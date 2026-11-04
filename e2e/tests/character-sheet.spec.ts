@@ -132,6 +132,21 @@ async function seed(page: Page, baseURL: string, theme: string) {
     },
   );
   const locked = add({ x: 60, y: 440 }, { name: 'Bloccata', role: 'Comparsa', locked: true });
+  const place = createElement(
+    doc,
+    'location',
+    { x: 380, y: 420 },
+    {
+      name: 'Cabina del guardiano',
+      setting: 'int',
+      light: 'Lampada da tavolo',
+      assetId: assets.ref1,
+      address: 'Via dei Binari 4',
+      notes: 'Le chiavi sono in portineria.',
+      scenes: ['2'],
+    },
+    opts,
+  );
   createElement(doc, 'image', { x: 700, y: 60 }, { assetId: assets.board }, opts);
   roots(doc).elements.get(ada.id)?.set('w', 300);
   await pushBoardDoc(baseURL, cookie, project.rootBoardId, doc);
@@ -153,7 +168,14 @@ async function seed(page: Page, baseURL: string, theme: string) {
     cookie,
     project,
     assets,
-    ids: { marta: marta.id, paolo: paolo.id, ada: ada.id, long: long.id, locked: locked.id },
+    ids: {
+      marta: marta.id,
+      paolo: paolo.id,
+      ada: ada.id,
+      long: long.id,
+      locked: locked.id,
+      place: place.id,
+    },
   };
 }
 
@@ -185,6 +207,11 @@ for (const [device, width, height, theme] of matrix) {
       return map ? readElement(map) : null;
     };
     await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=canvas`);
+    // An empty corner of the board on either screen.
+    const emptyBoard = async () => {
+      const box = (await page.locator('.canvas').boundingBox())!;
+      await page.mouse.click(box.x + box.width - 40, box.y + box.height / 2);
+    };
 
     // The face: two sizes, one line for a long name, scenes merged from another board.
     const adaCard = page.locator(`[data-el="${ids.ada}"]`);
@@ -224,7 +251,15 @@ for (const [device, width, height, theme] of matrix) {
 
     // The sheet: sections with content open, Scenes merge the frames and the manual field.
     await marta.click();
-    await page.getByRole('toolbar').getByRole('button', { name: 'Scheda', exact: true }).click();
+    // The bar of the mockup: duplicate and delete are under "more".
+    const bar = page.getByRole('toolbar', { name: 'Selezione' });
+    await expect(bar.getByRole('button', { name: 'Duplica' })).toHaveCount(0);
+    await expect(bar.getByRole('button', { name: 'Elimina' })).toHaveCount(0);
+    await bar.getByRole('button', { name: 'Altro' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Duplica' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Elimina' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await bar.getByRole('button', { name: 'Scheda', exact: true }).click();
     const sheet = page.getByRole('complementary', { name: 'Scheda personaggio' });
     await expect(sheet.getByLabel('Soprannome')).toHaveValue('Mar');
     await expect(sheet.locator('summary', { hasText: 'Identità' })).toContainText('6 campi');
@@ -236,7 +271,7 @@ for (const [device, width, height, theme] of matrix) {
     await toggle(sheet, 'Storia');
     await expect(sheet.getByLabel('Cosa vuole')).toHaveValue('Chiudere con il passato.');
     await toggle(sheet, 'Relazioni');
-    await expect(sheet.getByRole('textbox', { name: 'Relazione con Paolo Ferri' })).toHaveValue(
+    await expect(sheet.getByRole('button', { name: 'Modifica la relazione con Paolo Ferri' })).toContainText(
       'fratello',
     );
     await shot('story-relations');
@@ -256,16 +291,48 @@ for (const [device, width, height, theme] of matrix) {
 
     // Relations stay on this character alone.
     await toggle(sheet, 'Relazioni');
+    // The list of characters closes without choosing, with Esc as well.
     await sheet.getByRole('button', { name: 'Aggiungi una relazione' }).click();
-    await sheet.getByLabel('Aggiungi una relazione').click();
+    await expect(sheet.getByRole('combobox', { name: 'Aggiungi una relazione' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(sheet.getByRole('combobox', { name: 'Aggiungi una relazione' })).toHaveCount(0);
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole('button', { name: 'Aggiungi una relazione' }).click();
+    await sheet.getByRole('combobox', { name: 'Aggiungi una relazione' }).click();
     await page.getByRole('option', { name: 'Ada', exact: true }).click();
+    // The label typed and left by clicking the board is saved, the panel closes.
     await sheet.getByRole('textbox', { name: 'Relazione con Ada' }).fill('vecchia amica');
-    await sheet.getByRole('textbox', { name: 'Relazione con Ada' }).blur();
+    await emptyBoard();
+    await expect(sheet).toHaveCount(0);
     await expect
       .poll(async () => ((await saved(ids.marta)) as { relations?: unknown[] }).relations?.length)
       .toBe(3);
     expect(await saved(ids.ada)).not.toHaveProperty('relations');
-    await toggle(sheet, 'Relazioni');
+
+    // Notes typed and left by clicking the board are saved too.
+    await marta.dblclick();
+    await toggle(sheet, 'Solo team');
+    await sheet.getByLabel('Note', { exact: true }).fill('Disponibile dal 12 maggio.');
+    await emptyBoard();
+    await expect(sheet).toHaveCount(0);
+    await expect
+      .poll(async () => ((await saved(ids.marta)) as { notes?: string }).notes)
+      .toBe('Disponibile dal 12 maggio.');
+
+    // The panel follows the selection: the draft stays on the first card, the panel moves on.
+    await marta.dblclick();
+    await toggle(sheet, 'Storia');
+    await sheet.getByLabel('Cosa vuole').fill('Tornare a casa.');
+    await adaCard.click();
+    await expect(sheet.getByLabel('Nome', { exact: true })).toHaveValue('Ada');
+    await expect
+      .poll(async () => ((await saved(ids.marta)) as { wants?: string }).wants)
+      .toBe('Tornare a casa.');
+    expect(await saved(ids.ada)).not.toHaveProperty('wants');
+    // Another kind of card, the location, has its own sheet; a card without one closes it.
+    await emptyBoard();
+    await expect(sheet).toHaveCount(0);
+    await marta.dblclick();
 
     // "Dalla board" closes when told to: Esc leaves the sheet open.
     await sheet.getByRole('button', { name: 'Dalla board' }).click();
@@ -276,29 +343,45 @@ for (const [device, width, height, theme] of matrix) {
     await expect(list).toHaveCount(0);
     await expect(sheet).toBeVisible();
 
-    // A photo: local preview at once, progress, then the picture; and an error that can be fixed.
+    // A photo changes only when all its bytes have arrived.
     const photo = await png(page, '#7a5c2e');
     const file = sheet.locator('input[type="file"]');
-    if (shots) {
-      await page.route('**/api/v1/uploads', () => {}); // never answers
-      await file.setInputFiles({ name: 'waiting.png', mimeType: 'image/png', buffer: photo });
-      await expect(sheet.getByRole('status')).toContainText('Caricamento');
-      await shot('uploading');
-      await page.unrouteAll({ behavior: 'ignoreErrors' });
-      await page.reload();
-      await marta.dblclick();
-      await page.route('**/api/v1/uploads', (route) => route.fulfill({ status: 403, body: '' }));
-      await file.setInputFiles({ name: 'refused.png', mimeType: 'image/png', buffer: photo });
-      await expect(sheet.getByRole('alert')).toContainText('Foto non caricata');
-      await shot('upload-error');
-      await page.unrouteAll({ behavior: 'ignoreErrors' });
-      await page.reload();
-      await marta.dblclick();
-    }
-    await file.setInputFiles({ name: 'new-portrait.png', mimeType: 'image/png', buffer: photo });
-    await expect
-      .poll(async () => ((await saved(ids.marta)) as { assetId?: string } | null)?.assetId)
-      .not.toBe(assets.portrait);
+    const assetId = async () => ((await saved(ids.marta)) as { assetId?: string }).assetId;
+
+    // The bytes refused after the server created the asset: the old photo stays, with an error.
+    await page.route('**/api/v1/uploads/*', (route) =>
+      route.request().method() === 'PATCH'
+        ? route.fulfill({ status: 403, body: '' })
+        : route.continue(),
+    );
+    await file.setInputFiles({ name: 'refused.png', mimeType: 'image/png', buffer: photo });
+    await expect(sheet.getByRole('alert')).toContainText('Foto non caricata');
+    expect(await assetId()).toBe(assets.portrait);
+    await shot('upload-error');
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+
+    // "Dalla board" after the error: the error goes and the chosen picture shows, not the failed.
+    await sheet.getByRole('alert').getByRole('button', { name: 'Dalla board' }).click();
+    await sheet.getByRole('list', { name: 'Dalla board' }).getByRole('button').first().click();
+    await expect(sheet.getByRole('alert')).toHaveCount(0);
+    await expect.poll(assetId).toBe(assets.board);
+
+    // Bytes on their way: progress and the local preview, the card unchanged until they land.
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route('**/api/v1/uploads/*', async (route) => {
+      if (route.request().method() === 'PATCH') await held;
+      await route.continue();
+    });
+    await file.setInputFiles({ name: 'waiting.png', mimeType: 'image/png', buffer: photo });
+    await expect(sheet.getByRole('status')).toContainText('Caricamento');
+    await shot('uploading');
+    expect(await assetId()).toBe(assets.board);
+    release();
+    await expect.poll(assetId).not.toBe(assets.board);
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
     await expect
       .poll(() =>
         sheet
@@ -306,6 +389,23 @@ for (const [device, width, height, theme] of matrix) {
           .evaluate((img: HTMLImageElement) => img.naturalWidth),
       )
       .toBeGreaterThan(0);
+
+    // A reference: failed, it says so in its section; retried, it joins the list.
+    await toggle(sheet, 'Aspetto');
+    await page.route('**/api/v1/uploads/*', (route) =>
+      route.request().method() === 'PATCH'
+        ? route.fulfill({ status: 403, body: '' })
+        : route.continue(),
+    );
+    await sheet.getByRole('button', { name: 'Aggiungi un riferimento' }).click();
+    await file.setInputFiles({ name: 'reference.png', mimeType: 'image/png', buffer: photo });
+    await expect(sheet.getByRole('alert')).toContainText('reference.png');
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await sheet.getByRole('alert').getByRole('button', { name: 'Riprova' }).click();
+    await expect
+      .poll(async () => ((await saved(ids.marta)) as { references?: string[] }).references?.length)
+      .toBe(3);
+    await toggle(sheet, 'Aspetto');
     await sheet.getByRole('button', { name: 'Chiudi la scheda' }).click();
 
     if (shots) {
@@ -326,6 +426,30 @@ for (const [device, width, height, theme] of matrix) {
       await shot('empty');
       await sheet.getByRole('button', { name: 'Chiudi la scheda' }).click();
     }
+
+    // A location has the same sections, no new fields; its picker closes with Esc and Chiudi.
+    await page.locator(`[data-el="${ids.place}"]`).dblclick();
+    const location = page.getByRole('complementary', { name: 'Scheda location' });
+    await expect(location.locator('summary')).toHaveText([/Dettagli/, /Scene/, /Solo team/]);
+    await expect(location.getByLabel('Luce e orario migliore')).toHaveValue('Lampada da tavolo');
+    await expect(location.getByLabel('Indirizzo')).toBeHidden();
+    await shot('location');
+    const places = location.getByRole('list', { name: 'Dalla board' });
+    await location.getByRole('button', { name: 'Dalla board' }).click();
+    await expect(places).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(places).toHaveCount(0);
+    await expect(location).toBeVisible();
+    await location.getByRole('button', { name: 'Dalla board' }).click();
+    await location.getByRole('button', { name: 'Chiudi', exact: true }).click();
+    await expect(places).toHaveCount(0);
+    await location.locator('summary', { hasText: 'Solo team' }).click();
+    await location.getByLabel('Indirizzo').fill('Via dei Binari 5');
+    await emptyBoard();
+    await expect(location).toHaveCount(0);
+    await expect
+      .poll(async () => ((await saved(ids.place)) as { address?: string }).address)
+      .toBe('Via dei Binari 5');
 
     // Guests: only what has content, nothing to edit, no contact, no notes.
     const link = await page.request.post(`/api/v1/boards/${project.rootBoardId}/share-links`, {

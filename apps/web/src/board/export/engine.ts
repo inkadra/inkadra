@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  castAppearances,
   formatDuration,
   frameLabels,
   listElements,
@@ -11,6 +12,7 @@ import {
   aspectValue,
   type Element,
   getBoardAspect,
+  hiddenFromGuests,
   SHOT_ANGLES,
   SHOT_MOVEMENTS,
   SHOT_SIZES,
@@ -64,6 +66,11 @@ import { renderPdf } from './render-pdf.ts';
 import { logoUrl } from './settings.ts';
 import { missingGlyphs } from './text.ts';
 import { zipBlobs } from './zip.ts';
+import {
+  characterSceneCount,
+  characterSubtitle,
+  loadCastAppearances,
+} from '../film/cast-appearances.ts';
 
 export type ExportFormat = 'pdf' | 'png';
 export type ExportWhat = 'board' | 'selection' | 'visible' | 'storyboard' | 'shotlist';
@@ -92,6 +99,8 @@ export interface ExportEnv {
   projectName: string;
   boardTitle: string;
   boards: readonly Board[] | null;
+  /** Where the board is, to count the scenes of characters on its other boards too. */
+  scope?: { projectId: string; boardId: string } | undefined;
   threads: readonly CommentThread[];
   t: TFunction;
   language: string;
@@ -196,6 +205,13 @@ export async function buildPages(
   const team = req.audience === 'team';
   const boardAspect = getBoardAspect(store.doc) ?? DEFAULT_ASPECT;
   const groupsAll = storyboardOf(all);
+  // What a client export shows: only frames it may see, and nothing from other boards.
+  const cast = team
+    ? [
+        ...castAppearances(all),
+        ...(env.scope ? await loadCastAppearances(env.scope.projectId, env.scope.boardId) : []),
+      ]
+    : castAppearances(all.filter((el) => !hiddenFromGuests(el.id, lookup)));
   // Shot labels come from the whole board, as guests see them, before anything is left out.
   const labels = frameLabels(groupsAll);
   const preset = (prefix: string, codes: readonly string[], value: string | undefined) =>
@@ -240,13 +256,18 @@ export async function buildPages(
         .filter(Boolean)
         .join(' · '),
     slugline,
-    storyMeta: (el) =>
-      [
+    characterLine: (el) => characterSubtitle(el, t),
+    storyMeta: (el) => {
+      // A character counts the same scenes here as on its card.
+      const scenes =
+        el.type === 'character' ? characterSceneCount(el, cast) : (el.scenes?.length ?? 0);
+      return [
         el.type === 'character' ? el.actor : el.setting && t(`film.scene.settings.${el.setting}`),
-        el.scenes?.length ? t('story.sceneCount', { count: el.scenes.length }) : null,
+        scenes > 0 ? t('story.sceneCount', { count: scenes }) : null,
       ]
         .filter(Boolean)
-        .join(' · '),
+        .join(' · ');
+    },
     words: { board: t('export.board'), file: t('export.file'), plan: t('board.plan.name') },
   };
 

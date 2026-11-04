@@ -2904,6 +2904,8 @@ export function Canvas({
     }
     const locked = selectedEls.some((e) => e.locked);
     const single = selectedEls.length === 1 ? selectedEls[0] : undefined;
+    // A character's selection bar leaves these to the "more" menu.
+    const inMoreMenu = single?.type === 'character';
     if (single?.type === 'image' && menu.frames && !readOnly && !single.locked) {
       return [...snap.byId.values()]
         .filter((e) => e.type === 'frame' && !e.locked)
@@ -3169,7 +3171,7 @@ export function Canvas({
             ...(selectedEls.some((e) => e.type !== 'arrow')
               ? [
                   {
-                    toolbar: true,
+                    toolbar: !inMoreMenu,
                     label: t(
                       selectedEls.filter((e) => e.type !== 'arrow').every((e) => e.guestHidden)
                         ? 'guestVisibility.show'
@@ -3184,7 +3186,12 @@ export function Canvas({
               label: t('board.menu.tags'),
               action: () => setTagging({ x: menu.x, y: menu.y, ids: [...selection] }),
             },
-            { toolbar: true, label: t('board.menu.duplicate'), shortcut: '⌘D', action: duplicate },
+            {
+              toolbar: !inMoreMenu,
+              label: t('board.menu.duplicate'),
+              shortcut: '⌘D',
+              action: duplicate,
+            },
             {
               toolbar: true,
               label: locked ? t('board.menu.unlock') : t('board.menu.lock'),
@@ -3219,7 +3226,7 @@ export function Canvas({
               : []),
             ...(menu.fromToolbar ? [] : [{ divider: true as const }]),
             {
-              toolbar: true,
+              toolbar: !inMoreMenu,
               label: t('board.menu.delete'),
               shortcut: '⌫',
               danger: true,

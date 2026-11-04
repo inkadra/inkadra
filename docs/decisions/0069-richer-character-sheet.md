@@ -18,4 +18,7 @@ and `relations` (`characterId` and a free label).
   Guests have no such endpoint and see what is computed from the frames of the board they got.
 - A character's height follows its content and only its width resizes, with a 160 px minimum. A
   stored `h` from an older document is ignored, not rewritten.
-- Location cards do not change.
+- Location cards get the same closing sections and upload, with no new fields.
+- Pictures of both cards change only when all their bytes have arrived, as frames do.
+- `references` and `relations` are written whole, so of two simultaneous changes to one list only
+  the last stays. Lists that merge would need a Y.Array in the schema.

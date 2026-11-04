@@ -3211,7 +3211,10 @@
         "antagonist": "Antagonist",
         "supporting": "Sidekick"
       },
-      "sheet": "Sheet"
+      "sheet": "Sheet",
+      "editRelation": "Edit the relation with {{name}}",
+      "referenceFailed": "Reference not uploaded: {{name}}",
+      "dropUpload": "Discard"
     },
     "location": {
       "details": "Location card",
@@ -3227,7 +3230,8 @@
       "openMap": "Open the map",
       "searchMap": "Look up the address on OpenStreetMap",
       "contact": "Contact (owner, permits)",
-      "delete": "Delete location"
+      "delete": "Delete location",
+      "section": "Details"
     }
   },
   "tasks": {

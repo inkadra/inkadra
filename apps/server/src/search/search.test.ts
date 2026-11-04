@@ -7,7 +7,7 @@ import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { boardDoc, boardElementIndex, boardGrant, user } from '../db/schema.ts';
+import { board, boardDoc, boardElementIndex, boardGrant, user } from '../db/schema.ts';
 import { createApp } from '../http/app.ts';
 import {
   containsPattern,
@@ -419,6 +419,49 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     );
     expect((await get('stranger', path)).body.items).toEqual([]);
     expect((await get('owner', `${path}?excludeBoardId=nope`)).status).toBe(400);
+
+    // A viewer of one board: its sub-boards yes, the boards the grant does not open no.
+    const root = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+    });
+    const addBoard = async (title: string, cast: string[]) => {
+      const added = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/boards`,
+        headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+        payload: { parentBoardId: root.json().rootBoardId, kind: 'storyboard', title },
+      });
+      const id = added.json().id as string;
+      const closed = createBoardDoc(id);
+      addElement(closed, { ...base(), type: 'frame', cast });
+      const update = Y.encodeStateAsUpdate(closed);
+      await db
+        .insert(boardDoc)
+        .values({ boardId: id, state: update, schemaVersion: 2, size: update.byteLength });
+      await db.transaction((tx) => writeBoardIndex(tx, id, closed));
+      return id;
+    };
+    const closedBoard = await addBoard('Chiusa', ['Segreta']);
+    const names = async (who: keyof typeof cookies) =>
+      (await get(who, path)).body.items.map((i: { name: string }) => i.name);
+    expect(await names('owner')).toContain('segreta');
+    expect(await names('guest')).toContain('marta');
+    expect(await names('guest')).not.toContain('segreta');
+    // A board in the trash no longer counts.
+    await db.update(board).set({ deletedAt: new Date() }).where(eq(board.id, closedBoard));
+    expect(await names('owner')).not.toContain('segreta');
+
+    // A document nobody can read costs only itself.
+    const broken = await addBoard('Rotta', ['Rotta']);
+    await db
+      .update(boardDoc)
+      .set({ state: new Uint8Array([255, 1, 2, 3]) })
+      .where(eq(boardDoc.boardId, broken));
+    const survived = await get('owner', path);
+    expect(survived.status).toBe(200);
+    expect(survived.body.items.map((i: { name: string }) => i.name)).toContain('marta');
   });
 
   it('lists the named cards of one type only to people who can read them', async () => {

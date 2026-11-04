@@ -4001,6 +4001,37 @@ button.moodboard__card:focus-visible {
   color: var(--ink-text-muted);
   text-align: right;
 }
+.story-rel--edit {
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+}
+.story-rel--edit:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.story-rel small {
+  overflow-wrap: anywhere;
+}
+.story-panel__add-relation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.story-panel__add-relation > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.story-panel__thumb.is-uploading {
+  opacity: 0.6;
+}
 .story-rel__label.ink-input {
   flex: 1 1 72px;
   min-width: 56px;
@@ -4104,6 +4135,19 @@ button.moodboard__card:focus-visible {
   .canvas__panel > .film-panel {
     width: 100%;
     border-left: 0;
+  }
+}
+/* The sheet of a character or location takes the whole phone screen, bars included. */
+@media (width < 768px) {
+  .ink-shell .canvas .canvas__panel:has(> .story-panel),
+  .canvas .canvas__panel:has(> .story-panel) {
+    position: fixed;
+    inset: 0;
+    z-index: var(--ink-layer-viewer);
+  }
+  .canvas__panel > .story-panel {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 

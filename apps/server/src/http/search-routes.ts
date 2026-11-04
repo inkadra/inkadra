@@ -11,7 +11,7 @@ import {
   type TagCount,
   z,
 } from '@inkadra/shared';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import * as Y from 'yjs';
 import { type Actor, activeGrant, activeMember, effectiveRoles } from '../access.ts';
@@ -29,6 +29,8 @@ interface Deps {
 
 const ProjectParams = z.object({ projectId: Id });
 const SNIPPET = 140;
+/** Board documents read for one answer of cast-appearances. */
+const MAX_CAST_BOARDS = 40;
 
 /** `q` as a LIKE pattern that matches it anywhere, with % and _ taken literally. */
 export function containsPattern(q: string): string {
@@ -153,8 +155,10 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     const ids = boardIds.filter((id) => id !== excludeBoardId);
     if (ids.length === 0) return { items: [] };
     // Only the documents of boards the index says have frames: the cast is not in the index.
+    // shortcut: the most recently edited MAX_CAST_BOARDS only, read on each request (clients
+    // keep the answer a minute); a project with more needs the cast in the index.
     const docs = await db
-      .select({ state: boardDoc.state })
+      .select({ boardId: boardDoc.boardId, state: boardDoc.state })
       .from(boardDoc)
       .where(
         and(
@@ -163,24 +167,32 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
             where ${boardElementIndex.boardId} = ${boardDoc.boardId}
               and ${boardElementIndex.type} = 'frame')`,
         ),
-      );
+      )
+      .orderBy(desc(boardDoc.updatedAt))
+      .limit(MAX_CAST_BOARDS);
     const merged = new Map<string, CastAppearance>();
-    for (const { state } of docs) {
+    for (const { boardId, state } of docs) {
       const doc = new Y.Doc();
-      Y.applyUpdate(doc, state);
-      const elements = [...roots(doc).elements.values()].flatMap((map): Element[] => {
-        const el = readElement(map);
-        return el ? [el] : [];
-      });
-      for (const entry of castAppearances(elements)) {
-        const seen = merged.get(entry.name);
-        merged.set(entry.name, {
-          name: entry.name,
-          frames: entry.frames + (seen?.frames ?? 0),
-          scenes: [...new Set([...(seen?.scenes ?? []), ...entry.scenes])],
+      try {
+        Y.applyUpdate(doc, state);
+        const elements = [...roots(doc).elements.values()].flatMap((map): Element[] => {
+          const el = readElement(map);
+          return el ? [el] : [];
         });
+        for (const entry of castAppearances(elements)) {
+          const seen = merged.get(entry.name);
+          merged.set(entry.name, {
+            name: entry.name,
+            frames: entry.frames + (seen?.frames ?? 0),
+            scenes: [...new Set([...(seen?.scenes ?? []), ...entry.scenes])],
+          });
+        }
+      } catch (err) {
+        // One unreadable document must not cost the scenes of all the others.
+        req.log.warn({ err, boardId }, 'cast appearances: board document not readable');
+      } finally {
+        doc.destroy();
       }
-      doc.destroy();
     }
     return { items: [...merged.values()] };
   });

@@ -3211,7 +3211,10 @@
         "antagonist": "Antagonista",
         "supporting": "Spalla"
       },
-      "sheet": "Scheda"
+      "sheet": "Scheda",
+      "editRelation": "Modifica la relazione con {{name}}",
+      "referenceFailed": "Riferimento non caricato: {{name}}",
+      "dropUpload": "Lascia perdere"
     },
     "location": {
       "details": "Scheda location",
@@ -3227,7 +3230,8 @@
       "openMap": "Apri la mappa",
       "searchMap": "Cerca l’indirizzo su OpenStreetMap",
       "contact": "Contatto (proprietario, permessi)",
-      "delete": "Elimina la location"
+      "delete": "Elimina la location",
+      "section": "Dettagli"
     }
   },
   "tasks": {

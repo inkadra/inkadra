@@ -506,6 +506,15 @@ export function ContextBar({
   const hideable = elements.filter((e) => e.type !== 'arrow');
   const guestHidden = hideable.length > 0 && hideable.every((e) => e.guestHidden);
   const top = box.y - 44 < 8 ? box.y + box.h + 8 : box.y - 44;
+  // A character's bar follows its mockup: hiding, duplicating and deleting are under "more".
+  const character = elements.length === 1 && elements[0]?.type === 'character';
+  const tagButton = (
+    <BarButton
+      icon="tag"
+      label={t('tags.title')}
+      onClick={() => onTags(left, box.y + box.h + 8)}
+    />
+  );
   return (
     <div
       ref={bar}
@@ -572,6 +581,7 @@ export function ContextBar({
               <span className="ctxbar__sep" aria-hidden="true" />
             </>
           )}
+          {character && tagButton}
           <BarButton
             icon={locked ? 'unlock' : 'lock'}
             label={locked ? t('board.menu.unlock') : t('board.menu.lock')}
@@ -579,7 +589,7 @@ export function ContextBar({
             active={locked}
             danger={locked}
           />
-          {hideable.length > 0 && (
+          {!character && hideable.length > 0 && (
             <button
               type="button"
               className={`ctxbar__btn${guestHidden ? ' is-active' : ''}`}
@@ -592,14 +602,16 @@ export function ContextBar({
               <GuestVisibilityIcon />
             </button>
           )}
+          {character && <span className="ctxbar__sep" aria-hidden="true" />}
           {extra}
-          <BarButton
-            icon="tag"
-            label={t('tags.title')}
-            onClick={() => onTags(left, box.y + box.h + 8)}
-          />
-          <BarButton icon="copy" label={t('board.menu.duplicate')} onClick={onDuplicate} />
-          <BarButton icon="trash" label={t('board.menu.delete')} onClick={onDelete} />
+          {character && <span className="ctxbar__sep" aria-hidden="true" />}
+          {!character && (
+            <>
+              {tagButton}
+              <BarButton icon="copy" label={t('board.menu.duplicate')} onClick={onDuplicate} />
+              <BarButton icon="trash" label={t('board.menu.delete')} onClick={onDelete} />
+            </>
+          )}
           <button
             type="button"
             className="ctxbar__btn"

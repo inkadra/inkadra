@@ -190,6 +190,7 @@ for (const [device, width, height] of [
       await page.locator(`[data-el="${ids.cabin}"]`).dblclick();
       const place = page.getByRole('complementary', { name: 'Scheda location' });
       await expect(place.getByLabel('Interno o esterno')).toHaveAttribute('data-value', 'int');
+      await place.locator('summary', { hasText: 'Solo team' }).click();
       await place.getByLabel('Indirizzo').fill('Via dei Binari 4');
       await place.getByLabel('Indirizzo').blur();
       await expect(

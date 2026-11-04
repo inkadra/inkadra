@@ -2,11 +2,16 @@ import type { Element } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 import {
+  boardCast,
   characterAppearance,
+  characterSceneCount,
   characterSubtitle,
+} from './cast-appearances.ts';
+import {
   mapSearchUrl,
   parseMapUrl,
   parseScenes,
+  withRelation,
 } from './StoryCardPanel.tsx';
 
 describe('story card fields', () => {
@@ -43,14 +48,33 @@ it('finds where a character appears, by cast name, on this board and on others',
     { id: 'frame5678', type: 'frame', parent: 'scene1234', z: 'a2', cast: ['Marta'] },
     { id: 'frame9999', type: 'frame', parent: null, z: 'a3', cast: ['Marta'] },
   ] as unknown as Element[];
+  const here = boardCast({ byId: new Map(elements.map((el) => [el.id, el])) });
   const other = [{ name: 'marta', frames: 2, scenes: ['3A', '12'] }];
-  expect(characterAppearance('Marta', elements)).toEqual({ frames: 3, scenes: ['3A'] });
-  expect(characterAppearance('marta', elements, other)).toEqual({
+  expect(characterAppearance('Marta', here)).toEqual({ frames: 3, scenes: ['3A'] });
+  expect(characterAppearance('marta', [...here, ...other])).toEqual({
     frames: 5,
     scenes: ['3A', '12'],
   });
-  expect(characterAppearance('Paolo', elements)).toEqual({ frames: 0, scenes: [] });
-  expect(characterAppearance('', elements)).toEqual({ frames: 0, scenes: [] });
+  expect(characterAppearance('Paolo', here)).toEqual({ frames: 0, scenes: [] });
+  expect(characterAppearance('', here)).toEqual({ frames: 0, scenes: [] });
+});
+
+it('counts the scenes of a character once, from its frames and its manual field', () => {
+  const cast = [{ name: 'marta', frames: 2, scenes: ['3A', '12'] }];
+  expect(characterSceneCount({ name: 'Marta', scenes: ['12', '1'] }, cast)).toBe(3);
+  expect(characterSceneCount({ name: 'Paolo' }, cast)).toBe(0);
+});
+
+it('works out the cast of a board once for all its cards, until the board changes', () => {
+  const byId = new Map<string, Element>();
+  expect(boardCast({ byId })).toBe(boardCast({ byId }));
+  expect(boardCast({ byId: new Map() })).not.toBe(boardCast({ byId }));
+});
+
+it('stops at the limit the schema allows: one more would make the card invalid', () => {
+  const full = Array.from({ length: 100 }, (_, i) => ({ characterId: `c${i}`, label: '' }));
+  expect(withRelation(full, { characterId: 'more', label: '' })).toHaveLength(100);
+  expect(withRelation(full.slice(1), { characterId: 'more', label: '' })).toHaveLength(100);
 });
 
 it('writes a plain age in words and keeps anything else as written', () => {

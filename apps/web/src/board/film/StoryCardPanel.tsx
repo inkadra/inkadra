@@ -1,20 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import {
-  type CastAppearance,
-  castAppearances,
-  deleteElements,
-  updateElement,
-} from '@inkadra/canvas-core';
+import { deleteElements, updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton, Select } from '@inkadra/ui';
-import type { TFunction } from 'i18next';
 import {
   type KeyboardEvent,
   type ReactNode,
   useContext,
   useEffect,
   useId,
-  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -24,15 +17,15 @@ import { pickVariant, useAsset } from '../assets.ts';
 import { GuestModeContext } from '../context.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { TagEditor } from '../tags.tsx';
-import {
-  localPreview,
-  retryUpload,
-  startUpload,
-  useUploadProgress,
-  useUploads,
-} from '../uploads.ts';
-import { useCastAppearances } from './cast-appearances.ts';
+import { localPreview, retryUpload, useUploadProgress } from '../uploads.ts';
+import { characterSubtitle, useCharacterAppearance } from './cast-appearances.ts';
 import { blurOnEnter, PresetField, TextField } from './fields.tsx';
+import {
+  dropStoryUpload,
+  type StoryUploadTarget,
+  uploadToStoryCard,
+  useStoryUploads,
+} from './story-upload.ts';
 
 export type StoryCard = Extract<Element, { type: 'character' | 'location' }>;
 type Patch = Record<string, unknown>;
@@ -93,11 +86,7 @@ export function StoryCardPanel({
   const guest = useContext(GuestModeContext);
   const locked = readOnly || !!card.locked;
   const set = (patch: Patch) => !locked && updateElement(store.doc, card.id, patch, LOCAL);
-  const text = (v: string, max: number) => v.trim().slice(0, max) || undefined;
   const panel = useRef<HTMLElement>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [picking, setPicking] = useState(false);
-  const [badMap, setBadMap] = useState(false);
   // A new card opens with its name to type.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when another card opens
   useEffect(() => {
@@ -135,132 +124,13 @@ export function StoryCardPanel({
             readOnly={readOnly}
           />
         ) : (
-          <>
-            <div className="story-panel__picture">
-              <StoryPicture assetId={card.assetId} label={card.name} pixels={640} kind={kind} />
-              {!locked && (
-                <div className="film-panel__picture-actions">
-                  <Button icon="upload" variant="ghost" onClick={() => fileInput.current?.click()}>
-                    {t('story.upload')}
-                  </Button>
-                  <Button
-                    icon="image"
-                    variant="ghost"
-                    aria-expanded={picking}
-                    onClick={() => setPicking(!picking)}
-                  >
-                    {t('story.fromBoard')}
-                  </Button>
-                  {card.assetId && (
-                    <Button variant="ghost" onClick={() => set({ assetId: undefined })}>
-                      {t('story.removePicture')}
-                    </Button>
-                  )}
-                </div>
-              )}
-              {picking && !locked && (
-                <BoardPictures
-                  store={store}
-                  onPick={(assetId) => {
-                    set({ assetId });
-                    setPicking(false);
-                  }}
-                />
-              )}
-            </div>
-            <TextField
-              label={t('story.location.name')}
-              value={card.name}
-              placeholder={t('story.location.namePlaceholder')}
-              readOnly={locked}
-              className="story-panel__name"
-              onCommit={(v) => set({ name: v.trim().slice(0, 200) })}
-            />
-            <SettingField
-              value={card.setting}
-              readOnly={locked}
-              onCommit={(setting) => set({ setting })}
-            />
-            <TextField
-              label={t('story.location.light')}
-              value={card.light ?? ''}
-              placeholder={t('story.location.lightPlaceholder')}
-              multiline
-              readOnly={locked}
-              onCommit={(v) => set({ light: text(v, 1000) })}
-            />
-            <TextField
-              label={t('story.location.availability')}
-              value={card.availability ?? ''}
-              readOnly={locked}
-              onCommit={(v) => set({ availability: text(v, 1000) })}
-            />
-            <TextField
-              label={t('story.scenes')}
-              value={(card.scenes ?? []).join(', ')}
-              hint={t('story.scenesHint')}
-              readOnly={locked}
-              onCommit={(v) => set({ scenes: parseScenes(v) })}
-            />
-            {!guest && (
-              <section className="story-panel__team" aria-labelledby={`team-${card.id}`}>
-                <h3 id={`team-${card.id}`} className="story-panel__team-title">
-                  {t('story.teamOnly')}
-                </h3>
-                <p className="story-panel__team-hint">{t('story.teamOnlyHint')}</p>
-                <>
-                  <TextField
-                    label={t('story.location.address')}
-                    value={card.address ?? ''}
-                    readOnly={locked}
-                    onCommit={(v) => set({ address: text(v, 500) })}
-                  />
-                  <TextField
-                    label={t('story.location.mapUrl')}
-                    value={card.mapUrl ?? ''}
-                    placeholder="https://"
-                    hint={
-                      badMap ? t('story.location.mapUrlInvalid') : t('story.location.mapUrlHint')
-                    }
-                    readOnly={locked}
-                    onCommit={(v) => {
-                      if (!v.trim()) {
-                        setBadMap(false);
-                        set({ mapUrl: undefined });
-                        return;
-                      }
-                      const url = parseMapUrl(v);
-                      setBadMap(!url);
-                      if (url) set({ mapUrl: url });
-                    }}
-                  />
-                  {(card.mapUrl || card.address) && (
-                    <a
-                      className="story-panel__map"
-                      href={card.mapUrl ?? mapSearchUrl(card.address ?? '')}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {card.mapUrl ? t('story.location.openMap') : t('story.location.searchMap')}
-                    </a>
-                  )}
-                </>
-                <TextField
-                  label={t('story.location.contact')}
-                  value={card.contact ?? ''}
-                  readOnly={locked}
-                  onCommit={(v) => set({ contact: text(v, 500) })}
-                />
-                <TextField
-                  label={t('story.notes')}
-                  value={card.notes ?? ''}
-                  multiline
-                  readOnly={locked}
-                  onCommit={(v) => set({ notes: text(v, 4000) })}
-                />
-              </section>
-            )}
-          </>
+          <LocationSheet
+            store={store}
+            card={card}
+            projectId={projectId}
+            boardId={boardId}
+            readOnly={readOnly}
+          />
         )}
         {!guest && (
           <div className="film-field">
@@ -288,26 +158,6 @@ export function StoryCardPanel({
           </Button>
         )}
       </div>
-      {card.type === 'location' && (
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (!file) return;
-            const id = card.id;
-            startUpload({
-              file,
-              projectId,
-              boardId,
-              onAsset: (assetId) => updateElement(store.doc, id, { assetId }, LOCAL),
-            });
-          }}
-        />
-      )}
     </aside>
   );
 }
@@ -436,34 +286,6 @@ function BoardPicture({ assetId, onPick }: { assetId: string; onPick: () => void
   );
 }
 
-/** Where a character appears: its scenes come from the cast of the frames, by name. */
-export function characterAppearance(
-  name: string,
-  elements: Iterable<Element>,
-  otherBoards: readonly CastAppearance[] = [],
-): { frames: number; scenes: string[] } {
-  const key = name.trim().toLocaleLowerCase();
-  const found = [...castAppearances([...elements]), ...otherBoards].filter(
-    (entry) => key && entry.name === key,
-  );
-  return {
-    frames: found.reduce((sum, entry) => sum + entry.frames, 0),
-    scenes: [...new Set(found.flatMap((entry) => entry.scenes))],
-  };
-}
-
-/** "Protagonista · 34 anni": a plain number becomes an age, anything else stays as written. */
-export function characterSubtitle(
-  card: { role?: string | undefined; age?: string | undefined },
-  t: TFunction,
-): string {
-  const age =
-    card.age && /^\d+$/.test(card.age)
-      ? t('story.character.ageYears', { age: card.age })
-      : card.age;
-  return [card.role, age].filter(Boolean).join(' · ');
-}
-
 const ROLE_CODES = ['protagonist', 'coprotagonist', 'antagonist', 'supporting'] as const;
 
 type CharacterCard = Extract<Element, { type: 'character' }>;
@@ -493,6 +315,353 @@ function Section({
   );
 }
 
+const MAX_REFERENCES = 60;
+const MAX_RELATIONS = 100;
+
+/**
+ * Adds a relation, within the limit of the schema: past it the whole card would stop being valid.
+ * shortcut: `references` and `relations` are written as whole arrays, so of two simultaneous
+ * changes to one list only the last stays; lists that merge need a Y.Array in the schema.
+ */
+export function withRelation<T extends { characterId: string; label: string }>(
+  relations: readonly T[],
+  relation: T,
+): T[] {
+  return relations.length >= MAX_RELATIONS ? [...relations] : [...relations, relation];
+}
+
+/** Upload, "Dalla board", their progress and errors: the same on both kinds of card. */
+function useCardPicture({
+  store,
+  card,
+  projectId,
+  boardId,
+  locked,
+}: {
+  store: BoardStore;
+  card: StoryCard;
+  projectId: string;
+  boardId: string;
+  locked: boolean;
+}) {
+  const { t } = useTranslation();
+  const [picking, setPicking] = useState<StoryUploadTarget | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const uploadTarget = useRef<StoryUploadTarget>('photo');
+  const uploads = useStoryUploads(card.id);
+  const photo = uploads.find((item) => item.target === 'photo');
+  const uploading = photo?.state === 'uploading' || photo?.state === 'offline';
+  const chooseFile = (target: StoryUploadTarget) => {
+    uploadTarget.current = target;
+    fileInput.current?.click();
+  };
+  /** The upload that failed gives way to whatever the person chooses next. */
+  const dropFailedPhoto = () => {
+    if (photo?.state === 'failed') dropStoryUpload(card.id, photo.key);
+  };
+  const addReference = (assetId: string) => {
+    const references = card.type === 'character' ? (card.references ?? []) : [];
+    updateElement(
+      store.doc,
+      card.id,
+      { references: [...new Set([...references, assetId])].slice(0, MAX_REFERENCES) },
+      LOCAL,
+    );
+  };
+  const onFile = (file: File) => {
+    if (uploadTarget.current === 'photo') dropFailedPhoto();
+    uploadToStoryCard({
+      store,
+      cardId: card.id,
+      target: uploadTarget.current,
+      file,
+      projectId,
+      boardId,
+    });
+    setPicking(null);
+  };
+  const chooser = (target: StoryUploadTarget) =>
+    picking === target &&
+    !locked && (
+      <div className="story-panel__chooser">
+        <BoardPictures
+          store={store}
+          onPick={(assetId) => {
+            if (target === 'photo') {
+              dropFailedPhoto();
+              updateElement(store.doc, card.id, { assetId }, LOCAL);
+            } else addReference(assetId);
+            setPicking(null);
+          }}
+        />
+        <div className="story-panel__chooser-actions">
+          {target === 'reference' && (
+            <Button icon="upload" variant="ghost" onClick={() => chooseFile('reference')}>
+              {t('story.character.photo')}
+            </Button>
+          )}
+          <Button variant="ghost" onClick={() => setPicking(null)}>
+            {t('story.character.closePicker')}
+          </Button>
+        </div>
+      </div>
+    );
+  return {
+    picking,
+    setPicking,
+    chooseFile,
+    chooser,
+    uploads,
+    uploading,
+    /** What to show over the current photo: only what is still arriving. */
+    preview: uploading ? photo?.preview : undefined,
+    progress: uploading && photo && (
+      <div className="story-panel__progress">
+        <span role="status">
+          {t('story.character.uploading', {
+            percent: photo.size ? Math.round((photo.sent / photo.size) * 100) : 0,
+          })}
+        </span>
+        <div className="story-panel__bar" aria-hidden="true">
+          <i style={{ transform: `scaleX(${photo.size ? photo.sent / photo.size : 0})` }} />
+        </div>
+      </div>
+    ),
+    alert: photo?.state === 'failed' && !locked && (
+      <div className="story-panel__alert" role="alert">
+        <strong>{t('story.character.uploadFailed')}</strong>
+        <span>{t('story.character.uploadFailedHint')}</span>
+        <div className="film-panel__picture-actions">
+          <Button variant="secondary" onClick={() => retryUpload(photo.key)}>
+            {t('story.character.retry')}
+          </Button>
+          <Button variant="ghost" onClick={() => setPicking('photo')}>
+            {t('story.fromBoard')}
+          </Button>
+        </div>
+      </div>
+    ),
+    input: (
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) onFile(file);
+        }}
+      />
+    ),
+  };
+}
+
+function useSheetText() {
+  const { t } = useTranslation();
+  const guest = useContext(GuestModeContext);
+  return {
+    filled: (...values: Array<string | undefined>) => values.filter(Boolean).length,
+    fieldCount: (count: number) =>
+      count > 0 ? t('story.character.fieldCount', { count }) : t('story.character.empty'),
+    emptyMark: (hasContent: boolean) =>
+      hasContent || guest ? undefined : t('story.character.empty'),
+  };
+}
+
+/** The sheet of a location, in the same closing sections as a character: no fields of its own. */
+function LocationSheet({
+  store,
+  card,
+  projectId,
+  boardId,
+  readOnly,
+}: {
+  store: BoardStore;
+  card: Extract<Element, { type: 'location' }>;
+  projectId: string;
+  boardId: string;
+  readOnly: boolean;
+}) {
+  const { t } = useTranslation();
+  const guest = useContext(GuestModeContext);
+  const locked = readOnly || !!card.locked;
+  const set = (patch: Patch) => !locked && updateElement(store.doc, card.id, patch, LOCAL);
+  const clean = (v: string, max: number) => v.trim().slice(0, max) || undefined;
+  const [badMap, setBadMap] = useState(false);
+  const picture = useCardPicture({ store, card, projectId, boardId, locked });
+  const { filled, fieldCount, emptyMark } = useSheetText();
+  const detailsFilled = filled(card.setting, card.light, card.availability);
+  const scenes = card.scenes ?? [];
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && picture.picking) {
+      e.stopPropagation();
+      picture.setPicking(null);
+    }
+  };
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: Esc from the controls inside closes the chooser
+    <div className="story-panel__sheet" onKeyDown={onKeyDown}>
+      <div className="story-panel__picture">
+        <StoryPicture
+          assetId={card.assetId}
+          label={card.name}
+          pixels={640}
+          kind="location"
+          preview={picture.preview}
+        />
+        {picture.progress}
+        {!locked && !picture.uploading && (
+          <div className="film-panel__picture-actions">
+            <Button icon="upload" variant="ghost" onClick={() => picture.chooseFile('photo')}>
+              {t('story.upload')}
+            </Button>
+            <Button
+              icon="image"
+              variant="ghost"
+              aria-expanded={picture.picking === 'photo'}
+              onClick={() => picture.setPicking(picture.picking === 'photo' ? null : 'photo')}
+            >
+              {t('story.fromBoard')}
+            </Button>
+            {card.assetId && (
+              <Button variant="ghost" onClick={() => set({ assetId: undefined })}>
+                {t('story.removePicture')}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+      {picture.alert}
+      {picture.chooser('photo')}
+      {guest ? (
+        <strong className="story-panel__guest-name">{card.name}</strong>
+      ) : (
+        <TextField
+          label={t('story.location.name')}
+          value={card.name}
+          placeholder={t('story.location.namePlaceholder')}
+          readOnly={locked}
+          className="story-panel__name"
+          onCommit={(v) => set({ name: v.trim().slice(0, 200) })}
+        />
+      )}
+      {guest ? (
+        card.light && (
+          <Section title={t('story.location.section')} open>
+            <ReadField label={t('story.location.light')} value={card.light} />
+          </Section>
+        )
+      ) : (
+        <Section
+          title={t('story.location.section')}
+          count={fieldCount(detailsFilled)}
+          open={detailsFilled > 0}
+        >
+          <SettingField
+            value={card.setting}
+            readOnly={locked}
+            onCommit={(setting) => set({ setting })}
+          />
+          <TextField
+            label={t('story.location.light')}
+            value={card.light ?? ''}
+            placeholder={t('story.location.lightPlaceholder')}
+            multiline
+            readOnly={locked}
+            onCommit={(v) => set({ light: clean(v, 1000) })}
+          />
+          <TextField
+            label={t('story.location.availability')}
+            value={card.availability ?? ''}
+            readOnly={locked}
+            onCommit={(v) => set({ availability: clean(v, 1000) })}
+          />
+        </Section>
+      )}
+      {(!guest || scenes.length > 0) && (
+        <Section
+          title={t('story.scenes')}
+          count={scenes.length > 0 ? String(scenes.length) : emptyMark(false)}
+        >
+          {guest ? (
+            <ul className="story-panel__scenes">
+              {scenes.map((number) => (
+                <li className="film-chip story-chip" key={number}>
+                  {t('needed.sceneNumber', { number })}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <TextField
+              label={t('story.scenes')}
+              value={scenes.join(', ')}
+              hint={t('story.scenesHint')}
+              readOnly={locked}
+              onCommit={(v) => set({ scenes: parseScenes(v) })}
+            />
+          )}
+        </Section>
+      )}
+      {!guest && (
+        <Section
+          title={t('story.teamOnly')}
+          count={fieldCount(filled(card.address, card.mapUrl, card.contact, card.notes))}
+        >
+          <p className="film-field__hint">{t('story.teamOnlyHint')}</p>
+          <TextField
+            label={t('story.location.address')}
+            value={card.address ?? ''}
+            readOnly={locked}
+            onCommit={(v) => set({ address: clean(v, 500) })}
+          />
+          <TextField
+            label={t('story.location.mapUrl')}
+            value={card.mapUrl ?? ''}
+            placeholder="https://"
+            hint={badMap ? t('story.location.mapUrlInvalid') : t('story.location.mapUrlHint')}
+            readOnly={locked}
+            onCommit={(v) => {
+              if (!v.trim()) {
+                setBadMap(false);
+                set({ mapUrl: undefined });
+                return;
+              }
+              const url = parseMapUrl(v);
+              setBadMap(!url);
+              if (url) set({ mapUrl: url });
+            }}
+          />
+          {(card.mapUrl || card.address) && (
+            <a
+              className="story-panel__map"
+              href={card.mapUrl ?? mapSearchUrl(card.address ?? '')}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {card.mapUrl ? t('story.location.openMap') : t('story.location.searchMap')}
+            </a>
+          )}
+          <TextField
+            label={t('story.location.contact')}
+            value={card.contact ?? ''}
+            readOnly={locked}
+            onCommit={(v) => set({ contact: clean(v, 500) })}
+          />
+          <TextField
+            label={t('story.notes')}
+            value={card.notes ?? ''}
+            multiline
+            readOnly={locked}
+            onCommit={(v) => set({ notes: clean(v, 4000) })}
+          />
+        </Section>
+      )}
+      {picture.input}
+    </div>
+  );
+}
+
 /** The sheet of a character, in sections (approved mockup, variant A). */
 function CharacterSheet({
   store,
@@ -513,59 +682,20 @@ function CharacterSheet({
   const set = (patch: Patch) => !locked && updateElement(store.doc, card.id, patch, LOCAL);
   const clean = (v: string, max: number) => v.trim().slice(0, max) || undefined;
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  const otherBoards = useCastAppearances(projectId, boardId, guest);
-  const { frames, scenes } = useMemo(
-    () => characterAppearance(card.name, snap.byId.values(), otherBoards),
-    [card.name, snap, otherBoards],
-  );
+  const { frames, scenes } = useCharacterAppearance(store, card.name, projectId, boardId, guest);
   const allScenes = [...new Set([...scenes, ...(card.scenes ?? [])])];
-  const [picking, setPicking] = useState<'photo' | 'reference' | null>(null);
+  const picture = useCardPicture({ store, card, projectId, boardId, locked });
   const [addingRelation, setAddingRelation] = useState(false);
-  const [uploadKey, setUploadKey] = useState<string | null>(null);
-  const upload = useUploads().find((item) => item.key === uploadKey);
-  const uploading = upload?.state === 'uploading' || upload?.state === 'offline';
-  const failed = upload?.state === 'failed';
-  const fileInput = useRef<HTMLInputElement>(null);
-  const uploadTarget = useRef<'photo' | 'reference'>('photo');
+  const [editingRelation, setEditingRelation] = useState<string | null>(null);
   const references = card.references ?? [];
   const relations = card.relations ?? [];
   const subtitle = characterSubtitle(card, t);
-
-  const chooseFile = (target: 'photo' | 'reference') => {
-    uploadTarget.current = target;
-    fileInput.current?.click();
-  };
-  const addReference = (assetId: string, latest: readonly string[]) =>
-    updateElement(
-      store.doc,
-      card.id,
-      { references: [...new Set([...latest, assetId])].slice(0, 60) },
-      LOCAL,
-    );
-  const onFile = (file: File) => {
-    const id = card.id;
-    const target = uploadTarget.current;
-    const key = startUpload({
-      file,
-      projectId,
-      boardId,
-      onAsset: (assetId) => {
-        if (target === 'photo') {
-          updateElement(store.doc, id, { assetId }, LOCAL);
-          return;
-        }
-        const latest = store.getSnapshot().byId.get(id);
-        addReference(assetId, latest?.type === 'character' ? (latest.references ?? []) : []);
-      },
-    });
-    if (target === 'photo') setUploadKey(key);
-    setPicking(null);
-  };
+  const referenceUploads = picture.uploads.filter((item) => item.target === 'reference');
   const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && picking) {
-      e.stopPropagation();
-      setPicking(null);
-    }
+    if (e.key !== 'Escape' || (!picture.picking && !addingRelation)) return;
+    e.stopPropagation();
+    picture.setPicking(null);
+    setAddingRelation(false);
   };
 
   /** One field: an input, or for guests only the text it holds. */
@@ -600,11 +730,7 @@ function CharacterSheet({
       />
     );
   };
-  const filled = (...values: Array<string | undefined>) => values.filter(Boolean).length;
-  const fieldCount = (count: number) =>
-    count > 0 ? t('story.character.fieldCount', { count }) : t('story.character.empty');
-  const emptyMark = (hasContent: boolean) =>
-    hasContent || guest ? undefined : t('story.character.empty');
+  const { filled, fieldCount, emptyMark } = useSheetText();
   const identityFilled = filled(
     card.role,
     card.age,
@@ -622,31 +748,6 @@ function CharacterSheet({
       !relations.some((relation) => relation.characterId === el.id),
   );
 
-  const pictureChooser = (target: 'photo' | 'reference') =>
-    picking === target &&
-    !locked && (
-      <div className="story-panel__chooser">
-        <BoardPictures
-          store={store}
-          onPick={(assetId) => {
-            if (target === 'photo') set({ assetId });
-            else addReference(assetId, references);
-            setPicking(null);
-          }}
-        />
-        <div className="story-panel__chooser-actions">
-          {target === 'reference' && (
-            <Button icon="upload" variant="ghost" onClick={() => chooseFile('reference')}>
-              {t('story.character.photo')}
-            </Button>
-          )}
-          <Button variant="ghost" onClick={() => setPicking(null)}>
-            {t('story.character.closePicker')}
-          </Button>
-        </div>
-      </div>
-    );
-
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: Esc from the controls inside closes the chooser
     <div className="story-panel__sheet" onKeyDown={onKeyDown}>
@@ -657,9 +758,9 @@ function CharacterSheet({
             label={card.name}
             pixels={192}
             kind="character"
-            preview={uploading || failed ? upload?.preview : undefined}
+            preview={picture.preview}
           />
-          {card.assetId && !locked && !uploading && (
+          {card.assetId && !locked && !picture.uploading && (
             <IconButton
               icon="close"
               label={t('story.removePicture')}
@@ -684,31 +785,18 @@ function CharacterSheet({
                 className="story-panel__name"
                 onCommit={(v) => set({ name: v.trim().slice(0, 120) })}
               />
-              {uploading ? (
-                <div className="story-panel__progress">
-                  <span role="status">
-                    {t('story.character.uploading', {
-                      percent: upload?.size ? Math.round((upload.sent / upload.size) * 100) : 0,
-                    })}
-                  </span>
-                  <div className="story-panel__bar" aria-hidden="true">
-                    <i
-                      style={{
-                        transform: `scaleX(${upload?.size ? upload.sent / upload.size : 0})`,
-                      }}
-                    />
-                  </div>
-                </div>
+              {picture.uploading ? (
+                picture.progress
               ) : !locked ? (
                 <div className="film-panel__picture-actions">
-                  <Button icon="upload" variant="ghost" onClick={() => chooseFile('photo')}>
+                  <Button icon="upload" variant="ghost" onClick={() => picture.chooseFile('photo')}>
                     {t('story.character.photo')}
                   </Button>
                   <Button
                     icon="image"
                     variant="ghost"
-                    aria-expanded={picking === 'photo'}
-                    onClick={() => setPicking(picking === 'photo' ? null : 'photo')}
+                    aria-expanded={picture.picking === 'photo'}
+                    onClick={() => picture.setPicking(picture.picking === 'photo' ? null : 'photo')}
                   >
                     {t('story.fromBoard')}
                   </Button>
@@ -730,21 +818,8 @@ function CharacterSheet({
           )}
         </div>
       </div>
-      {failed && upload && !locked && (
-        <div className="story-panel__alert" role="alert">
-          <strong>{t('story.character.uploadFailed')}</strong>
-          <span>{t('story.character.uploadFailedHint')}</span>
-          <div className="film-panel__picture-actions">
-            <Button variant="secondary" onClick={() => retryUpload(upload.key)}>
-              {t('story.character.retry')}
-            </Button>
-            <Button variant="ghost" onClick={() => setPicking('photo')}>
-              {t('story.fromBoard')}
-            </Button>
-          </div>
-        </div>
-      )}
-      {pictureChooser('photo')}
+      {picture.alert}
+      {picture.chooser('photo')}
       {(!guest || filled(card.nickname, card.profession, card.origin) > 0) && (
         <Section
           title={t('story.character.identity')}
@@ -811,20 +886,50 @@ function CharacterSheet({
                   )}
                 </div>
               ))}
-              {!locked && references.length < 60 && (
+              {referenceUploads
+                .filter((item) => item.state !== 'failed')
+                .map((item) => (
+                  <div className="story-panel__thumb is-uploading" key={item.key}>
+                    <StoryPicture
+                      assetId={undefined}
+                      label=""
+                      pixels={160}
+                      kind="character"
+                      preview={item.preview}
+                    />
+                  </div>
+                ))}
+              {!locked && references.length + referenceUploads.length < MAX_REFERENCES && (
                 <button
                   type="button"
                   className="story-panel__thumb-add"
                   aria-label={t('story.character.addReference')}
-                  aria-expanded={picking === 'reference'}
-                  onClick={() => setPicking(picking === 'reference' ? null : 'reference')}
+                  aria-expanded={picture.picking === 'reference'}
+                  onClick={() =>
+                    picture.setPicking(picture.picking === 'reference' ? null : 'reference')
+                  }
                 >
                   <Icon name="plus" size={16} />
                 </button>
               )}
             </div>
           )}
-          {pictureChooser('reference')}
+          {referenceUploads
+            .filter((item) => item.state === 'failed')
+            .map((item) => (
+              <div className="story-panel__alert" role="alert" key={item.key}>
+                <strong>{t('story.character.referenceFailed', { name: item.name })}</strong>
+                <div className="film-panel__picture-actions">
+                  <Button variant="secondary" onClick={() => retryUpload(item.key)}>
+                    {t('story.character.retry')}
+                  </Button>
+                  <Button variant="ghost" onClick={() => dropStoryUpload(card.id, item.key)}>
+                    {t('story.character.dropUpload')}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          {picture.chooser('reference')}
         </Section>
       )}
       {(!guest || storyFilled > 0) && (
@@ -849,60 +954,92 @@ function CharacterSheet({
             const name = known
               ? known.name || t('story.character.namePlaceholder')
               : t('story.character.missing');
-            return (
-              <div className={`story-rel${known ? '' : ' is-missing'}`} key={relation.characterId}>
+            const face = (
+              <>
                 <StoryPicture assetId={known?.assetId} label={name} pixels={48} kind="character" />
                 <span className="story-rel__name" title={name}>
                   {name}
                 </span>
-                {locked ? (
-                  relation.label && <small>{relation.label}</small>
-                ) : (
-                  <>
-                    <input
-                      key={relation.label}
-                      className="ink-input story-rel__label"
-                      aria-label={t('story.character.relationWith', { name })}
-                      placeholder={t('story.character.relationPlaceholder')}
-                      defaultValue={relation.label}
-                      onKeyDown={blurOnEnter}
-                      onBlur={(e) => {
-                        const label = e.target.value.trim().slice(0, 200);
-                        if (label !== relation.label)
-                          set({
-                            relations: relations.map((r, i) => (i === index ? { ...r, label } : r)),
-                          });
-                      }}
-                    />
+              </>
+            );
+            const rowClass = `story-rel${known ? '' : ' is-missing'}`;
+            if (editingRelation === relation.characterId && !locked)
+              return (
+                <div className={rowClass} key={relation.characterId}>
+                  {face}
+                  <input
+                    className="ink-input story-rel__label"
+                    aria-label={t('story.character.relationWith', { name })}
+                    placeholder={t('story.character.relationPlaceholder')}
+                    defaultValue={relation.label}
+                    // biome-ignore lint/a11y/noAutofocus: shown because the person asked to edit it
+                    autoFocus
+                    onKeyDown={blurOnEnter}
+                    onBlur={(e) => {
+                      setEditingRelation(null);
+                      const label = e.target.value.trim().slice(0, 200);
+                      if (label !== relation.label)
+                        set({
+                          relations: relations.map((r, i) => (i === index ? { ...r, label } : r)),
+                        });
+                    }}
+                  />
+                  <span onMouseDown={(e) => e.preventDefault()} role="presentation">
                     <IconButton
                       icon="close"
                       label={t('story.character.removeRelation', { name })}
-                      onClick={() => set({ relations: relations.filter((_, i) => i !== index) })}
+                      onClick={() => {
+                        setEditingRelation(null);
+                        set({ relations: relations.filter((_, i) => i !== index) });
+                      }}
                     />
-                  </>
-                )}
+                  </span>
+                </div>
+              );
+            return locked ? (
+              <div className={rowClass} key={relation.characterId}>
+                {face}
+                {relation.label && <small>{relation.label}</small>}
               </div>
+            ) : (
+              <button
+                type="button"
+                className={`${rowClass} story-rel--edit`}
+                key={relation.characterId}
+                aria-label={t('story.character.editRelation', { name })}
+                onClick={() => setEditingRelation(relation.characterId)}
+              >
+                {face}
+                {relation.label && <small>{relation.label}</small>}
+              </button>
             );
           })}
           {!locked &&
+            relations.length < MAX_RELATIONS &&
             (addingRelation ? (
               candidates.length > 0 ? (
-                <Select
-                  aria-label={t('story.character.addRelation')}
-                  value=""
-                  onChange={(characterId) => {
-                    if (!characterId) return;
-                    set({ relations: [...relations, { characterId, label: '' }] });
-                    setAddingRelation(false);
-                  }}
-                >
-                  <option value="">{t('story.character.pickCharacter')}</option>
-                  {candidates.map((el) => (
-                    <option key={el.id} value={el.id}>
-                      {el.name || t('story.character.namePlaceholder')}
-                    </option>
-                  ))}
-                </Select>
+                <div className="story-panel__add-relation">
+                  <Select
+                    aria-label={t('story.character.addRelation')}
+                    value=""
+                    onChange={(characterId) => {
+                      if (!characterId) return;
+                      set({ relations: withRelation(relations, { characterId, label: '' }) });
+                      setAddingRelation(false);
+                      setEditingRelation(characterId);
+                    }}
+                  >
+                    <option value="">{t('story.character.pickCharacter')}</option>
+                    {candidates.map((el) => (
+                      <option key={el.id} value={el.id}>
+                        {el.name || t('story.character.namePlaceholder')}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button variant="ghost" onClick={() => setAddingRelation(false)}>
+                    {t('story.character.closePicker')}
+                  </Button>
+                </div>
               ) : (
                 <p className="film-field__hint">{t('story.character.noOtherCharacters')}</p>
               )
@@ -972,17 +1109,7 @@ function CharacterSheet({
           />
         </Section>
       )}
-      <input
-        ref={fileInput}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = '';
-          if (file) onFile(file);
-        }}
-      />
+      {picture.input}
     </div>
   );
 }

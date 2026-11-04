@@ -83,6 +83,8 @@ export interface CardContext {
   /** Shot size, angle, movement, lens and duration on one line. */
   frameMeta(frame: Extract<Element, { type: 'frame' }>): string;
   slugline(scene: Extract<Element, { type: 'scene' }>): string;
+  /** Role and age of a character, as on its card. */
+  characterLine(card: Extract<Element, { type: 'character' }>): string;
   /** Actor or INT./EXT. and the scene count of a character or location, on one line. */
   storyMeta(card: Extract<Element, { type: 'character' | 'location' }>): string;
   /** `plan`: the name of a set plan, in its header. */
@@ -138,7 +140,7 @@ export function cardHeight(el: Element, w: number, ctx: CardContext): number | n
     case 'character': {
       const text =
         lines(el.name || ' ', TITLE, 1) +
-        (el.role ? lines(el.role, SMALL, 1) : 0) +
+        (ctx.characterLine(el) ? lines(ctx.characterLine(el), SMALL, 1) : 0) +
         (ctx.storyMeta(el) ? lines(ctx.storyMeta(el), SMALL, 1) : 0);
       return Math.max(PORTRAIT, text + 4) + 20;
     }
@@ -580,7 +582,7 @@ function body(p: Placed, ctx: CardContext): Op[] {
       ops.push(...name.ops);
       let below = name.bottom;
       for (const [value, color] of [
-        [el.role, c['text-secondary']],
+        [ctx.characterLine(el), c['text-secondary']],
         [ctx.storyMeta(el), c['text-muted']],
       ] as const) {
         if (!value) continue;

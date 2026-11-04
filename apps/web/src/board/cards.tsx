@@ -36,11 +36,11 @@ import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
 import { isContextualFocus } from './editing-focus.ts';
 import { FileCard, RawImageFooter } from './FileCard.tsx';
 import { useBoardAspect } from './film/aspect.ts';
-import { useCastAppearances } from './film/cast-appearances.ts';
+import { characterSubtitle, useCharacterAppearance } from './film/cast-appearances.ts';
 import { FramePicture } from './film/FramePicture.tsx';
 import { FrameUploadState } from './film/frame-upload.tsx';
 import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
-import { characterAppearance, characterSubtitle, StoryPicture } from './film/StoryCardPanel.tsx';
+import { StoryPicture } from './film/StoryCardPanel.tsx';
 import { useSlugline } from './film/storyboard-data.ts';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';
@@ -332,11 +332,12 @@ function CharacterCard({ element }: { element: Of<'character'> }) {
   const { t } = useTranslation();
   const { store, projectId, boardId } = useBoard();
   const guest = useContext(GuestModeContext);
-  const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  const otherBoards = useCastAppearances(projectId, boardId, guest);
-  const { frames, scenes } = useMemo(
-    () => characterAppearance(element.name, snap.byId.values(), otherBoards),
-    [element.name, snap, otherBoards],
+  const { frames, scenes } = useCharacterAppearance(
+    store,
+    element.name,
+    projectId,
+    boardId,
+    guest,
   );
   const sceneCount = new Set([...(element.scenes ?? []), ...scenes]).size;
   const subtitle = characterSubtitle(element, t);
