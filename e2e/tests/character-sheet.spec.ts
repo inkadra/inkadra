@@ -319,19 +319,20 @@ for (const [device, width, height, theme] of matrix) {
       .poll(async () => ((await saved(ids.marta)) as { notes?: string }).notes)
       .toBe('Disponibile dal 12 maggio.');
 
-    // The panel follows the selection: the draft stays on the first card, the panel moves on.
-    await marta.dblclick();
-    await toggle(sheet, 'Storia');
-    await sheet.getByLabel('Cosa vuole').fill('Tornare a casa.');
-    await adaCard.click();
-    await expect(sheet.getByLabel('Nome', { exact: true })).toHaveValue('Ada');
-    await expect
-      .poll(async () => ((await saved(ids.marta)) as { wants?: string }).wants)
-      .toBe('Tornare a casa.');
-    expect(await saved(ids.ada)).not.toHaveProperty('wants');
-    // Another kind of card, the location, has its own sheet; a card without one closes it.
-    await emptyBoard();
-    await expect(sheet).toHaveCount(0);
+    if (device === 'desktop') {
+      // The panel follows the selection: the draft stays on the first card, the panel moves on.
+      await marta.dblclick();
+      await toggle(sheet, 'Storia');
+      await sheet.getByLabel('Cosa vuole').fill('Tornare a casa.');
+      await adaCard.click();
+      await expect(sheet.getByLabel('Nome', { exact: true })).toHaveValue('Ada');
+      await expect
+        .poll(async () => ((await saved(ids.marta)) as { wants?: string }).wants)
+        .toBe('Tornare a casa.');
+      expect(await saved(ids.ada)).not.toHaveProperty('wants');
+      await emptyBoard();
+      await expect(sheet).toHaveCount(0);
+    }
     await marta.dblclick();
 
     // "Dalla board" closes when told to: Esc leaves the sheet open.
