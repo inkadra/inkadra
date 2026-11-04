@@ -509,11 +509,7 @@ export function ContextBar({
   // A character's bar follows its mockup: hiding, duplicating and deleting are under "more".
   const character = elements.length === 1 && elements[0]?.type === 'character';
   const tagButton = (
-    <BarButton
-      icon="tag"
-      label={t('tags.title')}
-      onClick={() => onTags(left, box.y + box.h + 8)}
-    />
+    <BarButton icon="tag" label={t('tags.title')} onClick={() => onTags(left, box.y + box.h + 8)} />
   );
   return (
     <div

@@ -7,12 +7,7 @@ import {
   characterSceneCount,
   characterSubtitle,
 } from './cast-appearances.ts';
-import {
-  mapSearchUrl,
-  parseMapUrl,
-  parseScenes,
-  withRelation,
-} from './StoryCardPanel.tsx';
+import { mapSearchUrl, parseMapUrl, parseScenes, withRelation } from './StoryCardPanel.tsx';
 
 describe('story card fields', () => {
   it('reads scene numbers as written, once each', () => {

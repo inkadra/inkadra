@@ -21,6 +21,11 @@ import type { Asset, AssetTrack, Board, CommentThread } from '@inkadra/shared';
 import { light } from '@inkadra/ui/tokens';
 import type { TFunction } from 'i18next';
 import { DEFAULT_ASPECT } from '../film/aspect.ts';
+import {
+  characterSceneCount,
+  characterSubtitle,
+  loadCastAppearances,
+} from '../film/cast-appearances.ts';
 import { getFrameStatus } from '../film/film-status.ts';
 import type { BoardStore } from '../store.ts';
 import { paperAccent, type Theme } from '../theme.ts';
@@ -66,11 +71,6 @@ import { renderPdf } from './render-pdf.ts';
 import { logoUrl } from './settings.ts';
 import { missingGlyphs } from './text.ts';
 import { zipBlobs } from './zip.ts';
-import {
-  characterSceneCount,
-  characterSubtitle,
-  loadCastAppearances,
-} from '../film/cast-appearances.ts';
 
 export type ExportFormat = 'pdf' | 'png';
 export type ExportWhat = 'board' | 'selection' | 'visible' | 'storyboard' | 'shotlist';

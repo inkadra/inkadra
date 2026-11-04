@@ -332,13 +332,7 @@ function CharacterCard({ element }: { element: Of<'character'> }) {
   const { t } = useTranslation();
   const { store, projectId, boardId } = useBoard();
   const guest = useContext(GuestModeContext);
-  const { frames, scenes } = useCharacterAppearance(
-    store,
-    element.name,
-    projectId,
-    boardId,
-    guest,
-  );
+  const { frames, scenes } = useCharacterAppearance(store, element.name, projectId, boardId, guest);
   const sceneCount = new Set([...(element.scenes ?? []), ...scenes]).size;
   const subtitle = characterSubtitle(element, t);
   return (

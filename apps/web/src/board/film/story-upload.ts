@@ -42,7 +42,10 @@ export function uploadToStoryCard(input: {
           ? { assetId }
           : {
               references: [
-                ...new Set([...(card.type === 'character' ? (card.references ?? []) : []), assetId]),
+                ...new Set([
+                  ...(card.type === 'character' ? (card.references ?? []) : []),
+                  assetId,
+                ]),
               ].slice(0, 60),
             };
       store.undo.stopCapturing();
@@ -61,14 +64,10 @@ export function dropStoryUpload(cardId: string, key: string) {
 }
 
 /** The pictures still on their way to a card, or failed. */
-export function useStoryUploads(
-  cardId: string,
-): Array<UploadItem & { target: StoryUploadTarget }> {
+export function useStoryUploads(cardId: string): Array<UploadItem & { target: StoryUploadTarget }> {
   const uploads = useUploads();
   return (waiting.get(cardId) ?? []).flatMap(({ key, target }) => {
     const item = uploads.find((upload) => upload.key === key);
-    return item && item.state !== 'done' && item.state !== 'cancelled'
-      ? [{ ...item, target }]
-      : [];
+    return item && item.state !== 'done' && item.state !== 'cancelled' ? [{ ...item, target }] : [];
   });
 }

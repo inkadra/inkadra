@@ -984,16 +984,16 @@ function CharacterSheet({
                         });
                     }}
                   />
-                  <span onMouseDown={(e) => e.preventDefault()} role="presentation">
-                    <IconButton
-                      icon="close"
-                      label={t('story.character.removeRelation', { name })}
-                      onClick={() => {
-                        setEditingRelation(null);
-                        set({ relations: relations.filter((_, i) => i !== index) });
-                      }}
-                    />
-                  </span>
+                  <IconButton
+                    icon="close"
+                    label={t('story.character.removeRelation', { name })}
+                    // Keeps the focus in the label: its blur would take this button away.
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setEditingRelation(null);
+                      set({ relations: relations.filter((_, i) => i !== index) });
+                    }}
+                  />
                 </div>
               );
             return locked ? (

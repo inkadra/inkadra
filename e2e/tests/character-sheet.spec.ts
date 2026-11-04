@@ -252,10 +252,10 @@ for (const [device, width, height, theme] of matrix) {
     // The sheet: sections with content open, Scenes merge the frames and the manual field.
     await marta.click();
     // The bar of the mockup: duplicate and delete are under "more".
-    const bar = page.getByRole('toolbar', { name: 'Selezione' });
+    const bar = page.getByRole('toolbar', { name: 'Azioni sulla selezione' });
     await expect(bar.getByRole('button', { name: 'Duplica' })).toHaveCount(0);
     await expect(bar.getByRole('button', { name: 'Elimina' })).toHaveCount(0);
-    await bar.getByRole('button', { name: 'Altro' }).click();
+    await bar.getByRole('button', { name: 'Altre azioni' }).click();
     await expect(page.getByRole('menuitem', { name: 'Duplica' })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: 'Elimina' })).toBeVisible();
     await page.keyboard.press('Escape');
@@ -271,9 +271,9 @@ for (const [device, width, height, theme] of matrix) {
     await toggle(sheet, 'Storia');
     await expect(sheet.getByLabel('Cosa vuole')).toHaveValue('Chiudere con il passato.');
     await toggle(sheet, 'Relazioni');
-    await expect(sheet.getByRole('button', { name: 'Modifica la relazione con Paolo Ferri' })).toContainText(
-      'fratello',
-    );
+    await expect(
+      sheet.getByRole('button', { name: 'Modifica la relazione con Paolo Ferri' }),
+    ).toContainText('fratello');
     await shot('story-relations');
     await toggle(sheet, 'Storia');
     await toggle(sheet, 'Relazioni');
