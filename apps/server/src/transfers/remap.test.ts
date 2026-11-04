@@ -76,6 +76,7 @@ describe('remapDoc', () => {
     const doc = createBoardDoc(oldBoard);
     addElement(doc, {
       ...base,
+      references: [file, elsewhere],
       id: 'character-ok',
       type: 'character',
       name: 'Marta',
@@ -95,6 +96,7 @@ describe('remapDoc', () => {
     });
     const { elements } = roots(doc);
     expect(elements.get('character-ok')?.get('assetId')).toBe(newFile);
+    expect(elements.get('character-ok')?.get('references')).toEqual([newFile]);
     expect(elements.get('location-missing')?.has('assetId')).toBe(false);
     expect(readElement(elements.get('location-missing')!)).toMatchObject({
       name: 'Stazione Centrale',

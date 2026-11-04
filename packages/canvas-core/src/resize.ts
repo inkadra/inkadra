@@ -10,6 +10,8 @@ export interface ResizeOptions {
   widthOnly?: boolean;
   /** Caption/border height outside the aspect-constrained content. */
   fixedHeight?: number;
+  /** Narrowest width where the card's content still reads; default MIN_WIDTH. */
+  minWidth?: number;
 }
 
 /** Resize in world coordinates, keeping the opposite corner stationary even at minimum size. */
@@ -17,7 +19,7 @@ export function resizeFromCorner(
   rect: Rect,
   corner: ResizeCorner,
   delta: Point,
-  { aspectRatio, fixedHeight = 0, widthOnly = false }: ResizeOptions = {},
+  { aspectRatio, fixedHeight = 0, widthOnly = false, minWidth = MIN_WIDTH }: ResizeOptions = {},
 ): Rect {
   const west = corner.endsWith('w');
   const north = corner.startsWith('n');
@@ -33,7 +35,7 @@ export function resizeFromCorner(
     w = Math.max(MIN_WIDTH, 40 * aspectRatio, projected);
     h = w / aspectRatio + fixedHeight;
   } else {
-    w = Math.max(MIN_WIDTH, Math.round(desiredW));
+    w = Math.max(minWidth, Math.round(desiredW));
     h = widthOnly ? rect.h : Math.max(40, Math.round(desiredH));
   }
   return {

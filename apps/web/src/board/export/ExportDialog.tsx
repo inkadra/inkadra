@@ -148,6 +148,7 @@ export function ExportDialog(props: ExportDialogProps) {
     projectName: props.projectName,
     boardTitle: props.boardTitle,
     boards: props.boards,
+    scope: { projectId, boardId },
     threads: getReviews().threads,
     t,
     language: i18n.language,

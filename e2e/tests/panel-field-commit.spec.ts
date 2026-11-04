@@ -69,6 +69,8 @@ test('text typed in a side panel survives a click on the board', async ({ page, 
   await test.step('any panel with these fields: the character sheet', async () => {
     await card(person.id).dblclick();
     const actor = page.locator('.story-panel').getByLabel('Interprete', { exact: true });
+    // Empty sections start closed.
+    await page.locator('.story-panel summary', { hasText: 'Identità' }).click();
     await actor.fill('Anna Rossi');
     await emptyBoard();
     await expect(page.locator('.story-panel')).toHaveCount(0);

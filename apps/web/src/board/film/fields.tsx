@@ -17,6 +17,7 @@ export function TextField({
   readOnly,
   placeholder,
   multiline,
+  rows = 3,
   type,
   hint,
   className,
@@ -27,6 +28,7 @@ export function TextField({
   readOnly: boolean;
   placeholder?: string;
   multiline?: boolean;
+  rows?: number | undefined;
   type?: 'text' | 'number';
   hint?: string;
   className?: string;
@@ -46,7 +48,7 @@ export function TextField({
           defaultValue={value}
           readOnly={readOnly}
           placeholder={placeholder}
-          rows={3}
+          rows={rows}
           onBlur={(e) => commit(e.target.value)}
         />
       ) : (

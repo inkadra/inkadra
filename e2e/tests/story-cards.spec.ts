@@ -180,7 +180,7 @@ for (const [device, width, height] of [
       const sheet = page.getByRole('complementary', { name: 'Scheda personaggio' });
       await expect(sheet.getByLabel('Nome', { exact: true })).toHaveValue('Marta');
       await expect(sheet.getByLabel('Interprete')).toHaveValue('Giulia Neri');
-      await expect(sheet.getByRole('heading', { name: 'Solo team' })).toBeVisible();
+      await sheet.locator('summary', { hasText: 'Solo team' }).click();
       await expect(sheet.getByLabel('Contatto (agenzia, telefono)')).toHaveValue(
         'Agenzia Lumen · 02 0000 0000',
       );
@@ -190,6 +190,7 @@ for (const [device, width, height] of [
       await page.locator(`[data-el="${ids.cabin}"]`).dblclick();
       const place = page.getByRole('complementary', { name: 'Scheda location' });
       await expect(place.getByLabel('Interno o esterno')).toHaveAttribute('data-value', 'int');
+      await place.locator('summary', { hasText: 'Solo team' }).click();
       await place.getByLabel('Indirizzo').fill('Via dei Binari 4');
       await place.getByLabel('Indirizzo').blur();
       await expect(
@@ -205,7 +206,10 @@ for (const [device, width, height] of [
         const fresh = page.getByRole('complementary', { name: 'Scheda personaggio' });
         await expect(fresh.getByLabel('Nome', { exact: true })).toBeFocused();
         await page.keyboard.type('Bigliettaia');
+        // Empty sections start closed, so the sheet stays short.
+        await fresh.locator('summary', { hasText: 'Identità' }).click();
         await fresh.getByLabel('Ruolo nella storia').click();
+        await page.getByRole('option', { name: 'Altro…' }).click();
         await page.keyboard.type('Comparsa');
         await fresh.getByLabel('Età').click();
         await expect(

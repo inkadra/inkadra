@@ -284,3 +284,34 @@ it('leaves the layers hidden on a plan out of what guests receive', () => {
   const out = toGuestElement(plan) as { icons: Array<{ id: string }> };
   expect(out.icons.map((i) => i.id)).toEqual(['sofaAAAAAAAAA']);
 });
+
+it('sends rich character details without contact or notes in the guest payload', () => {
+  const card = Element.parse({
+    id: 'character123',
+    type: 'character',
+    x: 0,
+    y: 0,
+    w: 240,
+    z: 'a0',
+    parent: null,
+    createdBy: null,
+    createdAt: 0,
+    name: 'Marta',
+    nickname: 'Mar',
+    appearance: 'Dark hair',
+    wants: 'Stay',
+    contact: 'private',
+    notes: 'private',
+    relations: [{ characterId: 'character456', label: 'sister' }],
+  });
+  const payload = toGuestElement(card);
+  expect(payload).toMatchObject({
+    nickname: 'Mar',
+    appearance: 'Dark hair',
+    wants: 'Stay',
+    relations: [{ characterId: 'character456', label: 'sister' }],
+  });
+  expect(JSON.stringify(payload)).not.toContain('private');
+  expect(payload).not.toHaveProperty('contact');
+  expect(payload).not.toHaveProperty('notes');
+});

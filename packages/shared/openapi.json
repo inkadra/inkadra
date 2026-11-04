@@ -5035,6 +5035,42 @@
           "tags"
         ]
       },
+      "CastAppearances": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "A name of a frame cast, in lower case."
+                },
+                "frames": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "scenes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Numbers of the scenes."
+                }
+              },
+              "required": [
+                "name",
+                "frames",
+                "scenes"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "TagCount": {
         "type": "object",
         "properties": {
@@ -16591,6 +16627,99 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SearchResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/cast-appearances": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Where each name of a frame cast appears in a project.",
+        "description": "Counts frames and lists scene numbers per name, from the boards the caller can read, for the scenes of a character card. Names are compared without case.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+              "description": "Leave out this board, whose frames the caller already has live."
+            },
+            "required": false,
+            "description": "Leave out this board, whose frames the caller already has live.",
+            "name": "excludeBoardId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Names and scenes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CastAppearances"
                 }
               }
             }

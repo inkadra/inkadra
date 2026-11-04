@@ -724,6 +724,19 @@ export const CharacterElement = Base.extend({
   age: z.string().max(40).optional().describe('As written: "34", "about 60", "teen".'),
   description: z.string().max(4000).optional(),
   actor: z.string().max(120).optional().describe('Who plays the character.'),
+  nickname: z.string().max(120).optional(),
+  profession: z.string().max(200).optional(),
+  origin: z.string().max(200).optional(),
+  appearance: z.string().max(4000).optional(),
+  wants: z.string().max(4000).optional(),
+  fears: z.string().max(4000).optional(),
+  arc: z.string().max(4000).optional(),
+  costume: z.string().max(4000).optional(),
+  references: z.array(z.string()).max(60).optional(),
+  relations: z
+    .array(z.object({ characterId: ElementId, label: z.string().max(200) }))
+    .max(100)
+    .optional(),
   contact: z.string().max(500).optional().describe('Agent, phone or e-mail; never for guests.'),
   notes: z.string().max(4000).optional().describe('Internal casting notes; never for guests.'),
   scenes: SceneNumbers,

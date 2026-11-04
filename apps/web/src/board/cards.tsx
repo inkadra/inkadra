@@ -18,6 +18,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -35,6 +36,7 @@ import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
 import { isContextualFocus } from './editing-focus.ts';
 import { FileCard, RawImageFooter } from './FileCard.tsx';
 import { useBoardAspect } from './film/aspect.ts';
+import { characterSubtitle, useCharacterAppearance } from './film/cast-appearances.ts';
 import { FramePicture } from './film/FramePicture.tsx';
 import { FrameUploadState } from './film/frame-upload.tsx';
 import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
@@ -142,7 +144,10 @@ export const Card = memo(function Card({
         top: resize?.y ?? element.y,
         width: w,
         height:
-          element.type === 'link' || isContainer(element) || isCropping
+          element.type === 'character' ||
+          element.type === 'link' ||
+          isContainer(element) ||
+          isCropping
             ? undefined
             : (resize?.h ?? element.h),
         transform: offset ? `translate(${offset.dx}px, ${offset.dy}px)` : undefined,
@@ -319,23 +324,42 @@ function SectionCard({ element, editing }: { element: Of<'section'>; editing: bo
   );
 }
 
-/** Compact face of a character: portrait, name, role; the rest is in its side sheet. */
+/**
+ * Compact face of a character: portrait, name, role and age; above 260 px also the actor and
+ * where it appears (container query in film.css). The rest is in its side sheet.
+ */
 function CharacterCard({ element }: { element: Of<'character'> }) {
   const { t } = useTranslation();
-  const scenes = element.scenes?.length ?? 0;
+  const { store, projectId, boardId } = useBoard();
+  const guest = useContext(GuestModeContext);
+  const { frames, scenes } = useCharacterAppearance(store, element.name, projectId, boardId, guest);
+  const sceneCount = new Set([...(element.scenes ?? []), ...scenes]).size;
+  const subtitle = characterSubtitle(element, t);
   return (
     <div className="card__pad story-card story-card--character">
-      <StoryPicture assetId={element.assetId} label={element.name} pixels={112} kind="character" />
+      <StoryPicture assetId={element.assetId} label={element.name} pixels={176} kind="character" />
       <div className="story-card__text">
         <span className={`card__title${element.name ? '' : ' is-empty'}`}>
           {element.name || t('story.character.namePlaceholder')}
         </span>
-        {element.role && <span className="card__desc">{element.role}</span>}
-        {(element.actor || scenes > 0) && (
-          <span className="story-card__meta">
-            {[element.actor, scenes > 0 && t('story.sceneCount', { count: scenes })]
-              .filter(Boolean)
-              .join(' · ')}
+        {subtitle && <span className="card__desc">{subtitle}</span>}
+        {element.actor && (
+          <span className="story-card__meta story-card__more">
+            {t('story.character.actorLine', { name: element.actor })}
+          </span>
+        )}
+        {(frames > 0 || sceneCount > 0) && (
+          <span className="story-card__chips story-card__more">
+            {frames > 0 && (
+              <span className="film-chip story-chip">
+                {t('story.character.frameCount', { count: frames })}
+              </span>
+            )}
+            {sceneCount > 0 && (
+              <span className="film-chip story-chip">
+                {t('story.sceneCount', { count: sceneCount })}
+              </span>
+            )}
           </span>
         )}
       </div>
