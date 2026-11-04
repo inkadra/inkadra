@@ -499,3 +499,40 @@ export function proxyTimeoutMs(info: VideoInfo, settings: ProxySettings) {
   const planned = plannedSeconds(info, settings) * 1000 * 4;
   return Math.min(PROXY_MAX_RUN_MS, MAX_INT32, Math.max(10 * 60_000, planned));
 }
+
+/** Extract exactly the requested original presentation, with no proxy or scaling. */
+export async function extractVideoFrame(
+  ffmpeg: string,
+  file: string,
+  out: string,
+  time: number,
+  container: string | null,
+) {
+  if (!Number.isFinite(time) || time < 0 || time > 86400) throw new Error('invalid-time');
+  await runTool(
+    ffmpeg,
+    [
+      '-nostdin',
+      '-v',
+      'error',
+      '-y',
+      ...safeInput(container),
+      '-ss',
+      time.toFixed(6),
+      '-i',
+      file,
+      '-frames:v',
+      '1',
+      '-an',
+      '-threads',
+      '1',
+      '-f',
+      'image2',
+      '-c:v',
+      'png',
+      out,
+    ],
+    { timeoutMs: 30000, memoryBytes: FFMPEG_MEMORY, fileBytes: 256 * 1024 * 1024 },
+  );
+  if ((await stat(out)).size === 0) throw new Error('empty-frame');
+}

@@ -1,13 +1,5 @@
 // @vitest-environment happy-dom
-import {
-  addFrame,
-  addScene,
-  childrenOf,
-  type FrameElement,
-  listElements,
-  toGrid,
-  updateElement,
-} from '@inkadra/canvas-core';
+import { addFrame, addScene, type FrameElement, toGrid, updateElement } from '@inkadra/canvas-core';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -212,71 +204,33 @@ describe('drawing editor', () => {
     expect(area.style.transform).toBe('translate(0px, 0px) scale(1)');
   });
 
-  it('shows the previous frame as an onion skin and the guides', async () => {
-    const { doc, store, first, second } = board();
-    const frames = [first, second];
-    const firstView = await mount({ store, frame: first, frames, onPick: () => {} });
-    const onionFirst = firstView.host.querySelector<HTMLButtonElement>(
-      '.pen__view button:first-child',
-    );
-    expect(onionFirst?.disabled).toBe(true);
-    for (const dispose of disposals.splice(0).reverse()) dispose();
-
-    const store2 = new BoardStore(doc);
-    disposals.push(() => store2.destroy());
-    const { host } = await mount({ store: store2, frame: second, frames, onPick: () => {} });
-    const onion = button(host, 'Onion skin · 4A');
-    expect(onion.disabled).toBe(false);
-    await act(async () => onion.click());
-    expect(onion.getAttribute('aria-pressed')).toBe('true');
-    expect(host.querySelector('.frame-pic__ink g[opacity="0.35"]')).not.toBeNull();
-    expect(host.querySelector('.pen__guides')).toBeNull();
-    await press('g');
-    expect(host.querySelector('.pen__guides')).not.toBeNull();
-  });
-
-  it('moves between the frames of the scene and adds one after the current', async () => {
-    const { doc, store, scene, first, second } = board();
-    const onPick = vi.fn();
-    const { host } = await mount({ store, frame: first, frames: [first, second], onPick });
-    const items = host.querySelectorAll('.pen__strip-item');
-    expect(items).toHaveLength(2);
-    expect(items[0]?.getAttribute('aria-current')).toBe('true');
-    await act(async () => (items[1] as HTMLButtonElement).click());
-    expect(onPick).toHaveBeenLastCalledWith(second.id);
-    await act(async () => button(host, 'New frame').click());
-    const order = childrenOf(listElements(doc), scene.id).map((e) => e.id);
-    expect(order).toHaveLength(3);
-    expect(order[0]).toBe(first.id);
-    expect(order[2]).toBe(second.id);
-    expect(onPick).toHaveBeenLastCalledWith(order[1]);
-  });
-
-  it('hides layers and fades the reference picture in one undo step', async () => {
+  it('removes obsolete controls without altering existing drawing data', async () => {
     const { doc, store, first } = board();
-    const { host, rerender } = await mount({ store, frame: first });
-    await press('l');
-    expect(host.querySelector('.pen__layers')).not.toBeNull();
-    // No reference picture: nothing to fade.
-    expect(host.querySelector('.pen__opacity')).toBeNull();
-    const drawing = button(host, 'Drawing');
-    await act(async () => drawing.click());
-    expect(drawing.getAttribute('aria-pressed')).toBe('false');
-
-    updateElement(doc, first.id, { assetId: 'asset-1' });
-    await rerender();
-    const slider = host.querySelector<HTMLInputElement>('.pen__opacity input');
-    if (!slider) throw new Error('no opacity slider');
-    await act(async () => {
-      slider.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(slider, '40');
-      slider.dispatchEvent(new Event('input', { bubbles: true }));
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(slider, '30');
-      slider.dispatchEvent(new Event('input', { bubbles: true }));
-      slider.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    updateElement(doc, first.id, { referenceOpacity: 0.3, assetId: 'photo' });
+    const before = frameOf(store, first.id);
+    const { host } = await mount({ store, frame: before });
+    for (const key of ['g', 'l', 'o']) await press(key);
+    expect(host.querySelector('.pen__layers, .pen__guides, .pen__strip')).toBeNull();
+    expect(frameOf(store, first.id)).toEqual(before);
+    await act(async () => button(host, 'More actions').click());
+    expect(host.textContent).toContain('30%');
+  });
+  it('uses visible red ink over photos and keeps arrow navigation', async () => {
+    const { doc, store, first, second } = board();
+    updateElement(doc, first.id, { assetId: 'photo' });
+    const onPick = vi.fn();
+    const { host, pointer } = await mount({
+      store,
+      frame: frameOf(store, first.id),
+      frames: [first, second],
+      onPick,
     });
-    expect(frameOf(store, first.id).referenceOpacity).toBe(0.3);
-    await act(async () => store.undo.undo());
-    expect(frameOf(store, first.id).referenceOpacity).toBeUndefined();
+    await act(async () => {
+      pointer('pointerdown', 40, 45);
+      pointer('pointerup', 40, 45);
+    });
+    expect(frameOf(store, first.id).strokes?.[0]?.color).toBe('#E5484D');
+    await press('ArrowRight');
+    expect(onPick).toHaveBeenCalledWith(second.id);
   });
 });

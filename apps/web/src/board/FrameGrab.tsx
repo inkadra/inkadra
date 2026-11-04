@@ -4,6 +4,7 @@ import type { Asset } from '@inkadra/shared';
 import { Icon, Select } from '@inkadra/ui';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import { api } from '../lib/api.ts';
 import {
   captureVideoFrame,
   formatSourceTime,
@@ -48,6 +49,7 @@ export function FrameGrab({
   const [seconds, setSeconds] = useState(
     element.type === 'link' ? (parseYoutubeStartTime(element.url) ?? 0) : 0,
   );
+  const screenshotInput = useRef<HTMLInputElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
   const allowed = useRef(!readOnly);
@@ -91,10 +93,7 @@ export function FrameGrab({
       : false;
   const external = element.type === 'link' && isVideoLink(element.url);
   const youtube = element.type === 'link' && isYoutubeUrl(element.url);
-  const available =
-    !readOnly &&
-    ((external && element.type === 'link' && !!element.imageAssetId && asset?.kind === 'image') ||
-      asset?.kind === 'video');
+  const available = !readOnly && (external || asset?.kind === 'video');
   useEffect(() => {
     if (open) panel.current?.querySelector<HTMLButtonElement>('.ink-select')?.focus();
   }, [open]);
@@ -120,6 +119,13 @@ export function FrameGrab({
       if (!player || !asset) throw new Error('missing-video');
       captureController.current = new AbortController();
       const captured = await captureVideoFrame(player, captureController.current.signal);
+      if (asset.proxy?.status === 'ready') {
+        const bytes = await api.bytes(
+          `/assets/${asset.id}/frame?time=${captured.timeSeconds}`,
+          captureController.current.signal,
+        );
+        captured.file = new File([bytes as BlobPart], captured.file.name, { type: 'image/png' });
+      }
       if (!mounted.current || !allowed.current) return;
       setFile(captured.file);
       setSource({ kind: 'uploaded-video', assetId: asset.id, timeSeconds: captured.timeSeconds });
@@ -132,7 +138,7 @@ export function FrameGrab({
   }
 
   function save(targetId: string | null) {
-    if (!source || !allowed.current || busy || !asset) return;
+    if (!source || !allowed.current || busy || (!file && !asset)) return;
     setError(false);
     if (navigator.onLine === false) {
       setBusy(false);
@@ -141,15 +147,6 @@ export function FrameGrab({
     }
     const provenance: VideoFrameSource =
       source.kind === 'link-thumbnail' && youtube ? { ...source, timeSeconds: seconds } : source;
-    const reference =
-      youtube && element.type === 'link'
-        ? (() => {
-            const url = new URL(element.url);
-            url.searchParams.delete('start');
-            url.searchParams.set('t', String(Math.floor(seconds)));
-            return url.href;
-          })()
-        : undefined;
     const commit = (assetId: string) => {
       uploadKey.current = null;
       pendingCommit.current = null;
@@ -161,10 +158,8 @@ export function FrameGrab({
         sourceId: element.id,
         targetId,
         assetId,
-        source: provenance,
+        source: external && file ? undefined : provenance,
         userId,
-        caption: `${element.type === 'link' ? element.title || element.url : asset.filename} · ${source.kind === 'uploaded-video' ? formatSourceTime(source.timeSeconds, i18n.language) : t('frameGrab.thumbnail')}`,
-        reference,
       });
       setBusy(false);
       if (ok) {
@@ -172,7 +167,7 @@ export function FrameGrab({
         onDone();
       } else setError(true);
     };
-    if (external) {
+    if (external && !file && asset) {
       commit(asset.id);
       return;
     }
@@ -207,11 +202,25 @@ export function FrameGrab({
 
   return (
     <>
+      <input
+        ref={screenshotInput}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (!file || !file.type.startsWith('image/') || element.type !== 'link') return;
+          setFile(file);
+          setSource({ kind: 'link-thumbnail', url: element.url });
+          setOpen(true);
+        }}
+      />
       <button
         ref={button}
         type="button"
         className="ink-btn ink-btn--secondary viewer__stage-btn viewer__grab"
-        aria-label={t(external ? 'frameGrab.thumbnail' : 'frameGrab.grab')}
+        aria-label={t(external ? 'frameGrab.external' : 'frameGrab.grab')}
         aria-keyshortcuts={external ? undefined : 'G'}
         aria-expanded={open}
         aria-controls={open || error ? 'frame-grab-options' : undefined}
@@ -220,13 +229,21 @@ export function FrameGrab({
       >
         <Icon name="image" size={18} />
         <span className="viewer__action-label">
-          {t(external ? 'frameGrab.thumbnail' : 'frameGrab.grab')}
+          {t(external ? 'frameGrab.external' : 'frameGrab.grab')}
         </span>
         {!external && <span className="viewer__kbd">G</span>}
       </button>
       {(open || error) && (
         <section
           ref={panel}
+          onPaste={(e) => {
+            const image = [...e.clipboardData.files].find((file) => file.type.startsWith('image/'));
+            if (!external || !image || element.type !== 'link' || busy) return;
+            e.preventDefault();
+            e.stopPropagation();
+            setFile(image);
+            setSource({ kind: 'link-thumbnail', url: element.url });
+          }}
           id="frame-grab-options"
           className="viewer__grab-options"
           aria-label={t('frameGrab.destination')}
@@ -266,6 +283,27 @@ export function FrameGrab({
                           : '',
                     })}
               </p>
+              {external && (
+                <>
+                  <button
+                    type="button"
+                    className="ink-btn ink-btn--secondary"
+                    onClick={() => screenshotInput.current?.click()}
+                  >
+                    {t('frameGrab.screenshot')}
+                  </button>
+                  {asset?.kind === 'image' && (
+                    <button
+                      type="button"
+                      className="ink-btn ink-btn--secondary"
+                      onClick={() => setFile(null)}
+                    >
+                      {t('frameGrab.thumbnail')}
+                    </button>
+                  )}
+                </>
+              )}
+              {file && external && <p className="ink-muted">{file.name}</p>}
               {youtube && (
                 <label>
                   {t('frameGrab.referenceTime')}
@@ -306,7 +344,11 @@ export function FrameGrab({
               <button
                 type="button"
                 className="ink-btn ink-btn--primary"
-                disabled={busy || !frames.some((f) => f.id === target)}
+                disabled={
+                  busy ||
+                  (external && !file && asset?.kind !== 'image') ||
+                  !frames.some((f) => f.id === target)
+                }
                 onClick={() => save(target)}
               >
                 {t('frameGrab.useFrame')}
@@ -314,7 +356,7 @@ export function FrameGrab({
               <button
                 type="button"
                 className="ink-btn ink-btn--secondary"
-                disabled={busy}
+                disabled={busy || (external && !file && asset?.kind !== 'image')}
                 onClick={() => save(null)}
               >
                 {t('frameGrab.addBoard')}

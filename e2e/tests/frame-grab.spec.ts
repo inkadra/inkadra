@@ -8,7 +8,9 @@ import { chooseSelect } from '../helpers/select.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
-const out = fileURLToPath(new URL('../../docs/screenshots/0.6-frame-grab/', import.meta.url));
+const out =
+  process.env.FRAMES_SCREENSHOTS ??
+  fileURLToPath(new URL('../../docs/screenshots/0.6-frame-grab/', import.meta.url));
 
 /** The clip must outlast the seek target plus a few frame steps, however loaded the runner is. */
 const MIN_FOOTAGE_SECONDS = 1;
@@ -258,6 +260,10 @@ for (const [device, width, height] of [
       await expect(page.locator('.story__tile img')).toHaveAttribute('src', new RegExp(capturedId));
       if (device === 'desktop' && theme === 'dark') {
         await page.getByRole('button', { name: '1A', exact: true }).click();
+        await page
+          .locator('.film-panel')
+          .getByRole('button', { name: 'Immagine', exact: true })
+          .click();
         await page.getByRole('button', { name: 'Da video', exact: true }).click();
         await page.getByRole('button', { name: 'Last Train.webm', exact: true }).click();
         const player = page.getByRole('dialog').locator('video');
@@ -277,9 +283,7 @@ for (const [device, width, height] of [
           .map(readElement)
           .find((el) => el?.type === 'image');
         expect(image).toMatchObject({ source: { kind: 'uploaded-video', assetId } });
-        expect(image?.type === 'image' && image.caption).toMatch(
-          /Last Train\.webm · \d+:\d{2},\d{2}$/,
-        );
+        expect(image).not.toHaveProperty('caption');
       }
     });
   }
@@ -364,8 +368,10 @@ for (const provider of ['youtube', 'vimeo']) {
     await pushBoardDoc(baseURL!, cookie, project.rootBoardId, doc);
     await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=canvas`);
     await page.locator('[data-type="link"]').dblclick();
-    await page.getByRole('button', { name: 'Usa miniatura', exact: true }).click();
-    await expect(page.getByText('I player esterni non consentono', { exact: false })).toBeVisible();
+    await page.getByRole('button', { name: 'Screenshot o miniatura', exact: true }).click();
+    await expect(
+      page.getByText('Qui non si può catturare la scheda', { exact: false }),
+    ).toBeVisible();
     if (provider === 'youtube') {
       await page.getByLabel('Tempo di riferimento YouTube (secondi)').fill('67');
     }
@@ -382,9 +388,25 @@ for (const provider of ['youtube', 'vimeo']) {
     if (provider === 'youtube')
       expect(frame).toMatchObject({
         source: { timeSeconds: 67 },
-        notes: 'Preserve this direction.\nhttps://www.youtube.com/watch?v=abcdefghijk&t=67',
+        notes: 'Preserve this direction.',
       });
     else expect(frame).toMatchObject({ notes: 'Preserve this direction.' });
+    if (provider === 'vimeo') {
+      await page.locator('[data-type="link"]').dblclick();
+      await page.getByRole('button', { name: 'Screenshot o miniatura', exact: true }).click();
+      await page
+        .locator('.viewer input[type="file"]')
+        .setInputFiles({ name: 'manual.png', mimeType: 'image/png', buffer: thumbnail });
+      await page.getByRole('button', { name: 'Aggiungi alla lavagna', exact: true }).click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      const savedScreenshot = await readBoard(baseURL!, cookie, project.rootBoardId);
+      const image = [...roots(savedScreenshot).elements.values()]
+        .map(readElement)
+        .find((el) => el?.type === 'image');
+      expect(image).toBeTruthy();
+      expect(image).not.toHaveProperty('caption');
+      expect(image).not.toHaveProperty('source');
+    }
     expect(
       await page.evaluate(() => (window as unknown as { violations: string[] }).violations),
     ).toEqual([]);

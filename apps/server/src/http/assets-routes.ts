@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   API_PREFIX,
   type Asset,
@@ -10,6 +13,7 @@ import {
   OfficePreview,
   VariantParams,
   VariantQuery,
+  VideoFrameQuery,
   z,
 } from '@inkadra/shared';
 import { and, asc, eq } from 'drizzle-orm';
@@ -19,6 +23,8 @@ import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { type asset, assetVariant, user } from '../db/schema.ts';
 import { officeKey } from '../media/office.ts';
+import { privateInput, withJobDir } from '../media/scratch.ts';
+import { extractVideoFrame, mediaTools } from '../media/video.ts';
 import { animatedVariantKey, readAll, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
@@ -186,6 +192,39 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
       .orderBy(asc(assetVariant.width));
     return toAsset(row, variants);
   });
+
+  app.get(
+    v1('/assets/:assetId/frame'),
+    { config: { rateLimit: { max: 12, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const actor = await requireActor(auth, req, db);
+      const { assetId } = AssetParams.parse(req.params);
+      const { time } = VideoFrameQuery.parse(req.query);
+      const { asset: row } = await requireAssetRole(db, actor, assetId, 'editor');
+      if (
+        row.kind !== 'video' ||
+        row.status !== 'ready' ||
+        (row.durationMs !== null && time * 1000 >= row.durationMs)
+      )
+        throw new HttpError('not_found', 'Video frame unavailable.');
+      const { ffmpeg } = await mediaTools();
+      if (!ffmpeg) throw new HttpError('not_found', 'Frame extraction unavailable.');
+      const bytes = await withJobDir(tmpdir(), async (dir) => {
+        const copy = await storage.localCopy(row.storageKey, dir);
+        try {
+          const input = await privateInput(dir, copy.path);
+          const out = join(dir, 'frame.png');
+          await extractVideoFrame(ffmpeg, input, out, time, row.mime);
+          return await readFile(out);
+        } finally {
+          await copy.done();
+        }
+      });
+      reply.header('cache-control', 'private, no-store');
+      reply.type('image/png');
+      return reply.send(bytes);
+    },
+  );
 
   // Worker-generated, inert derivatives; the original's permissions still apply.
   app.get(v1('/assets/:assetId/office/:part'), async (req, reply) => {

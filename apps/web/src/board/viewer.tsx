@@ -14,7 +14,7 @@ import { GuestModeContext } from './context.ts';
 import { FontSpecimen } from './FontSpecimen.tsx';
 import { FrameGrab } from './FrameGrab.tsx';
 import { fileBadge, fileFamily, isPdf } from './file-kinds.ts';
-import { VideoFrameStepper } from './frame-grab.ts';
+import { formatSourceTime, VideoFrameStepper } from './frame-grab.ts';
 import { hasImageTransform } from './image-crop.ts';
 import { playInline, useInlineMedia } from './inline-player.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
@@ -261,6 +261,11 @@ export function MediaViewer({
   const { t, i18n } = useTranslation();
   const assetId = element.type === 'link' ? element.imageAssetId : element.assetId;
   const asset = useAsset(assetId);
+  const sourceAsset = useAsset(
+    element.type === 'image' && element.source?.kind === 'uploaded-video'
+      ? element.source.assetId
+      : undefined,
+  );
   const isYoutube = element.type === 'link' && isYoutubeUrl(element.url);
   const embedUrl =
     element.type === 'link' && isVideoLink(element.url) ? videoEmbedUrl(element.url) : null;
@@ -868,6 +873,21 @@ export function MediaViewer({
 
       {/* Sidebar Details */}
       <aside id="viewer-info" className="viewer__side" data-scroll>
+        {element.type === 'image' && element.source && (
+          <section>
+            <h3 className="viewer__title">{t('frameGrab.origin')}</h3>
+            <p style={{ overflowWrap: 'anywhere' }}>
+              {element.source.kind === 'uploaded-video'
+                ? sourceAsset && sourceAsset !== 'missing'
+                  ? sourceAsset.filename
+                  : t('frameGrab.fromVideo')
+                : element.source.url}
+            </p>
+            {element.source.timeSeconds !== undefined && (
+              <p>{formatSourceTime(element.source.timeSeconds, i18n.language)}</p>
+            )}
+          </section>
+        )}
         {office && ready && (
           <OfficeInfo
             asset={ready}

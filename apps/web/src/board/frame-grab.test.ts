@@ -41,7 +41,6 @@ describe('video still destinations', () => {
         assetId: 'still',
         source,
         userId: 'u',
-        caption: 'Last Train',
       }),
     ).toBe(true);
     expect(store.getSnapshot().byId.get(frame.id)).toMatchObject({
@@ -61,9 +60,9 @@ describe('video still destinations', () => {
       assetId: 'still',
       source,
       userId: 'u',
-      caption: 'Last Train',
     });
     const image = [...store.getSnapshot().byId.values()].find((el) => el.type === 'image');
+    expect(image).not.toHaveProperty('caption');
     expect(image).toMatchObject({
       assetId: 'still',
       source,
@@ -72,7 +71,7 @@ describe('video still destinations', () => {
       guestHidden: true,
     });
   });
-  it('rejects deleted destinations and notes that cannot fit the reference', () => {
+  it('rejects deleted destinations', () => {
     const { store, video } = setup();
     expect(
       placeVideoStill(store, {
@@ -81,11 +80,10 @@ describe('video still destinations', () => {
         assetId: 'still',
         source,
         userId: 'u',
-        caption: '',
       }),
     ).toBe(false);
   });
-  it('appends the YouTube reference without replacing director notes', () => {
+  it('keeps references in metadata without adding them to director notes', () => {
     const { store, video, frame } = setup();
     placeVideoStill(store, {
       sourceId: video.id,
@@ -97,11 +95,9 @@ describe('video still destinations', () => {
         timeSeconds: 12,
       },
       userId: 'u',
-      caption: '',
-      reference: 'https://youtube.com/watch?v=abcdefghijk&t=12',
     });
     expect(store.getSnapshot().byId.get(frame.id)).toMatchObject({
-      notes: 'Keep the train in view\nhttps://youtube.com/watch?v=abcdefghijk&t=12',
+      notes: 'Keep the train in view',
     });
   });
 });

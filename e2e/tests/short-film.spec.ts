@@ -446,6 +446,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
 
     // An uploaded picture on 1C.
     await page.getByRole('button', { name: '1C', exact: true }).click();
+    await panel.getByRole('button', { name: 'Immagine', exact: true }).click();
     const picker = page.waitForEvent('filechooser');
     await panel.getByRole('button', { name: 'Carica un’immagine' }).click();
     await (await picker).setFiles({

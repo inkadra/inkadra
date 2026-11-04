@@ -1201,7 +1201,10 @@
       "castLink": "Aggiungi {{name}} al cast",
       "castLinked": "{{name}} è nel cast",
       "castFilter": "Cerca un personaggio",
-      "castNone": "Nessun personaggio con questo nome."
+      "castNone": "Nessun personaggio con questo nome.",
+      "dropPicture": "Rilascia per sostituire l’immagine",
+      "moveImage": "Metti in un’inquadratura…",
+      "inserted": "Immagine inserita nell’inquadratura"
     },
     "shot": {
       "ews": "Campo lunghissimo",
@@ -1285,7 +1288,11 @@
       "zoomIn": "Ingrandisci",
       "zoomOut": "Riduci",
       "zoomReset": "Zoom {{percent}}%: torna al 100%",
-      "strip": "Inquadrature della scena"
+      "strip": "Inquadrature della scena",
+      "escape": "Esc per uscire",
+      "tools": "Strumenti",
+      "palette": "Colore",
+      "more": "Altre azioni"
     },
     "list": {
       "filter": "Filtra le inquadrature",
@@ -3048,7 +3055,7 @@
     "grab": "Cattura fotogramma",
     "thumbnail": "Usa miniatura",
     "destination": "Destinazione del fotogramma",
-    "externalHint": "I player esterni non consentono di catturare fotogrammi. La miniatura non rappresenta il tempo indicato.",
+    "externalHint": "Qui non si può catturare la scheda. Scegli uno screenshot o usa la miniatura del video.",
     "captured": "Fotogramma a {{timecode}} · risoluzione originale",
     "frame": "Inquadratura",
     "choose": "Scegli un’inquadratura",
@@ -3062,7 +3069,10 @@
     "fromVideo": "Da video",
     "pickVideo": "Scegli un video o un link presente su questa lavagna.",
     "noVideos": "Aggiungi prima un video o un link YouTube/Vimeo alla lavagna.",
-    "hiddenDestination": "La sorgente è nascosta agli ospiti: anche questa inquadratura verrà nascosta."
+    "hiddenDestination": "La sorgente è nascosta agli ospiti: anche questa inquadratura verrà nascosta.",
+    "external": "Screenshot o miniatura",
+    "screenshot": "Scegli uno screenshot",
+    "origin": "Origine"
   },
   "projectCreation": {
     "off": "Su questa istanza i progetti li crea solo chi è autorizzato da un amministratore. Lavori nei progetti a cui sei invitato.",

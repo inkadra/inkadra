@@ -1,12 +1,9 @@
 import {
-  addFrame,
   addShape,
   addStroke,
-  childrenOf,
   clearDrawing,
   encodeStroke,
   type FrameElement,
-  listElements,
   type Point,
   removeShapes,
   removeStrokes,
@@ -18,7 +15,6 @@ import {
 import {
   ASPECT_RATIOS,
   type AspectRatio,
-  type FrameShape,
   MAX_SHAPES,
   MAX_STROKES,
   type Stroke,
@@ -30,7 +26,7 @@ import { isMac } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { startUpload } from '../uploads.ts';
 import { aspectLabel, frameRatio } from './aspect.ts';
-import { FramePicture, StrokePath } from './FramePicture.tsx';
+import { FramePicture } from './FramePicture.tsx';
 import { DRAG_SHAPES, type ShapeKind, ShapeView } from './shapes.tsx';
 import { PEN_COLORS, PENS, type PenTool, pathOf, VIEW_W } from './strokes.ts';
 
@@ -65,8 +61,6 @@ const ERASER_RADIUS = 0.012;
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 1.25;
-/** Colour of the previous frame under the drawing. */
-const ONION_COLOR = '#3E7BFA';
 
 interface TextDraft {
   frameId: string;
@@ -95,8 +89,8 @@ const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
 /**
  * Full-screen editor for the drawing of a frame: pen strokes, shapes and texts over the
  * reference picture. Each finished line, shape or text is one item in the document, so the
- * drawing syncs item by item and undo goes back one gesture at a time. Zoom, pan, the onion
- * skin, the guides and which layers show are local to this person.
+ * drawing syncs item by item and undo goes back one gesture at a time. Zoom
+ * and pan are local to this person.
  */
 export function DrawingEditor({
   store,
@@ -104,11 +98,9 @@ export function DrawingEditor({
   label,
   boardAspect,
   readOnly,
-  userId = null,
   projectId,
   boardId,
   frames,
-  labels,
   onPick,
   onClose,
 }: {
@@ -121,7 +113,7 @@ export function DrawingEditor({
   /** Needed to upload a reference picture from the editor. */
   projectId?: string;
   boardId?: string;
-  /** Frames in shooting order: previous and next, the onion skin and the strip of the scene. */
+  /** Frames in shooting order for arrow navigation. */
   frames?: readonly FrameElement[];
   labels?: ReadonlyMap<string, string>;
   /** Opens the drawing of another frame. */
@@ -129,9 +121,17 @@ export function DrawingEditor({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const dialog = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    dialog.current?.focus();
+    return () => {
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+    };
+  }, []);
   const [tool, setTool] = useState<Tool>(readOnly ? 'pan' : 'pencil');
   const [shapeKind, setShapeKind] = useState<DragShape>('rect');
-  const [color, setColor] = useState(PEN_COLORS[0] as string);
+  const [color, setColor] = useState(frame.assetId ? '#E5484D' : '#1C1C1E');
   const [widths, setWidths] = useState<Widths>(() => ({
     pencil: PENS.pencil.width,
     brush: PENS.brush.width,
@@ -145,12 +145,11 @@ export function DrawingEditor({
   const textRef = useRef<TextDraft | null>(null);
   const textInput = useRef<HTMLInputElement>(null);
   const [zoom, setZoom] = useState(1);
+  const [cursor, setCursor] = useState<Point | null>(null);
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
-  const [onion, setOnion] = useState(false);
-  const [guides, setGuides] = useState(false);
-  const [layers, setLayers] = useState(false);
-  const [showDrawing, setShowDrawing] = useState(true);
-  const [showReference, setShowReference] = useState(true);
+  const [popover, setPopover] = useState<'tools' | 'shape' | 'color' | 'width' | 'more' | null>(
+    null,
+  );
   const points = useRef<Point[] | null>(null);
   const shapeStart = useRef<Point | null>(null);
   const panning = useRef<{ x: number; y: number; from: Point } | null>(null);
@@ -171,11 +170,8 @@ export function DrawingEditor({
   const at = sequence.findIndex((f) => f.id === frame.id);
   const prev = at > 0 ? sequence[at - 1] : undefined;
   const next = at >= 0 ? sequence[at + 1] : undefined;
-  const scene = frames ? sequence.filter((f) => f.parent === frame.parent) : [];
-  const labelOf = (f: FrameElement) => labels?.get(f.id) ?? '';
   const goPrev = prev && onPick ? () => onPick(prev.id) : undefined;
   const goNext = next && onPick ? () => onPick(next.id) : undefined;
-  const onionShown = onion && !!prev;
 
   // The picture fills the stage at the frame's aspect ratio; zoom scales it from there.
   useEffect(() => {
@@ -233,6 +229,24 @@ export function DrawingEditor({
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   keys.current = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
+    if (e.key === 'Tab' && e.type === 'keydown') {
+      const controls = [
+        ...(dialog.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not([type="file"]):not(:disabled), [tabindex="0"]',
+        ) ?? []),
+      ].filter((el) => el.getClientRects().length > 0);
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (e.shiftKey && (target === first || target === dialog.current)) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && (target === last || target === dialog.current)) {
+        e.preventDefault();
+        first?.focus();
+      }
+      e.stopImmediatePropagation();
+      return;
+    }
     if (target?.tagName === 'INPUT' || target?.tagName === 'SELECT') return;
     // The canvas behind listens on window too: the editor has the keyboard while open.
     e.stopImmediatePropagation();
@@ -244,17 +258,16 @@ export function DrawingEditor({
     if (e.type !== 'keydown') return;
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
-    if (e.key === 'Escape') onClose();
-    else if (mod && key === 'z' && !readOnly) e.shiftKey ? store.undo.redo() : store.undo.undo();
+    if (e.key === 'Escape') {
+      if (popover) setPopover(null);
+      else onClose();
+    } else if (mod && key === 'z' && !readOnly) e.shiftKey ? store.undo.redo() : store.undo.undo();
     else if (mod && key === 'y' && !readOnly) store.undo.redo();
     else if (!mod && e.key === 'ArrowLeft' && goPrev) goPrev();
     else if (!mod && e.key === 'ArrowRight' && goNext) goNext();
     else if (!mod && (e.key === '+' || e.key === '=')) zoomTo(zoom * ZOOM_STEP);
     else if (!mod && e.key === '-') zoomTo(zoom / ZOOM_STEP);
     else if (!mod && e.key === '0') resetView();
-    else if (!mod && key === 'o') setOnion((v) => !v);
-    else if (!mod && key === 'g') setGuides((v) => !v);
-    else if (!mod && key === 'l') setLayers((v) => !v);
     else if (!mod && key === 'i' && canUpload) fileInput.current?.click();
     else if (!mod && !readOnly) {
       const picked = TOOLS.find((x) => x.key.toLowerCase() === key);
@@ -362,6 +375,8 @@ export function DrawingEditor({
   }
 
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    const cursorPoint = pointAt(e);
+    setCursor(inside(cursorPoint) ? cursorPoint : null);
     const drag = panning.current;
     if (drag) {
       setPan({ x: drag.from.x + e.clientX - drag.x, y: drag.from.y + e.clientY - drag.y });
@@ -453,21 +468,18 @@ export function DrawingEditor({
       height={height}
     />
   );
-  const onionLayer = onionShown && prev && (
-    <g opacity={0.35}>
-      {(prev.strokes ?? []).map((s) => (
-        <StrokePath key={s.id} stroke={s} height={height} color={ONION_COLOR} />
-      ))}
-      {(prev.shapes ?? []).map((s: FrameShape) => (
-        <ShapeView key={s.id} shape={s} height={height} color={ONION_COLOR} />
-      ))}
-    </g>
-  );
   const title = t('film.pen.title', { label });
   const percent = Math.round(zoom * 100);
 
   return (
-    <div className="pen" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      ref={dialog}
+      tabIndex={-1}
+      className="pen"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       <header className="pen__bar">
         <span className="pen__title">{title}</span>
         {goPrev && (
@@ -479,67 +491,9 @@ export function DrawingEditor({
           />
         )}
         {goNext && <IconButton icon="chevronRight" label={t('film.pen.next')} onClick={goNext} />}
-        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
-        <label className="pen__aspect">
-          <span>{t('film.aspect.label')}</span>
-          <Select
-            className="ink-input"
-            value={frame.aspect ?? ''}
-            disabled={readOnly}
-            onChange={(e) =>
-              change(() =>
-                updateElement(
-                  store.doc,
-                  frame.id,
-                  { aspect: (e || undefined) as AspectRatio | undefined },
-                  LOCAL,
-                ),
-              )
-            }
-          >
-            <option value="">{t('film.aspect.board', { ratio: aspectLabel(boardAspect) })}</option>
-            {ASPECT_RATIOS.map((r) => (
-              <option key={r} value={r}>
-                {aspectLabel(r)}
-              </option>
-            ))}
-          </Select>
-        </label>
+        <span className="pen__escape">{t('film.pen.escape')}</span>
         <span className="ink-header__spacer" />
         <fieldset className="pen__view" aria-label={t('film.pen.view')}>
-          <button
-            type="button"
-            className="pen__toggle"
-            aria-pressed={onionShown}
-            disabled={!prev}
-            data-ink-tooltip={`${t('film.pen.onion')} (O)`}
-            onClick={() => setOnion((v) => !v)}
-          >
-            <Icon name="onion" size={16} />
-            {prev
-              ? t('film.pen.onionOf', { label: labelOf(prev) || t('film.pen.prev') })
-              : t('film.pen.onion')}
-          </button>
-          <button
-            type="button"
-            className="pen__toggle"
-            aria-pressed={guides}
-            data-ink-tooltip={`${t('film.pen.guides')} (G)`}
-            onClick={() => setGuides((v) => !v)}
-          >
-            <Icon name="guides" size={16} />
-            {t('film.pen.guides')}
-          </button>
-          <button
-            type="button"
-            className="pen__toggle"
-            aria-pressed={layers}
-            data-ink-tooltip={`${t('film.pen.layers')} (L)`}
-            onClick={() => setLayers((v) => !v)}
-          >
-            <Icon name="layers" size={16} />
-            {t('film.pen.layers')}
-          </button>
           <span className="pen__zoom">
             <IconButton
               icon="minus"
@@ -564,28 +518,37 @@ export function DrawingEditor({
             />
           </span>
         </fieldset>
-        <Button variant="primary" onClick={onClose}>
-          {t('film.pen.done')}
-        </Button>
       </header>
       <div className="pen__main">
         {!readOnly && (
           <div className="pen__tools" role="toolbar" aria-label={title}>
-            {TOOLS.map((x) => (
-              <button
-                key={x.tool}
-                type="button"
-                className="toolbar__btn"
-                aria-pressed={tool === x.tool}
-                aria-label={t(`film.pen.${x.tool}`)}
-                data-ink-tooltip={`${t(`film.pen.${x.tool}`)} (${x.key})`}
-                onClick={() => setTool(x.tool)}
-              >
-                <Icon name={x.tool === 'shape' ? SHAPE_ICONS[shapeKind] : x.icon} size={16} />
-              </button>
-            ))}
-            {tool === 'shape' && (
-              <>
+            <div className="pen__tool-picker">
+              <IconButton
+                icon={TOOLS.find((x) => x.tool === tool)?.icon ?? 'pen'}
+                label={t('film.pen.tools')}
+                onClick={() => setPopover(popover === 'tools' ? null : 'tools')}
+              />
+            </div>
+            <div className={`pen__tool-list${popover === 'tools' ? ' is-open' : ''}`}>
+              {TOOLS.map((x) => (
+                <button
+                  key={x.tool}
+                  type="button"
+                  className="toolbar__btn"
+                  aria-pressed={tool === x.tool}
+                  aria-label={t(`film.pen.${x.tool}`)}
+                  data-ink-tooltip={`${t(`film.pen.${x.tool}`)} (${x.key})`}
+                  onClick={() => {
+                    setTool(x.tool);
+                    setPopover(x.tool === 'shape' ? 'shape' : null);
+                  }}
+                >
+                  <Icon name={x.tool === 'shape' ? SHAPE_ICONS[shapeKind] : x.icon} size={16} />
+                </button>
+              ))}
+            </div>
+            {tool === 'shape' && popover === 'shape' && (
+              <div className="pen__popover pen__shapes">
                 <span className="toolbar__sep" aria-hidden="true" />
                 {DRAG_SHAPES.map((kind) => (
                   <button
@@ -595,30 +558,47 @@ export function DrawingEditor({
                     aria-pressed={shapeKind === kind}
                     aria-label={t(`film.pen.shapes.${kind}`)}
                     data-ink-tooltip={t(`film.pen.shapes.${kind}`)}
-                    onClick={() => setShapeKind(kind)}
+                    onClick={() => {
+                      setShapeKind(kind);
+                      setPopover(null);
+                    }}
                   >
                     <Icon name={SHAPE_ICONS[kind]} size={16} />
                   </button>
                 ))}
-              </>
+              </div>
             )}
             <span className="toolbar__sep" aria-hidden="true" />
-            {PEN_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                className="pen__swatch"
-                style={{ background: c }}
-                aria-pressed={color === c}
-                aria-label={t('film.pen.color', { color: c })}
-                onClick={() => {
-                  setColor(c);
-                  if (tool === 'eraser' || tool === 'pan') setTool('pencil');
-                }}
-              />
-            ))}
-            {sized && (
-              <label className="pen__width">
+            <IconButton
+              icon="color"
+              label={t('film.pen.palette')}
+              onClick={() => setPopover(popover === 'color' ? null : 'color')}
+            />
+            {popover === 'color' && (
+              <div className="pen__popover pen__colors">
+                {PEN_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="pen__swatch"
+                    style={{ background: c }}
+                    aria-pressed={color === c}
+                    aria-label={t('film.pen.color', { color: c })}
+                    onClick={() => {
+                      setColor(c);
+                      if (tool === 'eraser' || tool === 'pan') setTool('pencil');
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+            <IconButton
+              icon="pen"
+              label={t('film.pen.width')}
+              onClick={() => setPopover(popover === 'width' ? null : 'width')}
+            />
+            {sized && popover === 'width' && (
+              <label className="pen__width pen__popover">
                 <span>{t(sized === 'text' ? 'film.pen.textSize' : 'film.pen.width')}</span>
                 <input
                   type="range"
@@ -630,20 +610,101 @@ export function DrawingEditor({
               </label>
             )}
             <span className="toolbar__sep" aria-hidden="true" />
-            <IconButton icon="undo" label={t('film.pen.undo')} onClick={() => store.undo.undo()} />
+            <IconButton
+              icon="undo"
+              label={t('film.pen.undo')}
+              disabled={!store.undo.canUndo()}
+              onClick={() => store.undo.undo()}
+            />
             <IconButton
               icon="undo"
               className="pen__redo"
               label={t('film.pen.redo')}
+              disabled={!store.undo.canRedo()}
               onClick={() => store.undo.redo()}
             />
             <IconButton
-              icon="trash"
-              label={t('film.pen.clear')}
-              disabled={strokes.length === 0 && shapes.length === 0}
-              onClick={() => change(() => clearDrawing(store.doc, frame.id, LOCAL))}
+              icon="more"
+              label={t('film.pen.more')}
+              onClick={() => setPopover(popover === 'more' ? null : 'more')}
             />
+            {popover === 'more' && (
+              <div className="pen__popover pen__more">
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
+                <label className="pen__aspect">
+                  <span>{t('film.aspect.label')}</span>
+                  <Select
+                    className="ink-input"
+                    value={frame.aspect ?? ''}
+                    disabled={readOnly}
+                    onChange={(e) =>
+                      change(() =>
+                        updateElement(
+                          store.doc,
+                          frame.id,
+                          { aspect: (e || undefined) as AspectRatio | undefined },
+                          LOCAL,
+                        ),
+                      )
+                    }
+                  >
+                    <option value="">
+                      {t('film.aspect.board', { ratio: aspectLabel(boardAspect) })}
+                    </option>
+                    {ASPECT_RATIOS.map((r) => (
+                      <option key={r} value={r}>
+                        {aspectLabel(r)}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+
+                {canUpload && (
+                  <Button variant="ghost" onClick={() => fileInput.current?.click()}>
+                    {t('film.pen.referenceReplace')}
+                  </Button>
+                )}
+                {frame.assetId && (
+                  <label>
+                    {t('film.pen.opacity', {
+                      percent: Math.round((frame.referenceOpacity ?? 1) * 100),
+                    })}
+                    <input
+                      type="range"
+                      min={5}
+                      max={100}
+                      step={5}
+                      value={Math.round((frame.referenceOpacity ?? 1) * 100)}
+                      onChange={(e) =>
+                        change(() =>
+                          updateElement(
+                            store.doc,
+                            frame.id,
+                            { referenceOpacity: Number(e.target.value) / 100 },
+                            LOCAL,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                )}
+                <IconButton
+                  icon="trash"
+                  label={t('film.pen.clear')}
+                  disabled={strokes.length === 0 && shapes.length === 0}
+                  onClick={() => change(() => clearDrawing(store.doc, frame.id, LOCAL))}
+                />
+              </div>
+            )}
+            <Button variant="primary" onClick={onClose}>
+              {t('film.pen.done')}
+            </Button>
           </div>
+        )}
+        {readOnly && (
+          <Button className="pen__close" onClick={onClose}>
+            {t('viewer.close')}
+          </Button>
         )}
         <div className="pen__center">
           {/* Drawing happens with the pointer; the toolbar and the keys give the same tools. */}
@@ -654,6 +715,7 @@ export function DrawingEditor({
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
+            onPointerLeave={() => setCursor(null)}
           >
             <div
               ref={area}
@@ -671,32 +733,23 @@ export function DrawingEditor({
                 strokes={strokes}
                 shapes={shapes}
                 referenceOpacity={frame.referenceOpacity}
-                hideReference={!showReference}
-                hideDrawing={!showDrawing}
                 pixels={box.w * zoom * (window.devicePixelRatio || 1)}
-                under={onionLayer}
               >
                 {liveStroke}
                 {liveShapeView}
               </FramePicture>
-              {guides && (
-                <svg
-                  className="pen__guides"
-                  viewBox={`0 0 ${VIEW_W} ${height}`}
-                  preserveAspectRatio="none"
+              {cursor && pen && !readOnly && (
+                <span
                   aria-hidden="true"
-                >
-                  <path
-                    d={`M${VIEW_W / 3} 0V${height}M${(2 * VIEW_W) / 3} 0V${height}M0 ${height / 3}H${VIEW_W}M0 ${(2 * height) / 3}H${VIEW_W}`}
-                  />
-                  <rect
-                    className="pen__safe"
-                    x={VIEW_W * 0.05}
-                    y={height * 0.05}
-                    width={VIEW_W * 0.9}
-                    height={height * 0.9}
-                  />
-                </svg>
+                  className="pen__cursor"
+                  style={{
+                    left: `${cursor.x * 100}%`,
+                    top: `${cursor.y * 100}%`,
+                    width: (widths[pen] * box.w) / VIEW_W,
+                    height: (widths[pen] * box.w) / VIEW_W,
+                    borderColor: color,
+                  }}
+                />
               )}
               {text && (
                 <input
@@ -738,139 +791,7 @@ export function DrawingEditor({
               </p>
             )}
           </div>
-          {scene.length > 0 && onPick && (
-            <nav className="pen__strip" aria-label={t('film.pen.strip')}>
-              <ol>
-                {scene.map((f) => (
-                  <li key={f.id}>
-                    <button
-                      type="button"
-                      className="pen__strip-item"
-                      aria-current={f.id === frame.id ? 'true' : undefined}
-                      onClick={() => onPick(f.id)}
-                    >
-                      <FramePicture
-                        assetId={f.assetId}
-                        aspect={f.aspect}
-                        boardAspect={boardAspect}
-                        strokes={f.strokes}
-                        shapes={f.shapes}
-                        referenceOpacity={f.referenceOpacity}
-                        pixels={160}
-                      />
-                      <span>{labelOf(f)}</span>
-                    </button>
-                  </li>
-                ))}
-                {!readOnly && (
-                  <li>
-                    <button
-                      type="button"
-                      className="pen__strip-add"
-                      onClick={() => {
-                        const parent = frame.parent;
-                        const sceneId =
-                          parent && listElements(store.doc).some((e) => e.id === parent)
-                            ? parent
-                            : null;
-                        const index = sceneId
-                          ? childrenOf(listElements(store.doc), sceneId).findIndex(
-                              (e) => e.id === frame.id,
-                            ) + 1
-                          : null;
-                        store.undo.stopCapturing();
-                        const created = addFrame(
-                          store.doc,
-                          sceneId,
-                          index,
-                          {},
-                          {
-                            userId,
-                            origin: LOCAL,
-                          },
-                        );
-                        store.undo.stopCapturing();
-                        onPick(created.id);
-                      }}
-                    >
-                      <Icon name="plus" size={16} />
-                      {t('film.frame.add')}
-                    </button>
-                  </li>
-                )}
-              </ol>
-            </nav>
-          )}
         </div>
-        {layers && (
-          <aside className="pen__layers" aria-label={t('film.pen.layers')}>
-            <h3>{t('film.pen.layers')}</h3>
-            <div className="pen__layer">
-              <button
-                type="button"
-                className="pen__toggle"
-                aria-pressed={showDrawing}
-                onClick={() => setShowDrawing((v) => !v)}
-              >
-                <Icon name="pen" size={14} />
-                {t('film.pen.layerDrawing')}
-              </button>
-              <span className="pen__layer-count">
-                {t('film.pen.items', { count: strokes.length + shapes.length })}
-              </span>
-            </div>
-            <div className="pen__layer">
-              <button
-                type="button"
-                className="pen__toggle"
-                aria-pressed={showReference && !!frame.assetId}
-                disabled={!frame.assetId}
-                onClick={() => setShowReference((v) => !v)}
-              >
-                <Icon name="image" size={14} />
-                {t('film.pen.layerReference')}
-              </button>
-              {canUpload && (
-                <Button
-                  variant="ghost"
-                  icon="upload"
-                  data-ink-tooltip={`${t('film.pen.reference')} (I)`}
-                  onClick={() => fileInput.current?.click()}
-                >
-                  {frame.assetId ? t('film.pen.referenceReplace') : t('film.pen.reference')}
-                </Button>
-              )}
-            </div>
-            {frame.assetId && (
-              <label className="pen__opacity">
-                <span>
-                  {t('film.pen.opacity', {
-                    percent: Math.round((frame.referenceOpacity ?? 1) * 100),
-                  })}
-                </span>
-                <input
-                  type="range"
-                  min={5}
-                  max={100}
-                  step={5}
-                  value={Math.round((frame.referenceOpacity ?? 1) * 100)}
-                  disabled={readOnly}
-                  onPointerDown={() => store.undo.stopCapturing()}
-                  onPointerUp={() => store.undo.stopCapturing()}
-                  onChange={(e) => {
-                    const value = Number(e.target.value) / 100;
-                    updateElement(
-                      store.doc,
-                      frame.id,
-                      { referenceOpacity: value >= 1 ? undefined : value },
-                      LOCAL,
-                    );
-                  }}
-                />
-              </label>
-            )}
-          </aside>
-        )}
       </div>
       {canUpload && (
         <input

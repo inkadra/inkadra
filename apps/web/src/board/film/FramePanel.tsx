@@ -26,6 +26,7 @@ import { startUpload } from '../uploads.ts';
 import { aspectLabel } from './aspect.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { PresetField, parseSeconds, StatusSelect, secondsText, TextField } from './fields.tsx';
+import { moveImageToFrame } from './frame-image.ts';
 import { VideoReferencePicker } from './VideoReferencePicker.tsx';
 
 type Patch = Partial<Omit<FrameElement, 'id' | 'type'>>;
@@ -70,6 +71,9 @@ export function FramePanel({
   useRegisterActions(
     framePanelActions({ readOnly: readOnly || guest, store, frameId: frame.id, duplicate, t }),
   );
+  const [pictureMenu, setPictureMenu] = useState(false);
+  const [boardPictures, setBoardPictures] = useState(false);
+  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const fileInput = useRef<HTMLInputElement>(null);
   const set = (patch: Patch) => !readOnly && updateElement(store.doc, frame.id, patch, LOCAL);
   const text = (v: string) => v.trim() || undefined;
@@ -120,25 +124,71 @@ export function FramePanel({
               <Button icon="pen" onClick={onDraw}>
                 {t('film.frame.draw')}
               </Button>
-              <Button icon="upload" variant="ghost" onClick={() => fileInput.current?.click()}>
-                {t('film.frame.upload')}
+              <Button
+                icon="image"
+                variant="ghost"
+                aria-expanded={pictureMenu}
+                onClick={() => setPictureMenu(!pictureMenu)}
+              >
+                {t('board.types.image')}
               </Button>
-              {!guest && userId && (
-                <VideoReferencePicker
-                  store={store}
-                  frameId={frame.id}
-                  projectId={projectId}
-                  userId={userId}
-                  readOnly={readOnly}
-                />
-              )}
-              {frame.assetId && (
-                <Button
-                  variant="ghost"
-                  onClick={() => set({ assetId: undefined, source: undefined })}
-                >
-                  {t('film.frame.removePicture')}
-                </Button>
+              {pictureMenu && (
+                <div className="film-panel__image-menu">
+                  <Button icon="upload" variant="ghost" onClick={() => fileInput.current?.click()}>
+                    {t('film.frame.upload')}
+                  </Button>
+                  {!guest && userId && (
+                    <VideoReferencePicker
+                      store={store}
+                      frameId={frame.id}
+                      projectId={projectId}
+                      userId={userId}
+                      readOnly={readOnly}
+                    />
+                  )}
+                  <Button variant="ghost" onClick={() => setBoardPictures(!boardPictures)}>
+                    {t('story.fromBoard')}
+                  </Button>
+                  {boardPictures && (
+                    <div className="film-panel__video-picker">
+                      {[...snapshot.byId.values()]
+                        .filter((e) => e.type === 'image' && e.assetId && !e.locked)
+                        .map((image) => (
+                          <button
+                            key={image.id}
+                            type="button"
+                            className="ink-btn ink-btn--ghost"
+                            onClick={() => {
+                              moveImageToFrame(store, image.id, frame.id);
+                              setBoardPictures(false);
+                              setPictureMenu(false);
+                            }}
+                          >
+                            <FramePicture
+                              aspect={undefined}
+                              strokes={undefined}
+                              assetId={image.type === 'image' ? image.assetId : undefined}
+                              boardAspect={boardAspect}
+                              pixels={160}
+                            />
+                            <span>
+                              {image.type === 'image'
+                                ? image.caption || t('board.types.image')
+                                : ''}
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                  {frame.assetId && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => set({ assetId: undefined, source: undefined })}
+                    >
+                      {t('film.frame.removePicture')}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           )}

@@ -138,9 +138,10 @@ import { EmptyBoardStart } from './EmptyBoardStart.tsx';
 import { easeCards } from './ease-cards.ts';
 import { isContextualFocus, restoreEditingFocus } from './editing-focus.ts';
 import { isDesignFile } from './file-kinds.ts';
-import { useBoardAspect } from './film/aspect.ts';
+import { frameRatio, useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
+import { moveImageToFrame } from './film/frame-image.ts';
 import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
 import { StoryCardPanel } from './film/StoryCardPanel.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
@@ -346,7 +347,10 @@ interface Overlay {
   ghost?: { element: Element; x: number; y: number; w: number };
   guides?: Guide[];
   marquee?: Rect;
-  drop?: { kind: 'column'; id: string; index: number; line: Rect } | { kind: 'unsorted' };
+  drop?:
+    | { kind: 'frame'; id: string }
+    | { kind: 'column'; id: string; index: number; line: Rect }
+    | { kind: 'unsorted' };
   resize?: Rect & { id: string };
   arrow?: { a: Point; b: Point };
 }
@@ -528,6 +532,7 @@ export function Canvas({
     cell?: { r: number; c: number };
     /** The scene picker of a to-do list, opened from its "Scene" item. */
     scenes?: boolean;
+    frames?: boolean;
   } | null>(null);
   const [palette, setPalette] = useState(false);
   /** The address field of a new link card, or of a map card (an address or a map link). */
@@ -962,6 +967,14 @@ export function Canvas({
   // Edits ---------------------------------------------------------------------
 
   const select = useCallback((ids: Iterable<string>) => setSelection(new Set(ids)), []);
+  useEffect(() => {
+    const id = selection.size === 1 ? [...selection][0] : undefined;
+    const el = id ? snap.byId.get(id) : undefined;
+    setFramePanel((open) => (open ? (el?.type === 'frame' ? el.id : null) : null));
+    setStoryPanel((open) =>
+      open ? (el?.type === 'character' || el?.type === 'location' ? el.id : null) : null,
+    );
+  }, [selection, snap.byId]);
 
   /** An empty board card from the Canvas menu. */
   const insertCanvas = useCallback(
@@ -1591,6 +1604,27 @@ export function Canvas({
 
   // Pointer gestures ----------------------------------------------------------
 
+  function frameAt(clientX: number, clientY: number) {
+    const cards = [
+      ...(rootRef.current?.querySelectorAll<HTMLElement>('.card[data-type="frame"][data-el]') ??
+        []),
+    ];
+    for (const card of cards.reverse()) {
+      const rect = card.getBoundingClientRect();
+      const frame = snap.byId.get(card.dataset.el ?? '');
+      if (
+        frame?.type === 'frame' &&
+        !frame.locked &&
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom
+      )
+        return frame;
+    }
+    return undefined;
+  }
+
   function screenPoint(e: { clientX: number; clientY: number }): Point {
     const r = rootRef.current?.getBoundingClientRect();
     return { x: e.clientX - (r?.left ?? 0), y: e.clientY - (r?.top ?? 0) };
@@ -1803,18 +1837,20 @@ export function Canvas({
         `.card[data-el="${CSS.escape(id)}"]`,
       );
       const mediaHeight = card?.querySelector<HTMLElement>(
-        '.card__media, .fcard__preview',
+        '.card__media, .card__frame, .fcard__preview',
       )?.offsetHeight;
       const media = el.type === 'file' ? getCachedAsset(el.assetId) : null;
       const video = media && media !== 'missing' && media.kind === 'video';
       // Images keep the ratio of their picture and plans of their drawing; the header stays.
       const options: ResizeOptions =
-        el.type === 'image' || el.type === 'plan' || video
+        el.type === 'image' || el.type === 'frame' || el.type === 'plan' || video
           ? {
               aspectRatio:
-                video && media.width && media.height
-                  ? media.width / media.height
-                  : rect.w / (mediaHeight || rect.h),
+                el.type === 'frame'
+                  ? frameRatio(el.aspect, boardAspect)
+                  : video && media.width && media.height
+                    ? media.width / media.height
+                    : rect.w / (mediaHeight || rect.h),
               fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
             }
           : { widthOnly: el.type === 'link' || el.type === 'section' || isContainer(el) };
@@ -1962,6 +1998,11 @@ export function Canvas({
       }
     }
 
+    if (els.length === 1 && anchor?.type === 'image' && anchor.assetId) {
+      const frame = frameAt(e.clientX, e.clientY);
+      if (frame) drop = { kind: 'frame', id: frame.id };
+    }
+
     let guides: Guide[] | undefined;
     let land: Overlay['land'];
     // Alt leaves the guides out and inverts the magnet: the grid snaps when exactly one is on.
@@ -2087,7 +2128,12 @@ export function Canvas({
       );
     }
     doc.transact(() => {
-      if (o.drop?.kind === 'unsorted') {
+      if (o.drop?.kind === 'frame') {
+        if (moveImageToFrame(store, g.anchor, o.drop.id)) {
+          select([o.drop.id]);
+          setToast({ text: t('film.frame.inserted'), undo: true });
+        }
+      } else if (o.drop?.kind === 'unsorted') {
         moveToUnsorted(doc, cards, LOCAL);
       } else if (o.drop?.kind === 'column') {
         moveIntoParent(doc, cards, o.drop.id, o.drop.index, LOCAL);
@@ -2505,12 +2551,19 @@ export function Canvas({
     if (types.includes('Files') || types.includes(TOOL_MIME) || types.includes('text/uri-list')) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
-      if (types.includes('Files')) setDropHint(true);
+      if (types.includes('Files')) {
+        setDropHint(true);
+        const frame = frameAt(e.clientX, e.clientY);
+        const singleImage =
+          e.dataTransfer.items.length === 1 && e.dataTransfer.items[0]?.type.startsWith('image/');
+        setOverlay(frame && singleImage ? { drop: { kind: 'frame', id: frame.id } } : NO_OVERLAY);
+      }
     }
   }
 
   function onDrop(e: DragEvent<HTMLDivElement>) {
     setDropHint(false);
+    setOverlay(NO_OVERLAY);
     if (readOnly) return;
     e.preventDefault();
     const at = toWorld(e.clientX, e.clientY);
@@ -2521,7 +2574,22 @@ export function Canvas({
     }
     const files = [...e.dataTransfer.files];
     if (files.length > 0) {
-      uploadFiles(files, at);
+      const frame = frameAt(e.clientX, e.clientY);
+      const file = files[0];
+      if (frame && files.length === 1 && file?.type.startsWith('image/')) {
+        startUpload({
+          file,
+          projectId,
+          boardId,
+          onAsset: (assetId) => {
+            const current = store.getSnapshot().byId.get(frame.id);
+            if (current?.type !== 'frame' || current.locked) return;
+            store.undo.stopCapturing();
+            updateElement(doc, frame.id, { assetId, source: undefined }, LOCAL);
+            store.undo.stopCapturing();
+          },
+        });
+      } else uploadFiles(files, at);
       return;
     }
     const uri = e.dataTransfer
@@ -2719,7 +2787,7 @@ export function Canvas({
     return el?.type === 'character' || el?.type === 'location' ? el : undefined;
   })();
   const drawnFrame = frameOf(drawing);
-  // Shooting order, for the editor's strip and onion skin; only while a drawing is open.
+  // Shooting order for arrow navigation while drawing.
   const storyFrames = useMemo(
     () => (drawing ? storyboardOf([...snap.byId.values()]).flatMap((g) => g.frames) : []),
     [drawing, snap],
@@ -2791,6 +2859,17 @@ export function Canvas({
     }
     const locked = selectedEls.some((e) => e.locked);
     const single = selectedEls.length === 1 ? selectedEls[0] : undefined;
+    if (single?.type === 'image' && menu.frames && !readOnly && !single.locked) {
+      return [...snap.byId.values()]
+        .filter((e) => e.type === 'frame' && !e.locked)
+        .map((frame) => ({
+          label: labels.get(frame.id) || t('board.types.frame'),
+          action: () => {
+            moveImageToFrame(store, single.id, frame.id);
+            select([frame.id]);
+          },
+        }));
+    }
     // A to-do list gathers costumes, props or equipment for a scene (#323, decision 0058).
     const listable = single?.type === 'todo' && !readOnly && !single.locked ? single : undefined;
     const scenes = storyboardOf([...snap.byId.values()]).flatMap((g) => (g.scene ? [g.scene] : []));
@@ -2959,6 +3038,7 @@ export function Canvas({
         : []),
       ...(single?.type === 'image' && !readOnly && !single.locked
         ? [
+            { label: t('film.frame.moveImage'), action: () => setMenu({ ...menu, frames: true }) },
             {
               toolbar: true,
               label: t('board.image.cropRotate'),
@@ -3107,6 +3187,7 @@ export function Canvas({
       : items;
   }, [
     menu,
+    labels,
     editing,
     selection,
     selectedEls,
@@ -3187,7 +3268,10 @@ export function Canvas({
         onDoubleClick={outsideDialogs(onDoubleClick)}
         onContextMenu={outsideDialogs(onContextMenu)}
         onDragOver={outsideDialogs(onDragOver)}
-        onDragLeave={() => setDropHint(false)}
+        onDragLeave={() => {
+          setDropHint(false);
+          setOverlay(NO_OVERLAY);
+        }}
         onDrop={outsideDialogs(onDrop)}
         data-testid="canvas"
         aria-label={t('board.canvas')}
@@ -3306,6 +3390,30 @@ export function Canvas({
             }}
           />
         )}
+        {overlay.drop?.kind === 'frame' &&
+          (() => {
+            const frame = snap.byId.get(overlay.drop.id);
+            if (!frame) return null;
+            const card = rootRef.current?.querySelector<HTMLElement>(
+              `.card[data-el="${CSS.escape(frame.id)}"]`,
+            );
+            const box = card?.getBoundingClientRect();
+            const rootBox = rootRef.current?.getBoundingClientRect();
+            if (!box || !rootBox) return null;
+            return (
+              <div
+                className="canvas__frame-drop"
+                style={{
+                  left: box.left - rootBox.left,
+                  top: box.top - rootBox.top,
+                  width: box.width,
+                  height: box.height,
+                }}
+              >
+                {t('film.frame.dropPicture')}
+              </div>
+            );
+          })()}
         {overlay.drop?.kind === 'column' && (
           <div
             className="canvas__insert"
@@ -3835,7 +3943,7 @@ export function Canvas({
  */
 function outsideDialogs<E extends { target: EventTarget }>(handler: (e: E) => void) {
   return (e: E) => {
-    if ((e.target as HTMLElement).closest?.('dialog')) return;
+    if ((e.target as HTMLElement).closest?.('dialog, [role="dialog"]')) return;
     handler(e);
   };
 }

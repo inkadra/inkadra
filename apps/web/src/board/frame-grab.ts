@@ -99,29 +99,23 @@ export function placeVideoStill(
     sourceId: string;
     targetId: string | null;
     assetId: string;
-    source: VideoFrameSource;
+    source?: VideoFrameSource;
     userId: string;
-    caption: string;
-    reference?: string;
   },
 ): boolean {
   const byId = store.getSnapshot().byId;
   const original = byId.get(input.sourceId);
   const target = input.targetId ? byId.get(input.targetId) : null;
-  if (!original || (input.targetId && target?.type !== 'frame')) return false;
+  if (!original || (input.targetId && (target?.type !== 'frame' || target.locked))) return false;
   const guestHidden = hiddenFromGuests(original.id, (id) => byId.get(id));
   store.undo.stopCapturing();
   if (target?.type === 'frame') {
-    const notes = [target.notes, input.reference].filter(Boolean).join('\n');
-    // Never truncate director's notes to make room for a reference.
-    if (notes.length > 4000) return false;
     updateElement(
       store.doc,
       target.id,
       {
         assetId: input.assetId,
         source: input.source,
-        ...(input.reference ? { notes } : {}),
         ...(guestHidden ? { guestHidden: true } : {}),
       },
       LOCAL,
@@ -134,13 +128,13 @@ export function placeVideoStill(
       {
         assetId: input.assetId,
         source: input.source,
-        caption: input.caption.slice(0, 2000),
         guestHidden,
         parent: original.parent,
       },
       { userId: input.userId, origin: LOCAL },
     );
   }
+  store.undo.stopCapturing();
   return true;
 }
 

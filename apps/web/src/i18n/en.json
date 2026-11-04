@@ -1201,7 +1201,10 @@
       "castLink": "Add {{name}} to the cast",
       "castLinked": "{{name}} is in the cast",
       "castFilter": "Find a character",
-      "castNone": "No character by that name."
+      "castNone": "No character by that name.",
+      "dropPicture": "Drop to replace the picture",
+      "moveImage": "Move into a frame…",
+      "inserted": "Picture moved into frame"
     },
     "shot": {
       "ews": "Extreme wide",
@@ -1285,7 +1288,11 @@
       "zoomIn": "Zoom in",
       "zoomOut": "Zoom out",
       "zoomReset": "Zoom {{percent}}%: back to 100%",
-      "strip": "Frames of the scene"
+      "strip": "Frames of the scene",
+      "escape": "Esc to exit",
+      "tools": "Tools",
+      "palette": "Colour",
+      "more": "More actions"
     },
     "list": {
       "filter": "Filter the frames",
@@ -3048,7 +3055,7 @@
     "grab": "Grab frame",
     "thumbnail": "Use thumbnail",
     "destination": "Frame destination",
-    "externalHint": "External players cannot supply captured frames. The thumbnail does not depict the reference time.",
+    "externalHint": "Tab capture is unavailable here. Choose a screenshot or use the video thumbnail.",
     "captured": "Frame at {{timecode}} · original resolution",
     "frame": "Storyboard frame",
     "choose": "Choose a frame",
@@ -3062,7 +3069,10 @@
     "fromVideo": "From video",
     "pickVideo": "Choose a video or link on this board.",
     "noVideos": "Add a video or YouTube/Vimeo link to this board first.",
-    "hiddenDestination": "The source is hidden from guests: this frame will also be hidden."
+    "hiddenDestination": "The source is hidden from guests: this frame will also be hidden.",
+    "external": "Screenshot or thumbnail",
+    "screenshot": "Choose a screenshot",
+    "origin": "Source"
   },
   "projectCreation": {
     "off": "On this instance, only people an administrator allows create projects. You work in the projects you are invited to.",
