@@ -9,6 +9,7 @@ import {
   blockingCurve,
   blockingPositions,
   categoryOf,
+  coneEnd,
   DEFAULT_LENS,
   defaultLayer,
   duplicatePlanItems,
@@ -43,15 +44,19 @@ import {
   resizeItem,
   rotateItem,
   type SceneElement,
+  SYMBOL_PERCENT,
   scaleFor,
   shownAngle,
   snapPlanPoint,
+  symbolPercent,
   toGrid,
   toggleGroup,
   updateElement,
   updatePlanItems,
   variantView,
   withGroups,
+  withPercent,
+  withReachAt,
 } from '@inkadra/canvas-core';
 import {
   type FrameShape,
@@ -67,24 +72,38 @@ import {
   type PlanShape,
   type PlanStep,
 } from '@inkadra/doc-schema';
-import { Button, Icon, IconButton, type IconName, Select, Switch } from '@inkadra/ui';
-import { type PointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Checkbox, Icon, IconButton, type IconName, Select, Switch } from '@inkadra/ui';
+import {
+  type CSSProperties,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { pathOf } from '../film/strokes.ts';
 import { isMac } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
+import { measureValue } from './kit.ts';
 import { NumberField } from './NumberField.tsx';
 import { planTitle } from './PlanCard.tsx';
 import {
   iconColor,
+  measureText,
   NOTE_COLOR,
   PLAN_COLORS,
   PLAN_INK,
   PLAN_PEN,
   PLAN_TEXT,
   PlanDrawing,
-  PlanGlyph,
   PlanShapeView,
   planCss,
   TEXT_SIZES,
@@ -95,24 +114,45 @@ import './plan.css';
 
 type DragKind = 'line' | 'arrow' | 'rect' | 'ellipse' | 'zone' | 'measure' | 'scale';
 type Tool = 'select' | 'pencil' | 'text' | 'icons' | 'move' | DragKind;
-type Panel = 'icons' | 'layers' | 'props';
+type ShapeTool = 'rect' | 'ellipse';
+/** What is open over the plan: a menu or a small panel, one at a time. */
+type PopKind =
+  | 'color'
+  | 'lens'
+  | 'light'
+  | 'label'
+  | 'steps'
+  | 'layers'
+  | 'scale'
+  | 'variant'
+  | 'more'
+  | 'itemMore'
+  | 'moveLayer'
+  | 'shapes';
 
-/** The tools of the frame drawing that plans use, in the order of the mockup, with their keys. */
-const TOOLS: Array<{ tool: Tool; icon: IconName; key: string; phone: boolean }> = [
-  { tool: 'select', icon: 'pointer', key: 'V', phone: true },
-  { tool: 'pencil', icon: 'pen', key: 'P', phone: true },
-  { tool: 'line', icon: 'line', key: 'L', phone: false },
-  { tool: 'arrow', icon: 'arrow', key: 'A', phone: true },
-  { tool: 'rect', icon: 'rect', key: 'Q', phone: true },
-  { tool: 'ellipse', icon: 'ellipse', key: 'O', phone: false },
-  { tool: 'text', icon: 'text', key: 'T', phone: true },
+/** The tools of the bar at the bottom, in the order of the mockup, with their keys. */
+const TOOLS: Array<{ tool: Tool; icon: IconName; key: string }> = [
+  { tool: 'select', icon: 'pointer', key: 'V' },
+  { tool: 'pencil', icon: 'pen', key: 'P' },
+  { tool: 'line', icon: 'line', key: 'L' },
+  { tool: 'arrow', icon: 'arrow', key: 'A' },
+  { tool: 'rect', icon: 'rect', key: 'Q' },
+  { tool: 'ellipse', icon: 'ellipse', key: 'O' },
+  { tool: 'text', icon: 'text', key: 'T' },
+  { tool: 'measure', icon: 'ruler', key: 'U' },
 ];
+/** Degrees the R key and the menu turn an item by; the rotate handle snaps to ROTATE_STEP. */
+const QUARTER_TURN = 45;
+/** Two presses on an item within this time (ms) are a double click, by mouse or by finger. */
+const DOUBLE_PRESS = 400;
 const KINDS = new Set<string>(PLAN_ICON_KINDS);
 /** Schema bounds: sizes and reaches up to 4000 view units, a scale up to 100000 per metre. */
 const MAX_UNITS = 4000;
 const MAX_SCALE = 100000;
 /** A finger held this long (ms) on the empty plan starts a selection box. */
 const LONG_PRESS = 400;
+/** A finger that moves less than this (view units, about 9 px on a phone) has tapped. */
+const TAP_SLOP = 24;
 /** A set of primes, as on the mockup; Other takes any focal length. */
 const LENSES = [18, 24, 35, 50, 85, 135];
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
@@ -139,6 +179,7 @@ type Gesture =
   | { kind: 'draw'; points: Point[] }
   | { kind: 'shape'; shape: DragKind; a: Point; b: Point; raw: [Point, Point] }
   | { kind: 'bend'; index: number; item: PlanIcon }
+  | { kind: 'reach'; item: PlanIcon }
   | { kind: 'resize'; handle: ResizeHandle; item: PlanItem }
   | { kind: 'moveMany'; start: Point; items: PlanItem[] }
   | { kind: 'rotateMany'; centre: Point; from: number; items: PlanItem[] }
@@ -155,13 +196,26 @@ const replaceIn = <T extends { id: string }>(
 ): T[] | undefined =>
   list?.map((item) => (next.find((n) => n.id === item.id) as unknown as T | undefined) ?? item);
 
+/** A menu or panel by the button that opens it: under it, or above it low on the screen. */
+function popStyle(anchor: DOMRect): CSSProperties {
+  return {
+    position: 'fixed',
+    ...(anchor.left > window.innerWidth / 2
+      ? { right: Math.max(8, window.innerWidth - anchor.right) }
+      : { left: Math.max(8, anchor.left) }),
+    ...(anchor.top > window.innerHeight / 2
+      ? { bottom: window.innerHeight - anchor.top + 6 }
+      : { top: anchor.bottom + 6 }),
+  };
+}
+
 /**
- * The editor of a set plan (#335): a window in front of the dimmed board, on a desktop with
- * the tools on its left, the icon library and the properties on its right and the bar of the
- * selected item under the plan; on a phone it takes the whole screen with the library as a
- * sheet from the bottom. Every finished line, shape, icon or edit is one change of the
- * document, so it syncs as you go and undo goes back one gesture at a time. The tool, the
- * selection and the grid snap are local to this person.
+ * The editor of a set plan (#335, decision 0071): a window in front of the dimmed board, the plan
+ * filling it under one bar of tools at the bottom and one bar that appears on the selected item.
+ * Icons, layers and scale open only when asked. On a phone it takes the whole screen, with the
+ * bar of the item under the plan and the library as a sheet from the bottom. Every finished line,
+ * shape, icon or edit is one change of the document, so it syncs as you go and undo goes back one
+ * gesture at a time. The tool, the selection and the grid snap are local to this person.
  */
 export function PlanEditor({
   store,
@@ -195,13 +249,36 @@ export function PlanEditor({
   const { t, i18n } = useTranslation();
   const [tool, setTool] = useState<Tool>('select');
   const [armed, setArmed] = useState<LibraryItem | null>(null);
-  const [panel, setPanel] = useState<Panel>('icons');
+  const [library, setLibrary] = useState(false);
+  const [pop, setPop] = useState<{ kind: PopKind; anchor: DOMRect } | null>(null);
+  const popAnchor = useRef<HTMLElement | null>(null);
+  const popBox = useRef<HTMLDivElement>(null);
+  /** The colour of the next strokes and icons; none picked, each takes its own. */
+  const [penColor, setPenColor] = useState<string | null>(null);
+  const [shapeTool, setShapeTool] = useState<ShapeTool>('rect');
+  /** The text whose words are being written, in the bar over it. */
+  const [editingText, setEditingText] = useState<string | null>(null);
+  /** The measure being written: its number, then the offer to make it the scale of the plan. */
+  const [measureDraft, setMeasureDraft] = useState<{
+    id: string;
+    value: string;
+    wrong: boolean;
+    asking: string | null;
+    at: Point;
+  } | null>(null);
+  /** The item of a locked layer that was clicked: it says so instead of doing nothing. */
+  const [lockedItem, setLockedItem] = useState<PlanItem | null>(null);
+  const lastPress = useRef<{ id: string; at: number } | null>(null);
+  /** What a finger pressed on a picked item takes out of the selection if it does not drag. */
+  const tapOff = useRef<PlanItemRef[] | null>(null);
+  const longPress = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const itemBar = useRef<HTMLDivElement>(null);
   const [snap, setSnap] = useState(true);
   const [picking, setPicking] = useState<{ x: number; y: number } | null>(null);
   const [otherLens, setOtherLens] = useState(false);
-  /** The icon whose blocking is being drawn with the Movement tool, and the veiled copies. */
+  /** The icon whose route is being drawn, and the veiled copies of its earlier positions. */
   const [moving, setMoving] = useState<string | null>(null);
-  const [ghosts, setGhosts] = useState(true);
+  const [ghosts, setGhosts] = useState(false);
   /** The angle shown over the rotate handle while it turns. */
   const [chip, setChip] = useState<string | null>(null);
   /** Layers this person hides on the base plan; on a variant hiding is the variant's own. */
@@ -244,8 +321,9 @@ export function PlanEditor({
   const textInput = useRef<HTMLInputElement>(null);
 
   const doc = store.doc;
-  /** Annotations from the library draw green; the tools of the column draw in ink. */
-  const ink = armed && !isIconKind(armed) ? NOTE_COLOR : PLAN_INK;
+  /** Unless a colour was picked, annotations and measures draw green and the other tools in ink. */
+  const ink =
+    penColor ?? ((armed && !isIconKind(armed)) || tool === 'measure' ? NOTE_COLOR : PLAN_INK);
   /** A variant shows its base's Set layer under its own (round 6, h). */
   // Attached measures are drawn, picked and boxed where their icons stand now.
   const drawn = useMemo(() => {
@@ -297,6 +375,36 @@ export function PlanEditor({
   useEffect(() => {
     if (tool !== 'move') setMoving(null);
   }, [tool]);
+  // Writing a text ends with the selection of that text.
+  useEffect(() => {
+    if (editingText && selected?.id !== editingText) setEditingText(null);
+  }, [editingText, selected?.id]);
+  // The bar sits over the item, under it when there is no room, always inside the plan's area.
+  useLayoutEffect(() => {
+    // No bar while dragging: nothing is measured on those frames.
+    const bar = itemBar.current;
+    if (!bar || phone) return;
+    const held =
+      many.length > 1
+        ? itemsBox(many)
+        : (current ?? lockedItem)
+          ? itemBox((current ?? lockedItem) as PlanItem)
+          : null;
+    const room = bar.offsetParent as HTMLElement | null;
+    const on = stage.current?.getBoundingClientRect();
+    if (!room || !on || !held) return;
+    const r = room.getBoundingClientRect();
+    const k = on.width / PLAN_VIEW_W;
+    const top = on.top - r.top + held.y * k;
+    // Past the rotate handle above the item, 56 view units from its box.
+    const above = top - bar.offsetHeight - 56 * k - 8;
+    const below = top + held.h * k + 16;
+    const y = above >= 8 ? above : Math.min(below, r.height - bar.offsetHeight - 64);
+    const x = on.left - r.left + (held.x + held.w / 2) * k - bar.offsetWidth / 2;
+    const right = r.width - bar.offsetWidth - 8 - (library ? 276 : 0);
+    bar.style.left = `${Math.max(8, Math.min(x, right))}px`;
+    bar.style.top = `${y}px`;
+  });
 
   /** One change, one undo step. */
   const change = (write: () => void) => {
@@ -312,7 +420,7 @@ export function PlanEditor({
   };
   const inside = (p: Point) => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
 
-  const placeIcon = (kind: PlanIconKind, p: Point) => {
+  const placeIcon = (kind: PlanIconKind, p: Point, keepPlacing = false) => {
     if ((plan.icons?.length ?? 0) >= MAX_PLAN_ICONS) return;
     const q = snapped(p);
     let id: string | null = null;
@@ -323,7 +431,7 @@ export function PlanEditor({
         targetFor(layer),
         {
           kind,
-          color: iconColor(kind),
+          color: penColor ?? iconColor(kind),
           x: toGrid(q.x),
           y: toGrid(q.y),
           ...(layer !== categoryOf(kind).layer ? { layer } : {}),
@@ -332,7 +440,12 @@ export function PlanEditor({
       );
     });
     rememberRecent(kind);
-    if (id) setSelected({ kind: 'icons', id });
+    if (keepPlacing || !id) return;
+    // Back to Select, the new icon picked; Shift keeps placing.
+    setArmed(null);
+    setTool('select');
+    if (phone) setLibrary(false);
+    setSelection([{ kind: 'icons', id }]);
   };
 
   /** A library tile: icons wait for a tap on the plan; annotations pick their tool. */
@@ -385,19 +498,22 @@ export function PlanEditor({
     });
     setSelection(copies);
   };
-  /** Writes items where they live: the base's Set layer, or the plan (no undo step). */
-  const writeItems = (items: readonly PlanItem[]) => {
-    // Only what changed since this render is written (the item as drawn when the gesture
-    // started), so another person's edit of another field made meanwhile stays.
+  /**
+   * Writes items where they live: the base's Set layer, or the plan (no undo step). Only what
+   * differs from `baseline` is written: for a gesture, the items as they were when it started,
+   * so another person's edit of another field made meanwhile stays. Without one, this render.
+   */
+  const writeItems = (items: readonly PlanItem[], baseline?: readonly PlanItem[]) => {
     const all = planItems(drawn);
-    const before = items.flatMap((i) => all.find((e) => e.item.id === i.id)?.item ?? []);
+    const before =
+      baseline ?? items.flatMap((i) => all.find((e) => e.item.id === i.id)?.item ?? []);
     const own = items.filter((i) => ownerOf(i.id) === plan.id);
     const shared = items.filter((i) => ownerOf(i.id) !== plan.id);
     if (own.length) updatePlanItems(doc, plan.id, own, LOCAL, before);
     if (shared.length && base) updatePlanItems(doc, base.id, shared, LOCAL, before);
   };
-  const write = (next: PlanItem | readonly PlanItem[]) =>
-    change(() => writeItems(Array.isArray(next) ? next : [next as PlanItem]));
+  const write = (next: PlanItem | readonly PlanItem[], baseline?: readonly PlanItem[]) =>
+    change(() => writeItems(Array.isArray(next) ? next : [next as PlanItem], baseline));
   const rotate = (degrees: number) => {
     if (many.length > 1) {
       const b = itemsBox(many);
@@ -409,7 +525,48 @@ export function PlanEditor({
     const items = many.length > 1 ? many : item ? [item] : [];
     if (items.length) write(items.map((i) => moveItem(i, d)));
   };
-  const recolor = (hex: string) => item && write({ ...item, color: hex });
+  /** The colours paint what is selected; with nothing selected, the next strokes and icons. */
+  const pickColor = (hex: string) => {
+    if (many.length > 1) write(many.map((i) => ({ ...i, color: hex })));
+    else if (item) write({ ...item, color: hex });
+    else setPenColor(hex);
+  };
+  const openPop = (kind: PopKind) => (e: MouseEvent<HTMLElement>) => {
+    popAnchor.current = e.currentTarget;
+    const anchor = e.currentTarget.getBoundingClientRect();
+    setPop((open) => (open?.kind === kind ? null : { kind, anchor }));
+  };
+  const closePop = useCallback(() => setPop(null), []);
+  /** An item of a menu that opens a panel in its place, by the same button. */
+  const nextPop = (kind: PopKind) => {
+    const anchor = popAnchor.current?.getBoundingClientRect();
+    if (anchor) setPop({ kind, anchor });
+  };
+  const pickTool = (next: Tool) => {
+    setArmed(null);
+    setTool(next);
+    if (next === 'rect' || next === 'ellipse') setShapeTool(next);
+  };
+  /** The route of an icon: from where it stands, each click a new numbered position. */
+  const startRoute = (icon: PlanIcon) => {
+    setArmed(null);
+    setTool('move');
+    setMoving(icon.id);
+    setSelection([{ kind: 'icons', id: icon.id }]);
+  };
+  const endRoute = () => {
+    setMoving(null);
+    setTool('select');
+  };
+  const disarm = () => {
+    setArmed(null);
+    setTool('select');
+  };
+  /** Ends writing a text: a text left with no words goes. */
+  const finishText = () => {
+    if (item && 'x0' in item && !item.text?.trim()) remove();
+    setEditingText(null);
+  };
   const relabel = (label: string) => {
     if (!isIcon(item)) return;
     const next = { ...item, label: label.slice(0, 60) };
@@ -453,6 +610,18 @@ export function PlanEditor({
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   keys.current = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
+    // An open menu or panel has the keyboard, and Escape closes it first.
+    if (pop) {
+      if (e.key === 'Escape') {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        if (e.type === 'keydown') {
+          closePop();
+          popAnchor.current?.focus();
+        }
+      } else if (!target?.closest('.plan-pop, .menu')) e.stopImmediatePropagation();
+      return;
+    }
     // The scene picker has the keyboard while it is open; fields keep their keys.
     if (picking || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
     // Whatever the editor does not use never reaches the board behind it: Delete, arrows,
@@ -463,14 +632,22 @@ export function PlanEditor({
     const key = e.key.toLowerCase();
     if (e.key === 'Escape') {
       if (scaleDraft) setScaleDraft(null);
-      else if (moving) setMoving(null);
-      else if (armed) {
-        setArmed(null);
-        setTool('select');
-      } else if (selection.length) setSelection([]);
+      else if (measureDraft) setMeasureDraft(null);
+      else if (moving) endRoute();
+      else if (armed) disarm();
+      else if (selection.length) setSelection([]);
       else if (tool !== 'select') setTool('select');
+      else if (library) setLibrary(false);
       else onClose();
-    } else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length) remove();
+    } else if (
+      e.key === 'Enter' &&
+      item &&
+      'x0' in item &&
+      item.kind === 'text' &&
+      target?.tagName !== 'BUTTON'
+    )
+      setEditingText(item.id);
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length) remove();
     else if (mod && key === 'a')
       // Everything on the active layer, as the round 6 mockup says.
       setSelection(
@@ -490,23 +667,17 @@ export function PlanEditor({
     else if (mod && key === 'y') store.undo.redo();
     else if (mod && key === 'd' && selection.length) duplicate();
     else if (!mod && key === 'r' && selection.length)
-      rotate(e.shiftKey ? -ROTATE_STEP : ROTATE_STEP);
+      rotate(e.shiftKey ? -QUARTER_TURN : QUARTER_TURN);
     else if (!mod && key === '/' && !phone) {
-      setPanel('icons');
+      setLibrary(true);
       requestAnimationFrame(() =>
         document.querySelector<HTMLInputElement>('.plan-lib__search input')?.focus(),
       );
     } else if (!mod && key === 'g') setSnap((v) => !v);
-    else if (!mod && key === 'u' && !phone) {
-      setArmed(null);
-      setTool('measure');
-    } else if (!mod && key === 'm') {
-      setArmed(null);
-      setTool('move');
-    } else if (!mod && TOOLS.some((x) => x.key.toLowerCase() === key)) {
-      setArmed(null);
-      setTool(TOOLS.find((x) => x.key.toLowerCase() === key)?.tool ?? 'select');
-    } else return;
+    else if (!mod && key === 'm' && isIcon(item)) startRoute(item);
+    else if (!mod && TOOLS.some((x) => x.key.toLowerCase() === key))
+      pickTool(TOOLS.find((x) => x.key.toLowerCase() === key)?.tool ?? 'select');
+    else return;
     e.preventDefault();
   };
   useEffect(() => {
@@ -541,6 +712,26 @@ export function PlanEditor({
       commitText();
       return;
     }
+    // A double click writes: the words of a text in its bar, the number of a measure. Looked at
+    // first: on a phone the handles of a small text cover it and would take the second tap.
+    if (tool === 'select' && !armed) {
+      const pressed = planItemAt(drawn, p, viewOf);
+      const previous = lastPress.current;
+      lastPress.current = pressed ? { id: pressed.id, at: e.timeStamp } : null;
+      if (pressed && previous?.id === pressed.id && e.timeStamp - previous.at < DOUBLE_PRESS) {
+        const target = planItem(drawn, pressed);
+        if (target && 'x0' in target && target.kind === 'text') {
+          setSelected(pressed);
+          setEditingText(target.id);
+          return;
+        }
+        if (target && 'x0' in target && target.kind === 'measure') {
+          setSelected(pressed);
+          openMeasure(target);
+          return;
+        }
+      }
+    }
     const grip = (e.target as Element).closest<SVGElement>('[data-handle]');
     if (grip && item) {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -554,6 +745,12 @@ export function PlanEditor({
       gesture.current = { kind: 'end', which: end.dataset.end === '1' ? 1 : 0, item };
       return;
     }
+    const reachGrip = (e.target as Element).closest<SVGElement>('[data-reach]');
+    if (reachGrip && isIcon(item)) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      gesture.current = { kind: 'reach', item };
+      return;
+    }
     const bend = (e.target as Element).closest<SVGElement>('[data-bend]');
     if (bend && isIcon(item)) {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -561,13 +758,12 @@ export function PlanEditor({
       return;
     }
     if (tool === 'move') {
-      const hit = planItemAt(drawn, p, viewOf);
-      const target = hit && planItem(drawn, hit);
-      if (hit && isIcon(target)) {
-        setSelected(hit);
-        setMoving(target.id);
-        setPanel('props');
-      } else if (movingIcon) write(addBlockingStep(movingIcon, snapped(p)));
+      if (movingIcon) write(addBlockingStep(movingIcon, snapped(p)));
+      return;
+    }
+    setLockedItem(null);
+    if (armed && isIconKind(armed)) {
+      placeIcon(armed, p, e.shiftKey);
       return;
     }
     const handle = (e.target as Element).closest('[data-rotate]');
@@ -604,12 +800,16 @@ export function PlanEditor({
         // Shift (or, on a phone, a tap while something is picked) adds or takes away.
         const group = withGroups(drawn, [hit]);
         const has = selection.some((r) => r.id === hit.id);
-        setSelection(
-          has
-            ? selection.filter((r) => !group.some((g) => g.id === r.id))
-            : [...selection, ...group.filter((g) => !selection.some((r) => r.id === g.id))],
-        );
-        return;
+        if (e.shiftKey || !has) {
+          setSelection(
+            has
+              ? selection.filter((r) => !group.some((g) => g.id === r.id))
+              : [...selection, ...group.filter((g) => !selection.some((r) => r.id === g.id))],
+          );
+          return;
+        }
+        // A finger on a picked item may drag the selection: only a tap takes it out, on release.
+        tapOff.current = group;
       }
       const picked = hit
         ? selection.some((r) => r.id === hit.id)
@@ -630,37 +830,37 @@ export function PlanEditor({
       if (hit) {
         const target = planItem(drawn, hit);
         setSelected(hit);
-        // Picked with the arrow, a camera or a light shows its lens or beam (round 6, c).
-        if (
-          tool === 'select' &&
-          !phone &&
-          ((isIcon(target) && iconCone(target)) ||
-            (target && 'x0' in target && target.kind === 'text'))
-        )
-          setPanel('props');
         if (!target) return;
         e.currentTarget.setPointerCapture(e.pointerId);
         store.undo.stopCapturing();
         gesture.current = { kind: 'move', ref: hit, start: p, item: target };
         return;
       }
-      if (tool === 'icons' && armed && isIconKind(armed)) placeIcon(armed, p);
-      else {
-        // A drag on the empty plan picks what its box touches (round 6, f).
-        if (!e.shiftKey) setSelection([]);
-        e.currentTarget.setPointerCapture(e.pointerId);
-        // A finger draws the box after a long press (round 6, f); a mouse at once.
-        const touch = e.pointerType === 'touch';
-        gesture.current = {
-          kind: 'marquee',
-          a: p,
-          add: e.shiftKey,
-          touch,
-          at: e.timeStamp,
-          live: !touch,
-        };
-        if (!touch) setMarquee({ a: p, b: p });
-      }
+      // An item of a locked layer cannot be picked, but says why.
+      const under = planItemAt(drawn, p, { hidden: hiddenLayers });
+      const lockedOne = under && planItem(drawn, under);
+      if (lockedOne) setLockedItem(lockedOne);
+      // A drag on the empty plan picks what its box touches (round 6, f).
+      if (!e.shiftKey) setSelection([]);
+      e.currentTarget.setPointerCapture(e.pointerId);
+      // A finger draws the box after a long press (round 6, f); a mouse at once.
+      const touch = e.pointerType === 'touch';
+      const started = {
+        kind: 'marquee' as const,
+        a: p,
+        add: e.shiftKey,
+        touch,
+        at: e.timeStamp,
+        live: !touch,
+      };
+      gesture.current = started;
+      if (touch)
+        longPress.current = setTimeout(() => {
+          if (gesture.current !== started) return;
+          started.live = true;
+          setMarquee({ a: p, b: p });
+        }, LONG_PRESS);
+      else setMarquee({ a: p, b: p });
       return;
     }
     setSelected(null);
@@ -693,11 +893,19 @@ export function PlanEditor({
       if (!g.live) {
         const moved = Math.hypot(view(p).x - view(g.a).x, view(p).y - view(g.a).y) > 12;
         if (e.timeStamp - g.at >= LONG_PRESS) g.live = true;
-        else if (moved) gesture.current = null;
+        else if (moved) {
+          gesture.current = null;
+          clearTimeout(longPress.current);
+        }
         if (!g.live) return;
       }
       setMarquee({ a: g.a, b: p });
       return;
+    }
+    if (tapOff.current && (g.kind === 'move' || g.kind === 'moveMany')) {
+      const moved = Math.hypot(view(p).x - view(g.start).x, view(p).y - view(g.start).y);
+      if (moved < TAP_SLOP) return;
+      tapOff.current = null;
     }
     if (g.kind === 'moveMany') {
       let d = { x: view(p).x - view(g.start).x, y: view(p).y - view(g.start).y };
@@ -751,6 +959,8 @@ export function PlanEditor({
       // A measure's end let go anywhere no longer follows its icon.
       delete next[g.which === 0 ? 'from' : 'to'];
       setPreview(next);
+    } else if (g.kind === 'reach') {
+      setPreview(withReachAt(g.item, view(p), plan.sensor));
     } else if (g.kind === 'bend') {
       const at = blockingPositions(g.item);
       const a = at[g.index] as Point;
@@ -783,6 +993,8 @@ export function PlanEditor({
 
   /** A gesture the browser took away (a scroll, a second finger): nothing is written. */
   function onPointerCancel() {
+    clearTimeout(longPress.current);
+    tapOff.current = null;
     gesture.current = null;
     setPreview(null);
     setChip(null);
@@ -792,6 +1004,10 @@ export function PlanEditor({
   }
 
   function onPointerUp() {
+    clearTimeout(longPress.current);
+    const taken = tapOff.current;
+    tapOff.current = null;
+    if (taken) setSelection((now) => now.filter((r) => !taken.some((t) => t.id === r.id)));
     const g = gesture.current;
     gesture.current = null;
     if (!g) return;
@@ -808,6 +1024,7 @@ export function PlanEditor({
         h: Math.abs(b.y - a.y),
       };
       if (rect.w + rect.h < 4) return;
+      setLockedItem(null);
       const hits = withGroups(drawn, itemsInRect(drawn, rect, viewOf));
       setSelection(
         g.add ? [...selection, ...hits.filter((h) => !selection.some((r) => r.id === h.id))] : hits,
@@ -818,7 +1035,7 @@ export function PlanEditor({
       setChip(null);
       const next = previewRef.current;
       setPreview(null);
-      if (next) write(next);
+      if (next) write(next, 'items' in g ? g.items : [g.item]);
       return;
     }
     if (g.kind === 'draw') {
@@ -872,16 +1089,88 @@ export function PlanEditor({
       ...(toIcon ? { to: toIcon.id } : {}),
     };
     // A click without a drag draws nothing.
-    if (Math.abs(shape.x1 - shape.x0) + Math.abs(shape.y1 - shape.y0) >= 8)
+    if (Math.abs(shape.x1 - shape.x0) + Math.abs(shape.y1 - shape.y0) < 8) return;
+    let created: string | null = null;
+    change(() => {
+      created = addShape(
+        doc,
+        targetFor(shape.layer ?? activeLayer ?? 'set'),
+        { ...(shape.layer ? {} : onLayer), ...shape } as unknown as FrameShape,
+        LOCAL,
+      );
+    });
+    if (armed) setArmed(null);
+    if (armed && g.shape !== 'measure') setTool('select');
+    if (created && g.shape === 'measure') {
+      const length = gridLength(shape.x0, shape.y0, shape.x1, shape.y1);
+      openMeasure({ id: created, x0: shape.x0, y0: shape.y0, x1: shape.x1, y1: shape.y1, length });
+    }
+  }
+
+  /** The number of a measure, to write: what it says now, in the way of this language. */
+  function openMeasure(m: {
+    id: string;
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    length?: number;
+    text?: string | undefined;
+  }) {
+    const written = m.text ? Number(m.text) : 0;
+    const length = m.length ?? gridLength(m.x0, m.y0, m.x1, m.y1);
+    const metres = written > 0 ? written : drawn.scale ? length / drawn.scale : 0;
+    setMeasureDraft({
+      id: m.id,
+      value: metres
+        ? metres.toLocaleString(i18n.language, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
+        : '',
+      wrong: false,
+      asking: null,
+      at: { x: (m.x0 + m.x1) / 8192, y: Math.max(m.y0, m.y1) / 4096 },
+    });
+  }
+  const writeMeasure = (id: string, text: string | undefined) => {
+    const found = planItem(drawn, { kind: 'shapes', id });
+    if (!found) return;
+    const next = { ...found, text } as PlanShape;
+    if (text === undefined) delete next.text;
+    write(next);
+  };
+  const commitMeasure = () => {
+    if (!measureDraft) return;
+    const value = measureValue(measureDraft.value);
+    if (!value) {
+      setMeasureDraft({ ...measureDraft, wrong: true });
+      return;
+    }
+    if (drawn.scale) {
+      writeMeasure(measureDraft.id, value);
+      setMeasureDraft(null);
+    } else setMeasureDraft({ ...measureDraft, wrong: false, asking: value });
+  };
+  /** The line and its number make the scale of the plan: the measure then reads it from there. */
+  const measureAsScale = () => {
+    const found = measureDraft && planItem(drawn, { kind: 'shapes', id: measureDraft.id });
+    if (!measureDraft?.asking || !found || !('x0' in found)) return;
+    const next = scaleFor(
+      gridLength(found.x0, found.y0, found.x1, found.y1),
+      Number(measureDraft.asking),
+    );
+    if (next && next <= MAX_SCALE)
       change(() =>
-        addShape(
+        updateElement(
           doc,
-          targetFor(shape.layer ?? activeLayer ?? 'set'),
-          { ...(shape.layer ? {} : onLayer), ...shape } as unknown as FrameShape,
+          scaleOwner,
+          { scale: Math.round(next * 100) / 100, grid: drawn.grid ?? '0.5' },
           LOCAL,
         ),
       );
-  }
+    setMeasureDraft(null);
+  };
 
   const box = current ? itemBox(current) : null;
   const frame = current ? itemFrame(current) : null;
@@ -894,10 +1183,12 @@ export function PlanEditor({
           { x: current.x1 * (PLAN_VIEW_W / 4096), y: current.y1 * (PLAN_VIEW_H / 4096) },
         ]
       : null;
+  /** Handles are bigger under a finger: on a phone a view unit is a third of a pixel. */
+  const grip = phone ? 28 : 12;
   const rotateGrip = (x: number, y: number) => (
     <g data-rotate="" className="plan-editor__rotate">
       <line x1={x} y1={y} x2={x} y2={y - 32} />
-      <circle cx={x} cy={y - 40} r={12} />
+      <circle cx={x} cy={y - 40} r={phone ? 18 : 8} />
       {chip && (
         <g className="plan-editor__chip">
           <rect x={x - 30} y={y - 92} width={60} height={28} rx={6} />
@@ -929,11 +1220,11 @@ export function PlanEditor({
               key={h}
               data-handle={h}
               className={`plan-editor__handle plan-editor__handle--${h}`}
-              x={sx * (frame.w / 2 + pad) - 6}
-              y={sy * (frame.h / 2 + pad) - 6}
-              width={12}
-              height={12}
-              rx={2}
+              x={sx * (frame.w / 2 + pad) - grip / 2}
+              y={sy * (frame.h / 2 + pad) - grip / 2}
+              width={grip}
+              height={grip}
+              rx={symbol ? grip / 2 : 2}
             />
           );
         })}
@@ -989,7 +1280,17 @@ export function PlanEditor({
       {rotateGrip(groupBox.x + groupBox.w / 2, groupBox.y - pad)}
     </g>
   );
-  const blockingGrips = isIcon(current) && (
+  const reachEnd = isIcon(current) && !moving ? coneEnd(current, plan.sensor) : null;
+  const reachGrip = reachEnd && (
+    <circle
+      data-reach=""
+      className="plan-editor__reach"
+      cx={reachEnd.x}
+      cy={reachEnd.y}
+      r={phone ? 20 : 8}
+    />
+  );
+  const blockingGrips = isIcon(current) && !moving && (
     <g className="plan-editor__selection">
       {blockingPositions(current)
         .slice(1)
@@ -1040,8 +1341,9 @@ export function PlanEditor({
           }
         />
       )}
-      {many.length > 1 ? manyBox : outline}
+      {many.length > 1 ? manyBox : !moving && outline}
       {blockingGrips}
+      {reachGrip}
       {marquee && (
         <rect
           className="plan-editor__marquee"
@@ -1055,19 +1357,18 @@ export function PlanEditor({
   );
 
   const title = planTitle(t, plan);
-  const iconName = (i: PlanItem) =>
-    isIcon(i)
-      ? t(`board.plan.icons.${i.kind}`)
-      : 'points' in i
-        ? t('board.plan.tool.pencil')
-        : t(`board.plan.shapes.${i.kind}`);
+  const colorName = (hex: string) =>
+    t(
+      `board.plan.colors.${PLAN_COLORS.find((c) => c.hex === hex)?.name ?? 'ink'}`,
+    ).toLocaleLowerCase(i18n.language);
 
   const toolButton = (
     key: string,
     label: string,
     icon: ReactNode,
     on: boolean,
-    act: () => void,
+    act: (e: MouseEvent<HTMLElement>) => void,
+    disabled = false,
   ) => (
     <button
       key={key}
@@ -1076,116 +1377,203 @@ export function PlanEditor({
       aria-pressed={on}
       aria-label={label}
       data-ink-tooltip={label}
+      disabled={disabled}
       onClick={act}
     >
       {icon}
     </button>
   );
+  /** The colour of what is selected, or of the next strokes: the button that opens the palette. */
+  const colorButton = (hex: string, tip?: string) => (
+    <button
+      type="button"
+      className="plan-editor__swatch"
+      aria-label={t('board.plan.colorOf', { name: colorName(hex) })}
+      data-ink-tooltip={tip ?? t('board.plan.colorOf', { name: colorName(hex) })}
+      aria-haspopup="dialog"
+      onClick={openPop('color')}
+    >
+      <i style={{ background: planCss(hex) }} />
+    </button>
+  );
+  const shownColor = many.length > 1 ? (many[0] as PlanItem).color : current ? current.color : ink;
+  const shapeOn = (['line', 'arrow', 'rect', 'ellipse'] as Tool[]).includes(tool) && !armed;
   const tools = (
-    <div className="plan-editor__tools" role="toolbar" aria-label={t('board.plan.tools')}>
-      {TOOLS.filter((x) => !phone || x.phone).map((x) =>
-        toolButton(
-          x.tool,
-          `${t(`board.plan.tool.${x.tool}`)} (${x.key})`,
-          <Icon name={x.icon} size={16} />,
-          tool === x.tool && !armed,
-          () => {
-            setArmed(null);
-            setTool(x.tool);
-          },
-        ),
-      )}
-      <span className="plan-editor__sep" aria-hidden="true" />
+    <div
+      className="plan-editor__tools ink-motion-pop"
+      role="toolbar"
+      aria-label={t('board.plan.tools')}
+    >
+      {TOOLS.filter((x) => {
+        if (x.tool === 'ellipse') return false;
+        return !phone || !['line', 'arrow', 'rect'].includes(x.tool);
+      }).flatMap((x) => {
+        const button =
+          x.tool === 'rect'
+            ? // One button for both: pressed again it turns into the other shape (O and Q too).
+              toolButton(
+                'rect',
+                `${t('board.plan.tool.shape')} (Q)`,
+                <Icon name={shapeTool} size={16} />,
+                (tool === 'rect' || tool === 'ellipse') && !armed,
+                () =>
+                  pickTool(
+                    tool === shapeTool ? (shapeTool === 'rect' ? 'ellipse' : 'rect') : shapeTool,
+                  ),
+              )
+            : toolButton(
+                x.tool,
+                phone
+                  ? t(`board.plan.tool.${x.tool}`)
+                  : `${t(`board.plan.tool.${x.tool}`)} (${x.key})`,
+                <Icon name={x.icon} size={16} />,
+                tool === x.tool && !armed,
+                () => pickTool(x.tool),
+              );
+        // On a phone lines and shapes share one button, after the pencil.
+        return phone && x.tool === 'pencil'
+          ? [
+              button,
+              toolButton(
+                'shapes',
+                t('board.plan.tool.shapes'),
+                <Icon
+                  name={
+                    tool === 'line' || tool === 'arrow' || tool === 'ellipse'
+                      ? tool
+                      : ('rect' as IconName)
+                  }
+                  size={16}
+                />,
+                shapeOn,
+                openPop('shapes'),
+              ),
+            ]
+          : [button];
+      })}
+      {!phone && <span className="plan-editor__sep" aria-hidden="true" />}
+      {colorButton(shownColor, selection.length ? undefined : t('board.plan.nextColor'))}
+      {!phone && <span className="plan-editor__sep" aria-hidden="true" />}
+      <button
+        type="button"
+        className="plan-editor__btn plan-editor__btn--wide"
+        aria-pressed={library}
+        aria-label={t('board.plan.panel.icons')}
+        onClick={() => setLibrary((v) => !v)}
+      >
+        <Icon name="iconLibrary" size={16} />
+        {!phone && <span>{t('board.plan.panel.icons')}</span>}
+      </button>
+      {!phone && <span className="plan-editor__sep" aria-hidden="true" />}
       {toolButton(
-        'icons',
-        t('board.plan.tool.icons'),
-        <Icon name="iconLibrary" size={16} />,
-        tool === 'icons' || (phone && armed !== null),
-        () => {
-          setTool('icons');
-          setPanel('icons');
-        },
+        'undo',
+        t('board.plan.undo'),
+        <Icon name="undo" size={16} />,
+        false,
+        () => store.undo.undo(),
+        !store.undo.canUndo(),
       )}
       {!phone &&
         toolButton(
-          'measure',
-          `${t('board.plan.tool.measure')} (U)`,
-          <Icon name="ruler" size={16} />,
-          tool === 'measure' && !armed,
-          () => {
-            setArmed(null);
-            setTool('measure');
-          },
+          'redo',
+          t('board.plan.redo'),
+          <span className="plan-editor__mirror">
+            <Icon name="undo" size={16} />
+          </span>,
+          false,
+          () => store.undo.redo(),
+          !store.undo.canRedo(),
         )}
-      {toolButton(
-        'move',
-        `${t('board.plan.tool.move')} (M)`,
-        <Icon name="blocking" size={16} />,
-        tool === 'move',
-        () => {
-          setArmed(null);
-          setTool('move');
-        },
-      )}
-      {!phone && (
-        <>
-          <span className="plan-editor__sep" aria-hidden="true" />
-          {toolButton(
-            'snap',
-            `${t('board.plan.snap')} (G)`,
-            <Icon name="grid" size={16} />,
-            snap,
-            () => setSnap((v) => !v),
-          )}
-        </>
-      )}
     </div>
   );
 
-  const swatches = current && (
-    <>
+  const palette = (
+    <div className="plan-pop__swatches">
       {PLAN_COLORS.map((c) => (
         <button
           key={c.hex}
           type="button"
           className="plan-editor__swatch"
-          aria-pressed={current.color === c.hex}
+          aria-pressed={shownColor === c.hex}
           aria-label={t(`board.plan.colors.${c.name}`)}
           data-ink-tooltip={t(`board.plan.colors.${c.name}`)}
-          onClick={() => recolor(c.hex)}
+          onClick={() => {
+            pickColor(c.hex);
+            closePop();
+          }}
         >
           <i style={{ background: `var(--ink-${c.token})` }} />
         </button>
       ))}
-    </>
+    </div>
   );
-  const labelField = current &&
-    (isIcon(current) || ('x0' in current && current.kind === 'text')) && (
-      <input
-        className="plan-editor__field"
-        aria-label={t(isIcon(current) ? 'board.plan.labelField' : 'film.pen.textField')}
-        placeholder={t('board.plan.labelPlaceholder')}
-        maxLength={isIcon(current) ? 60 : 500}
-        value={(isIcon(current) ? current.label : current.text) ?? ''}
-        onFocus={() => store.undo.stopCapturing()}
-        onBlur={() => store.undo.stopCapturing()}
-        onChange={(e) =>
-          isIcon(current) ? relabel(e.target.value) : write({ ...current, text: e.target.value })
+  const isTextItem = !!current && 'x0' in current && current.kind === 'text';
+  const labelField = current && (isIcon(current) || isTextItem) && (
+    <input
+      className="plan-editor__field"
+      aria-label={t(isIcon(current) ? 'board.plan.labelField' : 'film.pen.textField')}
+      placeholder={isIcon(current) ? t('board.plan.labelPlaceholder') : undefined}
+      maxLength={isIcon(current) ? 60 : 500}
+      // biome-ignore lint/a11y/noAutofocus: a double click on a text is asking to write it.
+      autoFocus={!isIcon(current) || pop?.kind === 'label'}
+      value={(isIcon(current) ? current.label : 'text' in current ? current.text : '') ?? ''}
+      onFocus={() => store.undo.stopCapturing()}
+      onBlur={() => store.undo.stopCapturing()}
+      onChange={(e) =>
+        isIcon(current)
+          ? relabel(e.target.value)
+          : writeItems([{ ...current, text: e.target.value } as PlanItem])
+      }
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isIcon(current)) e.currentTarget.blur();
+          else finishText();
+          if (pop?.kind === 'label') closePop();
         }
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === 'Escape') {
-            e.preventDefault();
-            e.currentTarget.blur();
-          }
-        }}
+      }}
+    />
+  );
+  /** A smaller or bigger step of the three sizes of a text. */
+  const textStep = (dir: -1 | 1) => {
+    if (!current || !('x0' in current)) return null;
+    const sizes = Object.values(TEXT_SIZES) as number[];
+    const next =
+      dir > 0 ? sizes.find((v) => v > current.width) : sizes.findLast((v) => v < current.width);
+    return next ?? null;
+  };
+  const textSizer = (dir: -1 | 1) => {
+    const next = textStep(dir);
+    return (
+      <IconButton
+        icon={dir > 0 ? 'plus' : 'minus'}
+        label={t(dir > 0 ? 'board.plan.bigger' : 'board.plan.smaller')}
+        disabled={next === null}
+        onClick={() => next !== null && current && write({ ...current, width: next } as PlanItem)}
       />
     );
-  /** Width and depth of furniture in metres; S, M, L of symbols and texts (round 6, e). */
-  const sizeFields = current && (
+  };
+  const angleField = current && frame && (
     <>
-      {isIcon(current) && isSized(current.kind) && drawn.scale && frame && (
+      {!phone && <span className="plan-editor__vr" aria-hidden="true" />}
+      {!phone && <span className="plan-editor__cap">{t('board.plan.angleField')}</span>}
+      <NumberField
+        value={shownAngle(current)}
+        min={-360}
+        max={360}
+        unit="°"
+        label={t('board.plan.angleField')}
+        onCommit={(deg) => rotate(normalizeRotation(deg - shownAngle(current)))}
+      />
+    </>
+  );
+  /** Width and depth of furniture in metres; the size of a symbol in percent (round 6, e). */
+  const sizeFields = current && isIcon(current) && (
+    <>
+      {isSized(current.kind) && drawn.scale && frame && (
         <>
-          <span className="plan-editor__vr" aria-hidden="true" />
+          {!phone && <span className="plan-editor__vr" aria-hidden="true" />}
           <NumberField
             value={Math.round((frame.w / drawn.scale) * 100) / 100}
             min={0.01}
@@ -1206,58 +1594,31 @@ export function PlanEditor({
           />
         </>
       )}
-      {(symbol || ('x0' in current && current.kind === 'text')) && (
+      {!isSized(current.kind) && (
         <>
-          <span className="plan-editor__vr" aria-hidden="true" />
-          <fieldset className="plan-props__segmented" aria-label={t('board.plan.size')}>
-            {(['S', 'M', 'L'] as const).map((size) => {
-              const on = isIcon(current)
-                ? (current.size ?? 'M') === size
-                : 'x0' in current && current.width === TEXT_SIZES[size];
-              return (
-                <button
-                  key={size}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => {
-                    if (isIcon(current)) {
-                      const next = { ...current, size: size as 'S' | 'L' };
-                      if (size === 'M') delete (next as Partial<PlanIcon>).size;
-                      write(next);
-                    } else if ('x0' in current) write({ ...current, width: TEXT_SIZES[size] });
-                  }}
-                >
-                  {size}
-                </button>
-              );
-            })}
-          </fieldset>
+          {!phone && <span className="plan-editor__vr" aria-hidden="true" />}
+          {!phone && <span className="plan-editor__cap">{t('board.plan.dimShort')}</span>}
+          <NumberField
+            value={symbolPercent(current)}
+            min={SYMBOL_PERCENT.min}
+            max={SYMBOL_PERCENT.max}
+            unit="%"
+            label={t('board.plan.dimension')}
+            onCommit={(v) => write(withPercent(current, v))}
+          />
         </>
       )}
     </>
   );
   const align = (how: PlanAlign) => write(alignItems(many, how));
-  const sameColor = many.length > 1 && many.every((i) => i.color === many[0]?.color);
   const manyBar = many.length > 1 && (
     <div
+      ref={itemBar}
       className="plan-editor__bar ink-motion-pop"
       role="toolbar"
       aria-label={t('board.plan.selection')}
     >
       <span className="plan-editor__count">{t('board.plan.items', { count: many.length })}</span>
-      {sameColor &&
-        PLAN_COLORS.map((c) => (
-          <button
-            key={c.hex}
-            type="button"
-            className="plan-editor__swatch"
-            aria-pressed={many[0]?.color === c.hex}
-            aria-label={t(`board.plan.colors.${c.name}`)}
-            onClick={() => write(many.map((i) => ({ ...i, color: c.hex })))}
-          >
-            <i style={{ background: `var(--ink-${c.token})` }} />
-          </button>
-        ))}
       <span className="plan-editor__vr" aria-hidden="true" />
       <IconButton
         icon="alignLeft"
@@ -1281,56 +1642,133 @@ export function PlanEditor({
         label={`${t(many.every((i) => i.group && i.group === many[0]?.group) ? 'board.plan.ungroup' : 'board.plan.group')} (${isMac() ? '⌘' : 'Ctrl+'}G)`}
         onClick={() => write(toggleGroup(many))}
       />
-      <IconButton
-        icon="rotateRight"
-        label={`${t('board.plan.rotate')} (R)`}
-        onClick={() => rotate(ROTATE_STEP)}
-      />
+      <span className="plan-editor__vr" aria-hidden="true" />
+      {colorButton((many[0] as PlanItem).color)}
       <IconButton icon="copy" label={t('board.plan.duplicate')} onClick={duplicate} />
       <IconButton icon="trash" label={t('board.plan.delete')} onClick={remove} />
     </div>
   );
-  const bar = current && !(phone && tool === 'icons' && armed) && (
+  const moreButton = (
+    <IconButton
+      icon="more"
+      label={t('board.plan.more')}
+      aria-haspopup="menu"
+      onClick={openPop('itemMore')}
+    />
+  );
+  /** The bar turned into the field of a text, as on notes. */
+  const textBar = current && isTextItem && editingText === current.id && (
     <div
+      ref={itemBar}
       className="plan-editor__bar ink-motion-pop"
       role="toolbar"
       aria-label={t('board.plan.selection')}
     >
-      {swatches}
-      {labelField && (phone || isIcon(current)) && (
+      {colorButton(current.color)}
+      {labelField}
+      {textSizer(-1)}
+      {textSizer(1)}
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <button type="button" className="plan-editor__done" onClick={finishText}>
+        {t('film.pen.done')}
+      </button>
+    </div>
+  );
+  const isMeasure = !!current && 'x0' in current && current.kind === 'measure';
+  const itemOnBar = current && !(phone && armed) && (
+    <div
+      ref={itemBar}
+      className="plan-editor__bar ink-motion-pop"
+      role="toolbar"
+      aria-label={t(
+        isIcon(current) && current.kind === 'camera'
+          ? 'board.plan.cameraBar'
+          : 'board.plan.selection',
+      )}
+    >
+      {colorButton(current.color)}
+      {isIcon(current) &&
+        (phone ? (
+          <IconButton
+            icon="text"
+            label={t('board.plan.labelField')}
+            aria-haspopup="dialog"
+            onClick={openPop('label')}
+          />
+        ) : (
+          labelField
+        ))}
+      {isTextItem && (
         <>
-          <span className="plan-editor__vr" aria-hidden="true" />
-          {labelField}
+          <button
+            type="button"
+            className="plan-editor__lens"
+            onClick={() => setEditingText(current.id)}
+          >
+            {t('board.plan.edit')}
+          </button>
+          {textSizer(-1)}
+          {textSizer(1)}
         </>
       )}
-      {isIcon(current) && current.kind === 'camera' && (
-        <button type="button" className="plan-editor__lens" onClick={() => setPanel('props')}>
-          {current.lens ?? DEFAULT_LENS} mm
+      {isMeasure && 'x0' in current && (
+        <button type="button" className="plan-editor__lens" onClick={() => openMeasure(current)}>
+          {measureText(current, drawn.scale, i18n.language) || t('board.plan.writeMeasure')}
         </button>
       )}
       {sizeFields}
-      <span className="plan-editor__vr" aria-hidden="true" />
-      <IconButton
-        icon="rotateRight"
-        label={`${t('board.plan.rotate')} (R)`}
-        onClick={() => rotate(ROTATE_STEP)}
-      />
-      {frame && (
-        <NumberField
-          value={shownAngle(current)}
-          min={-360}
-          max={360}
-          unit="°"
-          label={t('board.plan.angleField')}
-          onCommit={(deg) => rotate(normalizeRotation(deg - shownAngle(current)))}
-        />
+      {angleField}
+      {isIcon(current) && (
+        <>
+          {!phone && <span className="plan-editor__vr" aria-hidden="true" />}
+          {current.kind === 'camera' && (
+            <PopButton
+              phone={phone}
+              icon="planCamera"
+              label={t('board.plan.lens')}
+              onClick={openPop('lens')}
+            />
+          )}
+          {iconCone(current)?.beam && (
+            <PopButton
+              phone={phone}
+              icon="brush"
+              label={t('board.plan.light')}
+              onClick={openPop('light')}
+            />
+          )}
+          <PopButton
+            phone={phone}
+            icon="blocking"
+            label={t('board.plan.route')}
+            noCaret
+            onClick={() => startRoute(current)}
+          />
+        </>
       )}
-      <IconButton icon="copy" label={t('board.plan.duplicate')} onClick={duplicate} />
-      <IconButton icon="trash" label={t('board.plan.delete')} onClick={remove} />
+      {!phone && <span className="plan-editor__vr" aria-hidden="true" />}
+      {moreButton}
     </div>
   );
+  const lockedBar = !current && many.length === 0 && lockedItem && (
+    <div
+      ref={itemBar}
+      className="plan-editor__bar ink-motion-pop"
+      role="toolbar"
+      aria-label={t('board.plan.selection')}
+    >
+      <span className="plan-editor__count plan-editor__locked">
+        <Icon name="lock" size={13} />
+        {t(`board.plan.lockedAs.${layerOf(lockedItem)}`)}
+      </span>
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <IconButton icon="copy" label={t('board.plan.duplicate')} disabled />
+      <IconButton icon="trash" label={t('board.plan.delete')} disabled />
+    </div>
+  );
+  const bar = manyBar || textBar || itemOnBar || lockedBar;
 
-  const library = (
+  const libraryPanel = (
     <PlanLibrary
       armed={armed}
       phone={phone}
@@ -1340,43 +1778,81 @@ export function PlanEditor({
         arm(next);
         if (isIconKind(next)) placeIcon(next, { x: 0.5, y: 0.5 });
       }}
+      onClose={() => setLibrary(false)}
     />
   );
 
   const icon = isIcon(current) ? current : null;
   const cone = icon ? iconCone(icon, plan.sensor) : null;
-  const camera = icon?.kind === 'camera' && cone && (
+  const lensIs = icon?.lens ?? DEFAULT_LENS;
+  /** The length of the cone, as the point at its end sets it: metres, or squares of the grid. */
+  const reachUnit = drawn.scale ?? step;
+  const reachField = icon && cone && (
+    <div className="plan-props__row">
+      <span>{t('board.plan.reach')}</span>
+      <NumberField
+        value={Math.round((cone.reach / reachUnit) * 100) / 100}
+        min={20 / reachUnit}
+        max={MAX_UNITS / reachUnit}
+        step={0.01}
+        unit={drawn.scale ? 'm' : t('board.plan.squares')}
+        label={t('board.plan.reach')}
+        onCommit={(v) => write({ ...icon, reach: Math.round(v * reachUnit * 100) / 100 })}
+      />
+    </div>
+  );
+  const lensPanel = icon?.kind === 'camera' && cone && (
     <>
-      <div className="plan-props__label">{t('board.plan.lens')}</div>
-      <div className="plan-props__lenses">
-        {LENSES.map((mm) => (
-          <button
-            key={mm}
-            type="button"
-            aria-pressed={(icon.lens ?? DEFAULT_LENS) === mm}
-            onClick={() => write({ ...icon, lens: mm })}
-          >
-            {mm}
-          </button>
-        ))}
-        <button
-          type="button"
-          className="plan-props__other"
-          aria-pressed={otherLens || !LENSES.includes(icon.lens ?? DEFAULT_LENS)}
-          onClick={() => setOtherLens(true)}
-        >
-          {t('board.plan.otherLens')}
-        </button>
+      <div className="plan-pop__row">
+        <div className="plan-pop__field">
+          <span>{t('board.plan.focal')}</span>
+          <Select
+            aria-label={t('board.plan.focal')}
+            value={otherLens || !LENSES.includes(lensIs) ? 'other' : String(lensIs)}
+            onChange={(v) => {
+              if (v === 'other') setOtherLens(true);
+              else {
+                setOtherLens(false);
+                write({ ...icon, lens: Number(v) });
+              }
+            }}
+            options={[
+              ...LENSES.map((mm) => ({ value: String(mm), label: `${mm} mm` })),
+              { value: 'other', label: t('board.plan.otherLens') },
+            ]}
+          />
+        </div>
+        <div className="plan-pop__field">
+          <span>{t('board.plan.sensor')}</span>
+          <Select
+            aria-label={t('board.plan.sensor')}
+            value={plan.sensor ?? 's35'}
+            onChange={(v) =>
+              change(() =>
+                updateElement(
+                  doc,
+                  plan.id,
+                  { sensor: v === 's35' ? undefined : (v as PlanSensor) },
+                  LOCAL,
+                ),
+              )
+            }
+            options={(['s35', 'ff', 'm43', 's16'] as const).map((v) => ({
+              value: v,
+              label: t(`board.plan.sensors.${v}`),
+            }))}
+          />
+        </div>
       </div>
-      {(otherLens || !LENSES.includes(icon.lens ?? DEFAULT_LENS)) && (
+      {(otherLens || !LENSES.includes(lensIs)) && (
         <div className="plan-props__row">
           <span>{t('board.plan.focal')}</span>
           <NumberField
-            value={icon.lens ?? DEFAULT_LENS}
+            value={lensIs}
             min={4}
             max={2000}
             unit="mm"
-            label={t('board.plan.focal')}
+            label={t('board.plan.focalOther')}
             onCommit={(mm) => write({ ...icon, lens: Math.round(mm) })}
           />
         </div>
@@ -1396,58 +1872,13 @@ export function PlanEditor({
           ))}
         </div>
       )}
-      <div className="plan-props__row">
-        <span>{t('board.plan.sensor')}</span>
-        <Select
-          value={plan.sensor ?? 's35'}
-          onChange={(v) =>
-            change(() =>
-              updateElement(
-                doc,
-                plan.id,
-                { sensor: v === 's35' ? undefined : (v as PlanSensor) },
-                LOCAL,
-              ),
-            )
-          }
-          options={(['s35', 'ff', 'm43', 's16'] as const).map((v) => ({
-            value: v,
-            label: t(`board.plan.sensors.${v}`),
-          }))}
-        />
-      </div>
-      <div className="plan-props__row">
-        <span>{t('board.plan.angle')}</span>
-        <b>{t('board.plan.angleValue', { angle: Math.round(cone.angle) })}</b>
-      </div>
-      <div className="plan-props__row">
-        <span>{t('board.plan.reach')}</span>
-        {drawn.scale ? (
-          <NumberField
-            value={Math.round((cone.reach / drawn.scale) * 10) / 10}
-            min={0.01}
-            max={MAX_UNITS / drawn.scale}
-            step={0.5}
-            unit="m"
-            label={t('board.plan.reach')}
-            onCommit={(m) => write({ ...icon, reach: (drawn.scale as number) * m })}
-          />
-        ) : (
-          <input
-            type="range"
-            className="plan-props__range"
-            aria-label={t('board.plan.reach')}
-            min={60}
-            max={900}
-            value={Math.round(cone.reach)}
-            onPointerDown={() => store.undo.stopCapturing()}
-            onChange={(e) => writeItems([{ ...icon, reach: Number(e.target.value) }])}
-          />
-        )}
-      </div>
+      <p className="plan-pop__text">
+        {t('board.plan.angle')}: {t('board.plan.angleValue', { angle: Math.round(cone.angle) })}
+      </p>
+      {reachField}
       <label className="plan-props__row">
         <span>{t('board.plan.showLens')}</span>
-        <Switch
+        <Checkbox
           checked={!!icon.showLens}
           onChange={(e) => {
             const next = { ...icon, showLens: e.target.checked };
@@ -1482,7 +1913,7 @@ export function PlanEditor({
       <b className="plan-props__value">{shown}</b>
     </div>
   );
-  const light = icon && cone?.beam && (
+  const lightPanel = icon && cone?.beam && (
     <>
       <div className="plan-props__row">
         <span>{t('board.plan.power')}</span>
@@ -1512,10 +1943,12 @@ export function PlanEditor({
         `${Math.round((icon.intensity ?? 0.8) * 100)}%`,
         (v) => ({ ...icon, intensity: v / 100 }),
       )}
+      {reachField}
     </>
   );
 
-  const blocking = icon && (icon.steps?.length ?? 0) > 0 && (
+  /** The notes of the positions of a route, kept from the earlier panel. */
+  const stepsPanel = icon && (icon.steps?.length ?? 0) > 0 && (
     <>
       <div className="plan-props__label">
         {t('board.plan.positions', { count: (icon.steps?.length ?? 0) + 1 })}
@@ -1547,45 +1980,17 @@ export function PlanEditor({
           </li>
         ))}
       </ol>
-      <div className="plan-props__row">
-        <span>{t('board.plan.line')}</span>
-        <fieldset className="plan-props__segmented" aria-label={t('board.plan.line')}>
-          {([false, true] as const).map((dashed) => (
-            <button
-              key={String(dashed)}
-              type="button"
-              aria-pressed={!!icon.dashed === dashed}
-              onClick={() => {
-                const next = { ...icon, dashed };
-                if (!dashed) delete (next as Partial<PlanIcon>).dashed;
-                write(next);
-              }}
-            >
-              {t(dashed ? 'board.plan.dashed' : 'board.plan.solid')}
-            </button>
-          ))}
-        </fieldset>
-      </div>
-      <label className="plan-props__row">
-        <span>{t('board.plan.ghosts')}</span>
-        <Switch checked={ghosts} onChange={(e) => setGhosts(e.target.checked)} />
-      </label>
     </>
   );
-  /** The bar of the Movement tool, over the plan (round 6, d). */
+  const routeName = movingIcon && (movingIcon.label || t(`board.plan.icons.${movingIcon.kind}`));
+  /** The bar of a route, over the plan. */
   const moveBar = movingIcon && (
     <div
       className="plan-editor__movebar ink-motion-pop"
       role="toolbar"
-      aria-label={t('board.plan.moveOf', {
-        name: movingIcon.label || t(`board.plan.icons.${movingIcon.kind}`),
-      })}
+      aria-label={t('board.plan.routeBar')}
     >
-      <span>
-        {t('board.plan.moveOf', {
-          name: movingIcon.label || t(`board.plan.icons.${movingIcon.kind}`),
-        })}
-      </span>
+      <span>{t('board.plan.routeOf', { name: routeName })}</span>
       <span className="plan-editor__vr" aria-hidden="true" />
       <IconButton
         icon="line"
@@ -1603,10 +2008,9 @@ export function PlanEditor({
         aria-pressed={!!movingIcon.dashed}
         onClick={() => write({ ...movingIcon, dashed: true })}
       />
-      <span className="plan-editor__vr" aria-hidden="true" />
       <IconButton
         icon="trash"
-        label={t('board.plan.clearMoves')}
+        label={t('board.plan.clearRoute')}
         onClick={() => {
           const next = { ...movingIcon };
           delete next.steps;
@@ -1615,84 +2019,28 @@ export function PlanEditor({
           write(next);
         }}
       />
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <button type="button" className="plan-editor__done" onClick={endRoute}>
+        {t('film.pen.done')}
+      </button>
     </div>
   );
-
-  const properties = current ? (
-    <div className="plan-props">
-      <h3 className="plan-props__title">
-        {icon && <PlanGlyph kind={icon.kind} size={18} />}
-        {iconName(current)}
-        {icon?.label && <span> · {icon.label}</span>}
-      </h3>
-      <div className="plan-props__row">
-        <span>{t('board.plan.color')}</span>
-        <span className="plan-props__swatches">{swatches}</span>
-      </div>
-      {labelField && (
-        <div className="plan-props__row">
-          <span>{t(isIcon(current) ? 'board.plan.labelField' : 'film.pen.textField')}</span>
-          {labelField}
-        </div>
-      )}
-      {camera}
-      {blocking}
-      <div className="plan-props__row">
-        <span>{t('board.plan.layer')}</span>
-        <Select
-          value={layerOf(current)}
-          disabled={ownerOf(current.id) !== plan.id}
-          onChange={(v) => {
-            const next = { ...current, layer: v as PlanLayer };
-            // The item's own default layer is not written (a text's is Notes, not Set).
-            if (defaultLayer(current) === v) delete (next as Partial<PlanIcon>).layer;
-            write(next);
-          }}
-          // On a variant the Set is the base's: the variant's own items cannot go there.
-          options={PLAN_LAYERS.filter((l) => !(base && l === 'set')).map((l) => ({
-            value: l,
-            label: t(`board.plan.layers.${l}`),
-          }))}
-        />
-      </div>
-      {light}
-      {icon && (
-        <p className="plan-props__hint">
-          {t(`board.plan.categories.${categoryOf(icon.kind).id}`)} ·{' '}
-          {t(`board.plan.layers.${layerOf(icon)}`)}
-        </p>
-      )}
-    </div>
-  ) : (
-    <div className="plan-props">
-      <h3 className="plan-props__title">{t('board.plan.settings')}</h3>
-      {plan.variantOf && (
-        <div className="plan-props__row">
-          <span>{t('board.plan.variantField')}</span>
-          <input
-            className="plan-editor__field"
-            aria-label={t('board.plan.variantField')}
-            maxLength={60}
-            defaultValue={plan.variant ?? ''}
-            onBlur={(e) => {
-              const variant = e.target.value.trim() || undefined;
-              if (variant !== plan.variant)
-                change(() => updateElement(doc, plan.id, { variant }, LOCAL));
-            }}
-          />
-        </div>
-      )}
+  const scaleValue = drawn.scale
+    ? t('board.plan.scaleGrid', { grid: Number(drawn.grid ?? '0.5').toLocaleString(i18n.language) })
+    : t('board.plan.noScale');
+  const scalePanel = (
+    <>
       <div className="plan-props__row">
         <span>{t('board.plan.scale')}</span>
-        <b>
-          {drawn.scale
-            ? t('board.plan.scaleGrid', {
-                grid: Number(drawn.grid ?? '0.5').toLocaleString(i18n.language),
-              })
-            : t('board.plan.noScale')}
-        </b>
+        <b>{scaleValue}</b>
       </div>
-      <Button icon="ruler" onClick={() => setTool('scale')}>
+      <Button
+        icon="ruler"
+        onClick={() => {
+          closePop();
+          pickTool('scale');
+        }}
+      >
         {t('board.plan.setScale')}
       </Button>
       {drawn.scale && (
@@ -1725,24 +2073,7 @@ export function PlanEditor({
           </Button>
         </>
       )}
-      <label className="plan-props__row">
-        <span>{t('board.plan.inPresentation')}</span>
-        <Switch
-          checked={plan.presentation !== false}
-          onChange={(e) =>
-            change(() =>
-              updateElement(
-                doc,
-                plan.id,
-                { presentation: e.target.checked ? undefined : false },
-                LOCAL,
-              ),
-            )
-          }
-        />
-      </label>
-      <p className="plan-props__empty">{t('board.plan.noSelection')}</p>
-    </div>
+    </>
   );
   const metresDraft = scaleDraft ? Number(scaleDraft.metres.replace(',', '.')) : 0;
   // Within the schema: at least a centimetre, and a scale the document accepts.
@@ -1823,6 +2154,99 @@ export function PlanEditor({
           {t('board.plan.apply')}
         </Button>
       </div>
+    </div>
+  );
+  /** The number of a measure just drawn; without a scale, the offer to make it the scale. */
+  const measurePanel = measureDraft && (
+    <div
+      className="plan-pop plan-pop--measure ink-motion-pop"
+      role="dialog"
+      aria-label={t('board.plan.shapes.measure')}
+      style={
+        phone
+          ? undefined
+          : (() => {
+              const r = stage.current?.getBoundingClientRect();
+              if (!r) return undefined;
+              const left = r.left + measureDraft.at.x * r.width - 135;
+              const top = r.top + measureDraft.at.y * r.height;
+              const low = top > window.innerHeight - 220;
+              return {
+                position: 'fixed',
+                left: Math.max(8, Math.min(left, window.innerWidth - 278)),
+                ...(low ? { bottom: window.innerHeight - top + 12 } : { top: top + 12 }),
+              } as CSSProperties;
+            })()
+      }
+    >
+      {measureDraft.asking ? (
+        <div className="plan-pop__ask">
+          <b>{t('board.plan.noScaleYet')}</b>
+          <p>
+            {t('board.plan.useAsScale', {
+              value: Number(measureDraft.asking).toLocaleString(i18n.language, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }),
+            })}
+          </p>
+          <div className="plan-pop__actions">
+            <Button variant="primary" onClick={measureAsScale}>
+              {t('board.plan.useAsScaleYes')}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                writeMeasure(measureDraft.id, measureDraft.asking as string);
+                setMeasureDraft(null);
+              }}
+            >
+              {t('board.plan.useAsScaleNo')}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="plan-pop__row plan-pop__row--end">
+            <label className="plan-pop__field">
+              <span>{t('board.plan.shapes.measure')}</span>
+              <input
+                className={`plan-editor__field${measureDraft.wrong ? ' is-wrong' : ''}`}
+                inputMode="decimal"
+                // biome-ignore lint/a11y/noAutofocus: the panel opens to take this one number.
+                autoFocus
+                aria-label={t('board.plan.measureMetres')}
+                aria-invalid={measureDraft.wrong}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitMeasure();
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setMeasureDraft(null);
+                  }
+                }}
+                value={measureDraft.value}
+                onChange={(e) =>
+                  setMeasureDraft({ ...measureDraft, value: e.target.value, wrong: false })
+                }
+              />
+            </label>
+            <span className="plan-pop__unit">m</span>
+            <Button variant="primary" onClick={commitMeasure}>
+              {t('film.pen.done')}
+            </Button>
+          </div>
+          {measureDraft.wrong ? (
+            <p className="plan-pop__wrong" role="alert">
+              {t('board.plan.measureWrong')}
+            </p>
+          ) : (
+            <p className="plan-pop__text">{t('board.plan.measureHint')}</p>
+          )}
+        </>
+      )}
     </div>
   );
   /** Rulers in metres along the top and the left of a scaled plan. */
@@ -1935,19 +2359,213 @@ export function PlanEditor({
           </button>
         );
       })}
-      {onNewVariant && (
-        <IconButton icon="plus" label={t('board.plan.newVariant')} onClick={onNewVariant} />
-      )}
     </nav>
   );
+  const newVariantButton = onNewVariant && (
+    <IconButton icon="plus" label={t('board.plan.newVariant')} onClick={onNewVariant} />
+  );
+
+  /** "…" of the plan: what is seldom needed. Aggancia alla griglia stays one click from here. */
+  const moreItems: MenuItem[] = [
+    {
+      label: t('board.plan.snap'),
+      shortcut: 'G',
+      checked: snap,
+      icon: 'grid',
+      action: () => setSnap((v) => !v),
+    },
+    {
+      label: t('board.plan.ghosts'),
+      checked: ghosts,
+      icon: 'blocking',
+      action: () => setGhosts((v) => !v),
+    },
+    {
+      label: t('board.plan.inPresentation'),
+      checked: plan.presentation !== false,
+      icon: 'play',
+      action: () =>
+        change(() =>
+          updateElement(
+            doc,
+            plan.id,
+            { presentation: plan.presentation !== false ? false : undefined },
+            LOCAL,
+          ),
+        ),
+    },
+    ...(plan.variantOf
+      ? [
+          {
+            label: t('board.plan.variantField'),
+            icon: 'text' as IconName,
+            action: () => nextPop('variant'),
+          },
+        ]
+      : []),
+    ...(phone
+      ? [
+          {
+            label: `${t('board.plan.scale')}: ${scaleValue}`,
+            icon: 'ruler' as IconName,
+            action: () => nextPop('scale'),
+          },
+          {
+            label: t('board.plan.linkScene'),
+            icon: 'link' as IconName,
+            action: () => {
+              const a = popAnchor.current?.getBoundingClientRect();
+              setPicking({ x: 8, y: (a?.bottom ?? 48) + 6 });
+            },
+          },
+        ]
+      : []),
+  ];
+  const itemMoreItems: MenuItem[] = current
+    ? [
+        { label: t('board.plan.duplicate'), icon: 'copy', action: duplicate },
+        {
+          label: t('board.plan.moveToLayer'),
+          icon: 'layers',
+          shortcut: t(`board.plan.layers.${layerOf(current)}`),
+          disabled: ownerOf(current.id) !== plan.id,
+          action: () => nextPop('moveLayer'),
+        },
+        {
+          label: t('board.plan.rotateBy', { degrees: QUARTER_TURN }),
+          icon: 'rotateRight',
+          shortcut: 'R',
+          action: () => rotate(QUARTER_TURN),
+        },
+        ...(isIcon(current) && (current.steps?.length ?? 0) > 0
+          ? [
+              {
+                label: t('board.plan.stepNotes'),
+                icon: 'note' as IconName,
+                action: () => nextPop('steps'),
+              },
+            ]
+          : []),
+        { divider: true },
+        { label: t('board.plan.delete'), icon: 'trash', danger: true, action: remove },
+      ]
+    : [];
+  const layerMenuItems: MenuItem[] = current
+    ? // On a variant the Set is the base's: the variant's own items cannot go there.
+      PLAN_LAYERS.filter((l) => !(base && l === 'set')).map((l) => ({
+        label: t(`board.plan.layers.${l}`),
+        checked: layerOf(current) === l,
+        action: () => {
+          const next = { ...current, layer: l };
+          // The item's own default layer is not written (a text's is Notes, not Set).
+          if (defaultLayer(current) === l) delete (next as Partial<PlanIcon>).layer;
+          write(next);
+        },
+      }))
+    : [];
+  const shapeItems: MenuItem[] = (['line', 'arrow', 'rect', 'ellipse'] as const).map((k) => ({
+    label: t(`board.plan.tool.${k}`),
+    icon: k,
+    checked: tool === k && !armed,
+    action: () => pickTool(k),
+  }));
+  const menuOf: Partial<Record<PopKind, MenuItem[]>> = {
+    more: moreItems,
+    itemMore: itemMoreItems,
+    moveLayer: layerMenuItems,
+    shapes: shapeItems,
+  };
+  const panelOf: Partial<Record<PopKind, { label: string; body: ReactNode }>> = {
+    color: { label: t('board.plan.color'), body: palette },
+    lens: { label: t('board.plan.lens'), body: lensPanel },
+    light: { label: t('board.plan.light'), body: lightPanel },
+    label: { label: t('board.plan.labelField'), body: labelField },
+    steps: { label: t('board.plan.stepNotes'), body: stepsPanel },
+    layers: { label: t('board.plan.panel.layers'), body: layersPane },
+    scale: { label: t('board.plan.scale'), body: scalePanel },
+    variant: {
+      label: t('board.plan.variantField'),
+      body: (
+        <input
+          className="plan-editor__field"
+          aria-label={t('board.plan.variantField')}
+          maxLength={60}
+          defaultValue={plan.variant ?? ''}
+          onBlur={(e) => {
+            const variant = e.target.value.trim() || undefined;
+            if (variant !== plan.variant)
+              change(() => updateElement(doc, plan.id, { variant }, LOCAL));
+          }}
+        />
+      ),
+    },
+  };
+  const openMenu = pop && menuOf[pop.kind];
+  const openPanel = pop && panelOf[pop.kind];
+  const pops = (
+    <>
+      {openMenu && pop && (
+        <ContextMenu
+          key={pop.kind}
+          className="plan-menu"
+          label={pop.kind === 'more' ? t('board.plan.morePlan') : t('board.plan.more')}
+          style={popStyle(pop.anchor)}
+          anchor={popAnchor}
+          items={openMenu}
+          onClose={closePop}
+        />
+      )}
+      {openPanel && pop && (
+        <PopPanel
+          key={pop.kind}
+          box={popBox}
+          label={openPanel.label}
+          style={popStyle(pop.anchor)}
+          anchor={popAnchor}
+          onClose={closePop}
+        >
+          {openPanel.body}
+        </PopPanel>
+      )}
+    </>
+  );
+
+  /** How many items the box being dragged would pick. */
+  const marqueeCount = marquee
+    ? withGroups(
+        drawn,
+        itemsInRect(
+          drawn,
+          {
+            x: Math.min(marquee.a.x, marquee.b.x) * PLAN_VIEW_W,
+            y: Math.min(marquee.a.y, marquee.b.y) * PLAN_VIEW_H,
+            w: Math.abs(marquee.b.x - marquee.a.x) * PLAN_VIEW_W,
+            h: Math.abs(marquee.b.y - marquee.a.y) * PLAN_VIEW_H,
+          },
+          viewOf,
+        ),
+      ).length
+    : 0;
+  const armedName = armed && t(`board.plan.icons.${armed}`);
+  const isEmpty = planItems(drawn).length === 0;
 
   const stageArea = (
-    <div className="plan-editor__stage-wrap">
-      <div className="plan-editor__fit">
+    <div className={`plan-editor__stage-wrap${library && !phone ? ' has-library' : ''}`}>
+      <div
+        className="plan-editor__fit"
+        onPointerDown={(e) => {
+          if (e.target === e.currentTarget) setSelection([]);
+        }}
+      >
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: the drawing is pointer work; the bars and keys give the same tools. */}
         <div
           ref={stage}
           className={`plan-editor__stage plan-editor__stage--${tool}`}
           onPointerDown={onPointerDown}
+          // The press that opened a field to write in must not take its focus back.
+          onMouseDown={(e) => {
+            if (editingText || measureDraft) e.preventDefault();
+          }}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerCancel}
@@ -1957,11 +2575,26 @@ export function PlanEditor({
             plan={shown}
             grid={step}
             ghosts={ghosts}
+            route
             hidden={hiddenList}
             lifted={liftedIds}
           >
             {liveLayer}
           </PlanDrawing>
+          {isEmpty && tool === 'select' && !armed && (
+            <p className="plan-editor__empty">{t('board.plan.emptyHint')}</p>
+          )}
+          {marquee && !phone && (
+            <span
+              className="plan-editor__tool-label"
+              style={{
+                left: `${Math.min(Math.max(marquee.a.x, marquee.b.x) * 100, 72)}%`,
+                top: `${Math.min(Math.max(marquee.a.y, marquee.b.y) * 100, 94)}%`,
+              }}
+            >
+              {t('board.plan.marquee', { count: marqueeCount })}
+            </span>
+          )}
           {text && (
             <input
               ref={textInput}
@@ -1992,7 +2625,7 @@ export function PlanEditor({
           )}
         </div>
       </div>
-      {!phone && moveBar}
+      {moveBar}
       {layerStatus.length > 0 && !phone && (
         <p className="plan-editor__status">{layerStatus.join(' · ')}</p>
       )}
@@ -2000,12 +2633,31 @@ export function PlanEditor({
         <p className="plan-editor__movebar plan-editor__tip">{t('board.plan.scaleHint')}</p>
       )}
       {scaleDialog}
-      {phone && movingIcon && (
-        <p className="plan-editor__hint">
-          {t('board.plan.moveHint', { number: (movingIcon.steps?.length ?? 0) + 2 })}
+      {armed && armedName && (
+        <p className="plan-editor__toast ink-motion-pop" role="status">
+          <span>{t(phone ? 'board.plan.placeTap' : 'board.plan.placeClick')}</span>
+          <b>{armedName}</b>
+          <button type="button" className="plan-editor__done" onClick={disarm}>
+            {t('board.plan.placeEnd')}
+          </button>
+          {!phone && <kbd>Esc</kbd>}
         </p>
       )}
-      {!phone && (manyBar || bar)}
+      {movingIcon && (
+        <p className="plan-editor__toast" role="status">
+          {t(phone ? 'board.plan.routeHintPhone' : 'board.plan.routeHint', {
+            number: (movingIcon.steps?.length ?? 0) + 2,
+          })}
+        </p>
+      )}
+      {marquee && phone && (
+        <p className="plan-editor__toast" role="status">
+          {t('board.plan.marqueeHold', { count: marqueeCount })}
+        </p>
+      )}
+      {!movingIcon && preview === null && !marquee && bar}
+      {tools}
+      {library && !phone && libraryPanel}
     </div>
   );
 
@@ -2022,16 +2674,38 @@ export function PlanEditor({
         aria-label={title}
       >
         <header className="plan-editor__head">
-          <IconButton icon="close" label={t('viewer.close')} onClick={onClose} />
-          <b>{t('board.plan.name')}</b>
+          <b>{t('board.plan.short')}</b>
+          <span className="plan-editor__subtitle">{plan.title}</span>
+          <span className="plan-editor__spacer" />
+          <IconButton
+            icon="layers"
+            label={t('board.plan.panel.layers')}
+            aria-haspopup="dialog"
+            onClick={openPop('layers')}
+          />
+          <IconButton
+            icon="more"
+            label={t('board.plan.morePlan')}
+            aria-haspopup="menu"
+            onClick={openPop('more')}
+          />
           <Button variant="primary" onClick={onClose}>
             {t('film.pen.done')}
           </Button>
+          {picking && (
+            <ScenePicker
+              store={store}
+              plan={plan}
+              scenes={scenes}
+              style={{ position: 'fixed', left: picking.x, top: picking.y }}
+              onClose={() => setPicking(null)}
+            />
+          )}
         </header>
         {stageArea}
-        {tool === 'icons' && !current && library}
-        {!movingIcon && (manyBar || bar)}
-        {tools}
+        {library && !current && libraryPanel}
+        {measurePanel}
+        {pops}
       </div>,
       document.body,
     );
@@ -2048,8 +2722,7 @@ export function PlanEditor({
         aria-label={title}
       >
         <header className="plan-editor__head">
-          <Icon name="map" size={15} />
-          <span className="plan-editor__name">{t('board.plan.name')} ·</span>
+          <span className="plan-editor__name">{t('board.plan.name')}</span>
           <input
             className="plan-editor__title"
             aria-label={t('board.plan.titleField')}
@@ -2087,31 +2760,39 @@ export function PlanEditor({
             />
           )}
           {variantTabs}
+          {newVariantButton}
           <span className="plan-editor__spacer" />
+          <button
+            type="button"
+            className="plan-editor__headbtn"
+            aria-haspopup="dialog"
+            onClick={openPop('scale')}
+          >
+            <Icon name="ruler" size={15} />
+            {drawn.scale ? `${t('board.plan.scale')}: ${scaleValue}` : t('board.plan.scale')}
+          </button>
+          <button
+            type="button"
+            className="plan-editor__headbtn"
+            aria-haspopup="dialog"
+            onClick={openPop('layers')}
+          >
+            <Icon name="layers" size={15} />
+            {t('board.plan.panel.layers')}
+          </button>
+          <IconButton
+            icon="more"
+            label={t('board.plan.morePlan')}
+            aria-haspopup="menu"
+            onClick={openPop('more')}
+          />
           <Button variant="primary" onClick={onClose}>
             {t('film.pen.done')}
           </Button>
         </header>
-        <div className="plan-editor__body">
-          {tools}
-          {stageArea}
-          <aside className="plan-editor__panel">
-            <div className="plan-editor__tabs" role="tablist">
-              {(['icons', 'layers', 'props'] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  role="tab"
-                  aria-selected={panel === p}
-                  onClick={() => setPanel(p)}
-                >
-                  {t(`board.plan.panel.${p}`)}
-                </button>
-              ))}
-            </div>
-            {panel === 'icons' ? library : panel === 'layers' ? layersPane : properties}
-          </aside>
-        </div>
+        <div className="plan-editor__body">{stageArea}</div>
+        {measurePanel}
+        {pops}
       </div>
     </div>,
     document.body,
@@ -2124,3 +2805,66 @@ const TOOL_OF_NOTE: Record<PlanNoteTool, Tool> = {
   measure: 'measure',
   zone: 'zone',
 };
+
+/** A button of the item's bar with its name; on a phone only its icon, as on the mockup. */
+function PopButton({
+  phone,
+  icon,
+  label,
+  noCaret,
+  onClick,
+}: {
+  phone: boolean;
+  icon: IconName;
+  label: string;
+  noCaret?: boolean;
+  onClick: (e: MouseEvent<HTMLElement>) => void;
+}) {
+  if (phone) return <IconButton icon={icon} label={label} onClick={onClick} />;
+  return (
+    <button type="button" className="plan-editor__lens" onClick={onClick}>
+      {noCaret && <Icon name={icon} size={14} />}
+      {label}
+      {!noCaret && <Icon name="chevronDown" size={12} />}
+    </button>
+  );
+}
+
+/** A small panel by the button that opened it: a press outside closes it, as menus do. */
+function PopPanel({
+  box,
+  label,
+  style,
+  anchor,
+  onClose,
+  children,
+}: {
+  box: RefObject<HTMLDivElement | null>;
+  label: string;
+  style: CSSProperties;
+  anchor: RefObject<HTMLElement | null>;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  useEffect(() => {
+    box.current?.querySelector<HTMLElement>('button, input, [role="combobox"]')?.focus();
+    const away = (e: globalThis.PointerEvent) => {
+      const target = e.target as Node;
+      if (box.current?.contains(target) || anchor.current?.contains(target)) return;
+      onClose();
+    };
+    document.addEventListener('pointerdown', away, true);
+    return () => document.removeEventListener('pointerdown', away, true);
+  }, [box, anchor, onClose]);
+  return (
+    <div
+      ref={box}
+      className="plan-pop ink-motion-pop"
+      role="dialog"
+      aria-label={label}
+      style={style}
+    >
+      {children}
+    </div>
+  );
+}
