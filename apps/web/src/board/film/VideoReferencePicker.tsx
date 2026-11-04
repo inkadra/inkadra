@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Element } from '@inkadra/doc-schema';
+import { Icon } from '@inkadra/ui';
 import { useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +17,7 @@ export function VideoReferencePicker({
   projectId,
   userId,
   readOnly,
+  onInserted,
 }: {
   store: BoardStore;
   frameId: string;

@@ -49,7 +49,7 @@ it.each([
     store.doc,
     'image',
     { x: 0, y: 0 },
-    { assetId: 'picture', ...fields },
+    { assetId: 'picture', ...fields } as Parameters<typeof createElement<'image'>>[3],
     { userId: null },
   );
   const frame = createElement(store.doc, 'frame', { x: 0, y: 0 }, {}, { userId: null });
