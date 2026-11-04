@@ -740,6 +740,7 @@ function TodoCard({
   const { t } = useTranslation();
   const [draft, setDraft] = useState('');
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [activeItem, setActiveItem] = useState<string | null>(null);
   const done = element.items.filter((i) => i.done).length;
   const addRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -784,7 +785,14 @@ function TodoCard({
       </div>
       <ul className="card__todo-list">
         {element.items.map((item) => (
-          <li key={item.id} className={item.done ? 'is-done' : undefined}>
+          <li
+            key={item.id}
+            className={item.done ? 'is-done' : undefined}
+            onFocus={() => setActiveItem(item.id)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setActiveItem(null);
+            }}
+          >
             <Checkbox
               checked={item.done}
               disabled={readOnly}
@@ -819,7 +827,7 @@ function TodoCard({
               failed={peopleFailed}
               elementId={element.id}
               item={item}
-              editing={editing}
+              editing={editing && activeItem === item.id}
               open={assigning === item.id}
               onClose={() => setAssigning(null)}
             />

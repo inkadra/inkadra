@@ -110,7 +110,7 @@ const SHARP_MIME: Record<string, string> = {
 
 /** Widths to render for an image `width` pixels wide: no upscaling, at least one. */
 export function variantWidths(width: number): number[] {
-  const fit = SIZES.filter((s) => s < width);
+  const fit = SIZES.filter((s) => s <= width);
   return fit.length > 0 ? fit : SIZES.slice(0, 1);
 }
 
