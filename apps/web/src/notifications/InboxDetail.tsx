@@ -12,11 +12,11 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePresetText } from '../board/film/fields.tsx';
 import { useNavigate } from 'react-router';
 import * as Y from 'yjs';
 import { pickVariant, useAsset } from '../board/assets.ts';
 import { useBoardConnection } from '../board/connection.ts';
+import { usePresetText } from '../board/film/fields.tsx';
 import { plainText, useFragment } from '../board/note.tsx';
 import {
   authorName,

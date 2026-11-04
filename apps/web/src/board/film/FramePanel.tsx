@@ -1,9 +1,5 @@
 import { deleteElements, type FrameElement, updateElement } from '@inkadra/canvas-core';
-import {
-  ASPECT_RATIOS,
-  type AspectRatio,
-  type Element,
-} from '@inkadra/doc-schema';
+import { ASPECT_RATIOS, type AspectRatio, type Element } from '@inkadra/doc-schema';
 import type { SearchResult } from '@inkadra/shared';
 import { Button, Icon, IconButton, Select } from '@inkadra/ui';
 import { useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';

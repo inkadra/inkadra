@@ -1,5 +1,5 @@
-import { CATALOG_UUID, type ShotCatalogKey } from '@inkadra/shared';
 import { FRAME_STATUSES, type FrameStatus } from '@inkadra/doc-schema';
+import { CATALOG_UUID, type ShotCatalogKey } from '@inkadra/shared';
 import { Select } from '@inkadra/ui';
 import { type KeyboardEvent, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

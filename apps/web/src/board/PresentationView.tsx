@@ -177,9 +177,7 @@ export function PresentationView({
           specs: {
             shot: frame.shot ? getPreset('shotSizes', frame.shot) : undefined,
             lens: frame.lens,
-            movement: frame.movement
-              ? getPreset('shotMovements', frame.movement)
-              : undefined,
+            movement: frame.movement ? getPreset('shotMovements', frame.movement) : undefined,
             duration: frame.durationMs ? `${Math.round(frame.durationMs / 1000)} s` : undefined,
             audio: frame.audio ? t('present.audio', { value: frame.audio }) : undefined,
           },

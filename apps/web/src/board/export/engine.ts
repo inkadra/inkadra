@@ -7,18 +7,14 @@ import {
   storyboardOf,
   totalDurationMs,
 } from '@inkadra/canvas-core';
-import {
-  aspectValue,
-  type Element,
-  getBoardAspect,
-} from '@inkadra/doc-schema';
+import { aspectValue, type Element, getBoardAspect } from '@inkadra/doc-schema';
 import type { Asset, AssetTrack, Board, CommentThread, ShotCatalogKey } from '@inkadra/shared';
 import { light } from '@inkadra/ui/tokens';
 import type { TFunction } from 'i18next';
+import { getClassifications, shotText } from '../../lib/classifications.ts';
 import { DEFAULT_ASPECT } from '../film/aspect.ts';
 import { getFrameStatus } from '../film/film-status.ts';
 import type { BoardStore } from '../store.ts';
-import { getClassifications, shotText } from '../../lib/classifications.ts';
 import { paperAccent, type Theme } from '../theme.ts';
 import {
   type Audience,

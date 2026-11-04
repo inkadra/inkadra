@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 import { AssetTrack, AssetVariant, ThumbnailSize } from './assets.ts';
 import { BoardKind } from './boards.ts';
-import { CommentCount, ElementRef } from './comments.ts';
 import { ShotCatalogs } from './classifications.ts';
+import { CommentCount, ElementRef } from './comments.ts';
 import { Id, Timestamp, z } from './common.ts';
 import { GuestElementReview } from './reviews.ts';
 import { UserSummary } from './users.ts';

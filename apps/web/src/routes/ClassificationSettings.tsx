@@ -9,11 +9,7 @@ import { Button, Icon, IconButton } from '@inkadra/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
-import {
-  isRenamedDefault,
-  setClassifications,
-  shotOptionLabel,
-} from '../lib/classifications.ts';
+import { isRenamedDefault, setClassifications, shotOptionLabel } from '../lib/classifications.ts';
 import './classification-settings.css';
 
 type CatalogKey = 'projectTypes' | 'tags' | ShotCatalogKey;
@@ -76,7 +72,11 @@ export function ClassificationSettings() {
   const nameOf = (key: CatalogKey, option: ClassificationOption) =>
     isShot(key) ? shotOptionLabel(key, option, t) : option.label;
   /** Same rule as the server: a name cannot be another value's name, id or original tag. */
-  const problemOf = (key: CatalogKey, option: ClassificationOption, all: ClassificationOption[]) => {
+  const problemOf = (
+    key: CatalogKey,
+    option: ClassificationOption,
+    all: ClassificationOption[],
+  ) => {
     const name = nameOf(key, option).trim().toLowerCase();
     if (!name) return triedSaving ? 'required' : null;
     const taken = all.some(
@@ -271,11 +271,7 @@ export function ClassificationSettings() {
                                           const label =
                                             original &&
                                             e.target.value ===
-                                              shotOptionLabel(
-                                                key as ShotCatalogKey,
-                                                original,
-                                                t,
-                                              )
+                                              shotOptionLabel(key as ShotCatalogKey, original, t)
                                               ? original.label
                                               : e.target.value;
                                           update(

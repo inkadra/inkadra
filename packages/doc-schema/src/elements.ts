@@ -392,9 +392,23 @@ export const FrameElement = Base.extend({
   assetId: z.string().optional().describe('Reference picture under the drawing.'),
   aspect: AspectRatio.optional().describe('Omitted = the aspect ratio of the board.'),
   action: z.string().max(2000).optional().describe('What happens in the shot.'),
-  shot: z.string().max(60).optional().describe('Shot size: the id of a value of the instance catalog (a SHOT_SIZES code or a UUID) or free text.'),
-  angle: z.string().max(60).optional().describe('The id of a catalog value (a SHOT_ANGLES code or a UUID) or free text.'),
-  movement: z.string().max(60).optional().describe('The id of a catalog value (a SHOT_MOVEMENTS code or a UUID) or free text.'),
+  shot: z
+    .string()
+    .max(60)
+    .optional()
+    .describe(
+      'Shot size: the id of a value of the instance catalog (a SHOT_SIZES code or a UUID) or free text.',
+    ),
+  angle: z
+    .string()
+    .max(60)
+    .optional()
+    .describe('The id of a catalog value (a SHOT_ANGLES code or a UUID) or free text.'),
+  movement: z
+    .string()
+    .max(60)
+    .optional()
+    .describe('The id of a catalog value (a SHOT_MOVEMENTS code or a UUID) or free text.'),
   lens: z.string().max(60).optional().describe('Focal length or lens name, e.g. "35mm".'),
   durationMs: z.int().min(0).max(3_600_000).optional(),
   audio: z.string().max(500).optional(),

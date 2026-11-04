@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type FrameElement, formatDuration, updateElement } from '@inkadra/canvas-core';
-import { type AspectRatio } from '@inkadra/doc-schema';
+import type { AspectRatio } from '@inkadra/doc-schema';
 import { Icon, Select } from '@inkadra/ui';
 import { type DragEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';

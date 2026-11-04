@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { DEFAULT_CLASSIFICATIONS, type Project } from '@inkadra/shared';
 import { act } from 'react';
+import { DEFAULT_CLASSIFICATIONS } from '@inkadra/shared';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createBoard } from '../board/boards.ts';
@@ -214,8 +215,8 @@ it('offers configured active project types using stable identifiers', async () =
   const custom = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', label: 'Feature', archived: false };
   await act(async () =>
     setClassifications({
+      ...DEFAULT_CLASSIFICATIONS,
       revision: 1,
-      tags: [],
       projectTypes: [custom, { ...custom, id: 'retired', label: 'Retired', archived: true }],
     }),
   );

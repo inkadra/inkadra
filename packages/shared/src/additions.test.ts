@@ -8,12 +8,12 @@ import {
   BoardVersionConflict,
   ClipRequest,
   Comment,
+  DEFAULT_SHOT_CATALOGS,
   GuestSession,
   Notification,
   OutcomeUnknown,
   PickSummary,
   SearchHit,
-  DEFAULT_SHOT_CATALOGS,
 } from './index.ts';
 import { buildOpenApiDocument } from './openapi.ts';
 

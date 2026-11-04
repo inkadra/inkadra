@@ -67,8 +67,7 @@ export const ClassificationCatalogs = ShotCatalogs.extend({
   revision: z.int().min(0),
   projectTypes: z.array(ClassificationOption).max(200),
   tags: z.array(ClassificationOption).max(500),
-})
-  .openapi('ClassificationCatalogs');
+}).openapi('ClassificationCatalogs');
 export type ClassificationCatalogs = z.infer<typeof ClassificationCatalogs>;
 export const DEFAULT_CLASSIFICATIONS: ClassificationCatalogs = {
   revision: 0,
