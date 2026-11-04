@@ -335,6 +335,10 @@
             "type": "string",
             "maxLength": 12000
           },
+          "guestName": {
+            "type": "string",
+            "maxLength": 80
+          },
           "diagnostics": {
             "type": "object",
             "properties": {

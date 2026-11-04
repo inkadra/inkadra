@@ -52,6 +52,7 @@ export const CreateFeedback = z
     area: z.enum(['home', 'board', 'settings', 'guest', 'other']),
     title: z.string().trim().min(1).max(160),
     description: z.string().trim().max(12000),
+    guestName: z.string().trim().max(80).optional(),
     diagnostics: FeedbackDiagnostics,
     attachments: z.array(FeedbackAttachment).max(7),
   })

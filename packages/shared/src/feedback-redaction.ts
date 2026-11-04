@@ -23,6 +23,19 @@ export function redactFeedback(text: string): string {
 }
 export function feedbackPage(path: string): string {
   const safe = new Set([
+    'p',
+    'api',
+    'v1',
+    'me',
+    'assets',
+    'variants',
+    'thumb',
+    'comments',
+    'reviews',
+    'search',
+    'users',
+    'notifications',
+    'schedule',
     'project',
     'projects',
     'board',
