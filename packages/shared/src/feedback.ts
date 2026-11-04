@@ -78,7 +78,8 @@ export const FeedbackReceipt = z
     id: z.uuid(),
     reference: z.string(),
     issueUrl: z.url().nullable(),
-    delivery: z.enum(['inbox', 'pending', 'delivered', 'uncertain']),
+    /** `refused`: GitHub will not take it until an administrator fixes the cause. */
+    delivery: z.enum(['inbox', 'pending', 'delivered', 'uncertain', 'refused']),
     /** The same error was already open: this report became a comment on that issue. */
     duplicate: z.boolean(),
   })
@@ -87,6 +88,8 @@ export type FeedbackReceipt = z.infer<typeof FeedbackReceipt>;
 export const FeedbackReport = FeedbackReceipt.extend({
   report: CreateFeedback,
   reporter: z.string(),
+  /** Why GitHub refused it, for the administrator. Never holds report content. */
+  failure: z.string().nullable(),
   createdAt: z.iso.datetime(),
 }).openapi('FeedbackReport');
 export type FeedbackReport = z.infer<typeof FeedbackReport>;

@@ -306,7 +306,8 @@
               "inbox",
               "pending",
               "delivered",
-              "uncertain"
+              "uncertain",
+              "refused"
             ]
           },
           "duplicate": {
@@ -542,6 +543,12 @@
               "reporter": {
                 "type": "string"
               },
+              "failure": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "createdAt": {
                 "type": "string",
                 "format": "date-time"
@@ -550,6 +557,7 @@
             "required": [
               "report",
               "reporter",
+              "failure",
               "createdAt"
             ]
           }

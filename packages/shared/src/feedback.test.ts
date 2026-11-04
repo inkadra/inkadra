@@ -62,6 +62,25 @@ it('removes credentials and identifiers from diagnostics', () => {
     // The server repeats the redaction: what the person previewed must not change.
     expect(redactFeedback(clean)).toBe(clean);
   }
+  for (const [secret, kept] of [
+    ['"cookie": "foo=topsecret"', ''],
+    ['password=my,topsecret', ''],
+    ['password: two topsecret words', ''],
+    ['postgres://admin:topsecret@db:5432/x', ''],
+    ['redis://:topsecret@cache:6379', ''],
+    ['failed aGVsbG8rd29ybGQ+topsecret/Zm9vYmFyYmF6cXV4== at retry', 'at retry'],
+    ['GET /reset-password/topsecret 404', '404'],
+    ['image topsecrettopsecrettopsecrettopsecret.png missing', 'missing'],
+    ['{"token":"topsecret","kept":1}', 'kept'],
+  ] as const) {
+    const clean = redactFeedback(secret);
+    expect(clean).not.toContain('topsecret');
+    expect(clean).toContain(kept);
+    expect(redactFeedback(clean)).toBe(clean);
+  }
+  // Not secrets: a long plain path, and an error keeps its name and message for the signature.
+  expect(redactFeedback('GET /api/v1/boards/elements/thumbnails/list 404')).toContain('elements');
+  expect(redactFeedback('TokenError: expired')).toBe('TokenError: expired');
   expect(redactFeedback('the side: left of the panel')).toBe('the side: left of the panel');
   expect(redactFeedback("TypeError: Cannot read 'offsetWidth' at card-menu.js:88")).toBe(
     "TypeError: Cannot read 'offsetWidth' at card-menu.js:88",

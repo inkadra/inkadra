@@ -1213,7 +1213,10 @@ export const feedbackReport = pgTable(
     report: jsonb('report').$type<import('@inkadra/shared').CreateFeedback>().notNull(),
     destination: text('destination').notNull(),
     repository: text('repository'),
-    delivery: text('delivery', { enum: ['inbox', 'pending', 'delivered', 'uncertain'] }).notNull(),
+    delivery: text('delivery', {
+      enum: ['inbox', 'pending', 'delivered', 'uncertain', 'refused'],
+    }).notNull(),
+    failure: text('failure'),
     issueNumber: integer('issue_number'),
     signature: text('signature'),
     attempts: integer('attempts').notNull().default(0),
