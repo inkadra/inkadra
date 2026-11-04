@@ -38,6 +38,7 @@ import {
   leftOutOfScreenshot,
   onOpenFeedback,
   readFeedbackDraft,
+  reportArea,
   STATUS_CHANGED,
   setFeedbackStatus,
   useFeedbackStatus,
@@ -146,6 +147,8 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   const [files, setFiles] = useState<LocalAttachment[]>([]);
   const [shot, setShot] = useState<LocalAttachment | null>(null);
   const [shotIncluded, setShotIncluded] = useState(true);
+  // Only the automatic capture leaves the names out: a shared tab or a pasted image shows it all.
+  const [shotAutomatic, setShotAutomatic] = useState(false);
   const relay = status?.destination === 'relay';
   const videoLimit = relay ? FEEDBACK_RELAY_VIDEO_BYTES : FEEDBACK_VIDEO_BYTES;
   const fileLimit = relay ? FEEDBACK_RELAY_FILE_BYTES : FEEDBACK_FILE_BYTES;
@@ -312,6 +315,8 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   async function capture() {
     const run = ++captureRun.current;
     setCapturing('loading');
+    // The copy takes its styles from the page while this is on: see feedback.css.
+    document.documentElement.dataset.feedbackCapturing = '';
     try {
       const { toBlob } = await import('html-to-image');
       const blob = await Promise.race([
@@ -331,10 +336,13 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         drop(old);
         return local(blob, 'screenshot', 'screenshot.png');
       });
+      setShotAutomatic(true);
       setShotIncluded(true);
       setCapturing('idle');
     } catch {
       if (run === captureRun.current) setCapturing('error');
+    } finally {
+      if (run === captureRun.current) delete document.documentElement.dataset.feedbackCapturing;
     }
   }
 
@@ -484,6 +492,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         drop(old);
         return local(file, 'screenshot', file.name);
       });
+      setShotAutomatic(false);
       setShotIncluded(true);
       setCapturing('idle');
       return;
@@ -615,15 +624,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         });
       }
       current = null;
-      const area = guest
-        ? 'guest'
-        : /\/b\//.test(location.pathname)
-          ? 'board'
-          : location.pathname.startsWith('/settings')
-            ? 'settings'
-            : location.pathname === '/'
-              ? 'home'
-              : 'other';
+      const area = guest ? 'guest' : reportArea(location.pathname);
       const payload: CreateFeedback = {
         requestId: requestId.current,
         type,
@@ -1061,6 +1062,9 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         {list.length > 0 && (
           <div className="feedback-section">
             <h4>{t('feedback.attachments')}</h4>
+            {shot && shotIncluded && shotAutomatic && (
+              <p className="feedback-text feedback-hint">{t('feedback.shotPrivacy')}</p>
+            )}
             <div className="feedback-thumbs">
               {list.map((item) => (
                 <div className="feedback-thumb" key={item.key}>

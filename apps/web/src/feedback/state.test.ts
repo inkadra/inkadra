@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it } from 'vitest';
-import { isFeedbackKey, leftOutOfScreenshot, readFeedbackDraft } from './state.ts';
+import { isFeedbackKey, leftOutOfScreenshot, readFeedbackDraft, reportArea } from './state.ts';
 
 afterEach(() => localStorage.clear());
 
@@ -28,11 +28,20 @@ it('leaves secrets out of the screenshot', () => {
     <input id="link" readonly value="https://x/s/secret">
     <textarea id="area" readonly>secret</textarea>
     <ul data-feedback-secret><li id="code"><code>backup</code></li></ul>
+    <dialog id="closed">project name</dialog>
     <div data-feedback-exclude><p id="form">form</p></div>`;
   const left = (id: string) => leftOutOfScreenshot(document.getElementById(id) as Element);
   expect(left('plain')).toBe(false);
-  for (const id of ['pass', 'link', 'area', 'code', 'form']) expect(left(id)).toBe(true);
+  for (const id of ['pass', 'link', 'area', 'code', 'closed', 'form']) expect(left(id)).toBe(true);
   expect(leftOutOfScreenshot(document.createTextNode('x'))).toBe(false);
+});
+
+it('labels a project page as a board, like the boards inside it', () => {
+  expect(reportArea('/p/1')).toBe('board');
+  expect(reportArea('/p/1/b/2')).toBe('board');
+  expect(reportArea('/settings')).toBe('settings');
+  expect(reportArea('/')).toBe('home');
+  expect(reportArea('/projects')).toBe('other');
 });
 
 it('keeps the request id with the draft, and survives what storage holds', () => {

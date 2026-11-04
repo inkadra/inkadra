@@ -47,9 +47,8 @@ export function errorSignature(report: CreateFeedback): string | null {
 }
 
 const FILE_SIZE = (bytes: number) =>
-  bytes < 1024 * 1024
-    ? `${Math.max(1, Math.round(bytes / 1024))} KB`
-    : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  // Decimal, as the app shows the same file.
+  bytes < 1e6 ? `${Math.max(1, Math.round(bytes / 1000))} KB` : `${(bytes / 1e6).toFixed(1)} MB`;
 /** GitHub refuses a body over 65,536 characters and a title over 256; escaping can triple text. */
 const TITLE_LIMIT = 256;
 const SECTION_LIMIT = 20000;

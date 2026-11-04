@@ -404,7 +404,7 @@ export function GuestBoardScreen({
       <div className="guest">
         <header className="guest__header">
           <Logo size={24} label={preview.instanceName} />
-          <nav aria-label={t('guest.breadcrumb')} className="guest__crumbs">
+          <nav aria-label={t('guest.breadcrumb')} className="guest__crumbs" data-feedback-secret>
             {crumbs.map((c, i) => (
               <Fragment key={c.id}>
                 {i > 0 && (

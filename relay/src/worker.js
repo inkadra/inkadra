@@ -429,7 +429,9 @@ function github(env) {
     });
     if (res.status === 404 && method === 'GET') return null;
     if (!res.ok) {
-      console.error('GitHub HTTP', res.status);
+      const empty = res.status === 409 && path.startsWith('/git/')
+        && /repository is empty/i.test(await res.text().catch(() => ''));
+      console.error(...(empty ? ['GitHub HTTP 409: Git Repository is empty. Push one commit to the target repository.'] : ['GitHub HTTP', res.status]));
       // A token or repository problem is ours, never the reporter's: nothing was written, and the
       // instance keeps the report and tries again. A 5xx during a write may have written.
       if (res.status < 500) throw new HttpError(503, `github ${res.status}`, {}, false);
@@ -691,7 +693,8 @@ const validInstallId = (v) => typeof v === 'string' && /^[0-9a-f-]{16,64}$/i.tes
 const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 const randomHex = (n) => hex(crypto.getRandomValues(new Uint8Array(n)));
 const encodePath = (p) => p.split('/').map(encodeURIComponent).join('/');
-const formatSize = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.ceil(b / 1024)} KB`);
+// Decimal, as the app shows the same file.
+export const formatSize = (b) => (b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.ceil(b / 1000)} KB`);
 
 /** Bytes of the file read and base64-encoded per step: a multiple of 3, so the pieces join cleanly. */
 const B64_CHUNK = 3 * 256 * 1024;

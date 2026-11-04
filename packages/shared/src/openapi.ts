@@ -308,6 +308,16 @@ registry.registerPath({
   },
 });
 registry.registerPath({
+  method: 'post',
+  path: v1('/feedback/reports/{id}/retry'),
+  tags: ['Feedback'],
+  security: secured,
+  summary:
+    'Administrator only: send a waiting report now. Anything else is left alone; sending twice cannot open a second issue.',
+  request: { params: z.object({ id: z.uuid() }) },
+  responses: { 200: { description: 'Where it is now', ...json(FeedbackReceipt) }, ...errors },
+});
+registry.registerPath({
   method: 'get',
   path: v1('/feedback/attachments/{token}'),
   tags: ['Feedback'],

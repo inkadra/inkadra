@@ -1,6 +1,6 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, type Route, test } from '@playwright/test';
 
 // New headless Chromium: the old headless shell has no tab capture.
 test.use({
@@ -156,9 +156,9 @@ test('captures and redacts a screenshot, shows the scrubbed logs, waits for the 
   await link?.close();
 });
 
-test('leaves the secrets on screen out of the screenshot', async ({ page }) => {
+/** What the screenshot library draws: the whole page as text, before it becomes pixels. */
+async function probeScreenshots(page: Page) {
   await page.addInitScript(() => {
-    // What the screenshot library draws: the whole page as text, before it becomes pixels.
     const src = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
     Object.defineProperty(HTMLImageElement.prototype, 'src', {
       ...src,
@@ -171,6 +171,97 @@ test('leaves the secrets on screen out of the screenshot', async ({ page }) => {
       },
     });
   });
+}
+/** Takes the automatic screenshot and answers with what it drew; `save` keeps the image for review. */
+async function shootScreenshot(page: Page, save?: string) {
+  await page.evaluate(() => {
+    (window as unknown as { drawn: string }).drawn = '';
+  });
+  await page.keyboard.press('Control+Shift+B');
+  const form = page.getByRole('dialog', FORM);
+  const image = form.getByRole('img', { name: 'Screenshot', exact: true });
+  await expect(image).toBeVisible();
+  const text = await page.evaluate(() => (window as unknown as { drawn: string }).drawn);
+  expect(text.length).toBeGreaterThan(1000);
+  if (save && process.env.FEEDBACK_SHOTS_DIR) {
+    mkdirSync(process.env.FEEDBACK_SHOTS_DIR, { recursive: true });
+    const bytes = await image.evaluate(async (node) => {
+      const blob = await (await fetch((node as HTMLImageElement).src)).blob();
+      return [...new Uint8Array(await blob.arrayBuffer())];
+    });
+    writeFileSync(join(process.env.FEEDBACK_SHOTS_DIR, `${save}.png`), Buffer.from(bytes));
+  }
+  await page.keyboard.press('Escape');
+  await expect(form).toHaveCount(0);
+  return text;
+}
+
+test('leaves navigation, account and names out of the automatic screenshot', async ({ page }) => {
+  await probeScreenshots(page);
+  await login(page);
+  await configure(page);
+  const name = `Riservato${Date.now()}`;
+  const project = await (
+    await page.request.post('/api/v1/projects', {
+      headers: ORIGIN_HEADERS(page),
+      data: { name },
+    })
+  ).json();
+  await page.route('**/api/v1/me/notifications*', async (route) => {
+    const response = await route.fetch();
+    const json = await response.json();
+    json.items.unshift({
+      id: '00000000-0000-4000-8000-000000000002',
+      type: 'invitation_accepted',
+      actor: {
+        kind: 'user',
+        user: { id: '00000000-0000-4000-8000-000000000003', name: 'Persona Invitata', image: null },
+      },
+      projectId: project.id,
+      projectName: name,
+      boardId: null,
+      boardTitle: null,
+      elementId: null,
+      commentId: null,
+      excerpt: null,
+      reviewStatus: null,
+      readAt: null,
+      createdAt: new Date().toISOString(),
+    });
+    await route.fulfill({ response, json });
+  });
+  const hidden = (text: string) => {
+    // Not `toContain`: a failure would print the whole page, fonts included.
+    for (const secret of [name, 'Giulia', 'Persona Invitata'])
+      expect(text.includes(secret), secret).toBe(false);
+    // The copy of this panel can overflow where the page does not: no scrollbars in the image.
+    if (text.includes('class="ink-main'))
+      expect(text).toMatch(/class="ink-main[^"]*"[^>]*scrollbar-width: none/);
+  };
+  for (const [width, height] of [
+    [1280, 800],
+    [390, 844],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/');
+    // They are really on screen: without the marks they would be drawn.
+    await expect(page.getByText('Persona Invitata').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
+    hidden(await shootScreenshot(page, `capture-home-${width}`));
+
+    await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
+    await expect(page.locator('.ink-header__crumbs')).toContainText(name);
+    hidden(await shootScreenshot(page, `capture-board-${width}`));
+  }
+  // The phone's navigation drawer holds the same sidebar.
+  await page.goto('/');
+  await page.locator('.mobile-bottom-nav').getByRole('button', { name: 'Progetti' }).click();
+  await expect(page.locator('.mobile-drawer').getByText(name).first()).toBeVisible();
+  hidden(await shootScreenshot(page, 'capture-drawer-390'));
+});
+
+test('leaves the secrets on screen out of the screenshot', async ({ page }) => {
+  await probeScreenshots(page);
   await page.route('**/api/auth/two-factor/enable', (route) =>
     route.fulfill({
       json: {
@@ -181,20 +272,7 @@ test('leaves the secrets on screen out of the screenshot', async ({ page }) => {
   );
   await login(page);
   await configure(page);
-  const drawn = () => page.evaluate(() => (window as unknown as { drawn: string }).drawn);
-  const shoot = async () => {
-    await page.evaluate(() => {
-      (window as unknown as { drawn: string }).drawn = '';
-    });
-    await page.keyboard.press('Control+Shift+B');
-    const form = page.getByRole('dialog', FORM);
-    await expect(form.getByRole('img', { name: 'Screenshot', exact: true })).toBeVisible();
-    const text = await drawn();
-    expect(text.length).toBeGreaterThan(1000);
-    await page.keyboard.press('Escape');
-    await expect(form).toHaveCount(0);
-    return text;
-  };
+  const shoot = () => shootScreenshot(page);
 
   await page.goto('/settings?section=account');
   await page.getByRole('button', { name: 'Attiva', exact: true }).click();
@@ -880,7 +958,7 @@ test('relay disclosure, mandatory preview, limits and admin switch', async ({ pa
   await expect(
     page.getByText('Segnalazione salvata su questo server', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('dialog')).toContainText('Il relay non risponde o è occupato');
+  await expect(page.getByRole('dialog')).toContainText('Non è ancora partita');
   if (process.env.FEEDBACK_SHOTS_DIR) {
     for (const theme of ['light', 'dark']) {
       await page.evaluate((value) => {
@@ -981,13 +1059,31 @@ test('with the relay down the report stays queued and everyone is told', async (
   await expect(preview).toContainText('inkadra/inkadra-feedback');
   await relayShots(page, 'relay-preview');
   await preview.getByRole('button', { name: 'Invia segnalazione', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('Il relay non risponde o è occupato');
+  await expect(page.getByRole('dialog')).toContainText('Non è ancora partita');
   await page.keyboard.press('Escape');
 
   await page.goto('/settings?section=instance');
-  const banner = page.getByText(/Il relay non risponde o è occupato: \d+ segnalazion/);
+  const banner = page.getByText(/\d+ segnalazion\S+ non (è|sono) ancora partit/);
   await expect(banner).toBeVisible();
   await relayShots(page, 'settings-relay-down', () => banner.scrollIntoViewIfNeeded());
+
+  // Riprova on a waiting report: the relay is still down, so it says it goes on waiting...
+  const row = page.locator('.feedback-reports details').first();
+  await row.locator('summary').click();
+  await row.getByRole('button', { name: 'Riprova', exact: true }).click();
+  await expect(row.getByRole('status')).toContainText('Ancora in attesa');
+  await expect(row.locator('summary')).toContainText('In attesa di invio');
+  await relayShots(page, 'settings-relay-retry', () => row.scrollIntoViewIfNeeded());
+  // ...and the list follows delivery by itself, without a reload.
+  const delivered = async (route: Route) => {
+    const response = await route.fetch();
+    const json = await response.json();
+    json.items[0].delivery = 'delivered';
+    await route.fulfill({ response, json });
+  };
+  await page.route('**/api/v1/feedback/reports', delivered);
+  await expect(row.locator('summary')).toContainText('Su GitHub', { timeout: 15000 });
+  await page.unroute('**/api/v1/feedback/reports', delivered);
 
   // No answer from the relay: nobody here can read its private repository, trying again is safe.
   await page.route('**/api/v1/feedback/reports*', async (route) => {

@@ -567,7 +567,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   );
 
   const sidebar = (
-    <Sidebar label={t('nav.navigation')} {...peek.panel}>
+    <Sidebar label={t('nav.navigation')} data-feedback-secret {...peek.panel}>
       <div className="ink-sidebar__workspace">
         <Logo />
         <span className="ink-nav__name" style={{ flex: 1 }}>
@@ -794,7 +794,11 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <div className="shell-header-content">
         <div className="ink-header__group ink-header__start">
           {headerContent?.start ?? (
-            <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
+            <nav
+              aria-label={t('nav.breadcrumb')}
+              className="ink-header__crumbs"
+              data-feedback-secret
+            >
               <span style={{ fontWeight: 600 }}>
                 {current?.name ??
                   (pathname === '/onboarding'

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import worker, { Meter, collectFiles, contentsBody, fenced, ipPrefix, issueBody, issueTitle, powOk, leadingZeroBits, sanitizeReport, verify } from '../src/worker.js';
+import worker, { Meter, collectFiles, contentsBody, fenced, formatSize, ipPrefix, issueBody, issueTitle, powOk, leadingZeroBits, sanitizeReport, verify } from '../src/worker.js';
 
 /** A Durable Object's `ctx.storage.sql`, on Node's SQLite. */
 function sqlStorage() {
@@ -606,6 +606,35 @@ test('distinguishes pre-write failures from ambiguous GitHub writes', async () =
       assert.equal((await response.json()).uncertain, duringWrite);
     });
   }
+});
+
+test('sizes read in the same decimal MB as the app', () => {
+  assert.equal(formatSize(20_300_000), '20.3 MB');
+  assert.equal(formatSize(1500), '2 KB');
+});
+
+test('an empty repository is named in the logs and still answers as any GitHub refusal', async () => {
+  const e = env();
+  mockGitHub();
+  const fakeFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    if (url.includes('/git/')) return Response.json({ message: 'Git Repository is empty.' }, { status: 409 });
+    return fakeFetch(url, init);
+  };
+  const logged = [];
+  const realError = console.error;
+  console.error = (...args) => logged.push(args.join(' '));
+  try {
+    const t = await ticketFor(e);
+    await later(5000, async () => {
+      const response = await sendReport(e, reportForm(t, await solve(t.seed, t.bits)));
+      assert.equal(response.status, 503);
+      assert.equal((await response.json()).uncertain, false);
+    });
+  } finally {
+    console.error = realError;
+  }
+  assert.ok(logged.some((line) => line.includes('Git Repository is empty')));
 });
 
 test('after four reports in a day, a report an hour later needs only the short wait, and goes', async () => {
