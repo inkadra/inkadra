@@ -120,8 +120,8 @@ test('frames keep their values while admins change the storyboard lists', async 
     await page.getByRole('button', { name: 'Aggiungi valore' }).click();
     await page.locator('.catalogs__name').last().fill(added);
     await page.getByRole('button', { name: 'Salva', exact: true }).click();
-    await expect(page.getByRole('status')).toHaveText('Salvato.');
-    await shoot(page, '04-saved', openCampo);
+    await expect(page.locator('.catalogs__bar [role=status]')).toHaveText('Salvato.');
+    if (shots) await page.screenshot({ path: `${shots}/04-saved-1280.png` });
 
     const saved = (await (
       await fetch(`${base}/api/v1/instance/classifications`, { headers })
