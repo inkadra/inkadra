@@ -226,11 +226,27 @@
           },
           "guest": {
             "type": "boolean"
+          },
+          "destination": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "inbox",
+              "github",
+              null
+            ]
+          },
+          "retentionDays": {
+            "type": "integer"
           }
         },
         "required": [
           "enabled",
-          "guest"
+          "guest",
+          "destination",
+          "retentionDays"
         ]
       },
       "ApiError": {
@@ -292,13 +308,17 @@
               "delivered",
               "uncertain"
             ]
+          },
+          "duplicate": {
+            "type": "boolean"
           }
         },
         "required": [
           "id",
           "reference",
           "issueUrl",
-          "delivery"
+          "delivery",
+          "duplicate"
         ]
       },
       "CreateFeedback": {
@@ -416,6 +436,16 @@
           "mime": {
             "type": "string",
             "maxLength": 100
+          },
+          "seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3600
+          },
+          "redactedAreas": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000
           }
         },
         "required": [
@@ -437,17 +467,10 @@
             "properties": {
               "tokenConfigured": {
                 "type": "boolean"
-              },
-              "retentionDays": {
-                "type": "number",
-                "enum": [
-                  90
-                ]
               }
             },
             "required": [
-              "tokenConfigured",
-              "retentionDays"
+              "tokenConfigured"
             ],
             "additionalProperties": false
           }
@@ -473,6 +496,29 @@
           },
           "guests": {
             "type": "boolean"
+          },
+          "retentionDays": {
+            "anyOf": [
+              {
+                "type": "number",
+                "enum": [
+                  30
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  90
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  365
+                ]
+              }
+            ],
+            "default": 90
           }
         },
         "required": [
@@ -7569,7 +7615,7 @@
           }
         ],
         "summary": "Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.",
-        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after 90 days. Only administrators receive issue links.",
+        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
         "requestBody": {
           "required": true,
           "content": {
@@ -7843,7 +7889,7 @@
           }
         ],
         "summary": "Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.",
-        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after 90 days. Only administrators receive issue links.",
+        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
         "parameters": [
           {
             "schema": {
@@ -8058,7 +8104,7 @@
             "bearer": []
           }
         ],
-        "summary": "Administrator only: destination, repository, token status, guests and fixed 90-day retention.",
+        "summary": "Administrator only: destination, repository, token status, guests and attachment retention.",
         "responses": {
           "200": {
             "description": "Settings",
@@ -8124,7 +8170,7 @@
             "bearer": []
           }
         ],
-        "summary": "Administrator only: configure delivery. GitHub destination requires a verified private repository.",
+        "summary": "Administrator only: configure delivery. With a server token the GitHub repository must verify as private; without one, reports wait locally.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8273,7 +8319,7 @@
         "tags": [
           "Feedback"
         ],
-        "summary": "Bearer link: anyone holding the random URL can open the attachment until its 90-day expiry.",
+        "summary": "Bearer link: anyone holding the random URL can open the attachment until it expires.",
         "parameters": [
           {
             "schema": {

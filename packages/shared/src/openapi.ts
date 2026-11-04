@@ -236,7 +236,7 @@ for (const prefix of ['/feedback', '/guest/links/{linkId}/feedback']) {
     summary:
       'Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.',
     description:
-      'Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after 90 days. Only administrators receive issue links.',
+      'Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.',
     request: { ...params, body: { required: true, ...json(CreateFeedback) } },
     responses: {
       201: { description: 'Durably accepted', ...json(FeedbackReceipt) },
@@ -276,7 +276,7 @@ registry.registerPath({
   tags: ['Feedback'],
   security: secured,
   summary:
-    'Administrator only: destination, repository, token status, guests and fixed 90-day retention.',
+    'Administrator only: destination, repository, token status, guests and attachment retention.',
   responses: { 200: { description: 'Settings', ...json(FeedbackSettings) }, ...errors },
 });
 registry.registerPath({
@@ -285,7 +285,7 @@ registry.registerPath({
   tags: ['Feedback'],
   security: secured,
   summary:
-    'Administrator only: configure delivery. GitHub destination requires a verified private repository.',
+    'Administrator only: configure delivery. With a server token the GitHub repository must verify as private; without one, reports wait locally.',
   request: { body: { required: true, ...json(FeedbackSettingsInput) } },
   responses: { 200: { description: 'Saved', ...json(FeedbackSettings) }, ...errors },
 });
@@ -304,8 +304,7 @@ registry.registerPath({
   method: 'get',
   path: v1('/feedback/attachments/{token}'),
   tags: ['Feedback'],
-  summary:
-    'Bearer link: anyone holding the random URL can open the attachment until its 90-day expiry.',
+  summary: 'Bearer link: anyone holding the random URL can open the attachment until it expires.',
   request: { params: z.object({ token: z.string().regex(/^[a-f0-9]{64}$/) }) },
   responses: {
     200: { description: 'Attachment; nosniff, no-store, sandboxed, no referrer' },
