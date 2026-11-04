@@ -84,6 +84,7 @@ export function GuestComments({ elementId }: { elementId: string | null }) {
       <h2 id={headingId} className="guest-panel__heading">
         {elementId ? t('guest.comments.onCard') : t('guest.comments.onBoard')}
       </h2>
+      <p className="guest-comments__audience">{t('comments.guestAudience')}</p>
       <Composer
         label={t('guest.comments.new')}
         submitLabel={t('guest.comments.send')}

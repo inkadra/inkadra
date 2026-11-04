@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Author, ElementReviewEvent, ReviewStatus } from '@inkadra/shared';
-import { Button, ChoiceTile } from '@inkadra/ui';
-import { useEffect, useId, useState } from 'react';
+import { Button, ChoiceTile, Icon } from '@inkadra/ui';
+import { type ReactNode, useEffect, useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { formatDateTime } from '../lib/datetime.ts';
 import { ReviewChip } from './CardReview.tsx';
 import { GuestTag } from './GuestTag.tsx';
-import { authorName, type Page, REVIEW_STATUSES } from './review-model.ts';
+import { authorName, type Page, REVIEW_STATUSES, reviewKey } from './review-model.ts';
 import { canComment, getReviews, refreshReviews, useReviews } from './review-store.ts';
 
 function Attribution({ author, at }: { author: Author; at: string }) {
@@ -22,35 +23,51 @@ function Attribution({ author, at }: { author: Author; at: string }) {
 }
 
 /** Review status of a card in the comments panel: current status, change it, history. */
-export function ReviewSection({ elementId }: { elementId: string }) {
+export function ReviewSection({
+  elementId,
+  compact = false,
+  context,
+  detailsContainer,
+}: {
+  elementId: string;
+  compact?: boolean;
+  context?: ReactNode;
+  /** Compact panels keep the summary fixed and render details in their scrolling body. */
+  detailsContainer?: HTMLElement | null;
+}) {
   const { t } = useTranslation();
   const current = useReviews((s) => s.reviews.get(elementId));
   const writable = useReviews((s) => canComment(s.role));
   const known = (value: string | undefined): value is ReviewStatus =>
     !!value && (REVIEW_STATUSES as readonly string[]).includes(value);
-  const [status, setStatus] = useState<ReviewStatus>('in_review');
+  const [status, setStatus] = useState<ReviewStatus>(
+    known(current?.status) ? current.status : 'in_review',
+  );
   const [note, setNote] = useState('');
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(compact);
   const [history, setHistory] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const id = useId();
 
-  return (
-    <section className="review-section" aria-labelledby={`${id}-title`}>
-      <div className="review-row review-row--between">
-        <h3 id={`${id}-title`}>{t('review.title')}</h3>
-        <ReviewChip status={current?.status ?? 'none'} />
-      </div>
+  const [expanded, setExpanded] = useState(false);
+  const details = (!compact || expanded) && (
+    <>
+      {!compact && (
+        <div className="review-row review-row--between">
+          <h3 id={`${id}-title`}>{t('review.title')}</h3>
+          <ReviewChip status={current?.status ?? 'none'} />
+        </div>
+      )}
       {current && (
         <div className="review-current">
           <Attribution author={current.changedBy} at={current.changedAt} />
           {current.note && <p className="comment-body">{current.note}</p>}
         </div>
       )}
-      <div className="review-row">
-        {/* A status this client does not know is shown without actions. */}
-        {writable && known(current?.status ?? 'none') && (
+      {/* A status this client does not know is shown without actions. */}
+      {!compact && writable && known(current?.status ?? 'none') && (
+        <div className="review-row">
           <Button
             icon="pen"
             aria-expanded={editing}
@@ -61,22 +78,14 @@ export function ReviewSection({ elementId }: { elementId: string }) {
           >
             {t('review.change')}
           </Button>
-        )}
-        <Button
-          variant="ghost"
-          icon="clock"
-          aria-expanded={history}
-          aria-controls={`${id}-history`}
-          onClick={() => setHistory((v) => !v)}
-        >
-          {t('review.history')}
-        </Button>
-      </div>
-      {writable && editing && (
+        </div>
+      )}
+      {writable && known(current?.status ?? 'none') && editing && (
         <form
           className="review-form"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (!known(current?.status ?? 'none')) return;
             setBusy(true);
             setError(null);
             try {
@@ -87,6 +96,7 @@ export function ReviewSection({ elementId }: { elementId: string }) {
               });
               setNote('');
               setEditing(false);
+              if (compact) setExpanded(false);
               refreshReviews('reviews');
             } catch (err) {
               setError(
@@ -126,11 +136,19 @@ export function ReviewSection({ elementId }: { elementId: string }) {
               onChange={(e) => setNote(e.target.value)}
             />
           </label>
+          <p className="review-audience">{t('comments.statusAudience')}</p>
           <div className="review-row">
             <Button type="submit" variant="primary" disabled={busy}>
               {t('review.apply')}
             </Button>
-            <Button variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                setEditing(false);
+                if (compact) setExpanded(false);
+              }}
+            >
               {t('comments.cancel')}
             </Button>
           </div>
@@ -141,7 +159,58 @@ export function ReviewSection({ elementId }: { elementId: string }) {
           )}
         </form>
       )}
+      <div className="review-row">
+        <Button
+          variant="ghost"
+          icon="clock"
+          aria-expanded={history}
+          aria-controls={`${id}-history`}
+          onClick={() => setHistory((v) => !v)}
+        >
+          {t('review.history')}
+        </Button>
+      </div>
       {history && <ReviewHistory id={`${id}-history`} elementId={elementId} />}
+    </>
+  );
+  return (
+    <section
+      className={`review-section${compact ? ' review-section--compact' : ''}`}
+      aria-labelledby={!compact ? `${id}-title` : undefined}
+      aria-label={compact ? t('review.title') : undefined}
+    >
+      {compact && (
+        <>
+          <div className="review-row review-row--between review-context">
+            {context}
+            <Button
+              variant="ghost"
+              aria-expanded={expanded}
+              aria-label={`${t('review.title')}: ${t(`review.status.${reviewKey(current?.status ?? 'none')}`)}. ${t(writable && known(current?.status ?? 'none') ? 'review.change' : 'review.history')}`}
+              onClick={() => {
+                if (!expanded) {
+                  setStatus(known(current?.status) ? current.status : 'in_review');
+                  setEditing(true);
+                }
+                setExpanded((v) => !v);
+              }}
+            >
+              <ReviewChip status={current?.status ?? 'none'} />{' '}
+              <Icon
+                className={expanded ? 'ink-icon review-chevron is-open' : 'ink-icon review-chevron'}
+                name="chevronDown"
+                size={14}
+              />
+            </Button>
+          </div>
+          {current?.note && (
+            <p className="review-note-preview">
+              <strong>{authorName(current.changedBy)}:</strong> {current.note}
+            </p>
+          )}
+        </>
+      )}
+      {compact && detailsContainer ? createPortal(details, detailsContainer) : details}
     </section>
   );
 }

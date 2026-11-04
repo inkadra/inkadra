@@ -1,4 +1,5 @@
 import { type Browser, expect, type Page, test } from '@playwright/test';
+import { captureComments } from '../helpers/comment-screenshots.ts';
 import { chooseSelect } from '../helpers/select.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists. Each test makes
@@ -93,6 +94,7 @@ test('comments, mentions, review status and notifications between two people', a
   const otherPanel = panelOf(other);
   await expect(otherPanel).toBeFocused();
 
+  await captureComments(other, 'empty');
   // A comment with a mention picked from the suggestions.
   const box = otherPanel.getByRole('combobox', { name: 'Commento' });
   await box.fill('Schiarire @Giu');
@@ -159,26 +161,31 @@ test('comments, mentions, review status and notifications between two people', a
   );
 
   // The director resolves; the owner's open list empties and the badge goes away.
-  await panel.getByRole('radio', { name: 'Aperte', exact: true }).check();
+  await expect(panel.getByRole('radio', { name: 'Aperte', exact: true })).toHaveCount(0);
   await otherPanel.getByRole('button', { name: 'Risolvi' }).click();
   await expect(panel.getByText('Nessuna discussione aperta.')).toBeVisible();
   await expect(card.locator('.card-review')).toHaveCount(0);
-  await panel.getByRole('radio', { name: 'Risolte', exact: true }).check();
+  await panel.getByRole('button', { name: /^Risolte ·/ }).click();
   await expect(panel.getByText('Risolta da Luca Regista')).toBeVisible();
+  await captureComments(page, 'resolved');
 
   // Review status: set by the commenter with a note, seen live, with its history.
-  await otherPanel.getByRole('button', { name: 'Cambia stato' }).click();
+  await otherPanel.getByRole('button', { name: /^Revisione:/ }).click();
   await otherPanel.getByRole('radio', { name: /^Approvata/ }).check();
   await otherPanel.getByLabel('Nota (facoltativa)').fill('Pronta per il montaggio');
   await otherPanel.getByRole('button', { name: 'Aggiorna la revisione' }).click();
   await expect(card.getByRole('button', { name: /Revisione: Approvata/ })).toBeVisible();
-  const section = panel.getByRole('region', { name: 'Revisione' });
-  await expect(section.getByText('Pronta per il montaggio')).toBeVisible();
+  await panel.getByRole('button', { name: /^Revisione:/ }).click();
+  const section = panel;
+  await expect(
+    section.locator('.review-current').getByText('Pronta per il montaggio'),
+  ).toBeVisible();
   await section.getByRole('button', { name: 'Cronologia' }).click();
   const history = section.getByRole('region', { name: 'Cronologia' });
   await expect(history.getByRole('listitem')).toHaveCount(1);
   await expect(history).toContainText('Luca Regista');
   await expect(history).toContainText('Approvata');
+  await captureComments(page, 'history');
 
   // Filter cards by status from the board's comments.
   await page.getByRole('button', { name: /^Commenti:/ }).click();
@@ -221,6 +228,13 @@ test('comments, mentions, review status and notifications between two people', a
   const pinned = otherPanel.getByRole('combobox', { name: 'Commento' });
   await expect(pinned).toBeFocused();
   await expect(pinned).toHaveValue('Qui il riflesso');
+  await expect
+    .poll(async () => {
+      const bounds = await otherPanel.boundingBox();
+      return bounds ? bounds.y + bounds.height : Infinity;
+    })
+    .toBeLessThanOrEqual(await other.evaluate(() => window.innerHeight - 76));
+  await captureComments(other, 'pin');
   await otherPanel.getByRole('button', { name: 'Commenta', exact: true }).click();
   await expect(card.getByRole('button', { name: 'Apri il commento sul punto 1' })).toBeVisible();
 
@@ -249,9 +263,15 @@ test('comments, mentions, review status and notifications between two people', a
   await expect(otherPanel.getByRole('button', { name: 'Risolvi' })).toHaveCount(0);
   await expect(otherPanel.getByRole('button', { name: 'Rispondi' })).toHaveCount(0);
 
+  await captureComments(other, 'read-only');
   // The owner may delete someone else's comment; the director sees it go.
   await page.getByRole('button', { name: /^Commenti:/ }).click();
-  await panel.getByRole('button', { name: 'Elimina il commento di Luca Regista' }).click();
+  await panel
+    .locator('.comment-item')
+    .filter({ hasText: 'Qui il riflesso' })
+    .getByRole('button', { name: /^Azioni sul commento di / })
+    .click();
+  await page.getByRole('menuitem', { name: 'Elimina il commento di Luca Regista' }).click();
   await panel.getByRole('button', { name: 'Sì, elimina' }).click();
   await expect(otherPanel.getByText('Qui il riflesso')).toHaveCount(0);
   await other.context().close();
@@ -387,7 +407,8 @@ test('replies page in, and the board loads comment data once for all its cards',
   await expect(panelOf(page).locator('.comment-thread')).toBeFocused();
   const oldReply = panelOf(page).locator('[data-comment="reply-1"]');
   await expect(oldReply).toBeInViewport();
-  await oldReply.getByRole('button', { name: 'Modifica' }).click();
+  await oldReply.getByRole('button', { name: /^Azioni sul commento di / }).click();
+  await page.getByRole('menuitem', { name: 'Modifica' }).click();
   await oldReply.getByRole('combobox', { name: 'Commento' }).fill('Risposta 1 aggiornata');
   await oldReply.getByRole('button', { name: 'Salva' }).click();
   await expect(oldReply.locator('.comment-body')).toHaveText('Risposta 1 aggiornata');
@@ -489,18 +510,113 @@ test('a new comment resets to Team after sending or reopening a draft', async ({
   await page.getByRole('button', { name: /^Commenti:/ }).click();
   const panel = panelOf(page);
   const box = panel.getByRole('combobox', { name: 'Commento' });
-  await panel.getByRole('radio', { name: 'Tutti', exact: true }).check();
   await box.fill('Explicitly shared');
+  await panel.getByRole('radio', { name: 'Anche ospiti', exact: true }).check();
+  await box.press('Control+Enter');
+  await expect(box).toHaveValue('Explicitly shared');
   const sent = page.waitForRequest(
     (request) => request.method() === 'POST' && request.url().endsWith('/comments'),
   );
-  await panel.getByRole('button', { name: 'Commenta', exact: true }).click();
+  await panel.getByRole('button', { name: 'Invia agli ospiti', exact: true }).click();
   expect((await sent).postDataJSON().visibility).toBe('everyone');
   await expect(panel.getByRole('radio', { name: 'Team', exact: true })).toBeChecked();
-  await panel.getByRole('radio', { name: 'Tutti', exact: true }).check();
+  await panel.getByRole('radio', { name: 'Anche ospiti', exact: true }).check();
   await box.fill('Private draft');
   await panel.getByRole('button', { name: 'Chiudi i commenti' }).click();
   await page.getByRole('button', { name: 'Commenti: 1 discussione aperta' }).click();
   await expect(box).toHaveValue('Private draft');
   await expect(panel.getByRole('radio', { name: 'Team', exact: true })).toBeChecked();
+});
+
+test('card comments keep their audience explicit and resolved conversations reachable', async ({
+  page,
+}) => {
+  await signIn(page);
+  const project = await api<{ id: string; rootBoardId: string }>(page, '/projects', 'POST', {
+    name: 'Comments panel A',
+  });
+  await page.goto(`/p/${project.id}`);
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await page.getByTestId('canvas').dblclick({ position: { x: 300, y: 260 } });
+  await page.keyboard.type('Il cielo sul porto');
+  await page.keyboard.press('Escape');
+  const card = page.locator('[data-type="note"]', { hasText: 'Il cielo sul porto' });
+  const id = await card.getAttribute('data-el');
+  await expect
+    .poll(() =>
+      api(page, `/boards/${project.rootBoardId}/elements/${id}/review`, 'PUT', {
+        status: 'none',
+      }).then(
+        () => true,
+        () => false,
+      ),
+    )
+    .toBe(true);
+  await api(page, `/boards/${project.rootBoardId}/comments`, 'POST', {
+    elementId: id,
+    visibility: 'everyone',
+    body: 'Possiamo schiarire il cielo?',
+  });
+  await card.click();
+  await page.getByRole('toolbar').getByRole('button', { name: 'Commenti e revisione' }).click();
+  const panel = panelOf(page);
+  await expect(panel.getByRole('switch', { name: 'Mostra sulla board' })).toHaveCount(0);
+  await expect(panel.getByRole('radio', { name: /Menzioni e risposte/ })).toHaveCount(0);
+  await expect.poll(async () => (await panel.boundingBox())?.height ?? Infinity).toBeLessThan(450);
+  const thread = panel.locator('.comment-thread');
+  await thread.getByRole('button', { name: 'Rispondi' }).first().click();
+  await expect(thread.getByText('Anche gli ospiti leggono questa risposta.')).toBeVisible();
+  if (process.env.COMMENTS_SHOTS_DIR) {
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(
+        (value) => document.documentElement.setAttribute('data-theme', value),
+        theme,
+      );
+      for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.mouse.move(0, 0);
+        await page.mouse.move(0, 0);
+        await page.screenshot({
+          path: `${process.env.COMMENTS_SHOTS_DIR}/${theme}-${width}-reply.png`,
+        });
+        await thread.getByRole('button', { name: 'Rispondi' }).first().click();
+        const composer = panel.locator('.comment-composer--new').getByRole('combobox');
+        await composer.fill('Controlliamo la nuova versione.');
+        await page.mouse.move(0, 0);
+        await page.screenshot({
+          path: `${process.env.COMMENTS_SHOTS_DIR}/${theme}-${width}-team.png`,
+        });
+        await panel.getByRole('radio', { name: 'Anche ospiti', exact: true }).check();
+        await page.mouse.move(0, 0);
+        await page.screenshot({
+          path: `${process.env.COMMENTS_SHOTS_DIR}/${theme}-${width}-public.png`,
+        });
+        await panel.getByRole('radio', { name: 'Team', exact: true }).check();
+        await composer.fill('');
+        await panel.getByRole('button', { name: /^Revisione:/ }).click();
+        await page.mouse.move(0, 0);
+        await expect(panel.locator('.comment-composer--new')).not.toHaveClass(/is-open/);
+        await page.screenshot({
+          path: `${process.env.COMMENTS_SHOTS_DIR}/${theme}-${width}-review.png`,
+        });
+        await panel.getByRole('button', { name: /^Revisione:/ }).click();
+        await thread.getByRole('button', { name: 'Rispondi' }).first().click();
+      }
+    }
+  }
+  const threadId = await thread.getAttribute('data-thread');
+  await thread.getByRole('button', { name: 'Risolvi' }).click();
+  await panel.getByRole('button', { name: /^Risolte · 1/ }).click();
+  await expect(panel.getByText('Possiamo schiarire il cielo?')).toBeVisible();
+  await page.goto(`/p/${project.id}?thread=${threadId}`);
+  await expect(panel.locator('.comment-thread')).toBeFocused();
+  await expect(panel.getByText('Possiamo schiarire il cielo?')).toBeVisible();
+  await panel.getByRole('button', { name: 'Riapri' }).click();
+  await page.goto(`/p/${project.id}?view=review`);
+  const review = page.locator('.client-review');
+  await expect(review.getByRole('button', { name: 'Cambia stato' })).toBeVisible();
+  await expect(review.locator('.comment-thread').first()).toHaveCSS('border-top-width', '0px');
+  await review.getByRole('button', { name: 'Rispondi' }).first().click();
+  await expect(review.getByText('Anche gli ospiti leggono questa risposta.')).toBeVisible();
+  await captureComments(page, 'review-view');
 });
