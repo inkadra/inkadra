@@ -194,7 +194,7 @@ const matrix = shots
 
 for (const [device, width, height, theme] of matrix) {
   test(`character sheet ${device} ${theme}`, async ({ page, browser, baseURL }) => {
-    test.setTimeout(shots ? 240_000 : 90_000);
+    test.setTimeout(shots ? 120_000 : 90_000);
     if (shots) mkdirSync(shots, { recursive: true });
     const shot = async (name: string, target: Page = page) => {
       if (shots) await target.screenshot({ path: `${shots}/${device}-${theme}-${name}.png` });
@@ -391,21 +391,21 @@ for (const [device, width, height, theme] of matrix) {
       .toBeGreaterThan(0);
 
     // A reference: failed, it says so in its section; retried, it joins the list.
-    await toggle(sheet, 'Aspetto');
     await page.route('**/api/v1/uploads/*', (route) =>
       route.request().method() === 'PATCH'
         ? route.fulfill({ status: 403, body: '' })
         : route.continue(),
     );
     await sheet.getByRole('button', { name: 'Aggiungi un riferimento' }).click();
-    await file.setInputFiles({ name: 'reference.png', mimeType: 'image/png', buffer: photo });
+    const chooser = page.waitForEvent('filechooser');
+    await sheet.locator('.story-panel__chooser').getByRole('button', { name: 'Foto' }).click();
+    await (await chooser).setFiles({ name: 'reference.png', mimeType: 'image/png', buffer: photo });
     await expect(sheet.getByRole('alert')).toContainText('reference.png');
     await page.unrouteAll({ behavior: 'ignoreErrors' });
     await sheet.getByRole('alert').getByRole('button', { name: 'Riprova' }).click();
     await expect
       .poll(async () => ((await saved(ids.marta)) as { references?: string[] }).references?.length)
       .toBe(3);
-    await toggle(sheet, 'Aspetto');
     await sheet.getByRole('button', { name: 'Chiudi la scheda' }).click();
 
     if (shots) {
