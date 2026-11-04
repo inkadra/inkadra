@@ -1783,10 +1783,19 @@
     "pinsOnCanvas": "I punti si vedono solo nella vista Lavagna, che si apre per sceglierne uno.",
     "cardCount_one": "{{count}} discussione aperta: apri i commenti",
     "cardCount_other": "{{count}} discussioni aperte: apri i commenti",
+    "resolvedCount_one": "Risolte · {{count}}",
+    "resolvedCount_other": "Risolte · {{count}}",
+    "sendGuests": "Invia agli ospiti",
+    "publicWarning": "Lo leggeranno gli ospiti dei link che possono leggere i commenti. Dopo l’invio non si può rendere privato, solo eliminare.",
+    "replyTeam": "Rispondi al team.",
+    "replyGuests": "Rispondi al team e agli ospiti dei link che leggono i commenti.",
+    "replyLink": "Rispondi al team e agli ospiti: {{link}}.",
+    "guestAudience": "Li leggono il team e gli ospiti di questo link.",
+    "statusAudience": "Gli ospiti vedono lo stato e chi l’ha cambiato, non la nota.",
     "visibilityLabel": "Chi la vede",
     "visibility": {
       "team": "Team",
-      "everyone": "Tutti"
+      "everyone": "Anche ospiti"
     },
     "teamHint": "Solo le persone con un ruolo sulla board.",
     "everyoneHint": "Anche gli ospiti dei link di condivisione che possono leggere i commenti.",

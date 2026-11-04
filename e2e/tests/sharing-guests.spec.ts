@@ -5,6 +5,7 @@ import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema
 import { type Browser, expect, type Page, test } from '@playwright/test';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
+import { captureComments } from '../helpers/comment-screenshots.ts';
 import { chooseSelect } from '../helpers/select.ts';
 
 // Runs after first-run.spec.ts: works on a project of its own, as the administrator.
@@ -354,6 +355,8 @@ test('a guest opens the link, comments and picks a picture', async ({ browser })
 
   expect(guestCalls.length).toBeGreaterThan(0);
   expect(accountCalls).toEqual([]);
+  await expect(page.getByText('Li leggono il team e gli ospiti di questo link.')).toBeVisible();
+  await captureComments(page, 'guest');
   await context.close();
 });
 

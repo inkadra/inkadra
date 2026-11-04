@@ -1783,10 +1783,19 @@
     "pinsOnCanvas": "Points only show in the Canvas view, which opens to choose one.",
     "cardCount_one": "{{count}} open thread: open comments",
     "cardCount_other": "{{count}} open threads: open comments",
+    "resolvedCount_one": "Resolved · {{count}}",
+    "resolvedCount_other": "Resolved · {{count}}",
+    "sendGuests": "Send to guests",
+    "publicWarning": "Guests of links that can read comments will see it. Once sent it cannot be made private, only deleted.",
+    "replyTeam": "Reply to the team.",
+    "replyGuests": "Reply to the team and guests of links that read comments.",
+    "replyLink": "Reply to the team and guests: {{link}}.",
+    "guestAudience": "The team and guests of this link can read them.",
+    "statusAudience": "Guests see the status and who changed it, but not the note.",
     "visibilityLabel": "Who sees it",
     "visibility": {
       "team": "Team",
-      "everyone": "Everyone"
+      "everyone": "Also guests"
     },
     "teamHint": "Only people with a role on the board.",
     "everyoneHint": "Also guests of share links that can read comments.",
