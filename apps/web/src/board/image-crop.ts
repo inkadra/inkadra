@@ -304,7 +304,12 @@ export function cropForQuarterTurn(
   const b = rotatedBounds(width, height, rotation);
   const origin = cropOrigins.get(originKey(id, shown)) ?? shown;
   const next = sanitizeCrop(
-    inscribeCrop(cropAfterQuarterTurn(shown, direction, b.width, b.height), width, height, rotation),
+    inscribeCrop(
+      cropAfterQuarterTurn(shown, direction, b.width, b.height),
+      width,
+      height,
+      rotation,
+    ),
   );
   cropOrigins.set(originKey(id, next), cropAfterQuarterTurn(origin, direction, b.width, b.height));
   return next;

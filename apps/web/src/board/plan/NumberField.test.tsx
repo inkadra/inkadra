@@ -12,7 +12,15 @@ it('steps with the arrows, within its limits', async () => {
   const root = createRoot(host);
   await act(async () =>
     root.render(
-      <NumberField value={3.95} min={1} max={4} step={0.01} nudge={0.1} label="L" onCommit={commit} />,
+      <NumberField
+        value={3.95}
+        min={1}
+        max={4}
+        step={0.01}
+        nudge={0.1}
+        label="L"
+        onCommit={commit}
+      />,
     ),
   );
   const input = host.querySelector('input') as HTMLInputElement;

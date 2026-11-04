@@ -35,7 +35,9 @@ it('tells an address with no results from a search that failed, also after Enter
   const status = () => host.querySelector('p')?.textContent;
   expect(status()).toBe('board.map.noResults');
   await act(async () =>
-    host.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+    host
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
   );
   expect(status()).toBe('board.map.noResults');
   await act(async () => root.unmount());

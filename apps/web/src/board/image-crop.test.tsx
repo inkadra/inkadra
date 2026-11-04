@@ -154,11 +154,21 @@ describe('image-crop geometry helpers', () => {
       ['clockwise', 1],
       ['counter', -1],
     ] as const) {
-      const at30 = slide(id, start, up.map((a) => a * sign));
+      const at30 = slide(
+        id,
+        start,
+        up.map((a) => a * sign),
+      );
       expect(cropInsideImage(at30, 400, 600, 30 * sign)).toBe(true);
       // One jump gives the same as thirty small moves: nothing piles up on the way.
       expect(at30).toEqual(cropForAngle(`${id}-jump`, start, 400, 600, 30 * sign));
-      expect(slide(id, at30, down.map((a) => a * sign))).toEqual(sanitizeCrop(start));
+      expect(
+        slide(
+          id,
+          at30,
+          down.map((a) => a * sign),
+        ),
+      ).toEqual(sanitizeCrop(start));
     }
   });
 

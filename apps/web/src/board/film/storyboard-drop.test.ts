@@ -209,7 +209,12 @@ describe('applyDrop', () => {
     const { store, scene, a } = setup();
     updateElement(store.doc, a.id, { assetId: 'old' });
     const { h, started } = hooks();
-    applyDrop(store, { kind: 'replace', frameId: a.id, sceneId: scene.id, index: 0 }, [file('a.png')], h);
+    applyDrop(
+      store,
+      { kind: 'replace', frameId: a.id, sceneId: scene.id, index: 0 },
+      [file('a.png')],
+      h,
+    );
     started[0]?.onAsset('new');
     expect(store.getSnapshot().byId.get(a.id)).toMatchObject({ assetId: 'new' });
     started[0]?.onCancelled('new');

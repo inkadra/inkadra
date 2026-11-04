@@ -65,7 +65,9 @@ test('a cancelled upload leaves no card, for anyone, and no asset', async ({
   );
   const transfer = await page.evaluateHandle(() => {
     const dt = new DataTransfer();
-    dt.items.add(new File([new Uint8Array(8 * 1024 * 1024)], 'cancel-me.mp4', { type: 'video/mp4' }));
+    dt.items.add(
+      new File([new Uint8Array(8 * 1024 * 1024)], 'cancel-me.mp4', { type: 'video/mp4' }),
+    );
     return dt;
   });
   await page
@@ -109,10 +111,22 @@ test('the crop comes back when the angle does, and a long to-do reads in full', 
   if (!asset) throw new Error('upload failed');
   await waitForAssets(baseURL!, cookie, [asset]);
   const doc = createBoardDoc(project.rootBoardId);
-  const image = createElement(doc, 'image', { x: 80, y: 40 }, { w: 280, assetId: asset }, { userId: null });
-  const todo = createElement(doc, 'todo', { x: 500, y: 40 }, { w: 240, items: [] }, { userId: null });
-  addTodoItem(doc, todo.id, 'Voce uno', undefined);
-  addTodoItem(doc, todo.id, LONG, undefined);
+  const image = createElement(
+    doc,
+    'image',
+    { x: 80, y: 40 },
+    { w: 280, assetId: asset },
+    { userId: null },
+  );
+  const todo = createElement(
+    doc,
+    'todo',
+    { x: 500, y: 40 },
+    { w: 240, items: [] },
+    { userId: null },
+  );
+  addTodoItem(doc, todo.id, 'Voce uno');
+  addTodoItem(doc, todo.id, LONG);
   await pushBoardDoc(baseURL!, cookie, project.rootBoardId, doc);
   await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
 
@@ -172,7 +186,10 @@ test('a failed address search is readable over the empty board', async ({ page, 
     route.fulfill({ status: 400, json: { error: { code: 'bad_request', message: 'x' } } }),
   );
   await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
-  await page.getByRole('button', { name: /^Mappa/ }).first().click();
+  await page
+    .getByRole('button', { name: /^Mappa/ })
+    .first()
+    .click();
   await page.locator('.canvas').click({ position: { x: 280, y: 280 } });
   const input = page.getByRole('combobox');
   await input.fill('Piazza del Duomo, Milano');
@@ -181,4 +198,60 @@ test('a failed address search is readable over the empty board', async ({ page, 
   const color = await message.evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(color).not.toBe('rgba(0, 0, 0, 0)');
   await shoot(page, 'map-error');
+});
+
+// Only for the pull request's screenshots: SOYO_SHOTS=<folder>.
+test('screenshots of the other screens', async ({ page, baseURL }) => {
+  test.skip(!shots);
+  const { cookie, project } = await start(page, baseURL!, 'Shots');
+  const doc = createBoardDoc(project.rootBoardId);
+  const note = createElement(doc, 'note', { x: 40, y: 40 }, { w: 240 }, { userId: null });
+  const todo = createElement(doc, 'todo', { x: 40, y: 200 }, { w: 240, items: [] }, { userId: null });
+  addTodoItem(doc, todo.id, LONG);
+  const plan = createElement(
+    doc,
+    'plan',
+    { x: 340, y: 40 },
+    {
+      w: 300,
+      scale: 100,
+      grid: '0.5',
+      rulers: true,
+      icons: [
+        {
+          id: 'iconAAAAAAAAA',
+          kind: 'camera',
+          color: '#9DB8F2',
+          x: 500,
+          y: 300,
+          steps: [
+            { x: 200, y: 200 },
+            { x: 500, y: 300 },
+          ],
+        },
+      ],
+    },
+    { userId: null },
+  );
+  await pushBoardDoc(baseURL!, cookie, project.rootBoardId, doc);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
+  await page.locator(`[data-el="${note.id}"]`).click();
+  await expect(page.locator('.ctxbar')).toBeVisible();
+  await shoot(page, 'note-bar');
+  await page.locator('.ctxbar').getByRole('button', { name: 'Elimina' }).waitFor();
+  await page.locator(`[data-el="${todo.id}"]`).click();
+  await shoot(page, 'todo-read');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.locator(`[data-el="${note.id}"]`).click();
+  await page.locator('.ctxbar').getByRole('button', { name: /[Tt]ag/ }).click();
+  const tag = page.getByRole('textbox', { name: 'Aggiungi un tag' });
+  await tag.fill('Nuovo');
+  await tag.press('Enter');
+  await expect(page.getByRole('alert')).toContainText('non è nel catalogo');
+  await shoot(page, 'tag-not-in-catalog');
+  await page.keyboard.press('Escape');
+  await page.locator(`[data-el="${plan.id}"]`).dblclick();
+  await expect(page.locator('.plan-ruler--top')).toBeVisible();
+  await shoot(page, 'plan-rulers-route');
 });
