@@ -1210,7 +1210,8 @@
       "dropBecomes": "Rilascia: diventa l’inquadratura {{label}}",
       "dropBecomesShort": "Rilascia: diventa {{label}}",
       "dropLocked": "Inquadratura bloccata",
-      "dropMany": "{{count}} elementi: nessun inserimento",
+      "dropMany_one": "{{count}} elemento: nessun inserimento",
+      "dropMany_other": "{{count}} elementi: nessun inserimento",
       "uploadFailed": "Caricamento non riuscito",
       "retry": "Riprova",
       "fromBoardVideo": "Da un video della lavagna"

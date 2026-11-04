@@ -1210,7 +1210,8 @@
       "dropBecomes": "Drop: it becomes frame {{label}}",
       "dropBecomesShort": "Drop: it becomes {{label}}",
       "dropLocked": "Frame locked",
-      "dropMany": "{{count}} items: nothing is inserted",
+      "dropMany_one": "{{count}} item: nothing is inserted",
+      "dropMany_other": "{{count}} items: nothing is inserted",
       "uploadFailed": "Upload failed",
       "retry": "Try again",
       "fromBoardVideo": "From a video on the board"
