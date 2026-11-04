@@ -2,11 +2,11 @@
 
 Inkadra keeps three kinds of data:
 
-| What                                 | Where                                 | Back it up                                |
-| ------------------------------------ | ------------------------------------- | ----------------------------------------- |
-| Accounts, projects, boards, comments | Postgres (`postgres-data`)            | Yes                                       |
-| Uploaded files and their previews    | `/data/files` in Inkadra, or a bucket | Yes                                       |
-| Jobs waiting to run, sign-in limits  | Valkey (`valkey-data`)                | With the rest, though it can be rebuilt   |
+| What                                 | Where                                 | Back it up                              |
+| ------------------------------------ | ------------------------------------- | --------------------------------------- |
+| Accounts, projects, boards, comments | Postgres (`postgres-data`)            | Yes                                     |
+| Uploaded files and their previews    | `/data/files` in Inkadra, or a bucket | Yes                                     |
+| Jobs waiting to run, sign-in limits  | Valkey (`valkey-data`)                | With the rest, though it can be rebuilt |
 
 If Valkey's data is lost, the queues are rebuilt when the server starts: only jobs that were
 waiting to run are lost, and the sign-in counters start again.

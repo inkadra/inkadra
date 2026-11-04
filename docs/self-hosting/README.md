@@ -3,16 +3,16 @@
 Inkadra runs on any machine with Docker: a VPS, a home server, a NAS. This page takes you from
 an empty folder to your first sign-in, and assumes you have never used Docker Compose.
 
-| Page                                  | What it covers                                          |
-| ------------------------------------- | ------------------------------------------------------- |
-| This page                             | Installing, the image variants, backups, what leaves    |
-| [Configuration](configuration.md)     | Every setting in `.env`                                 |
-| [Sign-in](sign-in.md)                 | Google, OIDC, email, invitations, two-factor            |
-| [Reverse proxy](reverse-proxy.md)     | Caddy, Traefik, Nginx, Nginx Proxy Manager, Pangolin    |
-| [Storage](storage.md)                 | Volumes, data on different disks, S3, bundled RustFS    |
-| [Upgrades](upgrades.md)               | Versions, updating, verifying images                    |
-| [Troubleshooting](troubleshooting.md) | What to check when something does not work              |
-| [Office previews](office.md)          | The optional LibreOffice worker                         |
+| Page                                  | What it covers                                       |
+| ------------------------------------- | ---------------------------------------------------- |
+| This page                             | Installing, the image variants, backups, what leaves |
+| [Configuration](configuration.md)     | Every setting in `.env`                              |
+| [Sign-in](sign-in.md)                 | Google, OIDC, email, invitations, two-factor         |
+| [Reverse proxy](reverse-proxy.md)     | Caddy, Traefik, Nginx, Nginx Proxy Manager, Pangolin |
+| [Storage](storage.md)                 | Volumes, data on different disks, S3, bundled RustFS |
+| [Upgrades](upgrades.md)               | Versions, updating, verifying images                 |
+| [Troubleshooting](troubleshooting.md) | What to check when something does not work           |
+| [Office previews](office.md)          | The optional LibreOffice worker                      |
 
 ## What you need
 
@@ -189,11 +189,11 @@ of `index.html` (with `'unsafe-inline'` or their hashes).
 with the standard one unless you need what the others add: you can change later by changing
 `INKADRA_TAG` and running `docker compose up -d`. Files you uploaded before get no new previews.
 
-| Variant  | Tag example   | Size    | What it adds                                                                                                                                                                                                                                  |
-| -------- | ------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Standard | `0.8.0`       | ~0.6 GB | Everything in Inkadra. Videos play in their card when the browser can play the original; other files get a generic card                                                                                                                       |
-| Media    | `0.8.0-media` | ~1.4 GB | ffmpeg, exiftool and poppler: video posters, playable copies of ProRes, MKV, AVI, MXF and HEVC, stills taken from the original video, audio waveforms, camera RAW and PDF thumbnails, video reports from a device. Hardware encoding drivers |
-| Office   | `0.8.0-office`| ~2 GB   | The media image plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental                                                                                                                       |
+| Variant  | Tag example    | Size    | What it adds                                                                                                                                                                                                                                 |
+| -------- | -------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Standard | `0.8.0`        | ~0.6 GB | Everything in Inkadra. Videos play in their card when the browser can play the original; other files get a generic card                                                                                                                      |
+| Media    | `0.8.0-media`  | ~1.4 GB | ffmpeg, exiftool and poppler: video posters, playable copies of ProRes, MKV, AVI, MXF and HEVC, stills taken from the original video, audio waveforms, camera RAW and PDF thumbnails, video reports from a device. Hardware encoding drivers |
+| Office   | `0.8.0-office` | ~2 GB   | The media image plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental                                                                                                                      |
 
 Sizes are uncompressed, measured on amd64. The image's command selects the role:
 
@@ -344,13 +344,13 @@ data folder first, for example with `docker compose cp`.
 Inkadra sends no telemetry and does not check for updates. It talks to other servers only for
 what is listed here.
 
-| What                                                                         | Goes to                                                                  | When                                                                 | To turn it off                                                 |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------- | -------------------------------------------------------------- |
-| **Reports**: the text, screenshots, videos, files and logs someone selected  | The Inkadra developers, through a relay on Cloudflare (details below)    | Only when someone sends a report, after its preview. **On by default** | **Settings → About → Reports**, or `FEEDBACK_RELAY_URL=` empty |
-| Map tile requests, with this instance's address in the user agent            | `tile.openstreetmap.org`, or your `MAP_TILE_URL`                         | When someone adds or explores a map or a GPX file                    | `MAPS=false`, or your own tile server                          |
-| Requests for the pages behind pasted links, and their preview images         | That site; YouTube and Vimeo for their videos                            | When someone pastes a link or clips a page                           | No setting                                                     |
-| Address lookups                                                              | Your `MAP_GEOCODER_URL`                                                  | When someone types an address in a map card                          | Off unless you set it                                          |
-| Sign-in, email and files                                                     | Your Google or OIDC provider, your mail server, your S3 bucket           | Only if you configure them                                           | Leave them empty                                               |
+| What                                                                        | Goes to                                                               | When                                                                   | To turn it off                                                 |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Reports**: the text, screenshots, videos, files and logs someone selected | The Inkadra developers, through a relay on Cloudflare (details below) | Only when someone sends a report, after its preview. **On by default** | **Settings → About → Reports**, or `FEEDBACK_RELAY_URL=` empty |
+| Map tile requests, with this instance's address in the user agent           | `tile.openstreetmap.org`, or your `MAP_TILE_URL`                      | When someone adds or explores a map or a GPX file                      | `MAPS=false`, or your own tile server                          |
+| Requests for the pages behind pasted links, and their preview images        | That site; YouTube and Vimeo for their videos                         | When someone pastes a link or clips a page                             | No setting                                                     |
+| Address lookups                                                             | Your `MAP_GEOCODER_URL`                                               | When someone types an address in a map card                            | Off unless you set it                                          |
+| Sign-in, email and files                                                    | Your Google or OIDC provider, your mail server, your S3 bucket        | Only if you configure them                                             | Leave them empty                                               |
 
 People's browsers load YouTube (from `youtube-nocookie.com`), Vimeo or Instagram players only when
 someone plays a link card, and Google profile pictures for accounts that sign in with Google.

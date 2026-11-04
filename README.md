@@ -149,18 +149,18 @@ ENV
 pnpm dev     # API on :3000, web app on http://localhost:5173
 ```
 
-| Path                   | What it is                                                             |
-| ---------------------- | ---------------------------------------------------------------------- |
-| `apps/web`             | Desktop web app (React, Vite)                                          |
-| `apps/server`          | API, auth, collaboration and background jobs: one image, several roles |
-| `apps/clipper`         | Browser extension for Chrome, Edge, Brave and Arc                      |
-| `apps/mobile`          | Android and iOS app (planned)                                          |
+| Path                   | What it is                                                              |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `apps/web`             | Desktop web app (React, Vite)                                           |
+| `apps/server`          | API, auth, collaboration and background jobs: one image, several roles  |
+| `apps/clipper`         | Browser extension for Chrome, Edge, Brave and Arc                       |
+| `apps/mobile`          | Android and iOS app (planned)                                           |
 | `relay`                | Worker that passes in-app reports to the developers' private repository |
-| `packages/shared`      | API contract: Zod schemas and the generated OpenAPI document           |
-| `packages/doc-schema`  | Versioned schema of the collaborative board documents (Yjs)            |
-| `packages/canvas-core` | Canvas math shared by web and mobile                                   |
-| `packages/ui`          | Design tokens and interface components                                 |
-| `e2e`                  | End-to-end tests (Playwright)                                          |
+| `packages/shared`      | API contract: Zod schemas and the generated OpenAPI document            |
+| `packages/doc-schema`  | Versioned schema of the collaborative board documents (Yjs)             |
+| `packages/canvas-core` | Canvas math shared by web and mobile                                    |
+| `packages/ui`          | Design tokens and interface components                                  |
+| `e2e`                  | End-to-end tests (Playwright)                                           |
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and
 [docs/decisions](docs/decisions) for the reasoning behind the main choices. Security problems
