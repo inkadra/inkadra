@@ -1201,22 +1201,29 @@ export const calendarFeed = pgTable('calendar_feed', {
 });
 
 /** Local inbox is durable before attempting the private GitHub relay. */
-export const feedbackReport = pgTable('feedback_report', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  number: integer('number').generatedAlwaysAsIdentity().notNull().unique(),
-  owner: text('owner').notNull(),
-  requestId: uuid('request_id').notNull(),
-  reporter: text('reporter').notNull(),
-  report: jsonb('report').$type<import('@inkadra/shared').CreateFeedback>().notNull(),
-  destination: text('destination').notNull(),
-  repository: text('repository'),
-  delivery: text('delivery', { enum: ['inbox', 'pending', 'delivered', 'uncertain'] }).notNull(),
-  issueNumber: integer('issue_number'),
-  signature: text('signature'),
-  attempts: integer('attempts').notNull().default(0),
-  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
-  createdAt: createdAt(),
-}, (t) => [uniqueIndex('feedback_report_request_uq').on(t.owner, t.requestId), index('feedback_report_pending_idx').on(t.delivery, t.nextAttemptAt)]);
+export const feedbackReport = pgTable(
+  'feedback_report',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    number: integer('number').generatedAlwaysAsIdentity().notNull().unique(),
+    owner: text('owner').notNull(),
+    requestId: uuid('request_id').notNull(),
+    reporter: text('reporter').notNull(),
+    report: jsonb('report').$type<import('@inkadra/shared').CreateFeedback>().notNull(),
+    destination: text('destination').notNull(),
+    repository: text('repository'),
+    delivery: text('delivery', { enum: ['inbox', 'pending', 'delivered', 'uncertain'] }).notNull(),
+    issueNumber: integer('issue_number'),
+    signature: text('signature'),
+    attempts: integer('attempts').notNull().default(0),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('feedback_report_request_uq').on(t.owner, t.requestId),
+    index('feedback_report_pending_idx').on(t.delivery, t.nextAttemptAt),
+  ],
+);
 export const feedbackAttachment = pgTable('feedback_attachment', {
   id: text('id').primaryKey(),
   owner: text('owner').notNull(),
