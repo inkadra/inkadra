@@ -235,6 +235,7 @@
             "enum": [
               "inbox",
               "github",
+              "relay",
               null
             ]
           },
@@ -485,7 +486,8 @@
             "enum": [
               "off",
               "inbox",
-              "github"
+              "github",
+              "relay"
             ]
           },
           "repository": {

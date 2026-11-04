@@ -7,7 +7,7 @@ export const FEEDBACK_FILE_BYTES = 25 * 1024 * 1024;
 export const FEEDBACK_VIDEO_BYTES = 100 * 1024 * 1024;
 export const FeedbackSettingsInput = z
   .object({
-    destination: z.enum(['off', 'inbox', 'github']),
+    destination: z.enum(['off', 'inbox', 'github', 'relay']),
     repository: z
       .string()
       .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*$/)
@@ -29,7 +29,7 @@ export const FeedbackStatus = z
   .object({
     enabled: z.boolean(),
     guest: z.boolean(),
-    destination: z.enum(['inbox', 'github']).nullable(),
+    destination: z.enum(['inbox', 'github', 'relay']).nullable(),
     retentionDays: z.int(),
   })
   .openapi('FeedbackStatus');

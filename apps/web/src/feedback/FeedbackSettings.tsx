@@ -165,7 +165,7 @@ export function FeedbackSettings() {
               <div>{error}</div>
             </div>
           )}
-          {github && refused.length > 0 && (
+          {(github || settings.destination === 'relay') && refused.length > 0 && (
             <div className="feedback-banner feedback-banner--danger" role="alert">
               <Icon name="warning" size={14} />
               <div>
@@ -187,11 +187,20 @@ export function FeedbackSettings() {
               <div>{t('feedback.tokenMissingBanner')}</div>
             </div>
           )}
+          <Row label={t('feedback.developers')} help={t('feedback.privacyRelay')}>
+            <Switch
+              aria-label={t('feedback.developers')}
+              checked={settings.destination === 'relay'}
+              onChange={(e) =>
+                void save({ ...input, destination: e.target.checked ? 'relay' : 'inbox' })
+              }
+            />
+          </Row>
           <RadioGroup
             label={t('feedback.destination')}
             value={settings.destination}
             onChange={(destination) => void save({ ...input, destination })}
-            options={(['github', 'inbox', 'off'] as const).map((value) => ({
+            options={(['relay', 'github', 'inbox', 'off'] as const).map((value) => ({
               value,
               label: t(`feedback.destinations.${value}`),
             }))}
@@ -226,7 +235,7 @@ export function FeedbackSettings() {
                 </Badge>
               </Row>
             )}
-            {github && (
+            {(github || settings.destination === 'relay') && (
               <Row
                 label={t('feedback.lastDelivery')}
                 help={[
@@ -245,7 +254,14 @@ export function FeedbackSettings() {
                 onChange={(e) => void save({ ...input, guests: e.target.checked })}
               />
             </Row>
-            <Row label={t('feedback.retention')} help={t('feedback.retentionHelp')}>
+            <Row
+              label={t('feedback.retention')}
+              help={t(
+                settings.destination === 'relay'
+                  ? 'feedback.relayRetentionHelp'
+                  : 'feedback.retentionHelp',
+              )}
+            >
               <Select
                 aria-label={t('feedback.retention')}
                 value={String(settings.retentionDays)}

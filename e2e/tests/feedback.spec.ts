@@ -34,7 +34,7 @@ async function configure(page: Page, destination = 'inbox', guests = false) {
   });
   expect(saved.ok()).toBe(true);
 }
-// Everything else in the suite runs with reporting off, as a fresh instance does.
+// Explicitly turn reporting off after each test.
 test.afterEach(async ({ page }) => {
   if (!page.url().startsWith('http')) return;
   await page.request.put('/api/v1/feedback/settings', {
@@ -54,6 +54,8 @@ test('stays off without configuration, and the shortcut says so', async ({ page 
     );
   });
   await login(page);
+  await configure(page, 'off');
+  await page.reload();
   await expect(page.getByRole('button', FORM)).toHaveCount(0);
   await page.keyboard.press('Control+Shift+B');
   const dialog = page.getByRole('dialog', FORM);
@@ -820,4 +822,68 @@ test.describe('every state, for review', () => {
     await expect(page.getByRole('dialog', FORM)).toContainText('Stiamo allegando');
     await snap(page, 'error-page-form');
   });
+});
+
+test('relay disclosure, mandatory preview, limits and admin switch', async ({ page }) => {
+  await login(page);
+  await configure(page, 'relay');
+  await page.reload();
+  await ready(page);
+  await page.getByRole('button', FORM).click();
+  const dialog = page.getByRole('dialog', FORM);
+  await expect(dialog).toContainText('inkadra/inkadra-feedback');
+  await expect(dialog).toContainText('32 MB totali');
+  await expect(dialog.getByRole('button', { name: 'Invia', exact: true })).toHaveCount(0);
+  if (process.env.FEEDBACK_SHOTS_DIR) {
+    mkdirSync(process.env.FEEDBACK_SHOTS_DIR, { recursive: true });
+    for (const theme of ['light', 'dark'] as const) {
+      await page.evaluate((theme) => {
+        localStorage.setItem('inkadra.theme', theme);
+        window.dispatchEvent(new Event('inkadra-theme-change'));
+        document.documentElement.dataset.theme = theme;
+      }, theme);
+      for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
+        await page.mouse.move(0, 0);
+        await page.screenshot({
+          path: join(process.env.FEEDBACK_SHOTS_DIR, `${theme}-${width}-relay.png`),
+        });
+        await dialog.locator('.feedback-privacy').scrollIntoViewIfNeeded();
+        await page.screenshot({
+          path: join(process.env.FEEDBACK_SHOTS_DIR, `${theme}-${width}-relay-disclosure.png`),
+        });
+        await dialog.getByLabel('Titolo', { exact: true }).scrollIntoViewIfNeeded();
+      }
+    }
+  }
+  await page.keyboard.press('Escape');
+  await page.goto('/settings?section=instance');
+  const toggle = page.getByRole('switch', {
+    name: 'Invia agli sviluppatori di Inkadra',
+    exact: true,
+  });
+  await expect(toggle).toBeChecked();
+  if (process.env.FEEDBACK_SHOTS_DIR) {
+    await toggle.scrollIntoViewIfNeeded();
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((value) => {
+        localStorage.setItem('inkadra.theme', value);
+        window.dispatchEvent(new Event('inkadra-theme-change'));
+        document.documentElement.dataset.theme = value;
+      }, theme);
+      for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
+        await toggle.scrollIntoViewIfNeeded();
+        await page.mouse.move(0, 0);
+        await page.screenshot({
+          path: join(process.env.FEEDBACK_SHOTS_DIR, `${theme}-${width}-settings-relay.png`),
+        });
+      }
+    }
+  }
+  await toggle.click();
+  await expect(toggle).not.toBeChecked();
+  expect((await (await page.request.get('/api/v1/feedback/settings')).json()).destination).toBe(
+    'inbox',
+  );
 });

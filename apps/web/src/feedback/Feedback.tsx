@@ -138,6 +138,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   const [files, setFiles] = useState<LocalAttachment[]>([]);
   const [shot, setShot] = useState<LocalAttachment | null>(null);
   const [shotIncluded, setShotIncluded] = useState(true);
+  const videoLimit = status?.destination === 'relay' ? 25 * 1024 * 1024 : FEEDBACK_VIDEO_BYTES;
   const [video, setVideo] = useState<LocalAttachment | null>(null);
   const [candidate, setCandidate] = useState<LocalAttachment | null>(null);
   const [data, setData] = useState<ReturnType<typeof diagnostics> | null>(null);
@@ -430,7 +431,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
     const started = Date.now();
     rec.ondataavailable = (e) => {
       size += e.data.size;
-      if (size <= FEEDBACK_VIDEO_BYTES) chunks.push(e.data);
+      if (size <= videoLimit) chunks.push(e.data);
       else if (rec.state === 'recording') rec.stop();
     };
     discardRecording.current = false;
@@ -484,10 +485,13 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       const item = local(file, isVideo ? 'video' : 'file', file.name);
       if (!ACCEPTED.test(file.type) && !ACCEPTED_NAME.test(file.name))
         item.error = t('feedback.typeRefused');
-      else if (isVideo && file.size > FEEDBACK_VIDEO_BYTES)
-        item.error = t('feedback.videoTooBig', {
-          size: formatStorage(file.size, i18n.language),
-        });
+      else if (isVideo && file.size > videoLimit)
+        item.error = t(
+          status?.destination === 'relay' ? 'feedback.relayVideoTooBig' : 'feedback.videoTooBig',
+          {
+            size: formatStorage(file.size, i18n.language),
+          },
+        );
       else if (!isVideo && file.size > FEEDBACK_FILE_BYTES)
         item.error = t('feedback.fileTooBig', {
           size: formatStorage(file.size, i18n.language),
@@ -680,11 +684,18 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       <Icon name="lock" size={14} />
       <span>
         {guest
-          ? t('feedback.privacyGuest')
-          : t(status?.destination === 'inbox' ? 'feedback.privacyInbox' : 'feedback.privacy', {
-              days: status?.retentionDays ?? 90,
-            })}{' '}
-        {t('feedback.linkPrivacy')}
+          ? t(status?.destination === 'relay' ? 'feedback.privacyRelay' : 'feedback.privacyGuest')
+          : t(
+              status?.destination === 'relay'
+                ? 'feedback.privacyRelay'
+                : status?.destination === 'inbox'
+                  ? 'feedback.privacyInbox'
+                  : 'feedback.privacy',
+              {
+                days: status?.retentionDays ?? 90,
+              },
+            )}{' '}
+        {t(status?.destination === 'relay' ? 'feedback.relayLimits' : 'feedback.linkPrivacy')}
       </span>
     </p>
   );
@@ -829,6 +840,9 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
           />
         )}
         {shotBlock()}
+        {status?.destination === 'relay' && (
+          <p className="feedback-text">{t('feedback.relayLimits')}</p>
+        )}
         {!guest && (
           <div className="feedback-row feedback-att">
             <Button
@@ -882,7 +896,9 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
           <div className="feedback-drop">
             <Icon name="upload" size={20} />
             {t('feedback.dropHere')}
-            <span>{t('feedback.dropLimits')}</span>
+            <span>
+              {t(status?.destination === 'relay' ? 'feedback.relayLimits' : 'feedback.dropLimits')}
+            </span>
           </div>
         ) : (
           files.length > 0 && (
@@ -923,7 +939,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
             <div key={part}>{partChoice(part)}</div>
           ))}
         </fieldset>
-        {guest && privacy}
+        {privacy}
       </>
     );
   }
@@ -1062,22 +1078,25 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   function doneBody() {
     const reference = receipt?.reference ?? '';
     const repository = receipt?.issueUrl?.match(/github\.com\/[^/]+\/([^/]+)\//)?.[1];
-    const message = receipt?.duplicate ? (
-      <>
-        {t('feedback.knownError')} <code>{reference}</code>.
-      </>
-    ) : receipt?.delivery === 'inbox' ? (
-      t('feedback.sentInbox')
-    ) : receipt?.issueUrl ? (
-      <>
-        {t('feedback.openedAs')} <code>{`${repository}${reference}`}</code>.
-      </>
-    ) : (
-      <>
-        {t('feedback.referenceIs')} <code>{reference}</code>
-        {t('feedback.referenceHint')}
-      </>
-    );
+    const message =
+      status?.destination === 'relay' && receipt?.delivery !== 'delivered' ? (
+        t('feedback.relayUnavailable')
+      ) : receipt?.duplicate ? (
+        <>
+          {t('feedback.knownError')} <code>{reference}</code>.
+        </>
+      ) : receipt?.delivery === 'inbox' ? (
+        t('feedback.sentInbox')
+      ) : receipt?.issueUrl ? (
+        <>
+          {t('feedback.openedAs')} <code>{`${repository}${reference}`}</code>.
+        </>
+      ) : (
+        <>
+          {t('feedback.referenceIs')} <code>{reference}</code>
+          {t('feedback.referenceHint')}
+        </>
+      );
     return (
       <div className="feedback-done">
         <span className="feedback-done__icon">
@@ -1271,7 +1290,11 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
                   <div className="feedback-send feedback-send--notes">
                     <p>
                       <Icon name="clock" size={14} />
-                      {t('feedback.recordLimit')}
+                      {t(
+                        status?.destination === 'relay'
+                          ? 'feedback.relayRecordLimit'
+                          : 'feedback.recordLimit',
+                      )}
                     </p>
                     <p>
                       <Icon name="eyeOff" size={14} />

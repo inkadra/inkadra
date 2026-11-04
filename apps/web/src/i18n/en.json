@@ -3521,7 +3521,8 @@
     "destinations": {
       "github": "GitHub, in a private repository",
       "inbox": "Administrators’ Inbox only",
-      "off": "Off"
+      "off": "Off",
+      "relay": "Send to the Inkadra developers"
     },
     "repository": "Repository",
     "repositoryHelp": "Use a private repository: screenshots and logs can hold confidential material. Write it as owner/name.",
@@ -3574,6 +3575,13 @@
     "failure": "Reason: {{reason}}",
     "refusedBanner_one": "GitHub refused {{count}} report ({{reason}}): I am not retrying by myself. It is safe here; fix the token, repository or labels, then try again.",
     "refusedBanner_other": "GitHub refused {{count}} reports ({{reason}}): I am not retrying by myself. They are safe here; fix the token, repository or labels, then try again.",
-    "retryRefused": "Try again"
+    "retryRefused": "Try again",
+    "developers": "Send to the Inkadra developers",
+    "privacyRelay": "This report goes to the Inkadra developers in the private GitHub repository inkadra/inkadra-feedback through the Cloudflare relay. Selected text, screenshots, videos, files and logs leave this server and are read by the Inkadra team. We add no name, email or instance URL. Check the preview: attachments may contain personal data. GitHub attachments remain until removed by the team; local retention does not delete them.",
+    "relayLimits": "Relay: up to 25 MB per file or video, 32 MB total.",
+    "relayRecordLimit": "Up to 60 seconds and 25 MB; recording stops automatically.",
+    "relayVideoTooBig": "{{size}}: the relay accepts videos up to 25 MB.",
+    "relayUnavailable": "The relay has not confirmed delivery. Your report is saved on this server: pending reports retry; uncertain or refused reports need an administrator to check them.",
+    "relayRetentionHelp": "Local attachments only. GitHub copies remain until removed by the Inkadra team."
   }
 }

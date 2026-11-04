@@ -35,6 +35,7 @@ import {
   issueTitle,
   repeatComment,
 } from '../feedback.ts';
+import { RelayFailure, relayChallenge, relayMetadata, sendRelay } from '../feedback-relay.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import { sniffImage } from '../media/heic.ts';
 import { sniffVideo } from '../media/video.ts';
@@ -50,7 +51,7 @@ const HOUR = 3600000;
 const DAY = 24 * HOUR;
 const key = (id: string) => `feedback/${id}`;
 const defaults = {
-  destination: 'off',
+  destination: 'relay',
   repository: null,
   guests: false,
   retentionDays: FEEDBACK_RETENTION_DAYS,
@@ -100,7 +101,9 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       .where(eq(instanceSetting.key, 'feedback'));
     return {
       ...defaults,
-      ...FeedbackSettingsInput.parse(row?.value ?? defaults),
+      ...FeedbackSettingsInput.parse(
+        row?.value ?? { ...defaults, destination: config.FEEDBACK_RELAY_URL ? 'relay' : 'off' },
+      ),
       tokenConfigured: !!config.FEEDBACK_GITHUB_TOKEN,
     };
   }
@@ -111,7 +114,9 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
   }
   /** Destination chosen, repository named. A missing token only delays delivery. */
   const enabled = (s: Awaited<ReturnType<typeof settings>>) =>
-    s.destination === 'inbox' || (s.destination === 'github' && !!s.repository);
+    (s.destination === 'relay' && !!config.FEEDBACK_RELAY_URL) ||
+    s.destination === 'inbox' ||
+    (s.destination === 'github' && !!s.repository);
   const receipt = (row: typeof report.$inferSelect, role: string, duplicate = false) => ({
     id: row.id,
     reference: `#${row.issueNumber ?? `local-${row.number}`}`,
@@ -164,7 +169,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       .values({ key: 'feedback', value })
       .onConflictDoUpdate({ target: instanceSetting.key, set: { value, updatedAt: new Date() } });
     // Saving is how an administrator says the cause is fixed: refused reports go round again.
-    if (value.destination === 'github')
+    if (['github', 'relay'].includes(value.destination))
       await db
         .update(report)
         .set({ delivery: 'pending', failure: null, nextAttemptAt: new Date() })
@@ -255,10 +260,13 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
             throw new HttpError('rate_limited', 'Too many uploads.');
           }
           const kind = (req.query as { kind?: string }).kind;
+          const s = await settings();
           const max = guest
             ? 5 * 1024 * 1024
             : kind === 'video'
-              ? FEEDBACK_VIDEO_BYTES
+              ? s.destination === 'relay'
+                ? 25 * 1024 * 1024
+                : FEEDBACK_VIDEO_BYTES
               : FEEDBACK_FILE_BYTES;
           if (Number(req.headers['content-length']) > max)
             throw new HttpError('payload_too_large', 'Attachment is too large.');
@@ -286,10 +294,13 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           throw new HttpError('forbidden', 'Guests can attach only a screenshot.');
         if (!(req.body instanceof Readable))
           throw new HttpError('bad_request', 'A binary attachment is required.');
+        const s = await settings();
         const max = guest
           ? 5 * 1024 * 1024
           : q.kind === 'video'
-            ? FEEDBACK_VIDEO_BYTES
+            ? s.destination === 'relay'
+              ? 25 * 1024 * 1024
+              : FEEDBACK_VIDEO_BYTES
             : FEEDBACK_FILE_BYTES;
         // The clip- prefix puts what a crash leaves behind under sweepClipTemp.
         const dir = await mkdtemp(join(deps.tmpDir ?? tmpdir(), 'clip-feedback-'));
@@ -372,6 +383,12 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           new Set(input.attachments.map((a) => a.id)).size !== input.attachments.length
         )
           throw new HttpError('bad_request', 'Too many attachments.');
+        if (
+          s.destination === 'relay' &&
+          (input.attachments.some((a) => a.bytes > 25 * 1024 * 1024) ||
+            input.attachments.reduce((n, a) => n + a.bytes, 0) > 32 * 1024 * 1024)
+        )
+          throw new HttpError('payload_too_large', 'Relay allows 25 MB per file and 32 MB total.');
         const clean = {
           ...input,
           diagnostics: Object.fromEntries(
@@ -444,8 +461,8 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
               reporter,
               report: clean,
               destination: s.destination,
-              repository: s.repository,
-              delivery: s.destination === 'github' ? 'pending' : 'inbox',
+              repository: s.destination === 'relay' ? 'inkadra/inkadra-feedback' : s.repository,
+              delivery: ['github', 'relay'].includes(s.destination) ? 'pending' : 'inbox',
               signature: errorSignature(clean),
             })
             .returning();
@@ -490,7 +507,8 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
 
   /** One report at a time: nothing holds a database connection while GitHub is being called. */
   async function deliver(id: string) {
-    if (!config.FEEDBACK_GITHUB_TOKEN) return;
+    const current = await settings();
+    if (current.destination === 'github' && !config.FEEDBACK_GITHUB_TOKEN) return;
     // The claim makes each report one process's job. A crash after it leaves "uncertain":
     // shortcut: an administrator checks those by hand, reconcile by the id marker if they pile up.
     const [row] = await db
@@ -502,13 +520,49 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
     const repository = row.repository;
     // The administrator moved reporting elsewhere: what is queued stays here, never goes to the
     // repository that was chosen before.
-    const current = await settings();
-    if (current.destination !== 'github' || current.repository !== repository) {
+    if (
+      current.destination !== row.destination ||
+      (row.destination === 'github' && current.repository !== repository) ||
+      (row.destination === 'relay' && !config.FEEDBACK_RELAY_URL)
+    ) {
       await db.update(report).set({ delivery: 'inbox' }).where(eq(report.id, row.id));
       return;
     }
     let writing = false;
     try {
+      if (row.destination === 'relay') {
+        const candidate = randomBytes(24).toString('hex');
+        await db
+          .insert(instanceSetting)
+          .values({ key: 'feedback-install', value: { id: candidate } })
+          .onConflictDoNothing();
+        const [install] = await db
+          .select()
+          .from(instanceSetting)
+          .where(eq(instanceSetting.key, 'feedback-install'));
+        const ticket = await relayChallenge(config.FEEDBACK_RELAY_URL, String(install?.value.id));
+        if ((await settings()).destination !== 'relay') {
+          await db.update(report).set({ delivery: 'inbox' }).where(eq(report.id, row.id));
+          return;
+        }
+        const form = new FormData();
+        form.set('report', JSON.stringify({ ...relayMetadata(row.report), ...ticket }));
+        const files = await db.select().from(attachment).where(eq(attachment.reportId, row.id));
+        for (const [i, file] of files.entries()) {
+          const stream = await storage.read(key(file.id));
+          const chunks = [];
+          for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+          const bytes = Buffer.concat(chunks);
+          const body = file.mime === 'text/plain' ? redactFeedback(bytes.toString('utf8')) : bytes;
+          form.set(`attachment-${i}`, new Blob([body], { type: file.mime }), file.name);
+        }
+        const issueNumber = await sendRelay(config.FEEDBACK_RELAY_URL, form);
+        await db
+          .update(report)
+          .set({ delivery: 'delivered', issueNumber, failure: null })
+          .where(eq(report.id, row.id));
+        return;
+      }
       await github.requirePrivate(repository);
       let issueNumber: number | null = null;
       if (row.signature) {
@@ -567,18 +621,27 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         .set({ delivery: 'delivered', issueNumber, failure: null })
         .where(eq(report.id, row.id));
     } catch (error) {
-      const status = error instanceof GitHubRefused ? error.status : null;
+      const status =
+        error instanceof GitHubRefused || error instanceof RelayFailure ? error.status : null;
       const refused =
-        error instanceof GitHubNotPrivate || (error instanceof GitHubRefused && error.permanent);
+        error instanceof GitHubNotPrivate ||
+        ((error instanceof GitHubRefused || error instanceof RelayFailure) && error.permanent);
       // A 4xx created nothing. A lost connection or a 5xx during the write may have: sending it
       // again could open the issue twice, so an administrator looks instead.
-      const unknown = writing && !refused && (status === null || status >= 500);
+      const unknown =
+        error instanceof RelayFailure
+          ? error.uncertain
+          : writing && !refused && (status === null || status >= 500);
       const failure =
-        error instanceof GitHubNotPrivate
-          ? 'Repository is not private'
-          : status
-            ? `GitHub HTTP ${status}`
-            : 'No answer from GitHub';
+        error instanceof RelayFailure
+          ? `Relay unavailable (HTTP ${error.status})`
+          : row.destination === 'relay'
+            ? 'Relay unavailable'
+            : error instanceof GitHubNotPrivate
+              ? 'Repository is not private'
+              : status
+                ? `GitHub HTTP ${status}`
+                : 'No answer from GitHub';
       deps.log.warn({ report: row.id, failure }, 'Feedback delivery failed');
       await db
         .update(report)

@@ -3521,7 +3521,8 @@
     "destinations": {
       "github": "GitHub, in un repository privato",
       "inbox": "Solo Inbox degli amministratori",
-      "off": "Spente"
+      "off": "Spente",
+      "relay": "Invia agli sviluppatori di Inkadra"
     },
     "repository": "Repository",
     "repositoryHelp": "Usa un repository privato: screenshot e log possono contenere materiale riservato. Scrivilo come owner/nome.",
@@ -3574,6 +3575,13 @@
     "failure": "Motivo: {{reason}}",
     "refusedBanner_one": "GitHub ha rifiutato {{count}} segnalazione ({{reason}}): non riprovo da solo. Sono salve qui; correggi token, repository o etichette, poi riprova.",
     "refusedBanner_other": "GitHub ha rifiutato {{count}} segnalazioni ({{reason}}): non riprovo da solo. Sono salve qui; correggi token, repository o etichette, poi riprova.",
-    "retryRefused": "Riprova"
+    "retryRefused": "Riprova",
+    "developers": "Invia agli sviluppatori di Inkadra",
+    "privacyRelay": "La segnalazione va agli sviluppatori di Inkadra nel repository GitHub privato inkadra/inkadra-feedback tramite il relay Cloudflare. Testo, screenshot, video, file e log selezionati lasciano questo server e sono letti dal team Inkadra. Non aggiungiamo nome, email o URL dell’istanza. Controlla l’anteprima: gli allegati possono contenere dati personali. Gli allegati su GitHub restano fino alla rimozione da parte del team; la conservazione locale non li elimina.",
+    "relayLimits": "Relay: massimo 25 MB per file o video, 32 MB totali.",
+    "relayRecordLimit": "Massimo 60 secondi e 25 MB; la registrazione si ferma automaticamente.",
+    "relayVideoTooBig": "{{size}}: il relay accetta video fino a 25 MB.",
+    "relayUnavailable": "Il relay non ha confermato l’invio. La segnalazione è salvata su questo server: se in attesa verrà ritentata; se l’esito è incerto o rifiutato, l’amministratore deve verificarla.",
+    "relayRetentionHelp": "Solo gli allegati locali. Le copie su GitHub restano fino alla rimozione da parte del team Inkadra."
   }
 }

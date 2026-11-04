@@ -2,11 +2,24 @@
 
 Accepted design: #338, its approved mockup and the eleven decisions approved on 4 November 2026.
 
-Reports are disabled until an administrator chooses Inbox only or a private GitHub repository.
+Updated 4 November 2026 by Matteo: this supersedes the 31 October self-hoster restriction.
+Fresh installations send to the Inkadra developers by default through the public, credential-free
+inkadra-report-relay. An empty FEEDBACK_RELAY_URL disables it. Saved admin choices always win:
+existing own-repository installations keep the direct path. A Settings switch turns developer
+reporting off into Inbox; Inbox, own GitHub and Off remain available. Mandatory preview and the
+report dialog disclose the private destination, readers and departure of logs and attachments.
+The relay receives no reporter identity or instance URL; installation/network keys are HMACs.
+It repeats #420 text neutralisation at the trust boundary and applies ticket/PoW, single use,
+network/install quotas and daily caps. Selected files are committed to feedback-assets on the
+private inkadra/inkadra-feedback repository. Videos are 25 MiB (direct path: 100 MiB), reports
+32 MiB total. The durable instance queue and requestId remain authoritative; ambiguous relay
+writes become uncertain and permanent refusals stop. GitHub attachment retention is independent
+of instance retention. Deploy is manual, performed separately by the coordinator.
+
+For the direct GitHub path:
 Guests are disabled by default. The GitHub credential stays in a server environment variable;
 the token belongs to a service account with Issues read/write and Metadata read on one private
-repository. Visibility is checked before configuration and delivery. There is no automatic
-public destination and no attachment commits. Destination GitHub without a token keeps reports
+repository. Visibility is checked before configuration and delivery. There are no public issues; the direct path uses expiring instance attachment links. Destination GitHub without a token keeps reports
 local until the token exists, as the approved mockup shows.
 
 The browser rasterizes the current page, with the approved new `html-to-image` dependency.

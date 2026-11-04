@@ -1,0 +1,28 @@
+# Inkadra report relay. Deployed by tools/deploy-relay.sh (or .github/workflows/report-relay.yml),
+# which also sets the secrets (GITHUB_TOKEN, TICKET_SECRET); nothing secret lives here. REPO is the
+# default target: the deploy overrides it with FEEDBACK_REPO when that is set.
+name = "inkadra-report-relay"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[vars]
+REPO = "inkadra/inkadra-feedback"
+DAILY_LIMIT = "30"
+# About a second on a phone, milliseconds on a PC: a speed bump, not a wall.
+POW_BITS = "16"
+
+# Used tickets, report counters and the daily total, in one SQLite-backed Durable Object.
+[[durable_objects.bindings]]
+name = "METER"
+class_name = "Meter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Meter"]
+
+# Per-network rate limit on /challenge and /report (the key is an HMAC of the client IP).
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
