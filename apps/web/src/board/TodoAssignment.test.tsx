@@ -102,7 +102,7 @@ it('keeps empty controls on the active row or an explicitly opened picker only',
     const markup = renderToStaticMarkup(
       <TodoAssignment
         elementId="todo-card"
-        item={{ ...item, assigneeId: null, dueDate: null }}
+        item={{ ...item, assigneeId: undefined, dueDate: undefined }}
         editing={editing!}
         open={open!}
         onClose={() => {}}

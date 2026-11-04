@@ -152,6 +152,13 @@ for (const width of [1280, 390]) {
           await expect(card.locator('.todo-assignment__person')).toHaveCount(0);
           await card.locator('.card__todo-list .card__inline-input').first().focus();
           await expect(card.locator('.todo-assignment__person')).toHaveCount(1);
+          await card.locator('.card__todo-list .card__inline-input').first().press('End');
+          await card.locator('.card__todo-list .card__inline-input').first().press('@');
+          await expect(card.locator('.todo-assignment__picker')).toBeVisible();
+          await card.locator('.todo-assignment__picker input').press('Escape');
+          await expect(card.locator('.todo-assignment__picker')).toHaveCount(0);
+          await card.locator('.card__todo-list .card__inline-input').first().focus();
+          await card.locator('.card__todo-list .card__inline-input').first().press('End');
           await expect(card.locator('.card__todo-hint')).toHaveCount(1);
           await page.mouse.move(0, 0);
           await shot('editing');
