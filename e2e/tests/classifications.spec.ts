@@ -235,10 +235,14 @@ test('frames keep their values while admins change the storyboard lists', async 
       await page.goto('/settings?section=classifications');
       await shoot(page, '08-empty', async () => {
         await page.getByRole('button', { name: /^Angolazione\b/ }).click();
-        const archive = page
-          .locator('.catalogs__card', { hasText: 'Angolazione' })
-          .getByRole('button', { name: 'Archivia' });
-        while ((await archive.count()) > 0) await archive.first().dispatchEvent('click');
+        // One after the other, each on the state the previous click left.
+        await page.locator('.catalogs__card', { hasText: 'Angolazione' }).evaluate(async (card) => {
+          for (const button of card.querySelectorAll('button')) {
+            if (button.textContent !== 'Archivia') continue;
+            button.click();
+            await new Promise((resolve) => setTimeout(resolve, 30));
+          }
+        });
       });
       await page.route('**/api/v1/instance/classifications', (route) =>
         route.request().method() === 'GET'
