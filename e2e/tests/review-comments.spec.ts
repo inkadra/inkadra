@@ -177,7 +177,9 @@ test('comments, mentions, review status and notifications between two people', a
   await expect(card.getByRole('button', { name: /Revisione: Approvata/ })).toBeVisible();
   await panel.getByRole('button', { name: /^Revisione:/ }).click();
   const section = panel;
-  await expect(section.locator('.review-current').getByText('Pronta per il montaggio')).toBeVisible();
+  await expect(
+    section.locator('.review-current').getByText('Pronta per il montaggio'),
+  ).toBeVisible();
   await section.getByRole('button', { name: 'Cronologia' }).click();
   const history = section.getByRole('region', { name: 'Cronologia' });
   await expect(history.getByRole('listitem')).toHaveCount(1);
@@ -563,9 +565,7 @@ test('card comments keep their audience explicit and resolved conversations reac
   await expect.poll(async () => (await panel.boundingBox())?.height ?? Infinity).toBeLessThan(450);
   const thread = panel.locator('.comment-thread');
   await thread.getByRole('button', { name: 'Rispondi' }).first().click();
-  await expect(
-    thread.getByText('Anche gli ospiti leggono questa risposta.'),
-  ).toBeVisible();
+  await expect(thread.getByText('Anche gli ospiti leggono questa risposta.')).toBeVisible();
   if (process.env.COMMENTS_SHOTS_DIR) {
     for (const theme of ['light', 'dark']) {
       await page.evaluate(
@@ -616,7 +616,5 @@ test('card comments keep their audience explicit and resolved conversations reac
   const review = page.locator('.client-review');
   await expect(review.getByRole('button', { name: 'Cambia stato' })).toBeVisible();
   await review.getByRole('button', { name: 'Rispondi' }).first().click();
-  await expect(
-    review.getByText('Anche gli ospiti leggono questa risposta.'),
-  ).toBeVisible();
+  await expect(review.getByText('Anche gli ospiti leggono questa risposta.')).toBeVisible();
 });
