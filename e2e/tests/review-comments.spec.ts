@@ -479,3 +479,28 @@ test('the bell polls once a minute and on focus, and keeps paging short pages', 
   await expect(list).toHaveCount(0);
   await expect(readBell).toBeFocused();
 });
+
+test('a new comment resets to Team after sending or reopening a draft', async ({ page }) => {
+  await signIn(page);
+  const project = await api<{ id: string; rootBoardId: string }>(page, '/projects', 'POST', {
+    name: 'Audience reset',
+  });
+  await page.goto(`/p/${project.id}`);
+  await page.getByRole('button', { name: /^Commenti:/ }).click();
+  const panel = panelOf(page);
+  const box = panel.getByRole('combobox', { name: 'Commento' });
+  await panel.getByRole('radio', { name: 'Tutti', exact: true }).check();
+  await box.fill('Explicitly shared');
+  const sent = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith('/comments'),
+  );
+  await panel.getByRole('button', { name: 'Commenta', exact: true }).click();
+  expect((await sent).postDataJSON().visibility).toBe('everyone');
+  await expect(panel.getByRole('radio', { name: 'Team', exact: true })).toBeChecked();
+  await panel.getByRole('radio', { name: 'Tutti', exact: true }).check();
+  await box.fill('Private draft');
+  await panel.getByRole('button', { name: 'Chiudi i commenti' }).click();
+  await page.getByRole('button', { name: 'Commenti: 1 discussione aperta' }).click();
+  await expect(box).toHaveValue('Private draft');
+  await expect(panel.getByRole('radio', { name: 'Team', exact: true })).toBeChecked();
+});
