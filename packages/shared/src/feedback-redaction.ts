@@ -4,7 +4,7 @@ export function redactFeedback(text: string): string {
   return (
     text
       .replace(
-        /(?:authorization|proxy-authorization|cookie|set-cookie)\s*[:=]\s*[^\r\n]+/gi,
+        /(?:authorization|proxy-authorization|cookie|set-cookie)["']?\s*[:=]\s*[^\r\n]+/gi,
         '[redacted header]',
       )
       .replace(/\b(?:Bearer|Basic)\s+\S+/gi, '[redacted credential]')
@@ -12,17 +12,30 @@ export function redactFeedback(text: string): string {
         /\b(?:gh[pousr]_\w+|github_pat_\w+|glpat-[\w-]+|ink_[\w.-]+|xox[abprs]-[\w-]+|sk-[\w-]{16,}|AKIA[0-9A-Z]{16}|eyJ[\w-]+\.[\w-]+\.[\w-]+)\b/g,
         '[redacted token]',
       )
-      .replace(/(?:https?|wss?):\/\/[^\s<>"']+/gi, '[redacted URL]')
+      // Any scheme: database and cache addresses carry their password in the URL.
+      .replace(/\b[a-z][a-z0-9+.-]*:\/\/[^\s<>"']+/gi, '[redacted URL]')
+      // A quoted value ends at its quote; an unquoted one may hold commas and spaces, so the rest
+      // of the line goes with it. An error's name ("TokenError: …") is not a secret's name.
       .replace(
-        /[\w-]{0,40}(?:password|passwd|pwd|secret|token|api[-_]?key|access[-_]?key|private[-_]?key|session|(?<![a-z])sid(?![a-z]))[\w-]{0,40}["']?\s*[:=]\s*["']?[^\s,;"'}]+/gi,
+        /[\w-]{0,40}(?:password|passwd|passphrase|pwd|secret|token|api[-_]?key|access[-_]?key|private[-_]?key|session|(?<![a-z])sid(?![a-z]))[\w-]{0,40}(?<!Error|Exception)["']?\s*[:=]\s*(?:"[^"\r\n]*"?|'[^'\r\n]*'?|[^\r\n]*)/gi,
         '[redacted secret]',
       )
-      .replace(/\/(?:s|share|guest\/by-token|calendar)\/[^\s?#]+/gi, '/[redacted link]')
+      .replace(
+        /\/(?:s|share|guest\/by-token|calendar|reset-password|reset|join|invite|invitations|magic-link|verify-email)\/[^\s?#]+/gi,
+        '/[redacted link]',
+      )
       .replace(/\?(?!\[redacted)[^\s<>"']*/g, '?[redacted query]')
       .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[redacted email]')
       .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[id]')
-      // Bare share-link tokens and other opaque credentials have no prefix to recognise.
-      .replace(/(?<![\w.-])[A-Za-z0-9_-]{32,}(?![\w-]|\.\w)/g, '[redacted token]')
+      // Bare share-link tokens and other opaque credentials have no prefix to recognise. Base64
+      // holds + and /; a long path holds / too, but short plain words between them.
+      .replace(/(?<![\w+/-])[A-Za-z0-9_+/-]{32,}={0,2}(?![\w+/-])/g, (found) =>
+        /[+=]/.test(found) ||
+        found.split('/').some((part) => part.length >= 24) ||
+        (/[a-z]/.test(found) && /[A-Z]/.test(found) && /\d/.test(found))
+          ? '[redacted token]'
+          : found,
+      )
   );
 }
 export function feedbackPage(path: string): string {
