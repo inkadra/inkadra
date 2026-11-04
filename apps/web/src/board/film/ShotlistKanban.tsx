@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type FrameElement, formatDuration, updateElement } from '@inkadra/canvas-core';
-import { type AspectRatio, SHOT_SIZES } from '@inkadra/doc-schema';
+import { type AspectRatio } from '@inkadra/doc-schema';
 import { Icon, Select } from '@inkadra/ui';
 import { type DragEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -158,7 +158,7 @@ export function ShotlistKanban({
               ) : null}
               {visibleFrames.map((f) => {
                 const label = labels.get(f.id) ?? '';
-                const lensOrShot = f.lens || presetText('film.shot', SHOT_SIZES, f.shot);
+                const lensOrShot = f.lens || presetText('shotSizes', f.shot);
                 const isSelected = selected === f.id;
                 return (
                   <article

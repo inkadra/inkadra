@@ -12,6 +12,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePresetText } from '../board/film/fields.tsx';
 import { useNavigate } from 'react-router';
 import * as Y from 'yjs';
 import { pickVariant, useAsset } from '../board/assets.ts';
@@ -141,6 +142,7 @@ function InboxDetailContent({
   refreshThreadId?: string;
 }) {
   const { t, i18n } = useTranslation();
+  const presetText = usePresetText();
   const navigate = useNavigate();
   const [boardDetail, setBoardDetail] = useState<BoardDetail | null>(null);
   const [threads, setThreads] = useState<CommentThread[]>([]);
@@ -515,8 +517,15 @@ function InboxDetailContent({
                 </span>
               )}
               {element?.type === 'frame' &&
-                (['shot', 'angle', 'movement', 'lens', 'location'] as const).map((field) =>
-                  element[field] ? <span key={field}>{element[field]}</span> : null,
+                [
+                  presetText('shotSizes', element.shot),
+                  presetText('shotAngles', element.angle),
+                  presetText('shotMovements', element.movement),
+                  element.lens,
+                  element.location,
+                ].map((text, i) =>
+                  // biome-ignore lint/suspicious/noArrayIndexKey: the five fields never move
+                  text ? <span key={i}>{text}</span> : null,
                 )}
               {notification.boardTitle && (
                 <span>

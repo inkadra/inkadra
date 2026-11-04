@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import { resetAssetCache, setAssetLoader } from '../board/assets.ts';
 import { FeedbackLauncher } from '../feedback/Feedback.tsx';
+import { useGuestShotCatalogs } from '../lib/classifications.ts';
 import { NoSessionProvider } from '../lib/session.tsx';
 import { guestApi } from './api.ts';
 import { GuestBoardScreen } from './GuestBoard.tsx';
@@ -56,6 +57,7 @@ function GuestLinkPage({ token }: { token: string }) {
   const [gate, setGate] = useState<Gate>({ kind: 'loading' });
   const recovery = useRef(new SessionRecovery());
   useGuestDocument();
+  useGuestShotCatalogs(gate.kind === 'ready' ? gate.session.shotCatalogs : undefined);
 
   const start = useCallback(async () => {
     // A newer start (a reopen, or a second effect run) makes every answer of this one stale.

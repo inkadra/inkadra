@@ -10,6 +10,7 @@ import {
 import {
   ArchiveAsset,
   ArchiveBoard,
+  ArchiveClassifications,
   ArchiveComment,
   ArchiveExportSettings,
   ArchivePerson,
@@ -26,12 +27,14 @@ import {
   ProjectArchiveManifest,
   type TransferSummary,
   z,
+  SHOT_CATALOG_KEYS,
 } from '@inkadra/shared';
 import { desc, eq, ne, sql } from 'drizzle-orm';
 import type { PgInsertValue, PgTable } from 'drizzle-orm/pg-core';
 import { generateKeyBetween } from 'fractional-indexing';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
+import { readClassifications } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import {
   asset,
@@ -172,6 +175,13 @@ export async function importProject(
       }),
       { current: [], history: [] },
     );
+    // Only `shots` is read: the rest of this file has never been checked on import.
+    const archiveShots = await optionalJson(
+      zip,
+      'classifications.json',
+      ArchiveClassifications.pick({ shots: true }),
+      {},
+    );
     const exportSettings = await optionalJson(
       zip,
       'export-settings.json',
@@ -264,10 +274,16 @@ export async function importProject(
       bytesDone += size;
       await progress(0.05 + 0.85 * (bytesDone / totalBytes));
     }
+    const catalogs = await readClassifications(db);
+    const here = new Set(SHOT_CATALOG_KEYS.flatMap((key) => catalogs[key].map((o) => o.id)));
+    const shotText = new Map(
+      (archiveShots.shots ?? []).filter((o) => !here.has(o.id)).map((o) => [o.id, o.label]),
+    );
     const maps = {
       boards: boardIds,
       assets: new Map([...stored].map(([from, file]) => [from, file.id])),
       person,
+      shotText,
     };
     /** A document of the archive, checked, migrated and pointing at this project's ids. */
     const document = async (name: string, boardId: string) => {

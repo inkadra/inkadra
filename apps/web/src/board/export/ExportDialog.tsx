@@ -4,6 +4,7 @@ import type { Board, ExportPreset, ExportSettings } from '@inkadra/shared';
 import { Button, Dialog, DialogActions, type DialogHandle, Icon, Select } from '@inkadra/ui';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { refreshClassifications } from '../../lib/classifications.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import { getReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
@@ -53,6 +54,14 @@ export interface ExportDialogProps {
 
 // The engine (pdf-lib, fontkit, Inter) loads only when the dialog opens.
 const engine = () => import('./engine.ts');
+// The pages show the names of the storyboard lists, whichever view opened the dialog.
+let catalogsRequest: Promise<void> | null = null;
+const catalogsLoaded = () => {
+  catalogsRequest ??= refreshClassifications().finally(() => {
+    catalogsRequest = null;
+  });
+  return catalogsRequest;
+};
 
 export function ExportDialog(props: ExportDialogProps) {
   const { source, store, projectId, boardId, onClose } = props;
@@ -159,6 +168,7 @@ export function ExportDialog(props: ExportDialogProps) {
     setProgress(null);
     try {
       const { exportFile, downloadBlob } = await engine();
+      await catalogsLoaded();
       const { blob, name } = await exportFile(req, envRef.current, {
         signal: controller.signal,
         onProgress: setProgress,
@@ -616,6 +626,7 @@ function Preview({
           import('./layout.ts'),
         ]);
         await document.fonts.load('600 12px Inter');
+        await catalogsLoaded();
         const built = await buildPages(req, env.current, {
           preview: true,
           signal: controller.signal,

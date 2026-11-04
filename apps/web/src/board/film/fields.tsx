@@ -1,7 +1,9 @@
+import { CATALOG_UUID, type ShotCatalogKey } from '@inkadra/shared';
 import { FRAME_STATUSES, type FrameStatus } from '@inkadra/doc-schema';
 import { Select } from '@inkadra/ui';
 import { type KeyboardEvent, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { shotOptionLabel, shotText, useShotCatalogs } from '../../lib/classifications.ts';
 import type { ShotDisplayStatus } from './film-status.ts';
 
 /**
@@ -80,24 +82,26 @@ const CUSTOM = '\u0000custom';
 export function PresetField({
   label,
   value,
-  codes,
-  prefix,
+  catalog,
   onCommit,
   readOnly,
   compact,
 }: {
   label: string;
   value: string | undefined;
-  codes: readonly string[];
-  /** i18n prefix of the codes, e.g. "film.shot". */
-  prefix: string;
+  /** The catalog of the instance with the values of this field. */
+  catalog: ShotCatalogKey;
   onCommit: (value: string | undefined) => void;
   readOnly: boolean;
   compact?: boolean;
 }) {
   const { t } = useTranslation();
   const id = useId();
-  const isCode = !value || codes.includes(value);
+  const options = useShotCatalogs()[catalog];
+  const inCatalog = !!value && options.some((o) => o.id === value);
+  // A value added to a catalog not loaded yet stays selected, and its id is never shown as text.
+  const notLoaded = !!value && !inCatalog && CATALOG_UUID.test(value);
+  const isCode = !value || inCatalog || notLoaded;
   const [custom, setCustom] = useState(!isCode);
   const showText = custom || !isCode;
   const select = (
@@ -119,11 +123,15 @@ export function PresetField({
       }}
     >
       <option value="">{t('film.frame.none')}</option>
-      {codes.map((c) => (
-        <option key={c} value={c}>
-          {t(`${prefix}.${c}`)}
-        </option>
-      ))}
+      {/* An archived value leaves the menu, except on the frames that already use it. */}
+      {options
+        .filter((o) => !o.archived || o.id === value)
+        .map((o) => (
+          <option key={o.id} value={o.id}>
+            {shotOptionLabel(catalog, o, t)}
+          </option>
+        ))}
+      {notLoaded && <option value={value}>{t('film.frame.unavailable')}</option>}
       <option value={CUSTOM}>{t('film.frame.custom')}</option>
     </Select>
   );
@@ -163,11 +171,12 @@ export function PresetField({
   );
 }
 
-/** Translated text of a preset field: the label of a code, or the text as typed. */
+/** Text of a preset field: the name of a catalog value, or the text as typed. */
 export function usePresetText() {
   const { t } = useTranslation();
-  return (prefix: string, codes: readonly string[], value: string | undefined) =>
-    value ? (codes.includes(value) ? t(`${prefix}.${value}`) : value) : '';
+  const catalogs = useShotCatalogs();
+  return (catalog: ShotCatalogKey, value: string | undefined) =>
+    shotText(catalogs, catalog, value, t);
 }
 
 export function StatusSelect({

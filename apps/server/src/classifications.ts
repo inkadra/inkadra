@@ -1,7 +1,9 @@
 import {
+  CATALOG_UUID,
   ClassificationCatalogs,
   type ClassificationOption,
   DEFAULT_CLASSIFICATIONS,
+  SHOT_CATALOG_KEYS,
 } from '@inkadra/shared';
 import { eq } from 'drizzle-orm';
 import type { Database } from './db/client.ts';
@@ -23,7 +25,7 @@ export function validateCatalogUpdate(
 ) {
   if (current.revision !== next.revision)
     throw new HttpError('conflict', 'Configuration changed. Reload and try again.');
-  for (const key of ['projectTypes', 'tags'] as const) {
+  for (const key of ['projectTypes', 'tags', ...SHOT_CATALOG_KEYS] as const) {
     const ids = new Set<string>();
     const labels = new Set<string>();
     for (const option of next[key]) {
@@ -36,7 +38,7 @@ export function validateCatalogUpdate(
       if (previous && previous.legacy !== option.legacy)
         throw new HttpError('bad_request', 'Legacy bindings are immutable.');
       if (!previous) {
-        if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(option.id))
+        if (!CATALOG_UUID.test(option.id))
           throw new HttpError('bad_request', 'New options require UUID identifiers.');
         option.legacy =
           key === 'tags'

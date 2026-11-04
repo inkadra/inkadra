@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type FrameElement, type SceneGroup, variantView } from '@inkadra/canvas-core';
-import { SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
 import type { ExportSettings } from '@inkadra/shared';
 import { Button, Icon, IconButton, KeyCap } from '@inkadra/ui';
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -176,10 +175,10 @@ export function PresentationView({
           location: scene?.location || frame.location,
           action: frame.action || frame.notes || '',
           specs: {
-            shot: frame.shot ? getPreset('film.shot', SHOT_SIZES, frame.shot) : undefined,
+            shot: frame.shot ? getPreset('shotSizes', frame.shot) : undefined,
             lens: frame.lens,
             movement: frame.movement
-              ? getPreset('film.movement', SHOT_MOVEMENTS, frame.movement)
+              ? getPreset('shotMovements', frame.movement)
               : undefined,
             duration: frame.durationMs ? `${Math.round(frame.durationMs / 1000)} s` : undefined,
             audio: frame.audio ? t('present.audio', { value: frame.audio }) : undefined,

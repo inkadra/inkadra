@@ -3,9 +3,6 @@ import {
   ASPECT_RATIOS,
   type AspectRatio,
   type Element,
-  SHOT_ANGLES,
-  SHOT_MOVEMENTS,
-  SHOT_SIZES,
 } from '@inkadra/doc-schema';
 import type { SearchResult } from '@inkadra/shared';
 import { Button, Icon, IconButton, Select } from '@inkadra/ui';
@@ -237,16 +234,14 @@ export function FramePanel({
           <PresetField
             label={t('film.frame.shot')}
             value={frame.shot}
-            codes={SHOT_SIZES}
-            prefix="film.shot"
+            catalog="shotSizes"
             readOnly={readOnly}
             onCommit={(shot) => set({ shot })}
           />
           <PresetField
             label={t('film.frame.angle')}
             value={frame.angle}
-            codes={SHOT_ANGLES}
-            prefix="film.angle"
+            catalog="shotAngles"
             readOnly={readOnly}
             onCommit={(angle) => set({ angle })}
           />
@@ -255,8 +250,7 @@ export function FramePanel({
           <PresetField
             label={t('film.frame.movement')}
             value={frame.movement}
-            codes={SHOT_MOVEMENTS}
-            prefix="film.movement"
+            catalog="shotMovements"
             readOnly={readOnly}
             onCommit={(movement) => set({ movement })}
           />
