@@ -615,6 +615,8 @@ test('card comments keep their audience explicit and resolved conversations reac
   await page.goto(`/p/${project.id}?view=review`);
   const review = page.locator('.client-review');
   await expect(review.getByRole('button', { name: 'Cambia stato' })).toBeVisible();
+  await expect(review.locator('.comment-thread').first()).toHaveCSS('border-top-width', '0px');
   await review.getByRole('button', { name: 'Rispondi' }).first().click();
   await expect(review.getByText('Anche gli ospiti leggono questa risposta.')).toBeVisible();
+  await captureComments(page, 'review-view');
 });

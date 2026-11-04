@@ -373,7 +373,7 @@ button.review-link:hover:not(:disabled) {
   flex-direction: column;
   gap: 8px;
   padding: 12px 0;
-  border-top: 1px solid var(--ink-border-muted);
+  border-top: 0;
 }
 .comment-thread.is-resolved {
   background: transparent;
@@ -989,8 +989,8 @@ body[data-comments-on-board="off"] .comment-pin {
 .comment-thread[data-unread] {
   padding-left: 14px;
 }
-.comment-thread:first-child {
-  border-top: 0;
+.comment-thread + .comment-thread {
+  border-top: 1px solid var(--ink-border-muted);
 }
 .comment-replies .comment-thread__more {
   opacity: 0;
