@@ -66,3 +66,12 @@ it('never retries a successful write with a malformed receipt blindly', async ()
   const { base } = await fake(201, 'invalid JSON');
   await expect(sendRelay(base, new FormData())).rejects.toMatchObject({ uncertain: true });
 });
+
+it('retries a relay failure explicitly confirmed before any issue write', async () => {
+  const { base } = await fake(503, JSON.stringify({ error: 'daily limit', uncertain: false }));
+  await expect(sendRelay(base, new FormData())).rejects.toMatchObject({
+    status: 503,
+    permanent: false,
+    uncertain: false,
+  });
+});

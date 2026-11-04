@@ -95,7 +95,7 @@ export default {
       if (path === '/health') return json({ ok: true });
       return json({ error: 'not found' }, 404);
     } catch (e) {
-      if (e instanceof HttpError) return json({ error: e.message }, e.status, e.headers);
+      if (e instanceof HttpError) return json({ error: e.message, ...(e.status >= 500 && typeof e.uncertain === 'boolean' ? {uncertain: e.uncertain} : {}) }, e.status, e.headers);
       console.error('Relay request failed');
       return json({ error: 'relay error' }, 502);
     }
@@ -103,10 +103,11 @@ export default {
 };
 
 class HttpError extends Error {
-  constructor(status, message, headers = {}) {
+  constructor(status, message, headers = {}, uncertain) {
     super(message);
     this.status = status;
     this.headers = headers;
+    this.uncertain = uncertain;
   }
 }
 
@@ -144,57 +145,64 @@ async function challenge(request, env) {
 // ---- Report -------------------------------------------------------------------------------
 
 async function report(request, env) {
-  const who = await client(request, env);
-  await rateLimit(env, who);
-  const length = Number(request.headers.get('content-length') ?? 0);
-  if (length > MAX_FORM) throw new HttpError(413, 'too large');
-  const form = await boundedFormData(request);
-  let meta;
+  let writing = false;
   try {
-    meta = JSON.parse(form.get('report'));
-  } catch {
-    throw new HttpError(400, 'report');
+    const who = await client(request, env);
+    await rateLimit(env, who);
+    const length = Number(request.headers.get('content-length') ?? 0);
+    if (length > MAX_FORM) throw new HttpError(413, 'too large');
+    const form = await boundedFormData(request);
+    let meta;
+    try {
+      meta = JSON.parse(form.get('report'));
+    } catch {
+      throw new HttpError(400, 'report');
+    }
+    const { installId, ticket, powNonce } = meta;
+    if (!validInstallId(installId)) throw new HttpError(400, 'installId');
+
+    const payload = await verify(env, ticket);
+    if (!payload) throw new HttpError(403, 'ticket');
+    if (payload.ih !== (await hmacHex(env.TICKET_SECRET, `install:${installId}`))) throw new HttpError(403, 'ticket');
+    const now = nowSeconds();
+    if (now < payload.nbf) throw new HttpError(403, 'early', { 'retry-after': String(payload.nbf - now) });
+    if (now > payload.exp) throw new HttpError(403, 'expired');
+    if (!(await powOk(payload.seed, powNonce, payload.bits))) throw new HttpError(403, 'pow');
+
+    const r = sanitizeReport(meta);
+    const files = collectFiles(form);
+
+    // One atomic step in the Durable Object: refuse a used ticket, a full day or a report sent before
+    // the wait, else mark the ticket used and count the report. It happens before the GitHub calls,
+    // so a GitHub failure still uses up the ticket (the app then asks for a new one); that's the
+    // price of never letting one ticket open two issues.
+    const claim = await meter(env).claim(ticket.split('.')[1], meterKeys(payload.ih, who), dailyLimit(env));
+    if (!claim.ok) {
+      const headers = claim.retryAfter ? { 'retry-after': String(claim.retryAfter) } : {};
+      throw new HttpError(claim.status, claim.error, headers);
+    }
+
+    const gh = github(env);
+    await gh.requirePrivate();
+    const folder = `reports/${new Date().toISOString().slice(0, 10)}-${randomHex(4)}`;
+    const stored = [];
+    if (files.length) await gh.ensureAssetsBranch();
+    for (const f of files) {
+      const path = `${folder}/${f.name}`;
+      await gh.putFile(path, f.file, `Report attachment: ${f.name}`);
+      stored.push({ ...f, path, url: `https://github.com/${env.REPO}/blob/${ASSETS_BRANCH}/${encodePath(path)}` });
+    }
+    writing = true;
+    const issue = await gh.createIssue({
+      title: issueTitle(r),
+      body: issueBody(r, stored),
+      labels: ['from-app', r.kind === 'problem' ? 'bug' : r.kind, `area:${r.area}`],
+    });
+    return json({ url: issue.html_url, number: issue.number }, 201);
+  } catch (error) {
+    if (error instanceof HttpError) { error.uncertain = writing; throw error; }
+    throw new HttpError(502, 'relay error', {}, writing);
   }
-  const { installId, ticket, powNonce } = meta;
-  if (!validInstallId(installId)) throw new HttpError(400, 'installId');
-
-  const payload = await verify(env, ticket);
-  if (!payload) throw new HttpError(403, 'ticket');
-  if (payload.ih !== (await hmacHex(env.TICKET_SECRET, `install:${installId}`))) throw new HttpError(403, 'ticket');
-  const now = nowSeconds();
-  if (now < payload.nbf) throw new HttpError(403, 'early', { 'retry-after': String(payload.nbf - now) });
-  if (now > payload.exp) throw new HttpError(403, 'expired');
-  if (!(await powOk(payload.seed, powNonce, payload.bits))) throw new HttpError(403, 'pow');
-
-  const r = sanitizeReport(meta);
-  const files = collectFiles(form);
-
-  // One atomic step in the Durable Object: refuse a used ticket, a full day or a report sent before
-  // the wait, else mark the ticket used and count the report. It happens before the GitHub calls,
-  // so a GitHub failure still uses up the ticket (the app then asks for a new one); that's the
-  // price of never letting one ticket open two issues.
-  const claim = await meter(env).claim(ticket.split('.')[1], meterKeys(payload.ih, who), dailyLimit(env));
-  if (!claim.ok) {
-    const headers = claim.retryAfter ? { 'retry-after': String(claim.retryAfter) } : {};
-    throw new HttpError(claim.status, claim.error, headers);
-  }
-
-  const gh = github(env);
-  await gh.requirePrivate();
-  const folder = `reports/${new Date().toISOString().slice(0, 10)}-${randomHex(4)}`;
-  const stored = [];
-  if (files.length) await gh.ensureAssetsBranch();
-  for (const f of files) {
-    const path = `${folder}/${f.name}`;
-    await gh.putFile(path, f.file, `Report attachment: ${f.name}`);
-    stored.push({ ...f, path, url: `https://github.com/${env.REPO}/blob/${ASSETS_BRANCH}/${encodePath(path)}` });
-  }
-  const issue = await gh.createIssue({
-    title: issueTitle(r),
-    body: issueBody(r, stored),
-    labels: ['from-app', r.kind === 'problem' ? 'bug' : r.kind, `area:${r.area}`],
-  });
-  return json({ url: issue.html_url, number: issue.number }, 201);
 }
 
 async function boundedFormData(request) {
@@ -367,7 +375,7 @@ function github(env) {
     if (res.status === 404 && method === 'GET') return null;
     if (!res.ok) {
       console.error('GitHub HTTP', res.status);
-      throw new HttpError([401, 404, 410, 422, 451].includes(res.status) ? res.status : 502, `github ${res.status}`);
+      throw new HttpError(res.status < 500 ? res.status : 502, `github ${res.status}`);
     }
     return res.status === 204 ? {} : res.json();
   };

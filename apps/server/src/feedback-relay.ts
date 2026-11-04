@@ -86,7 +86,12 @@ export async function sendRelay(base: string, form: FormData) {
   } catch {
     throw new RelayFailure(502, true);
   }
-  if (!res.ok) throw new RelayFailure(res.status, res.status >= 500);
+  if (!res.ok) {
+    // Only the relay can confirm it failed before calling GitHub's issue write. A proxy error
+    // or a lost answer carries no such confirmation and must remain uncertain.
+    const error = (await res.json().catch(() => null)) as { uncertain?: boolean } | null;
+    throw new RelayFailure(res.status, res.status >= 500 && error?.uncertain !== false);
+  }
   try {
     const result = (await res.json()) as { number: number };
     if (!Number.isSafeInteger(result.number) || result.number < 1)

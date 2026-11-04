@@ -525,3 +525,22 @@ test('generated duplicate names cannot collide with another submitted name', () 
  assert.ok(!output.includes('@dev')); assert.ok(!output.includes('https://evil.test')); assert.ok(!output.includes('deadbeef'));
  assert.ok(output.includes('\\<img\\>'));
  });
+
+
+test('distinguishes pre-write failures from ambiguous GitHub writes', async () => {
+  for (const duringWrite of [false, true]) {
+    const e = env();
+    mockGitHub();
+    const fakeFetch = globalThis.fetch;
+    globalThis.fetch = async (url, init) => {
+      if ((duringWrite && url.endsWith('/issues')) || (!duringWrite && url === 'https://api.github.com/repos/o/r')) return new Response('{}', {status: 500});
+      return fakeFetch(url, init);
+    };
+    const t = await ticketFor(e);
+    await later(5000, async () => {
+      const response = await sendReport(e, reportForm(t, await solve(t.seed, t.bits)));
+      assert.equal(response.status, 502);
+      assert.equal((await response.json()).uncertain, duringWrite);
+    });
+  }
+});
