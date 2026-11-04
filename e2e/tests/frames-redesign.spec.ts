@@ -117,15 +117,11 @@ for (const theme of ['dark', 'light'] as const)
             return !button.contains(top);
           });
         expect(await covered()).toBe(false);
-        await page.getByRole('button', { name: 'Commenti', exact: true }).first().click();
+        await page.locator('.comments-button').click();
         await expect(page.locator('.comments-panel')).toBeVisible();
         expect(await covered()).toBe(false);
         if (out) await page.screenshot({ path: `${out}/1280-${theme}-comments.png` });
-        await page
-          .locator('.comments-panel')
-          .getByRole('button', { name: /Chiudi/ })
-          .first()
-          .click();
+        await page.locator('.comments-button').click();
         await expect(page.locator('.comments-panel')).toHaveCount(0);
       }
       await page.getByRole('button', { name: 'Disegna', exact: true }).last().click();
@@ -182,7 +178,7 @@ for (const theme of ['dark', 'light'] as const)
         if (out) await page.screenshot({ path: `${out}/1280-dark-drop.png` });
         await page.mouse.up();
         await expect(page.locator(`[data-el="${image.id}"]`)).toHaveCount(0);
-        await expect(page.locator('.toast')).toContainText('Immagine inserita in 1');
+        await expect(page.locator('.toast:not([inert])')).toContainText('Immagine inserita in 1');
         await page.keyboard.press('Control+z');
         await expect(page.locator(`[data-el="${image.id}"]`)).toBeVisible();
         await expect(page.locator(`[data-el="${frame.id}"] .frame-pic__ink path`)).toHaveCount(1);
