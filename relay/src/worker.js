@@ -7,8 +7,8 @@
  * stores the attachments on the repository's `feedback-assets` branch and opens the issue.
  *
  *   POST /challenge  {installId}            → {ticket, seed, bits, nbf, exp}
- *   POST /report     multipart: report JSON + screenshot / logs / attachment-N files
- *                                           → 201 {url, number}
+ *   POST /report     x-relay-install, x-relay-ticket, x-relay-nonce headers; multipart: report JSON +
+ *                    attachment-N files     → 201 {url, number}
  *   GET  /health                            → {ok: true}
  *
  * Abuse guards (the relay URL ships inside the app, so it is public):
@@ -17,9 +17,12 @@
  *   milliseconds on a PC, so it slows casual abuse rather than stopping it);
  * - a wait before each further report that doubles each time, counted both per installation and
  *   per client IP (IPv6 by /64), so a fresh install id alone does not reset it;
- * - a daily cap across all installations;
+ * - a daily cap per network (NETWORK_DAILY_LIMIT, IPv6 also by /48), so nobody can use up the rest;
+ * - a daily cap across all installations, in reports (DAILY_LIMIT) and in bytes (DAILY_BYTES);
  * - optionally, Cloudflare's rate limiter per client IP on /challenge and /report;
- * - at most 8 files, up to 25 MiB each, 32 MiB per report in all.
+ * - the ticket and proof of work are checked before any of the body is read;
+ * - at most 8 files of a closed list of types: videos up to 25 MiB, the rest 10 MiB, 32 MiB per
+ *   report in all, named here from their type, never by the client.
  * Used tickets, counters and the daily total live in one Durable Object (`Meter`), so checking and
  * recording them is atomic: the same ticket sent twice in parallel opens one issue, not two.
  *
@@ -28,7 +31,7 @@
  *
  * Bindings: Durable Object `METER` (class `Meter`), optional rate limiter `RATE_LIMITER`; secrets
  * `GITHUB_TOKEN` (fine-grained: Issues + Contents on REPO) and `TICKET_SECRET`; vars `REPO`
- * ("owner/name") and optionally `DAILY_LIMIT`, `POW_BITS`.
+ * ("owner/name") and optionally `DAILY_LIMIT`, `DAILY_BYTES`, `NETWORK_DAILY_LIMIT`, `POW_BITS`.
  */
 
 import { DurableObject } from 'cloudflare:workers';
@@ -65,26 +68,28 @@ const MiB = 1024 * 1024;
 // What a report may carry. Memory sets the ceiling: a Worker has 128 MB, and parsing the form holds
 // the body and its files at once (about twice MAX_FORM). Files then go to GitHub one at a time,
 // base64-encoded as they stream, so no file is ever copied whole again.
-const MAX_FILE = 25 * MiB;
+const MAX_FILE = 10 * MiB;
+const MAX_VIDEO = 25 * MiB;
 const MAX_TOTAL = 32 * MiB;
 const MAX_FILES = 8;
 const MAX_FORM = MAX_TOTAL + MiB; // the report JSON and multipart overhead on top
 /** Types GitHub can show in the issue; the others are linked under "Attachments". */
 const INLINE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
-/** Every type an Inkadra server can store; anything else is dropped, and the issue says so. */
-const FILE_TYPES = new Set([
-  ...INLINE_TYPES,
-  'image/tiff',
-  'image/heic',
-  'image/avif',
-  'video/mp4',
-  'video/webm',
-  'video/quicktime',
-  'video/x-msvideo',
-  'video/mpeg',
-  'video/mp2t',
-  'text/plain',
-  'application/pdf',
+/**
+ * What the relay keeps: extension and limit of each type. The name in the repository comes from
+ * here, so `update.exe` or `../x.html` declared as text is stored as `attachment-1.txt`. An Inkadra
+ * server converts what is not listed; anything else is dropped, and the issue says so.
+ */
+const FILE_TYPES = new Map([
+  ['image/png', ['png', MAX_FILE]],
+  ['image/jpeg', ['jpg', MAX_FILE]],
+  ['image/webp', ['webp', MAX_FILE]],
+  ['image/gif', ['gif', MAX_FILE]],
+  ['video/mp4', ['mp4', MAX_VIDEO]],
+  ['video/webm', ['webm', MAX_VIDEO]],
+  ['video/quicktime', ['mov', MAX_VIDEO]],
+  ['text/plain', ['txt', MAX_FILE]],
+  ['application/pdf', ['pdf', MAX_FILE]],
 ]);
 /** GitHub refuses a body over 65,536 characters and a title over 256; escaping can triple text. */
 const TITLE_LIMIT = 256;
@@ -94,6 +99,10 @@ const clamp = (text, limit = SECTION_LIMIT) =>
 const TICKET_TTL = 30 * 60; // seconds
 const DAY = 24 * 60 * 60;
 const MAX_WAIT = 15 * 60; // seconds
+const MIN_WAIT = 5; // seconds
+/** How long a write may still be running: a retry inside it waits instead of looking for the issue. */
+const WRITE_GRACE = 10 * 60; // seconds
+const LOG_LIMIT = 6000;
 
 export default {
   async fetch(request, env) {
@@ -132,12 +141,13 @@ async function challenge(request, env) {
   try { ({installId} = JSON.parse(input)); } catch { throw new HttpError(400, 'installId'); }
   if (!validInstallId(installId)) throw new HttpError(400, 'installId');
   const ih = await hmacHex(env.TICKET_SECRET, `install:${installId}`);
-  const { sent, total } = await meter(env).status(meterKeys(ih, who));
+  const { ready, total, networkFullFor } = await meter(env).status(meterKeys(ih, who), networkLimit(env));
   if (total >= dailyLimit(env)) throw dailyLimitError();
+  if (networkFullFor) throw new HttpError(429, 'network limit', { 'retry-after': String(networkFullFor) });
   const now = nowSeconds();
-  // First report: a few seconds (the user is still typing). Each further one in a day doubles it,
-  // up to MAX_WAIT: enough to stop a flood, short enough for someone testing all day.
-  const wait = waitAfter(sent);
+  // A few seconds, or what is left of the wait after the last report: each further one in a day
+  // doubles it, up to MAX_WAIT. It counts from that report, as `claim` does, not from this request.
+  const wait = Math.max(MIN_WAIT, ready - now);
   const bits = Math.min(Math.max(Number(env.POW_BITS ?? 16), 0), 32);
   if (!Number.isInteger(bits)) throw new HttpError(500, 'invalid POW_BITS');
   const payload = {
@@ -155,19 +165,16 @@ async function challenge(request, env) {
 
 async function report(request, env) {
   let writing = false;
+  let requestKey = null;
   try {
     const who = await client(request, env);
     await rateLimit(env, who);
     const length = Number(request.headers.get('content-length') ?? 0);
     if (length > MAX_FORM) throw new HttpError(413, 'too large');
-    const form = await boundedFormData(request);
-    let meta;
-    try {
-      meta = JSON.parse(form.get('report'));
-    } catch {
-      throw new HttpError(400, 'report');
-    }
-    const { installId, ticket, powNonce } = meta;
+    // In the headers, so nothing of the body is held for someone without a ticket and its work.
+    const installId = request.headers.get('x-relay-install');
+    const ticket = request.headers.get('x-relay-ticket');
+    const powNonce = request.headers.get('x-relay-nonce');
     if (!validInstallId(installId)) throw new HttpError(400, 'installId');
 
     const payload = await verify(env, ticket);
@@ -178,39 +185,73 @@ async function report(request, env) {
     if (now > payload.exp) throw new HttpError(403, 'expired');
     if (!(await powOk(payload.seed, powNonce, payload.bits))) throw new HttpError(403, 'pow');
 
+    const form = await boundedFormData(request);
+    let meta;
+    try {
+      meta = JSON.parse(form.get('report'));
+    } catch {
+      throw new HttpError(400, 'report');
+    }
     const r = sanitizeReport(meta);
     const files = collectFiles(form);
+    const gh = github(env);
+
+    // A report sent again after a lost answer finds its issue instead of opening another.
+    requestKey = r.requestId && (await hmacHex(env.TICKET_SECRET, `request:${payload.ih}:${r.requestId}`));
+    const known = requestKey && (await meter(env).lookup(requestKey));
+    if (known?.number) return json({ url: known.url, number: known.number }, 201);
+    if (known && now - known.started < WRITE_GRACE) {
+      throw new HttpError(409, 'in progress', { 'retry-after': String(known.started + WRITE_GRACE - now) });
+    }
+    // Before the claim: an expired token must not use up the day's reports.
+    await gh.requirePrivate();
+    if (known) {
+      const found = await gh.findIssue(r.requestId);
+      if (found) {
+        await meter(env).finish(requestKey, found.number, found.html_url);
+        return json({ url: found.html_url, number: found.number }, 201);
+      }
+    }
 
     // One atomic step in the Durable Object: refuse a used ticket, a full day or a report sent before
     // the wait, else mark the ticket used and count the report. It happens before the GitHub calls,
     // so a GitHub failure still uses up the ticket (the app then asks for a new one); that's the
     // price of never letting one ticket open two issues.
-    const claim = await meter(env).claim(ticket.split('.')[1], meterKeys(payload.ih, who), dailyLimit(env));
+    const claim = await meter(env).claim(ticket.split('.')[1], meterKeys(payload.ih, who), dailyLimit(env), {
+      networkLimit: networkLimit(env),
+      bytes: files.reduce((n, f) => n + f.size, 0),
+      bytesLimit: dailyBytes(env),
+    });
     if (!claim.ok) {
       const headers = claim.retryAfter ? { 'retry-after': String(claim.retryAfter) } : {};
       throw new HttpError(claim.status, claim.error, headers);
     }
 
-    const gh = github(env);
-    await gh.requirePrivate();
     const folder = `reports/${new Date().toISOString().slice(0, 10)}-${randomHex(4)}`;
     const stored = [];
     if (files.length) await gh.ensureAssetsBranch();
     for (const f of files) {
       const path = `${folder}/${f.name}`;
-      await gh.putFile(path, f.file, `Report attachment: ${f.name}`);
+      await gh.putFile(path, f.file, 'Report attachment');
       stored.push({ ...f, path, url: `https://github.com/${env.REPO}/blob/${ASSETS_BRANCH}/${encodePath(path)}` });
     }
     stored.dropped = files.dropped;
     writing = true;
+    if (requestKey) await meter(env).begin(requestKey);
     const issue = await gh.createIssue({
       title: issueTitle(r),
       body: issueBody(r, stored),
       labels: ['from-app', r.kind === 'problem' ? 'bug' : r.kind, `area:${r.area}`],
     });
+    if (requestKey) await meter(env).finish(requestKey, issue.number, issue.html_url);
     return json({ url: issue.html_url, number: issue.number }, 201);
   } catch (error) {
-    if (error instanceof HttpError) { error.uncertain = writing; throw error; }
+    if (error instanceof HttpError) {
+      error.uncertain ??= writing;
+      // GitHub refused the write: no issue exists, so a retry needs no search.
+      if (writing && requestKey && !error.uncertain) await meter(env).abort(requestKey);
+      throw error;
+    }
     throw new HttpError(502, 'relay error', {}, writing);
   }
 }
@@ -272,33 +313,29 @@ export function sanitizeReport(meta) {
     description: text(meta.description, 12000).trim(),
     device,
     screens: (Array.isArray(meta.screens) ? meta.screens : []).slice(-12).map((s) => text(s, 120)),
-    logExcerpt: text(meta.logExcerpt, 24000),
+    // The end of the log: the newest lines are the ones that explain the report.
+    logExcerpt: String(meta.logExcerpt ?? '').replace(/\r/g, '').slice(-LOG_LIMIT),
   };
 }
 
 export function collectFiles(form) {
   const out = [];
-  const names = new Set();
   let total = 0;
   for (const [field, value] of form.entries()) {
     if (field === 'report' || typeof value === 'string') continue;
     // The part after a semicolon is a codec or charset: `video/webm;codecs=vp9` is still WebM.
     const type = (value.type || 'application/octet-stream').split(';')[0].trim().toLowerCase();
-    if (!FILE_TYPES.has(type)) {
+    const known = FILE_TYPES.get(type);
+    if (!known) {
       out.dropped = (out.dropped ?? 0) + 1;
       continue;
     }
+    const [extension, max] = known;
     if (out.length >= MAX_FILES) throw new HttpError(413, 'too many files');
-    if (value.size > MAX_FILE) throw new HttpError(413, 'file too large');
+    if (value.size > max) throw new HttpError(413, 'file too large');
     total += value.size;
     if (total > MAX_TOTAL) throw new HttpError(413, 'too large');
-    // One path per file: a repeated name would make GitHub refuse the second after the ticket is used.
-    let name = safeName(value.name || field);
-    const original = name;
-    let suffix = out.length + 1;
-    while (names.has(name)) name = `${suffix++}-${original}`;
-    names.add(name);
-    out.push({ field, name, type, size: value.size, file: value });
+    out.push({ field, name: `attachment-${out.length + 1}.${extension}`, type, size: value.size, file: value });
   }
   return out;
 }
@@ -324,6 +361,8 @@ export function fenced(content) {
 export function quoted(text) {
   return text.split('\n').map((l) => (l ? `> ${l}` : '>'));
 }
+
+const marker = (requestId) => `<!-- inkadra-feedback: ${requestId} -->`;
 
 export function issueTitle(r) {
   return ((r.kind === 'idea' ? '[Idea] ' : '') + noMentions(r.title)).slice(0, TITLE_LIMIT);
@@ -361,7 +400,7 @@ export function issueBody(r, files) {
     lines.push(`<details><summary>${summary}</summary>`, '', ...fenced(noMentions(r.logExcerpt.trim())), '', '</details>', '');
   }
   lines.push('_Sent from the in-app reporter._');
-  if (r.requestId) lines.push(`<!-- inkadra-feedback: ${r.requestId} -->`);
+  if (r.requestId) lines.push(marker(r.requestId));
   return lines.join('\n');
 }
 
@@ -375,7 +414,8 @@ function github(env) {
     const res = await fetch(base + path, {
       method,
       redirect: 'error',
-      signal: AbortSignal.timeout(30000),
+      // shortcut: a 25 MiB file is a 34 MB body; a slower link needs a smaller file, not a longer wait.
+      signal: AbortSignal.timeout(method === 'PUT' ? 120000 : 30000),
       headers: {
         authorization: `Bearer ${env.GITHUB_TOKEN}`,
         accept: 'application/vnd.github+json',
@@ -389,14 +429,25 @@ function github(env) {
     if (res.status === 404 && method === 'GET') return null;
     if (!res.ok) {
       console.error('GitHub HTTP', res.status);
-      throw new HttpError(res.status < 500 ? res.status : 502, `github ${res.status}`);
+      // A token or repository problem is ours, never the reporter's: nothing was written, and the
+      // instance keeps the report and tries again. A 5xx during a write may have written.
+      if (res.status < 500) throw new HttpError(503, `github ${res.status}`, {}, false);
+      throw new HttpError(502, `github ${res.status}`);
     }
     return res.status === 204 ? {} : res.json();
   };
   return {
     async requirePrivate() {
       const repo = await call('GET', '');
-      if (repo?.private !== true || repo.full_name !== env.REPO) throw new HttpError(422, 'private repository required');
+      if (repo?.private !== true || repo.full_name !== env.REPO) {
+        console.error('Relay repository is not private or not reachable');
+        throw new HttpError(503, 'repository unavailable', {}, false);
+      }
+    },
+    /** The report's own issue among the newest: the marker closes the body, and text can't forge it. */
+    async findIssue(requestId) {
+      const issues = await call('GET', '/issues?labels=from-app&state=all&sort=created&direction=desc&per_page=100');
+      return issues?.find?.((issue) => issue.body?.endsWith(marker(requestId))) ?? null;
     },
     /** An orphan branch holding only report files, so it never mixes with the code. */
     async ensureAssetsBranch() {
@@ -421,11 +472,17 @@ function github(env) {
 
 /** The caller's network, keyed by an HMAC of its IP (IPv6 by /64, which one subscriber usually holds). */
 async function client(request, env) {
-  const prefix = ipPrefix(request.headers.get('cf-connecting-ip'));
-  return { ipKey: prefix ? await hmacHex(env.TICKET_SECRET, `ip:${prefix}`) : null };
+  const ip = request.headers.get('cf-connecting-ip');
+  const prefix = ipPrefix(ip);
+  const network = ipPrefix(ip, 48);
+  return {
+    ipKey: prefix ? await hmacHex(env.TICKET_SECRET, `ip:${prefix}`) : null,
+    // A subscriber can hold a whole /48: new /64s must not add up to a new allowance.
+    netKey: network?.includes(':') ? await hmacHex(env.TICKET_SECRET, `net:${network}`) : null,
+  };
 }
 
-export function ipPrefix(ip) {
+export function ipPrefix(ip, bits = 64) {
   if (!ip) return null;
   ip = ip.trim().toLowerCase();
   if (!ip.includes(':')) return ip;
@@ -433,7 +490,7 @@ export function ipPrefix(ip) {
   const h = head ? head.split(':') : [];
   const t = tail ? tail.split(':') : [];
   const groups = tail === undefined ? h : [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill('0'), ...t];
-  return `${groups.slice(0, 4).map((g) => (parseInt(g, 16) || 0).toString(16)).join(':')}::/64`;
+  return `${groups.slice(0, bits / 16).map((g) => (parseInt(g, 16) || 0).toString(16)).join(':')}::/${bits}`;
 }
 
 /** Cloudflare's rate limiter, when the binding is there (wrangler.toml `[[ratelimits]]`). */
@@ -446,8 +503,14 @@ async function rateLimit(env, who) {
 // ---- Metering -----------------------------------------------------------------------------
 
 const meter = (env) => env.METER.get(env.METER.idFromName('global'));
-const meterKeys = (ih, who) => [`install:${ih}`, ...(who.ipKey ? [`ip:${who.ipKey}`] : [])];
+const meterKeys = (ih, who) => [
+  `install:${ih}`,
+  ...(who.ipKey ? [`ip:${who.ipKey}`] : []),
+  ...(who.netKey ? [`net:${who.netKey}`] : []),
+];
 const dailyLimit = (env) => Number(env.DAILY_LIMIT ?? 30);
+const networkLimit = (env) => Number(env.NETWORK_DAILY_LIMIT ?? 5);
+const dailyBytes = (env) => Number(env.DAILY_BYTES ?? 300 * MiB);
 /** The wait before a report, after `sent` reports in the current day. */
 const waitAfter = (sent) => Math.min(5 * 2 ** sent, MAX_WAIT);
 const utcDay = (seconds) => new Date(seconds * 1000).toISOString().slice(0, 10);
@@ -467,24 +530,42 @@ export class Meter extends DurableObject {
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS used (id TEXT PRIMARY KEY, exp INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS counts (key TEXT PRIMARY KEY, count INTEGER NOT NULL, since INTEGER NOT NULL, last INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS days (day TEXT PRIMARY KEY, total INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS days (day TEXT PRIMARY KEY, total INTEGER NOT NULL, bytes INTEGER NOT NULL DEFAULT 0);
+      CREATE TABLE IF NOT EXISTS requests (key TEXT PRIMARY KEY, started INTEGER NOT NULL, number INTEGER, url TEXT);
     `);
   }
 
-  /** Reports counted in the current window: the largest over `keys`, and today's total. */
-  status(keys) {
+  /** When the next report may go over `keys`, today's total, and how long a full network waits. */
+  status(keys, networkLimit) {
     const now = nowSeconds();
-    let sent = 0;
-    for (const row of this.#rows(keys, now)) sent = Math.max(sent, row.count);
-    return { sent, total: this.#total(now) };
+    let ready = now;
+    for (const row of this.#rows(keys, now)) ready = Math.max(ready, row.last + waitAfter(row.count));
+    return { ready, total: this.#total(now), networkFullFor: this.#networkFullFor(keys, now, networkLimit) };
+  }
+
+  /** What is known of an issue being opened for this report: when it started, and its number. */
+  lookup(key) {
+    return this.sql.exec('SELECT started, number, url FROM requests WHERE key = ?', key).toArray()[0] ?? null;
+  }
+
+  begin(key) {
+    this.sql.exec('INSERT OR REPLACE INTO requests (key, started) VALUES (?, ?)', key, nowSeconds());
+  }
+
+  finish(key, number, url) {
+    this.sql.exec('INSERT OR REPLACE INTO requests (key, started, number, url) VALUES (?, ?, ?, ?)', key, nowSeconds(), number, url);
+  }
+
+  abort(key) {
+    this.sql.exec('DELETE FROM requests WHERE key = ?', key);
   }
 
   /**
    * Uses the ticket and counts the report, or says why not: 409 ticket already used, 503 daily cap
-   * reached, 403 a report from the same installation or network came sooner than its wait allows
+   * or byte budget reached, 429 this network's day is full, 403 a report from the same installation or network came sooner than its wait allows
    * (tickets fetched in parallel before any report was counted all carry the shortest wait).
    */
-  claim(ticketId, keys, limit) {
+  claim(ticketId, keys, limit, { networkLimit, bytes, bytesLimit }) {
     const now = nowSeconds();
     this.#expire(now);
     if (this.sql.exec('SELECT 1 FROM used WHERE id = ?', ticketId).toArray().length) {
@@ -493,6 +574,11 @@ export class Meter extends DurableObject {
     if (this.#total(now) >= limit) {
       return { ok: false, status: 503, error: 'daily limit', retryAfter: Math.min(untilTomorrow(now), 6 * 60 * 60) };
     }
+    if (bytes && this.#bytes(now) + bytes > bytesLimit) {
+      return { ok: false, status: 503, error: 'daily bytes', retryAfter: Math.min(untilTomorrow(now), 6 * 60 * 60) };
+    }
+    const networkFullFor = this.#networkFullFor(keys, now, networkLimit);
+    if (networkFullFor) return { ok: false, status: 429, error: 'network limit', retryAfter: networkFullFor };
     let ready = now;
     for (const row of this.#rows(keys, now)) ready = Math.max(ready, row.last + waitAfter(row.count));
     if (ready > now) return { ok: false, status: 403, error: 'early', retryAfter: ready - now };
@@ -510,14 +596,30 @@ export class Meter extends DurableObject {
       );
     }
     this.sql.exec(
-      'INSERT INTO days (day, total) VALUES (?, 1) ON CONFLICT (day) DO UPDATE SET total = total + 1',
-      utcDay(now),
+      'INSERT INTO days (day, total, bytes) VALUES (?1, 1, ?2) ON CONFLICT (day) DO UPDATE SET total = total + 1, bytes = bytes + ?2',
+      utcDay(now), bytes,
     );
     return { ok: true };
   }
 
   #rows(keys, now) {
     return keys.flatMap((k) => this.sql.exec('SELECT count, since, last FROM counts WHERE key = ? AND ? - since < ?', k, now, DAY).toArray());
+  }
+
+  /** Seconds until a full network's day is over, or 0. Installations are free to invent, so they don't count. */
+  #networkFullFor(keys, now, limit) {
+    let wait = 0;
+    for (const key of keys) {
+      if (key.startsWith('install:')) continue;
+      for (const row of this.#rows([key], now)) {
+        if (row.count >= limit) wait = Math.max(wait, row.since + DAY - now);
+      }
+    }
+    return wait;
+  }
+
+  #bytes(now) {
+    return this.sql.exec('SELECT bytes FROM days WHERE day = ?', utcDay(now)).toArray()[0]?.bytes ?? 0;
   }
 
   #total(now) {
@@ -529,6 +631,7 @@ export class Meter extends DurableObject {
     this.sql.exec('DELETE FROM used WHERE exp < ?', now);
     this.sql.exec('DELETE FROM counts WHERE ? - since >= ?', now, DAY);
     this.sql.exec('DELETE FROM days WHERE day < ?', utcDay(now - DAY));
+    this.sql.exec('DELETE FROM requests WHERE ? - started >= ?', now, 7 * DAY);
   }
 }
 
@@ -586,7 +689,6 @@ const nowSeconds = () => Math.floor(Date.now() / 1000);
 const validInstallId = (v) => typeof v === 'string' && /^[0-9a-f-]{16,64}$/i.test(v);
 const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 const randomHex = (n) => hex(crypto.getRandomValues(new Uint8Array(n)));
-const safeName = (n) => n.replace(/[^A-Za-z0-9._-]/g, '_').slice(-80) || 'file';
 const encodePath = (p) => p.split('/').map(encodeURIComponent).join('/');
 const formatSize = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.ceil(b / 1024)} KB`);
 

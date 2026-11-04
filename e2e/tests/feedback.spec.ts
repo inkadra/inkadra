@@ -929,27 +929,28 @@ test('relay disclosure, mandatory preview, limits and admin switch', async ({ pa
   );
 });
 
-test('with the relay down the report stays queued and everyone is told', async ({ page }) => {
-  const shots = async (name: string, focus?: () => Promise<void>) => {
-    if (!process.env.FEEDBACK_SHOTS_DIR) return;
-    for (const theme of ['light', 'dark']) {
-      await page.evaluate((value) => {
-        localStorage.setItem('inkadra.theme', value);
-        window.dispatchEvent(new Event('inkadra-theme-change'));
-        document.documentElement.dataset.theme = value;
-      }, theme);
-      for (const width of [1280, 390]) {
-        await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
-        await focus?.();
-        await page.mouse.move(0, 0);
-        await page.screenshot({
-          path: join(process.env.FEEDBACK_SHOTS_DIR, `${theme}-${width}-${name}.png`),
-        });
-      }
+async function relayShots(page: Page, name: string, focus?: () => Promise<void>) {
+  if (!process.env.FEEDBACK_SHOTS_DIR) return;
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((value) => {
+      localStorage.setItem('inkadra.theme', value);
+      window.dispatchEvent(new Event('inkadra-theme-change'));
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
+      await focus?.();
+      await page.mouse.move(0, 0);
+      await page.screenshot({
+        path: join(process.env.FEEDBACK_SHOTS_DIR, `${theme}-${width}-${name}.png`),
+      });
     }
-    // The next steps use the desktop entry, which a phone keeps in a menu.
-    await page.setViewportSize({ width: 1280, height: 800 });
-  };
+  }
+  // The next steps use the desktop entry, which a phone keeps in a menu.
+  await page.setViewportSize({ width: 1280, height: 800 });
+}
+
+test('with the relay down the report stays queued and everyone is told', async ({ page }) => {
   await login(page);
   await configure(page, 'relay');
   await page.reload();
@@ -960,13 +961,13 @@ test('with the relay down the report stays queued and everyone is told', async (
   const big = (name: string) => ({
     name,
     mimeType: 'text/plain',
-    buffer: Buffer.alloc(12 * 1024 * 1024, 'x'),
+    buffer: Buffer.alloc(9 * 1024 * 1024, 'x'),
   });
   await page
     .locator('input[type=file][multiple]')
-    .setInputFiles([big('a.txt'), big('b.txt'), big('c.txt')]);
+    .setInputFiles([big('a.txt'), big('b.txt'), big('c.txt'), big('d.txt')]);
   await expect(dialog.getByRole('alert')).toContainText('superano i 32 MB');
-  await shots('relay-over-limit');
+  await relayShots(page, 'relay-over-limit');
   await dialog.getByRole('button', { name: 'Anteprima', exact: true }).click();
   await expect(page.getByRole('dialog', PREVIEW)).toHaveCount(0);
 
@@ -978,7 +979,7 @@ test('with the relay down the report stays queued and everyone is told', async (
   await dialog.getByRole('button', { name: 'Anteprima', exact: true }).click();
   const preview = page.getByRole('dialog', PREVIEW);
   await expect(preview).toContainText('inkadra/inkadra-feedback');
-  await shots('relay-preview');
+  await relayShots(page, 'relay-preview');
   await preview.getByRole('button', { name: 'Invia segnalazione', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('Il relay non risponde o è occupato');
   await page.keyboard.press('Escape');
@@ -986,5 +987,57 @@ test('with the relay down the report stays queued and everyone is told', async (
   await page.goto('/settings?section=instance');
   const banner = page.getByText(/Il relay non risponde o è occupato: \d+ segnalazion/);
   await expect(banner).toBeVisible();
-  await shots('settings-relay-down', () => banner.scrollIntoViewIfNeeded());
+  await relayShots(page, 'settings-relay-down', () => banner.scrollIntoViewIfNeeded());
+
+  // No answer from the relay: nobody here can read its private repository, trying again is safe.
+  await page.route('**/api/v1/feedback/reports*', async (route) => {
+    const response = await route.fetch();
+    const json = await response.json();
+    json.items[0].delivery = 'uncertain';
+    await route.fulfill({ response, json });
+  });
+  await page.reload();
+  const unsure = page.getByText(/riprovare è sicuro/);
+  await expect(unsure).toBeVisible();
+  await relayShots(page, 'settings-relay-uncertain', () => unsure.scrollIntoViewIfNeeded());
+});
+
+test('a dialog opened before the destination changed asks to read again', async ({ page }) => {
+  await login(page);
+  await configure(page, 'inbox');
+  await page.reload();
+  await ready(page);
+  await page.getByRole('button', FORM).click();
+  const dialog = page.getByRole('dialog', FORM);
+  await dialog.getByLabel('Titolo', { exact: true }).fill('Told something else');
+  await dialog.getByRole('button', { name: 'Anteprima', exact: true }).click();
+  const preview = page.getByRole('dialog', PREVIEW);
+  await expect(preview).not.toContainText('inkadra/inkadra-feedback');
+  await configure(page, 'relay');
+  await preview.getByRole('button', { name: 'Invia segnalazione', exact: true }).click();
+  await expect(preview.getByRole('alert')).toContainText('ha cambiato la destinazione');
+  await expect(preview).toContainText('inkadra/inkadra-feedback');
+  await relayShots(page, 'relay-destination-changed');
+  const reports = await (await page.request.get('/api/v1/feedback/reports')).json();
+  expect(
+    reports.items.filter((r: { report: { title: string } }) => r.report.title.includes('Told')),
+  ).toHaveLength(0);
+});
+
+test('without ffmpeg a video from the device stays here, and says why', async ({ page }) => {
+  await login(page);
+  await configure(page, 'relay');
+  await page.route('**/api/v1/feedback/status', async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({ response, json: { ...(await response.json()), deviceVideos: false } });
+  });
+  await page.reload();
+  await ready(page);
+  await page.getByRole('button', FORM).click();
+  const dialog = page.getByRole('dialog', FORM);
+  await page
+    .locator('input[type=file][multiple]')
+    .setInputFiles([{ name: 'clip.mp4', mimeType: 'video/mp4', buffer: Buffer.from('video') }]);
+  await expect(dialog).toContainText('non può togliere GPS');
+  await relayShots(page, 'relay-no-device-video');
 });

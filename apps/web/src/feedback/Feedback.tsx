@@ -3,6 +3,7 @@ import {
   FEEDBACK_FILE_BYTES,
   FEEDBACK_RELAY_FILE_BYTES,
   FEEDBACK_RELAY_TOTAL_BYTES,
+  FEEDBACK_RELAY_VIDEO_BYTES,
   FEEDBACK_VIDEO_BYTES,
   type FeedbackAttachment,
   type FeedbackReceipt,
@@ -54,9 +55,14 @@ type LocalAttachment = {
   uploaded?: FeedbackAttachment;
   seconds?: number;
   redactedAreas?: number;
+  /** Made in this dialog: no metadata from a device to take off. */
+  recorded?: boolean;
 };
 type Phase = 'compose' | 'preview' | 'recordIntro' | 'videoReview' | 'done' | 'off';
-type Failure = { kind: 'failed' | 'interrupted' | 'limited' | 'refused'; detail?: string };
+type Failure = {
+  kind: 'failed' | 'interrupted' | 'limited' | 'refused' | 'destination';
+  detail?: string;
+};
 const PARTS = ['environment', 'page', 'console', 'network', 'sync', 'flags'] as const;
 type Part = (typeof PARTS)[number];
 const GUEST_PARTS: Part[] = ['environment', 'page'];
@@ -141,7 +147,8 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   const [shot, setShot] = useState<LocalAttachment | null>(null);
   const [shotIncluded, setShotIncluded] = useState(true);
   const relay = status?.destination === 'relay';
-  const videoLimit = relay ? FEEDBACK_RELAY_FILE_BYTES : FEEDBACK_VIDEO_BYTES;
+  const videoLimit = relay ? FEEDBACK_RELAY_VIDEO_BYTES : FEEDBACK_VIDEO_BYTES;
+  const fileLimit = relay ? FEEDBACK_RELAY_FILE_BYTES : FEEDBACK_FILE_BYTES;
   const [video, setVideo] = useState<LocalAttachment | null>(null);
   const [candidate, setCandidate] = useState<LocalAttachment | null>(null);
   const [data, setData] = useState<ReturnType<typeof diagnostics> | null>(null);
@@ -453,6 +460,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         `recording.${mime.includes('mp4') ? 'mp4' : 'webm'}`,
       );
       item.seconds = Math.min(RECORD_SECONDS, Math.round((Date.now() - started) / 1000));
+      item.recorded = true;
       setCandidate(item);
       setPhase('videoReview');
       setOpen(true);
@@ -488,12 +496,14 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       const item = local(file, isVideo ? 'video' : 'file', file.name);
       if (!ACCEPTED.test(file.type) && !ACCEPTED_NAME.test(file.name))
         item.error = t('feedback.typeRefused');
+      else if (isVideo && status?.deviceVideos === false)
+        item.error = t('feedback.relayNoDeviceVideo');
       else if (isVideo && file.size > videoLimit)
         item.error = t(relay ? 'feedback.relayVideoTooBig' : 'feedback.videoTooBig', {
           size: formatStorage(file.size, i18n.language),
         });
-      else if (!isVideo && file.size > FEEDBACK_FILE_BYTES)
-        item.error = t('feedback.fileTooBig', {
+      else if (!isVideo && file.size > fileLimit)
+        item.error = t(relay ? 'feedback.relayFileTooBig' : 'feedback.fileTooBig', {
           size: formatStorage(file.size, i18n.language),
         });
       else if (isVideo && (video || reviewed)) item.error = t('feedback.oneVideo');
@@ -536,7 +546,11 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       const xhr = new XMLHttpRequest();
       xhr.open(
         'POST',
-        `${API_PREFIX}${prefix}/attachments?${new URLSearchParams({ kind: item.kind, name: item.name.slice(0, 180) })}`,
+        `${API_PREFIX}${prefix}/attachments?${new URLSearchParams({
+          kind: item.kind,
+          name: item.name.slice(0, 180),
+          ...(item.recorded ? { recorded: '1' } : {}),
+        })}`,
       );
       xhr.setRequestHeader('content-type', 'application/octet-stream');
       xhr.upload.onprogress = (e) =>
@@ -621,6 +635,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
           Object.entries(data).filter(([key, value]) => value && selected.includes(key as Part)),
         ),
         attachments: uploaded,
+        ...(status?.destination ? { expectedDestination: status.destination } : {}),
       };
       const response = await fetch(`${API_PREFIX}${prefix}`, {
         method: 'POST',
@@ -628,7 +643,14 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
-      if (response.status === 400) for (const item of sent()) item.uploaded = undefined;
+      // Files uploaded for another destination are not made safe for this one: they go up again.
+      if (response.status === 400 || response.status === 409)
+        for (const item of sent()) item.uploaded = undefined;
+      if (response.status === 409) {
+        refresh();
+        setFailure({ kind: 'destination' });
+        return;
+      }
       if (!response.ok)
         throw new RequestError(
           response.status,
@@ -1012,6 +1034,11 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         {failure?.kind === 'refused' && (
           <Banner tone="warn" icon="warning" role="alert">
             {t('feedback.refused', { name: failure.detail })}
+          </Banner>
+        )}
+        {failure?.kind === 'destination' && (
+          <Banner tone="warn" icon="warning" role="alert">
+            {t('feedback.destinationChanged')}
           </Banner>
         )}
         {failure?.kind === 'limited' && (

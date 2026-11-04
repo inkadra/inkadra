@@ -353,7 +353,8 @@ Use the pinned proxy container IP and verify the peer address in your deployment
 
 ### In-app reports (#338)
 
-Reporting to the **Inkadra developers is on without configuration** via the relay described below.
+Reporting to the **Inkadra developers is on without a saved choice**, also on an upgraded instance,
+via the relay described below.
 Saved administrator choices override that default. In Settings → About → Reports an administrator
 chooses Inkadra developers, own GitHub, Inbox only or Off, the destination `owner/repository`, whether
 guests may report (off by default) and how long attachments are kept (90 days by default; 30
@@ -409,21 +410,35 @@ the preview and a manual send. Videos stay in tab memory.
 
 ### Reports to the Inkadra developers
 
-`FEEDBACK_RELAY_URL` defaults to `https://inkadra-report-relay.matte-maraffio.workers.dev`.
-Set it to another HTTPS relay URL to override, or to the empty string to disable this route.
-No GitHub or Cloudflare credential is installed in the app for this route.
-A fresh installation enables this destination for signed-in members; guests remain disabled.
-Settings → Reports lets administrators turn developer reporting off with one switch (Inbox),
-choose Inbox only, disable reports, or configure their own private GitHub repository.
-Saved administrator choices always take precedence, including existing direct GitHub setups.
+`FEEDBACK_RELAY_URL` defaults to `https://inkadra-report-relay.matte-maraffio.workers.dev`. Set it to
+another `https://` relay URL to override (plain `http://` only to this machine), or to the empty
+string to disable this route. No GitHub or Cloudflare credential is installed in the app for it.
 
-After mandatory preview, selected title, description, diagnostics (redacted logs, version,
-browser/OS, screen, theme/language, route, sync and flags) and attachments go through Cloudflare
-to the private `inkadra/inkadra-feedback` repository, read by Inkadra developers. No reporter
-name, email or instance URL is added, and files leave as `kind-N.ext` rather than under their own
-names. User-written text and attachments can still contain
-personal information: review them before sending. Installation IDs and network counters are
-stored by the relay only as HMACs. Videos/files: 25 MiB each, 32 MiB total on this route;
-direct GitHub keeps its 100 MiB video limit. Reports remain in the local queue during outages, and
-Settings says so; ambiguous writes stop as uncertain for admin review. GitHub attachments live on feedback-assets
-and are not removed by the local 30/90/365-day retention setting.
+**Every instance without a saved choice uses this destination, including one upgraded from an
+earlier version where reporting was off.** To keep reports off, save a choice in Settings → Reports
+or set the empty value before upgrading. Guests stay disabled. Settings lets administrators turn
+developer reporting off with one switch (Inbox), choose Inbox only, disable reports, or configure
+their own private GitHub repository. Saved administrator choices always take precedence, including
+existing direct GitHub setups. A dialog opened before the choice changed asks to read it again.
+
+**What is sent**, after the mandatory preview: the selected title, description, diagnostics
+(redacted logs, version, browser/OS, screen, theme/language, route, sync and flags) and attachments.
+They go through Cloudflare, which sees this server's IP address, to the private
+`inkadra/inkadra-feedback` repository, read by Inkadra developers. No reporter name, email or
+instance URL is added. Before leaving, logs and text files lose secrets, this instance's host name,
+the machine's name and internal addresses, and files are renamed `kind-N.ext`. Installation IDs and
+networks are stored by the relay only as HMACs.
+
+**Metadata.** Attachments stay in a repository's history, so nothing leaves with its GPS position.
+PNG, JPEG, WebP, GIF, TIFF, AVIF and HEIC are rewritten without metadata (the last three as WebP).
+Videos from the device need ffmpeg to lose theirs, so they are refused on an image without it (the
+`-media` image has it); recordings made in the dialog always go. PDFs leave whole, with their
+metadata, and the dialog says so. What people write and what is visible in a file can still be
+personal: the preview is there to check it.
+
+**Limits.** 10 MiB per image or file, 25 MiB per video, 32 MiB per report; direct GitHub keeps its
+100 MiB video limit. The relay accepts 5 reports a day per network and 30 a day in total: beyond
+that, reports wait in the local queue and leave by themselves. During an outage they wait too, and
+Settings says so. If the relay gives no answer to a write, the report is marked as not confirmed:
+trying again from Settings is safe, because the relay recognises a report it already has. GitHub
+attachments live on `feedback-assets` and are not removed by the local retention setting.

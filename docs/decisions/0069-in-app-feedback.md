@@ -3,17 +3,24 @@
 Accepted design: #338, its approved mockup and the eleven decisions approved on 4 November 2026.
 
 Updated 4 November 2026 by Matteo: this supersedes the 31 October self-hoster restriction.
-Fresh installations send to the Inkadra developers by default through the public, credential-free
-inkadra-report-relay. An empty FEEDBACK_RELAY_URL disables it. Saved admin choices always win:
-existing own-repository installations keep the direct path. A Settings switch turns developer
+Every installation without a saved choice, new or already running, sends to the Inkadra developers
+by default through the public, credential-free inkadra-report-relay, as Matteo decided: an instance
+that never opened these settings changes on upgrade, and the release notes say so. An empty
+FEEDBACK_RELAY_URL disables it. Saved admin choices always win: existing own-repository
+installations keep the direct path. The dialog sends the destination it showed, and the relay route
+refuses a report that was told something else (409). A Settings switch turns developer
 reporting off into Inbox; Inbox, own GitHub and Off remain available. Mandatory preview and the
 report dialog disclose the private destination, readers and departure of logs and attachments.
 The relay receives no reporter identity or instance URL; installation/network keys are HMACs.
-It repeats #420 text neutralisation at the trust boundary and applies ticket/PoW, single use,
-network/install quotas and daily caps. Selected files are committed to feedback-assets on the
-private inkadra/inkadra-feedback repository. Videos are 25 MiB (direct path: 100 MiB), reports
-32 MiB total. The durable instance queue and requestId remain authoritative; ambiguous relay
-writes become uncertain and permanent refusals stop. GitHub attachment retention is independent
+It repeats #420 text neutralisation at the trust boundary and applies ticket/PoW before reading the
+body, single use, per-network and per-install quotas, daily caps in reports and bytes, and names
+files from a closed list of types. Selected files are committed to feedback-assets on the private
+inkadra/inkadra-feedback repository, so they outlive any deletion: nothing leaves with its GPS.
+TIFF, AVIF and HEIC are converted, GIF rewritten, device videos stripped with ffmpeg or refused
+where there is none, and PDFs leave whole with an explicit warning. Videos are 25 MiB (direct path:
+100 MiB), other files 10 MiB, reports 32 MiB total. The durable instance queue remains authoritative.
+Relay faults, GitHub refusals included, are retried and never refuse a report; an ambiguous write
+becomes uncertain and an administrator can retry it, because the relay recognises the requestId. GitHub attachment retention is independent
 of instance retention. Deploy is manual, performed separately by the coordinator.
 
 For the direct GitHub path:

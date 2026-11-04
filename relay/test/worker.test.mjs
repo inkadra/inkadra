@@ -26,12 +26,16 @@ function meterNamespace() {
   const stub = {
     status: async (...a) => instance.status(...a),
     claim: async (...a) => instance.claim(...a),
+    lookup: async (...a) => instance.lookup(...a),
+    begin: async (...a) => instance.begin(...a),
+    finish: async (...a) => instance.finish(...a),
+    abort: async (...a) => instance.abort(...a),
   };
   return { sql, idFromName: (name) => name, get: () => stub };
 }
 
 function env() {
-  return { METER: meterNamespace(), GITHUB_TOKEN: 'gh', TICKET_SECRET: 'secret', REPO: 'o/r', POW_BITS: '4', DAILY_LIMIT: '30' };
+  return { METER: meterNamespace(), GITHUB_TOKEN: 'gh', TICKET_SECRET: 'secret', REPO: 'o/r', POW_BITS: '4', DAILY_LIMIT: '30', NETWORK_DAILY_LIMIT: '1000' };
 }
 
 const INSTALL = '0123456789abcdef0123456789abcdef';
@@ -82,7 +86,9 @@ function reportForm(t, nonce, extra = {}, installId = INSTALL) {
   return form;
 }
 
-const sendReport = (e, form, ip = IP) => worker.fetch(post('/report', form, { 'cf-connecting-ip': ip }), e);
+/** The ticket travels in the headers; the tests keep it next to the report they build. */
+const ticketHeaders = ({ installId, ticket, powNonce }) => ({ 'x-relay-install': installId, 'x-relay-ticket': ticket, 'x-relay-nonce': powNonce });
+const sendReport = (e, form, ip = IP) => worker.fetch(post('/report', form, { 'cf-connecting-ip': ip, ...ticketHeaders(JSON.parse(form.get?.('report') ?? '{}')) }), e);
 
 /** Runs `fn` with the clock moved forward by `ms`. */
 async function later(ms, fn) {
@@ -125,6 +131,11 @@ test('invalid proof of work configuration cannot issue unusable tickets', async 
 
 test('oversized forms are rejected before parsing, regardless of Content-Length', async () => {
   const maxForm = 33 * 1024 * 1024;
+  const e = env();
+  const t = await ticketFor(e);
+  const nonce = await solve(t.seed, t.bits);
+  const realNow = Date.now;
+  Date.now = () => realNow() + 10_000;
   for (const length of [undefined, '0', '1', 'not-a-number', String(maxForm + 1)]) {
     let pulls = 0;
     let cancelled = false;
@@ -135,10 +146,10 @@ test('oversized forms are rejected before parsing, regardless of Content-Length'
       },
       cancel() { cancelled = true; },
     }, { highWaterMark: 0 });
-    const headers = { 'cf-connecting-ip': IP, 'content-type': 'multipart/form-data; boundary=test' };
+    const headers = { 'cf-connecting-ip': IP, 'content-type': 'multipart/form-data; boundary=test', ...ticketHeaders({ installId: INSTALL, ticket: t.ticket, powNonce: nonce }) };
     if (length !== undefined) headers['content-length'] = length;
     const request = new Request('https://relay.test/report', { method: 'POST', body, headers, duplex: 'half' });
-    const response = await worker.fetch(request, env());
+    const response = await worker.fetch(request, e);
     assert.equal(response.status, 413);
     assert.deepEqual(await response.json(), { error: 'too large' });
     if (length === String(maxForm + 1)) {
@@ -148,15 +159,31 @@ test('oversized forms are rejected before parsing, regardless of Content-Length'
       assert.equal(cancelled, true);
     }
   }
+  Date.now = realNow;
+});
+
+test('without a valid ticket not a byte of the body is read', async () => {
+  let pulls = 0;
+  const body = new ReadableStream({ pull(c) { pulls++; c.enqueue(new Uint8Array(1024)); } }, { highWaterMark: 0 });
+  const headers = { 'cf-connecting-ip': IP, 'content-type': 'multipart/form-data; boundary=test', 'x-relay-install': INSTALL, 'x-relay-ticket': 'forged.ticket', 'x-relay-nonce': '0' };
+  const res = await worker.fetch(new Request('https://relay.test/report', { method: 'POST', body, headers, duplex: 'half' }), env());
+  assert.equal(res.status, 403);
+  assert.equal(pulls, 0);
 });
 
 test('malformed multipart forms return a client error', async () => {
-  const response = await worker.fetch(post('/report', 'not multipart', {
-    'cf-connecting-ip': IP,
-    'content-type': 'multipart/form-data; boundary=test',
-  }), env());
-  assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { error: 'form' });
+  const e = env();
+  const t = await ticketFor(e);
+  const nonce = await solve(t.seed, t.bits);
+  await later(10_000, async () => {
+    const response = await worker.fetch(post('/report', 'not multipart', {
+      'cf-connecting-ip': IP,
+      'content-type': 'multipart/form-data; boundary=test',
+      ...ticketHeaders({ installId: INSTALL, ticket: t.ticket, powNonce: nonce }),
+    }), e);
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: 'form' });
+  });
 });
 
 test('a valid report creates the issue with its attachments, once', async () => {
@@ -174,8 +201,8 @@ test('a valid report creates the issue with its attachments, once', async () => 
     const issue = calls.find((c) => c.url.endsWith('/issues')).body;
     assert.equal(issue.title, 'Inbox stops syncing');
     assert.deepEqual(issue.labels, ['from-app', 'bug', 'area:other']);
-    assert.match(issue.body.replaceAll('\\', ''), /!\[screenshot\.png\]\(https:\/\/github\.com\/o\/r\/blob\/feedback-assets\/reports\/.+\/screenshot\.png\?raw=true\)/);
-    assert.match(issue.body.replaceAll('\\', ''), /logs\.txt/);
+    assert.match(issue.body.replaceAll('\\', ''), /!\[attachment-1\.png\]\(https:\/\/github\.com\/o\/r\/blob\/feedback-assets\/reports\/.+\/attachment-1\.png\?raw=true\)/);
+    assert.match(issue.body.replaceAll('\\', ''), /attachment-2\.txt/);
     assert.match(issue.body.replaceAll('\\', ''), /W boom/);
     // The same ticket can't be used twice.
     const again = await sendReport(e, reportForm(t, await solve(t.seed, t.bits)));
@@ -197,7 +224,7 @@ test('an idea is labelled idea, and files other than images, videos and text are
     const res = await sendReport(e, form);
     assert.equal(res.status, 201);
     const puts = calls.filter((c) => c.method === 'PUT');
-    assert.deepEqual(puts.map((c) => c.url.split('/').pop()).sort(), ['logs.txt', 'screenshot.png']);
+    assert.deepEqual(puts.map((c) => c.url.split('/').pop()).sort(), ['attachment-1.png', 'attachment-2.txt']);
     const issue = calls.find((c) => c.url.endsWith('/issues')).body;
     assert.equal(issue.title, '[Idea] Pin conversations');
     assert.deepEqual(issue.labels, ['from-app', 'idea', 'area:other']);
@@ -444,15 +471,15 @@ test('attached images show inline and videos are linked under Attachments', asyn
     assert.equal(res.status, 201);
     const puts = calls.filter((c) => c.method === 'PUT');
     assert.deepEqual(puts.map((c) => c.url.split('/').pop()).sort(), [
-      'attachment-1.gif', 'attachment-2.mp4', 'attachment-3.webm', 'attachment-4.mov', 'logs.txt', 'screenshot.png',
+      'attachment-1.png', 'attachment-2.txt', 'attachment-3.gif', 'attachment-4.mp4', 'attachment-5.webm', 'attachment-6.mov',
     ]);
-    const mp4 = puts.find((c) => c.url.endsWith('attachment-2.mp4')).body;
+    const mp4 = puts.find((c) => c.url.endsWith('attachment-4.mp4')).body;
     assert.deepEqual([...Buffer.from(mp4.content, 'base64')], [0, 0, 0, 24, 1]);
     assert.equal(mp4.branch, 'feedback-assets');
     const body = calls.find((c) => c.url.endsWith('/issues')).body.body;
     const [images, attachments] = body.split('### Attachments');
-    assert.match(images.replaceAll('\\', ''), /!\[attachment-1\.gif\]\(.+attachment-1\.gif\?raw=true\)/);
-    for (const name of ['attachment-2.mp4', 'attachment-3.webm', 'attachment-4.mov']) {
+    assert.match(images.replaceAll('\\', ''), /!\[attachment-3\.gif\]\(.+attachment-3\.gif\?raw=true\)/);
+    for (const name of ['attachment-4.mp4', 'attachment-5.webm', 'attachment-6.mov']) {
       assert.match(attachments.replaceAll('\\', ''), new RegExp(`- \\[${name.replace('.', '\\.')}\\]\\(https://github\\.com/o/r/blob/feedback-assets/`));
       assert.doesNotMatch(images, new RegExp(name.replace('.', '\\.')));
     }
@@ -467,7 +494,7 @@ test('files over their limits are refused before the ticket is used', async () =
   await later(10_000, async () => {
     const nonce = await solve(t.seed, t.bits);
     const cases = [
-      [[['attachment-1', 'image/png', 25 * MiB + 1]], 'file too large'],
+      [[['attachment-1', 'image/png', 10 * MiB + 1]], 'file too large'],
       [[['attachment-1', 'video/mp4', 25 * MiB + 1]], 'file too large'],
       [[['attachment-1', 'video/mp4', 25 * MiB], ['attachment-2', 'image/jpeg', 7 * MiB + 1]], 'too large'],
       [Array.from({ length: 7 }, (_, i) => [`attachment-${i + 1}`, 'image/webp', 1]), 'too many files'],
@@ -485,13 +512,20 @@ test('files over their limits are refused before the ticket is used', async () =
   });
 });
 
-test('a video just under its limit fits, and repeated names get their own path', async () => {
+test('the relay names files from their type, whatever the client calls them', async () => {
   const form = new FormData();
   form.append('a', new Blob([new Uint8Array(25 * 1024 * 1024)], { type: 'video/mp4' }), 'clip.mp4');
   form.append('b', new Blob([new Uint8Array(3)], { type: 'IMAGE/PNG' }), 'clip.mp4');
   form.append('c', new Blob([new Uint8Array(3)], { type: 'image/png' }), '../../x y.png');
+  form.append('d', new Blob([new Uint8Array(3)], { type: 'text/plain' }), 'update.exe');
+  form.append('e', new Blob([new Uint8Array(3)], { type: 'application/pdf' }), '..');
+  for (const type of ['text/html', 'image/svg+xml', 'application/x-msdownload', 'image/heic']) form.append('f', new Blob(['x'], { type }), 'evil');
   const files = collectFiles(form);
-  assert.deepEqual(files.map((f) => [f.name, f.type]), [['clip.mp4', 'video/mp4'], ['2-clip.mp4', 'image/png'], ['.._.._x_y.png', 'image/png']]);
+  assert.deepEqual(files.map((f) => [f.name, f.type]), [
+    ['attachment-1.mp4', 'video/mp4'], ['attachment-2.png', 'image/png'], ['attachment-3.png', 'image/png'],
+    ['attachment-4.txt', 'text/plain'], ['attachment-5.pdf', 'application/pdf'],
+  ]);
+  assert.equal(files.dropped, 4);
 });
 
 test('the contents body streams the file as base64 with its exact length', async () => {
@@ -508,15 +542,6 @@ test('the contents body streams the file as base64 with its exact length', async
   }
 });
 
-test('generated duplicate names cannot collide with another submitted name', () => {
-  const form = new FormData();
-  for (const name of ['clip.mp4', '3-clip.mp4', 'clip.mp4']) {
-    form.append('attachment', new Blob(['x'], { type: 'video/mp4' }), name);
-  }
-  const files = collectFiles(form);
-  assert.equal(new Set(files.map((f) => f.name)).size, 3);
-});
-
  test('all invisible input, links, references, markup and hashes are inert at the Worker boundary', () => {
  const hidden = '\u200c\u2060\ufeff\u00ad\u061c\u{e0061}';
  const r = sanitizeReport({title: `a${hidden}b @dev #42 https://evil.test deadbeef`, description: `<img> [go](https://evil.test) ${hidden}`, device: {x: hidden}, logExcerpt: hidden});
@@ -527,9 +552,9 @@ test('generated duplicate names cannot collide with another submitted name', () 
  });
 
 
-test('every type an Inkadra server stores survives, codec parameters included', () => {
+test('codec parameters do not get a recording dropped', () => {
   const form = new FormData();
-  const types = ['video/webm;codecs=vp9', 'image/heic', 'image/tiff', 'image/avif', 'video/x-msvideo', 'video/mpeg', 'video/mp2t', 'application/pdf'];
+  const types = ['video/webm;codecs=vp9', 'video/quicktime', 'application/pdf'];
   types.forEach((type, i) => form.append(`attachment-${i + 1}`, new File(['x'], `f${i}`, { type })));
   const files = collectFiles(form);
   assert.equal(files.length, types.length);
@@ -537,15 +562,15 @@ test('every type an Inkadra server stores survives, codec parameters included', 
   assert.equal(files[0].type, 'video/webm');
 });
 
-test('a dropped file is named in the issue and HEIC is linked, not shown inline', () => {
+test('a dropped file is named in the issue and a video is linked, not shown inline', () => {
   const form = new FormData();
   form.append('attachment-1', new File(['x'], 'a.zip', { type: 'application/zip' }));
   const dropped = collectFiles(form);
   const r = sanitizeReport({ kind: 'problem', title: 'T', description: 'D' });
   assert.match(issueBody(r, dropped), /1 attachment\(s\) of an unsupported type were not stored/);
-  const heic = issueBody(r, [{ name: 'p.heic', type: 'image/heic', size: 1, url: 'https://x/p' }]);
-  assert.doesNotMatch(heic, /!\[/);
-  assert.match(heic, /### Attachments/);
+  const video = issueBody(r, [{ name: 'a.mp4', type: 'video/mp4', size: 1, url: 'https://x/p' }]);
+  assert.doesNotMatch(video, /!\[/);
+  assert.match(video, /### Attachments/);
 });
 
 test('the issue fits GitHub limits however much the text grows when neutralised', () => {
@@ -577,4 +602,144 @@ test('distinguishes pre-write failures from ambiguous GitHub writes', async () =
       assert.equal((await response.json()).uncertain, duringWrite);
     });
   }
+});
+
+test('after four reports in a day, a report an hour later needs only the short wait, and goes', async () => {
+  const e = env();
+  mockGitHub();
+  let at = 0;
+  for (let i = 0; i < 4; i++) {
+    const t = await later(at, () => ticketFor(e));
+    at = t.nbf - Date.now() + 1000;
+    await later(at, async () => {
+      assert.equal((await sendReport(e, reportForm(t, await solve(t.seed, t.bits)))).status, 201);
+    });
+  }
+  await later(at + 3_600_000, async () => {
+    const t = await ticketFor(e);
+    const wait = t.nbf - Date.now();
+    assert.ok(wait <= 6_000, `waited ${wait}`);
+    await later(wait + 1000, async () => {
+      assert.equal((await sendReport(e, reportForm(t, await solve(t.seed, t.bits)))).status, 201);
+    });
+  });
+});
+
+test('one network cannot use up the day: an absolute cap, whatever the install id or /64', async () => {
+  const e = { ...env(), NETWORK_DAILY_LIMIT: '2' };
+  mockGitHub();
+  let at = 0;
+  const ips = ['2001:db8:1:1::1', '2001:db8:1:2::1', '2001:db8:1:3::1'];
+  const ids = [INSTALL, OTHER_INSTALL, 'abcdefabcdefabcdefabcdefabcdefab'];
+  for (let i = 0; i < 2; i++) {
+    const t = await later(at, () => ticketFor(e, ids[i], ips[i]));
+    at = t.nbf - Date.now() + 1000;
+    await later(at, async () => {
+      const form = reportForm(t, await solve(t.seed, t.bits), {}, ids[i]);
+      assert.equal((await sendReport(e, form, ips[i])).status, 201);
+    });
+  }
+  await later(at + 600_000, async () => {
+    const res = await challengeRes(e, ids[2], ips[2]);
+    assert.equal(res.status, 429);
+    assert.ok(Number(res.headers.get('retry-after')) > 0);
+    // Another network still gets through.
+    assert.equal((await challengeRes(e, ids[2], '2001:db8:2::1')).status, 200);
+  });
+});
+
+test('a report over the daily byte budget waits; one without files still goes', async () => {
+  const e = { ...env(), DAILY_BYTES: '3' };
+  const calls = mockGitHub();
+  const t = await ticketFor(e);
+  await later(10_000, async () => {
+    const nonce = await solve(t.seed, t.bits);
+    const res = await sendReport(e, reportForm(t, nonce));
+    assert.equal(res.status, 503);
+    assert.equal((await res.json()).uncertain, false);
+    assert.equal(calls.filter((c) => c.method === 'PUT').length, 0);
+    const bare = new FormData();
+    bare.set('report', reportForm(t, nonce).get('report'));
+    assert.equal((await sendReport(e, bare)).status, 201);
+  });
+});
+
+test('GitHub refusals are a relay fault to retry, and an expired token uses up no quota', async () => {
+  for (const status of [401, 403, 404, 422]) {
+    const e = env();
+    const calls = mockGitHub();
+    const fake = globalThis.fetch;
+    globalThis.fetch = async (url, init) => (url === 'https://api.github.com/repos/o/r' ? new Response('{}', { status }) : fake(url, init));
+    const t = await ticketFor(e);
+    await later(10_000, async () => {
+      const res = await sendReport(e, reportForm(t, await solve(t.seed, t.bits)));
+      assert.equal(res.status, 503);
+      assert.equal((await res.json()).uncertain, false);
+      assert.equal(calls.length, 0);
+      globalThis.fetch = fake;
+      // The ticket was not spent and nothing was counted: the same report goes once GitHub is back.
+      assert.equal((await sendReport(e, reportForm(t, await solve(t.seed, t.bits)))).status, 201);
+    });
+  }
+  // A label missing on the issue write: certainly not written, so not uncertain.
+  const e = env();
+  mockGitHub();
+  const fake = globalThis.fetch;
+  globalThis.fetch = async (url, init) => (url.endsWith('/issues') ? new Response('{}', { status: 422 }) : fake(url, init));
+  const t = await ticketFor(e);
+  await later(10_000, async () => {
+    const res = await sendReport(e, reportForm(t, await solve(t.seed, t.bits), { requestId: REQUEST }));
+    assert.equal(res.status, 503);
+    assert.equal((await res.json()).uncertain, false);
+  });
+});
+
+const REQUEST = '00000000-0000-4000-8000-000000000000';
+
+test('sending again after a lost answer finds the issue: no double, no extra quota', async () => {
+  const e = env();
+  const calls = mockGitHub();
+  const fake = globalThis.fetch;
+  // GitHub opens the issue, but the Worker sees an error.
+  const opened = [];
+  globalThis.fetch = async (url, init) => {
+    if (url.endsWith('/issues') && init.method === 'POST') {
+      const response = await fake(url, init);
+      opened.push({ ...calls.at(-1).body, number: 7, html_url: 'https://github.com/o/r/issues/7' });
+      await response.text();
+      return new Response('{}', { status: 502 });
+    }
+    if (url.includes('/issues?')) return Response.json(opened);
+    return fake(url, init);
+  };
+  const t = await ticketFor(e);
+  await later(10_000, async () => {
+    const first = await sendReport(e, reportForm(t, await solve(t.seed, t.bits), { requestId: REQUEST }));
+    assert.equal(first.status, 502);
+    assert.equal((await first.json()).uncertain, true);
+  });
+  const sendAt = async (at) => {
+    const ticket = await later(at, () => ticketFor(e));
+    return later(ticket.nbf - Date.now() + 1000, async () =>
+      sendReport(e, reportForm(ticket, await solve(ticket.seed, ticket.bits), { requestId: REQUEST })));
+  };
+  // Soon after: the first write may still be running, so it waits.
+  const soon = await sendAt(30_000);
+  assert.equal(soon.status, 409);
+  assert.ok(Number(soon.headers.get('retry-after')) > 0);
+  const late = await sendAt(700_000);
+  assert.equal(late.status, 201);
+  assert.equal((await late.json()).number, 7);
+  assert.equal(opened.length, 1);
+  // And from then on it answers from memory, without asking GitHub.
+  const before = calls.length;
+  const again = await sendAt(800_000);
+  assert.equal((await again.json()).number, 7);
+  assert.equal(calls.length, before);
+});
+
+test('the log keeps its newest lines, up to the limit', () => {
+  const r = sanitizeReport({ title: 'T', logExcerpt: `old${'x'.repeat(6000)}new` });
+  assert.equal(r.logExcerpt.length, 6000);
+  assert.ok(r.logExcerpt.endsWith('new'));
 });

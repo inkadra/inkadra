@@ -24,7 +24,14 @@ const Env = z.object({
   REDIS_URL: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
   FEEDBACK_RELAY_URL: z
-    .union([z.literal(''), z.url()])
+    .union([
+      z.literal(''),
+      // Plain http only to this machine, for tests: reports must not cross a network in clear.
+      z.url().refine((u) => {
+        const { protocol, hostname } = new URL(u);
+        return protocol === 'https:' || ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+      }, 'FEEDBACK_RELAY_URL must use https'),
+    ])
     .default('https://inkadra-report-relay.matte-maraffio.workers.dev')
     .transform((u) => u.replace(/\/+$/, '')),
   FEEDBACK_GITHUB_TOKEN: z.preprocess(emptyToUndefined, z.string().min(1).optional()),

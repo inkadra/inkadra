@@ -90,7 +90,13 @@ it('offers to report a failure, and only a failure, while reporting is on', asyn
   await act(async () => root.render(<Toast text="Failed" error onClose={() => {}} />));
   expect(button('feedback.report')).toBeUndefined();
   await act(async () =>
-    setFeedbackStatus({ enabled: true, guest: false, destination: 'inbox', retentionDays: 90 }),
+    setFeedbackStatus({
+      enabled: true,
+      guest: false,
+      destination: 'inbox',
+      retentionDays: 90,
+      deviceVideos: true,
+    }),
   );
   await act(async () => root.render(<Toast text="Saved" ok onClose={() => {}} />));
   expect(button('feedback.report')).toBeUndefined();

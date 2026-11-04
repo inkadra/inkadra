@@ -1,11 +1,11 @@
 # Deploys the report relay (relay/) to Cloudflare Workers. The app sends bug reports and requests
 # to it; it opens the GitHub issues, so no GitHub credential ships in the app.
 #
-# Repository secrets it needs:
+# Secrets of the `report-relay` environment:
 #   CLOUDFLARE_API_TOKEN   token from the "Edit Cloudflare Workers" template
 #   CLOUDFLARE_ACCOUNT_ID  the Cloudflare account id
 #   FEEDBACK_GITHUB_TOKEN  fine-grained PAT on the feedback repository only: Issues + Contents, read & write
-# Deployment is manual only (workflow_dispatch), never on push or merge.
+# Deployment is manual only (workflow_dispatch) and only from main, never on push or merge.
 # The ticket-signing secret is generated on the first deploy and stays on Cloudflare.
 #
 # Secrets are given only to the steps that use them; wrangler is pinned in relay/package-lock.json
@@ -13,7 +13,7 @@
 name: Report relay
 
 on:
-  # Pull requests run the tests only: the deploy steps below are skipped.
+  # Pull requests run the tests only: the deploy job is skipped.
   pull_request:
     paths: ["relay/**", ".github/workflows/report-relay.yml"]
   workflow_dispatch:
@@ -26,7 +26,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -46,23 +46,39 @@ jobs:
       - name: Test
         run: npm test
 
+  deploy:
+    needs: test
+    # Only by hand, only from main, and through an environment an administrator can protect.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: report-relay
+    defaults:
+      run:
+        working-directory: relay
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
       - name: Check secrets
-        id: ready
-        if: github.event_name == 'workflow_dispatch'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           FEEDBACK_GITHUB_TOKEN: ${{ secrets.FEEDBACK_GITHUB_TOKEN }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$FEEDBACK_GITHUB_TOKEN" ]; then
-            echo "::warning::Relay not deployed: add CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and FEEDBACK_GITHUB_TOKEN to the repository secrets."
-            echo "ok=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "ok=true" >> "$GITHUB_OUTPUT"
+            echo "::error::Relay not deployed: add CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and FEEDBACK_GITHUB_TOKEN to the report-relay environment."
+            exit 1
           fi
 
       - name: Deploy
-        if: steps.ready.outputs.ok == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -71,7 +87,6 @@ jobs:
           npx --no-install wrangler deploy | tee deploy.log
 
       - name: Secrets
-        if: steps.ready.outputs.ok == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -83,7 +98,6 @@ jobs:
           fi
 
       - name: Health check
-        if: steps.ready.outputs.ok == 'true'
         run: |
           url=$(grep -Eo 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
           echo "Relay: $url"

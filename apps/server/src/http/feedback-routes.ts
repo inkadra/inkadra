@@ -12,13 +12,14 @@ import {
   FEEDBACK_FILE_BYTES,
   FEEDBACK_RELAY_FILE_BYTES,
   FEEDBACK_RELAY_TOTAL_BYTES,
+  FEEDBACK_RELAY_VIDEO_BYTES,
   FEEDBACK_RETENTION_DAYS,
   FEEDBACK_VIDEO_BYTES,
   FeedbackSettingsInput,
   redactFeedback,
   z,
 } from '@inkadra/shared';
-import { and, asc, count, desc, eq, gt, inArray, isNull, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import sharp from 'sharp';
 import {
@@ -38,15 +39,19 @@ import {
   repeatComment,
 } from '../feedback.ts';
 import {
+  RELAY_MIMES,
   RelayFailure,
   relayChallenge,
   relayClean,
   relayFileName,
+  relayImage,
   relayMetadata,
+  relayVideo,
   sendRelay,
 } from '../feedback-relay.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import { sniffImage } from '../media/heic.ts';
+import { mediaTools } from '../media/tools.ts';
 import { sniffVideo } from '../media/video.ts';
 import { RateLimiter } from '../rate-limits.ts';
 import { DocViews } from '../share-links.ts';
@@ -72,6 +77,13 @@ const RELAY_WAIT_MS = 30000;
 /** Formats the server can rewrite without their metadata: GPS, camera, owner. */
 const REWRITABLE = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_PIXELS = 40_000_000;
+
+const uploadLimit = (guest: boolean, kind: string | undefined, destination: string) => {
+  if (guest) return 5 * 1024 * 1024;
+  if (destination === 'relay')
+    return kind === 'video' ? FEEDBACK_RELAY_VIDEO_BYTES : FEEDBACK_RELAY_FILE_BYTES;
+  return kind === 'video' ? FEEDBACK_VIDEO_BYTES : FEEDBACK_FILE_BYTES;
+};
 
 /** To a temporary file, never into memory: stops reading as soon as the limit is passed. */
 async function receive(body: Readable, path: string, max: number) {
@@ -186,7 +198,15 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       await db
         .update(report)
         .set({ delivery: 'pending', failure: null, nextAttemptAt: new Date() })
-        .where(eq(report.delivery, 'refused'));
+        .where(
+          or(
+            eq(report.delivery, 'refused'),
+            // The relay recognises a report sent twice, so trying again can't open a second issue.
+            value.destination === 'relay'
+              ? and(eq(report.delivery, 'uncertain'), eq(report.destination, 'relay'))
+              : undefined,
+          ),
+        );
     return settings();
   });
   app.get(`${API_PREFIX}/feedback/reports`, async (req, reply) => {
@@ -273,13 +293,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
             throw new HttpError('rate_limited', 'Too many uploads.');
           }
           const kind = (req.query as { kind?: string }).kind;
-          const max = guest
-            ? 5 * 1024 * 1024
-            : kind === 'video'
-              ? s.destination === 'relay'
-                ? FEEDBACK_RELAY_FILE_BYTES
-                : FEEDBACK_VIDEO_BYTES
-              : FEEDBACK_FILE_BYTES;
+          const max = uploadLimit(guest, kind, s.destination);
           if (Number(req.headers['content-length']) > max)
             throw new HttpError('payload_too_large', 'Attachment is too large.');
         }
@@ -292,6 +306,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           guest,
           destination: on && s.destination !== 'off' ? s.destination : null,
           retentionDays: s.retentionDays,
+          deviceVideos: s.destination !== 'relay' || !!(await mediaTools()).ffmpeg,
         };
       });
       scope.post(`${prefix}/attachments`, async (req, reply) => {
@@ -300,6 +315,11 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           .object({
             kind: z.enum(['screenshot', 'video', 'file']),
             name: z.string().min(1).max(180),
+            /**
+             * Made in the dialog, so it has no location to leak. The browser says so: someone
+             * lying here only sends their own metadata.
+             */
+            recorded: z.literal('1').optional(),
           })
           .parse(req.query);
         if (guest && q.kind !== 'screenshot')
@@ -307,13 +327,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         if (!(req.body instanceof Readable))
           throw new HttpError('bad_request', 'A binary attachment is required.');
         const s = await settings();
-        const max = guest
-          ? 5 * 1024 * 1024
-          : q.kind === 'video'
-            ? s.destination === 'relay'
-              ? FEEDBACK_RELAY_FILE_BYTES
-              : FEEDBACK_VIDEO_BYTES
-            : FEEDBACK_FILE_BYTES;
+        const max = uploadLimit(guest, q.kind, s.destination);
         // The clip- prefix puts what a crash leaves behind under sweepClipTemp.
         const dir = await mkdtemp(join(deps.tmpDir ?? tmpdir(), 'clip-feedback-'));
         const path = join(dir, 'upload');
@@ -347,9 +361,32 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
             } catch {
               throw new HttpError('bad_request', 'Invalid image.');
             }
-            if (rewritten.length > max)
-              throw new HttpError('payload_too_large', 'Encoded image is too large.');
           }
+          // What leaves on the relay route stays in a repository's history, so nothing leaves with
+          // its GPS position. On the direct route these stay on this server, behind expiring links.
+          if (s.destination === 'relay') {
+            if (mime.startsWith('video/')) {
+              if (!q.recorded) {
+                rewritten = await relayVideo(path, mime).catch(() => null);
+                if (!rewritten)
+                  throw new HttpError('bad_request', 'This video cannot go through the relay.');
+              }
+            } else if (!rewritten) {
+              try {
+                const clean = await relayImage(path, mime, MAX_PIXELS);
+                if (clean) {
+                  rewritten = clean.data;
+                  mime = clean.mime;
+                }
+              } catch {
+                throw new HttpError('bad_request', 'Invalid image.');
+              }
+            }
+            if (!RELAY_MIMES.includes(mime))
+              throw new HttpError('bad_request', 'Unsupported attachment type.');
+          }
+          if (rewritten && rewritten.length > max)
+            throw new HttpError('payload_too_large', 'Encoded image is too large.');
           const id = randomBytes(32).toString('hex');
           const value = {
             id,
@@ -397,12 +434,19 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           throw new HttpError('bad_request', 'Too many attachments.');
         if (
           s.destination === 'relay' &&
-          (input.attachments.some((a) => a.bytes > FEEDBACK_RELAY_FILE_BYTES) ||
+          (input.attachments.some(
+            (a) =>
+              a.bytes >
+              (a.mime.startsWith('video/')
+                ? FEEDBACK_RELAY_VIDEO_BYTES
+                : FEEDBACK_RELAY_FILE_BYTES),
+          ) ||
             input.attachments.reduce((n, a) => n + a.bytes, 0) > FEEDBACK_RELAY_TOTAL_BYTES)
         )
-          throw new HttpError('payload_too_large', 'Relay allows 25 MB per file and 32 MB total.');
+          throw new HttpError('payload_too_large', 'Over the limits of the relay.');
+        const { expectedDestination, ...written } = input;
         const clean = {
-          ...input,
+          ...written,
           diagnostics: Object.fromEntries(
             Object.entries(input.diagnostics).map(([k, v]) => [k, redactFeedback(v)]),
           ),
@@ -420,6 +464,14 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
             .from(report)
             .where(and(eq(report.owner, who.owner), eq(report.requestId, input.requestId)));
           if (existing) return existing;
+          // The reporter agreed to what the dialog said. Nothing goes to the developers, or stays
+          // away from them, on the strength of a tab opened before an administrator changed it.
+          if (
+            s.destination === 'relay'
+              ? expectedDestination !== 'relay'
+              : expectedDestination && expectedDestination !== s.destination
+          )
+            throw new HttpError('conflict', 'The destination of reports has changed.');
           const window = gt(report.createdAt, new Date(Date.now() - HOUR));
           const [all] = await tx.select({ n: count() }).from(report).where(window);
           const [person] = await tx
@@ -463,6 +515,9 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
               stored.mime !== a.mime ||
               stored.name !== a.name
             )
+              throw new HttpError('bad_request', 'Invalid or expired attachment.');
+            // Uploaded before this route was chosen, so never made safe for it.
+            if (s.destination === 'relay' && !RELAY_MIMES.includes(stored.mime))
               throw new HttpError('bad_request', 'Invalid or expired attachment.');
           }
           const [saved] = await tx
@@ -563,10 +618,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           return;
         }
         const form = new FormData();
-        form.set(
-          'report',
-          JSON.stringify({ ...relayMetadata(row.report, config.PUBLIC_URL), ...ticket }),
-        );
+        form.set('report', JSON.stringify({ ...relayMetadata(row.report, config.PUBLIC_URL) }));
         const files = await db.select().from(attachment).where(eq(attachment.reportId, row.id));
         for (const [i, file] of files.entries()) {
           const stream = await storage.read(key(file.id));
@@ -583,7 +635,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
             relayFileName(file, i),
           );
         }
-        const issueNumber = await sendRelay(config.FEEDBACK_RELAY_URL, form);
+        const issueNumber = await sendRelay(config.FEEDBACK_RELAY_URL, form, ticket);
         await db
           .update(report)
           .set({ delivery: 'delivered', issueNumber, failure: null })
@@ -674,10 +726,19 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         .update(report)
         .set({
           delivery: refused ? 'refused' : unknown ? 'uncertain' : 'pending',
-          failure,
-          attempts: row.attempts + 1,
+          // Waiting its turn at the relay is no failure, and must not lengthen the next wait.
+          failure: error instanceof RelayFailure && error.waiting ? null : failure,
+          attempts:
+            error instanceof RelayFailure && error.waiting ? row.attempts : row.attempts + 1,
           nextAttemptAt: new Date(
-            Date.now() + Math.min(24 * HOUR, 60000 * 2 ** Math.min(row.attempts, 10)),
+            Date.now() +
+              (error instanceof RelayFailure && error.retryAfterMs !== undefined
+                ? error.retryAfterMs
+                : // An administrator here can't fix the relay: it comes back without them.
+                  Math.min(
+                    row.destination === 'relay' ? HOUR : 24 * HOUR,
+                    60000 * 2 ** Math.min(row.attempts, 10),
+                  )),
           ),
         })
         .where(eq(report.id, row.id));

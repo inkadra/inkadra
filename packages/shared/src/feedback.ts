@@ -6,7 +6,8 @@ export const FEEDBACK_RETENTION_OPTIONS = [30, 90, 365] as const;
 export const FEEDBACK_FILE_BYTES = 25 * 1024 * 1024;
 export const FEEDBACK_VIDEO_BYTES = 100 * 1024 * 1024;
 /** Limits of the route through the public relay: its Worker has 128 MB of memory. */
-export const FEEDBACK_RELAY_FILE_BYTES = 25 * 1024 * 1024;
+export const FEEDBACK_RELAY_FILE_BYTES = 10 * 1024 * 1024;
+export const FEEDBACK_RELAY_VIDEO_BYTES = 25 * 1024 * 1024;
 export const FEEDBACK_RELAY_TOTAL_BYTES = 32 * 1024 * 1024;
 export const FeedbackSettingsInput = z
   .object({
@@ -34,6 +35,11 @@ export const FeedbackStatus = z
     guest: z.boolean(),
     destination: z.enum(['inbox', 'github', 'relay']).nullable(),
     retentionDays: z.int(),
+    /**
+     * False when a video from the device can't go: the relay route needs ffmpeg to take its
+     * metadata (GPS included) off. A recording made in the dialog always can.
+     */
+    deviceVideos: z.boolean(),
   })
   .openapi('FeedbackStatus');
 export type FeedbackStatus = z.infer<typeof FeedbackStatus>;
@@ -72,6 +78,8 @@ export const CreateFeedback = z
     guestName: z.string().trim().max(80).optional(),
     diagnostics: FeedbackDiagnostics,
     attachments: z.array(FeedbackAttachment).max(7),
+    /** What the reporter was told. The relay route refuses a report that was told something else. */
+    expectedDestination: z.enum(['inbox', 'github', 'relay']).optional(),
   })
   .strict()
   .openapi('CreateFeedback');

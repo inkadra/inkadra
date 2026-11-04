@@ -8,6 +8,10 @@ workers_dev = true
 [vars]
 REPO = "inkadra/inkadra-feedback"
 DAILY_LIMIT = "30"
+# One network can't use up the day for everyone; IPv6 also counts by /48.
+NETWORK_DAILY_LIMIT = "5"
+# 300 MiB a day of attachments in the repository.
+DAILY_BYTES = "314572800"
 # About a second on a phone, milliseconds on a PC: a speed bump, not a wall.
 POW_BITS = "16"
 
