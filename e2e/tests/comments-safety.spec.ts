@@ -77,6 +77,16 @@ async function addThread(
   return project.panel.locator(`[data-thread="${comment.id}"]`);
 }
 
+test('Enter on the focused send button sends to guests', async ({ page }) => {
+  const { panel, box } = await setup(page);
+  await box.fill('Sent from the keyboard');
+  await panel.getByRole('radio', { name: 'Anche ospiti', exact: true }).check();
+  await panel.getByRole('button', { name: 'Invia agli ospiti' }).press('Enter');
+  await expect(
+    panel.locator('.comment-body').filter({ hasText: 'Sent from the keyboard' }),
+  ).toBeVisible();
+});
+
 test('Enter on the audience radio cannot send to guests', async ({ page }) => {
   const { panel, box } = await setup(page);
   await box.fill('Do not send with a key');

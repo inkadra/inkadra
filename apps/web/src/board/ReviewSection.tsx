@@ -65,9 +65,9 @@ export function ReviewSection({
           {current.note && <p className="comment-body">{current.note}</p>}
         </div>
       )}
-      <div className="review-row">
-        {/* A status this client does not know is shown without actions. */}
-        {!compact && writable && known(current?.status ?? 'none') && (
+      {/* A status this client does not know is shown without actions. */}
+      {!compact && writable && known(current?.status ?? 'none') && (
+        <div className="review-row">
           <Button
             icon="pen"
             aria-expanded={editing}
@@ -78,8 +78,8 @@ export function ReviewSection({
           >
             {t('review.change')}
           </Button>
-        )}
-      </div>
+        </div>
+      )}
       {writable && known(current?.status ?? 'none') && editing && (
         <form
           className="review-form"

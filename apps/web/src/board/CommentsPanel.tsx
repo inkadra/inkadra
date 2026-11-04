@@ -560,11 +560,18 @@ function CommentsPanel() {
             <>
               <Button
                 variant="ghost"
+                className="comments-panel__resolved"
                 aria-expanded={resolvedOpen}
                 onClick={() => setResolvedOpen((v) => !v)}
               >
                 {t('comments.resolvedCount', { count: resolved.length })}
-                <Icon name="chevronDown" size={14} />
+                <Icon
+                  className={
+                    resolvedOpen ? 'ink-icon review-chevron is-open' : 'ink-icon review-chevron'
+                  }
+                  name="chevronDown"
+                  size={14}
+                />
               </Button>
               {resolvedOpen && (
                 <div className="comment-threads">
@@ -610,7 +617,6 @@ function NewThread({
   const canvas = useReviews((s) => s.canvas);
   const draftKey = elementId ?? null;
   const [visibility, setVisibility] = useState<CommentVisibility>('team');
-  const id = useId();
   return (
     <div className={`comments-panel__composer${visibility === 'everyone' ? ' is-public' : ''}`}>
       <Composer
@@ -641,7 +647,7 @@ function NewThread({
               </span>
             ) : null}
             <IconButton
-              icon={pin ? 'close' : 'pin'}
+              icon="pin"
               aria-pressed={!!pin}
               label={t(pin ? 'comments.pinRemove' : 'comments.pinAdd')}
               title={t(
@@ -661,7 +667,7 @@ function NewThread({
           </div>
         )}
         {visibility === 'everyone' && (
-          <p id={`${id}-hint`} className="comment-audience">
+          <p className="comment-audience">
             <Icon name="people" size={14} />
             <span>{t('comments.publicWarning')}</span>
           </p>
@@ -768,20 +774,19 @@ export const Thread = memo(function Thread({
       )}
       {showTarget && (
         <div className="review-row comment-thread__target">
-          {showTarget &&
-            (canJump ? (
-              <button
-                type="button"
-                className="review-link"
-                onClick={() => onJump(thread)}
-                aria-label={t('comments.jumpTo', { card: targetLabel })}
-              >
-                {targetLabel}
-                <Icon name="arrow" size={12} />
-              </button>
-            ) : (
-              <span className="review-link">{targetLabel}</span>
-            ))}
+          {canJump ? (
+            <button
+              type="button"
+              className="review-link"
+              onClick={() => onJump(thread)}
+              aria-label={t('comments.jumpTo', { card: targetLabel })}
+            >
+              {targetLabel}
+              <Icon name="arrow" size={12} />
+            </button>
+          ) : (
+            <span className="review-link">{targetLabel}</span>
+          )}
         </div>
       )}
       <CommentItem
@@ -1172,7 +1177,7 @@ function Composer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
-  const pointerSubmit = useRef(false);
+  const buttonSubmit = useRef(false);
   const id = useId();
   // Where the caret goes once a picked mention is in the field.
   const pendingCaret = useRef<number | null>(null);
@@ -1226,8 +1231,8 @@ function Composer({
   async function send(e: FormEvent) {
     e.preventDefault();
     // Implicit submit (including Enter on a radio) must never send outside the team.
-    const clicked = pointerSubmit.current;
-    pointerSubmit.current = false;
+    const clicked = buttonSubmit.current;
+    buttonSubmit.current = false;
     if ((publicAudience && !clicked) || busy || !body.trim() || tooLong) return;
     setBusy(true);
     setError(null);
@@ -1374,7 +1379,9 @@ function Composer({
           variant="primary"
           disabled={busy || !body.trim() || tooLong}
           onClick={(e) => {
-            pointerSubmit.current = e.detail > 0;
+            // Implicit submit is also a click, with no pointer and with focus left on the field.
+            // A pointer, or a key on the focused button itself, is a deliberate press.
+            buttonSubmit.current = e.detail > 0 || document.activeElement === e.currentTarget;
           }}
         >
           {submitLabel}

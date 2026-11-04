@@ -894,8 +894,21 @@ body[data-comments-on-board="off"] .comment-pin {
   order: 3;
   margin: 0;
 }
+/* The pin chip sits above the field and the pin button starts the controls row. */
 .comment-composer--new > .comment-composer__pin {
+  display: contents;
+}
+.comment-composer--new .comment-composer__pin > .review-chip {
+  order: 0;
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.comment-composer__pin > .ink-iconbtn {
   order: 4;
+}
+.comment-composer__pin > .ink-iconbtn[aria-pressed="true"] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
 }
 .comment-composer--new > .comment-visibility {
   order: 5;
@@ -905,9 +918,6 @@ body[data-comments-on-board="off"] .comment-pin {
 }
 .comment-composer--new:not(:has(.comment-composer__pin)) > .comment-visibility {
   grid-column: span 2;
-}
-.comment-composer__pin .ink-btn {
-  padding: 0 6px;
 }
 @media (max-width: 767px) {
   .comment-composer--new > .comment-visibility {
@@ -919,9 +929,6 @@ body[data-comments-on-board="off"] .comment-pin {
   .comment-composer--new > .review-row:last-of-type > .ink-btn {
     width: 100%;
   }
-}
-.comment-composer__pin:has(.review-chip) {
-  grid-column: 1 / -1;
 }
 
 .comments-panel__context {
@@ -942,6 +949,9 @@ body[data-comments-on-board="off"] .comment-pin {
   padding: 6px 8px;
   background: var(--ink-accent-soft-bg);
   border-radius: var(--ink-radius-sm);
+}
+.comments-panel__resolved {
+  align-self: flex-start;
 }
 .review-chevron {
   transition: transform var(--ink-dur-fast);
@@ -1002,9 +1012,6 @@ body[data-comments-on-board="off"] .comment-pin {
 .comment-composer--new > .review-error {
   order: 7;
   grid-column: 1 / -1;
-}
-.comment-composer__pin .ink-iconbtn {
-  flex: none;
 }
 @media (hover: none), (pointer: coarse) {
   .comment-replies .comment-thread__more {
