@@ -530,9 +530,7 @@ function NewThread({
   const boardId = useReviews((s) => s.boardId);
   const canvas = useReviews((s) => s.canvas);
   const draftKey = elementId ?? null;
-  const [visibility, setVisibility] = useState<CommentVisibility>(
-    () => getDraft(draftKey)?.visibility ?? 'team',
-  );
+  const [visibility, setVisibility] = useState<CommentVisibility>('team');
   const id = useId();
   return (
     <div className="comments-panel__composer">
@@ -575,6 +573,7 @@ function NewThread({
             ...(elementId ? { elementId } : {}),
             ...(pin ? { pin } : {}),
           });
+          setVisibility('team');
           refreshReviews('comments', draftKey);
           if (pin && elementId) openComments({ elementId });
         }}
