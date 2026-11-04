@@ -47,8 +47,9 @@
   flex-wrap: wrap;
 }
 .card__todo-list li > .card__inline-input {
-  flex: 1;
-  min-width: 90px;
+  /* The text keeps its whole row while editing: the person and date go underneath. */
+  flex: 1 1 calc(100% - 32px);
+  min-width: 0;
 }
 .todo-assignment__picker .people-picker__list {
   max-height: 180px;
