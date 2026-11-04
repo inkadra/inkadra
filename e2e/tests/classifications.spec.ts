@@ -203,7 +203,7 @@ test('frames keep their values while admins change the storyboard lists', async 
     await guest.goto(url);
     const frame = guest.locator('[data-el]', { hasText: 'Rinominata' }).first();
     await expect(frame).toBeVisible({ timeout: 20_000 });
-    await frame.click();
+    await frame.dblclick();
     const panel = guest.locator('.film-panel');
     await expect(panel).toContainText('Piano americano');
     if (shots) await guest.screenshot({ path: `${shots}/07-guest-panel-1280.png` });
