@@ -465,8 +465,8 @@ for (const provider of ['youtube', 'vimeo']) {
       await page.evaluate(() => {
         const original = window.matchMedia.bind(window);
         window.matchMedia = (query) =>
-          query.includes('pointer: fine')
-            ? ({ matches: false } as MediaQueryList)
+          query.includes('pointer: coarse')
+            ? ({ matches: true } as MediaQueryList)
             : original(query);
       });
       await page.locator('[data-type="link"]').dblclick();

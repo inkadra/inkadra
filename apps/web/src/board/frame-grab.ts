@@ -146,21 +146,62 @@ export function canCaptureTab() {
 }
 
 /** A phone or tablet, where there is no tab to photograph and no Ctrl+V. */
-export const coarsePointer = () => window.matchMedia?.('(pointer: fine)').matches === false;
+export const coarsePointer = () => window.matchMedia?.('(pointer: coarse)').matches === true;
 
 /** Nothing but black came through: protected content, or a capture that did not start. */
 export class BlackFrame extends Error {}
 
 /** Time for the browser to take its permission dialog and sharing bar off the picture. */
 const CAPTURE_SETTLE_MS = 500;
+/** A tab that is not changing sends no frames, so no wait for one may be without a limit. */
+const FRAME_WAIT_MS = 1000;
+const FRAME_ATTEMPTS = 3;
+
+/** No frame ever came through, however long and however it was asked for. */
+export class NoFrame extends Error {}
+
+const noop = () => {};
+
+/** Whether `work` ended in time. It throws what `work` throws, and at once on an abort. */
+function within(work: Promise<unknown>, ms: number, signal?: AbortSignal) {
+  return new Promise<boolean>((resolve, reject) => {
+    const finish = (settle: () => void) => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', aborted);
+      settle();
+    };
+    const aborted = () => finish(() => reject(new Error('cancelled')));
+    const timer = setTimeout(() => finish(() => resolve(false)), ms);
+    signal?.addEventListener('abort', aborted, { once: true });
+    if (signal?.aborted) aborted();
+    work.then(
+      () => finish(() => resolve(true)),
+      (error: unknown) => finish(() => reject(error)),
+    );
+  });
+}
+
+/**
+ * A static tab sends one frame when asked and then none until it changes, and a crop applied just
+ * after the capture starts can swallow that one: `play()` then waits forever (a paused player,
+ * about a run in three). Attaching the stream again asks for a new frame.
+ */
+async function waitForFrame(video: HTMLVideoElement, stream: MediaStream, signal?: AbortSignal) {
+  for (let attempt = 0; attempt < FRAME_ATTEMPTS; attempt += 1) {
+    video.srcObject = null;
+    video.srcObject = stream;
+    if (await within(video.play(), FRAME_WAIT_MS, signal)) return true;
+  }
+  return false;
+}
 
 /**
  * One photo of a browser tab, after asking the browser's permission. The tracks stop however
  * this ends, and nothing but the picture stays. `cropTo` limits the capture to an element of
  * this tab where the browser can (Region Capture, Chrome and Edge); elsewhere the whole surface
- * comes through, for the person to crop.
+ * comes through, for the person to crop. `signal` ends it, and the tracks, at once.
  */
-export async function captureTabFrame(cropTo: Element | null) {
+export async function captureTabFrame(cropTo: Element | null, signal?: AbortSignal) {
   const stream = await navigator.mediaDevices.getDisplayMedia({
     video: { displaySurface: 'browser' },
     audio: false,
@@ -171,20 +212,28 @@ export async function captureTabFrame(cropTo: Element | null) {
   } as DisplayMediaStreamOptions);
   const video = document.createElement('video');
   try {
+    signal?.throwIfAborted();
     const track = stream.getVideoTracks()[0] as
-      | (MediaStreamTrack & { cropTo?: (target: unknown) => Promise<void> })
+      | (MediaStreamTrack & { cropTo?: (target?: unknown) => Promise<void> })
       | undefined;
     const target = (
       window as unknown as { CropTarget?: { fromElement(el: Element): Promise<unknown> } }
     ).CropTarget;
-    if (cropTo && track?.cropTo && target) {
+    const cropped = Boolean(cropTo && track?.cropTo && target);
+    if (cropTo && cropped) {
       // Another tab or window was chosen: it cannot be cropped to an element of this one.
-      await track.cropTo(await target.fromElement(cropTo)).catch(() => {});
+      const crop = target?.fromElement(cropTo).then((region) => track?.cropTo?.(region));
+      await within(Promise.resolve(crop).catch(noop), FRAME_WAIT_MS, signal);
     }
     video.muted = true;
-    video.srcObject = stream;
-    await video.play();
-    await new Promise((resolve) => setTimeout(resolve, CAPTURE_SETTLE_MS));
+    let framed = await waitForFrame(video, stream, signal);
+    if (!framed && cropped) {
+      // The whole surface, for the person to crop, beats no picture at all.
+      await within(Promise.resolve(track?.cropTo?.()).catch(noop), FRAME_WAIT_MS, signal);
+      framed = await waitForFrame(video, stream, signal);
+    }
+    if (!framed) throw new NoFrame();
+    await within(new Promise(noop), CAPTURE_SETTLE_MS, signal);
     const { videoWidth: width, videoHeight: height } = video;
     if (!width || !height) throw new BlackFrame();
     const canvas = document.createElement('canvas');
