@@ -14,7 +14,13 @@ import { AutosaveText, Badge, Card, Row } from '../routes/settings-ui.tsx';
 import { openFeedback, STATUS_CHANGED, useFeedbackStatus } from './state.ts';
 
 const WHEN = { dateStyle: 'medium', timeStyle: 'short' } as const;
-const TONE = { delivered: 'ok', pending: 'warn', uncertain: 'warn', inbox: 'neutral' } as const;
+const TONE = {
+  delivered: 'ok',
+  pending: 'warn',
+  uncertain: 'warn',
+  refused: 'warn',
+  inbox: 'neutral',
+} as const;
 
 /** The Settings row: opens the form, or says in one line why it cannot. */
 export function FeedbackRow() {
@@ -76,6 +82,7 @@ function ReportList({ reports }: { reports: FeedbackReport[] }) {
             </span>
           </summary>
           <div className="feedback-reports__body">
+            {r.failure && <p role="note">{t('feedback.failure', { reason: r.failure })}</p>}
             {r.report.description && <p>{r.report.description}</p>}
             {r.issueUrl && (
               <p>
@@ -146,6 +153,7 @@ export function FeedbackSettings() {
   const latest = reports.find((r) => r.delivery === 'delivered');
   const waiting = reports.filter((r) => r.delivery === 'pending').length;
   const uncertain = reports.filter((r) => r.delivery === 'uncertain').length;
+  const refused = reports.filter((r) => r.delivery === 'refused');
   const github = settings.destination === 'github';
   return (
     <>
@@ -155,6 +163,22 @@ export function FeedbackSettings() {
             <div className="feedback-banner feedback-banner--danger" role="alert">
               <Icon name="warning" size={14} />
               <div>{error}</div>
+            </div>
+          )}
+          {github && refused.length > 0 && (
+            <div className="feedback-banner feedback-banner--danger" role="alert">
+              <Icon name="warning" size={14} />
+              <div>
+                <p>
+                  {t('feedback.refusedBanner', {
+                    count: refused.length,
+                    reason: refused[0]?.failure ?? '',
+                  })}
+                </p>
+                <Button onClick={() => void save(input).then(refresh)}>
+                  {t('feedback.retryRefused')}
+                </Button>
+              </div>
             </div>
           )}
           {github && !settings.tokenConfigured && (

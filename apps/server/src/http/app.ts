@@ -114,8 +114,9 @@ export async function createApp(deps: AppDeps) {
   });
 
   app.addHook('onSend', async (req, reply) => {
+    // A route's stricter policy stands: stored files are sandboxed whatever the page's policy is.
     for (const [name, value] of Object.entries(securityHeaders(config, requestIsSecure(req))))
-      reply.header(name, value);
+      if (!reply.hasHeader(name)) reply.header(name, value);
     reply.header('x-content-type-options', 'nosniff');
     reply.header('x-frame-options', 'DENY');
     // The token of a share link is in the path of its guest page: it must not leak to the

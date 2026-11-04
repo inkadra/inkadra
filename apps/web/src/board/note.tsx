@@ -3,6 +3,7 @@ import { Placeholder } from '@tiptap/extensions';
 import { TextSelection } from '@tiptap/pm/state';
 import { type Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { isFeedbackKey } from '../feedback/state.ts';
 import { type ReactNode, useEffect, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
@@ -192,7 +193,7 @@ export function NoteEditor({
       attributes: { class: 'note-text note-text--editing', 'aria-label': t('board.note.label') },
       handleKeyDown: (_view, event) => {
         // Reporting owns this chord, including when the reporting destination is off.
-        if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'KeyB') {
+        if (isFeedbackKey(event)) {
           event.preventDefault();
           return true;
         }

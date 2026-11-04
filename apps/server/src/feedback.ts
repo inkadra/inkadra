@@ -12,8 +12,9 @@ const INVISIBLE = '​';
 export function inertText(text: string): string {
   return (
     text
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: remove untrusted control characters
-      .replace(/[\u0000-\u0008\u000b-\u001f\u007f‪-‮⁦-⁩]/g, '')
+      // Every character a reader cannot see, tag characters included: a hidden instruction would
+      // reach whoever, or whatever, reads the issue. Line breaks and tabs stay.
+      .replace(/(?![\n\t])[\p{Cc}\p{Cf}\p{Default_Ignorable_Code_Point}]/gu, '')
       .replace(/[@#]/g, `$&${INVISIBLE}`)
       .replace(/\b([a-z][a-z0-9+.-]{1,20}):(?=\/\/|[^\s])/gi, `$1${INVISIBLE}:`)
       .replace(/\bwww\./gi, `www${INVISIBLE}.`)
@@ -64,6 +65,8 @@ export const issueTitle = (title: string) =>
 const CLOCK = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 const ENVIRONMENT_ROWS = ['Version', 'Browser and OS', 'Screen', 'Theme and language'];
+/** A browser sends four lines; a report built by hand could send thousands of empty rows. */
+const ENVIRONMENT_ROW_LIMIT = 8;
 
 export interface IssueContext {
   /** Abbreviated name and role, never an email (decision 10). */
@@ -116,7 +119,10 @@ export function issueBody(report: CreateFeedback, context: IssueContext): string
     );
   const rows = [
     ['Reporter', `${context.reporter} · instance ${context.instance}`],
-    ...(d.environment?.split('\n') ?? []).map((line, i) => [ENVIRONMENT_ROWS[i] ?? 'Info', line]),
+    ...(d.environment?.split('\n') ?? [])
+      .filter((line) => line.trim())
+      .slice(0, ENVIRONMENT_ROW_LIMIT)
+      .map((line, i) => [ENVIRONMENT_ROWS[i] ?? 'Info', line]),
     ...(d.page ? [['Route', d.page]] : []),
     ...(d.sync ? [['Sync', d.sync]] : []),
     ...(d.flags ? [['Features', d.flags]] : []),
@@ -161,12 +167,18 @@ export function repeatComment(report: CreateFeedback, context: IssueContext): st
   ].join('\n\n');
 }
 
-/** GitHub answered: nothing was created, so trying again cannot make a duplicate. */
+/** GitHub answered with an error. */
 export class GitHubRefused extends Error {
   constructor(readonly status: number) {
     super(`GitHub feedback HTTP ${status}`);
   }
+  /** It will say the same next time, until a person changes the token, repository or labels. */
+  get permanent() {
+    return [401, 404, 410, 422, 451].includes(this.status);
+  }
 }
+/** The repository is public or not the one named: nothing may be sent to it. */
+export class GitHubNotPrivate extends Error {}
 
 export class GitHubFeedback {
   constructor(
@@ -193,6 +205,6 @@ export class GitHubFeedback {
   async requirePrivate(repository: string) {
     const repo = await this.request(repository);
     if (repo.private !== true || repo.full_name !== repository)
-      throw new Error('A private feedback repository is required');
+      throw new GitHubNotPrivate('A private feedback repository is required');
   }
 }

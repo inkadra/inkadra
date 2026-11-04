@@ -3384,7 +3384,8 @@
       "inbox": "Solo Inbox",
       "pending": "In attesa di GitHub",
       "delivered": "Su GitHub",
-      "uncertain": "Da controllare su GitHub"
+      "uncertain": "Da controllare su GitHub",
+      "refused": "Rifiutata da GitHub"
     },
     "editScreenshot": "Modifica lo screenshot",
     "tools": "Strumenti",
@@ -3396,6 +3397,10 @@
     "apply": "Applica",
     "cancel": "Annulla",
     "close": "Chiudi",
-    "guestName": "Il tuo nome (facoltativo)"
+    "guestName": "Il tuo nome (facoltativo)",
+    "failure": "Motivo: {{reason}}",
+    "refusedBanner_one": "GitHub ha rifiutato {{count}} segnalazione ({{reason}}): non riprovo da solo. Sono salve qui; correggi token, repository o etichette, poi riprova.",
+    "refusedBanner_other": "GitHub ha rifiutato {{count}} segnalazioni ({{reason}}): non riprovo da solo. Sono salve qui; correggi token, repository o etichette, poi riprova.",
+    "retryRefused": "Riprova"
   }
 }

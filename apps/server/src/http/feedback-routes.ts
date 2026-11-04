@@ -1,4 +1,11 @@
 import { randomBytes } from 'node:crypto';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { once } from 'node:events';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Readable } from 'node:stream';
+import { finished } from 'node:stream/promises';
 import {
   API_PREFIX,
   CreateFeedback,
@@ -22,6 +29,7 @@ import {
 import {
   errorSignature,
   GitHubFeedback,
+  GitHubNotPrivate,
   GitHubRefused,
   issueBody,
   issueTitle,
@@ -49,6 +57,34 @@ const defaults = {
 } as const;
 /** The reporter waits this long for GitHub; the sweep finishes a slower delivery. */
 const DELIVERY_WAIT_MS = 8000;
+/** Formats the server can rewrite without their metadata: GPS, camera, owner. */
+const REWRITABLE = ['image/png', 'image/jpeg', 'image/webp'];
+const MAX_PIXELS = 40_000_000;
+
+/** To a temporary file, never into memory: stops reading as soon as the limit is passed. */
+async function receive(body: Readable, path: string, max: number) {
+  const out = createWriteStream(path);
+  let size = 0;
+  let head = Buffer.alloc(0);
+  let text = true;
+  try {
+    for await (const chunk of body.iterator({ destroyOnReturn: false }) as AsyncIterable<Buffer>) {
+      size += chunk.length;
+      if (size > max) return null;
+      if (head.length < 512) head = Buffer.concat([head, chunk]).subarray(0, 512);
+      text &&= !chunk.some((byte) => byte < 32 && byte !== 9 && byte !== 10 && byte !== 13);
+      if (!out.write(chunk)) await once(out, 'drain');
+    }
+  } finally {
+    out.end();
+    await finished(out);
+  }
+  return { size, head, text };
+}
+
+const sweeps = new WeakMap<FastifyInstance, () => Promise<void>>();
+/** Tests only: one round of what the timer does every minute. */
+export const sweepFeedback = (app: FastifyInstance) => sweeps.get(app)?.();
 
 export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
   const { db, auth, config, storage } = deps;
@@ -127,6 +163,12 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       .insert(instanceSetting)
       .values({ key: 'feedback', value })
       .onConflictDoUpdate({ target: instanceSetting.key, set: { value, updatedAt: new Date() } });
+    // Saving is how an administrator says the cause is fixed: refused reports go round again.
+    if (value.destination === 'github')
+      await db
+        .update(report)
+        .set({ delivery: 'pending', failure: null, nextAttemptAt: new Date() })
+        .where(eq(report.delivery, 'refused'));
     return settings();
   });
   app.get(`${API_PREFIX}/feedback/reports`, async (req, reply) => {
@@ -138,6 +180,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         ...receipt(r, 'admin'),
         report: r.report,
         reporter: r.reporter,
+        failure: r.failure,
         createdAt: r.createdAt.toISOString(),
       })),
     };
@@ -171,7 +214,6 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       const identities = new WeakMap<object, Reporter>();
       scope.addContentTypeParser(
         'application/octet-stream',
-        { parseAs: 'buffer', bodyLimit: FEEDBACK_VIDEO_BYTES },
         (_req, body, done) => done(null, body),
       );
       scope.addHook('onRequest', async (req, reply) => {
@@ -204,11 +246,15 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           throw new HttpError('forbidden', 'Feedback is not enabled.');
         if (req.routeOptions.url?.endsWith('/attachments')) {
           const who = identities.get(req) as Reporter;
-          if (
-            !(guest ? guestUploads : uploads).take(who.owner) ||
-            !instanceUploads.take('instance')
-          )
+          const budget = guest ? guestUploads : uploads;
+          if (!budget.take(who.owner)) {
+            reply.header('retry-after', budget.retryAfterSeconds(who.owner));
             throw new HttpError('rate_limited', 'Too many uploads.');
+          }
+          if (!instanceUploads.take('instance')) {
+            reply.header('retry-after', instanceUploads.retryAfterSeconds('instance'));
+            throw new HttpError('rate_limited', 'Too many uploads.');
+          }
           const kind = (req.query as { kind?: string }).kind;
           const max = guest
             ? 5 * 1024 * 1024
@@ -229,56 +275,59 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           retentionDays: s.retentionDays,
         };
       });
-      scope.post(
-        `${prefix}/attachments`,
-        { bodyLimit: guest ? 5 * 1024 * 1024 : FEEDBACK_VIDEO_BYTES },
-        async (req, reply) => {
-          const who = identities.get(req) as Reporter;
-          const q = z
-            .object({
-              kind: z.enum(['screenshot', 'video', 'file']),
-              name: z.string().min(1).max(180),
-            })
-            .parse(req.query);
-          if (guest && q.kind !== 'screenshot')
-            throw new HttpError('forbidden', 'Guests can attach only a screenshot.');
-          if (!Buffer.isBuffer(req.body) || !req.body.length)
-            throw new HttpError('bad_request', 'A binary attachment is required.');
-          let bytes: Buffer = req.body;
-          const max = guest
-            ? 5 * 1024 * 1024
-            : q.kind === 'video'
-              ? FEEDBACK_VIDEO_BYTES
-              : FEEDBACK_FILE_BYTES;
-          if (bytes.length > max)
+      scope.post(`${prefix}/attachments`, async (req, reply) => {
+        const who = identities.get(req) as Reporter;
+        const q = z
+          .object({
+            kind: z.enum(['screenshot', 'video', 'file']),
+            name: z.string().min(1).max(180),
+          })
+          .parse(req.query);
+        if (guest && q.kind !== 'screenshot')
+          throw new HttpError('forbidden', 'Guests can attach only a screenshot.');
+        if (!(req.body instanceof Readable))
+          throw new HttpError('bad_request', 'A binary attachment is required.');
+        const max = guest
+          ? 5 * 1024 * 1024
+          : q.kind === 'video'
+            ? FEEDBACK_VIDEO_BYTES
+            : FEEDBACK_FILE_BYTES;
+        // The clip- prefix puts what a crash leaves behind under sweepClipTemp.
+        const dir = await mkdtemp(join(deps.tmpDir ?? tmpdir(), 'clip-feedback-'));
+        const path = join(dir, 'upload');
+        try {
+          const received = await receive(req.body, path, max);
+          if (!received) {
+            // Unread bytes stay unread: the connection closes after this answer.
+            reply.header('connection', 'close');
             throw new HttpError('payload_too_large', 'Attachment is too large.');
-          const head = bytes.subarray(0, 512);
-          let mime = sniffImage(head) ?? sniffVideo(head);
-          if (!mime && head.subarray(0, 5).toString() === '%PDF-') mime = 'application/pdf';
-          if (
-            !mime &&
-            !bytes.includes(0) &&
-            !bytes.some((byte) => byte < 32 && ![9, 10, 13].includes(byte))
-          )
-            mime = 'text/plain';
+          }
+          if (!received.size)
+            throw new HttpError('bad_request', 'A binary attachment is required.');
+          let mime = sniffImage(received.head) ?? sniffVideo(received.head);
+          if (!mime && received.head.subarray(0, 5).toString() === '%PDF-')
+            mime = 'application/pdf';
+          if (!mime && received.text) mime = 'text/plain';
           if (
             !mime ||
-            (q.kind === 'screenshot' &&
-              !['image/png', 'image/jpeg', 'image/webp'].includes(mime)) ||
+            (q.kind === 'screenshot' && !REWRITABLE.includes(mime)) ||
             (q.kind === 'video' && !mime.startsWith('video/'))
           )
             throw new HttpError('bad_request', 'Unsupported attachment type.');
-          // Re-encode screenshots: flatten edits and remove EXIF and other hidden source data.
-          if (q.kind === 'screenshot') {
+          // Rewritten without EXIF and other hidden data: the screenshot's edits stay flat, and a
+          // photo sent as a file loses its GPS position. HEIC and RAW files leave as they came.
+          let rewritten: Buffer | null = null;
+          if (q.kind === 'screenshot' || REWRITABLE.includes(mime)) {
             try {
-              bytes = await sharp(bytes, { limitInputPixels: 40_000_000 }).png().toBuffer();
-              mime = 'image/png';
+              const image = sharp(path, { limitInputPixels: MAX_PIXELS }).rotate();
+              rewritten = await (q.kind === 'screenshot' ? image.png() : image).toBuffer();
+              if (q.kind === 'screenshot') mime = 'image/png';
             } catch {
-              throw new HttpError('bad_request', 'Invalid screenshot.');
+              throw new HttpError('bad_request', 'Invalid image.');
             }
+            if (rewritten.length > max)
+              throw new HttpError('payload_too_large', 'Encoded image is too large.');
           }
-          if (bytes.length > max)
-            throw new HttpError('payload_too_large', 'Encoded screenshot is too large.');
           const id = randomBytes(32).toString('hex');
           const value = {
             id,
@@ -288,10 +337,11 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
               .filter((c) => c.charCodeAt(0) >= 32 && c.charCodeAt(0) !== 127)
               .join(''),
             mime,
-            bytes: bytes.length,
+            bytes: rewritten?.length ?? received.size,
             expiresAt: new Date(Date.now() + DAY),
           };
-          await storage.write(key(id), bytes, mime);
+          if (rewritten) await storage.write(key(id), rewritten, mime);
+          else await storage.writeStream(key(id), createReadStream(path), mime);
           try {
             await db.insert(attachment).values(value);
           } catch (error) {
@@ -300,8 +350,10 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           }
           reply.code(201);
           return { id, kind: value.kind, name: value.name, mime, bytes: value.bytes };
-        },
-      );
+        } finally {
+          await rm(dir, { recursive: true, force: true });
+        }
+      });
       scope.post(prefix, async (req, reply) => {
         const who = identities.get(req) as Reporter;
         const input = CreateFeedback.parse(req.body);
@@ -449,6 +501,13 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       .returning();
     if (!row?.repository) return;
     const repository = row.repository;
+    // The administrator moved reporting elsewhere: what is queued stays here, never goes to the
+    // repository that was chosen before.
+    const current = await settings();
+    if (current.destination !== 'github' || current.repository !== repository) {
+      await db.update(report).set({ delivery: 'inbox' }).where(eq(report.id, row.id));
+      return;
+    }
     let writing = false;
     try {
       await github.requirePrivate(repository);
@@ -467,8 +526,14 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           .orderBy(desc(report.createdAt))
           .limit(1);
         if (known?.issueNumber) {
-          const issue = await github.request(repository, `/issues/${known.issueNumber}`);
-          if (issue.state === 'open') issueNumber = known.issueNumber;
+          // An issue deleted or moved away is not a refusal: this report opens a new one.
+          const issue = await github
+            .request(repository, `/issues/${known.issueNumber}`)
+            .catch((error) => {
+              if (error instanceof GitHubRefused && [404, 410].includes(error.status)) return null;
+              throw error;
+            });
+          if (issue?.state === 'open') issueNumber = known.issueNumber;
         }
       }
       const [stored] = await db
@@ -500,16 +565,27 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       }
       await db
         .update(report)
-        .set({ delivery: 'delivered', issueNumber })
+        .set({ delivery: 'delivered', issueNumber, failure: null })
         .where(eq(report.id, row.id));
     } catch (error) {
-      // Before the write, or refused by GitHub: nothing exists there, so it can run again. A
-      // connection lost during the write may have created the issue: keep it uncertain.
-      const again = !writing || error instanceof GitHubRefused;
+      const status = error instanceof GitHubRefused ? error.status : null;
+      const refused =
+        error instanceof GitHubNotPrivate || (error instanceof GitHubRefused && error.permanent);
+      // A 4xx created nothing. A lost connection or a 5xx during the write may have: sending it
+      // again could open the issue twice, so an administrator looks instead.
+      const unknown = writing && !refused && (status === null || status >= 500);
+      const failure =
+        error instanceof GitHubNotPrivate
+          ? 'Repository is not private'
+          : status
+            ? `GitHub HTTP ${status}`
+            : 'No answer from GitHub';
+      deps.log.warn({ report: row.id, failure }, 'Feedback delivery failed');
       await db
         .update(report)
         .set({
-          delivery: again ? 'pending' : 'uncertain',
+          delivery: refused ? 'refused' : unknown ? 'uncertain' : 'pending',
+          failure,
           attempts: row.attempts + 1,
           nextAttemptAt: new Date(
             Date.now() + Math.min(24 * HOUR, 60000 * 2 ** Math.min(row.attempts, 10)),
@@ -543,6 +619,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       );
     }
   }
+  sweeps.set(app, sweep);
   const timer = setInterval(() => {
     void sweep().catch(() => deps.log.warn('Feedback maintenance failed'));
   }, 60000);

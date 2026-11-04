@@ -730,7 +730,7 @@ export function TwoFactor({
   return setup ? (
     <form className="settings-form" onSubmit={confirm}>
       <p>{t('settings.twoFactor.scan')}</p>
-      <div className="settings__qr-row">
+      <div className="settings__qr-row" data-feedback-secret>
         <QrCode text={setup.totpURI} />
         <div className="settings__secret">
           <span className="settings-muted">{t('settings.twoFactor.manual')}</span>
@@ -738,7 +738,7 @@ export function TwoFactor({
         </div>
       </div>
       <p>{t('settings.twoFactor.backup')}</p>
-      <ul className="settings__codes">
+      <ul className="settings__codes" data-feedback-secret>
         {setup.backupCodes.map((c) => (
           <li key={c}>
             <code>{c}</code>
@@ -992,7 +992,9 @@ function Tokens() {
         {created ? (
           <div className="settings-form" role="status">
             <p>{t('settings.tokens.copyNow', { name: created.name })}</p>
-            <code className="settings__token">{created.token}</code>
+            <code className="settings__token" data-feedback-secret>
+              {created.token}
+            </code>
             <DialogActions>
               <Button
                 onClick={() => navigator.clipboard?.writeText(created.token).catch(() => {})}

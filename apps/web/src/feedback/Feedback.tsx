@@ -31,7 +31,10 @@ import { diagnostics } from './diagnostics.ts';
 import { ScreenshotEditor } from './ScreenshotEditor.tsx';
 import {
   type FeedbackPrefill,
+  isFeedbackKey,
+  leftOutOfScreenshot,
   onOpenFeedback,
+  readFeedbackDraft,
   STATUS_CHANGED,
   setFeedbackStatus,
   useFeedbackStatus,
@@ -208,19 +211,16 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   // Text stays on this device until it is sent or discarded (decision 9).
   const loadedDraft = useRef('');
   useEffect(() => {
-    try {
-      const draft = JSON.parse(localStorage.getItem(draftKey) ?? 'null');
-      if (draft) {
-        setTitle(draft.title ?? '');
-        setDescription(draft.description ?? '');
-        if (['bug', 'idea', 'question'].includes(draft.type)) {
-          setType(draft.type);
-          setSelected(defaultParts(draft.type, guest));
-          setShotIncluded(draft.type === 'bug');
-        }
+    const draft = readFeedbackDraft(draftKey);
+    if (draft) {
+      setTitle(draft.title ?? '');
+      setDescription(draft.description ?? '');
+      if (draft.requestId) requestId.current = draft.requestId;
+      if (draft.type) {
+        setType(draft.type);
+        setSelected(defaultParts(draft.type, guest));
+        setShotIncluded(draft.type === 'bug');
       }
-    } catch {
-      /* A storage that cannot be read only loses the draft. */
     }
     loadedDraft.current = draftKey;
   }, [draftKey, guest]);
@@ -228,7 +228,10 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
     if (loadedDraft.current !== draftKey) return;
     try {
       if (title || description)
-        localStorage.setItem(draftKey, JSON.stringify({ title, description, type }));
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({ title, description, type, requestId: requestId.current }),
+        );
       else localStorage.removeItem(draftKey);
     } catch {
       /* The text is still in memory. */
@@ -307,12 +310,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
           // Guests have a smaller size limit.
           pixelRatio: guest ? 1 : Math.min(devicePixelRatio, 2),
           imagePlaceholder: TRANSPARENT,
-          filter: (node) =>
-            !(
-              node instanceof HTMLElement &&
-              (node.closest('[data-feedback-exclude]') ||
-                (node instanceof HTMLInputElement && node.type === 'password'))
-            ),
+          filter: (node) => !leftOutOfScreenshot(node),
         }),
         new Promise<null>((resolve) => setTimeout(() => resolve(null), CAPTURE_TIMEOUT_MS)),
       ]);
@@ -374,7 +372,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
 
   useEffect(() => {
     function key(e: KeyboardEvent) {
-      if (!((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyB')) return;
+      if (!isFeedbackKey(e)) return;
       // Reporting owns this chord in every field, and the browser's bookmarks bar stays shut.
       e.preventDefault();
       e.stopImmediatePropagation();

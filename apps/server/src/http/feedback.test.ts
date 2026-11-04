@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { readdir } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import pino from 'pino';
@@ -12,6 +15,7 @@ import { createDatabase, runMigrations } from '../db/client.ts';
 import { feedbackAttachment, feedbackReport, user } from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
+import { sweepFeedback } from './feedback-routes.ts';
 
 const url = process.env.DATABASE_URL;
 describe.skipIf(!url)('feedback security and durable delivery', () => {
@@ -25,6 +29,7 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
   });
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 5);
   let app: Awaited<ReturnType<typeof createApp>>;
+  let sharedDeps: ReturnType<typeof testDeps>;
   const logged: string[] = [];
   const log = pino({ level: 'trace' }, { write: (line: string) => logged.push(line) });
   let cookie = '';
@@ -63,6 +68,29 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
       );
   });
   const headers = () => ({ cookie, origin: config.PUBLIC_URL });
+  const newReporter = async (name: string) => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      headers: { origin: config.PUBLIC_URL },
+      payload: {
+        email: `feedback-${name}-${randomUUID()}@example.com`,
+        password: 'correct-horse-battery',
+        name: 'Test Person',
+      },
+    });
+    return {
+      origin: config.PUBLIC_URL,
+      cookie: created.cookies.map((c) => `${c.name}=${c.value}`).join('; '),
+    };
+  };
+  const uploadOne = (reporter: Record<string, string>) =>
+    app.inject({
+      method: 'POST',
+      url: '/api/v1/feedback/attachments?kind=file&name=note.txt',
+      headers: { ...reporter, 'content-type': 'application/octet-stream' },
+      payload: Buffer.from('text'),
+    });
   const submit = (overrides = {}) => ({
     requestId: randomUUID(),
     type: 'bug',
@@ -79,12 +107,13 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
       fileURLToPath(new URL('../../drizzle', import.meta.url)),
     );
     await new Promise<void>((resolve) => fake.listen(0, '127.0.0.1', resolve));
+    sharedDeps = testDeps(db, log);
     app = await createApp({
       config,
       db,
       auth: createAuth(config, db),
       log,
-      ...testDeps(db, log),
+      ...sharedDeps,
       feedbackGitHubUrl: `http://127.0.0.1:${(fake.address() as AddressInfo).port}`,
     });
     const res = await app.inject({
@@ -275,19 +304,24 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
         headers: reporter,
         payload: submit({ type: 'idea', diagnostics: {} }),
       });
-    issueStatus = 503;
-    const refused = await send();
+    issueStatus = 429;
+    const limited = await send();
     issueStatus = 200;
-    // Saved and accepted although GitHub refused; it stays in the queue, nothing is uncertain.
-    expect(refused.statusCode).toBe(201);
-    expect(refused.json()).toMatchObject({ delivery: 'pending', issueUrl: null });
-    expect(refused.json().reference).toMatch(/^#local-\d+$/);
+    // Saved and accepted although GitHub said no; a 4xx created nothing, so it stays in the queue.
+    expect(limited.statusCode).toBe(201);
+    expect(limited.json()).toMatchObject({ delivery: 'pending', issueUrl: null });
+    expect(limited.json().reference).toMatch(/^#local-\d+$/);
     const [waiting] = await db
       .select()
       .from(feedbackReport)
-      .where(eq(feedbackReport.id, refused.json().id));
+      .where(eq(feedbackReport.id, limited.json().id));
     expect(waiting?.attempts).toBe(1);
     expect(waiting?.nextAttemptAt.getTime()).toBeGreaterThan(Date.now());
+    // A 5xx or a lost connection during the write may have created the issue: never sent twice.
+    issueStatus = 503;
+    const failed = await send();
+    issueStatus = 200;
+    expect(failed.json().delivery).toBe('uncertain');
     dropWrites = true;
     const lost = await send();
     dropWrites = false;
@@ -295,6 +329,167 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     expect(lost.json().delivery).toBe('uncertain');
     expect(logged.join('')).not.toContain('fake-test-credential');
     expect(logged.join('')).not.toContain('Bearer');
+  });
+  it('stops at a permanent refusal, says why, and tries again once an administrator saves', async () => {
+    const reporter = await newReporter('refused');
+    const send = () =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/feedback',
+        headers: reporter,
+        payload: submit({ type: 'idea', diagnostics: {} }),
+      });
+    issueStatus = 422;
+    const refused = await send();
+    issueStatus = 200;
+    expect(refused.json().delivery).toBe('refused');
+    expect(logged.join('')).toContain('GitHub HTTP 422');
+    const listed = (
+      await app.inject({ url: '/api/v1/feedback/reports', headers: headers() })
+    ).json();
+    expect(
+      listed.items.find((r: { id: string }) => r.id === refused.json().id),
+    ).toMatchObject({ delivery: 'refused', failure: 'GitHub HTTP 422' });
+    await app.inject({
+      method: 'PUT',
+      url: '/api/v1/feedback/settings',
+      headers: headers(),
+      payload: { destination: 'github', repository: 'test/feedback', guests: false },
+    });
+    const [again] = await db
+      .select()
+      .from(feedbackReport)
+      .where(eq(feedbackReport.id, refused.json().id));
+    expect(again).toMatchObject({ delivery: 'pending', failure: null });
+    // A repository that turned public is refused too, and receives nothing.
+    privateRepo = false;
+    const before = issueCount;
+    const notPrivate = await send();
+    privateRepo = true;
+    expect(notPrivate.json().delivery).toBe('refused');
+    expect(issueCount).toBe(before);
+  });
+  it('sends nothing queued to a repository the administrator has left', async () => {
+    const reporter = await newReporter('moved');
+    issueStatus = 429;
+    const queued = await app.inject({
+      method: 'POST',
+      url: '/api/v1/feedback',
+      headers: reporter,
+      payload: submit({ type: 'idea', diagnostics: {} }),
+    });
+    issueStatus = 200;
+    expect(queued.json().delivery).toBe('pending');
+    await app.inject({
+      method: 'PUT',
+      url: '/api/v1/feedback/settings',
+      headers: headers(),
+      payload: { destination: 'inbox', repository: null, guests: false },
+    });
+    await db
+      .update(feedbackReport)
+      .set({ nextAttemptAt: new Date(0) })
+      .where(eq(feedbackReport.id, queued.json().id));
+    const before = issueCount;
+    await sweepFeedback(app);
+    const [row] = await db
+      .select()
+      .from(feedbackReport)
+      .where(eq(feedbackReport.id, queued.json().id));
+    expect(row?.delivery).toBe('inbox');
+    expect(issueCount).toBe(before);
+    await app.inject({
+      method: 'PUT',
+      url: '/api/v1/feedback/settings',
+      headers: headers(),
+      payload: { destination: 'github', repository: 'test/feedback', guests: false },
+    });
+  });
+  it('reads uploads as a stream, stops at the limit and leaves nothing behind', async () => {
+    const reporter = await newReporter('stream');
+    let produced = 0;
+    const endless = Readable.from(
+      (function* () {
+        for (let i = 0; i < 100; i++) {
+          produced += 1024 * 1024;
+          yield Buffer.alloc(1024 * 1024, 65);
+        }
+      })(),
+    );
+    const temp = () =>
+      readdir(tmpdir()).then((names) => names.filter((n) => n.startsWith('clip-feedback-')));
+    const before = await temp();
+    // No Content-Length: only the reading itself can tell.
+    const big = await app.inject({
+      method: 'POST',
+      url: '/api/v1/feedback/attachments?kind=file&name=big.txt',
+      headers: { ...reporter, 'content-type': 'application/octet-stream' },
+      payload: endless,
+    });
+    expect(big.statusCode).toBe(413);
+    expect(produced).toBeLessThan(30 * 1024 * 1024);
+    expect(await temp()).toEqual(before);
+    const exe = await app.inject({
+      method: 'POST',
+      url: '/api/v1/feedback/attachments?kind=file&name=x.exe',
+      headers: { ...reporter, 'content-type': 'application/octet-stream' },
+      payload: Buffer.from([0x4d, 0x5a, 0, 0, 1, 2, 3]),
+    });
+    expect(exe.statusCode).toBe(400);
+  });
+  it('takes the GPS out of a photo sent as a file, and keeps stored files sandboxed', async () => {
+    const reporter = await newReporter('photo');
+    const photo = await sharp({
+      create: { width: 12, height: 12, channels: 3, background: 'white' },
+    })
+      .withExif({ IFD3: { GPSLatitude: '45/1 0/1 0/1' } })
+      .jpeg()
+      .toBuffer();
+    expect((await sharp(photo).metadata()).exif).toBeDefined();
+    const uploaded = await app.inject({
+      method: 'POST',
+      url: '/api/v1/feedback/attachments?kind=file&name=foto.jpg',
+      headers: { ...reporter, 'content-type': 'application/octet-stream' },
+      payload: photo,
+    });
+    expect(uploaded.statusCode).toBe(201);
+    expect(uploaded.json().mime).toBe('image/jpeg');
+    await app.inject({
+      method: 'POST',
+      url: '/api/v1/feedback',
+      headers: reporter,
+      payload: submit({ type: 'idea', diagnostics: {}, attachments: [uploaded.json()] }),
+    });
+    const enforcing = loadConfig({
+      NODE_ENV: 'test',
+      REGISTRATION: 'open',
+      PUBLIC_URL: 'http://localhost:3000',
+      DATABASE_URL: config.DATABASE_URL,
+      AUTH_SECRET: 'feedback-test-secret-feedback-test-secret-338',
+      CSP_ENFORCE: 'true',
+    });
+    const strict = await createApp({
+      config: enforcing,
+      db,
+      auth: createAuth(enforcing, db),
+      log: pino({ level: 'silent' }),
+      ...sharedDeps,
+    });
+    try {
+      const served = await strict.inject(`/api/v1/feedback/attachments/${uploaded.json().id}`);
+      expect(served.statusCode).toBe(200);
+      expect((await sharp(served.rawPayload).metadata()).exif).toBeUndefined();
+      expect(served.headers['content-security-policy']).toContain('sandbox');
+    } finally {
+      await strict.close();
+    }
+  });
+  it('tells a person over the upload budget when to come back', async () => {
+    const reporter = await newReporter('budget');
+    let last = await uploadOne(reporter);
+    for (let i = 0; i < 30 && last.statusCode !== 429; i++) last = await uploadOne(reporter);
+    expect(last.statusCode).toBe(429);
+    expect(Number(last.headers['retry-after'])).toBeGreaterThan(0);
   });
   it('keeps reports waiting locally while the destination is GitHub without a token', async () => {
     const noToken = loadConfig({

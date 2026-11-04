@@ -93,6 +93,27 @@ it('leaves nothing in a report that acts on maintainers, in any field', () => {
   expect(markdownText('**bold** 1. _x_')).toBe('\\*\\*bold\\*\\* 1\\. \\_x\\_');
 });
 
+it('removes every character a reader cannot see, in every field', () => {
+  const hidden =
+    '\u00ad\u034f\u061c\u180e\u200b\u200c\u200d\u200e\u200f\u202a\u202e\u2060\u2064\u2066\u2069\u3164\ufe0f\ufeff\u{e0001}\u{e0041}\u{e007f}\u{e0100}';
+  const body = issueBody(
+    {
+      ...report,
+      description: `pri${hidden}ma`,
+      diagnostics: { environment: `Ver${hidden}sion`, console: `Err${hidden}or`, page: `/p${hidden}` },
+      attachments: [{ ...(report.attachments[2] as never), name: `fi${hidden}le.pdf` }],
+    } as CreateFeedback,
+    { ...context, reporter: `Giu${hidden}lia`, instance: `Ink${hidden}adra` },
+  );
+  // Our own separator is the one exception, and it sits after @ and # only.
+  expect(body.replace(/(?<=[@#])\u200b/g, '')).not.toMatch(
+    /[\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\u3164\ufe00-\ufe0f\ufeff]|[\u{e0000}-\u{e0fff}]/u,
+  );
+  for (const word of ['prima', 'Version', 'Error', 'file\\.pdf', 'Giulia', 'Inkadra'])
+    expect(body).toContain(word);
+  expect(issueTitle(`ti${hidden}tolo`)).toBe('titolo');
+});
+
 it('cannot be broken out of the code fence by the logs', () => {
   const body = issueBody(report, context);
   // Four backticks in the log: the fence is five.
@@ -139,6 +160,13 @@ it('stays inside what GitHub accepts, whatever the report holds', () => {
     context,
   );
   expect(body.length).toBeLessThanOrEqual(65536);
+  // Thousands of lines, each its own table row.
+  const rows = issueBody(
+    { ...report, diagnostics: { environment: 'x\n'.repeat(2000) }, attachments: [] },
+    context,
+  );
+  expect(rows.match(/\| x \|/g)?.length).toBe(8);
+  expect(issueBody({ ...report, diagnostics: { environment: '\n'.repeat(4000) } }, context).length).toBeLessThan(5000);
   expect(issueTitle('@'.repeat(160)).length).toBeLessThanOrEqual(256);
   expect(issueTitle('a\n\nb')).toBe('a b');
 });

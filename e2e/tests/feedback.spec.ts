@@ -153,6 +153,114 @@ test('captures and redacts a screenshot, shows the scrubbed logs, waits for the 
   await link?.close();
 });
 
+test('leaves the secrets on screen out of the screenshot', async ({ page }) => {
+  await page.addInitScript(() => {
+    // What the screenshot library draws: the whole page as text, before it becomes pixels.
+    const src = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+      ...src,
+      set(value: string) {
+        if (String(value).startsWith('data:image/svg+xml')) {
+          const probe = window as unknown as { drawn: string };
+          probe.drawn = decodeURIComponent(String(value));
+        }
+        src?.set?.call(this, value);
+      },
+    });
+  });
+  await page.route('**/api/auth/two-factor/enable', (route) =>
+    route.fulfill({
+      json: {
+        totpURI: 'otpauth://totp/Inkadra?secret=TOTPSECRETVALUE&issuer=Inkadra',
+        backupCodes: ['BACKUPCODEVALUE'],
+      },
+    }),
+  );
+  await login(page);
+  await configure(page);
+  const drawn = () => page.evaluate(() => (window as unknown as { drawn: string }).drawn);
+  const shoot = async () => {
+    await page.evaluate(() => {
+      (window as unknown as { drawn: string }).drawn = '';
+    });
+    await page.keyboard.press('Control+Shift+B');
+    const form = page.getByRole('dialog', FORM);
+    await expect(form.getByRole('img', { name: 'Screenshot', exact: true })).toBeVisible();
+    const text = await drawn();
+    expect(text.length).toBeGreaterThan(1000);
+    await page.keyboard.press('Escape');
+    await expect(form).toHaveCount(0);
+    return text;
+  };
+
+  await page.goto('/settings?section=account');
+  await page.getByLabel('Password attuale', { exact: true }).last().fill('correct-horse-battery');
+  await page.getByRole('button', { name: 'Attiva', exact: true }).click();
+  await expect(page.getByText('BACKUPCODEVALUE')).toBeVisible();
+  let text = await shoot();
+  expect(text).not.toContain('BACKUPCODEVALUE');
+  expect(text).not.toContain('TOTP');
+
+  await page.goto('/settings?section=notifications');
+  const calendar = page.getByRole('textbox', { name: 'Link del tuo calendario' });
+  await expect(calendar).not.toHaveValue('');
+  const feed = await calendar.inputValue();
+  text = await shoot();
+  expect(text).not.toContain(feed);
+
+  const project = await (
+    await page.request.post('/api/v1/projects', {
+      headers: ORIGIN_HEADERS(page),
+      data: { name: 'Segreti' },
+    })
+  ).json();
+  await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
+  await page.getByRole('button', { name: 'Condividi', exact: true }).click();
+  await page.getByRole('button', { name: 'Crea link', exact: true }).click();
+  const invite = page.getByRole('textbox', { name: 'Link d’invito' });
+  await expect(invite).not.toHaveValue('');
+  const url = await invite.inputValue();
+  text = await shoot();
+  expect(text).not.toContain(url);
+});
+
+test('still draws blob images while the content policy is enforced', async ({ page }) => {
+  await page.route('**/*', async (route) => {
+    if (route.request().resourceType() !== 'document') return route.fallback();
+    const response = await route.fetch();
+    const headers = { ...response.headers() };
+    const policy = headers['content-security-policy-report-only'];
+    delete headers['content-security-policy-report-only'];
+    if (policy) headers['content-security-policy'] = policy;
+    await route.fulfill({ response, headers });
+  });
+  await login(page);
+  await configure(page);
+  await page.reload();
+  await ready(page);
+  await page.evaluate(async () => {
+    const probe = window as unknown as { blocked: string[] };
+    probe.blocked = [];
+    document.addEventListener('securitypolicyviolation', (e) => {
+      probe.blocked.push(`${e.violatedDirective} ${e.blockedURI}`);
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 8;
+    const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done));
+    const image = document.createElement('img');
+    image.src = URL.createObjectURL(blob as Blob);
+    await image.decode();
+    document.body.append(image);
+  });
+  await page.getByRole('button', FORM).click();
+  await expect(
+    page.getByRole('dialog', FORM).getByRole('img', { name: 'Screenshot', exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => (window as unknown as { blocked: string[] }).blocked),
+  ).toEqual([]);
+});
+
 test('records a real Chromium tab without audio, reviews it and can remove it', async ({
   page,
 }) => {
