@@ -115,9 +115,14 @@ for (const width of [1280, 390]) {
         await page.setViewportSize({ width, height: 500 });
         const popup = page.getByRole('dialog', { name: 'Dimensione, liste e allineamento' });
         await expect(popup).toBeVisible();
-        const box = await popup.boundingBox();
-        expect(box!.y).toBeGreaterThanOrEqual(0);
-        expect(box!.y + box!.height).toBeLessThanOrEqual(500);
+        // The popup moves on the resize event, which arrives after the viewport has changed.
+        await expect
+          .poll(async () => {
+            const box = await popup.boundingBox();
+            return box!.y + box!.height;
+          })
+          .toBeLessThanOrEqual(500);
+        expect((await popup.boundingBox())!.y).toBeGreaterThanOrEqual(0);
         await screenshot(page, `${width}-short-viewport`);
         await page.setViewportSize({ width, height: 900 });
       }
