@@ -794,7 +794,11 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <div className="shell-header-content">
         <div className="ink-header__group ink-header__start">
           {headerContent?.start ?? (
-            <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs" data-feedback-secret>
+            <nav
+              aria-label={t('nav.breadcrumb')}
+              className="ink-header__crumbs"
+              data-feedback-secret
+            >
               <span style={{ fontWeight: 600 }}>
                 {current?.name ??
                   (pathname === '/onboarding'

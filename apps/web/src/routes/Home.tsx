@@ -88,7 +88,11 @@ export function Home() {
         </div>
 
         {(days.length > 0 || today.state === 'error') && (
-          <section className="ink-card home__today" aria-labelledby="home-today" data-feedback-secret>
+          <section
+            className="ink-card home__today"
+            aria-labelledby="home-today"
+            data-feedback-secret
+          >
             <h2 id="home-today" className="ink-label home__today-chip">
               {t('home.today.title')}
             </h2>
