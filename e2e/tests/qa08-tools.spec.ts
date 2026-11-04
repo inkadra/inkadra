@@ -50,7 +50,10 @@ for (const width of [1280, 390]) {
                 : type === 'plan'
                   ? createElement(doc, 'plan', at, { title: 'QA Tools' }, opts)
                   : createElement(doc, 'note', at, { w: 380 }, opts);
-        if (kind === 'todo') addTodoItem(doc, el.id, 'Preparare il set');
+        if (kind === 'todo') {
+          addTodoItem(doc, el.id, 'Preparare il set');
+          addTodoItem(doc, el.id, 'Controllare le luci');
+        }
         await pushBoardDoc(baseURL!, cookie, project.rootBoardId, doc);
         if (kind === 'map')
           await page.route('**/api/v1/instance', async (route) => {
@@ -146,6 +149,19 @@ for (const width of [1280, 390]) {
           await expect(inline.locator('p')).toHaveText(['Primo ', ' terzo']);
         } else if (kind === 'todo') {
           await card.dblclick();
+          await expect(card.locator('.todo-assignment__person')).toHaveCount(0);
+          await card.locator('.card__todo-list .card__inline-input').first().focus();
+          await expect(card.locator('.todo-assignment__person')).toHaveCount(1);
+          await card.locator('.card__todo-list .card__inline-input').first().press('End');
+          await card.locator('.card__todo-list .card__inline-input').first().press('@');
+          await expect(card.locator('.todo-assignment__picker')).toBeVisible();
+          await card.locator('.todo-assignment__picker input').press('Escape');
+          await expect(card.locator('.todo-assignment__picker')).toHaveCount(0);
+          await card.locator('.card__todo-list .card__inline-input').first().focus();
+          await card.locator('.card__todo-list .card__inline-input').first().press('End');
+          await expect(card.locator('.card__todo-hint')).toHaveCount(1);
+          await page.mouse.move(0, 0);
+          await shot('editing');
           await card.getByRole('button', { name: 'Assegna persona', exact: true }).click();
           await page
             .locator('.todo-assignment__picker')
