@@ -146,6 +146,8 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   const [files, setFiles] = useState<LocalAttachment[]>([]);
   const [shot, setShot] = useState<LocalAttachment | null>(null);
   const [shotIncluded, setShotIncluded] = useState(true);
+  // Only the automatic capture leaves the names out: a shared tab or a pasted image shows it all.
+  const [shotAutomatic, setShotAutomatic] = useState(false);
   const relay = status?.destination === 'relay';
   const videoLimit = relay ? FEEDBACK_RELAY_VIDEO_BYTES : FEEDBACK_VIDEO_BYTES;
   const fileLimit = relay ? FEEDBACK_RELAY_FILE_BYTES : FEEDBACK_FILE_BYTES;
@@ -331,6 +333,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         drop(old);
         return local(blob, 'screenshot', 'screenshot.png');
       });
+      setShotAutomatic(true);
       setShotIncluded(true);
       setCapturing('idle');
     } catch {
@@ -484,6 +487,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         drop(old);
         return local(file, 'screenshot', file.name);
       });
+      setShotAutomatic(false);
       setShotIncluded(true);
       setCapturing('idle');
       return;
@@ -1061,6 +1065,9 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         {list.length > 0 && (
           <div className="feedback-section">
             <h4>{t('feedback.attachments')}</h4>
+            {shot && shotIncluded && shotAutomatic && (
+              <p className="feedback-text feedback-hint">{t('feedback.shotPrivacy')}</p>
+            )}
             <div className="feedback-thumbs">
               {list.map((item) => (
                 <div className="feedback-thumb" key={item.key}>

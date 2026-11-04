@@ -670,7 +670,7 @@ function InboxDetailContent({
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="inbox-detail__message-author">
-                      <b>{authorName(activeThread.author)}</b>
+                      <b data-feedback-secret>{authorName(activeThread.author)}</b>
                       <time
                         dateTime={activeThread.createdAt}
                         style={{ color: 'var(--ink-text-muted)' }}
@@ -707,7 +707,7 @@ function InboxDetailContent({
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="inbox-detail__message-author">
-                          <b>{replyAuthor}</b>
+                          <b data-feedback-secret>{replyAuthor}</b>
                           <time
                             dateTime={reply.createdAt}
                             style={{ color: 'var(--ink-text-muted)' }}

@@ -608,6 +608,30 @@ test('distinguishes pre-write failures from ambiguous GitHub writes', async () =
   }
 });
 
+test('an empty repository is named in the logs and still answers as any GitHub refusal', async () => {
+  const e = env();
+  mockGitHub();
+  const fakeFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    if (url.includes('/git/')) return Response.json({ message: 'Git Repository is empty.' }, { status: 409 });
+    return fakeFetch(url, init);
+  };
+  const logged = [];
+  const realError = console.error;
+  console.error = (...args) => logged.push(args.join(' '));
+  try {
+    const t = await ticketFor(e);
+    await later(5000, async () => {
+      const response = await sendReport(e, reportForm(t, await solve(t.seed, t.bits)));
+      assert.equal(response.status, 503);
+      assert.equal((await response.json()).uncertain, false);
+    });
+  } finally {
+    console.error = realError;
+  }
+  assert.ok(logged.some((line) => line.includes('Git Repository is empty')));
+});
+
 test('after four reports in a day, a report an hour later needs only the short wait, and goes', async () => {
   const e = env();
   mockGitHub();

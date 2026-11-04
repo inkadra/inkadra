@@ -429,7 +429,9 @@ function github(env) {
     });
     if (res.status === 404 && method === 'GET') return null;
     if (!res.ok) {
-      console.error('GitHub HTTP', res.status);
+      const empty = res.status === 409 && path.startsWith('/git/')
+        && /repository is empty/i.test(await res.text().catch(() => ''));
+      console.error(...(empty ? ['GitHub HTTP 409: Git Repository is empty. Push one commit to the target repository.'] : ['GitHub HTTP', res.status]));
       // A token or repository problem is ours, never the reporter's: nothing was written, and the
       // instance keeps the report and tries again. A 5xx during a write may have written.
       if (res.status < 500) throw new HttpError(503, `github ${res.status}`, {}, false);

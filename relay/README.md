@@ -58,7 +58,9 @@ safe: the relay remembers each `requestId` for seven days, answers with the same
 
 No deploy runs on push or merge. No deployment was performed during implementation.
 
-1. Confirm the private repository `inkadra/inkadra-feedback` and the labels above.
+1. Confirm the private repository `inkadra/inkadra-feedback` and the labels above. It must have at
+   least one commit: GitHub's git data API answers 409 on an empty repository, and the attachments
+   branch can't be created.
 2. Create a fine-grained GitHub PAT, resource owner **inkadra**, selecting **only
    inkadra/inkadra-feedback**. Exact permissions: **Issues: read and write**, **Contents:
    read and write**, **Metadata: read** (automatic). Issues creates reports; Contents creates
@@ -88,6 +90,12 @@ not the relay's leaves reports in the queue, never refused.
 
 To rotate the PAT, replace FEEDBACK_GITHUB_TOKEN and rerun the workflow. Never put secrets in
 source, logs or the application. No real GitHub/Cloudflare requests are needed for testing.
+
+## Troubleshooting
+
+- **`Git Repository is empty` in the Worker's logs (GitHub HTTP 409).** The target repository has no
+  commits, so every report with attachments waits on the instance. Push one commit to it, for
+  example a README; waiting reports then go by themselves.
 
 ## Tests
 

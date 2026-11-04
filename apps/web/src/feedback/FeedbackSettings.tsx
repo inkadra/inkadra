@@ -14,6 +14,7 @@ import { AutosaveText, Badge, Card, Row } from '../routes/settings-ui.tsx';
 import { openFeedback, STATUS_CHANGED, useFeedbackStatus } from './state.ts';
 
 const WHEN = { dateStyle: 'medium', timeStyle: 'short' } as const;
+const RELOAD_MS = 10000;
 const TONE = {
   delivered: 'ok',
   pending: 'warn',
@@ -59,8 +60,18 @@ export function FeedbackProfileRow() {
 }
 
 /** Text a person wrote, opened only by an administrator. React escapes it. */
-function ReportList({ reports, relay = false }: { reports: FeedbackReport[]; relay?: boolean }) {
+function ReportList({
+  reports,
+  relay = false,
+  onRetry,
+}: {
+  reports: FeedbackReport[];
+  relay?: boolean;
+  onRetry?: (id: string) => Promise<void>;
+}) {
   const { t } = useTranslation();
+  const [retrying, setRetrying] = useState<string | null>(null);
+  const [retried, setRetried] = useState<string | null>(null);
   return (
     <div className="settings-rows feedback-reports">
       {!reports.length && (
@@ -89,6 +100,26 @@ function ReportList({ reports, relay = false }: { reports: FeedbackReport[]; rel
           </summary>
           <div className="feedback-reports__body">
             {r.failure && <p role="note">{t('feedback.failure', { reason: r.failure })}</p>}
+            {onRetry && r.delivery === 'pending' && (
+              <p>
+                <Button
+                  disabled={!!retrying}
+                  onClick={() => {
+                    setRetrying(r.id);
+                    setRetried(null);
+                    void onRetry(r.id).finally(() => {
+                      setRetrying(null);
+                      setRetried(r.id);
+                    });
+                  }}
+                >
+                  {t('feedback.retryRefused')}
+                </Button>
+              </p>
+            )}
+            {retried === r.id && r.delivery === 'pending' && (
+              <p role="status">{t('feedback.retryWaiting')}</p>
+            )}
             {r.report.description && <p>{r.report.description}</p>}
             {r.issueUrl && (
               <p>
@@ -128,6 +159,27 @@ export function FeedbackSettings() {
   useEffect(() => {
     void refresh().catch(() => setError(t('feedback.settingsFailed')));
   }, [refresh, t]);
+  // Delivery goes on after the answer, on this server: without this the list stays on what it read.
+  // Reports only: a choice still waiting on this page for its repository must survive.
+  const unsettled = reports.some((r) => r.delivery === 'pending' || r.delivery === 'uncertain');
+  const reload = useCallback(async () => {
+    setReports((await api.get<{ items: FeedbackReport[] }>('/feedback/reports')).items);
+  }, []);
+  useEffect(() => {
+    if (!unsettled) return;
+    const timer = setInterval(() => void reload().catch(() => {}), RELOAD_MS);
+    return () => clearInterval(timer);
+  }, [unsettled, reload]);
+
+  async function retry(id: string) {
+    setError('');
+    try {
+      await api.post(`/feedback/reports/${id}/retry`, {});
+      await reload();
+    } catch {
+      setError(t('feedback.retryFailed'));
+    }
+  }
 
   async function save(next: FeedbackSettingsInput) {
     setSettings((old) => old && { ...old, ...next });
@@ -203,7 +255,7 @@ export function FeedbackSettings() {
           {relay && relayWaiting.length > 0 && (
             <div className="feedback-banner feedback-banner--warn" role="status">
               <Icon name="warning" size={14} />
-              <div>{t('feedback.relayDownBanner', { count: relayWaiting.length })}</div>
+              <div>{t('feedback.relayWaitingBanner', { count: relayWaiting.length })}</div>
             </div>
           )}
           {github && !settings.tokenConfigured && (
@@ -321,7 +373,12 @@ export function FeedbackSettings() {
           )
         }
       >
-        <ReportList reports={reports} relay={relay} />
+        <ReportList
+          reports={reports}
+          relay={relay}
+          // GitHub without a token has nothing to send with: the banner above says so.
+          onRetry={relay || (github && settings.tokenConfigured) ? retry : undefined}
+        />
       </Card>
     </>
   );

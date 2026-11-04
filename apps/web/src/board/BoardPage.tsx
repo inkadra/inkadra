@@ -418,7 +418,7 @@ function BoardScreen({
     () => ({
       start: (
         <>
-          <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
+          <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs" data-feedback-secret>
             {/* The project's glyph before its name; phones show the last crumb only. */}
             {projectIcon && crumbs[0]?.id === rootBoardId && <ProjectGlyph {...projectIcon} />}
             {crumbs.map((c, i) => (

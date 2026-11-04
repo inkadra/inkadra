@@ -209,6 +209,20 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         );
     return settings();
   });
+  // The same delivery as the sweep, sooner. Its claim keeps one sender and the relay knows requestId.
+  app.post(`${API_PREFIX}/feedback/reports/:id/retry`, async (req) => {
+    await admin(req);
+    const { id } = z.object({ id: z.uuid() }).parse(req.params);
+    const [row] = await db.select().from(report).where(eq(report.id, id));
+    if (!row) throw new HttpError('not_found', 'No such report.');
+    if (row.delivery === 'pending')
+      await Promise.race([
+        deliver(id).catch(() => {}),
+        new Promise((resolve) => setTimeout(resolve, RELAY_WAIT_MS).unref()),
+      ]);
+    const [current] = await db.select().from(report).where(eq(report.id, id));
+    return receipt(current ?? row, 'admin');
+  });
   app.get(`${API_PREFIX}/feedback/reports`, async (req, reply) => {
     await admin(req);
     reply.header('cache-control', 'no-store');

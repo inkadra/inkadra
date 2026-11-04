@@ -623,17 +623,18 @@ export function NotificationList({
                             <span
                               className="notification__av"
                               style={{ background: avatarBg(actor) }}
+                              data-feedback-secret
                             >
                               {initials(actor)}
                             </span>
                             <div className="notification__body">
                               <span className="notification__line">
-                                {actor && <b>{actor} </b>}
+                                {actor && <b data-feedback-secret>{actor} </b>}
                                 {describeNotification(n, t, { locale: i18n.language })}
                               </span>
                               <div className="notification__subline">
                                 {(n.boardTitle || n.projectName) && (
-                                  <span className="notification__pill">
+                                  <span className="notification__pill" data-feedback-secret>
                                     {[...new Set([n.projectName, n.boardTitle])]
                                       .filter(Boolean)
                                       .join(' · ')}

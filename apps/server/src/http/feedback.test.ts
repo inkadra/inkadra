@@ -41,6 +41,7 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
   let body = '';
   let issueStatus = 200;
   let dropWrites = false;
+  let relaySent = 0;
   const fake = createServer(async (req, res) => {
     let input = '';
     for await (const chunk of req) input += chunk;
@@ -53,6 +54,7 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     }
     if (req.url === '/report') {
       body = input;
+      relaySent += 1;
       res.statusCode = 201;
       res.end(JSON.stringify({ number: 901 }));
       return;
@@ -253,6 +255,25 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
         .from(feedbackReport)
         .where(eq(feedbackReport.id, queued.json().id));
       expect(again?.delivery).toBe('pending');
+
+      // Riprova: a member can't press it, too early it goes on waiting...
+      const retry = (who: Record<string, string>) =>
+        app.inject({
+          method: 'POST',
+          url: `/api/v1/feedback/reports/${queued.json().id}/retry`,
+          headers: who,
+          payload: {},
+        });
+      expect((await retry(reporter)).statusCode).toBe(403);
+      relayWait = 300000;
+      expect((await retry(headers())).json().delivery).toBe('pending');
+      // ...and its turn sends it now, though the next attempt is minutes away, and only once.
+      relayWait = 0;
+      const sentBefore = relaySent;
+      expect((await retry(headers())).json().delivery).toBe('delivered');
+      expect(relaySent).toBe(sentBefore + 1);
+      expect((await retry(headers())).json().delivery).toBe('delivered');
+      expect(relaySent).toBe(sentBefore + 1);
       await db.delete(instanceSetting).where(eq(instanceSetting.key, 'feedback'));
     } finally {
       config.FEEDBACK_RELAY_URL = '';
