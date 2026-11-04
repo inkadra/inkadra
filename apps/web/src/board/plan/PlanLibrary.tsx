@@ -6,7 +6,7 @@ import {
   type PlanNoteTool,
 } from '@inkadra/canvas-core';
 import { PLAN_ICON_KINDS, type PlanIconKind } from '@inkadra/doc-schema';
-import { Icon } from '@inkadra/ui';
+import { Icon, IconButton } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import { type PointerEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -66,9 +66,9 @@ export function rememberRecent(item: LibraryItem) {
 
 /**
  * The icon library of a set plan (#335): a search that knows synonyms ("kino" finds the tube),
- * the person's recent and starred icons, then the categories. A tap arms an icon for the next
- * taps on the plan; a drag drops it where it lands. On a phone it is a sheet from the bottom
- * with the categories as tabs.
+ * the categories as chips, and the person's recent and starred icons. A tap arms an icon for the
+ * next tap on the plan; a drag drops it where it lands. It floats over the right of the plan, on
+ * a phone as a sheet from the bottom.
  */
 export function PlanLibrary({
   armed,
@@ -76,6 +76,7 @@ export function PlanLibrary({
   onArm,
   onDrop,
   onPlaceFirst,
+  onClose,
 }: {
   armed: LibraryItem | null;
   phone: boolean;
@@ -84,11 +85,11 @@ export function PlanLibrary({
   onDrop: (item: LibraryItem, at: { clientX: number; clientY: number }) => void;
   /** Enter in the search: the first match, at the middle of the view. */
   onPlaceFirst: (item: LibraryItem) => void;
+  onClose: () => void;
 }) {
   const { t } = useTranslation();
   const prefs = usePreferences();
   const [query, setQuery] = useState('');
-  const [closed, setClosed] = useState<ReadonlySet<CategoryId>>(new Set());
   const [tab, setTab] = useState<CategoryId | 'recent' | 'starred'>('lights');
   const [tall, setTall] = useState(false);
   const drag = useRef<{ item: LibraryItem; x: number; y: number; moved: boolean } | null>(null);
@@ -186,136 +187,74 @@ export function PlanLibrary({
     </label>
   );
 
-  if (phone) {
-    const list =
-      found ??
-      (tab === 'recent'
-        ? recents
-        : tab === 'starred'
-          ? favourites
-          : (CATEGORIES.find((c) => c.id === tab)?.items ?? []));
-    return (
-      <section
-        className={`plan-lib plan-lib--sheet ink-motion-rise${tall ? ' is-tall' : ''}`}
-        aria-label={t('board.plan.library')}
-      >
+  const list =
+    found ??
+    (tab === 'recent'
+      ? recents
+      : tab === 'starred'
+        ? favourites
+        : (CATEGORIES.find((c) => c.id === tab)?.items ?? []));
+  return (
+    <section
+      className={`plan-lib ${phone ? 'plan-lib--sheet' : 'plan-lib--panel'} ink-motion-rise${tall ? ' is-tall' : ''}`}
+      aria-label={t('board.plan.library')}
+    >
+      {phone && (
         <button
           type="button"
           className="plan-lib__handle"
           aria-label={t(tall ? 'board.plan.sheetHalf' : 'board.plan.sheetFull')}
           onClick={() => setTall((v) => !v)}
         />
-        {search}
-        {!found && (
-          <div className="plan-lib__tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'recent'}
-              onClick={() => setTab('recent')}
-            >
-              <Icon name="clock" size={13} />
-              {t('board.plan.recent')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'starred'}
-              aria-label={t('board.plan.starred')}
-              onClick={() => setTab('starred')}
-            >
-              <Icon name="star" size={13} />
-            </button>
-            {CATEGORIES.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                role="tab"
-                aria-selected={tab === c.id}
-                onClick={() => setTab(c.id)}
-              >
-                {t(`board.plan.tabs.${c.id}`)}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="plan-lib__body">{grid(list)}</div>
-        <p className="plan-lib__hint">{t('board.plan.phoneHint')}</p>
-      </section>
-    );
-  }
-
-  const head = (id: CategoryId, count: number) => (
-    <button
-      type="button"
-      className="plan-lib__cat"
-      aria-expanded={!closed.has(id)}
-      onClick={() =>
-        setClosed((s) => {
-          const next = new Set(s);
-          if (next.has(id)) next.delete(id);
-          else next.add(id);
-          return next;
-        })
-      }
-    >
-      <Icon name="chevronDown" size={12} />
-      {t(`board.plan.categories.${id}`)}
-      <span>{count}</span>
-    </button>
-  );
-
-  return (
-    <div className="plan-lib">
-      {search}
-      <div className="plan-lib__body">
-        {found ? (
-          <>
-            {CATEGORIES.map((c) => {
-              const hits = c.items.filter((item) => found.includes(item));
-              if (hits.length === 0) return null;
-              return (
-                <div key={c.id}>
-                  <div className="plan-lib__cat plan-lib__cat--static">
-                    {t(`board.plan.categories.${c.id}`)}
-                    <span>{hits.length}</span>
-                  </div>
-                  {grid(hits, 'q')}
-                </div>
-              );
-            })}
-            {found.length === 0 && <p className="plan-lib__hint">{t('board.plan.noMatch')}</p>}
-            {found.length > 0 && <p className="plan-lib__hint">{t('board.plan.searchHint')}</p>}
-          </>
-        ) : (
-          <>
-            {recents.length > 0 && (
-              <>
-                <div className="plan-lib__cat plan-lib__cat--static">
-                  <Icon name="clock" size={12} />
-                  {t('board.plan.recent')}
-                </div>
-                {grid(recents, 'r')}
-              </>
-            )}
-            {favourites.length > 0 && (
-              <>
-                <div className="plan-lib__cat plan-lib__cat--static plan-lib__cat--star">
-                  <Icon name="star" size={12} />
-                  {t('board.plan.starred')}
-                </div>
-                {grid(favourites, 's')}
-              </>
-            )}
-            {CATEGORIES.map((c) => (
-              <div key={c.id}>
-                {head(c.id, c.items.length)}
-                {!closed.has(c.id) && grid(c.items)}
-              </div>
-            ))}
-          </>
-        )}
+      )}
+      <div className="plan-lib__head">
+        <b>{t('board.plan.library')}</b>
+        <IconButton icon="close" label={t('board.plan.closeLibrary')} onClick={onClose} />
       </div>
-    </div>
+      {search}
+      {!found && (
+        <div className="plan-lib__tabs" role="tablist">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === c.id}
+              onClick={() => setTab(c.id)}
+            >
+              {t(`board.plan.tabs.${c.id}`)}
+            </button>
+          ))}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'recent'}
+            aria-label={t('board.plan.recent')}
+            data-ink-tooltip={t('board.plan.recent')}
+            onClick={() => setTab('recent')}
+          >
+            <Icon name="clock" size={13} />
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'starred'}
+            aria-label={t('board.plan.starred')}
+            data-ink-tooltip={t('board.plan.starred')}
+            onClick={() => setTab('starred')}
+          >
+            <Icon name="star" size={13} />
+          </button>
+        </div>
+      )}
+      <div className="plan-lib__body">
+        {grid(list)}
+        {found?.length === 0 && <p className="plan-lib__hint">{t('board.plan.noMatch')}</p>}
+        {found && found.length > 0 && (
+          <p className="plan-lib__hint">{t('board.plan.searchHint')}</p>
+        )}
+        {!found && !phone && <p className="plan-lib__hint">{t('board.plan.shiftHint')}</p>}
+      </div>
+    </section>
   );
 }

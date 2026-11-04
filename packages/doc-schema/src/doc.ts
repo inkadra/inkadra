@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AspectRatio, Element, type ElementType, type TableRow } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 17;
+export const CURRENT_SCHEMA_VERSION = 18;
 
 /** Persisted ProseMirror additions: older editor schemas can destructively normalize them. */
 export const NOTE_BODY_FORMAT = {
@@ -114,6 +114,9 @@ const migrations: Record<number, Migration> = {
   15: () => {},
   // 17: optional character details. Existing cards remain unchanged.
   16: () => {},
+  // 18: optional `percent` on plan icons, any proportional size of a symbol (decision 0071).
+  // Existing icons keep their S, M or L; older clients stay read-only and cannot drop the field.
+  17: () => {},
 };
 
 /**

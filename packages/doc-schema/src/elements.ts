@@ -567,6 +567,12 @@ export const PlanIcon = z.object({
   rotation: z.int().min(0).max(359).optional().describe('Degrees clockwise. Omitted = 0.'),
   label: z.string().max(60).optional().describe('"A cam", "Anna", "Key 1,2K".'),
   size: z.enum(['S', 'L']).optional().describe('Symbols: small or large. Omitted = medium.'),
+  percent: z
+    .int()
+    .min(10)
+    .max(1000)
+    .optional()
+    .describe('Symbols, since version 18: size in percent of medium. Wins over `size`.'),
   w: z.number().positive().max(4000).optional().describe('Furniture: width in view units.'),
   h: z.number().positive().max(4000).optional().describe('Furniture: depth in view units.'),
   lens: z.int().min(4).max(2000).optional().describe('Camera: focal length in mm. Omitted = 35.'),
