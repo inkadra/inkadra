@@ -235,18 +235,23 @@
             "enum": [
               "inbox",
               "github",
+              "relay",
               null
             ]
           },
           "retentionDays": {
             "type": "integer"
+          },
+          "deviceVideos": {
+            "type": "boolean"
           }
         },
         "required": [
           "enabled",
           "guest",
           "destination",
-          "retentionDays"
+          "retentionDays",
+          "deviceVideos"
         ]
       },
       "ApiError": {
@@ -396,6 +401,14 @@
               "$ref": "#/components/schemas/FeedbackAttachment"
             },
             "maxItems": 7
+          },
+          "expectedDestination": {
+            "type": "string",
+            "enum": [
+              "inbox",
+              "github",
+              "relay"
+            ]
           }
         },
         "required": [
@@ -485,7 +498,8 @@
             "enum": [
               "off",
               "inbox",
-              "github"
+              "github",
+              "relay"
             ]
           },
           "repository": {

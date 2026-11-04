@@ -12,7 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { feedbackAttachment, feedbackReport, user } from '../db/schema.ts';
+import { feedbackAttachment, feedbackReport, instanceSetting, user } from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 import { sweepFeedback } from './feedback-routes.ts';
@@ -27,6 +27,7 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     DATABASE_URL: url ?? 'postgres://unused',
     AUTH_SECRET: 'feedback-test-secret-feedback-test-secret-338',
     FEEDBACK_GITHUB_TOKEN: 'fake-test-credential',
+    FEEDBACK_RELAY_URL: '',
   });
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 5);
   let app: Awaited<ReturnType<typeof createApp>>;
@@ -44,6 +45,19 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     let input = '';
     for await (const chunk of req) input += chunk;
     res.setHeader('content-type', 'application/json');
+    if (req.url === '/challenge') {
+      res.end(
+        JSON.stringify({ ticket: 'fake', seed: 'seed', bits: 0, nbf: Date.now() + relayWait }),
+      );
+      return;
+    }
+    if (req.url === '/report') {
+      body = input;
+      res.statusCode = 201;
+      res.end(JSON.stringify({ number: 901 }));
+      return;
+    }
+
     if (req.method === 'POST' && dropWrites) {
       // The connection dies while GitHub may already have done the write.
       req.socket.destroy();
@@ -85,6 +99,7 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
       cookie: created.cookies.map((c) => `${c.name}=${c.value}`).join('; '),
     };
   };
+  let relayWait = 0;
   const uploadOne = (reporter: Record<string, string>) =>
     app.inject({
       method: 'POST',
@@ -135,6 +150,124 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     await app?.close();
     await client.end();
     await new Promise<void>((resolve) => fake.close(() => resolve()));
+  });
+  it('defaults to developers without credentials and preserves requestId through relay delivery', async () => {
+    config.FEEDBACK_RELAY_URL = `http://127.0.0.1:${(fake.address() as AddressInfo).port}`;
+    const token = config.FEEDBACK_GITHUB_TOKEN;
+    config.FEEDBACK_GITHUB_TOKEN = undefined;
+    try {
+      expect(
+        (await app.inject({ url: '/api/v1/feedback/status', headers: headers() })).json(),
+      ).toMatchObject({ enabled: true, destination: 'relay' });
+      const settings = (
+        await app.inject({ url: '/api/v1/feedback/settings', headers: headers() })
+      ).json();
+      expect(settings.guests).toBe(false);
+      const reporter = await newReporter('relay');
+      const uploaded = await uploadOne(reporter);
+      const input = submit({
+        diagnostics: { console: 'password: hidden-value' },
+        attachments: [uploaded.json()],
+        expectedDestination: 'relay',
+      });
+      // A tab opened when the dialog said something else.
+      const stale = await app.inject({
+        method: 'POST',
+        url: '/api/v1/feedback',
+        headers: reporter,
+        payload: { ...input, expectedDestination: 'inbox' },
+      });
+      expect(stale.statusCode).toBe(409);
+      const silent = await app.inject({
+        method: 'POST',
+        url: '/api/v1/feedback',
+        headers: reporter,
+        payload: { ...input, expectedDestination: undefined },
+      });
+      expect(silent.statusCode).toBe(409);
+      const first = await app.inject({
+        method: 'POST',
+        url: '/api/v1/feedback',
+        headers: reporter,
+        payload: input,
+      });
+      expect(first.statusCode).toBe(201);
+      expect(first.json().delivery).toBe('delivered');
+      const second = await app.inject({
+        method: 'POST',
+        url: '/api/v1/feedback',
+        headers: reporter,
+        payload: input,
+      });
+      expect(second.json().id).toBe(first.json().id);
+      expect(body).not.toContain('hidden-value');
+      expect(body).not.toContain('Giulia');
+      expect(body).not.toContain(config.PUBLIC_URL);
+      expect(body).toContain('name="attachment-1"; filename="file-1.txt"');
+      expect(body).not.toContain('note.txt');
+      expect(body).not.toContain('expectedDestination');
+
+      // Far from its turn at the relay: it waits, with no failure and no longer backoff.
+      relayWait = 300000;
+      const queued = await app.inject({
+        method: 'POST',
+        url: '/api/v1/feedback',
+        headers: reporter,
+        payload: submit({ attachments: [], expectedDestination: 'relay' }),
+      });
+      expect(queued.json().delivery).toBe('pending');
+      const [row] = await db
+        .select()
+        .from(feedbackReport)
+        .where(eq(feedbackReport.id, queued.json().id));
+      expect(row?.failure).toBeNull();
+      expect(row?.attempts).toBe(0);
+      expect((row?.nextAttemptAt.getTime() ?? 0) - Date.now()).toBeGreaterThan(200000);
+      // When its turn comes it really goes.
+      relayWait = 0;
+      await db
+        .update(feedbackReport)
+        .set({ nextAttemptAt: new Date(0) })
+        .where(eq(feedbackReport.id, queued.json().id));
+      await sweepFeedback(app);
+      const [sent] = await db
+        .select()
+        .from(feedbackReport)
+        .where(eq(feedbackReport.id, queued.json().id));
+      expect(sent?.delivery).toBe('delivered');
+
+      // An answer that never came: an administrator can send it again from Settings.
+      await db
+        .update(feedbackReport)
+        .set({ delivery: 'uncertain' })
+        .where(eq(feedbackReport.id, queued.json().id));
+      const retried = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/feedback/settings',
+        headers: headers(),
+        payload: { destination: 'relay', repository: null, guests: false, retentionDays: 90 },
+      });
+      expect(retried.statusCode).toBe(200);
+      const [again] = await db
+        .select()
+        .from(feedbackReport)
+        .where(eq(feedbackReport.id, queued.json().id));
+      expect(again?.delivery).toBe('pending');
+      await db.delete(instanceSetting).where(eq(instanceSetting.key, 'feedback'));
+    } finally {
+      config.FEEDBACK_RELAY_URL = '';
+      config.FEEDBACK_GITHUB_TOKEN = token;
+    }
+  });
+  it('refuses to choose the relay when this server turned it off', async () => {
+    const saved = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/feedback/settings',
+      headers: headers(),
+      payload: { destination: 'relay', repository: null, guests: false, retentionDays: 90 },
+    });
+    expect(saved.statusCode).toBe(400);
+    expect(saved.body).toContain('FEEDBACK_RELAY_URL');
   });
   it('requires authentication, defaults off, refuses public GitHub and cross-site writes', async () => {
     expect((await app.inject('/api/v1/feedback/status')).statusCode).toBe(401);

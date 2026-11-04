@@ -353,9 +353,10 @@ Use the pinned proxy container IP and verify the peer address in your deployment
 
 ### In-app reports (#338)
 
-Reporting is **off without configuration**, including when a token alone is present: the icon is
-hidden, the shortcut explains itself and Settings shows one line. In Settings → About → Reports
-an administrator chooses GitHub, Inbox only or Off, the destination `owner/repository`, whether
+Reporting to the **Inkadra developers is on without a saved choice**, also on an upgraded instance,
+via the relay described below.
+Saved administrator choices override that default. In Settings → About → Reports an administrator
+chooses Inkadra developers, own GitHub, Inbox only or Off, the destination `owner/repository`, whether
 guests may report (off by default) and how long attachments are kept (90 days by default; 30
 days or one year on request). Every report is first saved in the local database; attachments
 use the configured instance storage (`STORAGE_DRIVER`, `DATA_DIR` or the existing `S3_*`
@@ -366,10 +367,10 @@ variables). Include both in backups.
 | `FEEDBACK_GITHUB_TOKEN` | Server-only fine-grained GitHub token. Unset/empty by default. Never sent to the browser, logged or displayed in Settings.                                     |
 | `PUBLIC_URL`            | Existing canonical instance URL, used for attachment links. It must be reachable by people opening links and by GitHub's image proxy for embedded screenshots. |
 
-No other feedback environment variables exist. Destination, repository, guest policy and
+`FEEDBACK_RELAY_URL` controls the developer relay (see below). Destination, repository, guest policy and
 retention are administrator settings.
 
-**The token.** A fine-grained personal access token, ideally of a service account: issues show
+**The direct-path token.** A fine-grained personal access token, ideally of a service account: issues show
 that account as their author. Restrict it to **one selected private repository**, with
 **Issues: read and write** and the automatically required **Metadata: read**. Contents is not
 needed: nothing is committed to GitHub. Do not choose the public application repository.
@@ -379,8 +380,7 @@ needed: nothing is committed to GitHub. Do not choose the public application rep
 creates a missing label for an Issues-only token is not guaranteed. Private visibility is checked
 when the setting is saved and before every delivery; a failed check keeps the report local.
 With destination GitHub and no token yet, reports wait locally and are delivered once the token
-is set. Self-hosted installations use their own private repository or Inbox only; nothing is
-automatically sent to Inkadra's repositories.
+is set. Existing direct GitHub installations retain their chosen destination.
 
 **Limits.** Members can submit five reports/hour and guests two; the instance limit is 100/hour.
 Members may attach one screenshot, five files up to 25 MB each, and one video up to 100 MB.
@@ -391,7 +391,7 @@ rewritten without metadata (GPS included), up to 40 megapixels; HEIC and other f
 they came. Uploads go through a temporary file in `DATA_DIR/tmp`, not memory.
 Report text goes into the issue with mentions, references, links and markup neutralised.
 
-**Attachment links** are random bearer credentials: **anyone holding a link can open it until
+**Direct-path attachment links** are random bearer credentials: **anyone holding a link can open it until
 it expires**, without an Inkadra or GitHub login. Expired links stop working immediately; a
 maintenance sweep removes the files within about one minute. Unsubmitted uploads expire after 24
 hours. Do not post these links publicly. Screenshots inside private GitHub issues depend on the
@@ -406,3 +406,39 @@ Settings → About → Reports, and saving the settings there sends those report
 destination changes, queued reports stay local and never go to the repository chosen before.
 Offline drafts are never sent in the background: text stays in the browser and leaves only after
 the preview and a manual send. Videos stay in tab memory.
+
+
+### Reports to the Inkadra developers
+
+`FEEDBACK_RELAY_URL` defaults to `https://inkadra-report-relay.matte-maraffio.workers.dev`. Set it to
+another `https://` relay URL to override (plain `http://` only to this machine), or to the empty
+string to disable this route. No GitHub or Cloudflare credential is installed in the app for it.
+
+**Every instance without a saved choice uses this destination, including one upgraded from an
+earlier version where reporting was off.** To keep reports off, save a choice in Settings → Reports
+or set the empty value before upgrading. Guests stay disabled. Settings lets administrators turn
+developer reporting off with one switch (Inbox), choose Inbox only, disable reports, or configure
+their own private GitHub repository. Saved administrator choices always take precedence, including
+existing direct GitHub setups. A dialog opened before the choice changed asks to read it again.
+
+**What is sent**, after the mandatory preview: the selected title, description, diagnostics
+(redacted logs, version, browser/OS, screen, theme/language, route, sync and flags) and attachments.
+They go through Cloudflare, which sees this server's IP address, to the private
+`inkadra/inkadra-feedback` repository, read by Inkadra developers. No reporter name, email or
+instance URL is added. Before leaving, logs and text files lose secrets, this instance's host name,
+the machine's name and internal addresses, and files are renamed `kind-N.ext`. Installation IDs and
+networks are stored by the relay only as HMACs.
+
+**Metadata.** Attachments stay in a repository's history, so nothing leaves with its GPS position.
+PNG, JPEG, WebP, GIF, TIFF, AVIF and HEIC are rewritten without metadata (the last three as WebP).
+Videos from the device need ffmpeg to lose theirs, so they are refused on an image without it (the
+`-media` image has it); recordings made in the dialog always go. PDFs leave whole, with their
+metadata, and the dialog says so. What people write and what is visible in a file can still be
+personal: the preview is there to check it.
+
+**Limits.** 10 MiB per image or file, 25 MiB per video, 32 MiB per report; direct GitHub keeps its
+100 MiB video limit. The relay accepts 5 reports a day per network and 30 a day in total: beyond
+that, reports wait in the local queue and leave by themselves. During an outage they wait too, and
+Settings says so. If the relay gives no answer to a write, the report is marked as not confirmed:
+trying again from Settings is safe, because the relay recognises a report it already has. GitHub
+attachments live on `feedback-assets` and are not removed by the local retention setting.

@@ -3524,7 +3524,8 @@
     "destinations": {
       "github": "GitHub, in a private repository",
       "inbox": "Administrators’ Inbox only",
-      "off": "Off"
+      "off": "Off",
+      "relay": "Send to the Inkadra developers"
     },
     "repository": "Repository",
     "repositoryHelp": "Use a private repository: screenshots and logs can hold confidential material. Write it as owner/name.",
@@ -3577,6 +3578,30 @@
     "failure": "Reason: {{reason}}",
     "refusedBanner_one": "GitHub refused {{count}} report ({{reason}}): I am not retrying by myself. It is safe here; fix the token, repository or labels, then try again.",
     "refusedBanner_other": "GitHub refused {{count}} reports ({{reason}}): I am not retrying by myself. They are safe here; fix the token, repository or labels, then try again.",
-    "retryRefused": "Try again"
+    "retryRefused": "Try again",
+    "developers": "Send to the Inkadra developers",
+    "privacyRelay": "This report goes to the Inkadra developers in the private GitHub repository inkadra/inkadra-feedback through the relay on Cloudflare, which sees this server’s IP address. Selected text, screenshots, videos, files and logs leave this server and are read by the Inkadra team. We add no name, email or instance URL. We remove GPS and other metadata from photos and videos from the device; PDFs leave whole, with their metadata. Check the preview. GitHub attachments remain until removed by the team; local retention does not delete them.",
+    "relayNote": "This goes to the Inkadra developers: selected text, screenshots and logs leave this server. Full details in the preview.",
+    "relayLimits": "Relay: 10 MB per image or file, 25 MB per video, 32 MB total.",
+    "relayFileTooBig": "{{size}}: the relay accepts images and files up to 10 MB.",
+    "relayNoDeviceVideo": "This server can’t remove GPS and other metadata from videos from the device, so they can’t leave: record from this dialog.",
+    "destinationChanged": "An administrator changed where reports go. Read where it goes now, then try again: nothing was sent.",
+    "relayUncertainBanner_one": "The relay did not confirm {{count}} report: it may have arrived or not. The repository is private and can’t be checked from here, but trying again is safe: the relay recognises a report that already arrived.",
+    "relayUncertainBanner_other": "The relay did not confirm {{count}} reports: they may have arrived or not. The repository is private and can’t be checked from here, but trying again is safe: the relay recognises a report that already arrived.",
+    "relayUncertain_one": "{{count}} not confirmed by the relay",
+    "relayUncertain_other": "{{count}} not confirmed by the relay",
+    "relayUncertainBadge": "Not confirmed by the relay",
+    "relayRecordLimit": "Up to 60 seconds and 25 MB; recording stops automatically.",
+    "relayVideoTooBig": "{{size}}: the relay accepts videos up to 25 MB.",
+    "relayUnavailable": "The relay did not confirm delivery and we don’t know whether it arrived. Your report is saved on this server: an administrator can try again from Settings, with no risk of a duplicate.",
+    "relayPending": "The relay is not answering or is busy. Your report is saved on this server and I will retry by myself: nothing else to do.",
+    "relayRefused": "The relay refused this report. It is saved on this server: an administrator can try again from Settings.",
+    "relayTotalTooBig": "Attachments exceed the relay’s 32 MB total: remove some to continue.",
+    "relayDownBanner_one": "The relay is not answering or is busy: {{count}} report is waiting here and I will retry by myself.",
+    "relayDownBanner_other": "The relay is not answering or is busy: {{count}} reports are waiting here and I will retry by myself.",
+    "relayRefusedBanner_one": "The relay refused {{count}} report ({{reason}}): I am not retrying by myself. It is safe here. Try again after updating Inkadra, or choose another destination.",
+    "relayRefusedBanner_other": "The relay refused {{count}} reports ({{reason}}): I am not retrying by myself. They are safe here. Try again after updating Inkadra, or choose another destination.",
+    "relayRetentionHelp": "Local attachments only. GitHub copies remain until removed by the Inkadra team.",
+    "relaySaved": "Report saved on this server"
   }
 }

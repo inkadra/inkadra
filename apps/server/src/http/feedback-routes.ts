@@ -10,13 +10,16 @@ import {
   API_PREFIX,
   CreateFeedback,
   FEEDBACK_FILE_BYTES,
+  FEEDBACK_RELAY_FILE_BYTES,
+  FEEDBACK_RELAY_TOTAL_BYTES,
+  FEEDBACK_RELAY_VIDEO_BYTES,
   FEEDBACK_RETENTION_DAYS,
   FEEDBACK_VIDEO_BYTES,
   FeedbackSettingsInput,
   redactFeedback,
   z,
 } from '@inkadra/shared';
-import { and, asc, count, desc, eq, gt, inArray, isNull, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import sharp from 'sharp';
 import {
@@ -35,8 +38,20 @@ import {
   issueTitle,
   repeatComment,
 } from '../feedback.ts';
+import {
+  RELAY_MIMES,
+  RelayFailure,
+  relayChallenge,
+  relayClean,
+  relayFileName,
+  relayImage,
+  relayMetadata,
+  relayVideo,
+  sendRelay,
+} from '../feedback-relay.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import { sniffImage } from '../media/heic.ts';
+import { mediaTools } from '../media/tools.ts';
 import { sniffVideo } from '../media/video.ts';
 import { RateLimiter } from '../rate-limits.ts';
 import { DocViews } from '../share-links.ts';
@@ -50,16 +65,25 @@ const HOUR = 3600000;
 const DAY = 24 * HOUR;
 const key = (id: string) => `feedback/${id}`;
 const defaults = {
-  destination: 'off',
+  destination: 'relay',
   repository: null,
   guests: false,
   retentionDays: FEEDBACK_RETENTION_DAYS,
 } as const;
 /** The reporter waits this long for GitHub; the sweep finishes a slower delivery. */
 const DELIVERY_WAIT_MS = 8000;
+/** The relay makes a report wait for its ticket, then stores the files and opens the issue. */
+const RELAY_WAIT_MS = 30000;
 /** Formats the server can rewrite without their metadata: GPS, camera, owner. */
 const REWRITABLE = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_PIXELS = 40_000_000;
+
+const uploadLimit = (guest: boolean, kind: string | undefined, destination: string) => {
+  if (guest) return 5 * 1024 * 1024;
+  if (destination === 'relay')
+    return kind === 'video' ? FEEDBACK_RELAY_VIDEO_BYTES : FEEDBACK_RELAY_FILE_BYTES;
+  return kind === 'video' ? FEEDBACK_VIDEO_BYTES : FEEDBACK_FILE_BYTES;
+};
 
 /** To a temporary file, never into memory: stops reading as soon as the limit is passed. */
 async function receive(body: Readable, path: string, max: number) {
@@ -100,7 +124,9 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       .where(eq(instanceSetting.key, 'feedback'));
     return {
       ...defaults,
-      ...FeedbackSettingsInput.parse(row?.value ?? defaults),
+      ...FeedbackSettingsInput.parse(
+        row?.value ?? { ...defaults, destination: config.FEEDBACK_RELAY_URL ? 'relay' : 'off' },
+      ),
       tokenConfigured: !!config.FEEDBACK_GITHUB_TOKEN,
     };
   }
@@ -111,7 +137,9 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
   }
   /** Destination chosen, repository named. A missing token only delays delivery. */
   const enabled = (s: Awaited<ReturnType<typeof settings>>) =>
-    s.destination === 'inbox' || (s.destination === 'github' && !!s.repository);
+    (s.destination === 'relay' && !!config.FEEDBACK_RELAY_URL) ||
+    s.destination === 'inbox' ||
+    (s.destination === 'github' && !!s.repository);
   const receipt = (row: typeof report.$inferSelect, role: string, duplicate = false) => ({
     id: row.id,
     reference: `#${row.issueNumber ?? `local-${row.number}`}`,
@@ -146,6 +174,8 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
   app.put(`${API_PREFIX}/feedback/settings`, async (req) => {
     await admin(req);
     const value = FeedbackSettingsInput.parse(req.body);
+    if (value.destination === 'relay' && !config.FEEDBACK_RELAY_URL)
+      throw new HttpError('bad_request', 'FEEDBACK_RELAY_URL turns the relay off on this server.');
     if (value.destination === 'github') {
       if (!value.repository) throw new HttpError('bad_request', 'Name a private repository.');
       // Without a token reports wait locally; delivery checks the repository again every time.
@@ -164,11 +194,19 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       .values({ key: 'feedback', value })
       .onConflictDoUpdate({ target: instanceSetting.key, set: { value, updatedAt: new Date() } });
     // Saving is how an administrator says the cause is fixed: refused reports go round again.
-    if (value.destination === 'github')
+    if (['github', 'relay'].includes(value.destination))
       await db
         .update(report)
         .set({ delivery: 'pending', failure: null, nextAttemptAt: new Date() })
-        .where(eq(report.delivery, 'refused'));
+        .where(
+          or(
+            eq(report.delivery, 'refused'),
+            // The relay recognises a report sent twice, so trying again can't open a second issue.
+            value.destination === 'relay'
+              ? and(eq(report.delivery, 'uncertain'), eq(report.destination, 'relay'))
+              : undefined,
+          ),
+        );
     return settings();
   });
   app.get(`${API_PREFIX}/feedback/reports`, async (req, reply) => {
@@ -255,11 +293,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
             throw new HttpError('rate_limited', 'Too many uploads.');
           }
           const kind = (req.query as { kind?: string }).kind;
-          const max = guest
-            ? 5 * 1024 * 1024
-            : kind === 'video'
-              ? FEEDBACK_VIDEO_BYTES
-              : FEEDBACK_FILE_BYTES;
+          const max = uploadLimit(guest, kind, s.destination);
           if (Number(req.headers['content-length']) > max)
             throw new HttpError('payload_too_large', 'Attachment is too large.');
         }
@@ -272,6 +306,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           guest,
           destination: on && s.destination !== 'off' ? s.destination : null,
           retentionDays: s.retentionDays,
+          deviceVideos: s.destination !== 'relay' || !!(await mediaTools()).ffmpeg,
         };
       });
       scope.post(`${prefix}/attachments`, async (req, reply) => {
@@ -280,17 +315,19 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           .object({
             kind: z.enum(['screenshot', 'video', 'file']),
             name: z.string().min(1).max(180),
+            /**
+             * Made in the dialog, so it has no location to leak. The browser says so: someone
+             * lying here only sends their own metadata.
+             */
+            recorded: z.literal('1').optional(),
           })
           .parse(req.query);
         if (guest && q.kind !== 'screenshot')
           throw new HttpError('forbidden', 'Guests can attach only a screenshot.');
         if (!(req.body instanceof Readable))
           throw new HttpError('bad_request', 'A binary attachment is required.');
-        const max = guest
-          ? 5 * 1024 * 1024
-          : q.kind === 'video'
-            ? FEEDBACK_VIDEO_BYTES
-            : FEEDBACK_FILE_BYTES;
+        const s = await settings();
+        const max = uploadLimit(guest, q.kind, s.destination);
         // The clip- prefix puts what a crash leaves behind under sweepClipTemp.
         const dir = await mkdtemp(join(deps.tmpDir ?? tmpdir(), 'clip-feedback-'));
         const path = join(dir, 'upload');
@@ -324,9 +361,32 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
             } catch {
               throw new HttpError('bad_request', 'Invalid image.');
             }
-            if (rewritten.length > max)
-              throw new HttpError('payload_too_large', 'Encoded image is too large.');
           }
+          // What leaves on the relay route stays in a repository's history, so nothing leaves with
+          // its GPS position. On the direct route these stay on this server, behind expiring links.
+          if (s.destination === 'relay') {
+            if (mime.startsWith('video/')) {
+              if (!q.recorded) {
+                rewritten = await relayVideo(path, mime).catch(() => null);
+                if (!rewritten)
+                  throw new HttpError('bad_request', 'This video cannot go through the relay.');
+              }
+            } else if (!rewritten) {
+              try {
+                const clean = await relayImage(path, mime, MAX_PIXELS);
+                if (clean) {
+                  rewritten = clean.data;
+                  mime = clean.mime;
+                }
+              } catch {
+                throw new HttpError('bad_request', 'Invalid image.');
+              }
+            }
+            if (!RELAY_MIMES.includes(mime))
+              throw new HttpError('bad_request', 'Unsupported attachment type.');
+          }
+          if (rewritten && rewritten.length > max)
+            throw new HttpError('payload_too_large', 'Encoded image is too large.');
           const id = randomBytes(32).toString('hex');
           const value = {
             id,
@@ -372,8 +432,21 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           new Set(input.attachments.map((a) => a.id)).size !== input.attachments.length
         )
           throw new HttpError('bad_request', 'Too many attachments.');
+        if (
+          s.destination === 'relay' &&
+          (input.attachments.some(
+            (a) =>
+              a.bytes >
+              (a.mime.startsWith('video/')
+                ? FEEDBACK_RELAY_VIDEO_BYTES
+                : FEEDBACK_RELAY_FILE_BYTES),
+          ) ||
+            input.attachments.reduce((n, a) => n + a.bytes, 0) > FEEDBACK_RELAY_TOTAL_BYTES)
+        )
+          throw new HttpError('payload_too_large', 'Over the limits of the relay.');
+        const { expectedDestination, ...written } = input;
         const clean = {
-          ...input,
+          ...written,
           diagnostics: Object.fromEntries(
             Object.entries(input.diagnostics).map(([k, v]) => [k, redactFeedback(v)]),
           ),
@@ -391,6 +464,14 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
             .from(report)
             .where(and(eq(report.owner, who.owner), eq(report.requestId, input.requestId)));
           if (existing) return existing;
+          // The reporter agreed to what the dialog said. Nothing goes to the developers, or stays
+          // away from them, on the strength of a tab opened before an administrator changed it.
+          if (
+            s.destination === 'relay'
+              ? expectedDestination !== 'relay'
+              : expectedDestination && expectedDestination !== s.destination
+          )
+            throw new HttpError('conflict', 'The destination of reports has changed.');
           const window = gt(report.createdAt, new Date(Date.now() - HOUR));
           const [all] = await tx.select({ n: count() }).from(report).where(window);
           const [person] = await tx
@@ -435,6 +516,9 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
               stored.name !== a.name
             )
               throw new HttpError('bad_request', 'Invalid or expired attachment.');
+            // Uploaded before this route was chosen, so never made safe for it.
+            if (s.destination === 'relay' && !RELAY_MIMES.includes(stored.mime))
+              throw new HttpError('bad_request', 'Invalid or expired attachment.');
           }
           const [saved] = await tx
             .insert(report)
@@ -444,8 +528,8 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
               reporter,
               report: clean,
               destination: s.destination,
-              repository: s.repository,
-              delivery: s.destination === 'github' ? 'pending' : 'inbox',
+              repository: s.destination === 'relay' ? 'inkadra/inkadra-feedback' : s.repository,
+              delivery: ['github', 'relay'].includes(s.destination) ? 'pending' : 'inbox',
               signature: errorSignature(clean),
             })
             .returning();
@@ -478,7 +562,12 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         if (row.delivery === 'pending')
           await Promise.race([
             deliver(row.id).catch(() => {}),
-            new Promise((resolve) => setTimeout(resolve, DELIVERY_WAIT_MS).unref()),
+            new Promise((resolve) =>
+              setTimeout(
+                resolve,
+                s.destination === 'relay' ? RELAY_WAIT_MS : DELIVERY_WAIT_MS,
+              ).unref(),
+            ),
           ]);
         const [current] = await db.select().from(report).where(eq(report.id, row.id));
         const final = current ?? row;
@@ -490,7 +579,8 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
 
   /** One report at a time: nothing holds a database connection while GitHub is being called. */
   async function deliver(id: string) {
-    if (!config.FEEDBACK_GITHUB_TOKEN) return;
+    const current = await settings();
+    if (current.destination === 'github' && !config.FEEDBACK_GITHUB_TOKEN) return;
     // The claim makes each report one process's job. A crash after it leaves "uncertain":
     // shortcut: an administrator checks those by hand, reconcile by the id marker if they pile up.
     const [row] = await db
@@ -502,13 +592,56 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
     const repository = row.repository;
     // The administrator moved reporting elsewhere: what is queued stays here, never goes to the
     // repository that was chosen before.
-    const current = await settings();
-    if (current.destination !== 'github' || current.repository !== repository) {
+    if (
+      current.destination !== row.destination ||
+      (row.destination === 'github' && current.repository !== repository) ||
+      (row.destination === 'relay' && !config.FEEDBACK_RELAY_URL)
+    ) {
       await db.update(report).set({ delivery: 'inbox' }).where(eq(report.id, row.id));
       return;
     }
     let writing = false;
     try {
+      if (row.destination === 'relay') {
+        const candidate = randomBytes(24).toString('hex');
+        await db
+          .insert(instanceSetting)
+          .values({ key: 'feedback-install', value: { id: candidate } })
+          .onConflictDoNothing();
+        const [install] = await db
+          .select()
+          .from(instanceSetting)
+          .where(eq(instanceSetting.key, 'feedback-install'));
+        const ticket = await relayChallenge(config.FEEDBACK_RELAY_URL, String(install?.value.id));
+        if ((await settings()).destination !== 'relay') {
+          await db.update(report).set({ delivery: 'inbox' }).where(eq(report.id, row.id));
+          return;
+        }
+        const form = new FormData();
+        form.set('report', JSON.stringify({ ...relayMetadata(row.report, config.PUBLIC_URL) }));
+        const files = await db.select().from(attachment).where(eq(attachment.reportId, row.id));
+        for (const [i, file] of files.entries()) {
+          const stream = await storage.read(key(file.id));
+          const chunks = [];
+          for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+          const bytes = Buffer.concat(chunks);
+          const body =
+            file.mime === 'text/plain'
+              ? relayClean(bytes.toString('utf8'), config.PUBLIC_URL)
+              : bytes;
+          form.set(
+            `attachment-${i + 1}`,
+            new Blob([body], { type: file.mime }),
+            relayFileName(file, i),
+          );
+        }
+        const issueNumber = await sendRelay(config.FEEDBACK_RELAY_URL, form, ticket);
+        await db
+          .update(report)
+          .set({ delivery: 'delivered', issueNumber, failure: null })
+          .where(eq(report.id, row.id));
+        return;
+      }
       await github.requirePrivate(repository);
       let issueNumber: number | null = null;
       if (row.signature) {
@@ -567,27 +700,45 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         .set({ delivery: 'delivered', issueNumber, failure: null })
         .where(eq(report.id, row.id));
     } catch (error) {
-      const status = error instanceof GitHubRefused ? error.status : null;
+      const status =
+        error instanceof GitHubRefused || error instanceof RelayFailure ? error.status : null;
       const refused =
-        error instanceof GitHubNotPrivate || (error instanceof GitHubRefused && error.permanent);
+        error instanceof GitHubNotPrivate ||
+        ((error instanceof GitHubRefused || error instanceof RelayFailure) && error.permanent);
       // A 4xx created nothing. A lost connection or a 5xx during the write may have: sending it
       // again could open the issue twice, so an administrator looks instead.
-      const unknown = writing && !refused && (status === null || status >= 500);
+      const unknown =
+        error instanceof RelayFailure
+          ? error.uncertain
+          : writing && !refused && (status === null || status >= 500);
       const failure =
-        error instanceof GitHubNotPrivate
-          ? 'Repository is not private'
-          : status
-            ? `GitHub HTTP ${status}`
-            : 'No answer from GitHub';
+        error instanceof RelayFailure
+          ? `Relay unavailable (HTTP ${error.status})`
+          : row.destination === 'relay'
+            ? 'Relay unavailable'
+            : error instanceof GitHubNotPrivate
+              ? 'Repository is not private'
+              : status
+                ? `GitHub HTTP ${status}`
+                : 'No answer from GitHub';
       deps.log.warn({ report: row.id, failure }, 'Feedback delivery failed');
       await db
         .update(report)
         .set({
           delivery: refused ? 'refused' : unknown ? 'uncertain' : 'pending',
-          failure,
-          attempts: row.attempts + 1,
+          // Waiting its turn at the relay is no failure, and must not lengthen the next wait.
+          failure: error instanceof RelayFailure && error.waiting ? null : failure,
+          attempts:
+            error instanceof RelayFailure && error.waiting ? row.attempts : row.attempts + 1,
           nextAttemptAt: new Date(
-            Date.now() + Math.min(24 * HOUR, 60000 * 2 ** Math.min(row.attempts, 10)),
+            Date.now() +
+              (error instanceof RelayFailure && error.retryAfterMs !== undefined
+                ? error.retryAfterMs
+                : // An administrator here can't fix the relay: it comes back without them.
+                  Math.min(
+                    row.destination === 'relay' ? HOUR : 24 * HOUR,
+                    60000 * 2 ** Math.min(row.attempts, 10),
+                  )),
           ),
         })
         .where(eq(report.id, row.id));

@@ -59,7 +59,7 @@ export function FeedbackProfileRow() {
 }
 
 /** Text a person wrote, opened only by an administrator. React escapes it. */
-function ReportList({ reports }: { reports: FeedbackReport[] }) {
+function ReportList({ reports, relay = false }: { reports: FeedbackReport[]; relay?: boolean }) {
   const { t } = useTranslation();
   return (
     <div className="settings-rows feedback-reports">
@@ -78,7 +78,13 @@ function ReportList({ reports }: { reports: FeedbackReport[] }) {
               </span>
             </span>
             <span className="settings-row__control">
-              <Badge tone={TONE[r.delivery]}>{t(`feedback.delivery.${r.delivery}`)}</Badge>
+              <Badge tone={TONE[r.delivery]}>
+                {t(
+                  r.delivery === 'uncertain' && relay
+                    ? 'feedback.relayUncertainBadge'
+                    : `feedback.delivery.${r.delivery}`,
+                )}
+              </Badge>
             </span>
           </summary>
           <div className="feedback-reports__body">
@@ -155,6 +161,8 @@ export function FeedbackSettings() {
   const uncertain = reports.filter((r) => r.delivery === 'uncertain').length;
   const refused = reports.filter((r) => r.delivery === 'refused');
   const github = settings.destination === 'github';
+  const relay = settings.destination === 'relay';
+  const relayWaiting = reports.filter((r) => r.delivery === 'pending' && r.failure);
   return (
     <>
       <Card title={t('feedback.settingsTitle')} body={t('feedback.settingsLead')}>
@@ -165,12 +173,12 @@ export function FeedbackSettings() {
               <div>{error}</div>
             </div>
           )}
-          {github && refused.length > 0 && (
+          {(github || relay) && refused.length > 0 && (
             <div className="feedback-banner feedback-banner--danger" role="alert">
               <Icon name="warning" size={14} />
               <div>
                 <p>
-                  {t('feedback.refusedBanner', {
+                  {t(relay ? 'feedback.relayRefusedBanner' : 'feedback.refusedBanner', {
                     count: refused.length,
                     reason: refused[0]?.failure ?? '',
                   })}
@@ -181,17 +189,43 @@ export function FeedbackSettings() {
               </div>
             </div>
           )}
+          {relay && uncertain > 0 && (
+            <div className="feedback-banner feedback-banner--warn" role="status">
+              <Icon name="warning" size={14} />
+              <div>
+                <p>{t('feedback.relayUncertainBanner', { count: uncertain })}</p>
+                <Button onClick={() => void save(input).then(refresh)}>
+                  {t('feedback.retryRefused')}
+                </Button>
+              </div>
+            </div>
+          )}
+          {relay && relayWaiting.length > 0 && (
+            <div className="feedback-banner feedback-banner--warn" role="status">
+              <Icon name="warning" size={14} />
+              <div>{t('feedback.relayDownBanner', { count: relayWaiting.length })}</div>
+            </div>
+          )}
           {github && !settings.tokenConfigured && (
             <div className="feedback-banner feedback-banner--warn" role="status">
               <Icon name="warning" size={14} />
               <div>{t('feedback.tokenMissingBanner')}</div>
             </div>
           )}
+          <Row label={t('feedback.developers')} help={t('feedback.privacyRelay')}>
+            <Switch
+              aria-label={t('feedback.developers')}
+              checked={settings.destination === 'relay'}
+              onChange={(e) =>
+                void save({ ...input, destination: e.target.checked ? 'relay' : 'inbox' })
+              }
+            />
+          </Row>
           <RadioGroup
             label={t('feedback.destination')}
             value={settings.destination}
             onChange={(destination) => void save({ ...input, destination })}
-            options={(['github', 'inbox', 'off'] as const).map((value) => ({
+            options={(['relay', 'github', 'inbox', 'off'] as const).map((value) => ({
               value,
               label: t(`feedback.destinations.${value}`),
             }))}
@@ -226,13 +260,19 @@ export function FeedbackSettings() {
                 </Badge>
               </Row>
             )}
-            {github && (
+            {(github || relay) && (
               <Row
                 label={t('feedback.lastDelivery')}
                 help={[
                   latest ? formatDateTime(latest.createdAt, WHEN) : t('feedback.noDelivery'),
                   t('feedback.waiting', { count: waiting }),
-                  ...(uncertain ? [t('feedback.uncertain', { count: uncertain })] : []),
+                  ...(uncertain
+                    ? [
+                        t(relay ? 'feedback.relayUncertain' : 'feedback.uncertain', {
+                          count: uncertain,
+                        }),
+                      ]
+                    : []),
                 ].join(' · ')}
               >
                 {latest && !uncertain && <Badge tone="ok">{t('feedback.delivered')}</Badge>}
@@ -245,7 +285,10 @@ export function FeedbackSettings() {
                 onChange={(e) => void save({ ...input, guests: e.target.checked })}
               />
             </Row>
-            <Row label={t('feedback.retention')} help={t('feedback.retentionHelp')}>
+            <Row
+              label={t('feedback.retention')}
+              help={t(relay ? 'feedback.relayRetentionHelp' : 'feedback.retentionHelp')}
+            >
               <Select
                 aria-label={t('feedback.retention')}
                 value={String(settings.retentionDays)}
@@ -278,7 +321,7 @@ export function FeedbackSettings() {
           )
         }
       >
-        <ReportList reports={reports} />
+        <ReportList reports={reports} relay={relay} />
       </Card>
     </>
   );

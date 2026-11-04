@@ -3524,7 +3524,8 @@
     "destinations": {
       "github": "GitHub, in un repository privato",
       "inbox": "Solo Inbox degli amministratori",
-      "off": "Spente"
+      "off": "Spente",
+      "relay": "Invia agli sviluppatori di Inkadra"
     },
     "repository": "Repository",
     "repositoryHelp": "Usa un repository privato: screenshot e log possono contenere materiale riservato. Scrivilo come owner/nome.",
@@ -3577,6 +3578,30 @@
     "failure": "Motivo: {{reason}}",
     "refusedBanner_one": "GitHub ha rifiutato {{count}} segnalazione ({{reason}}): non riprovo da solo. Sono salve qui; correggi token, repository o etichette, poi riprova.",
     "refusedBanner_other": "GitHub ha rifiutato {{count}} segnalazioni ({{reason}}): non riprovo da solo. Sono salve qui; correggi token, repository o etichette, poi riprova.",
-    "retryRefused": "Riprova"
+    "retryRefused": "Riprova",
+    "developers": "Invia agli sviluppatori di Inkadra",
+    "privacyRelay": "La segnalazione va agli sviluppatori di Inkadra nel repository GitHub privato inkadra/inkadra-feedback tramite il relay su Cloudflare, che vede l’indirizzo IP di questo server. Testo, screenshot, video, file e log selezionati lasciano questo server e sono letti dal team Inkadra. Non aggiungiamo nome, email o URL dell’istanza. Da foto e video del dispositivo togliamo GPS e altri metadati; i PDF partono interi, con i loro metadati. Controlla l’anteprima. Gli allegati su GitHub restano fino alla rimozione da parte del team; la conservazione locale non li elimina.",
+    "relayNote": "Va agli sviluppatori di Inkadra: testo, screenshot e log selezionati lasciano questo server. Tutti i dettagli nell’anteprima.",
+    "relayLimits": "Relay: 10 MB per immagine o file, 25 MB per video, 32 MB totali.",
+    "relayFileTooBig": "{{size}}: il relay accetta immagini e file fino a 10 MB.",
+    "relayNoDeviceVideo": "Questo server non può togliere GPS e altri metadati dai video del dispositivo, quindi non possono partire: registra dal dialogo.",
+    "destinationChanged": "Un amministratore ha cambiato la destinazione delle segnalazioni. Rileggi dove va ora, poi riprova: non è partito niente.",
+    "relayUncertainBanner_one": "Il relay non ha confermato {{count}} segnalazione: forse è arrivata, forse no. Il repository è privato e da qui non si può controllare, ma riprovare è sicuro: il relay riconosce una segnalazione già arrivata.",
+    "relayUncertainBanner_other": "Il relay non ha confermato {{count}} segnalazioni: forse sono arrivate, forse no. Il repository è privato e da qui non si può controllare, ma riprovare è sicuro: il relay riconosce una segnalazione già arrivata.",
+    "relayUncertain_one": "{{count}} senza conferma dal relay",
+    "relayUncertain_other": "{{count}} senza conferma dal relay",
+    "relayUncertainBadge": "Senza conferma dal relay",
+    "relayRecordLimit": "Massimo 60 secondi e 25 MB; la registrazione si ferma automaticamente.",
+    "relayVideoTooBig": "{{size}}: il relay accetta video fino a 25 MB.",
+    "relayUnavailable": "Il relay non ha confermato l’invio e non sappiamo se sia arrivata. La segnalazione è salvata su questo server: un amministratore può riprovare dalle Impostazioni, senza rischio di doppioni.",
+    "relayPending": "Il relay non risponde o è occupato. La segnalazione è salvata su questo server e riprovo da solo: non devi fare altro.",
+    "relayRefused": "Il relay ha rifiutato la segnalazione. È salvata su questo server: un amministratore può riprovare dalle Impostazioni.",
+    "relayTotalTooBig": "Gli allegati superano i 32 MB totali accettati dal relay: togline qualcuno per continuare.",
+    "relayDownBanner_one": "Il relay non risponde o è occupato: {{count}} segnalazione aspetta qui e riprovo da solo.",
+    "relayDownBanner_other": "Il relay non risponde o è occupato: {{count}} segnalazioni aspettano qui e riprovo da solo.",
+    "relayRefusedBanner_one": "Il relay ha rifiutato {{count}} segnalazione ({{reason}}): non riprovo da solo. È salva qui. Riprova dopo aver aggiornato Inkadra, oppure scegli un’altra destinazione.",
+    "relayRefusedBanner_other": "Il relay ha rifiutato {{count}} segnalazioni ({{reason}}): non riprovo da solo. Sono salve qui. Riprova dopo aver aggiornato Inkadra, oppure scegli un’altra destinazione.",
+    "relayRetentionHelp": "Solo gli allegati locali. Le copie su GitHub restano fino alla rimozione da parte del team Inkadra.",
+    "relaySaved": "Segnalazione salvata su questo server"
   }
 }

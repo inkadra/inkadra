@@ -9,7 +9,7 @@ updates:
       actions:
         patterns: ["*"]
   - package-ecosystem: npm
-    directory: /
+    directories: ["/", "/relay"]
     schedule:
       interval: weekly
     groups:

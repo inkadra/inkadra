@@ -1,6 +1,9 @@
 import {
   type CreateFeedback,
   FEEDBACK_FILE_BYTES,
+  FEEDBACK_RELAY_FILE_BYTES,
+  FEEDBACK_RELAY_TOTAL_BYTES,
+  FEEDBACK_RELAY_VIDEO_BYTES,
   FEEDBACK_VIDEO_BYTES,
   type FeedbackAttachment,
   type FeedbackReceipt,
@@ -52,9 +55,14 @@ type LocalAttachment = {
   uploaded?: FeedbackAttachment;
   seconds?: number;
   redactedAreas?: number;
+  /** Made in this dialog: no metadata from a device to take off. */
+  recorded?: boolean;
 };
 type Phase = 'compose' | 'preview' | 'recordIntro' | 'videoReview' | 'done' | 'off';
-type Failure = { kind: 'failed' | 'interrupted' | 'limited' | 'refused'; detail?: string };
+type Failure = {
+  kind: 'failed' | 'interrupted' | 'limited' | 'refused' | 'destination';
+  detail?: string;
+};
 const PARTS = ['environment', 'page', 'console', 'network', 'sync', 'flags'] as const;
 type Part = (typeof PARTS)[number];
 const GUEST_PARTS: Part[] = ['environment', 'page'];
@@ -138,6 +146,9 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   const [files, setFiles] = useState<LocalAttachment[]>([]);
   const [shot, setShot] = useState<LocalAttachment | null>(null);
   const [shotIncluded, setShotIncluded] = useState(true);
+  const relay = status?.destination === 'relay';
+  const videoLimit = relay ? FEEDBACK_RELAY_VIDEO_BYTES : FEEDBACK_VIDEO_BYTES;
+  const fileLimit = relay ? FEEDBACK_RELAY_FILE_BYTES : FEEDBACK_FILE_BYTES;
   const [video, setVideo] = useState<LocalAttachment | null>(null);
   const [candidate, setCandidate] = useState<LocalAttachment | null>(null);
   const [data, setData] = useState<ReturnType<typeof diagnostics> | null>(null);
@@ -430,7 +441,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
     const started = Date.now();
     rec.ondataavailable = (e) => {
       size += e.data.size;
-      if (size <= FEEDBACK_VIDEO_BYTES) chunks.push(e.data);
+      if (size <= videoLimit) chunks.push(e.data);
       else if (rec.state === 'recording') rec.stop();
     };
     discardRecording.current = false;
@@ -449,6 +460,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         `recording.${mime.includes('mp4') ? 'mp4' : 'webm'}`,
       );
       item.seconds = Math.min(RECORD_SECONDS, Math.round((Date.now() - started) / 1000));
+      item.recorded = true;
       setCandidate(item);
       setPhase('videoReview');
       setOpen(true);
@@ -484,12 +496,14 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       const item = local(file, isVideo ? 'video' : 'file', file.name);
       if (!ACCEPTED.test(file.type) && !ACCEPTED_NAME.test(file.name))
         item.error = t('feedback.typeRefused');
-      else if (isVideo && file.size > FEEDBACK_VIDEO_BYTES)
-        item.error = t('feedback.videoTooBig', {
+      else if (isVideo && status?.deviceVideos === false)
+        item.error = t('feedback.relayNoDeviceVideo');
+      else if (isVideo && file.size > videoLimit)
+        item.error = t(relay ? 'feedback.relayVideoTooBig' : 'feedback.videoTooBig', {
           size: formatStorage(file.size, i18n.language),
         });
-      else if (!isVideo && file.size > FEEDBACK_FILE_BYTES)
-        item.error = t('feedback.fileTooBig', {
+      else if (!isVideo && file.size > fileLimit)
+        item.error = t(relay ? 'feedback.relayFileTooBig' : 'feedback.fileTooBig', {
           size: formatStorage(file.size, i18n.language),
         });
       else if (isVideo && (video || reviewed)) item.error = t('feedback.oneVideo');
@@ -521,6 +535,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       focusTitle();
       return;
     }
+    if (relayOver) return;
     setData(diagnostics(version ?? fetchedVersion ?? 'unknown', i18n.language, prefill?.details));
     setFailure(null);
     setPhase('preview');
@@ -531,7 +546,11 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       const xhr = new XMLHttpRequest();
       xhr.open(
         'POST',
-        `${API_PREFIX}${prefix}/attachments?${new URLSearchParams({ kind: item.kind, name: item.name.slice(0, 180) })}`,
+        `${API_PREFIX}${prefix}/attachments?${new URLSearchParams({
+          kind: item.kind,
+          name: item.name.slice(0, 180),
+          ...(item.recorded ? { recorded: '1' } : {}),
+        })}`,
       );
       xhr.setRequestHeader('content-type', 'application/octet-stream');
       xhr.upload.onprogress = (e) =>
@@ -573,6 +592,8 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
     ...(video ? [video] : []),
     ...files.filter((f) => !f.error),
   ];
+  const relayOver =
+    relay && sent().reduce((n, a) => n + a.blob.size, 0) > FEEDBACK_RELAY_TOTAL_BYTES;
 
   async function send() {
     if (busy || !data) return;
@@ -614,6 +635,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
           Object.entries(data).filter(([key, value]) => value && selected.includes(key as Part)),
         ),
         attachments: uploaded,
+        ...(status?.destination ? { expectedDestination: status.destination } : {}),
       };
       const response = await fetch(`${API_PREFIX}${prefix}`, {
         method: 'POST',
@@ -621,7 +643,14 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
-      if (response.status === 400) for (const item of sent()) item.uploaded = undefined;
+      // Files uploaded for another destination are not made safe for this one: they go up again.
+      if (response.status === 400 || response.status === 409)
+        for (const item of sent()) item.uploaded = undefined;
+      if (response.status === 409) {
+        refresh();
+        setFailure({ kind: 'destination' });
+        return;
+      }
       if (!response.ok)
         throw new RequestError(
           response.status,
@@ -680,11 +709,18 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       <Icon name="lock" size={14} />
       <span>
         {guest
-          ? t('feedback.privacyGuest')
-          : t(status?.destination === 'inbox' ? 'feedback.privacyInbox' : 'feedback.privacy', {
-              days: status?.retentionDays ?? 90,
-            })}{' '}
-        {t('feedback.linkPrivacy')}
+          ? t(relay ? 'feedback.privacyRelay' : 'feedback.privacyGuest')
+          : t(
+              relay
+                ? 'feedback.privacyRelay'
+                : status?.destination === 'inbox'
+                  ? 'feedback.privacyInbox'
+                  : 'feedback.privacy',
+              {
+                days: status?.retentionDays ?? 90,
+              },
+            )}
+        {!relay && ` ${t('feedback.linkPrivacy')}`}
       </span>
     </p>
   );
@@ -829,6 +865,11 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
           />
         )}
         {shotBlock()}
+        {relay && !guest && (
+          <p className="feedback-text" role={relayOver ? 'alert' : undefined}>
+            {t(relayOver ? 'feedback.relayTotalTooBig' : 'feedback.relayLimits')}
+          </p>
+        )}
         {!guest && (
           <div className="feedback-row feedback-att">
             <Button
@@ -882,7 +923,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
           <div className="feedback-drop">
             <Icon name="upload" size={20} />
             {t('feedback.dropHere')}
-            <span>{t('feedback.dropLimits')}</span>
+            <span>{t(relay ? 'feedback.relayLimits' : 'feedback.dropLimits')}</span>
           </div>
         ) : (
           files.length > 0 && (
@@ -923,7 +964,14 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
             <div key={part}>{partChoice(part)}</div>
           ))}
         </fieldset>
-        {guest && privacy}
+        {relay ? (
+          <p className="feedback-privacy">
+            <Icon name="lock" size={14} />
+            <span>{t('feedback.relayNote')}</span>
+          </p>
+        ) : (
+          guest && privacy
+        )}
       </>
     );
   }
@@ -986,6 +1034,11 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         {failure?.kind === 'refused' && (
           <Banner tone="warn" icon="warning" role="alert">
             {t('feedback.refused', { name: failure.detail })}
+          </Banner>
+        )}
+        {failure?.kind === 'destination' && (
+          <Banner tone="warn" icon="warning" role="alert">
+            {t('feedback.destinationChanged')}
           </Banner>
         )}
         {failure?.kind === 'limited' && (
@@ -1062,28 +1115,37 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   function doneBody() {
     const reference = receipt?.reference ?? '';
     const repository = receipt?.issueUrl?.match(/github\.com\/[^/]+\/([^/]+)\//)?.[1];
-    const message = receipt?.duplicate ? (
-      <>
-        {t('feedback.knownError')} <code>{reference}</code>.
-      </>
-    ) : receipt?.delivery === 'inbox' ? (
-      t('feedback.sentInbox')
-    ) : receipt?.issueUrl ? (
-      <>
-        {t('feedback.openedAs')} <code>{`${repository}${reference}`}</code>.
-      </>
-    ) : (
-      <>
-        {t('feedback.referenceIs')} <code>{reference}</code>
-        {t('feedback.referenceHint')}
-      </>
-    );
+    const message =
+      relay && receipt?.delivery === 'pending' ? (
+        t('feedback.relayPending')
+      ) : relay && receipt?.delivery === 'refused' ? (
+        t('feedback.relayRefused')
+      ) : relay && receipt?.delivery === 'uncertain' ? (
+        t('feedback.relayUnavailable')
+      ) : receipt?.duplicate ? (
+        <>
+          {t('feedback.knownError')} <code>{reference}</code>.
+        </>
+      ) : receipt?.delivery === 'inbox' ? (
+        t('feedback.sentInbox')
+      ) : receipt?.issueUrl ? (
+        <>
+          {t('feedback.openedAs')} <code>{`${repository}${reference}`}</code>.
+        </>
+      ) : (
+        <>
+          {t('feedback.referenceIs')} <code>{reference}</code>
+          {t('feedback.referenceHint')}
+        </>
+      );
     return (
       <div className="feedback-done">
         <span className="feedback-done__icon">
           <Icon name="check" size={20} />
         </span>
-        <b role="status">{t('feedback.sent')}</b>
+        <b role="status">
+          {t(relay && receipt?.delivery !== 'delivered' ? 'feedback.relaySaved' : 'feedback.sent')}
+        </b>
         <p>{message}</p>
       </div>
     );
@@ -1271,7 +1333,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
                   <div className="feedback-send feedback-send--notes">
                     <p>
                       <Icon name="clock" size={14} />
-                      {t('feedback.recordLimit')}
+                      {t(relay ? 'feedback.relayRecordLimit' : 'feedback.recordLimit')}
                     </p>
                     <p>
                       <Icon name="eyeOff" size={14} />
