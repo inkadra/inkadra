@@ -18,9 +18,9 @@ claims atomic. Abuse guards:
 
 - A wait that doubles from 5 seconds to 15 minutes per installation and per network, counted from
   the last report.
-- `NETWORK_DAILY_LIMIT` (5) reports a day per network, IPv6 by /64 and by /48. An instance is one
+- `NETWORK_DAILY_LIMIT` (40) reports a day per network, IPv6 by /64 and by /48. An instance is one
   network, so a busy one queues the rest until the next day: raise it if real use needs it.
-- `DAILY_LIMIT` (30) reports and `DAILY_BYTES` (300 MiB) of files a day for everyone.
+- `DAILY_LIMIT` (60) reports and `DAILY_BYTES` (300 MiB) of files a day for everyone.
 - An optional 10/minute network limiter.
 
 Install and IP keys are stored only as HMACs. Request bodies are bounded even without
