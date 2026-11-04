@@ -687,6 +687,11 @@ function CharacterSheet({
   const picture = useCardPicture({ store, card, projectId, boardId, locked });
   const [addingRelation, setAddingRelation] = useState(false);
   const [editingRelation, setEditingRelation] = useState<string | null>(null);
+  const relationPicker = useRef<HTMLDivElement>(null);
+  // The button that opened it is gone: the focus moves here, so Esc stays in the sheet.
+  useEffect(() => {
+    if (addingRelation) relationPicker.current?.querySelector('button')?.focus();
+  }, [addingRelation]);
   const references = card.references ?? [];
   const relations = card.relations ?? [];
   const subtitle = characterSubtitle(card, t);
@@ -1018,7 +1023,7 @@ function CharacterSheet({
             relations.length < MAX_RELATIONS &&
             (addingRelation ? (
               candidates.length > 0 ? (
-                <div className="story-panel__add-relation">
+                <div className="story-panel__add-relation" ref={relationPicker}>
                   <Select
                     aria-label={t('story.character.addRelation')}
                     value=""

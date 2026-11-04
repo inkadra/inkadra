@@ -462,6 +462,7 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     const survived = await get('owner', path);
     expect(survived.status).toBe(200);
     expect(survived.body.items.map((i: { name: string }) => i.name)).toContain('marta');
+    await db.delete(board).where(eq(board.id, broken));
   });
 
   it('lists the named cards of one type only to people who can read them', async () => {
