@@ -11,6 +11,8 @@ local until the token exists, as the approved mockup shows.
 
 The browser rasterizes the current page, with the approved new `html-to-image` dependency.
 Cross-origin embeds and video may be blank; capture failure does not prevent text reporting.
+The capture leaves out password and read-only fields and anything marked `data-feedback-secret`:
+every new place that shows a secret on screen needs that attribute.
 Screenshot redaction replaces pixels with an opaque mosaic before upload. Optional desktop
 recording uses getDisplayMedia and MediaRecorder, never requests audio, stops after 60 seconds,
 and is reviewed before attachment. Unsupported mobile browsers attach a system recording.
@@ -27,9 +29,13 @@ per-instance submission limits are enforced under a database lock. Uploads have 
 bounded budget and strict byte and type checks. Reports with the same error signature comment
 on a known open issue. Requests have reporter-scoped idempotency keys. Remote writes with an
 ambiguous result are marked uncertain for administrator reconciliation rather than repeated
-blindly; preflight failures and requests GitHub refused retry with backoff.
+blindly, and so are 5xx answers to a write; other failures retry with backoff. A refusal that
+cannot change by itself (401, 404, 410, 422, a repository no longer private) stops, with its
+reason shown to administrators, until they save the settings again.
 
-All report text and filenames are untrusted. The fixed English issue template keeps the text as
+All report text and filenames are untrusted. Characters a reader cannot see (format, control and
+default-ignorable code points, tag characters included) are removed, so no hidden instruction
+reaches whoever or whatever reads the issue. The fixed English issue template keeps the text as
 written, with every ASCII punctuation character backslash-escaped so no Markdown or HTML is
 active. Backslashes do not stop mentions: GitHub finds them after decoding Markdown, so `@`, `#`,
 URL schemes and commit hashes also get an invisible separator (the method Renovate uses for

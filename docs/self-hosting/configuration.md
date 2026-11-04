@@ -386,7 +386,9 @@ automatically sent to Inkadra's repositories.
 Members may attach one screenshot, five files up to 25 MB each, and one video up to 100 MB.
 Guests may send text (description up to 4,000 characters), one screenshot up to 5 MB, environment
 and sanitized page information. Types are sniffed from the bytes: images, videos, PDF and plain
-text only; nothing but screenshots is served inline. Screenshots are re-encoded without metadata.
+text only; nothing but screenshots is served inline. Screenshots and PNG, JPEG and WebP files are
+rewritten without metadata (GPS included), up to 40 megapixels; HEIC and other formats leave as
+they came. Uploads go through a temporary file in `DATA_DIR/tmp`, not memory.
 Report text goes into the issue with mentions, references, links and markup neutralised.
 
 **Attachment links** are random bearer credentials: **anyone holding a link can open it until
@@ -395,9 +397,12 @@ maintenance sweep removes the files within about one minute. Unsubmitted uploads
 hours. Do not post these links publicly. Screenshots inside private GitHub issues depend on the
 instance being reachable; whether GitHub shows them is unverified.
 
-**Delivery.** When GitHub refuses a request or cannot be reached before the write, the report
+**Delivery.** When GitHub answers 429, 403 or cannot be reached before the write, the report
 retries with exponential backoff and the person has already seen "sent", with a local reference.
-If the connection dies during the write itself, the outcome is unknown: the report is marked
-"To check on GitHub" and not posted again, to prevent duplicates. Local reports stay available in
-Settings → About → Reports. Offline drafts are never sent in the background: text stays in the
-browser and leaves only after the preview and a manual send. Videos stay in tab memory.
+A lost connection or a 5xx during the write itself leaves the outcome unknown: the report is
+marked "To check on GitHub" and not posted again, to prevent duplicates. A 401, 404, 410, 422 or a
+repository that is no longer private stops the retries: the reason is logged and shown in
+Settings → About → Reports, and saving the settings there sends those reports round again. If the
+destination changes, queued reports stay local and never go to the repository chosen before.
+Offline drafts are never sent in the background: text stays in the browser and leaves only after
+the preview and a manual send. Videos stay in tab memory.
