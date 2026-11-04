@@ -24,6 +24,7 @@ const ctx: CardContext = {
   frameAspect: () => 16 / 9,
   frameMeta: () => '',
   slugline: () => 'EXT. STAZIONE – NOTTE',
+  characterLine: (el) => el.role ?? '',
   storyMeta: (el) => (el.type === 'character' ? (el.actor ?? '') : 'INT.'),
   words: { board: 'Board', file: 'File' },
 };

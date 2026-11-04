@@ -60,6 +60,31 @@ export function storyboardOf(elements: readonly Element[]): SceneGroup[] {
   return groups;
 }
 
+export interface CastAppearance {
+  /** Lower case: names match without case, as in the shot list filter. */
+  name: string;
+  frames: number;
+  /** Numbers of the scenes those frames are in. */
+  scenes: string[];
+}
+
+/** For each name in the cast of these frames, how many frames it is in and in which scenes. */
+export function castAppearances(elements: readonly Element[]): CastAppearance[] {
+  const out = new Map<string, { frames: number; scenes: Set<string> }>();
+  for (const { scene, frames } of storyboardOf(elements)) {
+    for (const frame of frames) {
+      for (const name of new Set((frame.cast ?? []).map((c) => c.trim().toLocaleLowerCase()))) {
+        if (!name) continue;
+        const entry = out.get(name) ?? { frames: 0, scenes: new Set<string>() };
+        entry.frames += 1;
+        if (scene?.number) entry.scenes.add(scene.number);
+        out.set(name, entry);
+      }
+    }
+  }
+  return [...out].map(([name, { frames, scenes }]) => ({ name, frames, scenes: [...scenes] }));
+}
+
 /** A, B, … Z, AA, AB, …: the letter of the n-th frame (from 0) of a scene. */
 export function frameLetter(n: number): string {
   let s = '';

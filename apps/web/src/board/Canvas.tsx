@@ -396,6 +396,9 @@ export interface CanvasProps {
     | undefined;
 }
 
+/** A character card narrower than this leaves its name no room next to the portrait. */
+const CHARACTER_MIN_WIDTH = 160;
+
 export function Canvas({
   conn,
   breadcrumb,
@@ -1893,7 +1896,9 @@ export function Canvas({
                     : rect.w / (mediaHeight || rect.h),
               fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
             }
-          : { widthOnly: el.type === 'link' || el.type === 'section' || isContainer(el) };
+          : el.type === 'character'
+            ? { widthOnly: true, minWidth: CHARACTER_MIN_WIDTH }
+            : { widthOnly: el.type === 'link' || el.type === 'section' || isContainer(el) };
       store.undo.stopCapturing();
       gesture.current = { kind: 'resize', id, corner: handle, start: p, rect, options };
       rootRef.current?.setPointerCapture(e.pointerId);
@@ -2128,7 +2133,10 @@ export function Canvas({
       const { x, y, w, h } = o.resize;
       doc.transact(() => {
         const widthOnly =
-          current.type === 'link' || current.type === 'section' || isContainer(current);
+          current.type === 'character' ||
+          current.type === 'link' ||
+          current.type === 'section' ||
+          isContainer(current);
         updateElement(
           doc,
           g.id,
@@ -2902,6 +2910,8 @@ export function Canvas({
     }
     const locked = selectedEls.some((e) => e.locked);
     const single = selectedEls.length === 1 ? selectedEls[0] : undefined;
+    // A character's selection bar leaves these to the "more" menu.
+    const inMoreMenu = single?.type === 'character';
     if (single?.type === 'image' && menu.frames && !readOnly && !single.locked) {
       return [...snap.byId.values()]
         .filter((e) => e.type === 'frame' && !e.locked)
@@ -3172,7 +3182,7 @@ export function Canvas({
             ...(selectedEls.some((e) => e.type !== 'arrow')
               ? [
                   {
-                    toolbar: true,
+                    toolbar: !inMoreMenu,
                     label: t(
                       selectedEls.filter((e) => e.type !== 'arrow').every((e) => e.guestHidden)
                         ? 'guestVisibility.show'
@@ -3187,7 +3197,12 @@ export function Canvas({
               label: t('board.menu.tags'),
               action: () => setTagging({ x: menu.x, y: menu.y, ids: [...selection] }),
             },
-            { toolbar: true, label: t('board.menu.duplicate'), shortcut: '⌘D', action: duplicate },
+            {
+              toolbar: !inMoreMenu,
+              label: t('board.menu.duplicate'),
+              shortcut: '⌘D',
+              action: duplicate,
+            },
             {
               toolbar: true,
               label: locked ? t('board.menu.unlock') : t('board.menu.lock'),
@@ -3222,7 +3237,7 @@ export function Canvas({
               : []),
             ...(menu.fromToolbar ? [] : [{ divider: true as const }]),
             {
-              toolbar: true,
+              toolbar: !inMoreMenu,
               label: t('board.menu.delete'),
               shortcut: '⌫',
               danger: true,
@@ -3603,6 +3618,15 @@ export function Canvas({
               onTags={(x, y) => setTagging({ x, y, ids: [...selection] })}
               extra={
                 <>
+                  {selectedEls.length === 1 && selectedEls[0]?.type === 'character' && (
+                    <button
+                      type="button"
+                      className="ctxbar__btn ctxbar__done"
+                      onClick={() => selectedEls[0] && openElement(selectedEls[0])}
+                    >
+                      {t('story.character.sheet')}
+                    </button>
+                  )}
                   {!readOnly &&
                     selectedEls.length === 1 &&
                     selectedEls[0]?.type === 'image' &&

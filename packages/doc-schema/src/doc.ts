@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AspectRatio, Element, type ElementType, type TableRow } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 16;
+export const CURRENT_SCHEMA_VERSION = 17;
 
 /** Persisted ProseMirror additions: older editor schemas can destructively normalize them. */
 export const NOTE_BODY_FORMAT = {
@@ -112,6 +112,8 @@ const migrations: Record<number, Migration> = {
   // 16: contextual appearance, image strokes and NOTE_BODY_FORMAT ProseMirror extensions. Omitted fields preserve old
   // documents; older builds must not drop the fields when copying cards.
   15: () => {},
+  // 17: optional character details. Existing cards remain unchanged.
+  16: () => {},
 };
 
 /**

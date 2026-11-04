@@ -296,6 +296,7 @@ describe('CroppedImage component & BoardStore integration', () => {
       frameAspect: () => 16 / 9,
       frameMeta: () => '',
       slugline: () => '',
+      characterLine: () => '',
       storyMeta: () => '',
       words: { board: 'Board', file: 'File' },
     };

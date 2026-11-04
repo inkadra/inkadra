@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -52,7 +53,7 @@ it('starts editable without a read-only flash and restores cached offline edits 
   expect(connection?.readOnly).toBe(false);
   await act(async () => {
     socket.onAuthenticated({ scope: 'read-write' });
-    connection!.store.doc.getMap('meta').set('schemaVersion', 16);
+    connection!.store.doc.getMap('meta').set('schemaVersion', CURRENT_SCHEMA_VERSION);
     connection!.store.doc.getMap('meta').set('title', 'Queued offline');
     socket.onDisconnect();
   });
@@ -76,7 +77,7 @@ it('keeps a cached viewer and a cached newer-schema document read-only offline',
   socket = await open('offline-future');
   await act(async () => {
     socket.onAuthenticated({ scope: 'read-write' });
-    connection!.store.doc.getMap('meta').set('schemaVersion', 17);
+    connection!.store.doc.getMap('meta').set('schemaVersion', CURRENT_SCHEMA_VERSION + 1);
   });
   await act(async () => root!.unmount());
   root = undefined;
