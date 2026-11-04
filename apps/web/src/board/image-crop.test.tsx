@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // @vitest-environment happy-dom
 import { createElement } from '@inkadra/canvas-core';
-import { initBoardDoc } from '@inkadra/doc-schema';
+import { type ImageCrop, initBoardDoc } from '@inkadra/doc-schema';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
@@ -12,6 +12,8 @@ import { applyImageTransform, restoreOriginalImage } from './ImageCropEditor.tsx
 import {
   conformCropAspect,
   cropAfterQuarterTurn,
+  cropForAngle,
+  cropForQuarterTurn,
   cropInsideImage,
   croppedRotatedSize,
   FULL_CROP,
@@ -140,6 +142,44 @@ describe('image-crop geometry helpers', () => {
     // Crops already on the picture stay as they are.
     const small = { x: 0.4, y: 0.4, w: 0.2, h: 0.2 };
     expect(inscribeCrop(small, 480, 320, 10)).toBe(small);
+  });
+
+  it('brings the crop back when the angle comes back, however it got there', () => {
+    const start: ImageCrop = { x: 0.1, y: 0.2, w: 0.6, h: 0.7 };
+    const slide = (id: string, from: ImageCrop, angles: number[]) =>
+      angles.reduce((crop, angle) => cropForAngle(id, crop, 400, 600, angle), from);
+    const up = Array.from({ length: 30 }, (_, i) => i + 1);
+    const down = up.map((a) => 30 - a);
+    for (const [id, sign] of [
+      ['clockwise', 1],
+      ['counter', -1],
+    ] as const) {
+      const at30 = slide(id, start, up.map((a) => a * sign));
+      expect(cropInsideImage(at30, 400, 600, 30 * sign)).toBe(true);
+      // One jump gives the same as thirty small moves: nothing piles up on the way.
+      expect(at30).toEqual(cropForAngle(`${id}-jump`, start, 400, 600, 30 * sign));
+      expect(slide(id, at30, down.map((a) => a * sign))).toEqual(sanitizeCrop(start));
+    }
+  });
+
+  it('finds the crop again after Undo goes back to a reduced one', () => {
+    const at30 = cropForAngle('undo', FULL_CROP, 400, 600, 30);
+    cropForAngle('undo', at30, 400, 600, 45);
+    // Undo restored the crop of 30°: going on from there still ends on the original.
+    expect(cropForAngle('undo', at30, 400, 600, 0)).toEqual(FULL_CROP);
+  });
+
+  it('takes a crop made by hand at an angle as the new starting point', () => {
+    const at30 = cropForAngle('hand', FULL_CROP, 400, 600, 30);
+    const byHand = sanitizeCrop({ ...at30, w: at30.w - 0.05 });
+    expect(cropForAngle('hand', byHand, 400, 600, 0)).toEqual(byHand);
+  });
+
+  it('keeps the original crop across a quarter turn at a free angle', () => {
+    const at30 = cropForAngle('turn', FULL_CROP, 400, 600, 30);
+    const turned = cropForQuarterTurn('turn', at30, 400, 600, 120, 1);
+    expect(cropInsideImage(turned, 400, 600, 120)).toBe(true);
+    expect(cropForAngle('turn', turned, 400, 600, 90)).toEqual(FULL_CROP);
   });
 
   it('keeps tiny imported crops that the schema accepts', () => {

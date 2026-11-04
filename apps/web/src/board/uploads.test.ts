@@ -212,6 +212,37 @@ it('rejects requests and ignores late responses after cancellation', async () =>
   expect(isBusy()).toBe(false);
 });
 
+it('tells the caller which asset a cancelled upload had, once', async () => {
+  const onCancelled = vi.fn();
+  const key = startUpload({
+    file: pdf('cancel-card.pdf'),
+    projectId: 'p1',
+    boardId: 'b1',
+    onAsset: vi.fn(),
+    onCancelled,
+  });
+  await flush();
+  FakeUpload.all.at(-1)!.options.onAfterResponse!(null, { getHeader: () => 'asset-1' });
+  cancelUpload(key);
+  cancelUpload(key);
+  expect(onCancelled).toHaveBeenCalledTimes(1);
+  expect(onCancelled).toHaveBeenCalledWith('asset-1');
+});
+
+it('says there is no asset when an upload is cancelled before the server made one', async () => {
+  const onCancelled = vi.fn();
+  const key = startUpload({
+    file: pdf('cancel-early.pdf'),
+    projectId: 'p1',
+    boardId: 'b1',
+    onAsset: vi.fn(),
+    onCancelled,
+  });
+  await flush();
+  cancelUpload(key);
+  expect(onCancelled).toHaveBeenCalledWith(null);
+});
+
 it('reports speed and remaining time from progress samples', async () => {
   const now = vi.spyOn(performance, 'now').mockReturnValue(0);
   const key = startUpload({

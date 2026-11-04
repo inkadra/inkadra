@@ -51,6 +51,28 @@ it('offers active options, stores IDs and prevents duplicate legacy selections',
   expect(host.querySelector('.tag-chip')?.textContent).toContain('Evening');
 });
 
+it('says so when typed text is not a tag of the catalog, and keeps the text', async () => {
+  const change = vi.fn();
+  setClassifications({ ...catalog, tags: [] });
+  await act(async () =>
+    root.render(<TagEditor tags={[]} onChange={change} readOnly={false} projectId="p" />),
+  );
+  const input = host.querySelector('input') as HTMLInputElement;
+  expect(input.placeholder).toBe('tags.placeholder');
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+  await act(async () => {
+    set?.call(input, 'Nuovo');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  await act(async () =>
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })),
+  );
+  expect(change).not.toHaveBeenCalled();
+  expect(input.value).toBe('Nuovo');
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('tags.notInCatalog');
+});
+
 it('removes a shared managed tag from mixed legacy and UUID selections', async () => {
   const change = vi.fn();
   setClassifications(catalog);

@@ -134,7 +134,7 @@ test('a video plays in its card and stops with the card, the viewer and other pl
   await first.locator('.fcard__play').click();
   await expect(first.locator('video')).toHaveCount(1);
   await first.locator('video').click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Apri immagine' }).click();
+  await page.getByRole('menuitem', { name: 'Apri file', exact: true }).click();
   await expect(page.getByRole('dialog').locator('video')).toBeVisible();
   await expect(first.locator('video')).toHaveCount(0);
   await page.keyboard.press('Escape');
