@@ -1,7 +1,7 @@
 # Inkadra, all-in-one. Put it behind your reverse proxy (HTTPS) and set PUBLIC_URL in .env.
 # The proxy must forward WebSocket upgrades on /collab. See docs/self-hosting.
 #
-# Variants, added with -f (see docs/self-hosting/compose.md):
+# Variants, added with -f (see docs/self-hosting/README.md#compose-variants):
 #   deploy/compose.split.yaml          web, collab and worker as separate containers
 #   deploy/compose.s3.yaml             files in an S3-compatible bucket you already have
 #   deploy/compose.rustfs.yaml         files in a bundled S3-compatible store (RustFS)

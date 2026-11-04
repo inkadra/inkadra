@@ -19,6 +19,7 @@
 <p align="center">
   <a href="#run-it">Run it</a> ·
   <a href="docs/self-hosting">Self-hosting guide</a> ·
+  <a href="docs/guide.md">Tour</a> ·
   <a href="#develop">Develop</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
   <a href="docs/decisions">Decisions</a>
@@ -27,7 +28,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme/board-dark.png">
-    <img src="docs/screenshots/readme/board-light.png" alt="A moodboard in Inkadra: notes, film stills, a column of references, a colour palette and a checklist on an infinite canvas">
+    <img src="docs/screenshots/readme/board-light.png" alt="A moodboard in Inkadra: notes, film stills, a column of references, a colour palette and a checklist on an infinite canvas, with the dock of tools along the bottom">
   </picture>
 </p>
 
@@ -43,12 +44,16 @@ own server.
 ## What it does
 
 - **Boards on an infinite canvas.** Notes, images, files, links, to-do lists, colour swatches,
-  columns, arrows and boards inside boards. YouTube and
-  Vimeo links show their preview, and YouTube videos play in the viewer.
+  tables, maps, voice notes, columns, sections, arrows and boards inside boards. A dock holds the
+  tools, and a toolbar above each card follows what you select. Uploaded videos and YouTube and Vimeo
+  links play inside their card.
 - **Storyboards, shot lists and schedules.** Scenes and frames with shot size, angle, movement,
-  lens, duration, cast and status. Draw on a frame with the pen, or start from a picture. The
-  shot list is the same data as a table you can filter and export to CSV; the shooting
-  schedule plans the days from the same shots.
+  lens, duration, cast and status. Draw on a frame full screen, drag a picture into it, or take a
+  still from a video. The shot list is the same data as a table you can filter and export to CSV;
+  the shooting schedule plans the days from the same shots.
+- **Set plans and character sheets.** Draw the location with cameras, actors, lights and movement
+  paths, to scale. Keep each character's story, relations, references and costume on a card, with
+  the scenes they appear in worked out from the frames.
 - **A home for every project.** Home opens on your recent boards, today's shooting day and what
   changed. Each project has its own colour, shape or emoji, and every kind of canvas keeps one
   colour across the app: storyboards purple, shot lists green, moodboards orange, schedules
@@ -56,24 +61,26 @@ own server.
 - **Together, live.** Everyone on a board sees changes as they happen. Roles per project and per
   board, invitations, comments with mentions, review status, and an inbox for notifications.
 - **Client review.** Share a board through a link, with or without comments and picks, and keep
-  some cards for the team only. Named versions let you go back to any earlier state, or bring
-  back a single deleted element.
+  some cards for the team only. Every comment shows who reads it: the team, or also the guests.
+  Named versions let you go back to any earlier state, or bring back a single deleted element.
 - **Capture from the web.** The [Inkadra Clipper](apps/clipper) extension saves images, quotes
   and links from Chrome, Edge, Brave and Arc straight onto a board.
-- **Your server, your files.** One Docker image for amd64 and arm64. Files on a volume, a host
-  folder or any S3 storage. Email, Google or your own OIDC provider for sign-in, with two-factor
-  authentication on every method and sign-in limits that survive restarts. Installs as an app
-  from the browser.
+- **Your server, your files.** Docker images for amd64 and arm64. Files on a volume, a host folder,
+  a disk of their own or any S3 storage. Email, Google or your own OIDC provider for sign-in, with
+  two-factor authentication on every method and sign-in limits that survive restarts. Administrators
+  set the instance's lists of project types, tags and shot data. Installs as an app from the browser.
 - **Take it with you.** Export a project as an open zip archive (boards, original files,
   comments, reviews, schedule) and import it on any Inkadra server. Nightly backups of the
   database, with a restore command that also carries data across upgrades.
+
+[A tour of the tools](docs/guide.md), with pictures.
 
 <table>
   <tr>
     <td width="50%">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme/storyboard-dark.png">
-        <img src="docs/screenshots/readme/storyboard-light.png" alt="A storyboard: two scenes with their frames, shot sizes, durations and status">
+        <img src="docs/screenshots/readme/storyboard-light.png" alt="A storyboard: scenes with their frames, shot sizes, durations and status">
       </picture>
       <p align="center"><sub>Storyboard: scenes, frames and the data of each shot</sub></p>
     </td>
@@ -89,7 +96,7 @@ own server.
     <td colspan="2">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme/home-dark.png">
-        <img src="docs/screenshots/readme/home-light.png" alt="Home: today's shooting day, the recent boards with their kind colours, and activity">
+        <img src="docs/screenshots/readme/home-light.png" alt="Home: today's shooting day, your tasks, the recent boards and activity">
       </picture>
       <p align="center"><sub>Home: today's shoot, recent boards and what changed</sub></p>
     </td>
@@ -98,26 +105,34 @@ own server.
 
 ## Run it
 
-You need Docker with Compose and a domain for Inkadra. A reverse proxy for HTTPS is included
-if you do not have one.
+You need a machine with Docker and Compose. To try Inkadra on your own computer, that is all:
 
 ```sh
 mkdir inkadra && cd inkadra
 curl -fsSLO https://raw.githubusercontent.com/inkadra/inkadra/main/compose.yaml
 curl -fsSL -o .env https://raw.githubusercontent.com/inkadra/inkadra/main/.env.example
-# edit .env: PUBLIC_URL, AUTH_SECRET, POSTGRES_PASSWORD
-docker compose up -d
+sed -i "s/^AUTH_SECRET=.*/AUTH_SECRET=$(openssl rand -hex 32)/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 16)/" .env
+sed -i "s#^PUBLIC_URL=.*#PUBLIC_URL=http://localhost:3000#" .env
+docker compose up -d --wait
 ```
 
-Open `PUBLIC_URL` in a browser: the first account you create becomes the administrator.
+Open <http://localhost:3000>: the first account you create becomes the administrator. For real work
+you need a domain and HTTPS, and a reverse proxy for it is included if you do not have one.
 
-To pin a release instead of following `latest`, set `INKADRA_TAG=0.4.0` (or `0.4` for its patch
-releases) in `.env`. Upgrading from 0.3? Read [Upgrading to 0.4](docs/self-hosting/upgrades.md#upgrading-to-04)
-first: Valkey is now required by every role and allowed domains are checked more strictly.
+**[The self-hosting guide](docs/self-hosting)** starts from zero, for someone who has never used
+Compose: prerequisites, each step, the first sign-in, updating, backups, which of the three images to
+choose, and troubleshooting. It also covers reverse proxies (Caddy, Traefik, Nginx, Nginx Proxy
+Manager, Pangolin), sign-in, [data on different disks](docs/self-hosting/storage.md#data-on-different-disks),
+S3 and split mode. Images are published for amd64 and arm64 as `ghcr.io/inkadra/inkadra`.
 
-The [self-hosting guide](docs/self-hosting) covers reverse proxies (Caddy, Traefik, Nginx,
-Nginx Proxy Manager, Pangolin), sign-in, storage on host folders or S3, split mode, upgrades
-and troubleshooting. Images are published for amd64 and arm64 as `ghcr.io/inkadra/inkadra`.
+To pin a release instead of following `latest`, set `INKADRA_TAG=0.8.0` (or `0.8` for its patch
+releases) in `.env`.
+
+> [!IMPORTANT]
+> **Reports go to the developers by default.** People can report a problem from inside the app.
+> Unless an administrator chooses otherwise, a report that someone writes, previews and sends goes to
+> the Inkadra developers through a relay on Cloudflare. Nothing leaves without that. Inkadra sends no
+> telemetry. [What leaves your server, and how to turn it off](docs/self-hosting/README.md#what-leaves-your-server).
 
 ## Develop
 
@@ -140,6 +155,7 @@ pnpm dev     # API on :3000, web app on http://localhost:5173
 | `apps/server`          | API, auth, collaboration and background jobs: one image, several roles |
 | `apps/clipper`         | Browser extension for Chrome, Edge, Brave and Arc                      |
 | `apps/mobile`          | Android and iOS app (planned)                                          |
+| `relay`                | Worker that passes in-app reports to the developers' private repository |
 | `packages/shared`      | API contract: Zod schemas and the generated OpenAPI document           |
 | `packages/doc-schema`  | Versioned schema of the collaborative board documents (Yjs)            |
 | `packages/canvas-core` | Canvas math shared by web and mobile                                   |
@@ -149,6 +165,13 @@ pnpm dev     # API on :3000, web app on http://localhost:5173
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and
 [docs/decisions](docs/decisions) for the reasoning behind the main choices. Security problems
 go through [private advisories](SECURITY.md), not public issues.
+
+## AI-assisted development
+
+Much of Inkadra's code, tests and reviews are written with AI coding agents, under the direction of
+the maintainer. Changes go through CI, tests and review before they are merged. That does not rule
+out mistakes: Inkadra is early software, so keep backups and
+[report what you find](https://github.com/inkadra/inkadra/issues/new/choose).
 
 ## Licence
 

@@ -2,11 +2,14 @@
 
 Inkadra keeps three kinds of data:
 
-| What                                 | Where                                 | Back it up |
-| ------------------------------------ | ------------------------------------- | ---------- |
-| Accounts, projects, boards, comments | Postgres (`postgres-data`)            | Yes        |
-| Uploaded files and their previews    | `/data/files` in Inkadra, or a bucket | Yes        |
-| Jobs waiting to run                  | Valkey (`valkey-data`)                | Not needed |
+| What                                 | Where                                 | Back it up                                |
+| ------------------------------------ | ------------------------------------- | ----------------------------------------- |
+| Accounts, projects, boards, comments | Postgres (`postgres-data`)            | Yes                                       |
+| Uploaded files and their previews    | `/data/files` in Inkadra, or a bucket | Yes                                       |
+| Jobs waiting to run, sign-in limits  | Valkey (`valkey-data`)                | With the rest, though it can be rebuilt   |
+
+If Valkey's data is lost, the queues are rebuilt when the server starts: only jobs that were
+waiting to run are lost, and the sign-in counters start again.
 
 Files never change once uploaded: a new version is a new file. That makes them easy to copy
 and to back up incrementally.
@@ -18,7 +21,9 @@ Nothing to set. Compose creates the `inkadra-data` volume and keeps it across up
 
 ## A folder on the host
 
-To keep files on a disk, an array or a NAS dataset of your choice, set the folders in `.env`:
+To keep files on a disk, an array or a NAS dataset of your choice, set the folders in `.env`
+(for each kind of data on a different disk, see
+[Data on different disks](#data-on-different-disks)):
 
 ```sh
 INKADRA_DATA=/mnt/tank/inkadra/data
@@ -46,6 +51,67 @@ this one purpose; a folder that holds the files of PostgreSQL 16 directly (`PG_V
 
 Avoid network shares (NFS, SMB) for `POSTGRES_DATA`: Postgres needs local disk semantics. For
 `INKADRA_DATA` a share works if it maps the owner to uid 1000.
+
+## Data on different disks
+
+Files want a large disk, the database wants a fast one. Each kind of data can live on its own disk
+by giving it its own folder in `.env`, for example files on large hard disks and the rest on an SSD:
+
+```sh
+INKADRA_DATA=/mnt/hdd/inkadra/data          # uploads, previews, nightly backups, upload parts
+POSTGRES_DATA=/mnt/ssd/inkadra/postgres     # the database: this is what makes the app feel fast
+VALKEY_DATA=/mnt/ssd/inkadra/valkey         # job queues and sign-in limits
+```
+
+Make the folders and give them to the right users before the first start:
+
+```sh
+sudo mkdir -p /mnt/hdd/inkadra/data /mnt/ssd/inkadra/postgres /mnt/ssd/inkadra/valkey
+sudo chown -R 1000:1000 /mnt/hdd/inkadra/data       # Inkadra runs as uid 1000
+sudo chown -R 70:70 /mnt/ssd/inkadra/postgres       # postgres:18-alpine runs as uid 70
+docker compose up -d --wait
+```
+
+| Folder          | Owner                 | Who sets it                                                          |
+| --------------- | --------------------- | -------------------------------------------------------------------- |
+| `INKADRA_DATA`  | uid 1000              | You, or `compose.yaml`, which gives it to uid 1000 at startup        |
+| `POSTGRES_DATA` | uid 70                | You, beforehand. PostgreSQL keeps its files in `18/docker` inside it |
+| `VALKEY_DATA`   | uid 999, in the image | The Valkey image, at startup: leave it as it is                      |
+
+The owners are numbers: on the host they may show up as other names, or as no name at all. Keep
+`tmp` and `backups` inside `INKADRA_DATA`, as they come: do not mount them on a disk of their own.
+
+### Backing up the folders
+
+**All three folders belong in your backups,** together with `.env`. `INKADRA_DATA` holds your files
+and the nightly zips of the database, which are the safest way to get the database back on
+[another server or a newer version](README.md#backups). A copy of `POSTGRES_DATA` is only good with
+the same major version of PostgreSQL and only if it was made with the containers stopped: copied
+while Postgres writes, it can be damaged without any error. Keep the owners when you copy:
+
+```sh
+docker compose stop
+sudo tar czf inkadra-folders.tgz --numeric-owner /mnt/hdd/inkadra/data /mnt/ssd/inkadra/postgres /mnt/ssd/inkadra/valkey
+docker compose up -d --wait
+```
+
+To restore, stop the containers, unpack the archive with
+`sudo tar xzf inkadra-folders.tgz --numeric-owner -C /`, and start them again.
+
+### Moving an existing install to folders
+
+Stop everything, copy each volume with its owners, add the three lines to `.env`, and start.
+`docker compose down` keeps the volumes, so they remain as your way back until you remove them.
+This copies the default volumes of `compose.yaml` to the folders above:
+
+```sh
+docker compose down
+docker run --rm -v inkadra_inkadra-data:/from -v /mnt/hdd/inkadra/data:/to alpine cp -a /from/. /to/
+docker run --rm -v inkadra_postgres-data:/from -v /mnt/ssd/inkadra/postgres:/to alpine cp -a /from/. /to/
+docker run --rm -v inkadra_valkey-data:/from -v /mnt/ssd/inkadra/valkey:/to alpine cp -a /from/. /to/
+# add INKADRA_DATA, POSTGRES_DATA and VALKEY_DATA to .env
+docker compose up -d --wait
+```
 
 ## An S3-compatible bucket
 

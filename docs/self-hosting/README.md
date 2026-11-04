@@ -1,60 +1,147 @@
 # Self-hosting
 
-Inkadra runs on any machine with Docker: a VPS, a home server, a NAS. You need
-- Docker Engine 24 or newer with the Compose plugin (`docker compose version`), on amd64 or arm64;
-- a (sub)domain for Inkadra, such as `inkadra.example.com`, and a reverse proxy that serves it
-  over HTTPS: the proxy can be one of the examples in this repository;
-- 2 GB of RAM and disk space for your files.
+Inkadra runs on any machine with Docker: a VPS, a home server, a NAS. This page takes you from
+an empty folder to your first sign-in, and assumes you have never used Docker Compose.
 
 | Page                                  | What it covers                                          |
 | ------------------------------------- | ------------------------------------------------------- |
-| This page                             | Installing, the image and its roles, compose variants   |
+| This page                             | Installing, the image variants, backups, what leaves    |
 | [Configuration](configuration.md)     | Every setting in `.env`                                 |
 | [Sign-in](sign-in.md)                 | Google, OIDC, email, invitations, two-factor            |
 | [Reverse proxy](reverse-proxy.md)     | Caddy, Traefik, Nginx, Nginx Proxy Manager, Pangolin    |
-| [Storage](storage.md)                 | Where files go: volume, host folder, S3, bundled RustFS |
+| [Storage](storage.md)                 | Volumes, data on different disks, S3, bundled RustFS    |
 | [Upgrades](upgrades.md)               | Versions, updating, verifying images                    |
 | [Troubleshooting](troubleshooting.md) | What to check when something does not work              |
+| [Office previews](office.md)          | The optional LibreOffice worker                         |
+
+## What you need
+
+- A Linux machine, amd64 or arm64, with 2 GB of RAM and disk space for your files. Windows and
+  macOS work through Docker Desktop, for trying Inkadra out.
+- **Docker Engine 24 or newer with the Compose plugin.** Install it from
+  [Docker's guide](https://docs.docker.com/engine/install/) (the convenience script is fine on a
+  machine of your own), or install [Docker Desktop](https://docs.docker.com/desktop/). On Linux,
+  to run `docker` without `sudo`, add yourself to its group and sign in again:
+  `sudo usermod -aG docker $USER`. Check that it works:
+
+  ```sh
+  docker compose version     # Docker Compose version v2 or newer
+  docker run --rm hello-world
+  ```
+
+- `curl` and `openssl`, which most systems already have.
+- For real work, a (sub)domain such as `inkadra.example.com` pointing at the machine, and a
+  reverse proxy that serves it over HTTPS. The repository has
+  [ready-made ones](#with-a-proxy-in-the-same-stack). To try Inkadra on your own computer you need
+  neither.
 
 ## Install
 
-```sh
-mkdir inkadra && cd inkadra
-curl -fsSLO https://raw.githubusercontent.com/inkadra/inkadra/main/compose.yaml
-curl -fsSL -o .env https://raw.githubusercontent.com/inkadra/inkadra/main/.env.example
-```
+Compose starts three containers from one file, `compose.yaml`, and reads your settings from a
+second one, `.env`, in the same folder. Run every `docker compose` command from that folder.
 
-Edit `.env`: set `PUBLIC_URL` to the address people will use, and fill `AUTH_SECRET` and
-`POSTGRES_PASSWORD` with random values:
+1. **Make a folder and download the two files.**
 
-```sh
-sed -i "s/^AUTH_SECRET=.*/AUTH_SECRET=$(openssl rand -hex 32)/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 16)/" .env
-```
+   ```sh
+   mkdir inkadra && cd inkadra
+   curl -fsSLO https://raw.githubusercontent.com/inkadra/inkadra/main/compose.yaml
+   curl -fsSL -o .env https://raw.githubusercontent.com/inkadra/inkadra/main/.env.example
+   ```
 
-Then start it and point your reverse proxy at port 3000 (see [Reverse proxy](reverse-proxy.md)):
+2. **Fill in the two secrets.** This writes random values into `.env` (on macOS, use
+   `sed -i ''`). Keep the file private: anyone who reads it can get into the database.
 
-```sh
-docker compose up -d
-docker compose ps        # inkadra, postgres and valkey should be "healthy"
-```
+   ```sh
+   sed -i "s/^AUTH_SECRET=.*/AUTH_SECRET=$(openssl rand -hex 32)/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 16)/" .env
+   ```
 
-Open `PUBLIC_URL` in a browser. The first account you create becomes the administrator; after
-that, sign-up is closed unless `REGISTRATION=open`.
+3. **Set the address** people will use, in `PUBLIC_URL`, with any text editor. To try Inkadra on
+   this computer, use `http://localhost:3000`:
+
+   ```sh
+   sed -i "s#^PUBLIC_URL=.*#PUBLIC_URL=http://localhost:3000#" .env
+   ```
+
+   For a server, use its HTTPS address, such as `https://inkadra.example.com`, without a path or
+   a trailing slash.
+
+4. **Start it.** The first start downloads the images, which take about 1 GB of disk. The `--wait`
+   option returns when everything is ready.
+
+   ```sh
+   docker compose up -d --wait
+   docker compose ps          # inkadra, postgres and valkey should say "healthy"
+   curl -s http://127.0.0.1:3000/api/v1/health     # {"status":"ok",…}
+   ```
+
+5. **Point your reverse proxy at port 3000** of this machine, unless you are only trying it out.
+   See [Reverse proxy](reverse-proxy.md), or use a [bundled one](#with-a-proxy-in-the-same-stack).
+
+6. **Create the administrator.** Open `PUBLIC_URL` in a browser. The first visit asks for a name,
+   an email and a password of at least 10 characters: that account administers the instance.
+   Without [email configured](sign-in.md) no message is sent, so the address does not have to
+   work yet. After that, sign-up is closed:
+   other people join through an invitation (see [Sign-in](sign-in.md)), or anyone can sign up if
+   you set `REGISTRATION=open`.
+
+   <picture>
+     <source media="(prefers-color-scheme: dark)" srcset="../screenshots/guide/first-run-dark.png">
+     <img src="../screenshots/guide/first-run-light.png" alt="The first visit: a form to create the administrator account, with name, email and password" width="640">
+   </picture>
+
+Then look at **Settings → About**: it shows what is set up and what is not, and its
+**Diagnostics** page checks the network, the proxy and the services.
+
+> [!IMPORTANT]
+> **Reports go to the Inkadra developers by default.** People can report a problem from inside
+> the app, and unless you choose otherwise the report goes to the developers. Nothing leaves
+> until someone writes a report, sees its preview and sends it. Read
+> [What leaves your server](#what-leaves-your-server) and decide before you invite anyone.
+
+To stop Inkadra, run `docker compose stop`; to start it again, `docker compose up -d`.
+`docker compose down` also removes the containers, and keeps your data. Only
+`docker compose down -v` deletes the data, so do not use that one.
 
 For a release instead of the latest commit of `main`, download the deployment files attached
 to the [release](https://github.com/inkadra/inkadra/releases): they pin `INKADRA_TAG` to that
 version.
 
+### Updating
+
+Read the [release notes](https://github.com/inkadra/inkadra/releases) and [back up](#backups), set
+the new version in `INKADRA_TAG` in `.env` if you pinned one, then:
+
+```sh
+docker compose pull
+docker compose up -d --wait
+```
+
+Database migrations run by themselves when the new version starts. [Upgrades](upgrades.md) has the
+details and what to do for each version.
+
+### What this guide was tested on
+
+The steps on this page, the update from 0.8.0, the backup and restore, and
+[data in separate folders](storage.md#data-on-different-disks) were followed by hand on a clean
+folder and empty databases, on Ubuntu under WSL 2 with Docker Desktop. The bundled Caddy was tried
+with `localhost` and its own certificate: health check, home page and the WebSocket on `/collab`.
+**Not tried by hand:** a public domain with a real certificate, a separate reverse proxy of your
+own, a machine with Docker Engine on plain Linux, separate physical disks, macOS, and arm64. CI runs
+the [proxy examples](reverse-proxy.md) on every change, in containers. If a step fails for you, please
+[open an issue](https://github.com/inkadra/inkadra/issues/new/choose).
+
 ### With a proxy in the same stack
 
-If nothing else uses ports 80 and 443 on the machine, let Compose run the proxy too. Download
-the repository files (or the release archive), set `INKADRA_DOMAIN` in `.env` to the host of
-`PUBLIC_URL`, and add the proxy's file:
+If nothing else uses ports 80 and 443 on the machine, let Compose run the proxy too. The domain
+must already point at the machine. Download the repository files (or the release archive), fill in
+`.env` as in steps 2 and 3, with the HTTPS address in `PUBLIC_URL`, add its host as `INKADRA_DOMAIN`,
+and add the proxy's file:
 
 ```sh
 git clone --depth 1 https://github.com/inkadra/inkadra.git && cd inkadra
-cp .env.example .env     # and edit it as above, plus INKADRA_DOMAIN
-docker compose -f compose.yaml -f deploy/proxy/caddy/compose.yaml up -d
+cp .env.example .env     # then steps 2 and 3 above
+echo INKADRA_DOMAIN=inkadra.example.com >> .env
+docker compose -f compose.yaml -f deploy/proxy/caddy/compose.yaml up -d --wait
 ```
 
 Caddy gets the certificate by itself. Traefik and Nginx are there too; see
@@ -98,8 +185,17 @@ of `index.html` (with `'unsafe-inline'` or their hashes).
 
 ## The image
 
-One image, `ghcr.io/inkadra/inkadra`, built for `linux/amd64` and `linux/arm64`. Its command
-selects the role:
+`ghcr.io/inkadra/inkadra`, built for `linux/amd64` and `linux/arm64`, in three variants. Start
+with the standard one unless you need what the others add: you can change later by changing
+`INKADRA_TAG` and running `docker compose up -d`. Files you uploaded before get no new previews.
+
+| Variant  | Tag example   | Size    | What it adds                                                                                                                                                                                                                                  |
+| -------- | ------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Standard | `0.8.0`       | ~0.6 GB | Everything in Inkadra. Videos play in their card when the browser can play the original; other files get a generic card                                                                                                                       |
+| Media    | `0.8.0-media` | ~1.4 GB | ffmpeg, exiftool and poppler: video posters, playable copies of ProRes, MKV, AVI, MXF and HEVC, stills taken from the original video, audio waveforms, camera RAW and PDF thumbnails, video reports from a device. Hardware encoding drivers |
+| Office   | `0.8.0-office`| ~2 GB   | The media image plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental                                                                                                                       |
+
+Sizes are uncompressed, measured on amd64. The image's command selects the role:
 
 | Command                 | Role                                                                |
 | ----------------------- | ------------------------------------------------------------------- |
@@ -124,14 +220,14 @@ switches to uid 1000, which drops them. Each role has its own health check.
 
 | Tag           | What it is                                                  |
 | ------------- | ----------------------------------------------------------- |
-| `0.4.0`       | One release. Recommended: pin it in `INKADRA_TAG`           |
-| `0.4`         | The latest patch release of 0.4                             |
+| `0.8.0`       | One release. Recommended: pin it in `INKADRA_TAG`           |
+| `0.8`         | The latest patch release of 0.8                             |
 | `latest`      | The latest stable release                                   |
 | `edge`        | The latest commit of `main`: for testing, not for real work |
 | `sha-1a2b3c4` | One commit                                                  |
 
-Every tag also exists with the suffix `-media` (`0.4.0-media`, `latest-media`, `edge-media`…):
-the same image plus ffmpeg, exiftool and poppler, a few hundred MB larger. With it, videos get a
+Every tag also exists with the suffix `-media` (`0.8.0-media`, `latest-media`, `edge-media`…):
+the same image plus ffmpeg, exiftool and poppler, about 800 MB larger. With it, videos get a
 poster thumbnail on the board, their duration and codecs, and a playable H.264 copy when the
 browser cannot play the original (ProRes, MKV, AVI, MXF, HEVC); camera RAW files get thumbnails
 from the JPEG the camera embedded; PDFs get a thumbnail of page 1 and their page count. Without
@@ -151,7 +247,7 @@ image under `/usr/share/doc/<package>/copyright`. The GPL is compatible with dis
 under the AGPL-3.0. The server only runs the `ffmpeg`, `ffprobe`, `exiftool`, `pdftoppm` and
 `pdfinfo` programs and does not link to them.
 
-The suffix `-office` (`0.4.0-office`, `edge-office`…) is the `-media` image plus LibreOffice, for
+The suffix `-office` (`0.8.0-office`, `latest-office`, `edge-office`…) is the `-media` image plus LibreOffice, for
 the worker role only when you enable [Office document previews](office.md).
 
 ## Compose variants
@@ -192,6 +288,20 @@ data volume or the bucket too**, with your usual tool (restic, Borg, a snapshot 
 bucket versioning or replication). The format is described in
 [instance-backup.md](../formats/instance-backup.md).
 
+These backups stay on the same disk as your files, so they do not protect you from losing that
+disk. **A complete backup, copied to another machine, is:**
+1. the data: the `inkadra-data` volume or your `INKADRA_DATA` folder, which holds the nightly
+   zips too, or the bucket;
+2. your `.env`, because `AUTH_SECRET` is needed to read two-factor secrets and sealed tokens;
+3. if you copy whole folders, `POSTGRES_DATA` and `VALKEY_DATA` too, with the containers stopped:
+   see [Data on different disks](storage.md#backing-up-the-folders).
+
+To copy the default data volume to the current folder:
+
+```sh
+docker run --rm -v inkadra_inkadra-data:/from -v "$PWD":/to alpine tar czf /to/inkadra-data.tgz -C /from .
+```
+
 Backups contain password hashes, sessions and sealed tokens: keep them as safe as the database,
 and never make the `backups/` prefix of a bucket public. They are not downloadable from the
 browser; copy them from the server:
@@ -229,4 +339,66 @@ any file named by the backup that storage does not have (a warning, not an error
 volume or the bucket and they come back). To restore a backup copied elsewhere, put it in the
 data folder first, for example with `docker compose cp`.
 
-Optional [Office document previews](office.md): isolated LibreOffice worker and spreadsheet limits.
+## What leaves your server
+
+Inkadra sends no telemetry and does not check for updates. It talks to other servers only for
+what is listed here.
+
+| What                                                                         | Goes to                                                                  | When                                                                 | To turn it off                                                 |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Reports**: the text, screenshots, videos, files and logs someone selected  | The Inkadra developers, through a relay on Cloudflare (details below)    | Only when someone sends a report, after its preview. **On by default** | **Settings → About → Reports**, or `FEEDBACK_RELAY_URL=` empty |
+| Map tile requests, with this instance's address in the user agent            | `tile.openstreetmap.org`, or your `MAP_TILE_URL`                         | When someone adds or explores a map or a GPX file                    | `MAPS=false`, or your own tile server                          |
+| Requests for the pages behind pasted links, and their preview images         | That site; YouTube and Vimeo for their videos                            | When someone pastes a link or clips a page                           | No setting                                                     |
+| Address lookups                                                              | Your `MAP_GEOCODER_URL`                                                  | When someone types an address in a map card                          | Off unless you set it                                          |
+| Sign-in, email and files                                                     | Your Google or OIDC provider, your mail server, your S3 bucket           | Only if you configure them                                           | Leave them empty                                               |
+
+People's browsers load YouTube (from `youtube-nocookie.com`), Vimeo or Instagram players only when
+someone plays a link card, and Google profile pictures for accounts that sign in with Google.
+
+### Reports to the developers
+
+People can report a problem from inside the app: an icon next to the notifications,
+`Ctrl/⌘+Shift+B`, or **Settings → About**. On every instance where no administrator has saved a
+choice, new or upgraded, those reports go to the Inkadra developers.
+
+**What leaves:** the title and description someone wrote and, if they kept them selected,
+a screenshot, a recording, attached files, and diagnostics (version, browser and system, screen,
+theme and language, the current page without identifiers, recent console errors, sync state and
+active features). The person sees all of it in a preview, and can untick or blur what they want,
+before anything is sent.
+
+**What does not leave:** no name, email or instance address is added. Logs and text files lose
+secrets, this server's host name and internal addresses; images and videos lose their metadata,
+GPS included. PDFs leave whole, with their metadata, and the dialog says so. What people write, or
+what is visible in a screenshot or a file, can still be personal or a client's: that is what the
+preview is for.
+
+**Where it goes:** through a relay on Cloudflare, which sees this server's IP address, to the
+private GitHub repository `inkadra/inkadra-feedback`, where the Inkadra developers read it.
+Attachments stay in that repository until the developers remove them, whatever retention you set
+here. Guests cannot report unless you allow them.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../screenshots/guide/report-preview-dark.png">
+  <img src="../screenshots/guide/report-preview-light.png" alt="The preview of a report: the title, the screenshot, and each group of diagnostics exactly as it leaves, each with its own checkbox">
+</picture>
+
+**To turn it off,** use either of these:
+- In **Settings → About → Reports**, switch off _Send to the Inkadra developers_ (reports stay in
+  the administrators' Inbox), or choose another destination: your own private GitHub repository,
+  Inbox only, or Off. A saved choice always wins.
+- Set an empty value in `.env`, then run `docker compose up -d`. The relay route is gone from this
+  server and, without a saved choice, reports are off and the icon is hidden. On an existing
+  instance, do this **before** upgrading to a version that has the relay.
+
+  ```sh
+  FEEDBACK_RELAY_URL=
+  ```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../screenshots/guide/reports-settings-dark.png">
+  <img src="../screenshots/guide/reports-settings-light.png" alt="Settings, About, Reports: a switch for sending to the Inkadra developers, with what it means, and the destination: developers, own GitHub repository, administrators' Inbox only, or off">
+</picture>
+
+Limits, the direct GitHub route and how delivery retries work are in
+[Configuration](configuration.md#in-app-reports).

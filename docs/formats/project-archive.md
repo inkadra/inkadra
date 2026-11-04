@@ -21,11 +21,12 @@ All JSON is UTF-8; timestamps are ISO 8601 with offset; ids are UUIDs of the exp
 | `comments.json`                  | Comments and replies (board or card, pin, resolved, edited, deleted)       |
 | `reviews.json`                   | The team's review status of each card and its history                      |
 | `schedule.json`                  | Shooting days with their blocks                                            |
-| `classifications.json`           | Labels of the project type and tags used, as named on the exporting server |
+| `classifications.json`           | Labels of the project type, tags and custom shot values used, by name      |
 | `export-settings.json`           | PDF and image export settings of the project and its logo (an asset id)    |
 
 Inside documents, cards refer to files by `assetId` (image, file, frame, and the picture of a
-character or location card, from schema version 7) or `imageAssetId` (link) and to boards by
+character or location card, from schema version 7), `references` (the reference pictures of a
+character card, from schema version 17) or `imageAssetId` (link) and to boards by
 `boardId` (board cards); `meta.boardId` names the board itself. Element ids are stable:
 comments, reviews and schedule blocks refer to cards by them.
 `elements.json` also has the storyboard's `aspect` and, from document version 9,

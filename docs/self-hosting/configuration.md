@@ -1,8 +1,22 @@
 # Configuration
 
 Inkadra reads its settings from the environment. With Compose, put them in `.env` next to
-`compose.yaml`; [`.env.example`](../../.env.example) lists them with their defaults. Never commit
-or share the real `.env`.
+`compose.yaml` and run `docker compose up -d`; [`.env.example`](../../.env.example) lists them with
+their defaults. Never commit or share the real `.env`.
+
+`compose.yaml` passes on the settings people change most. The others, in the tables below, reach
+the server only if you add them to `environment`, for example `TZ`, `IMPORT_MAX_SIZE` and the
+`VIDEO_PROXY_` limits and quality settings other than `VIDEO_PROXY_HWACCEL` and
+`VIDEO_PROXY_VAAPI_DEVICE`. Put them in a `compose.override.yaml` next to `compose.yaml`, which
+Compose reads by itself:
+
+```yaml
+services:
+  inkadra: # `web`, `collab` or `worker` too in split mode
+    environment:
+      TZ: Europe/Rome
+      IMPORT_MAX_SIZE: 50GB
+```
 
 ## Server
 
@@ -187,22 +201,24 @@ These change `compose.yaml` itself, not the server.
 
 | Variable                  | Default                   | Meaning                                                                        |
 | ------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
-| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.4.0` (recommended), `latest` or `edge`         |
+| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.8.0` (recommended), `latest` or `edge`         |
 | `INKADRA_IMAGE`           | `ghcr.io/inkadra/inkadra` | Image name, for a mirror or your own build                                     |
 | `INKADRA_PORT`            | `3000`                    | Host port of the web app                                                       |
 | `INKADRA_COLLAB_PORT`     | `3001`                    | Host port of `collab`, in split mode                                           |
 | `INKADRA_BIND`            | `127.0.0.1`               | Host address the ports listen on. `0.0.0.0` if the proxy is on another machine |
-| `INKADRA_DATA`            | volume `inkadra-data`     | Host folder for uploads instead of the volume                                  |
+| `INKADRA_DATA`            | volume `inkadra-data`     | Host folder for uploads instead of the volume. See [Storage][data-disks]       |
 | `POSTGRES_PASSWORD`       | required                  | Password of the bundled Postgres                                               |
 | `POSTGRES_DATA`           | volume `postgres-data`    | Host folder for the database (or the name of another volume)                   |
 | `POSTGRES_MAJOR`          | `16`                      | PostgreSQL version, only with `deploy/compose.postgres-old-layout.yaml`        |
-| `VALKEY_DATA`             | volume `valkey-data`      | Host folder for Valkey                                                         |
+| `VALKEY_DATA`             | volume `valkey-data`      | Host folder for Valkey. See [Storage][data-disks]                              |
 | `RUSTFS_DATA`             | volume `rustfs-data`      | Host folder for the bundled RustFS                                             |
 | `INKADRA_DOMAIN`          |                           | Host of `PUBLIC_URL`, for the bundled proxies                                  |
 | `INKADRA_COLLAB_UPSTREAM` | `inkadra:3000`            | Where the bundled Caddy and Nginx send `/collab`: `collab:3001` in split mode  |
 | `ACME_EMAIL`              |                           | Contact for Let's Encrypt, for the bundled Traefik                             |
 | `TRAEFIK_CERTRESOLVER`    | `letsencrypt`             | Which Traefik certresolver gets the certificate, for the bundled Traefik       |
 | `NGINX_CERTS`             | `./certs`                 | Folder with `fullchain.pem` and `privkey.pem`, for the bundled Nginx           |
+
+[data-disks]: storage.md#data-on-different-disks
 
 ## Sign-in and email
 
@@ -351,10 +367,11 @@ rootless Docker or IPv6 forwarding, a direct LAN client can appear as the Docker
 (e.g. `172.18.0.1`). Trusting that gateway/subnet lets direct clients forge proxy headers.
 Use the pinned proxy container IP and verify the peer address in your deployment.
 
-### In-app reports (#338)
+## In-app reports
 
 Reporting to the **Inkadra developers is on without a saved choice**, also on an upgraded instance,
-via the relay described below.
+via the relay described below. What leaves and how to turn it off, in plain words:
+[What leaves your server](README.md#what-leaves-your-server).
 Saved administrator choices override that default. In Settings → About → Reports an administrator
 chooses Inkadra developers, own GitHub, Inbox only or Off, the destination `owner/repository`, whether
 guests may report (off by default) and how long attachments are kept (90 days by default; 30
@@ -415,7 +432,7 @@ another `https://` relay URL to override (plain `http://` only to this machine),
 string to disable this route. No GitHub or Cloudflare credential is installed in the app for it.
 
 **Every instance without a saved choice uses this destination, including one upgraded from an
-earlier version where reporting was off.** To keep reports off, save a choice in Settings → Reports
+earlier version where reporting was off.** To keep reports off, save a choice in Settings → About → Reports
 or set the empty value before upgrading. Guests stay disabled. Settings lets administrators turn
 developer reporting off with one switch (Inbox), choose Inbox only, disable reports, or configure
 their own private GitHub repository. Saved administrator choices always take precedence, including
@@ -437,8 +454,8 @@ metadata, and the dialog says so. What people write and what is visible in a fil
 personal: the preview is there to check it.
 
 **Limits.** 10 MiB per image or file, 25 MiB per video, 32 MiB per report; direct GitHub keeps its
-100 MiB video limit. The relay accepts 5 reports a day per network and 30 a day in total: beyond
-that, reports wait in the local queue and leave by themselves. During an outage they wait too, and
+100 MiB video limit. The relay accepts 40 reports a day per network and 60 a day in total, across
+every instance that uses it: beyond that, reports wait in the local queue and leave by themselves. During an outage they wait too, and
 Settings says so. If the relay gives no answer to a write, the report is marked as not confirmed:
 trying again from Settings is safe, because the relay recognises a report it already has. GitHub
 attachments live on `feedback-assets` and are not removed by the local retention setting.
