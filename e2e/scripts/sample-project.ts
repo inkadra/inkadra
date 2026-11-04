@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { addFrame, addScene, createElement, moveIntoParent } from '@inkadra/canvas-core';
-import { initBoardDoc, roots } from '@inkadra/doc-schema';
+import { initBoardDoc, type PlanIcon, roots, STROKE_GRID } from '@inkadra/doc-schema';
 import type { Browser } from '@playwright/test';
 import * as Y from 'yjs';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from '../tests/perf/seed.ts';
 
 /**
  * The sample project of the screenshot scripts, built on an empty instance: "Last Train", with
- * a moodboard, a storyboard of two scenes, a casting board and a shooting day today.
+ * a moodboard, a storyboard of two scenes, a casting board, a set plan and a shooting day today.
  *
  * The pictures on the boards are drawn here, so the screenshots carry no third-party images.
  */
@@ -161,6 +161,9 @@ export interface SampleProject {
   project: { id: string; rootBoardId: string };
   storyboard: { id: string };
   casting: { id: string };
+  /** The board with the set plan; its plan card is `planId`. */
+  setPlan: { id: string };
+  planId: string;
   /** Asset ids of the stills, by name. */
   asset: Record<string, string>;
 }
@@ -180,6 +183,11 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     parentBoardId: project.rootBoardId,
     kind: 'board',
     title: 'Casting',
+  });
+  const setPlan = await api<{ id: string }>(base, cookie, `/projects/${project.id}/boards`, {
+    parentBoardId: project.rootBoardId,
+    kind: 'board',
+    title: 'Set plan',
   });
 
   const asset: Record<string, string> = {};
@@ -405,16 +413,110 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
   });
   await pushBoardDoc(base, cookie, storyboard.id, story);
 
-  // The casting board, so that its card on Home has a preview.
+  // The casting board: character sheets, so that its card on Home has a preview too.
   const cast = new Y.Doc();
   initBoardDoc(cast, casting.id);
   cast.transact(() => {
-    note(cast, { x: 0, y: 0 }, ['Anna', 'Late twenties, tired, quick to laugh.'], 260);
-    note(cast, { x: 0, y: 200 }, ['Leo', 'Older, night-shift worker, few words.'], 260);
-    createElement(cast, 'image', { x: 300, y: 0 }, { assetId: pic('window'), w: 320 }, opts);
-    createElement(cast, 'image', { x: 300, y: 200 }, { assetId: pic('diner'), w: 320 }, opts);
+    const leo = createElement(
+      cast,
+      'character',
+      { x: 340, y: 0 },
+      {
+        name: 'Leo',
+        role: 'Supporting',
+        age: '52',
+        assetId: pic('diner'),
+        actor: 'Paolo Verdi',
+        profession: 'Night-shift signalman',
+        w: 280,
+      },
+      opts,
+    );
+    createElement(
+      cast,
+      'character',
+      { x: 0, y: 0 },
+      {
+        name: 'Anna',
+        role: 'Lead',
+        age: '29',
+        assetId: pic('window'),
+        nickname: 'Annie',
+        profession: 'Sound editor',
+        origin: 'A town at the end of the line',
+        actor: 'Marta Neri',
+        appearance: 'Tired, quick to laugh. A coat one size too big.',
+        description: 'Comes back to the city for one night and misses the last train out.',
+        wants: 'To get home before morning.',
+        fears: 'That nobody is waiting there.',
+        arc: 'From running away to staying until dawn.',
+        costume: 'Grey wool coat, red scarf.',
+        references: [pic('rain'), pic('platform')],
+        relations: [{ characterId: leo.id, label: 'stranger at the counter' }],
+        w: 280,
+      },
+      opts,
+    );
+    createElement(
+      cast,
+      'location',
+      { x: 680, y: 0 },
+      { name: 'Central station', assetId: pic('platform'), w: 280 },
+      opts,
+    );
   });
   await pushBoardDoc(base, cookie, casting.id, cast);
+
+  // The set plan of the diner: four walls, the counter, two people, lamps and a camera.
+  const planDoc = new Y.Doc();
+  initBoardDoc(planDoc, setPlan.id);
+  const planId = planDoc.transact(() => {
+    const gx = (x: number) => Math.round((x / 1000) * STROKE_GRID);
+    const gy = (y: number) => Math.round((y / (1000 / 1.5)) * STROKE_GRID);
+    const id = (name: string) => name.padEnd(13, 'A');
+    const wall = (n: number, x0: number, y0: number, x1: number, y1: number) => ({
+      id: id(`wall${n}`),
+      kind: 'line' as const,
+      color: '#8E8E93',
+      width: 6,
+      x0: gx(x0),
+      y0: gy(y0),
+      x1: gx(x1),
+      y1: gy(y1),
+    });
+    const icon = (name: string, kind: PlanIcon['kind'], color: string, x: number, y: number) => ({
+      id: id(`icon${name}`),
+      kind,
+      color,
+      x: gx(x),
+      y: gy(y),
+    });
+    return createElement(
+      planDoc,
+      'plan',
+      { x: 0, y: 0 },
+      {
+        w: 640,
+        title: 'Station diner, scene 2',
+        shapes: [
+          wall(0, 140, 90, 860, 90),
+          wall(1, 860, 90, 860, 580),
+          wall(2, 860, 580, 140, 580),
+          wall(3, 140, 580, 140, 90),
+        ],
+        icons: [
+          { ...icon('Counter', 'table', '#8E8E93', 500, 250), w: 360, h: 80 },
+          { ...icon('Lamp1', 'practical', '#EDD963', 300, 170), size: 'L' as const },
+          icon('Lamp2', 'practical', '#EDD963', 700, 170),
+          { ...icon('Anna', 'actor', '#B897F0', 420, 340), label: 'Anna' },
+          { ...icon('Leo', 'actor', '#F79B54', 580, 340), label: 'Leo' },
+          { ...icon('Cam', 'camera', '#9DB8F2', 500, 520), label: 'A cam', showLens: true },
+        ],
+      },
+      opts,
+    ).id;
+  });
+  await pushBoardDoc(base, cookie, setPlan.id, planDoc);
 
   // A shooting day today, for the card on Home. The date is the local one, like the app's.
   const now = new Date();
@@ -444,5 +546,5 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     ],
   });
 
-  return { cookie, project, storyboard, casting, asset };
+  return { cookie, project, storyboard, casting, setPlan, planId, asset };
 }

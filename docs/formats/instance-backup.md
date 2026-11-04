@@ -1,6 +1,6 @@
 # Instance backup format (version 1)
 
-Instance backups (`inkadra-backup-<date>.zip`, administrators only) hold the database of one
+Instance backups (`inkadra-backup-<date>-<id>.zip`, administrators only) hold the database of one
 Inkadra server. They are not meant to be read by other tools; the reasons are in
 [decision 0037](../decisions/0037-export-import-and-backups.md) and the schema of the manifest
 is `BackupManifest` in [`packages/shared/src/backups.ts`](../../packages/shared/src/backups.ts).

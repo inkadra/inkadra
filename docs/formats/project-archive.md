@@ -6,26 +6,27 @@ with the layout below. The schemas of every JSON entry are in
 reasons behind the format are in [decision 0037](../decisions/0037-export-import-and-backups.md).
 All JSON is UTF-8; timestamps are ISO 8601 with offset; ids are UUIDs of the exporting server.
 
-| Entry                            | Content                                                                    |
-| -------------------------------- | -------------------------------------------------------------------------- |
-| `manifest.json`                  | `format: "inkadra-project"`, `formatVersion`, app version, date, counts    |
-| `project.json`                   | Name, icon, type, shooting dates, archived                                 |
-| `people.json`                    | Id and name of every author and mentioned person (never emails)            |
-| `boards.json`                    | Board tree: id, parent (null for root), kind, title, icon, schema version  |
-| `boards/<boardId>/document.yjs`  | The board's Yjs document, one full update (`Y.encodeStateAsUpdate`)        |
-| `boards/<boardId>/elements.json` | The same board readable: elements as in `@inkadra/doc-schema`, note text   |
-| `versions.json`                  | Named versions: id, board, name, schema version, author, date              |
-| `versions/<versionId>.yjs`       | The document of a named version                                            |
-| `assets.json`                    | Files: id, kind, MIME type, name, size, SHA-256, author                    |
-| `files/<assetId>`                | The original file, byte for byte                                           |
-| `comments.json`                  | Comments and replies (board or card, pin, resolved, edited, deleted)       |
-| `reviews.json`                   | The team's review status of each card and its history                      |
-| `schedule.json`                  | Shooting days with their blocks                                            |
-| `classifications.json`           | Labels of the project type and tags used, as named on the exporting server |
-| `export-settings.json`           | PDF and image export settings of the project and its logo (an asset id)    |
+| Entry                            | Content                                                                   |
+| -------------------------------- | ------------------------------------------------------------------------- |
+| `manifest.json`                  | `format: "inkadra-project"`, `formatVersion`, app version, date, counts   |
+| `project.json`                   | Name, icon, type, shooting dates, archived                                |
+| `people.json`                    | Id and name of every author and mentioned person (never emails)           |
+| `boards.json`                    | Board tree: id, parent (null for root), kind, title, icon, schema version |
+| `boards/<boardId>/document.yjs`  | The board's Yjs document, one full update (`Y.encodeStateAsUpdate`)       |
+| `boards/<boardId>/elements.json` | The same board readable: elements as in `@inkadra/doc-schema`, note text  |
+| `versions.json`                  | Named versions: id, board, name, schema version, author, date             |
+| `versions/<versionId>.yjs`       | The document of a named version                                           |
+| `assets.json`                    | Files: id, kind, MIME type, name, size, SHA-256, author                   |
+| `files/<assetId>`                | The original file, byte for byte                                          |
+| `comments.json`                  | Comments and replies (board or card, pin, resolved, edited, deleted)      |
+| `reviews.json`                   | The team's review status of each card and its history                     |
+| `schedule.json`                  | Shooting days with their blocks                                           |
+| `classifications.json`           | Labels of the project type, tags and custom shot values used, by name     |
+| `export-settings.json`           | PDF and image export settings of the project and its logo (an asset id)   |
 
 Inside documents, cards refer to files by `assetId` (image, file, frame, and the picture of a
-character or location card, from schema version 7) or `imageAssetId` (link) and to boards by
+character or location card, from schema version 7), `references` (the reference pictures of a
+character card, from schema version 17) or `imageAssetId` (link) and to boards by
 `boardId` (board cards); `meta.boardId` names the board itself. Element ids are stable:
 comments, reviews and schedule blocks refer to cards by them.
 `elements.json` also has the storyboard's `aspect` and, from document version 9,

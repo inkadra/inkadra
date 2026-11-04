@@ -25,7 +25,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0018](0018-cookie-only-auth-responses.md)           | Keep session tokens out of browser-readable auth responses                             |
 | [0019](0019-invitation-links-up-to-editor.md)        | Invitation links give at most the editor role; amends 0011                             |
 | [0020](0020-file-captions.md)                        | Keep captions on file cards                                                            |
-| [0021](0021-templates-on-existing-boards.md)         | Templates on existing boards; Storyboard creates a real storyboard board               |
+| [0021](0021-templates-on-existing-boards.md)         | Templates on existing boards (removed by 0067); Storyboard creates a real board        |
 | [0022](0022-shooting-schedule.md)                    | Shooting schedules in Postgres, storyboard references by id                            |
 | [0023](0023-home-overview.md)                        | Home overview from two read-only lists                                                 |
 | [0024](0024-project-setup-and-personal-pins.md)      | Project setup and personal pins                                                        |
@@ -70,6 +70,12 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0065](0065-office-previews.md)                      | Optional Office previews: sandboxed LibreOffice worker, bounded spreadsheet grids      |
 | [0066](0066-password-change-keeps-the-session.md)    | A password change closes the other sessions and keeps the one that made it             |
 | [0067](0067-remove-project-and-board-templates.md)   | Remove project and board templates; keep empty creation and film views                 |
+| [0068](0068-contextual-appearance.md)                | Contextual card appearance stored in the document, with a read-only guard              |
+| [0069](0069-in-app-feedback.md)                      | In-app reports: to the developers by default, through a private GitHub relay           |
+| [0069](0069-richer-character-sheet.md)               | Richer character sheet, with scenes worked out from the frames                         |
+| [0070](0070-frame-editing-and-capture.md)            | Frames: pictures moved in, full-screen Draw, stills from the original video            |
+| [0071](0071-simpler-set-plan.md)                     | A simpler set plan: two bars, proportional icons, routes                               |
+| [0071](0071-storyboard-catalogs.md)                  | Shot size, angle and movement as instance catalogs                                     |
 
-Two decisions share the number 0025: they were accepted in parallel, and accepted records
-are not renumbered.
+A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
+and accepted records are not renumbered.
