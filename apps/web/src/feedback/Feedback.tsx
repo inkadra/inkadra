@@ -36,11 +36,11 @@ import {
   type FeedbackPrefill,
   isFeedbackKey,
   leftOutOfScreenshot,
-  reportArea,
   onOpenFeedback,
   readFeedbackDraft,
-  STATUS_CHANGED,
+  reportArea,
   setFeedbackStatus,
+  STATUS_CHANGED,
   useFeedbackStatus,
 } from './state.ts';
 import './feedback.css';
