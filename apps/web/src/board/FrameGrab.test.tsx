@@ -5,8 +5,8 @@ import type { Asset } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { NoFrame } from './frame-grab.ts';
 import { FrameGrab } from './FrameGrab.tsx';
+import { NoFrame } from './frame-grab.ts';
 import { BoardStore } from './store.ts';
 import type { StartUpload } from './uploads.ts';
 

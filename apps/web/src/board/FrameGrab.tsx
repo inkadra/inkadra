@@ -183,7 +183,9 @@ export function FrameGrab({
     setFile(null);
     setShot(null);
     setCapturing(true);
-    const { signal } = (captureController.current = new AbortController());
+    const controller = new AbortController();
+    captureController.current = controller;
+    const { signal } = controller;
     try {
       const captured = await captureTabFrame(embed?.current ?? null, signal);
       if (!mounted.current) return;
