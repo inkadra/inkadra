@@ -223,8 +223,7 @@ export function FrameGrab({
   async function grab() {
     if (busy) return;
     if (open) {
-      setOpen(false);
-      button.current?.focus();
+      closePanel();
       return;
     }
     setError(false);
