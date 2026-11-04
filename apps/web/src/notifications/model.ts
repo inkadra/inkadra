@@ -14,12 +14,16 @@ export const KNOWN_TYPES = [
   'access_expired',
   'link_opened',
   'task_assigned',
+  'feedback_received',
 ] as const;
 
 /** Where a notification leads: the board, with the card selected and the thread open. */
 export function notificationPath(
-  item: Pick<Notification, 'projectId' | 'boardId' | 'elementId' | 'commentId' | 'threadId'>,
+  item: Pick<Notification, 'projectId' | 'boardId' | 'elementId' | 'commentId' | 'threadId'> & {
+    type?: string;
+  },
 ): string | null {
+  if (item.type === 'feedback_received') return '/settings?section=instance';
   if (!item.projectId) return null;
   const path = item.boardId ? `/p/${item.projectId}/b/${item.boardId}` : `/p/${item.projectId}`;
   if (!item.boardId) return path;

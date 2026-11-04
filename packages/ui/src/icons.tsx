@@ -5,6 +5,7 @@ import { type ContentKind, kindStyle } from './kind-color.ts';
 
 /** Line icons from the design reference: 24 grid, 1.6 stroke, round caps. */
 const paths = {
+  report: <path d="M4 4h16v12H9l-5 4zM12 7v4M12 13.5v.01" />,
   comment: <path d="M4 4h16v12H9l-5 4zM8 8h8M8 12h5" />,
   bell: <path d="M5 17h14l-2-3V9a5 5 0 0 0-10 0v5zM10 20h4M12 2v2" />,
   clock: (

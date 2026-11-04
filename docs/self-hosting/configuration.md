@@ -350,3 +350,54 @@ Do not trust the whole Docker subnet or its gateway. With userland-proxy, hairpi
 rootless Docker or IPv6 forwarding, a direct LAN client can appear as the Docker gateway
 (e.g. `172.18.0.1`). Trusting that gateway/subnet lets direct clients forge proxy headers.
 Use the pinned proxy container IP and verify the peer address in your deployment.
+
+### In-app reports (#338)
+
+Reporting is **off without configuration**, including when a token alone is present: the icon is
+hidden, the shortcut explains itself and Settings shows one line. In Settings → About → Reports
+an administrator chooses GitHub, Inbox only or Off, the destination `owner/repository`, whether
+guests may report (off by default) and how long attachments are kept (90 days by default; 30
+days or one year on request). Every report is first saved in the local database; attachments
+use the configured instance storage (`STORAGE_DRIVER`, `DATA_DIR` or the existing `S3_*`
+variables). Include both in backups.
+
+| Environment variable    | Purpose                                                                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FEEDBACK_GITHUB_TOKEN` | Server-only fine-grained GitHub token. Unset/empty by default. Never sent to the browser, logged or displayed in Settings.                                     |
+| `PUBLIC_URL`            | Existing canonical instance URL, used for attachment links. It must be reachable by people opening links and by GitHub's image proxy for embedded screenshots. |
+
+No other feedback environment variables exist. Destination, repository, guest policy and
+retention are administrator settings.
+
+**The token.** A fine-grained personal access token, ideally of a service account: issues show
+that account as their author. Restrict it to **one selected private repository**, with
+**Issues: read and write** and the automatically required **Metadata: read**. Contents is not
+needed: nothing is committed to GitHub. Do not choose the public application repository.
+
+**The repository** needs the labels `bug`, `idea`, `question`, `from-app` and `area:home`,
+`area:board`, `area:settings`, `area:guest`, `area:other`. Create them beforehand: whether GitHub
+creates a missing label for an Issues-only token is not guaranteed. Private visibility is checked
+when the setting is saved and before every delivery; a failed check keeps the report local.
+With destination GitHub and no token yet, reports wait locally and are delivered once the token
+is set. Self-hosted installations use their own private repository or Inbox only; nothing is
+automatically sent to Inkadra's repositories.
+
+**Limits.** Members can submit five reports/hour and guests two; the instance limit is 100/hour.
+Members may attach one screenshot, five files up to 25 MB each, and one video up to 100 MB.
+Guests may send text (description up to 4,000 characters), one screenshot up to 5 MB, environment
+and sanitized page information. Types are sniffed from the bytes: images, videos, PDF and plain
+text only; nothing but screenshots is served inline. Screenshots are re-encoded without metadata.
+Report text goes into the issue with mentions, references, links and markup neutralised.
+
+**Attachment links** are random bearer credentials: **anyone holding a link can open it until
+it expires**, without an Inkadra or GitHub login. Expired links stop working immediately; a
+maintenance sweep removes the files within about one minute. Unsubmitted uploads expire after 24
+hours. Do not post these links publicly. Screenshots inside private GitHub issues depend on the
+instance being reachable; whether GitHub shows them is unverified.
+
+**Delivery.** When GitHub refuses a request or cannot be reached before the write, the report
+retries with exponential backoff and the person has already seen "sent", with a local reference.
+If the connection dies during the write itself, the outcome is unknown: the report is marked
+"To check on GitHub" and not posted again, to prevent duplicates. Local reports stay available in
+Settings → About → Reports. Offline drafts are never sent in the background: text stays in the
+browser and leaves only after the preview and a manual send. Videos stay in tab memory.

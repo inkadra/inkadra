@@ -14,6 +14,16 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
+const reporting = vi.hoisted(() => ({ enabled: false, open: vi.fn() }));
+vi.mock('../feedback/state.ts', () => ({
+  useFeedbackStatus: () => (reporting.enabled ? { enabled: true } : null),
+  openFeedback: reporting.open,
+}));
+vi.mock('../feedback/Feedback.tsx', () => ({ FeedbackLauncher: () => null }));
+vi.mock('../lib/session.tsx', () => ({
+  NoSessionProvider: ({ children }: { children: ReactNode }) => children,
+}));
+
 function Boom(): ReactNode {
   throw new Error('render exploded');
 }
@@ -125,5 +135,29 @@ describe('ErrorPage', () => {
     const details = JSON.parse(text) as Record<string, unknown>;
     expect(details.page).toBe('https://inkadra.test/s/[redacted]');
     expect(retry).toBeTruthy();
+  });
+});
+
+describe('reporting from the crash page', () => {
+  const report = () =>
+    [...host.querySelectorAll('button')].find((b) => b.textContent === 'feedback.reportThis');
+
+  it('has no entry while reporting is off', async () => {
+    reporting.enabled = false;
+    await renderError();
+    expect(report()).toBeUndefined();
+  });
+
+  it('opens the form with the error and its ID', async () => {
+    reporting.enabled = true;
+    await renderError();
+    await act(async () => report()?.click());
+    expect(reporting.open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'feedback.prefilledTitle',
+        details: expect.stringContaining('render exploded'),
+        errorId: expect.any(String),
+      }),
+    );
   });
 });

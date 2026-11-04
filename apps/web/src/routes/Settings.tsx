@@ -32,6 +32,7 @@ import {
   barTools,
   toggleBarTool,
 } from '../board/toolbar-prefs.ts';
+import { FeedbackRow } from '../feedback/FeedbackSettings.tsx';
 import { LOCALES } from '../i18n/index.ts';
 import { api, authApi, RequestError } from '../lib/api.ts';
 import { formatClock } from '../lib/datetime.ts';
@@ -358,6 +359,8 @@ export function ToolbarSettings() {
 }
 
 function Account() {
+  const { t } = useTranslation();
+  const { user } = useSession();
   const [accounts, setAccounts] = useState<Array<{ id: string; providerId: string }> | null>(null);
   const loadAccounts = useCallback(async () => setAccounts(await authApi.listAccounts()), []);
   useEffect(() => {
@@ -369,6 +372,13 @@ function Account() {
       <Profile />
       <SignInMethods accounts={accounts} hasPassword={hasPassword} onChange={loadAccounts} />
       <Sessions />
+      {user?.role !== 'admin' && (
+        <Card title={t('settingsUi.pages.about')}>
+          <div className="settings-rows">
+            <FeedbackRow />
+          </div>
+        </Card>
+      )}
       <Tokens />
       <DeleteAccount hasPassword={hasPassword} />
     </SettingsShell>

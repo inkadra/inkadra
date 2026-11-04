@@ -32,6 +32,7 @@ import { registerCsrfCheck } from './csrf.ts';
 import { registerDiagnostics } from './diagnostics.ts';
 import { errorHandler, sendError } from './errors.ts';
 import { registerExportSettingsRoutes } from './export-settings-routes.ts';
+import { registerFeedbackRoutes } from './feedback-routes.ts';
 import { registerGuestRoutes } from './guest-routes.ts';
 import { registerInstanceAdminRoutes } from './instance-admin-routes.ts';
 import { registerLinkPreviews } from './link-previews.ts';
@@ -50,6 +51,8 @@ import { registerUploads } from './uploads.ts';
 import { registerVersionRoutes } from './versions-routes.ts';
 
 export interface AppDeps {
+  /** Tests only: fake GitHub HTTP server. */
+  feedbackGitHubUrl?: string;
   config: Config;
   db: Database;
   auth: Auth;
@@ -82,13 +85,15 @@ export async function createApp(deps: AppDeps) {
         serializers: {
           req(req: FastifyRequest) {
             // These paths contain bearer credentials. Never persist them in request logs.
-            const url = req.url.startsWith('/calendar/')
-              ? '/calendar/[redacted].ics'
-              : req.url.startsWith(GUEST_PAGE_PATH)
-                ? `${GUEST_PAGE_PATH}[redacted]`
-                : req.url.startsWith(`${API_PREFIX}/guest/by-token/`)
-                  ? `${API_PREFIX}/guest/by-token/[redacted]`
-                  : req.url;
+            const url = req.url.startsWith(`${API_PREFIX}/feedback/attachments/`)
+              ? `${API_PREFIX}/feedback/attachments/[redacted]`
+              : req.url.startsWith('/calendar/')
+                ? '/calendar/[redacted].ics'
+                : req.url.startsWith(GUEST_PAGE_PATH)
+                  ? `${GUEST_PAGE_PATH}[redacted]`
+                  : req.url.startsWith(`${API_PREFIX}/guest/by-token/`)
+                    ? `${API_PREFIX}/guest/by-token/[redacted]`
+                    : req.url;
             return { method: req.method, url, hostname: req.hostname, remoteAddress: req.ip };
           },
         },
@@ -115,7 +120,11 @@ export async function createApp(deps: AppDeps) {
     reply.header('x-frame-options', 'DENY');
     // The token of a share link is in the path of its guest page: it must not leak to the
     // sites of link cards nor into search engines (decision 0013).
-    if (req.url.startsWith(GUEST_PAGE_PATH) || req.url.startsWith('/calendar/')) {
+    if (
+      req.url.startsWith(GUEST_PAGE_PATH) ||
+      req.url.startsWith('/calendar/') ||
+      req.url.startsWith(`${API_PREFIX}/feedback/attachments/`)
+    ) {
       reply.header('referrer-policy', 'no-referrer');
       reply.header('x-robots-tag', 'noindex, nofollow');
     } else reply.header('referrer-policy', 'strict-origin-when-cross-origin');
@@ -144,6 +153,7 @@ export async function createApp(deps: AppDeps) {
   registerScheduleRoutes(app, deps);
   registerNotificationRoutes(app, deps);
   registerCalendarRoutes(app, deps);
+  registerFeedbackRoutes(app, deps);
   registerTransferRoutes(app, deps);
   registerUploads(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
   await registerClipRoutes(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });

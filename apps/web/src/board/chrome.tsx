@@ -28,6 +28,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
 import { addActions, type PaletteAction, rankActions } from '../commands/actions.ts';
+import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
 import { usePreferences } from '../lib/preferences.ts';
 import { ContextualTools } from './ContextualTools.tsx';
 import { Card, NOTE_COLORS } from './cards.tsx';
@@ -1356,6 +1357,7 @@ export const TOAST_MS = 6000;
 export function Toast({
   text,
   ok,
+  error,
   onShow,
   onUndo,
   history,
@@ -1364,6 +1366,8 @@ export function Toast({
   text: string;
   /** A check before the text: something was done. */
   ok?: boolean | undefined;
+  /** Something failed: the toast offers to report it, when reporting is on. */
+  error?: boolean | undefined;
   /** Brings what was added into view. */
   onShow?: (() => void) | undefined;
   onUndo?: (() => void) | undefined;
@@ -1397,7 +1401,9 @@ export function Toast({
       history.off('stack-item-popped', done);
     };
   }, [history]);
-  const actions = !!onShow || !!onUndo;
+  const feedback = useFeedbackStatus();
+  const canReport = !!error && !!feedback?.enabled;
+  const actions = !!onShow || !!onUndo || canReport;
   return (
     <div
       ref={ref}
@@ -1417,6 +1423,18 @@ export function Toast({
         </span>
       )}
       <span className="toast__text">{text}</span>
+      {canReport && (
+        <button
+          type="button"
+          className="toast__action"
+          onClick={() => {
+            openFeedback({ title: text });
+            onClose();
+          }}
+        >
+          {t('feedback.report')}
+        </button>
+      )}
       {onShow && (
         <button type="button" className="toast__action" onClick={onShow}>
           {t('board.show')}

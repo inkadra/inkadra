@@ -25,6 +25,7 @@ import {
   reviewKey,
 } from '../board/review-model.ts';
 import { canComment } from '../board/review-store.ts';
+import { FeedbackInbox } from '../feedback/FeedbackSettings.tsx';
 import { api } from '../lib/api.ts';
 import { notificationPath } from './model.ts';
 import {
@@ -42,6 +43,12 @@ type DetailProps = {
 };
 
 export function InboxDetail(props: DetailProps) {
+  if (props.notification?.type === 'feedback_received')
+    return (
+      <div className="inbox-detail">
+        <FeedbackInbox />
+      </div>
+    );
   return props.notification?.boardId && props.notification.elementId ? (
     <ConnectedInboxDetail
       key={props.notification.boardId}

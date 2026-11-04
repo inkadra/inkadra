@@ -191,6 +191,11 @@ export function NoteEditor({
     editorProps: {
       attributes: { class: 'note-text note-text--editing', 'aria-label': t('board.note.label') },
       handleKeyDown: (_view, event) => {
+        // Reporting owns this chord, including when the reporting destination is off.
+        if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'KeyB') {
+          event.preventDefault();
+          return true;
+        }
         if (event.key === 'Escape') {
           onExit();
           return true;

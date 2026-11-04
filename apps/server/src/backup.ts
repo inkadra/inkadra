@@ -561,7 +561,9 @@ async function dumpDatabase(
         const files = await tx<{ key: string; size: string | null; sha256: string | null }[]>`
         select storage_key as key, size::text, sha256 from asset where status <> 'pending'
         union all
-        select storage_key, null, null from asset_variant where size <> 'proxy'`;
+        select storage_key, null, null from asset_variant where size <> 'proxy'
+        union all
+        select 'feedback/' || id, bytes::text, null from feedback_attachment where expires_at > now()`;
         let bytes = 0;
         const lines = files.map((f) => {
           bytes += Number(f.size ?? 0);
