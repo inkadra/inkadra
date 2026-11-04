@@ -61,6 +61,13 @@ export function leftOutOfScreenshot(node: Node) {
   );
 }
 
+/** The issue's `area:` label. `/p/<id>` opens the project's board, as `/p/<id>/b/<id>` does. */
+export function reportArea(pathname: string) {
+  if (pathname.startsWith('/p/')) return 'board';
+  if (pathname.startsWith('/settings')) return 'settings';
+  return pathname === '/' ? 'home' : 'other';
+}
+
 export interface FeedbackDraft {
   title: string;
   description: string;

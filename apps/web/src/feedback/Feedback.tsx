@@ -36,6 +36,7 @@ import {
   type FeedbackPrefill,
   isFeedbackKey,
   leftOutOfScreenshot,
+  reportArea,
   onOpenFeedback,
   readFeedbackDraft,
   STATUS_CHANGED,
@@ -619,15 +620,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         });
       }
       current = null;
-      const area = guest
-        ? 'guest'
-        : /\/b\//.test(location.pathname)
-          ? 'board'
-          : location.pathname.startsWith('/settings')
-            ? 'settings'
-            : location.pathname === '/'
-              ? 'home'
-              : 'other';
+      const area = guest ? 'guest' : reportArea(location.pathname);
       const payload: CreateFeedback = {
         requestId: requestId.current,
         type,

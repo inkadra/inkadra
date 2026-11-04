@@ -141,7 +141,7 @@ it('uses the approved template: English headings, the text as written, no email'
     `![Screenshot, 2 areas redacted by the reporter](https://instance.test/api/v1/feedback/attachments/${'a'.repeat(64)})\n*Link expires on 2027-02-01.*`,
   );
   expect(body).toContain('recording\\.webm');
-  expect(body).toContain(', 0:38, 11.9 MB. *Expires on 2027-02-01.*');
+  expect(body).toContain(', 0:38, 12.5 MB. *Expires on 2027-02-01.*');
   expect(body).toContain('| Browser and OS | Chrome 142 · Windows 11 |');
   expect(body).toContain('Inkadra 0\\.8 \\| build x');
   expect(body).toContain('<details><summary>Console (5)</summary>');

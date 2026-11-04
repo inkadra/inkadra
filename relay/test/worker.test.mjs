@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import worker, { Meter, collectFiles, contentsBody, fenced, ipPrefix, issueBody, issueTitle, powOk, leadingZeroBits, sanitizeReport, verify } from '../src/worker.js';
+import worker, { Meter, collectFiles, contentsBody, fenced, formatSize, ipPrefix, issueBody, issueTitle, powOk, leadingZeroBits, sanitizeReport, verify } from '../src/worker.js';
 
 /** A Durable Object's `ctx.storage.sql`, on Node's SQLite. */
 function sqlStorage() {
@@ -606,6 +606,11 @@ test('distinguishes pre-write failures from ambiguous GitHub writes', async () =
       assert.equal((await response.json()).uncertain, duringWrite);
     });
   }
+});
+
+test('sizes read in the same decimal MB as the app', () => {
+  assert.equal(formatSize(20_300_000), '20.3 MB');
+  assert.equal(formatSize(1500), '2 KB');
 });
 
 test('an empty repository is named in the logs and still answers as any GitHub refusal', async () => {

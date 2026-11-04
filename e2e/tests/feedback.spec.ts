@@ -213,7 +213,10 @@ test('leaves navigation, account and names out of the automatic screenshot', asy
     json.items.unshift({
       id: '00000000-0000-4000-8000-000000000002',
       type: 'invitation_accepted',
-      actor: { id: '00000000-0000-4000-8000-000000000003', name: 'Persona Invitata', image: null },
+      actor: {
+        kind: 'user',
+        user: { id: '00000000-0000-4000-8000-000000000003', name: 'Persona Invitata', image: null },
+      },
       projectId: project.id,
       projectName: name,
       boardId: null,
