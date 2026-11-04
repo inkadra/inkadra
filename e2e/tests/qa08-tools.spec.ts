@@ -162,6 +162,14 @@ for (const width of [1280, 390]) {
           await expect(card.locator('.card__todo-hint')).toHaveCount(1);
           await page.mouse.move(0, 0);
           await shot('editing');
+          // The controls of the active item must not eat its text.
+          await expect(card.locator('.todo-assignment__person')).toBeVisible();
+          expect(
+            await card
+              .locator('.card__todo-list .card__inline-input')
+              .first()
+              .evaluate((el) => el.scrollWidth <= el.clientWidth),
+          ).toBe(true);
           await card.getByRole('button', { name: 'Assegna persona', exact: true }).click();
           await page
             .locator('.todo-assignment__picker')
