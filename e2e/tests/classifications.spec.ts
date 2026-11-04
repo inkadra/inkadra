@@ -60,7 +60,7 @@ test('frames keep their values while admins change the storyboard lists', async 
   browser,
   baseURL,
 }, info) => {
-  test.setTimeout(240_000);
+  test.setTimeout(shots ? 600_000 : 120_000);
   const base = baseURL as string;
   const cookie = await signIn(base, admin);
   const headers = { cookie, 'content-type': 'application/json', origin: base };
