@@ -39,7 +39,7 @@ it('moves one image without losing frame data and restores both cards on undo', 
 });
 
 it.each([
-  ['a drawing', { strokes: [{ id: 's', tool: 'pencil', color: '#000000', width: 2, points: [] }] }],
+  ['a drawing', { strokes: [{ id: 'XhYcoMEgtRnNdEDHC17_6', tool: 'pencil', color: '#000000', width: 2, points: [0, 0, 9, 9] }] }],
   ['a crop', { crop: { x: 0.1, y: 0.1, w: 0.5, h: 0.5 } }],
   ['a rotation', { rotation: 90 }],
   ['a caption', { caption: 'Marta' }],

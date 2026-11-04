@@ -71,7 +71,7 @@ describe.skipIf(!url)('frame of a video: limits (needs DATABASE_URL)', () => {
     });
 
   beforeAll(async () => {
-    await runMigrations(db, join(import.meta.dirname, '..', '..', 'drizzle'));
+    await runMigrations(config.DATABASE_URL, join(import.meta.dirname, '..', '..', 'drizzle'));
     await db.execute(sql`truncate table "user", project, instance_setting cascade`);
     app = await createApp({ config, db, auth: createAuth(config, db), log, ...testDeps(db, log) });
   });

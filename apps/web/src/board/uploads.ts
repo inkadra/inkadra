@@ -262,7 +262,11 @@ function subscribe(l: () => void) {
 }
 
 export function useUploads(): UploadItem[] {
-  return useSyncExternalStore(subscribe, () => items);
+  return useSyncExternalStore(
+    subscribe,
+    () => items,
+    () => items,
+  );
 }
 
 const previews = new Map<string, string>();
