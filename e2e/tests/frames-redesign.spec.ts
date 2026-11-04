@@ -122,7 +122,11 @@ for (const theme of ['dark', 'light'] as const)
         await page.locator('.comments-button').click();
         await expect(page.locator('.comments-panel')).toBeVisible();
         expect(await covered()).toBe(false);
-        if (out) await page.screenshot({ path: `${out}/1280-${theme}-comments.png`, animations: 'disabled' });
+        if (out)
+          await page.screenshot({
+            path: `${out}/1280-${theme}-comments.png`,
+            animations: 'disabled',
+          });
         await page.locator('.comments-button').click();
         await expect(page.locator('.comments-panel')).toHaveCount(0);
       }
@@ -226,7 +230,11 @@ for (const theme of ['dark', 'light'] as const)
         await expect(
           page.locator('.frame-upload').getByRole('button', { name: 'Riprova' }),
         ).toBeVisible();
-        if (out) await page.screenshot({ path: `${out}/1280-dark-upload-failed.png`, animations: 'disabled' });
+        if (out)
+          await page.screenshot({
+            path: `${out}/1280-dark-upload-failed.png`,
+            animations: 'disabled',
+          });
         expect(await page.locator(`[data-el="${frame.id}"] img`).getAttribute('src')).toBe(before);
         await page.unroute('**/api/v1/uploads**');
       }

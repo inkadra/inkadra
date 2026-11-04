@@ -404,7 +404,9 @@ for (const provider of ['youtube', 'vimeo']) {
       expect(image).toBeTruthy();
       expect(image).not.toHaveProperty('caption');
       expect(image).not.toHaveProperty('source');
-      await expect(page.locator('.toast:not([inert])')).toContainText('Fotogramma aggiunto alla lavagna');
+      await expect(page.locator('.toast:not([inert])')).toContainText(
+        'Fotogramma aggiunto alla lavagna',
+      );
 
       // The photo of the tab, over a stand-in for the browser's permission: refused, then given.
       // Not a proof on real Chrome, which the permission dialog keeps out of a headless run.
@@ -454,14 +456,18 @@ for (const provider of ['youtube', 'vimeo']) {
       await expect(page.locator('.viewer__grab-quality')).toContainText('720 × 450 px');
       await page.getByRole('button', { name: 'Aggiungi alla lavagna', exact: true }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
-      await expect(page.locator('.toast:not([inert])')).toContainText('Fotogramma aggiunto alla lavagna');
+      await expect(page.locator('.toast:not([inert])')).toContainText(
+        'Fotogramma aggiunto alla lavagna',
+      );
       expect(await page.evaluate(() => (window as unknown as { stopped: number }).stopped)).toBe(1);
 
       // A phone has no tab to photograph: a screenshot or the thumbnail.
       await page.evaluate(() => {
         const original = window.matchMedia.bind(window);
         window.matchMedia = (query) =>
-          query.includes('pointer: fine') ? ({ matches: false } as MediaQueryList) : original(query);
+          query.includes('pointer: fine')
+            ? ({ matches: false } as MediaQueryList)
+            : original(query);
       });
       await page.locator('[data-type="link"]').dblclick();
       await page.setViewportSize({ width: 390, height: 800 });
