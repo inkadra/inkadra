@@ -207,10 +207,10 @@ for (const [device, width, height, theme] of matrix) {
       return map ? readElement(map) : null;
     };
     await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=canvas`);
-    // An empty corner of the board on either screen.
+    // Leaves a side panel by clicking the board; on a phone the sheet covers it: its own button.
     const emptyBoard = async () => {
-      const box = (await page.locator('.canvas').boundingBox())!;
-      await page.mouse.click(box.x + box.width - 40, box.y + box.height / 2);
+      if (device === 'phone') await page.getByRole('button', { name: 'Chiudi la scheda' }).click();
+      else await page.mouse.click(760, 790);
     };
 
     // The face: two sizes, one line for a long name, scenes merged from another board.
