@@ -350,6 +350,8 @@ export function MediaViewer({
             ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)))
       )
         return;
+      // The corners of the box on a photo of the tab move with the arrows, not the gallery.
+      if (e.target instanceof HTMLElement && e.target.matches('.viewer__tab-handle')) return;
       // The canvas behind listens on window too.
       e.stopImmediatePropagation();
       if (e.type !== 'keydown') return;

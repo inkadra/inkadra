@@ -120,7 +120,7 @@ for (const theme of ['dark', 'light'] as const)
         await page.locator('.comments-button').click();
         await expect(page.locator('.comments-panel')).toBeVisible();
         expect(await covered()).toBe(false);
-        if (out) await page.screenshot({ path: `${out}/1280-${theme}-comments.png` });
+        if (out) await page.screenshot({ path: `${out}/1280-${theme}-comments.png`, animations: 'disabled' });
         await page.locator('.comments-button').click();
         await expect(page.locator('.comments-panel')).toHaveCount(0);
       }
@@ -185,7 +185,7 @@ for (const theme of ['dark', 'light'] as const)
 
         // A file that fails to upload leaves the picture alone, with the error and Retry on it.
         const before = await page.locator(`[data-el="${frame.id}"] img`).getAttribute('src');
-        await page.route('**/api/v1/uploads**', (route) => route.abort());
+        await page.route('**/api/v1/uploads**', (route) => route.fulfill({ status: 403 }));
         const dropped = await page.evaluateHandle(() => {
           const data = new DataTransfer();
           data.items.add(new File(['x'], 'fails.png', { type: 'image/png' }));

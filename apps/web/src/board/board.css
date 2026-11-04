@@ -3747,6 +3747,9 @@ button.card__play {
 }
 .viewer__grab-quality {
   justify-self: start;
+  border: 0;
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-tag-orange);
 }
 .viewer__grab-bar {
   display: block;
@@ -3764,10 +3767,10 @@ button.card__play {
 .viewer__tab-capture {
   position: absolute;
   z-index: 4;
-  inset: 0 408px 0 0;
+  inset: 52px 0 0;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 24px 408px 24px 24px;
   background: rgb(8 8 10);
 }
 .viewer__tab-picture {
@@ -3799,23 +3802,23 @@ button.card__play {
   background: var(--ink-surface-float);
 }
 .viewer__tab-handle--nw {
-  left: -8px;
-  top: -8px;
+  left: 0;
+  top: 0;
   cursor: nwse-resize;
 }
 .viewer__tab-handle--ne {
-  right: -8px;
-  top: -8px;
+  right: 0;
+  top: 0;
   cursor: nesw-resize;
 }
 .viewer__tab-handle--sw {
-  left: -8px;
-  bottom: -8px;
+  left: 0;
+  bottom: 0;
   cursor: nesw-resize;
 }
 .viewer__tab-handle--se {
-  right: -8px;
-  bottom: -8px;
+  right: 0;
+  bottom: 0;
   cursor: nwse-resize;
 }
 .film-panel__video-picker {
