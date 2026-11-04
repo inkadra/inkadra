@@ -141,7 +141,8 @@ import { isDesignFile } from './file-kinds.ts';
 import { frameRatio, useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
-import { moveImageToFrame } from './film/frame-image.ts';
+import { isFrameImageFile, isFrameImageType, moveImageToFrame } from './film/frame-image.ts';
+import { uploadToFrame } from './film/frame-upload.tsx';
 import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
 import { StoryCardPanel } from './film/StoryCardPanel.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
@@ -349,6 +350,8 @@ interface Overlay {
   marquee?: Rect;
   drop?:
     | { kind: 'frame'; id: string }
+    /** On a frame that takes nothing: only a note says why, the cards land as usual. */
+    | { kind: 'frameNote'; id: string; note: 'locked' | number }
     | { kind: 'column'; id: string; index: number; line: Rect }
     | { kind: 'unsorted' };
   resize?: Rect & { id: string };
@@ -1604,25 +1607,44 @@ export function Canvas({
 
   // Pointer gestures ----------------------------------------------------------
 
-  function frameAt(clientX: number, clientY: number) {
-    const cards = [
-      ...(rootRef.current?.querySelectorAll<HTMLElement>('.card[data-type="frame"][data-el]') ??
-        []),
-    ];
-    for (const card of cards.reverse()) {
-      const rect = card.getBoundingClientRect();
-      const frame = snap.byId.get(card.dataset.el ?? '');
-      if (
-        frame?.type === 'frame' &&
-        !frame.locked &&
-        clientX >= rect.left &&
-        clientX <= rect.right &&
-        clientY >= rect.top &&
-        clientY <= rect.bottom
-      )
-        return frame;
+  /** The frame under the pointer, unless a card, a column or a panel is on top of it. */
+  function frameAt(clientX: number, clientY: number, moving?: ReadonlySet<string>) {
+    for (const hit of document.elementsFromPoint(clientX, clientY)) {
+      if (!rootRef.current?.contains(hit)) return undefined;
+      const id = hit.closest<HTMLElement>('.card[data-el]')?.dataset.el;
+      if (id) {
+        if (moving?.has(id)) continue;
+        const card = snap.byId.get(id);
+        return card?.type === 'frame' ? card : undefined;
+      }
+      if (hit.closest('[data-chrome], .canvas__panel, .unsorted')) return undefined;
     }
     return undefined;
+  }
+
+  /** What a drag of `count` pictures over this point would do to a frame. */
+  function frameDrop(
+    clientX: number,
+    clientY: number,
+    count: number,
+    moving?: ReadonlySet<string>,
+  ): Overlay['drop'] {
+    const frame = frameAt(clientX, clientY, moving);
+    if (!frame) return undefined;
+    if (frame.locked) return { kind: 'frameNote', id: frame.id, note: 'locked' };
+    return count > 1
+      ? { kind: 'frameNote', id: frame.id, note: count }
+      : { kind: 'frame', id: frame.id };
+  }
+
+  function frameInserted(frameId: string, result: 'moved' | 'kept') {
+    setToast({
+      text: t(result === 'kept' ? 'film.frame.insertedKept' : 'film.frame.inserted', {
+        label: labelsRef.current.get(frameId) ?? '',
+      }),
+      undo: true,
+      ok: true,
+    });
   }
 
   function screenPoint(e: { clientX: number; clientY: number }): Point {
@@ -1752,6 +1774,15 @@ export function Canvas({
   }
 
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    // Side-panel fields save on blur, and this press can close or switch the panel: unmounted
+    // before the browser moves the focus, they would lose what was typed.
+    const field = document.activeElement;
+    if (
+      field instanceof HTMLElement &&
+      field.closest('.canvas__panel') &&
+      !(e.target as HTMLElement).closest('.canvas__panel')
+    )
+      field.blur();
     // A hand on the board ends the restacking of a mosaic just made.
     pendingTidy.current = null;
     if (touchDown(e)) return;
@@ -1998,9 +2029,9 @@ export function Canvas({
       }
     }
 
-    if (els.length === 1 && anchor?.type === 'image' && anchor.assetId) {
-      const frame = frameAt(e.clientX, e.clientY);
-      if (frame) drop = { kind: 'frame', id: frame.id };
+    if (els.some((x) => x.type === 'image' && x.assetId)) {
+      const onFrame = frameDrop(e.clientX, e.clientY, els.length, moving);
+      if (onFrame?.kind === 'frame' ? anchor?.type === 'image' : onFrame) drop = onFrame;
     }
 
     let guides: Guide[] | undefined;
@@ -2129,9 +2160,10 @@ export function Canvas({
     }
     doc.transact(() => {
       if (o.drop?.kind === 'frame') {
-        if (moveImageToFrame(store, g.anchor, o.drop.id)) {
+        const moved = moveImageToFrame(store, g.anchor, o.drop.id);
+        if (moved) {
           select([o.drop.id]);
-          setToast({ text: t('film.frame.inserted'), undo: true });
+          frameInserted(o.drop.id, moved);
         }
       } else if (o.drop?.kind === 'unsorted') {
         moveToUnsorted(doc, cards, LOCAL);
@@ -2348,7 +2380,7 @@ export function Canvas({
     // Enter on the toast's buttons, a colour's copy button and a play button presses them (#310, #308).
     const presses =
       e.target instanceof HTMLElement &&
-      !!e.target.closest('.toast, .card__copy, .screenplay-hint, [data-play-link]');
+      !!e.target.closest('.toast, .card__copy, .screenplay-hint, .frame-upload, [data-play-link]');
     if (cmd.kind === 'edit' && (onArrowStyleButton(e.target) || presses)) return;
     const single = selection.size === 1 ? snap.byId.get([...selection][0] ?? '') : undefined;
     switch (cmd.kind) {
@@ -2553,10 +2585,11 @@ export function Canvas({
       e.dataTransfer.dropEffect = 'copy';
       if (types.includes('Files')) {
         setDropHint(true);
-        const frame = frameAt(e.clientX, e.clientY);
-        const singleImage =
-          e.dataTransfer.items.length === 1 && e.dataTransfer.items[0]?.type.startsWith('image/');
-        setOverlay(frame && singleImage ? { drop: { kind: 'frame', id: frame.id } } : NO_OVERLAY);
+        const items = [...e.dataTransfer.items];
+        const drop = items.some((item) => isFrameImageType(item.type))
+          ? frameDrop(e.clientX, e.clientY, items.length)
+          : undefined;
+        setOverlay(drop ? { drop } : NO_OVERLAY);
       }
     }
   }
@@ -2576,18 +2609,19 @@ export function Canvas({
     if (files.length > 0) {
       const frame = frameAt(e.clientX, e.clientY);
       const file = files[0];
-      if (frame && files.length === 1 && file?.type.startsWith('image/')) {
-        startUpload({
+      if (frame && !frame.locked && files.length === 1 && file && isFrameImageFile(file)) {
+        const max = instance?.limits.uploadMaxBytes ?? 0;
+        if (max > 0 && file.size > max) {
+          setToast({ text: t('board.errors.tooBig', { name: file.name }), undo: false });
+          return;
+        }
+        uploadToFrame({
+          store,
+          frameId: frame.id,
           file,
           projectId,
           boardId,
-          onAsset: (assetId) => {
-            const current = store.getSnapshot().byId.get(frame.id);
-            if (current?.type !== 'frame' || current.locked) return;
-            store.undo.stopCapturing();
-            updateElement(doc, frame.id, { assetId, source: undefined }, LOCAL);
-            store.undo.stopCapturing();
-          },
+          onInserted: () => frameInserted(frame.id, 'moved'),
         });
       } else uploadFiles(files, at);
       return;
@@ -2865,8 +2899,10 @@ export function Canvas({
         .map((frame) => ({
           label: labels.get(frame.id) || t('board.types.frame'),
           action: () => {
-            moveImageToFrame(store, single.id, frame.id);
+            const moved = moveImageToFrame(store, single.id, frame.id);
+            if (!moved) return;
             select([frame.id]);
+            frameInserted(frame.id, moved);
           },
         }));
     }
@@ -3267,12 +3303,12 @@ export function Canvas({
         onLostPointerCapture={onLostPointerCapture}
         onDoubleClick={outsideDialogs(onDoubleClick)}
         onContextMenu={outsideDialogs(onContextMenu)}
-        onDragOver={outsideDialogs(onDragOver)}
+        onDragOver={filesStayOutOfDialogs(onDragOver)}
         onDragLeave={() => {
           setDropHint(false);
           setOverlay(NO_OVERLAY);
         }}
-        onDrop={outsideDialogs(onDrop)}
+        onDrop={filesStayOutOfDialogs(onDrop)}
         data-testid="canvas"
         aria-label={t('board.canvas')}
         role="application"
@@ -3390,27 +3426,51 @@ export function Canvas({
             }}
           />
         )}
-        {overlay.drop?.kind === 'frame' &&
+        {(overlay.drop?.kind === 'frame' || overlay.drop?.kind === 'frameNote') &&
           (() => {
-            const frame = snap.byId.get(overlay.drop.id);
-            if (!frame) return null;
+            const drop = overlay.drop;
+            const frame = snap.byId.get(drop.id);
             const card = rootRef.current?.querySelector<HTMLElement>(
-              `.card[data-el="${CSS.escape(frame.id)}"]`,
+              `.card[data-el="${CSS.escape(drop.id)}"]`,
             );
             const box = card?.getBoundingClientRect();
             const rootBox = rootRef.current?.getBoundingClientRect();
-            if (!box || !rootBox) return null;
+            if (frame?.type !== 'frame' || !box || !rootBox) return null;
+            if (drop.kind === 'frameNote')
+              return (
+                <span
+                  className={`canvas__frame-note${drop.note === 'locked' ? ' is-locked' : ''}`}
+                  style={{ left: box.left - rootBox.left, top: box.bottom - rootBox.top + 6 }}
+                >
+                  {drop.note === 'locked' && <Icon name="lock" size={12} />}
+                  {drop.note === 'locked'
+                    ? t('film.frame.dropLocked')
+                    : t('film.frame.dropMany', { count: drop.note })}
+                </span>
+              );
+            const label = labels.get(frame.id) ?? '';
+            const picture = card?.querySelector('.card__frame')?.getBoundingClientRect() ?? box;
             return (
               <div
                 className="canvas__frame-drop"
                 style={{
-                  left: box.left - rootBox.left,
-                  top: box.top - rootBox.top,
-                  width: box.width,
-                  height: box.height,
+                  left: picture.left - rootBox.left + 6,
+                  top: picture.top - rootBox.top + 6,
+                  width: picture.width - 12,
+                  height: picture.height - 6,
                 }}
               >
-                {t('film.frame.dropPicture')}
+                <span className="canvas__frame-drop-label">
+                  {frame.assetId ? (
+                    <>
+                      {t('film.frame.dropReplace')}
+                      <br />
+                      {t('film.frame.dropDrawingStays')}
+                    </>
+                  ) : (
+                    t(isPhone ? 'film.frame.dropBecomesShort' : 'film.frame.dropBecomes', { label })
+                  )}
+                </span>
               </div>
             );
           })()}
@@ -3632,6 +3692,7 @@ export function Canvas({
         {panelFrame && (
           <div className="canvas__panel">
             <FramePanel
+              key={panelFrame.id}
               store={store}
               userId={userId}
               frame={panelFrame}
@@ -3642,6 +3703,7 @@ export function Canvas({
               readOnly={readOnly}
               onClose={() => setFramePanel(null)}
               onDraw={() => setDrawing(panelFrame.id)}
+              onInserted={(result) => frameInserted(panelFrame.id, result)}
             />
           </div>
         )}
@@ -3707,6 +3769,11 @@ export function Canvas({
           createPortal(
             <MediaViewer
               instanceAdmin={user?.role === 'admin'}
+              onFrameSaved={(frameId, imageId) => {
+                if (imageId) select([imageId]);
+                if (frameId) frameInserted(frameId, 'moved');
+                else setToast({ text: t('frameGrab.added'), undo: true, ok: true });
+              }}
               onOfficeTable={(id, name, rows) =>
                 setToast({
                   text: t('office.created', { name, rows }),
@@ -3945,6 +4012,16 @@ function outsideDialogs<E extends { target: EventTarget }>(handler: (e: E) => vo
   return (e: E) => {
     if ((e.target as HTMLElement).closest?.('dialog, [role="dialog"]')) return;
     handler(e);
+  };
+}
+
+/** As outsideDialogs, and a file let go on a dialog does nothing: the browser would open it. */
+function filesStayOutOfDialogs(handler: (e: DragEvent<HTMLDivElement>) => void) {
+  return (e: DragEvent<HTMLDivElement>) => {
+    if (!(e.target as HTMLElement).closest?.('dialog, [role="dialog"]')) return handler(e);
+    if (e.defaultPrevented || !e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'none';
   };
 }
 

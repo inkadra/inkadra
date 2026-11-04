@@ -90,6 +90,20 @@ export function videoEmbedUrl(url: string): string | null {
 }
 
 /** Accept playback updates only from this viewer's privacy-enhanced YouTube player. */
+/** The embedded player says it cannot play: blocked by its owner, private or removed. */
+export function youtubePlayerBlocked(
+  event: Pick<MessageEvent, 'origin' | 'source' | 'data'>,
+  player: Window | null,
+): boolean {
+  if (!player || event.origin !== YOUTUBE_ORIGIN || event.source !== player) return false;
+  try {
+    const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    return data?.event === 'onError';
+  } catch {
+    return false;
+  }
+}
+
 export function youtubePlayerTime(
   event: Pick<MessageEvent, 'origin' | 'source' | 'data'>,
   player: Window | null,

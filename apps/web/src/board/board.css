@@ -3706,6 +3706,118 @@ button.card__play {
   font-size: 13px;
   line-height: 1.5;
 }
+.viewer__grab-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.viewer__grab-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.viewer__grab-item {
+  gap: 8px;
+  height: 36px;
+  font-size: 13px;
+}
+.viewer__grab-item .menu__key {
+  margin-left: auto;
+}
+.viewer__grab-options .menu__divider {
+  width: 100%;
+  margin: 0;
+}
+.viewer__grab-call {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 10px 12px;
+  border-radius: var(--ink-radius-sm);
+  font-size: 13px;
+}
+.viewer__grab-call.is-danger {
+  background: var(--ink-danger-bg);
+  color: var(--ink-danger-fg);
+}
+.viewer__grab-call.is-warn {
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-text-primary);
+}
+.viewer__grab-quality {
+  justify-self: start;
+}
+.viewer__grab-bar {
+  display: block;
+  height: 4px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-3);
+  overflow: hidden;
+}
+.viewer__grab-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ink-accent-primary);
+}
+/* The photo of the tab covers the player, beside the panel with the choices. */
+.viewer__tab-capture {
+  position: absolute;
+  z-index: 4;
+  inset: 0 408px 0 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(8 8 10);
+}
+.viewer__tab-picture {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  overflow: hidden;
+  touch-action: none;
+}
+.viewer__tab-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.viewer__tab-crop {
+  position: absolute;
+  outline: 2px solid var(--ink-accent-primary);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.55);
+  cursor: move;
+}
+.viewer__tab-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 2px solid var(--ink-accent-primary);
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-float);
+}
+.viewer__tab-handle--nw {
+  left: -8px;
+  top: -8px;
+  cursor: nwse-resize;
+}
+.viewer__tab-handle--ne {
+  right: -8px;
+  top: -8px;
+  cursor: nesw-resize;
+}
+.viewer__tab-handle--sw {
+  left: -8px;
+  bottom: -8px;
+  cursor: nesw-resize;
+}
+.viewer__tab-handle--se {
+  right: -8px;
+  bottom: -8px;
+  cursor: nwse-resize;
+}
 .film-panel__video-picker {
   display: grid;
   gap: 8px;
@@ -4069,12 +4181,33 @@ button.card__play {
   .canvas__dock {
     position: absolute;
     left: calc(var(--ink-board-left, 0px) + 12px + 150px + 12px);
-    right: 12px;
+    /* A side panel takes the right of the board, whichever it is: the dock ends before it. */
+    right: calc(var(--ink-board-right, 0px) + 12px);
     bottom: 12px;
     display: flex;
     justify-content: center;
     pointer-events: none;
     container: canvas / inline-size;
+  }
+  .canvas:has(.canvas__panel) {
+    --ink-board-right: 352px;
+  }
+  :root:has(.comments-panel) .canvas {
+    --ink-board-right: 392px;
+  }
+  /* No room for the dock between the corner and a panel: the dock stays, the corner gives way. */
+  @media (width < 1100px) {
+    :is(.canvas:has(.canvas__panel), :root:has(.comments-panel) .canvas) {
+      .canvas__corner {
+        display: none;
+      }
+      .canvas__dock {
+        left: calc(var(--ink-board-left, 0px) + 12px);
+      }
+      .canvas__dock::after {
+        content: none;
+      }
+    }
   }
   .canvas__dock::after {
     content: "";

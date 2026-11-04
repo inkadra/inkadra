@@ -35,6 +35,7 @@ import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
 import { isContextualFocus } from './editing-focus.ts';
 import { FileCard, RawImageFooter } from './FileCard.tsx';
 import { useBoardAspect } from './film/aspect.ts';
+import { FrameUploadState } from './film/frame-upload.tsx';
 import { FramePicture } from './film/FramePicture.tsx';
 import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
 import { StoryPicture } from './film/StoryCardPanel.tsx';
@@ -390,6 +391,7 @@ function FrameCard({ element, width }: { element: Of<'frame'>; width: number }) 
           referenceOpacity={element.referenceOpacity}
           pixels={width * scale * (window.devicePixelRatio || 1)}
         />
+        <FrameUploadState frameId={element.id} />
       </div>
       <div className="card__pad card__frame-meta">
         <span className="card__title">{label}</span>

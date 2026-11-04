@@ -1173,6 +1173,7 @@ export function ShotList({
 
         {currentFrame && (
           <FramePanel
+            key={currentFrame.id}
             store={store}
             userId={userId}
             frame={currentFrame}

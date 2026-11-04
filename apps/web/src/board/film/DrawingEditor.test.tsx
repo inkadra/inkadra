@@ -51,6 +51,30 @@ function board() {
 
 const frameOf = (store: BoardStore, id: string) => store.getSnapshot().byId.get(id) as FrameElement;
 
+async function mountWithClose(store: BoardStore, frame: FrameElement) {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const onClose = vi.fn();
+  await act(async () =>
+    root.render(
+      <DrawingEditor
+        store={store}
+        frame={frame}
+        label="4A"
+        boardAspect="16:9"
+        readOnly={false}
+        onClose={onClose}
+      />,
+    ),
+  );
+  disposals.push(() => {
+    act(() => root.unmount());
+    host.remove();
+  });
+  return { host, onClose };
+}
+
 async function mount(props: {
   store: BoardStore;
   frame: FrameElement;
@@ -232,5 +256,51 @@ describe('drawing editor', () => {
     expect(frameOf(store, first.id).strokes?.[0]?.color).toBe('#E5484D');
     await press('ArrowRight');
     expect(onPick).toHaveBeenCalledWith(second.id);
+  });
+
+  it('closes an open menu with Esc from its slider, and only then the editor', async () => {
+    const { store, first } = board();
+    const { host, onClose } = await mountWithClose(store, first);
+    const width = [...host.querySelectorAll('button')].find(
+      (b) => b.getAttribute('aria-label') === mockEn.film.pen.width,
+    );
+    await act(async () => width?.click());
+    const slider = host.querySelector<HTMLInputElement>('.pen__width input');
+    if (!slider) throw new Error('no slider');
+    slider.focus();
+    await act(async () =>
+      slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
+    );
+    expect(host.querySelector('.pen__width')).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('takes two fingers as moving the view, not as a line', async () => {
+    const { store, first } = board();
+    const { host } = await mountWithClose(store, first);
+    const stage = host.querySelector<HTMLElement>('.pen__stage');
+    const area = host.querySelector<HTMLElement>('.pen__area');
+    if (!stage || !area) throw new Error('no stage');
+    stage.setPointerCapture = () => {};
+    const touch = (type: string, pointerId: number, x: number, y: number) =>
+      act(async () =>
+        stage.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            button: 0,
+            pointerId,
+            pointerType: 'touch',
+            clientX: x,
+            clientY: y,
+          }),
+        ),
+      );
+    await touch('pointerdown', 1, 100, 100);
+    await touch('pointerdown', 2, 200, 100);
+    await touch('pointermove', 2, 300, 100);
+    await touch('pointerup', 1, 100, 100);
+    await touch('pointerup', 2, 300, 100);
+    expect(frameOf(store, first.id).strokes ?? []).toHaveLength(0);
+    expect(area.style.transform).toContain('scale(2)');
   });
 });

@@ -24,25 +24,25 @@ import { type PointerEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isMac } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
-import { startUpload } from '../uploads.ts';
 import { aspectLabel, frameRatio } from './aspect.ts';
+import { FrameUploadState, uploadToFrame } from './frame-upload.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { DRAG_SHAPES, type ShapeKind, ShapeView } from './shapes.tsx';
-import { PEN_COLORS, PENS, type PenTool, pathOf, VIEW_W } from './strokes.ts';
+import { PEN_COLOR_NAMES, PEN_COLORS, PENS, type PenTool, pathOf, VIEW_W } from './strokes.ts';
 
 type Tool = PenTool | 'shape' | 'text' | 'pan';
 type DragShape = (typeof DRAG_SHAPES)[number];
 /** Line width of each pen and of shapes; font size of texts. */
 type Widths = Record<Stroke['tool'] | 'shape' | 'text', number>;
 
-const TOOLS: Array<{ tool: Tool; icon: IconName; key: string }> = [
+/** Moving the view has no tool of its own: space and drag, the wheel, or two fingers. */
+const TOOLS: Array<{ tool: Exclude<Tool, 'pan'>; icon: IconName; key: string }> = [
   { tool: 'pencil', icon: 'pen', key: 'P' },
   { tool: 'brush', icon: 'brush', key: 'B' },
   { tool: 'marker', icon: 'marker', key: 'M' },
   { tool: 'eraser', icon: 'eraser', key: 'E' },
   { tool: 'shape', icon: 'rect', key: 'R' },
   { tool: 'text', icon: 'text', key: 'T' },
-  { tool: 'pan', icon: 'hand', key: 'H' },
 ];
 const SHAPE_ICONS: Record<DragShape, IconName> = {
   rect: 'rect',
@@ -153,6 +153,8 @@ export function DrawingEditor({
   const points = useRef<Point[] | null>(null);
   const shapeStart = useRef<Point | null>(null);
   const panning = useRef<{ x: number; y: number; from: Point } | null>(null);
+  const fingers = useRef(new Map<number, Point>());
+  const pinch = useRef<{ center: Point; distance: number; zoom: number; pan: Point } | null>(null);
   const space = useRef(false);
   const area = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -247,7 +249,9 @@ export function DrawingEditor({
       e.stopImmediatePropagation();
       return;
     }
-    if (target?.tagName === 'INPUT' || target?.tagName === 'SELECT') return;
+    const escapingSlider =
+      e.key === 'Escape' && target instanceof HTMLInputElement && target.type === 'range';
+    if ((target?.tagName === 'INPUT' || target?.tagName === 'SELECT') && !escapingSlider) return;
     // The canvas behind listens on window too: the editor has the keyboard while open.
     e.stopImmediatePropagation();
     if (e.key === ' ') {
@@ -331,8 +335,37 @@ export function DrawingEditor({
   const commitTextFor = useRef(commitText);
   commitTextFor.current = commitText;
 
+  /** The stage centre and the distance of two fingers, in the terms of `pan`. */
+  const pinchOf = () => {
+    const [a, b] = [...fingers.current.values()];
+    const r = stage.current?.getBoundingClientRect();
+    if (!a || !b || !r) return null;
+    return {
+      center: {
+        x: (a.x + b.x) / 2 - (r.left + r.width / 2),
+        y: (a.y + b.y) / 2 - (r.top + r.height / 2),
+      },
+      distance: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+    };
+  };
+
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest('.pen__text')) return;
+    if (e.pointerType === 'touch') {
+      fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const now = fingers.current.size === 2 ? pinchOf() : null;
+      if (now) {
+        // The second finger makes it a gesture: what the first one began is not a line.
+        e.currentTarget.setPointerCapture(e.pointerId);
+        points.current = null;
+        shapeStart.current = null;
+        panning.current = null;
+        setLive(null);
+        setLiveShape(null);
+        pinch.current = { ...now, zoom, pan };
+        return;
+      }
+    }
     const p = pointAt(e);
     const panGesture =
       e.button === 1 ||
@@ -375,6 +408,21 @@ export function DrawingEditor({
   }
 
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    if (fingers.current.has(e.pointerId))
+      fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pinched = pinch.current;
+    if (pinched) {
+      const now = pinchOf();
+      if (!now) return;
+      const next = clampZoom((pinched.zoom * now.distance) / pinched.distance);
+      const k = next / pinched.zoom;
+      setZoom(next);
+      setPan({
+        x: now.center.x - k * (pinched.center.x - pinched.pan.x),
+        y: now.center.y - k * (pinched.center.y - pinched.pan.y),
+      });
+      return;
+    }
     const cursorPoint = pointAt(e);
     setCursor(inside(cursorPoint) ? cursorPoint : null);
     const drag = panning.current;
@@ -400,7 +448,12 @@ export function DrawingEditor({
     if (pen) setLive([...current]);
   }
 
-  function onPointerUp() {
+  function onPointerUp(e: PointerEvent<HTMLDivElement>) {
+    fingers.current.delete(e.pointerId);
+    if (pinch.current) {
+      if (fingers.current.size < 2) pinch.current = null;
+      return;
+    }
     if (panning.current) {
       panning.current = null;
       return;
@@ -469,6 +522,9 @@ export function DrawingEditor({
     />
   );
   const title = t('film.pen.title', { label });
+  const colorLabel = t('film.pen.colorCurrent', {
+    color: t(`film.pen.colorNames.${PEN_COLOR_NAMES[color]}`),
+  });
   const percent = Math.round(zoom * 100);
 
   return (
@@ -530,7 +586,10 @@ export function DrawingEditor({
               />
             </div>
             <div className={`pen__tool-list${popover === 'tools' ? ' is-open' : ''}`}>
-              {TOOLS.map((x) => (
+              {TOOLS.flatMap((x) => [
+                ...(x.tool === 'shape'
+                  ? [<span key="sep" className="toolbar__sep" aria-hidden="true" />]
+                  : []),
                 <button
                   key={x.tool}
                   type="button"
@@ -544,8 +603,8 @@ export function DrawingEditor({
                   }}
                 >
                   <Icon name={x.tool === 'shape' ? SHAPE_ICONS[shapeKind] : x.icon} size={16} />
-                </button>
-              ))}
+                </button>,
+              ])}
             </div>
             {tool === 'shape' && popover === 'shape' && (
               <div className="pen__popover pen__shapes">
@@ -569,11 +628,16 @@ export function DrawingEditor({
               </div>
             )}
             <span className="toolbar__sep" aria-hidden="true" />
-            <IconButton
-              icon="color"
-              label={t('film.pen.palette')}
+            <button
+              type="button"
+              className="toolbar__btn"
+              aria-expanded={popover === 'color'}
+              aria-label={colorLabel}
+              data-ink-tooltip={colorLabel}
               onClick={() => setPopover(popover === 'color' ? null : 'color')}
-            />
+            >
+              <span className="pen__current-color" style={{ background: color }} />
+            </button>
             {popover === 'color' && (
               <div className="pen__popover pen__colors">
                 {PEN_COLORS.map((c) => (
@@ -583,17 +647,19 @@ export function DrawingEditor({
                     className="pen__swatch"
                     style={{ background: c }}
                     aria-pressed={color === c}
-                    aria-label={t('film.pen.color', { color: c })}
+                    aria-label={t('film.pen.color', {
+                      color: t(`film.pen.colorNames.${PEN_COLOR_NAMES[c]}`),
+                    })}
                     onClick={() => {
                       setColor(c);
-                      if (tool === 'eraser' || tool === 'pan') setTool('pencil');
+                      if (tool === 'eraser') setTool('pencil');
                     }}
                   />
                 ))}
               </div>
             )}
             <IconButton
-              icon="pen"
+              icon="lineWidth"
               label={t('film.pen.width')}
               onClick={() => setPopover(popover === 'width' ? null : 'width')}
             />
@@ -623,6 +689,7 @@ export function DrawingEditor({
               disabled={!store.undo.canRedo()}
               onClick={() => store.undo.redo()}
             />
+            <span className="toolbar__sep" aria-hidden="true" />
             <IconButton
               icon="more"
               label={t('film.pen.more')}
@@ -630,6 +697,31 @@ export function DrawingEditor({
             />
             {popover === 'more' && (
               <div className="pen__popover pen__more">
+                {frame.assetId && (
+                  <label className="pen__opacity">
+                    <span className="pen__opacity-label">
+                      {t('film.pen.opacity')}
+                      <small>{Math.round((frame.referenceOpacity ?? 1) * 100)}%</small>
+                    </span>
+                    <input
+                      type="range"
+                      min={5}
+                      max={100}
+                      step={5}
+                      value={Math.round((frame.referenceOpacity ?? 1) * 100)}
+                      onChange={(e) =>
+                        change(() =>
+                          updateElement(
+                            store.doc,
+                            frame.id,
+                            { referenceOpacity: Number(e.target.value) / 100 },
+                            LOCAL,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                )}
                 {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
                 <label className="pen__aspect">
                   <span>{t('film.aspect.label')}</span>
@@ -658,44 +750,29 @@ export function DrawingEditor({
                     ))}
                   </Select>
                 </label>
-
                 {canUpload && (
-                  <Button variant="ghost" onClick={() => fileInput.current?.click()}>
-                    {t('film.pen.referenceReplace')}
-                  </Button>
+                  <button
+                    type="button"
+                    className="menu__item"
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    <Icon name="image" size={16} />
+                    {t(frame.assetId ? 'film.pen.referenceReplace' : 'film.pen.reference')}
+                  </button>
                 )}
-                {frame.assetId && (
-                  <label>
-                    {t('film.pen.opacity', {
-                      percent: Math.round((frame.referenceOpacity ?? 1) * 100),
-                    })}
-                    <input
-                      type="range"
-                      min={5}
-                      max={100}
-                      step={5}
-                      value={Math.round((frame.referenceOpacity ?? 1) * 100)}
-                      onChange={(e) =>
-                        change(() =>
-                          updateElement(
-                            store.doc,
-                            frame.id,
-                            { referenceOpacity: Number(e.target.value) / 100 },
-                            LOCAL,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                )}
-                <IconButton
-                  icon="trash"
-                  label={t('film.pen.clear')}
+                <hr className="menu__divider" />
+                <button
+                  type="button"
+                  className="menu__item is-danger"
                   disabled={strokes.length === 0 && shapes.length === 0}
                   onClick={() => change(() => clearDrawing(store.doc, frame.id, LOCAL))}
-                />
+                >
+                  <Icon name="trash" size={16} />
+                  {t('film.pen.clear')}
+                </button>
               </div>
             )}
+            <span className="toolbar__sep" aria-hidden="true" />
             <Button variant="primary" onClick={onClose}>
               {t('film.pen.done')}
             </Button>
@@ -738,6 +815,7 @@ export function DrawingEditor({
                 {liveStroke}
                 {liveShapeView}
               </FramePicture>
+              <FrameUploadState frameId={frame.id} />
               {cursor && pen && !readOnly && (
                 <span
                   aria-hidden="true"
@@ -803,14 +881,7 @@ export function DrawingEditor({
             const file = e.target.files?.[0];
             e.target.value = '';
             if (!file || !projectId || !boardId) return;
-            const id = frame.id;
-            startUpload({
-              file,
-              projectId,
-              boardId,
-              onAsset: (assetId) =>
-                updateElement(store.doc, id, { assetId, source: undefined }, LOCAL),
-            });
+            uploadToFrame({ store, frameId: frame.id, file, projectId, boardId });
           }}
         />
       )}

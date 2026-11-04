@@ -818,8 +818,9 @@
 }
 .pen__more {
   display: grid;
-  gap: 12px;
-  width: 300px;
+  gap: 8px;
+  width: 280px;
+  padding: 12px;
 }
 .pen__escape {
   font-size: 12px;
@@ -4025,11 +4026,98 @@ button.moodboard__card:focus-visible {
   pointer-events: none;
   z-index: 3;
   display: grid;
-  place-items: center;
-  border: 2px solid var(--ink-accent-primary);
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-accent-soft-bg);
-  color: var(--ink-accent-soft-fg);
+  place-items: start center;
+  padding: 8px;
+  outline: 2px solid var(--ink-accent-primary);
+  border-radius: var(--ink-radius-sm);
+  background: color-mix(in srgb, var(--ink-accent-primary) 28%, transparent);
+  text-align: center;
+}
+.canvas__frame-drop-label {
+  padding: 3px 8px;
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.canvas__frame-note {
+  position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-3);
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.canvas__frame-note.is-locked {
+  background: var(--ink-danger-bg);
+  color: var(--ink-danger-fg);
+}
+.card__frame,
+.film-panel__picture {
+  position: relative;
+}
+.frame-upload {
+  position: absolute;
+  inset: 8px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--ink-radius-sm);
+  background: color-mix(in srgb, var(--ink-danger-bg) 88%, transparent);
+  outline: 2px solid var(--ink-danger-border);
+  color: var(--ink-danger-fg);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+.film-panel__picture > .frame-upload {
+  bottom: auto;
+}
+.pen__area > .card__progress,
+.pen__area > .frame-upload {
+  z-index: 1;
+}
+.pen__current-color {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border: 1px solid color-mix(in srgb, var(--ink-text-primary) 22%, transparent);
+  border-radius: var(--ink-radius-full);
+}
+.pen__opacity {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.pen__opacity-label {
+  display: flex;
+  justify-content: space-between;
+}
+.pen__opacity-label small {
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.pen__more .menu__item {
+  gap: 8px;
+}
+.pen__more .menu__item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.pen__more .menu__divider {
+  margin: 0;
+}
+.film-panel__image-remove {
+  color: var(--ink-danger-fg);
 }
 .film-panel__image-menu {
   display: grid;

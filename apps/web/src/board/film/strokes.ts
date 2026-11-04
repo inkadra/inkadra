@@ -13,7 +13,16 @@ export const PENS: Record<Stroke['tool'], { width: number; opacity: number }> = 
   marker: { width: 28, opacity: 0.35 },
 };
 
-export const PEN_COLORS = ['#1C1C1E', '#FFFFFF', '#E5484D', '#F5A524', '#30A46C', '#3E7BFA'];
+export const PEN_COLORS = ['#E5484D', '#F5A524', '#30A46C', '#3E7BFA', '#FFFFFF', '#1C1C1E'];
+/** Key of each colour's name, for screen readers. */
+export const PEN_COLOR_NAMES: Record<string, string> = {
+  '#E5484D': 'red',
+  '#F5A524': 'orange',
+  '#30A46C': 'green',
+  '#3E7BFA': 'blue',
+  '#FFFFFF': 'white',
+  '#1C1C1E': 'black',
+};
 
 /**
  * A smooth SVG path through points relative to the picture (0 to 1): quadratic curves

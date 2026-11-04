@@ -104,12 +104,33 @@ for (const theme of ['dark', 'light'] as const)
         await page.mouse.move(0, 0);
         await page.screenshot({ path: `${out}/${width}-${theme}-panel.png` });
       }
+      if (width === 1280) {
+        // No side panel covers the dock: its last button is the one on top where it stands.
+        const canvasButton = page.locator('.canvas__dock .toolbar__btn--canvas');
+        const covered = () =>
+          canvasButton.evaluate((button) => {
+            const box = button.getBoundingClientRect();
+            const top = document.elementFromPoint(
+              box.left + box.width / 2,
+              box.top + box.height / 2,
+            );
+            return !button.contains(top);
+          });
+        expect(await covered()).toBe(false);
+        await page.getByRole('button', { name: 'Commenti', exact: true }).first().click();
+        await expect(page.locator('.comments-panel')).toBeVisible();
+        expect(await covered()).toBe(false);
+        if (out) await page.screenshot({ path: `${out}/1280-${theme}-comments.png` });
+        await page.locator('.comments-panel').getByRole('button', { name: /Chiudi/ }).first().click();
+        await expect(page.locator('.comments-panel')).toHaveCount(0);
+      }
       await page.getByRole('button', { name: 'Disegna', exact: true }).last().click();
       const editor = page.locator('.pen');
       await expect(editor).toBeVisible();
       await page.keyboard.press('Tab');
       expect(await editor.evaluate((el) => el.contains(document.activeElement))).toBe(true);
       await expect(editor.locator('.pen__strip,.pen__layers,.pen__guides')).toHaveCount(0);
+      await expect(editor).toHaveAttribute('aria-label', 'Disegno · 1');
       const box = await editor.locator('.pen__area').boundingBox();
       if (!box) throw new Error('No drawing area');
       await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.3);
@@ -122,7 +143,7 @@ for (const theme of ['dark', 'light'] as const)
       );
       await page.mouse.move(0, 0);
       if (out) await page.screenshot({ path: `${out}/${width}-${theme}-draw.png` });
-      await editor.getByRole('button', { name: 'Colore', exact: true }).click();
+      await editor.getByRole('button', { name: 'Colore: rosso', exact: true }).click();
       if (out) {
         await page.mouse.move(0, 0);
         await page.screenshot({ path: `${out}/${width}-${theme}-palette.png` });
@@ -150,13 +171,39 @@ for (const theme of ['dark', 'light'] as const)
         await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
         await page.mouse.down();
         await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
-        await expect(page.locator('.canvas__frame-drop')).toBeVisible();
+        await expect(page.locator('.canvas__frame-drop')).toContainText(
+          'Rilascia per sostituire l’immagine',
+        );
+        await expect(page.locator('.canvas__frame-drop')).toContainText('Il disegno resta');
         if (out) await page.screenshot({ path: `${out}/1280-dark-drop.png` });
         await page.mouse.up();
         await expect(page.locator(`[data-el="${image.id}"]`)).toHaveCount(0);
+        await expect(page.locator('.toast')).toContainText('Immagine inserita in 1');
         await page.keyboard.press('Control+z');
         await expect(page.locator(`[data-el="${image.id}"]`)).toBeVisible();
         await expect(page.locator(`[data-el="${frame.id}"] .frame-pic__ink path`)).toHaveCount(1);
+
+        // A file that fails to upload leaves the picture alone, with the error and Retry on it.
+        const before = await page.locator(`[data-el="${frame.id}"] img`).getAttribute('src');
+        await page.route('**/api/v1/uploads**', (route) => route.abort());
+        const dropped = await page.evaluateHandle(() => {
+          const data = new DataTransfer();
+          data.items.add(new File(['x'], 'fails.png', { type: 'image/png' }));
+          return data;
+        });
+        const at = await page.locator(`[data-el="${frame.id}"]`).boundingBox();
+        const point = { clientX: at!.x + at!.width / 2, clientY: at!.y + at!.height / 3 };
+        await page.locator('[data-testid="canvas"]').dispatchEvent('drop', {
+          ...point,
+          dataTransfer: dropped,
+        });
+        await expect(page.locator('.frame-upload')).toContainText('Caricamento non riuscito', {
+          timeout: 15_000,
+        });
+        await expect(page.locator('.frame-upload').getByRole('button', { name: 'Riprova' })).toBeVisible();
+        if (out) await page.screenshot({ path: `${out}/1280-dark-upload-failed.png` });
+        expect(await page.locator(`[data-el="${frame.id}"] img`).getAttribute('src')).toBe(before);
+        await page.unroute('**/api/v1/uploads**');
       }
     });
   }

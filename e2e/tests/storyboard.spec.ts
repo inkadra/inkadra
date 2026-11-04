@@ -69,7 +69,7 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
 
   // The pen: one line is one stroke in the frame.
   await panel.getByRole('button', { name: 'Disegna' }).click();
-  const pen = page.getByRole('dialog', { name: /Disegno dell’inquadratura 1D/ });
+  const pen = page.getByRole('dialog', { name: /Disegno · 1D/ });
   const area = pen.locator('.pen__area');
   const box = await area.boundingBox();
   if (!box) throw new Error('no drawing area');

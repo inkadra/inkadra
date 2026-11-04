@@ -32,6 +32,7 @@ import {
   isYoutubeUrl,
   videoEmbedUrl,
   YOUTUBE_ORIGIN,
+  youtubePlayerBlocked,
   youtubePlayerTime,
 } from './youtube.ts';
 
@@ -237,8 +238,11 @@ export function MediaViewer({
   initialFrameId,
   onOfficeTable,
   instanceAdmin = false,
+  onFrameSaved,
 }: {
   instanceAdmin?: boolean;
+  /** A captured frame has been saved: into this frame, or as this new image card. */
+  onFrameSaved?: (frameId: string | null, imageId: string | null) => void;
   onOfficeTable?: (id: string, name: string, rows: number) => void;
   initialFrameId?: string;
   store: BoardStore;
@@ -280,13 +284,17 @@ export function MediaViewer({
   const dialogRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [youtubeTime, setYoutubeTime] = useState<number | null>(null);
+  const [embedBlocked, setEmbedBlocked] = useState(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset player time when navigating gallery items
   useEffect(() => {
     setYoutubeTime(null);
+    setEmbedBlocked(false);
     if (!isYoutube) return;
     const receive = (event: MessageEvent) => {
-      const time = youtubePlayerTime(event, iframeRef.current?.contentWindow ?? null);
+      const player = iframeRef.current?.contentWindow ?? null;
+      const time = youtubePlayerTime(event, player);
       if (time !== null) setYoutubeTime(time);
+      if (youtubePlayerBlocked(event, player)) setEmbedBlocked(true);
     };
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
@@ -549,6 +557,9 @@ export function MediaViewer({
             readOnly={readOnly || guestMode}
             initialFrameId={initialFrameId}
             youtubeTime={youtubeTime}
+            embed={iframeRef}
+            unavailable={embedBlocked}
+            onSaved={onFrameSaved}
             onDone={onClose}
           />
           <button

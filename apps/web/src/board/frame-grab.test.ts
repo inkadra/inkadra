@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  BlackFrame,
+  captureTabFrame,
   captureVideoFrame,
   formatSourceTime,
   placeVideoStill,
@@ -42,7 +44,7 @@ describe('video still destinations', () => {
         source,
         userId: 'u',
       }),
-    ).toBe(true);
+    ).toBeTruthy();
     expect(store.getSnapshot().byId.get(frame.id)).toMatchObject({
       assetId: 'still',
       source,
@@ -81,7 +83,7 @@ describe('video still destinations', () => {
         source,
         userId: 'u',
       }),
-    ).toBe(false);
+    ).toBeNull();
   });
   it('keeps references in metadata without adding them to director notes', () => {
     const { store, video, frame } = setup();
@@ -199,4 +201,74 @@ it('formats source time consistently in Italian and English, carrying rounded se
   expect(formatSourceTime(0.62, 'en')).toBe('0:00.62');
   expect(formatSourceTime(65.125, 'it')).toBe('1:05,13');
   expect(formatSourceTime(59.999, 'en')).toBe('1:00.00');
+});
+
+describe('photo of a browser tab', () => {
+  function stubDisplayMedia(pixels: number) {
+    const stop = vi.fn();
+    const cropTo = vi.fn(async () => {});
+    const track = { cropTo, stop };
+    const getDisplayMedia = vi.fn(async () => ({
+      getVideoTracks: () => [track],
+      getTracks: () => [track],
+    }));
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getDisplayMedia },
+    });
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+    vi.spyOn(HTMLVideoElement.prototype, 'videoWidth', 'get').mockReturnValue(4);
+    vi.spyOn(HTMLVideoElement.prototype, 'videoHeight', 'get').mockReturnValue(4);
+    vi.spyOn(HTMLMediaElement.prototype, 'srcObject', 'set').mockImplementation(() => {});
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+      getImageData: () => ({ data: new Uint8ClampedArray(64).fill(pixels) }),
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) =>
+      done(new Blob(['png'])),
+    );
+    return { stop, cropTo, getDisplayMedia };
+  }
+  beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout'] }));
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+  const run = async (cropTo: Element | null = null) => {
+    const shot = captureTabFrame(cropTo);
+    const settled = shot.then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
+    await vi.runAllTimersAsync();
+    return settled;
+  };
+
+  it('keeps the picture, crops to the player where it can, and always stops the tracks', async () => {
+    const { stop, cropTo } = stubDisplayMedia(200);
+    vi.stubGlobal('CropTarget', { fromElement: async () => 'target' });
+    const result = await run(document.createElement('iframe'));
+    expect(result).toMatchObject({ value: { width: 4, height: 4 } });
+    expect(cropTo).toHaveBeenCalledWith('target');
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('refuses a black frame and stops the tracks', async () => {
+    const { stop } = stubDisplayMedia(0);
+    const result = await run();
+    expect((result as { error: unknown }).error).toBeInstanceOf(BlackFrame);
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('stops the tracks when the capture fails halfway, and asks nothing after a refusal', async () => {
+    const { stop, getDisplayMedia } = stubDisplayMedia(200);
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(new Error('no'));
+    await run();
+    expect(stop).toHaveBeenCalledOnce();
+    getDisplayMedia.mockRejectedValueOnce(new DOMException('no', 'NotAllowedError'));
+    const refused = await run();
+    expect((refused as { error: DOMException }).error.name).toBe('NotAllowedError');
+    expect(stop).toHaveBeenCalledOnce();
+  });
 });

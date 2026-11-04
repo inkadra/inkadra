@@ -22,6 +22,7 @@ export function VideoReferencePicker({
   projectId: string;
   userId: string;
   readOnly: boolean;
+  onInserted?: () => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -40,7 +41,8 @@ export function VideoReferencePicker({
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
-        {t('frameGrab.fromVideo')}
+        <Icon name="film" size={16} />
+        {t('film.frame.fromBoardVideo')}
       </button>
       {open && (
         <div className="film-panel__video-picker">
@@ -64,6 +66,7 @@ export function VideoReferencePicker({
             userId={userId}
             readOnly={readOnly}
             initialFrameId={frameId}
+            {...(onInserted ? { onFrameSaved: onInserted } : {})}
             onClose={() => {
               setSelected(null);
               setOpen(false);

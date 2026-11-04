@@ -9,14 +9,20 @@ import { FrameGrab } from './FrameGrab.tsx';
 import { BoardStore } from './store.ts';
 import type { StartUpload } from './uploads.ts';
 
-const state = vi.hoisted(() => ({ upload: null as StartUpload | null, cancel: vi.fn() }));
+const state = vi.hoisted(() => ({
+  upload: null as StartUpload | null,
+  cancel: vi.fn(),
+  bytes: vi.fn(),
+}));
 vi.mock('./uploads.ts', () => ({
   startUpload: (input: StartUpload) => {
     state.upload = input;
     return 'capture-upload';
   },
   cancelUpload: state.cancel,
+  useUploads: () => [],
 }));
+vi.mock('../lib/api.ts', () => ({ api: { bytes: state.bytes } }));
 vi.mock('./frame-grab.ts', async (original) => ({
   ...(await original<typeof import('./frame-grab.ts')>()),
   captureVideoFrame: async () => ({
@@ -37,7 +43,7 @@ afterEach(() => {
   state.cancel.mockClear();
 });
 
-async function setup() {
+async function setup(asset: Partial<Asset> = {}) {
   const store = new BoardStore(createBoardDoc(id));
   const element = createElement(
     store.doc,
@@ -56,7 +62,7 @@ async function setup() {
       <FrameGrab
         store={store}
         element={element}
-        asset={{ id, kind: 'video', filename: 'Last Train' } as Asset}
+        asset={{ id, kind: 'video', filename: 'Last Train', ...asset } as Asset}
         video={{ current: document.createElement('video') }}
         projectId={id}
         userId="u"
@@ -129,4 +135,18 @@ it('retries after failure without accepting a stale completion and hides a publi
     assetId: 'new-image',
     guestHidden: true,
   });
+});
+
+it('keeps the capture on screen when the server cannot read the original, and says so', async () => {
+  state.bytes.mockRejectedValueOnce(new Error('404'));
+  const { container, store, click } = await setup({
+    proxy: { status: 'ready' } as Asset['proxy'],
+  });
+  await click('.viewer__grab');
+  expect(state.bytes).toHaveBeenCalledOnce();
+  expect(container.textContent).toContain('frameGrab.capturedCopy');
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  await click('.ink-btn--primary');
+  expect(state.upload?.file.name).toBe('capture.png');
+  expect(store.getSnapshot().byId.size).toBe(2);
 });
