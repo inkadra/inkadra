@@ -424,7 +424,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     // A pen sketch on 1B.
     await page.getByRole('button', { name: '1B', exact: true }).click();
     await panel.getByRole('button', { name: 'Disegna' }).click();
-    const pen = page.getByRole('dialog', { name: /Disegno dell’inquadratura 1B/ });
+    const pen = page.getByRole('dialog', { name: /Disegno · 1B/ });
     const area = pen.locator('.pen__area');
     const box = await area.boundingBox();
     if (!box) throw new Error('no drawing area');
@@ -446,6 +446,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
 
     // An uploaded picture on 1C.
     await page.getByRole('button', { name: '1C', exact: true }).click();
+    await panel.getByRole('button', { name: 'Immagine', exact: true }).click();
     const picker = page.waitForEvent('filechooser');
     await panel.getByRole('button', { name: 'Carica un’immagine' }).click();
     await (await picker).setFiles({

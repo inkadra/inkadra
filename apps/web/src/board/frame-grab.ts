@@ -99,49 +99,143 @@ export function placeVideoStill(
     sourceId: string;
     targetId: string | null;
     assetId: string;
-    source: VideoFrameSource;
+    source?: VideoFrameSource;
     userId: string;
-    caption: string;
-    reference?: string;
   },
-): boolean {
+): string | null {
   const byId = store.getSnapshot().byId;
   const original = byId.get(input.sourceId);
   const target = input.targetId ? byId.get(input.targetId) : null;
-  if (!original || (input.targetId && target?.type !== 'frame')) return false;
+  if (!original || (input.targetId && (target?.type !== 'frame' || target.locked))) return null;
   const guestHidden = hiddenFromGuests(original.id, (id) => byId.get(id));
   store.undo.stopCapturing();
+  let placed: string;
   if (target?.type === 'frame') {
-    const notes = [target.notes, input.reference].filter(Boolean).join('\n');
-    // Never truncate director's notes to make room for a reference.
-    if (notes.length > 4000) return false;
+    placed = target.id;
     updateElement(
       store.doc,
       target.id,
       {
         assetId: input.assetId,
         source: input.source,
-        ...(input.reference ? { notes } : {}),
         ...(guestHidden ? { guestHidden: true } : {}),
       },
       LOCAL,
     );
   } else {
-    createElement(
+    placed = createElement(
       store.doc,
       'image',
       { x: original.x + original.w + 24, y: original.y },
       {
         assetId: input.assetId,
         source: input.source,
-        caption: input.caption.slice(0, 2000),
         guestHidden,
         parent: original.parent,
       },
       { userId: input.userId, origin: LOCAL },
-    );
+    ).id;
   }
+  store.undo.stopCapturing();
+  return placed;
+}
+
+/** A photo of a browser tab: only on a desktop browser that offers it. */
+export function canCaptureTab() {
+  return typeof navigator.mediaDevices?.getDisplayMedia === 'function' && !coarsePointer();
+}
+
+/** A phone or tablet, where there is no tab to photograph and no Ctrl+V. */
+export const coarsePointer = () => window.matchMedia?.('(pointer: fine)').matches === false;
+
+/** Nothing but black came through: protected content, or a capture that did not start. */
+export class BlackFrame extends Error {}
+
+/** Time for the browser to take its permission dialog and sharing bar off the picture. */
+const CAPTURE_SETTLE_MS = 500;
+
+/**
+ * One photo of a browser tab, after asking the browser's permission. The tracks stop however
+ * this ends, and nothing but the picture stays. `cropTo` limits the capture to an element of
+ * this tab where the browser can (Region Capture, Chrome and Edge); elsewhere the whole surface
+ * comes through, for the person to crop.
+ */
+export async function captureTabFrame(cropTo: Element | null) {
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: { displaySurface: 'browser' },
+    audio: false,
+    preferCurrentTab: true,
+    selfBrowserSurface: 'include',
+    surfaceSwitching: 'exclude',
+    monitorTypeSurfaces: 'exclude',
+  } as DisplayMediaStreamOptions);
+  const video = document.createElement('video');
+  try {
+    const track = stream.getVideoTracks()[0] as
+      | (MediaStreamTrack & { cropTo?: (target: unknown) => Promise<void> })
+      | undefined;
+    const target = (
+      window as unknown as { CropTarget?: { fromElement(el: Element): Promise<unknown> } }
+    ).CropTarget;
+    if (cropTo && track?.cropTo && target) {
+      // Another tab or window was chosen: it cannot be cropped to an element of this one.
+      await track.cropTo(await target.fromElement(cropTo)).catch(() => {});
+    }
+    video.muted = true;
+    video.srcObject = stream;
+    await video.play();
+    await new Promise((resolve) => setTimeout(resolve, CAPTURE_SETTLE_MS));
+    const { videoWidth: width, videoHeight: height } = video;
+    if (!width || !height) throw new BlackFrame();
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('canvas-unavailable');
+    ctx.drawImage(video, 0, 0);
+    if (isBlack(ctx, width, height)) throw new BlackFrame();
+    const blob = await encodePng(canvas);
+    return { file: new File([blob], 'frame.png', { type: 'image/png' }), width, height };
+  } finally {
+    video.srcObject = null;
+    for (const track of stream.getTracks()) track.stop();
+  }
+}
+
+function encodePng(canvas: HTMLCanvasElement) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('encode-failed'))),
+      'image/png',
+    );
+  });
+}
+
+function isBlack(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  const { data } = ctx.getImageData(0, 0, width, height);
+  // Every pixel of a 4K frame would take a while, and one pixel in 64 tells as much.
+  for (let i = 0; i < data.length; i += 256)
+    if ((data[i] ?? 0) > 8 || (data[i + 1] ?? 0) > 8 || (data[i + 2] ?? 0) > 8) return false;
   return true;
+}
+
+/** A PNG of the part of a picture inside `crop`, in [0, 1] coordinates. */
+export async function cropPicture(
+  file: File,
+  crop: { x: number; y: number; w: number; h: number },
+) {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * crop.w));
+    canvas.height = Math.max(1, Math.round(bitmap.height * crop.h));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('canvas-unavailable');
+    ctx.drawImage(bitmap, -Math.round(bitmap.width * crop.x), -Math.round(bitmap.height * crop.y));
+    return new File([await encodePng(canvas)], file.name, { type: 'image/png' });
+  } finally {
+    bitmap.close();
+  }
 }
 
 export function uploadBoardId(store: BoardStore): string | null {

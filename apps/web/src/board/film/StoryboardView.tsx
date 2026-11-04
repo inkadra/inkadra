@@ -424,6 +424,7 @@ export function StoryboardView({
         </div>
         {current && (
           <FramePanel
+            key={current.id}
             store={store}
             userId={userId}
             frame={current}

@@ -80,6 +80,8 @@ export interface RunLimits extends ProcessLimits {
   maxBuffer?: number;
   /** Written to the standard input of the tool (bwrap reads its seccomp filter from fd 0). */
   input?: Buffer;
+  /** Kills the tool when it fires. */
+  signal?: AbortSignal;
 }
 
 /** The environment of a tool: no variables of the server (secrets, proxies) reach it. */
@@ -121,6 +123,7 @@ export async function runTool(bin: string, args: string[], limits: RunLimits) {
     encoding: 'buffer',
     killSignal: 'SIGKILL',
     env: toolEnv(),
+    ...(limits.signal ? { signal: limits.signal } : {}),
   });
   if (limits.input) {
     run.child.stdin?.on('error', () => {});

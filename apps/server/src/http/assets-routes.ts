@@ -1,3 +1,7 @@
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   API_PREFIX,
   type Asset,
@@ -10,6 +14,7 @@ import {
   OfficePreview,
   VariantParams,
   VariantQuery,
+  VideoFrameQuery,
   z,
 } from '@inkadra/shared';
 import { and, asc, eq } from 'drizzle-orm';
@@ -19,6 +24,9 @@ import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { type asset, assetVariant, user } from '../db/schema.ts';
 import { officeKey } from '../media/office.ts';
+import { ensureFreeSpace, NotEnoughSpace, privateInput, withJobDir } from '../media/scratch.ts';
+import { extractVideoFrame, FRAME_MAX_BYTES, mediaTools, NoVideoFrame } from '../media/video.ts';
+import { RateLimiter } from '../rate-limits.ts';
 import { animatedVariantKey, readAll, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
@@ -28,7 +36,16 @@ interface Deps {
   db: Database;
   auth: Auth;
   storage: Storage;
+  /** Scratch space of frame extraction; swept at startup when it is DATA_DIR/tmp. */
+  tmpDir?: string;
 }
+
+/** Frames one person may ask for in a minute: each can start ffmpeg and download an original. */
+const FRAMES_PER_MINUTE = 12;
+/** ffmpeg runs in the web role here (decision 0070): never more than this at once. */
+const MAX_RUNNING_FRAMES = 2;
+/** The whole request, download from a bucket and sending included. */
+const FRAME_DEADLINE_MS = 2 * 60_000;
 
 const AssetParams = z.object({ assetId: Id });
 const FileQuery = z.object({ download: z.enum(['1']).optional() });
@@ -174,6 +191,8 @@ export async function sendRanged(
 
 export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth, storage } = deps;
+  const frameLimiter = new RateLimiter(FRAMES_PER_MINUTE, 60_000);
+  let runningFrames = 0;
 
   app.get(v1('/assets/:assetId'), async (req) => {
     const actor = await requireActor(auth, req, db);
@@ -185,6 +204,64 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
       .where(eq(assetVariant.assetId, assetId))
       .orderBy(asc(assetVariant.width));
     return toAsset(row, variants);
+  });
+
+  app.get(v1('/assets/:assetId/frame'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    if (!frameLimiter.take(actor.id))
+      throw new HttpError('rate_limited', 'Too many frames: wait a minute.');
+    const { assetId } = AssetParams.parse(req.params);
+    const { time } = VideoFrameQuery.parse(req.query);
+    const { asset: row } = await requireAssetRole(db, actor, assetId, 'editor');
+    if (
+      row.kind !== 'video' ||
+      row.status !== 'ready' ||
+      (row.durationMs !== null && time * 1000 >= row.durationMs)
+    )
+      throw new HttpError('not_found', 'Video frame unavailable.');
+    const { ffmpeg } = await mediaTools();
+    if (!ffmpeg) throw new HttpError('not_found', 'Frame extraction unavailable.');
+    if (runningFrames >= MAX_RUNNING_FRAMES)
+      throw new HttpError('rate_limited', 'The server is busy with other frames: try again.');
+    runningFrames += 1;
+    const stop = new AbortController();
+    const deadline = setTimeout(() => stop.abort(), FRAME_DEADLINE_MS);
+    const disconnected = () => stop.abort();
+    reply.raw.once('close', disconnected);
+    try {
+      await withJobDir(deps.tmpDir ?? tmpdir(), async (dir) => {
+        await ensureFreeSpace(
+          dir,
+          (storage.copiesToLocal ? row.size : 0) + FRAME_MAX_BYTES,
+          'a video frame',
+        );
+        const copy = await storage.localCopy(row.storageKey, dir, stop.signal);
+        try {
+          const input = await privateInput(dir, copy.path);
+          const out = join(dir, 'frame.png');
+          await extractVideoFrame(ffmpeg, input, out, time, row.mime, stop.signal);
+          reply.header('cache-control', 'private, no-store');
+          reply.header('content-length', (await stat(out)).size);
+          reply.type('image/png');
+          // Streamed from the job folder, which stays until the response ends.
+          await reply.send(createReadStream(out, { signal: stop.signal }));
+        } finally {
+          await copy.done();
+        }
+      });
+    } catch (err) {
+      if (reply.sent) throw err;
+      if (err instanceof NoVideoFrame) throw new HttpError('not_found', 'No frame at this time.');
+      if (err instanceof NotEnoughSpace)
+        throw new HttpError('rate_limited', 'The server has no room for this frame now.');
+      if (stop.signal.aborted) throw new HttpError('rate_limited', 'The frame took too long.');
+      throw err;
+    } finally {
+      clearTimeout(deadline);
+      reply.raw.off('close', disconnected);
+      runningFrames -= 1;
+    }
+    return reply;
   });
 
   // Worker-generated, inert derivatives; the original's permissions still apply.

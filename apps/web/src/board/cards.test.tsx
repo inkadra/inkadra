@@ -59,6 +59,7 @@ vi.mock('./assets.ts', async (original) => ({
 }));
 vi.mock('./uploads.ts', () => ({
   useUploadProgress: () => null,
+  useUploads: () => [],
   localPreview: () => state.preview,
 }));
 vi.mock('./CardReview.tsx', () => ({ CardReview: () => null }));

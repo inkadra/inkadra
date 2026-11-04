@@ -14,7 +14,7 @@ import { GuestModeContext } from './context.ts';
 import { FontSpecimen } from './FontSpecimen.tsx';
 import { FrameGrab } from './FrameGrab.tsx';
 import { fileBadge, fileFamily, isPdf } from './file-kinds.ts';
-import { VideoFrameStepper } from './frame-grab.ts';
+import { formatSourceTime, VideoFrameStepper } from './frame-grab.ts';
 import { hasImageTransform } from './image-crop.ts';
 import { playInline, useInlineMedia } from './inline-player.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
@@ -32,6 +32,7 @@ import {
   isYoutubeUrl,
   videoEmbedUrl,
   YOUTUBE_ORIGIN,
+  youtubePlayerBlocked,
   youtubePlayerTime,
 } from './youtube.ts';
 
@@ -237,8 +238,11 @@ export function MediaViewer({
   initialFrameId,
   onOfficeTable,
   instanceAdmin = false,
+  onFrameSaved,
 }: {
   instanceAdmin?: boolean;
+  /** A captured frame has been saved: into this frame, or as this new image card. */
+  onFrameSaved?: (frameId: string | null, imageId: string | null) => void;
   onOfficeTable?: (id: string, name: string, rows: number) => void;
   initialFrameId?: string;
   store: BoardStore;
@@ -261,6 +265,11 @@ export function MediaViewer({
   const { t, i18n } = useTranslation();
   const assetId = element.type === 'link' ? element.imageAssetId : element.assetId;
   const asset = useAsset(assetId);
+  const sourceAsset = useAsset(
+    element.type === 'image' && element.source?.kind === 'uploaded-video'
+      ? element.source.assetId
+      : undefined,
+  );
   const isYoutube = element.type === 'link' && isYoutubeUrl(element.url);
   const embedUrl =
     element.type === 'link' && isVideoLink(element.url) ? videoEmbedUrl(element.url) : null;
@@ -275,13 +284,17 @@ export function MediaViewer({
   const dialogRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [youtubeTime, setYoutubeTime] = useState<number | null>(null);
+  const [embedBlocked, setEmbedBlocked] = useState(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset player time when navigating gallery items
   useEffect(() => {
     setYoutubeTime(null);
+    setEmbedBlocked(false);
     if (!isYoutube) return;
     const receive = (event: MessageEvent) => {
-      const time = youtubePlayerTime(event, iframeRef.current?.contentWindow ?? null);
+      const player = iframeRef.current?.contentWindow ?? null;
+      const time = youtubePlayerTime(event, player);
       if (time !== null) setYoutubeTime(time);
+      if (youtubePlayerBlocked(event, player)) setEmbedBlocked(true);
     };
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
@@ -337,6 +350,8 @@ export function MediaViewer({
             ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)))
       )
         return;
+      // The corners of the box on a photo of the tab move with the arrows, not the gallery.
+      if (e.target instanceof HTMLElement && e.target.matches('.viewer__tab-handle')) return;
       // The canvas behind listens on window too.
       e.stopImmediatePropagation();
       if (e.type !== 'keydown') return;
@@ -544,6 +559,9 @@ export function MediaViewer({
             readOnly={readOnly || guestMode}
             initialFrameId={initialFrameId}
             youtubeTime={youtubeTime}
+            embed={iframeRef}
+            unavailable={embedBlocked}
+            onSaved={onFrameSaved}
             onDone={onClose}
           />
           <button
@@ -868,6 +886,21 @@ export function MediaViewer({
 
       {/* Sidebar Details */}
       <aside id="viewer-info" className="viewer__side" data-scroll>
+        {element.type === 'image' && element.source && (
+          <section>
+            <h3 className="viewer__title">{t('frameGrab.origin')}</h3>
+            <p style={{ overflowWrap: 'anywhere' }}>
+              {element.source.kind === 'uploaded-video'
+                ? sourceAsset && sourceAsset !== 'missing'
+                  ? sourceAsset.filename
+                  : t('frameGrab.fromVideo')
+                : element.source.url}
+            </p>
+            {element.source.timeSeconds !== undefined && (
+              <p>{formatSourceTime(element.source.timeSeconds, i18n.language)}</p>
+            )}
+          </section>
+        )}
         {office && ready && (
           <OfficeInfo
             asset={ready}
