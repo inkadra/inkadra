@@ -236,7 +236,9 @@ for (const [device, width, height, theme] of matrix) {
     await toggle(sheet, 'Storia');
     await expect(sheet.getByLabel('Cosa vuole')).toHaveValue('Chiudere con il passato.');
     await toggle(sheet, 'Relazioni');
-    await expect(sheet.getByRole('textbox', { name: 'Relazione con Paolo Ferri' })).toHaveValue('fratello');
+    await expect(sheet.getByRole('textbox', { name: 'Relazione con Paolo Ferri' })).toHaveValue(
+      'fratello',
+    );
     await shot('story-relations');
     await toggle(sheet, 'Storia');
     await toggle(sheet, 'Relazioni');
