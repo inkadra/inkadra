@@ -10,6 +10,7 @@ import {
   canCaptureTab,
   captureTabFrame,
   captureVideoFrame,
+  coarsePointer,
   cropPicture,
   formatSourceTime,
   frameChoices,
@@ -147,7 +148,7 @@ export function FrameGrab({
     if (open) panel.current?.querySelector<HTMLButtonElement>('.ink-select')?.focus();
   }, [open]);
   if (!available) return null;
-  const phone = !window.matchMedia('(pointer: fine)').matches;
+  const phone = coarsePointer();
   const hasThumbnail = external && asset?.kind === 'image';
   const service = youtube ? 'YouTube' : 'Vimeo';
   const tabOffered = canCaptureTab() && tabIssue !== 'failed';

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
@@ -56,7 +57,7 @@ describe.skipIf(!url)('frame of a video: limits (needs DATABASE_URL)', () => {
         mime: 'video/mp4',
         filename: 'video.mp4',
         size: 10,
-        storageKey: `frame-${name}`,
+        storageKey: `originals/${randomUUID()}`,
         status: 'ready',
         durationMs: 10_000,
       })

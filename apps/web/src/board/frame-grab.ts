@@ -142,11 +142,11 @@ export function placeVideoStill(
 
 /** A photo of a browser tab: only on a desktop browser that offers it. */
 export function canCaptureTab() {
-  return (
-    typeof navigator.mediaDevices?.getDisplayMedia === 'function' &&
-    window.matchMedia('(pointer: fine)').matches
-  );
+  return typeof navigator.mediaDevices?.getDisplayMedia === 'function' && !coarsePointer();
 }
+
+/** A phone or tablet, where there is no tab to photograph and no Ctrl+V. */
+export const coarsePointer = () => window.matchMedia?.('(pointer: fine)').matches === false;
 
 /** Nothing but black came through: protected content, or a capture that did not start. */
 export class BlackFrame extends Error {}
