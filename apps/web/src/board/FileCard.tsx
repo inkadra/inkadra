@@ -3,7 +3,14 @@ import { formatDuration } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
-import type { CSSProperties, ReactNode } from 'react';
+import {
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { AudioPlayer, useWaveform } from './AudioPlayer.tsx';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
@@ -19,6 +26,7 @@ import {
   metaParts,
   splitName,
 } from './file-kinds.ts';
+import { playInline, stopInline, useInlinePlaying, useInlineStops } from './inline-player.ts';
 import { MAP_ASPECT, MapCredit, TrackLine } from './MapCard.tsx';
 import { MapSurface, useExploring } from './MapExplore.tsx';
 import { formatClimb, formatDistance } from './maps.ts';
@@ -156,7 +164,8 @@ function ratioOf(width: number | null, height: number | null, fallback: string):
 
 /**
  * The card of a file element: a preview on top, the shared footer below, and the same
- * actions as every card. Opening it (double click, Enter, the menu) shows the shared viewer.
+ * actions as every card. Opening it (double click, Enter, the menu) shows the shared viewer;
+ * the play button of a video plays it right on the card.
  */
 export function FileCard({ element, width }: { element: FileElement; width: number }) {
   const { t } = useTranslation();
@@ -336,6 +345,62 @@ function ReadyFileCard({
   );
 }
 
+/**
+ * The video in its card, on the board's one-player rule. Mounted only once play is pressed, so a
+ * large board holds no video elements. A file the browser turns out not to read goes to the
+ * viewer, which explains and offers the download.
+ */
+function CardVideo({
+  element,
+  src,
+  poster,
+  name,
+  hadFocus,
+}: {
+  element: FileElement;
+  src: string;
+  poster: string;
+  name: string;
+  hadFocus: RefObject<boolean>;
+}) {
+  const { t } = useTranslation();
+  const { openElement } = useBoard();
+  const video = useRef<HTMLVideoElement>(null);
+  const id = element.id;
+  useInlineStops(id, video);
+  // Playing here, not with autoPlay: StrictMode's second mount has to start it again. A layout
+  // effect, because its cleanup still finds the video in the page and can read the focus.
+  useLayoutEffect(() => {
+    const el = video.current;
+    if (!el) return;
+    hadFocus.current = false;
+    el.focus({ preventScroll: true });
+    void el.play()?.catch(() => {});
+    return () => {
+      hadFocus.current = document.activeElement === el;
+      el.pause();
+    };
+  }, [hadFocus]);
+  return (
+    // biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions
+    <video
+      ref={video}
+      className="fcard__video"
+      data-play-link={id}
+      aria-label={t('board.menu.videoPlayer', { title: name })}
+      src={src}
+      poster={poster || undefined}
+      controls
+      playsInline
+      onEnded={() => stopInline(id)}
+      onError={() => {
+        stopInline(id);
+        openElement?.(element);
+      }}
+    />
+  );
+}
+
 function VideoPreview({
   element,
   asset,
@@ -354,49 +419,79 @@ function VideoPreview({
   const proxy = asset.proxy;
   const preparing = proxy?.status === 'queued' || proxy?.status === 'processing';
   const percent = proxy?.status === 'processing' ? (proxy.progress ?? null) : null;
+  // A guest whose link allows no downloads gets a picture as the url (guest-assets.ts): nothing
+  // to play on the card, and the viewer shows them that picture as before.
+  const plays = !!source && !asset.variants.some((variant) => variant.url === source);
+  const playing = useInlinePlaying(element.id) && state === 'ready' && !preparing && plays;
+  const playButton = useRef<HTMLButtonElement>(null);
+  // Stopping a video that had the keyboard hands the focus back to the play button.
+  const hadFocus = useRef(false);
+  useEffect(() => {
+    if (playing || !hadFocus.current) return;
+    hadFocus.current = false;
+    playButton.current?.focus({ preventScroll: true });
+  }, [playing]);
   return (
     <Preview
       family="video"
       className="fcard__preview--video"
       style={{ aspectRatio: ratioOf(asset.width, asset.height, '16 / 9') }}
     >
-      {poster && (
-        <img className="fcard__img" src={poster} alt="" draggable={false} decoding="async" />
-      )}
-      {preparing ? (
-        <span className="fcard__prep" role="status">
-          <span>{t('board.file.preparing')}</span>
-          <span className="fcard__bar" aria-hidden="true">
-            <i
-              className={percent === null ? 'is-indeterminate' : undefined}
-              style={percent === null ? undefined : { width: `${percent}%` }}
-            />
-          </span>
-          {percent !== null && <span className="fcard__percent">{percent}%</span>}
-        </span>
+      {playing && source ? (
+        <CardVideo
+          element={element}
+          src={source}
+          poster={poster}
+          name={asset.filename}
+          hadFocus={hadFocus}
+        />
       ) : (
-        state === 'ready' &&
-        source && (
-          <button
-            type="button"
-            className="card__play fcard__play"
-            aria-label={t('board.file.play', { name: asset.filename })}
-            onClick={() => openElement?.(element)}
-          >
-            <Icon name="play" size={14} />
-          </button>
-        )
-      )}
-      {!preparing && state === 'ready' && !source && (
-        <span className="fcard__prep" role="status">
-          {t('board.file.unavailable')}
-        </span>
-      )}
-      {!preparing && source && asset.durationMs !== null && asset.durationMs > 0 && (
-        <span className="card__duration">{formatDuration(asset.durationMs)}</span>
-      )}
-      {state === 'processing' && !poster && (
-        <span className="fcard__state">{t('board.image.processing')}</span>
+        <>
+          {poster && (
+            <img className="fcard__img" src={poster} alt="" draggable={false} decoding="async" />
+          )}
+          {preparing ? (
+            <span className="fcard__prep" role="status">
+              <span>{t('board.file.preparing')}</span>
+              <span className="fcard__bar" aria-hidden="true">
+                <i
+                  className={percent === null ? 'is-indeterminate' : undefined}
+                  style={percent === null ? undefined : { width: `${percent}%` }}
+                />
+              </span>
+              {percent !== null && <span className="fcard__percent">{percent}%</span>}
+            </span>
+          ) : (
+            state === 'ready' &&
+            source && (
+              <button
+                ref={playButton}
+                type="button"
+                className="card__play fcard__play"
+                data-play-link={element.id}
+                aria-label={t('board.file.play', { name: asset.filename })}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (plays) playInline(element.id);
+                  else openElement?.(element);
+                }}
+              >
+                <Icon name="play" size={14} />
+              </button>
+            )
+          )}
+          {!preparing && state === 'ready' && !source && (
+            <span className="fcard__prep" role="status">
+              {t('board.file.unavailable')}
+            </span>
+          )}
+          {!preparing && source && asset.durationMs !== null && asset.durationMs > 0 && (
+            <span className="card__duration">{formatDuration(asset.durationMs)}</span>
+          )}
+          {state === 'processing' && !poster && (
+            <span className="fcard__state">{t('board.image.processing')}</span>
+          )}
+        </>
       )}
     </Preview>
   );

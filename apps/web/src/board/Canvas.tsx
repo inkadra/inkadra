@@ -2119,6 +2119,7 @@ export function Canvas({
     const target =
       (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null) ??
       (e.target as HTMLElement);
+    if (target.closest('[data-play-link]')) return;
     const targetId = canvasElementId(target);
     if (!targetId) {
       if (target.closest('[data-chrome]') || readOnly || !getPreferences().doubleClickNote) return;
@@ -2251,6 +2252,8 @@ export function Canvas({
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e: KeyboardEvent) => {
     if (insideDialog()) return;
+    // A focused video keeps Space (play) and the arrows (seek, volume) for itself.
+    if (e.target instanceof HTMLVideoElement && /^( |Arrow)/.test(e.key)) return;
     // Contextual controls keep native Enter/Space activation instead of board edit/pan shortcuts.
     if (isContextualFocus(e.target) && (e.key === 'Enter' || e.key === ' ')) return;
     // A menu or the version banner already handled this Escape; a preview has nothing to clear.
@@ -2296,10 +2299,10 @@ export function Canvas({
     if (e.type !== 'keydown' || isTyping(e.target) || palette) return;
     const cmd = commandFor(e);
     if (!cmd) return;
-    // Enter on the toast's buttons and a colour's copy button presses them (#310, #308).
+    // Enter on the toast's buttons, a colour's copy button and a play button presses them (#310, #308).
     const presses =
       e.target instanceof HTMLElement &&
-      !!e.target.closest('.toast, .card__copy, .screenplay-hint');
+      !!e.target.closest('.toast, .card__copy, .screenplay-hint, [data-play-link]');
     if (cmd.kind === 'edit' && (onArrowStyleButton(e.target) || presses)) return;
     const single = selection.size === 1 ? snap.byId.get([...selection][0] ?? '') : undefined;
     switch (cmd.kind) {
