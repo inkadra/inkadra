@@ -834,7 +834,7 @@ test('relay disclosure, mandatory preview, limits and admin switch', async ({ pa
   const dialog = page.getByRole('dialog', FORM);
   await expect(dialog).toContainText('inkadra/inkadra-feedback');
   await expect(dialog).toContainText('32 MB totali');
-  await expect(dialog.getByRole('button', { name: 'Invia', exact: true })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Invia segnalazione', exact: true })).toHaveCount(0);
   if (process.env.FEEDBACK_SHOTS_DIR) {
     mkdirSync(process.env.FEEDBACK_SHOTS_DIR, { recursive: true });
     for (const theme of ['light', 'dark'] as const) {
