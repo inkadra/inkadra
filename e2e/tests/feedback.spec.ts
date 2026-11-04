@@ -234,7 +234,7 @@ test('leaves navigation, account and names out of the automatic screenshot', asy
     // Not `toContain`: a failure would print the whole page, fonts included.
     for (const secret of [name, 'Giulia', 'Persona Invitata'])
       expect(text.includes(secret), secret).toBe(false);
-    // Rounding at a fractional device ratio gave the copy of this panel scrollbars of its own.
+    // The copy of this panel can overflow where the page does not: no scrollbars in the image.
     if (text.includes('class="ink-main'))
       expect(text).toMatch(/class="ink-main[^"]*"[^>]*scrollbar-width: none/);
   };

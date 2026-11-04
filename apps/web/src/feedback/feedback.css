@@ -763,8 +763,8 @@ button.settings-home__item {
   cursor: pointer;
 }
 
-/* While the automatic screenshot is drawn. Its copy lays out to rounded sizes, so at a fractional
-   device ratio a panel overflows by a fraction and gets scrollbars the page does not have. */
+/* While the automatic screenshot is drawn: a panel's copy can overflow where the page does not, and
+   its scrollbars ended up in the image of a real report (window 1278x1270, device ratio 1.5). */
 html[data-feedback-capturing] *:not([data-feedback-exclude], [data-feedback-exclude] *) {
   scrollbar-width: none !important;
 }
