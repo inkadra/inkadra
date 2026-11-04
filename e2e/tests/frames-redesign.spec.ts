@@ -137,6 +137,9 @@ for (const theme of ['dark', 'light'] as const)
         await page.mouse.move(0, 0);
         await page.screenshot({ path: `${out}/${width}-${theme}-more.png` });
       }
+      const popup = await editor.locator('.pen__more').boundingBox();
+      const select = await editor.locator('.pen__more .ink-select').boundingBox();
+      expect(popup && select && select.x + select.width <= popup.x + popup.width).toBe(true);
       await editor.getByRole('button', { name: 'Fatto', exact: true }).click();
       await expect(editor).toHaveCount(0);
       if (width === 1280 && theme === 'dark') {

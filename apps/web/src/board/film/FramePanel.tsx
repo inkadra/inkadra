@@ -153,9 +153,10 @@ export function FramePanel({
                     <div className="film-panel__video-picker">
                       {[...snapshot.byId.values()]
                         .filter((e) => e.type === 'image' && e.assetId && !e.locked)
-                        .map((image) => (
+                        .map((image, index) => (
                           <button
                             key={image.id}
+                            aria-label={t('viewer.item', { n: index + 1 })}
                             type="button"
                             className="ink-btn ink-btn--ghost"
                             onClick={() => {

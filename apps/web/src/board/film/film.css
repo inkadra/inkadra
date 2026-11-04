@@ -4081,3 +4081,17 @@ button.moodboard__card:focus-visible {
     min-height: 44px;
   }
 }
+.pen__more .pen__aspect {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  margin-left: 0;
+}
+.pen__more .ink-select {
+  width: 100%;
+  min-width: 0;
+}
+.film-panel__image-menu .ink-btn {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
