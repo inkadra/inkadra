@@ -610,8 +610,9 @@ export function PlanEditor({
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   keys.current = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
-    // An open menu or panel has the keyboard, and Escape closes it first.
-    if (pop) {
+    // An open menu or panel has the keyboard, and Escape closes it first; the point on the cone
+    // keeps its arrows, as the length panel and the point are one control.
+    if (pop && !target?.closest('[data-reach]')) {
       if (e.key === 'Escape') {
         e.stopImmediatePropagation();
         e.preventDefault();

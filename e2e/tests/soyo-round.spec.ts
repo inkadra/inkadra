@@ -145,11 +145,15 @@ test('the crop comes back when the angle does, and a long to-do reads in full', 
   for (const sign of [1, -1]) {
     for (const angle of [10, 20, 30]) await slider.fill(String(angle * sign));
     await expect.poll(coverage).toBeLessThan(90);
-    if (sign === 1) await shoot(page, 'crop-30');
+    if (sign === 1) {
+      await slider.blur();
+      await shoot(page, 'crop-30');
+    }
     for (const angle of [20, 10, 0]) await slider.fill(String(angle * sign));
     await expect(page.locator('.crop-bar__deg')).toHaveText('0°');
     await expect.poll(coverage).toBe(100);
   }
+  await slider.blur();
   await shoot(page, 'crop-back-to-0');
   await page.keyboard.press('Escape');
   await page.locator('.crop-bar').getByRole('button', { name: 'Fatto' }).click();
@@ -203,15 +207,25 @@ test('a failed address search is readable over the empty board', async ({ page, 
 // Only for the pull request's screenshots: SOYO_SHOTS=<folder>.
 test('screenshots of the other screens', async ({ page, baseURL }) => {
   test.skip(!shots);
+  test.setTimeout(90_000);
   const { cookie, project } = await start(page, baseURL!, 'Shots');
+  await page.goto('/');
+  const asset = await uploadFile(baseURL!, cookie, project.id, {
+    body: await page.screenshot({ clip: { x: 0, y: 0, width: 400, height: 600 } }),
+    name: 'portrait.png',
+    type: 'image/png',
+  });
+  if (!asset) throw new Error('upload failed');
+  await waitForAssets(baseURL!, cookie, [asset]);
   const doc = createBoardDoc(project.rootBoardId);
-  const note = createElement(doc, 'note', { x: 40, y: 40 }, { w: 240 }, { userId: null });
-  const todo = createElement(doc, 'todo', { x: 40, y: 200 }, { w: 240, items: [] }, { userId: null });
-  addTodoItem(doc, todo.id, LONG);
+  const at = (x: number, y: number) => ({ x, y });
+  const options = { userId: null };
+  const note = createElement(doc, 'note', at(40, 40), { w: 240 }, options);
+  const image = createElement(doc, 'image', at(40, 200), { w: 240, assetId: asset }, options);
   const plan = createElement(
     doc,
     'plan',
-    { x: 340, y: 40 },
+    at(340, 40),
     {
       w: 300,
       scale: 100,
@@ -231,27 +245,36 @@ test('screenshots of the other screens', async ({ page, baseURL }) => {
         },
       ],
     },
-    { userId: null },
+    options,
   );
   await pushBoardDoc(baseURL!, cookie, project.rootBoardId, doc);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
-  await page.locator(`[data-el="${note.id}"]`).click();
-  await expect(page.locator('.ctxbar')).toBeVisible();
-  await shoot(page, 'note-bar');
-  await page.locator('.ctxbar').getByRole('button', { name: 'Elimina' }).waitFor();
-  await page.locator(`[data-el="${todo.id}"]`).click();
-  await shoot(page, 'todo-read');
+  const board = `/p/${project.id}/b/${project.rootBoardId}`;
+
   await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(board);
   await page.locator(`[data-el="${note.id}"]`).click();
-  await page.locator('.ctxbar').getByRole('button', { name: /[Tt]ag/ }).click();
+  await page.locator('.ctxbar').getByRole('button', { name: 'Tag', exact: true }).click();
   const tag = page.getByRole('textbox', { name: 'Aggiungi un tag' });
   await tag.fill('Nuovo');
   await tag.press('Enter');
   await expect(page.getByRole('alert')).toContainText('non è nel catalogo');
   await shoot(page, 'tag-not-in-catalog');
   await page.keyboard.press('Escape');
+  await page.goto(board);
   await page.locator(`[data-el="${plan.id}"]`).dblclick();
   await expect(page.locator('.plan-ruler--top')).toBeVisible();
   await shoot(page, 'plan-rulers-route');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(board);
+  await page.locator(`[data-el="${note.id}"]`).click();
+  await expect(page.locator('.ctxbar').getByRole('button', { name: 'Elimina' })).toBeInViewport();
+  await expect(
+    page.locator('.ctxbar').getByRole('button', { name: 'Altre azioni' }),
+  ).toBeInViewport();
+  await shoot(page, 'note-bar');
+  await page.locator(`[data-el="${image.id}"]`).click();
+  await page.keyboard.press('x');
+  await expect(page.getByTestId('image-crop-stage')).toBeVisible();
+  await shoot(page, 'crop');
 });

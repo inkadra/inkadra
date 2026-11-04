@@ -3563,6 +3563,10 @@ button.crumb--editable:focus-visible {
   }
   .ctxbar > .ctxbar__btn:nth-last-child(-n + 2):not(:active, .is-active) {
     background: var(--ink-surface-2);
+    /* Covers the bar's padding on the right, and fades what goes under them on the left. */
+    box-shadow:
+      4px 0 0 var(--ink-surface-2),
+      -10px 0 8px -4px var(--ink-surface-2);
   }
   /* Menus: finger-sized rows, no keyboard shortcuts to read. */
   .menu {
