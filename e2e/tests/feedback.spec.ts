@@ -218,7 +218,10 @@ test('leaves navigation, account and names out of the automatic screenshot', asy
       projectName: name,
       boardId: null,
       boardTitle: null,
+      elementId: null,
       commentId: null,
+      excerpt: null,
+      reviewStatus: null,
       readAt: null,
       createdAt: new Date().toISOString(),
     });
@@ -247,7 +250,7 @@ test('leaves navigation, account and names out of the automatic screenshot', asy
   // The phone's navigation drawer holds the same sidebar.
   await page.goto('/');
   await ready(page);
-  await page.getByRole('navigation', { name: 'Navigazione mobile' }).getByRole('button', { name: 'Progetti' }).click();
+  await page.locator('.mobile-bottom-nav').getByRole('button', { name: 'Progetti' }).click();
   await expect(page.locator('.mobile-drawer').getByText(name).first()).toBeVisible();
   hidden(await shootScreenshot(page, 'capture-drawer-390'));
 });
