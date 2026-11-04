@@ -28,10 +28,11 @@ it('leaves secrets out of the screenshot', () => {
     <input id="link" readonly value="https://x/s/secret">
     <textarea id="area" readonly>secret</textarea>
     <ul data-feedback-secret><li id="code"><code>backup</code></li></ul>
+    <dialog id="closed">project name</dialog>
     <div data-feedback-exclude><p id="form">form</p></div>`;
   const left = (id: string) => leftOutOfScreenshot(document.getElementById(id) as Element);
   expect(left('plain')).toBe(false);
-  for (const id of ['pass', 'link', 'area', 'code', 'form']) expect(left(id)).toBe(true);
+  for (const id of ['pass', 'link', 'area', 'code', 'closed', 'form']) expect(left(id)).toBe(true);
   expect(leftOutOfScreenshot(document.createTextNode('x'))).toBe(false);
 });
 

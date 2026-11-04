@@ -49,13 +49,15 @@ export function isFeedbackKey(e: {
 
 /**
  * What the automatic screenshot leaves out: the report form itself, password and read-only fields
- * (they hold links and tokens to copy), and anything marked `data-feedback-secret`. Mark every new
- * place that shows a secret on screen.
+ * (they hold links and tokens to copy), closed dialogs (nothing to see, but they name the project),
+ * and anything marked `data-feedback-secret`: secrets, the navigation and people's names. Mark every
+ * new place that shows one on screen.
  */
 export function leftOutOfScreenshot(node: Node) {
   if (!(node instanceof Element)) return false;
   return (
     !!node.closest('[data-feedback-exclude],[data-feedback-secret]') ||
+    (node instanceof HTMLDialogElement && !node.open) ||
     (node instanceof HTMLInputElement && (node.type === 'password' || node.readOnly)) ||
     (node instanceof HTMLTextAreaElement && node.readOnly)
   );
