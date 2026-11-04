@@ -48,6 +48,8 @@ export const PLAN_GRID = 25;
 export const ROTATE_STEP = 15;
 /** Longest side of a symbol (lights, cameras, people…) in view units, by size. */
 export const SYMBOL_SIZES = { S: 32, M: 44, L: 60 } as const;
+/** Bounds of a symbol's `percent`, as in the schema. */
+export const SYMBOL_PERCENT = { min: 10, max: 1000 } as const;
 /** Default lens of a camera, in mm: about the 40° cone of version 14 on Super 35. */
 export const DEFAULT_LENS = 35;
 const DEFAULT_REACH = { cone: 312, beam: 250 };
@@ -100,15 +102,33 @@ export function iconCentre(icon: Pick<PlanIcon, 'x' | 'y'>): Point {
 }
 
 /** Width and depth of an icon's drawing, unturned, in view units. */
-export function iconSize(icon: Pick<PlanIcon, 'kind' | 'size' | 'w' | 'h'>): {
+export function iconSize(icon: Pick<PlanIcon, 'kind' | 'size' | 'percent' | 'w' | 'h'>): {
   w: number;
   h: number;
 } {
   const box = glyphBox(glyphOf(icon.kind));
   if (isSized(icon.kind) && icon.w && icon.h) return { w: icon.w, h: icon.h };
-  const long = isSized(icon.kind) ? 64 : SYMBOL_SIZES[icon.size ?? 'M'];
+  const symbol = icon.percent
+    ? (icon.percent / 100) * SYMBOL_SIZES.M
+    : SYMBOL_SIZES[icon.size ?? 'M'];
+  const long = isSized(icon.kind) ? 64 : symbol;
   const k = long / Math.max(box.w, box.h);
   return { w: icon.w ?? box.w * k, h: icon.h ?? box.h * k };
+}
+
+/** A symbol's size in percent of medium: S and L of older plans read as 73 % and 136 %. */
+export function symbolPercent(icon: Pick<PlanIcon, 'size' | 'percent'>): number {
+  return icon.percent ?? Math.round((SYMBOL_SIZES[icon.size ?? 'M'] / SYMBOL_SIZES.M) * 100);
+}
+
+/** The symbol at `percent`, within the schema's bounds; `percent` replaces S, M or L. */
+export function withPercent(icon: PlanIcon, percent: number): PlanIcon {
+  const next = {
+    ...icon,
+    percent: Math.round(Math.min(SYMBOL_PERCENT.max, Math.max(SYMBOL_PERCENT.min, percent))),
+  };
+  delete (next as Partial<PlanIcon>).size;
+  return next;
 }
 
 /** Angle the glyph of an icon is drawn at: where it faces, less where its drawing faces. */
@@ -198,6 +218,26 @@ export function iconCone(
     reach,
     beam,
   };
+}
+
+/** Where the end of an icon's cone is, on its axis at the base of the triangle; view units. */
+export function coneEnd(icon: PlanIcon, sensor?: PlanSensor): Point | null {
+  const cone = iconCone(icon, sensor);
+  if (!cone) return null;
+  const [, a, b] = cone.points;
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+/** The icon with the end of its cone dragged to `p` (view units): only its length changes. */
+export function withReachAt(icon: PlanIcon, p: Point, sensor?: PlanSensor): PlanIcon {
+  const cone = iconCone(icon, sensor);
+  if (!cone) return icon;
+  const c = iconCentre(icon);
+  const along = turn({ x: p.x - c.x, y: p.y - c.y }, -(icon.rotation ?? 0)).x;
+  const start = Math.hypot(cone.points[0].x - c.x, cone.points[0].y - c.y);
+  // The base of the triangle sits at cos(angle / 2) of its sides' length; a beam of 180° is flat.
+  const side = along / Math.max(0.1, Math.cos((cone.angle * Math.PI) / 360));
+  return { ...icon, reach: Math.round(Math.min(4000, Math.max(20, side - start))) };
 }
 
 // Blocking ------------------------------------------------------------------------
@@ -320,7 +360,8 @@ const SIGN: Record<ResizeHandle, [number, number]> = {
 /**
  * The item with its `handle` dragged to `p` (view units). The opposite side stays, or the
  * middle with `fromCentre`; `keepRatio` keeps the proportions. Furniture takes any width and
- * depth; symbols snap to S, M or L; texts to the three font sizes in `textSizes`.
+ * depth; symbols grow in proportion around their middle; texts snap to the three font sizes in
+ * `textSizes`.
  */
 export function resizeItem<T extends PlanItem>(
   item: T,
@@ -358,15 +399,9 @@ export function resizeItem<T extends PlanItem>(
         x: clampGrid(centre.x / kx),
         y: clampGrid(centre.y / ky),
       };
-    // Symbols keep their middle and pick the nearest of the three sizes.
-    const long = Math.max(f.w, f.h) * Math.max(w / f.w, h / f.h);
-    const sizes = Object.entries(SYMBOL_SIZES) as Array<['S' | 'M' | 'L', number]>;
-    const [size] = sizes.reduce((best, s) =>
-      Math.abs(s[1] - long) < Math.abs(best[1] - long) ? s : best,
-    );
-    const next = { ...item, size };
-    if (size === 'M') delete (next as Partial<PlanIcon>).size;
-    return next;
+    // Symbols keep their middle, so the corner stays under the pointer from there.
+    const grown = Math.max(Math.abs(q.x) / (f.w / 2), Math.abs(q.y) / (f.h / 2));
+    return withPercent(item, symbolPercent(item) * grown) as T;
   }
   if ('x0' in item && item.kind === 'text') {
     const sizes = opts.textSizes ?? [item.width];

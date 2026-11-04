@@ -226,22 +226,36 @@ for (const theme of ['dark', 'light'] as const) {
     await page.mouse.click(1300, 820);
     await page.screenshot({ path: join(out, `desktop-${theme}-board.png`) });
 
-    // Editing: a window in front of the dimmed board, tools inside its left edge, the library
-    // of 42 icons in 7 categories (and the annotations) on the right.
+    // Editing: a window in front of the dimmed board, the tools in one bar at the bottom. The
+    // library opens when asked: 42 icons in 7 categories, and the annotations.
     await card.dblclick();
     const editor = page.getByRole('dialog', { name: 'Pianta del set · Cucina, giorno 2' });
     await expect(editor.getByRole('toolbar', { name: 'Strumenti della pianta' })).toBeVisible();
     await expect(editor.locator('pattern')).toHaveCount(1);
-    // 42 icons and 4 annotations, plus the recent and starred ones of earlier runs.
-    expect(await editor.locator('.plan-lib__tile').count()).toBeGreaterThanOrEqual(46);
-    // The last match: the category tile, after Recent and Favourites.
     // The board behind never gets the editor's keys: Delete, N or Ctrl+D act on nothing there.
     await expect(editor).toBeFocused();
     for (const key of ['Delete', 'n', 'Control+d', 'ArrowLeft']) await page.keyboard.press(key);
     await expect.poll(async () => (await saved()).count).toBe(1);
     expect((await saved()).notes).toBe(1);
+    await expect(editor.locator('.plan-lib')).toHaveCount(0);
+    await editor.getByRole('button', { name: 'Icone', exact: true }).click();
+    const chips = editor.locator('.plan-lib__tabs');
+    let tiles = 0;
+    for (const name of [
+      'Grip',
+      'Camera',
+      'Persone',
+      'Audio',
+      'Arredi',
+      'Esterni',
+      'Note',
+      'Luci',
+    ]) {
+      await chips.getByRole('tab', { name, exact: true }).click();
+      tiles += await editor.locator('.plan-lib__tile').count();
+    }
+    expect(tiles).toBe(46);
     const tile = (name: string) => editor.getByRole('button', { name, exact: true }).last();
-    await expect(tile('Binario')).toBeVisible();
     // The tools stay inside the window: nothing covers the cards next to the plan.
     const win = (await editor.boundingBox())!;
     const tools = (await editor
@@ -262,41 +276,51 @@ for (const theme of ['dark', 'light'] as const) {
     if (theme === 'dark') await page.screenshot({ path: join(out, 'desktop-dark-search.png') });
     await search.fill('');
     // A star keeps an icon among the Favourites.
+    await chips.getByRole('tab', { name: 'Luci', exact: true }).click();
     // (The account is the same for both themes: the star stays from the dark run.)
     if (theme === 'dark')
       await editor.getByRole('button', { name: 'Preferito: Pannello LED' }).click();
-    await expect(editor.getByText('Preferiti', { exact: true })).toBeVisible();
+    await chips.getByRole('tab', { name: 'Preferiti' }).click();
+    await expect(tile('Pannello LED')).toBeVisible();
+    await editor.getByRole('button', { name: 'Chiudi le icone' }).click();
 
-    // Selecting A cam: the bar with its colour, its label, Ruota, Duplica and Elimina.
+    // Selecting A cam: the bar on it with its colour, its label, its size, angle and lens.
     const stage = editor.locator('.plan-editor__stage');
-    const box = (await stage.boundingBox())!;
+    let box = (await stage.boundingBox())!;
     const at = (x: number, y: number) => ({
       x: box.x + (x / 400) * box.width,
       y: box.y + (y / (400 / 1.5)) * box.height,
     });
     const aCam = at(100, 200);
     await page.mouse.click(aCam.x, aCam.y);
-    const bar = editor.getByRole('toolbar', { name: 'Elemento selezionato' });
+    const bar = editor.getByRole('toolbar', { name: 'Camera selezionata' });
+    const menuItem = (name: string | RegExp) => page.getByRole('menuitem', { name });
     await expect(bar.getByLabel('Etichetta')).toHaveValue('A cam');
-    await expect(bar.getByRole('button', { name: 'Blu' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(bar.getByRole('button', { name: 'Colore: blu' })).toBeVisible();
     await expect(editor.locator('[data-rotate]')).toBeVisible();
     await page.screenshot({ path: join(out, `desktop-${theme}-editing.png`) });
 
     const camera = async () => (await saved()).plan?.icons?.find((i) => i.label === 'A cam');
     await page.keyboard.press('r');
-    await expect.poll(async () => (await camera())?.rotation).toBe(325);
-    await bar.getByRole('button', { name: 'Ruota (R)' }).click();
-    await expect.poll(async () => (await camera())?.rotation).toBe(340);
-    await bar.getByRole('button', { name: 'Giallo' }).click();
+    await expect.poll(async () => (await camera())?.rotation).toBe(355);
+    await bar.getByRole('button', { name: 'Altre azioni' }).click();
+    await menuItem('Ruota di 45°').click();
+    await expect.poll(async () => (await camera())?.rotation).toBe(40);
+    await bar.getByRole('button', { name: 'Colore: blu' }).click();
+    await editor
+      .getByRole('dialog', { name: 'Colore' })
+      .getByRole('button', { name: 'Giallo' })
+      .click();
     await expect.poll(async () => (await camera())?.color).toBe('#EDD963');
     await bar.getByLabel('Etichetta').fill('A cam 35mm');
     await expect
       .poll(async () => (await saved()).plan?.icons?.some((i) => i.label === 'A cam 35mm'))
       .toBe(true);
 
-    // The lens (round 6, c): Properties shows the primes; the cone narrows, the label says it.
-    await editor.getByRole('tab', { name: 'Proprietà' }).click();
-    await editor.locator('.plan-props__lenses').getByRole('button', { name: '85' }).click();
+    // The lens (round 6, c): Ottica shows the primes; the cone narrows, the label says it.
+    await bar.getByRole('button', { name: 'Ottica' }).click();
+    await editor.getByRole('combobox', { name: 'Focale' }).click();
+    await editor.getByRole('option', { name: '85 mm' }).click();
     await expect
       .poll(
         async () =>
@@ -307,11 +331,15 @@ for (const theme of ['dark', 'light'] as const) {
     await editor.getByLabel('Mostra l’ottica nell’etichetta').check();
     await expect(editor.locator('.plan__svg text', { hasText: '85 mm' })).toBeVisible();
     await page.screenshot({ path: join(out, `desktop-${theme}-lens.png`) });
+    await page.keyboard.press('Escape');
 
-    // Blocking (round 6, d): the Movement tool, from Anna through two more positions.
-    await editor.getByRole('button', { name: 'Movimento (M)' }).click();
+    // The route (round 6, d): from the bar of Anna, through two more positions.
     const anna = at(204, 78);
     await page.mouse.click(anna.x, anna.y);
+    await editor
+      .getByRole('toolbar', { name: 'Elemento selezionato' })
+      .getByRole('button', { name: 'Percorso' })
+      .click();
     for (const [x, y] of [
       [300, 120],
       [262, 178],
@@ -321,13 +349,22 @@ for (const theme of ['dark', 'light'] as const) {
     }
     const annaNow = async () => (await saved()).plan?.icons?.find((i) => i.label === 'Anna');
     await expect.poll(async () => (await annaNow())?.steps?.length).toBe(2);
+    // Numbered points, the icon being the last position; no veiled copies.
+    await expect(editor.locator('.plan__step')).toHaveCount(2);
+    await page.screenshot({ path: join(out, `desktop-${theme}-blocking.png`) });
+    await editor
+      .getByRole('toolbar', { name: 'Percorso' })
+      .getByRole('button', { name: 'Fatto' })
+      .click();
+    await editor
+      .getByRole('toolbar', { name: 'Elemento selezionato' })
+      .getByRole('button', { name: 'Altre azioni' })
+      .click();
+    await menuItem('Note delle posizioni').click();
     await editor.getByLabel('Nota della posizione 1').fill('Porta, entra');
     await expect.poll(async () => (await annaNow())?.steps?.[0]?.note).toBe('Porta, entra');
-    await expect(editor.locator('.plan__step')).toHaveCount(3);
-    await page.screenshot({ path: join(out, `desktop-${theme}-blocking.png`) });
     await page.keyboard.press('Escape');
-    await editor.getByRole('button', { name: 'Seleziona (V)' }).click();
-    await editor.getByRole('tab', { name: 'Icone' }).click();
+    await page.keyboard.press('Escape');
 
     // Resize and rotate (round 6, e): furniture takes any size from a corner, and an angle.
     const sofaAt = at(318, 140);
@@ -373,10 +410,9 @@ for (const theme of ['dark', 'light'] as const) {
     // metres, rulers show; a measure from A cam to Anna stays on both.
     const empty = at(390, 255);
     await page.mouse.click(empty.x, empty.y);
-    await editor.getByRole('tab', { name: 'Proprietà' }).click();
+    await editor.getByRole('button', { name: 'Scala', exact: true }).click();
     // Nothing selected, no scale: the row has its label, not a translation key (QA 2026-11-02).
     await expect(editor.getByText('Nessuna, senza metri')).toBeVisible();
-    await expect(editor.getByText('Scala', { exact: true })).toBeVisible();
     await expect(editor).not.toContainText(/\bboard\.[a-z]+\.[a-zA-Z]+/);
     await page.screenshot({ path: join(out, `desktop-${theme}-properties.png`) });
     await editor.getByRole('button', { name: 'Imposta la scala' }).click();
@@ -405,11 +441,12 @@ for (const theme of ['dark', 'light'] as const) {
       })
       .toBe(true);
     await expect(editor.locator('.plan__chip text')).toContainText(' m');
+    await editor.getByLabel('Misura in metri').press('Escape');
     await page.screenshot({ path: join(out, `desktop-${theme}-scale.png`) });
     await editor.getByRole('button', { name: 'Seleziona (V)' }).click();
 
     // Layers (round 6, h): Set locked for everyone, Camera hidden just here.
-    await editor.getByRole('tab', { name: 'Livelli' }).click();
+    await editor.getByRole('button', { name: 'Livelli', exact: true }).click();
     await editor.getByRole('button', { name: 'Blocca Set' }).click();
     await expect.poll(async () => (await saved()).plan?.lockedLayers).toEqual(['set']);
     await editor.getByRole('button', { name: 'Nascondi Camera' }).click();
@@ -422,30 +459,43 @@ for (const theme of ['dark', 'light'] as const) {
     await editor.getByRole('button', { name: 'Mostra Camera' }).click();
     await editor.getByRole('button', { name: 'Sblocca Set' }).click();
     await expect.poll(async () => (await saved()).plan?.lockedLayers).toBeUndefined();
+    await page.keyboard.press('Escape');
 
     // Duplicate, then delete the copy; the plan keeps the ten icons it had.
     await page.mouse.click(aCam.x, aCam.y);
-    await bar.getByRole('button', { name: 'Duplica' }).click();
+    await bar.getByRole('button', { name: 'Altre azioni' }).click();
+    await menuItem('Duplica').click();
     await expect.poll(async () => (await saved()).plan?.icons?.length).toBe(11);
     await page.keyboard.press('Delete');
     await expect.poll(async () => (await saved()).plan?.icons?.length).toBe(10);
 
-    // Tap Fresnel, then tap the plan twice: it stays armed and places two, then Recent shows it.
-    await editor.getByRole('tab', { name: 'Icone' }).click();
+    // Tap Fresnel, then the plan with Shift twice: it keeps placing; without, the first click
+    // places it and goes back to Select. Recent shows it.
+    await editor.getByRole('button', { name: 'Icone', exact: true }).click();
+    await chips.getByRole('tab', { name: 'Luci', exact: true }).click();
+    box = (await stage.boundingBox())!;
     await tile('Fresnel').click();
     const spot = at(60, 60);
+    await page.keyboard.down('Shift');
     await page.mouse.click(spot.x, spot.y);
     const spot2 = at(60, 120);
     await page.mouse.click(spot2.x, spot2.y);
+    await page.keyboard.up('Shift');
+    await expect(stage).toHaveClass(/--icons/);
+    const spot3 = at(60, 170);
+    await page.mouse.click(spot3.x, spot3.y);
+    await expect(stage).toHaveClass(/--select/);
     await expect
       .poll(async () => (await saved()).plan?.icons?.filter((i) => i.kind === 'fresnel').length)
-      .toBe(3);
-    await expect(editor.getByText('Recenti', { exact: true })).toBeVisible();
-    await page.mouse.click(aCam.x, aCam.y);
+      .toBe(4);
+    await chips.getByRole('tab', { name: 'Recenti' }).click();
+    await expect(tile('Fresnel')).toBeVisible();
     await page.screenshot({ path: join(out, `desktop-${theme}-library.png`) });
+    await editor.getByRole('button', { name: 'Chiudi le icone' }).click();
+    box = (await stage.boundingBox())!;
 
     // A line with the Linea tool, next to the walls.
-    await editor.getByRole('button', { name: 'Linea' }).click();
+    await editor.getByRole('button', { name: 'Linea (L)' }).click();
     const from = at(40, 240);
     const to = at(150, 240);
     await page.mouse.move(from.x, from.y);
@@ -561,21 +611,22 @@ for (const theme of ['dark', 'light'] as const) {
         phoneBox.x + (100 / 400) * phoneBox.width,
         phoneBox.y + (200 / (400 / 1.5)) * phoneBox.height,
       );
-      await expect(full.getByRole('toolbar', { name: 'Elemento selezionato' })).toBeVisible();
-      const selection = full.getByRole('toolbar', { name: 'Elemento selezionato' });
-      for (const size of ['S', 'M', 'L']) {
-        const button = selection.getByRole('button', { name: size, exact: true });
+      const selection = full.getByRole('toolbar', { name: 'Camera selezionata' });
+      await expect(selection).toBeVisible();
+      const dimension = selection.getByLabel('Dimensione');
+      await expect(dimension).toHaveValue('100');
+      await dimension.fill('120');
+      await dimension.press('Enter');
+      await expect(dimension).toHaveValue('120');
+      for (const name of ['Etichetta', 'Ottica', 'Percorso', 'Altre azioni']) {
+        const button = selection.getByRole('button', { name, exact: true });
         expect(
           await button.evaluate((el) => {
             const r = el.getBoundingClientRect();
             return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
           }),
         ).toBe(true);
-        await button.tap();
-        await expect(button).toHaveAttribute('aria-pressed', 'true');
       }
-      const labelBox = (await selection.getByLabel('Etichetta').boundingBox())!;
-      expect(labelBox.width).toBeGreaterThanOrEqual(96);
       const overlaps = await selection.evaluate((bar) => {
         const controls = [...bar.children].filter((el) => !el.matches('[aria-hidden="true"]'));
         return controls.some((a, i) =>
@@ -592,28 +643,33 @@ for (const theme of ['dark', 'light'] as const) {
       expect(overlaps).toBe(false);
       await mobile.mouse.move(0, 0);
       await mobile.screenshot({ path: join(out, `phone-${theme}-selection.png`) });
-      await full.getByRole('button', { name: 'Seleziona (V)' }).tap();
+      await full.getByRole('button', { name: 'Seleziona', exact: true }).tap();
       await mobile.keyboard.press('Escape');
-      await full.getByRole('button', { name: 'Icone da set' }).tap();
+      await full.getByRole('button', { name: 'Icone', exact: true }).tap();
       await expect(full.getByRole('button', { name: 'Fresnel', exact: true })).toBeVisible();
       await full.getByRole('tab', { name: 'Arredi' }).tap();
       await expect(full.getByRole('button', { name: 'Divano', exact: true })).toBeVisible();
       await full.getByRole('tab', { name: 'Luci' }).tap();
       await mobile.screenshot({ path: join(out, `phone-${theme}-library.png`) });
-      // Blocking on a phone: the Movement tool, then a tap on Marco and on a new spot.
-      await full.getByRole('button', { name: 'Movimento (M)' }).tap();
+      await full.getByRole('button', { name: 'Chiudi le icone' }).tap();
+      // A route on a phone: B cam, its Percorso, then a tap on a new spot.
       const phoneStage = (await full.locator('.plan-editor__stage').boundingBox())!;
       const pt = (x: number, y: number) => ({
         x: phoneStage.x + (x / 400) * phoneStage.width,
         y: phoneStage.y + (y / (400 / 1.5)) * phoneStage.height,
       });
-      const marco = pt(214, 168);
-      await mobile.touchscreen.tap(marco.x, marco.y);
+      const bCam = pt(326, 70);
+      await mobile.touchscreen.tap(bCam.x, bCam.y);
+      await full.getByRole('button', { name: 'Percorso', exact: true }).tap();
       const spot3 = pt(120, 150);
       await mobile.touchscreen.tap(spot3.x, spot3.y);
-      await expect(full.locator('.plan-editor__hint')).toBeVisible();
+      await expect(full.locator('.plan-editor__toast')).toContainText('Tocca la posizione 3');
       await mobile.screenshot({ path: join(out, `phone-${theme}-blocking.png`) });
-      await full.getByRole('button', { name: 'Fatto' }).tap();
+      await full
+        .getByRole('toolbar', { name: 'Percorso' })
+        .getByRole('button', { name: 'Fatto' })
+        .tap();
+      await full.locator('.plan-editor__head').getByRole('button', { name: 'Fatto' }).tap();
       await expect(full).toHaveCount(0);
     } finally {
       await phone.close();

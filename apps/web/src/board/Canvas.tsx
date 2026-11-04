@@ -164,6 +164,7 @@ import { fillFragment, isEmpty } from './note.tsx';
 import { selectedBlocks } from './note-format.ts';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { PlanEditor } from './plan/PlanEditor.tsx';
+import { PlanViewer } from './plan/PlanViewer.tsx';
 import {
   lensMillimetres,
   ScenePicker,
@@ -513,6 +514,8 @@ export function Canvas({
   const [noteSheet, setNoteSheet] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
+  /** The set plan open for who cannot edit it (a guest, a viewer). */
+  const [viewedPlanId, setViewedPlanId] = useState<string | null>(null);
   const [tagging, setTagging] = useState<{ x: number; y: number; ids: string[] } | null>(null);
   /** The board whose icon and colour are being picked from a board card (#322). */
   const [iconBoard, setIconBoard] = useState<Board | null>(null);
@@ -1606,6 +1609,8 @@ export function Canvas({
         // The sheet takes over the note's document: leave inline editing first.
         setEditing(null, editingRef.current === el.id);
         setNoteSheet(el.id);
+      } else if (el.type === 'plan' && readOnly) {
+        setViewedPlanId(el.id);
       } else if (!readOnly) {
         select([el.id]);
         setEditing(el.id);
@@ -2682,8 +2687,14 @@ export function Canvas({
     const el = snap.byId.get(planParam);
     if (el?.type !== 'plan') return;
     select([el.id]);
-    if (!readOnly) setEditing(el.id);
+    if (readOnly) setViewedPlanId(el.id);
+    else setEditing(el.id);
   }, [planParam, takePlanParam, conn.status, snap, select, setEditing, readOnly]);
+  const viewedPlan = viewedPlanId ? snap.byId.get(viewedPlanId) : undefined;
+  const viewedBase =
+    viewedPlan?.type === 'plan' && viewedPlan.variantOf
+      ? snap.byId.get(viewedPlan.variantOf)
+      : undefined;
   const pickingScenes = scenePicker ? snap.byId.get(scenePicker.id) : undefined;
   const editedBaseEl = editedPlan?.variantOf ? snap.byId.get(editedPlan.variantOf) : undefined;
   const editedBase = editedBaseEl?.type === 'plan' ? editedBaseEl : undefined;
@@ -3776,6 +3787,14 @@ export function Canvas({
             onNewVariant={() => editedPlan && newVariant(editedPlan, true)}
             onOpenScene={openScene}
             onClose={() => setEditing(null)}
+          />
+        )}
+        {viewedPlan?.type === 'plan' && (
+          <PlanViewer
+            plan={viewedPlan}
+            base={viewedBase?.type === 'plan' ? viewedBase : undefined}
+            phone={isPhone}
+            onClose={() => setViewedPlanId(null)}
           />
         )}
         {pickingScenes?.type === 'plan' && scenePicker && (

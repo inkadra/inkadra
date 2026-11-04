@@ -223,7 +223,7 @@ for (const width of [1280, 390]) {
           await expect(page.locator('.story-panel')).toHaveCount(0);
         } else if (kind === 'plan') {
           await card.dblclick();
-          await page.getByRole('button', { name: 'Testo (T)', exact: true }).click();
+          await page.getByRole('button', { name: /^Testo( \(T\))?$/ }).click();
           await page.locator('.plan-editor__stage').click({ position: { x: 100, y: 100 } });
           await page
             .getByRole('textbox', { name: 'Testo sul disegno', exact: true })
@@ -232,10 +232,11 @@ for (const width of [1280, 390]) {
             .getByRole('textbox', { name: 'Testo sul disegno', exact: true })
             .press('Enter');
           await expect(page.locator('.plan-editor__stage')).toHaveClass(/--select/);
+          // A click selects, a double click writes.
           await page
             .locator('.plan-editor__stage text')
             .filter({ hasText: /^Uscita$/ })
-            .click();
+            .dblclick();
           const field = page.getByRole('textbox', { name: 'Testo sul disegno', exact: true });
           await field.fill('Ingresso');
           await expect(

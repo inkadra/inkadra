@@ -35,3 +35,9 @@ export function kitList(
   }
   return [...counts].map(([name, count]) => ({ name, count }));
 }
+
+/** A number typed on a measure as it is stored ("6,20" gives "6.2"); null if it is no length. */
+export function measureValue(typed: string): string | null {
+  const m = Number(typed.trim().replace(',', '.'));
+  return Number.isFinite(m) && m > 0 && m < 100000 ? String(m) : null;
+}
