@@ -13,6 +13,7 @@ import {
   UploadMetadata,
   VariantParams,
   VariantQuery,
+  VideoFrameQuery,
 } from './assets.ts';
 import {
   BackupSettings,
@@ -1388,6 +1389,21 @@ registry.registerPath({
   responses: {
     200: { description: 'File' },
     206: { description: 'Part of the file' },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/assets/{assetId}/frame'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'Extract a PNG frame from the original video, at its original resolution (editors).',
+  request: { params: idParam('assetId'), query: VideoFrameQuery },
+  responses: {
+    200: {
+      description: 'Original video frame.',
+      content: { 'image/png': { schema: z.string().openapi({ format: 'binary' }) } },
+    },
     ...errors,
   },
 });

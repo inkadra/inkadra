@@ -38,6 +38,7 @@ import { FileCard, RawImageFooter } from './FileCard.tsx';
 import { useBoardAspect } from './film/aspect.ts';
 import { useCastAppearances } from './film/cast-appearances.ts';
 import { FramePicture } from './film/FramePicture.tsx';
+import { FrameUploadState } from './film/frame-upload.tsx';
 import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
 import { characterAppearance, characterSubtitle, StoryPicture } from './film/StoryCardPanel.tsx';
 import { useSlugline } from './film/storyboard-data.ts';
@@ -419,6 +420,7 @@ function FrameCard({ element, width }: { element: Of<'frame'>; width: number }) 
           referenceOpacity={element.referenceOpacity}
           pixels={width * scale * (window.devicePixelRatio || 1)}
         />
+        <FrameUploadState frameId={element.id} />
       </div>
       <div className="card__pad card__frame-meta">
         <span className="card__title">{label}</span>

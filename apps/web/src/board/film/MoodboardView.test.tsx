@@ -33,7 +33,10 @@ vi.mock('../assets.ts', () => ({
 }));
 vi.mock('../chrome.tsx', () => ({ UploadPanel: () => null }));
 const startUpload = vi.fn();
-vi.mock('../uploads.ts', () => ({ startUpload: (input: unknown) => startUpload(input) }));
+vi.mock('../uploads.ts', () => ({
+  startUpload: (input: unknown) => startUpload(input),
+  useUploads: () => [],
+}));
 const fillLinkPreview = vi.fn(async () => true);
 vi.mock('../links.ts', async (original) => ({
   ...(await original<typeof import('../links.ts')>()),

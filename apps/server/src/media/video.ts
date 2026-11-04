@@ -499,3 +499,53 @@ export function proxyTimeoutMs(info: VideoInfo, settings: ProxySettings) {
   const planned = plannedSeconds(info, settings) * 1000 * 4;
   return Math.min(PROXY_MAX_RUN_MS, MAX_INT32, Math.max(10 * 60_000, planned));
 }
+
+/** Past the last frame of the file ffmpeg succeeds and writes nothing. */
+export class NoVideoFrame extends Error {}
+
+/** Largest PNG of one frame. */
+export const FRAME_MAX_BYTES = 256 * 1024 * 1024;
+
+/** Extract exactly the requested original presentation, with no proxy or scaling. */
+export async function extractVideoFrame(
+  ffmpeg: string,
+  file: string,
+  out: string,
+  time: number,
+  container: string | null,
+  signal?: AbortSignal,
+) {
+  if (!Number.isFinite(time) || time < 0 || time > 86400) throw new Error('invalid-time');
+  await runTool(
+    ffmpeg,
+    [
+      '-nostdin',
+      '-v',
+      'error',
+      '-y',
+      ...safeInput(container),
+      '-ss',
+      time.toFixed(6),
+      '-i',
+      file,
+      '-frames:v',
+      '1',
+      '-an',
+      '-threads',
+      '1',
+      '-f',
+      'image2',
+      '-c:v',
+      'png',
+      out,
+    ],
+    {
+      timeoutMs: 30000,
+      memoryBytes: FFMPEG_MEMORY,
+      fileBytes: FRAME_MAX_BYTES,
+      ...(signal ? { signal } : {}),
+    },
+  );
+  const written = await stat(out).catch(() => null);
+  if (!written?.size) throw new NoVideoFrame();
+}

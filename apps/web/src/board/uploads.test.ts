@@ -156,6 +156,20 @@ describe('the reload guard and tus uploads', () => {
     expect(isBusy()).toBe(false);
   });
 
+  it('tells whoever asks again for a file on its way how it ends', async () => {
+    const onComplete = vi.fn();
+    const file = new File(['x'], 'same.png', { type: 'image/png' });
+    const key = startUpload({ file, projectId: 'p', boardId: 'b', onAsset: vi.fn() });
+    expect(startUpload({ file, projectId: 'p', boardId: 'b', onAsset: vi.fn(), onComplete })).toBe(
+      key,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    const upload = FakeUpload.all.at(-1)!;
+    upload.options.onAfterResponse!({} as never, { getHeader: () => 'asset-1' } as never);
+    upload.options.onSuccess!({} as never);
+    expect(onComplete).toHaveBeenCalledWith('asset-1');
+  });
+
   it('keeps holding it while an upload is still running, and releases it on cancel', async () => {
     const key = startUpload({
       file: pdf('running.pdf'),

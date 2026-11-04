@@ -343,6 +343,13 @@ const paths = {
       <circle cx="5" cy="18" r="1.5" />
     </>
   ),
+  lineWidth: (
+    <>
+      <path d="M4 6h16" strokeWidth="1" />
+      <path d="M4 11.5h16" strokeWidth="2" />
+      <path d="M4 18h16" strokeWidth="3.5" />
+    </>
+  ),
   ruler: <path d="M3 15L15 3l6 6L9 21zM7 11l2 2M10 8l2 2M13 5l2 2" />,
   groupItems: (
     <>

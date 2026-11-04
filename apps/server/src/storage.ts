@@ -41,7 +41,11 @@ export interface Storage {
   /** Writes a file of unknown length from a stream (imports, backup copies). */
   writeStream(key: string, body: Readable, contentType: string): Promise<void>;
   /** A local path to the file, downloading it first when needed. Call `done` afterwards. */
-  localCopy(key: string, tmpDir: string): Promise<{ path: string; done: () => Promise<void> }>;
+  localCopy(
+    key: string,
+    tmpDir: string,
+    signal?: AbortSignal,
+  ): Promise<{ path: string; done: () => Promise<void> }>;
   remove(keys: string[]): Promise<void>;
 }
 
@@ -161,7 +165,11 @@ function s3Storage(config: Config): Storage {
     useTags: false,
   });
 
-  const read = async (key: string, range?: { start: number; end: number }) => {
+  const read = async (
+    key: string,
+    range?: { start: number; end: number },
+    signal?: AbortSignal,
+  ) => {
     checkKey(key);
     const res = await client.send(
       new GetObjectCommand({
@@ -169,6 +177,7 @@ function s3Storage(config: Config): Storage {
         Key: key,
         ...(range ? { Range: `bytes=${range.start}-${range.end}` } : {}),
       }),
+      signal ? { abortSignal: signal } : {},
     );
     if (!res.Body) throw new Error(`Empty body for ${key}`);
     return res.Body as Readable;
@@ -236,10 +245,14 @@ function s3Storage(config: Config): Storage {
         throw err;
       }
     },
-    async localCopy(key, tmpDir) {
+    async localCopy(key, tmpDir, signal) {
       const target = join(tmpDir, key.replaceAll('/', '_'));
       await mkdir(tmpDir, { recursive: true });
-      await pipeline(await read(key), createWriteStream(target));
+      await pipeline(
+        await read(key, undefined, signal),
+        createWriteStream(target),
+        signal ? { signal } : {},
+      );
       return { path: target, done: () => rm(target, { force: true }) };
     },
     async remove(keys) {

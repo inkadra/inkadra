@@ -65,6 +65,12 @@ export interface StartUpload {
   onComplete?: (assetId: string) => void;
 }
 
+/** Those who asked again for a file already on its way: they hear how it ends too. */
+const followers = new Map<
+  string,
+  Array<{ onComplete: StartUpload['onComplete']; onFailed: StartUpload['onFailed'] }>
+>();
+
 const online = () => typeof navigator === 'undefined' || navigator.onLine !== false;
 
 if (typeof window !== 'undefined') {
@@ -86,7 +92,7 @@ if (typeof window !== 'undefined') {
  * Resumable upload over tus; an interrupted upload resumes, also after a reload. Returns the
  * key of the upload in the panel. Adding a file that is already in the panel for the same
  * project resumes that upload (or leaves it running) instead of starting a second one, and
- * calls no `onAsset` again: its card already exists.
+ * calls no `onAsset` again: its card already exists. `onComplete` and `onFailed` still follow it.
  */
 export function startUpload({
   file,
@@ -101,6 +107,11 @@ export function startUpload({
     (i) => i.fingerprint === fingerprint && i.state !== 'done' && i.state !== 'cancelled',
   );
   if (existing) {
+    if (onComplete || onFailed)
+      followers.set(existing.key, [
+        ...(followers.get(existing.key) ?? []),
+        { onComplete, onFailed },
+      ]);
     if (existing.state !== 'uploading') retryUpload(existing.key);
     return existing.key;
   }
@@ -185,7 +196,11 @@ export function startUpload({
       patch(key, { state: 'done', sent: file.size, reconnecting: false });
       uploads.delete(key);
       const assetId = items.find((i) => i.key === key)?.assetId;
-      if (assetId) onComplete?.(assetId);
+      if (assetId) {
+        onComplete?.(assetId);
+        for (const follower of followers.get(key) ?? []) follower.onComplete?.(assetId);
+      }
+      followers.delete(key);
       setTimeout(() => dismiss(key), 4000);
     },
     onError: () => {
@@ -195,7 +210,9 @@ export function startUpload({
         return;
       }
       patch(key, { state: 'failed', reconnecting: false });
-      onFailed?.(items.find((i) => i.key === key)?.assetId ?? null);
+      const assetId = items.find((i) => i.key === key)?.assetId ?? null;
+      onFailed?.(assetId);
+      for (const follower of followers.get(key) ?? []) follower.onFailed?.(assetId);
     },
   });
   uploads.set(key, upload);
@@ -225,6 +242,7 @@ export function cancelUpload(key: string) {
   const upload = uploads.get(key);
   if (!upload) return;
   uploads.delete(key);
+  followers.delete(key);
   void upload.abort(true).catch(() => {});
   patch(key, { state: 'cancelled' });
   setTimeout(() => dismiss(key), 1500);
@@ -244,7 +262,11 @@ function subscribe(l: () => void) {
 }
 
 export function useUploads(): UploadItem[] {
-  return useSyncExternalStore(subscribe, () => items);
+  return useSyncExternalStore(
+    subscribe,
+    () => items,
+    () => items,
+  );
 }
 
 const previews = new Map<string, string>();
