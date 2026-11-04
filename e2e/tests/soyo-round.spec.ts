@@ -155,7 +155,6 @@ test('the crop comes back when the angle does, and a long to-do reads in full', 
   }
   await slider.blur();
   await shoot(page, 'crop-back-to-0');
-  await page.keyboard.press('Escape');
   await page.locator('.crop-bar').getByRole('button', { name: 'Fatto' }).click();
 
   // The long item, read and written.
@@ -263,6 +262,7 @@ test('screenshots of the other screens', async ({ page, baseURL }) => {
   await page.goto(board);
   await page.locator(`[data-el="${plan.id}"]`).dblclick();
   await expect(page.locator('.plan-ruler--top')).toBeVisible();
+  await page.waitForTimeout(500); // The editor's entrance.
   await shoot(page, 'plan-rulers-route');
 
   await page.setViewportSize({ width: 390, height: 844 });

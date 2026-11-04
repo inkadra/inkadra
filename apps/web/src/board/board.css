@@ -4052,8 +4052,9 @@ button.card__play {
   cursor: ew-resize;
 }
 
+/* The bar stays on the canvas for a card near the right edge; 740 px is about its full width. */
 .crop-bar {
-  left: var(--crop-bar-left, 8px);
+  left: max(8px, min(var(--crop-bar-left, 8px), calc(100% - 740px)));
   top: var(--crop-bar-top, 8px);
   height: 36px;
   gap: 2px;
