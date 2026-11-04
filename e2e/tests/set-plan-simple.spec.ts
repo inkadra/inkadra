@@ -647,3 +647,219 @@ async function phoneChecks(
     await phone.close();
   }
 }
+
+/** Opens the plan of `seed` in its editor on a desktop page. */
+async function openEditor(page: Page, planId: string) {
+  await page.locator(`[data-el="${planId}"]`).dblclick();
+  const editor = page.getByRole('dialog', { name: /Pianta del set/ });
+  const stage = editor.locator('.plan-editor__stage');
+  await expect(stage).toBeVisible();
+  return { editor, stage };
+}
+
+test('a drag writes only what it changed: a colour set meanwhile by someone else stays', async ({
+  page,
+  baseURL,
+  browser,
+}) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const { project, planId, saved } = await seed(page, baseURL!, 'dark', 1281);
+  const { stage } = await openEditor(page, planId);
+  const other = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    locale: 'it-IT',
+    storageState: await page.context().storageState(),
+  });
+  try {
+    const them = await other.newPage();
+    await them.goto(`${baseURL}/p/${project.id}?view=canvas`);
+    const theirs = await openEditor(them, planId);
+    const recolor = async (at: readonly [number, number]) => {
+      const p = await pointOf(theirs.stage, at[0], at[1]);
+      await them.mouse.click(p.x, p.y);
+      await theirs.editor
+        .getByRole('toolbar', { name: /selezionat/ })
+        .getByRole('button', { name: /^Colore:/ })
+        .click();
+      await theirs.editor
+        .getByRole('dialog', { name: 'Colore' })
+        .getByRole('button', { name: 'Rosso' })
+        .click();
+    };
+    const before = (await saved()).icons?.find((i) => i.label === 'A cam');
+
+    // A holds the camera mid-drag.
+    const from = await pointOf(stage, POINTS.camera[0], POINTS.camera[1]);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 60, from.y + 30, { steps: 4 });
+    // B paints the camera, then a lamp: when the lamp turns red on A's side, A has both.
+    await recolor(POINTS.camera);
+    await recolor(POINTS.lampRight);
+    await expect(stage.locator('[data-icon="iconLamp2AAAA"]')).toHaveAttribute('style', /tag-red/);
+    await page.mouse.up();
+
+    await expect
+      .poll(async () => (await saved()).icons?.find((i) => i.label === 'A cam')?.x)
+      .not.toBe(before?.x);
+    const after = (await saved()).icons?.find((i) => i.label === 'A cam');
+    expect(after?.color).toBe('#F68186');
+  } finally {
+    await other.close();
+  }
+});
+
+test('the length of the cone can be typed: in metres with a scale, in squares without', async ({
+  page,
+  baseURL,
+}) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const { planId, saved } = await seed(page, baseURL!, 'dark', 1282);
+  const { editor, stage } = await openEditor(page, planId);
+  const p = await pointOf(stage, POINTS.camera[0], POINTS.camera[1]);
+  await page.mouse.click(p.x, p.y);
+  const camera = async () => (await saved()).icons?.find((i) => i.label === 'A cam');
+  const camBar = editor.getByRole('toolbar', { name: 'Camera selezionata' });
+
+  // By keyboard alone: to the button, Enter, the field, a number, Enter.
+  await camBar.getByRole('button', { name: 'Ottica' }).focus();
+  await page.keyboard.press('Enter');
+  const reach = editor.getByRole('textbox', { name: 'Lunghezza cono' });
+  await reach.focus();
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type('10');
+  await page.keyboard.press('Enter');
+  // Ten squares of 25 view units.
+  await expect.poll(async () => (await camera())?.reach).toBe(250);
+  await page.keyboard.press('Escape');
+
+  // With a scale: 100 view units for a metre, an exact 3,25 m.
+  await editor.getByRole('button', { name: 'Misura (U)' }).click();
+  const a = await pointOf(stage, 140, 560);
+  const b = await pointOf(stage, 640, 560);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 4 });
+  await page.mouse.up();
+  const measure = editor.getByRole('dialog', { name: 'Misura' });
+  await measure.getByLabel('Misura in metri').fill('5');
+  await measure.getByRole('button', { name: 'Fatto' }).click();
+  await measure.getByRole('button', { name: 'Usa come scala' }).click();
+  await editor.getByRole('button', { name: 'Seleziona (V)' }).click();
+  await page.mouse.click(p.x, p.y);
+  await camBar.getByRole('button', { name: 'Ottica' }).click();
+  await expect(reach).toHaveValue('2,5');
+  await reach.fill('3,25');
+  await reach.press('Enter');
+  await expect.poll(async () => (await camera())?.reach).toBe(325);
+  await expect(reach).toHaveValue('3,25');
+});
+
+test('on a phone a selection can be dragged, and a tap still takes an item out of it', async ({
+  page,
+  baseURL,
+  browser,
+}) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const { project, planId, saved } = await seed(page, baseURL!, 'dark', 391);
+  const phone = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+    locale: 'it-IT',
+    reducedMotion: 'reduce',
+    storageState: await page.context().storageState(),
+  });
+  try {
+    const m = await phone.newPage();
+    await m.goto(`${baseURL}/p/${project.id}?view=canvas`);
+    await m.getByRole('button', { name: 'Adatta alla vista' }).click();
+    await m.locator(`[data-el="${planId}"]`).dblclick();
+    const full = m.getByRole('dialog', { name: /Pianta del set/ });
+    const stage = full.locator('.plan-editor__stage');
+    const cdp = await phone.newCDPSession(m);
+    const touch = (type: 'touchStart' | 'touchMove', p: { x: number; y: number }) =>
+      cdp.send('Input.dispatchTouchEvent', { type, touchPoints: [p] });
+    const end = () => cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    /** At a finger's pace: a flick would count as a fling. */
+    const dragTo = async (from: { x: number; y: number }, to: { x: number; y: number }) => {
+      for (const k of [0.25, 0.5, 0.75, 1]) {
+        await touch('touchMove', {
+          x: from.x + (to.x - from.x) * k,
+          y: from.y + (to.y - from.y) * k,
+        });
+        await m.waitForTimeout(50);
+      }
+      await m.waitForTimeout(150);
+      await end();
+    };
+
+    // A long press and a drag pick the two lamps.
+    const a = await pointOf(stage, 170, 110);
+    const b = await pointOf(stage, 730, 190);
+    await touch('touchStart', a);
+    await expect(full.locator('.plan-editor__toast')).toContainText('Tieni premuto', {
+      timeout: 2000,
+    });
+    await dragTo(a, b);
+    const bar = full.getByRole('toolbar', { name: 'Elemento selezionato' });
+    await expect(bar).toContainText('2 elementi');
+
+    // A finger on one of them drags both, and they stay selected.
+    const lamps = async () =>
+      (await saved()).icons?.filter((i) => i.kind === 'practical').map((i) => i.y) ?? [];
+    const start = await lamps();
+    const lamp = await pointOf(stage, POINTS.lampRight[0], POINTS.lampRight[1]);
+    await touch('touchStart', lamp);
+    await dragTo(lamp, { x: lamp.x, y: lamp.y + 30 });
+    await expect.poll(async () => (await lamps())[0]).toBeGreaterThan(start[0] as number);
+    expect((await lamps())[1]).toBeGreaterThan(start[1] as number);
+    await expect(bar).toContainText('2 elementi');
+
+    // A tap on one, without moving, takes it out.
+    const moved = await pointOf(stage, POINTS.lampRight[0], POINTS.lampRight[1] + 80);
+    await m.touchscreen.tap(moved.x, moved.y);
+    await expect(bar).toHaveCount(1);
+    await expect(bar).not.toContainText('2 elementi');
+  } finally {
+    await phone.close();
+  }
+});
+
+test('dragging an item reads the layout once per move, not again after every render', async ({
+  page,
+  baseURL,
+}) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const { planId } = await seed(page, baseURL!, 'dark', 1283);
+  const { stage } = await openEditor(page, planId);
+  const p = await pointOf(stage, POINTS.camera[0], POINTS.camera[1]);
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.down();
+  await page.mouse.move(p.x + 4, p.y, { steps: 2 });
+  await page.evaluate(() => {
+    const counts = { reads: 0, moves: 0 };
+    (window as unknown as { counts: typeof counts }).counts = counts;
+    const read = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      if (this.classList.contains('plan-editor__stage')) counts.reads += 1;
+      return read.call(this);
+    };
+    document.addEventListener('pointermove', () => (counts.moves += 1), true);
+  });
+  for (let i = 1; i <= 12; i++) {
+    await page.mouse.move(p.x + 4 + i * 5, p.y);
+    await page.evaluate(() => new Promise(requestAnimationFrame));
+  }
+  const counts = await page.evaluate(
+    () => (window as unknown as { counts: { reads: number; moves: number } }).counts,
+  );
+  await page.mouse.up();
+  expect(counts.moves).toBeGreaterThan(5);
+  // One for the pointer's position in the move handler; none from the bar's placement.
+  expect(counts.reads).toBeLessThanOrEqual(counts.moves);
+});

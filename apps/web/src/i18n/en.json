@@ -1015,7 +1015,9 @@
       "useAsScaleNo": "Only this measure",
       "zoomIn": "Zoom in",
       "zoomOut": "Zoom out",
-      "morePlan": "More plan actions"
+      "morePlan": "More plan actions",
+      "reach": "Cone length",
+      "squares": "squares"
     },
     "contextual": {
       "done": "Done",

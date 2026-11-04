@@ -151,6 +151,8 @@ const MAX_UNITS = 4000;
 const MAX_SCALE = 100000;
 /** A finger held this long (ms) on the empty plan starts a selection box. */
 const LONG_PRESS = 400;
+/** A finger that moves less than this (view units, about 9 px on a phone) has tapped. */
+const TAP_SLOP = 24;
 /** A set of primes, as on the mockup; Other takes any focal length. */
 const LENSES = [18, 24, 35, 50, 85, 135];
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
@@ -267,6 +269,8 @@ export function PlanEditor({
   /** The item of a locked layer that was clicked: it says so instead of doing nothing. */
   const [lockedItem, setLockedItem] = useState<PlanItem | null>(null);
   const lastPress = useRef<{ id: string; at: number } | null>(null);
+  /** What a finger pressed on a picked item takes out of the selection if it does not drag. */
+  const tapOff = useRef<PlanItemRef[] | null>(null);
   const longPress = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const itemBar = useRef<HTMLDivElement>(null);
   const [snap, setSnap] = useState(true);
@@ -377,16 +381,18 @@ export function PlanEditor({
   }, [editingText, selected?.id]);
   // The bar sits over the item, under it when there is no room, always inside the plan's area.
   useLayoutEffect(() => {
+    // No bar while dragging: nothing is measured on those frames.
     const bar = itemBar.current;
-    const room = bar?.offsetParent as HTMLElement | null;
-    const on = stage.current?.getBoundingClientRect();
+    if (!bar || phone) return;
     const held =
       many.length > 1
         ? itemsBox(many)
         : (current ?? lockedItem)
           ? itemBox((current ?? lockedItem) as PlanItem)
           : null;
-    if (!bar || !room || !on || !held || phone) return;
+    const room = bar.offsetParent as HTMLElement | null;
+    const on = stage.current?.getBoundingClientRect();
+    if (!room || !on || !held) return;
     const r = room.getBoundingClientRect();
     const k = on.width / PLAN_VIEW_W;
     const top = on.top - r.top + held.y * k;
@@ -492,19 +498,22 @@ export function PlanEditor({
     });
     setSelection(copies);
   };
-  /** Writes items where they live: the base's Set layer, or the plan (no undo step). */
-  const writeItems = (items: readonly PlanItem[]) => {
-    // Only what changed since this render is written (the item as drawn when the gesture
-    // started), so another person's edit of another field made meanwhile stays.
+  /**
+   * Writes items where they live: the base's Set layer, or the plan (no undo step). Only what
+   * differs from `baseline` is written: for a gesture, the items as they were when it started,
+   * so another person's edit of another field made meanwhile stays. Without one, this render.
+   */
+  const writeItems = (items: readonly PlanItem[], baseline?: readonly PlanItem[]) => {
     const all = planItems(drawn);
-    const before = items.flatMap((i) => all.find((e) => e.item.id === i.id)?.item ?? []);
+    const before =
+      baseline ?? items.flatMap((i) => all.find((e) => e.item.id === i.id)?.item ?? []);
     const own = items.filter((i) => ownerOf(i.id) === plan.id);
     const shared = items.filter((i) => ownerOf(i.id) !== plan.id);
     if (own.length) updatePlanItems(doc, plan.id, own, LOCAL, before);
     if (shared.length && base) updatePlanItems(doc, base.id, shared, LOCAL, before);
   };
-  const write = (next: PlanItem | readonly PlanItem[]) =>
-    change(() => writeItems(Array.isArray(next) ? next : [next as PlanItem]));
+  const write = (next: PlanItem | readonly PlanItem[], baseline?: readonly PlanItem[]) =>
+    change(() => writeItems(Array.isArray(next) ? next : [next as PlanItem], baseline));
   const rotate = (degrees: number) => {
     if (many.length > 1) {
       const b = itemsBox(many);
@@ -791,12 +800,16 @@ export function PlanEditor({
         // Shift (or, on a phone, a tap while something is picked) adds or takes away.
         const group = withGroups(drawn, [hit]);
         const has = selection.some((r) => r.id === hit.id);
-        setSelection(
-          has
-            ? selection.filter((r) => !group.some((g) => g.id === r.id))
-            : [...selection, ...group.filter((g) => !selection.some((r) => r.id === g.id))],
-        );
-        return;
+        if (e.shiftKey || !has) {
+          setSelection(
+            has
+              ? selection.filter((r) => !group.some((g) => g.id === r.id))
+              : [...selection, ...group.filter((g) => !selection.some((r) => r.id === g.id))],
+          );
+          return;
+        }
+        // A finger on a picked item may drag the selection: only a tap takes it out, on release.
+        tapOff.current = group;
       }
       const picked = hit
         ? selection.some((r) => r.id === hit.id)
@@ -889,6 +902,11 @@ export function PlanEditor({
       setMarquee({ a: g.a, b: p });
       return;
     }
+    if (tapOff.current && (g.kind === 'move' || g.kind === 'moveMany')) {
+      const moved = Math.hypot(view(p).x - view(g.start).x, view(p).y - view(g.start).y);
+      if (moved < TAP_SLOP) return;
+      tapOff.current = null;
+    }
     if (g.kind === 'moveMany') {
       let d = { x: view(p).x - view(g.start).x, y: view(p).y - view(g.start).y };
       if (snap) {
@@ -976,6 +994,7 @@ export function PlanEditor({
   /** A gesture the browser took away (a scroll, a second finger): nothing is written. */
   function onPointerCancel() {
     clearTimeout(longPress.current);
+    tapOff.current = null;
     gesture.current = null;
     setPreview(null);
     setChip(null);
@@ -986,6 +1005,9 @@ export function PlanEditor({
 
   function onPointerUp() {
     clearTimeout(longPress.current);
+    const taken = tapOff.current;
+    tapOff.current = null;
+    if (taken) setSelection((now) => now.filter((r) => !taken.some((t) => t.id === r.id)));
     const g = gesture.current;
     gesture.current = null;
     if (!g) return;
@@ -1013,7 +1035,7 @@ export function PlanEditor({
       setChip(null);
       const next = previewRef.current;
       setPreview(null);
-      if (next) write(next);
+      if (next) write(next, 'items' in g ? g.items : [g.item]);
       return;
     }
     if (g.kind === 'draw') {
@@ -1763,6 +1785,22 @@ export function PlanEditor({
   const icon = isIcon(current) ? current : null;
   const cone = icon ? iconCone(icon, plan.sensor) : null;
   const lensIs = icon?.lens ?? DEFAULT_LENS;
+  /** The length of the cone, as the point at its end sets it: metres, or squares of the grid. */
+  const reachUnit = drawn.scale ?? step;
+  const reachField = icon && cone && (
+    <div className="plan-props__row">
+      <span>{t('board.plan.reach')}</span>
+      <NumberField
+        value={Math.round((cone.reach / reachUnit) * 100) / 100}
+        min={20 / reachUnit}
+        max={MAX_UNITS / reachUnit}
+        step={0.01}
+        unit={drawn.scale ? 'm' : t('board.plan.squares')}
+        label={t('board.plan.reach')}
+        onCommit={(v) => write({ ...icon, reach: Math.round(v * reachUnit * 100) / 100 })}
+      />
+    </div>
+  );
   const lensPanel = icon?.kind === 'camera' && cone && (
     <>
       <div className="plan-pop__row">
@@ -1837,6 +1875,7 @@ export function PlanEditor({
       <p className="plan-pop__text">
         {t('board.plan.angle')}: {t('board.plan.angleValue', { angle: Math.round(cone.angle) })}
       </p>
+      {reachField}
       <label className="plan-props__row">
         <span>{t('board.plan.showLens')}</span>
         <Checkbox
@@ -1904,6 +1943,7 @@ export function PlanEditor({
         `${Math.round((icon.intensity ?? 0.8) * 100)}%`,
         (v) => ({ ...icon, intensity: v / 100 }),
       )}
+      {reachField}
     </>
   );
 

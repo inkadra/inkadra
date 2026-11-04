@@ -1015,7 +1015,9 @@
       "useAsScaleNo": "Solo questa misura",
       "zoomIn": "Ingrandisci",
       "zoomOut": "Riduci",
-      "morePlan": "Altre azioni della pianta"
+      "morePlan": "Altre azioni della pianta",
+      "reach": "Lunghezza cono",
+      "squares": "quadretti"
     },
     "contextual": {
       "done": "Fatto",
