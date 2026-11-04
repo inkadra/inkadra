@@ -19,6 +19,9 @@
       "name": "Instance"
     },
     {
+      "name": "Feedback"
+    },
+    {
       "name": "Auth"
     },
     {
@@ -215,23 +218,35 @@
           "reason"
         ]
       },
-      "CalendarFeed": {
+      "FeedbackStatus": {
         "type": "object",
         "properties": {
           "enabled": {
             "type": "boolean"
           },
-          "url": {
+          "guest": {
+            "type": "boolean"
+          },
+          "destination": {
             "type": [
               "string",
               "null"
             ],
-            "format": "uri"
+            "enum": [
+              "inbox",
+              "github",
+              null
+            ]
+          },
+          "retentionDays": {
+            "type": "integer"
           }
         },
         "required": [
           "enabled",
-          "url"
+          "guest",
+          "destination",
+          "retentionDays"
         ]
       },
       "ApiError": {
@@ -266,6 +281,305 @@
         },
         "required": [
           "error"
+        ]
+      },
+      "FeedbackReceipt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "issueUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          },
+          "delivery": {
+            "type": "string",
+            "enum": [
+              "inbox",
+              "pending",
+              "delivered",
+              "uncertain",
+              "refused"
+            ]
+          },
+          "duplicate": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "issueUrl",
+          "delivery",
+          "duplicate"
+        ]
+      },
+      "CreateFeedback": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "bug",
+              "idea",
+              "question"
+            ]
+          },
+          "area": {
+            "type": "string",
+            "enum": [
+              "home",
+              "board",
+              "settings",
+              "guest",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 12000
+          },
+          "guestName": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "diagnostics": {
+            "type": "object",
+            "properties": {
+              "environment": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "page": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "console": {
+                "type": "string",
+                "maxLength": 16000
+              },
+              "network": {
+                "type": "string",
+                "maxLength": 8000
+              },
+              "sync": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "flags": {
+                "type": "string",
+                "maxLength": 1000
+              }
+            },
+            "additionalProperties": false
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedbackAttachment"
+            },
+            "maxItems": 7
+          }
+        },
+        "required": [
+          "requestId",
+          "type",
+          "area",
+          "title",
+          "description",
+          "diagnostics",
+          "attachments"
+        ],
+        "additionalProperties": false
+      },
+      "FeedbackAttachment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "screenshot",
+              "video",
+              "file"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 180
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 104857600
+          },
+          "mime": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3600
+          },
+          "redactedAreas": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "bytes",
+          "mime"
+        ],
+        "additionalProperties": false
+      },
+      "FeedbackSettings": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/FeedbackSettingsInput"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "tokenConfigured": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "tokenConfigured"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "FeedbackSettingsInput": {
+        "type": "object",
+        "properties": {
+          "destination": {
+            "type": "string",
+            "enum": [
+              "off",
+              "inbox",
+              "github"
+            ]
+          },
+          "repository": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*\\/[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          },
+          "guests": {
+            "type": "boolean"
+          },
+          "retentionDays": {
+            "anyOf": [
+              {
+                "type": "number",
+                "enum": [
+                  30
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  90
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  365
+                ]
+              }
+            ],
+            "default": 90
+          }
+        },
+        "required": [
+          "destination",
+          "repository",
+          "guests"
+        ],
+        "additionalProperties": false
+      },
+      "FeedbackReport": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/FeedbackReceipt"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "report": {
+                "$ref": "#/components/schemas/CreateFeedback"
+              },
+              "reporter": {
+                "type": "string"
+              },
+              "failure": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "report",
+              "reporter",
+              "failure",
+              "createdAt"
+            ]
+          }
+        ]
+      },
+      "CalendarFeed": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          }
+        },
+        "required": [
+          "enabled",
+          "url"
         ]
       },
       "MyTasks": {
@@ -5126,9 +5440,10 @@
               "access_expiring",
               "access_expired",
               "link_opened",
-              "task_assigned"
+              "task_assigned",
+              "feedback_received"
             ],
-            "description": "`mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on `projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three days before to that person and to the project owners. `access_expired`: it has ended. Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you made for the first time, or for the first time since a new named version of the board; it has no actor (`shareLinkLabel` says which link) and nothing about the visit. Open: clients show types they do not know as a plain line with the actor, the board and the time."
+            "description": "`feedback_received`: a new in-app report, for instance administrators only; in-app only, no report content; open Settings About Reports. `mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on `projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three days before to that person and to the project owners. `access_expired`: it has ended. Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you made for the first time, or for the first time since a new named version of the board; it has no actor (`shareLinkLabel` says which link) and nothing about the visit. Open: clients show types they do not know as a plain line with the actor, the board and the time."
           },
           "actor": {
             "allOf": [
@@ -7226,6 +7541,821 @@
     "parameters": {}
   },
   "paths": {
+    "/api/v1/feedback/status": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Authenticated availability; guests require a live share-link session.",
+        "responses": {
+          "200": {
+            "description": "Availability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/feedback": {
+      "post": {
+        "tags": [
+          "Feedback"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.",
+        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeedback"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Durably accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit exceeded"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
+    "/api/v1/feedback/attachments": {
+      "post": {
+        "tags": [
+          "Feedback"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload one sniffed attachment before sending. Query kind and name; binary body. Owner bound; unsubmitted uploads expire after 24 hours.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "screenshot",
+                "video",
+                "file"
+              ]
+            },
+            "required": true,
+            "name": "kind",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 180
+            },
+            "required": true,
+            "name": "name",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackAttachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "25 MiB per file, 100 MiB per video; guest screenshot 5 MiB"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/feedback/status": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Authenticated availability; guests require a live share-link session.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Availability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/feedback": {
+      "post": {
+        "tags": [
+          "Feedback"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.",
+        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeedback"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Durably accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit exceeded"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/feedback/attachments": {
+      "post": {
+        "tags": [
+          "Feedback"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload one sniffed attachment before sending. Query kind and name; binary body. Owner bound; unsubmitted uploads expire after 24 hours.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "screenshot",
+                "video",
+                "file"
+              ]
+            },
+            "required": true,
+            "name": "kind",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 180
+            },
+            "required": true,
+            "name": "name",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackAttachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "25 MiB per file, 100 MiB per video; guest screenshot 5 MiB"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
+    "/api/v1/feedback/settings": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: destination, repository, token status, guests and attachment retention.",
+        "responses": {
+          "200": {
+            "description": "Settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Feedback"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: configure delivery. With a server token the GitHub repository must verify as private; without one, reports wait locally.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackSettingsInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/feedback/reports": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: latest 100 local reports, including pending GitHub delivery.",
+        "responses": {
+          "200": {
+            "description": "Reports",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FeedbackReport"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/feedback/attachments/{token}": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "Bearer link: anyone holding the random URL can open the attachment until it expires.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attachment; nosniff, no-store, sandboxed, no referrer"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/calendar-feed": {
       "get": {
         "tags": [
