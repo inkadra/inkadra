@@ -33,7 +33,10 @@ export function PlanViewer({
   const body = (
     <>
       <div className="plan-viewer__scroll">
-        <div className="plan-viewer__sheet" style={{ width: `calc(min(100cqw, 150cqh) * ${zoom / 100})` }}>
+        <div
+          className="plan-viewer__sheet"
+          style={{ width: `calc(min(100cqw, 150cqh) * ${zoom / 100})` }}
+        >
           <PlanDrawing plan={variantView(plan, base)} />
         </div>
       </div>
