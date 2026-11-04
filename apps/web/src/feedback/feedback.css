@@ -758,7 +758,7 @@ button.settings-home__item {
   border: 0;
   background: transparent;
   color: inherit;
-  font: inherit;
+  font-family: inherit;
   text-align: start;
   cursor: pointer;
 }
