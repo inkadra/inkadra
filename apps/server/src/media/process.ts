@@ -13,14 +13,7 @@ import { readExif } from './exif.ts';
 import { readFileMetadata } from './file-metadata.ts';
 import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
-import {
-  type MapSettings,
-  PICTURE_HEIGHT,
-  PICTURE_WIDTH,
-  renderMap,
-  routeLine,
-  viewOf,
-} from './maps.ts';
+import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
 import { convertOffice, OFFICE_CAPS, officeExtension, officeKey } from './office.ts';
 import {
   decodeCsv,
@@ -526,8 +519,8 @@ async function processGpx(deps: MediaDeps, row: typeof asset.$inferSelect, diges
   const fields = {
     ...plain,
     track: { ...trackStats(segments), points: routeLine(segments, view), view },
-    width: PICTURE_WIDTH,
-    height: PICTURE_HEIGHT,
+    width: MAP_WIDTH,
+    height: MAP_HEIGHT,
   };
   if (!deps.maps) {
     await save(db, row.id, [], fields);

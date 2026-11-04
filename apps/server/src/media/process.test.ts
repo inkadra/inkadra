@@ -123,8 +123,8 @@ describe('variantWidths', () => {
   it('never upscales and always gives one thumbnail', () => {
     expect(variantWidths(6000)).toEqual([256, 512, 1024, 2048]);
     expect(variantWidths(800)).toEqual([256, 512]);
-    // A picture exactly as wide as a size keeps that size: maps would stop at half their pixels.
-    expect(variantWidths(2048)).toEqual([256, 512, 1024, 2048]);
+    // A picture exactly as wide as a size keeps that size: a map would stop at half its pixels.
+    expect(variantWidths(1024)).toEqual([256, 512, 1024]);
     expect(variantWidths(120)).toEqual([256]);
   });
 });
@@ -541,18 +541,18 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         const maps = { tileUrl: `http://127.0.0.1:${port}/{z}/{x}/{y}.png`, userAgent: 'test' };
         await processAsset({ ...deps, maps }, id);
         const { row, variants } = await load(id);
-        expect(row).toMatchObject({ status: 'ready', width: 2048, height: 1120 });
+        expect(row).toMatchObject({ status: 'ready', width: 1024, height: 560 });
         expect(row?.track?.elevationGainM).toBe(200);
         expect(row?.track?.distanceM).toBeGreaterThan(18_000);
         expect(row?.track?.points).toHaveLength(6);
-        expect(variants.map((v) => v.size)).toEqual(['256', '512', '1024', '2048']);
-        expect(requests.length).toBeGreaterThanOrEqual(40);
+        expect(variants.map((v) => v.size)).toEqual(['256', '512', '1024']);
+        expect(requests.length).toBeGreaterThanOrEqual(15);
         expect(requests.every((r) => /^\/\d+\/\d+\/\d+\.png$/.test(r))).toBe(true);
         // A second pass (a retried job) takes every tile from the cache.
         const fetched = requests.length;
         await processAsset({ ...deps, maps }, id);
         expect(requests).toHaveLength(fetched);
-        expect((await load(id)).variants).toHaveLength(4);
+        expect((await load(id)).variants).toHaveLength(3);
       } finally {
         server.close();
       }

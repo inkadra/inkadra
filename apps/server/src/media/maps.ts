@@ -9,18 +9,10 @@ import type { TrackPoint } from './gpx.ts';
  */
 
 export const TILE = 256;
-/**
- * Size of a view, in pixels of its zoom: the 1.83 : 1 of the cards in the mockup. Routes, `MapView`
- * and the web app all count in these pixels, so a picture of any resolution lines up with them.
- */
+/** Size of every map picture: the 1.83 : 1 of the cards in the mockup, sharp at 2×. */
 export const MAP_WIDTH = 1024;
 export const MAP_HEIGHT = 560;
-/** Size of the stored picture: the ground of a view, one tile zoom closer. */
-export const PICTURE_WIDTH = MAP_WIDTH * 2;
-export const PICTURE_HEIGHT = MAP_HEIGHT * 2;
 const MAX_ZOOM = 17;
-/** The closest tiles asked for, as in `MapTileParams`, and the highest of the default server. */
-const MAX_TILE_ZOOM = 19;
 /** Room left around a route, in pixels of the picture. */
 const PAD = 72;
 /** Points of the line drawn over a route's picture. */
@@ -110,20 +102,13 @@ export function routeLine(segments: readonly TrackPoint[][], view: MapView): num
   return out;
 }
 
-/**
- * Tiles of `width` × `height` pixels from the corner of a view, as [x, y] at its zoom; x wraps
- * around the world, y stays inside it.
- */
-export function tilesOf(
-  view: MapView,
-  width = MAP_WIDTH,
-  height = MAP_HEIGHT,
-): Array<{ x: number; y: number; dx: number; dy: number }> {
+/** Tiles of a view, as [x, y] at its zoom; x wraps around the world, y stays inside it. */
+export function tilesOf(view: MapView): Array<{ x: number; y: number; dx: number; dy: number }> {
   const n = 2 ** view.zoom;
   const x0 = Math.floor(view.left / TILE);
   const y0 = Math.floor(view.top / TILE);
-  const x1 = Math.floor((view.left + width - 1) / TILE);
-  const y1 = Math.floor((view.top + height - 1) / TILE);
+  const x1 = Math.floor((view.left + MAP_WIDTH - 1) / TILE);
+  const y1 = Math.floor((view.top + MAP_HEIGHT - 1) / TILE);
   const out: Array<{ x: number; y: number; dx: number; dy: number }> = [];
   for (let ty = y0; ty <= y1; ty++) {
     if (ty < 0 || ty >= n) continue;
@@ -162,9 +147,6 @@ let nextSlot = 0;
 
 /** Thrown when the queue of tile requests is longer than a caller is willing to wait. */
 export class TilesBusy extends Error {}
-
-/** Thrown when the tile server has no such tile: usually a zoom past its closest one. */
-class TileMissing extends Error {}
 
 /**
  * Waits for this request's turn: requests are spaced evenly, in the order they asked. A caller
@@ -236,7 +218,6 @@ export async function fetchTile(
     redirect: 'error',
     signal: AbortSignal.timeout(TILE_TIMEOUT_MS),
   });
-  if (res.status === 404) throw new TileMissing(`Tile ${z}/${x}/${y}: HTTP 404`);
   if (!res.ok) throw new Error(`Tile ${z}/${x}/${y}: HTTP ${res.status}`);
   if (!(res.headers.get('content-type') ?? '').startsWith('image/'))
     throw new Error(`Tile ${z}/${x}/${y} is not an image.`);
@@ -251,34 +232,9 @@ export async function fetchTile(
  * rather than store a map with holes.
  * shortcut: the cache is in memory and per process; share one (Valkey) if several workers
  * make many maps of the same area.
- *
- * The picture is twice the pixels of its view, from tiles one zoom closer: the same ground, so
- * routes and pins stay where they were. Where that zoom does not exist (the closest view, or a
- * tile server that stops earlier) the view's own tiles are enlarged to the same size.
  */
 export async function renderMap(settings: MapSettings, view: MapView): Promise<Buffer> {
-  if (view.zoom < MAX_TILE_ZOOM) {
-    const closer = { zoom: view.zoom + 1, left: view.left * 2, top: view.top * 2 };
-    try {
-      return await composite(settings, closer, PICTURE_WIDTH, PICTURE_HEIGHT);
-    } catch (err) {
-      if (!(err instanceof TileMissing)) throw err;
-    }
-  }
-  return sharp(await composite(settings, view, MAP_WIDTH, MAP_HEIGHT))
-    .resize(PICTURE_WIDTH, PICTURE_HEIGHT)
-    .png()
-    .toBuffer();
-}
-
-/** `width` × `height` pixels from the corner of a view, composited from its tiles. */
-async function composite(
-  settings: MapSettings,
-  view: MapView,
-  width: number,
-  height: number,
-): Promise<Buffer> {
-  const tiles = tilesOf(view, width, height);
+  const tiles = tilesOf(view);
   const images: Buffer[] = [];
   for (let i = 0; i < tiles.length; i += 4) {
     const batch = tiles.slice(i, i + 4);
@@ -286,8 +242,8 @@ async function composite(
   }
   const x0 = Math.floor(view.left / TILE);
   const y0 = Math.floor(view.top / TILE);
-  const cols = Math.floor((view.left + width - 1) / TILE) - x0 + 1;
-  const rows = Math.floor((view.top + height - 1) / TILE) - y0 + 1;
+  const cols = Math.floor((view.left + MAP_WIDTH - 1) / TILE) - x0 + 1;
+  const rows = Math.floor((view.top + MAP_HEIGHT - 1) / TILE) - y0 + 1;
   // Each tile is decoded and re-encoded raw first: a tile is untrusted bytes too, and sharp
   // rejects anything that is not a real picture of the tile's size.
   const layers = await Promise.all(
@@ -315,8 +271,8 @@ async function composite(
     .extract({
       left: Math.round(view.left - x0 * TILE),
       top: Math.round(view.top - y0 * TILE),
-      width,
-      height,
+      width: MAP_WIDTH,
+      height: MAP_HEIGHT,
     })
     .png()
     .toBuffer();

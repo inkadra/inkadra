@@ -164,7 +164,7 @@ that the server fetches on the person's behalf, through the same queue and cache
 
 The OpenStreetMap tile servers are run by volunteers: their
 [usage policy](https://operations.osmfoundation.org/policies/tiles/) allows a few maps added by
-hand, which is what Inkadra does (about fifty tiles a map, with the instance's address in the
+hand, which is what Inkadra does (about twenty tiles a map, with the instance's address in the
 user agent), and exploring a map asks for a few dozen more. An instance that makes or explores
 many maps should use a tile provider or its own tile server.
 With `MAP_SATELLITE_TILE_URL` set, map cards and GPX files get a Map/Satellite switch, for the
