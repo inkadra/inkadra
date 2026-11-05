@@ -73,7 +73,7 @@ services:
     extends: # same database, Redis, storage and volume settings
       file: compose.yaml
       service: inkadra
-    # Same version as the other roles; set INKADRA_TAG without a suffix (0.4.0, not 0.4.0-media).
+    # Same version as the other roles; set INKADRA_TAG without a suffix (0.8.0, not 0.8.0-media).
     image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}-office # or inkadra-office-worker
     command: worker
     ports: !reset []
@@ -113,11 +113,14 @@ lets it, and otherwise that same filter, which refuses `clone` with `CLONE_NEWUS
 `--disable-userns` needs a writable `/proc/sys`: it is skipped on a default container, and used
 if you add `systempaths=unconfined` to `security_opt` (optional, not needed for safety).
 
-Check the sandbox before enabling conversion for users (the service is `office-worker` with the
-single-container layout):
+Check the sandbox before enabling conversion for users, as the user the worker runs as and
+without the image's entrypoint, which only accepts Inkadra roles (the service is `office-worker`
+with the single-container layout, `worker` with the split one; add the same `-f` files as for
+`up`):
 
 ```sh
-docker compose run --rm --no-deps worker bwrap --unshare-all --unshare-user \
+docker compose run --rm --no-deps --user node --entrypoint bwrap office-worker \
+  --unshare-all --unshare-user \
   --ro-bind /usr /usr --symlink usr/lib /lib --symlink usr/lib64 /lib64 \
   --proc /proc --dev /dev /usr/bin/true && echo sandbox ok
 ```
