@@ -50,6 +50,7 @@ it('normalizes note links, prepends https when missing, and rejects unsafe schem
   expect(normalizeNoteLink('https://example.com')).toBe('https://example.com');
   expect(normalizeNoteLink('http://example.com/page')).toBe('http://example.com/page');
   expect(normalizeNoteLink('mailto:team@example.com')).toBe('mailto:team@example.com');
+  expect(normalizeNoteLink('example.com:8080/a')).toBe('https://example.com:8080/a');
 
   // Boundary validation: reject dangerous schemes and invalid strings
   expect(normalizeNoteLink('javascript:alert(1)')).toBeNull();

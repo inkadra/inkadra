@@ -362,6 +362,7 @@ test('log summary says whether there were problems', () => {
   assert.match(issueBody({ ...r, logExcerpt: 'warn something failed to load' }, []), /Recent warnings and errors/);
   assert.match(issueBody({ ...r, logExcerpt: '12:34:56 warn connection timeout' }, []), /Recent warnings and errors/);
   assert.match(issueBody({ ...r, logExcerpt: 'error Unhandled rejection' }, []), /Recent warnings and errors/);
+  assert.match(issueBody({ ...r, logExcerpt: 'aperta board e nota' }, []), /no warnings or errors/);
 });
 
 test('fences are longer than any backtick run inside', () => {

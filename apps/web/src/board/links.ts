@@ -27,7 +27,7 @@ export function normalizeNoteLink(raw: string | undefined): string | null {
   if (!raw) return null;
   const text = raw.trim();
   if (!text) return null;
-  const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(text) ? text : `https://${text}`;
+  const candidate = /^[a-zA-Z][a-zA-Z0-9+-]*:/.test(text) ? text : `https://${text}`;
   try {
     const parsed = new URL(candidate);
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
