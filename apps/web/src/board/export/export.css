@@ -613,7 +613,9 @@
   /* Above the button and below the preview it changes, wherever the sheet is scrolled. */
   .export--image .colorpicker {
     position: fixed;
-    left: 16px;
+    /* Over what the picker wrote while the window was wide. */
+    top: auto !important;
+    left: 16px !important;
     right: 16px;
     bottom: 88px;
   }
