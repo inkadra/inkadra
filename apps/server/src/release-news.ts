@@ -10,8 +10,9 @@ import {
   user,
   userPreference,
 } from './db/schema.ts';
+import { renderMail } from './mail-layout.ts';
 import { mailText } from './mail-texts.ts';
-import { actionMail, type Mailer } from './mailer.ts';
+import type { Mailer } from './mailer.ts';
 
 // Strict SemVer, including numeric pre-release identifiers and build metadata.
 const semver =
@@ -139,21 +140,28 @@ export async function releaseNewsMail(
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     }
   }
-  return actionMail(
-    person.email,
-    t.releaseSubject(version),
-    [t.releaseIntro(version)],
-    { label: t.releaseAction, url: `https://github.com/inkadra/inkadra/releases/tag/v${version}` },
-    {
-      instanceName: instance.instanceName,
-      highlights: { title: t.releaseHighlights, items: releaseHighlights(notes) },
-      footer: {
-        text: t.releaseConsent,
-        label: t.releaseSettingsAction,
-        url: `${instance.publicUrl}/settings?section=notifications`,
-      },
+  const highlights = releaseHighlights(notes);
+  const settingsUrl = `${instance.publicUrl}/settings?section=notifications`;
+  return renderMail({
+    to: person.email,
+    subject: t.releaseSubject(version),
+    lang: t.lang,
+    instanceName: instance.instanceName,
+    preheader: highlights[0] ?? t.releaseIntro(instance.instanceName, version, false),
+    badge: { label: t.releaseBadge(version), tone: 'accent' },
+    title: t.releaseTitle,
+    intro: t.releaseIntro(instance.instanceName, version, highlights.length > 0),
+    list: highlights,
+    action: {
+      label: t.releaseAction,
+      url: `https://github.com/inkadra/inkadra/releases/tag/v${version}`,
     },
-  );
+    footer: {
+      text: t.releaseFooter.text,
+      link: { label: t.releaseFooter.link, url: settingsUrl },
+      after: t.releaseFooter.after,
+    },
+  });
 }
 
 /** One durable claim per person. A job retry resumes at the next unattempted recipient. */

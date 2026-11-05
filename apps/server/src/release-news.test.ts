@@ -77,14 +77,18 @@ it('reads bundled notes and renders highlights in the common branded layout', as
     '0.4.2',
     instance,
   );
-  expect(mail.html).toContain('<header');
+  expect(mail.html).toMatch(/^<!doctype html><html lang="it">/);
   expect(mail.html).toContain('Studio Aurora');
-  expect(mail.html).toContain('Novità principali');
-  expect(mail.html).toContain('<li ');
+  expect(mail.html).toContain('Versione 0.4.2');
+  expect(mail.html).toContain('Novità di Inkadra');
+  expect(mail.html).toContain('>1</td>');
+  expect(mail.text).toContain('1. ');
   expect(mail.text).toContain('HTTPS installations now use');
   expect(mail.text).not.toContain('##');
-  expect(mail.html).toContain('<footer');
-  expect(mail.html).toContain('settings?section=notifications');
+  expect(mail.html).toContain('Disattivale qui');
+  expect(mail.text).toContain(
+    'Disattivale qui: https://boards.example.com/settings?section=notifications',
+  );
 });
 
 const url = process.env.DATABASE_URL;

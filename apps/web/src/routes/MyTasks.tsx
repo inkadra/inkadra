@@ -1,9 +1,8 @@
-import type { MyTask } from '@inkadra/shared';
+import { type MyTask, notificationPath } from '@inkadra/shared';
 import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { api } from '../lib/api.ts';
-import { notificationPath } from '../notifications/model.ts';
 import { localDate } from './home-data.ts';
 
 export function taskGroup(dueDate: string | undefined, now: Date): string {
