@@ -419,8 +419,10 @@ retries with exponential backoff and the person has already seen "sent", with a 
 A lost connection or a 5xx during the write itself leaves the outcome unknown: the report is
 marked "To check on GitHub" and not posted again, to prevent duplicates. A 401, 404, 410, 422 or a
 repository that is no longer private stops the retries: the reason is logged and shown in
-Settings → About → Reports, and saving the settings there sends those reports round again. If the
-destination changes, queued reports stay local and never go to the repository chosen before.
+Settings → About → Reports, and **Try again** there sends those reports round again. A report still
+retrying reads "Waiting to be sent", and **Try again** in its expanded row runs the same delivery
+sooner, with no risk of a duplicate. If the destination changes, queued reports stay local, marked
+"Inbox only", and never go to the repository chosen before.
 Offline drafts are never sent in the background: text stays in the browser and leaves only after
 the preview and a manual send. Videos stay in tab memory.
 

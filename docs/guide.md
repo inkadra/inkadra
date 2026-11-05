@@ -152,6 +152,10 @@ The icon next to the notifications, `Ctrl/⌘+Shift+B` or **Settings → About**
 an idea or a question, with a screenshot of the page that you can draw on or blur, a recording up to
 60 seconds, or files. **Preview** shows exactly what leaves, and you choose what to keep.
 
+The automatic screenshot leaves out the sidebar, the account, the breadcrumbs, your tasks, and project
+and people names in activity. The rest of the page leaves as it is: cover it by hand if needed. A
+shared tab or an image you choose leaves whole.
+
 Where it goes is up to whoever runs the instance. Unless they chose otherwise, it goes to the Inkadra
 developers: [What leaves your server](self-hosting/README.md#what-leaves-your-server) says what that
 means and how to turn it off. The dialog also says where the report is going.

@@ -43,7 +43,8 @@ before PostgreSQL 18: see [Upgrades](upgrades.md#upgrading-to-postgresql-18).
 
 **The report icon is missing, or a report waits.** Without a destination, reports are off and the
 icon is hidden: see [What leaves your server](README.md#what-leaves-your-server). **Settings → About →
-Reports** shows what is waiting and why.
+Reports** shows what is waiting and why: a waiting report reads _Waiting to be sent_, and its
+expanded row has **Try again**.
 
 **The page loads but sign-in fails or loops back to the login.** `PUBLIC_URL` does not match the
 address in the browser (scheme, host or port), or the proxy does not send
