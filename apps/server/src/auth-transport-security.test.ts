@@ -21,7 +21,7 @@ it('uses one security store and closes it once after selecting both transports',
   const close = vi.spyOn(security, 'close');
   try {
     // No cookie means session lookup does not need a database connection.
-    for (const origin of ['https://boards.example.test', 'http://soyo:7340'])
+    for (const origin of ['https://boards.example.test', 'http://nas:7340'])
       expect((await auth.handler(new Request(`${origin}/api/auth/get-session`))).status).toBe(200);
     expect(authSecurity).toHaveBeenCalledTimes(1);
   } finally {

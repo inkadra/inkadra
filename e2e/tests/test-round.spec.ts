@@ -6,7 +6,7 @@ import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts'
 
 const LONG =
   'Una voce molto molto lunga che deve restare leggibile per intero senza essere tagliata dalla card del to-do anche se occupa tante righe';
-const shots = process.env.SOYO_SHOTS;
+const shots = process.env.ROUND_SHOTS;
 const shoot = async (page: Page, name: string) => {
   if (!shots) return;
   await page.mouse.move(0, 0);
@@ -204,7 +204,7 @@ test('a failed address search is readable over the empty board', async ({ page, 
   await shoot(page, 'map-error');
 });
 
-// Only for the pull request's screenshots: SOYO_SHOTS=<folder>.
+// Only for the pull request's screenshots: ROUND_SHOTS=<folder>.
 test('screenshots of the other screens', async ({ page, baseURL }) => {
   test.skip(!shots);
   test.setTimeout(90_000);
