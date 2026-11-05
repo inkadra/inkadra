@@ -22,6 +22,7 @@ import {
   type PaperSize,
   pageSize,
   paginateRows,
+  slideCell,
   storyboardCells,
   storyboardGrid,
 } from './layout.ts';
@@ -284,13 +285,23 @@ export function storyboardPages(
     // Room under each picture for label, shot data and a few lines of action.
     const textRoom = perPage === 1 ? box.h * 0.3 : 84 * f;
     const narrowest = Math.min(...group.map((s) => ctx.frameAspect(s.frame)), 16 / 9);
-    const cells = storyboardCells(box, grid.cols, grid.rows, narrowest, textRoom);
+    // One frame on a 16:9 slide: as large as its caption allows, centred clear of the header.
+    const only = perPage === 1 && setup.paper === 'slide' ? group[0] : undefined;
+    const cells = only
+      ? [
+          slideCell(box, narrowest, (w) => {
+            const pic = w / ctx.frameAspect(only.frame);
+            const probe = { x: 0, y: 0, w, h: pic + box.h };
+            return storyboardCell(only, probe, perPage, ctx, words, showNotes).bottom - pic;
+          }),
+        ]
+      : storyboardCells(box, grid.cols, grid.rows, narrowest, textRoom);
     if (group.length === 0) {
       page.ops.push(text(words.noFrames, box.x, box.y + 20, 11, 400, ctx.colors['text-muted']));
     }
     group.forEach((shot, i) => {
       const cell = cells[i];
-      if (cell) page.ops.push(...storyboardCell(shot, cell, perPage, ctx, words, showNotes));
+      if (cell) page.ops.push(...storyboardCell(shot, cell, perPage, ctx, words, showNotes).ops);
     });
     return page;
   });
@@ -303,7 +314,7 @@ function storyboardCell(
   ctx: CardContext,
   words: Words,
   showNotes: boolean,
-): Op[] {
+): { ops: Op[]; bottom: number } {
   const c = ctx.colors;
   const m = ctx.measure;
   const f = perPage <= 2 ? 1.15 : 1;
@@ -360,7 +371,7 @@ function storyboardCell(
     block(`${words.dialogue}: “${shot.frame.dialogue}”`, 8.5 * f, 400, c['text-secondary']);
   if (showNotes && shot.frame.notes)
     block(`${words.notes}: ${shot.frame.notes}`, 8 * f, 400, c['text-muted']);
-  return ops;
+  return { ops, bottom: top };
 }
 
 export const SHOT_COLUMNS = [

@@ -100,6 +100,32 @@ export function storyboardCells(
   return cells;
 }
 
+/**
+ * The one cell of a 16:9 storyboard slide: the picture as large as the page allows above the
+ * caption it needs, the two centred in `box` with at least `gap` above and below, clear of the
+ * header rule. `caption(w)` is the height of the text under a picture `w` wide; it grows as the
+ * picture narrows, so it is measured again until the width settles. A caption longer than half
+ * the room is cut there rather than shrink the picture further.
+ */
+export function slideCell(
+  box: Box,
+  aspect: number,
+  caption: (width: number) => number,
+  gap = GUTTER,
+): Box {
+  const room = box.h - gap * 2;
+  const text = (w: number) => Math.min(Math.max(0, caption(w)), room / 2);
+  const widthFor = (t: number) => Math.max(1, Math.min(box.w, (room - t) * aspect));
+  let w = widthFor(text(box.w));
+  for (let i = 0; i < 4; i++) {
+    const next = widthFor(text(w));
+    if (next >= w - 0.5) break;
+    w = next;
+  }
+  const h = Math.min(room, w / aspect + text(w));
+  return { x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w, h };
+}
+
 /** Items in consecutive pages of `perPage`; an empty list still makes one (empty) page. */
 export function chunk<T>(items: readonly T[], perPage: number): T[][] {
   if (perPage < 1) throw new RangeError('perPage must be at least 1');

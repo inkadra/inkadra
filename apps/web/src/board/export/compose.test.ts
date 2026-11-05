@@ -12,6 +12,7 @@ import {
   titlePage,
   type Words,
 } from './compose.ts';
+import { contentBox } from './layout.ts';
 import type { Op, Page } from './pages.ts';
 
 const ctx: CardContext = {
@@ -131,6 +132,31 @@ describe('storyboard pages', () => {
       const labels = texts(page?.ops ?? []).filter((t) => /^1[A-F]$/.test(t));
       expect(labels).toHaveLength(perPage);
     }
+  });
+
+  it('centres a single frame on a 16:9 slide, clear of the header, and leaves paper pages as they were', () => {
+    const border = (page: Page | undefined) =>
+      (page?.ops ?? []).find(
+        (op): op is Extract<Op, { kind: 'rect' }> => op.kind === 'rect' && !!op.stroke,
+      );
+    const slide = { paper: 'slide', orientation: 'landscape' } as const;
+    const [page] = storyboardPages(slide, shots(1, 'Luce fredda'), 1, ctx, words, true);
+    const box = contentBox(960, 540);
+    const pic = border(page);
+    expect(pic?.y).toBeGreaterThanOrEqual(box.y + 18 - 0.001);
+    const bottom = Math.max(
+      ...(page?.ops ?? []).flatMap((op) => (op.kind === 'text' ? [op.y] : [])),
+    );
+    // The caption ends about as far above the content box's bottom as the picture starts below
+    // its top (the last baseline sits a few points above the block's end).
+    const above = (pic?.y ?? 0) - box.y;
+    const below = box.y + box.h - bottom;
+    expect(Math.abs(above - below)).toBeLessThan(12);
+    // The caption is all there, notes included.
+    expect(allText(page ? [page] : [])).toContain('Luce fredda');
+    // A4 keeps the picture at the top of the content box.
+    const [paper] = storyboardPages(a4, shots(1), 1, ctx, words, true);
+    expect(border(paper)?.y).toBeCloseTo(contentBox(paper?.width ?? 0, paper?.height ?? 0).y);
   });
 
   it("prints the director's notes only for the team", () => {

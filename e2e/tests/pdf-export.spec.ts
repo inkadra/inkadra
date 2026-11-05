@@ -6,7 +6,7 @@ import { initBoardDoc, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as Y from 'yjs';
-import { pushBoardDoc, signIn } from './perf/seed.ts';
+import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists.
 test.describe.configure({ mode: 'serial' });
@@ -401,6 +401,45 @@ test('a storyboard exports to PDF with frames per page, and to PNG', async ({ pa
   expect(await violations()).toEqual([]);
 });
 
+/**
+ * PRESET_SHOTS: the export dialog, dark and light, desktop and phone, for review. A no-op
+ * without it.
+ */
+async function shootDialog(page: Page, name: string) {
+  const shots = process.env.PRESET_SHOTS;
+  if (!shots) return;
+  const dialog = page.getByRole('dialog', { name: 'Esporta' });
+  const size = page.viewportSize() ?? { width: 1440, height: 900 };
+  const theme = await page.evaluate(() => document.documentElement.dataset.theme ?? '');
+  await page.mouse.move(size.width - 2, 2);
+  for (const [device, width, height] of [
+    ['desktop', 1280, 900],
+    ['phone', 390, 844],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    for (const mode of ['dark', 'light']) {
+      await page.evaluate((m) => {
+        document.documentElement.dataset.theme = m;
+      }, mode);
+      await page.waitForTimeout(400);
+      await page.screenshot({
+        path: `${shots}/${name}-${device}-${mode}.png`,
+        animations: 'disabled',
+      });
+      // The options sit below the fold: their own picture, scrolled into view.
+      if (name.endsWith('customise'))
+        await dialog.locator('.export__options').screenshot({
+          path: `${shots}/${name}-options-${device}-${mode}.png`,
+          animations: 'disabled',
+        });
+    }
+  }
+  await page.setViewportSize(size);
+  await page.evaluate((m) => {
+    document.documentElement.dataset.theme = m;
+  }, theme);
+}
+
 test('each audience preset exports a PDF and remembers the last preset for the project', async ({
   page,
 }, info) => {
@@ -418,40 +457,8 @@ test('each audience preset exports a PDF and remembers the last preset for the p
   );
   await dialog.getByRole('radio', { name: /Pitch cliente/ }).click();
   await expect(dialog.getByText('4 pagine')).toBeVisible();
-  // PRESET_SHOTS: the dialog of each preset, dark and light, desktop and phone, for review.
   const shots = process.env.PRESET_SHOTS;
-  const shoot = async (name: string) => {
-    if (!shots) return;
-    const size = page.viewportSize() ?? { width: 1440, height: 900 };
-    const theme = await page.evaluate(() => document.documentElement.dataset.theme ?? '');
-    await page.mouse.move(size.width - 2, 2);
-    for (const [device, width, height] of [
-      ['desktop', 1280, 900],
-      ['phone', 390, 844],
-    ] as const) {
-      await page.setViewportSize({ width, height });
-      for (const mode of ['dark', 'light']) {
-        await page.evaluate((m) => {
-          document.documentElement.dataset.theme = m;
-        }, mode);
-        await page.waitForTimeout(400);
-        await page.screenshot({
-          path: `${shots}/${name}-${device}-${mode}.png`,
-          animations: 'disabled',
-        });
-        // The options sit below the fold: their own picture, scrolled into view.
-        if (name.endsWith('customise'))
-          await dialog.locator('.export__options').screenshot({
-            path: `${shots}/${name}-options-${device}-${mode}.png`,
-            animations: 'disabled',
-          });
-      }
-    }
-    await page.setViewportSize(size);
-    await page.evaluate((m) => {
-      document.documentElement.dataset.theme = m;
-    }, theme);
-  };
+  const shoot = (name: string) => shootDialog(page, name);
   const customise = async (open: boolean) => {
     const button = dialog.getByRole('button', { name: /Personalizza/ });
     if ((await button.getAttribute('aria-expanded')) !== String(open)) await button.click();
@@ -568,6 +575,126 @@ test('each audience preset exports a PDF and remembers the last preset for the p
   ).json();
   expect(stored.preset).toBe('internal-kickoff');
   expect(await violations()).toEqual([]);
+});
+
+test('the Storyboard recommends the pitch only once a frame is approved', async ({
+  page,
+  baseURL,
+}, info) => {
+  const base = baseURL as string;
+  const cookie = await signIn(base, admin);
+  const post = async <T>(path: string, body: unknown, method = 'POST') => {
+    const res = await fetch(`${base}/api/v1${path}`, {
+      method,
+      headers: { cookie, 'content-type': 'application/json', origin: base },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`${path}: ${res.status} ${await res.text()}`);
+    return (await res.json()) as T;
+  };
+  // A project of its own: no export settings remembered.
+  const project = await post<{ id: string; rootBoardId: string }>('/projects', {
+    name: 'First Light',
+  });
+  const storyboard = await post<{ id: string }>(`/projects/${project.id}/boards`, {
+    parentBoardId: project.rootBoardId,
+    kind: 'storyboard',
+    title: 'Dawn pier',
+  });
+  await signInPage(page);
+  // A real picture in the frames, so the 16:9 page is checked with an image, not an empty box.
+  const picture = Buffer.from(
+    await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1280;
+      canvas.height = 720;
+      const c = canvas.getContext('2d') as CanvasRenderingContext2D;
+      const sky = c.createLinearGradient(0, 0, 0, 720);
+      sky.addColorStop(0, '#22324a');
+      sky.addColorStop(0.6, '#e48a5a');
+      sky.addColorStop(1, '#1d2430');
+      c.fillStyle = sky;
+      c.fillRect(0, 0, 1280, 720);
+      c.fillStyle = '#f6d38a';
+      c.beginPath();
+      c.arc(860, 430, 70, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = '#10151d';
+      c.fillRect(0, 470, 1280, 250);
+      c.fillRect(220, 300, 26, 170);
+      return canvas.toDataURL('image/png').split(',')[1] as string;
+    }),
+    'base64',
+  );
+  const assetId = await uploadFile(base, cookie, project.id, {
+    body: picture,
+    name: 'dawn.png',
+    type: 'image/png',
+  });
+  if (!assetId) throw new Error('Upload failed');
+  await waitForAssets(base, cookie, [assetId]);
+  const story = new Y.Doc();
+  initBoardDoc(story, storyboard.id);
+  const scene = addScene(
+    story,
+    { number: '1', title: 'The pier', setting: 'ext', time: 'day', location: 'Harbour' },
+    opts,
+  );
+  const frameIds = [
+    'Mara walks to the end of the pier as the sun comes up.',
+    'Close on her hands.',
+  ].map(
+    (action) =>
+      addFrame(story, scene.id, null, { action, shot: 'ws', durationMs: 4000, assetId }, opts).id,
+  );
+  await pushBoardDoc(base, cookie, storyboard.id, story);
+
+  // No approved frame: the pitch would be empty, so the production book is recommended.
+  await page.goto(`/p/${project.id}/b/${storyboard.id}?view=storyboard`);
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await page.getByRole('button', { name: 'Esporta PDF' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Esporta' });
+  await expect(dialog.getByRole('radio', { name: /Pitch cliente/ })).toBeVisible();
+  await shootDialog(page, 'rec-no-approved');
+  await expect(dialog.getByRole('radio', { name: /Libro di produzione/ })).toBeChecked();
+  await expect(dialog.locator('.export__preset', { hasText: 'Libro di produzione' })).toContainText(
+    'Consigliato',
+  );
+  await expect(dialog.locator('.export__preset', { hasText: 'Pitch cliente' })).not.toContainText(
+    'Consigliato',
+  );
+  await dialog.getByRole('button', { name: 'Annulla' }).click();
+
+  // Approved in review: the pitch is recommended and shows that frame on a 16:9 page.
+  await post(
+    `/boards/${storyboard.id}/elements/${frameIds[0]}/review`,
+    { status: 'approved' },
+    'PUT',
+  );
+  await page.reload();
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await page.getByRole('button', { name: 'Esporta PDF' }).click();
+  await expect(dialog.getByRole('radio', { name: /Pitch cliente/ })).toBeVisible();
+  await shootDialog(page, 'rec-approved');
+  await expect(dialog.getByRole('radio', { name: /Pitch cliente/ })).toBeChecked();
+  await expect(dialog.locator('.export__preset', { hasText: 'Pitch cliente' })).toContainText(
+    'Consigliato',
+  );
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
+  ]);
+  const path = info.outputPath('pitch-with-picture.pdf');
+  await download.saveAs(path);
+  if (process.env.PRESET_SHOTS)
+    await download.saveAs(`${process.env.PRESET_SHOTS}/pitch-with-picture.pdf`);
+  const pdf = await readPdf(path);
+  expect(pdf.sizes).toEqual([
+    [960, 540],
+    [960, 540],
+  ]);
+  expect(pdf.pages[1]).toContain('Mara walks to the end of the pier');
+  expect(pdf.pages.join(' ')).not.toContain('Close on her hands');
 });
 
 /** The PNG files of a stored ZIP: name and the width and height from each IHDR. */
