@@ -258,7 +258,8 @@ export function ExportDialog(props: ExportDialogProps) {
   };
 
   const canDownload = atLeast(props.role ?? null, CAPABILITY_ROLE.download);
-  const offersFile = req.format !== 'pdf' && image.aspect === 'original' && req.what === 'selection';
+  const offersFile =
+    req.format !== 'pdf' && image.aspect === 'original' && req.what === 'selection';
   const fileMode = offersFile && canDownload && size === 'file';
   const selection = props.selection;
   const { audience, hideGuestHidden } = req;
@@ -973,10 +974,10 @@ export function ExportDialog(props: ExportDialogProps) {
                   : fileMode
                     ? t('export.submitFiles', { count: fileCount || 1 })
                     : isPhone && asImage && imageState.count > 0
-                    ? t('export.submitImages', { count: imageState.count })
-                    : isPhone && !asImage && pageCount > 0
-                      ? t('export.submitPages', { count: pageCount })
-                      : t('export.submit')}
+                      ? t('export.submitImages', { count: imageState.count })
+                      : isPhone && !asImage && pageCount > 0
+                        ? t('export.submitPages', { count: pageCount })
+                        : t('export.submit')}
               </Button>
             </DialogActions>
           </div>

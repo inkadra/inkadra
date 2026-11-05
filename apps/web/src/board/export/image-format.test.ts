@@ -82,10 +82,13 @@ describe('image formats', () => {
       ...wide,
       ops: [{ kind: 'rect', x: 0, y: 0, w: 3000, h: 2000, fill: '#222222' }],
     };
-    const { pages, scales } = imagePages(
-      [box, box],
-      { aspect: '4:5', fit: 'fill', many: null, foci: { 1: { x: 0, y: 0 } }, band: '#161616' },
-    );
+    const { pages, scales } = imagePages([box, box], {
+      aspect: '4:5',
+      fit: 'fill',
+      many: null,
+      foci: { 1: { x: 0, y: 0 } },
+      band: '#161616',
+    });
     expect(scales).toEqual([1, 1]);
     const x = (page: Page | undefined) => {
       const clip = page?.ops[0];
@@ -97,7 +100,12 @@ describe('image formats', () => {
   });
 
   it('paints the bands in the chosen colour, black by default', () => {
-    const out = imagePages([wide], { ...ORIGINAL_IMAGE, aspect: '9:16', fit: 'fit', band: '#3A5A7C' });
+    const out = imagePages([wide], {
+      ...ORIGINAL_IMAGE,
+      aspect: '9:16',
+      fit: 'fit',
+      band: '#3A5A7C',
+    });
     expect(out.pages[0]?.background).toBe('#3A5A7C');
     expect(ORIGINAL_IMAGE.band).toBe('#000000');
   });
