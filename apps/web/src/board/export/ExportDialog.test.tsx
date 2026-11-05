@@ -475,7 +475,7 @@ describe('ExportDialog preset state and customization', () => {
     expect(radio('File originale')).toBeUndefined();
     await act(async () => radio('Originale')?.click());
     expect(radio('Anteprima')?.checked).toBe(true);
-    expect(host.textContent).toContain('Un\'immagine ridotta, senza metadati.');
+    expect(host.textContent).toContain("Un'immagine ridotta, senza metadati.");
     await act(async () => radio('File originale')?.click());
     expect(radio('File originale')?.checked).toBe(true);
     expect(radio('PNG')).toBeUndefined();
