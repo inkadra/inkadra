@@ -164,6 +164,8 @@ test('the project theme dresses the presentation and the PDF', async ({ page }, 
   const exporter = page.getByRole('dialog', { name: /Esporta/ });
   await exporter.getByRole('button', { name: /Personalizza/ }).click();
   await exporter.getByRole('checkbox', { name: /Copertina/ }).check();
+  // No frame is approved here: the pitch would print none.
+  await exporter.getByRole('checkbox', { name: 'Solo inquadrature approvate' }).uncheck();
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     exporter.getByRole('button', { name: 'Esporta', exact: true }).click(),

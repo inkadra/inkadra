@@ -37,3 +37,14 @@ export function getFrameKanbanColumn(frame: {
   if (s === 'ready' || s === 'shot' || s === 'retake') return s;
   return 'todo';
 }
+
+/**
+ * Whether a frame counts as approved for the "approved frames only" export (#380): approved in
+ * review (decision 0013, as the team sees it) or marked approved in the shot list.
+ */
+export function isApproved(
+  frame: { id: string; approved?: boolean | undefined },
+  reviews: ReadonlyMap<string, { status: string }>,
+): boolean {
+  return !!frame.approved || reviews.get(frame.id)?.status === 'approved';
+}

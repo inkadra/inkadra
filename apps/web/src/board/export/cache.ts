@@ -10,7 +10,18 @@ export class ExportCache {
   private images = new Map<string, Promise<LoadedImage | null>>();
   private settled: LoadedImage[] = [];
   private closed = false;
+  private data = new Map<string, Promise<unknown>>();
   readonly names = new Map<string, string>();
+
+  /** Data the preview fetches once while the dialog is open, such as the shooting days. */
+  once<T>(key: string, load: () => Promise<T>): Promise<T> {
+    let p = this.data.get(key) as Promise<T> | undefined;
+    if (!p) {
+      p = load();
+      this.data.set(key, p);
+    }
+    return p;
+  }
 
   image(asset: Asset, pixels: number, signal?: AbortSignal): Promise<LoadedImage | null> {
     const key = `${asset.id}@${pixels}`;
@@ -44,6 +55,7 @@ export class ExportCache {
     closeImages(this.settled);
     this.settled = [];
     this.images.clear();
+    this.data.clear();
     this.names.clear();
   }
 }

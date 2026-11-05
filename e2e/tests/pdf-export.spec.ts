@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { deflateSync } from 'node:zlib';
 import { addFrame, addScene, createElement, updateElement } from '@inkadra/canvas-core';
@@ -24,12 +25,16 @@ let seeded: Seeded;
 async function readPdf(path: string) {
   const pdf = await getDocument({ data: new Uint8Array(await readFile(path)) }).promise;
   const pages: string[] = [];
+  const sizes: number[][] = [];
   for (let n = 1; n <= pdf.numPages; n++) {
-    const content = await (await pdf.getPage(n)).getTextContent();
+    const page = await pdf.getPage(n);
+    const content = await page.getTextContent();
     pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '));
+    const [, , width = 0, height = 0] = page.view;
+    sizes.push([Math.round(width), Math.round(height)]);
   }
   const meta = await pdf.getMetadata();
-  return { pages, title: (meta.info as { Title?: string }).Title ?? '' };
+  return { pages, sizes, title: (meta.info as { Title?: string }).Title ?? '' };
 }
 
 /** A small opaque PNG (solid colour), as a logo would be. */
@@ -89,15 +94,16 @@ async function signInPage(page: Page) {
 test.beforeAll(async ({ baseURL }) => {
   const base = baseURL as string;
   const cookie = await signIn(base, admin);
-  const post = async <T>(path: string, body: unknown) => {
+  const send = async <T>(method: string, path: string, body: unknown) => {
     const res = await fetch(`${base}/api/v1${path}`, {
-      method: 'POST',
+      method,
       headers: { cookie, 'content-type': 'application/json', origin: base },
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`${path}: ${res.status} ${await res.text()}`);
     return (await res.json()) as T;
   };
+  const post = <T>(path: string, body: unknown) => send<T>('POST', path, body);
   const project = await post<{ id: string; rootBoardId: string }>('/projects', {
     name: 'Last Train',
   });
@@ -141,6 +147,7 @@ test.beforeAll(async ({ baseURL }) => {
 
   const story = new Y.Doc();
   let firstFrameId = '';
+  const frameIds: string[] = [];
   initBoardDoc(story, storyboard.id);
   const scene = addScene(
     story,
@@ -155,6 +162,9 @@ test.beforeAll(async ({ baseURL }) => {
       { action: `Frame action ${i + 1}`, shot: 'ws', durationMs: 3000 },
       opts,
     );
+    frameIds.push(frame.id);
+    // Frames 1 and 2 approved in the shot list, frame 3 in review (below): the client pitch.
+    if (i < 2) updateElement(story, frame.id, { approved: true });
     if (i === 0) {
       firstFrameId = frame.id;
       updateElement(story, frame.id, { notes: 'Director only note', tags: ['internal-tag'] });
@@ -162,7 +172,38 @@ test.beforeAll(async ({ baseURL }) => {
     if (i === 4)
       updateElement(story, frame.id, { guestHidden: true, action: 'Hidden frame action' });
   }
+  // An open task for the kickoff summary.
+  createElement(
+    story,
+    'todo',
+    { x: 0, y: 900 },
+    { title: 'Prep', items: [{ id: 'item000002', text: 'Rent the dolly', done: false }] },
+    opts,
+  );
   await pushBoardDoc(base, cookie, storyboard.id, story);
+  await send('PUT', `/boards/${storyboard.id}/elements/${frameIds[2]}/review`, {
+    status: 'approved',
+  });
+  // One shooting day: the production book prints its call sheet, the kickoff its schedule.
+  await post(`/boards/${storyboard.id}/schedule`, {
+    date: '2026-11-10',
+    callTime: '07:00',
+    wrap: '19:00',
+    location: 'Station platform 4',
+    notes: '',
+    blocks: [
+      {
+        id: randomUUID(),
+        type: 'shot',
+        title: 'Train arrives',
+        start: null,
+        duration: 60,
+        shotId: frameIds[0],
+        cast: ['Marta'],
+        departments: ['Camera: dolly track'],
+      },
+    ],
+  });
   // 32 frames, enough to squeeze into a strip when the pages were stacked in one image.
   const long = new Y.Doc();
   initBoardDoc(long, longBoard.id);
@@ -368,24 +409,73 @@ test('each audience preset exports a PDF and remembers the last preset for the p
   await page.goto(`/p/${seeded.projectId}/b/${seeded.storyboardId}?view=storyboard`);
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
 
-  // 1. Storyboard view recommends Pitch cliente (1 per page, client audience, cover, no comments).
+  // 1. Storyboard view recommends Pitch cliente: 16:9, approved frames only (by flag or by
+  // review), one per page, for clients, no comments.
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
   await expect(dialog.locator('.export__preset', { hasText: 'Pitch cliente' })).toContainText(
     'Consigliato',
   );
   await dialog.getByRole('radio', { name: /Pitch cliente/ }).click();
-  await expect(dialog.getByText('5 pagine')).toBeVisible();
+  await expect(dialog.getByText('4 pagine')).toBeVisible();
+  // PRESET_SHOTS: the dialog of each preset, dark and light, desktop and phone, for review.
+  const shots = process.env.PRESET_SHOTS;
+  const shoot = async (name: string) => {
+    if (!shots) return;
+    const size = page.viewportSize() ?? { width: 1440, height: 900 };
+    const theme = await page.evaluate(() => document.documentElement.dataset.theme ?? '');
+    await page.mouse.move(size.width - 2, 2);
+    for (const [device, width, height] of [
+      ['desktop', 1280, 900],
+      ['phone', 390, 844],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      for (const mode of ['dark', 'light']) {
+        await page.evaluate((m) => {
+          document.documentElement.dataset.theme = m;
+        }, mode);
+        await page.waitForTimeout(400);
+        await page.screenshot({
+          path: `${shots}/${name}-${device}-${mode}.png`,
+          animations: 'disabled',
+        });
+        // The options sit below the fold: their own picture, scrolled into view.
+        if (name.endsWith('customise'))
+          await dialog.locator('.export__options').screenshot({
+            path: `${shots}/${name}-options-${device}-${mode}.png`,
+            animations: 'disabled',
+          });
+      }
+    }
+    await page.setViewportSize(size);
+    await page.evaluate((m) => {
+      document.documentElement.dataset.theme = m;
+    }, theme);
+  };
+  const customise = async (open: boolean) => {
+    const button = dialog.getByRole('button', { name: /Personalizza/ });
+    if ((await button.getAttribute('aria-expanded')) !== String(open)) await button.click();
+  };
+  if (shots) {
+    await customise(false);
+    await shoot('1-pitch');
+    await customise(true);
+    await shoot('1-pitch-customise');
+  }
   const [pitchDownload] = await Promise.all([
     page.waitForEvent('download'),
     dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
   ]);
   const pitchPath = info.outputPath('preset-client-pitch.pdf');
   await pitchDownload.saveAs(pitchPath);
+  if (shots) await pitchDownload.saveAs(`${shots}/preset-client-pitch.pdf`);
   const pitchPdf = await readPdf(pitchPath);
-  expect(pitchPdf.pages).toHaveLength(5);
+  expect(pitchPdf.pages).toHaveLength(4);
+  expect(pitchPdf.sizes).toEqual(Array(4).fill([960, 540]));
   expect(pitchPdf.pages[0]).toContain('STORYBOARD');
   expect(pitchPdf.pages[1]).toContain('Frame action 1');
+  expect(pitchPdf.pages[3]).toContain('Frame action 3');
+  expect(pitchPdf.pages.join(' ')).not.toContain('Frame action 4');
   expect(pitchPdf.pages.join(' ')).not.toContain('Hidden frame action');
   expect(pitchPdf.pages.join(' ')).not.toContain('Director only note');
   expect(pitchPdf.pages.join(' ')).not.toContain('Shared with the client');
@@ -397,18 +487,30 @@ test('each audience preset exports a PDF and remembers the last preset for the p
   await expect(dialog.locator('.export__preset', { hasText: 'Libro di produzione' })).toContainText(
     'Consigliato',
   );
-  await expect(dialog.getByText('2 pagine')).toBeVisible();
+  await expect(dialog.getByText('3 pagine')).toBeVisible();
+  if (shots) {
+    await customise(false);
+    await shoot('2-book');
+    await customise(true);
+    await shoot('2-book-customise');
+  }
   const [bookDownload] = await Promise.all([
     page.waitForEvent('download'),
     dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
   ]);
   const bookPath = info.outputPath('preset-production-book.pdf');
   await bookDownload.saveAs(bookPath);
+  if (shots) await bookDownload.saveAs(`${shots}/preset-production-book.pdf`);
   const bookPdf = await readPdf(bookPath);
-  expect(bookPdf.pages).toHaveLength(2);
+  expect(bookPdf.pages).toHaveLength(3);
   expect(bookPdf.pages[0]).toContain('SHOT LIST');
   expect(bookPdf.pages[1]).toContain('Hidden frame action');
   expect(bookPdf.pages[1]).toContain('Bozza');
+  // The call sheet of the shooting day closes the book.
+  expect(bookPdf.pages[2]).toContain('Ordine del giorno');
+  expect(bookPdf.pages[2]).toContain('Station platform 4');
+  expect(bookPdf.pages[2]).toContain('1A · Train arrives');
+  expect(bookPdf.pages[2]).toContain('dolly track');
   expect(bookPdf.pages.join(' ')).not.toContain('Shared with the client');
 
   // 3. Schedule view recommends Kickoff interno (since Libro di produzione is a shot list preset).
@@ -418,16 +520,34 @@ test('each audience preset exports a PDF and remembers the last preset for the p
   await expect(dialog.locator('.export__preset', { hasText: 'Kickoff interno' })).toContainText(
     'Consigliato',
   );
-  await expect(dialog.getByText('4 pagine')).toBeVisible();
+  await expect(dialog.getByText('5 pagine')).toBeVisible();
+  if (shots) {
+    await customise(false);
+    await shoot('3-kickoff');
+    await customise(true);
+    await shoot('3-kickoff-customise');
+  }
   const [kickoffDownload] = await Promise.all([
     page.waitForEvent('download'),
     dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
   ]);
   const kickoffPath = info.outputPath('preset-internal-kickoff.pdf');
   await kickoffDownload.saveAs(kickoffPath);
+  if (shots) await kickoffDownload.saveAs(`${shots}/preset-internal-kickoff.pdf`);
   const kickoffPdf = await readPdf(kickoffPath);
-  expect(kickoffPdf.pages).toHaveLength(4);
+  expect(kickoffPdf.pages).toHaveLength(5);
   expect(kickoffPdf.pages[0]).toContain('STORYBOARD');
+  // The kickoff summary follows the title page: dates, people, open tasks and schedule.
+  for (const value of [
+    'Riepilogo kickoff',
+    '1 giorno di riprese',
+    'Giulia',
+    'Proprietario',
+    'Rent the dolly',
+    'Station platform 4',
+    '1 inquadratura',
+  ])
+    expect(kickoffPdf.pages[1]).toContain(value);
   const kickoffText = kickoffPdf.pages.join(' ');
   expect(kickoffText).toContain('Hidden frame action');
   expect(kickoffText).toContain('Director only note');

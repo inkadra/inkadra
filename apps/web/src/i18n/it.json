@@ -2988,6 +2988,7 @@
     "page": "Formato pagina",
     "paperA4": "A4",
     "paperLetter": "Letter",
+    "paperSlide": "16:9 · Orizzontale",
     "portrait": "Verticale",
     "landscape": "Orizzontale",
     "audience": "Destinatari",
@@ -3016,6 +3017,7 @@
     "madeWith": "Creato con Inkadra",
     "scene": "Sc.",
     "noFrames": "Nessuna inquadratura",
+    "noApprovedFrames": "Nessuna inquadratura approvata",
     "commentsTitle": "Commenti",
     "onBoard": "Sulla board",
     "onCard": "Su {{label}}",
@@ -3060,16 +3062,35 @@
     "presets": {
       "client-pitch": {
         "title": "Pitch cliente",
-        "description": "Orizzontale · una inquadratura per pagina · copertina · per i clienti, senza commenti né card nascoste"
+        "description": "16:9 · solo inquadrature approvate · una per pagina · niente note interne"
       },
       "production-book": {
         "title": "Libro di produzione",
-        "description": "A4 verticale · shot list con tutti i campi · copertina · per il team, senza commenti"
+        "description": "A4 · tutti i campi · shot list e ordine del giorno · numeri di pagina"
       },
       "internal-kickoff": {
         "title": "Kickoff interno",
-        "description": "Orizzontale · 4 per pagina · copertina · per il team, con commenti e card nascoste"
+        "description": "Date, persone, compiti e riepilogo del piano riprese"
       }
+    },
+    "approvedOnly": "Solo inquadrature approvate",
+    "kickoffSummary": "Riepilogo kickoff: date, persone, compiti e piano riprese",
+    "callSheet": "Ordine del giorno di ogni giorno di riprese",
+    "teamOnlyHint": "Solo nei PDF per il team.",
+    "callSheetTitle": "Ordine del giorno",
+    "kickoff": {
+      "title": "Riepilogo kickoff",
+      "dates": "Date",
+      "period_one": "{{count}} giorno di riprese: {{from}}",
+      "period_other": "{{count}} giorni di riprese, dal {{from}} al {{to}}",
+      "noDays": "Nessun giorno di riprese nel piano.",
+      "people": "Persone",
+      "noPeople": "Nessuna persona da mostrare.",
+      "tasks": "Compiti aperti",
+      "noTasks": "Nessun compito aperto.",
+      "schedule": "Piano riprese",
+      "shots_one": "{{count}} inquadratura",
+      "shots_other": "{{count}} inquadrature"
     }
   },
   "screenplay": {

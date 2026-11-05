@@ -44,12 +44,15 @@ describe('export settings on the client', () => {
       format: 'pdf',
       what: 'storyboard',
       framesPerPage: 1,
-      paper: 'a4',
+      paper: 'slide',
       orientation: 'landscape',
       audience: 'client',
       titlePage: true,
       comments: false,
       hideGuestHidden: true,
+      approvedOnly: true,
+      kickoffSummary: false,
+      callSheet: false,
     });
     expect(matchesPreset(pitch, 'client-pitch', 'storyboard', 'it-IT')).toBe(true);
     expect(
@@ -67,6 +70,9 @@ describe('export settings on the client', () => {
       titlePage: true,
       comments: false,
       hideGuestHidden: false,
+      approvedOnly: false,
+      kickoffSummary: false,
+      callSheet: true,
     });
     expect(matchesPreset(book, 'production-book', 'storyboard', 'en-US')).toBe(true);
 
@@ -81,6 +87,9 @@ describe('export settings on the client', () => {
       titlePage: true,
       comments: true,
       hideGuestHidden: false,
+      approvedOnly: false,
+      kickoffSummary: true,
+      callSheet: false,
     });
     expect(matchesPreset(kickoff, 'internal-kickoff', 'schedule', 'it-IT')).toBe(true);
 
@@ -97,7 +106,35 @@ describe('export settings on the client', () => {
     ).toBe(true);
     expect(
       matchesPreset({ ...pitch, paper: 'letter' }, 'client-pitch', 'storyboard', 'en-US', 'a4'),
+    ).toBe(false);
+  });
+
+  it('counts the new options as edits only where they apply', () => {
+    const pitch = presetChoices('client-pitch', 'storyboard', undefined, 'it-IT');
+    expect(
+      matchesPreset({ ...pitch, approvedOnly: false }, 'client-pitch', 'storyboard', 'it-IT'),
+    ).toBe(false);
+    // A canvas board has no frames to approve: the pitch leaves the filter off there.
+    expect(presetChoices('client-pitch', 'canvas', 'board').approvedOnly).toBe(false);
+    // Kickoff summary and call sheet are team PDF pages; for clients they are ignored.
+    expect(
+      matchesPreset({ ...pitch, kickoffSummary: true }, 'client-pitch', 'storyboard', 'it-IT'),
     ).toBe(true);
+    const kickoff = presetChoices('internal-kickoff', 'schedule', undefined, 'it-IT');
+    expect(
+      matchesPreset({ ...kickoff, kickoffSummary: false }, 'internal-kickoff', 'schedule', 'it-IT'),
+    ).toBe(false);
+    const book = presetChoices('production-book', 'shotlist', undefined, 'it-IT');
+    expect(
+      matchesPreset({ ...book, callSheet: false }, 'production-book', 'shotlist', 'it-IT'),
+    ).toBe(false);
+    expect(
+      preferencesPatch(
+        DEFAULT_EXPORT_PREFERENCES,
+        { ...DEFAULT_EXPORT_PREFERENCES, paper: 'slide', approvedOnly: true, callSheet: true },
+        'it-IT',
+      ),
+    ).toEqual({ paper: 'slide', approvedOnly: true, callSheet: true });
   });
 
   it('chooses the initial preset from remembered settings and view compatibility', () => {
@@ -146,6 +183,17 @@ describe('export settings on the client', () => {
     );
     expect(remembered.basePreset).toBe('internal-kickoff');
     expect(remembered.customOpen).toBe(false);
+
+    // A pitch remembered before #380 (A4, no approved filter) starts as the pitch is now.
+    const oldPitch = initialExportState(
+      { ...baseSettings, preset: 'client-pitch', framesPerPage: 1, paper: 'a4' },
+      'storyboard',
+      undefined,
+      'it-IT',
+    );
+    expect(oldPitch.basePreset).toBe('client-pitch');
+    expect(oldPitch.customOpen).toBe(false);
+    expect(oldPitch.req).toMatchObject({ paper: 'slide', approvedOnly: true });
 
     // Custom preferences that match no preset open Personalizza automatically.
     const custom = initialExportState(

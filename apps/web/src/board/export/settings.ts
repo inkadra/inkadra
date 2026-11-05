@@ -59,12 +59,15 @@ export function presetChoices(
         format: 'pdf',
         what: film ? 'storyboard' : currentWhat,
         framesPerPage: 1,
-        paper: localePaper(language),
+        paper: 'slide',
         orientation: 'landscape',
         audience: 'client',
         titlePage: true,
         comments: false,
         hideGuestHidden: true,
+        approvedOnly: film,
+        kickoffSummary: false,
+        callSheet: false,
       };
     case 'production-book':
       return {
@@ -77,6 +80,9 @@ export function presetChoices(
         titlePage: true,
         comments: false,
         hideGuestHidden: false,
+        approvedOnly: false,
+        kickoffSummary: false,
+        callSheet: true,
       };
     case 'internal-kickoff':
       return {
@@ -89,6 +95,9 @@ export function presetChoices(
         titlePage: true,
         comments: true,
         hideGuestHidden: false,
+        approvedOnly: false,
+        kickoffSummary: true,
+        callSheet: false,
       };
   }
 }
@@ -117,8 +126,21 @@ export function matchesPreset(
     req.audience === expected.audience &&
     (req.format !== 'pdf' || req.titlePage === expected.titlePage) &&
     (req.format !== 'pdf' || req.comments === expected.comments) &&
-    (req.audience === 'client' || req.hideGuestHidden === expected.hideGuestHidden)
+    (req.audience === 'client' || req.hideGuestHidden === expected.hideGuestHidden) &&
+    (!framesOf(req.what) || req.approvedOnly === expected.approvedOnly) &&
+    (!teamPdf(req) || req.kickoffSummary === expected.kickoffSummary) &&
+    (!teamPdf(req) || req.callSheet === expected.callSheet)
   );
+}
+
+/** Content made of frames, where "approved frames only" applies. */
+export function framesOf(what: ExportWhat): boolean {
+  return what === 'storyboard' || what === 'shotlist';
+}
+
+/** The kickoff summary and the call sheet are PDF pages for the team only. */
+export function teamPdf(req: Pick<PresetChoices, 'format' | 'audience'>): boolean {
+  return req.format === 'pdf' && req.audience === 'team';
 }
 
 /** Whether `preset` exports the content kind of the view the dialog was opened from. */
@@ -142,7 +164,10 @@ function isDefaultPreferences(prefs: ExportPreferences): boolean {
     prefs.audience === DEFAULT_EXPORT_PREFERENCES.audience &&
     prefs.titlePage === DEFAULT_EXPORT_PREFERENCES.titlePage &&
     prefs.comments === DEFAULT_EXPORT_PREFERENCES.comments &&
-    prefs.hideGuestHidden === DEFAULT_EXPORT_PREFERENCES.hideGuestHidden
+    prefs.hideGuestHidden === DEFAULT_EXPORT_PREFERENCES.hideGuestHidden &&
+    prefs.approvedOnly === DEFAULT_EXPORT_PREFERENCES.approvedOnly &&
+    prefs.kickoffSummary === DEFAULT_EXPORT_PREFERENCES.kickoffSummary &&
+    prefs.callSheet === DEFAULT_EXPORT_PREFERENCES.callSheet
   );
 }
 
@@ -150,8 +175,9 @@ function isDefaultPreferences(prefs: ExportPreferences): boolean {
  * Starting state of the dialog once the project's export settings load:
  * - A project that never saved preferences (or only uploaded a logo or theme) starts on the
  *   view's recommended preset with Personalizza closed.
- * - A remembered preset is used only if its content matches the open view; otherwise the view's
- *   recommended preset is selected so opening from Shot list never silently exports the storyboard.
+ * - A remembered preset is used, with its current options, only if its content matches the open
+ *   view; otherwise the view's recommended preset is selected so opening from Shot list never
+ *   silently exports the storyboard.
  * - Personalizza opens automatically only when stored preferences do not match any preset.
  */
 export function initialExportState(
@@ -199,20 +225,12 @@ export function initialExportState(
         },
       };
     }
-    const what: ExportWhat =
-      source === 'canvas' ? (initialWhat ?? 'board') : presetChoices(savedPreset, source).what;
-    const req: ExportRequest = {
-      ...prefs,
-      what,
-      paper: prefs.paper ?? localePaper(language),
-      logo,
-      theme,
-    };
-    const matches = matchesPreset(req, savedPreset, source, language, prefs.paper);
+    // The preset is what was remembered: it starts from the preset's options as they are now,
+    // so a preset that gained options (#380: 16:9, approved only, kickoff, call sheet) gets them.
     return {
       basePreset: savedPreset,
-      customOpen: !matches,
-      req,
+      customOpen: false,
+      req: { ...presetChoices(savedPreset, source, initialWhat, language), logo, theme },
     };
   }
   const what: ExportWhat =
@@ -284,6 +302,9 @@ export function preferencesPatch(
     'titlePage',
     'comments',
     'hideGuestHidden',
+    'approvedOnly',
+    'kickoffSummary',
+    'callSheet',
   ] as const;
   for (const key of keys) {
     if (stored[key] !== chosen[key]) (out as Record<string, unknown>)[key] = chosen[key];

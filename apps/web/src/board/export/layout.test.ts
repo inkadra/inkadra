@@ -20,6 +20,11 @@ describe('page sizes', () => {
     expect(pageSize('letter', 'landscape')).toEqual({ width: 792, height: 612 });
   });
 
+  it('makes the 16:9 page a landscape slide whatever the orientation', () => {
+    expect(pageSize('slide', 'landscape')).toEqual({ width: 960, height: 540 });
+    expect(pageSize('slide', 'portrait')).toEqual({ width: 960, height: 540 });
+  });
+
   it('keeps the content inside the margins, header and footer', () => {
     const box = contentBox(600, 800);
     expect(box.x).toBe(36);

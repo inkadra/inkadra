@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /** Page sizes, margins and grids of an export, in PDF points. Pure maths, unit tested. */
 
-export type PaperSize = 'a4' | 'letter';
+export type PaperSize = 'a4' | 'letter' | 'slide';
 export type Orientation = 'portrait' | 'landscape';
 export type FramesPerPage = 1 | 2 | 4 | 6;
 export const FRAMES_PER_PAGE: readonly FramesPerPage[] = [1, 2, 4, 6];
@@ -17,10 +17,13 @@ const PAPER: Record<PaperSize, { w: number; h: number }> = {
   // 210 × 297 mm and 8.5 × 11 in.
   a4: { w: 595.28, h: 841.89 },
   letter: { w: 612, h: 792 },
+  // 16:9, 13.33 × 7.5 in like a widescreen slide; always landscape.
+  slide: { w: 540, h: 960 },
 };
 
 export function pageSize(paper: PaperSize, orientation: Orientation) {
   const { w, h } = PAPER[paper];
+  if (paper === 'slide') return { width: h, height: w };
   return orientation === 'portrait' ? { width: w, height: h } : { width: h, height: w };
 }
 

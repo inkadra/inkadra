@@ -5,6 +5,7 @@ import { type CardContext, cardHeight, drawCard } from './board-render.ts';
 import {
   finish,
   type Shot,
+  sectionPages,
   shotColumns,
   shotListPages,
   storyboardPages,
@@ -248,5 +249,29 @@ describe('story bible cards in exports', () => {
     expect(shown).toContain('INT.');
     expect(shown).toContain('Neon verde');
     expect(shown).not.toContain('Binari');
+  });
+});
+
+describe('section pages', () => {
+  it('heads the first page and continues long sections on the next ones', () => {
+    const setup = { paper: 'slide', orientation: 'landscape' } as const;
+    const rows = Array.from({ length: 80 }, (_, i) => [`Task ${i}`, 'Anna', '10 nov']);
+    const pages = sectionPages(
+      setup,
+      'Kickoff summary',
+      [
+        { title: 'Open tasks', columns: [4, 2, 1], rows, empty: 'No open tasks' },
+        { title: 'People', columns: [1, 1], rows: [], empty: 'No people' },
+      ],
+      ctx,
+    );
+    expect(pages.length).toBeGreaterThan(1);
+    for (const page of pages) expect([page.width, page.height]).toEqual([960, 540]);
+    const texts = (page: Page) => page.ops.flatMap((op) => (op.kind === 'text' ? [op.text] : []));
+    expect(texts(pages[0] as Page)[0]).toBe('Kickoff summary');
+    expect(texts(pages[1] as Page)).not.toContain('Kickoff summary');
+    const all = pages.flatMap(texts);
+    expect(all).toContain('Task 79');
+    expect(all).toContain('No people');
   });
 });

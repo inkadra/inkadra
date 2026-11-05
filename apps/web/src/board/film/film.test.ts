@@ -7,7 +7,7 @@ import { exifRows, shutterText } from '../viewer.tsx';
 import { aspectLabel } from './aspect.ts';
 import { estimatedDurationMs } from './duration.ts';
 import { parseSeconds, secondsText } from './fields.tsx';
-import { getFrameKanbanColumn, getFrameStatus } from './film-status.ts';
+import { getFrameKanbanColumn, getFrameStatus, isApproved } from './film-status.ts';
 import { toCsv } from './ShotList.tsx';
 import { KANBAN_COLUMNS } from './ShotlistKanban.tsx';
 import { pathOf } from './strokes.ts';
@@ -90,6 +90,17 @@ it('maps kanban columns and derives frame statuses', () => {
   expect(getFrameStatus({ status: 'shot', approved: true })).toBe('approved');
   expect(getFrameStatus({ status: 'shot' })).toBe('shot');
   expect(getFrameStatus({})).toBe('draft');
+});
+
+it('counts a frame as approved by its flag or by its review', () => {
+  const reviews = new Map([
+    ['a', { status: 'approved' }],
+    ['b', { status: 'changes_requested' }],
+  ]);
+  expect(isApproved({ id: 'a' }, reviews)).toBe(true);
+  expect(isApproved({ id: 'b' }, reviews)).toBe(false);
+  expect(isApproved({ id: 'b', approved: true }, reviews)).toBe(true);
+  expect(isApproved({ id: 'c' }, reviews)).toBe(false);
 });
 
 describe('search, tags and viewer', () => {

@@ -100,17 +100,18 @@ describe('ExportDialog preset state and customization', () => {
     );
     expect(pitchRadio?.checked).toBe(true);
     expect(host.querySelector('.export__disclosure-note')?.textContent).toBe(
-      '· A4 orizzontale, PDF, clienti',
+      '· 16:9 · Orizzontale, PDF, clienti',
     );
 
     // Open Personalizza and edit an option (enable comments).
     const disclosure = host.querySelector<HTMLButtonElement>('.export__disclosure');
     await act(async () => disclosure?.click());
 
-    const checkboxes = [
-      ...host.querySelectorAll<HTMLInputElement>('.export__options input[type="checkbox"]'),
-    ];
-    const commentsCheckbox = checkboxes.at(-1);
+    const checkOf = (label: string) =>
+      [...host.querySelectorAll<HTMLLabelElement>('.export__options .export__check')]
+        .find((el) => el.textContent?.startsWith(label))
+        ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    const commentsCheckbox = checkOf('Includi i commenti');
     expect(commentsCheckbox?.checked).toBe(false);
 
     await act(async () => commentsCheckbox?.click());
@@ -134,8 +135,73 @@ describe('ExportDialog preset state and customization', () => {
 
     await act(async () => disclosure?.click());
     expect(host.querySelector('.export__disclosure-note')?.textContent).toBe(
-      '· A4 orizzontale, PDF, clienti',
+      '· 16:9 · Orizzontale, PDF, clienti',
     );
+  });
+
+  it('offers 16:9, approved frames only, kickoff summary and call sheet through the presets', async () => {
+    getMock.mockResolvedValue({
+      ...DEFAULT_EXPORT_PREFERENCES,
+      logoAssetId: null,
+      logo: null,
+      theme: DEFAULT_PROJECT_THEME,
+      projectColor: 'blue',
+      canEdit: true,
+      updatedAt: null,
+    });
+    await act(async () => {
+      root.render(
+        <ExportDialog
+          source="storyboard"
+          store={{} as BoardStore}
+          projectId="p1"
+          boardId="b1"
+          projectName="Spot Lagunc"
+          boardTitle="Storyboard"
+          boards={null}
+          selection={new Set()}
+          visible={null}
+          onClose={() => {}}
+        />,
+      );
+    });
+    const checkOf = (label: string) =>
+      [...host.querySelectorAll<HTMLLabelElement>('.export__options .export__check')]
+        .find((el) => el.textContent?.startsWith(label))
+        ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    const radio = (id: string) =>
+      host.querySelector<HTMLInputElement>(`input.export__preset-input[value="${id}"]`);
+    const orientation = () => host.querySelector('.export__row fieldset');
+
+    // Client pitch: a 16:9 slide (no orientation to pick), approved frames only, and no
+    // kickoff or call sheet, which are for the team.
+    expect(host.querySelector('.export__row [role="combobox"]')?.getAttribute('data-value')).toBe(
+      'slide',
+    );
+    expect(orientation()).toBeNull();
+    expect(checkOf('Solo inquadrature approvate')?.checked).toBe(true);
+    expect(checkOf('Riepilogo kickoff')?.disabled).toBe(true);
+    expect(checkOf('Ordine del giorno')?.disabled).toBe(true);
+    await act(async () => checkOf('Solo inquadrature approvate')?.click());
+    expect(radio('client-pitch')?.checked).toBe(false);
+    await act(async () => checkOf('Solo inquadrature approvate')?.click());
+    expect(radio('client-pitch')?.checked).toBe(true);
+
+    // Production book: A4 portrait with the call sheet.
+    await act(async () => radio('production-book')?.click());
+    expect(host.querySelector('.export__row [role="combobox"]')?.getAttribute('data-value')).toBe(
+      'a4',
+    );
+    expect(orientation()).not.toBeNull();
+    expect(checkOf('Ordine del giorno')?.checked).toBe(true);
+    expect(checkOf('Riepilogo kickoff')?.checked).toBe(false);
+
+    // Internal kickoff: the kickoff summary.
+    await act(async () => radio('internal-kickoff')?.click());
+    expect(checkOf('Riepilogo kickoff')?.checked).toBe(true);
+    expect(checkOf('Ordine del giorno')?.checked).toBe(false);
+    await act(async () => checkOf('Riepilogo kickoff')?.click());
+    expect(radio('internal-kickoff')?.checked).toBe(false);
   });
 
   it('waits for settings before offering presets and restores the remembered value without early clicks', async () => {

@@ -662,6 +662,119 @@ export function commentPages(
   });
 }
 
+/** A titled table of text, for the kickoff summary and the call sheet. */
+export interface Section {
+  title: string;
+  /** Relative widths of the columns; rows with one cell span them all. */
+  columns: number[];
+  rows: string[][];
+  /** Printed in place of the rows when there are none. */
+  empty: string;
+}
+
+const SECTION_SIZE = 8.5;
+const SECTION_LEADING = 12;
+
+/** Pages of `sections` under one heading; a section continues on the next page when full. */
+export function sectionPages(
+  setup: PageSetup,
+  heading: string,
+  sections: readonly Section[],
+  ctx: CardContext,
+): Page[] {
+  const { width, height } = pageSize(setup.paper, setup.orientation);
+  const box = contentBox(width, height);
+  const c = ctx.colors;
+  const m = ctx.measure;
+  type Block = { h: number; draw: (top: number) => Op[] };
+  const blocks: Block[] = [];
+  for (const section of sections) {
+    blocks.push({
+      h: 28,
+      draw: (top) => [
+        {
+          kind: 'line',
+          x1: box.x,
+          y1: top + 6,
+          x2: box.x + box.w,
+          y2: top + 6,
+          color: c['border-default'],
+          width: 0.5,
+        },
+        text(
+          ellipsize(section.title, box.w, 10, 600, m),
+          box.x,
+          top + 22,
+          10,
+          600,
+          c['text-primary'],
+        ),
+      ],
+    });
+    const total = section.columns.reduce((sum, w) => sum + w, 0);
+    let x = 0;
+    const cols = section.columns.map((weight) => {
+      const col = { x, w: (weight / total) * box.w };
+      x += col.w;
+      return col;
+    });
+    const rows = section.rows.length ? section.rows : [[section.empty]];
+    for (const row of rows) {
+      const muted = section.rows.length === 0;
+      const cells = row.map((value, i) => {
+        const col = row.length === 1 ? { x: 0, w: box.w } : (cols[i] ?? { x: 0, w: 0 });
+        const weight: FontWeight = i === 0 && row.length > 1 ? 600 : 400;
+        return {
+          col,
+          weight,
+          lines: wrapText(value, col.w - CELL_PAD * 2, SECTION_SIZE, weight, m, 6),
+        };
+      });
+      const lines = Math.max(1, ...cells.map((cell) => cell.lines.length));
+      blocks.push({
+        h: lines * SECTION_LEADING + CELL_PAD * 2,
+        draw: (top) =>
+          cells.flatMap(
+            (cell, i) =>
+              textBlock(cell.lines, box.x + cell.col.x + (i === 0 ? 0 : CELL_PAD), top + CELL_PAD, {
+                size: SECTION_SIZE,
+                weight: cell.weight,
+                leading: SECTION_LEADING,
+                color: muted ? c['text-muted'] : i === 0 ? c['text-primary'] : c['text-secondary'],
+              }).ops,
+          ),
+      });
+    }
+  }
+  const head = 30;
+  const pages = paginateRows(
+    blocks.map((b) => b.h),
+    box.h - head,
+  );
+  return pages.map((indexes, n) => {
+    const page: Page = { width, height, ops: [] };
+    if (n === 0)
+      page.ops.push(
+        text(
+          ellipsize(heading, box.w, 16, 'heading', m),
+          box.x,
+          box.y + 16,
+          16,
+          'heading',
+          c['text-primary'],
+        ),
+      );
+    let top = box.y + (n === 0 ? head : 0);
+    for (const i of indexes) {
+      const block = blocks[i];
+      if (!block) continue;
+      page.ops.push(...block.draw(top));
+      top += block.h;
+    }
+    return page;
+  });
+}
+
 /**
  * Adds the running header and footer. Page numbers count every page, the title page included,
  * which carries neither.
