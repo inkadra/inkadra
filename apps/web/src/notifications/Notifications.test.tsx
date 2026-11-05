@@ -154,18 +154,26 @@ it('walks the filter tabs with the keyboard and labels the list by the selected 
       ),
     );
     tabs()[0]?.focus();
-    await press('ArrowRight');
-    expectOn('notifications.tabs.mentions');
-    await press('ArrowLeft');
     expectOn('notifications.tabs.all');
-    await press('ArrowLeft');
-    expectOn('tasks.title');
+    const focused = () => document.activeElement?.textContent;
     await press('ArrowRight');
-    expectOn('notifications.tabs.all');
-    await press('End');
-    expectOn('tasks.title');
+    expect(focused()).toBe('notifications.tabs.mentions');
+    await press('ArrowLeft');
+    expect(focused()).toBe('notifications.tabs.all');
+    await press('ArrowLeft');
+    expect(focused()).toBe('tasks.title');
+    await press('ArrowRight');
+    expect(focused()).toBe('notifications.tabs.all');
     await press('Home');
-    expectOn('notifications.tabs.all');
+    expect(focused()).toBe('notifications.tabs.all');
+    await press('End');
+    expect(focused()).toBe('tasks.title');
+    // Walking the tabs chooses nothing, so it reads nothing.
+    expect(selected().map((tab) => tab.textContent)).toEqual(['notifications.tabs.all']);
+    expect(api.post).not.toHaveBeenCalled();
+    // A button answers Enter and Space with a click.
+    await act(async () => (document.activeElement as HTMLElement).click());
+    expectOn('tasks.title');
   } finally {
     await act(async () => root.unmount());
     host.remove();

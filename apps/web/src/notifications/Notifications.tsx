@@ -545,7 +545,11 @@ export function NotificationList({
             onKeyDown={(e) => {
               if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
               e.preventDefault();
-              const at = INBOX_TABS.findIndex((tab) => tab.value === filter);
+              // The arrows only move the focus: choosing a tab reads its first notification, so
+              // that waits for Enter, Space or a click, and walking the tabs leaves all unread.
+              const at = INBOX_TABS.findIndex(
+                (tab) => `${tabsId}-${tab.value}` === document.activeElement?.id,
+              );
               const step = e.key === 'ArrowRight' ? 1 : INBOX_TABS.length - 1;
               const target =
                 e.key === 'Home'
@@ -554,7 +558,6 @@ export function NotificationList({
                     ? INBOX_TABS.at(-1)
                     : INBOX_TABS[(at + step) % INBOX_TABS.length];
               if (!target) return;
-              setFilter(target.value);
               document.getElementById(`${tabsId}-${target.value}`)?.focus();
             }}
           >
