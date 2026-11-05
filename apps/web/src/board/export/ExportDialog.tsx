@@ -1174,6 +1174,18 @@ function BandField({
     setPicking(false);
     tile.current?.querySelector('input')?.focus();
   }, []);
+  // Escape closes the picker, not the dialog, also when the hex field has just let go of the focus.
+  useEffect(() => {
+    if (!picking) return;
+    const away = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      closePicker();
+    };
+    document.addEventListener('keydown', away, true);
+    return () => document.removeEventListener('keydown', away, true);
+  }, [picking, closePicker]);
   return (
     <fieldset className="export__field">
       <legend className="export__label">{t('export.band')}</legend>
