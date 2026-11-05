@@ -43,7 +43,7 @@ describe('a card as its own picture', () => {
     expect(ops.find((op) => op.kind === 'image')).toMatchObject({ x: 0, y: 0, w: 2048, h: 1365 });
   });
 
-  it('puts the bands' colour under a JPEG and behind a picture that is not ready', () => {
+  it('puts the band colour under a JPEG and behind a picture that is not ready', () => {
     const image = placed({ type: 'image', assetId: 'pic' });
     const jpeg = cardPage(image, ctx, '#161616', true, sizes);
     expect(jpeg.background).toBe('#161616');

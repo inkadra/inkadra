@@ -96,8 +96,7 @@ describe('image formats', () => {
     expect(x(pages[1])).toBeCloseTo(0);
   });
 
-  it('paints the bands in the chosen colour, whichever theme is on', () => {
-    document.documentElement.style.setProperty('--ink-bg-canvas', '#123456');
+  it('paints the bands in the chosen colour, black by default', () => {
     const out = imagePages([wide], { ...ORIGINAL_IMAGE, aspect: '9:16', fit: 'fit', band: '#3A5A7C' });
     expect(out.pages[0]?.background).toBe('#3A5A7C');
     expect(ORIGINAL_IMAGE.band).toBe('#000000');

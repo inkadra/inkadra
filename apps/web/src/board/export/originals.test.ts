@@ -185,7 +185,7 @@ describe('which files a selection has', () => {
   const source = (...elements: Element[]) =>
     ({
       byId: new Map(elements.map((el) => [el.id, el])),
-      canvas: elements.filter((el) => el.parent === null).map((el) => el.id),
+      canvas: elements.filter((el) => el.parent === null),
       columns: new Map(),
       heightOf: () => 100,
     }) as unknown as BoardSource;
@@ -217,7 +217,7 @@ describe('which files a selection has', () => {
   it('leaves out cards hidden from guests for clients, and only for them', async () => {
     const board = source(
       card('a', 'image', { assetId: 'x' }),
-      card('b', 'image', { assetId: 'y', hiddenFromGuests: true }),
+      card('b', 'image', { assetId: 'y', guestHidden: true }),
     );
     const ids = new Set(['a', 'b']);
     const forClient = await planOriginals(board, ids, client);
