@@ -610,6 +610,13 @@
   .export--image .export__stage {
     height: 230px;
   }
+  /* Above the button and below the preview it changes, wherever the sheet is scrolled. */
+  .export--image .colorpicker {
+    position: fixed;
+    left: 50%;
+    bottom: 88px;
+    translate: -50% 0;
+  }
   .export--image .ink-segmented .ink-radio-group__options {
     width: 100%;
   }
