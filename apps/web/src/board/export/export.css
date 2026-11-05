@@ -613,9 +613,9 @@
   /* Above the button and below the preview it changes, wherever the sheet is scrolled. */
   .export--image .colorpicker {
     position: fixed;
-    left: 50%;
+    left: 16px;
+    right: 16px;
     bottom: 88px;
-    translate: -50% 0;
   }
   .export--image .ink-segmented .ink-radio-group__options {
     width: 100%;
