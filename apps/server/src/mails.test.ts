@@ -6,7 +6,7 @@ import { inviteMail, magicLinkMail, notificationMail, resetMail, securityMail } 
 
 const TZ = 'Europe/Rome';
 const now = new Date('2026-11-05T17:45:00Z');
-const instance = { instanceName: 'Recore Studio', publicUrl: 'https://ink.example.com' };
+const instance = { instanceName: 'Acme Studio', publicUrl: 'https://ink.example.com' };
 const hostile = '<img src=x onerror=alert(1)> "Giulia" & co';
 
 let seq = 0;
@@ -152,12 +152,12 @@ describe('notification emails', () => {
       note({ type: 'link_opened', actor: null, shareLinkLabel: null }),
     ];
     const itMail = mail(items);
-    expect(itMail.subject).toBe('5 novità su Recore Studio: una menzione, 2 revisioni');
+    expect(itMail.subject).toBe('5 novità su Acme Studio: una menzione, 2 revisioni');
     expect(itMail.text).toContain('Una menzione, 2 revisioni, un compito e altro da guardare.');
     expect(itMail.text).not.toContain('da ieri');
     expect(itMail.text).toContain('Un ospite ha aperto un link di condivisione');
     const en = mail(items, 'en');
-    expect(en.subject).toBe('5 new things on Recore Studio: a mention, 2 reviews');
+    expect(en.subject).toBe('5 new things on Acme Studio: a mention, 2 reviews');
     expect(en.text).toContain('A mention, 2 reviews, a task and more to look at.');
     expect(mail([note(), note()], 'en').text).toContain('2 mentions.');
   });
@@ -215,7 +215,7 @@ describe('account emails', () => {
       role: 'editor',
       expiresAt: new Date('2026-11-12T10:00:00Z'),
       url: 'https://ink.example.com/join/abc"onmouseover="alert(1)',
-      instanceName: 'Recore Studio',
+      instanceName: 'Acme Studio',
       now,
       timeZone: TZ,
     });
@@ -282,7 +282,7 @@ describe('account emails', () => {
       at,
       TZ,
     );
-    expect(token.subject).toBe('Nuovo token di accesso su Recore Studio');
+    expect(token.subject).toBe('Nuovo token di accesso su Acme Studio');
     expect(token.text).toContain('Token: CLI portatile');
     expect(token.text).toContain('Quando: 5 novembre 2026, 18:42 CET');
     expect(token.text).toContain('Scade: 3 febbraio 2027');
@@ -304,10 +304,10 @@ describe('account emails', () => {
       instance,
       at,
     );
-    expect(password.subject).toBe('Password changed on Recore Studio');
+    expect(password.subject).toBe('Password changed on Acme Studio');
     expect(password.text).not.toContain('Token:');
     expect(securityMail(user, 'twoFactor', instance).subject).toBe(
-      'Verifica in due passaggi disattivata su Recore Studio',
+      'Verifica in due passaggi disattivata su Acme Studio',
     );
     for (const m of [token, app, password])
       expect(m.text).not.toMatch(/\bIP\b|device|dispositivo/i);

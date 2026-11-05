@@ -80,7 +80,7 @@ describe.skipIf(!url)('diagnostics (needs DATABASE_URL)', () => {
     const body = (await get({ 'x-forwarded-for': '203.0.113.7' })).json<Diagnostics>();
     expect(body.request.protocol).toBe('http');
     expect(check(body, 'public_url_matches_request')?.status).toBe('warning');
-    const direct = (await get({ host: 'soyo:7340' })).json<Diagnostics>();
+    const direct = (await get({ host: 'nas:7340' })).json<Diagnostics>();
     expect(check(direct, 'public_url_matches_request')?.status).toBe('warning');
   });
 
