@@ -2935,7 +2935,7 @@
     "loadError": "No se pudieron cargar las copias.",
     "last": "Última copia",
     "none": "Aún no hay copias",
-    "filesListed_one": "enumera 1 archivo ({{size}})",
+    "filesListed_one": "enumera {{count}} archivo ({{size}})",
     "filesListed_other": "enumera {{count}} archivos ({{size}})",
     "nightly": "Copia nocturna",
     "next": "Próxima: {{time}}",

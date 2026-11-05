@@ -2935,7 +2935,7 @@
     "loadError": "Impossible de charger les sauvegardes.",
     "last": "Dernière sauvegarde",
     "none": "Aucune sauvegarde pour l’instant",
-    "filesListed_one": "répertorie 1 fichier ({{size}})",
+    "filesListed_one": "répertorie {{count}} fichier ({{size}})",
     "filesListed_other": "répertorie {{count}} fichiers ({{size}})",
     "nightly": "Sauvegarde nocturne",
     "next": "Prochaine : {{time}}",

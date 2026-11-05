@@ -144,6 +144,12 @@ describe('loading a language on demand', () => {
     );
     expect(instance.t('n', { count: 1_000_000 })).toBe('1000000 cosas');
   });
+
+  it('shows a count of 0 where French reads 0 as singular', async () => {
+    await i18n.loadLanguages('fr');
+    const zero = i18n.getFixedT('fr')('backups.filesListed', { count: 0, size: '0 B' });
+    expect(zero).toBe('répertorie 0 fichier (0 B)');
+  });
 });
 
 describe('translations', () => {

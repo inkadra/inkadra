@@ -2937,7 +2937,7 @@
     "loadError": "Non è stato possibile caricare i backup.",
     "last": "Ultimo backup",
     "none": "Ancora nessun backup",
-    "filesListed_one": "elenca 1 file ({{size}})",
+    "filesListed_one": "elenca {{count}} file ({{size}})",
     "filesListed_other": "elenca {{count}} file ({{size}})",
     "nightly": "Backup notturno",
     "next": "Prossimo: {{time}}",
