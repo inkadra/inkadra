@@ -136,8 +136,6 @@ export interface ExportEnv {
   language: string;
   /** Pictures of the preview, kept while the dialog is open. */
   cache: ExportCache;
-  /** The board's background as the reader sees it: the bars of a Fit picture (decision 0072). */
-  background?: string | undefined;
 }
 
 export interface BuiltPages {
@@ -151,7 +149,8 @@ export interface BuiltPages {
 }
 
 export interface ExportProgress {
-  phase: 'pictures' | 'pages';
+  /** `files`: the original files of a selection, counted in bytes. */
+  phase: 'pictures' | 'pages' | 'files';
   done: number;
   total: number;
 }
@@ -378,9 +377,8 @@ export async function buildPages(
       const cards = selectedCards(source, ids, filter);
       await load(assetIdsOf(cards.flatMap(flatten)));
       for (const card of cards) for (const el of flatten(card)) shownIds.add(el.id);
-      const colour = env.background ?? PALETTE['bg-canvas'];
       content = cards.map((card) =>
-        cardPage(card, ctx, colour, req.format === 'jpeg', exportSizes),
+        cardPage(card, ctx, image.band, req.format === 'jpeg', exportSizes),
       );
     } else if (asImage && image.aspect !== 'original') {
       bare = true;
@@ -540,7 +538,7 @@ export async function buildPages(
   };
 }
 
-/** Space around a card without a picture, on the board's colour. */
+/** Space around a card without a picture, on the bands' colour. */
 const CARD_MARGIN = 24;
 /** Drawn when a frame has only a drawing, or a picture has no thumbnail yet. */
 const UNLOADED_WIDTH = 1600;
@@ -569,7 +567,7 @@ export function selectedCards(
 
 /**
  * One card as its own picture: an image or a frame without its caption, at the pixels of the
- * thumbnail; any other card as it prints, with a margin of the board's colour.
+ * thumbnail; any other card as it prints, with a margin of the bands' colour.
  */
 export function cardPage(
   card: Placed,
@@ -587,7 +585,7 @@ export function cardPage(
       el.crop,
       el.rotation,
     );
-    // Under a picture with transparency: nothing in a PNG, the board's colour in a JPEG.
+    // Under a picture with transparency: nothing in a PNG, the bands' colour in a JPEG.
     const under = jpeg ? colour : 'transparent';
     const ops = body(
       { el: { ...el, caption: undefined }, x: 0, y: 0, w: width, h: height },
@@ -625,7 +623,7 @@ function compositionPage(items: readonly Placed[], region: Rect, ctx: CardContex
   };
 }
 
-function flatten(p: { el: Element; children?: unknown[] }): Element[] {
+export function flatten(p: { el: Element; children?: unknown[] }): Element[] {
   const kids = (p.children ?? []) as Array<{ el: Element; children?: unknown[] }>;
   return [p.el, ...kids.flatMap(flatten)];
 }
@@ -648,6 +646,11 @@ function collectKeys(ops: readonly Op[], into: Set<string>) {
   }
 }
 
+/** What an export's files are called, without the extension. */
+export function exportBaseName(env: Pick<ExportEnv, 'boardTitle' | 'projectName'>): string {
+  return (env.boardTitle || env.projectName || 'inkadra').replace(/[\\/:*?"<>|]/g, '_').trim();
+}
+
 /** The finished file and the name to download it under. */
 export async function exportFile(
   req: ExportRequest,
@@ -656,18 +659,12 @@ export async function exportFile(
 ): Promise<{ blob: Blob; name: string }> {
   const { signal, onProgress } = options;
   const { pages, images, fonts } = await buildPages(req, env, options);
-  const base = (env.boardTitle || env.projectName || 'inkadra')
-    .replace(/[\\/:*?"<>|]/g, '_')
-    .trim();
+  const base = exportBaseName(env);
   const pageProgress = (done: number) =>
     onProgress?.({ phase: 'pages', done, total: pages.length });
   try {
     if (req.format !== 'pdf') {
-      const out = imagePages(
-        pages,
-        req.image ?? ORIGINAL_IMAGE,
-        env.background ?? PALETTE['bg-canvas'],
-      );
+      const out = imagePages(pages, req.image ?? ORIGINAL_IMAGE);
       // One image per page: stacking them squeezed a long storyboard into an unreadable strip.
       const blobs = await renderImages(out.pages, out.scales, images, {
         ...(signal ? { signal } : {}),

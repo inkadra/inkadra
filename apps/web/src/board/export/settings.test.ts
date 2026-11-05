@@ -320,6 +320,9 @@ describe('export settings on the client', () => {
     });
     expect(initialImage(DEFAULT_EXPORT_PREFERENCES, false).aspect).toBe('original');
     expect(initialImage(null, true).format).toBe('png');
+    // Rows saved before the colour of the bands, and rows with one, in either case.
+    expect(initialImage(DEFAULT_EXPORT_PREFERENCES, true).band).toBe('#000000');
+    expect(initialImage({ imageBandColor: '#3a5a7c' }, true).band).toBe('#3A5A7C');
     const remembered = initialImage(
       { ...DEFAULT_EXPORT_PREFERENCES, imageFormat: 'jpeg', imageAspect: '9:16', imageFit: 'fit' },
       true,
@@ -332,10 +335,21 @@ describe('export settings on the client', () => {
     expect(
       preferencesPatch(
         DEFAULT_EXPORT_PREFERENCES,
-        { ...chosen, imageFormat: 'jpeg', imageAspect: '4:5', imageFit: 'fit' },
+        {
+          ...chosen,
+          imageFormat: 'jpeg',
+          imageAspect: '4:5',
+          imageFit: 'fit',
+          imageBandColor: '#FFFFFF',
+        },
         'it-IT',
       ),
-    ).toEqual({ imageFormat: 'jpeg', imageAspect: '4:5', imageFit: 'fit' });
+    ).toEqual({
+      imageFormat: 'jpeg',
+      imageAspect: '4:5',
+      imageFit: 'fit',
+      imageBandColor: '#FFFFFF',
+    });
     const stored = { ...DEFAULT_EXPORT_PREFERENCES, imageAspect: '4:5' as const };
     expect(preferencesPatch(stored, chosen, 'it-IT')).toEqual({});
   });

@@ -19,18 +19,21 @@ export function Field({ label, children }: { label: string; children: (id: strin
   );
 }
 
-/** The shared segmented radios with a visible label, taking [value, text] pairs. */
+/** The shared segmented radios with a visible label, taking [value, text, disabled] triples. */
 export function Segmented({
   options,
   hideLabel = false,
+  className = '',
   ...props
-}: Omit<RadioGroupProps<string>, 'options'> & { options: Array<[string, string]> }) {
+}: Omit<RadioGroupProps<string>, 'options'> & {
+  options: Array<[string, string, boolean?]>;
+}) {
   return (
     <UiSegmented
       {...props}
       hideLabel={hideLabel}
-      className="export__field"
-      options={options.map(([value, label]) => ({ value, label }))}
+      className={`export__field ${className}`.trim()}
+      options={options.map(([value, label, disabled = false]) => ({ value, label, disabled }))}
     />
   );
 }

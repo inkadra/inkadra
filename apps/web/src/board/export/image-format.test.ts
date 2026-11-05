@@ -84,8 +84,7 @@ describe('image formats', () => {
     };
     const { pages, scales } = imagePages(
       [box, box],
-      { aspect: '4:5', fit: 'fill', many: null, foci: { 1: { x: 0, y: 0 } } },
-      '#161616',
+      { aspect: '4:5', fit: 'fill', many: null, foci: { 1: { x: 0, y: 0 } }, band: '#161616' },
     );
     expect(scales).toEqual([1, 1]);
     const x = (page: Page | undefined) => {
@@ -97,11 +96,18 @@ describe('image formats', () => {
     expect(x(pages[1])).toBeCloseTo(0);
   });
 
+  it('paints the bands in the chosen colour, whichever theme is on', () => {
+    document.documentElement.style.setProperty('--ink-bg-canvas', '#123456');
+    const out = imagePages([wide], { ...ORIGINAL_IMAGE, aspect: '9:16', fit: 'fit', band: '#3A5A7C' });
+    expect(out.pages[0]?.background).toBe('#3A5A7C');
+    expect(ORIGINAL_IMAGE.band).toBe('#000000');
+  });
+
   it('never enlarges a picture past its own pixels in Original', () => {
     const picture: Page = { width: 2048, height: 1365, maxScale: 1, background: null, ops: [] };
     const card: Page = { width: 400, height: 300, background: '#111111', ops: [] };
-    expect(imagePages([picture], ORIGINAL_IMAGE, '#000').scales).toEqual([1]);
-    expect(imagePages([card], ORIGINAL_IMAGE, '#000').scales).toEqual([4]);
+    expect(imagePages([picture], ORIGINAL_IMAGE).scales).toEqual([1]);
+    expect(imagePages([card], ORIGINAL_IMAGE).scales).toEqual([4]);
   });
 
   it('makes one image per card the default with a social format only', () => {

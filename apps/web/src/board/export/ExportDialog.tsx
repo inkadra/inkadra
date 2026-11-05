@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { frameLabels, listElements, type Rect, storyboardOf } from '@inkadra/canvas-core';
-import type {
-  Board,
-  ExportImageAspect,
-  ExportImageFit,
-  ExportPreset,
-  ExportSettings,
+import {
+  atLeast,
+  type Board,
+  CAPABILITY_ROLE,
+  type ExportImageAspect,
+  type ExportImageFit,
+  type ExportPreset,
+  type ExportSettings,
+  type ProjectRole,
 } from '@inkadra/shared';
 import {
   Button,
@@ -21,6 +24,7 @@ import {
   type Dispatch,
   type PointerEvent,
   type SetStateAction,
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -29,6 +33,9 @@ import {
 import { useTranslation } from 'react-i18next';
 import { refreshClassifications } from '../../lib/classifications.ts';
 import { useIsPhone } from '../../lib/phone.ts';
+import { ColorPicker } from '../ColorPicker.tsx';
+import { swatchColors } from '../colors.ts';
+import { formatBytes } from '../file-kinds.ts';
 import { getReviews, useReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
 import { ExportCache } from './cache.ts';
@@ -51,9 +58,11 @@ import {
   type ImageOptions,
   imagePages,
   manyMode,
+  ORIGINALS_ZIP_MAX_BYTES,
   placeContent,
 } from './image-format.ts';
 import { FRAMES_PER_PAGE, type FramesPerPage, type Orientation, type PaperSize } from './layout.ts';
+import type { OriginalFile, OriginalsPlan } from './originals.ts';
 import {
   type ExportSource,
   fetchExportSettings,
@@ -93,6 +102,8 @@ export interface ExportDialogProps {
   boards: readonly Board[] | null;
   selection: ReadonlySet<string>;
   visible: Rect | null;
+  /** The reader's role on this board: viewers do not download originals (decision 0011). */
+  role?: ProjectRole | null | undefined;
   onClose: () => void;
 }
 
@@ -101,10 +112,7 @@ const REVIEWS_WAIT_MS = 1500;
 
 // The engine (pdf-lib, fontkit, Inter) loads only when the dialog opens.
 const engine = () => import('./engine.ts');
-/** The board's background as this reader sees it: the bars of a Fit picture (decision 0072). */
-const boardBackground = () =>
-  getComputedStyle(document.documentElement).getPropertyValue('--ink-bg-canvas').trim() ||
-  undefined;
+const originals = () => import('./originals.ts');
 // The pages show the names of the storyboard lists, whichever view opened the dialog.
 let catalogsRequest: Promise<void> | null = null;
 const catalogsLoaded = () => {
@@ -135,6 +143,10 @@ export function ExportDialog(props: ExportDialogProps) {
     count: 0,
     notReady: 0,
   });
+  // Never remembered: nobody exports GPS positions by accident (decision 0072).
+  const [size, setSize] = useState<'preview' | 'file'>('preview');
+  const [plan, setPlan] = useState<OriginalsPlan | null>(null);
+  const [failedFiles, setFailedFiles] = useState<{ names: string[]; zipped: boolean } | null>(null);
   const [settings, setSettings] = useState<ExportSettings | null>(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   // The options were changed by hand: closing would lose them.
@@ -245,9 +257,46 @@ export function ExportDialog(props: ExportDialogProps) {
     updateReq((r) => ({ ...r, [key]: value }));
   };
 
+  const canDownload = atLeast(props.role ?? null, CAPABILITY_ROLE.download);
+  const offersFile = req.format !== 'pdf' && image.aspect === 'original' && req.what === 'selection';
+  const fileMode = offersFile && canDownload && size === 'file';
+  const selection = props.selection;
+  const { audience, hideGuestHidden } = req;
+  useEffect(() => {
+    setPlan(null);
+    setFailedFiles(null);
+    if (!fileMode) return;
+    let live = true;
+    void originals()
+      .then(({ planOriginals }) => {
+        const snapshot = store.getSnapshot();
+        return planOriginals(
+          {
+            byId: snapshot.byId,
+            canvas: snapshot.canvas,
+            columns: snapshot.columns,
+            heightOf: (el) => store.heightOf(el),
+          },
+          selection,
+          { audience, hideGuestHidden: hideGuestHidden || audience === 'client' },
+        );
+      })
+      .catch((): OriginalsPlan => ({ files: [], cards: [], noFile: selection.size }))
+      .then((next) => {
+        if (live) setPlan(next);
+      });
+    return () => {
+      live = false;
+    };
+  }, [fileMode, store, selection, audience, hideGuestHidden]);
+  const fileCount = plan?.files.length ?? 0;
+  const fileBytes = plan?.files.reduce((sum, file) => sum + file.size, 0) ?? 0;
+  const tooBig = fileCount > 1 && fileBytes > ORIGINALS_ZIP_MAX_BYTES;
+
   const env: ExportEnv = {
     store,
-    selection: props.selection,
+    // The picture shown beside originals is one of a card that has a file.
+    selection: fileMode && plan?.cards.length ? new Set(plan.cards.map((c) => c.id)) : selection,
     visible: props.visible,
     projectName: props.projectName,
     boardTitle: props.boardTitle,
@@ -258,7 +307,6 @@ export function ExportDialog(props: ExportDialogProps) {
     t,
     language: i18n.language,
     cache,
-    background: boardBackground(),
   };
   const envRef = useRef(env);
   envRef.current = env;
@@ -285,8 +333,24 @@ export function ExportDialog(props: ExportDialogProps) {
     running.current = controller;
     setBusy(true);
     setFailed(false);
+    setFailedFiles(null);
     setProgress(null);
     try {
+      if (fileMode) {
+        const [{ downloadOriginals }, { exportBaseName }] = await Promise.all([
+          originals(),
+          engine(),
+        ]);
+        const files = plan?.files ?? [];
+        const names = await downloadOriginals(files, exportBaseName(envRef.current), {
+          signal: controller.signal,
+          onProgress: setProgress,
+        });
+        if (controller.signal.aborted) return;
+        if (names.length > 0) setFailedFiles({ names, zipped: names.length < files.length });
+        else onClose();
+        return;
+      }
       const { exportFile, downloadBlob } = await engine();
       await catalogsLoaded();
       const { blob, name } = await exportFile({ ...req, image }, envRef.current, {
@@ -306,6 +370,7 @@ export function ExportDialog(props: ExportDialogProps) {
               imageFormat: req.format === 'jpeg' ? ('jpeg' as const) : ('png' as const),
               imageAspect: image.aspect,
               imageFit: image.fit,
+              imageBandColor: image.band,
             }
           : { preset: active };
         const patch = preferencesPatch(settings, { ...chosen, ...picture }, i18n.language);
@@ -517,30 +582,32 @@ export function ExportDialog(props: ExportDialogProps) {
               </p>
             ) : (
               <>
-                <Segmented
-                  label={t('export.format')}
-                  value={req.format}
-                  options={[
-                    ['pdf', t('export.formatPdf')],
-                    ['png', t('export.formatPng')],
-                    ['jpeg', t('export.formatJpeg')],
-                  ]}
-                  onChange={(v) => chooseFormat(v as ExportFormat)}
-                  hint={
-                    req.format === 'jpeg'
-                      ? t('export.jpegHint')
-                      : req.format === 'png'
-                        ? t('export.pngHint')
-                        : undefined
-                  }
-                />
+                {!fileMode && (
+                  <Segmented
+                    label={t('export.format')}
+                    value={req.format}
+                    options={[
+                      ['pdf', t('export.formatPdf')],
+                      ['png', t('export.formatPng')],
+                      ['jpeg', t('export.formatJpeg')],
+                    ]}
+                    onChange={(v) => chooseFormat(v as ExportFormat)}
+                    hint={
+                      req.format === 'jpeg'
+                        ? t('export.jpegHint')
+                        : req.format === 'png'
+                          ? t('export.pngHint')
+                          : undefined
+                    }
+                  />
+                )}
                 {asImage ? (
                   <>
-                    <p className="export__presets-off">{t('export.presetsOff')}</p>
+                    {!fileMode && <p className="export__presets-off">{t('export.presetsOff')}</p>}
                     {whatField}
                     {framesField}
                     {pageField}
-                    {several && (
+                    {several && !fileMode && (
                       <Segmented
                         label={t('export.many')}
                         value={manyMode(image)}
@@ -563,23 +630,60 @@ export function ExportDialog(props: ExportDialogProps) {
                       aspect={image.aspect}
                       onChange={(aspect) => changeImage({ aspect })}
                     />
-                    <Segmented
-                      label={t('export.fit')}
-                      value={image.fit}
-                      disabled={image.aspect === 'original'}
-                      options={[
-                        ['fit', t('export.fitIn')],
-                        ['fill', t('export.fill')],
-                      ]}
-                      onChange={(v) => changeImage({ fit: v as ExportImageFit })}
-                      hint={
-                        image.aspect === 'original'
-                          ? t('export.fitOriginal')
-                          : image.fit === 'fill'
-                            ? t('export.fillHint')
-                            : t('export.fitHint')
-                      }
-                    />
+                    {offersFile && (
+                      <Segmented
+                        label={t('export.size')}
+                        className={fileMode ? 'export__field--warn' : ''}
+                        value={fileMode ? 'file' : 'preview'}
+                        options={[
+                          ['preview', t('export.sizePreview')],
+                          ['file', t('export.sizeFile'), !canDownload],
+                        ]}
+                        onChange={(v) => {
+                          setChanged(true);
+                          setSize(v as 'preview' | 'file');
+                        }}
+                        hint={
+                          !canDownload
+                            ? t('export.sizeViewer')
+                            : !fileMode
+                              ? t('export.sizePreviewHint')
+                              : plan && fileCount === 0
+                                ? t('export.sizeNone')
+                                : [
+                                    fileCount > 1
+                                      ? t('export.sizeFilesHint')
+                                      : t('export.sizeFileHint'),
+                                    plan?.noFile
+                                      ? t('export.sizeNoFile', { count: plan.noFile })
+                                      : '',
+                                    tooBig ? t('export.sizeTooBig') : '',
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' ')
+                        }
+                      />
+                    )}
+                    {image.aspect !== 'original' && (
+                      <Segmented
+                        label={t('export.fit')}
+                        value={image.fit}
+                        options={[
+                          ['fit', t('export.fitIn')],
+                          ['fill', t('export.fill')],
+                        ]}
+                        onChange={(v) => changeImage({ fit: v as ExportImageFit })}
+                        hint={image.fit === 'fill' ? t('export.fillHint') : t('export.fitHint')}
+                      />
+                    )}
+                    {image.aspect !== 'original' && image.fit === 'fit' && (
+                      <BandField
+                        band={image.band}
+                        remembered={canEdit}
+                        used={swatchColors(store.getSnapshot().byId.values())}
+                        onChange={(band) => changeImage({ band })}
+                      />
+                    )}
                     {(!single || imageState.status === 'empty') && audienceField}
                     {req.what !== 'selection' && (
                       <fieldset className="export__options">
@@ -765,7 +869,8 @@ export function ExportDialog(props: ExportDialogProps) {
             {asImage ? (
               <ImagePreview
                 req={req}
-                image={image}
+                image={fileMode ? { ...image, many: 'each' } : image}
+                files={fileMode ? plan : null}
                 index={imageIndex}
                 onIndex={setImageIndex}
                 onFocus={(focus) => changeImage({ foci: { ...image.foci, [imageIndex]: focus } })}
@@ -794,7 +899,15 @@ export function ExportDialog(props: ExportDialogProps) {
                 {t('export.missingGlyphs', { chars: missing.join(' ') })}
               </p>
             )}
-            {asImage && imageState.notReady > 0 && (
+            {failedFiles && (
+              <p className="export__hint export__hint--error" role="alert">
+                {t(failedFiles.zipped ? 'export.filesPartial' : 'export.filesFailed', {
+                  count: failedFiles.names.length,
+                  names: failedFiles.names.join(', '),
+                })}
+              </p>
+            )}
+            {asImage && !fileMode && imageState.notReady > 0 && (
               <p className="export__notice" role="note">
                 {t('export.notReady', { count: imageState.notReady })}
               </p>
@@ -816,24 +929,31 @@ export function ExportDialog(props: ExportDialogProps) {
                   />
                 </div>
                 <span className="export__hint">
-                  {progress
-                    ? t(
-                        progress.phase === 'pictures'
-                          ? 'export.progressPictures'
-                          : asImage && board
-                            ? 'export.progressImages'
-                            : 'export.progressPages',
-                        {
-                          done: progress.done,
-                          total: progress.total,
-                        },
-                      )
-                    : t('export.busy')}
+                  {progress?.phase === 'files'
+                    ? t('export.progressFiles', {
+                        done: formatBytes(progress.done, i18n.language),
+                        total: formatBytes(progress.total, i18n.language),
+                      })
+                    : progress
+                      ? t(
+                          progress.phase === 'pictures'
+                            ? 'export.progressPictures'
+                            : asImage && board
+                              ? 'export.progressImages'
+                              : 'export.progressPages',
+                          {
+                            done: progress.done,
+                            total: progress.total,
+                          },
+                        )
+                      : t('export.busy')}
                 </span>
               </div>
             )}
             <DialogActions>
-              {canEdit && <span className="export__remembered">{t('export.remembered')}</span>}
+              {canEdit && !fileMode && (
+                <span className="export__remembered">{t('export.remembered')}</span>
+              )}
               <Button className="export__cancel" onClick={() => dialog.current?.requestClose()}>
                 {t('export.cancel')}
               </Button>
@@ -841,13 +961,19 @@ export function ExportDialog(props: ExportDialogProps) {
                 variant="primary"
                 icon="download"
                 className="export__submit"
-                disabled={busy || !settingsLoaded || (asImage && !imageReady)}
+                disabled={
+                  busy ||
+                  !settingsLoaded ||
+                  (fileMode ? fileCount === 0 || tooBig : asImage && !imageReady)
+                }
                 aria-busy={busy || undefined}
                 onClick={() => void submit()}
               >
                 {busy
                   ? t('export.busy')
-                  : isPhone && asImage && imageState.count > 0
+                  : fileMode
+                    ? t('export.submitFiles', { count: fileCount || 1 })
+                    : isPhone && asImage && imageState.count > 0
                     ? t('export.submitImages', { count: imageState.count })
                     : isPhone && !asImage && pageCount > 0
                       ? t('export.submitPages', { count: pageCount })
@@ -1018,6 +1144,82 @@ function AspectField({
   );
 }
 
+/** Where "Colore…" starts until someone picks a colour. */
+const BAND_START = '#3A5A7C';
+const BAND_PICKER = 'export-band';
+
+/** Black, white or any colour for the bands; the app's colour picker opens from the last. */
+function BandField({
+  band,
+  remembered,
+  used,
+  onChange,
+}: {
+  band: string;
+  remembered: boolean;
+  used: readonly string[];
+  onChange: (band: string) => void;
+}) {
+  const { t } = useTranslation();
+  const name = useId();
+  const tile = useRef<HTMLSpanElement>(null);
+  const choices: Array<[string, string]> = [
+    ['#000000', t('export.bandBlack')],
+    ['#FFFFFF', t('export.bandWhite')],
+  ];
+  const isCustom = !choices.some(([hex]) => hex === band);
+  const [custom, setCustom] = useState(isCustom ? band : BAND_START);
+  const [picking, setPicking] = useState(false);
+  const closePicker = useCallback(() => {
+    setPicking(false);
+    tile.current?.querySelector('input')?.focus();
+  }, []);
+  return (
+    <fieldset className="export__field">
+      <legend className="export__label">{t('export.band')}</legend>
+      <div className="export__aspects">
+        {choices.map(([hex, label]) => (
+          <ChoiceTile
+            key={hex}
+            name={name}
+            value={hex}
+            checked={band === hex}
+            onChange={() => onChange(hex)}
+          >
+            <span className="export__chip" style={{ background: hex }} aria-hidden="true" />
+            {label}
+          </ChoiceTile>
+        ))}
+        <span ref={tile} className="export__band-custom" data-el={BAND_PICKER}>
+          <ChoiceTile
+            name={name}
+            value="custom"
+            checked={isCustom}
+            onChange={() => onChange(custom)}
+            onClick={() => setPicking(true)}
+          >
+            <span className="export__chip" style={{ background: custom }} aria-hidden="true" />
+            {t('export.bandCustom')}
+          </ChoiceTile>
+        </span>
+      </div>
+      {remembered && <p className="export__hint">{t('export.bandRemembered')}</p>}
+      {picking && (
+        <ColorPicker
+          id={BAND_PICKER}
+          hex={custom}
+          used={used}
+          onChange={(hex) => {
+            setCustom(hex);
+            onChange(hex);
+          }}
+          onClose={closePicker}
+        />
+      )}
+    </fieldset>
+  );
+}
+
 function pixelLabel(
   size: { width: number; height: number },
   language: string,
@@ -1045,6 +1247,7 @@ const STAGE_FALLBACK = { width: 444, height: 340 };
 function ImagePreview({
   req,
   image,
+  files,
   index,
   onIndex,
   onFocus,
@@ -1056,6 +1259,8 @@ function ImagePreview({
 }: {
   req: ExportRequest;
   image: ImageOptions;
+  /** "File originale": what will be downloaded instead of this picture. */
+  files: OriginalsPlan | null;
   index: number;
   onIndex: (index: number) => void;
   onFocus: (focus: Focus) => void;
@@ -1091,12 +1296,15 @@ function ImagePreview({
     return () => observer?.disconnect();
   }, []);
 
-  const { aspect, fit, many } = image;
+  const { aspect, fit, many, band } = image;
+  // A new colour only repaints what is there: no "loading" while the picker is dragged.
+  const paintedBand = useRef(band);
   // The focus point is left out on purpose: dragging it must not rebuild the picture.
   useEffect(() => {
     if (!ready) return;
     const controller = new AbortController();
-    onState((s) => ({ ...s, status: 'loading' }));
+    if (paintedBand.current === band) onState((s) => ({ ...s, status: 'loading' }));
+    paintedBand.current = band;
     const timer = setTimeout(async () => {
       try {
         const [{ buildPages }, { drawPage }] = await Promise.all([
@@ -1105,7 +1313,7 @@ function ImagePreview({
         ]);
         await document.fonts.load('600 12px Inter');
         await catalogsLoaded();
-        const options = { aspect, fit, many, foci: {} };
+        const options = { aspect, fit, many, band, foci: {} };
         const built = await buildPages({ ...req, image: options }, env.current, {
           preview: true,
           previewPage: index,
@@ -1125,7 +1333,7 @@ function ImagePreview({
         }
         const page = built.pages[index];
         if (!page) return;
-        const out = imagePages(built.pages, options, env.current.background ?? '');
+        const out = imagePages(built.pages, options);
         const at = out.pages[index] ?? page;
         const scale = out.scales[index] ?? 1;
         setContent({
@@ -1144,7 +1352,7 @@ function ImagePreview({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [req, aspect, fit, many, index, ready, env, onMissing, onState, onIndex]);
+  }, [req, aspect, fit, many, band, files, index, ready, env, onMissing, onState, onIndex]);
 
   const social = aspect === 'original' ? null : ASPECT_PIXELS[aspect];
   const ratio = social
@@ -1180,7 +1388,14 @@ function ImagePreview({
     }
   }, [content, drawnWidth, drawnHeight]);
 
-  const pixels = social ?? content?.pixels ?? null;
+  const shownFile: OriginalFile | undefined = files?.cards[index]?.file;
+  const pixels =
+    social ??
+    (files
+      ? shownFile?.width && shownFile.height
+        ? { width: shownFile.width, height: shownFile.height }
+        : null
+      : (content?.pixels ?? null));
   const pixelText = pixels ? pixelLabel(pixels, i18n.language, t) : '';
   const aspectName = social ? aspect : t('export.aspectOriginal');
   const formatName = req.format === 'jpeg' ? t('export.formatJpeg') : t('export.formatPng');
@@ -1235,6 +1450,8 @@ function ImagePreview({
                 top: frame.top,
                 width: frame.width,
                 height: frame.height,
+                // Fit shows the bands; elsewhere the picture covers its frame.
+                ...(social && fit === 'fit' ? { background: band } : {}),
               }}
             >
               {!failed && <canvas ref={canvas} className="export__picture" style={inner} />}
@@ -1311,17 +1528,27 @@ function ImagePreview({
       )}
       <figcaption className="export__hint">
         {state.status !== 'empty' &&
-          (pagesOfDocument
-            ? [
-                `${t('export.previewImage')} · ${t('export.pages', { count: state.count })}`,
-                state.count > 1 ? t('export.pngPages') : '',
-                content?.reduced ? t('export.pngReduced') : '',
-              ]
-                .filter(Boolean)
-                .join(' · ')
-            : state.count > 1
-              ? `${t('export.imagesZip', { count: state.count })} · ${formatName}`
-              : `${t('export.previewImage')} · ${pixelText} · ${formatName}`)}
+          (files
+            ? files.files.length > 1
+              ? t('export.filesZip', {
+                  count: files.files.length,
+                  size: formatBytes(
+                    files.files.reduce((sum, file) => sum + file.size, 0),
+                    i18n.language,
+                  ),
+                })
+              : shownFile && `${shownFile.name} · ${formatBytes(shownFile.size, i18n.language)}`
+            : pagesOfDocument
+              ? [
+                  `${t('export.previewImage')} · ${t('export.pages', { count: state.count })}`,
+                  state.count > 1 ? t('export.pngPages') : '',
+                  content?.reduced ? t('export.pngReduced') : '',
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+              : state.count > 1
+                ? `${t('export.imagesZip', { count: state.count })} · ${formatName}`
+                : `${t('export.previewImage')} · ${pixelText} · ${formatName}`)}
       </figcaption>
       {filling && state.status !== 'empty' && (
         <p id={hintId} className="export__hint export__focus-hint">

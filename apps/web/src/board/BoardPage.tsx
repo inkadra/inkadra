@@ -810,6 +810,7 @@ function BoardScreen({
           boards={boards}
           selection={exporting.selection}
           visible={exporting.visible}
+          role={detail?.myRole ?? projectRole}
           onClose={() => setExporting(null)}
         />
       )}

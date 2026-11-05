@@ -338,6 +338,9 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     // Viewers look at images through thumbnails and never download originals.
     expect((await call('viewer', 'GET', ready.url)).statusCode).toBe(403);
     expect((await call('viewer', 'GET', `${ready.url}?download=1`)).statusCode).toBe(403);
+    // What the export asks before it downloads one file.
+    expect((await call('viewer', 'HEAD', `${ready.url}?download=1`)).statusCode).toBe(403);
+    expect((await call('owner', 'HEAD', `${ready.url}?download=1`)).statusCode).toBe(200);
     const file = await call('owner', 'GET', ready.url);
     expect(file.headers['content-type']).toBe('image/jpeg');
     expect(file.rawPayload.equals(jpeg)).toBe(true);

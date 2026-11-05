@@ -9,6 +9,7 @@
   display: none;
 }
 .export {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
   gap: 24px;
@@ -337,6 +338,19 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+.export__chip {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--ink-radius-full);
+  border: 1px solid var(--ink-border-strong);
+}
+.export__band-custom {
+  display: inline-flex;
+}
+.export__field--warn .ink-radio-group__hint {
+  color: var(--ink-status-warn);
 }
 .export__glyph {
   display: inline-block;

@@ -4,6 +4,7 @@ import {
   DEFAULT_EXPORT_PREFERENCES,
   DEFAULT_PROJECT_THEME,
   type ExportSettings,
+  type ProjectRole,
 } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -382,7 +383,11 @@ describe('ExportDialog preset state and customization', () => {
     expect(host.querySelector('.export__custom-body')?.textContent).toContain('whatSelection');
   });
 
-  const renderImage = (selection: Set<string>, loaded: ExportSettings = freshSettings) => {
+  const renderImage = (
+    selection: Set<string>,
+    loaded: ExportSettings = freshSettings,
+    role: ProjectRole | null = 'editor',
+  ) => {
     getMock.mockResolvedValue(loaded);
     return act(async () => {
       root.render(
@@ -398,6 +403,7 @@ describe('ExportDialog preset state and customization', () => {
           boards={null}
           selection={selection}
           visible={null}
+          role={role}
           onClose={() => {}}
         />,
       );
@@ -427,13 +433,82 @@ describe('ExportDialog preset state and customization', () => {
     expect(radio('Una per card')?.checked).toBe(true);
     await act(async () => radio('Originale')?.click());
     expect(radio('Una sola')?.checked).toBe(true);
-    expect(radio('Contieni')?.disabled).toBe(true);
+    // "Original" has no bands and nothing to fit.
+    expect(radio('Contieni')).toBeUndefined();
+    expect(radio('Nero')).toBeUndefined();
     await act(async () => radio('1:1')?.click());
     expect(radio('Una per card')?.checked).toBe(true);
     // A choice made by hand stays, whatever the shape.
     await act(async () => radio('Una sola')?.click());
     await act(async () => radio('16:9')?.click());
     expect(radio('Una sola')?.checked).toBe(true);
+  });
+
+  it('offers the colour of the bands with Fit only, black until the project remembers one', async () => {
+    await renderImage(new Set(['a']));
+    expect(radio('Nero')).toBeUndefined();
+    await act(async () => radio('Contieni')?.click());
+    expect(radio('Nero')?.checked).toBe(true);
+    await act(async () => radio('Bianco')?.click());
+    expect(radio('Bianco')?.checked).toBe(true);
+    expect(host.querySelector('.colorpicker')).toBeNull();
+    await act(async () => radio('Colore…')?.click());
+    expect(radio('Colore…')?.checked).toBe(true);
+    expect(host.querySelector('.colorpicker')).not.toBeNull();
+    await act(async () => radio('Riempi')?.click());
+    expect(radio('Nero')).toBeUndefined();
+  });
+
+  it('starts on a colour the project remembers, as Colore…', async () => {
+    await renderImage(new Set(['a']), {
+      ...freshSettings,
+      imageAspect: '9:16',
+      imageFit: 'fit',
+      imageBandColor: '#3a5a7c',
+      updatedAt: '2026-10-01T12:00:00.000Z',
+    });
+    expect(radio('Colore…')?.checked).toBe(true);
+  });
+
+  it('offers the original file with Original only, without format, fit or bands', async () => {
+    await renderImage(new Set(['a']));
+    expect(radio('File originale')).toBeUndefined();
+    await act(async () => radio('Originale')?.click());
+    expect(radio('Anteprima')?.checked).toBe(true);
+    expect(host.textContent).toContain('Fino a 2048 px sul lato lungo, senza metadati.');
+    await act(async () => radio('File originale')?.click());
+    expect(radio('File originale')?.checked).toBe(true);
+    expect(radio('PNG')).toBeUndefined();
+    expect(radio('JPEG')).toBeUndefined();
+    expect(radio('Contieni')).toBeUndefined();
+    // Not a remembered choice: the footer's note about it goes too.
+    expect(host.querySelector('.export__remembered')).toBeNull();
+    expect(host.querySelector('.export__field--warn')).not.toBeNull();
+  });
+
+  it('starts on Anteprima every time the dialog opens', async () => {
+    await renderImage(new Set(['a']));
+    await act(async () => radio('Originale')?.click());
+    await act(async () => radio('File originale')?.click());
+    expect(radio('File originale')?.checked).toBe(true);
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await renderImage(new Set(['a']));
+    await act(async () => radio('Originale')?.click());
+    expect(radio('Anteprima')?.checked).toBe(true);
+    expect(patchMock).not.toHaveBeenCalled();
+  });
+
+  it('disables the original file for people who can only view, and says why', async () => {
+    for (const role of ['viewer', null] as const) {
+      await renderImage(new Set(['a']), freshSettings, role);
+      await act(async () => radio('Originale')?.click());
+      expect(radio('File originale')?.disabled).toBe(true);
+      expect(radio('Anteprima')?.checked).toBe(true);
+      expect(host.textContent).toContain('richiede il permesso di modifica');
+    }
+    await renderImage(new Set(['a']), freshSettings, 'commenter');
+    expect(radio('File originale')?.disabled).toBe(false);
   });
 
   it('starts from the picture options the project remembers', async () => {

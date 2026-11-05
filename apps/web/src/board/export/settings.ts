@@ -16,7 +16,7 @@ import { isApproved } from '../film/film-status.ts';
 import { resolveTheme } from '../theme.ts';
 import { startUpload } from '../uploads.ts';
 import type { ExportRequest, ExportWhat } from './engine.ts';
-import type { ImageOptions } from './image-format.ts';
+import { DEFAULT_BAND, type ImageOptions } from './image-format.ts';
 import type { PaperSize } from './layout.ts';
 
 /** Where the dialog was opened from: the canvas offers board scopes, film views their own. */
@@ -315,6 +315,7 @@ export function initialImage(
     fit: loaded?.imageFit ?? 'fill',
     many: null,
     foci: {},
+    band: loaded?.imageBandColor?.toUpperCase() ?? DEFAULT_BAND,
   };
 }
 
@@ -363,6 +364,7 @@ export function preferencesPatch(
     'imageFormat',
     'imageAspect',
     'imageFit',
+    'imageBandColor',
   ] as const;
   for (const key of keys) {
     // A PDF says nothing about the picture options: they stay as they were.

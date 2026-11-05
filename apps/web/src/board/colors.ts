@@ -1,6 +1,13 @@
 import { createElement } from '@inkadra/canvas-core';
+import type { Element } from '@inkadra/doc-schema';
 import type { BoardStore } from './store.ts';
 import { LOCAL } from './store.ts';
+
+/** Colours of the board's swatches, to pick again. */
+export function swatchColors(elements: Iterable<Element>): string[] {
+  const hexes = [...elements].flatMap((e) => (e.type === 'color' ? [e.hex.toUpperCase()] : []));
+  return [...new Set(hexes)].slice(0, 12);
+}
 
 /** Red, green and blue of a `#RRGGBB` colour, 0-255. */
 export function hexToRgb(hex: string): [number, number, number] {

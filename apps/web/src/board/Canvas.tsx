@@ -131,7 +131,7 @@ import {
   ZoomControls,
 } from './chrome.tsx';
 import { decodeClipboard, encodeClipboard } from './clipboard.ts';
-import { addPalette } from './colors.ts';
+import { addPalette, swatchColors } from './colors.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
 import { EmptyBoardStart } from './EmptyBoardStart.tsx';
@@ -2733,15 +2733,7 @@ export function Canvas({
       return mm ? [{ label: labels.get(e.id) ?? '', mm }] : [];
     });
   }, [editedPlan, snap, labels]);
-  const usedColors = useMemo(
-    () =>
-      [
-        ...new Set(
-          [...snap.byId.values()].flatMap((e) => (e.type === 'color' ? [e.hex.toUpperCase()] : [])),
-        ),
-      ].slice(0, 12),
-    [snap],
-  );
+  const usedColors = useMemo(() => swatchColors(snap.byId.values()), [snap]);
   const closePicker = useCallback(() => setEditing(null), [setEditing]);
   // Guests have no project to count in; versions show the counts of today.
   const boardCounts = useBoardCounts(guest ? undefined : projectId, boards);

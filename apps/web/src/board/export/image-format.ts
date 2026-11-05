@@ -27,6 +27,12 @@ export const ASPECT_PIXELS: Record<
   '16:9': { width: 1920, height: 1080 },
 };
 
+/**
+ * Most a ZIP of original files may hold. shortcut: `zipBlobs` has no ZIP64 and builds the archive as
+ * a Blob, which browsers keep on disk only up to a share of it; streaming to disk would lift this.
+ */
+export const ORIGINALS_ZIP_MAX_BYTES = 2 * 1024 ** 3;
+
 /** Where the crop sits, from 0 to 1 on each axis: 0 keeps the left or top edge. */
 export interface Focus {
   x: number;
@@ -41,13 +47,19 @@ export interface ImageOptions {
   many: 'one' | 'each' | null;
   /** By image, while the dialog is open; never saved. */
   foci: Readonly<Record<number, Focus>>;
+  /** Where a picture has no content: the bands of Fit, what is transparent in a JPEG. */
+  band: string;
 }
+
+/** Black keeps attention on the picture; the same for everyone, whatever their theme. */
+export const DEFAULT_BAND = '#000000';
 
 export const ORIGINAL_IMAGE: ImageOptions = {
   aspect: 'original',
   fit: 'fill',
   many: null,
   foci: {},
+  band: DEFAULT_BAND,
 };
 
 /** A social format makes a carousel, one image per card; "Original" keeps today's single picture. */
@@ -149,8 +161,8 @@ export function formatPage(
 }
 
 /** The pictures to encode, with the pixels per point of each. */
-export function imagePages(contents: readonly Page[], image: ImageOptions, colour: string) {
-  const { aspect, fit, foci } = image;
+export function imagePages(contents: readonly Page[], image: ImageOptions) {
+  const { aspect, fit, foci, band } = image;
   if (aspect === 'original') {
     const { scales, reduced } = pngScales(contents);
     return {
@@ -161,7 +173,7 @@ export function imagePages(contents: readonly Page[], image: ImageOptions, colou
     };
   }
   return {
-    pages: contents.map((page, i) => formatPage(page, aspect, fit, foci[i], colour)),
+    pages: contents.map((page, i) => formatPage(page, aspect, fit, foci[i], band)),
     scales: contents.map(() => 1),
     reduced: false,
   };
