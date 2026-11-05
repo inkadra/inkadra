@@ -318,6 +318,16 @@ registry.registerPath({
   responses: { 200: { description: 'Where it is now', ...json(FeedbackReceipt) }, ...errors },
 });
 registry.registerPath({
+  method: 'delete',
+  path: v1('/feedback/reports/{id}'),
+  tags: ['Feedback'],
+  security: secured,
+  summary:
+    'Administrator only: delete a report and its attachments from this instance. It is not sent afterwards; a copy already delivered to GitHub stays there.',
+  request: { params: z.object({ id: z.uuid() }) },
+  responses: { 204: { description: 'Deleted' }, ...errors },
+});
+registry.registerPath({
   method: 'get',
   path: v1('/feedback/attachments/{token}'),
   tags: ['Feedback'],

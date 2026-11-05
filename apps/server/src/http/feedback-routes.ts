@@ -53,6 +53,7 @@ import { readInstanceSettings } from '../instance-settings.ts';
 import { sniffImage } from '../media/heic.ts';
 import { mediaTools } from '../media/tools.ts';
 import { sniffVideo } from '../media/video.ts';
+import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
 import { RateLimiter } from '../rate-limits.ts';
 import { DocViews } from '../share-links.ts';
 import type { AppDeps } from './app.ts';
@@ -222,6 +223,34 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       ]);
     const [current] = await db.select().from(report).where(eq(report.id, id));
     return receipt(current ?? row, 'admin');
+  });
+  // Rows first: a failure can leave a file nothing points to, never a row pointing to no file.
+  app.delete(`${API_PREFIX}/feedback/reports/:id`, async (req, reply) => {
+    await admin(req);
+    const { id } = z.object({ id: z.uuid() }).parse(req.params);
+    const files = await db.transaction(async (tx) => {
+      const removed = await tx
+        .delete(attachment)
+        .where(eq(attachment.reportId, id))
+        .returning({ id: attachment.id });
+      const [gone] = await tx.delete(report).where(eq(report.id, id)).returning({ id: report.id });
+      if (!gone) throw new HttpError('not_found', 'No such report.');
+      return removed.map((file) => key(file.id));
+    });
+    if (files.length)
+      try {
+        await within(
+          deps.jobs.deleteFiles(files),
+          ENQUEUE_TIMEOUT_MS,
+          'The job queue did not answer.',
+        );
+      } catch (err) {
+        req.log.warn({ err, report: id }, 'Feedback files not queued for removal: removing now');
+        await storage
+          .remove(files)
+          .catch((e) => req.log.error({ err: e, report: id }, 'Feedback files not removed'));
+      }
+    return reply.code(204).send();
   });
   app.get(`${API_PREFIX}/feedback/reports`, async (req, reply) => {
     await admin(req);
@@ -591,6 +620,14 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
     });
   }
 
+  /**
+   * Asked just before a write: an administrator may have deleted the report since its claim.
+   * shortcut: a delete landing between this answer and the write can't recall it, and then counts
+   * as a copy already delivered. Closing that gap would hold a connection during the call.
+   */
+  const deleted = async (id: string) =>
+    !(await db.select({ id: report.id }).from(report).where(eq(report.id, id))).length;
+
   /** One report at a time: nothing holds a database connection while GitHub is being called. */
   async function deliver(id: string) {
     const current = await settings();
@@ -649,6 +686,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
             relayFileName(file, i),
           );
         }
+        if (await deleted(row.id)) return;
         const issueNumber = await sendRelay(config.FEEDBACK_RELAY_URL, form, ticket);
         await db
           .update(report)
@@ -695,6 +733,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         signature: row.signature,
         expires: stored?.expiresAt ?? new Date(row.createdAt.getTime() + 90 * DAY),
       };
+      if (await deleted(row.id)) return;
       writing = true;
       if (issueNumber)
         await github.request(repository, `/issues/${issueNumber}/comments`, {

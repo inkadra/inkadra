@@ -633,6 +633,18 @@
 .feedback-reports > details > summary::-webkit-details-marker {
   display: none;
 }
+.feedback-reports__item {
+  position: relative;
+}
+/* The button sits on the row, not in it: nothing interactive inside a summary. */
+.feedback-reports__item > details > summary {
+  padding-right: 38px;
+}
+.feedback-reports__delete {
+  position: absolute;
+  top: 13px;
+  right: 0;
+}
 .feedback-reports__title {
   display: block;
   overflow: hidden;
