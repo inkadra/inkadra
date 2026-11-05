@@ -58,7 +58,8 @@ export async function searchMapPlaces(
 ): Promise<MapSearchPlace[]> {
   const url = new URL(endpoint);
   url.searchParams.set('q', query);
-  url.searchParams.set('format', 'jsonv2');
+  // `json`, not `jsonv2`: LocationIQ answers 400 to it, and only the fields common to both are read.
+  url.searchParams.set('format', 'json');
   url.searchParams.set('limit', String(limit));
   const res = await fetch(url, {
     headers: {
