@@ -61,7 +61,9 @@
 :root {
   view-transition-name: none;
 }
-.ink-main:not(.ink-main--canvas) > .view-stage {
+/* Named only during a switch: a name makes a stacking context, which would trap a view's viewer
+   under the header. Browsers without this selector switch instantly. */
+:root:active-view-transition .ink-main:not(.ink-main--canvas) > .view-stage {
   view-transition-name: board-view;
 }
 html[data-view-direction="forward"] {
@@ -106,7 +108,7 @@ html[data-view-direction]::view-transition-new(board-view) {
   }
 }
 /* The comments float over the views, from outside them: they stay on top and live. */
-.comments-panel {
+:root:active-view-transition .comments-panel {
   view-transition-name: comments-panel;
 }
 ::view-transition-group(comments-panel),

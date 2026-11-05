@@ -54,6 +54,8 @@ async function expectSettled(page: Page) {
     )
     .toBe(false);
   await expect(page.locator('.view-tabs--sliding')).toHaveCount(0);
+  // A name left on the views would trap their viewer under the header.
+  await expect(page.locator('.view-stage')).toHaveCSS('view-transition-name', 'none');
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
