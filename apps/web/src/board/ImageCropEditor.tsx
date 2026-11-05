@@ -33,6 +33,7 @@ import {
   rotatedBounds,
   sanitizeCrop,
 } from './image-crop.ts';
+import { HandleCurve, SQUARE_CORNER } from './ResizeHandles.tsx';
 import { LOCAL } from './store.ts';
 
 type ImageEl = Extract<Element, { type: 'image' }>;
@@ -285,7 +286,9 @@ export function ImageCropStage({
             className={`crop-stage__handle crop-stage__handle--${h}`}
             data-crop-handle={h}
             aria-hidden="true"
-          />
+          >
+            {h.length === 2 && <HandleCurve corner={h as 'nw'} d={SQUARE_CORNER} />}
+          </span>
         ))}
       </div>
       <p id={helpId} className="ink-sr-only">

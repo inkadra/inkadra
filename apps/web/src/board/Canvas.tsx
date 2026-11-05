@@ -3420,7 +3420,15 @@ export function Canvas({
               )
               .map((el) => {
                 const rect = overlay.resize?.id === el.id ? overlay.resize : liveRect(el);
-                return <ResizeHandles key={el.id} id={el.id} rect={rect} zoom={viewport.zoom} />;
+                return (
+                  <ResizeHandles
+                    key={el.id}
+                    id={el.id}
+                    rect={rect}
+                    zoom={viewport.zoom}
+                    resizing={overlay.resize?.id === el.id}
+                  />
+                );
               })}
           <PresenceLayer peers={peers} zoom={viewport.zoom} rectOf={peerRect} />
           {overlay.ghost && (
