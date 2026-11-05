@@ -100,12 +100,19 @@ describe('export settings on the client', () => {
       matchesPreset({ ...canvasSel, what: 'visible' }, 'production-book', 'canvas', 'it-IT'),
     ).toBe(true);
 
-    // A stored explicit 'a4' with client-pitch still matches for a US-locale reader.
+    // The pitch is 16:9: leaving it for the project's stored paper is an edit, and so is the reverse.
     expect(
       matchesPreset({ ...pitch, paper: 'a4' }, 'client-pitch', 'storyboard', 'en-US', 'a4'),
+    ).toBe(false);
+    expect(
+      matchesPreset({ ...book, paper: 'slide' }, 'production-book', 'shotlist', 'it-IT', 'slide'),
+    ).toBe(false);
+    // Between paper sizes the stored one still counts as the preset's, for any reader's locale.
+    expect(
+      matchesPreset({ ...book, paper: 'letter' }, 'production-book', 'shotlist', 'it-IT', 'letter'),
     ).toBe(true);
     expect(
-      matchesPreset({ ...pitch, paper: 'letter' }, 'client-pitch', 'storyboard', 'en-US', 'a4'),
+      matchesPreset({ ...book, paper: 'letter' }, 'production-book', 'shotlist', 'it-IT', 'a4'),
     ).toBe(false);
   });
 
@@ -193,6 +200,26 @@ describe('export settings on the client', () => {
     );
     expect(oldPitch.basePreset).toBe('client-pitch');
     expect(oldPitch.customOpen).toBe(false);
+    expect(oldPitch.req.paper).toBe('slide');
+
+    // A remembered preset keeps the project's paper size, whatever the reader's locale.
+    const letterKickoff = initialExportState(
+      { ...baseSettings, preset: 'internal-kickoff', paper: 'letter' },
+      'storyboard',
+      undefined,
+      'it-IT',
+    );
+    expect(letterKickoff.basePreset).toBe('internal-kickoff');
+    expect(letterKickoff.req.paper).toBe('letter');
+
+    // A book that was saved as 16:9 goes back to the book's own paper.
+    const slideBook = initialExportState(
+      { ...baseSettings, preset: 'production-book', paper: 'slide' },
+      'shotlist',
+      undefined,
+      'it-IT',
+    );
+    expect(slideBook.req.paper).toBe('a4');
     expect(oldPitch.req).toMatchObject({ paper: 'slide', approvedOnly: true });
 
     // Custom preferences that match no preset open Personalizza automatically.

@@ -115,8 +115,13 @@ export function matchesPreset(
   storedPaper?: PaperSize | null,
 ): boolean {
   const expected = presetChoices(preset, source, req.what, language);
+  // Only paper sizes are interchangeable: 16:9 is part of what the preset is, not a local habit.
   const paperMatches =
-    req.paper === expected.paper || (storedPaper != null && req.paper === storedPaper);
+    req.paper === expected.paper ||
+    (expected.paper !== 'slide' &&
+      req.paper !== 'slide' &&
+      storedPaper != null &&
+      req.paper === storedPaper);
   return (
     req.format === expected.format &&
     (source === 'canvas' || req.what === expected.what) &&
@@ -227,10 +232,16 @@ export function initialExportState(
     }
     // The preset is what was remembered: it starts from the preset's options as they are now,
     // so a preset that gained options (#380: 16:9, approved only, kickoff, call sheet) gets them.
+    // The paper size the project chose stays, unless the preset is 16:9 or was saved as 16:9.
+    const choices = presetChoices(savedPreset, source, initialWhat, language);
+    const paper =
+      choices.paper !== 'slide' && prefs.paper && prefs.paper !== 'slide'
+        ? prefs.paper
+        : choices.paper;
     return {
       basePreset: savedPreset,
       customOpen: false,
-      req: { ...presetChoices(savedPreset, source, initialWhat, language), logo, theme },
+      req: { ...choices, paper, logo, theme },
     };
   }
   const what: ExportWhat =
