@@ -66,8 +66,13 @@ jobs:
       # The media worker tests skip what needs a tool the runner does not have.
       - name: Media tools of the -media image
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils
+          # A mirror can hang for many minutes, past the job's timeout: try again instead.
+          for attempt in 1 2 3; do
+            sudo timeout 90 apt-get update -qq &&
+              sudo timeout 180 apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils && break
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep 15
+          done
       - name: Unit and integration tests
         run: pnpm turbo run test
       - name: Licences of production dependencies
@@ -140,8 +145,13 @@ jobs:
       # media-cards.spec.ts checks page counts, codecs and playable copies made by these.
       - name: Media tools of the -media image
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils
+          # A mirror can hang for many minutes, past the job's timeout: try again instead.
+          for attempt in 1 2 3; do
+            sudo timeout 90 apt-get update -qq &&
+              sudo timeout 180 apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils && break
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep 15
+          done
       - run: pnpm test:e2e
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
