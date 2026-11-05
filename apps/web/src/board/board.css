@@ -247,7 +247,19 @@
 }
 
 /* Resize handles: a short line hugging each corner of the outline, drawn in screen px (the
-   viewBox is 24 screen px at any zoom), with a halo of the surface colour over photos. */
+   viewBox is 24 screen px at any zoom). In the dark theme a halo of the surface colour separates
+   it from photos; the light theme has none, a white one reads as a gap against the card. */
+:root {
+  --handle-halo: var(--ink-surface-1);
+}
+:root[data-theme='light'] {
+  --handle-halo: transparent;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --handle-halo: transparent;
+  }
+}
 .handle-curve {
   position: absolute;
   width: calc(24px / var(--zoom, 1));
@@ -278,7 +290,7 @@
   transform: scale(-1);
 }
 .handle-curve__halo {
-  stroke: var(--ink-surface-1);
+  stroke: var(--handle-halo);
   stroke-width: 5;
 }
 .handle-curve__line {
@@ -4058,7 +4070,7 @@ button.card__play {
   pointer-events: auto;
   touch-action: none;
 }
-/* The side handles are short straight ticks of the corners' weight, with the same halo. */
+/* The side handles are short straight ticks of the corners' weight, with the same halo rule. */
 .crop-stage__handle:is(
   .crop-stage__handle--n,
   .crop-stage__handle--e,
@@ -4074,7 +4086,7 @@ button.card__play {
   transform: translate(-50%, -50%);
   border-radius: var(--ink-radius-full);
   background: var(--ink-accent-primary);
-  box-shadow: 0 0 0 calc(1px / var(--zoom, 1)) var(--ink-surface-1);
+  box-shadow: 0 0 0 calc(1px / var(--zoom, 1)) var(--handle-halo);
 }
 .crop-stage__handle:is(.crop-stage__handle--e, .crop-stage__handle--w)::after {
   width: calc(3px / var(--zoom, 1));
