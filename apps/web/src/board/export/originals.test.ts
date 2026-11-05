@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // @vitest-environment happy-dom
 import { createHash } from 'node:crypto';
-import type { Element } from '@inkadra/doc-schema';
+import { createElement, listElements } from '@inkadra/canvas-core';
+import { type Element, initBoardDoc } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as Y from 'yjs';
 import type { BoardSource } from './board-model.ts';
 import { downloadOriginals, type OriginalFile, planOriginals, zipNames } from './originals.ts';
 
@@ -215,11 +217,20 @@ describe('which files a selection has', () => {
   });
 
   it('leaves out cards hidden from guests for clients, and only for them', async () => {
-    const board = source(
-      card('a', 'image', { assetId: 'x' }),
-      card('b', 'image', { assetId: 'y', guestHidden: true }),
+    // Real cards: a client's export passes each through the guest schema.
+    const doc = new Y.Doc();
+    initBoardDoc(doc, 'b1');
+    const opts = { userId: null } as const;
+    const a = createElement(doc, 'image', { x: 0, y: 0 }, { w: 100, h: 100, assetId: 'x' }, opts);
+    const b = createElement(
+      doc,
+      'image',
+      { x: 200, y: 0 },
+      { w: 100, h: 100, assetId: 'y', guestHidden: true },
+      opts,
     );
-    const ids = new Set(['a', 'b']);
+    const board = source(...listElements(doc));
+    const ids = new Set([a.id, b.id]);
     const forClient = await planOriginals(board, ids, client);
     expect(forClient.files.map((f) => f.assetId)).toEqual(['x']);
     expect(forClient.noFile).toBe(0);

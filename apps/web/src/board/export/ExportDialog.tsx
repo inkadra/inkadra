@@ -295,8 +295,7 @@ export function ExportDialog(props: ExportDialogProps) {
 
   const env: ExportEnv = {
     store,
-    // The picture shown beside originals is one of a card that has a file.
-    selection: fileMode && plan?.cards.length ? new Set(plan.cards.map((c) => c.id)) : selection,
+    selection,
     visible: props.visible,
     projectName: props.projectName,
     boardTitle: props.boardTitle,
@@ -1314,7 +1313,11 @@ function ImagePreview({
         await document.fonts.load('600 12px Inter');
         await catalogsLoaded();
         const options = { aspect, fit, many, band, foci: {} };
-        const built = await buildPages({ ...req, image: options }, env.current, {
+        // Beside originals, the pictures of the cards that have a file.
+        const shown = files?.cards.length
+          ? { ...env.current, selection: new Set(files.cards.map((card) => card.id)) }
+          : env.current;
+        const built = await buildPages({ ...req, image: options }, shown, {
           preview: true,
           previewPage: index,
           signal: controller.signal,
