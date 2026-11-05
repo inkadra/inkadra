@@ -32,6 +32,16 @@ describe('readPreferences', () => {
     expect(readPreferences({ preset: 'obsolete-preset' })).toEqual(DEFAULT_EXPORT_PREFERENCES);
   });
 
+  it('reads rows saved before the 16:9 page and the new options', () => {
+    const old = { preset: 'client-pitch', paper: 'a4', comments: true };
+    expect(readPreferences(old)).toEqual({ ...DEFAULT_EXPORT_PREFERENCES, ...old });
+    expect(readPreferences({ paper: 'slide', approvedOnly: true, callSheet: 'yes' })).toEqual({
+      ...DEFAULT_EXPORT_PREFERENCES,
+      paper: 'slide',
+      approvedOnly: true,
+    });
+  });
+
   it('reads the theme the same way', () => {
     expect(readTheme(null)).toEqual(DEFAULT_PROJECT_THEME);
     expect(readTheme({ accent: 'teal', headingFont: 'Papyrus' })).toEqual({
