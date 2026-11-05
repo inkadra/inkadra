@@ -10,7 +10,7 @@ import { ProjectIcon } from './projects.ts';
  */
 
 export const ExportFormat = z.enum(['pdf', 'png']);
-export const ExportPaper = z.enum(['a4', 'letter']);
+export const ExportPaper = z.enum(['a4', 'letter', 'slide']);
 export const ExportOrientation = z.enum(['portrait', 'landscape']);
 export const ExportAudience = z.enum(['client', 'team']).openapi({
   description:
@@ -60,7 +60,9 @@ export const ExportPreferences = z
     format: ExportFormat,
     framesPerPage: ExportFramesPerPage,
     paper: ExportPaper.nullable().openapi({
-      description: "Null: A4, or Letter where the reader's browser is set to the US or Canada.",
+      description:
+        "Null: A4, or Letter where the reader's browser is set to the US or Canada. `slide`: a " +
+        '16:9 landscape page (13.33 × 7.5 in), like a presentation slide.',
     }),
     orientation: ExportOrientation,
     audience: ExportAudience,
@@ -68,6 +70,17 @@ export const ExportPreferences = z
     comments: z.boolean(),
     hideGuestHidden: z.boolean().openapi({
       description: 'For the team: leave out cards hidden from guests. Always on for clients.',
+    }),
+    approvedOnly: z.boolean().openapi({
+      description: 'Storyboard and shot list: only frames approved in review.',
+    }),
+    kickoffSummary: z.boolean().openapi({
+      description:
+        'PDF for the team: a summary page with shooting dates, people and their roles, open ' +
+        'tasks and the schedule.',
+    }),
+    callSheet: z.boolean().openapi({
+      description: 'PDF for the team: the call sheet of every shooting day of the board.',
     }),
   })
   .openapi('ExportPreferences');
@@ -84,6 +97,9 @@ export const DEFAULT_EXPORT_PREFERENCES: ExportPreferences = {
   titlePage: true,
   comments: false,
   hideGuestHidden: true,
+  approvedOnly: false,
+  kickoffSummary: false,
+  callSheet: false,
 };
 
 export const ExportSettings = ExportPreferences.extend({

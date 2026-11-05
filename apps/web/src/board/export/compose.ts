@@ -22,6 +22,7 @@ import {
   type PaperSize,
   pageSize,
   paginateRows,
+  slideCell,
   storyboardCells,
   storyboardGrid,
 } from './layout.ts';
@@ -284,13 +285,23 @@ export function storyboardPages(
     // Room under each picture for label, shot data and a few lines of action.
     const textRoom = perPage === 1 ? box.h * 0.3 : 84 * f;
     const narrowest = Math.min(...group.map((s) => ctx.frameAspect(s.frame)), 16 / 9);
-    const cells = storyboardCells(box, grid.cols, grid.rows, narrowest, textRoom);
+    // One frame on a 16:9 slide: as large as its caption allows, centred clear of the header.
+    const only = perPage === 1 && setup.paper === 'slide' ? group[0] : undefined;
+    const cells = only
+      ? [
+          slideCell(box, narrowest, (w) => {
+            const pic = w / ctx.frameAspect(only.frame);
+            const probe = { x: 0, y: 0, w, h: pic + box.h };
+            return storyboardCell(only, probe, perPage, ctx, words, showNotes).bottom - pic;
+          }),
+        ]
+      : storyboardCells(box, grid.cols, grid.rows, narrowest, textRoom);
     if (group.length === 0) {
       page.ops.push(text(words.noFrames, box.x, box.y + 20, 11, 400, ctx.colors['text-muted']));
     }
     group.forEach((shot, i) => {
       const cell = cells[i];
-      if (cell) page.ops.push(...storyboardCell(shot, cell, perPage, ctx, words, showNotes));
+      if (cell) page.ops.push(...storyboardCell(shot, cell, perPage, ctx, words, showNotes).ops);
     });
     return page;
   });
@@ -303,7 +314,7 @@ function storyboardCell(
   ctx: CardContext,
   words: Words,
   showNotes: boolean,
-): Op[] {
+): { ops: Op[]; bottom: number } {
   const c = ctx.colors;
   const m = ctx.measure;
   const f = perPage <= 2 ? 1.15 : 1;
@@ -360,7 +371,7 @@ function storyboardCell(
     block(`${words.dialogue}: “${shot.frame.dialogue}”`, 8.5 * f, 400, c['text-secondary']);
   if (showNotes && shot.frame.notes)
     block(`${words.notes}: ${shot.frame.notes}`, 8 * f, 400, c['text-muted']);
-  return ops;
+  return { ops, bottom: top };
 }
 
 export const SHOT_COLUMNS = [
@@ -652,6 +663,119 @@ export function commentPages(
     const page: Page = { width, height, ops: [] };
     if (n === 0) page.ops.push(text(words.comments, box.x, box.y + 16, 16, 600, c['text-primary']));
     let top = box.y + (n === 0 ? heading : 0);
+    for (const i of indexes) {
+      const block = blocks[i];
+      if (!block) continue;
+      page.ops.push(...block.draw(top));
+      top += block.h;
+    }
+    return page;
+  });
+}
+
+/** A titled table of text, for the kickoff summary and the call sheet. */
+export interface Section {
+  title: string;
+  /** Relative widths of the columns; rows with one cell span them all. */
+  columns: number[];
+  rows: string[][];
+  /** Printed in place of the rows when there are none. */
+  empty: string;
+}
+
+const SECTION_SIZE = 8.5;
+const SECTION_LEADING = 12;
+
+/** Pages of `sections` under one heading; a section continues on the next page when full. */
+export function sectionPages(
+  setup: PageSetup,
+  heading: string,
+  sections: readonly Section[],
+  ctx: CardContext,
+): Page[] {
+  const { width, height } = pageSize(setup.paper, setup.orientation);
+  const box = contentBox(width, height);
+  const c = ctx.colors;
+  const m = ctx.measure;
+  type Block = { h: number; draw: (top: number) => Op[] };
+  const blocks: Block[] = [];
+  for (const section of sections) {
+    blocks.push({
+      h: 28,
+      draw: (top) => [
+        {
+          kind: 'line',
+          x1: box.x,
+          y1: top + 6,
+          x2: box.x + box.w,
+          y2: top + 6,
+          color: c['border-default'],
+          width: 0.5,
+        },
+        text(
+          ellipsize(section.title, box.w, 10, 600, m),
+          box.x,
+          top + 22,
+          10,
+          600,
+          c['text-primary'],
+        ),
+      ],
+    });
+    const total = section.columns.reduce((sum, w) => sum + w, 0);
+    let x = 0;
+    const cols = section.columns.map((weight) => {
+      const col = { x, w: (weight / total) * box.w };
+      x += col.w;
+      return col;
+    });
+    const rows = section.rows.length ? section.rows : [[section.empty]];
+    for (const row of rows) {
+      const muted = section.rows.length === 0;
+      const cells = row.map((value, i) => {
+        const col = row.length === 1 ? { x: 0, w: box.w } : (cols[i] ?? { x: 0, w: 0 });
+        const weight: FontWeight = i === 0 && row.length > 1 ? 600 : 400;
+        return {
+          col,
+          weight,
+          lines: wrapText(value, col.w - CELL_PAD * 2, SECTION_SIZE, weight, m, 6),
+        };
+      });
+      const lines = Math.max(1, ...cells.map((cell) => cell.lines.length));
+      blocks.push({
+        h: lines * SECTION_LEADING + CELL_PAD * 2,
+        draw: (top) =>
+          cells.flatMap(
+            (cell, i) =>
+              textBlock(cell.lines, box.x + cell.col.x + (i === 0 ? 0 : CELL_PAD), top + CELL_PAD, {
+                size: SECTION_SIZE,
+                weight: cell.weight,
+                leading: SECTION_LEADING,
+                color: muted ? c['text-muted'] : i === 0 ? c['text-primary'] : c['text-secondary'],
+              }).ops,
+          ),
+      });
+    }
+  }
+  const head = 30;
+  const pages = paginateRows(
+    blocks.map((b) => b.h),
+    box.h - head,
+  );
+  return pages.map((indexes, n) => {
+    const page: Page = { width, height, ops: [] };
+    if (n === 0)
+      page.ops.push(
+        text(
+          ellipsize(heading, box.w, 16, 'heading', m),
+          box.x,
+          box.y + 16,
+          16,
+          'heading',
+          c['text-primary'],
+        ),
+      );
+    let top = box.y + (n === 0 ? head : 0);
     for (const i of indexes) {
       const block = blocks[i];
       if (!block) continue;

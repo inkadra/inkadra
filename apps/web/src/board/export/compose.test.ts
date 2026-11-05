@@ -5,12 +5,14 @@ import { type CardContext, cardHeight, drawCard } from './board-render.ts';
 import {
   finish,
   type Shot,
+  sectionPages,
   shotColumns,
   shotListPages,
   storyboardPages,
   titlePage,
   type Words,
 } from './compose.ts';
+import { contentBox } from './layout.ts';
 import type { Op, Page } from './pages.ts';
 
 const ctx: CardContext = {
@@ -132,6 +134,31 @@ describe('storyboard pages', () => {
     }
   });
 
+  it('centres a single frame on a 16:9 slide, clear of the header, and leaves paper pages as they were', () => {
+    const border = (page: Page | undefined) =>
+      (page?.ops ?? []).find(
+        (op): op is Extract<Op, { kind: 'rect' }> => op.kind === 'rect' && !!op.stroke,
+      );
+    const slide = { paper: 'slide', orientation: 'landscape' } as const;
+    const [page] = storyboardPages(slide, shots(1, 'Luce fredda'), 1, ctx, words, true);
+    const box = contentBox(960, 540);
+    const pic = border(page);
+    expect(pic?.y).toBeGreaterThanOrEqual(box.y + 18 - 0.001);
+    const bottom = Math.max(
+      ...(page?.ops ?? []).flatMap((op) => (op.kind === 'text' ? [op.y] : [])),
+    );
+    // The caption ends about as far above the content box's bottom as the picture starts below
+    // its top (the last baseline sits a few points above the block's end).
+    const above = (pic?.y ?? 0) - box.y;
+    const below = box.y + box.h - bottom;
+    expect(Math.abs(above - below)).toBeLessThan(12);
+    // The caption is all there, notes included.
+    expect(allText(page ? [page] : [])).toContain('Luce fredda');
+    // A4 keeps the picture at the top of the content box.
+    const [paper] = storyboardPages(a4, shots(1), 1, ctx, words, true);
+    expect(border(paper)?.y).toBeCloseTo(contentBox(paper?.width ?? 0, paper?.height ?? 0).y);
+  });
+
   it("prints the director's notes only for the team", () => {
     expect(allText(storyboardPages(a4, shots(1, 'Luce fredda'), 2, ctx, words, true))).toContain(
       'Luce fredda',
@@ -248,5 +275,29 @@ describe('story bible cards in exports', () => {
     expect(shown).toContain('INT.');
     expect(shown).toContain('Neon verde');
     expect(shown).not.toContain('Binari');
+  });
+});
+
+describe('section pages', () => {
+  it('heads the first page and continues long sections on the next ones', () => {
+    const setup = { paper: 'slide', orientation: 'landscape' } as const;
+    const rows = Array.from({ length: 80 }, (_, i) => [`Task ${i}`, 'Anna', '10 nov']);
+    const pages = sectionPages(
+      setup,
+      'Kickoff summary',
+      [
+        { title: 'Open tasks', columns: [4, 2, 1], rows, empty: 'No open tasks' },
+        { title: 'People', columns: [1, 1], rows: [], empty: 'No people' },
+      ],
+      ctx,
+    );
+    expect(pages.length).toBeGreaterThan(1);
+    for (const page of pages) expect([page.width, page.height]).toEqual([960, 540]);
+    const texts = (page: Page) => page.ops.flatMap((op) => (op.kind === 'text' ? [op.text] : []));
+    expect(texts(pages[0] as Page)[0]).toBe('Kickoff summary');
+    expect(texts(pages[1] as Page)).not.toContain('Kickoff summary');
+    const all = pages.flatMap(texts);
+    expect(all).toContain('Task 79');
+    expect(all).toContain('No people');
   });
 });

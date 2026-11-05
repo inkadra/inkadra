@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
+import { type Element, hiddenFromGuests } from '@inkadra/doc-schema';
 import {
   type Asset,
   DEFAULT_EXPORT_PREFERENCES,
@@ -10,6 +12,7 @@ import {
   type UpdateExportSettings,
 } from '@inkadra/shared';
 import { api } from '../../lib/api.ts';
+import { isApproved } from '../film/film-status.ts';
 import { resolveTheme } from '../theme.ts';
 import { startUpload } from '../uploads.ts';
 import type { ExportRequest, ExportWhat } from './engine.ts';
@@ -31,12 +34,32 @@ export function presetNumber(preset: ExportPreset): 1 | 2 | 3 {
 
 /**
  * The preset marked "Recommended" for the open view: Storyboard → Client pitch, Shot list →
- * Production book, Schedule → Internal kickoff.
+ * Production book, Schedule → Internal kickoff. The pitch exports approved frames only, so a
+ * storyboard without any (`approvedFrames` false) gets the production book instead of an empty
+ * PDF.
  */
-export function recommendedPreset(source: ExportSource): ExportPreset {
+export function recommendedPreset(source: ExportSource, approvedFrames: boolean): ExportPreset {
   if (source === 'shotlist') return 'production-book';
   if (source === 'schedule') return 'internal-kickoff';
+  if (source === 'storyboard' && !approvedFrames) return 'production-book';
   return 'client-pitch';
+}
+
+/**
+ * Whether the client pitch has a frame to show: approved as its "approved frames only" filter
+ * counts it, and not hidden from guests.
+ */
+export function hasApprovedFrame(
+  byId: ReadonlyMap<string, Element>,
+  reviews: ReadonlyMap<string, { status: string }>,
+): boolean {
+  const lookup = (id: string) => byId.get(id);
+  for (const el of byId.values()) {
+    if (el.type === 'frame' && isApproved(el, reviews) && !hiddenFromGuests(el.id, lookup)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export type PresetChoices = Omit<ExportRequest, 'logo' | 'theme'>;
@@ -59,12 +82,15 @@ export function presetChoices(
         format: 'pdf',
         what: film ? 'storyboard' : currentWhat,
         framesPerPage: 1,
-        paper: localePaper(language),
+        paper: 'slide',
         orientation: 'landscape',
         audience: 'client',
         titlePage: true,
         comments: false,
         hideGuestHidden: true,
+        approvedOnly: film,
+        kickoffSummary: false,
+        callSheet: false,
       };
     case 'production-book':
       return {
@@ -77,6 +103,9 @@ export function presetChoices(
         titlePage: true,
         comments: false,
         hideGuestHidden: false,
+        approvedOnly: false,
+        kickoffSummary: false,
+        callSheet: true,
       };
     case 'internal-kickoff':
       return {
@@ -89,6 +118,9 @@ export function presetChoices(
         titlePage: true,
         comments: true,
         hideGuestHidden: false,
+        approvedOnly: false,
+        kickoffSummary: true,
+        callSheet: false,
       };
   }
 }
@@ -106,8 +138,13 @@ export function matchesPreset(
   storedPaper?: PaperSize | null,
 ): boolean {
   const expected = presetChoices(preset, source, req.what, language);
+  // Only paper sizes are interchangeable: 16:9 is part of what the preset is, not a local habit.
   const paperMatches =
-    req.paper === expected.paper || (storedPaper != null && req.paper === storedPaper);
+    req.paper === expected.paper ||
+    (expected.paper !== 'slide' &&
+      req.paper !== 'slide' &&
+      storedPaper != null &&
+      req.paper === storedPaper);
   return (
     req.format === expected.format &&
     (source === 'canvas' || req.what === expected.what) &&
@@ -117,8 +154,21 @@ export function matchesPreset(
     req.audience === expected.audience &&
     (req.format !== 'pdf' || req.titlePage === expected.titlePage) &&
     (req.format !== 'pdf' || req.comments === expected.comments) &&
-    (req.audience === 'client' || req.hideGuestHidden === expected.hideGuestHidden)
+    (req.audience === 'client' || req.hideGuestHidden === expected.hideGuestHidden) &&
+    (!framesOf(req.what) || req.approvedOnly === expected.approvedOnly) &&
+    (!teamPdf(req) || req.kickoffSummary === expected.kickoffSummary) &&
+    (!teamPdf(req) || req.callSheet === expected.callSheet)
   );
+}
+
+/** Content made of frames, where "approved frames only" applies. */
+export function framesOf(what: ExportWhat): boolean {
+  return what === 'storyboard' || what === 'shotlist';
+}
+
+/** The kickoff summary and the call sheet are PDF pages for the team only. */
+export function teamPdf(req: Pick<PresetChoices, 'format' | 'audience'>): boolean {
+  return req.format === 'pdf' && req.audience === 'team';
 }
 
 /** Whether `preset` exports the content kind of the view the dialog was opened from. */
@@ -142,7 +192,10 @@ function isDefaultPreferences(prefs: ExportPreferences): boolean {
     prefs.audience === DEFAULT_EXPORT_PREFERENCES.audience &&
     prefs.titlePage === DEFAULT_EXPORT_PREFERENCES.titlePage &&
     prefs.comments === DEFAULT_EXPORT_PREFERENCES.comments &&
-    prefs.hideGuestHidden === DEFAULT_EXPORT_PREFERENCES.hideGuestHidden
+    prefs.hideGuestHidden === DEFAULT_EXPORT_PREFERENCES.hideGuestHidden &&
+    prefs.approvedOnly === DEFAULT_EXPORT_PREFERENCES.approvedOnly &&
+    prefs.kickoffSummary === DEFAULT_EXPORT_PREFERENCES.kickoffSummary &&
+    prefs.callSheet === DEFAULT_EXPORT_PREFERENCES.callSheet
   );
 }
 
@@ -150,21 +203,23 @@ function isDefaultPreferences(prefs: ExportPreferences): boolean {
  * Starting state of the dialog once the project's export settings load:
  * - A project that never saved preferences (or only uploaded a logo or theme) starts on the
  *   view's recommended preset with Personalizza closed.
- * - A remembered preset is used only if its content matches the open view; otherwise the view's
- *   recommended preset is selected so opening from Shot list never silently exports the storyboard.
+ * - A remembered preset is used, with its current options, only if its content matches the open
+ *   view; otherwise the view's recommended preset is selected so opening from Shot list never
+ *   silently exports the storyboard.
  * - Personalizza opens automatically only when stored preferences do not match any preset.
  */
 export function initialExportState(
   loaded: ExportSettings,
   source: ExportSource,
-  initialWhat?: ExportWhat,
-  language?: string,
+  initialWhat: ExportWhat | undefined,
+  language: string | undefined,
+  approvedFrames: boolean,
 ): {
   basePreset: ExportPreset;
   customOpen: boolean;
   req: ExportRequest;
 } {
-  const recommended = recommendedPreset(source);
+  const recommended = recommendedPreset(source, approvedFrames);
   const {
     logo,
     logoAssetId: _id,
@@ -199,20 +254,18 @@ export function initialExportState(
         },
       };
     }
-    const what: ExportWhat =
-      source === 'canvas' ? (initialWhat ?? 'board') : presetChoices(savedPreset, source).what;
-    const req: ExportRequest = {
-      ...prefs,
-      what,
-      paper: prefs.paper ?? localePaper(language),
-      logo,
-      theme,
-    };
-    const matches = matchesPreset(req, savedPreset, source, language, prefs.paper);
+    // The preset is what was remembered: it starts from the preset's options as they are now,
+    // so a preset that gained options (#380: 16:9, approved only, kickoff, call sheet) gets them.
+    // The paper size the project chose stays, unless the preset is 16:9 or was saved as 16:9.
+    const choices = presetChoices(savedPreset, source, initialWhat, language);
+    const paper =
+      choices.paper !== 'slide' && prefs.paper && prefs.paper !== 'slide'
+        ? prefs.paper
+        : choices.paper;
     return {
       basePreset: savedPreset,
-      customOpen: !matches,
-      req,
+      customOpen: false,
+      req: { ...choices, paper, logo, theme },
     };
   }
   const what: ExportWhat =
@@ -284,6 +337,9 @@ export function preferencesPatch(
     'titlePage',
     'comments',
     'hideGuestHidden',
+    'approvedOnly',
+    'kickoffSummary',
+    'callSheet',
   ] as const;
   for (const key of keys) {
     if (stored[key] !== chosen[key]) (out as Record<string, unknown>)[key] = chosen[key];

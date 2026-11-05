@@ -19,7 +19,7 @@ import {
   characterSubtitle,
   loadCastAppearances,
 } from '../film/cast-appearances.ts';
-import { getFrameStatus } from '../film/film-status.ts';
+import { getFrameStatus, isApproved } from '../film/film-status.ts';
 import type { BoardStore } from '../store.ts';
 import { paperAccent, type Theme } from '../theme.ts';
 import {
@@ -38,8 +38,10 @@ import {
   type DocInfo,
   type ExportKind,
   finish,
+  type Section,
   SHOT_COLUMNS,
   type Shot,
+  sectionPages,
   shotListPages,
   storyboardPages,
   titlePage,
@@ -59,9 +61,16 @@ import {
 import { type FramesPerPage, type Orientation, type PaperSize, pngScales } from './layout.ts';
 import { noteBlocks } from './note-text.ts';
 import type { Op, Page } from './pages.ts';
+import {
+  calendarDate,
+  callSheetSections,
+  kickoffSections,
+  loadPlanning,
+  type Planning,
+} from './planning.ts';
 import { renderPngPages } from './render-canvas.ts';
 import { renderPdf } from './render-pdf.ts';
-import { logoUrl } from './settings.ts';
+import { logoUrl, teamPdf } from './settings.ts';
 import { missingGlyphs } from './text.ts';
 import { zipBlobs } from './zip.ts';
 
@@ -82,6 +91,12 @@ export interface ExportRequest {
   comments: boolean;
   audience: Audience;
   hideGuestHidden: boolean;
+  /** Storyboard and shot list: only frames approved in review. */
+  approvedOnly: boolean;
+  /** PDF for the team: the kickoff summary after the title page. */
+  kickoffSummary: boolean;
+  /** PDF for the team: the call sheet of every shooting day, at the end. */
+  callSheet: boolean;
 }
 
 export interface ExportEnv {
@@ -95,6 +110,8 @@ export interface ExportEnv {
   /** Where the board is, to count the scenes of characters on its other boards too. */
   scope?: { projectId: string; boardId: string } | undefined;
   threads: readonly CommentThread[];
+  /** Review status of the cards (decision 0013), for "approved frames only". */
+  reviews?: ReadonlyMap<string, { status: string }> | undefined;
   t: TFunction;
   language: string;
   /** Pictures of the preview, kept while the dialog is open. */
@@ -270,7 +287,7 @@ export async function buildPages(
     pageOf: (n, total) => t('export.pageOf', { n, total }),
     madeWith: t('export.madeWith'),
     scene: t('export.scene'),
-    noFrames: t('export.noFrames'),
+    noFrames: req.approvedOnly ? t('export.noApprovedFrames') : t('export.noFrames'),
     comments: t('export.commentsTitle'),
     onBoard: t('export.onBoard'),
     onCard: (label) => t('export.onCard', { label }),
@@ -282,7 +299,11 @@ export async function buildPages(
     ) as Words['columns'],
   };
 
-  const setup = { paper: req.paper, orientation: req.orientation };
+  // A 16:9 page is always a landscape slide.
+  const setup = {
+    paper: req.paper,
+    orientation: req.paper === 'slide' ? ('landscape' as const) : req.orientation,
+  };
   const logo = req.logo ? await logoImage(req.logo, mode, signal) : null;
   if (logo) images.set('logo', logo);
   let content: Page[] = [];
@@ -324,6 +345,8 @@ export async function buildPages(
       for (const raw of group.frames) {
         const frame = exportable(raw, lookup, filter);
         if (frame?.type !== 'frame') continue;
+        // The raw frame: a client export drops the approval flag with the other production fields.
+        if (req.approvedOnly && !isApproved(raw, env.reviews ?? new Map())) continue;
         shownIds.add(frame.id);
         if (scene) shownIds.add(scene.id);
         shots.push({
@@ -373,6 +396,45 @@ export async function buildPages(
       },
     });
     if (entries.length) content.push(...commentPages(setup, entries, ctx, words));
+  }
+
+  // Kickoff summary first, call sheets last: shooting days and people come from the server.
+  const withSummary = req.kickoffSummary && teamPdf(req);
+  const withSheets = req.callSheet && teamPdf(req);
+  if (withSummary || withSheets) {
+    const fetchPlanning = (): Promise<Planning> =>
+      env.scope
+        ? loadPlanning(env.scope.projectId, env.scope.boardId)
+        : Promise.resolve({ days: [], members: [] });
+    const planning = preview
+      ? await env.cache.once('planning', fetchPlanning)
+      : await fetchPlanning();
+    signal?.throwIfAborted();
+    if (withSummary) {
+      const todos = all.flatMap((raw) => {
+        const el = exportable(raw, lookup, filter);
+        return el?.type === 'todo' ? [el] : [];
+      });
+      const sections: Section[] = kickoffSections(planning, todos, t, env.language);
+      content.unshift(...sectionPages(setup, t('export.kickoff.title'), sections, ctx));
+    }
+    if (withSheets) {
+      planning.days.forEach((day, i) => {
+        const heading = [
+          t('export.callSheetTitle'),
+          calendarDate(day.date, env.language, 'long'),
+          t('callSheet.dayOf', { n: i + 1, total: planning.days.length }),
+        ].join(' · ');
+        content.push(
+          ...sectionPages(
+            setup,
+            heading,
+            callSheetSections(day, (id) => labels.get(id), t),
+            ctx,
+          ),
+        );
+      });
+    }
   }
 
   const info: DocInfo = {

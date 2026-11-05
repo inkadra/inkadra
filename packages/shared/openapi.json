@@ -3494,9 +3494,10 @@
             "enum": [
               "a4",
               "letter",
+              "slide",
               null
             ],
-            "description": "Null: A4, or Letter where the reader's browser is set to the US or Canada."
+            "description": "Null: A4, or Letter where the reader's browser is set to the US or Canada. `slide`: a 16:9 landscape page (13.33 × 7.5 in), like a presentation slide."
           },
           "orientation": {
             "type": "string",
@@ -3522,6 +3523,18 @@
           "hideGuestHidden": {
             "type": "boolean",
             "description": "For the team: leave out cards hidden from guests. Always on for clients."
+          },
+          "approvedOnly": {
+            "type": "boolean",
+            "description": "Storyboard and shot list: only frames approved in review."
+          },
+          "kickoffSummary": {
+            "type": "boolean",
+            "description": "PDF for the team: a summary page with shooting dates, people and their roles, open tasks and the schedule."
+          },
+          "callSheet": {
+            "type": "boolean",
+            "description": "PDF for the team: the call sheet of every shooting day of the board."
           }
         },
         "required": [
@@ -3533,7 +3546,10 @@
           "audience",
           "titlePage",
           "comments",
-          "hideGuestHidden"
+          "hideGuestHidden",
+          "approvedOnly",
+          "kickoffSummary",
+          "callSheet"
         ]
       },
       "UpdateExportSettings": {
@@ -3595,9 +3611,10 @@
             "enum": [
               "a4",
               "letter",
+              "slide",
               null
             ],
-            "description": "Null: A4, or Letter where the reader's browser is set to the US or Canada."
+            "description": "Null: A4, or Letter where the reader's browser is set to the US or Canada. `slide`: a 16:9 landscape page (13.33 × 7.5 in), like a presentation slide."
           },
           "orientation": {
             "type": "string",
@@ -3623,6 +3640,18 @@
           "hideGuestHidden": {
             "type": "boolean",
             "description": "For the team: leave out cards hidden from guests. Always on for clients."
+          },
+          "approvedOnly": {
+            "type": "boolean",
+            "description": "Storyboard and shot list: only frames approved in review."
+          },
+          "kickoffSummary": {
+            "type": "boolean",
+            "description": "PDF for the team: a summary page with shooting dates, people and their roles, open tasks and the schedule."
+          },
+          "callSheet": {
+            "type": "boolean",
+            "description": "PDF for the team: the call sheet of every shooting day of the board."
           },
           "logoAssetId": {
             "type": [

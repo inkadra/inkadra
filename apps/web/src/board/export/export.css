@@ -196,6 +196,10 @@
 .export__row > .export__field:first-child {
   flex: 0 0 96px;
 }
+/* 16:9 has no orientation to pick: the page size takes the row. */
+.export__row > .export__field:only-child {
+  flex: 1 1 auto;
+}
 .export__hint {
   display: block;
   margin: 0;

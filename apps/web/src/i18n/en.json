@@ -2991,6 +2991,7 @@
     "page": "Page size",
     "paperA4": "A4",
     "paperLetter": "Letter",
+    "paperSlide": "16:9 · Landscape",
     "portrait": "Portrait",
     "landscape": "Landscape",
     "audience": "Meant for",
@@ -3019,6 +3020,7 @@
     "madeWith": "Made with Inkadra",
     "scene": "Sc.",
     "noFrames": "No frames",
+    "noApprovedFrames": "No approved frames",
     "commentsTitle": "Comments",
     "onBoard": "On the board",
     "onCard": "On {{label}}",
@@ -3063,16 +3065,35 @@
     "presets": {
       "client-pitch": {
         "title": "Client pitch",
-        "description": "Landscape · one frame per page · title page · for clients, no comments or hidden cards"
+        "description": "16:9 · approved frames only · one per page · no internal notes"
       },
       "production-book": {
         "title": "Production book",
-        "description": "A4 portrait · shot list with every field · title page · for the team, no comments"
+        "description": "A4 · every field · shot list and call sheet · page numbers"
       },
       "internal-kickoff": {
         "title": "Internal kickoff",
-        "description": "Landscape · 4 per page · title page · for the team, with comments and hidden cards"
+        "description": "Dates, people, tasks and the schedule summary"
       }
+    },
+    "approvedOnly": "Approved frames only",
+    "kickoffSummary": "Kickoff summary: dates, people, tasks and schedule",
+    "callSheet": "Call sheet of every shooting day",
+    "teamOnlyHint": "Only in PDFs for the team.",
+    "callSheetTitle": "Call sheet",
+    "kickoff": {
+      "title": "Kickoff summary",
+      "dates": "Dates",
+      "period_one": "{{count}} shooting day: {{from}}",
+      "period_other": "{{count}} shooting days, from {{from}} to {{to}}",
+      "noDays": "No shooting days in the schedule.",
+      "people": "People",
+      "noPeople": "No people to show.",
+      "tasks": "Open tasks",
+      "noTasks": "No open tasks.",
+      "schedule": "Schedule",
+      "shots_one": "{{count}} shot",
+      "shots_other": "{{count}} shots"
     }
   },
   "screenplay": {
