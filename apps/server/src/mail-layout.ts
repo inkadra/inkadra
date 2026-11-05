@@ -129,8 +129,8 @@ const chip = ({ label, tone }: Chip) =>
     `display:inline-block;padding:2px 8px;border-radius:999px;font:500 12px/18px ${FONT};white-space:nowrap;`,
   )}>${esc(label)}</span>`;
 
-const link = (url: string, label: string) =>
-  `<a href="${esc(url)}"${paint({ fg: 'link' }, 'text-decoration:underline;')}>${esc(label)}</a>`;
+const link = (url: string, label: string, style = '') =>
+  `<a href="${esc(url)}"${paint({ fg: 'link' }, `text-decoration:underline;${style}`)}>${esc(label)}</a>`;
 
 const logo = () =>
   `<table ${TABLE} style="border-collapse:separate"><tr>` +
@@ -224,7 +224,7 @@ function note({ text, strong }: { text: string; strong?: string }) {
 }
 
 const fallback = (lead: string, url: string) =>
-  `<p${paint({ fg: 'sec' }, `margin:14px 0 0;font:400 12px/18px ${FONT};overflow-wrap:anywhere;word-break:break-all;`)}>${esc(lead)}<br>${link(url, url)}</p>`;
+  `<p${paint({ fg: 'sec' }, `margin:14px 0 0;font:400 12px/18px ${FONT};overflow-wrap:anywhere;`)}>${esc(lead)}<br>${link(url, url, 'word-break:break-all;')}</p>`;
 
 function html(c: MailContent) {
   const body = [
