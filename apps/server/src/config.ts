@@ -32,7 +32,7 @@ const Env = z.object({
         return protocol === 'https:' || ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
       }, 'FEEDBACK_RELAY_URL must use https'),
     ])
-    .default('https://inkadra-report-relay.matte-maraffio.workers.dev')
+    .default('https://relay.inkadra.com')
     .transform((u) => u.replace(/\/+$/, '')),
   FEEDBACK_GITHUB_TOKEN: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   INSTANCE_NAME: z.string().min(1).default('Inkadra'),

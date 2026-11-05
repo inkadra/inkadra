@@ -3,7 +3,9 @@
 name = "inkadra-report-relay"
 main = "src/worker.js"
 compatibility_date = "2026-09-01"
+# Instances from before this domain still call the workers.dev address: keep it on for them.
 workers_dev = true
+routes = [{ pattern = "relay.inkadra.com", custom_domain = true }]
 
 [vars]
 REPO = "inkadra/inkadra-feedback"

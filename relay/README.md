@@ -77,8 +77,8 @@ No deploy runs on push or merge. No deployment was performed during implementati
    Bindings/vars are in wrangler.toml: METER, RATE_LIMITER, REPO, DAILY_LIMIT, DAILY_BYTES,
    NETWORK_DAILY_LIMIT, POW_BITS.
 5. Check the workflow's /health result and URL. The app defaults to
-   `https://inkadra-report-relay.matte-maraffio.workers.dev`; if the account subdomain differs,
-   set `FEEDBACK_RELAY_URL` on instances accordingly. Empty disables this route.
+   `https://relay.inkadra.com`, a custom domain of the Worker set in `wrangler.toml`; another
+   relay needs `FEEDBACK_RELAY_URL` on its instances. Empty disables this route.
 
 6. **Try the largest report before relying on it.** Send one with a 25 MiB video and a 6 MiB image
    and watch the Worker's logs. Parsing the form and base64-encoding 31 MiB take CPU time well

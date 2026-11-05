@@ -429,7 +429,7 @@ the preview and a manual send. Videos stay in tab memory.
 
 ### Reports to the Inkadra developers
 
-`FEEDBACK_RELAY_URL` defaults to `https://inkadra-report-relay.matte-maraffio.workers.dev`. Set it to
+`FEEDBACK_RELAY_URL` defaults to `https://relay.inkadra.com`. Set it to
 another `https://` relay URL to override (plain `http://` only to this machine), or to the empty
 string to disable this route. No GitHub or Cloudflare credential is installed in the app for it.
 
