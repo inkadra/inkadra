@@ -60,4 +60,3 @@ it('normalizes note links, prepends https when missing, and rejects unsafe schem
   expect(normalizeNoteLink('')).toBeNull();
   expect(normalizeNoteLink('   ')).toBeNull();
 });
-
