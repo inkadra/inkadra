@@ -162,7 +162,11 @@ test.describe('with motion', () => {
     expect(during.overflow).toBe(0);
     await expectSettled(page);
     // Right after, a click reaches the new view.
-    await page.locator('section.schedule .story__bar').getByRole('button').first().click({ trial: true });
+    await page
+      .locator('section.schedule .story__bar')
+      .getByRole('button')
+      .first()
+      .click({ trial: true });
     // Keyboard focus stays on the tab that was chosen.
     await tab(page, 'Shot list').focus();
     await page.keyboard.press('Enter');
@@ -212,6 +216,7 @@ test.describe('with motion', () => {
     await tab(page, 'Lavagna').click();
     await expect(canvas).toBeVisible();
     await expect.poll(() => world.evaluate((el) => el.style.transform)).toBe(zoomed);
+    await expect(card).toHaveClass(/is-selected/);
     await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   });
 
@@ -221,6 +226,8 @@ test.describe('with motion', () => {
     test('the view picker switches with the same transition', async ({ page, baseURL }) => {
       await openProject(page, baseURL!, `View tabs phone ${Date.now()}`);
       const picker = page.locator('.mobile-view-switcher');
+      // Until the project's boards load no view is current yet, and nothing can animate.
+      await expect(picker).toContainText('Lavagna');
       await chooseSelect(picker, 'moodboard');
       await expect(page).toHaveURL(/view=moodboard/);
       expect(await transitions(page)).toBe(1);

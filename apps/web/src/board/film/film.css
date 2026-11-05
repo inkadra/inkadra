@@ -105,6 +105,17 @@ html[data-view-direction]::view-transition-new(board-view) {
     transform: translateX(calc(var(--view-direction) * 12px));
   }
 }
+/* The comments float over the views, from outside them: they stay on top and live. */
+.comments-panel {
+  view-transition-name: comments-panel;
+}
+::view-transition-group(comments-panel),
+::view-transition-new(comments-panel) {
+  animation: none;
+}
+::view-transition-old(comments-panel) {
+  display: none;
+}
 
 /* Frame picture ------------------------------------------------------------------ */
 
