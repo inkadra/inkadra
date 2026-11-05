@@ -35,10 +35,17 @@ it.each([
 const instance = { instanceName: 'Studio Aurora', publicUrl: 'https://boards.example.com' };
 
 it('renders localised fallback with only the project release URL', async () => {
-  for (const locale of ['it', 'en', 'es', 'de', 'fr', 'pt']) {
+  const subjects = {
+    it: 'Novità di Inkadra 99.0.0',
+    en: 'Inkadra 99.0.0 news',
+    es: 'Novedades de Inkadra 99.0.0',
+    de: 'Neuigkeiten in Inkadra 99.0.0',
+    fr: 'Nouveautés d’Inkadra 99.0.0',
+    pt: 'Novidades do Inkadra 99.0.0',
+  };
+  for (const [locale, subject] of Object.entries(subjects)) {
     const mail = await releaseNewsMail({ email: 'news@example.com', locale }, '99.0.0', instance);
-    // The other languages are English until they are translated.
-    expect(mail.subject).toContain(locale === 'it' ? 'Novità' : 'news');
+    expect(mail.subject).toBe(subject);
     expect(mail.html).not.toContain('<img');
     expect(mail.html?.match(/href="[^"]+"/g)).toEqual([
       'href="https://github.com/inkadra/inkadra/releases/tag/v99.0.0"',
