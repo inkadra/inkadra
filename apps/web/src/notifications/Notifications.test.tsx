@@ -119,6 +119,75 @@ it('keeps the API unread count across pages and excludes comments from mentions'
   }
 });
 
+it('walks the filter tabs with the keyboard and labels the list by the selected tab', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  vi.mocked(api.get).mockResolvedValue({ items: [], nextCursor: null });
+  const tabs = () => [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  const selected = () => tabs().filter((tab) => tab.getAttribute('aria-selected') === 'true');
+  const press = (key: string) =>
+    act(async () => {
+      document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+    });
+  const expectOn = (label: string) => {
+    expect(selected().map((tab) => tab.textContent)).toEqual([label]);
+    expect(document.activeElement).toBe(selected()[0]);
+    // Roving tabindex: one tab stop, on the selected tab.
+    expect(tabs().filter((tab) => tab.tabIndex === 0)).toEqual(selected());
+    const panel = host.querySelector('[role="tabpanel"]');
+    expect(panel?.getAttribute('aria-labelledby')).toBe(selected()[0]?.id);
+    expect(selected()[0]?.getAttribute('aria-controls')).toBe(panel?.id);
+  };
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={0}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    tabs()[0]?.focus();
+    await press('ArrowRight');
+    expectOn('notifications.tabs.mentions');
+    await press('ArrowLeft');
+    expectOn('notifications.tabs.all');
+    await press('ArrowLeft');
+    expectOn('tasks.title');
+    await press('ArrowRight');
+    expectOn('notifications.tabs.all');
+    await press('End');
+    expectOn('tasks.title');
+    await press('Home');
+    expectOn('notifications.tabs.all');
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it('has no tabs and no tabpanel in the peek of the bell', async () => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  vi.mocked(api.get).mockResolvedValue({ items: [], nextCursor: null });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <NotificationList unread={0} onClose={vi.fn()} onNavigate={vi.fn()} onCount={vi.fn()} />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.querySelector('[role="tab"]')).toBeNull();
+  expect(host.querySelector('[role="tabpanel"]')).toBeNull();
+  await act(async () => root.unmount());
+});
+
 it('renders the two-pane triage view and marks unread notification as read on open', async () => {
   const host = document.createElement('div');
   const root = createRoot(host);
