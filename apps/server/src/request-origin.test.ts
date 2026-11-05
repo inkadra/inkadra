@@ -26,9 +26,9 @@ describe('request origin boundary', () => {
     expect(rawOrigin(request('203.0.113.2', headers), '172.18.0.0/16')).toBe('http://nas:3000');
   });
   it('accepts only canonical or request origins', () => {
-    expect(
-      allowedOrigin('http://nas:7340', 'http://nas:7340', 'https://boards.example.test'),
-    ).toBe(true);
+    expect(allowedOrigin('http://nas:7340', 'http://nas:7340', 'https://boards.example.test')).toBe(
+      true,
+    );
     for (const origin of ['https://evil.test', 'null', 'http://other:7340'])
       expect(allowedOrigin(origin, 'http://nas:7340', 'https://boards.example.test')).toBe(false);
   });
