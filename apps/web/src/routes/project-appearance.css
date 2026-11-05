@@ -248,6 +248,7 @@
 }
 .project-appearance__custom:focus-within {
   border-color: var(--ink-accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
 }
 .project-appearance__custom-glyph {
   flex: none;
@@ -266,6 +267,10 @@
   background: transparent;
   color: var(--ink-text-primary);
   font: inherit;
+}
+/* The field around it wears the focus ring: a second one here would draw inside the border. */
+.project-appearance__custom-input:focus-visible {
+  box-shadow: none;
 }
 .project-appearance__custom-input::placeholder {
   color: var(--ink-text-muted);

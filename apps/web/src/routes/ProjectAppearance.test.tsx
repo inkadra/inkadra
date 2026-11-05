@@ -254,6 +254,22 @@ it('selects a typed emoji right away, in the preview and for Save', async () => 
   expect(host.querySelector('.project-appearance__emojis [aria-checked="true"]')).toBeNull();
 });
 
+it('keeps typed text that is not an emoji out of the preview and the field glyph', async () => {
+  await render();
+  await openDialog();
+  await act(async () => host.querySelector<HTMLButtonElement>('#appearance-tab-emoji')?.click());
+  await act(async () => {
+    const input = host.querySelector<HTMLInputElement>('input[maxlength="32"]')!;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, 'ciao');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(host.querySelector('.project-appearance__tile')?.textContent).not.toContain('ciao');
+  expect(host.querySelector('.project-appearance__custom-glyph')?.textContent).toBe('·');
+  expect(host.querySelector<HTMLInputElement>('input[maxlength="32"]')?.value).toBe('ciao');
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('appearance.invalid');
+  expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+});
+
 it('saves from Symbol with an invalid emoji by clearing it', async () => {
   const patch = vi.spyOn(api, 'patch').mockResolvedValue(project);
   await render({ ...project, icon: { ...project.icon, emoji: 'invalid' } });

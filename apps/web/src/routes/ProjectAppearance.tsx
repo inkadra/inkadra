@@ -586,7 +586,8 @@ export function ProjectAppearanceDialog({
       setLogoState('failed');
     }
   }
-  const shown = { ...icon, emoji: iconTab === 'symbol' ? null : icon.emoji };
+  // Text that is not one emoji stays in the field, with its error: only a valid emoji is shown.
+  const shown = valid ? payload : { ...payload, emoji: null };
   const accent = theme.accent ?? icon.color;
   const logo = settings?.logo ?? null;
   const logoError = ['type', 'size', 'failed', 'timeout'].includes(logoState);
@@ -782,7 +783,7 @@ export function ProjectAppearanceDialog({
               </div>
               <label className="project-appearance__custom">
                 <span aria-hidden="true" className="project-appearance__custom-glyph">
-                  {icon.emoji || '·'}
+                  {shown.emoji || '·'}
                 </span>
                 <input
                   className="project-appearance__custom-input"
