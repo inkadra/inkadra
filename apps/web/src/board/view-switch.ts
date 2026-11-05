@@ -61,7 +61,10 @@ export function slideTabPill(list: HTMLElement | null, view: BoardView): void {
 
 // The router replays a transition on back and forward, with no way to set its direction first:
 // without one the switch is instant (film.css).
-window.addEventListener('popstate', () => {
-  delete document.documentElement.dataset.viewDirection;
-  pill = null;
-});
+// Tests that import the board page run without a window.
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => {
+    delete document.documentElement.dataset.viewDirection;
+    pill = null;
+  });
+}
