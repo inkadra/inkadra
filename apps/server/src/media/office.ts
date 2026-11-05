@@ -181,10 +181,6 @@ export async function takeSandboxPdf(from: string, to: string): Promise<string> 
 }
 
 /**
- * The PDF of an Office file, converted in the sandbox and copied out; null when conversion is
- * off or the host cannot sandbox it. Throws on a failed or invalid conversion.
- */
-/**
  * Whether this process can convert Office documents: `OFFICE_PREVIEWS=true`, Linux, a filter
  * for the architecture, prlimit, Poppler and LibreOffice (the `-office` image). Only then does
  * a worker read the `office` queue, so a process without LibreOffice never takes those jobs.
@@ -200,6 +196,10 @@ export async function officeConverterInstalled(): Promise<boolean> {
   );
 }
 
+/**
+ * The PDF of an Office file, converted in the sandbox and copied out; null when conversion is
+ * off or the host cannot sandbox it. Throws on a failed or invalid conversion.
+ */
 export async function convertOffice(
   source: string,
   dir: string,
