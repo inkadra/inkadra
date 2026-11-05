@@ -185,6 +185,8 @@ it('applies bulk actions only to visible rows, prunes selection on filter change
 
   // Toolbar should now show only 1 selected (the visible one)
   expect(toolbar?.textContent).toContain('1 selected');
+  // The footer says the list is filtered instead of reading as the whole count.
+  expect(host.querySelector('.shots__footer b')?.textContent).toBe('1 of 2 shots');
 
   // Bulk delete should only affect the visible frame 1B, not the hidden frame 1A
   const deleteBtn = toolbar?.querySelector<HTMLButtonElement>('.shots__bulk-btn--danger');

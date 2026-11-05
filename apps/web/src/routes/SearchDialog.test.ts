@@ -79,6 +79,12 @@ describe('search query parsing', () => {
     expect(parseQuery('stazione')).toEqual({ q: 'stazione' });
     expect(parseQuery('#')).toEqual({});
   });
+  it('keeps the words within the server limit, so a long paste still searches', () => {
+    // A 201-character query used to be refused and read as "search is not available".
+    expect(parseQuery('a'.repeat(250)).q).toHaveLength(200);
+    expect(parseQuery(`#notte ${'b'.repeat(250)}`)).toEqual({ tag: 'notte', q: 'b'.repeat(200) });
+    expect(parseQuery(`#blue hour ${'c'.repeat(250)}`, 'blue hour').q).toHaveLength(200);
+  });
 });
 
 it('does not offer cached tags when access is revoked', async () => {

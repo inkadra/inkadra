@@ -3537,6 +3537,8 @@ button.crumb--editable:focus-visible {
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
+    /* A control scrolled into view stops left of Delete and More, not under them (chrome.tsx). */
+    scroll-padding-inline-end: 80px;
   }
   .ctxbar__btn {
     flex: none;

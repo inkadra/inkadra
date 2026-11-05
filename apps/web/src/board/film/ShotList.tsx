@@ -1188,7 +1188,11 @@ export function ShotList({
 
       <footer className="shots__footer">
         <span>
-          <b>{t('film.list.totalShots', { count: allFilteredFrames.length })}</b>
+          <b>
+            {hasActiveFilters || q
+              ? t('film.list.shownShots', { shown: allFilteredFrames.length, count: frames.length })
+              : t('film.list.totalShots', { count: allFilteredFrames.length })}
+          </b>
         </span>
         <span>
           {t('film.list.estimatedDuration')}{' '}
