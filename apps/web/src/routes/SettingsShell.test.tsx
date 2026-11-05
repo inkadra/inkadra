@@ -12,7 +12,9 @@ const session = vi.hoisted(() => ({
   instance: { name: 'Studio' },
 }));
 vi.mock('../lib/session.tsx', () => ({ useSession: () => session }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key, i18n: { languages: ['en'] } }),
+}));
 
 function Where() {
   const location = useLocation();

@@ -12,7 +12,9 @@ const session = vi.hoisted(() => ({
 }));
 const phone = vi.hoisted(() => ({ value: false }));
 vi.mock('../lib/session.tsx', () => ({ useSession: () => session }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key, i18n: { languages: ['en'] } }),
+}));
 vi.mock('../lib/api.ts', () => ({
   api: {
     get: vi.fn(async () => ({
