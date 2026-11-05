@@ -119,6 +119,83 @@ it('keeps the API unread count across pages and excludes comments from mentions'
   }
 });
 
+it('walks the filter tabs with the keyboard and labels the list by the selected tab', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  vi.mocked(api.get).mockResolvedValue({ items: [], nextCursor: null });
+  const tabs = () => [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  const selected = () => tabs().filter((tab) => tab.getAttribute('aria-selected') === 'true');
+  const press = (key: string) =>
+    act(async () => {
+      document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+    });
+  const expectOn = (label: string) => {
+    expect(selected().map((tab) => tab.textContent)).toEqual([label]);
+    expect(document.activeElement).toBe(selected()[0]);
+    // Roving tabindex: one tab stop, on the selected tab.
+    expect(tabs().filter((tab) => tab.tabIndex === 0)).toEqual(selected());
+    const panel = host.querySelector('[role="tabpanel"]');
+    expect(panel?.getAttribute('aria-labelledby')).toBe(selected()[0]?.id);
+    expect(selected()[0]?.getAttribute('aria-controls')).toBe(panel?.id);
+  };
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={0}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    tabs()[0]?.focus();
+    expectOn('notifications.tabs.all');
+    const focused = () => document.activeElement?.textContent;
+    await press('ArrowRight');
+    expect(focused()).toBe('notifications.tabs.mentions');
+    await press('ArrowLeft');
+    expect(focused()).toBe('notifications.tabs.all');
+    await press('ArrowLeft');
+    expect(focused()).toBe('tasks.title');
+    await press('ArrowRight');
+    expect(focused()).toBe('notifications.tabs.all');
+    await press('Home');
+    expect(focused()).toBe('notifications.tabs.all');
+    await press('End');
+    expect(focused()).toBe('tasks.title');
+    // Walking the tabs chooses nothing, so it reads nothing.
+    expect(selected().map((tab) => tab.textContent)).toEqual(['notifications.tabs.all']);
+    expect(api.post).not.toHaveBeenCalled();
+    // A button answers Enter and Space with a click.
+    await act(async () => (document.activeElement as HTMLElement).click());
+    expectOn('tasks.title');
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it('has no tabs and no tabpanel in the peek of the bell', async () => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  vi.mocked(api.get).mockResolvedValue({ items: [], nextCursor: null });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <NotificationList unread={0} onClose={vi.fn()} onNavigate={vi.fn()} onCount={vi.fn()} />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.querySelector('[role="tab"]')).toBeNull();
+  expect(host.querySelector('[role="tabpanel"]')).toBeNull();
+  await act(async () => root.unmount());
+});
+
 it('renders the two-pane triage view and marks unread notification as read on open', async () => {
   const host = document.createElement('div');
   const root = createRoot(host);

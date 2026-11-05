@@ -10,7 +10,7 @@ import {
   type UnreadCount,
 } from '@inkadra/shared';
 import { Button, Checkbox, Icon, IconButton, Switch, swallowOutsidePress } from '@inkadra/ui';
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName, groupByDay, type Page, reviewKey } from '../board/review-model.ts';
@@ -31,6 +31,12 @@ import {
 import './notifications.css';
 
 const POLL_MS = 60_000;
+const INBOX_TABS: { value: InboxFilter; label: string }[] = [
+  { value: 'all', label: 'notifications.tabs.all' },
+  { value: 'mentions', label: 'notifications.tabs.mentions' },
+  { value: 'approvals', label: 'notifications.tabs.approvals' },
+  { value: 'tasks', label: 'tasks.title' },
+];
 
 /** Pathless notifications render disabled: keep them out of selection and keyboard order. */
 const isNavigable = (n: Notification) => Boolean(notificationPath(n));
@@ -326,6 +332,7 @@ export function NotificationList({
   const ownFeed = useNotificationFeed(onCount);
   const { items, next, state, load, markRead, markAll: readAll } = feed ?? ownFeed;
   const [filter, setFilter] = useState<InboxFilter>('all');
+  const tabsId = useId();
   const [actionError, setActionError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -535,49 +542,55 @@ export function NotificationList({
             role="tablist"
             aria-label={t('notifications.filter')}
             className="notifications-filter-tabs"
+            onKeyDown={(e) => {
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+              e.preventDefault();
+              // The arrows only move the focus: choosing a tab reads its first notification, so
+              // that waits for Enter, Space or a click, and walking the tabs leaves all unread.
+              const at = INBOX_TABS.findIndex(
+                (tab) => `${tabsId}-${tab.value}` === document.activeElement?.id,
+              );
+              const step = e.key === 'ArrowRight' ? 1 : INBOX_TABS.length - 1;
+              const target =
+                e.key === 'Home'
+                  ? INBOX_TABS[0]
+                  : e.key === 'End'
+                    ? INBOX_TABS.at(-1)
+                    : INBOX_TABS[(at + step) % INBOX_TABS.length];
+              if (!target) return;
+              document.getElementById(`${tabsId}-${target.value}`)?.focus();
+            }}
           >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={filter === 'all'}
-              className={`notifications-filter-tab ${filter === 'all' ? 'is-active' : ''}`}
-              onClick={() => setFilter('all')}
-            >
-              {t('notifications.tabs.all')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={filter === 'mentions'}
-              className={`notifications-filter-tab ${filter === 'mentions' ? 'is-active' : ''}`}
-              onClick={() => setFilter('mentions')}
-            >
-              {t('notifications.tabs.mentions')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={filter === 'approvals'}
-              className={`notifications-filter-tab ${filter === 'approvals' ? 'is-active' : ''}`}
-              onClick={() => setFilter('approvals')}
-            >
-              {t('notifications.tabs.approvals')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={filter === 'tasks'}
-              className={`notifications-filter-tab ${filter === 'tasks' ? 'is-active' : ''}`}
-              onClick={() => setFilter('tasks')}
-            >
-              {t('tasks.title')}
-            </button>
+            {INBOX_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                id={`${tabsId}-${tab.value}`}
+                type="button"
+                role="tab"
+                aria-selected={filter === tab.value}
+                aria-controls={`${tabsId}-panel`}
+                tabIndex={filter === tab.value ? 0 : -1}
+                className={`notifications-filter-tab ${filter === tab.value ? 'is-active' : ''}`}
+                onClick={() => setFilter(tab.value)}
+              >
+                {t(tab.label)}
+              </button>
+            ))}
           </div>
         )}
         {fixed && filter !== 'all' && filter !== 'tasks' && next && (
           <p className="notifications__helper">{t('notifications.loadedOnly')}</p>
         )}
-        <div className="notifications__list-container">
+        <div
+          className="notifications__list-container"
+          {...(fixed
+            ? {
+                role: 'tabpanel',
+                id: `${tabsId}-panel`,
+                'aria-labelledby': `${tabsId}-${filter}`,
+              }
+            : {})}
+        >
           {filter === 'tasks' ? (
             <MyTasks onNavigate={onNavigate} />
           ) : (
