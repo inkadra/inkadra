@@ -324,11 +324,186 @@
   line-height: 1.45;
   color: var(--ink-text-secondary);
 }
+/* Pictures (decision 0072): the shapes on offer and the file as it will come out. */
+.export__presets-off {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  color: var(--ink-text-muted);
+  border: 1px dashed var(--ink-border-strong);
+  border-radius: var(--ink-radius-md);
+}
+.export__aspects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.export__glyph {
+  display: inline-block;
+  flex: none;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+}
+.export__glyph.is-original {
+  border-style: dashed;
+}
+.export__stage {
+  position: relative;
+  height: 340px;
+  overflow: hidden;
+  border-radius: var(--ink-radius-sm);
+  user-select: none;
+}
+.export__ghost,
+.export__picture {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+.export__ghost {
+  opacity: 0.28;
+}
+.export__frame {
+  position: absolute;
+  overflow: hidden;
+  background: var(--ink-bg-canvas);
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px var(--ink-border-strong),
+    0 1px 4px rgb(0 0 0 / 0.25);
+}
+.export__stage.is-loading .export__frame,
+.export__stage.is-loading .export__ghost {
+  opacity: 0.55;
+}
+.export__skeleton {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.12), transparent);
+  background-size: 200% 100%;
+  animation: export-skeleton 1.2s linear infinite;
+}
+@keyframes export-skeleton {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.export__tag {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  color: var(--ink-text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--ink-shadow-menu);
+}
+.export__tag small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-text-secondary);
+}
+/* Over any picture, so white with a dark edge rather than a theme colour. */
+.export__focus {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 2px solid #fff;
+  border-radius: var(--ink-radius-full);
+  background: rgb(0 0 0 / 0.25);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.45),
+    0 1px 4px rgb(0 0 0 / 0.4);
+  cursor: grab;
+  touch-action: none;
+}
+.export__focus::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: var(--ink-radius-full);
+  background: #fff;
+}
+.export__focus:active {
+  cursor: grabbing;
+}
+.export__focus:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.45),
+    0 0 0 5px color-mix(in srgb, var(--ink-accent-primary) 55%, transparent);
+}
+.export__stage-note {
+  position: absolute;
+  inset: auto 0 8px;
+  z-index: 3;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.export__stage-note > span {
+  padding: 3px 8px;
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-full);
+}
+.export__stage-note > .export__stage-error {
+  color: var(--ink-danger-fg);
+}
+.export__empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-text-secondary);
+}
+.export__empty strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: var(--ink-text-primary);
+}
+.export__pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.export__focus-hint {
+  text-align: center;
+}
+.export--image .export__hint--error {
+  margin-top: 12px;
+}
 @media (prefers-reduced-motion: reduce) {
   .export__canvas,
   .export__progress span,
   .export__disclosure-icon {
     transition: none;
+  }
+  .export__skeleton {
+    animation: none;
   }
 }
 @media (width < 768px) {
@@ -385,5 +560,47 @@
     width: 100vw;
     max-width: 100vw;
     padding-top: 22px;
+  }
+  /* A picture needs its preview, for the focus point: above the controls, the button stays down. */
+  .export--image {
+    gap: 14px;
+  }
+  .export--image .export__main {
+    display: contents;
+  }
+  .export--image .export__preview {
+    display: flex;
+    order: -1;
+    padding: 10px;
+  }
+  .export--image .export__progress-row,
+  .export--image .export__notice,
+  .export--image .export__hint--error {
+    order: -1;
+    margin-top: 0;
+  }
+  .export--image .export__controls {
+    max-height: none;
+    overflow: visible;
+    gap: 14px;
+  }
+  .export--image .ink-dialog__actions {
+    position: sticky;
+    bottom: -16px;
+    z-index: 4;
+    margin: 2px -16px -16px;
+    padding: 12px 16px 16px;
+    background: var(--ink-surface-float);
+    border-top: 1px solid var(--ink-border-subtle);
+  }
+  .export--image .export__stage {
+    height: 230px;
+  }
+  .export--image .ink-segmented .ink-radio-group__options {
+    width: 100%;
+  }
+  .export--image .ink-segmented .ink-radio-group__option {
+    flex: 1;
+    justify-content: center;
   }
 }

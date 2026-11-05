@@ -255,7 +255,8 @@ const TINTS = {
   green: 'tag-green-bg',
 } as const;
 
-function body(p: Placed, ctx: CardContext): Op[] {
+/** What is inside a card, without its box. */
+export function body(p: Placed, ctx: CardContext): Op[] {
   const { el } = p;
   const c = ctx.colors;
   const m = ctx.measure;

@@ -11,15 +11,17 @@ import {
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, setBoardAspect } from '@inkadra/doc-schema';
 import { Button, EmptyState, Icon, IconButton, Select } from '@inkadra/ui';
-import { type DragEvent, memo, useCallback, useEffect, useId, useState } from 'react';
+import { type DragEvent, memo, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
+import { duplicateInStore } from '../../commands/board-actions.ts';
 import { useSession } from '../../lib/session.tsx';
 import { CardReview } from '../CardReview.tsx';
-import { Toast, UploadPanel } from '../chrome.tsx';
+import { ContextMenu, Toast, UploadPanel } from '../chrome.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { PresentationView } from '../PresentationView.tsx';
 import { plansOfScene, ScenePlanButton, useTakeParam } from '../plan/scenes.tsx';
+import { openComments } from '../review-store.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { startUpload } from '../uploads.ts';
 import { aspectLabel, useBoardAspect } from './aspect.ts';
@@ -73,6 +75,7 @@ export function StoryboardView({
   userId,
   readOnly,
   onExport,
+  onExportFrame,
   onImportScript,
 }: {
   store: BoardStore;
@@ -83,6 +86,8 @@ export function StoryboardView({
   readOnly: boolean;
   /** Opens the export dialog on the storyboard. */
   onExport?: (() => void) | undefined;
+  /** "Export image…" in a frame's menu. */
+  onExportFrame?: ((frameId: string) => void) | undefined;
   /** Opens the screenplay import, which adds scenes and frames from a script file. */
   onImportScript?: (() => void) | undefined;
 }) {
@@ -390,6 +395,8 @@ export function StoryboardView({
                   replacing={fileMark?.kind === 'replace' && fileMark.frameId === f.id}
                   onSelect={() => setSelected(f.id)}
                   onDraw={() => setDrawing(f.id)}
+                  onExport={onExportFrame ? () => onExportFrame(f.id) : undefined}
+                  userId={userId}
                   onDragOver={(e, after) => {
                     if (!g.scene || readOnly || isFileDrag([...e.dataTransfer.types])) return;
                     e.preventDefault();
@@ -752,6 +759,8 @@ const FrameTile = memo(function FrameTile({
   replacing,
   onSelect,
   onDraw,
+  onExport,
+  userId,
   onDragOver,
   onDrop,
 }: {
@@ -766,11 +775,16 @@ const FrameTile = memo(function FrameTile({
   replacing: boolean;
   onSelect: () => void;
   onDraw: () => void;
+  onExport?: (() => void) | undefined;
+  userId: string;
   onDragOver: (e: DragEvent, after: boolean) => void;
   onDrop: (e: DragEvent) => void;
 }) {
+  const { t } = useTranslation();
   const presetText = usePresetText();
   const shot = presetText('shotSizes', frame.shot);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
   return (
     <li
       className={`story__tile${selected ? ' is-selected' : ''}${dropBefore ? ' is-drop' : ''}${replacing ? ' is-replace' : ''}`}
@@ -814,6 +828,55 @@ const FrameTile = memo(function FrameTile({
         )}
         <StatusChip status={frame.status} />
         <FrameVisibilityButton store={store} frame={frame} readOnly={readOnly} />
+        {onExport && (
+          <button
+            ref={menuButton}
+            type="button"
+            className="ink-iconbtn"
+            aria-label={t('film.frame.menu', { label })}
+            data-ink-tooltip={t('film.frame.menu', { label })}
+            aria-haspopup="menu"
+            aria-expanded={!!menuAt}
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setMenuAt((open) => (open ? null : { x: r.right - 208, y: r.bottom + 4 }));
+            }}
+          >
+            <Icon name="more" size={16} />
+          </button>
+        )}
+        {menuAt && onExport && (
+          <ContextMenu
+            style={{ position: 'fixed', left: Math.max(8, menuAt.x), top: menuAt.y }}
+            anchor={menuButton}
+            label={t('film.frame.menu', { label })}
+            onClose={(reason) => {
+              setMenuAt(null);
+              if (reason === 'escape') menuButton.current?.focus();
+            }}
+            items={[
+              { label: t('film.frame.open'), action: onSelect },
+              ...(readOnly ? [] : [{ label: t('film.frame.status'), action: onSelect }]),
+              { label: t('comments.open'), action: () => openComments({ elementId: frame.id }) },
+              { divider: true },
+              { label: t('export.openImage'), action: onExport },
+              ...(readOnly
+                ? []
+                : [
+                    {
+                      label: t('film.frame.duplicate'),
+                      action: () => duplicateInStore(store, [frame.id], userId),
+                    },
+                    { divider: true as const },
+                    {
+                      label: t('film.frame.delete'),
+                      danger: true,
+                      action: () => deleteElements(store.doc, [frame.id], LOCAL),
+                    },
+                  ]),
+            ]}
+          />
+        )}
       </div>
       <CardReview elementId={frame.id} withPins={false} />
       {frame.action && <p className="story__tile-action">{frame.action}</p>}

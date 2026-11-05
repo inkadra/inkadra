@@ -20,6 +20,7 @@ import {
   loadCastAppearances,
 } from '../film/cast-appearances.ts';
 import { getFrameStatus, isApproved } from '../film/film-status.ts';
+import { croppedRotatedSize } from '../image-crop.ts';
 import type { BoardStore } from '../store.ts';
 import { paperAccent, type Theme } from '../theme.ts';
 import {
@@ -28,8 +29,17 @@ import {
   collectBoard,
   type ExportScope,
   exportable,
+  type Placed,
 } from './board-model.ts';
-import { type CardContext, cardHeight, type Palette } from './board-render.ts';
+import {
+  body,
+  type CardContext,
+  cardHeight,
+  drawBoard,
+  framePicture,
+  type Palette,
+  transformOps,
+} from './board-render.ts';
 import type { ExportCache } from './cache.ts';
 import { commentEntries } from './comments.ts';
 import {
@@ -49,6 +59,13 @@ import {
 } from './compose.ts';
 import { fallbackHeadings, loadFonts } from './fonts.ts';
 import {
+  type ImageOptions,
+  imageNames,
+  imagePages,
+  manyMode,
+  ORIGINAL_IMAGE,
+} from './image-format.ts';
+import {
   assetMeta,
   closeImages,
   decodeImage,
@@ -57,8 +74,9 @@ import {
   type LoadedImage,
   loadAssetImage,
   pool,
+  variantFor,
 } from './images.ts';
-import { type FramesPerPage, type Orientation, type PaperSize, pngScales } from './layout.ts';
+import type { FramesPerPage, Orientation, PaperSize } from './layout.ts';
 import { noteBlocks } from './note-text.ts';
 import type { Op, Page } from './pages.ts';
 import {
@@ -68,13 +86,13 @@ import {
   loadPlanning,
   type Planning,
 } from './planning.ts';
-import { renderPngPages } from './render-canvas.ts';
+import { renderImages } from './render-canvas.ts';
 import { renderPdf } from './render-pdf.ts';
 import { logoUrl, teamPdf } from './settings.ts';
 import { missingGlyphs } from './text.ts';
 import { zipBlobs } from './zip.ts';
 
-export type ExportFormat = 'pdf' | 'png';
+export type ExportFormat = 'pdf' | 'png' | 'jpeg';
 export type ExportWhat = 'board' | 'selection' | 'visible' | 'storyboard' | 'shotlist';
 
 export interface ExportRequest {
@@ -97,6 +115,8 @@ export interface ExportRequest {
   kickoffSummary: boolean;
   /** PDF for the team: the call sheet of every shooting day, at the end. */
   callSheet: boolean;
+  /** PNG and JPEG: the shape of the picture; left out, "Original". */
+  image?: ImageOptions | undefined;
 }
 
 export interface ExportEnv {
@@ -116,6 +136,8 @@ export interface ExportEnv {
   language: string;
   /** Pictures of the preview, kept while the dialog is open. */
   cache: ExportCache;
+  /** The board's background as the reader sees it: the bars of a Fit picture (decision 0072). */
+  background?: string | undefined;
 }
 
 export interface BuiltPages {
@@ -124,6 +146,8 @@ export interface BuiltPages {
   fonts: Awaited<ReturnType<typeof loadFonts>>;
   /** Characters of the content the embedded font cannot draw, a few at most. */
   missing: string[];
+  /** Pictures that have no thumbnail yet: they print as an empty box. */
+  notReady: number;
 }
 
 export interface ExportProgress {
@@ -135,6 +159,8 @@ export interface ExportProgress {
 export interface BuildOptions {
   /** Only the pictures of the first pages, decoded and kept in `env.cache`. */
   preview?: boolean;
+  /** With `preview`: the page shown, when it is not one of the first. */
+  previewPage?: number;
   signal?: AbortSignal;
   onProgress?: (progress: ExportProgress) => void;
 }
@@ -156,11 +182,14 @@ async function logoImage(asset: Asset, mode: ImageMode, signal?: AbortSignal) {
   }
 }
 
+/** Longest thumbnail an export uses. */
+const EXPORT_PIXELS = 2048;
+
 function thumbnailPixels(req: ExportRequest, preview: boolean): number {
   if (preview) return 512;
   if (req.what === 'shotlist') return 512;
-  if (req.what === 'storyboard') return req.framesPerPage <= 2 ? 2048 : 1024;
-  return 2048;
+  if (req.what === 'storyboard') return req.framesPerPage <= 2 ? EXPORT_PIXELS : 1024;
+  return EXPORT_PIXELS;
 }
 
 export function kindOf(what: ExportWhat): ExportKind {
@@ -171,15 +200,17 @@ export function kindOf(what: ExportWhat): ExportKind {
 export async function buildPages(
   req: ExportRequest,
   env: ExportEnv,
-  { preview = false, signal, onProgress }: BuildOptions = {},
+  { preview = false, previewPage, signal, onProgress }: BuildOptions = {},
 ): Promise<BuiltPages> {
   const { store, t } = env;
   const fonts = await loadFonts(req.theme?.headingFont);
   signal?.throwIfAborted();
   const images = new Map<string, LoadedImage>();
-  const mode: ImageMode = preview || req.format === 'png' ? 'bitmap' : 'pdf';
+  const mode: ImageMode = preview || req.format !== 'pdf' ? 'bitmap' : 'pdf';
   const names = preview ? env.cache.names : new Map<string, string>();
   const tracks = new Map<string, AssetTrack>();
+  const exportSizes = new Map<string, { width: number; height: number }>();
+  const notReady = new Set<string>();
   // Loads pictures into `images`: from the dialog's cache for the preview, else afresh.
   const load = async (ids: Iterable<string>) => {
     const todo = [...ids].filter((id) => !images.has(id));
@@ -198,6 +229,9 @@ export async function buildPages(
             ? await env.cache.image(meta, pixels, signal)
             : await loadAssetImage(meta, pixels, mode, signal);
           if (img) images.set(id, img);
+          else notReady.add(id);
+          const variant = variantFor(meta, EXPORT_PIXELS);
+          if (variant) exportSizes.set(id, variant);
         }
         done += 1;
         if (!preview) onProgress?.({ phase: 'pictures', done, total: todo.length });
@@ -307,6 +341,8 @@ export async function buildPages(
   const logo = req.logo ? await logoImage(req.logo, mode, signal) : null;
   if (logo) images.set('logo', logo);
   let content: Page[] = [];
+  // A picture in a social format, or a card by itself, has no running header and footer.
+  let bare = false;
   let summary = '';
   const shownIds = new Set<string>();
 
@@ -334,7 +370,26 @@ export async function buildPages(
       .filter((el) => el.type !== 'arrow' && el.type !== 'column' && el.type !== 'scene').length;
     summary = t('export.cards', { count });
     const empty = { x: 0, y: 0, w: 800, h: 500 };
-    content = [boardPage(req.format === 'png' ? 'fit' : setup, items, region ?? empty, ctx)];
+    const asImage = req.format !== 'pdf';
+    const image = req.image ?? ORIGINAL_IMAGE;
+    const ids = req.what === 'selection' ? env.selection : null;
+    if (asImage && ids && (ids.size === 1 || manyMode(image) === 'each')) {
+      bare = true;
+      const cards = selectedCards(source, ids, filter);
+      await load(assetIdsOf(cards.flatMap(flatten)));
+      for (const card of cards) for (const el of flatten(card)) shownIds.add(el.id);
+      const colour = env.background ?? PALETTE['bg-canvas'];
+      content = cards.map((card) =>
+        cardPage(card, ctx, colour, req.format === 'jpeg', exportSizes),
+      );
+    } else if (asImage && image.aspect !== 'original') {
+      bare = true;
+      if (region) content = [compositionPage(items, region, ctx)];
+    } else if (asImage && items.length === 0) {
+      bare = true;
+    } else {
+      content = [boardPage(asImage ? 'fit' : setup, items, region ?? empty, ctx)];
+    }
   } else {
     const shots: Shot[] = [];
     for (const group of groupsAll) {
@@ -448,18 +503,26 @@ export async function buildPages(
     accent: req.theme ? paperAccent(req.theme.color) : undefined,
   };
   const withTitle = req.titlePage && req.format === 'pdf';
-  const pages = finish(
-    withTitle ? [titlePage(setup, info, ctx, words), ...content] : content,
-    info,
-    ctx,
-    words,
-    withTitle,
-  );
+  const pages = bare
+    ? content
+    : finish(
+        withTitle ? [titlePage(setup, info, ctx, words), ...content] : content,
+        info,
+        ctx,
+        words,
+        withTitle,
+      );
   for (const page of pages) fallbackHeadings(page.ops, fonts.headingCovers);
 
   // Pictures of the pages that will be drawn (all of them, or the first for the preview).
   const needed = new Set<string>();
-  for (const page of preview ? pages.slice(0, 2) : pages) collectKeys(page.ops, needed);
+  const shown =
+    preview && previewPage !== undefined
+      ? pages.slice(previewPage, previewPage + 1)
+      : preview
+        ? pages.slice(0, 2)
+        : pages;
+  for (const page of shown) collectKeys(page.ops, needed);
   needed.delete('logo');
   try {
     await load(needed);
@@ -468,7 +531,98 @@ export async function buildPages(
     if (!preview) closeImages(images.values());
     throw err;
   }
-  return { pages, images, fonts, missing: missingGlyphs(pages, fonts.covers) };
+  return {
+    pages,
+    images,
+    fonts,
+    missing: missingGlyphs(pages, fonts.covers),
+    notReady: notReady.size,
+  };
+}
+
+/** Space around a card without a picture, on the board's colour. */
+const CARD_MARGIN = 24;
+/** Drawn when a frame has only a drawing, or a picture has no thumbnail yet. */
+const UNLOADED_WIDTH = 1600;
+
+/** The cards the selection names, each by itself; a card inside a column or scene too. */
+export function selectedCards(
+  source: BoardSource,
+  ids: ReadonlySet<string>,
+  filter: { audience: Audience; hideGuestHidden: boolean },
+): Placed[] {
+  const lookup = (id: string) => source.byId.get(id);
+  const nested = [...ids].flatMap((id) => {
+    const raw = lookup(id);
+    return raw && raw.parent !== null ? [raw] : [];
+  });
+  const top = new Set([...ids].filter((id) => lookup(id)?.parent === null));
+  const { items } = collectBoard(source, { kind: 'selection', ids: top }, filter);
+  const inside = nested.flatMap((raw): Placed[] => {
+    const el = exportable(raw, lookup, filter);
+    if (!el) return [];
+    const h = el.h ?? source.nestedHeight?.(el, el.w) ?? source.heightOf(el);
+    return [{ el, x: el.x, y: el.y, w: el.w, h }];
+  });
+  return [...items.filter((p) => p.el.type !== 'arrow'), ...inside];
+}
+
+/**
+ * One card as its own picture: an image or a frame without its caption, at the pixels of the
+ * thumbnail; any other card as it prints, with a margin of the board's colour.
+ */
+export function cardPage(
+  card: Placed,
+  ctx: CardContext,
+  colour: string,
+  jpeg: boolean,
+  exportSizes: ReadonlyMap<string, { width: number; height: number }>,
+): Page {
+  const { el } = card;
+  if (el.type === 'image') {
+    const size = el.assetId ? exportSizes.get(el.assetId) : undefined;
+    const { width, height } = croppedRotatedSize(
+      size?.width ?? UNLOADED_WIDTH,
+      size?.height ?? (UNLOADED_WIDTH * 3) / 4,
+      el.crop,
+      el.rotation,
+    );
+    // Under a picture with transparency: nothing in a PNG, the board's colour in a JPEG.
+    const under = jpeg ? colour : 'transparent';
+    const ops = body(
+      { el: { ...el, caption: undefined }, x: 0, y: 0, w: width, h: height },
+      { ...ctx, colors: { ...ctx.colors, 'surface-2': under } },
+    );
+    return { width, height, ops, background: jpeg || !size ? colour : null, maxScale: 1 };
+  }
+  if (el.type === 'frame') {
+    const size = el.assetId ? exportSizes.get(el.assetId) : undefined;
+    const width = size?.width ?? UNLOADED_WIDTH;
+    const height = width / ctx.frameAspect(el);
+    // Its first operation is the picture; the rest is the rounded outline of a tile.
+    const [picture] = framePicture(el, { x: 0, y: 0, w: width, h: height }, ctx);
+    const ops: Op[] = picture?.kind === 'clip' ? [{ ...picture, radius: 0 }] : [];
+    return { width, height, ops, background: colour, ...(size ? { maxScale: 1 } : {}) };
+  }
+  return {
+    width: card.w + CARD_MARGIN * 2,
+    height: card.h + CARD_MARGIN * 2,
+    background: colour,
+    ops: transformOps(drawBoard([card], ctx), 1, CARD_MARGIN - card.x, CARD_MARGIN - card.y),
+  };
+}
+
+/** Several cards as one picture on the light paper of a board page, without its frame. */
+function compositionPage(items: readonly Placed[], region: Rect, ctx: CardContext): Page {
+  return {
+    width: region.w,
+    height: region.h,
+    background: ctx.colors['bg-canvas'],
+    ops: [
+      { kind: 'rect', x: 0, y: 0, w: region.w, h: region.h, fill: ctx.colors['bg-canvas'] },
+      ...transformOps(drawBoard(items, ctx), 1, -region.x, -region.y),
+    ],
+  };
 }
 
 function flatten(p: { el: Element; children?: unknown[] }): Element[] {
@@ -508,17 +662,22 @@ export async function exportFile(
   const pageProgress = (done: number) =>
     onProgress?.({ phase: 'pages', done, total: pages.length });
   try {
-    if (req.format === 'png') {
+    if (req.format !== 'pdf') {
+      const out = imagePages(
+        pages,
+        req.image ?? ORIGINAL_IMAGE,
+        env.background ?? PALETTE['bg-canvas'],
+      );
       // One image per page: stacking them squeezed a long storyboard into an unreadable strip.
-      const blobs = await renderPngPages(pages, pngScales(pages).scales, images, {
+      const blobs = await renderImages(out.pages, out.scales, images, {
         ...(signal ? { signal } : {}),
         onPage: pageProgress,
         heading: fonts.headingFamily,
+        format: req.format,
       });
-      if (blobs.length === 1) return { blob: blobs[0] as Blob, name: `${base}.png` };
-      const blob = await zipBlobs(
-        blobs.map((b, n) => ({ blob: b, name: `${base}-${String(n + 1).padStart(3, '0')}.png` })),
-      );
+      const names = imageNames(base, blobs.length, req.format);
+      if (blobs.length === 1) return { blob: blobs[0] as Blob, name: names[0] as string };
+      const blob = await zipBlobs(blobs.map((b, n) => ({ blob: b, name: names[n] as string })));
       return { blob, name: `${base}.zip` };
     }
     const bytes = await renderPdf(

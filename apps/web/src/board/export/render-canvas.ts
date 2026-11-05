@@ -6,7 +6,7 @@ type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 type Images = ReadonlyMap<string, { bitmap?: ImageBitmap; width: number; height: number }>;
 
 /**
- * Draws a page on a 2D canvas at `scale` pixels per point, on white paper, `offsetY` pixels down;
+ * Draws a page on a 2D canvas at `scale` pixels per point, on its background, `offsetY` pixels down;
  * headings in `heading`, a CSS font stack.
  */
 export function drawPage(
@@ -19,8 +19,10 @@ export function drawPage(
 ) {
   ctx.save();
   ctx.setTransform(scale, 0, 0, scale, 0, offsetY);
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, page.width, page.height);
+  if (page.background !== null) {
+    ctx.fillStyle = page.background ?? '#FFFFFF';
+    ctx.fillRect(0, 0, page.width, page.height);
+  }
   // The PDF places glyphs by their advance only; the preview must break lines the same way.
   ctx.fontKerning = 'none';
   ctx.textBaseline = 'alphabetic';
@@ -120,8 +122,8 @@ function drawOps(ctx: Ctx, ops: readonly Op[], images: Images, heading: string) 
   }
 }
 
-/** One PNG per page, drawn `scales[n]` pixels per point on white paper. */
-export async function renderPngPages(
+/** One picture per page, drawn `scales[n]` pixels per point; canvases encode in sRGB. */
+export async function renderImages(
   pages: readonly Page[],
   scales: readonly number[],
   images: Images,
@@ -129,7 +131,13 @@ export async function renderPngPages(
     signal,
     onPage,
     heading,
-  }: { signal?: AbortSignal; onPage?: (done: number) => void; heading?: string } = {},
+    format = 'png',
+  }: {
+    signal?: AbortSignal;
+    onPage?: (done: number) => void;
+    heading?: string;
+    format?: 'png' | 'jpeg';
+  } = {},
 ): Promise<Blob[]> {
   const blobs: Blob[] = [];
   for (const [n, page] of pages.entries()) {
@@ -143,7 +151,11 @@ export async function renderPngPages(
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('No 2D context');
     drawPage(ctx, page, scale, images, 0, heading);
-    blobs.push(await canvas.convertToBlob({ type: 'image/png' }));
+    blobs.push(
+      await canvas.convertToBlob(
+        format === 'jpeg' ? { type: 'image/jpeg', quality: 0.9 } : { type: 'image/png' },
+      ),
+    );
     onPage?.(n + 1);
     // Lets the dialog repaint its progress and a cancel through between pages.
     await new Promise((r) => setTimeout(r, 0));

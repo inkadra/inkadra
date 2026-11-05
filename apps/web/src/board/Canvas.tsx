@@ -3199,7 +3199,16 @@ export function Canvas({
           ]
         : []),
       ...(onExportSelection && !preview
-        ? [{ label: t('export.openSelection'), action: onExportSelection }]
+        ? [
+            {
+              label: t(
+                selectedEls.filter((e) => e.type !== 'arrow').length === 1
+                  ? 'export.openImage'
+                  : 'export.openSelection',
+              ),
+              action: onExportSelection,
+            },
+          ]
         : []),
       ...(readOnly
         ? []

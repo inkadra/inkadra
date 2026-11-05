@@ -348,8 +348,7 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
   await page.getByRole('menuitem', { name: 'Esporta…' }).click();
   const exportDialog = page.getByRole('dialog', { name: 'Esporta' });
   await expect(exportDialog).toBeVisible();
-  await exportDialog.getByRole('button', { name: /Personalizza/ }).click();
-  await exportDialog.getByRole('radio', { name: 'Immagine (PNG)' }).click();
+  await exportDialog.getByRole('radio', { name: 'PNG', exact: true }).click();
   const [pngDownload] = await Promise.all([
     page.waitForEvent('download'),
     exportDialog.getByRole('button', { name: 'Esporta', exact: true }).click(),

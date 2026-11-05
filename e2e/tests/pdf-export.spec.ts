@@ -385,7 +385,7 @@ test('a storyboard exports to PDF with frames per page, and to PNG', async ({ pa
   expect(commented).not.toContain('Director only note');
 
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
-  await dialog.getByRole('radio', { name: 'Immagine (PNG)' }).click();
+  await dialog.getByRole('radio', { name: 'PNG', exact: true }).click();
   // Five frames on one page: a single image, not an archive.
   await dialog.getByRole('radio', { name: '6', exact: true }).click();
   await expect(dialog.getByText('1 pagina')).toBeVisible();
@@ -727,8 +727,7 @@ test('a long storyboard exports to PNG as one readable image per page, zipped (Q
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
-  await dialog.getByRole('button', { name: /Personalizza/ }).click();
-  await dialog.getByRole('radio', { name: 'Immagine (PNG)' }).click();
+  await dialog.getByRole('radio', { name: 'PNG', exact: true }).click();
   await dialog.getByRole('radio', { name: '1', exact: true }).click();
   await expect(dialog.getByText('32 pagine')).toBeVisible();
   await expect(dialog.getByText(/scaricate in un unico file ZIP/)).toBeVisible();
@@ -760,3 +759,201 @@ test('a long storyboard exports to PNG as one readable image per page, zipped (Q
     ).toBeLessThan(0.01);
   }
 });
+
+test('a card exports as a picture in social formats, remembered for the project', async ({
+  page,
+  baseURL,
+}, info) => {
+  test.setTimeout(120_000);
+  const base = baseURL as string;
+  const cookie = await signIn(base, admin);
+  const post = async <T>(path: string, body: unknown) => {
+    const res = await fetch(`${base}/api/v1${path}`, {
+      method: 'POST',
+      headers: { cookie, 'content-type': 'application/json', origin: base },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`${path}: ${res.status} ${await res.text()}`);
+    return (await res.json()) as T;
+  };
+  const project = await post<{ id: string; rootBoardId: string }>('/projects', { name: 'Harbour' });
+  const storyboard = await post<{ id: string }>(`/projects/${project.id}/boards`, {
+    parentBoardId: project.rootBoardId,
+    kind: 'storyboard',
+    title: 'Pier',
+  });
+  await signInPage(page);
+  // Red on the left half, blue on the right: the crop shows which part it kept.
+  const picture = Buffer.from(
+    await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1500;
+      canvas.height = 1000;
+      const c = canvas.getContext('2d') as CanvasRenderingContext2D;
+      c.fillStyle = '#d02020';
+      c.fillRect(0, 0, 750, 1000);
+      c.fillStyle = '#2040d0';
+      c.fillRect(750, 0, 750, 1000);
+      return canvas.toDataURL('image/png').split(',')[1] as string;
+    }),
+    'base64',
+  );
+  const assetIds = await Promise.all(
+    ['one.png', 'two.png'].map((name) =>
+      uploadFile(base, cookie, project.id, { body: picture, name, type: 'image/png' }),
+    ),
+  );
+  const [first, second] = assetIds as [string, string];
+  await waitForAssets(base, cookie, [first, second]);
+  const doc = new Y.Doc();
+  initBoardDoc(doc, project.rootBoardId);
+  createElement(doc, 'image', { x: 0, y: 0 }, { w: 300, h: 200, assetId: first }, opts);
+  createElement(doc, 'image', { x: 340, y: 0 }, { w: 300, h: 200, assetId: second }, opts);
+  await pushBoardDoc(base, cookie, project.rootBoardId, doc);
+  const story = new Y.Doc();
+  initBoardDoc(story, storyboard.id);
+  const scene = addScene(story, { number: '1', title: 'Pier' }, opts);
+  addFrame(story, scene.id, null, { action: 'Boats', assetId: first }, opts);
+  await pushBoardDoc(base, cookie, storyboard.id, story);
+
+  const pixel = (bytes: Buffer, x: number, y: number) =>
+    page.evaluate(
+      async ([data, px, py]) => {
+        const res = await fetch(`data:image/png;base64,${data}`);
+        const bitmap = await createImageBitmap(await res.blob());
+        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+        const ctx = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D;
+        ctx.drawImage(bitmap, 0, 0);
+        return [...ctx.getImageData(px as number, py as number, 1, 1).data];
+      },
+      [bytes.toString('base64'), x, y] as const,
+    );
+  const near = (actual: number[], rgb: number[]) => {
+    for (const [i, v] of rgb.entries())
+      expect(Math.abs((actual[i] as number) - v)).toBeLessThan(12);
+  };
+  const save = async (path: string, click: () => Promise<unknown>) => {
+    const [download] = await Promise.all([page.waitForEvent('download'), click()]);
+    const file = info.outputPath(path);
+    await download.saveAs(file);
+    if (process.env.IMAGE_SHOTS) await download.saveAs(`${process.env.IMAGE_SHOTS}/${path}`);
+    return { name: download.suggestedFilename(), bytes: await readFile(file) };
+  };
+  const dialog = page.getByRole('dialog', { name: 'Esporta' });
+  const submit = () => dialog.getByRole('button', { name: 'Esporta', exact: true }).click();
+
+  await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  const openFirst = async () => {
+    await page.locator('[data-type="image"]').first().click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Esporta immagine…' }).click();
+  };
+  await page.locator('[data-type="image"]').first().click();
+  await openFirst();
+
+  // 4:5 Fill, the focus point moved all the way left by keyboard: only the red half is left.
+  await expect(dialog.getByRole('radio', { name: '4:5' })).toBeChecked();
+  await expect(dialog.getByRole('radio', { name: 'Riempi' })).toBeChecked();
+  await expect(dialog.getByText('Post verticale · 1080 × 1350 px')).toBeVisible();
+  const focus = dialog.getByRole('slider', { name: 'Punto di interesse' });
+  await focus.focus();
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowLeft');
+  await expect(focus).toHaveAttribute('aria-valuenow', '0');
+  const fill = await save('social-4x5-fill.png', submit);
+  expect(fill.name).toBe('Harbour.png');
+  expect(fill.bytes.subarray(1, 4).toString()).toBe('PNG');
+  expect([fill.bytes.readUInt32BE(16), fill.bytes.readUInt32BE(20)]).toEqual([1080, 1350]);
+  near(await pixel(fill.bytes, 1000, 700), [0xd0, 0x20, 0x20]);
+
+  // Remembered for the project; the focus point is not. 9:16 Fit: bars in the board's colour.
+  await page.locator('[data-type="image"]').first().click();
+  await openFirst();
+  await expect(dialog.getByRole('radio', { name: '4:5' })).toBeChecked();
+  await dialog.getByRole('radio', { name: '9:16' }).click();
+  await dialog.getByRole('radio', { name: 'Contieni' }).click();
+  await expect(dialog.getByRole('slider', { name: 'Punto di interesse' })).toBeHidden();
+  const fit = await save('social-9x16-fit.png', submit);
+  expect([fit.bytes.readUInt32BE(16), fit.bytes.readUInt32BE(20)]).toEqual([1080, 1920]);
+  const board = await page.evaluate(() => {
+    const canvas = document.createElement('canvas').getContext('2d') as CanvasRenderingContext2D;
+    canvas.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(
+      '--ink-bg-canvas',
+    );
+    canvas.fillRect(0, 0, 1, 1);
+    return [...canvas.getImageData(0, 0, 1, 1).data];
+  });
+  near(await pixel(fit.bytes, 540, 10), board.slice(0, 3));
+  near(await pixel(fit.bytes, 10, 960), [0xd0, 0x20, 0x20]);
+  // The picture alone, with no outline of its card: red, then straight to the bar.
+  near(await pixel(fit.bytes, 300, 1319), [0xd0, 0x20, 0x20]);
+  near(await pixel(fit.bytes, 300, 1321), board.slice(0, 3));
+  near(await pixel(fit.bytes, 1070, 960), [0x20, 0x40, 0xd0]);
+  const stored = await (
+    await page.request.get(`/api/v1/projects/${project.id}/export-settings`)
+  ).json();
+  expect(stored).toMatchObject({ imageFormat: 'png', imageAspect: '9:16', imageFit: 'fit' });
+  expect(stored.focus).toBeUndefined();
+
+  // Two cards in JPEG: one image per card by default, in one ZIP.
+  await page.getByRole('button', { name: 'Adatta alla vista' }).click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.locator('[data-type="image"]').first().click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Esporta selezione…' }).click();
+  await dialog.getByRole('radio', { name: 'JPEG' }).click();
+  await dialog.getByRole('radio', { name: '1:1' }).click();
+  await expect(dialog.getByRole('radio', { name: 'Una per card' })).toBeChecked();
+  await expect(dialog.getByText('Immagine 1 di 2')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Immagine successiva' }).click();
+  await expect(dialog.getByText('Immagine 2 di 2')).toBeVisible();
+  const zip = await save('social-cards.zip', submit);
+  expect(zip.name).toBe('Harbour.zip');
+  expect(filesInZip(zip.bytes).map((f) => f.name)).toEqual(['Harbour-001.jpg', 'Harbour-002.jpg']);
+  for (const f of filesInZip(zip.bytes)) {
+    // A real JPEG, 1080 × 1080 in its start-of-frame marker.
+    expect(f.bytes.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
+    expect(jpegSize(f.bytes)).toEqual([1080, 1080]);
+  }
+
+  // A frame of the storyboard, from the "…" of its tile: the picture alone.
+  await page.goto(`/p/${project.id}/b/${storyboard.id}?view=storyboard`);
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await page.getByRole('button', { name: /^Menu dell.inquadratura/ }).click();
+  await page.getByRole('menuitem', { name: 'Esporta immagine…' }).click();
+  await expect(dialog.getByRole('radio', { name: 'JPEG' })).toBeChecked();
+  await dialog.getByRole('radio', { name: '16:9' }).click();
+  const frame = await save('social-frame.jpg', submit);
+  expect(frame.name).toBe('Pier.jpg');
+  expect(jpegSize(frame.bytes)).toEqual([1920, 1080]);
+});
+
+/** Files of a stored ZIP, with their bytes. */
+function filesInZip(zip: Buffer) {
+  const end = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  const count = zip.readUInt16LE(end + 10);
+  let at = zip.readUInt32LE(end + 16);
+  const files: { name: string; bytes: Buffer }[] = [];
+  for (let i = 0; i < count; i++) {
+    const size = zip.readUInt32LE(at + 24);
+    const nameLength = zip.readUInt16LE(at + 28);
+    const local = zip.readUInt32LE(at + 42);
+    const data = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
+    files.push({
+      name: zip.subarray(at + 46, at + 46 + nameLength).toString(),
+      bytes: zip.subarray(data, data + size),
+    });
+    at += 46 + nameLength + zip.readUInt16LE(at + 30) + zip.readUInt16LE(at + 32);
+  }
+  return files;
+}
+
+/** Width and height from a JPEG's start-of-frame marker. */
+function jpegSize(bytes: Buffer): number[] {
+  let at = 2;
+  while (at < bytes.length) {
+    const marker = bytes[at + 1] as number;
+    if (marker >= 0xc0 && marker <= 0xc3)
+      return [bytes.readUInt16BE(at + 7), bytes.readUInt16BE(at + 5)];
+    at += 2 + bytes.readUInt16BE(at + 2);
+  }
+  return [];
+}

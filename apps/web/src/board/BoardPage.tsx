@@ -241,22 +241,46 @@ function BoardScreen({
   const [exporting, setExporting] = useState<{
     source: ExportSource;
     what?: ExportWhat;
+    imageEntry?: boolean;
+    pdfEntry?: boolean;
     selection: ReadonlySet<string>;
     visible: Rect | null;
   } | null>(null);
   const visibleRef = useRef<(() => Rect | null) | null>(null);
   // Selection and visible area are read when the dialog opens, not followed afterwards.
-  const openExport = useCallback((source: ExportSource, what?: ExportWhat) => {
+  const openExport = useCallback((source: ExportSource, what?: ExportWhat, pdfEntry?: boolean) => {
     setExporting({
       source,
       ...(what ? { what } : {}),
+      ...(pdfEntry ? { pdfEntry } : {}),
       selection: liveSelection.current,
       visible: visibleRef.current?.() ?? null,
     });
   }, []);
-  const exportSelection = useCallback(() => openExport('canvas', 'selection'), [openExport]);
-  const exportStoryboard = useCallback(() => openExport('storyboard'), [openExport]);
-  const exportShotList = useCallback(() => openExport('shotlist'), [openExport]);
+  const exportSelection = useCallback(() => {
+    setExporting({
+      source: 'canvas',
+      what: 'selection',
+      imageEntry: true,
+      selection: liveSelection.current,
+      visible: visibleRef.current?.() ?? null,
+    });
+  }, []);
+  // The Storyboard has no selection of its own: its menu names the frame.
+  const exportFrame = useCallback((id: string) => {
+    setExporting({
+      source: 'storyboard',
+      what: 'selection',
+      imageEntry: true,
+      selection: new Set([id]),
+      visible: null,
+    });
+  }, []);
+  const exportStoryboard = useCallback(
+    () => openExport('storyboard', undefined, true),
+    [openExport],
+  );
+  const exportShotList = useCallback(() => openExport('shotlist', undefined, true), [openExport]);
   const [importingScript, setImportingScript] = useState(false);
   const openScriptImport = useCallback(() => setImportingScript(true), []);
   const [scriptToast, setScriptToast] = useState<string | null>(null);
@@ -649,6 +673,7 @@ function BoardScreen({
         userId={user.id}
         readOnly={!!preview || !editable}
         onExport={exportStoryboard}
+        onExportFrame={exportFrame}
         onImportScript={openScriptImport}
       />
     ) : view === 'shotlist' ? (
@@ -754,6 +779,8 @@ function BoardScreen({
         <ExportDialog
           source={exporting.source}
           initialWhat={exporting.what}
+          imageEntry={exporting.imageEntry}
+          pdfEntry={exporting.pdfEntry}
           store={preview?.store ?? conn.store}
           projectId={projectId}
           boardId={boardId}
