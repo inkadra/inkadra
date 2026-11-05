@@ -367,6 +367,16 @@ export function createCollabServer(deps: {
     },
   });
 
+  // A store leaves a setTimeout(0) holding its document, and Hocuspocus unloads by name. If that
+  // copy is gone and the board was opened again, the timer removes the new copy from the map: what
+  // is written to it (a restore) never reaches whoever opens the board next. Only the copy in the
+  // map may unload.
+  // shortcut: replaces a Hocuspocus method, drop it once upstream compares the document.
+  const { hocuspocus } = server;
+  const shouldUnload = hocuspocus.shouldUnloadDocument.bind(hocuspocus);
+  hocuspocus.shouldUnloadDocument = (document) =>
+    hocuspocus.documents.get(document.name) === document && shouldUnload(document);
+
   return Object.assign(server, { recheck: () => recheck(server) });
 }
 
