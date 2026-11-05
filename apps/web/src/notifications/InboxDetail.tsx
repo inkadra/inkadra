@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { frameLabels, storyboardOf } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import type { BoardDetail, Comment, CommentThread, Notification } from '@inkadra/shared';
+import {
+  type BoardDetail,
+  type Comment,
+  type CommentThread,
+  type Notification,
+  notificationPath,
+} from '@inkadra/shared';
 import { Button, Icon } from '@inkadra/ui';
 import {
   type FormEvent,
@@ -28,7 +34,6 @@ import {
 import { canComment } from '../board/review-store.ts';
 import { FeedbackInbox } from '../feedback/FeedbackSettings.tsx';
 import { api } from '../lib/api.ts';
-import { notificationPath } from './model.ts';
 import {
   avatarBg,
   describeNotification,

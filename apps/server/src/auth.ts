@@ -20,8 +20,8 @@ import {
   readCookie,
   reserveInvitationUse,
 } from './invitations.ts';
-import { mailText } from './mail-texts.ts';
-import { actionMail, type Mailer, securityNotification, sendDetached } from './mailer.ts';
+import { type Mailer, securityNotification, sendDetached } from './mailer.ts';
+import { magicLinkMail, resetMail } from './mails.ts';
 import { ORIGIN_HEADER } from './request-origin.ts';
 
 /** Internal header carrying the client address from the HTTP layer to Better Auth. */
@@ -151,6 +151,7 @@ function createAuthInstance(
   const trusted = ['google', ...(oidc && config.OIDC_TRUST_EMAIL ? [OIDC_PROVIDER_ID] : [])];
 
   const devices = knownDevices(config.AUTH_SECRET);
+  const mailInstance = { instanceName: config.INSTANCE_NAME, publicUrl: config.PUBLIC_URL };
   // Hooks receive shallow copies of the endpoint context but share ctx.context; reservations
   // made before the password check live there until the after hook settles them.
   type BudgetContext = { inkadraReservations?: string[]; inkadraCloseOthers?: boolean };
@@ -176,7 +177,7 @@ function createAuthInstance(
           all ? undefined : sql`${schema.personalToken.client} is null`,
         ),
       );
-    securityNotification(mailer, user, 'password', deps.log);
+    securityNotification(mailer, user, 'password', mailInstance, deps.log);
   };
   // Invitations whose use the user-create hook counted, by the endpoint context it shares with
   // the after hook.
@@ -310,7 +311,13 @@ function createAuthInstance(
         if (ctx.path === '/change-password' && ok && ctx.context.session)
           await revokeTokens(ctx.context.session.user);
         if (ctx.path === '/two-factor/disable' && ok && ctx.context.session)
-          securityNotification(mailer, ctx.context.session.user, 'twoFactor', deps.log);
+          securityNotification(
+            mailer,
+            ctx.context.session.user,
+            'twoFactor',
+            mailInstance,
+            deps.log,
+          );
       }),
     },
     appName: config.INSTANCE_NAME,
@@ -371,7 +378,6 @@ function createAuthInstance(
       ...(email
         ? {
             sendResetPassword: async ({ user, url }, request) => {
-              const t = mailText(user as { locale?: string | null });
               void (async () => {
                 if (
                   !(await mailBudget(
@@ -382,10 +388,7 @@ function createAuthInstance(
                   return;
                 sendDetached(
                   mailer,
-                  actionMail(user.email, t.resetSubject, t.resetLines(config.INSTANCE_NAME), {
-                    label: t.resetAction,
-                    url,
-                  }),
+                  resetMail(user.email, user as { locale?: string | null }, url, config.INSTANCE_NAME),
                   deps.log,
                 );
               })().catch(() => security.reportError());
@@ -510,13 +513,9 @@ function createAuthInstance(
                     ))
                   )
                     return;
-                  const t = mailText(existing ?? {});
                   sendDetached(
                     mailer,
-                    actionMail(to, t.magicSubject(config.INSTANCE_NAME), t.magicLines, {
-                      label: t.magicAction,
-                      url,
-                    }),
+                    magicLinkMail(to, existing ?? {}, url, config.INSTANCE_NAME),
                     deps.log,
                   );
                 })().catch(() => security.reportError());
