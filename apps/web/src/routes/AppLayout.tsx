@@ -49,6 +49,7 @@ import {
   useSharedBoards,
 } from '../board/boards.ts';
 import { useBoardCounts } from '../board/live-counts.ts';
+import { beginViewSwitch, type ViewSwitchMotion } from '../board/view-switch.ts';
 import {
   ALL_FILM_LINKS,
   askedView,
@@ -434,12 +435,12 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   };
 
   // The header switcher, the rail and the sidebar all open a view the same way.
-  const showView = (v: BoardView) => {
+  const showView = (v: BoardView, motion?: ViewSwitchMotion) => {
     if (!projectId) return;
     setDrawerOpen(false);
     const target = destination(v);
     if (target.boardId) {
-      navigate(hrefFor(v));
+      navigate(hrefFor(v), motion);
       return;
     }
     setParams(
@@ -449,7 +450,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         else next.set('view', v);
         return next;
       },
-      { replace: true },
+      { replace: true, ...motion },
     );
   };
 
@@ -834,7 +835,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             className="mobile-view-switcher"
             aria-label={t('film.views.label')}
             value={currentView ?? ''}
-            onChange={(e) => showView(e as BoardView)}
+            onChange={(e) => showView(e as BoardView, beginViewSwitch(currentView, e as BoardView))}
           >
             {pickerViews(openKind, currentView, links).map((v) => (
               <option key={v} value={v}>
@@ -877,6 +878,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           >
             {/* Keep layout observable while Inbox covers the board, including sidebar resizes. */}
             <div
+              className="view-stage"
               inert={inboxOpen}
               aria-hidden={inboxOpen || undefined}
               style={{

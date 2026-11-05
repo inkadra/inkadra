@@ -31,6 +31,94 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
 }
 
+/* The active tab's background slides to the new tab, then the tab draws its own again. */
+.ink-header .view-tabs,
+.ink-header .view-tabs__tab {
+  position: relative;
+}
+.view-tabs__pill {
+  display: none;
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: calc(var(--ink-radius-sm) - 2px);
+  background: var(--ink-surface-1);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+}
+.view-tabs--sliding .view-tabs__pill {
+  display: block;
+}
+.view-tabs--sliding .view-tabs__tab[aria-selected="true"] {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Switching views with the tabs (view-switch.ts). Only the views' surface takes part, so the
+   chrome stays live. The live canvas runs under the floating panels and a snapshot would cover
+   them, so it never takes part: a view leaving for the canvas fades over it, and the canvas
+   leaves at once. Pointers go through to the new view, which is already live underneath. */
+:root {
+  view-transition-name: none;
+}
+/* Named only during a switch: a name makes a stacking context, which would trap a view's viewer
+   under the header. Browsers without this selector switch instantly. */
+:root:active-view-transition .ink-main:not(.ink-main--canvas) > .view-stage {
+  view-transition-name: board-view;
+}
+html[data-view-direction="forward"] {
+  --view-direction: 1;
+}
+html[data-view-direction="back"] {
+  --view-direction: -1;
+}
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(board-view) {
+  animation: none;
+  overflow: clip;
+}
+@media (width >= 768px) {
+  ::view-transition-group(board-view) {
+    border-radius: calc(var(--ink-radius-lg) - 1px);
+  }
+}
+/* Without a direction (back and forward) the switch is instant. */
+::view-transition-old(board-view),
+::view-transition-new(board-view) {
+  animation: none;
+}
+html[data-view-direction]::view-transition-old(board-view) {
+  animation: view-leave var(--ink-dur-fast) var(--ink-ease-in) both;
+}
+html[data-view-direction]::view-transition-new(board-view) {
+  animation: view-enter var(--ink-dur-base) var(--ink-ease-out) calc(var(--ink-dur-fast) / 2) both;
+}
+@keyframes view-leave {
+  to {
+    opacity: 0;
+    transform: translateX(calc(var(--view-direction) * -6px));
+  }
+}
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--view-direction) * 12px));
+  }
+}
+/* The comments float over the views, from outside them: they stay on top and live. */
+:root:active-view-transition .comments-panel {
+  view-transition-name: comments-panel;
+}
+::view-transition-group(comments-panel),
+::view-transition-new(comments-panel) {
+  animation: none;
+}
+::view-transition-old(comments-panel) {
+  display: none;
+}
+
 /* Frame picture ------------------------------------------------------------------ */
 
 .frame-pic {

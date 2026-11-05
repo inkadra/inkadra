@@ -589,7 +589,8 @@ export function Canvas({
       // the navigation floats over the board, collapses, or the page is a phone.
       if (!preview)
         saveViewport(boardId, value, (v) =>
-          rootRef.current ? shiftViewport(v, chromeInsets(rootRef.current), 1) : v,
+          // Written after the canvas closed: the panels' last known size, so it reopens in place.
+          shiftViewport(v, rootRef.current ? chromeInsets(rootRef.current) : freeInset.current, 1),
         );
       // While the view moves the world and the dots are composited, so a pan only shifts pixels; once it
       // settles the layer goes away and the cards are drawn sharp at the new zoom.
@@ -3429,7 +3430,15 @@ export function Canvas({
               )
               .map((el) => {
                 const rect = overlay.resize?.id === el.id ? overlay.resize : liveRect(el);
-                return <ResizeHandles key={el.id} id={el.id} rect={rect} zoom={viewport.zoom} />;
+                return (
+                  <ResizeHandles
+                    key={el.id}
+                    id={el.id}
+                    rect={rect}
+                    zoom={viewport.zoom}
+                    resizing={overlay.resize?.id === el.id}
+                  />
+                );
               })}
           <PresenceLayer peers={peers} zoom={viewport.zoom} rectOf={peerRect} />
           {overlay.ghost && (

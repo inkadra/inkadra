@@ -101,7 +101,7 @@ it('retries a relay failure explicitly confirmed before any issue write', async 
 });
 
 it('removes the instance host name from text and the device name from files', () => {
-  expect(relayClean('log from soyo.example.org', 'https://soyo.example.org')).toBe(
+  expect(relayClean('log from boards.example.org', 'https://boards.example.org')).toBe(
     'log from [instance]',
   );
   for (const internal of ['192.168.1.20:3000', 'db.lan', 'nas.tail1234.ts.net', hostname()])

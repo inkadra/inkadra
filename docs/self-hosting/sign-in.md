@@ -177,7 +177,7 @@ change to v1 in 0.4.2 (issue #225).
 ## Signing in through a private address
 
 The same instance supports its public HTTPS URL and direct HTTP LAN/Tailscale addresses
-(such as `http://soyo:7340`) without listing them in configuration. Publish the port on the
+(such as `http://nas:7340`) without listing them in configuration. Publish the port on the
 appropriate interface; `INKADRA_BIND=0.0.0.0` makes it reachable on the LAN. Keep
 `PUBLIC_URL` set to the public HTTPS address. Email/password, sessions, uploads and
 collaboration use the current browser address. Sign in once per hostname.

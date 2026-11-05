@@ -6,6 +6,7 @@ import {
   type MouseEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -47,6 +48,7 @@ import { RestoredToast } from './RestoredToast.tsx';
 import { isMac } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
+import { beginViewSwitch, slideTabPill, type ViewSwitchMotion } from './view-switch.ts';
 import {
   type BoardView,
   headerViews,
@@ -68,7 +70,9 @@ const canEdit = (role: ProjectRole | null | undefined) => role === 'owner' || ro
 export { type BoardView, VIEWS } from './views.ts';
 
 /** Storyboards open on the storyboard; `?view=` picks another view of the same board. */
-export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: BoardView) => void] {
+export function useBoardView(
+  kind: Board['kind'] | undefined,
+): [BoardView, (v: BoardView, motion?: ViewSwitchMotion) => void] {
   const [params, setParams] = useSearchParams();
   const asked = params.get('view');
   const view: BoardView = isBoardView(asked)
@@ -77,7 +81,7 @@ export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: B
       ? 'storyboard'
       : 'canvas';
   const setView = useCallback(
-    (v: BoardView) =>
+    (v: BoardView, motion?: ViewSwitchMotion) =>
       setParams(
         (p) => {
           const next = new URLSearchParams(p);
@@ -88,7 +92,7 @@ export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: B
           }
           return next;
         },
-        { replace: true },
+        { replace: true, ...motion },
       ),
     [kind, setParams],
   );
@@ -196,6 +200,62 @@ function CurrentCrumb({
     >
       {title}
     </button>
+  );
+}
+
+/** The bar of a board's views in the header. */
+function ViewTabs({
+  tabs,
+  view,
+  onChoose,
+}: {
+  tabs: BoardView[];
+  view: BoardView;
+  onChoose: (view: BoardView) => void;
+}) {
+  const { t } = useTranslation();
+  const list = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => slideTabPill(list.current, view), [view]);
+  return (
+    <div
+      ref={list}
+      className="view-tabs"
+      role="tablist"
+      aria-label={t('film.views.label')}
+      onKeyDown={(e) => {
+        // Arrow keys walk the tabs; Enter and Space pick one, as on any button.
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        const all = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+        const at = all.indexOf(document.activeElement as HTMLButtonElement);
+        e.preventDefault();
+        all[(at + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length]?.focus();
+      }}
+    >
+      <span className="view-tabs__pill" aria-hidden="true" />
+      {tabs.map((v) => (
+        <button
+          key={v}
+          type="button"
+          role="tab"
+          aria-selected={view === v}
+          tabIndex={view === v ? 0 : -1}
+          className="view-tabs__tab"
+          // On narrow desktops only the open tab keeps its name: the rest say it on hover.
+          aria-label={t(`film.views.${v}`)}
+          data-ink-tooltip={t(`film.views.${v}`)}
+          // Focus on press would scroll a tab cut off by the strip out from under the
+          // pointer: the release lands on its neighbour and the click is lost.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.currentTarget.focus({ preventScroll: true });
+            onChoose(v);
+          }}
+        >
+          <Icon name={viewIcon(v)} contentKind={v} size={14} />
+          <span className="view-tabs__label">{t(`film.views.${v}`)}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -309,13 +369,14 @@ function BoardScreen({
         storyboardId,
         reviewBoard,
       );
+      const motion = beginViewSwitch(view, next);
       if (destination.boardId) {
-        navigate(viewHref(projectId, destination, { boardId, rootBoardId, kind }));
+        navigate(viewHref(projectId, destination, { boardId, rootBoardId, kind }), motion);
         return;
       }
-      setView(next);
+      setView(next, motion);
     },
-    [boardId, kind, rootBoardId, storyboardId, reviewBoard, navigate, projectId, setView],
+    [boardId, kind, rootBoardId, storyboardId, reviewBoard, navigate, projectId, setView, view],
   );
 
   // The layout builds its links anew on every render: the tabs depend on their fields, so the
@@ -476,47 +537,7 @@ function BoardScreen({
               </Fragment>
             ))}
           </nav>
-          {tabs.length > 0 && (
-            <div
-              className="view-tabs"
-              role="tablist"
-              aria-label={t('film.views.label')}
-              onKeyDown={(e) => {
-                // Arrow keys walk the tabs; Enter and Space pick one, as on any button.
-                if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-                const all = [
-                  ...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
-                ];
-                const at = all.indexOf(document.activeElement as HTMLButtonElement);
-                e.preventDefault();
-                all[(at + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length]?.focus();
-              }}
-            >
-              {tabs.map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  role="tab"
-                  aria-selected={view === v}
-                  tabIndex={view === v ? 0 : -1}
-                  className="view-tabs__tab"
-                  // On narrow desktops only the open tab keeps its name: the rest say it on hover.
-                  aria-label={t(`film.views.${v}`)}
-                  data-ink-tooltip={t(`film.views.${v}`)}
-                  // Focus on press would scroll a tab cut off by the strip out from under the
-                  // pointer: the release lands on its neighbour and the click is lost.
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={(e) => {
-                    e.currentTarget.focus({ preventScroll: true });
-                    chooseView(v);
-                  }}
-                >
-                  <Icon name={viewIcon(v)} contentKind={v} size={14} />
-                  <span className="view-tabs__label">{t(`film.views.${v}`)}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {tabs.length > 0 && <ViewTabs tabs={tabs} view={view} onChoose={chooseView} />}
           {editable && (
             <div className="board-header-menu" ref={headerMenuAnchor}>
               <IconButton

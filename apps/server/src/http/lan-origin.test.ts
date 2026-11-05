@@ -45,7 +45,7 @@ it.skipIf(!process.env.DATABASE_URL)(
       trustProxy: false,
     });
     attachCollab(app.server, collab);
-    const lan = { host: 'soyo:7340', origin: 'http://soyo:7340' };
+    const lan = { host: 'nas:7340', origin: 'http://nas:7340' };
     const credentials = {
       email: 'owner@example.test',
       name: 'Owner',

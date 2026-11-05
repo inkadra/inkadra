@@ -7,7 +7,7 @@ describe('toHeaders', () => {
   it('replaces any client-sent address header with the address Fastify resolved', () => {
     const req = {
       ip: '203.0.113.7',
-      raw: { socket: { remoteAddress: '203.0.113.7' }, headers: { host: 'soyo:7340' } },
+      raw: { socket: { remoteAddress: '203.0.113.7' }, headers: { host: 'nas:7340' } },
       headers: { [CLIENT_IP_HEADER]: '1.2.3.4', 'x-forwarded-for': '9.9.9.9', cookie: 'a=b' },
     } as unknown as FastifyRequest;
     const headers = toHeaders(req);
@@ -38,7 +38,7 @@ it('checks auth write origins even without cookies, preserving native clients an
       [{ origin: 'https://evil.test' }, 403],
       [{ origin: 'null' }, 403],
       [{ 'sec-fetch-site': 'cross-site' }, 403],
-      [{ origin: 'http://soyo:7340' }, 200],
+      [{ origin: 'http://nas:7340' }, 200],
       [{ origin: 'https://boards.example.test' }, 200],
       [{}, 200],
       [{ 'sec-fetch-site': 'same-origin' }, 200],
@@ -46,7 +46,7 @@ it('checks auth write origins even without cookies, preserving native clients an
       const res = await app.inject({
         method: 'POST',
         url: '/api/auth/sign-in/email',
-        headers: { host: 'soyo:7340', ...headers },
+        headers: { host: 'nas:7340', ...headers },
         payload: {},
       });
       expect(res.statusCode).toBe(status);
