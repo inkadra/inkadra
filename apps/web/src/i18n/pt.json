@@ -97,7 +97,7 @@
     "shotlist": "Decupagem",
     "schedule": "Cronograma",
     "clients": "Revisão",
-    "inbox": "Caixa de entrada",
+    "inbox": "Entrada",
     "search": "Buscar",
     "settings": "Configurações",
     "assigned": "Atribuídos a mim",
@@ -152,7 +152,7 @@
       "moreDays_other": "+{{count}} diárias hoje",
       "fewerDays": "Mostrar menos"
     },
-    "recentBoards": "Quadros recentes",
+    "recentBoards": "Recentes",
     "continue": "Continuar",
     "recentBoardsHint": "pela última edição",
     "noRecentBoards": "Nenhum quadro ainda. Crie um.",
@@ -1164,7 +1164,7 @@
     },
     "aspect": {
       "label": "Proporção",
-      "board": "Proporção do storyboard ({{ratio}})"
+      "board": "Quadro ({{ratio}})"
     },
     "total_one": "{{count}} frame · {{duration}}",
     "total_other": "{{count}} frames · {{duration}}",
@@ -1385,7 +1385,7 @@
       "groupLocation": "Locação",
       "groupStatus": "Status",
       "groupNone": "Sem agrupamento",
-      "sortManual": "Ordem do storyboard",
+      "sortManual": "Storyboard",
       "sortLabel": "Número do plano",
       "sortDuration": "Duração",
       "collapseGroup": "Recolher grupo",
@@ -2368,7 +2368,7 @@
     "breakdown": "{{changes}} com alterações · {{pending}} pendentes"
   },
   "projectsPage": {
-    "counts": "{{active}} ativos · {{archived}} arquivados",
+    "counts": "Ativos: {{active}} · Arquivados: {{archived}}",
     "search": "Buscar projetos",
     "status": "Status",
     "all": "Todos",
@@ -2612,7 +2612,7 @@
       "diagnosticsHelp": "Verificações de rede, proxy e serviços, úteis quando algo não funciona",
       "openDiagnostics": "Abrir"
     },
-    "search": "Buscar nas configurações",
+    "search": "Buscar configurações",
     "noResults": "Nenhuma configuração encontrada",
     "keywords": {
       "account": "Nome, E-mail, Foto do perfil, Senha, Verificação em duas etapas (2FA), Códigos de recuperação, Métodos de acesso, Sessões, Dispositivos, Apps e tokens, Excluir conta",
@@ -2992,7 +2992,7 @@
     "whatStoryboard": "Storyboard",
     "whatShotlist": "Decupagem",
     "framesPerPage": "Frames por página",
-    "page": "Tamanho da página",
+    "page": "Tamanho",
     "paperA4": "A4",
     "paperLetter": "Carta",
     "paperSlide": "16:9 · Paisagem",

@@ -1164,7 +1164,7 @@
     },
     "aspect": {
       "label": "Seitenverhältnis",
-      "board": "Seitenverhältnis des Storyboards ({{ratio}})"
+      "board": "Board ({{ratio}})"
     },
     "total_one": "{{count}} Frame · {{duration}}",
     "total_other": "{{count}} Frames · {{duration}}",
@@ -1385,7 +1385,7 @@
       "groupLocation": "Location",
       "groupStatus": "Status",
       "groupNone": "Keine Gruppierung",
-      "sortManual": "Storyboard-Reihenfolge",
+      "sortManual": "Storyboard",
       "sortLabel": "Shot-Nummer",
       "sortDuration": "Dauer",
       "collapseGroup": "Gruppe einklappen",
@@ -2612,7 +2612,7 @@
       "diagnosticsHelp": "Prüft Netzwerk, Proxy und Dienste, nützlich wenn etwas nicht funktioniert",
       "openDiagnostics": "Öffnen"
     },
-    "search": "Einstellungen durchsuchen",
+    "search": "Einstellungen suchen",
     "noResults": "Keine Einstellungen gefunden",
     "keywords": {
       "account": "Name, E-Mail, Profilfoto, Passwort, Zwei-Faktor-Anmeldung (2FA), Backup-Codes, Anmeldemethoden, Sitzungen, Geräte, Apps und Tokens, Konto löschen",

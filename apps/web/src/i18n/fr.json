@@ -897,7 +897,7 @@
       "searchScene": "Rechercher une scène",
       "noScenes": "Aucune scène",
       "openScene": "Ouvrir la scène {{number}}",
-      "short": "Plan au sol",
+      "short": "Plan",
       "lens": "Optique",
       "otherLens": "Autre…",
       "focal": "Focale",
@@ -1164,7 +1164,7 @@
     },
     "aspect": {
       "label": "Format",
-      "board": "Format du storyboard ({{ratio}})"
+      "board": "Tableau ({{ratio}})"
     },
     "total_one": "{{count}} plan · {{duration}}",
     "total_other": "{{count}} plans · {{duration}}",
@@ -2368,7 +2368,7 @@
     "breakdown": "{{changes}} avec modifications · {{pending}} en attente"
   },
   "projectsPage": {
-    "counts": "{{active}} actifs · {{archived}} archivés",
+    "counts": "Actifs : {{active}} · Archivés : {{archived}}",
     "search": "Rechercher des projets",
     "status": "État",
     "all": "Tous",
@@ -2612,7 +2612,7 @@
       "diagnosticsHelp": "Vérifications du réseau, du proxy et des services, utiles en cas de problème",
       "openDiagnostics": "Ouvrir"
     },
-    "search": "Rechercher dans les paramètres",
+    "search": "Chercher un réglage",
     "noResults": "Aucun paramètre trouvé",
     "keywords": {
       "account": "Nom, E-mail, Photo de profil, Mot de passe, Validation en deux étapes (2FA), Codes de secours, Méthodes de connexion, Sessions, Appareils, Applications et jetons, Supprimer le compte",
@@ -2639,7 +2639,7 @@
     "requireAdminTwoFactor": "Exiger la validation en deux étapes des administrateurs",
     "requireAdminTwoFactorHelp": "Les administrateurs doivent configurer la validation en deux étapes pour utiliser l’instance. Conservez les codes de secours avant d’activer cette exigence.",
     "requireAdminTwoFactorEnrollFirst": "Configurez et vérifiez d’abord votre validation en deux étapes dans Compte. Seul un administrateur déjà protégé peut activer cette exigence.",
-    "personal": "Visible par vous uniquement. Dissoudre un groupe ne touche pas aux projets.",
+    "personal": "Personnel",
     "account": "Compte",
     "preferences": "Préférences",
     "notifications": "Notifications",

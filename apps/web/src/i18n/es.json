@@ -1164,7 +1164,7 @@
     },
     "aspect": {
       "label": "Formato",
-      "board": "Formato del storyboard ({{ratio}})"
+      "board": "Tablero ({{ratio}})"
     },
     "total_one": "{{count}} plano · {{duration}}",
     "total_other": "{{count}} planos · {{duration}}",
@@ -1385,7 +1385,7 @@
       "groupLocation": "Localización",
       "groupStatus": "Estado",
       "groupNone": "Sin agrupar",
-      "sortManual": "Orden del storyboard",
+      "sortManual": "Storyboard",
       "sortLabel": "Número de plano",
       "sortDuration": "Duración",
       "collapseGroup": "Contraer grupo",
@@ -2368,7 +2368,7 @@
     "breakdown": "{{changes}} con cambios · {{pending}} pendientes"
   },
   "projectsPage": {
-    "counts": "{{active}} activos · {{archived}} archivados",
+    "counts": "Activos: {{active}} · Archivados: {{archived}}",
     "search": "Buscar proyectos",
     "status": "Estado",
     "all": "Todos",
