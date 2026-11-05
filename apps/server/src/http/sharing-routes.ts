@@ -45,8 +45,8 @@ import {
   invitationTarget,
   invitedRole,
 } from '../invitations.ts';
-import { mailText } from '../mail-texts.ts';
-import { actionMail, type Mailer } from '../mailer.ts';
+import type { Mailer } from '../mailer.ts';
+import { inviteMail } from '../mails.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { requestOrigin } from '../request-origin.ts';
 import { newSecret, sealer, sha256 } from '../secrets.ts';
@@ -231,17 +231,18 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     if (!mailer.enabled || row.kind !== 'email' || !row.email) return row;
     const [from] = await db.select().from(user).where(eq(user.id, inviter.id));
     const { projectName, boardTitle } = await invitationTarget(db, row);
-    const what = boardTitle ?? projectName ?? config.INSTANCE_NAME;
-    const t = mailText(from ?? {});
-    const who = from?.name ?? config.INSTANCE_NAME;
     await mailer.send(
-      actionMail(
-        row.email,
-        t.inviteSubject(who, what),
-        t.inviteLines(who, what, row.role, config.INSTANCE_NAME),
-        { label: t.inviteAction, url: joinUrl(token) },
-        { instanceName: config.INSTANCE_NAME },
-      ),
+      inviteMail({
+        to: row.email,
+        from: from ?? {},
+        who: from?.name ?? config.INSTANCE_NAME,
+        projectName,
+        boardTitle,
+        role: row.projectId || row.boardId ? invitedRole(row) : null,
+        expiresAt: row.expiresAt,
+        url: joinUrl(token),
+        instanceName: config.INSTANCE_NAME,
+      }),
     );
     const [sent] = await db
       .update(invitation)

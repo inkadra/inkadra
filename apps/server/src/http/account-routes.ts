@@ -100,6 +100,7 @@ export async function normalizeAvatar(bytes: Buffer): Promise<Buffer> {
 
 export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   const { config, db, auth, jobs } = deps;
+  const mailInstance = { instanceName: config.INSTANCE_NAME, publicUrl: config.PUBLIC_URL };
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const exchangeLimiter = new RateLimiter(20, 60_000);
 
@@ -240,7 +241,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       name: input.name,
       expiresAt: new Date(Date.now() + (input.expiresInDays ?? 90) * 86_400_000),
     });
-    securityNotification(deps.mailer, session.user, 'token', req.log);
+    securityNotification(
+      deps.mailer,
+      session.user,
+      'token',
+      { ...mailInstance, token: { name: row.name, expiresAt: row.expiresAt } },
+      req.log,
+    );
     const body: CreatedPersonalToken = { ...toPersonalToken(row), token };
     return reply.status(201).send(body);
   });
@@ -323,7 +330,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       name: pending.deviceName ?? CLIENT_NAMES[pending.clientId],
       client: pending.clientId,
     });
-    securityNotification(deps.mailer, owner, 'token', req.log);
+    securityNotification(
+      deps.mailer,
+      owner,
+      'token',
+      { ...mailInstance, token: { name: issued.name, expiresAt: issued.expiresAt } },
+      req.log,
+    );
     const body: AppToken = { token, tokenId: issued.id, user: toUser(owner) };
     return body;
   });

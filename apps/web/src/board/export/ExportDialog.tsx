@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { refreshClassifications } from '../../lib/classifications.ts';
 import { useIsPhone } from '../../lib/phone.ts';
-import { getReviews } from '../review-store.ts';
+import { getReviews, useReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
 import { ExportCache } from './cache.ts';
 import type {
@@ -21,6 +21,8 @@ import { FRAMES_PER_PAGE, type FramesPerPage, type Orientation, type PaperSize }
 import {
   type ExportSource,
   fetchExportSettings,
+  framesOf,
+  hasApprovedFrame,
   initialExportState,
   LogoTimeoutError,
   logoProblem,
@@ -32,6 +34,7 @@ import {
   presetNumber,
   recommendedPreset,
   saveExportSettings,
+  teamPdf,
   uploadLogo,
 } from './settings.ts';
 import './export.css';
@@ -52,6 +55,9 @@ export interface ExportDialogProps {
   onClose: () => void;
 }
 
+/** How long the dialog waits for review statuses before recommending a preset without them. */
+const REVIEWS_WAIT_MS = 1500;
+
 // The engine (pdf-lib, fontkit, Inter) loads only when the dialog opens.
 const engine = () => import('./engine.ts');
 // The pages show the names of the storyboard lists, whichever view opened the dialog.
@@ -68,7 +74,8 @@ export function ExportDialog(props: ExportDialogProps) {
   const { t, i18n } = useTranslation();
   const isPhone = useIsPhone();
   const film = source !== 'canvas';
-  const recommended = recommendedPreset(source);
+  // Settled when the options are first chosen, so the badge and the selection agree.
+  const [recommended, setRecommended] = useState(() => recommendedPreset(source, true));
   const [basePreset, setBasePreset] = useState<ExportPreset | null>(recommended);
   const [customOpen, setCustomOpen] = useState(false);
   const [pageCount, setPageCount] = useState(0);
@@ -82,26 +89,52 @@ export function ExportDialog(props: ExportDialogProps) {
   const [changed, setChanged] = useState(false);
   const dialog = useRef<DialogHandle>(null);
   const initialWhat = props.initialWhat;
+  const [fetched, setFetched] = useState<ExportSettings | 'failed' | null>(null);
   useEffect(() => {
     let live = true;
     fetchExportSettings(projectId).then(
       (loaded) => {
-        if (!live) return;
-        const init = initialExportState(loaded, source, initialWhat, i18n.language);
-        setSettings(loaded);
-        setBasePreset(init.basePreset);
-        setCustomOpen(init.customOpen);
-        setReq(init.req);
-        setSettingsLoaded(true);
+        if (live) setFetched(loaded);
       },
       () => {
-        if (live) setSettingsLoaded(true);
+        if (live) setFetched('failed');
       },
     );
     return () => {
       live = false;
     };
-  }, [projectId, source, initialWhat, i18n.language]);
+  }, [projectId]);
+  // The Storyboard recommends the pitch only with an approved frame, and review statuses may
+  // still be on their way: wait for them briefly rather than switch the choice under the reader.
+  const reviewsStatus = useReviews((s) => s.reviewsStatus);
+  const reviews = useReviews((s) => s.reviews);
+  const [reviewsWaited, setReviewsWaited] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setReviewsWaited(true), REVIEWS_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  const approvalKnown = source !== 'storyboard' || reviewsStatus !== 'loading' || reviewsWaited;
+  useEffect(() => {
+    if (settingsLoaded || !fetched || !approvalKnown) return;
+    const approved = source === 'storyboard' && hasApprovedFrame(store.getSnapshot().byId, reviews);
+    const next = recommendedPreset(source, approved);
+    setRecommended(next);
+    if (fetched === 'failed') {
+      setBasePreset(next);
+      setReq((r) => ({
+        ...presetChoices(next, source, initialWhat, i18n.language),
+        logo: r.logo,
+        theme: r.theme,
+      }));
+    } else {
+      const init = initialExportState(fetched, source, initialWhat, i18n.language, approved);
+      setSettings(fetched);
+      setBasePreset(init.basePreset);
+      setCustomOpen(init.customOpen);
+      setReq(init.req);
+    }
+    setSettingsLoaded(true);
+  }, [settingsLoaded, fetched, approvalKnown, source, store, reviews, initialWhat, i18n.language]);
   const canEdit = settings?.canEdit ?? false;
   const active =
     basePreset && matchesPreset(req, basePreset, source, i18n.language, settings?.paper)
@@ -150,6 +183,7 @@ export function ExportDialog(props: ExportDialogProps) {
     boards: props.boards,
     scope: { projectId, boardId },
     threads: getReviews().threads,
+    reviews: getReviews().reviews,
     t,
     language: i18n.language,
     cache,
@@ -237,8 +271,15 @@ export function ExportDialog(props: ExportDialogProps) {
   const presetGroupName = useId();
   const customPanelId = useId();
 
-  const paperLabel = req.paper === 'letter' ? t('export.paperLetter') : t('export.paperA4');
+  const slide = req.paper === 'slide';
+  const paperLabel =
+    req.paper === 'letter'
+      ? t('export.paperLetter')
+      : slide
+        ? t('export.paperSlide')
+        : t('export.paperA4');
   const orientLabel = req.orientation === 'portrait' ? t('export.portrait') : t('export.landscape');
+  const pageLabel = slide ? paperLabel : `${paperLabel} ${orientLabel.toLocaleLowerCase()}`;
   const formatLabel = req.format === 'png' ? t('export.formatPng') : t('export.formatPdf');
   const audienceLabel = client ? t('export.audienceClient') : t('export.audienceTeam');
   const summaryNote =
@@ -246,7 +287,7 @@ export function ExportDialog(props: ExportDialogProps) {
       ? t('export.editingPreset', { n: presetNumber(basePreset) })
       : pngBoard
         ? `${formatLabel}, ${audienceLabel.toLocaleLowerCase()}`
-        : `${paperLabel} ${orientLabel.toLocaleLowerCase()}, ${formatLabel}, ${audienceLabel.toLocaleLowerCase()}`;
+        : `${pageLabel}, ${formatLabel}, ${audienceLabel.toLocaleLowerCase()}`;
   const dialogTitle =
     !isPhone && props.projectName
       ? t('export.titleProject', { name: props.projectName })
@@ -387,23 +428,33 @@ export function ExportDialog(props: ExportDialogProps) {
                               id={id}
                               className="ink-input"
                               value={req.paper}
-                              onChange={(e) => set('paper', e as PaperSize)}
+                              onChange={(e) =>
+                                updateReq((r) => ({
+                                  ...r,
+                                  paper: e as PaperSize,
+                                  // A 16:9 page is always a landscape slide.
+                                  orientation: e === 'slide' ? 'landscape' : r.orientation,
+                                }))
+                              }
                             >
                               <option value="a4">{t('export.paperA4')}</option>
                               <option value="letter">{t('export.paperLetter')}</option>
+                              <option value="slide">{t('export.paperSlide')}</option>
                             </Select>
                           )}
                         </Field>
-                        <Segmented
-                          label={t('export.page')}
-                          hideLabel
-                          value={req.orientation}
-                          options={[
-                            ['portrait', t('export.portrait')],
-                            ['landscape', t('export.landscape')],
-                          ]}
-                          onChange={(v) => set('orientation', v as Orientation)}
-                        />
+                        {!slide && (
+                          <Segmented
+                            label={t('export.page')}
+                            hideLabel
+                            value={req.orientation}
+                            options={[
+                              ['portrait', t('export.portrait')],
+                              ['landscape', t('export.landscape')],
+                            ]}
+                            onChange={(v) => set('orientation', v as Orientation)}
+                          />
+                        )}
                       </div>
                     )}
                     <Segmented
@@ -429,6 +480,11 @@ export function ExportDialog(props: ExportDialogProps) {
                           {t('export.titlePage')}
                         </Check>
                       )}
+                      {framesOf(req.what) && (
+                        <Check checked={req.approvedOnly} onChange={(v) => set('approvedOnly', v)}>
+                          {t('export.approvedOnly')}
+                        </Check>
+                      )}
                       <Check
                         checked={req.hideGuestHidden || client}
                         disabled={client}
@@ -444,6 +500,26 @@ export function ExportDialog(props: ExportDialogProps) {
                         >
                           {t('export.comments')}
                         </Check>
+                      )}
+                      {req.format === 'pdf' && (
+                        <>
+                          <Check
+                            checked={req.kickoffSummary && teamPdf(req)}
+                            disabled={client}
+                            onChange={(v) => set('kickoffSummary', v)}
+                            hint={client ? t('export.teamOnlyHint') : undefined}
+                          >
+                            {t('export.kickoffSummary')}
+                          </Check>
+                          <Check
+                            checked={req.callSheet && teamPdf(req)}
+                            disabled={client}
+                            onChange={(v) => set('callSheet', v)}
+                            hint={client ? t('export.teamOnlyHint') : undefined}
+                          >
+                            {t('export.callSheet')}
+                          </Check>
+                        </>
                       )}
                       <div className="export__logo">
                         <span className="export__logo-label">{t('export.logo')}</span>

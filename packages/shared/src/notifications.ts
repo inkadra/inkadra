@@ -96,6 +96,30 @@ export const Notification = z
   .openapi('Notification');
 export type Notification = z.infer<typeof Notification>;
 
+/** Where a notification leads: the board, with the card selected and the thread open. */
+export function notificationPath(
+  item: Pick<Notification, 'projectId' | 'boardId' | 'elementId' | 'commentId' | 'threadId'> & {
+    type?: string;
+  },
+): string | null {
+  if (item.type === 'feedback_received') return '/settings?section=instance';
+  if (!item.projectId) return null;
+  const path = item.boardId ? `/p/${item.projectId}/b/${item.boardId}` : `/p/${item.projectId}`;
+  if (!item.boardId) return path;
+  const params = new URLSearchParams();
+  if (item.elementId) {
+    params.set('el', item.elementId);
+    params.set('view', 'canvas');
+  }
+  if (item.commentId) {
+    // The thread's start; for a thread start it is the comment itself, so no comment param.
+    const thread = item.threadId ?? item.commentId;
+    params.set('thread', thread);
+    if (thread !== item.commentId) params.set('comment', item.commentId);
+  }
+  return params.size ? `${path}?${params}` : path;
+}
+
 export const NotificationQuery = z
   .object({
     unread: z.enum(['true', 'false']).optional().openapi({ description: 'Only unread ones.' }),

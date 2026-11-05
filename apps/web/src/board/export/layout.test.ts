@@ -9,6 +9,7 @@ import {
   paginateRows,
   pixelRatio,
   pngScales,
+  slideCell,
   storyboardCells,
   storyboardGrid,
 } from './layout.ts';
@@ -18,6 +19,11 @@ describe('page sizes', () => {
     expect(pageSize('a4', 'portrait')).toEqual({ width: 595.28, height: 841.89 });
     expect(pageSize('a4', 'landscape')).toEqual({ width: 841.89, height: 595.28 });
     expect(pageSize('letter', 'landscape')).toEqual({ width: 792, height: 612 });
+  });
+
+  it('makes the 16:9 page a landscape slide whatever the orientation', () => {
+    expect(pageSize('slide', 'landscape')).toEqual({ width: 960, height: 540 });
+    expect(pageSize('slide', 'portrait')).toEqual({ width: 960, height: 540 });
   });
 
   it('keeps the content inside the margins, header and footer', () => {
@@ -129,5 +135,34 @@ describe('fitting', () => {
     expect(huge.reduced).toBe(true);
     const pixels = huge.scales.reduce((sum, s) => sum + a4.width * a4.height * s * s, 0);
     expect(pixels).toBeLessThanOrEqual(PNG_TOTAL_PIXELS * 1.001);
+  });
+});
+
+describe('slide cell', () => {
+  // The content box of a 16:9 page.
+  const box = contentBox(960, 540);
+
+  it('centres the picture and its caption with a gap from the header', () => {
+    const cell = slideCell(box, 16 / 9, () => 60);
+    // As tall as the room left by the caption and the two gaps of 18.
+    expect(cell.w / (16 / 9) + 60).toBeCloseTo(box.h - 36);
+    expect(cell.y - box.y).toBeCloseTo(18);
+    expect(box.y + box.h - (cell.y + cell.h)).toBeCloseTo(18);
+    expect(cell.x - box.x).toBeCloseTo(box.x + box.w - (cell.x + cell.w));
+  });
+
+  it('keeps room for a caption that grows as the picture narrows', () => {
+    // One more line of 15 for every 100 points the picture loses from the full width.
+    const caption = (w: number) => 60 + 15 * Math.ceil((box.w - w) / 100);
+    const cell = slideCell(box, 16 / 9, caption);
+    expect(cell.h - cell.w / (16 / 9)).toBeGreaterThanOrEqual(caption(cell.w) - 0.001);
+    expect(cell.y).toBeGreaterThanOrEqual(box.y + 18 - 0.001);
+    expect(cell.y + cell.h).toBeLessThanOrEqual(box.y + box.h - 18 + 0.001);
+  });
+
+  it('cuts a very long caption at half the room rather than shrink the picture away', () => {
+    const cell = slideCell(box, 16 / 9, () => 10_000);
+    expect(cell.w / (16 / 9)).toBeCloseTo((box.h - 36) / 2);
+    expect(cell.h).toBeCloseTo(box.h - 36);
   });
 });

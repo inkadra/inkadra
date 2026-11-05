@@ -38,6 +38,19 @@ describe('export settings contract', () => {
     expect(UpdateExportSettings.safeParse({ audience: 'everyone' }).success).toBe(false);
   });
 
+  it('adds the 16:9 page and the approved, kickoff and call sheet options, off by default', () => {
+    expect(UpdateExportSettings.parse({ paper: 'slide' })).toEqual({ paper: 'slide' });
+    expect(
+      UpdateExportSettings.parse({ approvedOnly: true, kickoffSummary: true, callSheet: true }),
+    ).toEqual({ approvedOnly: true, kickoffSummary: true, callSheet: true });
+    expect(UpdateExportSettings.safeParse({ approvedOnly: 'yes' }).success).toBe(false);
+    expect(DEFAULT_EXPORT_PREFERENCES).toMatchObject({
+      approvedOnly: false,
+      kickoffSummary: false,
+      callSheet: false,
+    });
+  });
+
   it('describes the stored settings with the logo and who may change them', () => {
     const settings = {
       ...DEFAULT_EXPORT_PREFERENCES,

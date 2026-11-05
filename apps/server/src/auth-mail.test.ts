@@ -20,8 +20,9 @@ it('does not await SMTP and handles delivery failures', async () => {
 describe('localized security notifications', () => {
   it.each(['it', 'en'])('covers every security event in %s', (locale) => {
     const text = mailText({ locale });
-    for (const event of ['password', 'twoFactor', 'token'] as const)
-      expect(text.securitySubjects[event].length).toBeGreaterThan(0);
-    expect(text.securityNotice.length).toBeGreaterThan(0);
+    for (const event of ['password', 'twoFactor', 'token'] as const) {
+      const e = text.security.events[event];
+      for (const s of [e.title, e.body, e.after]) expect(s.length).toBeGreaterThan(0);
+    }
   });
 });

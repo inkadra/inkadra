@@ -20,8 +20,8 @@ import {
 import { authorOf, labelOf, loadPeople } from './http/authors.ts';
 import { afterCursor, atText, type Keyset } from './http/keyset.ts';
 import { RateLimiter } from './http/link-previews.ts';
-import { mailText } from './mail-texts.ts';
-import { actionMail, type Mailer } from './mailer.ts';
+import type { Mailer } from './mailer.ts';
+import { notificationMail } from './mails.ts';
 
 /**
  * Notifications are written by the server when something happens (decision 0013): the actor is
@@ -289,27 +289,6 @@ export interface NotificationMailDeps {
   instanceName: string;
 }
 
-/** One line of an email for a notification. */
-function mailLine(texts: ReturnType<typeof mailText>, n: Notification, to: string): string {
-  if (n.type === 'access_expiring' || n.type === 'access_expired')
-    return texts.accessLine(
-      n.type,
-      n.subject?.id === to ? null : (n.subject?.name ?? texts.someone),
-      n.boardTitle ?? n.projectName ?? '',
-      n.accessExpiresAt ? new Date(n.accessExpiresAt) : null,
-    );
-  if (n.type === 'link_opened')
-    return texts.linkOpenedLine(n.shareLinkLabel ?? null, n.boardTitle ?? n.projectName ?? '');
-  const who =
-    n.actor?.kind === 'user'
-      ? n.actor.user.name
-      : n.actor?.kind === 'guest'
-        ? texts.guestName(n.actor.name)
-        : texts.someone;
-  const where = n.boardTitle ?? n.projectName ?? '';
-  return texts.notificationLine(n.type, who, where, n.excerpt, n.reviewStatus);
-}
-
 /** Hidden mail is handled once, even if access comes back later. Keep the in-app row. */
 async function skipHiddenMail(
   db: Database,
@@ -372,35 +351,15 @@ async function sendTo(
       .from(user)
       .where(eq(user.id, userId));
     if (!me) return false;
-    const texts = mailText(me);
     const items = await renderNotifications(db, userId, rows);
-    const lines = items.map((n) => mailLine(texts, n, userId));
-    const settingsUrl = `${deps.publicUrl}/settings?section=notifications`;
-    const first = items[0];
-    const sameBoard = first?.boardId && items.every((n) => n.boardId === first.boardId);
-    const url =
-      sameBoard && first.projectId
-        ? `${deps.publicUrl}/p/${first.projectId}/b/${first.boardId}`
-        : `${deps.publicUrl}/`;
-    const subject =
-      kind === 'daily'
-        ? texts.digestSubject(deps.instanceName)
-        : texts.notificationSubject(rows.length, deps.instanceName);
     await mailer.send(
-      actionMail(
-        me.email,
-        subject,
-        lines,
-        { label: texts.notificationAction, url },
-        {
-          instanceName: deps.instanceName,
-          footer: {
-            text: texts.notificationSettings(settingsUrl),
-            label: texts.releaseSettingsAction,
-            url: settingsUrl,
-          },
-        },
-      ),
+      notificationMail({
+        to: me.email,
+        recipient: { id: userId, locale: me.locale },
+        notifications: items,
+        daily: kind === 'daily',
+        instance: deps,
+      }),
     );
   } catch (err) {
     await db
