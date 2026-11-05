@@ -252,7 +252,7 @@
 :root {
   --handle-halo: var(--ink-surface-1);
 }
-:root[data-theme='light'] {
+:root[data-theme="light"] {
   --handle-halo: transparent;
 }
 @media (prefers-color-scheme: light) {
