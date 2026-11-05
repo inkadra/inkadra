@@ -520,6 +520,7 @@ export function ContextBar({
       aria-label={t('board.contextBar')}
       style={{ left, top }}
       data-chrome
+      onFocus={(e) => keepClearOfPinned(e.currentTarget, e.target)}
     >
       {editing && !locked && elements[0] ? (
         <>
@@ -1039,6 +1040,18 @@ export function Minimap({
 }
 
 /** Undo and redo, for people who turned the buttons on (#302): a small pill of their own. */
+/**
+ * On a phone the bar scrolls under its last two actions, which stay pinned (board.css). Focus
+ * scrolls a control only to the edge, under them; this moves it to their left. Browsers apply
+ * the bar's `scroll-padding` to scrollIntoView but not to focus.
+ */
+function keepClearOfPinned(bar: HTMLElement, target: EventTarget) {
+  if (!(target instanceof HTMLElement) || getComputedStyle(target).position === 'sticky') return;
+  const pinned = Number.parseFloat(getComputedStyle(bar).scrollPaddingInlineEnd) || 0;
+  const over = target.getBoundingClientRect().right - (bar.getBoundingClientRect().right - pinned);
+  if (pinned > 0 && over > 0) bar.scrollLeft += over;
+}
+
 export function HistoryControls({ onUndo, onRedo }: { onUndo: () => void; onRedo: () => void }) {
   const { t } = useTranslation();
   return (

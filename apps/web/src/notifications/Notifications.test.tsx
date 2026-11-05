@@ -762,3 +762,39 @@ it('does not auto-read hidden assignment notifications when opening My tasks', a
     await act(async () => root.unmount());
   }
 });
+
+it('reads only the notification it shows when the Inbox opens, not the rest of the list', async () => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  const items = ['n1', 'n2', 'n3', 'n4'].map((id, i) => ({
+    ...baseNotification,
+    id,
+    type: 'comment',
+    readAt: null,
+    createdAt: `2026-10-25T1${4 - i}:00:00Z`,
+  }));
+  vi.mocked(api.get).mockImplementation(async (path: string) =>
+    path.startsWith('/me/notifications') ? { items, nextCursor: null } : { items: [] },
+  );
+  vi.mocked(api.post).mockResolvedValue({});
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={4}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={vi.fn().mockResolvedValue(undefined)}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 500)));
+    expect(vi.mocked(api.post).mock.calls).toEqual([['/me/notifications/n1/read', {}]]);
+    expect(host.querySelectorAll('.notification.is-unread')).toHaveLength(3);
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
