@@ -159,3 +159,79 @@ it('treats legacy section weight 600 as not explicitly bold, so the first press 
     await view.cleanup();
   }
 });
+
+it('applies note links on Enter, normalizes example.com, and shows an error on invalid links', async () => {
+  const doc = createBoardDoc('boardAAAAAAAA');
+  const element = createElement(doc, 'note', { x: 0, y: 0 }, {}, { userId: null });
+  const store = new BoardStore(doc);
+  const setLink = vi.fn().mockReturnValue({ run: vi.fn() });
+  const unsetLink = vi.fn().mockReturnValue({ run: vi.fn() });
+  const editor = {
+    state: { selection: { empty: false } },
+    isActive: vi.fn().mockReturnValue(false),
+    getAttributes: vi.fn().mockReturnValue({}),
+    on: vi.fn(),
+    off: vi.fn(),
+    chain: () => ({
+      focus: () => ({
+        setLink,
+        unsetLink,
+      }),
+    }),
+  } as unknown as Parameters<typeof ContextualTools>[0]['editor'];
+
+  const context = { store, readOnly: false, setCropping: vi.fn() } as unknown as BoardContextValue;
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  await act(async () =>
+    root.render(
+      <BoardContext.Provider value={context}>
+        <ContextualTools element={element} editor={editor} />
+      </BoardContext.Provider>,
+    ),
+  );
+
+  try {
+    const popoverButton = host.querySelector<HTMLButtonElement>(
+      'button[aria-label="board.contextual.link"]',
+    )!;
+    expect(popoverButton).not.toBeNull();
+    await act(async () => popoverButton.click());
+
+    const input = document.body.querySelector<HTMLInputElement>(
+      'input[aria-label="board.contextual.link"]',
+    )!;
+    expect(input).not.toBeNull();
+
+    const typeInto = (value: string) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    // 1. Enter with invalid link shows error and does not set link
+    await act(async () => {
+      typeInto('javascript:alert(1)');
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+    expect(document.body.querySelector('.ink-field__error')?.textContent).toBe(
+      'board.contextual.invalidLink',
+    );
+    expect(setLink).not.toHaveBeenCalled();
+
+    // 2. Enter with example.com normalizes to https://example.com and applies
+    await act(async () => {
+      typeInto('example.com');
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+    expect(document.body.querySelector('.ink-field__error')).toBeNull();
+    expect(setLink).toHaveBeenCalledWith({ href: 'https://example.com' });
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    store.destroy();
+    doc.destroy();
+  }
+});

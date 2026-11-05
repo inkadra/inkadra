@@ -2,7 +2,7 @@ import { updateElement } from '@inkadra/canvas-core';
 import { beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { api } from '../lib/api.ts';
-import { fillLinkPreview } from './links.ts';
+import { fillLinkPreview, normalizeNoteLink } from './links.ts';
 
 vi.mock('../lib/api.ts', () => ({ api: { post: vi.fn() } }));
 vi.mock('@inkadra/canvas-core', () => ({ updateElement: vi.fn() }));
@@ -42,4 +42,22 @@ it('omits empty fields so a successful refresh preserves good metadata', async (
   expect(await fillLinkPreview(doc, 'card', 'project', 'board', 'https://example.com')).toBe(true);
   expect(updateElement).toHaveBeenCalledWith(doc, 'card', {}, expect.anything());
   doc.destroy();
+});
+
+it('normalizes note links, prepends https when missing, and rejects unsafe schemes', () => {
+  expect(normalizeNoteLink('example.com')).toBe('https://example.com');
+  expect(normalizeNoteLink('example.com/path?foo=bar')).toBe('https://example.com/path?foo=bar');
+  expect(normalizeNoteLink('https://example.com')).toBe('https://example.com');
+  expect(normalizeNoteLink('http://example.com/page')).toBe('http://example.com/page');
+  expect(normalizeNoteLink('mailto:team@example.com')).toBe('mailto:team@example.com');
+  expect(normalizeNoteLink('example.com:8080/a')).toBe('https://example.com:8080/a');
+
+  // Boundary validation: reject dangerous schemes and invalid strings
+  expect(normalizeNoteLink('javascript:alert(1)')).toBeNull();
+  expect(normalizeNoteLink('data:text/html,bad')).toBeNull();
+  expect(normalizeNoteLink('file:///etc/passwd')).toBeNull();
+  expect(normalizeNoteLink('vbscript:msgbox(1)')).toBeNull();
+  expect(normalizeNoteLink('https://')).toBeNull();
+  expect(normalizeNoteLink('')).toBeNull();
+  expect(normalizeNoteLink('   ')).toBeNull();
 });

@@ -395,7 +395,7 @@ export function issueBody(r, files) {
   if (r.logExcerpt.trim()) {
     section('Log excerpt');
     // The app sends warnings and errors, or plain activity when there were none.
-    const problems = /(^| )[WE] |^Crash/m.test(r.logExcerpt);
+    const problems = /(^| )([WE]|warn(ing)?|error) |^Crash/m.test(r.logExcerpt);
     const summary = problems ? 'Recent warnings and errors' : 'Recent activity (no warnings or errors)';
     lines.push(`<details><summary>${summary}</summary>`, '', ...fenced(noMentions(r.logExcerpt.trim())), '', '</details>', '');
   }
