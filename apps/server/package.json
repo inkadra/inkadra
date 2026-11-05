@@ -50,6 +50,7 @@
     "@inkadra/canvas-core": "workspace:*",
     "@inkadra/doc-schema": "workspace:*",
     "@inkadra/shared": "workspace:*",
+    "@inkadra/ui": "workspace:*",
     "@types/node": "^26.6.6",
     "@types/ws": "^8.18.0",
     "@types/yauzl": "^3.4.0",

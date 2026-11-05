@@ -1016,9 +1016,9 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       password: PASSWORD,
     });
     expect(disabled.status).toBe(200);
-    expect(mailer.sent.some((m) => m.subject === 'Autenticazione a due fattori disabilitata')).toBe(
-      true,
-    );
+    expect(
+      mailer.sent.some((m) => m.subject.startsWith('Verifica in due passaggi disattivata su ')),
+    ).toBe(true);
     as.viewer.cookie = cookieOf(disabled.cookies, 'inkadra.session_token');
   });
 
@@ -1042,7 +1042,9 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect((await call({ bearer: issued.body.token }, 'GET', '/api/v1/me')).status).toBe(401);
     expect((await call({ cookie: elsewhereCookie }, 'GET', '/api/v1/me')).status).toBe(401);
     expect(
-      mailer.sent.some((m) => m.to === as.guest.email && m.subject === 'Password modificata'),
+      mailer.sent.some(
+        (m) => m.to === as.guest.email && m.subject.startsWith('Password modificata su '),
+      ),
     ).toBe(true);
     // The session that changed it stays: the board open in that tab keeps its collaboration.
     expect((await call('guest', 'GET', '/api/v1/me')).status).toBe(200);
@@ -1074,7 +1076,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect(reset.status).toBe(200);
     expect((await call({ cookie: changedCookie }, 'GET', '/api/v1/me')).status).toBe(401);
     expect((await call({ bearer: token.body.token }, 'GET', '/api/v1/me')).status).toBe(401);
-    expect(mailer.sent.some((m) => m.subject === 'Password modificata')).toBe(true);
+    expect(mailer.sent.some((m) => m.subject.startsWith('Password modificata su '))).toBe(true);
   });
 
   it('deletes an account, but not while it is the only owner of a shared project', async () => {

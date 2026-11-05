@@ -304,6 +304,9 @@ importers:
       '@inkadra/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@inkadra/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6

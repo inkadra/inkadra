@@ -1,11 +1,16 @@
-import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
+import {
+  type Notification,
+  notificationPath,
+  type PlannedShootingDay,
+  type Project,
+  type RecentBoard,
+} from '@inkadra/shared';
 import { Avatar, kindStyle, ProjectGlyph } from '@inkadra/ui';
 import { type MouseEvent, type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
-import { notificationPath } from '../notifications/model.ts';
 import {
   avatarBg,
   describeNotification,

@@ -6,6 +6,7 @@ import {
   type Notification,
   NotificationChannelType,
   type NotificationPreferences,
+  notificationPath,
   type UnreadCount,
 } from '@inkadra/shared';
 import { Button, Checkbox, Icon, IconButton, Switch, swallowOutsidePress } from '@inkadra/ui';
@@ -25,7 +26,6 @@ import {
   filterNotifications,
   type InboxFilter,
   KNOWN_TYPES,
-  notificationPath,
   unreadBadge,
 } from './model.ts';
 import './notifications.css';
