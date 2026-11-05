@@ -3874,8 +3874,8 @@ button.card__play {
   cursor: move;
 }
 .viewer__tab-handle {
-  /* The curve sits on the 2 px outline, outside the frame. */
-  --curve-at: -1px;
+  /* Just inside the 2 px outline: the picture clips what is outside a full-size frame. */
+  --curve-at: 1.5px;
   position: absolute;
   width: 16px;
   height: 16px;
