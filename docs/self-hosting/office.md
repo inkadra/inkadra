@@ -132,10 +132,10 @@ worker log says `Office conversion unavailable` with the reason.
 AppArmor, the seccomp profile is not enough, and these two lines of the log each have one fix, for
 the worker alone:
 
-| Worker log                                         | Add to the worker's `security_opt` |
-| -------------------------------------------------- | ---------------------------------- |
-| `bwrap: Failed to make / slave: Permission denied` | `apparmor=unconfined`              |
-| `bwrap: Can't mount proc on /proc: Operation not permitted` | `systempaths=unconfined`   |
+| Worker log                                                  | Add to the worker's `security_opt` |
+| ----------------------------------------------------------- | ---------------------------------- |
+| `bwrap: Failed to make / slave: Permission denied`          | `apparmor=unconfined`              |
+| `bwrap: Can't mount proc on /proc: Operation not permitted` | `systempaths=unconfined`           |
 
 Both were checked on such a host, together, with `cap_drop: [ALL]` and `no-new-privileges`. They
 take protections off that container, which holds your database credentials, while the converter
