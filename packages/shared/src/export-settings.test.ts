@@ -60,6 +60,15 @@ describe('export settings contract', () => {
     expect(UpdateExportSettings.safeParse({ imageFit: 'stretch' }).success).toBe(false);
   });
 
+  it('takes the colour of the bands only as #RRGGBB', () => {
+    for (const imageBandColor of ['#000000', '#3A5A7C', '#3a5a7c']) {
+      expect(UpdateExportSettings.parse({ imageBandColor })).toEqual({ imageBandColor });
+    }
+    for (const imageBandColor of ['red', '#FFF', '#GGGGGG', '#0000000', 'url(x)', '', 12, null]) {
+      expect(UpdateExportSettings.safeParse({ imageBandColor }).success).toBe(false);
+    }
+  });
+
   it('still reads settings of a server that knows no picture options', () => {
     const old = {
       ...DEFAULT_EXPORT_PREFERENCES,

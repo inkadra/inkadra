@@ -3562,7 +3562,12 @@
               "fit",
               "fill"
             ],
-            "description": "`fit`: all of the content, with bars in the board background colour. `fill`: fills the shape and crops the edges. Left out until a picture is exported."
+            "description": "`fit`: all of the content, with bands of `imageBandColor`. `fill`: fills the shape and crops the edges. Left out until a picture is exported."
+          },
+          "imageBandColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "description": "The colour of the bands of `fit`, also under the transparent areas of a JPEG, as `#RRGGBB`: the same for everyone, whatever their theme. Left out until a picture is exported, and black until then."
           }
         },
         "required": [
@@ -3707,7 +3712,12 @@
               "fit",
               "fill"
             ],
-            "description": "`fit`: all of the content, with bars in the board background colour. `fill`: fills the shape and crops the edges. Left out until a picture is exported."
+            "description": "`fit`: all of the content, with bands of `imageBandColor`. `fill`: fills the shape and crops the edges. Left out until a picture is exported."
+          },
+          "imageBandColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "description": "The colour of the bands of `fit`, also under the transparent areas of a JPEG, as `#RRGGBB`: the same for everyone, whatever their theme. Left out until a picture is exported, and black until then."
           },
           "logoAssetId": {
             "type": [

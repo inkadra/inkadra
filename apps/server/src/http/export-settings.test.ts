@@ -56,6 +56,12 @@ describe('readPreferences', () => {
     );
   });
 
+  it('reads the colour of the bands, and rows that have none or a bad one', () => {
+    expect(readPreferences({ imageBandColor: '#3A5A7C' }).imageBandColor).toBe('#3A5A7C');
+    expect(readPreferences({ format: 'png' })).not.toHaveProperty('imageBandColor');
+    expect(readPreferences({ imageBandColor: 'url(evil)' })).toEqual(DEFAULT_EXPORT_PREFERENCES);
+  });
+
   it('reads the theme the same way', () => {
     expect(readTheme(null)).toEqual(DEFAULT_PROJECT_THEME);
     expect(readTheme({ accent: 'teal', headingFont: 'Papyrus' })).toEqual({
@@ -233,6 +239,20 @@ describe.skipIf(!url)('project export settings', () => {
     expect(
       (await request('owner', 'PATCH', settingsPath(), { imageAspect: '3:2' })).statusCode,
     ).toBe(400);
+  });
+
+  it('stores the colour of the bands and refuses anything but a hex colour', async () => {
+    let res = await request('owner', 'PATCH', settingsPath(), { imageBandColor: '#3A5A7C' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().imageBandColor).toBe('#3A5A7C');
+    res = await request('guest', 'GET', settingsPath());
+    expect(res.json().imageBandColor).toBe('#3A5A7C');
+    for (const imageBandColor of ['red', '#FFF', 'url(evil)']) {
+      res = await request('owner', 'PATCH', settingsPath(), { imageBandColor });
+      expect(res.statusCode).toBe(400);
+    }
+    res = await request('owner', 'PATCH', settingsPath(), { format: 'pdf' });
+    expect(res.json().imageBandColor).toBe('#3A5A7C');
   });
 
   it('keeps a theme that follows the project colour until an accent is chosen', async () => {
