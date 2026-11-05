@@ -976,7 +976,11 @@ test('bands take the chosen colour in any theme, and a selection downloads its f
     );
 
   // White bands from the dark theme, then the very same file from the light theme.
-  await page.emulateMedia({ colorScheme: 'dark' });
+  const theme = (mode: 'dark' | 'light') =>
+    page.evaluate((m) => {
+      document.documentElement.dataset.theme = m;
+    }, mode);
+  await theme('dark');
   const darkToken = await canvasToken();
   await openFirst();
   await radio('9:16').click();
@@ -985,7 +989,7 @@ test('bands take the chosen colour in any theme, and a selection downloads its f
   await radio('Bianco').click();
   const inDark = await save('band-dark.png', () => button('Esporta').click());
   near(await pixelOf(page, inDark.bytes, 540, 10), [255, 255, 255]);
-  await page.emulateMedia({ colorScheme: 'light' });
+  await theme('light');
   expect(await canvasToken()).not.toBe(darkToken);
   await openFirst();
   await expect(radio('Bianco')).toBeChecked();
