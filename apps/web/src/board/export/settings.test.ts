@@ -1,3 +1,4 @@
+import type { Element } from '@inkadra/doc-schema';
 import {
   DEFAULT_EXPORT_PREFERENCES,
   DEFAULT_PROJECT_THEME,
@@ -5,6 +6,7 @@ import {
 } from '@inkadra/shared';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  hasApprovedFrame,
   initialExportState,
   LogoTimeoutError,
   localePaper,
@@ -29,10 +31,13 @@ describe('export settings on the client', () => {
   });
 
   it('recommends a preset for the open view', () => {
-    expect(recommendedPreset('storyboard')).toBe('client-pitch');
-    expect(recommendedPreset('shotlist')).toBe('production-book');
-    expect(recommendedPreset('schedule')).toBe('internal-kickoff');
-    expect(recommendedPreset('canvas')).toBe('client-pitch');
+    expect(recommendedPreset('storyboard', true)).toBe('client-pitch');
+    expect(recommendedPreset('shotlist', true)).toBe('production-book');
+    expect(recommendedPreset('schedule', true)).toBe('internal-kickoff');
+    expect(recommendedPreset('canvas', true)).toBe('client-pitch');
+    // The pitch exports approved frames only: a storyboard without any gets the production book.
+    expect(recommendedPreset('storyboard', false)).toBe('production-book');
+    expect(recommendedPreset('canvas', false)).toBe('client-pitch');
     expect(presetNumber('client-pitch')).toBe(1);
     expect(presetNumber('production-book')).toBe(2);
     expect(presetNumber('internal-kickoff')).toBe(3);
@@ -155,7 +160,7 @@ describe('export settings on the client', () => {
       updatedAt: '2026-10-01T12:00:00.000Z',
     };
     // A project that only uploaded a logo (preset is null, default preferences) selects recommended and keeps Personalizza closed.
-    const logoOnly = initialExportState(baseSettings, 'storyboard', undefined, 'it-IT');
+    const logoOnly = initialExportState(baseSettings, 'storyboard', undefined, 'it-IT', true);
     expect(logoOnly.basePreset).toBe('client-pitch');
     expect(logoOnly.customOpen).toBe(false);
     expect(logoOnly.req.theme).toEqual({ color: 'blue', headingFont: 'inter' });
@@ -169,6 +174,7 @@ describe('export settings on the client', () => {
       'shotlist',
       undefined,
       'it-IT',
+      true,
     );
     expect(mismatch.basePreset).toBe('production-book');
     expect(mismatch.req.what).toBe('shotlist');
@@ -187,6 +193,7 @@ describe('export settings on the client', () => {
       'storyboard',
       undefined,
       'it-IT',
+      true,
     );
     expect(remembered.basePreset).toBe('internal-kickoff');
     expect(remembered.customOpen).toBe(false);
@@ -197,6 +204,7 @@ describe('export settings on the client', () => {
       'storyboard',
       undefined,
       'it-IT',
+      true,
     );
     expect(oldPitch.basePreset).toBe('client-pitch');
     expect(oldPitch.customOpen).toBe(false);
@@ -208,6 +216,7 @@ describe('export settings on the client', () => {
       'storyboard',
       undefined,
       'it-IT',
+      true,
     );
     expect(letterKickoff.basePreset).toBe('internal-kickoff');
     expect(letterKickoff.req.paper).toBe('letter');
@@ -218,6 +227,7 @@ describe('export settings on the client', () => {
       'shotlist',
       undefined,
       'it-IT',
+      true,
     );
     expect(slideBook.req.paper).toBe('a4');
     expect(oldPitch.req).toMatchObject({ paper: 'slide', approvedOnly: true });
@@ -228,11 +238,55 @@ describe('export settings on the client', () => {
       'storyboard',
       undefined,
       'it-IT',
+      true,
     );
     expect(custom.customOpen).toBe(true);
     expect(
       matchesPreset(custom.req, custom.basePreset, 'storyboard', 'it-IT', baseSettings.paper),
     ).toBe(false);
+  });
+
+  it('recommends the pitch from Storyboard only when it has an approved frame to show', () => {
+    const frame = (id: string, extra: Partial<Element> = {}) =>
+      [id, { id, type: 'frame', parent: null, ...extra } as Element] as const;
+    const byId = new Map([frame('a'), frame('b', { approved: true } as Partial<Element>)]);
+    const none = new Map<string, { status: string }>();
+    // Same criterion as the "approved frames only" filter: the shot list flag or the review.
+    expect(hasApprovedFrame(byId, none)).toBe(true);
+    expect(hasApprovedFrame(new Map([frame('a')]), new Map([['a', { status: 'approved' }]]))).toBe(
+      true,
+    );
+    expect(hasApprovedFrame(new Map([frame('a')]), new Map([['a', { status: 'changes' }]]))).toBe(
+      false,
+    );
+    // A frame hidden from guests never reaches the pitch.
+    const hidden = new Map([frame('a', { approved: true, guestHidden: true } as Partial<Element>)]);
+    expect(hasApprovedFrame(hidden, none)).toBe(false);
+
+    const fresh: ExportSettings = {
+      ...DEFAULT_EXPORT_PREFERENCES,
+      logoAssetId: null,
+      logo: null,
+      theme: DEFAULT_PROJECT_THEME,
+      projectColor: 'blue',
+      canEdit: true,
+      updatedAt: null,
+    };
+    expect(initialExportState(fresh, 'storyboard', undefined, 'it-IT', true).basePreset).toBe(
+      'client-pitch',
+    );
+    const empty = initialExportState(fresh, 'storyboard', undefined, 'it-IT', false);
+    expect(empty.basePreset).toBe('production-book');
+    expect(empty.req).toMatchObject({ approvedOnly: false, callSheet: true });
+    // A preset the project remembered still wins.
+    const remembered = initialExportState(
+      { ...fresh, preset: 'client-pitch', updatedAt: '2026-10-01T12:00:00.000Z' },
+      'storyboard',
+      undefined,
+      'it-IT',
+      false,
+    );
+    expect(remembered.basePreset).toBe('client-pitch');
   });
 
   it('sends only what changed, including the remembered preset, and keeps a null paper when the default was kept', () => {

@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { refreshClassifications } from '../../lib/classifications.ts';
 import { useIsPhone } from '../../lib/phone.ts';
-import { getReviews } from '../review-store.ts';
+import { getReviews, useReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
 import { ExportCache } from './cache.ts';
 import type {
@@ -22,6 +22,7 @@ import {
   type ExportSource,
   fetchExportSettings,
   framesOf,
+  hasApprovedFrame,
   initialExportState,
   LogoTimeoutError,
   logoProblem,
@@ -54,6 +55,9 @@ export interface ExportDialogProps {
   onClose: () => void;
 }
 
+/** How long the dialog waits for review statuses before recommending a preset without them. */
+const REVIEWS_WAIT_MS = 1500;
+
 // The engine (pdf-lib, fontkit, Inter) loads only when the dialog opens.
 const engine = () => import('./engine.ts');
 // The pages show the names of the storyboard lists, whichever view opened the dialog.
@@ -70,7 +74,8 @@ export function ExportDialog(props: ExportDialogProps) {
   const { t, i18n } = useTranslation();
   const isPhone = useIsPhone();
   const film = source !== 'canvas';
-  const recommended = recommendedPreset(source);
+  // Settled when the options are first chosen, so the badge and the selection agree.
+  const [recommended, setRecommended] = useState(() => recommendedPreset(source, true));
   const [basePreset, setBasePreset] = useState<ExportPreset | null>(recommended);
   const [customOpen, setCustomOpen] = useState(false);
   const [pageCount, setPageCount] = useState(0);
@@ -84,26 +89,52 @@ export function ExportDialog(props: ExportDialogProps) {
   const [changed, setChanged] = useState(false);
   const dialog = useRef<DialogHandle>(null);
   const initialWhat = props.initialWhat;
+  const [fetched, setFetched] = useState<ExportSettings | 'failed' | null>(null);
   useEffect(() => {
     let live = true;
     fetchExportSettings(projectId).then(
       (loaded) => {
-        if (!live) return;
-        const init = initialExportState(loaded, source, initialWhat, i18n.language);
-        setSettings(loaded);
-        setBasePreset(init.basePreset);
-        setCustomOpen(init.customOpen);
-        setReq(init.req);
-        setSettingsLoaded(true);
+        if (live) setFetched(loaded);
       },
       () => {
-        if (live) setSettingsLoaded(true);
+        if (live) setFetched('failed');
       },
     );
     return () => {
       live = false;
     };
-  }, [projectId, source, initialWhat, i18n.language]);
+  }, [projectId]);
+  // The Storyboard recommends the pitch only with an approved frame, and review statuses may
+  // still be on their way: wait for them briefly rather than switch the choice under the reader.
+  const reviewsStatus = useReviews((s) => s.reviewsStatus);
+  const reviews = useReviews((s) => s.reviews);
+  const [reviewsWaited, setReviewsWaited] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setReviewsWaited(true), REVIEWS_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  const approvalKnown = source !== 'storyboard' || reviewsStatus !== 'loading' || reviewsWaited;
+  useEffect(() => {
+    if (settingsLoaded || !fetched || !approvalKnown) return;
+    const approved = source === 'storyboard' && hasApprovedFrame(store.getSnapshot().byId, reviews);
+    const next = recommendedPreset(source, approved);
+    setRecommended(next);
+    if (fetched === 'failed') {
+      setBasePreset(next);
+      setReq((r) => ({
+        ...presetChoices(next, source, initialWhat, i18n.language),
+        logo: r.logo,
+        theme: r.theme,
+      }));
+    } else {
+      const init = initialExportState(fetched, source, initialWhat, i18n.language, approved);
+      setSettings(fetched);
+      setBasePreset(init.basePreset);
+      setCustomOpen(init.customOpen);
+      setReq(init.req);
+    }
+    setSettingsLoaded(true);
+  }, [settingsLoaded, fetched, approvalKnown, source, store, reviews, initialWhat, i18n.language]);
   const canEdit = settings?.canEdit ?? false;
   const active =
     basePreset && matchesPreset(req, basePreset, source, i18n.language, settings?.paper)

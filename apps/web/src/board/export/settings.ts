@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
+import { type Element, hiddenFromGuests } from '@inkadra/doc-schema';
 import {
   type Asset,
   DEFAULT_EXPORT_PREFERENCES,
@@ -10,6 +12,7 @@ import {
   type UpdateExportSettings,
 } from '@inkadra/shared';
 import { api } from '../../lib/api.ts';
+import { isApproved } from '../film/film-status.ts';
 import { resolveTheme } from '../theme.ts';
 import { startUpload } from '../uploads.ts';
 import type { ExportRequest, ExportWhat } from './engine.ts';
@@ -31,12 +34,32 @@ export function presetNumber(preset: ExportPreset): 1 | 2 | 3 {
 
 /**
  * The preset marked "Recommended" for the open view: Storyboard → Client pitch, Shot list →
- * Production book, Schedule → Internal kickoff.
+ * Production book, Schedule → Internal kickoff. The pitch exports approved frames only, so a
+ * storyboard without any (`approvedFrames` false) gets the production book instead of an empty
+ * PDF.
  */
-export function recommendedPreset(source: ExportSource): ExportPreset {
+export function recommendedPreset(source: ExportSource, approvedFrames: boolean): ExportPreset {
   if (source === 'shotlist') return 'production-book';
   if (source === 'schedule') return 'internal-kickoff';
+  if (source === 'storyboard' && !approvedFrames) return 'production-book';
   return 'client-pitch';
+}
+
+/**
+ * Whether the client pitch has a frame to show: approved as its "approved frames only" filter
+ * counts it, and not hidden from guests.
+ */
+export function hasApprovedFrame(
+  byId: ReadonlyMap<string, Element>,
+  reviews: ReadonlyMap<string, { status: string }>,
+): boolean {
+  const lookup = (id: string) => byId.get(id);
+  for (const el of byId.values()) {
+    if (el.type === 'frame' && isApproved(el, reviews) && !hiddenFromGuests(el.id, lookup)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export type PresetChoices = Omit<ExportRequest, 'logo' | 'theme'>;
@@ -188,14 +211,15 @@ function isDefaultPreferences(prefs: ExportPreferences): boolean {
 export function initialExportState(
   loaded: ExportSettings,
   source: ExportSource,
-  initialWhat?: ExportWhat,
-  language?: string,
+  initialWhat: ExportWhat | undefined,
+  language: string | undefined,
+  approvedFrames: boolean,
 ): {
   basePreset: ExportPreset;
   customOpen: boolean;
   req: ExportRequest;
 } {
-  const recommended = recommendedPreset(source);
+  const recommended = recommendedPreset(source, approvedFrames);
   const {
     logo,
     logoAssetId: _id,

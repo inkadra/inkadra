@@ -9,6 +9,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import itLocale from '../../i18n/it.json';
+import { type ReviewsState, setReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
 import { ExportDialog } from './ExportDialog.tsx';
 
@@ -43,6 +44,24 @@ vi.mock('../../lib/api.ts', () => ({
   },
 }));
 
+/** A board whose frames are `frames`: only what the dialog reads to recommend a preset. */
+function storeWith(...frames: { id: string; approved?: boolean }[]): BoardStore {
+  const byId = new Map(frames.map((f) => [f.id, { type: 'frame', parent: null, ...f }]));
+  return { getSnapshot: () => ({ byId }) } as unknown as BoardStore;
+}
+
+const approvedStore = storeWith({ id: 'f1', approved: true });
+
+const freshSettings: ExportSettings = {
+  ...DEFAULT_EXPORT_PREFERENCES,
+  logoAssetId: null,
+  logo: null,
+  theme: DEFAULT_PROJECT_THEME,
+  projectColor: 'blue',
+  canEdit: true,
+  updatedAt: null,
+};
+
 describe('ExportDialog preset state and customization', () => {
   let host: HTMLDivElement;
   let root: Root;
@@ -54,6 +73,7 @@ describe('ExportDialog preset state and customization', () => {
     root = createRoot(host);
     getMock.mockReset();
     patchMock.mockReset();
+    setReviews({ reviews: new Map(), reviewsStatus: 'ready' });
   });
 
   afterEach(async () => {
@@ -76,7 +96,7 @@ describe('ExportDialog preset state and customization', () => {
       root.render(
         <ExportDialog
           source="storyboard"
-          store={{} as BoardStore}
+          store={approvedStore}
           projectId="p1"
           boardId="b1"
           projectName="Spot Lagunc"
@@ -153,7 +173,7 @@ describe('ExportDialog preset state and customization', () => {
       root.render(
         <ExportDialog
           source="storyboard"
-          store={{} as BoardStore}
+          store={approvedStore}
           projectId="p1"
           boardId="b1"
           projectName="Spot Lagunc"
@@ -215,7 +235,7 @@ describe('ExportDialog preset state and customization', () => {
       root.render(
         <ExportDialog
           source="storyboard"
-          store={{} as BoardStore}
+          store={approvedStore}
           projectId="p1"
           boardId="b1"
           projectName="Spot Lagunc"
@@ -252,6 +272,74 @@ describe('ExportDialog preset state and customization', () => {
     );
     expect(host.querySelector('.export__disclosure')?.getAttribute('aria-expanded')).toBe('false');
     expect(host.querySelector<HTMLButtonElement>('.export__submit')?.disabled).toBe(false);
+  });
+
+  const renderStoryboard = (store: BoardStore) =>
+    act(async () => {
+      root.render(
+        <ExportDialog
+          source="storyboard"
+          store={store}
+          projectId="p1"
+          boardId="b1"
+          projectName="Spot Lagunc"
+          boardTitle="Storyboard"
+          boards={null}
+          selection={new Set()}
+          visible={null}
+          onClose={() => {}}
+        />,
+      );
+    });
+  const checked = () =>
+    host.querySelector<HTMLInputElement>('input.export__preset-input:checked')?.value;
+  const badged = () =>
+    host
+      .querySelector('.export__preset-badge')
+      ?.closest('.export__preset')
+      ?.querySelector<HTMLInputElement>('input')?.value;
+
+  it('recommends the production book from a Storyboard without approved frames, and still allows the pitch', async () => {
+    getMock.mockResolvedValue(freshSettings);
+    await renderStoryboard(storeWith({ id: 'f1' }, { id: 'f2' }));
+    expect(checked()).toBe('production-book');
+    expect(badged()).toBe('production-book');
+    // Picked by hand, the pitch stays available: its PDF says no frame is approved yet.
+    await act(async () =>
+      host.querySelector<HTMLInputElement>('input[value="client-pitch"]')?.click(),
+    );
+    expect(checked()).toBe('client-pitch');
+    expect(host.querySelector<HTMLButtonElement>('.export__submit')?.disabled).toBe(false);
+  });
+
+  it('recommends the pitch for a frame approved in review, waiting for review statuses to load', async () => {
+    getMock.mockResolvedValue(freshSettings);
+    setReviews({ reviews: new Map(), reviewsStatus: 'loading' });
+    await renderStoryboard(storeWith({ id: 'f1' }));
+    // No guess while the statuses are on their way: the presets appear once they are known.
+    expect(host.querySelector('.export__preset-input')).toBeNull();
+    await act(async () =>
+      setReviews({
+        reviews: new Map([['f1', { status: 'approved' }]]) as unknown as ReviewsState['reviews'],
+        reviewsStatus: 'ready',
+      }),
+    );
+    expect(checked()).toBe('client-pitch');
+    expect(badged()).toBe('client-pitch');
+  });
+
+  it('recommends without review statuses that never arrive', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      getMock.mockResolvedValue(freshSettings);
+      setReviews({ reviews: new Map(), reviewsStatus: 'loading' });
+      await renderStoryboard(storeWith({ id: 'f1' }));
+      expect(host.querySelector('.export__preset-input')).toBeNull();
+      await act(async () => vi.advanceTimersByTime(1500));
+      expect(checked()).toBe('production-book');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('hides "Ricordato per questo progetto" when the user cannot edit project settings and preserves canvas scope across presets', async () => {
