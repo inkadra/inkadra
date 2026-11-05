@@ -24,5 +24,7 @@ tag.
 - **Release notes** stay written in Italian and English (`<version>.<lang>.md`): the release email
   of another language has translated surroundings and English highlights.
 - **Accounts with no language.** Nothing sets `user.locale` at sign-up, so an account that never
-  opened the language setting has none, and its emails are in Italian. That stays as it is for now,
-  to avoid changing the language of existing people's emails without notice.
+  opened the language setting has none, and its emails are in English like any unknown language.
+  The web app saves the language in use the next time such an account opens it, so people who come
+  back get emails in their own language. Until then, and for those who never come back, existing
+  Italian accounts that used to get Italian emails get English ones.

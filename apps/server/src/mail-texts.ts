@@ -68,11 +68,7 @@ export function rowWhen(at: Date, now: Date, texts: Texts, timeZone?: string): s
 const TEXTS: Record<string, Texts> = { it, en, es, de, fr, pt };
 
 export function mailText(who: { locale?: string | null }): Texts {
-  // shortcut: nothing sets `locale` at sign-up, so an account that never opened the language
-  // setting has none, and today it reads Italian. It stays so until that is decided: a plain
-  // English default would switch those people's emails without notice.
-  if (!who.locale) return it;
-  return TEXTS[who.locale.slice(0, 2).toLowerCase()] ?? en;
+  return TEXTS[who.locale?.slice(0, 2).toLowerCase() ?? ''] ?? en;
 }
 
 export type { Texts as MailTexts };

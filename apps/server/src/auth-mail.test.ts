@@ -27,11 +27,11 @@ describe('localized security notifications', () => {
     expect(text.lang).toBe(locale);
   });
 
-  it('picks the base language, English when unknown, Italian for an account with none', () => {
+  it('picks the base language, English when unknown or missing', () => {
     expect(mailText({ locale: 'fr-CA' }).lang).toBe('fr');
     expect(mailText({ locale: 'PT-br' }).lang).toBe('pt');
     expect(mailText({ locale: 'xx' }).lang).toBe('en');
-    expect(mailText({ locale: null }).lang).toBe('it');
-    expect(mailText({}).lang).toBe('it');
+    expect(mailText({ locale: null }).lang).toBe('en');
+    expect(mailText({}).lang).toBe('en');
   });
 });
