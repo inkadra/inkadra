@@ -58,7 +58,7 @@ Documents are migrated when the collaboration server loads them. The schema free
   text, put the English one in `es`, `de`, `fr` and `pt`: English is what those users would see
   anyway. A count needs `_one` and `_other`; `_many` is optional and defaults to `_other`. The
   emails (`apps/server/src/mail-texts/`) and the clipper (`apps/clipper/public/_locales/`) follow
-  the same rule. See [decision 0072](docs/decisions/0072-more-languages-english-fallback.md).
+  the same rule. See [decision 0073](docs/decisions/0073-more-languages-english-fallback.md).
 - Styling uses the tokens of `packages/ui` (`var(--ink-…)`). Colour carries meaning only:
   blue for selection, focus and the primary action; everything else stays neutral.
   To change a token edit `tokens.ts` and run `pnpm --filter @inkadra/ui tokens`.

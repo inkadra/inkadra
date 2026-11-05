@@ -1,4 +1,4 @@
-# 0072 — More languages, English fallback, catalogues on demand
+# 0073 — More languages, English fallback, catalogues on demand
 
 Inkadra spoke Italian and English, and anyone else got Italian. It now also speaks Spanish, German,
 French and Brazilian Portuguese, the first languages chosen to reach people outside Italy. The code
