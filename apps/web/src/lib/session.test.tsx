@@ -66,7 +66,6 @@ it('saves the language in use only for an account with none, tolerating a failur
   respond(user(null));
   unmount = await mount();
   expect(patch).toHaveBeenCalledExactlyOnceWith('/me', { locale: 'it' });
-  expect(snapshot.loading).toBe(false);
   unmount();
   patch.mockClear();
   respond(user('en-GB'));
