@@ -1,18 +1,26 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { feedbackAttachment, feedbackReport, instanceSetting, user } from '../db/schema.ts';
+import {
+  feedbackAttachment,
+  feedbackReport,
+  instanceSetting,
+  notification,
+  user,
+} from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 import { sweepFeedback } from './feedback-routes.ts';
@@ -42,10 +50,15 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
   let issueStatus = 200;
   let dropWrites = false;
   let relaySent = 0;
+  /** Everything that reached the fake GitHub or relay. */
+  const outgoing: string[] = [];
+  /** Runs while a delivery has its claim and is waiting for an answer from outside. */
+  let whileDelivering: (() => Promise<unknown>) | null = null;
   const fake = createServer(async (req, res) => {
     let input = '';
     for await (const chunk of req) input += chunk;
     res.setHeader('content-type', 'application/json');
+    if (req.url === '/challenge' || req.method === 'GET') await whileDelivering?.();
     if (req.url === '/challenge') {
       res.end(
         JSON.stringify({ ticket: 'fake', seed: 'seed', bits: 0, nbf: Date.now() + relayWait }),
@@ -54,6 +67,7 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     }
     if (req.url === '/report') {
       body = input;
+      outgoing.push(input);
       relaySent += 1;
       res.statusCode = 201;
       res.end(JSON.stringify({ number: 901 }));
@@ -72,6 +86,7 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     }
     if (req.method === 'POST') {
       body = input;
+      outgoing.push(input);
       if (req.url?.endsWith('/comments')) commentCount++;
       else issueCount++;
       res.end(JSON.stringify({ number: 142 }));
@@ -559,6 +574,145 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
       url: '/api/v1/feedback/settings',
       headers: headers(),
       payload: { destination: 'github', repository: 'test/feedback', guests: false },
+    });
+  });
+  describe('deleting a report', () => {
+    const remove = (id: string, who: Record<string, string>) =>
+      app.inject({ method: 'DELETE', url: `/api/v1/feedback/reports/${id}`, headers: who });
+    const row = async (id: string) =>
+      (await db.select().from(feedbackReport).where(eq(feedbackReport.id, id)))[0];
+    /** Letters and digits only: the issue title escapes punctuation. */
+    const uniqueTitle = () => `deleted${randomUUID().replaceAll('-', '')}`;
+    const sentOf = (title: string) => outgoing.filter((sent) => sent.includes(title)).length;
+    const retry = (id: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/v1/feedback/reports/${id}/retry`,
+        headers: headers(),
+        payload: {},
+      });
+    /** Refused by GitHub at the first attempt, so it stays pending and due. */
+    const pending = async (reporter: Record<string, string>, title: string) => {
+      issueStatus = 429;
+      const queued = await app.inject({
+        method: 'POST',
+        url: '/api/v1/feedback',
+        headers: reporter,
+        payload: submit({ title, diagnostics: {} }),
+      });
+      issueStatus = 200;
+      expect(queued.json().delivery).toBe('pending');
+      await db
+        .update(feedbackReport)
+        .set({ nextAttemptAt: new Date(0) })
+        .where(eq(feedbackReport.id, queued.json().id));
+      return queued.json().id as string;
+    };
+    const settings = (destination: string, repository: string | null) =>
+      app.inject({
+        method: 'PUT',
+        url: '/api/v1/feedback/settings',
+        headers: headers(),
+        payload: { destination, repository, guests: false },
+      });
+
+    it('is for administrators, and takes the attachments with the report', async () => {
+      await settings('inbox', null);
+      const reporter = await newReporter('delete');
+      const uploaded = await uploadOne(reporter);
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/v1/feedback',
+        headers: reporter,
+        payload: submit({ diagnostics: {}, attachments: [uploaded.json()] }),
+      });
+      const { id } = created.json();
+      const file = uploaded.json().id;
+      const link = `/api/v1/feedback/attachments/${file}`;
+      expect((await app.inject({ url: link })).statusCode).toBe(200);
+      const stored = join(sharedDeps.root, 'files', 'feedback', file);
+      expect(existsSync(stored)).toBe(true);
+
+      expect((await remove(id, reporter)).statusCode).toBe(403);
+      expect(
+        (await app.inject({ method: 'DELETE', url: `/api/v1/feedback/reports/${id}` })).statusCode,
+      ).toBe(401);
+      expect(await row(id)).toBeDefined();
+
+      expect((await remove(id, headers())).statusCode).toBe(204);
+      expect(await row(id)).toBeUndefined();
+      expect(
+        await db.select().from(feedbackAttachment).where(eq(feedbackAttachment.id, file)),
+      ).toEqual([]);
+      expect((await app.inject({ url: link })).statusCode).toBe(404);
+      // In-process jobs run after the answer, as the queue would.
+      await vi.waitFor(() => expect(existsSync(stored)).toBe(false));
+      expect((await remove(id, headers())).statusCode).toBe(404);
+
+      // The notification names no report: it still opens the list, without this one.
+      const inbox = await app.inject({ url: '/api/v1/me/notifications', headers: headers() });
+      expect(inbox.json().items.some((n: { type: string }) => n.type === 'feedback_received')).toBe(
+        true,
+      );
+      const list = await app.inject({ url: '/api/v1/feedback/reports', headers: headers() });
+      expect(list.json().items.some((r: { id: string }) => r.id === id)).toBe(false);
+    });
+
+    it('sends nothing for a pending report deleted before its turn', async () => {
+      await settings('github', 'test/feedback');
+      const title = uniqueTitle();
+      const id = await pending(await newReporter('delete-pending'), title);
+      expect((await remove(id, headers())).statusCode).toBe(204);
+      await sweepFeedback(app);
+      expect(sentOf(title)).toBe(0);
+      expect(await row(id)).toBeUndefined();
+    });
+
+    it('sends nothing for a report deleted while it is being delivered', async () => {
+      await settings('github', 'test/feedback');
+      const title = uniqueTitle();
+      const id = await pending(await newReporter('delete-claimed'), title);
+      let during: number | undefined;
+      whileDelivering = async () => {
+        whileDelivering = null;
+        // The delivery holds the claim: the report reads "uncertain" and can still be deleted.
+        expect((await row(id))?.delivery).toBe('uncertain');
+        during = (await remove(id, headers())).statusCode;
+      };
+      expect((await retry(id)).statusCode).toBe(200);
+      expect(during).toBe(204);
+      expect(sentOf(title)).toBe(0);
+      expect(await row(id)).toBeUndefined();
+    });
+
+    it('sends nothing to the relay for a report deleted while it waits for its ticket', async () => {
+      config.FEEDBACK_RELAY_URL = `http://127.0.0.1:${(fake.address() as AddressInfo).port}`;
+      try {
+        await settings('relay', null);
+        const title = uniqueTitle();
+        // The turn is far away, so it stays queued; the retry below finds its turn has come.
+        relayWait = 300000;
+        const queued = await app.inject({
+          method: 'POST',
+          url: '/api/v1/feedback',
+          headers: await newReporter('delete-relay'),
+          payload: submit({ title, diagnostics: {}, expectedDestination: 'relay' }),
+        });
+        relayWait = 0;
+        expect(queued.json().delivery).toBe('pending');
+        const { id } = queued.json();
+        whileDelivering = async () => {
+          whileDelivering = null;
+          await remove(id, headers());
+        };
+        expect((await retry(id)).statusCode).toBe(200);
+        expect(whileDelivering).toBeNull();
+        expect(sentOf(title)).toBe(0);
+        expect(await row(id)).toBeUndefined();
+      } finally {
+        config.FEEDBACK_RELAY_URL = '';
+        await settings('github', 'test/feedback');
+      }
     });
   });
   it('reads uploads as a stream, stops at the limit and leaves nothing behind', async () => {
