@@ -1,14 +1,8 @@
 import type { Notification } from '@inkadra/shared';
 import { dark, light } from '@inkadra/ui/tokens';
 import { describe, expect, it } from 'vitest';
-import { rowWhen, mailText } from './mail-texts.ts';
-import {
-  inviteMail,
-  magicLinkMail,
-  notificationMail,
-  resetMail,
-  securityMail,
-} from './mails.ts';
+import { mailText, rowWhen } from './mail-texts.ts';
+import { inviteMail, magicLinkMail, notificationMail, resetMail, securityMail } from './mails.ts';
 
 const TZ = 'Europe/Rome';
 const now = new Date('2026-11-05T17:45:00Z');
@@ -140,8 +134,12 @@ describe('notification emails', () => {
     );
     expect(text).toContain('Marco Riva ha cambiato la revisione: modifiche richieste');
     // Status colours: green approved, orange changes requested, from the tokens.
-    expect(m.html).toContain(`color:${light['tag-green']};background-color:${light['tag-green-bg']}`);
-    expect(m.html).toContain(`color:${light['tag-orange']};background-color:${light['tag-orange-bg']}`);
+    expect(m.html).toContain(
+      `color:${light['tag-green']};background-color:${light['tag-green-bg']}`,
+    );
+    expect(m.html).toContain(
+      `color:${light['tag-orange']};background-color:${light['tag-orange-bg']}`,
+    );
     expect(m.html).toContain(`.ink-bg-card{background-color:${dark['surface-1']}!important}`);
   });
 
@@ -185,7 +183,9 @@ describe('notification emails', () => {
     expect(m.text).toContain('Il tuo accesso a Storyboard scade l’8 novembre, 23:59 CET');
     expect(m.text).toContain('Marco Riva perde l’accesso l’8 novembre, 23:59 CET');
     expect(m.text).toContain('Giulia Conti ha una novità per te');
-    expect(m.html).toMatch(/display:none[^>]*>Una menzione e il tuo accesso a Storyboard che scade\./);
+    expect(m.html).toMatch(
+      /display:none[^>]*>Una menzione e il tuo accesso a Storyboard che scade\./,
+    );
   });
 
   it('escapes hostile names, excerpts and titles', () => {
@@ -221,9 +221,15 @@ describe('account emails', () => {
     });
     expectSafeDocument(m.html, locale);
     expect(m.html).not.toContain('"onmouseover');
-    expect(m.html).toContain('href="https://ink.example.com/join/abc&#34;onmouseover=&#34;alert(1)"');
-    expect(m.text).toContain(locale === 'it' ? 'Ruolo: Editor: può creare' : 'Role: Editor: can create');
-    expect(m.text).toContain(locale === 'it' ? 'Scade: 12 novembre 2026' : 'Expires: 12 November 2026');
+    expect(m.html).toContain(
+      'href="https://ink.example.com/join/abc&#34;onmouseover=&#34;alert(1)"',
+    );
+    expect(m.text).toContain(
+      locale === 'it' ? 'Ruolo: Editor: può creare' : 'Role: Editor: can create',
+    );
+    expect(m.text).toContain(
+      locale === 'it' ? 'Scade: 12 novembre 2026' : 'Expires: 12 November 2026',
+    );
     expect(m.html).toContain(locale === 'it' ? 'Invito valido 7 giorni' : 'valid for 7 days');
   });
 
@@ -248,7 +254,12 @@ describe('account emails', () => {
   });
 
   it('sends sign-in and reset links with the instance name', () => {
-    const magic = magicLinkMail('a@example.com', { locale: 'en' }, 'https://x.test/m?t=1', 'Aurora');
+    const magic = magicLinkMail(
+      'a@example.com',
+      { locale: 'en' },
+      'https://x.test/m?t=1',
+      'Aurora',
+    );
     expect(magic.subject).toBe('Your sign-in link for Aurora');
     expect(magic.text.match(/https?:\/\/\S+/)?.[0]).toBe('https://x.test/m?t=1');
     expect(magic.html).toContain('<strong');
@@ -264,7 +275,10 @@ describe('account emails', () => {
     const token = securityMail(
       user,
       'token',
-      { ...instance, token: { name: 'CLI portatile', expiresAt: new Date('2027-02-03T12:00:00Z') } },
+      {
+        ...instance,
+        token: { name: 'CLI portatile', expiresAt: new Date('2027-02-03T12:00:00Z') },
+      },
       at,
       TZ,
     );
@@ -284,12 +298,18 @@ describe('account emails', () => {
       TZ,
     );
     expect(app.text).not.toContain('Scade');
-    const password = securityMail({ email: 'a@example.com', locale: 'en' }, 'password', instance, at);
+    const password = securityMail(
+      { email: 'a@example.com', locale: 'en' },
+      'password',
+      instance,
+      at,
+    );
     expect(password.subject).toBe('Password changed on Recore Studio');
     expect(password.text).not.toContain('Token:');
     expect(securityMail(user, 'twoFactor', instance).subject).toBe(
       'Verifica in due passaggi disattivata su Recore Studio',
     );
-    for (const m of [token, app, password]) expect(m.text).not.toMatch(/\bIP\b|device|dispositivo/i);
+    for (const m of [token, app, password])
+      expect(m.text).not.toMatch(/\bIP\b|device|dispositivo/i);
   });
 });

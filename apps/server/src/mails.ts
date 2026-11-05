@@ -173,7 +173,9 @@ function item(
   });
   if (n.type === 'access_expiring' || n.type === 'access_expired') {
     const mine = !n.subject || n.subject.id === me;
-    const when = n.accessExpiresAt ? accessWhen(new Date(n.accessExpiresAt), t.locale, timeZone) : '';
+    const when = n.accessExpiresAt
+      ? accessWhen(new Date(n.accessExpiresAt), t.locale, timeZone)
+      : '';
     if (mine && n.type === 'access_expiring') {
       const sentence = t.ownExpiring(where, when);
       return { ...made(t.ownExpired.who, sentence), sentence, banner: sentence };

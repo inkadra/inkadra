@@ -45,9 +45,7 @@ function over(a: string, b: string, alpha: number) {
 }
 
 const colour = (theme: Record<ColorToken, string>, role: Role) =>
-  role === 'tileInk2'
-    ? over(theme['logo-ink'], theme['logo-tile'], 0.55)
-    : theme[ROLES[role]];
+  role === 'tileInk2' ? over(theme['logo-ink'], theme['logo-tile'], 0.55) : theme[ROLES[role]];
 
 const ALL_ROLES = [...Object.keys(ROLES), 'tileInk2'] as Role[];
 const DARK_CSS = ALL_ROLES.map((role) => {
@@ -286,7 +284,8 @@ function text(c: MailContent) {
   if (c.banners?.length) blocks.push(c.banners);
   if (c.facts?.length) blocks.push(c.facts.map(([k, v]) => `${k}: ${v}`));
   if (c.row) blocks.push(textRow(c.row));
-  for (const g of c.groups ?? []) blocks.push([g.title, ...g.rows.flatMap((r) => textRow(r, '- '))]);
+  for (const g of c.groups ?? [])
+    blocks.push([g.title, ...g.rows.flatMap((r) => textRow(r, '- '))]);
   if (c.list?.length) blocks.push(c.list.map((item, i) => `${i + 1}. ${item}`));
   blocks.push([`${c.action.label}: ${c.action.url}`, ...(c.note ? [c.note.text] : [])]);
   const { footer } = c;

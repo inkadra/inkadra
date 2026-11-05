@@ -388,7 +388,12 @@ function createAuthInstance(
                   return;
                 sendDetached(
                   mailer,
-                  resetMail(user.email, user as { locale?: string | null }, url, config.INSTANCE_NAME),
+                  resetMail(
+                    user.email,
+                    user as { locale?: string | null },
+                    url,
+                    config.INSTANCE_NAME,
+                  ),
                   deps.log,
                 );
               })().catch(() => security.reportError());

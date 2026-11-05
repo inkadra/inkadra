@@ -86,7 +86,9 @@ it('reads bundled notes and renders highlights in the common branded layout', as
   expect(mail.text).toContain('HTTPS installations now use');
   expect(mail.text).not.toContain('##');
   expect(mail.html).toContain('Disattivale qui');
-  expect(mail.text).toContain('Disattivale qui: https://boards.example.com/settings?section=notifications');
+  expect(mail.text).toContain(
+    'Disattivale qui: https://boards.example.com/settings?section=notifications',
+  );
 });
 
 const url = process.env.DATABASE_URL;

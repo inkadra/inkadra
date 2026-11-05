@@ -10,8 +10,8 @@ import {
   user,
   userPreference,
 } from './db/schema.ts';
-import { mailText } from './mail-texts.ts';
 import { renderMail } from './mail-layout.ts';
+import { mailText } from './mail-texts.ts';
 import type { Mailer } from './mailer.ts';
 
 // Strict SemVer, including numeric pre-release identifiers and build metadata.

@@ -14,7 +14,9 @@ const it = {
   locale: 'it-IT',
   fallback: 'Se il pulsante non funziona, copia questo indirizzo nel browser:',
   sentBy: (instance: string) =>
-    instance === 'Inkadra' ? 'Email inviata da Inkadra.' : `Email inviata da ${instance} con Inkadra.`,
+    instance === 'Inkadra'
+      ? 'Email inviata da Inkadra.'
+      : `Email inviata da ${instance} con Inkadra.`,
   join: (parts: string[]) =>
     parts.length > 1 ? `${parts.slice(0, -1).join(', ')} e ${parts.at(-1)}` : (parts[0] ?? ''),
 
@@ -123,7 +125,8 @@ const it = {
     label
       ? { who: `Link ${label}`, what: 'è stato aperto da un ospite' }
       : { who: 'Un ospite', what: 'ha aperto un link di condivisione' },
-  ownExpiring: (where: string, when: string) => `Il tuo accesso a ${where} scade ${il(when)}${when}`,
+  ownExpiring: (where: string, when: string) =>
+    `Il tuo accesso a ${where} scade ${il(when)}${when}`,
   ownExpiringTail: (where: string) => `il tuo accesso a ${where} che scade`,
   ownExpired: { who: 'Il tuo accesso', what: 'è scaduto' },
   otherExpiring: (when: string) => `perde l’accesso ${il(when)}${when}`,
@@ -136,7 +139,8 @@ const it = {
     task_assigned: (n: number) => plural(n, 'un compito', 'compiti'),
   } as Record<string, (n: number) => string>,
   more: 'altro da guardare',
-  singleSubject: (sentence: string, where: string) => (where ? `${sentence} su ${where}` : sentence),
+  singleSubject: (sentence: string, where: string) =>
+    where ? `${sentence} su ${where}` : sentence,
   digestTitle: (n: number, daily: boolean) => `${n} novità${daily ? ' da ieri' : ''}`,
   digestSubject: (n: number, instance: string, summary: string) =>
     `${n} novità su ${instance}${summary ? `: ${summary}` : ''}`,
