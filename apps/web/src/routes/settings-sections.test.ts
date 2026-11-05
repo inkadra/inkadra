@@ -209,6 +209,10 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Open registration', 'Registrazione aperta'],
     ['Invitation only', 'Solo su invito'],
     ['Closed registration', 'Registrazione chiusa'],
+    [
+      'Require two-step verification for administrators',
+      'Richiedi la verifica in due passaggi agli amministratori',
+    ],
   ],
   instance: [
     ['Instance name', 'Nome dell’istanza'],
@@ -216,8 +220,55 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Version', 'Versione'],
     ['Diagnostics', 'Diagnostica'],
     ['Instance status', 'Stato dell’istanza'],
+    ['Inkadra news', 'Novità di Inkadra'],
+    ['Reports', 'Segnalazioni'],
+    ['Send to the Inkadra developers', 'Invia agli sviluppatori di Inkadra'],
+    ['Destination', 'Destinazione'],
+    ['Repository', 'Repository'],
+    ['GitHub token', 'Token GitHub'],
+    ['Guests can report', 'Gli ospiti possono segnalare'],
+    ['Attachment retention', 'Conservazione degli allegati'],
+    ['Reports received', 'Segnalazioni ricevute'],
   ],
 };
+
+/** The labels each page shows, by translation key; every one must find its page. */
+const PAGE_LABELS: Record<string, string[]> = {
+  instance: [
+    'admin.instanceName',
+    'settingsUi.about.url',
+    'settingsUi.about.version',
+    'settingsUi.notifications.releaseNews',
+    'settingsUi.status.title',
+    'feedback.settingsTitle',
+    'feedback.developers',
+    'feedback.destination',
+    'feedback.repository',
+    'feedback.token',
+    'feedback.allowGuests',
+    'feedback.retention',
+    'feedback.received',
+  ],
+  registration: ['settingsUi.registration.label', 'admin.requireAdminTwoFactor'],
+  backups: ['backups.nightly'],
+};
+
+it('finds every setting label shown on a page, in both languages', async () => {
+  const i18n = i18next.createInstance();
+  await i18n.init({
+    lng: 'en',
+    resources: { en: { translation: en }, it: { translation: itLocale } },
+  });
+  const t = (key: string, options?: { lng: string }) => i18n.t(key, options);
+  for (const [id, keys] of Object.entries(PAGE_LABELS))
+    for (const key of keys)
+      for (const lng of ['en', 'it']) {
+        const label = i18n.t(key, { lng });
+        // "Attachment retention" used to find nothing: the Reports card was missing.
+        const pages = matchSettings(SETTINGS_PAGES, label, t, ['it', 'en']).map((m) => m.page.id);
+        expect(pages, `${lng}: ${label}`).toContain(id);
+      }
+});
 
 it('lists the same settings in the same order in every language', () => {
   const keywords = (locale: typeof en, page: string) =>

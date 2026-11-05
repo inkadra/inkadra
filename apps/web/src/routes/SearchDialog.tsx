@@ -12,6 +12,8 @@ import { loadProjects } from './projects.ts';
 import './search.css';
 
 const DEBOUNCE_MS = 180;
+/** The longest `q` the server accepts (`SearchQuery`); longer ones are refused. */
+const MAX_QUERY = 200;
 
 /** "#luce notte" searches the tag "luce" for "notte"; "notte" searches text only. */
 export function parseQuery(
@@ -20,11 +22,17 @@ export function parseQuery(
 ): { q?: string; tag?: string } {
   const text = input.trim();
   if (pickedTag && (text === `#${pickedTag}` || text.startsWith(`#${pickedTag} `))) {
-    const rest = text.slice(pickedTag.length + 1).trim();
+    const rest = text
+      .slice(pickedTag.length + 1)
+      .trim()
+      .slice(0, MAX_QUERY);
     return { tag: pickedTag, ...(rest.length >= 2 ? { q: rest } : {}) };
   }
   const tag = /(^|\s)#(\S+)/.exec(text)?.[2];
-  const q = text.replace(/(^|\s)#\S+/, ' ').trim();
+  const q = text
+    .replace(/(^|\s)#\S+/, ' ')
+    .trim()
+    .slice(0, MAX_QUERY);
   return { ...(q.length >= 2 ? { q } : {}), ...(tag ? { tag } : {}) };
 }
 

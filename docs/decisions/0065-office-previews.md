@@ -11,7 +11,11 @@ other originals, server secrets or the worker's home directory.
 ## Decision
 
 Only `OFFICE_PREVIEWS=true` enables conversion. A Linux worker invokes LibreOffice through
-bubblewrap. The converter gets:
+bubblewrap. Where `OFFICE_PREVIEWS=true`, the `media` job of an Office document hands it to a
+separate `office` queue, and only a worker with `OFFICE_PREVIEWS=true` and LibreOffice installed
+reads that queue: an `all` container beside an `-office` worker never takes a conversion it
+cannot do. Without the variable a worker reads Office documents itself (grids, icon cards) and
+nothing is queued for a worker that may not exist. The converter gets:
 
 - all namespaces unshared (network, PID, IPC, UTS, cgroup) and a **required** user namespace
   (`--unshare-user`, not "if possible"), capabilities dropped, no new session;
@@ -91,7 +95,8 @@ The default image size is unchanged. The published `-office` image (`--build-arg
 on top of `MEDIA=true`) adds Debian LibreOffice Writer, Calc, Impress, fonts, Poppler and
 bubblewrap: budget approximately 600–800 MiB extra uncompressed
 (depending on architecture and Debian version); measure the exact tag in your registry.
-Only the separate worker needs that image. Linux must permit unprivileged user namespaces;
+Only the separate worker needs that image; the other worker roles (or the `all` container)
+set `OFFICE_PREVIEWS=true` too, without LibreOffice, so that Office documents reach it. Linux must permit unprivileged user namespaces;
 under Docker that takes a custom seccomp profile, never `seccomp=unconfined` nor a privileged
 container; operators must not bypass a failed sandbox. See [self-hosting](../self-hosting/office.md).
 
