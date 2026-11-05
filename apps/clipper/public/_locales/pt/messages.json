@@ -4,35 +4,35 @@
     "description": "Name of the extension."
   },
   "ext_description": {
-    "message": "Save images, text and links to an Inkadra board.",
+    "message": "Salve imagens, texto e links em um quadro do Inkadra.",
     "description": "Store description."
   },
   "action_title": {
-    "message": "Save to Inkadra",
+    "message": "Salvar no Inkadra",
     "description": "Tooltip of the toolbar button."
   },
   "command_save_page": {
-    "message": "Save the page to the last board",
+    "message": "Salvar a página no último quadro",
     "description": "Keyboard shortcut description."
   },
   "menu_image": {
-    "message": "Save to Inkadra",
+    "message": "Salvar no Inkadra",
     "description": "Context menu on an image."
   },
   "menu_selection": {
-    "message": "Save selection to Inkadra",
+    "message": "Salvar seleção no Inkadra",
     "description": "Context menu on selected text."
   },
   "menu_link": {
-    "message": "Save link to Inkadra",
+    "message": "Salvar link no Inkadra",
     "description": "Context menu on a link."
   },
   "menu_page": {
-    "message": "Save page to Inkadra",
+    "message": "Salvar página no Inkadra",
     "description": "Context menu on a page."
   },
   "toast_saved": {
-    "message": "Saved to $BOARD$",
+    "message": "Salvo em $BOARD$",
     "description": "After saving.",
     "placeholders": {
       "board": {
@@ -42,167 +42,167 @@
     }
   },
   "toast_open_board": {
-    "message": "Open board",
+    "message": "Abrir quadro",
     "description": "Link to the board."
   },
   "action_settings": {
-    "message": "Settings"
+    "message": "Configurações"
   },
   "action_connect": {
-    "message": "Connect"
+    "message": "Conectar"
   },
   "action_reconnect": {
-    "message": "Reconnect"
+    "message": "Reconectar"
   },
   "action_disconnect": {
-    "message": "Disconnect"
+    "message": "Desconectar"
   },
   "action_save_page": {
-    "message": "Save page"
+    "message": "Salvar página"
   },
   "action_expand": {
-    "message": "Show sub-boards"
+    "message": "Mostrar subquadros"
   },
   "action_collapse": {
-    "message": "Hide sub-boards"
+    "message": "Ocultar subquadros"
   },
   "field_board": {
-    "message": "Board"
+    "message": "Quadro"
   },
   "field_column": {
-    "message": "Column"
+    "message": "Coluna"
   },
   "field_note": {
-    "message": "Note"
+    "message": "Nota"
   },
   "field_tags": {
     "message": "Tags"
   },
   "field_server": {
-    "message": "Server address"
+    "message": "Endereço do servidor"
   },
   "board_search": {
-    "message": "Search for a board…"
+    "message": "Buscar um quadro…"
   },
   "board_none_selected": {
-    "message": "No board chosen"
+    "message": "Nenhum quadro escolhido"
   },
   "boards_none": {
-    "message": "No boards you can add cards to."
+    "message": "Nenhum quadro em que você possa adicionar cards."
   },
   "boards_none_found": {
-    "message": "No boards found."
+    "message": "Nenhum quadro encontrado."
   },
   "section_recent": {
-    "message": "Recent"
+    "message": "Recentes"
   },
   "section_projects": {
-    "message": "Projects"
+    "message": "Projetos"
   },
   "section_shared": {
-    "message": "Shared with you"
+    "message": "Compartilhados com você"
   },
   "section_search": {
-    "message": "Results"
+    "message": "Resultados"
   },
   "column_unsorted": {
-    "message": "Unsorted"
+    "message": "Não organizados"
   },
   "tags_placeholder": {
-    "message": "separated by commas"
+    "message": "separadas por vírgulas"
   },
   "page_not_web": {
-    "message": "This page cannot be saved."
+    "message": "Esta página não pode ser salva."
   },
   "connect_intro": {
-    "message": "Connect the clipper to your Inkadra server. You will be asked to sign in and allow access."
+    "message": "Conecte o clipper ao seu servidor Inkadra. Será preciso entrar e permitir o acesso."
   },
   "connect_permission": {
-    "message": "Chrome will ask for permission to contact this address only."
+    "message": "O Chrome pedirá permissão para acessar somente este endereço."
   },
   "connect_hint_ids": {
-    "message": "If you built the extension yourself, the administrator must add its ID to CLIPPER_EXTENSION_IDS."
+    "message": "Se você mesmo compilou a extensão, o administrador precisa adicionar o ID dela a CLIPPER_EXTENSION_IDS."
   },
   "connected_as": {
-    "message": "Connected as"
+    "message": "Conectado como"
   },
   "help_title": {
-    "message": "How to use it"
+    "message": "Como usar"
   },
   "help_shortcut": {
-    "message": "Save the page to the last board used:"
+    "message": "Salvar a página no último quadro usado:"
   },
   "help_shortcut_unset": {
-    "message": "no shortcut"
+    "message": "sem atalho"
   },
   "help_shortcut_change": {
-    "message": "Change"
+    "message": "Alterar"
   },
   "help_menus": {
-    "message": "Right-click an image, selected text, a link or the page to save it to the last board chosen from the toolbar button."
+    "message": "Clique com o botão direito em uma imagem, um texto selecionado, um link ou na página para salvar no último quadro escolhido pelo botão da barra de ferramentas."
   },
   "help_selfhost": {
-    "message": "Extension you built yourself"
+    "message": "Extensão compilada por você"
   },
   "help_selfhost_text": {
-    "message": "The server only accepts the official extensions. For this one, the server administrator adds the ID below to CLIPPER_EXTENSION_IDS and restarts."
+    "message": "O servidor só aceita as extensões oficiais. Para esta, o administrador do servidor adiciona o ID abaixo a CLIPPER_EXTENSION_IDS e reinicia."
   },
   "help_extension_id": {
-    "message": "Extension ID:"
+    "message": "ID da extensão:"
   },
   "help_redirect": {
-    "message": "Redirect address:"
+    "message": "Endereço de redirecionamento:"
   },
   "error_not_connected": {
-    "message": "The clipper is not connected to a server."
+    "message": "O clipper não está conectado a um servidor."
   },
   "error_unauthorized": {
-    "message": "Access was revoked or has expired: reconnect the clipper."
+    "message": "O acesso foi revogado ou expirou: reconecte o clipper."
   },
   "error_forbidden": {
-    "message": "You are not allowed to add cards to this board."
+    "message": "Você não tem permissão para adicionar cards a este quadro."
   },
   "error_not_found": {
-    "message": "The board no longer exists or is no longer shared with you."
+    "message": "O quadro não existe mais ou não está mais compartilhado com você."
   },
   "error_too_large": {
-    "message": "The file is too large for this server."
+    "message": "O arquivo é grande demais para este servidor."
   },
   "error_offline": {
-    "message": "The server does not answer: check the connection."
+    "message": "O servidor não responde: verifique a conexão."
   },
   "error_rate_limited": {
-    "message": "Too many requests: try again in a minute."
+    "message": "Muitas solicitações: tente novamente em um minuto."
   },
   "error_invalid_server": {
-    "message": "There is no Inkadra server at this address."
+    "message": "Não há um servidor Inkadra neste endereço."
   },
   "error_auth_cancelled": {
-    "message": "Sign-in was not completed."
+    "message": "O acesso não foi concluído."
   },
   "error_auth_failed": {
-    "message": "Sign-in failed: try again."
+    "message": "Não foi possível entrar: tente novamente."
   },
   "error_permission_denied": {
-    "message": "Without permission to contact the server the clipper cannot work."
+    "message": "Sem permissão para acessar o servidor, o clipper não funciona."
   },
   "error_no_board": {
-    "message": "First choose a board from the Inkadra toolbar button."
+    "message": "Primeiro escolha um quadro pelo botão do Inkadra na barra de ferramentas."
   },
   "error_bad_request": {
-    "message": "This content cannot be saved."
+    "message": "Este conteúdo não pode ser salvo."
   },
   "error_server": {
-    "message": "Something went wrong on the server: try again."
+    "message": "Algo deu errado no servidor: tente novamente."
   },
   "error_clip_unconfirmed": {
-    "message": "Check the board before trying again."
+    "message": "Verifique o quadro antes de tentar de novo."
   },
   "column_untitled": {
-    "message": "Untitled column"
+    "message": "Coluna sem título"
   },
   "error_too_large_limit": {
-    "message": "The file is too large. This server’s limit is $LIMIT$.",
+    "message": "O arquivo é grande demais. O limite deste servidor é $LIMIT$.",
     "placeholders": {
       "limit": {
         "content": "$1",
