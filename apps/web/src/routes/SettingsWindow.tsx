@@ -102,6 +102,9 @@ export function SettingsWindow({
       aria-labelledby={titleId}
       aria-modal="true"
       tabIndex={-1}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') e.stopPropagation();
+      }}
       onCancel={(e) => {
         if (!own(e)) return;
         e.preventDefault();

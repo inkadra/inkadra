@@ -19,6 +19,34 @@ export function webUrl(url: string | undefined): string | null {
 }
 
 /**
+ * Normalizes and validates a link for note rich text.
+ * Prepends https:// when no scheme is present (e.g. example.com -> https://example.com).
+ * Validates protocol: allows http, https, mailto; rejects javascript:, data:, etc.
+ */
+export function normalizeNoteLink(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const text = raw.trim();
+  if (!text) return null;
+  const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(text) ? text : `https://${text}`;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      if (!parsed.hostname) return null;
+      if (!candidate.endsWith('/') && parsed.pathname === '/') {
+        return `${parsed.protocol}//${parsed.host}${parsed.search}${parsed.hash}`;
+      }
+      return parsed.href;
+    }
+    if (parsed.protocol === 'mailto:') {
+      return parsed.pathname ? parsed.href : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Asks the server for the title, description and image of a link and fills in the card.
  * A failure leaves the card as it is: it still shows the address.
  */

@@ -240,3 +240,13 @@ it('puts the question in the place of the action row, and brings the row back', 
   expect(confirm(dialog)).toBeNull();
   expect(row.classList.contains('is-confirming')).toBe(false);
 });
+
+it('stops propagation of Escape so window listeners do not see it', async () => {
+  const windowListener = vi.fn();
+  window.addEventListener('keydown', windowListener);
+  disposals.push(() => window.removeEventListener('keydown', windowListener));
+  const dialog = await dialogWith(() => {});
+  const button = dialog.querySelector('button')!;
+  pressEscape(button);
+  expect(windowListener).not.toHaveBeenCalled();
+});

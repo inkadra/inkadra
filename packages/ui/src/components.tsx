@@ -648,12 +648,14 @@ export function Dialog({
       {...backdrop}
       // A second Escape in a row cannot be cancelled by the browser: take Escape first.
       onKeyDown={(event) => {
-        if (event.key !== 'Escape' || (!dirty && !confirming)) return;
+        if (event.key !== 'Escape') return;
         if (
           event.target instanceof Element &&
           event.target.closest('dialog') !== event.currentTarget
         )
           return;
+        event.stopPropagation();
+        if (!dirty && !confirming) return;
         event.preventDefault();
         if (confirming) setConfirming(false);
         else requestClose();

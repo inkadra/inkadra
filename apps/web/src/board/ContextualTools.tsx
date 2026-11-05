@@ -17,6 +17,7 @@ import { useAsset } from './assets.ts';
 import { BarButton } from './chrome.tsx';
 import { useBoard } from './context.ts';
 import { rotateImageQuarterTurn } from './ImageCropEditor.tsx';
+import { normalizeNoteLink } from './links.ts';
 import { noteColor, selectedBlocks, TEXT_COLORS } from './note-format.ts';
 import { LOCAL } from './store.ts';
 import { videoEmbedUrl } from './youtube.ts';
@@ -165,8 +166,35 @@ export function ContextualTools({
   const { store, readOnly, setCropping } = useBoard();
   const asset = useAsset(el.type === 'file' || el.type === 'image' ? el.assetId : undefined);
   const [href, setHref] = useState('');
+  const [linkError, setLinkError] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [activeCell, setActiveCell] = useState<{ row: string; column: string } | null>(null);
+
+  useEffect(() => {
+    if (!editor) return;
+    const update = () => {
+      const currentHref = (editor.getAttributes('link')?.href as string | undefined) ?? '';
+      setHref(currentHref);
+      setLinkError(false);
+    };
+    update();
+    editor.on('selectionUpdate', update);
+    return () => {
+      editor.off('selectionUpdate', update);
+    };
+  }, [editor]);
+
+  const applyNoteLink = () => {
+    if (!editor) return;
+    const normalized = normalizeNoteLink(href);
+    if (normalized) {
+      setLinkError(false);
+      setHref(normalized);
+      editor.chain().focus().setLink({ href: normalized }).run();
+    } else {
+      setLinkError(true);
+    }
+  };
   useEffect(() => {
     const remember = (element: EventTarget | null) => {
       const target =
@@ -298,20 +326,32 @@ export function ContextualTools({
             </div>
             <input
               aria-label={t('board.contextual.link')}
+              aria-invalid={linkError || undefined}
               value={href}
-              onChange={(e) => setHref(e.target.value)}
+              onChange={(e) => {
+                setHref(e.target.value);
+                setLinkError(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  applyNoteLink();
+                }
+              }}
               placeholder="https://"
             />
+            {linkError && (
+              <span className="ink-field__error" role="alert">
+                {t('board.contextual.invalidLink')}
+              </span>
+            )}
             <div className="contextual-row">
-              {option(
-                t('board.contextual.apply'),
-                () => editor.chain().focus().setLink({ href }).run(),
-                undefined,
-                !/^(https?:\/\/|mailto:)/i.test(href),
-              )}
-              {option(t('board.contextual.removeLink'), () =>
-                editor.chain().focus().unsetLink().run(),
-              )}
+              {option(t('board.contextual.apply'), applyNoteLink, undefined, !href.trim())}
+              {option(t('board.contextual.removeLink'), () => {
+                setHref('');
+                setLinkError(false);
+                editor.chain().focus().unsetLink().run();
+              })}
             </div>
             {option(t('board.contextual.clear'), () =>
               selectedBlocks(editor).unsetAllMarks().clearNodes().run(),
@@ -354,17 +394,31 @@ export function ContextualTools({
           <ToolPopover label={t('board.contextual.link')} icon="link">
             <input
               aria-label={t('board.contextual.link')}
+              aria-invalid={linkError || undefined}
               value={href}
-              onChange={(e) => setHref(e.target.value)}
+              onChange={(e) => {
+                setHref(e.target.value);
+                setLinkError(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  applyNoteLink();
+                }
+              }}
               placeholder="https://"
             />
-            {option(t('board.contextual.apply'), () => {
-              if (/^(https?:\/\/|mailto:)/i.test(href))
-                editor.chain().focus().setLink({ href }).run();
-            })}
-            {option(t('board.contextual.removeLink'), () =>
-              editor.chain().focus().unsetLink().run(),
+            {linkError && (
+              <span className="ink-field__error" role="alert">
+                {t('board.contextual.invalidLink')}
+              </span>
             )}
+            {option(t('board.contextual.apply'), applyNoteLink, undefined, !href.trim())}
+            {option(t('board.contextual.removeLink'), () => {
+              setHref('');
+              setLinkError(false);
+              editor.chain().focus().unsetLink().run();
+            })}
           </ToolPopover>
         </span>
         <ToolPopover label={t('board.contextual.ink')} icon="textColor">

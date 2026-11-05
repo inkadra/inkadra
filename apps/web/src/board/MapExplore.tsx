@@ -251,6 +251,7 @@ export function MapDialog({
       data-chrome
       {...backdrop}
       onClose={onClose}
+      onKeyDown={(e) => e.stopPropagation()}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
