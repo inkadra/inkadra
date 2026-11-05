@@ -5,7 +5,7 @@ import {
   DEFAULT_PROJECT_THEME,
   EXPORT_LOGO_MAX_BYTES,
   EXPORT_LOGO_TYPES,
-  type ExportPreferences,
+  ExportPreferences,
   type ExportSettings,
   Id,
   ProjectTheme,
@@ -55,7 +55,7 @@ const LOGO_TYPES: ReadonlySet<string> = new Set(EXPORT_LOGO_TYPES);
 export function readPreferences(stored: Record<string, unknown> | null): ExportPreferences {
   const out: Record<string, unknown> = { ...DEFAULT_EXPORT_PREFERENCES };
   const shape = UpdateExportSettings.shape;
-  for (const key of Object.keys(DEFAULT_EXPORT_PREFERENCES) as Array<keyof ExportPreferences>) {
+  for (const key of Object.keys(ExportPreferences.shape) as Array<keyof ExportPreferences>) {
     if (!stored || !(key in stored)) continue;
     const parsed = shape[key].safeParse(stored[key]);
     if (parsed.success && parsed.data !== undefined) out[key] = parsed.data;

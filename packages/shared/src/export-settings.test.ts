@@ -51,6 +51,29 @@ describe('export settings contract', () => {
     });
   });
 
+  it('takes JPEG and the remembered picture options, all optional', () => {
+    expect(UpdateExportSettings.parse({ format: 'jpeg' })).toEqual({ format: 'jpeg' });
+    const picture = { imageFormat: 'jpeg', imageAspect: '4:5', imageFit: 'fill' };
+    expect(UpdateExportSettings.parse(picture)).toEqual(picture);
+    expect(UpdateExportSettings.safeParse({ imageFormat: 'pdf' }).success).toBe(false);
+    expect(UpdateExportSettings.safeParse({ imageAspect: '3:2' }).success).toBe(false);
+    expect(UpdateExportSettings.safeParse({ imageFit: 'stretch' }).success).toBe(false);
+  });
+
+  it('still reads settings of a server that knows no picture options', () => {
+    const old = {
+      ...DEFAULT_EXPORT_PREFERENCES,
+      logoAssetId: null,
+      logo: null,
+      theme: DEFAULT_PROJECT_THEME,
+      projectColor: 'green',
+      canEdit: true,
+      updatedAt: null,
+    };
+    expect(DEFAULT_EXPORT_PREFERENCES).not.toHaveProperty('imageAspect');
+    expect(ExportSettings.parse(old)).toEqual(old);
+  });
+
   it('describes the stored settings with the logo and who may change them', () => {
     const settings = {
       ...DEFAULT_EXPORT_PREFERENCES,
