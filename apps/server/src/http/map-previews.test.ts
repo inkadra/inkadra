@@ -26,6 +26,7 @@ it('keeps the resolved place name and coordinates and sends the exact typed addr
     await geocode('https://geocoder.example/search', 'Via Roma, Milano', 'Inkadra', 'it'),
   ).toEqual({ lat: 45.4642, lon: 9.19, zoom: 16, name: 'Via Roma, Milano' });
   expect((fetcher.mock.calls[0]![0] as URL).searchParams.get('q')).toBe('Via Roma, Milano');
+  expect((fetcher.mock.calls[0]![0] as URL).searchParams.get('format')).toBe('json');
 });
 
 it('returns bounded suggestions, skips invalid coordinates and rejects provider failures', async () => {
