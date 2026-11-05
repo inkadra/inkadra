@@ -173,8 +173,9 @@ export type SettingsTranslate = (key: string, options?: { lng: string }) => stri
 /**
  * The pages a settings search finds: by title, description and group, or by one of the
  * settings on the page (password, 2FA, theme, invitations…), which is then named. Every
- * language in `languages` is searched, so "tema" finds the theme with the interface in
- * English; what is shown stays in the interface language. The keyword lists of all languages
+ * language in `languages` is searched, so "theme" finds the theme with the interface in
+ * Italian; what is shown stays in the interface language. The app passes the languages it has
+ * loaded (the interface one and English): the others are files nobody has downloaded. The keyword lists of all languages
  * name the same settings in the same order (a test checks this).
  */
 export function matchSettings(

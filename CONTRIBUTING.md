@@ -52,8 +52,13 @@ Documents are migrated when the collaboration server loads them. The schema free
 - TypeScript everywhere, `strict`. Biome formats and lints; CI runs `biome ci`.
 - Imports between workspace packages go through the package name (`@inkadra/shared`), never
   relative paths across packages.
-- Interface text is never hard-coded: add it to `apps/web/src/i18n/it.json` **and** `en.json`
-  (a test checks the keys match). Italian is the reference language.
+- Interface text is never hard-coded: add it to `apps/web/src/i18n/it.json` (Italian is the
+  reference language) and to every other catalogue in that folder (`en`, `es`, `de`, `fr`, `pt`).
+  A test checks that keys, `{{placeholders}}` and markup match. If you cannot translate a new
+  text, put the English one in `es`, `de`, `fr` and `pt`: English is what those users would see
+  anyway. A count needs `_one` and `_other`; `_many` is optional and defaults to `_other`. The
+  emails (`apps/server/src/mail-texts/`) and the clipper (`apps/clipper/public/_locales/`) follow
+  the same rule. See [decision 0072](docs/decisions/0072-more-languages-english-fallback.md).
 - Styling uses the tokens of `packages/ui` (`var(--ink-…)`). Colour carries meaning only:
   blue for selection, focus and the primary action; everything else stays neutral.
   To change a token edit `tokens.ts` and run `pnpm --filter @inkadra/ui tokens`.

@@ -8,7 +8,7 @@ import { pwa } from './plugin.ts';
 
 describe('web app manifest', () => {
   it('describes an installable app at the site root', () => {
-    const manifest = webManifest(itMessages);
+    const manifest = webManifest(en);
     expect(manifest).toMatchObject({
       name: 'Inkadra',
       start_url: '/',
@@ -42,12 +42,13 @@ describe('index.html', () => {
 });
 
 describe('offline page', () => {
-  const html = offlinePage({ it: itMessages, en });
+  const html = offlinePage({ it: itMessages, en, fr: en });
 
-  it('has both languages, Italian first', () => {
-    expect(html).toContain('<h1 id="title">Sei offline</h1>');
-    expect(html).toContain('You are offline');
-    expect(html).toContain('<html lang="it">');
+  it('has every language, English first', () => {
+    expect(html).toContain('<h1 id="title">You are offline</h1>');
+    expect(html).toContain('Sei offline');
+    expect(html).toContain('<html lang="en">');
+    expect(html).toContain('&quot;fr&quot;');
   });
 
   it('uses only the precached external script under enforced CSP', () => {

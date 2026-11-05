@@ -386,7 +386,7 @@ function sourceText(
 
 function relative(iso: string): string {
   const days = Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000);
-  const rtf = new Intl.RelativeTimeFormat(document.documentElement.lang || 'it', {
+  const rtf = new Intl.RelativeTimeFormat(document.documentElement.lang || 'en', {
     numeric: 'auto',
   });
   return rtf.format(-days, 'day');

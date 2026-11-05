@@ -55,7 +55,7 @@ it('keeps the detected language when the profile has none or an unsupported one'
   unmount = await mount();
   expect(i18n.language).toBe('it');
   unmount();
-  respond(user('fr'));
+  respond(user('xx'));
   unmount = await mount();
   expect(i18n.language).toBe('it');
 });

@@ -10,7 +10,7 @@
 ## Checklist
 
 - [ ] Every commit is signed off (`git commit -s`)
-- [ ] Interface text is in both `it.json` and `en.json`
+- [ ] Interface text is in `it.json` and every other catalogue (English where not translated)
 - [ ] A decision in `docs/decisions/` if the choice is not obvious from the code
 
 ## How it was checked

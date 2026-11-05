@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dark } from '@inkadra/ui/tokens';
 import { build, type Plugin } from 'vite';
+import { LOCALES } from '../src/i18n/locales.ts';
 import { isPrecached, OFFLINE_PAGE } from '../src/pwa/routing.ts';
 import { iconPng } from './icons.ts';
 import { APPLE_META, ICONS, offlinePage, offlineScript, themeColor, webManifest } from './pages.ts';
@@ -46,15 +47,18 @@ export function pwa(): Plugin {
     },
 
     generateBundle() {
-      const it = json('../src/i18n/it.json');
       const en = json('../src/i18n/en.json');
+      const messages = {
+        ...Object.fromEntries(LOCALES.map((l) => [l, json(`../src/i18n/${l}.json`)])),
+        en,
+      };
       const colours = { tile: dark['logo-tile'], ink: dark['logo-ink'] };
       const emit = (fileName: string, source: string | Uint8Array) =>
         this.emitFile({ type: 'asset', fileName, source });
 
-      emit('manifest.webmanifest', `${JSON.stringify(webManifest(it), null, 2)}\n`);
+      emit('manifest.webmanifest', `${JSON.stringify(webManifest(en), null, 2)}\n`);
       emit('offline.js', offlineScript);
-      emit(OFFLINE_PAGE.slice(1), offlinePage({ it, en }));
+      emit(OFFLINE_PAGE.slice(1), offlinePage(messages));
       emit(ICONS.any192, iconPng({ size: 192, ...colours }));
       emit(ICONS.any512, iconPng({ size: 512, ...colours }));
       // Maskable icons are cropped to a circle as small as 80% of the side.

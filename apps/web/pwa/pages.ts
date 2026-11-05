@@ -25,13 +25,13 @@ export const APPLE_META = {
 /** The window colour: the background behind the rail, as the page itself paints it. */
 export const themeColor = { dark: dark['bg-rail'], light: light['bg-rail'] };
 
-export function webManifest(it: Messages) {
+export function webManifest(en: Messages) {
   return {
     id: '/',
-    name: it.app.name,
-    short_name: it.app.name,
-    description: it.app.tagline,
-    lang: 'it',
+    name: en.app.name,
+    short_name: en.app.name,
+    description: en.app.tagline,
+    lang: 'en',
     dir: 'ltr',
     start_url: '/',
     scope: '/',
@@ -58,20 +58,20 @@ const escapeHtml = (s: string) =>
 
 /**
  * A page with no dependencies, kept by the service worker for navigations that cannot reach
- * the server. Both languages are inside; the script picks one as the app does.
+ * the server. Every language is inside; the script picks one as the app does, English otherwise.
  */
-export function offlinePage(messages: { it: Messages; en: Messages }) {
+export function offlinePage(messages: { en: Messages } & Record<string, Messages>) {
   const text = (m: Messages) =>
     Object.fromEntries(Object.entries(m.pwa.offline).map(([k, v]) => [k, escapeHtml(v)]));
-  const it = text(messages.it);
+  const all = Object.fromEntries(Object.entries(messages).map(([lang, m]) => [lang, text(m)]));
   const en = text(messages.en);
   return `<!doctype html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
-<title>${it.title} · Inkadra</title>
+<title>${en.title} · Inkadra</title>
 <style>
 :root { --bg: ${dark['bg-rail']}; --panel: ${dark['bg-app']}; --border: ${dark['border-default']}; --text: ${dark['text-primary']}; --muted: ${dark['text-secondary']}; --button: ${dark['accent-button']}; --on: ${dark['on-accent']}; --tile: ${dark['logo-tile']}; --ink: ${dark['logo-ink']}; }
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: ${light['bg-rail']}; --panel: ${light['bg-app']}; --border: ${light['border-default']}; --text: ${light['text-primary']}; --muted: ${light['text-secondary']}; --button: ${light['accent-button']}; --on: ${light['on-accent']}; --tile: ${light['logo-tile']}; --ink: ${light['logo-ink']}; } }
@@ -88,11 +88,11 @@ button { padding: 8px 16px; border: 0; border-radius: 8px; background: var(--but
 <body>
 <main>
 ${LOGO}
-<h1 id="title">${it.title}</h1>
-<p id="body">${it.body}</p>
-<button id="retry" type="button">${it.retry}</button>
+<h1 id="title">${en.title}</h1>
+<p id="body">${en.body}</p>
+<button id="retry" type="button">${en.retry}</button>
 </main>
-<div id="messages" hidden data-messages="${escapeHtml(JSON.stringify({ it, en }))}"></div>
+<div id="messages" hidden data-messages="${escapeHtml(JSON.stringify(all))}"></div>
 <script src="/offline.js"></script>
 </body>
 </html>
@@ -100,4 +100,4 @@ ${LOGO}
 }
 
 export const offlineScript =
-  "try {\n  var t = localStorage.getItem('inkadra.theme');\n  if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;\n} catch (e) {}\nvar text = JSON.parse(document.getElementById('messages').dataset.messages);\nvar langs = navigator.languages || [navigator.language || ''];\nfor (var i = 0; i < langs.length; i++) {\n  var base = String(langs[i]).slice(0, 2);\n  if (text[base]) {\n    if (base !== 'it') {\n      document.documentElement.lang = base;\n      document.title = text[base].title + ' \u00b7 Inkadra';\n      ['title', 'body', 'retry'].forEach(function (k) { document.getElementById(k).innerHTML = text[base][k]; });\n    }\n    break;\n  }\n}\n// An online event can precede the worker's network recovery. Probe a network-only\n// endpoint before navigating, and retry without depending on another online event.\nvar checking = false;\nvar retryTimer;\nasync function reconnect() {\n  if (checking) return;\n  clearTimeout(retryTimer);\n  var timeout;\n  try {\n    var signal;\n    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {\n      signal = AbortSignal.timeout(3000);\n    } else {\n      var controller = new AbortController();\n      signal = controller.signal;\n      timeout = setTimeout(function () { controller.abort(); }, 3000);\n    }\n    checking = true;\n    var response = await fetch('/api/v1/health', { cache: 'no-store', credentials: 'omit', signal: signal });\n    if (!response.ok) throw new Error('Server unavailable');\n    location.reload();\n  } catch (error) {\n    retryTimer = setTimeout(reconnect, 1000);\n  } finally {\n    clearTimeout(timeout);\n    checking = false;\n  }\n}\ndocument.getElementById('retry').addEventListener('click', reconnect);\nwindow.addEventListener('online', reconnect);\nreconnect();\n";
+  "try {\n  var t = localStorage.getItem('inkadra.theme');\n  if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;\n} catch (e) {}\nvar text = JSON.parse(document.getElementById('messages').dataset.messages);\nvar langs = navigator.languages || [navigator.language || ''];\nfor (var i = 0; i < langs.length; i++) {\n  var base = String(langs[i]).slice(0, 2);\n  if (text[base]) {\n    if (base !== 'en') {\n      document.documentElement.lang = base;\n      document.title = text[base].title + ' \u00b7 Inkadra';\n      ['title', 'body', 'retry'].forEach(function (k) { document.getElementById(k).innerHTML = text[base][k]; });\n    }\n    break;\n  }\n}\n// An online event can precede the worker's network recovery. Probe a network-only\n// endpoint before navigating, and retry without depending on another online event.\nvar checking = false;\nvar retryTimer;\nasync function reconnect() {\n  if (checking) return;\n  clearTimeout(retryTimer);\n  var timeout;\n  try {\n    var signal;\n    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {\n      signal = AbortSignal.timeout(3000);\n    } else {\n      var controller = new AbortController();\n      signal = controller.signal;\n      timeout = setTimeout(function () { controller.abort(); }, 3000);\n    }\n    checking = true;\n    var response = await fetch('/api/v1/health', { cache: 'no-store', credentials: 'omit', signal: signal });\n    if (!response.ok) throw new Error('Server unavailable');\n    location.reload();\n  } catch (error) {\n    retryTimer = setTimeout(reconnect, 1000);\n  } finally {\n    clearTimeout(timeout);\n    checking = false;\n  }\n}\ndocument.getElementById('retry').addEventListener('click', reconnect);\nwindow.addEventListener('online', reconnect);\nreconnect();\n";

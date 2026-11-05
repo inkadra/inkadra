@@ -6,7 +6,7 @@ import { dateInputValue, endOfDay, expiresSoon, expiryBounds, expiryDate } from 
 /** "Expires 15 Dec" in muted text; in the warning colour within three days (decision 0041). */
 export function ExpiryLabel({ at }: { at: string }) {
   const { t } = useTranslation();
-  const locale = document.documentElement.lang || 'it';
+  const locale = document.documentElement.lang || 'en';
   return (
     <span className={expiresSoon(at) ? 'share__expiry share__expiry--soon' : 'share__expiry'}>
       {t('share.expiry.label', { date: expiryDate(at, locale) })}

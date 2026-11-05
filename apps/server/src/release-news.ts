@@ -121,10 +121,10 @@ export async function releaseNewsMail(
 ) {
   if (!semver.test(version)) throw new Error('Invalid release version');
   const t = mailText(person);
-  const locale = person.locale?.startsWith('en') ? 'en' : 'it';
   let notes = '';
   // Plain text only: HTML/Markdown links from notes never become external email resources.
-  for (const name of [`${version}.${locale}.md`, `${version}.md`]) {
+  // Notes are written in Italian and English: other languages get the English highlights.
+  for (const name of [`${version}.${t.lang}.md`, `${version}.en.md`, `${version}.md`]) {
     try {
       notes = await readFile(
         fileURLToPath(

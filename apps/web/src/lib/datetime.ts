@@ -38,7 +38,7 @@ export function formatDateTime(
   options: Intl.DateTimeFormatOptions,
   formats: Formats = getPreferences(),
   // The interface language, which i18n/index.ts keeps on the page (no import: tests mock it).
-  language: string = (typeof document !== 'undefined' && document.documentElement.lang) || 'it',
+  language: string = (typeof document !== 'undefined' && document.documentElement.lang) || 'en',
 ): string {
   const date = value instanceof Date ? value : new Date(value);
   const hasTime = options.timeStyle !== undefined || options.hour !== undefined;
