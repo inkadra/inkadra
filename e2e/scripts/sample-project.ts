@@ -218,7 +218,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
       300,
     );
     createElement(mood, 'board', { x: 0, y: 250 }, { boardId: storyboard.id }, opts);
-    createElement(mood, 'board', { x: 160, y: 250 }, { boardId: casting.id }, opts);
+    createElement(mood, 'board', { x: 0, y: 340 }, { boardId: casting.id }, opts);
     createElement(
       mood,
       'todo',

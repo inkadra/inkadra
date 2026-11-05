@@ -369,9 +369,10 @@ before anything is sent.
 
 **What does not leave:** no name, email or instance address is added. Logs and text files lose
 secrets, this server's host name and internal addresses; images and videos lose their metadata,
-GPS included. PDFs leave whole, with their metadata, and the dialog says so. What people write, or
-what is visible in a screenshot or a file, can still be personal or a client's: that is what the
-preview is for.
+GPS included. PDFs leave whole, with their metadata, and the dialog says so. The automatic screenshot
+leaves out the sidebar, the account, the breadcrumbs, tasks, and project and people names in
+activity. What people write, or what is visible in the rest of a screenshot or in a file, can still
+be personal or a client's: that is what the preview is for.
 
 **Where it goes:** through a relay on Cloudflare, which sees this server's IP address, to the
 private GitHub repository `inkadra/inkadra-feedback`, where the Inkadra developers read it.
