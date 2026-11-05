@@ -34,7 +34,7 @@ async function openProject(page: Page, baseURL: string, name: string) {
       };
   });
   await page.goto(`/p/${project.id}`);
-  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await expect(page.getByTestId('canvas')).toBeVisible();
   return project;
 }
 
@@ -49,9 +49,7 @@ async function expectSettled(page: Page) {
         document
           .getAnimations()
           .filter((a) => a.effect && 'pseudoElement' in a.effect && a.effect.pseudoElement)
-          .some((a) =>
-            (a.effect as KeyframeEffect).pseudoElement?.startsWith('::view-transition'),
-          ),
+          .some((a) => (a.effect as KeyframeEffect).pseudoElement?.startsWith('::view-transition')),
       ),
     )
     .toBe(false);
@@ -75,7 +73,7 @@ test.describe('with motion', () => {
     expect(await transitions(page)).toBe(0);
 
     await page.reload();
-    await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+    await expect(page.getByTestId('canvas')).toBeVisible();
     expect(await transitions(page)).toBe(0);
 
     await tab(page, 'Moodboard').click();
@@ -132,9 +130,7 @@ test.describe('with motion', () => {
 
     // Hold the animations halfway, to look at the page in the middle of a switch.
     const during = await page.evaluate(async () => {
-      document
-        .querySelector<HTMLElement>('[role="tab"][aria-label="Piano riprese"]')
-        ?.click();
+      document.querySelector<HTMLElement>('[role="tab"][aria-label="Piano riprese"]')?.click();
       const until = performance.now() + 3000;
       let held: Animation[] = [];
       while (performance.now() < until && held.length === 0) {
@@ -147,23 +143,26 @@ test.describe('with motion', () => {
       }
       for (const a of held) a.pause();
       const stage = document.querySelector('.view-stage')?.getBoundingClientRect();
-      const hit =
-        stage && document.elementFromPoint(stage.left + stage.width / 2, stage.top + 20);
+      const hit = stage && document.elementFromPoint(stage.left + stage.width / 2, stage.top + 20);
       const result = {
         held: held.length,
-        hitsNewView: !!hit?.closest('section.schedule'),
-        panels: document.querySelectorAll('section.schedule, .story').length,
-        stale: document.querySelectorAll('.story').length,
+        // The old view is gone from the page; its picture and the new view take no pointer yet.
+        hitsOld: !!hit?.closest('.story'),
+        oldViews: document.querySelectorAll('.story').length,
+        newViews: document.querySelectorAll('section.schedule').length,
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       };
       for (const a of held) a.finish();
       return result;
     });
     expect(during.held).toBeGreaterThan(0);
-    expect(during.hitsNewView).toBe(true);
-    expect(during.stale).toBe(0);
+    expect(during.hitsOld).toBe(false);
+    expect(during.oldViews).toBe(0);
+    expect(during.newViews).toBe(1);
     expect(during.overflow).toBe(0);
     await expectSettled(page);
+    // Right after, a click reaches the new view.
+    await page.locator('section.schedule .story__bar').getByRole('button').first().click({ trial: true });
     // Keyboard focus stays on the tab that was chosen.
     await tab(page, 'Shot list').focus();
     await page.keyboard.press('Enter');
@@ -177,6 +176,7 @@ test.describe('with motion', () => {
     baseURL,
   }) => {
     await openProject(page, baseURL!, `View tabs canvas ${Date.now()}`);
+    await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
     const canvas = page.getByTestId('canvas');
     await page.keyboard.press('n');
     await page.keyboard.type('Non ancora salvata');
@@ -197,9 +197,15 @@ test.describe('with motion', () => {
     await page.mouse.wheel(0, -300);
     await page.keyboard.up('Control');
     const world = page.locator('.canvas__world');
-    await expect.poll(() => world.evaluate((el) => el.style.transform)).toContain('scale');
-    await page.waitForTimeout(400);
-    const zoomed = await world.evaluate((el) => el.style.transform);
+    // Leaving while the view has only just stopped: its position is saved after the canvas closed.
+    let zoomed = '';
+    await expect
+      .poll(async () => {
+        const before = zoomed;
+        zoomed = await world.evaluate((el) => el.style.transform);
+        return zoomed === before && zoomed.includes('scale(1.2');
+      })
+      .toBe(true);
 
     await tab(page, 'Moodboard').click();
     await expect(canvas).toHaveCount(0);
