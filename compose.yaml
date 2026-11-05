@@ -33,7 +33,7 @@ services:
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       FEEDBACK_GITHUB_TOKEN: ${FEEDBACK_GITHUB_TOKEN:-}
       # A single dash on purpose: an empty value must stay empty, it turns the relay off.
-      FEEDBACK_RELAY_URL: ${FEEDBACK_RELAY_URL-https://inkadra-report-relay.matte-maraffio.workers.dev}
+      FEEDBACK_RELAY_URL: ${FEEDBACK_RELAY_URL-https://relay.inkadra.com}
       UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE:-20GB}
       HEIC_PREVIEWS: ${HEIC_PREVIEWS:-true}
       RAW_PREVIEWS: ${RAW_PREVIEWS:-true}
