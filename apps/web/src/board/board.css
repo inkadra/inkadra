@@ -199,10 +199,12 @@
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--ink-bg-rail) 80%, transparent);
-  color: var(--ink-text-primary);
+  color: var(--ink-status-danger);
 }
 
 .canvas__resize-handles {
+  /* Intersection of the 45-degree corner diagonal with the card's round outline. */
+  --handle-inset: calc(var(--ink-radius-md) * 0.293);
   position: absolute;
   pointer-events: none;
   z-index: 6;
@@ -218,29 +220,29 @@
 .card__handle::after {
   content: "";
   position: absolute;
-  inset: calc(8px / var(--zoom, 1));
-  border-radius: calc(2px / var(--zoom, 1));
-  background: #ffffff;
+  inset: calc(6px / var(--zoom, 1));
+  border-radius: 50%;
+  background: var(--ink-surface-1);
   border: calc(1px / var(--zoom, 1)) solid var(--ink-accent-primary);
 }
 .card__handle--nw {
-  left: 0;
-  top: 0;
+  left: var(--handle-inset);
+  top: var(--handle-inset);
   cursor: nwse-resize;
 }
 .card__handle--ne {
-  left: 100%;
-  top: 0;
+  left: calc(100% - var(--handle-inset));
+  top: var(--handle-inset);
   cursor: nesw-resize;
 }
 .card__handle--sw {
-  left: 0;
-  top: 100%;
+  left: var(--handle-inset);
+  top: calc(100% - var(--handle-inset));
   cursor: nesw-resize;
 }
 .card__handle--se {
-  left: 100%;
-  top: 100%;
+  left: calc(100% - var(--handle-inset));
+  top: calc(100% - var(--handle-inset));
   cursor: nwse-resize;
 }
 
@@ -249,6 +251,12 @@
   min-height: 1.5em;
   outline: none;
 }
+
+/* The card already indicates editing; the global focus halo must not frame its text. */
+.note-text:focus-visible {
+  box-shadow: none;
+}
+
 .note-text p,
 .note-text h3,
 .note-text h4,
@@ -319,6 +327,7 @@
 }
 /* Explicit image geometry reserves the remaining height for the media, including captions. */
 .card--image {
+  border: 0;
   display: flex;
   flex-direction: column;
 }
@@ -571,11 +580,26 @@
   width: 34px;
   height: 34px;
   background: rgb(0 0 0 / 0.62);
-  pointer-events: none;
   transition: background-color var(--ink-dur-fast) var(--ink-ease-out);
 }
 .card--file:hover .fcard__play {
   background: rgb(0 0 0 / 0.8);
+}
+button.fcard__play:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+/* Fills the preview, whose overflow is hidden: the focus ring sits inside. */
+.fcard__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+.fcard__video:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
 }
 .fcard__play svg {
   fill: currentColor;
@@ -587,13 +611,17 @@
   bottom: 8px;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 5px 7px;
   border-radius: var(--ink-radius-sm);
   background: rgb(0 0 0 / 0.62);
   color: #fff;
   font-size: 10.5px;
-  white-space: nowrap;
+  white-space: normal;
+}
+.fcard__prep > span:first-child {
+  flex-basis: 100%;
 }
 .fcard__bar {
   flex: 1;
@@ -820,8 +848,8 @@ button.fcard__audio-play:focus-visible {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: inherit;
 }
 .card__todo-list li {
   display: flex;
@@ -829,7 +857,20 @@ button.fcard__audio-play:focus-visible {
   gap: 8px;
 }
 .card__todo-list .ink-choice {
+  flex: none;
   margin-top: 3px;
+}
+.card__todo-text {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+textarea.card__todo-text {
+  overflow: hidden;
+  resize: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: inherit;
 }
 .card__todo-list li.is-done {
   color: var(--ink-text-muted);
@@ -1326,6 +1367,7 @@ body:has(.colorpicker) .card-reactions {
  */
 .mcard__explore {
   position: absolute;
+  z-index: 2;
   left: 8px;
   top: 8px;
   padding: 3px 9px;
@@ -1628,7 +1670,6 @@ body:has(.colorpicker) .card-reactions {
 }
 .canvas__start-options {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 .canvas__start-option {
@@ -1655,8 +1696,7 @@ body:has(.colorpicker) .card-reactions {
 .canvas__start-option:active {
   scale: 0.98;
 }
-.canvas__start-option:focus-visible,
-.canvas__start-browse:focus-visible {
+.canvas__start-option:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
 }
@@ -1667,26 +1707,12 @@ body:has(.colorpicker) .card-reactions {
   height: 34px;
   border-radius: var(--ink-radius-sm);
   color: var(--kind-fg, var(--ink-text-secondary));
-  background: var(--kind-bg, var(--ink-surface-2));
+  background: var(--ink-surface-2);
 }
 .canvas__start-desc {
   font-size: 11px;
   font-weight: 400;
   color: var(--ink-text-muted);
-}
-.canvas__start-browse {
-  margin-top: 12px;
-  padding: 4px 8px;
-  border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: transparent;
-  color: var(--ink-accent-soft-fg);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.canvas__start-browse:hover {
-  text-decoration: underline;
 }
 .canvas__start-hint {
   margin: 6px 0 0;
@@ -1706,10 +1732,6 @@ body:has(.colorpicker) .card-reactions {
   .canvas__start-option {
     min-height: 44px;
     padding: 12px 6px;
-  }
-  .canvas__start-browse {
-    min-height: 44px;
-    padding: 0 12px;
   }
 }
 .canvas__linkdraft {
@@ -1798,7 +1820,7 @@ body:has(.colorpicker) .card-reactions {
 .canvas {
   container: canvas / inline-size;
 }
-@container canvas (width < 640px) {
+@container canvas (width < 860px) {
   .toolbar .toolbar__btn.toolbar__btn--canvas {
     padding: 0 8px;
     gap: 2px;
@@ -1811,7 +1833,7 @@ body:has(.colorpicker) .card-reactions {
 .toolbar__tools {
   display: contents;
 }
-@container canvas (width < 600px) {
+@container canvas (width < 820px) {
   /* The tools scroll sideways; the Canvas button stays pinned at the end, always in view. */
   .toolbar {
     max-width: calc(100% - 16px);
@@ -1994,7 +2016,7 @@ body:has(.colorpicker) .card-reactions {
   margin-right: 8px;
   border-radius: var(--ink-radius-sm);
   color: var(--kind-fg, var(--ink-text-secondary));
-  background: var(--kind-bg, var(--ink-surface-2));
+  background: var(--ink-surface-2);
 }
 /* Opened from the toolbar: fixed above its button, outside the bar that scrolls on phones. */
 .menu--canvas {
@@ -2580,9 +2602,10 @@ button.crumb--editable:focus-visible {
   }
 }
 
-/* Far zoom: text and controls are not drawn, only the card shapes, images and swatches.
+/* Far zoom: text and controls are not drawn, only the card shapes, images and swatches, and a
+   video playing in its card, which must not be left as sound with nothing to see.
    A hairline border vanishes at this scale, so plain cards are filled with its colour. */
-.canvas__world--far .card--free > :not(.card__media, .card__swatch) {
+.canvas__world--far .card--free > :not(.card__media, .card__swatch, .fcard:has(.fcard__video)) {
   visibility: hidden;
 }
 .canvas__world--far .card--free:not([class*="card--tint-"]) {
@@ -2702,9 +2725,14 @@ button.crumb--editable:focus-visible {
   color: var(--ink-text-muted);
 }
 .tag-popover__backdrop {
+  pointer-events: none;
   background: transparent;
 }
 .tag-popover {
+  pointer-events: auto;
+  max-width: calc(100% - 16px);
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
   position: absolute;
   width: 280px;
   padding: 12px;
@@ -2800,6 +2828,8 @@ button.crumb--editable:focus-visible {
   box-shadow: none;
 }
 .viewer__stage {
+  position: relative;
+  overflow: hidden;
   container-type: size;
   min-height: 0;
   flex: 1;
@@ -3437,12 +3467,12 @@ button.crumb--editable:focus-visible {
 }
 .toolbar__group--create .toolbar__btn,
 .toolbar__group--organize .toolbar__btn {
-  background: var(--kind-bg);
+  background: transparent;
 }
 .toolbar__btn:not([aria-pressed="true"]):hover,
 .toolbar__btn:not([aria-pressed="true"]):active {
   /* Buttons without a kind (the pen editor's) keep the plain hover. */
-  background: var(--kind-bg, var(--ink-surface-2));
+  background: var(--ink-surface-2);
   color: var(--kind-fg, var(--ink-text-primary));
 }
 .toolbar__btn[aria-pressed="true"] {
@@ -3521,6 +3551,22 @@ button.crumb--editable:focus-visible {
   }
   .ctxbar__sep {
     flex: none;
+  }
+  /* What scrolls goes under the last two actions (Delete and More): they never leave the view. */
+  .ctxbar > .ctxbar__btn:nth-last-child(-n + 2) {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+  }
+  .ctxbar > .ctxbar__btn:nth-last-child(2):has(+ .ctxbar__btn) {
+    right: 40px;
+  }
+  .ctxbar > .ctxbar__btn:nth-last-child(-n + 2):not(:active, .is-active) {
+    background: var(--ink-surface-2);
+    /* Covers the bar's padding on the right, and fades what goes under them on the left. */
+    box-shadow:
+      4px 0 0 var(--ink-surface-2),
+      -10px 0 8px -4px var(--ink-surface-2);
   }
   /* Menus: finger-sized rows, no keyboard shortcuts to read. */
   .menu {
@@ -3688,6 +3734,121 @@ button.card__play {
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
+}
+.viewer__grab-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.viewer__grab-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.viewer__grab-item {
+  gap: 8px;
+  height: 36px;
+  font-size: 13px;
+}
+.viewer__grab-item .menu__key {
+  margin-left: auto;
+}
+.viewer__grab-options .menu__divider {
+  width: 100%;
+  margin: 0;
+}
+.viewer__grab-call {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 10px 12px;
+  border-radius: var(--ink-radius-sm);
+  font-size: 13px;
+}
+.viewer__grab-call.is-danger {
+  background: var(--ink-danger-bg);
+  color: var(--ink-danger-fg);
+}
+.viewer__grab-call.is-warn {
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-text-primary);
+}
+.viewer__grab-quality {
+  justify-self: start;
+  border: 0;
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-tag-orange);
+}
+.viewer__grab-bar {
+  display: block;
+  height: 4px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-3);
+  overflow: hidden;
+}
+.viewer__grab-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ink-accent-primary);
+}
+/* The photo of the tab covers the player, beside the panel with the choices. */
+.viewer__tab-capture {
+  position: absolute;
+  z-index: 4;
+  inset: 52px 0 0;
+  display: grid;
+  place-items: center;
+  padding: 24px 408px 24px 24px;
+  background: rgb(8 8 10);
+}
+.viewer__tab-picture {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  overflow: hidden;
+  touch-action: none;
+}
+.viewer__tab-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.viewer__tab-crop {
+  position: absolute;
+  outline: 2px solid var(--ink-accent-primary);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.55);
+  cursor: move;
+}
+.viewer__tab-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 2px solid var(--ink-accent-primary);
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-float);
+}
+.viewer__tab-handle--nw {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+}
+.viewer__tab-handle--ne {
+  right: 0;
+  top: 0;
+  cursor: nesw-resize;
+}
+.viewer__tab-handle--sw {
+  left: 0;
+  bottom: 0;
+  cursor: nesw-resize;
+}
+.viewer__tab-handle--se {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
 }
 .film-panel__video-picker {
   display: grid;
@@ -3891,8 +4052,9 @@ button.card__play {
   cursor: ew-resize;
 }
 
+/* The bar stays on the canvas for a card near the right edge; 740 px is about its full width. */
 .crop-bar {
-  left: var(--crop-bar-left, 8px);
+  left: max(8px, min(var(--crop-bar-left, 8px), calc(100% - 740px)));
   top: var(--crop-bar-top, 8px);
   height: 36px;
   gap: 2px;
@@ -3933,6 +4095,9 @@ button.card__play {
   padding: 0 6px;
   font-size: 11px;
   color: var(--ink-text-secondary);
+}
+.crop-bar__angle .ink-slider {
+  width: 180px;
 }
 .crop-bar__deg {
   min-width: 34px;
@@ -4052,12 +4217,33 @@ button.card__play {
   .canvas__dock {
     position: absolute;
     left: calc(var(--ink-board-left, 0px) + 12px + 150px + 12px);
-    right: 12px;
+    /* A side panel takes the right of the board, whichever it is: the dock ends before it. */
+    right: calc(var(--ink-board-right, 0px) + 12px);
     bottom: 12px;
     display: flex;
     justify-content: center;
     pointer-events: none;
     container: canvas / inline-size;
+  }
+  .canvas:has(.canvas__panel) {
+    --ink-board-right: 352px;
+  }
+  :root:has(.comments-panel) .canvas {
+    --ink-board-right: 392px;
+  }
+  /* No room for the dock between the corner and a panel: the dock stays, the corner gives way. */
+  @media (width < 1100px) {
+    :is(.canvas:has(.canvas__panel), :root:has(.comments-panel) .canvas) {
+      .canvas__corner {
+        display: none;
+      }
+      .canvas__dock {
+        left: calc(var(--ink-board-left, 0px) + 12px);
+      }
+      .canvas__dock::after {
+        content: none;
+      }
+    }
   }
   .canvas__dock::after {
     content: "";
@@ -4103,11 +4289,6 @@ button.card__play {
     backdrop-filter: var(--ink-float-blur);
     box-shadow: var(--ink-float-shadow);
     pointer-events: none;
-  }
-  .canvas--moving :is(.toolbar, .minimap, .zoom, .unsorted__toggle)::before {
-    background: var(--ink-surface-float);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
   }
   .canvas .zoom {
     height: 36px;
@@ -4179,9 +4360,6 @@ button.card__play {
 @media (768px <= width < 1000px) {
   .ink-shell > .ink-header :is(.board-header-export, .board-header-present) {
     display: none;
-  }
-  .ink-shell > .ink-header .ink-header__crumbs {
-    min-width: 72px;
   }
 }
 /* A version preview on the full-bleed board: its banner floats under the header panels, beside
@@ -4463,4 +4641,282 @@ button.card__play {
 .office-unavailable a:not(.ink-btn) {
   color: #9db8f2;
   text-decoration: underline;
+}
+
+.map-dialog {
+  width: calc(100vw - 32px);
+  height: calc(100dvh - 32px);
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-lg);
+  background: var(--ink-surface-float);
+  color: var(--ink-text-primary);
+}
+.map-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.map-dialog::backdrop {
+  background: var(--ink-scrim);
+}
+.map-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+}
+.map-dialog__map {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.map-dialog > header > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Alternative A: one anchored bar; its editing tools replace the selection actions. */
+.ctxbar__done {
+  width: auto;
+  padding-inline: 8px;
+  white-space: nowrap;
+}
+.contextual-popover {
+  z-index: 100;
+  width: 240px;
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  padding: 8px;
+}
+.contextual-popover input {
+  width: 100%;
+  color: var(--ink-text-primary);
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-strong);
+  border-radius: var(--ink-radius-sm);
+}
+.contextual-row {
+  display: flex;
+}
+.contextual-palette {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-block: 6px;
+}
+.contextual-palette button {
+  min-height: 28px;
+  border: 1px solid var(--ink-border-strong);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+}
+.contextual-palette button[aria-pressed="true"] {
+  outline: 2px solid var(--ink-accent-soft-fg);
+}
+.note-text ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 1.4em;
+}
+.note-text li[data-type="taskItem"]::before {
+  content: "☐";
+  margin-left: -1.3em;
+  margin-right: 0.3em;
+}
+.note-text li[data-type="taskItem"][data-checked="true"]::before {
+  content: "☑";
+}
+
+.image-drawing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.contextual-note {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+}
+.contextual-note:disabled {
+  opacity: 0.5;
+}
+.ctxbar > .menu__item {
+  width: auto;
+  white-space: nowrap;
+}
+
+.section-heading.has-rule::after {
+  content: "";
+  display: block;
+  height: 3px;
+  background:
+    linear-gradient(currentColor, currentColor) left center / 48px 3px no-repeat,
+    linear-gradient(var(--ink-border-strong), var(--ink-border-strong)) center / 100% 1px no-repeat;
+}
+
+.contextual-desktop {
+  display: inline-flex;
+}
+.contextual-mobile {
+  display: none;
+}
+@media (max-width: 600px) {
+  .contextual-desktop {
+    display: none;
+  }
+  .contextual-mobile {
+    display: block;
+  }
+  .contextual-palette button,
+  .contextual-popover .menu__item {
+    min-height: 44px;
+  }
+}
+
+.note-text h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.note-text h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.note-text li[data-type="taskItem"] {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.note-text li[data-type="taskItem"]::before {
+  content: none;
+}
+.note-text li[data-type="taskItem"] input {
+  flex: none;
+  accent-color: var(--ink-accent-primary);
+}
+
+.contextual-mobile-tools {
+  display: none;
+}
+@media (max-width: 600px) {
+  .contextual-mobile-tools {
+    display: inline-flex;
+  }
+}
+
+.contextual-row > .menu__item {
+  flex: 1;
+  width: auto;
+  justify-content: center;
+  padding-inline: 4px;
+  font-size: 11px;
+}
+.contextual-label {
+  margin: 6px 4px 2px;
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+}
+.ctxbar__btn[role="switch"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ctxbar__btn[role="switch"]::after {
+  content: "";
+  width: 24px;
+  height: 14px;
+  flex: none;
+  border: 1px solid var(--ink-border-strong);
+  border-radius: var(--ink-radius-full);
+  background: radial-gradient(circle at 6px 6px, var(--ink-text-secondary) 4px, transparent 5px)
+    var(--ink-surface-3);
+}
+.ctxbar__btn[role="switch"][aria-checked="true"]::after {
+  background: radial-gradient(circle at 16px 6px, var(--ink-on-accent) 4px, transparent 5px)
+    var(--ink-accent-primary);
+  border-color: var(--ink-accent-primary);
+}
+
+.board-update-notice {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  max-width: calc(100vw - 32px);
+  padding: 12px;
+  border: 1px solid var(--ink-border-strong);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  color: var(--ink-text-primary);
+}
+
+.mcard__layer {
+  left: auto;
+  right: 8px;
+}
+.mcard__static {
+  pointer-events: none;
+}
+.mcard__satellite-credit ~ .mcard__credit {
+  display: none;
+}
+
+.viewer__image-view {
+  position: absolute;
+  inset: 0 0 var(--viewer-thumbs-h, 0px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  touch-action: none;
+}
+.viewer__image-plane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+}
+.viewer__image-plane .viewer__media {
+  max-height: calc(100cqh - 48px - var(--viewer-thumbs-h, 0px));
+  max-width: 100%;
+}
+.viewer__image-tools {
+  position: absolute;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.ctxbar__btn.is-danger {
+  color: var(--ink-status-danger);
+}
+
+/* The tray scrolls instead of squashing its cards into strips; pictures show whole. */
+.unsorted__panel > .card {
+  flex-shrink: 0;
+}
+.unsorted__panel .card--image .card__media {
+  flex: none;
+  height: 140px;
+}
+.unsorted__panel .card--image .card__media img {
+  object-fit: contain;
 }

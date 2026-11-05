@@ -21,9 +21,11 @@ export const NotificationType = z
     'access_expired',
     'link_opened',
     'task_assigned',
+    'feedback_received',
   ])
   .openapi({
     description:
+      '`feedback_received`: a new in-app report, for instance administrators only; in-app only, no report content; open Settings About Reports. ' +
       '`mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote ' +
       'in. `comment`: a new thread on a card you created. `review`: the review status of a ' +
       'card you created, or asked a review for, changed. `invitation_accepted`: someone ' +

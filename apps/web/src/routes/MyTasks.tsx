@@ -70,8 +70,10 @@ export function MyTasks({ onNavigate }: { onNavigate?: () => void }) {
                     to={notificationPath({ ...item, commentId: null }) ?? '/'}
                   >
                     <span aria-hidden="true">☐</span>
-                    <span>{item.text}</span>
-                    <span className="ink-muted">{item.projectName}</span>
+                    <span data-feedback-secret>{item.text}</span>
+                    <span className="ink-muted" data-feedback-secret>
+                      {item.projectName}
+                    </span>
                   </Link>
                 ))}
               </div>

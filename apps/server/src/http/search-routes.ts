@@ -1,5 +1,8 @@
+import { type CastAppearance, castAppearances } from '@inkadra/canvas-core';
+import { type Element, readElement, roots } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
+  CastAppearancesQuery,
   classificationOption,
   Id,
   type ProjectRole,
@@ -8,13 +11,14 @@ import {
   type TagCount,
   z,
 } from '@inkadra/shared';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
+import * as Y from 'yjs';
 import { type Actor, activeGrant, activeMember, effectiveRoles } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { readClassifications } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
-import { board, boardGrant, projectMember } from '../db/schema.ts';
+import { board, boardDoc, boardElementIndex, boardGrant, projectMember } from '../db/schema.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -25,6 +29,8 @@ interface Deps {
 
 const ProjectParams = z.object({ projectId: Id });
 const SNIPPET = 140;
+/** Board documents read for one answer of cast-appearances. */
+const MAX_CAST_BOARDS = 40;
 
 /** `q` as a LIKE pattern that matches it anywhere, with % and _ taken literally. */
 export function containsPattern(q: string): string {
@@ -140,6 +146,56 @@ const uuids = (ids: string[]) => sql`${`{${ids.join(',')}}`}::uuid[]`;
 
 export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
   const v1 = (path: string) => `${API_PREFIX}${path}`;
+
+  app.get(v1('/projects/:projectId/cast-appearances'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { projectId } = ProjectParams.parse(req.params);
+    const { excludeBoardId } = CastAppearancesQuery.parse(req.query ?? {});
+    const { boardIds } = await readableBoards(db, actor, projectId);
+    const ids = boardIds.filter((id) => id !== excludeBoardId);
+    if (ids.length === 0) return { items: [] };
+    // Only the documents of boards the index says have frames: the cast is not in the index.
+    // shortcut: the most recently edited MAX_CAST_BOARDS only, read on each request (clients
+    // keep the answer a minute); a project with more needs the cast in the index.
+    const docs = await db
+      .select({ boardId: boardDoc.boardId, state: boardDoc.state })
+      .from(boardDoc)
+      .where(
+        and(
+          inArray(boardDoc.boardId, ids),
+          sql`exists (select 1 from ${boardElementIndex}
+            where ${boardElementIndex.boardId} = ${boardDoc.boardId}
+              and ${boardElementIndex.type} = 'frame')`,
+        ),
+      )
+      .orderBy(desc(boardDoc.updatedAt))
+      .limit(MAX_CAST_BOARDS);
+    const merged = new Map<string, CastAppearance>();
+    for (const { boardId, state } of docs) {
+      const doc = new Y.Doc();
+      try {
+        Y.applyUpdate(doc, state);
+        const elements = [...roots(doc).elements.values()].flatMap((map): Element[] => {
+          const el = readElement(map);
+          return el ? [el] : [];
+        });
+        for (const entry of castAppearances(elements)) {
+          const seen = merged.get(entry.name);
+          merged.set(entry.name, {
+            name: entry.name,
+            frames: entry.frames + (seen?.frames ?? 0),
+            scenes: [...new Set([...(seen?.scenes ?? []), ...entry.scenes])],
+          });
+        }
+      } catch (err) {
+        // One unreadable document must not cost the scenes of all the others.
+        req.log.warn({ err, boardId }, 'cast appearances: board document not readable');
+      } finally {
+        doc.destroy();
+      }
+    }
+    return { items: [...merged.values()] };
+  });
 
   app.get(v1('/search'), async (req) => {
     const actor = await requireActor(auth, req, db);

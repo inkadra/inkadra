@@ -1139,6 +1139,9 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
   it('slides the session at most once an hour, never beyond the link expiry', async () => {
     const link = await createLink('editor', B.A, { expiresInDays: 2 });
     const opened = await open(link);
+    // The names of the storyboard lists reach guests with the link; the tags do not.
+    expect(opened.body.shotCatalogs.shotSizes[0].id).toBe('ews');
+    expect(opened.body.shotCatalogs.tags).toBeUndefined();
     const until = new Date(opened.body.sessionExpiresAt).getTime();
     expect(until).toBeLessThanOrEqual(Date.now() + 2 * 86_400_000 + 1000);
     expect(until).toBeGreaterThan(Date.now() + 86_400_000);
@@ -1624,6 +1627,52 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     await db
       .delete(boardGrant)
       .where(and(eq(boardGrant.boardId, B.R), eq(boardGrant.userId, as.editor.id)));
+  });
+
+  it('keeps the contact and notes of a character, and relations to hidden ones, from guests', async () => {
+    const cast = await insertBoard(P, 'Cast', B.A);
+    const character = { ...el, type: 'character', parent: null } as const;
+    await saveDoc(cast, [
+      {
+        ...character,
+        id: 'marta_____',
+        name: 'Marta',
+        nickname: 'Mar',
+        wants: 'Restare',
+        costume: 'Giacca verde',
+        contact: 'Agenzia riservata',
+        notes: 'Provino riservato',
+        assetId: X.x1,
+        references: [X.x3],
+        relations: [
+          { characterId: 'paolo_____', label: 'fratello' },
+          { characterId: 'segreto___', label: 'amante nascosta' },
+        ],
+      },
+      { ...character, id: 'paolo_____', name: 'Paolo' },
+      { ...character, id: 'segreto___', name: 'Segreto', guestHidden: true },
+    ]);
+    const link = await createLink('editor', cast, { role: 'guest_view' });
+    const me = await open(link, { name: 'Gina', ip: '10.31.0.9' });
+    const res = await call({ cookie: me.cookie }, 'GET', g(link, `/boards/${cast}`));
+    await db.delete(board).where(eq(board.id, cast));
+    expect(res.status).toBe(200);
+    const raw = JSON.stringify(res.body);
+    for (const secret of ['Agenzia riservata', 'Provino riservato', 'amante', 'Segreto'])
+      expect(raw).not.toContain(secret);
+    const marta = res.body.elements.find((e: { id: string }) => e.id === 'marta_____');
+    expect(marta).toMatchObject({
+      nickname: 'Mar',
+      wants: 'Restare',
+      costume: 'Giacca verde',
+      references: [X.x3],
+      relations: [{ characterId: 'paolo_____', label: 'fratello' }],
+    });
+    expect(marta).not.toHaveProperty('contact');
+    expect(marta).not.toHaveProperty('notes');
+    // The picture and the references are files the guest may read.
+    const assets = res.body.assets.map((a: { id: string }) => a.id);
+    expect(assets).toEqual(expect.arrayContaining([X.x1, X.x3]));
   });
 
   it('follows the creator: sub-boards they lose and links they can no longer edit', async () => {

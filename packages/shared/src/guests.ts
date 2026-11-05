@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { AssetTrack, AssetVariant, ThumbnailSize } from './assets.ts';
 import { BoardKind } from './boards.ts';
+import { ShotCatalogs } from './classifications.ts';
 import { CommentCount, ElementRef } from './comments.ts';
 import { Id, Timestamp, z } from './common.ts';
 import { GuestElementReview } from './reviews.ts';
@@ -227,7 +228,10 @@ export const GuestSession = z
         'a password change, the page opens the link again with POST …/session.',
     }),
     maps: z
-      .object({ attribution: z.string().max(200) })
+      .object({
+        attribution: z.string().max(200),
+        satelliteAttribution: z.string().max(200).optional(),
+      })
       .nullable()
       .optional()
       .openapi({
@@ -236,6 +240,11 @@ export const GuestSession = z
           'cards can be explored through GET …/map-tiles. Null when maps are off; absent from ' +
           'servers older than the field.',
       }),
+    shotCatalogs: ShotCatalogs.optional().openapi({
+      description:
+        'Names of the storyboard lists, to show the shot, angle and movement of frames. Absent ' +
+        'from servers older than the field: use the default lists.',
+    }),
   })
   .openapi('GuestSession');
 export type GuestSession = z.infer<typeof GuestSession>;

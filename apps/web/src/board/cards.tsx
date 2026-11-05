@@ -8,7 +8,7 @@ import {
 } from '@inkadra/canvas-core';
 import { CARD_COLORS, type ContentCounts, contentCounts, type Element } from '@inkadra/doc-schema';
 import type { Person, ProjectMember } from '@inkadra/shared';
-import { Checkbox, fadeOutCopy, Icon, ProjectGlyph } from '@inkadra/ui';
+import { Checkbox, fadeOutCopy, Icon, ProjectGlyph, tokens } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import {
   type CSSProperties,
@@ -18,6 +18,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -32,21 +33,26 @@ import { CardReview } from './CardReview.tsx';
 import { CroppedImage } from './CroppedImage.tsx';
 import { copyHex, hexToRgb } from './colors.ts';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
+import { isContextualFocus } from './editing-focus.ts';
 import { FileCard, RawImageFooter } from './FileCard.tsx';
 import { useBoardAspect } from './film/aspect.ts';
+import { characterSubtitle, useCharacterAppearance } from './film/cast-appearances.ts';
 import { FramePicture } from './film/FramePicture.tsx';
+import { FrameUploadState } from './film/frame-upload.tsx';
 import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
 import { StoryPicture } from './film/StoryCardPanel.tsx';
 import { useSlugline } from './film/storyboard-data.ts';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';
 import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
-import { playInline, stopInline, stopWhenOffscreen, useInlinePlaying } from './inline-player.ts';
+import { appendImageStroke } from './image-drawing.ts';
+import { playInline, stopInline, useInlinePlaying, useInlineStops } from './inline-player.ts';
 import { webUrl } from './links.ts';
 import { MapCard } from './MapCard.tsx';
 import { useMeasure } from './measure.ts';
 import { movingVariantUrl } from './moving.tsx';
 import { NoteBody, NoteEditor, useFragment } from './note.tsx';
+import { noteColor } from './note-format.ts';
 import { PlanCard } from './plan/PlanCard.tsx';
 import { LOCAL } from './store.ts';
 import { TableCard } from './TableCard.tsx';
@@ -137,7 +143,13 @@ export const Card = memo(function Card({
         left: resize?.x ?? element.x,
         top: resize?.y ?? element.y,
         width: w,
-        height: element.type === 'link' || isCropping ? undefined : (resize?.h ?? element.h),
+        height:
+          element.type === 'character' ||
+          element.type === 'link' ||
+          isContainer(element) ||
+          isCropping
+            ? undefined
+            : (resize?.h ?? element.h),
         transform: offset ? `translate(${offset.dx}px, ${offset.dy}px)` : undefined,
       };
   if (zoom !== undefined) (style as Record<string, unknown>)['--zoom'] = zoom;
@@ -260,46 +272,94 @@ function CardBody({
 function SectionCard({ element, editing }: { element: Of<'section'>; editing: boolean }) {
   const { store, setEditing } = useBoard();
   const { t } = useTranslation();
-  return editing ? (
-    <input
-      className="card__inline-input section__title"
-      defaultValue={element.title}
-      placeholder={t('board.section.placeholder')}
-      // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
-      autoFocus
-      onFocus={(e) => e.currentTarget.select()}
-      onBlur={(e) => {
-        updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
-        setEditing(null);
-      }}
-      onKeyDown={blurOnEnter}
-      maxLength={200}
-      aria-label={t('board.section.title')}
-    />
-  ) : (
-    <h2 className={`section__title${element.title ? '' : ' is-empty'}`}>
-      {element.title || t('board.section.placeholder')}
-    </h2>
+  const style = {
+    margin: element.size || element.bold !== undefined ? 0 : undefined,
+    whiteSpace: element.size || element.bold !== undefined ? 'nowrap' : undefined,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    fontSize: element.size ? { S: 20, M: 26, L: 34 }[element.size] : 20,
+    fontWeight: element.bold === undefined ? 600 : element.bold ? 700 : 400,
+    fontStyle: element.italic ? 'italic' : 'normal',
+    textAlign: element.align ?? 'left',
+    color: noteColor(element.color),
+    borderBottom:
+      element.line === false || element.size || element.bold !== undefined ? 'none' : undefined,
+  } as const;
+  return (
+    <div
+      className={
+        element.line !== false && (element.size || element.bold !== undefined)
+          ? 'section-heading has-rule'
+          : 'section-heading'
+      }
+      style={{ color: noteColor(element.color) }}
+    >
+      {editing ? (
+        <input
+          className="card__inline-input section__title"
+          style={style}
+          defaultValue={element.title}
+          placeholder={t('board.section.placeholder')}
+          // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          onBlur={(e) => {
+            updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === 'Escape') {
+              e.preventDefault();
+              setEditing(null);
+            }
+          }}
+          maxLength={200}
+          aria-label={t('board.section.title')}
+        />
+      ) : (
+        <h2 style={style} className={`section__title${element.title ? '' : ' is-empty'}`}>
+          {element.title || t('board.section.placeholder')}
+        </h2>
+      )}
+    </div>
   );
 }
 
-/** Compact face of a character: portrait, name, role; the rest is in its side sheet. */
+/**
+ * Compact face of a character: portrait, name, role and age; above 260 px also the actor and
+ * where it appears (container query in film.css). The rest is in its side sheet.
+ */
 function CharacterCard({ element }: { element: Of<'character'> }) {
   const { t } = useTranslation();
-  const scenes = element.scenes?.length ?? 0;
+  const { store, projectId, boardId } = useBoard();
+  const guest = useContext(GuestModeContext);
+  const { frames, scenes } = useCharacterAppearance(store, element.name, projectId, boardId, guest);
+  const sceneCount = new Set([...(element.scenes ?? []), ...scenes]).size;
+  const subtitle = characterSubtitle(element, t);
   return (
     <div className="card__pad story-card story-card--character">
-      <StoryPicture assetId={element.assetId} label={element.name} pixels={112} kind="character" />
+      <StoryPicture assetId={element.assetId} label={element.name} pixels={176} kind="character" />
       <div className="story-card__text">
         <span className={`card__title${element.name ? '' : ' is-empty'}`}>
           {element.name || t('story.character.namePlaceholder')}
         </span>
-        {element.role && <span className="card__desc">{element.role}</span>}
-        {(element.actor || scenes > 0) && (
-          <span className="story-card__meta">
-            {[element.actor, scenes > 0 && t('story.sceneCount', { count: scenes })]
-              .filter(Boolean)
-              .join(' · ')}
+        {subtitle && <span className="card__desc">{subtitle}</span>}
+        {element.actor && (
+          <span className="story-card__meta story-card__more">
+            {t('story.character.actorLine', { name: element.actor })}
+          </span>
+        )}
+        {(frames > 0 || sceneCount > 0) && (
+          <span className="story-card__chips story-card__more">
+            {frames > 0 && (
+              <span className="film-chip story-chip">
+                {t('story.character.frameCount', { count: frames })}
+              </span>
+            )}
+            {sceneCount > 0 && (
+              <span className="film-chip story-chip">
+                {t('story.sceneCount', { count: sceneCount })}
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -355,6 +415,7 @@ function FrameCard({ element, width }: { element: Of<'frame'>; width: number }) 
           referenceOpacity={element.referenceOpacity}
           pixels={width * scale * (window.devicePixelRatio || 1)}
         />
+        <FrameUploadState frameId={element.id} />
       </div>
       <div className="card__pad card__frame-meta">
         <span className="card__title">{label}</span>
@@ -417,6 +478,18 @@ function ImageCard({
   const { t } = useTranslation();
   const asset = useAsset(element.assetId);
   const progress = useUploadProgress(element.assetId);
+  const board = useBoard();
+  const [drawing, setDrawing] = useState(false);
+  useEffect(() => {
+    const toggle = (event: Event) => {
+      if ((event as CustomEvent).detail === element.id) setDrawing((value) => !value);
+    };
+    window.addEventListener('inkadra:image-draw', toggle);
+    return () => window.removeEventListener('inkadra:image-draw', toggle);
+  }, [element.id]);
+  useEffect(() => {
+    if (board.editing !== element.id) setDrawing(false);
+  }, [board.editing, element.id]);
   const ready = asset && asset !== 'missing' ? asset : null;
   const [hover, setHover] = useState(false);
   const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
@@ -455,6 +528,15 @@ function ImageCard({
             />
           ) : (
             <CroppedImage
+              strokes={element.strokes}
+              onStroke={
+                drawing && board.editing === element.id && !board.readOnly && !element.locked
+                  ? (points) => {
+                      if (!appendImageStroke(board.store.doc, element.id, points))
+                        board.notify?.(t('board.contextual.drawFailed'));
+                    }
+                  : undefined
+              }
               poster={src}
               moving={moving}
               alt={element.caption ?? ready?.filename ?? ''}
@@ -520,40 +602,20 @@ function InlineVideo({
 }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
-  const mounted = useRef(false);
   const [alt, setAlt] = useState(false);
-  const id = element.id;
+  useInlineStops(element.id, ref);
   useEffect(() => {
-    mounted.current = true;
-    const stop = () => stopInline(id);
-    const onKey = (event: { key: string; altKey: boolean }) => {
-      if (event.key === 'Escape') stop();
-      setAlt(event.altKey);
-    };
+    const onKey = (event: { altKey: boolean }) => setAlt(event.altKey);
     const onBlur = () => setAlt(false);
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKey);
     window.addEventListener('blur', onBlur);
-    // Far off-screen means more than a screen away: a small pan keeps the video running.
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry && !entry.isIntersecting) stopWhenOffscreen(id);
-      },
-      { rootMargin: '100% 100% 100% 100%' },
-    );
-    if (ref.current) observer.observe(ref.current);
     return () => {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onKey);
       window.removeEventListener('blur', onBlur);
-      observer.disconnect();
-      mounted.current = false;
-      // StrictMode remounts at once: only a card that really went away stops.
-      queueMicrotask(() => {
-        if (!mounted.current) stop();
-      });
     };
-  }, [id]);
+  }, []);
   return (
     <div
       className={`card__media card__media--link card__embed${instagram ? ' card__embed--portrait' : ''}`}
@@ -622,41 +684,49 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   );
   return (
     <>
-      {embedUrl && playing ? (
-        <InlineVideo element={element} embedUrl={embedUrl} title={title} instagram={instagram} />
-      ) : src || embedUrl ? (
-        <div className={`card__media card__media--link${src ? '' : ' card__video'}`}>
-          {src && <img src={src} alt="" draggable={false} decoding="async" />}
-          {embedUrl && (
-            <button
-              type="button"
-              className="card__play"
-              data-no-drag
-              data-play-link={element.id}
-              onClick={(event) => {
-                event.stopPropagation();
-                playInline(element.id);
-              }}
-              aria-label={t('board.menu.playLink', { title })}
-            >
-              <Icon name="play" size={16} />
-            </button>
-          )}
-          {instagram && <span className="card__badge">{t('board.menu.instagram')}</span>}
-        </div>
-      ) : null}
-      <div className="card__pad card__link">
-        <span className="card__title">{element.title || shortUrl(element.url)}</span>
-        {element.description && <span className="card__desc">{element.description}</span>}
-        {embedUrl && playing && instagram ? (
-          // Instagram's embed fills its picture with its own bars: ↗ waits below, by the host.
-          <div className="card__host-row">
-            {host}
-            <OpenOutButton element={element} instagram />
+      {(embedUrl ? element.showPreview !== false : element.showInfo !== false) &&
+        (embedUrl && playing ? (
+          <InlineVideo element={element} embedUrl={embedUrl} title={title} instagram={instagram} />
+        ) : src || embedUrl ? (
+          <div className={`card__media card__media--link${src ? '' : ' card__video'}`}>
+            {src && <img src={src} alt="" draggable={false} decoding="async" />}
+            {embedUrl && (
+              <button
+                type="button"
+                className="card__play"
+                data-no-drag
+                data-play-link={element.id}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  playInline(element.id);
+                }}
+                aria-label={t('board.menu.playLink', { title })}
+              >
+                <Icon name="play" size={16} />
+              </button>
+            )}
+            {instagram && <span className="card__badge">{t('board.menu.instagram')}</span>}
           </div>
-        ) : (
-          host
+        ) : null)}
+      <div className="card__pad card__link">
+        <span className="card__title">
+          {element.showInfo === false
+            ? shortUrl(element.url)
+            : element.title || shortUrl(element.url)}
+        </span>
+        {element.showInfo !== false && element.description && (
+          <span className="card__desc">{element.description}</span>
         )}
+        {element.showInfo !== false &&
+          (embedUrl && playing && instagram ? (
+            // Instagram's embed fills its picture with its own bars: ↗ waits below, by the host.
+            <div className="card__host-row">
+              {host}
+              <OpenOutButton element={element} instagram />
+            </div>
+          ) : (
+            host
+          ))}
       </div>
     </>
   );
@@ -696,6 +766,7 @@ function TodoCard({
   const { t } = useTranslation();
   const [draft, setDraft] = useState('');
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [activeItem, setActiveItem] = useState<string | null>(null);
   const done = element.items.filter((i) => i.done).length;
   const addRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -710,7 +781,7 @@ function TodoCard({
   }
 
   return (
-    <div className="card__pad card__todo">
+    <div className="card__pad card__todo" style={{ fontSize: tokens.type.noteBody[0] }}>
       <div className="card__todo-head">
         {editing ? (
           <input
@@ -740,7 +811,14 @@ function TodoCard({
       </div>
       <ul className="card__todo-list">
         {element.items.map((item) => (
-          <li key={item.id} className={item.done ? 'is-done' : undefined}>
+          <li
+            key={item.id}
+            className={item.done ? 'is-done' : undefined}
+            onFocus={() => setActiveItem(item.id)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setActiveItem(null);
+            }}
+          >
             <Checkbox
               checked={item.done}
               disabled={readOnly}
@@ -751,11 +829,16 @@ function TodoCard({
               data-no-drag
             />
             {editing ? (
-              <input
-                className="card__inline-input"
+              <textarea
+                className="card__inline-input card__todo-text"
+                rows={1}
                 defaultValue={item.text}
+                ref={(el) => {
+                  if (el) fitHeight(el);
+                }}
+                onInput={(e) => fitHeight(e.currentTarget)}
                 onBlur={(e) => {
-                  const text = e.target.value.trim();
+                  const text = e.target.value.replace(/\s+/g, ' ').trim();
                   if (text) updateTodoItem(store.doc, element.id, item.id, { text }, LOCAL);
                   else removeTodoItem(store.doc, element.id, item.id, LOCAL);
                 }}
@@ -768,14 +851,14 @@ function TodoCard({
                 aria-label={t('board.todo.item')}
               />
             ) : (
-              <span>{item.text}</span>
+              <span className="card__todo-text">{item.text}</span>
             )}
             <TodoAssignment
               people={people}
               failed={peopleFailed}
               elementId={element.id}
               item={item}
-              editing={editing}
+              editing={editing && activeItem === item.id}
               open={assigning === item.id}
               onClose={() => setAssigning(null)}
             />
@@ -821,7 +904,13 @@ function TodoScene({ sceneId }: { sceneId: string }) {
   );
 }
 
-function blurOnEnter(e: KeyboardEvent<HTMLInputElement>) {
+/** A field as tall as its text: an item of a to-do reads in full while it is edited too. */
+function fitHeight(el: HTMLTextAreaElement) {
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
+function blurOnEnter(e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
   if (e.key === 'Enter' || e.key === 'Escape') {
     e.preventDefault();
     e.currentTarget.blur();
@@ -931,7 +1020,7 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
             onFocus={(e) => e.currentTarget.select()}
             onBlur={(e) => {
               const value = e.target.value.trim();
-              setEditing(null);
+              if (!isContextualFocus(e.relatedTarget)) setEditing(null);
               if (value && value !== board.title)
                 void renameBoard(projectId, board.id, value).catch(() => {});
             }}
@@ -995,7 +1084,7 @@ function ColumnCard({
             onFocus={(e) => e.currentTarget.select()}
             onBlur={(e) => {
               updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
-              setEditing(null);
+              if (!isContextualFocus(e.relatedTarget)) setEditing(null);
             }}
             onKeyDown={blurOnEnter}
             aria-label={t('board.column.title')}

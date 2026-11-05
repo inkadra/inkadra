@@ -1,5 +1,5 @@
 import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
-import { Avatar, Icon, kindStyle, ProjectGlyph } from '@inkadra/ui';
+import { Avatar, kindStyle, ProjectGlyph } from '@inkadra/ui';
 import { type MouseEvent, type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -23,7 +23,6 @@ import {
   useShootingDays,
 } from './home-data.ts';
 import { MyTasks } from './MyTasks.tsx';
-import { PROJECT_TEMPLATES, TEMPLATE_ICONS } from './project-setup.ts';
 import './home.css';
 
 function greetingKey(hour: number) {
@@ -35,8 +34,7 @@ function greetingKey(hour: number) {
 export function Home() {
   const { t, i18n } = useTranslation();
   const { user } = useSession();
-  const { projects, shared, openNewProject, canCreateProjects, openInbox, unread, refreshUnread } =
-    useProjects();
+  const { projects, shared, openInbox, unread, refreshUnread } = useProjects();
   const navigate = useNavigate();
   const now = new Date();
   const firstName = user?.name.split(' ')[0] ?? '';
@@ -74,10 +72,14 @@ export function Home() {
     <div className="home">
       <header className="home__head">
         <div className="home__title">
-          <h1>{t(greetingKey(now.getHours()), { name: firstName })}</h1>
+          <h1 data-feedback-secret>{t(greetingKey(now.getHours()), { name: firstName })}</h1>
           <p className="ink-muted">
             {summary.map((part, index) => (
-              <span key={part} className={first && index === 1 ? 'home__shooting' : undefined}>
+              <span
+                key={part}
+                className={first && index === 1 ? 'home__shooting' : undefined}
+                data-feedback-secret={(first && index === 1) || undefined}
+              >
                 {index > 0 && ' · '}
                 {part}
               </span>
@@ -86,7 +88,11 @@ export function Home() {
         </div>
 
         {(days.length > 0 || today.state === 'error') && (
-          <section className="ink-card home__today" aria-labelledby="home-today">
+          <section
+            className="ink-card home__today"
+            aria-labelledby="home-today"
+            data-feedback-secret
+          >
             <h2 id="home-today" className="ink-label home__today-chip">
               {t('home.today.title')}
             </h2>
@@ -135,7 +141,7 @@ export function Home() {
       >
         <LoadState list={boards} empty={t('home.noRecentBoards')}>
           {(items) => (
-            <div className="home__boards">
+            <div className="home__boards" data-feedback-secret>
               {items.map((b) => (
                 <BoardCard
                   key={b.id}
@@ -172,7 +178,7 @@ export function Home() {
       </Section>
       {shared && shared.length > 0 && (
         <Section id="home-shared" title={t('home.shared')}>
-          <div className="home__recent">
+          <div className="home__recent" data-feedback-secret>
             {shared.map((b) => (
               <a
                 key={b.id}
@@ -186,34 +192,6 @@ export function Home() {
                   <span className="ink-muted home__when">{t(`roles.${b.myRole}`)}</span>
                 </span>
               </a>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Templates create projects: not offered to people who cannot (decision 0041). */}
-      {canCreateProjects && (
-        <Section id="home-templates" title={t('home.templates.title')}>
-          <div className="home__templates">
-            {PROJECT_TEMPLATES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                className="ink-card home__template"
-                // The same templates and form as New project and the guided setup.
-                onClick={() => openNewProject(c)}
-              >
-                <span
-                  className="home__template-icon"
-                  data-kind={c}
-                  style={kindStyle(c)}
-                  aria-hidden="true"
-                >
-                  <Icon name={TEMPLATE_ICONS[c]} size={16} />
-                </span>
-                <span className="home__name">{t(`onboarding.templates.${c}.name`)}</span>
-                <span className="ink-muted home__when">{t(`onboarding.templates.${c}.body`)}</span>
-              </button>
             ))}
           </div>
         </Section>
@@ -364,16 +342,16 @@ function ActivityItem({ item, onRead }: { item: Notification; onRead: () => Prom
   const where = [...new Set([item.projectName, item.boardTitle])].filter(Boolean).join(' · ');
   const body = (
     <>
-      <span className="home__avatar" style={{ background: avatarBg(actor) }}>
+      <span className="home__avatar" style={{ background: avatarBg(actor) }} data-feedback-secret>
         <Avatar name={actor ?? 'Inkadra'} size={24} />
       </span>
       <span className="home__activity-body">
         <span className={item.reviewStatus === 'approved' ? 'home__approved' : undefined}>
-          {actor && <b>{actor} </b>}
+          {actor && <b data-feedback-secret>{actor} </b>}
           {describeNotification(item, t, { id: user?.id, locale: i18n.language })}
         </span>
         <span className="ink-muted home__when">
-          {where && `${where} · `}
+          {where && <span data-feedback-secret>{where} · </span>}
           <time dateTime={item.createdAt}>{relativeTime(item.createdAt, i18n.language)}</time>
         </span>
       </span>

@@ -1,10 +1,11 @@
 import { deflateSync } from 'node:zlib';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { createElement } from '@inkadra/canvas-core';
-import { boardDocName, roots } from '@inkadra/doc-schema';
+import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
 import { type Browser, expect, type Page, test } from '@playwright/test';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
+import { captureComments } from '../helpers/comment-screenshots.ts';
 import { chooseSelect } from '../helpers/select.ts';
 
 // Runs after first-run.spec.ts: works on a project of its own, as the administrator.
@@ -123,7 +124,7 @@ async function seed(page: Page, baseURL: string): Promise<Seeded> {
   }
   const doc = new Y.Doc();
   const socket = new HocuspocusProviderWebsocket({
-    url: `${baseURL.replace(/^http/, 'ws')}/collab`,
+    url: `${baseURL.replace(/^http/, 'ws')}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
     WebSocketPolyfill: CookieSocket,
   });
   const provider = new HocuspocusProvider({
@@ -354,6 +355,8 @@ test('a guest opens the link, comments and picks a picture', async ({ browser })
 
   expect(guestCalls.length).toBeGreaterThan(0);
   expect(accountCalls).toEqual([]);
+  await expect(page.getByText('Li leggono il team e gli ospiti di questo link.')).toBeVisible();
+  await captureComments(page, 'guest');
   await context.close();
 });
 

@@ -3,6 +3,9 @@ import { Button, Icon } from '@inkadra/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isRouteErrorResponse, useRouteError } from 'react-router';
+import { FeedbackLauncher } from '../feedback/Feedback.tsx';
+import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
+import { NoSessionProvider } from '../lib/session.tsx';
 import './error.css';
 
 /** Short reference for support: random per crash, not a hash of anything sensitive. */
@@ -57,6 +60,7 @@ export function ErrorPage() {
     console.error(`App error ${id}`, error);
   }, [error, id]);
   const details = useMemo(() => errorDetails(error, id), [error, id]);
+  const reporting = !!useFeedbackStatus()?.enabled;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(details);
@@ -81,6 +85,15 @@ export function ErrorPage() {
           <Button variant="secondary" onClick={() => void copy()}>
             {copied ? t('appError.copied') : t('appError.copy')}
           </Button>
+          {reporting && (
+            <Button
+              onClick={() =>
+                openFeedback({ title: t('feedback.prefilledTitle'), details, errorId: id })
+              }
+            >
+              {t('feedback.reportThis')}
+            </Button>
+          )}
         </div>
         {copied && (
           <p className="app-error__hint" role="status">
@@ -89,6 +102,10 @@ export function ErrorPage() {
         )}
       </div>
       <code className="app-error__id">{t('appError.id', { id })}</code>
+      {/* Nobody signed in: the status request is refused and the button above stays hidden. */}
+      <NoSessionProvider>
+        <FeedbackLauncher />
+      </NoSessionProvider>
     </div>
   );
 }

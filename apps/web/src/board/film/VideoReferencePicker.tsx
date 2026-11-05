@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Element } from '@inkadra/doc-schema';
+import { Icon } from '@inkadra/ui';
 import { useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -16,12 +17,14 @@ export function VideoReferencePicker({
   projectId,
   userId,
   readOnly,
+  onInserted,
 }: {
   store: BoardStore;
   frameId: string;
   projectId: string;
   userId: string;
   readOnly: boolean;
+  onInserted?: () => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -40,7 +43,8 @@ export function VideoReferencePicker({
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
-        {t('frameGrab.fromVideo')}
+        <Icon name="film" size={16} />
+        {t('film.frame.fromBoardVideo')}
       </button>
       {open && (
         <div className="film-panel__video-picker">
@@ -64,6 +68,7 @@ export function VideoReferencePicker({
             userId={userId}
             readOnly={readOnly}
             initialFrameId={frameId}
+            {...(onInserted ? { onFrameSaved: onInserted } : {})}
             onClose={() => {
               setSelected(null);
               setOpen(false);

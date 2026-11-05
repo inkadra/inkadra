@@ -1,9 +1,10 @@
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { createElement, moveIntoParent } from '@inkadra/canvas-core';
-import { boardDocName, roots } from '@inkadra/doc-schema';
+import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
+import { addSceneWithFrames } from '../helpers/storyboard.ts';
 
 const account = {
   name: 'Giulia Bianchi',
@@ -36,7 +37,7 @@ async function seed(page: Page, baseURL: string) {
   }
   const doc = new Y.Doc();
   const socket = new HocuspocusProviderWebsocket({
-    url: `${baseURL.replace(/^http/, 'ws')}/collab`,
+    url: `${baseURL.replace(/^http/, 'ws')}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
     WebSocketPolyfill: CookieSocket,
   });
   const provider = new HocuspocusProvider({
@@ -285,7 +286,7 @@ test('viewers and commenters get no board menu, no guest hiding and no scene tog
   await page.keyboard.type('Scene private');
   await page.keyboard.press('Escape');
   await storyboard.dblclick();
-  // The Storyboard template: one scene with three frames.
+  await addSceneWithFrames(page);
   const ownerScene = page.getByRole('region', { name: 'Scena 1' });
   await expect(ownerScene.locator('.story__tile')).toHaveCount(3);
   await expect(
@@ -624,6 +625,7 @@ test('storyboard and shot list preview a version read-only, and editors hide fra
   await page.keyboard.type('Preview film');
   await page.keyboard.press('Escape');
   await card.dblclick();
+  await addSceneWithFrames(page);
   const scene = page.getByRole('region', { name: 'Scena 1' });
   await expect(scene.locator('.story__tile')).toHaveCount(3);
   await scene.getByRole('button', { name: 'Nuova inquadratura' }).last().click();

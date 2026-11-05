@@ -404,7 +404,7 @@ export function GuestBoardScreen({
       <div className="guest">
         <header className="guest__header">
           <Logo size={24} label={preview.instanceName} />
-          <nav aria-label={t('guest.breadcrumb')} className="guest__crumbs">
+          <nav aria-label={t('guest.breadcrumb')} className="guest__crumbs" data-feedback-secret>
             {crumbs.map((c, i) => (
               <Fragment key={c.id}>
                 {i > 0 && (
@@ -468,6 +468,7 @@ export function GuestBoardScreen({
                         session.maps
                           ? {
                               attribution: session.maps.attribution,
+                              satelliteAttribution: session.maps.satelliteAttribution,
                               tiles: `${API_PREFIX}/guest/links/${session.linkId}/map-tiles/{z}/{x}/{y}`,
                             }
                           : undefined

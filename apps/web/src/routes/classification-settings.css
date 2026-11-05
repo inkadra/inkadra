@@ -2,28 +2,45 @@
   min-width: 0;
 }
 .catalogs__error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--ink-danger-border);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-danger-bg);
+  color: var(--ink-danger-fg);
+  font-size: 13px;
+}
+.catalogs__error p {
+  margin: 2px 0 0;
+}
+.catalogs__error .ink-btn {
+  flex: none;
+}
+.catalogs__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.catalogs__skeleton {
+  height: 30px;
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-3);
 }
 .catalogs__grid {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 24px;
 }
-/* One catalog is one group of rows, like every other settings section. */
-.catalogs__card {
+.catalogs__group {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.catalogs__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--ink-border-muted);
-}
-.catalogs__head h2 {
+.catalogs__group-title {
   margin: 0;
   font-size: 11px;
   font-weight: 600;
@@ -31,8 +48,85 @@
   text-transform: uppercase;
   color: var(--ink-text-muted);
 }
-.catalogs__head span {
+/* One catalog is one group of rows, like every other settings section. */
+.catalogs__card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ink-border-muted);
+}
+.catalogs__head {
+  margin: 0;
+  font: inherit;
+}
+.catalogs__head button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: none;
+  color: var(--ink-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.catalogs__head button:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.catalogs__name-head {
+  font-size: 13px;
+  font-weight: 600;
+}
+.catalogs__count {
+  margin-left: auto;
   font-size: 12px;
+}
+.catalogs__chevron.is-open {
+  transform: rotate(180deg);
+}
+.catalogs__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.catalogs__chip {
+  max-width: 180px;
+  overflow: hidden;
+  padding: 1px 7px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-3);
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.catalogs__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.catalogs__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.catalogs__hint {
+  margin: 4px 0 0 56px;
+  color: var(--ink-danger-fg);
+  font-size: 12px;
+}
+.catalogs__name.is-invalid {
+  border-color: var(--ink-danger-fg);
+}
+.catalogs__badge.is-renamed {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
 }
 .catalogs__empty {
   margin: 0;
@@ -110,7 +204,25 @@
     width: 36px;
     height: 44px;
   }
+  /* Name and button share the first line; a chip sits under the name. */
   .catalogs__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 4px;
+  }
+  .catalogs__badge {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+  }
+  .catalogs__badge + .catalogs__badge {
+    grid-row: 3;
+  }
+  .catalogs__hint {
+    margin-left: 76px;
+  }
+  /* Three names say enough on a phone. */
+  .catalogs__chip:nth-child(n + 4) {
+    display: none;
   }
 }

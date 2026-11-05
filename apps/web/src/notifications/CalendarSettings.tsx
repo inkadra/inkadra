@@ -81,6 +81,7 @@ export function CalendarSettings() {
               className="ink-input"
               aria-label={t('calendar.link')}
               readOnly
+              data-feedback-secret
               value={feed?.url ?? ''}
             />
             <Button

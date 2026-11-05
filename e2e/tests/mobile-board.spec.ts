@@ -13,7 +13,7 @@ async function inside(locator: Locator) {
   return box!;
 }
 
-test('a card on a phone: selection bar, menu and note sheet fit the screen', async ({
+test('a card on a phone: selection bar, menu and inline editor fit the screen', async ({
   page,
   baseURL,
 }) => {
@@ -72,16 +72,10 @@ test('a card on a phone: selection bar, menu and note sheet fit the screen', asy
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
 
-  // The note opens as a full-screen sheet, without a Full page toggle that would do nothing.
+  // Editing transforms the same bar and keeps the note on the canvas.
   await card.dblclick();
-  const sheet = page.locator('.note-sidesheet');
-  await expect(sheet).toBeVisible();
-  // It slides in from the right: measure once it has arrived.
-  await expect
-    .poll(async () => {
-      const box = await sheet.boundingBox();
-      return { x: box?.x, width: box?.width };
-    })
-    .toEqual({ x: 0, width });
-  await expect(sheet.getByRole('button', { name: 'A tutta pagina' })).toBeHidden();
+  await expect(card.locator('[contenteditable=true]')).toBeVisible();
+  await inside(page.locator('.ctxbar'));
+  await expect(page.getByRole('button', { name: 'Fatto', exact: true })).toBeVisible();
+  await expect(page.locator('.note-sidesheet')).toHaveCount(0);
 });

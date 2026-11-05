@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './tests',
-  testMatch: 'viewer-layout.spec.ts',
+  testMatch: ['viewer-layout.spec.ts', 'map-dialog.spec.ts'],
   use: { channel: 'chrome' },
   webServer: {
     command: `${process.platform === 'win32' ? 'npx.cmd' : 'npx'} -y pnpm@10.28.0 --filter @inkadra/web dev --host 127.0.0.1 --port 5179 --strictPort`,

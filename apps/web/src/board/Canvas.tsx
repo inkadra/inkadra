@@ -5,7 +5,6 @@ import {
   addScene,
   addVariant,
   alignRects,
-  applyTemplate,
   arrowBox,
   arrowEnds,
   arrowGeometry,
@@ -58,7 +57,6 @@ import {
   snap as snapToGrid,
   stackColumns,
   storyboardOf,
-  type TemplateId,
   TIDY_GAPS,
   type TidyGap,
   tidyMosaic,
@@ -99,8 +97,6 @@ import { useIsPhone } from '../lib/phone.ts';
 import { getPreferences, updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
-import { setupBoards } from '../routes/project-setup.ts';
-import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
 import { addedSummary } from './added-summary.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
@@ -114,12 +110,7 @@ import {
 } from './boards.ts';
 import { ColorPicker } from './ColorPicker.tsx';
 import { loadBoardGrid, loadTidyGap, saveBoardGrid, saveTidyGap } from './canvas-prefs.ts';
-import {
-  type CanvasTemplate,
-  createCanvasBoards,
-  isStoryboardTemplate,
-} from './canvas-templates.ts';
-import { Card } from './cards.tsx';
+import { Card, NOTE_COLORS } from './cards.tsx';
 import {
   type ArrangeCommand,
   BarButton,
@@ -145,10 +136,13 @@ import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
 import { EmptyBoardStart } from './EmptyBoardStart.tsx';
 import { easeCards } from './ease-cards.ts';
+import { isContextualFocus, restoreEditingFocus } from './editing-focus.ts';
 import { isDesignFile } from './file-kinds.ts';
-import { useBoardAspect } from './film/aspect.ts';
+import { frameRatio, useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
+import { isFrameImageFile, isFrameImageType, moveImageToFrame } from './film/frame-image.ts';
+import { uploadToFrame } from './film/frame-upload.tsx';
 import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
 import { StoryCardPanel } from './film/StoryCardPanel.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
@@ -162,12 +156,15 @@ import { ImageCropToolbar, restoreOriginalImage } from './ImageCropEditor.tsx';
 import { hasImageTransform } from './image-crop.ts';
 import { fillLinkPreview, webUrl } from './links.ts';
 import { useBoardCounts } from './live-counts.ts';
-import { exploreMap } from './MapExplore.tsx';
+import { MapDraft, type MapSource } from './MapDraft.tsx';
+import { MapDialog } from './MapExplore.tsx';
 import { fillMapPreview } from './maps.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
+import { selectedBlocks } from './note-format.ts';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { PlanEditor } from './plan/PlanEditor.tsx';
+import { PlanViewer } from './plan/PlanViewer.tsx';
 import {
   lensMillimetres,
   ScenePicker,
@@ -182,7 +179,6 @@ import { canSpacePan, commandFor, insideDialog, isMac, isTyping } from './shortc
 import { LOCAL } from './store.ts';
 import { clipboardGrid, tableMenu } from './table.ts';
 import { TagPopover } from './tags.tsx';
-import { templateLabels, templateRect } from './templates.ts';
 import { startUpload } from './uploads.ts';
 import { canRecord, VoiceNoteRecorder } from './VoiceNote.tsx';
 import { MediaViewer } from './viewer.tsx';
@@ -198,7 +194,6 @@ const SNAP_PX = 6;
 const OVERSCAN_PX = 400;
 /** Below this zoom, text is too small to read: cards are drawn as plain shapes. */
 const FAR_ZOOM = 0.3;
-const DOT_GRID = 22;
 
 /**
  * How much of the canvas the shell's floating panels cover (#333): the navigation at the left
@@ -224,7 +219,7 @@ function chromeInsets(canvas: HTMLElement): { left: number; top: number } {
 
 /** On-screen spacing of the background dots: the grid doubles as you zoom out, never denser than 16px. */
 function dotSpacing(zoom: number): number {
-  let step = DOT_GRID * zoom;
+  let step = GRID * zoom;
   while (step < 16) step *= 2;
   return step;
 }
@@ -241,7 +236,11 @@ function Dots({ viewport }: { viewport: Viewport }) {
     <div
       className="canvas__dots"
       aria-hidden="true"
-      style={{ backgroundSize: `${step}px ${step}px`, transform: `translate(${x}px, ${y}px)` }}
+      style={{
+        backgroundSize: `${step}px ${step}px`,
+        backgroundPosition: `${-step / 2}px ${-step / 2}px`,
+        transform: `translate(${x}px, ${y}px)`,
+      }}
     />
   );
 }
@@ -350,7 +349,12 @@ interface Overlay {
   ghost?: { element: Element; x: number; y: number; w: number };
   guides?: Guide[];
   marquee?: Rect;
-  drop?: { kind: 'column'; id: string; index: number; line: Rect } | { kind: 'unsorted' };
+  drop?:
+    | { kind: 'frame'; id: string }
+    /** On a frame that takes nothing: only a note says why, the cards land as usual. */
+    | { kind: 'frameNote'; id: string; note: 'locked' | number }
+    | { kind: 'column'; id: string; index: number; line: Rect }
+    | { kind: 'unsorted' };
   resize?: Rect & { id: string };
   arrow?: { a: Point; b: Point };
 }
@@ -378,7 +382,7 @@ export interface CanvasProps {
   preview?: boolean;
   initialSelection?: ReadonlySet<string>;
   peers: Peer[];
-  onOpenBoard: (boardId: string, template?: 'storyboard') => void;
+  onOpenBoard: (boardId: string) => void;
   /** Told whenever the selection changes. */
   onSelectionChange?: (ids: ReadonlySet<string>) => void;
   /** Opens an image, file or frame in a view of the page's own; return false for the default. */
@@ -388,8 +392,13 @@ export interface CanvasProps {
   /** Filled with a reader of the part of the board on screen, for the export dialog. */
   visibleRef?: { current: (() => Rect | null) | null };
   /** Maps of the guest page, which has no instance: the credit and the guest tile URL. */
-  guestMaps?: { attribution: string; tiles: string } | undefined;
+  guestMaps?:
+    | { attribution: string; tiles: string; satelliteAttribution?: string | undefined }
+    | undefined;
 }
+
+/** A character card narrower than this leaves its name no room next to the portrait. */
+const CHARACTER_MIN_WIDTH = 160;
 
 export function Canvas({
   conn,
@@ -413,6 +422,9 @@ export function Canvas({
   const guest = useContext(GuestModeContext);
   const { instance, user } = useSession();
   const mapAttribution = guestMaps ? guestMaps.attribution : instance?.maps?.attribution;
+  const mapSatelliteAttribution = guestMaps
+    ? guestMaps.satelliteAttribution
+    : instance?.maps?.satelliteAttribution;
   const mapTiles = guestMaps
     ? guestMaps.tiles
     : instance?.maps?.enabled
@@ -474,6 +486,7 @@ export function Canvas({
   const [selection, setSelection] = useState<ReadonlySet<string>>(initialSelection);
   const [editing, setEditingState] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
+  const [appearance, setAppearance] = useState<string | null>(null);
   const [tool, setTool] = useState<CanvasTool>('select');
   const prefs = usePreferences();
   /** Snap to grid (#296): this person's preference (#302), so the magnet follows them. */
@@ -497,9 +510,12 @@ export function Canvas({
   const [framePanel, setFramePanel] = useState<string | null>(null);
   /** Character or location card whose side sheet is open. */
   const [storyPanel, setStoryPanel] = useState<string | null>(null);
+  const [mapSheet, setMapSheet] = useState<string | null>(null);
   const [noteSheet, setNoteSheet] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
+  /** The set plan open for who cannot edit it (a guest, a viewer). */
+  const [viewedPlanId, setViewedPlanId] = useState<string | null>(null);
   const [tagging, setTagging] = useState<{ x: number; y: number; ids: string[] } | null>(null);
   /** The board whose icon and colour are being picked from a board card (#322). */
   const [iconBoard, setIconBoard] = useState<Board | null>(null);
@@ -519,10 +535,13 @@ export function Canvas({
     y: number;
     at: Point;
     fromToolbar?: boolean;
+    /** Keep editing actions available when focusing the menu blurs an inline title. */
+    fromEditing?: boolean;
     /** Row and column of the table cell the menu was opened on. */
     cell?: { r: number; c: number };
     /** The scene picker of a to-do list, opened from its "Scene" item. */
     scenes?: boolean;
+    frames?: boolean;
   } | null>(null);
   const [palette, setPalette] = useState(false);
   /** The address field of a new link card, or of a map card (an address or a map link). */
@@ -535,6 +554,7 @@ export function Canvas({
     /** Cards that Show brings into view (#310). */
     show?: readonly string[];
     ok?: boolean;
+    error?: boolean;
   } | null>(null);
   const closeToast = useCallback(() => setToast(null), []);
   /** A short confirmation from a card, such as a copied colour (#308). */
@@ -694,16 +714,39 @@ export function Canvas({
   /** Keys typed between creating a note and its editor taking focus. */
   const pendingText = useRef<string | null>(null);
 
+  /** True while the field being left is blurred, so its own `setEditing(null)` is ignored. */
+  const finishingEdit = useRef(false);
+
   const setEditing = useCallback(
     (id: string | null, keepEmpty = false) => {
+      if (finishingEdit.current) return;
       const previous = editingRef.current;
+      // A canvas click or "Done" unmounts inline fields before they blur: blur the focused field
+      // of the card being left first, so titles, names and captions commit what was typed.
+      if (previous && previous !== id) {
+        const active = document.activeElement;
+        if (
+          active instanceof HTMLElement &&
+          active.closest(`[data-el="${CSS.escape(previous)}"]`)
+        ) {
+          finishingEdit.current = true;
+          try {
+            active.blur();
+          } finally {
+            finishingEdit.current = false;
+          }
+        }
+      }
       editingRef.current = id;
       setEditingState(id);
       // One editor per note: its side sheet and the inline editor share the same document.
       if (id) setNoteSheet(null);
       if (previous === id) return;
       noteEditor.current = null;
-      if (!id) pendingText.current = null;
+      if (!id) {
+        pendingText.current = null;
+        if (previous) restoreEditingFocus(rootRef.current);
+      }
       // A note left empty disappears, as on paper. Not an undo step of its own.
       const body = previous ? store.map(previous)?.get('body') : null;
       if (previous && !keepEmpty && body instanceof Y.XmlFragment && isEmpty(body))
@@ -825,6 +868,10 @@ export function Canvas({
   // Others see where we point, what we selected and which card we write in.
   const presence = useLocalPresence(preview ? null : conn.provider);
 
+  useEffect(() => {
+    if (conn.schemaTooNew) setEditing(null);
+  }, [conn.schemaTooNew, setEditing]);
+
   // A role change while the board is open: leave the note being written and say why, and
   // publish presence again so the server stamps the new role for the others right away.
   const [nextAccessNotice] = useState(accessNotices);
@@ -861,7 +908,8 @@ export function Canvas({
       if ([...sel].every((id) => snap.byId.has(id))) return sel;
       return new Set([...sel].filter((id) => snap.byId.has(id)));
     });
-    if (editing && !snap.byId.has(editing)) setEditing(null);
+    if (editing && (!snap.byId.has(editing) || snap.byId.get(editing)?.locked || readOnly))
+      setEditing(null);
     if (
       cropping &&
       (readOnly ||
@@ -871,8 +919,16 @@ export function Canvas({
     ) {
       setCropping(null);
     }
+    if (
+      appearance &&
+      (readOnly ||
+        !selection.has(appearance) ||
+        !snap.byId.has(appearance) ||
+        snap.byId.get(appearance)?.locked)
+    )
+      setAppearance(null);
     if (noteSheet && !snap.byId.has(noteSheet)) setNoteSheet(null);
-  }, [snap, editing, setEditing, cropping, readOnly, selection, noteSheet]);
+  }, [snap, editing, setEditing, cropping, readOnly, selection, noteSheet, appearance]);
 
   const toWorld = useCallback((clientX: number, clientY: number): Point => {
     const r = rootRef.current?.getBoundingClientRect();
@@ -921,14 +977,27 @@ export function Canvas({
   // Edits ---------------------------------------------------------------------
 
   const select = useCallback((ids: Iterable<string>) => setSelection(new Set(ids)), []);
+  useEffect(() => {
+    const id = selection.size === 1 ? [...selection][0] : undefined;
+    const el = id ? snap.byId.get(id) : undefined;
+    setFramePanel((open) => (open ? (el?.type === 'frame' ? el.id : null) : null));
+    setStoryPanel((open) =>
+      open ? (el?.type === 'character' || el?.type === 'location' ? el.id : null) : null,
+    );
+  }, [selection, snap.byId]);
 
-  /** A board card from the Canvas menu; templates are laid out in the background. */
+  /** An empty board card from the Canvas menu. */
   const insertCanvas = useCallback(
-    async (template: CanvasTemplate, at?: Point) => {
+    async (kind: 'board' | 'storyboard' = 'board', at?: Point) => {
       if (readOnly) return;
       const pos = place(at ?? center(DEFAULT_WIDTH.board));
       try {
-        const { board, jobs } = await createCanvasBoards(projectId, boardId, template, t, userId);
+        const board = await createBoard(
+          projectId,
+          boardId,
+          t(kind === 'board' ? 'board.board.untitled' : 'film.views.storyboard'),
+          kind,
+        );
         store.undo.stopCapturing();
         const card = createElement(
           doc,
@@ -938,44 +1007,13 @@ export function Canvas({
           { userId, origin: LOCAL },
         );
         store.undo.stopCapturing();
-        queueSeeds(jobs);
         select([card.id]);
         setEditing(card.id);
-        // A template made boards that the card stands for: say how many, with Undo (#310).
-        if (template !== 'board') {
-          const count = Math.max(1, setupBoards(template).length);
-          setToast({
-            text: addedSummary(t, i18n.language, Array(count).fill('board')),
-            undo: true,
-            show: [card.id],
-            ok: true,
-          });
-        }
       } catch {
-        setToast({
-          text: t(
-            isStoryboardTemplate(template)
-              ? 'board.errors.storyboardCreate'
-              : 'board.errors.boardCreate',
-          ),
-          undo: false,
-        });
+        setToast({ text: t('board.errors.boardCreate'), undo: false, error: true });
       }
     },
-    [
-      readOnly,
-      center,
-      place,
-      t,
-      i18n.language,
-      projectId,
-      boardId,
-      userId,
-      store,
-      doc,
-      select,
-      setEditing,
-    ],
+    [readOnly, center, place, t, projectId, boardId, userId, store, doc, select, setEditing],
   );
 
   const [importingScript, setImportingScript] = useState(false);
@@ -996,7 +1034,7 @@ export function Canvas({
   );
   /** Where the voice note being recorded will go (#327), while the recorder is open. */
   const [recording, setRecording] = useState<Point | null>(null);
-  /** A storyboard card from a screenplay: the board is filled in the background, like a template. */
+  /** A storyboard card from a screenplay: the board is filled in the background. */
   const insertScreenplay = useCallback(
     async (plan: ImportPlan) => {
       if (readOnly) return;
@@ -1032,7 +1070,7 @@ export function Canvas({
               store.undo.stopCapturing();
               await refreshBoards(projectId);
             })
-            .catch(() => setToast({ text: t('screenplay.failed'), undo: false }));
+            .catch(() => setToast({ text: t('screenplay.failed'), undo: false, error: true }));
         },
         show: [card.id],
         ok: true,
@@ -1060,7 +1098,7 @@ export function Canvas({
           created = createElement(doc, 'column', pos, { title: '' }, opts);
           break;
         case 'section':
-          created = createElement(doc, 'section', pos, { title: '' }, opts);
+          created = createElement(doc, 'section', pos, { title: '', size: 'M', bold: true }, opts);
           break;
         case 'table':
           created = createElement(doc, 'table', pos, { ...newTable(3, 3), header: true }, opts);
@@ -1116,7 +1154,11 @@ export function Canvas({
       const max = instance?.limits.uploadMaxBytes ?? 0;
       const tooBig = max > 0 ? files.filter((f) => f.size > max) : [];
       if (tooBig.length > 0) {
-        setToast({ text: t('board.errors.tooBig', { name: tooBig[0]?.name }), undo: false });
+        setToast({
+          text: t('board.errors.tooBig', { name: tooBig[0]?.name }),
+          undo: false,
+          error: true,
+        });
       }
       const accepted = files.filter((f) => !tooBig.includes(f));
       // Several files: once each has its card or failed, one toast sums them up (#310). Each
@@ -1167,8 +1209,21 @@ export function Canvas({
           },
           onFailed: (assetId) => {
             if (!assetId)
-              setToast({ text: t('board.errors.upload', { name: file.name }), undo: false });
+              setToast({
+                text: t('board.errors.upload', { name: file.name }),
+                undo: false,
+                error: true,
+              });
             settled();
+          },
+          onCancelled: (assetId) => {
+            if (!assetId) return settled();
+            // No undo step: Undo must not bring back a card whose file no longer exists.
+            const gone = listElements(doc)
+              .filter((e) => (e.type === 'image' || e.type === 'file') && e.assetId === assetId)
+              .map((e) => e.id);
+            deleteElements(doc, gone);
+            created.splice(0, created.length, ...created.filter((id) => !gone.includes(id)));
           },
         });
       });
@@ -1178,14 +1233,34 @@ export function Canvas({
 
   /** A map card from a map link or a typed address; the server finds the place and its map. */
   const addMap = useCallback(
-    (at: Point, from: { url: string } | { query: string }) => {
+    (at: Point, from: MapSource) => {
       const fields =
-        'url' in from ? { name: '', url: from.url } : { name: from.query, address: from.query };
+        'url' in from
+          ? { name: '', url: from.url }
+          : {
+              name: from.place.name,
+              address: from.query,
+              lat: from.place.lat,
+              lon: from.place.lon,
+              zoom: from.place.zoom,
+            };
       const el = createElement(doc, 'map', at, fields, { userId, origin: LOCAL });
       select([el.id]);
-      void fillMapPreview(doc, el.id, projectId, boardId, from);
+      void fillMapPreview(
+        doc,
+        el.id,
+        projectId,
+        boardId,
+        'url' in from
+          ? from
+          : {
+              url: `https://www.openstreetmap.org/?mlat=${from.place.lat}&mlon=${from.place.lon}#map=${from.place.zoom}/${from.place.lat}/${from.place.lon}`,
+            },
+      ).then((found) => {
+        if (!found) setToast({ text: t('board.map.notFound'), undo: false });
+      });
     },
-    [doc, userId, select, projectId, boardId],
+    [doc, userId, select, projectId, boardId, t],
   );
 
   const addText = useCallback(
@@ -1536,13 +1611,15 @@ export function Canvas({
         select([el.id]);
         setFramePanel(null);
         setStoryPanel(el.id);
-      } else if (el.type === 'map' && el.lat !== undefined && el.imageAssetId && mapTiles) {
-        exploreMap(el.id);
+      } else if (el.type === 'map' && el.lat !== undefined && el.lon !== undefined && mapTiles) {
+        setMapSheet(el.id);
       } else if (el.type === 'note') {
         select([el.id]);
         // The sheet takes over the note's document: leave inline editing first.
         setEditing(null, editingRef.current === el.id);
         setNoteSheet(el.id);
+      } else if (el.type === 'plan' && readOnly) {
+        setViewedPlanId(el.id);
       } else if (!readOnly) {
         select([el.id]);
         setEditing(el.id);
@@ -1552,6 +1629,49 @@ export function Canvas({
   );
 
   // Pointer gestures ----------------------------------------------------------
+
+  /** The frame under the pointer, unless a card, a column or a panel is on top of it. */
+  function frameAt(clientX: number, clientY: number, moving?: ReadonlySet<string>) {
+    for (const hit of document.elementsFromPoint(clientX, clientY)) {
+      if (!rootRef.current?.contains(hit)) return undefined;
+      const id = hit.closest<HTMLElement>('.card[data-el]')?.dataset.el;
+      if (id) {
+        if (moving?.has(id)) continue;
+        const card = snap.byId.get(id);
+        return card?.type === 'frame' ? card : undefined;
+      }
+      if (hit.closest('[data-chrome], .canvas__panel, .unsorted')) return undefined;
+    }
+    return undefined;
+  }
+
+  /** What a drag of `count` pictures over this point would do to a frame. */
+  function frameDrop(
+    clientX: number,
+    clientY: number,
+    count: number,
+    moving?: ReadonlySet<string>,
+  ): Overlay['drop'] {
+    const frame = frameAt(clientX, clientY, moving);
+    if (!frame) return undefined;
+    if (frame.locked) return { kind: 'frameNote', id: frame.id, note: 'locked' };
+    return count > 1
+      ? { kind: 'frameNote', id: frame.id, note: count }
+      : { kind: 'frame', id: frame.id };
+  }
+
+  const frameInserted = useCallback(
+    (frameId: string, result: 'moved' | 'kept') => {
+      setToast({
+        text: t(result === 'kept' ? 'film.frame.insertedKept' : 'film.frame.inserted', {
+          label: labelsRef.current.get(frameId) ?? '',
+        }),
+        undo: true,
+        ok: true,
+      });
+    },
+    [t],
+  );
 
   function screenPoint(e: { clientX: number; clientY: number }): Point {
     const r = rootRef.current?.getBoundingClientRect();
@@ -1680,6 +1800,15 @@ export function Canvas({
   }
 
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    // Side-panel fields save on blur, and this press can close or switch the panel: unmounted
+    // before the browser moves the focus, they would lose what was typed.
+    const field = document.activeElement;
+    if (
+      field instanceof HTMLElement &&
+      field.closest('.canvas__panel') &&
+      !(e.target as HTMLElement).closest('.canvas__panel')
+    )
+      field.blur();
     // A hand on the board ends the restacking of a mosaic just made.
     pendingTidy.current = null;
     if (touchDown(e)) return;
@@ -1718,7 +1847,13 @@ export function Canvas({
     }
 
     if (!targetId) {
-      if (editing) setEditing(null);
+      setStoryPanel(null);
+      setFramePanel(null);
+      if (editing || appearance) {
+        setEditing(null);
+        setAppearance(null);
+        return;
+      }
       if (cropping) setCropping(null);
       const base = e.shiftKey ? new Set(selection) : new Set<string>();
       if (!e.shiftKey) setSelection(EMPTY_SET);
@@ -1733,6 +1868,7 @@ export function Canvas({
     const interactive = target.closest(INTERACTIVE);
     if ((editing === id || cropping === id) && interactive) return;
     if (editing && editing !== id) setEditing(null);
+    if (appearance && appearance !== id) setAppearance(null);
     if (cropping && cropping !== id) setCropping(null);
 
     let next: Set<string>;
@@ -1757,15 +1893,26 @@ export function Canvas({
       const card = rootRef.current?.querySelector<HTMLElement>(
         `.card[data-el="${CSS.escape(id)}"]`,
       );
-      const mediaHeight = card?.querySelector<HTMLElement>('.card__media')?.offsetHeight;
+      const mediaHeight = card?.querySelector<HTMLElement>(
+        '.card__media, .card__frame, .fcard__preview',
+      )?.offsetHeight;
+      const media = el.type === 'file' ? getCachedAsset(el.assetId) : null;
+      const video = media && media !== 'missing' && media.kind === 'video';
       // Images keep the ratio of their picture and plans of their drawing; the header stays.
       const options: ResizeOptions =
-        el.type === 'image' || el.type === 'plan'
+        el.type === 'image' || el.type === 'frame' || el.type === 'plan' || video
           ? {
-              aspectRatio: rect.w / (mediaHeight || rect.h),
+              aspectRatio:
+                el.type === 'frame'
+                  ? frameRatio(el.aspect, boardAspect)
+                  : video && media.width && media.height
+                    ? media.width / media.height
+                    : rect.w / (mediaHeight || rect.h),
               fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
             }
-          : { widthOnly: el.type === 'link' || el.type === 'section' };
+          : el.type === 'character'
+            ? { widthOnly: true, minWidth: CHARACTER_MIN_WIDTH }
+            : { widthOnly: el.type === 'link' || el.type === 'section' || isContainer(el) };
       store.undo.stopCapturing();
       gesture.current = { kind: 'resize', id, corner: handle, start: p, rect, options };
       rootRef.current?.setPointerCapture(e.pointerId);
@@ -1910,6 +2057,11 @@ export function Canvas({
       }
     }
 
+    if (els.some((x) => x.type === 'image' && x.assetId)) {
+      const onFrame = frameDrop(e.clientX, e.clientY, els.length, moving);
+      if (onFrame?.kind === 'frame' ? anchor?.type === 'image' : onFrame) drop = onFrame;
+    }
+
     let guides: Guide[] | undefined;
     let land: Overlay['land'];
     // Alt leaves the guides out and inverts the magnet: the grid snaps when exactly one is on.
@@ -1994,8 +2146,17 @@ export function Canvas({
       if (!current || current.locked || readOnly || current.parent !== null) return;
       const { x, y, w, h } = o.resize;
       doc.transact(() => {
-        const widthOnly = current.type === 'link' || current.type === 'section';
-        updateElement(doc, g.id, widthOnly ? { x, w } : { x, y, w, h }, LOCAL);
+        const widthOnly =
+          current.type === 'character' ||
+          current.type === 'link' ||
+          current.type === 'section' ||
+          isContainer(current);
+        updateElement(
+          doc,
+          g.id,
+          widthOnly ? { x, w, ...(isContainer(current) ? { h: undefined } : {}) } : { x, y, w, h },
+          LOCAL,
+        );
         // The store updates after this transaction; attached arrows need the new rect now.
         refreshArrows(
           doc,
@@ -2029,7 +2190,13 @@ export function Canvas({
       );
     }
     doc.transact(() => {
-      if (o.drop?.kind === 'unsorted') {
+      if (o.drop?.kind === 'frame') {
+        const moved = moveImageToFrame(store, g.anchor, o.drop.id);
+        if (moved) {
+          select([o.drop.id]);
+          frameInserted(o.drop.id, moved);
+        }
+      } else if (o.drop?.kind === 'unsorted') {
         moveToUnsorted(doc, cards, LOCAL);
       } else if (o.drop?.kind === 'column') {
         moveIntoParent(doc, cards, o.drop.id, o.drop.index, LOCAL);
@@ -2061,6 +2228,7 @@ export function Canvas({
     const target =
       (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null) ??
       (e.target as HTMLElement);
+    if (target.closest('[data-play-link]')) return;
     const targetId = canvasElementId(target);
     if (!targetId) {
       if (target.closest('[data-chrome]') || readOnly || !getPreferences().doubleClickNote) return;
@@ -2070,7 +2238,12 @@ export function Canvas({
     }
     const el = snap.byId.get(targetId);
     if (el && editing !== el.id) {
-      openElement(el);
+      if (target.closest('.card__caption') && (el.type === 'image' || el.type === 'file')) {
+        if (!readOnly && !el.locked) setEditing(el.id);
+        return;
+      }
+      if (!readOnly && !el.locked && (el.type === 'note' || el.type === 'image')) setEditing(el.id);
+      else openElement(el);
     }
   }
 
@@ -2188,6 +2361,10 @@ export function Canvas({
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e: KeyboardEvent) => {
     if (insideDialog()) return;
+    // A focused video keeps Space (play) and the arrows (seek, volume) for itself.
+    if (e.target instanceof HTMLVideoElement && /^( |Arrow)/.test(e.key)) return;
+    // Contextual controls keep native Enter/Space activation instead of board edit/pan shortcuts.
+    if (isContextualFocus(e.target) && (e.key === 'Enter' || e.key === ' ')) return;
     // A menu or the version banner already handled this Escape; a preview has nothing to clear.
     if (e.key === 'Escape' && (e.defaultPrevented || preview)) return;
     if (e.key === ' ' && canSpacePan(e.target)) {
@@ -2231,10 +2408,10 @@ export function Canvas({
     if (e.type !== 'keydown' || isTyping(e.target) || palette) return;
     const cmd = commandFor(e);
     if (!cmd) return;
-    // Enter on the toast's buttons and a colour's copy button presses them (#310, #308).
+    // Enter on the toast's buttons, a colour's copy button and a play button presses them (#310, #308).
     const presses =
       e.target instanceof HTMLElement &&
-      !!e.target.closest('.toast, .card__copy, .screenplay-hint');
+      !!e.target.closest('.toast, .card__copy, .screenplay-hint, .frame-upload, [data-play-link]');
     if (cmd.kind === 'edit' && (onArrowStyleButton(e.target) || presses)) return;
     const single = selection.size === 1 ? snap.byId.get([...selection][0] ?? '') : undefined;
     switch (cmd.kind) {
@@ -2268,12 +2445,20 @@ export function Canvas({
       case 'escape':
         setMenu(null);
         if (tool === 'arrow') setTool('select');
+        else if (appearance) setAppearance(null);
         else if (cropping) setCropping(null);
         else if (editing) setEditing(null);
         else setSelection(EMPTY_SET);
         break;
       case 'edit':
         if (cropping) setCropping(null);
+        else if (
+          single &&
+          !readOnly &&
+          !single.locked &&
+          (single.type === 'image' || single.type === 'note')
+        )
+          setEditing(single.id);
         else if (single) openElement(single);
         break;
       case 'rename':
@@ -2429,12 +2614,20 @@ export function Canvas({
     if (types.includes('Files') || types.includes(TOOL_MIME) || types.includes('text/uri-list')) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
-      if (types.includes('Files')) setDropHint(true);
+      if (types.includes('Files')) {
+        setDropHint(true);
+        const items = [...e.dataTransfer.items];
+        const drop = items.some((item) => isFrameImageType(item.type))
+          ? frameDrop(e.clientX, e.clientY, items.length)
+          : undefined;
+        setOverlay(drop ? { drop } : NO_OVERLAY);
+      }
     }
   }
 
   function onDrop(e: DragEvent<HTMLDivElement>) {
     setDropHint(false);
+    setOverlay(NO_OVERLAY);
     if (readOnly) return;
     e.preventDefault();
     const at = toWorld(e.clientX, e.clientY);
@@ -2445,7 +2638,23 @@ export function Canvas({
     }
     const files = [...e.dataTransfer.files];
     if (files.length > 0) {
-      uploadFiles(files, at);
+      const frame = frameAt(e.clientX, e.clientY);
+      const file = files[0];
+      if (frame && !frame.locked && files.length === 1 && file && isFrameImageFile(file)) {
+        const max = instance?.limits.uploadMaxBytes ?? 0;
+        if (max > 0 && file.size > max) {
+          setToast({ text: t('board.errors.tooBig', { name: file.name }), undo: false });
+          return;
+        }
+        uploadToFrame({
+          store,
+          frameId: frame.id,
+          file,
+          projectId,
+          boardId,
+          onInserted: () => frameInserted(frame.id, 'moved'),
+        });
+      } else uploadFiles(files, at);
       return;
     }
     const uri = e.dataTransfer
@@ -2487,8 +2696,14 @@ export function Canvas({
     const el = snap.byId.get(planParam);
     if (el?.type !== 'plan') return;
     select([el.id]);
-    if (!readOnly) setEditing(el.id);
+    if (readOnly) setViewedPlanId(el.id);
+    else setEditing(el.id);
   }, [planParam, takePlanParam, conn.status, snap, select, setEditing, readOnly]);
+  const viewedPlan = viewedPlanId ? snap.byId.get(viewedPlanId) : undefined;
+  const viewedBase =
+    viewedPlan?.type === 'plan' && viewedPlan.variantOf
+      ? snap.byId.get(viewedPlan.variantOf)
+      : undefined;
   const pickingScenes = scenePicker ? snap.byId.get(scenePicker.id) : undefined;
   const editedBaseEl = editedPlan?.variantOf ? snap.byId.get(editedPlan.variantOf) : undefined;
   const editedBase = editedBaseEl?.type === 'plan' ? editedBaseEl : undefined;
@@ -2549,6 +2764,7 @@ export function Canvas({
       setNoteEditor,
       frameLabels: labels,
       mapAttribution,
+      mapSatelliteAttribution,
       mapTiles,
       notify,
     }),
@@ -2556,6 +2772,7 @@ export function Canvas({
       notify,
       labels,
       mapAttribution,
+      mapSatelliteAttribution,
       mapTiles,
       store,
       readOnly,
@@ -2621,11 +2838,14 @@ export function Canvas({
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
   const selectionBox = useMemo(() => {
     const free = selectedEls.filter((e) => e.parent === null);
-    const b = boundsOf(free.map(liveRect));
+    // A card being resized carries the bar along, not only once it is let go.
+    const b = boundsOf(
+      free.map((e) => (overlay.resize?.id === e.id ? overlay.resize : liveRect(e))),
+    );
     if (!b) return null;
     const a = worldToScreen(viewport, { x: b.x, y: b.y });
     return { x: a.x, y: a.y, w: b.w * viewport.zoom, h: b.h * viewport.zoom };
-  }, [selectedEls, viewport, liveRect, sizeVersion]);
+  }, [selectedEls, viewport, liveRect, sizeVersion, overlay.resize]);
 
   const visibleCards = useMemo(() => snap.canvas.filter((e) => e.type !== 'arrow'), [snap]);
   const frameOf = (id: string | null) => {
@@ -2638,7 +2858,7 @@ export function Canvas({
     return el?.type === 'character' || el?.type === 'location' ? el : undefined;
   })();
   const drawnFrame = frameOf(drawing);
-  // Shooting order, for the editor's strip and onion skin; only while a drawing is open.
+  // Shooting order for arrow navigation while drawing.
   const storyFrames = useMemo(
     () => (drawing ? storyboardOf([...snap.byId.values()]).flatMap((g) => g.frames) : []),
     [drawing, snap],
@@ -2659,45 +2879,6 @@ export function Canvas({
   const closeViewer = useCallback(() => {
     setViewing(null);
   }, []);
-
-  const addTemplate = async (id: TemplateId) => {
-    if (readOnly) return;
-    const rect = templateRect(
-      id,
-      screenToWorld(vp.current, { x: size.w / 2, y: size.h / 2 }),
-      store.getSnapshot().canvas.map((e) => store.rectOf(e)),
-    );
-    if (id === 'storyboard') {
-      try {
-        const board = await createBoard(
-          projectId,
-          boardId,
-          t('templates.storyboard.name'),
-          'storyboard',
-        );
-        store.undo.stopCapturing();
-        const card = createElement(
-          doc,
-          'board',
-          rect,
-          { boardId: board.id },
-          { userId, origin: LOCAL },
-        );
-        store.undo.stopCapturing();
-        select([card.id]);
-        onOpenBoard(board.id, 'storyboard');
-      } catch {
-        setToast({ text: t('board.errors.storyboardCreate'), undo: false });
-      }
-      return;
-    }
-    store.undo.stopCapturing();
-    const ids = applyTemplate(doc, id, rect, templateLabels(t), { userId, origin: LOCAL });
-    store.undo.stopCapturing();
-    select(ids);
-    setViewport(fitRect(rect, size.w, size.h));
-    summarize(ids);
-  };
 
   // A search result links to ?el=<id>: select that card and bring it into view, once.
   const focusId = params.get('el');
@@ -2749,6 +2930,21 @@ export function Canvas({
     }
     const locked = selectedEls.some((e) => e.locked);
     const single = selectedEls.length === 1 ? selectedEls[0] : undefined;
+    // A character's selection bar leaves these to the "more" menu.
+    const inMoreMenu = single?.type === 'character';
+    if (single?.type === 'image' && menu.frames && !readOnly && !single.locked) {
+      return [...snap.byId.values()]
+        .filter((e) => e.type === 'frame' && !e.locked)
+        .map((frame) => ({
+          label: labels.get(frame.id) || t('board.types.frame'),
+          action: () => {
+            const moved = moveImageToFrame(store, single.id, frame.id);
+            if (!moved) return;
+            select([frame.id]);
+            frameInserted(frame.id, moved);
+          },
+        }));
+    }
     // A to-do list gathers costumes, props or equipment for a scene (#323, decision 0058).
     const listable = single?.type === 'todo' && !readOnly && !single.locked ? single : undefined;
     const scenes = storyboardOf([...snap.byId.values()]).flatMap((g) => (g.scene ? [g.scene] : []));
@@ -2799,7 +2995,7 @@ export function Canvas({
                 text: t(isCover ? 'board.menu.coverRemoved' : 'board.menu.coverSet'),
                 undo: false,
               }),
-            () => setToast({ text: t('board.menu.coverFailed'), undo: false }),
+            () => setToast({ text: t('board.menu.coverFailed'), undo: false, error: true }),
           ),
       };
     };
@@ -2821,6 +3017,19 @@ export function Canvas({
     };
     const items: MenuItem[] = [
       ...listItems,
+      ...(menu.fromEditing &&
+      single &&
+      !readOnly &&
+      !single.locked &&
+      ['note', 'table', 'column'].includes(single.type)
+        ? [
+            { heading: t('board.contextual.cardColor') },
+            ...[undefined, ...NOTE_COLORS].map((color) => ({
+              label: t(color ? `board.colors.${color}` : 'board.colors.none'),
+              action: () => updateElement(doc, single.id, { color }, LOCAL),
+            })),
+          ]
+        : []),
       ...(single?.type === 'file' && !readOnly && detectedScripts[single.id]
         ? [
             {
@@ -2830,13 +3039,40 @@ export function Canvas({
             },
           ]
         : []),
+      ...(single &&
+      !readOnly &&
+      !single.locked &&
+      (single.type === 'link' ||
+        (single.type === 'file' &&
+          (() => {
+            const asset = getCachedAsset(single.assetId);
+            return asset && asset !== 'missing' && asset.kind === 'video';
+          })()))
+        ? [{ label: t('board.contextual.appearance'), action: () => setAppearance(single.id) }]
+        : []),
+      ...(editing && single?.type === 'note' && noteEditor.current
+        ? [
+            {
+              label: t('board.contextual.clear'),
+              disabled: noteEditor.current.state.selection.empty,
+              action: () =>
+                noteEditor.current &&
+                selectedBlocks(noteEditor.current).unsetAllMarks().clearNodes().run(),
+            },
+          ]
+        : []),
       ...(single?.type === 'link' && !readOnly && !single.locked
         ? [
             {
               label: t('board.menu.refreshPreview'),
               action: () =>
                 void fillLinkPreview(doc, single.id, projectId, boardId, single.url).then((ok) => {
-                  if (!ok) setToast({ text: t('board.menu.refreshPreviewFailed'), undo: false });
+                  if (!ok)
+                    setToast({
+                      text: t('board.menu.refreshPreviewFailed'),
+                      undo: false,
+                      error: true,
+                    });
                 }),
             },
           ]
@@ -2878,10 +3114,16 @@ export function Canvas({
         ? tableMenu(doc, single, menu.cell, t)
         : []),
       ...(single && (single.type === 'image' || single.type === 'file')
-        ? [{ label: t('board.menu.viewImage'), action: () => openElement(single) }]
+        ? [
+            {
+              label: t(single.type === 'image' ? 'board.menu.viewImage' : 'board.menu.viewFile'),
+              action: () => openElement(single),
+            },
+          ]
         : []),
       ...(single?.type === 'image' && !readOnly && !single.locked
         ? [
+            { label: t('film.frame.moveImage'), action: () => setMenu({ ...menu, frames: true }) },
             {
               toolbar: true,
               label: t('board.image.cropRotate'),
@@ -2965,7 +3207,7 @@ export function Canvas({
             ...(selectedEls.some((e) => e.type !== 'arrow')
               ? [
                   {
-                    toolbar: true,
+                    toolbar: !inMoreMenu,
                     label: t(
                       selectedEls.filter((e) => e.type !== 'arrow').every((e) => e.guestHidden)
                         ? 'guestVisibility.show'
@@ -2980,7 +3222,12 @@ export function Canvas({
               label: t('board.menu.tags'),
               action: () => setTagging({ x: menu.x, y: menu.y, ids: [...selection] }),
             },
-            { toolbar: true, label: t('board.menu.duplicate'), shortcut: '⌘D', action: duplicate },
+            {
+              toolbar: !inMoreMenu,
+              label: t('board.menu.duplicate'),
+              shortcut: '⌘D',
+              action: duplicate,
+            },
             {
               toolbar: true,
               label: locked ? t('board.menu.unlock') : t('board.menu.lock'),
@@ -3015,7 +3262,7 @@ export function Canvas({
               : []),
             ...(menu.fromToolbar ? [] : [{ divider: true as const }]),
             {
-              toolbar: true,
+              toolbar: !inMoreMenu,
               label: t('board.menu.delete'),
               shortcut: '⌫',
               danger: true,
@@ -3025,9 +3272,14 @@ export function Canvas({
     ];
     // These flags mark actions actually rendered by ContextBar for the same selection.
     // Standalone right-click menus keep the complete permission-filtered action list.
-    return menu.fromToolbar ? items.filter((item) => !('toolbar' in item && item.toolbar)) : items;
+    return menu.fromToolbar && !menu.fromEditing
+      ? items.filter((item) => !('toolbar' in item && item.toolbar))
+      : items;
   }, [
     menu,
+    labels,
+    frameInserted,
+    editing,
     selection,
     selectedEls,
     boards,
@@ -3106,9 +3358,12 @@ export function Canvas({
         onLostPointerCapture={onLostPointerCapture}
         onDoubleClick={outsideDialogs(onDoubleClick)}
         onContextMenu={outsideDialogs(onContextMenu)}
-        onDragOver={outsideDialogs(onDragOver)}
-        onDragLeave={() => setDropHint(false)}
-        onDrop={outsideDialogs(onDrop)}
+        onDragOver={filesStayOutOfDialogs(onDragOver)}
+        onDragLeave={() => {
+          setDropHint(false);
+          setOverlay(NO_OVERLAY);
+        }}
+        onDrop={filesStayOutOfDialogs(onDrop)}
         data-testid="canvas"
         aria-label={t('board.canvas')}
         role="application"
@@ -3226,6 +3481,54 @@ export function Canvas({
             }}
           />
         )}
+        {(overlay.drop?.kind === 'frame' || overlay.drop?.kind === 'frameNote') &&
+          (() => {
+            const drop = overlay.drop;
+            const frame = snap.byId.get(drop.id);
+            const card = rootRef.current?.querySelector<HTMLElement>(
+              `.card[data-el="${CSS.escape(drop.id)}"]`,
+            );
+            const box = card?.getBoundingClientRect();
+            const rootBox = rootRef.current?.getBoundingClientRect();
+            if (frame?.type !== 'frame' || !box || !rootBox) return null;
+            if (drop.kind === 'frameNote')
+              return (
+                <span
+                  className={`canvas__frame-note${drop.note === 'locked' ? ' is-locked' : ''}`}
+                  style={{ left: box.left - rootBox.left, top: box.bottom - rootBox.top + 6 }}
+                >
+                  {drop.note === 'locked' && <Icon name="lock" size={12} />}
+                  {drop.note === 'locked'
+                    ? t('film.frame.dropLocked')
+                    : t('film.frame.dropMany', { count: drop.note })}
+                </span>
+              );
+            const label = labels.get(frame.id) ?? '';
+            const picture = card?.querySelector('.card__frame')?.getBoundingClientRect() ?? box;
+            return (
+              <div
+                className="canvas__frame-drop"
+                style={{
+                  left: picture.left - rootBox.left + 6,
+                  top: picture.top - rootBox.top + 6,
+                  width: picture.width - 12,
+                  height: picture.height - 6,
+                }}
+              >
+                <span className="canvas__frame-drop-label">
+                  {frame.assetId ? (
+                    <>
+                      {t('film.frame.dropReplace')}
+                      <br />
+                      {t('film.frame.dropDrawingStays')}
+                    </>
+                  ) : (
+                    t(isPhone ? 'film.frame.dropBecomesShort' : 'film.frame.dropBecomes', { label })
+                  )}
+                </span>
+              </div>
+            );
+          })()}
         {overlay.drop?.kind === 'column' && (
           <div
             className="canvas__insert"
@@ -3282,16 +3585,7 @@ export function Canvas({
           conn.status === 'synced' &&
           !readOnly &&
           !guest &&
-          !preview && (
-            <EmptyBoardStart
-              onMoodboard={() => void addTemplate('moodboard')}
-              onStoryboard={() => void addTemplate('storyboard')}
-              onScreenplay={() => setImportingScript(true)}
-              onBrowse={() =>
-                rootRef.current?.querySelector<HTMLButtonElement>('.toolbar__btn--canvas')?.click()
-              }
-            />
-          )}
+          !preview && <EmptyBoardStart onScreenplay={() => setImportingScript(true)} />}
 
         {!overlay.offset &&
           !overlay.marquee &&
@@ -3308,6 +3602,11 @@ export function Canvas({
             <ContextBar
               box={selectionBox}
               elements={selectedEls}
+              editing={editing ?? appearance}
+              onDone={() => {
+                setEditing(null);
+                setAppearance(null);
+              }}
               editor={editing ? noteEditor.current : null}
               readOnly={readOnly}
               onComments={
@@ -3327,7 +3626,13 @@ export function Canvas({
               onDelete={removeSelection}
               onDuplicate={duplicate}
               onMore={(x, y) =>
-                setMenu({ x, y, at: screenToWorld(vp.current, { x, y }), fromToolbar: true })
+                setMenu({
+                  x,
+                  y,
+                  at: screenToWorld(vp.current, { x, y }),
+                  fromToolbar: true,
+                  fromEditing: Boolean(editing || appearance),
+                })
               }
               onColor={(color) => {
                 for (const el of selectedEls) {
@@ -3338,6 +3643,15 @@ export function Canvas({
               onTags={(x, y) => setTagging({ x, y, ids: [...selection] })}
               extra={
                 <>
+                  {selectedEls.length === 1 && selectedEls[0]?.type === 'character' && (
+                    <button
+                      type="button"
+                      className="ctxbar__btn ctxbar__done"
+                      onClick={() => selectedEls[0] && openElement(selectedEls[0])}
+                    >
+                      {t('story.character.sheet')}
+                    </button>
+                  )}
                   {!readOnly &&
                     selectedEls.length === 1 &&
                     selectedEls[0]?.type === 'image' &&
@@ -3397,6 +3711,14 @@ export function Canvas({
           <TagPopover
             x={tagging.x}
             y={tagging.y}
+            anchor={() => {
+              const id = tagging.ids[0];
+              return id
+                ? (rootRef.current?.querySelector<HTMLElement>(
+                    `.card[data-el="${CSS.escape(id)}"]`,
+                  ) ?? null)
+                : null;
+            }}
             projectId={projectId}
             elements={tagging.ids.map((id) => snap.byId.get(id)).filter((e) => e !== undefined)}
             onChange={(changes) =>
@@ -3434,6 +3756,7 @@ export function Canvas({
         {panelFrame && (
           <div className="canvas__panel">
             <FramePanel
+              key={panelFrame.id}
               store={store}
               userId={userId}
               frame={panelFrame}
@@ -3444,6 +3767,7 @@ export function Canvas({
               readOnly={readOnly}
               onClose={() => setFramePanel(null)}
               onDraw={() => setDrawing(panelFrame.id)}
+              onInserted={(result) => frameInserted(panelFrame.id, result)}
             />
           </div>
         )}
@@ -3479,6 +3803,14 @@ export function Canvas({
             onClose={() => setEditing(null)}
           />
         )}
+        {viewedPlan?.type === 'plan' && (
+          <PlanViewer
+            plan={viewedPlan}
+            base={viewedBase?.type === 'plan' ? viewedBase : undefined}
+            phone={isPhone}
+            onClose={() => setViewedPlanId(null)}
+          />
+        )}
         {pickingScenes?.type === 'plan' && scenePicker && (
           <ScenePicker
             store={store}
@@ -3509,6 +3841,11 @@ export function Canvas({
           createPortal(
             <MediaViewer
               instanceAdmin={user?.role === 'admin'}
+              onFrameSaved={(frameId, imageId) => {
+                if (imageId) select([imageId]);
+                if (frameId) frameInserted(frameId, 'moved');
+                else setToast({ text: t('frameGrab.added'), undo: true, ok: true });
+              }}
               onOfficeTable={(id, name, rows) =>
                 setToast({
                   text: t('office.created', { name, rows }),
@@ -3624,7 +3961,7 @@ export function Canvas({
               tool={tool}
               onTool={setTool}
               onAdd={(type) => void add(type)}
-              onCanvas={(template) => void insertCanvas(template)}
+              onCanvas={() => void insertCanvas()}
               onScreenplay={() => setImportingScript(true)}
               onVoiceNote={canRecord() ? () => setRecording(center()) : undefined}
             />
@@ -3651,14 +3988,28 @@ export function Canvas({
             />,
             document.body,
           )}
+        {mapSheet &&
+          (() => {
+            const map = snap.byId.get(mapSheet);
+            return map?.type === 'map' && map.lat !== undefined && map.lon !== undefined ? (
+              <MapDialog
+                id={map.id}
+                name={map.name || map.address || t('board.map.untitled')}
+                place={{ lat: map.lat, lon: map.lon, zoom: map.zoom ?? 16 }}
+                onClose={() => setMapSheet(null)}
+              />
+            ) : null;
+          })()}
         {linkDraft?.map && (
-          <LinkDraft
-            map
+          <MapDraft
+            projectId={projectId}
+            boardId={boardId}
+            geocoding={instance?.maps?.geocoding ?? false}
             at={worldToScreen(viewport, linkDraft.at)}
             onCancel={() => setLinkDraft(null)}
             onSubmit={(value) => {
               setLinkDraft(null);
-              addMap(linkDraft.at, webUrl(value) ? { url: value } : { query: value });
+              addMap(linkDraft.at, value);
             }}
           />
         )}
@@ -3689,7 +4040,6 @@ export function Canvas({
             ]}
             onClose={() => setPalette(false)}
             onAdd={(type) => void add(type)}
-            onTemplate={(id) => void addTemplate(id)}
             onZoom={zoomTo}
             onUndo={() => store.undo.undo()}
             onRedo={() => store.undo.redo()}
@@ -3701,6 +4051,7 @@ export function Canvas({
             key={toastKey}
             text={toast.text}
             ok={toast.ok}
+            error={toast.error}
             onShow={toast.show ? () => showCards(toast.show ?? []) : undefined}
             onUndo={
               toast.undo === true ? () => store.undo.undo() : toast.undo ? toast.undo : undefined
@@ -3732,27 +4083,33 @@ export function Canvas({
  */
 function outsideDialogs<E extends { target: EventTarget }>(handler: (e: E) => void) {
   return (e: E) => {
-    if ((e.target as HTMLElement).closest?.('dialog')) return;
+    if ((e.target as HTMLElement).closest?.('dialog, [role="dialog"]')) return;
     handler(e);
+  };
+}
+
+/** As outsideDialogs, and a file let go on a dialog does nothing: the browser would open it. */
+function filesStayOutOfDialogs(handler: (e: DragEvent<HTMLDivElement>) => void) {
+  return (e: DragEvent<HTMLDivElement>) => {
+    if (!(e.target as HTMLElement).closest?.('dialog, [role="dialog"]')) return handler(e);
+    if (e.defaultPrevented || !e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'none';
   };
 }
 
 function LinkDraft({
   at,
-  map,
   onSubmit,
   onCancel,
 }: {
   at: Point;
-  /** A map card: an address or a map link; addresses are sent as typed. */
-  map?: boolean;
   onSubmit: (value: string) => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const [value, setValue] = useState('');
   const [error, setError] = useState(false);
-  const prefix = map ? 'board.map' : 'board.link';
   return (
     <form
       className="canvas__linkdraft"
@@ -3760,11 +4117,7 @@ function LinkDraft({
       data-chrome
       onSubmit={(e) => {
         e.preventDefault();
-        const text = value.trim().slice(0, map ? 2048 : undefined);
-        if (map && !/^https?:\/\//i.test(text)) {
-          if (text) onSubmit(text.slice(0, 500));
-          return;
-        }
+        const text = value.trim();
         const url = /^[a-z]+:\/\//i.test(text) ? text : `https://${text}`;
         const href = webUrl(url);
         if (href) onSubmit(href);
@@ -3776,8 +4129,8 @@ function LinkDraft({
         // biome-ignore lint/a11y/noAutofocus: the field opens because the user picked the link tool
         autoFocus
         value={value}
-        placeholder={t(`${prefix}.placeholder`)}
-        aria-label={t(`${prefix}.label`)}
+        placeholder={t('board.link.placeholder')}
+        aria-label={t('board.link.label')}
         aria-invalid={error || undefined}
         onChange={(e) => {
           setValue(e.target.value);

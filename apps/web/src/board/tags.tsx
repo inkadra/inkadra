@@ -1,7 +1,7 @@
 import { MAX_TAGS } from '@inkadra/doc-schema';
 import type { TagCount } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
@@ -108,14 +108,19 @@ export function TagEditor({
   const { t } = useTranslation();
   const id = useId();
   const [draft, setDraft] = useState('');
+  const [unknown, setUnknown] = useState<string | null>(null);
   const used = useProjectTags(projectId);
   const full = tags.length >= MAX_TAGS;
   const add = (text: string) => {
     const option =
       tagOption(text) ?? catalogs.tags.find((o) => o.label.toLowerCase() === normaliseTag(text));
     const tag = option?.id;
-    if (!option || option.archived) return;
+    if (!option || option.archived) {
+      setUnknown(text.trim());
+      return;
+    }
     setDraft('');
+    setUnknown(null);
     if (!tag || tags.some((value) => (tagOption(value)?.id ?? value) === tag) || full) return;
     onChange([...tags, tag]);
   };
@@ -165,7 +170,11 @@ export function TagEditor({
             disabled={full}
             placeholder={full ? t('tags.max', { count: MAX_TAGS }) : t('tags.placeholder')}
             aria-label={t('tags.add')}
-            onChange={(e) => setDraft(e.target.value)}
+            aria-invalid={unknown !== null || undefined}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              setUnknown(null);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ',') {
                 e.preventDefault();
@@ -176,6 +185,11 @@ export function TagEditor({
             }}
             onBlur={() => draft && add(draft)}
           />
+          {unknown && (
+            <p role="alert" className="ink-muted">
+              {t('tags.notInCatalog', { tag: unknown })}
+            </p>
+          )}
           {suggestions.length > 0 && (
             <div className="tag-suggest">
               <span className="tag-suggest__title">{t('tags.suggested')}</span>
@@ -207,14 +221,45 @@ export function TagPopover({
   projectId,
   onChange,
   onClose,
+  anchor,
 }: {
   x: number;
   y: number;
+  anchor: () => HTMLElement | null;
   elements: ReadonlyArray<{ id: string; tags?: string[] | undefined }>;
   projectId: string;
   onChange: (changes: Array<{ id: string; tags: string[] | undefined }>) => void;
   onClose: () => void;
 }) {
+  const popup = useRef<HTMLDivElement>(null);
+  const place = useRef(() => {});
+  place.current = () => {
+    const node = popup.current;
+    const host = node?.offsetParent;
+    if (!node || !(host instanceof HTMLElement)) return;
+    const bounds = host.getBoundingClientRect();
+    const card = anchor()?.getBoundingClientRect();
+    const left = card ? card.left - bounds.left : x;
+    const below = card ? card.bottom - bounds.top + 8 : y;
+    const top =
+      below + node.offsetHeight <= bounds.height - 8
+        ? below
+        : (card ? card.top - bounds.top : y) - node.offsetHeight - 8;
+    node.style.left = `${Math.max(8, Math.min(left, bounds.width - node.offsetWidth - 8))}px`;
+    node.style.top = `${Math.max(8, Math.min(top, bounds.height - node.offsetHeight - 8))}px`;
+  };
+  // The canvas renders this again on every pan, zoom, drag and resize of a card, so following
+  // the card needs no frame loop: place it after each render...
+  useLayoutEffect(() => place.current());
+  // ...and when a size changes without one: the popover's content, the card, the canvas (window).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: observed once, while open.
+  useEffect(() => {
+    const node = popup.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const resize = new ResizeObserver(() => place.current());
+    for (const el of [node, node.offsetParent, anchor()]) if (el) resize.observe(el);
+    return () => resize.disconnect();
+  }, []);
   const { t } = useTranslation();
   const { tagOption } = useClassifications();
   const canonical = (values: readonly string[]) => [
@@ -231,7 +276,9 @@ export function TagPopover({
   return (
     <div className="palette__backdrop tag-popover__backdrop" data-chrome onPointerDown={onClose}>
       <div
+        ref={popup}
         className="tag-popover"
+        data-scroll
         role="dialog"
         aria-label={t('tags.title')}
         style={{ left: x, top: y }}

@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router';
 import * as Y from 'yjs';
 import { pickVariant, useAsset } from '../board/assets.ts';
 import { useBoardConnection } from '../board/connection.ts';
+import { usePresetText } from '../board/film/fields.tsx';
 import { plainText, useFragment } from '../board/note.tsx';
 import {
   authorName,
@@ -25,6 +26,7 @@ import {
   reviewKey,
 } from '../board/review-model.ts';
 import { canComment } from '../board/review-store.ts';
+import { FeedbackInbox } from '../feedback/FeedbackSettings.tsx';
 import { api } from '../lib/api.ts';
 import { notificationPath } from './model.ts';
 import {
@@ -42,6 +44,12 @@ type DetailProps = {
 };
 
 export function InboxDetail(props: DetailProps) {
+  if (props.notification?.type === 'feedback_received')
+    return (
+      <div className="inbox-detail">
+        <FeedbackInbox />
+      </div>
+    );
   return props.notification?.boardId && props.notification.elementId ? (
     <ConnectedInboxDetail
       key={props.notification.boardId}
@@ -50,6 +58,21 @@ export function InboxDetail(props: DetailProps) {
     />
   ) : (
     <InboxDetailWithElement {...props} />
+  );
+}
+
+/** Its own component so that only a frame asks for the storyboard lists. */
+function FrameFacts({ frame }: { frame: Extract<Element, { type: 'frame' }> }) {
+  const presetText = usePresetText();
+  return [
+    presetText('shotSizes', frame.shot),
+    presetText('shotAngles', frame.angle),
+    presetText('shotMovements', frame.movement),
+    frame.lens,
+    frame.location,
+  ].map((text, i) =>
+    // biome-ignore lint/suspicious/noArrayIndexKey: the five fields never move
+    text ? <span key={i}>{text}</span> : null,
   );
 }
 
@@ -507,10 +530,7 @@ function InboxDetailContent({
                   {cardTitle}
                 </span>
               )}
-              {element?.type === 'frame' &&
-                (['shot', 'angle', 'movement', 'lens', 'location'] as const).map((field) =>
-                  element[field] ? <span key={field}>{element[field]}</span> : null,
-                )}
+              {element?.type === 'frame' && <FrameFacts frame={element} />}
               {notification.boardTitle && (
                 <span>
                   <span className="inbox-detail__meta-label">{t('notifications.boardLabel')}:</span>
@@ -650,7 +670,7 @@ function InboxDetailContent({
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="inbox-detail__message-author">
-                      <b>{authorName(activeThread.author)}</b>
+                      <b data-feedback-secret>{authorName(activeThread.author)}</b>
                       <time
                         dateTime={activeThread.createdAt}
                         style={{ color: 'var(--ink-text-muted)' }}
@@ -687,7 +707,7 @@ function InboxDetailContent({
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="inbox-detail__message-author">
-                          <b>{replyAuthor}</b>
+                          <b data-feedback-secret>{replyAuthor}</b>
                           <time
                             dateTime={reply.createdAt}
                             style={{ color: 'var(--ink-text-muted)' }}

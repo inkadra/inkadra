@@ -28,7 +28,7 @@ async function signIn(page: Page) {
   return origin;
 }
 
-test('home shows today’s shooting day and starts from templates', async ({ page }) => {
+test('home shows today’s shooting day and creates empty projects and boards', async ({ page }) => {
   const origin = await signIn(page);
   const projectName = `Home overview ${Date.now()}`;
   const project = await (
@@ -83,32 +83,25 @@ test('home shows today’s shooting day and starts from templates', async ({ pag
     }
   }
 
-  // The same templates and form as New project and the guided setup.
-  await main
-    .getByRole('region', { name: 'Inizia da un modello' })
-    .getByRole('button', { name: /Moodboard/ })
-    .click();
+  await expect(main.getByRole('region', { name: 'Inizia da un modello' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Nuovo progetto', exact: true }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Nuovo progetto' });
-  await expect(dialog.getByRole('radio', { name: /Moodboard/ })).toBeChecked();
+  await expect(dialog.locator('[name="projectTemplate"]')).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
-  await expect(dialog).toBeHidden();
-
-  // Board layouts stay in New board.
-  await page.getByRole('button', { name: 'Nuova board' }).click();
+  await page.getByRole('button', { name: 'Nuova board', exact: true }).first().click();
   const board = page.getByRole('dialog', { name: 'Nuova board' });
   await chooseSelect(board.getByLabel('Progetto'), { label: projectName });
-  await board.getByRole('radio', { name: /Produzione/ }).check();
-  await expect(board.getByLabel('Nome della board')).toHaveValue('Produzione');
+  await expect(board.getByRole('radio')).toHaveCount(0);
+  await board.getByLabel('Nome della board').fill('Empty board');
   await board.getByRole('button', { name: 'Crea board' }).click();
   await expect(page).toHaveURL(new RegExp(`/p/${project.id}/b/[0-9a-f-]{36}$`));
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
-  await expect(page.locator('[data-type="column"]')).toHaveCount(3);
-
+  await expect(page.locator('[data-type="column"]')).toHaveCount(0);
   await page.goto('/');
   await expect(
     main
       .getByRole('region', { name: 'Recenti', exact: true })
-      .getByRole('link', { name: /Produzione/ }),
+      .getByRole('link', { name: /Empty board/ }),
   ).toBeVisible();
   await todayCard.locator(`a[href="/p/${project.id}?view=schedule"]`).click();
   await expect(page).toHaveURL(new RegExp(`/p/${project.id}\\?view=schedule$`));

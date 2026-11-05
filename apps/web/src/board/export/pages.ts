@@ -14,7 +14,7 @@ import {
 } from '../image-crop.ts';
 
 /** `heading`: weight 600 in the project theme's heading font (decision 0057). */
-export type FontWeight = 400 | 500 | 600 | 'heading';
+export type FontWeight = 400 | 500 | 600 | 700 | 'heading';
 
 export type Op =
   | {

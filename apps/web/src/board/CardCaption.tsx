@@ -3,6 +3,7 @@ import type { Element } from '@inkadra/doc-schema';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBoard } from './context.ts';
+import { isContextualFocus } from './editing-focus.ts';
 import { LOCAL } from './store.ts';
 
 type CaptionedElement = Extract<Element, { type: 'file' | 'image' }>;
@@ -44,7 +45,9 @@ function CaptionEditor({ element }: { element: CaptionedElement }) {
           LOCAL,
         );
       }}
-      onBlur={() => setEditing(null)}
+      onBlur={(e) => {
+        if (!isContextualFocus(e.relatedTarget)) setEditing(null);
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) {
           e.preventDefault();

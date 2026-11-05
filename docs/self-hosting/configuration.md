@@ -1,8 +1,22 @@
 # Configuration
 
 Inkadra reads its settings from the environment. With Compose, put them in `.env` next to
-`compose.yaml`; [`.env.example`](../../.env.example) lists them with their defaults. Never commit
-or share the real `.env`.
+`compose.yaml` and run `docker compose up -d`; [`.env.example`](../../.env.example) lists them with
+their defaults. Never commit or share the real `.env`.
+
+`compose.yaml` passes on the settings people change most. The others, in the tables below, reach
+the server only if you add them to `environment`, for example `TZ`, `IMPORT_MAX_SIZE` and the
+`VIDEO_PROXY_` limits and quality settings other than `VIDEO_PROXY_HWACCEL` and
+`VIDEO_PROXY_VAAPI_DEVICE`. Put them in a `compose.override.yaml` next to `compose.yaml`, which
+Compose reads by itself:
+
+```yaml
+services:
+  inkadra: # `web`, `collab` or `worker` too in split mode
+    environment:
+      TZ: Europe/Rome
+      IMPORT_MAX_SIZE: 50GB
+```
 
 ## Server
 
@@ -153,20 +167,33 @@ load that picture, never the tile server. "Explore" on a map card pans and zooms
 that the server fetches on the person's behalf, through the same queue and cache. See
 [decision 0053](../decisions/0053-maps.md).
 
-| Variable               | Default                                          | Meaning                                                                                                   |
-| ---------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `MAPS`                 | `true`                                           | `false`: map cards show only the place name, address and link, and GPX files only their route line        |
-| `MAP_TILE_URL`         | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Tile server, with `{z}`, `{x}` and `{y}`. It may be on your network. No API key is needed for the default |
-| `MAP_TILE_ATTRIBUTION` | `© OpenStreetMap contributors`                   | Credit of the tiles, shown on every map                                                                   |
-| `MAP_GEOCODER_URL`     | empty                                            | A Nominatim-compatible `/search` address to look up typed addresses; empty leaves addresses unlooked      |
+| Variable                         | Default                                          | Meaning                                                                                                      |
+| -------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `MAPS`                           | `true`                                           | `false`: map cards show only the place name, address and link, and GPX files only their route line           |
+| `MAP_TILE_URL`                   | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Tile server, with `{z}`, `{x}` and `{y}`. It may be on your network. No API key is needed for the default    |
+| `MAP_TILE_ATTRIBUTION`           | `© OpenStreetMap contributors`                   | Credit of the tiles, shown on every map                                                                      |
+| `MAP_GEOCODER_URL`               | empty                                            | A Nominatim-compatible `/search` address to look up typed addresses; empty leaves addresses unlooked         |
+| `MAP_SATELLITE_TILE_URL`         | empty                                            | A second tile server, with `{z}`, `{x}` and `{y}`, for satellite views; empty hides the Map/Satellite switch |
+| `MAP_SATELLITE_TILE_ATTRIBUTION` | `Satellite`                                      | Credit of the satellite tiles, shown while they are on screen                                                |
 
 The OpenStreetMap tile servers are run by volunteers: their
 [usage policy](https://operations.osmfoundation.org/policies/tiles/) allows a few maps added by
 hand, which is what Inkadra does (about twenty tiles a map, with the instance's address in the
 user agent), and exploring a map asks for a few dozen more. An instance that makes or explores
 many maps should use a tile provider or its own tile server.
-The same goes for `https://nominatim.openstreetmap.org/search` as a geocoder (at most one search
-a second).
+With `MAP_SATELLITE_TILE_URL` set, map cards and GPX files get a Map/Satellite switch, for the
+card picture and while exploring. Satellite tiles go through the same proxy, queue, cache and
+limits (`/api/v1/map-tiles/{z}/{x}/{y}?layer=satellite`, and the guest equivalent): the address
+and any key in it stay on the server, and browsers never contact the provider. The switch is
+per person and per view; it does not change the board. Use a provider whose licence and usage
+policy allow your deployment, and set the credit it requires.
+With a geocoder configured, typing at least three characters requests up to five address
+suggestions after a short pause. Queries go through Inkadra to that provider; no picture is
+created until a result is chosen. Leave the setting empty to keep address queries private and
+use map links instead. Choose a provider that permits autocomplete: the public
+[public Nominatim service](https://operations.osmfoundation.org/policies/nominatim/) prohibits
+autocomplete (Inkadra rejects suggestion requests to that host), so use a self-hosted
+Nominatim instance or a compatible provider whose policy permits it.
 
 ## Compose only
 
@@ -174,22 +201,24 @@ These change `compose.yaml` itself, not the server.
 
 | Variable                  | Default                   | Meaning                                                                        |
 | ------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
-| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.4.0` (recommended), `latest` or `edge`         |
+| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.8.0` (recommended), `latest` or `edge`         |
 | `INKADRA_IMAGE`           | `ghcr.io/inkadra/inkadra` | Image name, for a mirror or your own build                                     |
 | `INKADRA_PORT`            | `3000`                    | Host port of the web app                                                       |
 | `INKADRA_COLLAB_PORT`     | `3001`                    | Host port of `collab`, in split mode                                           |
 | `INKADRA_BIND`            | `127.0.0.1`               | Host address the ports listen on. `0.0.0.0` if the proxy is on another machine |
-| `INKADRA_DATA`            | volume `inkadra-data`     | Host folder for uploads instead of the volume                                  |
+| `INKADRA_DATA`            | volume `inkadra-data`     | Host folder for uploads instead of the volume. See [Storage][data-disks]       |
 | `POSTGRES_PASSWORD`       | required                  | Password of the bundled Postgres                                               |
 | `POSTGRES_DATA`           | volume `postgres-data`    | Host folder for the database (or the name of another volume)                   |
 | `POSTGRES_MAJOR`          | `16`                      | PostgreSQL version, only with `deploy/compose.postgres-old-layout.yaml`        |
-| `VALKEY_DATA`             | volume `valkey-data`      | Host folder for Valkey                                                         |
+| `VALKEY_DATA`             | volume `valkey-data`      | Host folder for Valkey. See [Storage][data-disks]                              |
 | `RUSTFS_DATA`             | volume `rustfs-data`      | Host folder for the bundled RustFS                                             |
 | `INKADRA_DOMAIN`          |                           | Host of `PUBLIC_URL`, for the bundled proxies                                  |
 | `INKADRA_COLLAB_UPSTREAM` | `inkadra:3000`            | Where the bundled Caddy and Nginx send `/collab`: `collab:3001` in split mode  |
 | `ACME_EMAIL`              |                           | Contact for Let's Encrypt, for the bundled Traefik                             |
 | `TRAEFIK_CERTRESOLVER`    | `letsencrypt`             | Which Traefik certresolver gets the certificate, for the bundled Traefik       |
 | `NGINX_CERTS`             | `./certs`                 | Folder with `fullchain.pem` and `privkey.pem`, for the bundled Nginx           |
+
+[data-disks]: storage.md#data-on-different-disks
 
 ## Sign-in and email
 
@@ -337,3 +366,98 @@ Do not trust the whole Docker subnet or its gateway. With userland-proxy, hairpi
 rootless Docker or IPv6 forwarding, a direct LAN client can appear as the Docker gateway
 (e.g. `172.18.0.1`). Trusting that gateway/subnet lets direct clients forge proxy headers.
 Use the pinned proxy container IP and verify the peer address in your deployment.
+
+## In-app reports
+
+Reporting to the **Inkadra developers is on without a saved choice**, also on an upgraded instance,
+via the relay described below. What leaves and how to turn it off, in plain words:
+[What leaves your server](README.md#what-leaves-your-server).
+Saved administrator choices override that default. In Settings → About → Reports an administrator
+chooses Inkadra developers, own GitHub, Inbox only or Off, the destination `owner/repository`, whether
+guests may report (off by default) and how long attachments are kept (90 days by default; 30
+days or one year on request). Every report is first saved in the local database; attachments
+use the configured instance storage (`STORAGE_DRIVER`, `DATA_DIR` or the existing `S3_*`
+variables). Include both in backups.
+
+| Environment variable    | Purpose                                                                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FEEDBACK_GITHUB_TOKEN` | Server-only fine-grained GitHub token. Unset/empty by default. Never sent to the browser, logged or displayed in Settings.                                     |
+| `PUBLIC_URL`            | Existing canonical instance URL, used for attachment links. It must be reachable by people opening links and by GitHub's image proxy for embedded screenshots. |
+
+`FEEDBACK_RELAY_URL` controls the developer relay (see below). Destination, repository, guest policy and
+retention are administrator settings.
+
+**The direct-path token.** A fine-grained personal access token, ideally of a service account: issues show
+that account as their author. Restrict it to **one selected private repository**, with
+**Issues: read and write** and the automatically required **Metadata: read**. Contents is not
+needed: nothing is committed to GitHub. Do not choose the public application repository.
+
+**The repository** needs the labels `bug`, `idea`, `question`, `from-app` and `area:home`,
+`area:board`, `area:settings`, `area:guest`, `area:other`. Create them beforehand: whether GitHub
+creates a missing label for an Issues-only token is not guaranteed. Private visibility is checked
+when the setting is saved and before every delivery; a failed check keeps the report local.
+With destination GitHub and no token yet, reports wait locally and are delivered once the token
+is set. Existing direct GitHub installations retain their chosen destination.
+
+**Limits.** Members can submit five reports/hour and guests two; the instance limit is 100/hour.
+Members may attach one screenshot, five files up to 25 MB each, and one video up to 100 MB.
+Guests may send text (description up to 4,000 characters), one screenshot up to 5 MB, environment
+and sanitized page information. Types are sniffed from the bytes: images, videos, PDF and plain
+text only; nothing but screenshots is served inline. Screenshots and PNG, JPEG and WebP files are
+rewritten without metadata (GPS included), up to 40 megapixels; HEIC and other formats leave as
+they came. Uploads go through a temporary file in `DATA_DIR/tmp`, not memory.
+Report text goes into the issue with mentions, references, links and markup neutralised.
+
+**Direct-path attachment links** are random bearer credentials: **anyone holding a link can open it until
+it expires**, without an Inkadra or GitHub login. Expired links stop working immediately; a
+maintenance sweep removes the files within about one minute. Unsubmitted uploads expire after 24
+hours. Do not post these links publicly. Screenshots inside private GitHub issues depend on the
+instance being reachable; whether GitHub shows them is unverified.
+
+**Delivery.** When GitHub answers 429, 403 or cannot be reached before the write, the report
+retries with exponential backoff and the person has already seen "sent", with a local reference.
+A lost connection or a 5xx during the write itself leaves the outcome unknown: the report is
+marked "To check on GitHub" and not posted again, to prevent duplicates. A 401, 404, 410, 422 or a
+repository that is no longer private stops the retries: the reason is logged and shown in
+Settings → About → Reports, and **Try again** there sends those reports round again. A report still
+retrying reads "Waiting to be sent", and **Try again** in its expanded row runs the same delivery
+sooner, with no risk of a duplicate. If the destination changes, queued reports stay local, marked
+"Inbox only", and never go to the repository chosen before.
+Offline drafts are never sent in the background: text stays in the browser and leaves only after
+the preview and a manual send. Videos stay in tab memory.
+
+
+### Reports to the Inkadra developers
+
+`FEEDBACK_RELAY_URL` defaults to `https://inkadra-report-relay.matte-maraffio.workers.dev`. Set it to
+another `https://` relay URL to override (plain `http://` only to this machine), or to the empty
+string to disable this route. No GitHub or Cloudflare credential is installed in the app for it.
+
+**Every instance without a saved choice uses this destination, including one upgraded from an
+earlier version where reporting was off.** To keep reports off, save a choice in Settings → About → Reports
+or set the empty value before upgrading. Guests stay disabled. Settings lets administrators turn
+developer reporting off with one switch (Inbox), choose Inbox only, disable reports, or configure
+their own private GitHub repository. Saved administrator choices always take precedence, including
+existing direct GitHub setups. A dialog opened before the choice changed asks to read it again.
+
+**What is sent**, after the mandatory preview: the selected title, description, diagnostics
+(redacted logs, version, browser/OS, screen, theme/language, route, sync and flags) and attachments.
+They go through Cloudflare, which sees this server's IP address, to the private
+`inkadra/inkadra-feedback` repository, read by Inkadra developers. No reporter name, email or
+instance URL is added. Before leaving, logs and text files lose secrets, this instance's host name,
+the machine's name and internal addresses, and files are renamed `kind-N.ext`. Installation IDs and
+networks are stored by the relay only as HMACs.
+
+**Metadata.** Attachments stay in a repository's history, so nothing leaves with its GPS position.
+PNG, JPEG, WebP, GIF, TIFF, AVIF and HEIC are rewritten without metadata (the last three as WebP).
+Videos from the device need ffmpeg to lose theirs, so they are refused on an image without it (the
+`-media` image has it); recordings made in the dialog always go. PDFs leave whole, with their
+metadata, and the dialog says so. What people write and what is visible in a file can still be
+personal: the preview is there to check it.
+
+**Limits.** 10 MiB per image or file, 25 MiB per video, 32 MiB per report; direct GitHub keeps its
+100 MiB video limit. The relay accepts 40 reports a day per network and 60 a day in total, across
+every instance that uses it: beyond that, reports wait in the local queue and leave by themselves. During an outage they wait too, and
+Settings says so. If the relay gives no answer to a write, the report is marked as not confirmed:
+trying again from Settings is safe, because the relay recognises a report it already has. GitHub
+attachments live on `feedback-assets` and are not removed by the local retention setting.

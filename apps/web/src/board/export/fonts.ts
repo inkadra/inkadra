@@ -4,6 +4,7 @@ import regular from '@fontsource/inter/files/inter-latin-400-normal.woff?url';
 // Inter, the interface font (OFL-1.1). WOFF rather than WOFF2: fontkit reads it without Brotli.
 import medium from '@fontsource/inter/files/inter-latin-500-normal.woff?url';
 import semibold from '@fontsource/inter/files/inter-latin-600-normal.woff?url';
+import bold from '@fontsource/inter/files/inter-latin-700-normal.woff?url';
 import type { ThemeFont } from '@inkadra/shared';
 import fontkit from '@pdf-lib/fontkit';
 import { headingFamily, headingPdfUrl, loadHeadingFont } from '../theme.ts';
@@ -20,8 +21,13 @@ export interface Fonts {
   headingCovers(text: string): boolean;
 }
 
-type Inter = Record<400 | 500 | 600, Uint8Array>;
-const URLS: Record<400 | 500 | 600, string> = { 400: regular, 500: medium, 600: semibold };
+type Inter = Record<400 | 500 | 600 | 700, Uint8Array>;
+const URLS: Record<400 | 500 | 600 | 700, string> = {
+  400: regular,
+  500: medium,
+  600: semibold,
+  700: bold,
+};
 let inter: Promise<Inter> | null = null;
 const loading = new Map<ThemeFont, Promise<Fonts>>();
 
@@ -33,7 +39,7 @@ async function fetchFont(url: string): Promise<Uint8Array> {
 
 function loadInter(): Promise<Inter> {
   inter ??= Promise.all(
-    ([400, 500, 600] as const).map(async (w) => [w, await fetchFont(URLS[w])] as const),
+    ([400, 500, 600, 700] as const).map(async (w) => [w, await fetchFont(URLS[w])] as const),
   )
     .then((entries) => Object.fromEntries(entries) as Inter)
     .catch((err: unknown) => {
@@ -104,6 +110,7 @@ function measureFrom(
     400: fontkit.create(bytes[400]),
     500: fontkit.create(bytes[500]),
     600: fontkit.create(bytes[600]),
+    700: fontkit.create(bytes[700]),
     heading: fontkit.create(bytes.heading),
   };
   const advances = new Map<string, number>();

@@ -72,5 +72,25 @@ export type SearchHit = z.infer<typeof SearchHit>;
 export const SearchResult = z.object({ items: z.array(SearchHit) }).openapi('SearchResult');
 export type SearchResult = z.infer<typeof SearchResult>;
 
+export const CastAppearancesQuery = z.object({
+  excludeBoardId: Id.optional().openapi({
+    description: 'Leave out this board, whose frames the caller already has live.',
+  }),
+});
+export type CastAppearancesQuery = z.infer<typeof CastAppearancesQuery>;
+
+export const CastAppearances = z
+  .object({
+    items: z.array(
+      z.object({
+        name: z.string().openapi({ description: 'A name of a frame cast, in lower case.' }),
+        frames: z.int().min(0),
+        scenes: z.array(z.string()).openapi({ description: 'Numbers of the scenes.' }),
+      }),
+    ),
+  })
+  .openapi('CastAppearances');
+export type CastAppearances = z.infer<typeof CastAppearances>;
+
 export const TagCount = z.object({ tag: z.string(), count: z.int().min(1) }).openapi('TagCount');
 export type TagCount = z.infer<typeof TagCount>;

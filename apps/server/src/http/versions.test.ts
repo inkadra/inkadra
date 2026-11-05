@@ -206,7 +206,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     const doc = new Y.Doc();
     const notices: unknown[] = [];
     const websocketProvider = new HocuspocusProviderWebsocket({
-      url: `ws://${base}/collab`,
+      url: `ws://${base}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
       WebSocketPolyfill: CookieSocket,
     });
     const provider = new HocuspocusProvider({
@@ -1134,6 +1134,33 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
         }
       });
     }
+
+    it('keeps a restore when the store timer of an unloaded copy of the board fires late', async () => {
+      const version = await changedBoard(boardId);
+      const first = await collab.hocuspocus.openDirectConnection(boardDocName(boardId));
+      const unloaded = first.document;
+      if (!unloaded) throw new Error('no document');
+      await first.disconnect();
+      const openDirect = collab.hocuspocus.openDirectConnection.bind(collab.hocuspocus);
+      const opening = vi.spyOn(collab.hocuspocus, 'openDirectConnection');
+      opening.mockImplementationOnce(async (...args) => {
+        const connection = await openDirect(...args);
+        // What the setTimeout(0) left by the store of the unloaded copy calls once it fires.
+        await collab.hocuspocus.unloadDocument(unloaded);
+        return connection;
+      });
+      try {
+        const result = await versions.restore({
+          boardId,
+          versionId: version.id,
+          userId: people.editor?.id ?? '',
+        });
+        expect(result.ok).toBe(true);
+        expectRestored(await read(boardId, (doc) => doc));
+      } finally {
+        opening.mockRestore();
+      }
+    });
 
     it('leaves the live board alone if persisting a concurrent edit in the backup fails', async () => {
       const version = await changedBoard(boardId);

@@ -13,6 +13,7 @@ import {
   UploadMetadata,
   VariantParams,
   VariantQuery,
+  VideoFrameQuery,
 } from './assets.ts';
 import {
   BackupSettings,
@@ -56,6 +57,15 @@ import { ApiError, Id, OutcomeUnknown, PageQuery, page, z } from './common.ts';
 import { API_PREFIX, AUTH_PREFIX } from './constants.ts';
 import { ExportSettings, UpdateExportSettings } from './export-settings.ts';
 import {
+  CreateFeedback,
+  FeedbackAttachment,
+  FeedbackReceipt,
+  FeedbackReport,
+  FeedbackSettings,
+  FeedbackSettingsInput,
+  FeedbackStatus,
+} from './feedback.ts';
+import {
   CreateGuestSession,
   CreateShareLink,
   GuestBoardSnapshot,
@@ -77,7 +87,13 @@ import {
   UpdateInstanceMember,
   UpdateInstanceSettings,
 } from './instance-admin.ts';
-import { CreateMapPreview, MapPreview } from './maps.ts';
+import {
+  CreateMapPreview,
+  MapPreview,
+  MapSearchResults,
+  MapTileQuery,
+  SearchMapPlaces,
+} from './maps.ts';
 import {
   MarkAllRead,
   Notification,
@@ -117,7 +133,13 @@ import {
   ShootingDayInput,
   UpdateShootingDay,
 } from './schedule.ts';
-import { SearchQuery, SearchResult, TagCount } from './search.ts';
+import {
+  CastAppearances,
+  CastAppearancesQuery,
+  SearchQuery,
+  SearchResult,
+  TagCount,
+} from './search.ts';
 import {
   AcceptedInvitation,
   BoardAccess,
@@ -199,6 +221,113 @@ const outcome = {
   },
 };
 registry.register('OutcomeUnknown', OutcomeUnknown);
+
+// Feedback ------------------------------------------------------------------
+for (const prefix of ['/feedback', '/guest/links/{linkId}/feedback']) {
+  const guest = prefix.includes('/guest/');
+  const params = guest ? { params: idParam('linkId') } : {};
+  registry.registerPath({
+    method: 'get',
+    path: v1(`${prefix}/status`),
+    tags: ['Feedback'],
+    security: secured,
+    summary: 'Authenticated availability; guests require a live share-link session.',
+    request: params,
+    responses: { 200: { description: 'Availability', ...json(FeedbackStatus) }, ...errors },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: v1(prefix),
+    tags: ['Feedback'],
+    security: secured,
+    summary:
+      'Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.',
+    description:
+      'Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.',
+    request: { ...params, body: { required: true, ...json(CreateFeedback) } },
+    responses: {
+      201: { description: 'Durably accepted', ...json(FeedbackReceipt) },
+      ...errors,
+      413: { description: 'Size limit exceeded' },
+      429: { description: 'Rate limited' },
+    },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: v1(`${prefix}/attachments`),
+    tags: ['Feedback'],
+    security: secured,
+    summary:
+      'Upload one sniffed attachment before sending. Query kind and name; binary body. Owner bound; unsubmitted uploads expire after 24 hours.',
+    request: {
+      ...params,
+      query: z.object({ kind: z.enum(['screenshot', 'video', 'file']), name: z.string().max(180) }),
+      body: {
+        required: true,
+        content: {
+          'application/octet-stream': { schema: z.string().openapi({ format: 'binary' }) },
+        },
+      },
+    },
+    responses: {
+      201: { description: 'Uploaded', ...json(FeedbackAttachment) },
+      ...errors,
+      413: { description: '25 MiB per file, 100 MiB per video; guest screenshot 5 MiB' },
+      429: { description: 'Rate limited' },
+    },
+  });
+}
+registry.registerPath({
+  method: 'get',
+  path: v1('/feedback/settings'),
+  tags: ['Feedback'],
+  security: secured,
+  summary:
+    'Administrator only: destination, repository, token status, guests and attachment retention.',
+  responses: { 200: { description: 'Settings', ...json(FeedbackSettings) }, ...errors },
+});
+registry.registerPath({
+  method: 'put',
+  path: v1('/feedback/settings'),
+  tags: ['Feedback'],
+  security: secured,
+  summary:
+    'Administrator only: configure delivery. With a server token the GitHub repository must verify as private; without one, reports wait locally.',
+  request: { body: { required: true, ...json(FeedbackSettingsInput) } },
+  responses: { 200: { description: 'Saved', ...json(FeedbackSettings) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/feedback/reports'),
+  tags: ['Feedback'],
+  security: secured,
+  summary: 'Administrator only: latest 100 local reports, including pending GitHub delivery.',
+  responses: {
+    200: { description: 'Reports', ...json(z.object({ items: z.array(FeedbackReport) })) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/feedback/reports/{id}/retry'),
+  tags: ['Feedback'],
+  security: secured,
+  summary:
+    'Administrator only: send a waiting report now. Anything else is left alone; sending twice cannot open a second issue.',
+  request: { params: z.object({ id: z.uuid() }) },
+  responses: { 200: { description: 'Where it is now', ...json(FeedbackReceipt) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/feedback/attachments/{token}'),
+  tags: ['Feedback'],
+  summary: 'Bearer link: anyone holding the random URL can open the attachment until it expires.',
+  request: { params: z.object({ token: z.string().regex(/^[a-f0-9]{64}$/) }) },
+  responses: {
+    200: { description: 'Attachment; nosniff, no-store, sandboxed, no referrer' },
+    404: errors[404],
+  },
+});
 
 // Schedule ------------------------------------------------------------------
 const schedulePath = v1('/boards/{boardId}/schedule');
@@ -1381,6 +1510,21 @@ registry.registerPath({
 });
 registry.registerPath({
   method: 'get',
+  path: v1('/assets/{assetId}/frame'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'Extract a PNG frame from the original video, at its original resolution (editors).',
+  request: { params: idParam('assetId'), query: VideoFrameQuery },
+  responses: {
+    200: {
+      description: 'Original video frame.',
+      content: { 'image/png': { schema: z.string().openapi({ format: 'binary' }) } },
+    },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'get',
   path: v1('/assets/{assetId}/proxy'),
   tags: ['Assets'],
   security: secured,
@@ -1452,6 +1596,24 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'post',
+  path: v1('/map-search'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'Suggest up to five places for a typed address without creating map images.',
+  description:
+    'Needs editor access to the project or supplied board and an administrator-configured ' +
+    'Nominatim-compatible geocoder (Instance.maps.geocoding). The query is sent to that ' +
+    'provider. An empty list means no matches; an unavailable geocoder returns an error. ' +
+    'Clients should debounce requests and discard stale answers. Rate limited per person.',
+  request: { body: json(SearchMapPlaces) },
+  responses: {
+    200: { description: 'Place suggestions', ...json(MapSearchResults) },
+    ...errors,
+  },
+});
+
+registry.registerPath({
+  method: 'post',
   path: v1('/map-previews'),
   tags: ['Assets'],
   security: secured,
@@ -1492,7 +1654,7 @@ registry.registerPath({
     'the queue and cache of map pictures, so browsers never contact it (decision 0053). 404 ' +
     'when maps are off (Instance.maps.enabled) or the tile server has no such tile; 429 past ' +
     '600 tiles a minute per person, or when the queue is too long (`Retry-After`).',
-  request: { params: z.object(tilePath) },
+  request: { params: z.object(tilePath), query: MapTileQuery },
   responses: { ...tile, ...errors },
 });
 
@@ -1510,6 +1672,18 @@ registry.registerPath({
     'index of the board documents, updated a few seconds after each edit.',
   request: { query: SearchQuery },
   responses: { 200: { description: 'Results, best first', ...json(SearchResult) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/projects/{projectId}/cast-appearances'),
+  tags: ['Search'],
+  security: secured,
+  summary: 'Where each name of a frame cast appears in a project.',
+  description:
+    'Counts frames and lists scene numbers per name, from the boards the caller can read, for ' +
+    'the scenes of a character card. Names are compared without case.',
+  request: { params: z.object({ projectId: Id }), query: CastAppearancesQuery },
+  responses: { 200: { description: 'Names and scenes', ...json(CastAppearances) }, ...errors },
 });
 registry.registerPath({
   method: 'get',
@@ -2048,7 +2222,7 @@ registry.registerPath({
   description:
     'As GET /map-tiles/{z}/{x}/{y}, for any guest of the link while GuestSession.maps is set; ' +
     'the 600 tiles a minute are counted per guest.',
-  request: { params: z.object({ linkId: Id, ...tilePath }) },
+  request: { params: z.object({ linkId: Id, ...tilePath }), query: MapTileQuery },
   responses: { ...tile, ...guestErrors },
 });
 registry.registerPath({
@@ -2390,6 +2564,7 @@ export function buildOpenApiDocument() {
     servers: [{ url: '/' }],
     tags: [
       { name: 'Instance' },
+      { name: 'Feedback' },
       { name: 'Auth' },
       { name: 'Users' },
       { name: 'Projects' },

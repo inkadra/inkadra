@@ -1,12 +1,4 @@
-import {
-  type Alignment,
-  type Point,
-  type Rect,
-  TEMPLATE_IDS,
-  type TemplateId,
-  type TidyGap,
-  type Viewport,
-} from '@inkadra/canvas-core';
+import type { Alignment, Point, Rect, TidyGap, Viewport } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import {
   type ContentKind,
@@ -36,13 +28,9 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
 import { addActions, type PaletteAction, rankActions } from '../commands/actions.ts';
+import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
 import { usePreferences } from '../lib/preferences.ts';
-import {
-  CANVAS_TEMPLATES,
-  type CanvasTemplate,
-  canvasTemplateIcon,
-  canvasTemplateLabel,
-} from './canvas-templates.ts';
+import { ContextualTools } from './ContextualTools.tsx';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
 import { isMac } from './shortcuts.ts';
@@ -140,9 +128,9 @@ export function Toolbar({
   tool: CanvasTool;
   onTool: (tool: CanvasTool) => void;
   onAdd: (type: ToolType) => void;
-  /** A board from the Canvas menu: plain or laid out from a template. */
-  onCanvas: (template: CanvasTemplate) => void;
-  /** A storyboard made from a screenplay file, after the Canvas menu's Storyboard. */
+  /** An empty board from the Canvas menu. */
+  onCanvas: () => void;
+  /** A storyboard made from a screenplay file. */
   onScreenplay?: () => void;
   /** Records a voice note from the microphone, saved as an audio card (#327). */
   onVoiceNote?: (() => void) | undefined;
@@ -195,8 +183,8 @@ export function Toolbar({
               (tl) =>
                 shown.includes(tl.type as BarTool) &&
                 (group === 'create'
-                  ? ['note', 'image', 'link', 'todo', 'color'].includes(tl.type)
-                  : ['column', 'frame', 'storyboard'].includes(tl.type)),
+                  ? ['note', 'image', 'link', 'todo', 'color', 'table'].includes(tl.type)
+                  : ['column', 'frame', 'storyboard', 'section', 'map', 'plan'].includes(tl.type)),
             ).map((tl) => (
               <ToolButton
                 key={tl.type}
@@ -204,10 +192,19 @@ export function Toolbar({
                 icon={tl.icon}
                 label={t(`board.types.${tl.type}`)}
                 keyHint={tl.key ?? ''}
-                onClick={() => (tl.type === 'storyboard' ? onCanvas('storyboard') : onAdd(tl.type))}
+                onClick={() => onAdd(tl.type)}
                 dragType={tl.type === 'storyboard' ? undefined : tl.type}
               />
             ))}
+            {group === 'create' && shown.includes('voice') && onVoiceNote && (
+              <ToolButton
+                keyHint=""
+                icon="mic"
+                kind="voice"
+                label={t('board.voiceNote.label')}
+                onClick={onVoiceNote}
+              />
+            )}
           </fieldset>
         ))}
       </div>
@@ -243,7 +240,7 @@ function CanvasMenuButton({
   /** Tools of the default bar this person hid (#302): they open the menu. */
   hidden: readonly BarTool[];
   onTool: (tool: CanvasTool) => void;
-  onCanvas: (template: CanvasTemplate) => void;
+  onCanvas: () => void;
   onScreenplay?: (() => void) | undefined;
   /** Records a voice note (#327); absent where the browser cannot record. */
   onVoiceNote?: (() => void) | undefined;
@@ -293,36 +290,48 @@ function CanvasMenuButton({
             style={{ right: at.right, bottom: at.bottom }}
             anchor={button}
             items={[
-              ...hidden.map(
-                (tool): MenuItem => ({
-                  label: t(tool === 'arrow' ? 'board.tools.arrow' : `board.types.${tool}`),
-                  icon: BAR_ICONS[tool],
-                  kind: 'canvas',
-                  action: () => (tool === 'arrow' ? onTool('arrow') : onCard(tool as ToolType)),
-                }),
-              ),
+              ...hidden
+                .filter((tool) => tool !== 'voice' || onVoiceNote)
+                .map(
+                  (tool): MenuItem => ({
+                    label: t(
+                      tool === 'arrow'
+                        ? 'board.tools.arrow'
+                        : tool === 'voice'
+                          ? 'board.voiceNote.label'
+                          : `board.types.${tool}`,
+                    ),
+                    icon: BAR_ICONS[tool],
+                    kind: 'canvas',
+                    action: () =>
+                      tool === 'arrow'
+                        ? onTool('arrow')
+                        : tool === 'voice'
+                          ? onVoiceNote?.()
+                          : onCard(tool as ToolType),
+                  }),
+                ),
               ...(hidden.length > 0 ? [{ divider: true } as MenuItem] : []),
             ].concat(
-              CANVAS_TEMPLATES.flatMap((template): MenuItem[] => [
-                {
-                  label: canvasTemplateLabel(template, t),
-                  icon: canvasTemplateIcon(template),
-                  kind: template,
-                  action: () => onCanvas(template),
-                },
-                ...(template === 'storyboard' && onScreenplay
-                  ? [
-                      {
-                        label: t('screenplay.fromScreenplay'),
-                        icon: 'upload' as const,
-                        kind: 'storyboard' as const,
-                        action: onScreenplay,
-                      },
-                    ]
-                  : []),
-              ]).concat([
+              (
+                [
+                  { label: t('board.types.board'), icon: 'page', kind: 'board', action: onCanvas },
+                  ...(onScreenplay
+                    ? [
+                        {
+                          label: t('screenplay.fromScreenplay'),
+                          icon: 'upload',
+                          kind: 'storyboard',
+                          action: onScreenplay,
+                        } as MenuItem,
+                      ]
+                    : []),
+                ] as MenuItem[]
+              ).concat([
                 { divider: true },
-                ...MENU_CARDS.map(
+                ...MENU_CARDS.filter(
+                  ([type]) => !['section', 'table', 'map', 'plan'].includes(type),
+                ).map(
                   ([type, icon]): MenuItem => ({
                     label: t(`board.types.${type}`),
                     icon,
@@ -330,17 +339,6 @@ function CanvasMenuButton({
                     action: () => onCard(type),
                   }),
                 ),
-                ...(onVoiceNote
-                  ? [
-                      { divider: true } as MenuItem,
-                      {
-                        label: t('board.voiceNote.label'),
-                        icon: 'mic' as const,
-                        kind: 'canvas' as const,
-                        action: onVoiceNote,
-                      },
-                    ]
-                  : []),
               ]),
             )}
             onClose={(reason) => {
@@ -376,10 +374,10 @@ function ToolButton({
       type="button"
       className={`toolbar__btn toolbar__btn--${dragType ?? icon}`}
       style={toolStyle(kind)}
-      aria-keyshortcuts={keyHint}
+      aria-keyshortcuts={keyHint || undefined}
       aria-label={label}
       aria-pressed={pressed}
-      data-ink-tooltip={`${label} (${keyHint})`}
+      data-ink-tooltip={keyHint ? `${label} (${keyHint})` : label}
       onClick={onClick}
       draggable={!!dragType}
       onDragStart={(e) => {
@@ -399,16 +397,19 @@ export function BarButton({
   onClick,
   active,
   danger,
+  disabled,
 }: {
   icon: IconName;
   label: string;
   onClick: () => void;
   active?: boolean;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       className={`ctxbar__btn${active ? ' is-active' : ''}${danger ? ' is-danger' : ''}`}
       aria-label={label}
       data-ink-tooltip={label}
@@ -440,7 +441,11 @@ export function ContextBar({
   onTags,
   extra,
   onComments,
+  editing,
+  onDone,
 }: {
+  editing?: string | null;
+  onDone?: () => void;
   box: Rect;
   onComments?: (() => void) | undefined;
   elements: Element[];
@@ -463,7 +468,11 @@ export function ContextBar({
 }) {
   const { t } = useTranslation();
   const bar = useRef<HTMLDivElement>(null);
-  const left = Math.max(8, box.x);
+  const editBox = useRef<Rect | null>(null);
+  if (!editing) editBox.current = null;
+  else if (!editBox.current) editBox.current = box;
+  const anchor = editBox.current ?? box;
+  const left = Math.max(8, anchor.x);
   // A selection near the right edge would push the bar off a narrow screen: keep it inside.
   // The bar is taller with touch targets, so it also clears the selection by its real height.
   useLayoutEffect(() => {
@@ -471,8 +480,9 @@ export function ContextBar({
     const room = (el?.offsetParent as HTMLElement | null)?.clientWidth;
     if (!el || !room) return;
     el.style.left = `${Math.max(8, Math.min(left, room - el.offsetWidth - 8))}px`;
-    const above = box.y - el.offsetHeight - 10;
-    el.style.top = `${above < 8 ? box.y + box.h + 8 : above}px`;
+    const above = anchor.y - el.offsetHeight - 10;
+    const top = above < 8 ? anchor.y + anchor.h + 8 : above;
+    el.style.top = `${Math.max(8, Math.min(top, (el.offsetParent as HTMLElement).clientHeight - el.offsetHeight - 8))}px`;
   });
   if (elements.length === 0 || (readOnly && !onComments)) return null;
   if (readOnly && onComments)
@@ -497,6 +507,11 @@ export function ContextBar({
   const hideable = elements.filter((e) => e.type !== 'arrow');
   const guestHidden = hideable.length > 0 && hideable.every((e) => e.guestHidden);
   const top = box.y - 44 < 8 ? box.y + box.h + 8 : box.y - 44;
+  // A character's bar follows its mockup: hiding, duplicating and deleting are under "more".
+  const character = elements.length === 1 && elements[0]?.type === 'character';
+  const tagButton = (
+    <BarButton icon="tag" label={t('tags.title')} onClick={() => onTags(left, box.y + box.h + 8)} />
+  );
   return (
     <div
       ref={bar}
@@ -506,109 +521,112 @@ export function ContextBar({
       style={{ left, top }}
       data-chrome
     >
-      {onComments && <BarButton icon="comment" label={t('comments.open')} onClick={onComments} />}
-      {editor && (
+      {editing && !locked && elements[0] ? (
         <>
+          <ContextualTools key={elements[0].id} element={elements[0]} editor={editor} />
+          {elements[0]?.type === 'arrow' && extra}
           <BarButton
-            icon="bold"
-            label={t('board.format.bold')}
-            active={editor.isActive('bold')}
-            onClick={() => editor.chain().focus().toggleBold().run()}
-          />
-          <BarButton
-            icon="italic"
-            label={t('board.format.italic')}
-            active={editor.isActive('italic')}
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-          />
-          <BarButton
-            icon="heading"
-            label={t('board.format.heading')}
-            active={editor.isActive('heading')}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          />
-          <BarButton
-            icon="list"
-            label={t('board.format.list')}
-            active={editor.isActive('bulletList')}
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            icon="more"
+            label={t('board.menu.more')}
+            onClick={() => {
+              const rect = bar.current;
+              if (!rect) return;
+              onMore(rect.offsetLeft, rect.offsetTop + rect.offsetHeight + 6);
+            }}
           />
           <span className="ctxbar__sep" aria-hidden="true" />
+          <button type="button" className="ctxbar__btn ctxbar__done" onClick={onDone}>
+            {t('board.contextual.done')}
+          </button>
         </>
-      )}
-      {colored.length > 0 && colored.length === elements.length && (
+      ) : (
         <>
+          {onComments && (
+            <BarButton icon="comment" label={t('comments.open')} onClick={onComments} />
+          )}
+          {colored.length > 0 && colored.length === elements.length && (
+            <>
+              <button
+                type="button"
+                className="ctxbar__swatch"
+                aria-label={t('board.colors.none')}
+                data-ink-tooltip={t('board.colors.none')}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onColor(undefined)}
+              />
+              {NOTE_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`ctxbar__swatch ctxbar__swatch--${c}`}
+                  aria-label={t(`board.colors.${c}`)}
+                  data-ink-tooltip={t(`board.colors.${c}`)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => onColor(c)}
+                />
+              ))}
+              <span className="ctxbar__sep" aria-hidden="true" />
+            </>
+          )}
+          {free.length > 1 && (
+            <>
+              <span className="ctxbar__count">
+                {t('board.selected', { count: elements.length })}
+              </span>
+              <ArrangeButton count={free.length} gap={gap} onGap={onGap} onArrange={onArrange} />
+              <BarButton icon="column" label={t('board.align.group')} onClick={onGroup} />
+              <span className="ctxbar__sep" aria-hidden="true" />
+            </>
+          )}
+          {character && tagButton}
+          <BarButton
+            icon={locked ? 'unlock' : 'lock'}
+            label={locked ? t('board.menu.unlock') : t('board.menu.lock')}
+            onClick={onLock}
+            active={locked}
+            danger={locked}
+          />
+          {!character && hideable.length > 0 && (
+            <button
+              type="button"
+              className={`ctxbar__btn${guestHidden ? ' is-active' : ''}`}
+              aria-label={t('guestVisibility.hide')}
+              data-ink-tooltip={t('guestVisibility.hide')}
+              aria-pressed={guestHidden}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={onGuestHidden}
+            >
+              <GuestVisibilityIcon />
+            </button>
+          )}
+          {character && <span className="ctxbar__sep" aria-hidden="true" />}
+          {extra}
+          {character && <span className="ctxbar__sep" aria-hidden="true" />}
+          {!character && (
+            <>
+              {tagButton}
+              <BarButton icon="copy" label={t('board.menu.duplicate')} onClick={onDuplicate} />
+              <BarButton icon="trash" label={t('board.menu.delete')} onClick={onDelete} />
+            </>
+          )}
           <button
             type="button"
-            className="ctxbar__swatch"
-            aria-label={t('board.colors.none')}
-            data-ink-tooltip={t('board.colors.none')}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onColor(undefined)}
-          />
-          {NOTE_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`ctxbar__swatch ctxbar__swatch--${c}`}
-              aria-label={t(`board.colors.${c}`)}
-              data-ink-tooltip={t(`board.colors.${c}`)}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onColor(c)}
-            />
-          ))}
-          <span className="ctxbar__sep" aria-hidden="true" />
+            className="ctxbar__btn"
+            aria-label={t('board.menu.more')}
+            data-ink-tooltip={t('board.menu.more')}
+            aria-haspopup="menu"
+            onClick={(e) => {
+              const bar = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+              const root = (
+                e.currentTarget.closest('.canvas') as HTMLElement
+              ).getBoundingClientRect();
+              onMore(bar.right - root.left - 200, bar.bottom - root.top + 6);
+            }}
+          >
+            <Icon name="more" size={14} />
+          </button>
         </>
       )}
-      {free.length > 1 && (
-        <>
-          <span className="ctxbar__count">{t('board.selected', { count: elements.length })}</span>
-          <ArrangeButton count={free.length} gap={gap} onGap={onGap} onArrange={onArrange} />
-          <BarButton icon="column" label={t('board.align.group')} onClick={onGroup} />
-          <span className="ctxbar__sep" aria-hidden="true" />
-        </>
-      )}
-      <BarButton
-        icon={locked ? 'unlock' : 'lock'}
-        label={locked ? t('board.menu.unlock') : t('board.menu.lock')}
-        onClick={onLock}
-        active={locked}
-      />
-      {hideable.length > 0 && (
-        <button
-          type="button"
-          className={`ctxbar__btn${guestHidden ? ' is-active' : ''}`}
-          aria-label={t('guestVisibility.hide')}
-          data-ink-tooltip={t('guestVisibility.hide')}
-          aria-pressed={guestHidden}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={onGuestHidden}
-        >
-          <GuestVisibilityIcon />
-        </button>
-      )}
-      {extra}
-      <BarButton
-        icon="tag"
-        label={t('tags.title')}
-        onClick={() => onTags(left, box.y + box.h + 8)}
-      />
-      <BarButton icon="copy" label={t('board.menu.duplicate')} onClick={onDuplicate} />
-      <BarButton icon="trash" label={t('board.menu.delete')} onClick={onDelete} />
-      <button
-        type="button"
-        className="ctxbar__btn"
-        aria-label={t('board.menu.more')}
-        data-ink-tooltip={t('board.menu.more')}
-        aria-haspopup="menu"
-        onClick={(e) => {
-          const bar = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
-          const root = (e.currentTarget.closest('.canvas') as HTMLElement).getBoundingClientRect();
-          onMore(bar.right - root.left - 200, bar.bottom - root.top + 6);
-        }}
-      >
-        <Icon name="more" size={14} />
-      </button>
     </div>
   );
 }
@@ -1114,6 +1132,22 @@ export function ZoomControls({
   );
 }
 
+/** The open tray: rises in, and fades out as it closes. */
+function UnsortedPanel({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
+  const ref = useExitFade<HTMLElement>();
+  return (
+    <section
+      ref={ref}
+      className="unsorted__panel ink-motion-rise"
+      aria-label={t('nav.unsorted')}
+      data-scroll
+    >
+      {children}
+    </section>
+  );
+}
+
 /**
  * "Non ordinati": what arrives from the clipper, the phone or other boards, still to place.
  * Shown only while something waits there, while it is open (the command palette opens it) or
@@ -1143,7 +1177,7 @@ export function UnsortedDrawer({
   return (
     <div ref={ref} className={`unsorted${dropping ? ' is-dropping' : ''}`} data-chrome>
       {open && (
-        <section className="unsorted__panel" aria-label={t('nav.unsorted')} data-scroll>
+        <UnsortedPanel>
           {items.length === 0 ? (
             <p className="ink-muted unsorted__empty">{t('board.unsorted.empty')}</p>
           ) : (
@@ -1157,7 +1191,7 @@ export function UnsortedDrawer({
               />
             ))
           )}
-        </section>
+        </UnsortedPanel>
       )}
       <button type="button" className="unsorted__toggle" aria-expanded={open} onClick={onToggle}>
         <Icon name="unsorted" size={14} />
@@ -1194,6 +1228,14 @@ export function UploadPanel() {
               </button>
             )}
           </div>
+          {u.state === 'uploading' && !u.reconnecting && u.remainingSeconds !== null && (
+            <span className="ink-muted">
+              {t('board.uploads.transfer', {
+                speed: (u.bytesPerSecond / 1024 / 1024).toFixed(1),
+                seconds: u.remainingSeconds,
+              })}
+            </span>
+          )}
           <div className="uploads__bar">
             <span style={{ width: `${(u.sent / (u.size || 1)) * 100}%` }} />
           </div>
@@ -1207,7 +1249,6 @@ export function CommandPalette({
   readOnly,
   onClose,
   onAdd,
-  onTemplate,
   onZoom,
   onUndo,
   onRedo,
@@ -1219,7 +1260,6 @@ export function CommandPalette({
   extra?: PaletteAction[];
   onClose: () => void;
   onAdd: (type: ToolType) => void;
-  onTemplate: (id: TemplateId) => void;
   onZoom: (to: 'in' | 'out' | 'reset' | 'fit' | 'selection') => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -1237,13 +1277,6 @@ export function CommandPalette({
           (type) => t('board.palette.add', { type: t(`board.types.${type}`) }),
           onAdd,
         )),
-    ...(readOnly
-      ? []
-      : TEMPLATE_IDS.map((id) => ({
-          id: `template-${id}`,
-          label: t('board.palette.template', { name: t(`templates.${id}.name`) }),
-          run: () => onTemplate(id),
-        }))),
     ...(readOnly ? [] : extra),
     { id: 'fit', label: t('board.zoom.fit'), hint: '⇧1', run: () => onZoom('fit') },
     {
@@ -1332,6 +1365,7 @@ export const TOAST_MS = 6000;
 export function Toast({
   text,
   ok,
+  error,
   onShow,
   onUndo,
   history,
@@ -1340,6 +1374,8 @@ export function Toast({
   text: string;
   /** A check before the text: something was done. */
   ok?: boolean | undefined;
+  /** Something failed: the toast offers to report it, when reporting is on. */
+  error?: boolean | undefined;
   /** Brings what was added into view. */
   onShow?: (() => void) | undefined;
   onUndo?: (() => void) | undefined;
@@ -1373,7 +1409,9 @@ export function Toast({
       history.off('stack-item-popped', done);
     };
   }, [history]);
-  const actions = !!onShow || !!onUndo;
+  const feedback = useFeedbackStatus();
+  const canReport = !!error && !!feedback?.enabled;
+  const actions = !!onShow || !!onUndo || canReport;
   return (
     <div
       ref={ref}
@@ -1393,6 +1431,18 @@ export function Toast({
         </span>
       )}
       <span className="toast__text">{text}</span>
+      {canReport && (
+        <button
+          type="button"
+          className="toast__action"
+          onClick={() => {
+            openFeedback({ title: text });
+            onClose();
+          }}
+        >
+          {t('feedback.report')}
+        </button>
+      )}
       {onShow && (
         <button type="button" className="toast__action" onClick={onShow}>
           {t('board.show')}

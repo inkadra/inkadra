@@ -71,7 +71,11 @@ export interface DropHooks {
   /** Starts the upload of a file; `onAsset` fires once the server has created its asset. */
   upload: (
     file: File,
-    hooks: { onAsset: (assetId: string) => void; onFailed: (assetId: string | null) => void },
+    hooks: {
+      onAsset: (assetId: string) => void;
+      onFailed: (assetId: string | null) => void;
+      onCancelled: (assetId: string | null) => void;
+    },
   ) => void;
   userId: string;
   /** An upload failed before the server knew the file. */
@@ -113,15 +117,24 @@ export function applyDrop(
     }
   }, LOCAL);
   for (const { frameId, file } of jobs) {
+    // What a cancelled upload gives back; no undo step, as the file it replaces no longer exists.
+    let earlier: string | undefined;
     upload(file, {
       // Same as "Upload an image" in the frame panel: the picture is replaced and the video
       // source it may have been grabbed from is dropped with it.
       onAsset: (assetId) => {
+        const frame = store.getSnapshot().byId.get(frameId);
+        if (frame?.type === 'frame') earlier = frame.assetId;
         store.undo.stopCapturing();
         updateElement(doc, frameId, { assetId, source: undefined }, LOCAL);
       },
       onFailed: (assetId) => {
         if (!assetId) onFailed(file);
+      },
+      onCancelled: (assetId) => {
+        const frame = store.getSnapshot().byId.get(frameId);
+        if (assetId && frame?.type === 'frame' && frame.assetId === assetId)
+          updateElement(doc, frameId, { assetId: earlier });
       },
     });
   }

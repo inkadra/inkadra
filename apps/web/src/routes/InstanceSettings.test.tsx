@@ -88,3 +88,19 @@ it('refreshes the session immediately after an enrolled administrator activates 
   expect(session.refresh).toHaveBeenCalledOnce();
   expect(checkbox.checked).toBe(true);
 });
+
+it('ends registration loading when the connection stalls', async () => {
+  vi.useFakeTimers();
+  vi.mocked(api.get).mockReturnValue(new Promise(() => {}));
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <InstanceSettings section="registration" setup={{ checks: null, error: false }} />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => vi.advanceTimersByTimeAsync(15_000));
+  expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  expect(host.querySelector('[role="status"]')).toBeNull();
+  vi.useRealTimers();
+});

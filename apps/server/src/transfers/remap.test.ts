@@ -76,6 +76,7 @@ describe('remapDoc', () => {
     const doc = createBoardDoc(oldBoard);
     addElement(doc, {
       ...base,
+      references: [file, elsewhere],
       id: 'character-ok',
       type: 'character',
       name: 'Marta',
@@ -95,6 +96,7 @@ describe('remapDoc', () => {
     });
     const { elements } = roots(doc);
     expect(elements.get('character-ok')?.get('assetId')).toBe(newFile);
+    expect(elements.get('character-ok')?.get('references')).toEqual([newFile]);
     expect(elements.get('location-missing')?.has('assetId')).toBe(false);
     expect(readElement(elements.get('location-missing')!)).toMatchObject({
       name: 'Stazione Centrale',
@@ -199,6 +201,32 @@ describe('remapDoc', () => {
     setAnimaticAudio(skipped, { assetId: elsewhere, volume: 1 });
     remapDoc(skipped, newBoard, maps);
     expect(roots(skipped).meta.has('animaticAudio')).toBe(false);
+  });
+});
+
+describe('remapDoc on frame catalog values', () => {
+  it('turns ids of another instance into text and leaves everything else as it is', () => {
+    const elsewhere = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a12';
+    const doc = createBoardDoc(oldBoard);
+    const frame = {
+      ...base,
+      id: 'frame-card',
+      type: 'frame' as const,
+      shot: elsewhere,
+      angle: 'high',
+      movement: 'Testo libero',
+    };
+    addElement(doc, frame);
+    remapDoc(doc, newBoard, {
+      boards: new Map(),
+      assets: new Map(),
+      person: () => null,
+      shotText: new Map([[elsewhere, 'Piano americano']]),
+    });
+    const el = roots(doc).elements.get(frame.id);
+    expect(el?.get('shot')).toBe('Piano americano');
+    expect(el?.get('angle')).toBe('high');
+    expect(el?.get('movement')).toBe('Testo libero');
   });
 });
 

@@ -26,6 +26,7 @@ export async function fillMapPreview(
   } catch {
     return false;
   }
+  if (preview.lat === null || preview.lon === null) return false;
   const map = doc.getMap<Y.Map<unknown>>('elements').get(elementId);
   const name = map?.get('name');
   updateElement(
@@ -36,10 +37,10 @@ export async function fillMapPreview(
       lon: preview.lon ?? undefined,
       zoom: preview.zoom ?? undefined,
       imageAssetId: preview.imageAssetId ?? undefined,
-      // A typed address stays the card's name; a link names the place when it can.
+      // Show the resolved place, so a first geocoder match is never disguised as the query.
       ...('url' in from
         ? { url: webUrl(preview.url ?? undefined) ?? from.url, name: name || preview.name || '' }
-        : {}),
+        : { name: preview.name || from.query }),
     },
     LOCAL,
   );

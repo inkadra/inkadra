@@ -2,6 +2,7 @@
 export interface AccessState {
   accessChangedAt: number | null;
   readOnly: boolean;
+  schemaTooNew?: boolean;
 }
 
 /**
@@ -13,6 +14,7 @@ export function accessNotices() {
   return (state: AccessState): { readOnly: boolean } | null => {
     if (state.accessChangedAt === null || state.accessChangedAt === seen) return null;
     seen = state.accessChangedAt;
+    if (state.schemaTooNew) return null;
     return { readOnly: state.readOnly };
   };
 }

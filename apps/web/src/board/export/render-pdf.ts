@@ -58,6 +58,7 @@ export async function renderPdf(
     400: await pdf.embedFont(fonts[400], { subset: true }),
     500: await pdf.embedFont(fonts[500], { subset: true }),
     600: semibold,
+    700: await pdf.embedFont(fonts[700], { subset: true }),
     heading:
       fonts.heading === fonts[600]
         ? semibold

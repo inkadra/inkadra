@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { describe, expect, it } from 'vitest';
-import { formatClimb, formatDistance, openInMapsUrl, trackLatLngs } from './maps.ts';
+import { createElement } from '@inkadra/canvas-core';
+import { createBoardDoc, readElement, roots } from '@inkadra/doc-schema';
+import { describe, expect, it, vi } from 'vitest';
+import { api } from '../lib/api.ts';
+import {
+  fillMapPreview,
+  formatClimb,
+  formatDistance,
+  openInMapsUrl,
+  trackLatLngs,
+} from './maps.ts';
 
 describe('map cards', () => {
   it('opens the original link, else OpenStreetMap at the place or the address', () => {
@@ -34,4 +43,44 @@ describe('map cards', () => {
     expect(at?.[1]?.[0]).toBeGreaterThan(40);
     expect(trackLatLngs({ distanceM: 1, elevationGainM: null, points: [0.5, 0.5] })).toBeNull();
   });
+});
+
+it('reports an unresolved address and shows the geocoder place instead of disguising it as the query', async () => {
+  const doc = createBoardDoc('board');
+  const el = createElement(
+    doc,
+    'map',
+    { x: 0, y: 0 },
+    { name: 'Via Roma', address: 'Via Roma' },
+    { userId: null },
+  );
+  const post = vi.spyOn(api, 'post');
+  try {
+    post.mockResolvedValueOnce({
+      lat: null,
+      lon: null,
+      zoom: null,
+      name: null,
+      url: null,
+      imageAssetId: null,
+    });
+    expect(await fillMapPreview(doc, el.id, 'project', 'board', { query: 'Via Roma' })).toBe(false);
+    post.mockResolvedValueOnce({
+      lat: 45.46,
+      lon: 9.19,
+      zoom: 16,
+      name: 'Via Roma, Milano',
+      url: null,
+      imageAssetId: 'picture',
+    });
+    expect(await fillMapPreview(doc, el.id, 'project', 'board', { query: 'Via Roma' })).toBe(true);
+    expect(readElement(roots(doc).elements.get(el.id)!)).toMatchObject({
+      name: 'Via Roma, Milano',
+      address: 'Via Roma',
+      imageAssetId: 'picture',
+    });
+  } finally {
+    post.mockRestore();
+    doc.destroy();
+  }
 });

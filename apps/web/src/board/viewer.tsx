@@ -14,22 +14,25 @@ import { GuestModeContext } from './context.ts';
 import { FontSpecimen } from './FontSpecimen.tsx';
 import { FrameGrab } from './FrameGrab.tsx';
 import { fileBadge, fileFamily, isPdf } from './file-kinds.ts';
-import { VideoFrameStepper } from './frame-grab.ts';
+import { formatSourceTime, VideoFrameStepper } from './frame-grab.ts';
 import { hasImageTransform } from './image-crop.ts';
 import { playInline, useInlineMedia } from './inline-player.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { OfficeInfo, OfficeStage, useOfficePreview } from './OfficePreview.tsx';
 import { isOffice, officeTable, SHEET_PREVIEW, tableable } from './office.ts';
+import { PdfReader } from './PdfReader.tsx';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
+import { ViewerImage } from './ViewerImage.tsx';
 import {
   isVideoLink,
   isYoutubeUrl,
   videoEmbedUrl,
   YOUTUBE_ORIGIN,
+  youtubePlayerBlocked,
   youtubePlayerTime,
 } from './youtube.ts';
 
@@ -235,8 +238,11 @@ export function MediaViewer({
   initialFrameId,
   onOfficeTable,
   instanceAdmin = false,
+  onFrameSaved,
 }: {
   instanceAdmin?: boolean;
+  /** A captured frame has been saved: into this frame, or as this new image card. */
+  onFrameSaved?: (frameId: string | null, imageId: string | null) => void;
   onOfficeTable?: (id: string, name: string, rows: number) => void;
   initialFrameId?: string;
   store: BoardStore;
@@ -259,6 +265,11 @@ export function MediaViewer({
   const { t, i18n } = useTranslation();
   const assetId = element.type === 'link' ? element.imageAssetId : element.assetId;
   const asset = useAsset(assetId);
+  const sourceAsset = useAsset(
+    element.type === 'image' && element.source?.kind === 'uploaded-video'
+      ? element.source.assetId
+      : undefined,
+  );
   const isYoutube = element.type === 'link' && isYoutubeUrl(element.url);
   const embedUrl =
     element.type === 'link' && isVideoLink(element.url) ? videoEmbedUrl(element.url) : null;
@@ -273,13 +284,17 @@ export function MediaViewer({
   const dialogRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [youtubeTime, setYoutubeTime] = useState<number | null>(null);
+  const [embedBlocked, setEmbedBlocked] = useState(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset player time when navigating gallery items
   useEffect(() => {
     setYoutubeTime(null);
+    setEmbedBlocked(false);
     if (!isYoutube) return;
     const receive = (event: MessageEvent) => {
-      const time = youtubePlayerTime(event, iframeRef.current?.contentWindow ?? null);
+      const player = iframeRef.current?.contentWindow ?? null;
+      const time = youtubePlayerTime(event, player);
       if (time !== null) setYoutubeTime(time);
+      if (youtubePlayerBlocked(event, player)) setEmbedBlocked(true);
     };
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
@@ -298,10 +313,8 @@ export function MediaViewer({
     setOfficeSheet(0);
   }, [element.id]);
   const isTransformedImage = element.type === 'image' && hasImageTransform(element);
-  const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(
-    ready ? playbackUrl(ready) : undefined,
-    ready?.id,
-  );
+  const playback = ready ? playbackUrl(ready) : undefined;
+  const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(playback, ready?.id);
   // The viewer's own media take turns with the cards (one player at a time).
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoTurn = useInlineMedia('viewer-video', videoRef);
@@ -311,10 +324,10 @@ export function MediaViewer({
   const [videoPaused, setVideoPaused] = useState(false);
   useEffect(() => {
     const player = videoRef.current;
-    if (!player || !ready?.id) return;
+    if (!player || !ready?.id || !playback) return;
     stepper.current = new VideoFrameStepper();
     return stepper.current.start(player);
-  }, [ready?.id, videoRef]);
+  }, [ready?.id, videoRef, playback]);
 
   const threads = useReviews((s) => s.threads);
   const reviewsReady = useReviews((s) => s.status);
@@ -327,6 +340,18 @@ export function MediaViewer({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e.target) && e.key !== 'Escape' && e.key !== 'Tab') return;
+      // Let the focused image handle local zoom/pan before isolating other viewer keys.
+      const image = e.target instanceof HTMLElement && e.target.matches('.viewer__image-view');
+      if (
+        e.type === 'keydown' &&
+        image &&
+        (['+', '=', '-', '0'].includes(e.key) ||
+          ((e.target as HTMLElement).dataset.imageZoomed === 'true' &&
+            ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)))
+      )
+        return;
+      // The corners of the box on a photo of the tab move with the arrows, not the gallery.
+      if (e.target instanceof HTMLElement && e.target.matches('.viewer__tab-handle')) return;
       // The canvas behind listens on window too.
       e.stopImmediatePropagation();
       if (e.type !== 'keydown') return;
@@ -534,6 +559,9 @@ export function MediaViewer({
             readOnly={readOnly || guestMode}
             initialFrameId={initialFrameId}
             youtubeTime={youtubeTime}
+            embed={iframeRef}
+            unavailable={embedBlocked}
+            onSaved={onFrameSaved}
             onDone={onClose}
           />
           <button
@@ -638,13 +666,25 @@ export function MediaViewer({
                   allowFullScreen
                 />
               </div>
+            ) : ready?.kind === 'video' && !playback ? (
+              <VideoUnplayable
+                poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
+                filename={ready.filename}
+                downloadUrl={ready.url}
+                downloadLabel={t('viewer.download')}
+                message={t(
+                  ready.proxy?.status === 'queued' || ready.proxy?.status === 'processing'
+                    ? 'board.file.preparing'
+                    : 'viewer.unplayable',
+                )}
+              />
             ) : ready?.kind === 'video' ? (
               <>
                 {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
                 <video
                   ref={videoRef}
                   className="viewer__media viewer__media--contain"
-                  src={playbackUrl(ready)}
+                  src={playback}
                   poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
                   controls
                   autoPlay
@@ -691,7 +731,7 @@ export function MediaViewer({
                 {/* biome-ignore lint/a11y/useMediaCaption: people's own recordings have no captions */}
                 <audio
                   className="viewer__audio"
-                  src={playbackUrl(ready)}
+                  src={playback}
                   controls
                   autoPlay
                   ref={audioRef}
@@ -699,6 +739,7 @@ export function MediaViewer({
                 />
               </div>
             ) : ready &&
+              !isPdf(ready) &&
               !pickVariant(ready, wide) &&
               (ready.kind !== 'image' || isRawImageType(ready.mime)) ? (
               <div className="viewer__file">
@@ -712,17 +753,9 @@ export function MediaViewer({
                 </a>
               </div>
             ) : ready && isPdf(ready) ? (
-              // No PDF view yet (pdf.js comes with #294): page 1 and the download.
               <div className="viewer__file viewer__file--pdf">
-                <img
-                  className="viewer__media viewer__media--contain viewer__pdf-page"
-                  src={pickVariant(ready, wide)}
-                  alt={ready.filename}
-                />
+                <PdfReader key={ready.url} url={ready.url} name={ready.filename} />
                 <div className="viewer__pdf-bar">
-                  {ready.pageCount && (
-                    <span>{t('viewer.pageOne', { count: ready.pageCount })}</span>
-                  )}
                   <a
                     className="ink-btn ink-btn--primary"
                     href={ready.url}
@@ -734,27 +767,34 @@ export function MediaViewer({
                 </div>
               </div>
             ) : ready ? (
-              isTransformedImage && !showOriginal ? (
-                <CroppedImage
-                  className="viewer__media viewer__media--contain"
-                  poster={pickVariant(ready, wide) || ready.url}
-                  moving={movingVariantUrl(ready, wide)}
-                  alt={element.caption ?? ready.filename}
-                  width={ready.width}
-                  height={ready.height}
-                  crop={element.crop}
-                  rotation={element.rotation}
-                />
-              ) : (
-                <MovingPicture
-                  className="viewer__media viewer__media--contain"
-                  poster={pickVariant(ready, wide) || ready.url}
-                  moving={movingVariantUrl(ready, wide)}
-                  alt={
-                    element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename
-                  }
-                />
-              )
+              <ViewerImage key={element.id} onClose={onClose}>
+                {element.type === 'image' &&
+                (isTransformedImage || element.strokes?.length) &&
+                !showOriginal ? (
+                  <CroppedImage
+                    strokes={element.type === 'image' ? element.strokes : undefined}
+                    className="viewer__media viewer__media--contain"
+                    poster={pickVariant(ready, wide) || ready.url}
+                    moving={movingVariantUrl(ready, wide)}
+                    alt={element.caption ?? ready.filename}
+                    width={ready.width}
+                    height={ready.height}
+                    crop={element.crop}
+                    rotation={element.rotation}
+                  />
+                ) : (
+                  <MovingPicture
+                    className="viewer__media viewer__media--contain"
+                    poster={pickVariant(ready, wide) || ready.url}
+                    moving={movingVariantUrl(ready, wide)}
+                    alt={
+                      element.type === 'image'
+                        ? (element.caption ?? ready.filename)
+                        : ready.filename
+                    }
+                  />
+                )}
+              </ViewerImage>
             ) : null}
           </div>
 
@@ -846,6 +886,21 @@ export function MediaViewer({
 
       {/* Sidebar Details */}
       <aside id="viewer-info" className="viewer__side" data-scroll>
+        {element.type === 'image' && element.source && (
+          <section>
+            <h3 className="viewer__title">{t('frameGrab.origin')}</h3>
+            <p style={{ overflowWrap: 'anywhere' }}>
+              {element.source.kind === 'uploaded-video'
+                ? sourceAsset && sourceAsset !== 'missing'
+                  ? sourceAsset.filename
+                  : t('frameGrab.fromVideo')
+                : element.source.url}
+            </p>
+            {element.source.timeSeconds !== undefined && (
+              <p>{formatSourceTime(element.source.timeSeconds, i18n.language)}</p>
+            )}
+          </section>
+        )}
         {office && ready && (
           <OfficeInfo
             asset={ready}

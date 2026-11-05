@@ -23,6 +23,18 @@ const Env = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
+  FEEDBACK_RELAY_URL: z
+    .union([
+      z.literal(''),
+      // Plain http only to this machine, for tests: reports must not cross a network in clear.
+      z.url().refine((u) => {
+        const { protocol, hostname } = new URL(u);
+        return protocol === 'https:' || ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+      }, 'FEEDBACK_RELAY_URL must use https'),
+    ])
+    .default('https://inkadra-report-relay.matte-maraffio.workers.dev')
+    .transform((u) => u.replace(/\/+$/, '')),
+  FEEDBACK_GITHUB_TOKEN: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   INSTANCE_NAME: z.string().min(1).default('Inkadra'),
   AUTH_RATE_LIMITS: z.enum(['on', 'off']).default('on'),
   /** Empty when unset: compose passes every variable, set or not. */
@@ -117,6 +129,15 @@ const Env = z.object({
       'Use an http(s) address with {z}, {x} and {y}',
     )
     .default('https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+  /** Optional second source, fetched only by the server. */
+  MAP_SATELLITE_TILE_URL: z.preprocess(
+    emptyToUndefined,
+    z
+      .string()
+      .regex(/^https?:\/\/\S*\{z\}\S*\{x\}\S*\{y\}\S*$/)
+      .optional(),
+  ),
+  MAP_SATELLITE_TILE_ATTRIBUTION: z.string().min(1).max(200).default('Satellite'),
   /** Credit of the tiles, shown on every map picture. */
   MAP_TILE_ATTRIBUTION: z.string().min(1).max(200).default('© OpenStreetMap contributors'),
   /**

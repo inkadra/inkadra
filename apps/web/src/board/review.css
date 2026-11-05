@@ -186,6 +186,8 @@
   font-weight: 600;
 }
 .comments-panel__body {
+  /* Scrolls by wheel, touch and keyboard without a bar of its own (QA 0.8). */
+  scrollbar-width: none;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -266,8 +268,7 @@ button.review-link:hover:not(:disabled) {
 .review-statuses .review-chip {
   border: 0;
 }
-.review-statuses legend,
-.comment-visibility legend {
+.review-statuses legend {
   padding: 0;
   margin-bottom: 6px;
   color: var(--ink-text-secondary);
@@ -371,10 +372,8 @@ button.review-link:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--ink-border-subtle);
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface-1);
+  padding: 12px 0;
+  border-top: 0;
 }
 .comment-thread.is-resolved {
   background: transparent;
@@ -497,26 +496,6 @@ button.review-link:hover:not(:disabled) {
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
 }
-.comment-visibility {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  font-size: 12px;
-}
-.comment-visibility label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-.comment-visibility > span {
-  flex-basis: 100%;
-  font-size: 11px;
-  line-height: 1.5;
-}
 
 /* The header is crowded on narrow screens: the button keeps its icon, count and name. */
 @media (max-width: 720px) {
@@ -531,11 +510,11 @@ button.review-link:hover:not(:disabled) {
 }
 
 /* Element discussions stay compact beside the rendered card; board/mobile stays a sidebar. */
-.comments-panel--element {
+:root .comments-panel.comments-panel--element {
   right: auto;
   bottom: auto;
-  height: min(560px, calc(100dvh - 64px));
-  max-height: calc(100dvh - 64px);
+  height: auto;
+  max-height: calc(100dvh - 140px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
 }
 
@@ -780,4 +759,279 @@ body[data-comments-on-board="off"] .comment-pin {
 .review-count--unread {
   background: var(--ink-accent-button);
   color: var(--ink-on-accent);
+}
+
+/* Card panels grow with their conversation; the board panel remains a sidebar. */
+.comments-panel--element .comments-panel__body {
+  flex: 0 1 auto;
+}
+.comments-panel__composer {
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.comment-composer--new:not(.is-open) > :not(.comment-composer__field) {
+  display: none;
+}
+.comment-composer--new:not(.is-open) textarea {
+  height: 36px;
+  min-height: 36px;
+  resize: none;
+}
+.comment-audience {
+  color: var(--ink-text-primary);
+  background: var(--ink-tag-orange-bg);
+  border-radius: var(--ink-radius-sm);
+  padding: 6px 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.comments-panel__composer.is-public textarea {
+  border-color: var(--ink-status-warn);
+}
+.review-note-preview {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.review-section--compact {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .comment-item .reaction-add {
+    opacity: 0;
+  }
+  .comment-item:hover .reaction-add,
+  .comment-item:focus-within .reaction-add {
+    opacity: 1;
+  }
+}
+
+.comment-item {
+  position: relative;
+}
+.comment-item > .comment-author {
+  padding-right: 28px;
+}
+.comment-actions {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+/* Mention choices take space inside the compact composer instead of being clipped by it. */
+.comment-composer--new .mention-suggestions {
+  position: static;
+  margin-top: 4px;
+}
+
+.comments-panel__scroll {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.comments-panel--element .comments-panel__scroll {
+  flex: 0 1 auto;
+}
+.comments-panel__scroll.has-more::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(transparent, var(--ink-bg-panel));
+}
+
+@media (pointer: coarse) {
+  .comment-thread__more {
+    width: 44px;
+    height: 44px;
+  }
+  .comment-item > .comment-author {
+    padding-right: 44px;
+  }
+}
+.review-context {
+  flex-wrap: nowrap;
+}
+.review-context > .review-link {
+  flex: 1;
+  min-width: 0;
+}
+.review-context > .ink-btn {
+  flex: none;
+}
+.review-context .review-link > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comment-composer--new.is-open {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+.comment-composer--new > .comment-composer__field {
+  grid-column: 1 / -1;
+  order: 1;
+}
+.comment-composer--new > .comment-hint {
+  grid-column: 1 / -1;
+  order: 2;
+}
+.comment-composer--new > .comment-audience {
+  grid-column: 1 / -1;
+  order: 3;
+  margin: 0;
+}
+/* The pin chip sits above the field and the pin button starts the controls row. */
+.comment-composer--new > .comment-composer__pin {
+  display: contents;
+}
+.comment-composer--new .comment-composer__pin > .review-chip {
+  order: 0;
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.comment-composer__pin > .ink-iconbtn {
+  order: 4;
+}
+.comment-composer__pin > .ink-iconbtn[aria-pressed="true"] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.comment-composer--new > .comment-visibility {
+  order: 5;
+}
+.comment-composer--new > .review-row:last-of-type {
+  order: 6;
+}
+.comment-composer--new:not(:has(.comment-composer__pin)) > .comment-visibility {
+  grid-column: span 2;
+}
+@media (max-width: 767px) {
+  .comment-composer--new > .comment-visibility {
+    grid-column: span 2;
+  }
+  .comment-composer--new > .review-row:last-of-type {
+    grid-column: 1 / -1;
+  }
+  .comment-composer--new > .review-row:last-of-type > .ink-btn {
+    width: 100%;
+  }
+}
+
+.comments-panel__context {
+  padding: 10px 16px 0;
+  flex: none;
+}
+.comments-panel__context:empty,
+.comments-panel__body > div:empty {
+  display: none;
+}
+.review-audience,
+.guest-comments__audience {
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.guest-comments__audience {
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--ink-accent-soft-bg);
+  border-radius: var(--ink-radius-sm);
+}
+.comments-panel__resolved {
+  align-self: flex-start;
+}
+.review-chevron {
+  transition: transform var(--ink-dur-fast);
+}
+.review-chevron.is-open {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-chevron {
+    transition: none;
+  }
+}
+
+.comment-audience > .ink-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ink-status-warn);
+}
+.comment-composer.is-public textarea {
+  border-color: var(--ink-status-warn);
+}
+.review-tag--out {
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-text-primary);
+}
+.comment-thread__foot {
+  flex-wrap: nowrap;
+}
+.comment-thread__tags {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+}
+.comment-thread > .comment-unread {
+  position: absolute;
+  left: 2px;
+  top: 18px;
+}
+.comment-thread {
+  position: relative;
+}
+.comment-thread[data-unread] {
+  padding-left: 14px;
+}
+.comment-thread + .comment-thread {
+  border-top: 1px solid var(--ink-border-muted);
+}
+.comment-replies .comment-thread__more {
+  opacity: 0;
+}
+.comment-replies .comment-item:hover .comment-thread__more,
+.comment-replies .comment-item:focus-within .comment-thread__more {
+  opacity: 1;
+}
+.comment-composer--new > .review-error {
+  order: 7;
+  grid-column: 1 / -1;
+}
+@media (hover: none), (pointer: coarse) {
+  .comment-replies .comment-thread__more {
+    opacity: 1;
+  }
+}
+@media (max-width: 767px) {
+  .comment-composer--new:not(.is-open) textarea {
+    height: 44px;
+    min-height: 44px;
+  }
+}
+
+.comments-panel__review-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.comment-visibility .ink-radio-group__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }

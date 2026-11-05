@@ -1,11 +1,5 @@
 import { deleteElements, type FrameElement, updateElement } from '@inkadra/canvas-core';
-import {
-  ASPECT_RATIOS,
-  type AspectRatio,
-  SHOT_ANGLES,
-  SHOT_MOVEMENTS,
-  SHOT_SIZES,
-} from '@inkadra/doc-schema';
+import { ASPECT_RATIOS, type AspectRatio, type Element } from '@inkadra/doc-schema';
 import type { SearchResult } from '@inkadra/shared';
 import { Button, Icon, IconButton, Select } from '@inkadra/ui';
 import { useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
@@ -17,15 +11,17 @@ import {
   setFrameStatus,
 } from '../../commands/board-actions.ts';
 import { api } from '../../lib/api.ts';
+import { useAsset } from '../assets.ts';
 import { GuestModeContext } from '../context.ts';
 import { authorName, editableText } from '../review-model.ts';
 import { openComments, useReviews } from '../review-store.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { TagEditor } from '../tags.tsx';
-import { startUpload } from '../uploads.ts';
 import { aspectLabel } from './aspect.ts';
 import { FramePicture } from './FramePicture.tsx';
-import { PresetField, parseSeconds, StatusSelect, secondsText, TextField } from './fields.tsx';
+import { parseSeconds, ShotField, StatusSelect, secondsText, TextField } from './fields.tsx';
+import { moveImageToFrame } from './frame-image.ts';
+import { FrameUploadState, uploadToFrame } from './frame-upload.tsx';
 import { VideoReferencePicker } from './VideoReferencePicker.tsx';
 
 type Patch = Partial<Omit<FrameElement, 'id' | 'type'>>;
@@ -45,6 +41,7 @@ export function FramePanel({
   dropping = false,
   onClose,
   onDraw,
+  onInserted,
 }: {
   store: BoardStore;
   frame: FrameElement;
@@ -61,6 +58,8 @@ export function FramePanel({
   dropping?: boolean;
   onClose: () => void;
   onDraw: () => void;
+  /** A picture has just become the frame's; `kept` when its card stayed on the board. */
+  onInserted?: (result: 'moved' | 'kept') => void;
 }) {
   const { t } = useTranslation();
   const duplicate = () => {
@@ -70,6 +69,9 @@ export function FramePanel({
   useRegisterActions(
     framePanelActions({ readOnly: readOnly || guest, store, frameId: frame.id, duplicate, t }),
   );
+  const [pictureMenu, setPictureMenu] = useState(false);
+  const [boardPictures, setBoardPictures] = useState(false);
+  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const fileInput = useRef<HTMLInputElement>(null);
   const set = (patch: Patch) => !readOnly && updateElement(store.doc, frame.id, patch, LOCAL);
   const text = (v: string) => v.trim() || undefined;
@@ -115,30 +117,75 @@ export function FramePanel({
             referenceOpacity={frame.referenceOpacity}
             pixels={640}
           />
+          <FrameUploadState frameId={frame.id} />
           {!readOnly && (
             <div className="film-panel__picture-actions">
               <Button icon="pen" onClick={onDraw}>
                 {t('film.frame.draw')}
               </Button>
-              <Button icon="upload" variant="ghost" onClick={() => fileInput.current?.click()}>
-                {t('film.frame.upload')}
+              <Button
+                icon="image"
+                variant="ghost"
+                aria-expanded={pictureMenu}
+                onClick={() => setPictureMenu(!pictureMenu)}
+              >
+                {t('board.types.image')}
               </Button>
-              {!guest && userId && (
-                <VideoReferencePicker
-                  store={store}
-                  frameId={frame.id}
-                  projectId={projectId}
-                  userId={userId}
-                  readOnly={readOnly}
-                />
-              )}
-              {frame.assetId && (
-                <Button
-                  variant="ghost"
-                  onClick={() => set({ assetId: undefined, source: undefined })}
-                >
-                  {t('film.frame.removePicture')}
-                </Button>
+              {pictureMenu && (
+                <div className="film-panel__image-menu">
+                  <Button icon="upload" variant="ghost" onClick={() => fileInput.current?.click()}>
+                    {t('film.frame.upload')}
+                  </Button>
+                  {!guest && userId && (
+                    <VideoReferencePicker
+                      store={store}
+                      frameId={frame.id}
+                      projectId={projectId}
+                      userId={userId}
+                      readOnly={readOnly}
+                      onInserted={() => onInserted?.('moved')}
+                    />
+                  )}
+                  <Button
+                    icon="board"
+                    variant="ghost"
+                    aria-expanded={boardPictures}
+                    onClick={() => setBoardPictures(!boardPictures)}
+                  >
+                    {t('story.fromBoard')}
+                  </Button>
+                  {boardPictures && (
+                    <div className="film-panel__video-picker">
+                      {[...snapshot.byId.values()].flatMap((image) =>
+                        image.type === 'image' && image.assetId && !image.locked
+                          ? [
+                              <BoardPicture
+                                key={image.id}
+                                image={image}
+                                boardAspect={boardAspect}
+                                onPick={() => {
+                                  const moved = moveImageToFrame(store, image.id, frame.id);
+                                  setBoardPictures(false);
+                                  setPictureMenu(false);
+                                  if (moved) onInserted?.(moved);
+                                }}
+                              />,
+                            ]
+                          : [],
+                      )}
+                    </div>
+                  )}
+                  {frame.assetId && (
+                    <Button
+                      icon="trash"
+                      variant="ghost"
+                      className="film-panel__image-remove"
+                      onClick={() => set({ assetId: undefined, source: undefined })}
+                    >
+                      {t('film.frame.removePicture')}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -180,29 +227,26 @@ export function FramePanel({
           onCommit={(v) => set({ action: text(v) })}
         />
         <div className="film-panel__row">
-          <PresetField
+          <ShotField
             label={t('film.frame.shot')}
             value={frame.shot}
-            codes={SHOT_SIZES}
-            prefix="film.shot"
+            catalog="shotSizes"
             readOnly={readOnly}
             onCommit={(shot) => set({ shot })}
           />
-          <PresetField
+          <ShotField
             label={t('film.frame.angle')}
             value={frame.angle}
-            codes={SHOT_ANGLES}
-            prefix="film.angle"
+            catalog="shotAngles"
             readOnly={readOnly}
             onCommit={(angle) => set({ angle })}
           />
         </div>
         <div className="film-panel__row">
-          <PresetField
+          <ShotField
             label={t('film.frame.movement')}
             value={frame.movement}
-            codes={SHOT_MOVEMENTS}
-            prefix="film.movement"
+            catalog="shotMovements"
             readOnly={readOnly}
             onCommit={(movement) => set({ movement })}
           />
@@ -324,17 +368,47 @@ export function FramePanel({
           const file = e.target.files?.[0];
           e.target.value = '';
           if (!file) return;
-          const id = frame.id;
-          startUpload({
+          uploadToFrame({
+            store,
+            frameId: frame.id,
             file,
             projectId,
             boardId,
-            onAsset: (assetId) =>
-              updateElement(store.doc, id, { assetId, source: undefined }, LOCAL),
+            onInserted: () => onInserted?.('moved'),
           });
         }}
       />
     </aside>
+  );
+}
+
+/** A picture of the board to put into the frame, named by its caption or file. */
+function BoardPicture({
+  image,
+  boardAspect,
+  onPick,
+}: {
+  image: Extract<Element, { type: 'image' }>;
+  boardAspect: AspectRatio;
+  onPick: () => void;
+}) {
+  const { t } = useTranslation();
+  const asset = useAsset(image.assetId);
+  const name =
+    image.caption?.trim() ||
+    (asset && asset !== 'missing' ? asset.filename : '') ||
+    t('board.types.image');
+  return (
+    <button type="button" className="ink-btn ink-btn--ghost" onClick={onPick}>
+      <FramePicture
+        aspect={undefined}
+        strokes={undefined}
+        assetId={image.assetId}
+        boardAspect={boardAspect}
+        pixels={160}
+      />
+      <span>{name}</span>
+    </button>
   );
 }
 

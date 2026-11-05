@@ -93,7 +93,6 @@ export function SettingsWindow({
   const own = (e: SyntheticEvent) => e.target === e.currentTarget;
 
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: the backdrop's keyboard path is Escape (onCancel).
     <dialog
       ref={ref}
       className={
@@ -102,6 +101,9 @@ export function SettingsWindow({
       aria-labelledby={titleId}
       aria-modal="true"
       tabIndex={-1}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') e.stopPropagation();
+      }}
       onCancel={(e) => {
         if (!own(e)) return;
         e.preventDefault();

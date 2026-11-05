@@ -12,3 +12,12 @@ describe('accessNotices', () => {
     expect(next({ accessChangedAt: 2, readOnly: false })).toEqual({ readOnly: false });
   });
 });
+
+it('does not describe schema restrictions as a role change', () => {
+  const next = accessNotices();
+  expect(next({ accessChangedAt: 1, readOnly: true, schemaTooNew: true })).toBeNull();
+  expect(next({ accessChangedAt: 1, readOnly: true, schemaTooNew: false })).toBeNull();
+  expect(next({ accessChangedAt: 2, readOnly: false, schemaTooNew: false })).toEqual({
+    readOnly: false,
+  });
+});

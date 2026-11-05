@@ -19,8 +19,8 @@ import { useBoard } from './context.ts';
 import {
   CROP_HANDLES,
   type CropHandle,
-  conformCropAspect,
-  cropAfterQuarterTurn,
+  cropForAngle,
+  cropForQuarterTurn,
   cropInsideImage,
   FULL_CROP,
   fitCropToAspect,
@@ -32,7 +32,6 @@ import {
   resizeCropRect,
   rotatedBounds,
   sanitizeCrop,
-  splitRotation,
 } from './image-crop.ts';
 import { LOCAL } from './store.ts';
 
@@ -76,6 +75,28 @@ export function applyImageTransform(
       );
     }
   }, LOCAL);
+}
+
+/** The contextual shortcut and crop editor must preserve the same source region. */
+export function rotateImageQuarterTurn(
+  store: ReturnType<typeof useBoard>['store'],
+  element: ImageEl,
+  baseW: number,
+  baseH: number,
+  direction: 1 | -1,
+) {
+  const nextRot = normalizeRotation((element.rotation ?? 0) + direction * 90);
+  const crop = cropForQuarterTurn(
+    element.id,
+    element.crop ?? FULL_CROP,
+    baseW,
+    baseH,
+    nextRot,
+    direction,
+  );
+  store.undo.stopCapturing();
+  applyImageTransform(store, element, crop, nextRot);
+  store.undo.stopCapturing();
 }
 
 /** Restores an image element to its original uncropped and unrotated state. */
@@ -298,7 +319,6 @@ export function ImageCropToolbar({
   const baseH = ready?.height && ready.height > 0 ? ready.height : 3;
 
   const rot = normalizeRotation(element.rotation);
-  const { base: quarterBase, fine } = splitRotation(rot);
   const crop = element.crop ? sanitizeCrop(element.crop) : FULL_CROP;
   const activeAspect: ImageCropAspect = crop.aspect ?? 'free';
   const rBounds = rotatedBounds(baseW, baseH, rot);
@@ -319,31 +339,18 @@ export function ImageCropToolbar({
   }
 
   function stepRotate(direction: 1 | -1) {
-    store.undo.stopCapturing();
-    const nextRot = normalizeRotation(quarterBase + direction * 90 + fine);
-    const bounds = rotatedBounds(baseW, baseH, nextRot);
-    const nextCrop = inscribeCrop(
-      cropAfterQuarterTurn(crop, direction, bounds.width, bounds.height),
-      baseW,
-      baseH,
-      nextRot,
-    );
-    applyImageTransform(store, element, nextCrop, nextRot);
-    store.undo.stopCapturing();
+    rotateImageQuarterTurn(store, element, baseW, baseH, direction);
   }
 
-  function changeFineAngle(nextFine: number) {
-    const nextRot = normalizeRotation(quarterBase + nextFine);
-    const bounds = rotatedBounds(baseW, baseH, nextRot);
+  function changeAngle(nextRot: number) {
     // A free angle leaves the bounding box's corners empty: the crop shrinks to stay on the
-    // picture.
-    const nextCrop = inscribeCrop(
-      conformCropAspect(crop, bounds.width, bounds.height),
-      baseW,
-      baseH,
+    // picture, and grows back with the angle.
+    applyImageTransform(
+      store,
+      element,
+      cropForAngle(element.id, crop, baseW, baseH, nextRot),
       nextRot,
     );
-    applyImageTransform(store, element, nextCrop, nextRot);
   }
 
   const presetLabel = (preset: ImageCropAspect) =>
@@ -399,27 +406,29 @@ export function ImageCropToolbar({
       </button>
       <span className="crop-bar__angle">
         <Slider
-          min={-45}
-          max={45}
+          // 0 in the middle. Not ±180: -180 normalizes to +180 and the thumb would jump to the
+          // other end. A half turn is two 90° steps away, and shows at the end of the slider.
+          min={-179}
+          max={179}
           step={1}
-          value={fine}
+          value={rot}
           aria-label={t('board.image.angle')}
           data-ink-tooltip={t('board.image.resetAngleHint')}
           onPointerDown={() => store.undo.stopCapturing()}
           onPointerUp={() => store.undo.stopCapturing()}
-          onDoubleClick={() => changeFineAngle(0)}
-          onChange={changeFineAngle}
+          onDoubleClick={() => changeAngle(Math.round(rot / 90) * 90)}
+          onChange={changeAngle}
         />
         <button
           type="button"
           className="crop-bar__deg ink-mono"
-          disabled={fine === 0}
+          disabled={rot % 90 === 0}
           aria-label={t('board.image.resetAngle')}
           data-ink-tooltip={t('board.image.resetAngle')}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             store.undo.stopCapturing();
-            changeFineAngle(0);
+            changeAngle(Math.round(rot / 90) * 90);
           }}
         >
           {Math.round(rot)}°

@@ -13,6 +13,7 @@ import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/pro
 import {
   addElement,
   boardDocName,
+  CURRENT_SCHEMA_VERSION,
   type Element,
   newElementId,
   readElement,
@@ -231,7 +232,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     }
     const doc = new Y.Doc();
     const websocketProvider = new HocuspocusProviderWebsocket({
-      url: `ws://${base}/collab`,
+      url: `ws://${base}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
       WebSocketPolyfill: CookieSocket,
     });
     const provider = new HocuspocusProvider({

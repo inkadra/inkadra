@@ -47,8 +47,15 @@ export default defineConfig({
   },
   projects: [
     {
+      // Create the administrator before any fixture can sign up the shared test account.
+      name: 'first-run',
+      testMatch: 'first-run.spec.ts',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    {
       name: 'chromium',
-      testIgnore: ['**/perf/**'],
+      testIgnore: ['**/perf/**', '**/first-run.spec.ts'],
+      dependencies: ['first-run'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     {
@@ -81,6 +88,8 @@ export default defineConfig({
         AUTH_RATE_LIMITS: 'off',
         PORT: String(port),
         PUBLIC_URL: baseURL,
+        // Never the real relay: nothing listens here, so a report waits in the local queue.
+        FEEDBACK_RELAY_URL: 'http://127.0.0.1:9',
         DATABASE_URL:
           process.env.DATABASE_URL ?? 'postgres://inkadra:inkadra@localhost:5432/inkadra_e2e',
         REDIS_URL: process.env.REDIS_URL ?? 'redis://localhost:6379',
@@ -90,6 +99,8 @@ export default defineConfig({
         DATA_DIR: process.env.E2E_DATA_DIR ?? join(tmpdir(), 'inkadra-e2e'),
         INKADRA_VERSION: '0.1.0-e2e',
         MAP_TILE_URL: tileUrl,
+        MAP_SATELLITE_TILE_URL: `http://127.0.0.1:${tilePort}/satellite/{z}/{x}/{y}.png`,
+        MAP_GEOCODER_URL: process.env.E2E_GEOCODER_URL ?? `http://127.0.0.1:${tilePort}/geocode`,
         LOG_LEVEL: 'warn',
       },
     },

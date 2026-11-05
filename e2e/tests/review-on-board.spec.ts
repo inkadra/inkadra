@@ -142,7 +142,7 @@ test('bubble, popover, reactions, mentions filter and unread', async ({ page, br
   await panel.getByRole('radio', { name: /^Menzioni e risposte · 1/ }).check();
   await expect(panel.locator('.comment-mention')).toHaveText('@Giulia Bianchi');
   await expect(panel.getByRole('button', { name: /^✅ 1/ })).toBeVisible();
-  await panel.getByRole('button', { name: 'Azioni sulla discussione' }).click();
+  await panel.getByRole('button', { name: /^Azioni sul commento di / }).click();
   await page.getByRole('menuitem', { name: 'Segna come non letta' }).click();
   await expect(panel.getByRole('img', { name: 'Non letta' })).toBeVisible();
   await expect(

@@ -67,6 +67,8 @@ import {
   viewIcon,
 } from '../board/views.ts';
 import { appActions } from '../commands/app-actions.ts';
+import { FeedbackLauncher } from '../feedback/Feedback.tsx';
+import { FeedbackEntry } from '../feedback/FeedbackEntry.tsx';
 import { canCreateProjects } from '../lib/access.ts';
 import { authApi } from '../lib/api.ts';
 import { HeaderContext, type HeaderParts } from '../lib/header.tsx';
@@ -88,7 +90,7 @@ import { ProjectNavItem } from './ProjectAppearance.tsx';
 import { SidebarGroup, useDropTarget } from './ProjectGroups.tsx';
 import { ImportProjectDialog } from './ProjectTransfer.tsx';
 import { groupProjects, moveToGroup, useProjectGroups } from './project-groups.ts';
-import { onboardingTitle, type ProjectTemplate } from './project-setup.ts';
+import { onboardingTitle } from './project-setup.ts';
 import {
   getCachedProjects,
   refreshProjects,
@@ -104,8 +106,8 @@ import './mobile-shell.css';
 interface ProjectsState {
   projects: Project[] | null;
   shared: Board[] | null;
-  /** Opens New project, optionally with a template already chosen, or into a group. */
-  openNewProject: (template?: ProjectTemplate, groupId?: string) => void;
+  /** Opens New project, optionally into a group. */
+  openNewProject: (groupId?: string) => void;
   /** Opens Import project… (decision 0037). */
   openImportProject: () => void;
   /** False when an administrator keeps project creation to some people (decision 0041). */
@@ -270,8 +272,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   // The group a project made from a group's menu goes into.
   const newProjectGroup = useRef<string | undefined>(undefined);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // A template when New project opens with one preselected, as from Home.
-  const [creating, setCreating] = useState<boolean | ProjectTemplate>(false);
+  const [creating, setCreating] = useState(false);
   const [creatingBoard, setCreatingBoard] = useState(false);
   const [importing, setImporting] = useState(false);
   // The project a new board goes into when it starts from inside that project.
@@ -379,11 +380,11 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     await refresh();
   }
 
-  const openNewProject = (template?: ProjectTemplate, groupId?: string) => {
+  const openNewProject = (groupId?: string) => {
     if (!canCreate) return;
     newProjectGroup.current = groupId;
     setDrawerOpen(false);
-    setCreating(template ?? true);
+    setCreating(true);
   };
 
   const inSettings = overlay.open;
@@ -473,7 +474,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <ProjectNavItem
         project={p}
         onDropProject={onDropProject}
-        extra={addStoryboardItem(p, t, user.id, (to) => {
+        extra={addStoryboardItem(p, t, (to) => {
           setDrawerOpen(false);
           navigate(to);
         })}
@@ -566,7 +567,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   );
 
   const sidebar = (
-    <Sidebar label={t('nav.navigation')} {...peek.panel}>
+    <Sidebar label={t('nav.navigation')} data-feedback-secret {...peek.panel}>
       <div className="ink-sidebar__workspace">
         <Logo />
         <span className="ink-nav__name" style={{ flex: 1 }}>
@@ -659,7 +660,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             group={group}
             groups={groups}
             count={items.length}
-            onNewProject={canCreate ? () => openNewProject(undefined, group.id) : undefined}
+            onNewProject={canCreate ? () => openNewProject(group.id) : undefined}
           >
             {items
               // A folded group still shows the open project, with its boards.
@@ -690,7 +691,14 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       </div>
       <span className="ink-sidebar__spacer" />
       <div className="ink-sidebar__user">
-        <Avatar image={user.image} name={user.name} />
+        <button
+          type="button"
+          className="ink-btn ink-btn--ghost"
+          aria-label={t('admin.account')}
+          onClick={go('/settings?section=account')}
+        >
+          <Avatar image={user.image} name={user.name} />
+        </button>
         <span className="ink-sidebar__who">
           <span>{user.name}</span>
           <small>{instance?.name}</small>
@@ -786,7 +794,11 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <div className="shell-header-content">
         <div className="ink-header__group ink-header__start">
           {headerContent?.start ?? (
-            <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
+            <nav
+              aria-label={t('nav.breadcrumb')}
+              className="ink-header__crumbs"
+              data-feedback-secret
+            >
               <span style={{ fontWeight: 600 }}>
                 {current?.name ??
                   (pathname === '/onboarding'
@@ -798,6 +810,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         </div>
         <div className="ink-header__group ink-header__end">
           {headerContent ? headerContent.end : pathname === '/' && homeActions}
+          <FeedbackEntry />
           <NotificationBell
             unread={unread}
             onCount={refreshUnread}
@@ -850,6 +863,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           filmLinks: links,
         }}
       >
+        <FeedbackLauncher />
         <HeaderContext.Provider value={setHeaderContent}>
           <AppShell
             launcher={launcher}
@@ -919,7 +933,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           onInbox={() => setInboxOpen((o) => !o)}
           onProfile={() => {
             setInboxOpen(false);
-            navigate('/settings');
+            navigate('/settings?section=account');
           }}
         />
         {overlay.settings && (
@@ -1014,14 +1028,12 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           <NewBoardDialog
             open
             projects={writable}
-            initial="blank"
             initialProject={boardProject}
             onClose={() => setCreatingBoard(false)}
           />
         )}
         <NewProjectDialog
           open={canCreate && creating !== false}
-          template={typeof creating === 'string' ? creating : undefined}
           onClose={() => {
             setCreating(false);
             newProjectGroup.current = undefined;

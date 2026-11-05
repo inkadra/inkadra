@@ -1,5 +1,5 @@
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
-import { boardDocName } from '@inkadra/doc-schema';
+import { boardDocName, CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 
@@ -11,7 +11,7 @@ export async function readBoard(base: string, cookie: string, boardId: string): 
   }
   const doc = new Y.Doc();
   const websocket = new HocuspocusProviderWebsocket({
-    url: `${base.replace(/^http/, 'ws')}/collab`,
+    url: `${base.replace(/^http/, 'ws')}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
     WebSocketPolyfill: CookieSocket,
   });
   const provider = new HocuspocusProvider({

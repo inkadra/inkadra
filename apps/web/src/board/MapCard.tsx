@@ -5,7 +5,7 @@ import { Icon } from '@inkadra/ui';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from './assets.ts';
 import { useBoard } from './context.ts';
-import { ExploreButton, LiveMap, useExploring } from './MapExplore.tsx';
+import { MapSurface, useExploring } from './MapExplore.tsx';
 import { openInMapsUrl } from './maps.ts';
 
 type MapElement = Extract<Element, { type: 'map' }>;
@@ -56,7 +56,7 @@ export function MapCard({ element, width }: { element: MapElement; width: number
   const image = useAsset(element.imageAssetId);
   const ready = image && image !== 'missing' ? image : null;
   const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
-  const src = ready && ready.variants.length > 0 ? pickVariant(ready, width * scale * dpr) : '';
+  const src = ready ? pickVariant(ready, width * scale * dpr) : '';
   const href = openInMapsUrl(element);
   const coords =
     element.lat !== undefined && element.lon !== undefined
@@ -71,17 +71,14 @@ export function MapCard({ element, width }: { element: MapElement; width: number
           <div className="fcard__preview mcard__map" style={{ aspectRatio: MAP_ASPECT }}>
             <img className="fcard__img" src={src} alt="" draggable={false} decoding="async" />
             <span className="mcard__pin" aria-hidden="true" />
-            {element.lat !== undefined &&
-              element.lon !== undefined &&
-              (exploring ? (
-                <LiveMap
-                  id={element.id}
-                  name={title}
-                  place={{ lat: element.lat, lon: element.lon, zoom: element.zoom ?? 16 }}
-                />
-              ) : (
-                <ExploreButton id={element.id} name={title} />
-              ))}
+            {element.lat !== undefined && element.lon !== undefined && (
+              <MapSurface
+                id={element.id}
+                name={title}
+                exploring={exploring}
+                place={{ lat: element.lat, lon: element.lon, zoom: element.zoom ?? 16 }}
+              />
+            )}
             <MapCredit />
           </div>
         </div>

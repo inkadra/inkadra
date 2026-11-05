@@ -21,7 +21,8 @@ export function securityHeaders(
     `img-src 'self' data: blob: https://*.googleusercontent.com ${storage}`.trim(),
     `media-src 'self' blob: ${storage}`.trim(),
     "font-src 'self'",
-    `connect-src 'self' ${storage}`.trim(),
+    // The report form's screenshot fetches the images on screen to draw them.
+    `connect-src 'self' ${storage} blob: https://*.googleusercontent.com`.replace('  ', ' '),
     'frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.instagram.com',
     "worker-src 'self'",
     "manifest-src 'self'",
@@ -37,7 +38,7 @@ export function securityHeaders(
   return {
     [config.CSP_ENFORCE ? 'content-security-policy' : 'content-security-policy-report-only']:
       policy,
-    'permissions-policy': `camera=(), microphone=(), geolocation=(), payment=(), usb=(), autoplay=${players}, encrypted-media=${players}, picture-in-picture=${players}, fullscreen=${players}, clipboard-write=${players}`,
+    'permissions-policy': `camera=(), microphone=(self), geolocation=(), payment=(), usb=(), autoplay=${players}, encrypted-media=${players}, picture-in-picture=${players}, fullscreen=${players}, clipboard-write=${players}`,
     'cross-origin-opener-policy': 'same-origin',
     ...(config.HSTS_ENABLED && secure ? { 'strict-transport-security': 'max-age=31536000' } : {}),
   };

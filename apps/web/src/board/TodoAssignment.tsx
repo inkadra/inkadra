@@ -1,8 +1,8 @@
 import { updateTodoItem } from '@inkadra/canvas-core';
 import type { TodoItem } from '@inkadra/doc-schema';
 import type { Person } from '@inkadra/shared';
-import { Avatar, DateField } from '@inkadra/ui';
-import { useContext, useState } from 'react';
+import { Avatar, DateField, tokens } from '@inkadra/ui';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { z } from 'zod';
 import { PeoplePicker } from '../people/PeoplePicker.tsx';
@@ -50,6 +50,18 @@ export function TodoAssignment({
   const [picking, setPicking] = useState(false);
   const [dating, setDating] = useState(false);
   const [query, setQuery] = useState('');
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!picking && !open && !dating) return;
+    const outside = (event: PointerEvent) => {
+      if (root.current?.contains(event.target as Node)) return;
+      setPicking(false);
+      setDating(false);
+      onClose();
+    };
+    document.addEventListener('pointerdown', outside, true);
+    return () => document.removeEventListener('pointerdown', outside, true);
+  }, [picking, open, dating, onClose]);
   if (guest) return null;
   const person = people.find((p) => p.id === item.assigneeId);
   const now = new Date();
@@ -67,8 +79,13 @@ export function TodoAssignment({
   const change = (patch: Parameters<typeof updateTodoItem>[3]) =>
     updateTodoItem(store.doc, elementId, item.id, patch, LOCAL);
   return (
-    <div className="todo-assignment" data-no-drag>
-      {(item.assigneeId || editing) && (
+    <div
+      ref={root}
+      className="todo-assignment"
+      style={{ fontSize: tokens.type.ui[0] }}
+      data-no-drag
+    >
+      {(item.assigneeId || editing || picking || open) && (
         <button
           type="button"
           className="todo-assignment__chip todo-assignment__person"
@@ -86,7 +103,7 @@ export function TodoAssignment({
           )}
         </button>
       )}
-      {(editing || dating) && !readOnly ? (
+      {(editing || dating || picking || open) && !readOnly ? (
         <DateField
           className={`todo-assignment__date${tone ? ` todo-assignment--${tone}` : ''}`}
           label={t('tasks.dueDate')}

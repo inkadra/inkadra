@@ -6,11 +6,11 @@ original download. CSV and XLSX grid previews and first-sheet-to-table work with
 
 ## The worker image
 
-Every tag also exists with the suffix `-office` (`ghcr.io/inkadra/inkadra:0.4.0-office`,
+Every tag from 0.8.0 on also exists with the suffix `-office` (`ghcr.io/inkadra/inkadra:0.8.0-office`,
 `latest-office`, `edge-office`…): the `-media` image plus LibreOffice (Writer, Calc, Impress),
 fonts, Poppler, bubblewrap and `prlimit`, everything the converter needs. It is built, attested
 and published like the other variants, for linux/amd64 and linux/arm64. Pin the version you run,
-with `-office`; until a stable release includes it, only `edge-office` and `sha-…-office` exist.
+with `-office`.
 
 To build it yourself instead, one build argument is enough:
 
@@ -95,7 +95,7 @@ split layout (`deploy/compose.split.yaml`), give the `worker` role the image ins
 # compose.office.yaml — docker compose -f compose.yaml -f deploy/compose.split.yaml -f compose.office.yaml up -d
 services:
   worker:
-    # Same version as the other roles; set INKADRA_TAG without a suffix (0.4.0, not 0.4.0-media).
+    # Same version as the other roles; set INKADRA_TAG without a suffix (0.8.0, not 0.8.0-media).
     image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}-office # or inkadra-office-worker
     environment:
       OFFICE_PREVIEWS: "true"

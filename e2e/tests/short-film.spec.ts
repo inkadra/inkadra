@@ -236,7 +236,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
 }, info) => {
   test.setTimeout(240_000);
 
-  await test.step('1. new project from the Film pre-production template', async () => {
+  await test.step('1. new empty project', async () => {
     await page.goto('/login');
     // The instance may be new (this spec alone) or already have its administrator.
     const create = page.getByRole('button', { name: 'Crea account e accedi' });
@@ -259,14 +259,13 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await dialog.getByLabel('Nome del progetto').fill('Ultimo Treno');
     await dialog.getByRole('button', { name: /^Dettagli/ }).click();
     await dialog.getByRole('radio', { name: 'Cortometraggio' }).check();
-    await dialog.getByRole('radio', { name: /Pre-produzione film/ }).check();
     await dialog.getByRole('button', { name: 'Crea progetto' }).click();
     await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}$/, { timeout: 60_000 });
     await synced(page);
-    // The template made five boards, linked from the project's first board.
-    for (const title of ['Brief', 'Location', 'Casting', 'Moodboard', 'Storyboard e shotlist']) {
-      await expect(page.locator('[data-type="board"]', { hasText: title })).toHaveCount(1);
-    }
+    await expect(page.locator('[data-type="board"]')).toHaveCount(0);
+    await page.keyboard.press('b');
+    await page.getByLabel('Titolo della board').fill('Moodboard');
+    await page.getByLabel('Titolo della board').press('Enter');
   });
 
   await test.step('2. moodboard: pictures, palette, note, link', async () => {
@@ -293,16 +292,13 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     const before = await swatches.count();
     // The four uploads land stacked at the centre of the board.
     await gap(page, 'moodboard-uploads-stacked');
-    // Pull them apart, top one first, into the free area under the template's columns.
-    const stack = (await images.first().boundingBox()) as { x: number; y: number };
-    for (let i = 0; i < 4; i++) {
-      await page.mouse.move(stack.x + 110 + i * 8, stack.y + 90 + i * 8);
-      await page.mouse.down();
-      await page.mouse.move(300 + i * 190, 280, { steps: 6 });
-      await page.mouse.up();
-    }
+    // Arrange the uploaded cards with the same mosaic command offered by the canvas.
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('Shift+t');
+    await page.keyboard.press('Shift+Digit1');
     await page.keyboard.press('Escape');
-    await images.first().dblclick();
+    await images.first().click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Apri immagine', exact: true }).click();
     const addColors = page.getByRole('button', { name: 'Aggiungi i colori alla board' });
     await expect(addColors).toBeVisible({ timeout: 60_000 });
     await addColors.click();
@@ -348,19 +344,21 @@ test('a short film is prepared from the moodboard to the shot list', async ({
   });
   await test.step('3. storyboard: screenplay import, 30 frames, details, pen, picture, reorder', async () => {
     await page.getByRole('banner').getByRole('link', { name: 'Ultimo Treno' }).click();
-    await page.locator('[data-type="board"]', { hasText: 'Storyboard e shotlist' }).dblclick();
+    // The URL changes before the previous canvas unmounts; wait for the project's board.
+    await expect(page.locator('[data-type="board"]', { hasText: /^Moodboard/ })).toBeVisible();
+    await synced(page);
+    await page.keyboard.press('s');
+    const storyboard = page.locator('[data-type="board"]', { hasText: 'Storyboard' });
+    await expect(storyboard).toHaveCount(1);
+    await page.getByLabel('Titolo della board').fill('Storyboard e shotlist');
+    await page.getByLabel('Titolo della board').press('Enter');
+    await storyboard.dblclick();
     await expect(page.getByRole('tab', { name: 'Storyboard', exact: true })).toHaveAttribute(
       'aria-selected',
       'true',
     );
     await synced(page);
     const tiles = page.locator('.story__tile');
-    // The template's sample scene with three empty frames goes: the script brings its own.
-    await expect(tiles).toHaveCount(3);
-    await page
-      .getByRole('region', { name: 'Scena 1' })
-      .getByRole('button', { name: 'Elimina la scena' })
-      .click();
     await expect(tiles).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Importa sceneggiatura…' }).first().click();
@@ -426,7 +424,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     // A pen sketch on 1B.
     await page.getByRole('button', { name: '1B', exact: true }).click();
     await panel.getByRole('button', { name: 'Disegna' }).click();
-    const pen = page.getByRole('dialog', { name: /Disegno dell’inquadratura 1B/ });
+    const pen = page.getByRole('dialog', { name: /Disegno · 1B/ });
     const area = pen.locator('.pen__area');
     const box = await area.boundingBox();
     if (!box) throw new Error('no drawing area');
@@ -448,6 +446,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
 
     // An uploaded picture on 1C.
     await page.getByRole('button', { name: '1C', exact: true }).click();
+    await panel.getByRole('button', { name: 'Immagine', exact: true }).click();
     const picker = page.waitForEvent('filechooser');
     await panel.getByRole('button', { name: 'Carica un’immagine' }).click();
     await (await picker).setFiles({

@@ -9,6 +9,7 @@
     "includes": [
       "**",
       "!pnpm-lock.yaml",
+      "!relay/**",
       "!**/openapi.json",
       "!**/drizzle/meta",
       "!**/ui/src/tokens.css"

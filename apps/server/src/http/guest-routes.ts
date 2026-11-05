@@ -14,6 +14,7 @@ import {
   type ReviewStatus,
   SetPick,
   type ShareLinkPreview,
+  ShotCatalogs,
   ThumbnailSize,
   UpdateGuestSession,
   VariantQuery,
@@ -26,6 +27,7 @@ import { boardRoles, guestCan } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { storedElement } from '../board-content.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
+import { readClassifications } from '../classifications.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import {
@@ -245,7 +247,16 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       proofing: ctx.link.proofing,
       linkExpiresAt: ctx.link.expiresAt ? iso(ctx.link.expiresAt) : null,
       sessionExpiresAt: iso(ctx.guest.sessionExpiresAt),
-      maps: config.MAPS ? { attribution: config.MAP_TILE_ATTRIBUTION } : null,
+      // Only the storyboard lists: guests cannot read /instance/classifications, nor the tags.
+      shotCatalogs: ShotCatalogs.parse(await readClassifications(db)),
+      maps: config.MAPS
+        ? {
+            attribution: config.MAP_TILE_ATTRIBUTION,
+            ...(config.MAP_SATELLITE_TILE_URL
+              ? { satelliteAttribution: config.MAP_SATELLITE_TILE_ATTRIBUTION }
+              : {}),
+          }
+        : null,
     };
   }
 

@@ -10,6 +10,8 @@ export interface UploadItem {
   name: string;
   size: number;
   sent: number;
+  bytesPerSecond: number;
+  remainingSeconds: number | null;
   /** `offline`: paused while the browser has no network, resumes by itself when it is back. */
   state: 'uploading' | 'offline' | 'done' | 'failed' | 'cancelled';
   /** A request failed and tus is retrying it, while the browser still reports a network. */
@@ -61,7 +63,20 @@ export interface StartUpload {
   onAsset: (assetId: string) => void;
   onFailed?: (assetId: string | null) => void;
   onComplete?: (assetId: string) => void;
+  /**
+   * The person cancelled: the server drops the asset (null when it had none yet), so whatever
+   * `onAsset` put on the board has to go too.
+   */
+  onCancelled?: (assetId: string | null) => void;
 }
+
+/** Those who asked again for a file already on its way: they hear how it ends too. */
+const followers = new Map<
+  string,
+  Array<{ onComplete: StartUpload['onComplete']; onFailed: StartUpload['onFailed'] }>
+>();
+
+const cancelHooks = new Map<string, NonNullable<StartUpload['onCancelled']>>();
 
 const online = () => typeof navigator === 'undefined' || navigator.onLine !== false;
 
@@ -84,7 +99,7 @@ if (typeof window !== 'undefined') {
  * Resumable upload over tus; an interrupted upload resumes, also after a reload. Returns the
  * key of the upload in the panel. Adding a file that is already in the panel for the same
  * project resumes that upload (or leaves it running) instead of starting a second one, and
- * calls no `onAsset` again: its card already exists.
+ * calls no `onAsset` again: its card already exists. `onComplete` and `onFailed` still follow it.
  */
 export function startUpload({
   file,
@@ -93,12 +108,18 @@ export function startUpload({
   onAsset,
   onFailed,
   onComplete,
+  onCancelled,
 }: StartUpload): string {
   const fingerprint = [projectId, file.name, file.size, file.lastModified].join('|');
   const existing = items.find(
     (i) => i.fingerprint === fingerprint && i.state !== 'done' && i.state !== 'cancelled',
   );
   if (existing) {
+    if (onComplete || onFailed)
+      followers.set(existing.key, [
+        ...(followers.get(existing.key) ?? []),
+        { onComplete, onFailed },
+      ]);
     if (existing.state !== 'uploading') retryUpload(existing.key);
     return existing.key;
   }
@@ -111,6 +132,8 @@ export function startUpload({
     name: file.name,
     size: file.size,
     sent: 0,
+    bytesPerSecond: 0,
+    remainingSeconds: null,
     state: 'uploading',
     reconnecting: false,
     fingerprint,
@@ -118,9 +141,11 @@ export function startUpload({
     preview: isImage ? URL.createObjectURL(file) : null,
   });
   emit();
+  let sampledAt = performance.now();
+  let sampledBytes = 0;
   let announced = false;
   const announce = (assetId: string | null) => {
-    if (!assetId || announced) return;
+    if (!uploads.has(key) || !assetId || announced) return;
     announced = true;
     patch(key, { assetId });
     onAsset(assetId);
@@ -131,7 +156,7 @@ export function startUpload({
     retryDelays: [0, 1000, 3000, 5000, 10000, 20000, 30000, 60000],
     // Offline, retrying only burns attempts: the upload pauses and resumes on "online".
     onShouldRetry: (err) => {
-      if (!online()) return false;
+      if (!uploads.has(key) || !online()) return false;
       const status = err.originalResponse?.getStatus() ?? 0;
       const retry = status < 400 || status >= 500 || status === 409 || status === 423;
       if (retry) patch(key, { reconnecting: true });
@@ -145,25 +170,62 @@ export function startUpload({
       filename: file.name,
       filetype: file.type || 'application/octet-stream',
     },
+    // tus can finish opening the File after abort() and reset its internal aborted flag.
+    // Guard the request boundary as well, so that delayed work cannot restart a cancelled upload.
+    onBeforeRequest: (req) => {
+      if (!uploads.has(key) && req.getMethod() !== 'DELETE') throw new Error('Upload cancelled');
+    },
     onAfterResponse: (_req, res) => announce(res.getHeader('Inkadra-Asset-Id') ?? null),
-    onProgress: (sent) => patch(key, { sent, reconnecting: false }),
+    onProgress: (sent) => {
+      if (!uploads.has(key)) return;
+      const now = performance.now();
+      const elapsed = (now - sampledAt) / 1000;
+      if (elapsed < 0.5 || sent < sampledBytes) {
+        if (sent < sampledBytes) {
+          sampledAt = now;
+          sampledBytes = sent;
+        }
+        patch(key, { sent, reconnecting: false });
+        return;
+      }
+      const bytesPerSecond = (sent - sampledBytes) / elapsed;
+      sampledAt = now;
+      sampledBytes = sent;
+      patch(key, {
+        sent,
+        bytesPerSecond,
+        remainingSeconds:
+          bytesPerSecond > 0 ? Math.ceil((file.size - sent) / bytesPerSecond) : null,
+        reconnecting: false,
+      });
+    },
     onSuccess: () => {
+      if (!uploads.has(key)) return;
       patch(key, { state: 'done', sent: file.size, reconnecting: false });
       uploads.delete(key);
+      cancelHooks.delete(key);
       const assetId = items.find((i) => i.key === key)?.assetId;
-      if (assetId) onComplete?.(assetId);
+      if (assetId) {
+        onComplete?.(assetId);
+        for (const follower of followers.get(key) ?? []) follower.onComplete?.(assetId);
+      }
+      followers.delete(key);
       setTimeout(() => dismiss(key), 4000);
     },
     onError: () => {
+      if (!uploads.has(key)) return;
       if (!online()) {
         patch(key, { state: 'offline', reconnecting: false });
         return;
       }
       patch(key, { state: 'failed', reconnecting: false });
-      onFailed?.(items.find((i) => i.key === key)?.assetId ?? null);
+      const assetId = items.find((i) => i.key === key)?.assetId ?? null;
+      onFailed?.(assetId);
+      for (const follower of followers.get(key) ?? []) follower.onFailed?.(assetId);
     },
   });
   uploads.set(key, upload);
+  if (onCancelled) cancelHooks.set(key, onCancelled);
   void upload
     .findPreviousUploads()
     .then((previous) => {
@@ -190,8 +252,12 @@ export function cancelUpload(key: string) {
   const upload = uploads.get(key);
   if (!upload) return;
   uploads.delete(key);
-  void upload.abort(true);
+  followers.delete(key);
+  void upload.abort(true).catch(() => {});
   patch(key, { state: 'cancelled' });
+  const hook = cancelHooks.get(key);
+  cancelHooks.delete(key);
+  hook?.(items.find((i) => i.key === key)?.assetId ?? null);
   setTimeout(() => dismiss(key), 1500);
 }
 
@@ -209,7 +275,11 @@ function subscribe(l: () => void) {
 }
 
 export function useUploads(): UploadItem[] {
-  return useSyncExternalStore(subscribe, () => items);
+  return useSyncExternalStore(
+    subscribe,
+    () => items,
+    () => items,
+  );
 }
 
 const previews = new Map<string, string>();

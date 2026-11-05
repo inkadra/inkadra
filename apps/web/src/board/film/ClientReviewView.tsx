@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { formatDuration } from '@inkadra/canvas-core';
-import { SHOT_SIZES } from '@inkadra/doc-schema';
 import type { ReviewStatus } from '@inkadra/shared';
 import { Button, EmptyState, Select } from '@inkadra/ui';
 import { type KeyboardEvent, useId, useState } from 'react';
@@ -132,7 +131,7 @@ export function ClientReviewView({
     );
   const frame = current?.frame;
   const emptyKey = groups.length ? 'shells.noShots' : 'clientReview.noCards';
-  const shot = frame ? presetText('film.shot', SHOT_SIZES, frame.shot) : '';
+  const shot = frame ? presetText('shotSizes', frame.shot) : '';
   return (
     <section
       onKeyDown={(e: KeyboardEvent) => {

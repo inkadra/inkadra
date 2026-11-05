@@ -276,3 +276,6 @@ export const OfficePartParams = z.object({
   assetId: Id,
   part: z.string().regex(/^(manifest\.json|page-([1-9]|[1-4][0-9]|50)\.webp)$/),
 });
+
+/** Original video frame; finite presentation time in seconds. */
+export const VideoFrameQuery = z.object({ time: z.coerce.number().min(0).max(86400) });

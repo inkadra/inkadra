@@ -28,6 +28,7 @@ import {
   bendThrough,
   blockingCurve,
   blockingPositions,
+  coneEnd,
   defaultLayer,
   duplicatePlanItems,
   gridLength,
@@ -53,11 +54,14 @@ import {
   scaleFor,
   shownAngle,
   snapPlanPoint,
+  symbolPercent,
   toggleGroup,
   updatePlanItems,
   variantFamily,
   variantView,
   withGroups,
+  withPercent,
+  withReachAt,
 } from './plan.ts';
 import { flattenPath, glyphBox, glyphOf, PLAN_CATEGORIES } from './plan-icons.ts';
 
@@ -312,7 +316,25 @@ describe('resizing', () => {
     expect((out.x / STROKE_GRID) * PLAN_VIEW_W).toBeCloseTo(500 + 60, 0);
   });
 
-  it('snaps symbols to S, M or L and texts to their three sizes', () => {
+  it('drags the end of a cone along its axis, whatever the turn of the icon', () => {
+    const camera: PlanIcon = {
+      id: 'iconAAAAAAAAA',
+      kind: 'camera',
+      color: '#9DB8F2',
+      x: 2048,
+      y: 2048,
+      rotation: 90,
+    };
+    const end = coneEnd(camera) as { x: number; y: number };
+    const longer = withReachAt(camera, { x: end.x, y: end.y + 100 });
+    const moved = coneEnd(longer) as { x: number; y: number };
+    expect(moved.y).toBeCloseTo(end.y + 100, 0);
+    expect(moved.x).toBeCloseTo(end.x, 0);
+    expect(withReachAt(camera, { x: end.x, y: -9000 }).reach).toBe(20);
+    expect(withReachAt({ ...camera, kind: 'table' }, end).reach).toBeUndefined();
+  });
+
+  it('sizes symbols in proportion and snaps texts to their three sizes', () => {
     const fresnel: PlanIcon = {
       id: 'iconAAAAAAAAA',
       kind: 'fresnel',
@@ -321,12 +343,25 @@ describe('resizing', () => {
       y: 2048,
     };
     const c = { x: 500, y: (2048 / STROKE_GRID) * PLAN_VIEW_H };
-    expect(resizeItem(fresnel, 'se', { x: c.x + 40, y: c.y + 40 }, { keepRatio: true }).size).toBe(
-      'L',
-    );
-    expect(resizeItem(fresnel, 'se', { x: c.x + 10, y: c.y + 10 }, { keepRatio: true }).size).toBe(
-      'S',
-    );
+    const half = iconSize(fresnel);
+    const grown = resizeItem(fresnel, 'se', {
+      x: c.x + half.w,
+      y: c.y + half.h,
+    });
+    // Twice as far from the middle: twice the size, the middle where it was.
+    expect(grown.percent).toBe(200);
+    expect(grown.x).toBe(fresnel.x);
+    expect(grown.y).toBe(fresnel.y);
+    expect(iconSize(grown).w).toBeCloseTo(half.w * 2);
+    // S and L of older plans read as a percentage; a new size replaces them.
+    expect(symbolPercent({ size: 'S' })).toBe(73);
+    expect(symbolPercent({ size: 'L' })).toBe(136);
+    expect(symbolPercent({})).toBe(100);
+    const old = { ...fresnel, size: 'L' as const };
+    expect(iconSize(old).w).toBeCloseTo(iconSize(fresnel).w * (SYMBOL_SIZES.L / SYMBOL_SIZES.M));
+    const sized = withPercent(old, 5000);
+    expect(sized.size).toBeUndefined();
+    expect(sized.percent).toBe(1000);
     const text = {
       id: 'textAAAAAAAAA',
       kind: 'text' as const,

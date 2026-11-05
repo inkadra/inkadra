@@ -37,22 +37,26 @@ import { ShapeView } from '../film/shapes.tsx';
 export const PLAN_COLORS = [
   { hex: '#1C1C1E', token: 'text-secondary', name: 'ink' },
   { hex: '#9DB8F2', token: 'tag-blue', name: 'blue' },
-  { hex: '#EDD963', token: 'tag-yellow', name: 'yellow' },
-  { hex: '#B897F0', token: 'tag-purple', name: 'purple' },
+  { hex: '#60D8EB', token: 'tag-teal', name: 'teal' },
   { hex: '#7AD689', token: 'tag-green', name: 'green' },
+  { hex: '#EDD963', token: 'tag-yellow', name: 'yellow' },
+  { hex: '#F79B54', token: 'tag-orange', name: 'orange' },
+  { hex: '#F68186', token: 'tag-red', name: 'red' },
+  { hex: '#FF91CC', token: 'tag-pink', name: 'pink' },
+  { hex: '#B897F0', token: 'tag-purple', name: 'purple' },
 ] as const;
 export type PlanColor = (typeof PLAN_COLORS)[number];
 export const PLAN_INK = PLAN_COLORS[0].hex;
 
 /** The colour a family starts in: lights yellow, cameras blue, people purple, the rest ink. */
 const FAMILY_COLORS: Record<PlanFamily, string> = {
-  light: PLAN_COLORS[2].hex,
-  camera: PLAN_COLORS[1].hex,
-  person: PLAN_COLORS[3].hex,
+  light: '#EDD963',
+  camera: '#9DB8F2',
+  person: '#B897F0',
   ink: PLAN_INK,
 };
 /** Annotations (arrows, texts, measures, zones) start green, as in the library. */
-export const NOTE_COLOR = PLAN_COLORS[4].hex;
+export const NOTE_COLOR = '#7AD689';
 
 export function iconColor(kind: PlanIconKind): string {
   return FAMILY_COLORS[categoryOf(kind).family];
@@ -228,14 +232,17 @@ const STEP_DOT = 11;
 /**
  * The blocking of an icon (round 6, d): its earlier positions as veiled copies, the moves
  * between them as arrows (dashed for the camera, say), each position numbered. `ghosts` false
- * leaves the veiled copies out.
+ * leaves the veiled copies out. `route` is how the editor draws it: a plain line through numbered
+ * points, the icon itself being the last position.
  */
 export const BlockingView = memo(function BlockingView({
   icon,
   ghosts = true,
+  route = false,
 }: {
   icon: PlanIcon;
   ghosts?: boolean;
+  route?: boolean;
 }) {
   const steps = icon.steps ?? [];
   if (steps.length === 0) return null;
@@ -252,11 +259,14 @@ export const BlockingView = memo(function BlockingView({
         const end = { x: b.x - back * Math.cos(angle), y: b.y - back * Math.sin(angle) };
         const wing = (side: number) =>
           `${end.x - 14 * Math.cos(angle + side * 0.5)} ${end.y - 14 * Math.sin(angle + side * 0.5)}`;
+        const way = route
+          ? `M${a.x} ${a.y}Q${control.x} ${control.y} ${b.x} ${b.y}`
+          : `M${a.x} ${a.y}Q${control.x} ${control.y} ${end.x} ${end.y}M${wing(-1)}L${end.x} ${end.y}L${wing(1)}`;
         return (
           <path
             // biome-ignore lint/suspicious/noArrayIndexKey: moves are the gaps between steps.
             key={i}
-            d={`M${a.x} ${a.y}Q${control.x} ${control.y} ${end.x} ${end.y}M${wing(-1)}L${end.x} ${end.y}L${wing(1)}`}
+            d={way}
             style={{
               fill: 'none',
               stroke: 'currentColor',
@@ -283,9 +293,29 @@ export const BlockingView = memo(function BlockingView({
             noCone
           />
         ))}
-      {at.map((p, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: the number is the place in the order.
-        <g key={i} className="plan__step" transform={`translate(${p.x - 24} ${p.y - 24})`}>
+    </g>
+  );
+});
+
+/** The numbers of a blocking, drawn after the icons so that none hides under one. */
+const BlockingNumbers = memo(function BlockingNumbers({
+  icon,
+  route,
+}: {
+  icon: PlanIcon;
+  route: boolean;
+}) {
+  if (!icon.steps?.length) return null;
+  const at = blockingPositions(icon);
+  return (
+    <g style={{ color: planCss(icon.color) }}>
+      {(route ? at.slice(0, -1) : at).map((p, i) => (
+        <g
+          // biome-ignore lint/suspicious/noArrayIndexKey: the number is the place in the order.
+          key={i}
+          className="plan__step"
+          transform={route ? `translate(${p.x} ${p.y})` : `translate(${p.x - 24} ${p.y - 24})`}
+        >
           <circle r={STEP_DOT} style={{ fill: 'currentColor' }} />
           <text textAnchor="middle" y={4.5} fontSize={13} fontWeight={700}>
             {i + 1}
@@ -296,12 +326,16 @@ export const BlockingView = memo(function BlockingView({
   );
 });
 
-/** Length of a measure in metres, "2,70 m", or null on a plan without a scale. */
+/**
+ * Length of a measure in metres, "2,70 m": what was written on it (in `text`, a plain number), or
+ * else what the scale says; '' on a plan without a scale.
+ */
 export function measureText(shape: PlanShape, scale: number | undefined, locale?: string): string {
-  if (!scale) return '';
+  const written = shape.text ? Number(shape.text) : 0;
+  if (!(written > 0) && !scale) return '';
   const dx = ((shape.x1 - shape.x0) / STROKE_GRID) * PLAN_VIEW_W;
   const dy = ((shape.y1 - shape.y0) / STROKE_GRID) * PLAN_VIEW_H;
-  const m = Math.hypot(dx, dy) / scale;
+  const m = written > 0 ? written : Math.hypot(dx, dy) / (scale as number);
   return `${m.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
 }
 
@@ -437,11 +471,17 @@ export const PlanDrawing = memo(function PlanDrawing({
   grid,
   hidden,
   ghosts = true,
+  route = false,
   moves = true,
   lifted,
+  label,
   children,
 }: {
   plan: PlanLike;
+  /** Names the drawing for the editor, where it holds a control; elsewhere it stays hidden. */
+  label?: string;
+  /** Blocking as the editor draws it: a line through numbered points. */
+  route?: boolean;
   /** Icons whose labels move past the selection handles. */
   lifted?: ReadonlySet<string> | undefined;
   /** Blocking moves and numbers; an export may leave them out. */
@@ -455,11 +495,12 @@ export const PlanDrawing = memo(function PlanDrawing({
 }) {
   const off = [...(plan.hiddenLayers ?? []), ...(hidden ?? [])];
   return (
+    // biome-ignore lint/a11y/noSvgWithoutTitle: named by aria-label in the editor, hidden elsewhere.
     <svg
       className="plan__svg"
       viewBox={`0 0 ${PLAN_VIEW_W} ${PLAN_VIEW_H}`}
       style={{ aspectRatio: String(PLAN_ASPECT) }}
-      aria-hidden="true"
+      {...(label ? { role: 'group', 'aria-label': label } : { 'aria-hidden': true })}
     >
       {grid && <GridDots step={grid} />}
       {visible(plan.strokes, off).map((s) => (
@@ -470,11 +511,15 @@ export const PlanDrawing = memo(function PlanDrawing({
       ))}
       {moves &&
         visible(plan.icons, off).map((icon) => (
-          <BlockingView key={`b${icon.id}`} icon={icon} ghosts={ghosts} />
+          <BlockingView key={`b${icon.id}`} icon={icon} ghosts={ghosts} route={route} />
         ))}
       {visible(plan.icons, off).map((icon) => (
         <PlanIconView key={icon.id} icon={icon} sensor={plan.sensor} />
       ))}
+      {moves &&
+        visible(plan.icons, off).map((icon) => (
+          <BlockingNumbers key={`n${icon.id}`} icon={icon} route={route} />
+        ))}
       {visible(plan.icons, off).map((icon) => (
         <PlanLabel key={`l${icon.id}`} icon={icon} lifted={lifted?.has(icon.id)} />
       ))}

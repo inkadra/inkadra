@@ -1,4 +1,4 @@
-import { ImageCrop } from '@inkadra/doc-schema';
+import { ImageCrop, Stroke } from '@inkadra/doc-schema';
 import type { GuestElement } from '@inkadra/shared';
 import { IconButton } from '@inkadra/ui';
 import { useEffect, useRef } from 'react';
@@ -87,6 +87,14 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
           </>
         ) : src && asset ? (
           <CroppedImage
+            strokes={
+              element.type === 'image' && Array.isArray(element.strokes)
+                ? element.strokes.flatMap((value) => {
+                    const stroke = Stroke.safeParse(value);
+                    return stroke.success ? [stroke.data] : [];
+                  })
+                : undefined
+            }
             className="guest-viewer__media"
             poster={src}
             moving={movingVariantUrl(asset, wide)}

@@ -8,7 +8,9 @@ import { chooseSelect } from '../helpers/select.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
-const out = fileURLToPath(new URL('../../docs/screenshots/0.6-frame-grab/', import.meta.url));
+const out =
+  process.env.FRAMES_SCREENSHOTS ??
+  fileURLToPath(new URL('../../docs/screenshots/0.6-frame-grab/', import.meta.url));
 
 /** The clip must outlast the seek target plus a few frame steps, however loaded the runner is. */
 const MIN_FOOTAGE_SECONDS = 1;
@@ -258,7 +260,11 @@ for (const [device, width, height] of [
       await expect(page.locator('.story__tile img')).toHaveAttribute('src', new RegExp(capturedId));
       if (device === 'desktop' && theme === 'dark') {
         await page.getByRole('button', { name: '1A', exact: true }).click();
-        await page.getByRole('button', { name: 'Da video', exact: true }).click();
+        await page
+          .locator('.film-panel')
+          .getByRole('button', { name: 'Immagine', exact: true })
+          .click();
+        await page.getByRole('button', { name: 'Da un video della lavagna', exact: true }).click();
         await page.getByRole('button', { name: 'Last Train.webm', exact: true }).click();
         const player = page.getByRole('dialog').locator('video');
         await expect
@@ -277,9 +283,7 @@ for (const [device, width, height] of [
           .map(readElement)
           .find((el) => el?.type === 'image');
         expect(image).toMatchObject({ source: { kind: 'uploaded-video', assetId } });
-        expect(image?.type === 'image' && image.caption).toMatch(
-          /Last Train\.webm · \d+:\d{2},\d{2}$/,
-        );
+        expect(image).not.toHaveProperty('caption');
       }
     });
   }
@@ -364,8 +368,8 @@ for (const provider of ['youtube', 'vimeo']) {
     await pushBoardDoc(baseURL!, cookie, project.rootBoardId, doc);
     await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=canvas`);
     await page.locator('[data-type="link"]').dblclick();
-    await page.getByRole('button', { name: 'Usa miniatura', exact: true }).click();
-    await expect(page.getByText('I player esterni non consentono', { exact: false })).toBeVisible();
+    await page.getByRole('button', { name: 'Cattura fotogramma', exact: true }).click();
+    await page.getByRole('button', { name: 'Usa la miniatura del video', exact: true }).click();
     if (provider === 'youtube') {
       await page.getByLabel('Tempo di riferimento YouTube (secondi)').fill('67');
     }
@@ -382,9 +386,99 @@ for (const provider of ['youtube', 'vimeo']) {
     if (provider === 'youtube')
       expect(frame).toMatchObject({
         source: { timeSeconds: 67 },
-        notes: 'Preserve this direction.\nhttps://www.youtube.com/watch?v=abcdefghijk&t=67',
+        notes: 'Preserve this direction.',
       });
     else expect(frame).toMatchObject({ notes: 'Preserve this direction.' });
+    if (provider === 'vimeo') {
+      await page.locator('[data-type="link"]').dblclick();
+      await page.getByRole('button', { name: 'Cattura fotogramma', exact: true }).click();
+      await page
+        .locator('.viewer input[type="file"]')
+        .setInputFiles({ name: 'manual.png', mimeType: 'image/png', buffer: thumbnail });
+      await page.getByRole('button', { name: 'Aggiungi alla lavagna', exact: true }).click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      const savedScreenshot = await readBoard(baseURL!, cookie, project.rootBoardId);
+      const image = [...roots(savedScreenshot).elements.values()]
+        .map(readElement)
+        .find((el) => el?.type === 'image');
+      expect(image).toBeTruthy();
+      expect(image).not.toHaveProperty('caption');
+      expect(image).not.toHaveProperty('source');
+      await expect(page.locator('.toast:not([inert])')).toContainText(
+        'Fotogramma aggiunto alla lavagna',
+      );
+
+      // The photo of the tab, over a stand-in for the browser's permission: refused, then given.
+      // Not a proof on real Chrome, which the permission dialog keeps out of a headless run.
+      await page.evaluate(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 450;
+        const paint = canvas.getContext('2d')!;
+        paint.fillStyle = '#7c3a22';
+        paint.fillRect(0, 0, 800, 450);
+        const state = window as unknown as { stopped: number; refuse: boolean };
+        state.stopped = 0;
+        state.refuse = true;
+        navigator.mediaDevices.getDisplayMedia = async () => {
+          if (state.refuse) {
+            state.refuse = false;
+            throw new DOMException('no', 'NotAllowedError');
+          }
+          paint.fillRect(0, 0, 800, 450);
+          const stream = canvas.captureStream(5);
+          for (const track of stream.getTracks()) {
+            const stop = track.stop.bind(track);
+            track.stop = () => {
+              state.stopped += 1;
+              stop();
+            };
+          }
+          const keepPainting = setInterval(() => paint.fillRect(0, 0, 800, 450), 100);
+          setTimeout(() => clearInterval(keepPainting), 3000);
+          return stream;
+        };
+      });
+      await page.locator('[data-type="link"]').dblclick();
+      await page.getByRole('button', { name: 'Cattura fotogramma', exact: true }).click();
+      const tabShots = process.env.FRAMES_SCREENSHOTS;
+      if (tabShots) await page.screenshot({ path: `${tabShots}/1280-tab-intro.png` });
+      await page.getByRole('button', { name: 'Continua', exact: true }).click();
+      await expect(page.getByRole('alert')).toContainText('Condivisione annullata');
+      if (tabShots) await page.screenshot({ path: `${tabShots}/1280-tab-denied.png` });
+      await page.getByRole('button', { name: 'Riprova', exact: true }).click();
+      await expect(page.locator('.viewer__tab-crop')).toBeVisible();
+      await expect(page.locator('.viewer__grab-quality')).toContainText('800 × 450 px');
+      const shots = process.env.FRAMES_SCREENSHOTS;
+      if (shots) await page.screenshot({ path: `${shots}/1280-tab-capture.png` });
+      await page.getByRole('button', { name: 'Riquadro: angolo in alto a sinistra' }).focus();
+      for (let i = 0; i < 10; i += 1) await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.viewer__grab-quality')).toContainText('720 × 450 px');
+      await page.getByRole('button', { name: 'Aggiungi alla lavagna', exact: true }).click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.locator('.toast:not([inert])')).toContainText(
+        'Fotogramma aggiunto alla lavagna',
+      );
+      expect(await page.evaluate(() => (window as unknown as { stopped: number }).stopped)).toBe(1);
+
+      // A phone has no tab to photograph: a screenshot or the thumbnail.
+      await page.evaluate(() => {
+        const original = window.matchMedia.bind(window);
+        window.matchMedia = (query) =>
+          query.includes('pointer: coarse')
+            ? ({ matches: true } as MediaQueryList)
+            : original(query);
+      });
+      await page.locator('[data-type="link"]').dblclick();
+      await page.setViewportSize({ width: 390, height: 800 });
+      await page.getByRole('button', { name: 'Cattura fotogramma', exact: true }).click();
+      await expect(page.locator('.viewer__grab-call')).toContainText(
+        'I browser dei telefoni non lo permettono.',
+      );
+      await expect(page.getByRole('button', { name: 'Scegli uno screenshot' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Continua', exact: true })).toHaveCount(0);
+      if (tabShots) await page.screenshot({ path: `${tabShots}/390-tab-phone.png` });
+    }
     expect(
       await page.evaluate(() => (window as unknown as { violations: string[] }).violations),
     ).toEqual([]);

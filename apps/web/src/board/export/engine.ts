@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  castAppearances,
   formatDuration,
   frameLabels,
   listElements,
@@ -7,18 +8,17 @@ import {
   storyboardOf,
   totalDurationMs,
 } from '@inkadra/canvas-core';
-import {
-  aspectValue,
-  type Element,
-  getBoardAspect,
-  SHOT_ANGLES,
-  SHOT_MOVEMENTS,
-  SHOT_SIZES,
-} from '@inkadra/doc-schema';
-import type { Asset, AssetTrack, Board, CommentThread } from '@inkadra/shared';
+import { aspectValue, type Element, getBoardAspect, hiddenFromGuests } from '@inkadra/doc-schema';
+import type { Asset, AssetTrack, Board, CommentThread, ShotCatalogKey } from '@inkadra/shared';
 import { light } from '@inkadra/ui/tokens';
 import type { TFunction } from 'i18next';
+import { getClassifications, shotText } from '../../lib/classifications.ts';
 import { DEFAULT_ASPECT } from '../film/aspect.ts';
+import {
+  characterSceneCount,
+  characterSubtitle,
+  loadCastAppearances,
+} from '../film/cast-appearances.ts';
 import { getFrameStatus } from '../film/film-status.ts';
 import type { BoardStore } from '../store.ts';
 import { paperAccent, type Theme } from '../theme.ts';
@@ -92,6 +92,8 @@ export interface ExportEnv {
   projectName: string;
   boardTitle: string;
   boards: readonly Board[] | null;
+  /** Where the board is, to count the scenes of characters on its other boards too. */
+  scope?: { projectId: string; boardId: string } | undefined;
   threads: readonly CommentThread[];
   t: TFunction;
   language: string;
@@ -196,10 +198,17 @@ export async function buildPages(
   const team = req.audience === 'team';
   const boardAspect = getBoardAspect(store.doc) ?? DEFAULT_ASPECT;
   const groupsAll = storyboardOf(all);
+  // What a client export shows: only frames it may see, and nothing from other boards.
+  const cast = team
+    ? [
+        ...castAppearances(all),
+        ...(env.scope ? await loadCastAppearances(env.scope.projectId, env.scope.boardId) : []),
+      ]
+    : castAppearances(all.filter((el) => !hiddenFromGuests(el.id, lookup)));
   // Shot labels come from the whole board, as guests see them, before anything is left out.
   const labels = frameLabels(groupsAll);
-  const preset = (prefix: string, codes: readonly string[], value: string | undefined) =>
-    value ? (codes.includes(value) ? t(`${prefix}.${value}`) : value) : '';
+  const preset = (catalog: ShotCatalogKey, value: string | undefined) =>
+    shotText(getClassifications(), catalog, value, t);
   const seconds = (ms: number | undefined) => (ms ? `${Math.round(ms / 100) / 10} s` : '');
   const slugline = (scene: Extract<Element, { type: 'scene' }>) =>
     [
@@ -231,22 +240,27 @@ export async function buildPages(
     },
     frameMeta: (frame) =>
       [
-        preset('film.shot', SHOT_SIZES, frame.shot),
-        preset('film.angle', SHOT_ANGLES, frame.angle),
-        preset('film.movement', SHOT_MOVEMENTS, frame.movement),
+        preset('shotSizes', frame.shot),
+        preset('shotAngles', frame.angle),
+        preset('shotMovements', frame.movement),
         frame.lens,
         seconds(frame.durationMs),
       ]
         .filter(Boolean)
         .join(' · '),
     slugline,
-    storyMeta: (el) =>
-      [
+    characterLine: (el) => characterSubtitle(el, t),
+    storyMeta: (el) => {
+      // A character counts the same scenes here as on its card.
+      const scenes =
+        el.type === 'character' ? characterSceneCount(el, cast) : (el.scenes?.length ?? 0);
+      return [
         el.type === 'character' ? el.actor : el.setting && t(`film.scene.settings.${el.setting}`),
-        el.scenes?.length ? t('story.sceneCount', { count: el.scenes.length }) : null,
+        scenes > 0 ? t('story.sceneCount', { count: scenes }) : null,
       ]
         .filter(Boolean)
-        .join(' · '),
+        .join(' · ');
+    },
     words: { board: t('export.board'), file: t('export.file'), plan: t('board.plan.name') },
   };
 
@@ -316,9 +330,9 @@ export async function buildPages(
           frame,
           label: labels.get(frame.id) ?? '',
           scene,
-          size: preset('film.shot', SHOT_SIZES, frame.shot),
-          angle: preset('film.angle', SHOT_ANGLES, frame.angle),
-          movement: preset('film.movement', SHOT_MOVEMENTS, frame.movement),
+          size: preset('shotSizes', frame.shot),
+          angle: preset('shotAngles', frame.angle),
+          movement: preset('shotMovements', frame.movement),
           duration: seconds(frame.durationMs),
           status: team ? t(`film.status.${getFrameStatus(frame)}`) : undefined,
         });

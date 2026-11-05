@@ -256,7 +256,7 @@ export function saveDraft(
   next: CommentDraft | null,
   elementId: string | null = next?.elementId ?? null,
 ) {
-  if (next) drafts.set(next.elementId, next);
+  if (next) drafts.set(next.elementId, { ...next, visibility: 'team' });
   else drafts.delete(elementId);
 }
 

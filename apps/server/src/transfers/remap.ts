@@ -8,6 +8,8 @@ export interface IdMaps {
   assets: ReadonlyMap<string, string>;
   /** Archive person id to an account here (always the importer); null keeps no author. */
   person(id: string): string | null;
+  /** Catalog ids of frame fields unknown to this instance, with the text that replaces them. */
+  shotText?: ReadonlyMap<string, string>;
 }
 
 const ASSET_FIELDS = ['assetId', 'imageAssetId'] as const;
@@ -51,6 +53,12 @@ export function remapDoc(doc: Y.Doc, boardId: string, maps: IdMaps): void {
           if (field === 'assetId') pictureMissing = true;
         } else el.set(field, randomUUID());
       }
+      if (el.get('type') === 'character' && Array.isArray(el.get('references'))) {
+        el.set(
+          'references',
+          (el.get('references') as string[]).flatMap((id) => maps.assets.get(id) ?? []),
+        );
+      }
       if (el.has('source')) {
         const source = VideoFrameSource.safeParse(el.get('source'));
         if (pictureMissing || !el.has('assetId') || !source.success) el.delete('source');
@@ -76,6 +84,11 @@ export function remapDoc(doc: Y.Doc, boardId: string, maps: IdMaps): void {
           el.delete('rotation');
         }
       }
+      if (el.get('type') === 'frame')
+        for (const field of ['shot', 'angle', 'movement']) {
+          const text = maps.shotText?.get(el.get(field) as string);
+          if (text) el.set(field, text);
+        }
       if (el.get('type') === 'board') el.set('boardId', mapped(maps.boards, el.get('boardId')));
       const items = el.get('items');
       if (el.get('type') === 'todo' && items instanceof Y.Array) {

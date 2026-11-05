@@ -37,3 +37,9 @@
       max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   }
 }
+.app-error .ink-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}

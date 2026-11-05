@@ -11,8 +11,10 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useRegisterActions } from '../commands/actions.ts';
+import { setFeedbackConnection } from '../feedback/diagnostics.ts';
+import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
 import { useHeaderContent } from '../lib/header.tsx';
 import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
@@ -42,6 +44,7 @@ import {
 import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
 import { useLiveBoardCounts } from './live-counts.ts';
 import { RestoredToast } from './RestoredToast.tsx';
+import { isMac } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import {
@@ -57,7 +60,6 @@ import './film/film.css';
 import { type Peer, usePeers } from './presence.ts';
 import { projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
-import { isStartTemplate, seedStoryboard, seedTemplate, templateLabels } from './templates.ts';
 import { useBoardReviews } from './use-board-reviews.ts';
 import './board.css';
 
@@ -214,12 +216,18 @@ function BoardScreen({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useSession();
   // The sidebar's rule for the film links, so the header tabs never disagree with it.
   const { filmLinks } = useProjects();
   const { items: boards } = useProjectBoards(projectId);
   const conn = useBoardConnection(boardId);
+  useEffect(() => {
+    if (!conn) return;
+    return setFeedbackConnection(() => ({
+      sync: `${conn.status} · pending changes: ${conn.saves.get().pending}`,
+      flags: `readOnly: ${conn.readOnly} · schemaTooNew: ${!!conn.schemaTooNew}`,
+    }));
+  }, [conn]);
   useLiveBoardCounts(conn, boardId);
   const [detail, setDetail] = useState<BoardDetail | null>(null);
   const kind = detail?.kind ?? boards?.find((b) => b.id === boardId)?.kind;
@@ -227,6 +235,7 @@ function BoardScreen({
   const [sharing, setSharing] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [headerMenu, setHeaderMenu] = useState(false);
+  const reportingOn = !!useFeedbackStatus()?.enabled;
   const isPhone = useIsPhone();
   const liveSelection = useRef<ReadonlySet<string>>(new Set());
   const [exporting, setExporting] = useState<{
@@ -309,23 +318,6 @@ function BoardScreen({
         ],
   );
   useEffect(() => {
-    const template: unknown = location.state?.template;
-    const storyboard = template === 'storyboard' && kind === 'storyboard';
-    const canvas = isStartTemplate(template) && kind === 'board';
-    if ((!storyboard && !canvas) || conn?.status !== 'synced' || !editable || !user) return;
-    conn.store.undo.stopCapturing();
-    if (isStartTemplate(template)) {
-      seedTemplate(conn.store.doc, template, templateLabels(t), user.id);
-    } else {
-      seedStoryboard(conn.store.doc, t('templates.storyboard.scene'), user.id);
-    }
-    conn.store.undo.stopCapturing();
-    void navigate(
-      { pathname: location.pathname, search: location.search, hash: location.hash },
-      { replace: true, state: null },
-    );
-  }, [location, kind, conn, editable, user, t, navigate]);
-  useEffect(() => {
     if (!editable) {
       setVersionsOpen(false);
       setPreview(null);
@@ -377,8 +369,7 @@ function BoardScreen({
   }, [boardId, accessVersion]);
 
   const openBoard = useCallback(
-    (id: string, template?: 'storyboard') =>
-      navigate(boardPath(projectId, id, rootBoardId), { state: template ? { template } : null }),
+    (id: string) => navigate(boardPath(projectId, id, rootBoardId)),
     [navigate, projectId, rootBoardId],
   );
   useBoardReviews(boardId, conn, detail?.myRole ?? projectRole, {
@@ -427,7 +418,7 @@ function BoardScreen({
     () => ({
       start: (
         <>
-          <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
+          <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs" data-feedback-secret>
             {/* The project's glyph before its name; phones show the last crumb only. */}
             {projectIcon && crumbs[0]?.id === rootBoardId && <ProjectGlyph {...projectIcon} />}
             {crumbs.map((c, i) => (
@@ -488,7 +479,13 @@ function BoardScreen({
                   // On narrow desktops only the open tab keeps its name: the rest say it on hover.
                   aria-label={t(`film.views.${v}`)}
                   data-ink-tooltip={t(`film.views.${v}`)}
-                  onClick={() => chooseView(v)}
+                  // Focus on press would scroll a tab cut off by the strip out from under the
+                  // pointer: the release lands on its neighbour and the click is lost.
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.currentTarget.focus({ preventScroll: true });
+                    chooseView(v);
+                  }}
                 >
                   <Icon name={viewIcon(v)} contentKind={v} size={14} />
                   <span className="view-tabs__label">{t(`film.views.${v}`)}</span>
@@ -528,6 +525,17 @@ function BoardScreen({
                       disabled: true,
                       hint: t('board.present.soon'),
                     },
+                    ...(reportingOn
+                      ? [
+                          { divider: true as const },
+                          {
+                            label: t('feedback.title'),
+                            icon: 'report' as const,
+                            ...(isPhone ? {} : { shortcut: isMac() ? '⌘⇧B' : 'Ctrl+Shift+B' }),
+                            action: () => openFeedback(),
+                          },
+                        ]
+                      : []),
                   ]}
                 />
               )}
@@ -591,6 +599,7 @@ function BoardScreen({
       detail,
       editable,
       headerMenu,
+      reportingOn,
       isPhone,
       closeHeaderMenu,
       openExport,
@@ -717,6 +726,11 @@ function BoardScreen({
       className={preview ? 'board-preview' : undefined}
       style={preview ? undefined : { display: 'contents' }}
     >
+      {conn.schemaTooNew && (
+        <div role="alert" className="board-update-notice">
+          {t('board.contextual.updateApp')}
+        </div>
+      )}
       {versions}
       {content}
       {shareDialog}

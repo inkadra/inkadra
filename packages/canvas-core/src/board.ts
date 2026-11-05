@@ -166,7 +166,10 @@ export function createElement<T extends ElementType>(
     createdBy: opts.userId,
     createdAt: Date.now(),
   } as Element;
-  doc.transact(() => addElement(doc, element), opts.origin);
+  doc.transact(() => {
+    const map = addElement(doc, element);
+    if (element.type === 'image' && !map.has('strokes')) map.set('strokes', new Y.Array());
+  }, opts.origin);
   return element;
 }
 

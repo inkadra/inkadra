@@ -1,10 +1,14 @@
 // @vitest-environment happy-dom
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  BlackFrame,
+  captureTabFrame,
   captureVideoFrame,
+  coarsePointer,
   formatSourceTime,
+  NoFrame,
   placeVideoStill,
   VideoFrameStepper,
 } from './frame-grab.ts';
@@ -41,9 +45,8 @@ describe('video still destinations', () => {
         assetId: 'still',
         source,
         userId: 'u',
-        caption: 'Last Train',
       }),
-    ).toBe(true);
+    ).toBeTruthy();
     expect(store.getSnapshot().byId.get(frame.id)).toMatchObject({
       assetId: 'still',
       source,
@@ -61,9 +64,9 @@ describe('video still destinations', () => {
       assetId: 'still',
       source,
       userId: 'u',
-      caption: 'Last Train',
     });
     const image = [...store.getSnapshot().byId.values()].find((el) => el.type === 'image');
+    expect(image).not.toHaveProperty('caption');
     expect(image).toMatchObject({
       assetId: 'still',
       source,
@@ -72,7 +75,7 @@ describe('video still destinations', () => {
       guestHidden: true,
     });
   });
-  it('rejects deleted destinations and notes that cannot fit the reference', () => {
+  it('rejects deleted destinations', () => {
     const { store, video } = setup();
     expect(
       placeVideoStill(store, {
@@ -81,11 +84,10 @@ describe('video still destinations', () => {
         assetId: 'still',
         source,
         userId: 'u',
-        caption: '',
       }),
-    ).toBe(false);
+    ).toBeNull();
   });
-  it('appends the YouTube reference without replacing director notes', () => {
+  it('keeps references in metadata without adding them to director notes', () => {
     const { store, video, frame } = setup();
     placeVideoStill(store, {
       sourceId: video.id,
@@ -97,11 +99,9 @@ describe('video still destinations', () => {
         timeSeconds: 12,
       },
       userId: 'u',
-      caption: '',
-      reference: 'https://youtube.com/watch?v=abcdefghijk&t=12',
     });
     expect(store.getSnapshot().byId.get(frame.id)).toMatchObject({
-      notes: 'Keep the train in view\nhttps://youtube.com/watch?v=abcdefghijk&t=12',
+      notes: 'Keep the train in view',
     });
   });
 });
@@ -203,4 +203,146 @@ it('formats source time consistently in Italian and English, carrying rounded se
   expect(formatSourceTime(0.62, 'en')).toBe('0:00.62');
   expect(formatSourceTime(65.125, 'it')).toBe('1:05,13');
   expect(formatSourceTime(59.999, 'en')).toBe('1:00.00');
+});
+
+describe('photo of a browser tab', () => {
+  function stubDisplayMedia(pixels: number) {
+    const stop = vi.fn();
+    const cropTo = vi.fn(async () => {});
+    const track = { cropTo, stop };
+    const getDisplayMedia = vi.fn(async () => ({
+      getVideoTracks: () => [track],
+      getTracks: () => [track],
+    }));
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getDisplayMedia },
+    });
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+    for (const size of ['videoWidth', 'videoHeight'])
+      Object.defineProperty(HTMLVideoElement.prototype, size, { configurable: true, value: 4 });
+    Object.defineProperty(HTMLMediaElement.prototype, 'srcObject', {
+      configurable: true,
+      set: () => {},
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+      getImageData: () => ({ data: new Uint8ClampedArray(64).fill(pixels) }),
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) =>
+      done(new Blob(['png'])),
+    );
+    return { stop, cropTo, getDisplayMedia };
+  }
+  beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout'] }));
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+  const run = async (cropTo: Element | null = null, signal?: AbortSignal) => {
+    const shot = captureTabFrame(cropTo, signal);
+    const settled = shot.then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
+    await vi.runAllTimersAsync();
+    return settled;
+  };
+
+  it('keeps the picture, crops to the player where it can, and always stops the tracks', async () => {
+    const { stop, cropTo } = stubDisplayMedia(200);
+    vi.stubGlobal('CropTarget', { fromElement: async () => 'target' });
+    const result = await run(document.createElement('iframe'));
+    expect(result).toMatchObject({ value: { width: 4, height: 4 } });
+    expect(cropTo).toHaveBeenCalledWith('target');
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('refuses a black frame and stops the tracks', async () => {
+    const { stop } = stubDisplayMedia(0);
+    const result = await run();
+    expect((result as { error: unknown }).error).toBeInstanceOf(BlackFrame);
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('stops the tracks when the capture fails halfway, and asks nothing after a refusal', async () => {
+    const { stop, getDisplayMedia } = stubDisplayMedia(200);
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(new Error('no'));
+    await run();
+    expect(stop).toHaveBeenCalledOnce();
+    getDisplayMedia.mockRejectedValueOnce(new DOMException('no', 'NotAllowedError'));
+    const refused = await run();
+    expect((refused as { error: DOMException }).error.name).toBe('NotAllowedError');
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  // A paused player: the tab does not change, so the stream delivers no frames and play() waits.
+  const never = () => new Promise<void>(() => {});
+
+  it('asks again for a frame when none comes, and keeps the crop', async () => {
+    const { stop, cropTo } = stubDisplayMedia(200);
+    vi.stubGlobal('CropTarget', { fromElement: async () => 'target' });
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementationOnce(never);
+    const result = await run(document.createElement('iframe'));
+    expect(result).toMatchObject({ value: { width: 4, height: 4 } });
+    expect(cropTo).toHaveBeenCalledOnce();
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('gives up the crop before giving up the picture', async () => {
+    const { stop, cropTo } = stubDisplayMedia(200);
+    vi.stubGlobal('CropTarget', { fromElement: async () => 'target' });
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(never);
+    cropTo.mockImplementation(async (region?: unknown) => {
+      if (region === undefined) play.mockResolvedValue();
+    });
+    const result = await run(document.createElement('iframe'));
+    expect(result).toMatchObject({ value: { width: 4, height: 4 } });
+    expect(cropTo).toHaveBeenLastCalledWith();
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('never hangs on a stream with no frames: it says so and stops the tracks', async () => {
+    const { stop, cropTo } = stubDisplayMedia(200);
+    vi.stubGlobal('CropTarget', { fromElement: async () => 'target' });
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(never);
+    cropTo.mockImplementation(never);
+    const result = await run(document.createElement('iframe'));
+    expect((result as { error: unknown }).error).toBeInstanceOf(NoFrame);
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('stops the tracks at once when ended while waiting, with no timer left to run', async () => {
+    const { stop } = stubDisplayMedia(200);
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(never);
+    const ended = new AbortController();
+    const shot = captureTabFrame(null, ended.signal).catch((error: unknown) => error);
+    await vi.waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalled());
+    expect(stop).not.toHaveBeenCalled();
+    ended.abort();
+    expect(await shot).toBeInstanceOf(Error);
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('stops a stream that arrives after the viewer closed', async () => {
+    const { stop, getDisplayMedia } = stubDisplayMedia(200);
+    const ended = new AbortController();
+    ended.abort();
+    expect(await run(null, ended.signal)).toHaveProperty('error');
+    expect(getDisplayMedia).toHaveBeenCalledOnce();
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('tells a real touch device from a desktop with no mouse', () => {
+    const pointer = (kind: string) =>
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === `(pointer: ${kind})` }));
+    pointer('none');
+    expect(coarsePointer()).toBe(false);
+    pointer('fine');
+    expect(coarsePointer()).toBe(false);
+    pointer('coarse');
+    expect(coarsePointer()).toBe(true);
+  });
 });

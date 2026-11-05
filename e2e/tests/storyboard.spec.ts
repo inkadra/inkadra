@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import { chooseSelect } from '../helpers/select.ts';
+import { addSceneWithFrames } from '../helpers/storyboard.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator and the project exist.
 test.describe.configure({ mode: 'serial' });
@@ -26,18 +27,12 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await page.keyboard.type('Binario 21');
   await page.keyboard.press('Escape');
   await expect(card).toContainText('Binario 21');
-  // The sidebar counts the frames laid out in the background, without a reload.
-  const modules = page.locator('.ink-sidebar__modules');
-  await expect(modules.locator('a[data-ink-tooltip^="Storyboard"] .ink-nav__count')).toHaveText(
-    '3',
-  );
-  await expect(modules.locator('a[data-ink-tooltip^="Shot list"] .ink-nav__count')).toHaveText('3');
   await card.dblclick();
   await expect(page.getByRole('tab', { name: 'Storyboard' })).toHaveAttribute(
     'aria-selected',
     'true',
   );
-  // S inserts the Storyboard of the Canvas menu: the template's scene and three frames.
+  await addSceneWithFrames(page);
   const scene = page.getByRole('region', { name: 'Scena 1' });
   await expect(scene.locator('.story__tile')).toHaveCount(3);
   await scene.getByLabel('Luogo', { exact: true }).fill('Stazione');
@@ -74,7 +69,7 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
 
   // The pen: one line is one stroke in the frame.
   await panel.getByRole('button', { name: 'Disegna' }).click();
-  const pen = page.getByRole('dialog', { name: /Disegno dell’inquadratura 1D/ });
+  const pen = page.getByRole('dialog', { name: /Disegno · 1D/ });
   const area = pen.locator('.pen__area');
   const box = await area.boundingBox();
   if (!box) throw new Error('no drawing area');
@@ -147,109 +142,34 @@ test('arrows join two cards and keep a label', async ({ page }) => {
   await expect(page.locator('.arrows__label')).toHaveText('poi');
 });
 
-test('the empty-board Storyboard template opens a real storyboard with a shot list', async ({
-  page,
-}) => {
+test('the command palette offers no templates', async ({ page }) => {
   await openProject(page);
-  await page.keyboard.press('b');
-  await page.getByLabel('Titolo della board').fill('Modelli');
-  await page.getByLabel('Titolo della board').press('Enter');
-  await page.locator('[data-type="board"]', { hasText: 'Modelli' }).dblclick();
-  await expect(page.getByRole('heading', { name: 'Da dove partiamo?' })).toBeVisible();
-  await page.getByRole('button', { name: /^Storyboard Scene e inquadrature/ }).click();
-  await expect(page.getByRole('tab', { name: 'Storyboard', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  await expect(
-    page
-      .getByRole('region', { name: 'Scena 1' })
-      .getByRole('textbox', { name: 'Titolo', exact: true }),
-  ).toHaveValue('Apertura');
-  await page.getByRole('tab', { name: 'Shot list' }).click();
-  await expect(
-    page.locator('.shots__table tbody tr:not(.shots__scene):not(.shots__add-row)'),
-  ).toHaveCount(3);
-  await page.reload();
-  await expect(page.getByRole('row', { name: /\b1A\b/ })).toBeVisible();
-  await expect(page.getByRole('row', { name: /1C/ })).toBeVisible();
-  await page.getByRole('banner').getByRole('link', { name: 'Modelli' }).click();
-  await expect(page.locator('[data-type="board"]', { hasText: 'Storyboard' })).toHaveCount(1);
-});
-
-test('the palette inserts templates on a non-empty board and opens storyboard templates', async ({
-  page,
-}) => {
-  await openProject(page);
-  await page.locator('[data-type="board"]', { hasText: 'Modelli' }).dblclick();
-  const canvas = page.getByTestId('canvas');
-  const existing = page.locator('[data-type="board"]', { hasText: 'Storyboard' });
-  await expect(existing).toHaveCount(1);
-  await expect(page.locator('.canvas__start')).toHaveCount(0);
-
   await page.keyboard.press('/');
   const palette = page.getByRole('dialog', { name: 'Comandi' });
   await palette.getByRole('combobox').fill('modello');
-  await expect(palette.getByRole('option')).toHaveCount(3);
-  await palette.getByRole('option', { name: 'Inserisci modello: Produzione' }).click();
-  await expect(canvas.locator('[data-type="column"]')).toHaveCount(3);
-  await expect(canvas.locator('[data-type="column"]', { hasText: 'Da fare' })).toBeVisible();
-  const occupied = await existing.boundingBox();
-  const columns = await canvas.locator('[data-type="column"]').all();
-  if (!occupied) throw new Error('storyboard card missing');
-  for (const column of columns) {
-    const rect = await column.boundingBox();
-    if (!rect) throw new Error('template column missing');
-    expect(
-      rect.x >= occupied.x + occupied.width ||
-        rect.x + rect.width <= occupied.x ||
-        rect.y >= occupied.y + occupied.height ||
-        rect.y + rect.height <= occupied.y,
-    ).toBe(true);
-  }
-  await page.keyboard.press('ControlOrMeta+z');
-  await expect(canvas.locator('[data-type="column"]')).toHaveCount(0);
-  await expect(existing).toHaveCount(1);
-  await page.keyboard.press('ControlOrMeta+Shift+z');
-  await expect(canvas.locator('[data-type="column"]')).toHaveCount(3);
-
-  await page.keyboard.press('/');
-  await palette.getByRole('combobox').fill('modello: Storyboard');
-  const modelli = page.url();
-  await page.keyboard.press('Enter');
-  // The project has a storyboard already, so this board's header shows the film tabs too: wait
-  // for the new storyboard to open before using them.
-  await expect(page).not.toHaveURL(modelli);
-  await expect(page.getByRole('tab', { name: 'Shot list' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Shot list' }).click();
-  await expect(page.getByRole('row', { name: /1B/ })).toBeVisible();
-  await page.getByRole('banner').getByRole('link', { name: 'Modelli' }).click();
-  await expect(canvas.locator('[data-type="column"]')).toHaveCount(3);
-  await expect(page.locator('[data-type="board"]', { hasText: 'Storyboard' })).toHaveCount(2);
+  await expect(palette.getByRole('option')).toHaveCount(0);
 });
 
 test('opening a note edits its real document and preserves the canvas editor', async ({ page }) => {
   await openProject(page);
   const note = page.locator('[data-type="note"]').filter({ hasText: 'Sopralluogo al porto' });
   await note.dblclick();
-  const dialog = page.getByRole('dialog', { name: 'Testo della nota', exact: true });
-  const editor = dialog.locator('[contenteditable="true"]');
+  const editor = note.locator('[contenteditable=true]');
   await expect(editor).toContainText('Sopralluogo al porto');
-  await expect(dialog).not.toContainText('Antonio guida');
+  await expect(editor).not.toContainText('Antonio guida');
   await editor.fill('Sopralluogo al porto — aggiornato');
-  await dialog.getByRole('button', { name: 'Modifica sulla board' }).click();
-  await expect(dialog).not.toBeVisible();
-  await expect(note.locator('[contenteditable="true"]')).toContainText('aggiornato');
-  // Opening a sheet ends inline editing: never two editors on the canvas at once.
-  await page.locator('[data-type="note"]').filter({ hasText: 'Casting comparse' }).dblclick();
-  await expect(editor).toContainText('Casting comparse');
-  await expect(page.locator('[contenteditable="true"]')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Fatto', exact: true }).click();
+  await expect(note).toContainText('aggiornato');
+  const other = page.locator('[data-type="note"]').filter({ hasText: 'Casting comparse' });
+  await other.dblclick();
+  await expect(other.locator('[contenteditable=true]')).toContainText('Casting comparse');
+  await expect(page.locator('[contenteditable=true]')).toHaveCount(1);
   await page.keyboard.press('Escape');
-  await expect(dialog).not.toBeVisible();
+  await expect(page.locator('[contenteditable=true]')).toHaveCount(0);
   await note.dblclick();
   await expect(editor).toContainText('Sopralluogo al porto — aggiornato');
   await page.keyboard.press('Escape');
-  await expect(dialog).not.toBeVisible();
+  await expect(page.locator('[contenteditable=true]')).toHaveCount(0);
 });
 
 test('shell views use real shots and the call sheet traps and restores focus', async ({ page }) => {

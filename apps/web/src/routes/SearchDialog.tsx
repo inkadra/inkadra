@@ -199,6 +199,9 @@ export function SearchDialog({
         className="search ink-motion-dialog"
         aria-label={t('search.title')}
         onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') e.stopPropagation();
+        }}
       >
         <div className="search__field">
           <Icon name="search" size={16} />
@@ -231,6 +234,7 @@ export function SearchDialog({
             }}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
+                e.stopPropagation();
                 onClose();
                 e.preventDefault();
                 return;

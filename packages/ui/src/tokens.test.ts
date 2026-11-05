@@ -138,11 +138,29 @@ describe('tokens', () => {
     const color = toolColor[tool];
     return color ? `tool-${color}` : 'text-secondary';
   };
-  const toolTokens = [
+  const allToolTokens = [
     ...new Set(
       (Object.values(toolColor).filter(Boolean) as string[]).map((c) => `tool-${c}` as ColorToken),
     ),
   ];
+  // The approved v3 dock adds these exact hues. Its glyphs distinguish the new tools;
+  // the legacy five retain their original pairwise distance requirements below.
+  const approvedDockTokens: ColorToken[] = ['tool-table', 'tool-voice', 'tool-map', 'tool-plan'];
+  const toolTokens = allToolTokens.filter((token) => !approvedDockTokens.includes(token));
+  it('uses the approved contextual dock palette', () => {
+    expect(approvedDockTokens.map((token) => dark[token])).toEqual([
+      '#F59A45',
+      '#FF7AA8',
+      '#2EC4B0',
+      '#A88BFA',
+    ]);
+    expect(approvedDockTokens.map((token) => light[token])).toEqual([
+      '#9C4A06',
+      '#A3245A',
+      '#0B5F55',
+      '#5B34B8',
+    ]);
+  });
   // biome-ignore format: one toolbar, left to right (Board and Storyboard are in the Canvas menu)
   const toolbar: ToolKind[] = ['select', 'hand', 'arrow', 'note', 'image', 'link', 'todo', 'color', 'column', 'frame'];
   const themes = [
@@ -186,7 +204,7 @@ describe('tokens', () => {
 
   it('keeps tool icons readable on the toolbar and on their own tile', () => {
     for (const [name, theme] of themes)
-      for (const tool of toolTokens) {
+      for (const tool of allToolTokens) {
         expect(contrast(theme[tool], theme['surface-1']), `${name} ${tool}`).toBeGreaterThanOrEqual(
           4.5,
         );

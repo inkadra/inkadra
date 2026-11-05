@@ -1,7 +1,7 @@
 # Inkadra, all-in-one. Put it behind your reverse proxy (HTTPS) and set PUBLIC_URL in .env.
 # The proxy must forward WebSocket upgrades on /collab. See docs/self-hosting.
 #
-# Variants, added with -f (see docs/self-hosting/compose.md):
+# Variants, added with -f (see docs/self-hosting/README.md#compose-variants):
 #   deploy/compose.split.yaml          web, collab and worker as separate containers
 #   deploy/compose.s3.yaml             files in an S3-compatible bucket you already have
 #   deploy/compose.rustfs.yaml         files in a bundled S3-compatible store (RustFS)
@@ -31,6 +31,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       TRUST_PROXY: ${TRUST_PROXY:-loopback,linklocal,uniquelocal}
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      FEEDBACK_GITHUB_TOKEN: ${FEEDBACK_GITHUB_TOKEN:-}
+      # A single dash on purpose: an empty value must stay empty, it turns the relay off.
+      FEEDBACK_RELAY_URL: ${FEEDBACK_RELAY_URL-https://inkadra-report-relay.matte-maraffio.workers.dev}
       UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE:-20GB}
       HEIC_PREVIEWS: ${HEIC_PREVIEWS:-true}
       RAW_PREVIEWS: ${RAW_PREVIEWS:-true}
@@ -39,6 +42,8 @@ services:
       # Map pictures of map cards and GPX files (decision 0053)
       MAPS: ${MAPS:-true}
       MAP_TILE_URL: ${MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
+      MAP_SATELLITE_TILE_URL: ${MAP_SATELLITE_TILE_URL:-}
+      MAP_SATELLITE_TILE_ATTRIBUTION: ${MAP_SATELLITE_TILE_ATTRIBUTION:-Satellite}
       MAP_TILE_ATTRIBUTION: ${MAP_TILE_ATTRIBUTION:-© OpenStreetMap contributors}
       MAP_GEOCODER_URL: ${MAP_GEOCODER_URL:-}
       # Hardware encoding of playable copies: deploy/compose.vaapi.yaml, deploy/compose.nvidia.yaml

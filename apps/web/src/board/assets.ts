@@ -179,11 +179,16 @@ const browserPlays = (mime: string) =>
 
 /**
  * What a media element plays: the playable copy the worker made of a format browsers do not
- * read (decision 0048), else the original. Audio (#327) keeps its original wherever this
+ * read (decision 0048), else the original; undefined for a video whose copy is not ready.
+ * Audio (#327) keeps its original wherever this
  * browser plays it: the AAC copy is for the others (Ogg or WebM on Safari, AIFF on Chrome).
  */
-export function playbackUrl(asset: Asset, canPlay = browserPlays): string {
+export function playbackUrl(asset: Asset, canPlay = browserPlays): string | undefined {
   const copy = asset.proxy?.status === 'ready' ? asset.proxy.url : null;
+  // A video the server copies (MKV with AC-3, say) has a picture Chrome decodes but sound it
+  // drops: until the copy is ready there is nothing to play. No copy at all (null) means the
+  // server judged the original playable.
+  if (asset.kind === 'video' && asset.proxy) return copy ?? undefined;
   if (!copy || (asset.kind === 'audio' && canPlay(asset.mime))) return asset.url;
   return copy;
 }

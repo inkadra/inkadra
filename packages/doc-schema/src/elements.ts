@@ -98,24 +98,6 @@ export const ImageCrop = z
   });
 export type ImageCrop = z.infer<typeof ImageCrop>;
 
-export const ImageElement = Base.extend({
-  type: z.literal('image'),
-  source: VideoFrameSource.optional(),
-  assetId: z.string(),
-  caption: z.string().max(2000).optional(),
-  crop: ImageCrop.optional().describe(
-    'Non-destructive crop rectangle in normalized [0, 1] coordinates of the rotated image (since version 8).',
-  ),
-  rotation: z
-    .number()
-    .finite()
-    .min(-360)
-    .max(360)
-    .optional()
-    .describe(
-      'Clockwise rotation in degrees (90° steps or free angle; omitted or 0 = unrotated, since version 8).',
-    ),
-});
 export const LinkElement = Base.extend({
   type: z.literal('link'),
   // Web addresses only: the card renders it as a link.
@@ -123,9 +105,23 @@ export const LinkElement = Base.extend({
   title: z.string().max(500).optional(),
   description: z.string().max(2000).optional(),
   imageAssetId: z.string().optional(),
+  showInfo: z
+    .boolean()
+    .optional()
+    .describe('Omitted = true. False shows only the URL; metadata is kept (since version 16).'),
+  showPreview: z
+    .boolean()
+    .optional()
+    .describe(
+      'Embedded video preview; omitted = true. Independent of showInfo (since version 16).',
+    ),
 });
 export const FileElement = Base.extend({
   type: z.literal('file'),
+  showPreview: z
+    .boolean()
+    .optional()
+    .describe('Video preview; omitted = true. Other file kinds ignore it (since version 16).'),
   assetId: z.string(),
   caption: z.string().max(2000).optional(),
 });
@@ -180,9 +176,23 @@ export const BoardLinkElement = Base.extend({
  * width only (since version 10). With `moveCards`, dragging it also moves the cards placed under
  * it (see sectionMembers in canvas-core).
  */
+/** Section text accents from the approved toolbar; omission is the neutral choice. */
+export const SECTION_COLORS = [...CARD_COLORS, 'teal', 'yellow', 'red', 'pink'] as const;
+export const SectionColor = z.enum(SECTION_COLORS);
+export type SectionColor = z.infer<typeof SectionColor>;
+
 export const SectionElement = Base.extend({
   type: z.literal('section'),
   title: z.string().max(200),
+  size: z
+    .enum(['S', 'M', 'L'])
+    .optional()
+    .describe('20, 26 or 34 world units. Omitted = legacy 20 (since version 16).'),
+  bold: z.boolean().optional().describe('True = 700, false = 400; omitted = legacy 600.'),
+  italic: z.boolean().optional().describe('Omitted = false.'),
+  align: z.enum(['left', 'center', 'right']).optional().describe('Omitted = left.'),
+  color: SectionColor.optional().describe('Text and leading rule accent; omitted = primary text.'),
+  line: z.boolean().optional().describe('False hides the rule; omitted = true.'),
   moveCards: z
     .boolean()
     .optional()
@@ -262,8 +272,8 @@ export const SceneElement = Base.extend({
 });
 
 /**
- * Preset values for frame fields. A field holds either one of these codes, which clients
- * translate, or text the person typed.
+ * Default values for frame fields, the first ids of the instance catalogs. A field holds a
+ * catalog id, which clients show by name, or text the person typed.
  */
 export const SHOT_SIZES = ['ews', 'ws', 'fs', 'ms', 'mcu', 'cu', 'ecu', 'insert'] as const;
 export const SHOT_ANGLES = ['eye', 'high', 'low', 'overhead', 'dutch', 'pov', 'ots'] as const;
@@ -343,6 +353,32 @@ const FrameShapes = z
     }),
   );
 
+export const ImageElement = Base.extend({
+  type: z.literal('image'),
+  source: VideoFrameSource.optional(),
+  strokes: z
+    .array(Stroke)
+    .max(MAX_STROKES)
+    .optional()
+    .describe(
+      'Drawing over the source image, before crop and rotation, in STROKE_GRID units. Omitted = empty (since version 16).',
+    ),
+  assetId: z.string(),
+  caption: z.string().max(2000).optional(),
+  crop: ImageCrop.optional().describe(
+    'Non-destructive crop rectangle in normalized [0, 1] coordinates of the rotated image (since version 8).',
+  ),
+  rotation: z
+    .number()
+    .finite()
+    .min(-360)
+    .max(360)
+    .optional()
+    .describe(
+      'Clockwise rotation in degrees (90° steps or free angle; omitted or 0 = unrotated, since version 8).',
+    ),
+});
+
 /** A storyboard frame: a picture (drawn or uploaded) with the data of the shot. */
 export const FrameElement = Base.extend({
   type: z.literal('frame'),
@@ -356,9 +392,23 @@ export const FrameElement = Base.extend({
   assetId: z.string().optional().describe('Reference picture under the drawing.'),
   aspect: AspectRatio.optional().describe('Omitted = the aspect ratio of the board.'),
   action: z.string().max(2000).optional().describe('What happens in the shot.'),
-  shot: z.string().max(60).optional().describe('Shot size: a SHOT_SIZES code or free text.'),
-  angle: z.string().max(60).optional().describe('A SHOT_ANGLES code or free text.'),
-  movement: z.string().max(60).optional().describe('A SHOT_MOVEMENTS code or free text.'),
+  shot: z
+    .string()
+    .max(60)
+    .optional()
+    .describe(
+      'Shot size: the id of a value of the instance catalog (a SHOT_SIZES code or a UUID) or free text.',
+    ),
+  angle: z
+    .string()
+    .max(60)
+    .optional()
+    .describe('The id of a catalog value (a SHOT_ANGLES code or a UUID) or free text.'),
+  movement: z
+    .string()
+    .max(60)
+    .optional()
+    .describe('The id of a catalog value (a SHOT_MOVEMENTS code or a UUID) or free text.'),
   lens: z.string().max(60).optional().describe('Focal length or lens name, e.g. "35mm".'),
   durationMs: z.int().min(0).max(3_600_000).optional(),
   audio: z.string().max(500).optional(),
@@ -517,6 +567,12 @@ export const PlanIcon = z.object({
   rotation: z.int().min(0).max(359).optional().describe('Degrees clockwise. Omitted = 0.'),
   label: z.string().max(60).optional().describe('"A cam", "Anna", "Key 1,2K".'),
   size: z.enum(['S', 'L']).optional().describe('Symbols: small or large. Omitted = medium.'),
+  percent: z
+    .int()
+    .min(10)
+    .max(1000)
+    .optional()
+    .describe('Symbols, since version 18: size in percent of medium. Wins over `size`.'),
   w: z.number().positive().max(4000).optional().describe('Furniture: width in view units.'),
   h: z.number().positive().max(4000).optional().describe('Furniture: depth in view units.'),
   lens: z.int().min(4).max(2000).optional().describe('Camera: focal length in mm. Omitted = 35.'),
@@ -674,6 +730,19 @@ export const CharacterElement = Base.extend({
   age: z.string().max(40).optional().describe('As written: "34", "about 60", "teen".'),
   description: z.string().max(4000).optional(),
   actor: z.string().max(120).optional().describe('Who plays the character.'),
+  nickname: z.string().max(120).optional(),
+  profession: z.string().max(200).optional(),
+  origin: z.string().max(200).optional(),
+  appearance: z.string().max(4000).optional(),
+  wants: z.string().max(4000).optional(),
+  fears: z.string().max(4000).optional(),
+  arc: z.string().max(4000).optional(),
+  costume: z.string().max(4000).optional(),
+  references: z.array(z.string()).max(60).optional(),
+  relations: z
+    .array(z.object({ characterId: ElementId, label: z.string().max(200) }))
+    .max(100)
+    .optional(),
   contact: z.string().max(500).optional().describe('Agent, phone or e-mail; never for guests.'),
   notes: z.string().max(4000).optional().describe('Internal casting notes; never for guests.'),
   scenes: SceneNumbers,

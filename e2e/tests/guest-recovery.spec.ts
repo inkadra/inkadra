@@ -72,6 +72,10 @@ async function mockGuest(page: Page, password = false) {
       return password ? deny(route) : route.fulfill({ json: state.session });
     }
     if (path.endsWith('/comments')) return route.fulfill({ json: { items: [], nextCursor: null } });
+    if (path.endsWith('/feedback/status'))
+      return route.fulfill({
+        json: { enabled: false, guest: true, destination: null, retentionDays: 90 },
+      });
     if (path.endsWith('/boards/board')) {
       state.snapshots++;
       return state.snapshot(route);

@@ -55,6 +55,7 @@ it('identifies all settings pages and localizes headings, descriptions and group
   expect(autosaves('account')).toBe(true);
   expect(autosaves('workspace')).toBe(false);
   expect(autosaves('providers')).toBe(false);
+  expect(autosaves('classifications')).toBe(false);
 });
 
 it('finds pages by the settings on them, naming the setting, in both languages', async () => {
@@ -183,6 +184,9 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Project types', 'Tipi di progetto'],
     ['Tags', 'Tag'],
     ['Catalogs', 'Cataloghi'],
+    ['Shot size', 'Campo'],
+    ['Angle', 'Angolazione'],
+    ['Movement', 'Movimento'],
   ],
   providers: [
     ['Google', 'Google'],

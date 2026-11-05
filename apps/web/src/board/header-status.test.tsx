@@ -12,6 +12,11 @@ import {
 } from './header-status.tsx';
 import type { Peer } from './presence.ts';
 
+// connection.ts reads the session; mock it so i18n setup is not pulled in through it.
+vi.mock('../lib/session.tsx', () => ({
+  useSession: () => ({ user: { id: 'me', name: 'Mia Rossi', image: null } }),
+}));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, values?: Record<string, unknown>) =>

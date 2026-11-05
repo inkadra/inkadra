@@ -590,9 +590,14 @@
   width: auto;
 }
 .team-table {
+  table-layout: fixed;
+  overflow-wrap: anywhere;
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+}
+.team-table thead th:first-child {
+  width: 30%;
 }
 .team-table thead th {
   padding: 9px 12px;
@@ -628,17 +633,19 @@
 }
 .team-person__name {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   font-weight: 500;
 }
 .team-role {
   width: auto;
+  max-width: 100%;
   padding-block: 4px;
 }
 .team-table .team-col--actions {
   text-align: end;
-  white-space: nowrap;
+  white-space: normal;
 }
 .team-col--last {
   white-space: nowrap;

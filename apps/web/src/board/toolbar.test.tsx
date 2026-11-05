@@ -1,16 +1,15 @@
 // @vitest-environment happy-dom
 
-import { Icon, type IconName, kindColor, toolColor } from '@inkadra/ui';
+import { Icon, type IconName, toolColor } from '@inkadra/ui';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it, vi } from 'vitest';
-import { CANVAS_TEMPLATES } from './canvas-templates.ts';
 import { TOOLS, Toolbar } from './chrome.tsx';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
-async function renderToolbar() {
+async function renderToolbar(onVoiceNote?: () => void) {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
@@ -18,7 +17,15 @@ async function renderToolbar() {
   const onTool = vi.fn();
   const onCanvas = vi.fn();
   await act(async () =>
-    root.render(<Toolbar tool="hand" onAdd={onAdd} onTool={onTool} onCanvas={onCanvas} />),
+    root.render(
+      <Toolbar
+        onVoiceNote={onVoiceNote}
+        tool="hand"
+        onAdd={onAdd}
+        onTool={onTool}
+        onCanvas={onCanvas}
+      />,
+    ),
   );
   const cleanup = async () => {
     await act(async () => root.unmount());
@@ -43,7 +50,7 @@ it('groups tools with described tooltips while preserving actions and pressed mo
       '--kind-fg: var(--ink-tool-color)',
     );
     expect(host.querySelectorAll('fieldset')).toHaveLength(4);
-    expect(host.querySelectorAll('button')).toHaveLength(11);
+    expect(host.querySelectorAll('button')).toHaveLength(15);
     // The primary action closes the bar, in its own group after a divider, with its label.
     const canvas = [...host.querySelectorAll('button')].at(-1)!;
     expect(canvas.className).toContain('toolbar__btn--canvas');
@@ -54,7 +61,12 @@ it('groups tools with described tooltips while preserving actions and pressed mo
       // One tooltip: the shared chip fed by data-ink-tooltip, never a second bubble in the DOM.
       expect(button.getAttribute('data-ink-tooltip')).toBeTruthy();
       expect(button.querySelector('[role="tooltip"]')).toBeNull();
-      if (!button.hasAttribute('aria-haspopup'))
+      if (
+        !button.hasAttribute('aria-haspopup') &&
+        !['section', 'table', 'map', 'plan'].some((type) =>
+          button.classList.contains(`toolbar__btn--${type}`),
+        )
+      )
         expect(button.getAttribute('aria-keyshortcuts')).toBeTruthy();
     }
     expect(host.querySelector('[aria-pressed="true"]')?.getAttribute('aria-label')).toBe(
@@ -82,33 +94,13 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
     expect(items.map((i) => i.textContent)).toEqual([
       'board.types.board',
-      'onboarding.templates.moodboard.name',
-      'onboarding.templates.storyboard.name',
-      'onboarding.templates.shotlist.name',
-      'onboarding.templates.production.name',
       'board.types.character',
       'board.types.location',
-      'board.types.section',
-      'board.types.table',
-      'board.types.map',
-      'board.types.plan',
     ]);
     // No shortcut hints in the menu (B and S still work on the canvas).
     expect(menu.querySelector('.menu__key')).toBeNull();
     expect(items.map((i) => i.querySelector('.menu__tile svg')?.innerHTML)).toEqual(
-      [
-        'page',
-        'tiles',
-        'storyboard',
-        'shotlist',
-        'calendar',
-        'user',
-        'pin',
-        'heading',
-        'table',
-        'map',
-        'planCamera',
-      ].map(
+      ['page', 'user', 'pin'].map(
         (name) =>
           renderToStaticMarkup(<Icon name={name as IconName} />).match(
             /<svg[^>]*>(.*)<\/svg>/,
@@ -118,17 +110,7 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     // Each canvas type carries its content-kind colour; Board stays neutral.
     const tiles = items.map((i) => i.querySelector('.menu__tile')?.getAttribute('style') ?? '');
     expect(tiles[0]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[1]).toContain('--ink-tag-orange');
-    expect(tiles[2]).toContain('--ink-tag-purple');
-    expect(tiles[3]).toContain('--ink-tag-green');
-    expect(tiles[4]).toContain('--ink-tag-green');
-    // Story bible cards are neutral: colour only where it means a kind of canvas.
-    expect(tiles[5]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[6]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[7]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[8]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[9]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[10]).toContain('--kind-fg: var(--ink-text-secondary)');
+    for (const tile of tiles) expect(tile).toContain('--kind-fg: var(--ink-text-secondary)');
     expect(document.activeElement).toBe(items[0]);
     const key = (k: string) =>
       act(async () => {
@@ -139,7 +121,7 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[1]);
     await key('End');
-    expect(document.activeElement).toBe(items[10]);
+    expect(document.activeElement).toBe(items[2]);
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[0]);
     await key('Escape');
@@ -148,12 +130,12 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     expect(button.getAttribute('aria-expanded')).toBe('false');
 
     await act(async () => button.click());
-    await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[2]?.click());
-    expect(onCanvas).toHaveBeenCalledWith('storyboard');
+    await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[0]?.click());
+    expect(onCanvas).toHaveBeenCalledWith();
     expect(document.querySelector('[role="menu"]')).toBeNull();
 
     await act(async () => button.click());
-    await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[5]?.click());
+    await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[1]?.click());
     expect(onAdd).toHaveBeenCalledWith('character');
   } finally {
     await cleanup();
@@ -163,5 +145,29 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
 it('covers every tool with a tool colour and every menu entry with a canvas colour', () => {
   for (const { type, menuOnly } of TOOLS)
     if (!menuOnly) expect(Object.hasOwn(toolColor, type)).toBe(true);
-  for (const template of CANVAS_TEMPLATES) expect(Object.hasOwn(kindColor, template)).toBe(true);
+});
+
+it('adds the voice recorder to the dock when recording is available', async () => {
+  const record = vi.fn();
+  const view = await renderToolbar(record);
+  try {
+    const mic = view.host.querySelector<HTMLButtonElement>('.toolbar__btn--mic');
+    expect(mic).not.toBeNull();
+    mic?.click();
+    expect(record).toHaveBeenCalledOnce();
+    expect(view.host.querySelectorAll('button')).toHaveLength(16);
+  } finally {
+    await view.cleanup();
+  }
+});
+
+it('omits empty keyboard shortcuts from the voice recorder', async () => {
+  const view = await renderToolbar(vi.fn());
+  try {
+    expect(view.host.querySelector('.toolbar__btn--mic')?.hasAttribute('aria-keyshortcuts')).toBe(
+      false,
+    );
+  } finally {
+    await view.cleanup();
+  }
 });

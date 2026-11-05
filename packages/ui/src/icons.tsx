@@ -5,6 +5,7 @@ import { type ContentKind, kindStyle } from './kind-color.ts';
 
 /** Line icons from the design reference: 24 grid, 1.6 stroke, round caps. */
 const paths = {
+  report: <path d="M4 4h16v12H9l-5 4zM12 7v4M12 13.5v.01" />,
   comment: <path d="M4 4h16v12H9l-5 4zM8 8h8M8 12h5" />,
   bell: <path d="M5 17h14l-2-3V9a5 5 0 0 0-10 0v5zM10 20h4M12 2v2" />,
   clock: (
@@ -300,6 +301,32 @@ const paths = {
       <path d="M16.5 13v7M13 16.5h7" />
     </>
   ),
+  rowAdd: (
+    <>
+      <path d="M3 4h18v9H3zM3 8h18M12 16v6M9 19h6" />
+    </>
+  ),
+  rowRemove: (
+    <>
+      <path d="M3 4h18v9H3zM3 8h18M9 19h6" />
+    </>
+  ),
+  columnAdd: (
+    <>
+      <path d="M3 3h10v18H3zM8 3v18M16 12h6M19 9v6" />
+    </>
+  ),
+  columnRemove: (
+    <>
+      <path d="M3 3h10v18H3zM8 3v18M16 12h6" />
+    </>
+  ),
+  textColor: (
+    <>
+      <path d="M4 17L10 3l6 14M6 12h8M3 21h13" />
+      <circle cx="20" cy="19" r="2" />
+    </>
+  ),
   grid: <path d="M4 9h16M4 15h16M9 4v16M15 4v16" />,
   eye: (
     <>
@@ -315,6 +342,13 @@ const paths = {
       <path d="M5 18c3-7 7-10 14-11" />
       <path d="M15 4l4 3-3 4" />
       <circle cx="5" cy="18" r="1.5" />
+    </>
+  ),
+  lineWidth: (
+    <>
+      <path d="M4 6h16" strokeWidth="1" />
+      <path d="M4 11.5h16" strokeWidth="2" />
+      <path d="M4 18h16" strokeWidth="3.5" />
     </>
   ),
   ruler: <path d="M3 15L15 3l6 6L9 21zM7 11l2 2M10 8l2 2M13 5l2 2" />,

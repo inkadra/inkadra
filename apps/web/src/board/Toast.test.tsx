@@ -3,6 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
+import { setFeedbackStatus } from '../feedback/state.ts';
 import { TOAST_MS, Toast } from './chrome.tsx';
 
 vi.mock('react-i18next', () => ({
@@ -81,4 +82,27 @@ it('undoes in one step, and drops Undo once the history moves on', async () => {
   expect(button('board.undo')).toBeUndefined();
   expect(button('board.show')).toBeDefined();
   expect(button('board.toastClose')).toBeDefined();
+});
+
+it('offers to report a failure, and only a failure, while reporting is on', async () => {
+  const open = vi.fn();
+  window.addEventListener('inkadra:feedback', open);
+  await act(async () => root.render(<Toast text="Failed" error onClose={() => {}} />));
+  expect(button('feedback.report')).toBeUndefined();
+  await act(async () =>
+    setFeedbackStatus({
+      enabled: true,
+      guest: false,
+      destination: 'inbox',
+      retentionDays: 90,
+      deviceVideos: true,
+    }),
+  );
+  await act(async () => root.render(<Toast text="Saved" ok onClose={() => {}} />));
+  expect(button('feedback.report')).toBeUndefined();
+  await act(async () => root.render(<Toast text="Failed" error onClose={() => {}} />));
+  await act(async () => button('feedback.report')?.click());
+  expect((open.mock.calls[0]?.[0] as CustomEvent | undefined)?.detail).toEqual({ title: 'Failed' });
+  window.removeEventListener('inkadra:feedback', open);
+  await act(async () => setFeedbackStatus(null));
 });

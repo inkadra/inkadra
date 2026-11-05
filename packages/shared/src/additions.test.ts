@@ -8,6 +8,7 @@ import {
   BoardVersionConflict,
   ClipRequest,
   Comment,
+  DEFAULT_SHOT_CATALOGS,
   GuestSession,
   Notification,
   OutcomeUnknown,
@@ -105,6 +106,7 @@ describe('contract additions of API 0.5.0', () => {
     };
     both(GuestSession, session, { sharedBy: 'Giulia' });
     both(GuestSession, session, { sharedBy: null });
+    both(GuestSession, session, { shotCatalogs: DEFAULT_SHOT_CATALOGS });
   });
 
   it('reads pick summaries with and without thumbnails', () => {
