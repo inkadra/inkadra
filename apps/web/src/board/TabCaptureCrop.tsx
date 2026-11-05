@@ -3,6 +3,7 @@ import type { ImageCrop } from '@inkadra/doc-schema';
 import { type PointerEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type CropHandle, moveCropRect, resizeCropRect } from './image-crop.ts';
+import { HandleCurve, SQUARE_CORNER } from './ResizeHandles.tsx';
 
 const CORNERS = ['nw', 'ne', 'sw', 'se'] as const;
 const KEY_STEP = 0.01;
@@ -98,7 +99,9 @@ export function TabCaptureCrop({
                 e.stopPropagation();
                 onCrop(resizeCropRect(crop, corner, step[0], step[1], width, height));
               }}
-            />
+            >
+              <HandleCurve corner={corner} d={SQUARE_CORNER} />
+            </button>
           ))}
         </div>
       </div>

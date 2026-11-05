@@ -160,9 +160,8 @@ for (const width of [1280, 390]) {
       const hit = (await handle.boundingBox())!;
       expect(hit.width).toBeGreaterThanOrEqual(24);
       expect(hit.height).toBeGreaterThanOrEqual(24);
-      expect(await handle.evaluate((el) => getComputedStyle(el, '::after').borderRadius)).toBe(
-        '50%',
-      );
+      // The handle is a short curve hugging the corner, not a dot.
+      await expect(handle.locator('.handle-curve__line')).toHaveCSS('stroke-width', '3px');
       await shot('handles');
       // The bar keeps its place over the card while a top corner is dragged and while the board
       // zooms, frame by frame, not only once the gesture settles.
