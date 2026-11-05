@@ -475,7 +475,7 @@ describe('ExportDialog preset state and customization', () => {
     expect(radio('File originale')).toBeUndefined();
     await act(async () => radio('Originale')?.click());
     expect(radio('Anteprima')?.checked).toBe(true);
-    expect(host.textContent).toContain('Fino a 2048 px sul lato lungo, senza metadati.');
+    expect(host.textContent).toContain('Un\'immagine ridotta, senza metadati.');
     await act(async () => radio('File originale')?.click());
     expect(radio('File originale')?.checked).toBe(true);
     expect(radio('PNG')).toBeUndefined();
@@ -505,7 +505,7 @@ describe('ExportDialog preset state and customization', () => {
       await act(async () => radio('Originale')?.click());
       expect(radio('File originale')?.disabled).toBe(true);
       expect(radio('Anteprima')?.checked).toBe(true);
-      expect(host.textContent).toContain('richiede il permesso di modifica');
+      expect(host.textContent).toContain('solo guardare non può scaricare');
     }
     await renderImage(new Set(['a']), freshSettings, 'commenter');
     expect(radio('File originale')?.disabled).toBe(false);
