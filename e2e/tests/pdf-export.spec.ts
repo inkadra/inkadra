@@ -936,16 +936,16 @@ test('bands take the chosen colour in any theme, and a selection downloads its f
       'base64',
     );
   const [red, blue] = [await solid('#d02020'), await solid('#2040d0')];
-  const first = await uploadFile(base, cookie, project.id, {
+  const first = (await uploadFile(base, cookie, project.id, {
     body: red,
     name: 'one.png',
     type: 'image/png',
-  });
-  const second = await uploadFile(base, cookie, project.id, {
+  })) as string;
+  const second = (await uploadFile(base, cookie, project.id, {
     body: blue,
     name: 'two.png',
     type: 'image/png',
-  });
+  })) as string;
   await waitForAssets(base, cookie, [first, second]);
   const doc = new Y.Doc();
   initBoardDoc(doc, project.rootBoardId);
