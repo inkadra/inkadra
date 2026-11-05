@@ -23,8 +23,12 @@ export const IMAGE_CONCURRENCY = 6;
  * original file (decision 0038): thumbnails are what everyone who can open the board sees.
  */
 export function thumbnailFor(asset: Asset, pixels: number): string | null {
+  return variantFor(asset, pixels)?.url ?? null;
+}
+
+export function variantFor(asset: Asset, pixels: number) {
   const variants = [...asset.variants].sort((a, b) => a.width - b.width);
-  return (variants.find((v) => v.width >= pixels) ?? variants.at(-1))?.url ?? null;
+  return variants.find((v) => v.width >= pixels) ?? variants.at(-1);
 }
 
 async function assetOf(id: string): Promise<Asset | null> {

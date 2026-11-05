@@ -81,6 +81,10 @@ export interface Page {
   width: number;
   height: number;
   ops: Op[];
+  /** What is under the operations: left out, white paper; null, nothing (a transparent PNG). */
+  background?: string | null;
+  /** A picture at its own pixels: the most a PNG or JPEG may enlarge it. */
+  maxScale?: number;
 }
 
 /** Natural size of a picture, used to keep its proportions. */

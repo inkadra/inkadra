@@ -42,6 +42,26 @@ describe('readPreferences', () => {
     });
   });
 
+  it('reads rows saved before JPEG and the picture options, and drops values it cannot read', () => {
+    expect(readPreferences({ format: 'png', comments: true })).toEqual({
+      ...DEFAULT_EXPORT_PREFERENCES,
+      format: 'png',
+      comments: true,
+    });
+    expect(readPreferences({ format: 'png' })).not.toHaveProperty('imageAspect');
+    const picture = { format: 'jpeg', imageFormat: 'jpeg', imageAspect: '9:16', imageFit: 'fit' };
+    expect(readPreferences(picture)).toEqual({ ...DEFAULT_EXPORT_PREFERENCES, ...picture });
+    expect(readPreferences({ imageAspect: '3:2', imageFit: 'stretch' })).toEqual(
+      DEFAULT_EXPORT_PREFERENCES,
+    );
+  });
+
+  it('reads the colour of the bands, and rows that have none or a bad one', () => {
+    expect(readPreferences({ imageBandColor: '#3A5A7C' }).imageBandColor).toBe('#3A5A7C');
+    expect(readPreferences({ format: 'png' })).not.toHaveProperty('imageBandColor');
+    expect(readPreferences({ imageBandColor: 'url(evil)' })).toEqual(DEFAULT_EXPORT_PREFERENCES);
+  });
+
   it('reads the theme the same way', () => {
     expect(readTheme(null)).toEqual(DEFAULT_PROJECT_THEME);
     expect(readTheme({ accent: 'teal', headingFont: 'Papyrus' })).toEqual({
@@ -207,6 +227,32 @@ describe.skipIf(!url)('project export settings', () => {
       400,
     );
     expect((await request('owner', 'PATCH', settingsPath(), { unknown: 1 })).statusCode).toBe(400);
+  });
+
+  it('keeps the picture options when an older client saves only the fields it knows', async () => {
+    const picture = { format: 'jpeg', imageFormat: 'jpeg', imageAspect: '4:5', imageFit: 'fit' };
+    let res = await request('owner', 'PATCH', settingsPath(), picture);
+    expect(res.statusCode).toBe(200);
+    expect(ExportSettings.parse(res.json())).toMatchObject(picture);
+    res = await request('owner', 'PATCH', settingsPath(), { format: 'pdf' });
+    expect(res.json()).toMatchObject({ ...picture, format: 'pdf' });
+    expect(
+      (await request('owner', 'PATCH', settingsPath(), { imageAspect: '3:2' })).statusCode,
+    ).toBe(400);
+  });
+
+  it('stores the colour of the bands and refuses anything but a hex colour', async () => {
+    let res = await request('owner', 'PATCH', settingsPath(), { imageBandColor: '#3A5A7C' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().imageBandColor).toBe('#3A5A7C');
+    res = await request('guest', 'GET', settingsPath());
+    expect(res.json().imageBandColor).toBe('#3A5A7C');
+    for (const imageBandColor of ['red', '#FFF', 'url(evil)']) {
+      res = await request('owner', 'PATCH', settingsPath(), { imageBandColor });
+      expect(res.statusCode).toBe(400);
+    }
+    res = await request('owner', 'PATCH', settingsPath(), { format: 'pdf' });
+    expect(res.json().imageBandColor).toBe('#3A5A7C');
   });
 
   it('keeps a theme that follows the project colour until an accent is chosen', async () => {

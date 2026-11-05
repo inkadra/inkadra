@@ -76,6 +76,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0070](0070-frame-editing-and-capture.md)            | Frames: pictures moved in, full-screen Draw, stills from the original video            |
 | [0071](0071-simpler-set-plan.md)                     | A simpler set plan: two bars, proportional icons, routes                               |
 | [0071](0071-storyboard-catalogs.md)                  | Shot size, angle and movement as instance catalogs                                     |
+| [0072](0072-social-image-formats.md)                 | Pictures in social formats, with bars in the board background colour                   |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

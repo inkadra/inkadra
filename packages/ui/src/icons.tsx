@@ -177,6 +177,7 @@ const paths = {
   minus: <path d="M5 12h14" />,
   fit: <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />,
   chevronRight: <path d="M10 7l5 5-5 5" />,
+  chevronLeft: <path d="M14 7l-5 5 5 5" />,
   alignLeft: <path d="M4 3v18M8 7h10M8 13h6" />,
   alignCenter: <path d="M12 3v18M6 7h12M8 13h8" />,
   alignRight: <path d="M20 3v18M6 7h10M10 13h6" />,

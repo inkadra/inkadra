@@ -9,7 +9,17 @@ import { ProjectIcon } from './projects.ts';
  * everyone who can open one of its boards, changed by project editors and owners.
  */
 
-export const ExportFormat = z.enum(['pdf', 'png']);
+export const ExportFormat = z.enum(['pdf', 'png', 'jpeg']);
+/** The file formats of a picture; JPEG is written at quality 90, in sRGB, with no transparency. */
+export const ExportImageFormat = z.enum(['png', 'jpeg']);
+export type ExportImageFormat = z.infer<typeof ExportImageFormat>;
+/** Shape of an exported picture. Not a page: the 16:9 here is 1920 × 1080 px, `slide` is a page. */
+export const ExportImageAspect = z.enum(['original', '4:5', '1:1', '9:16', '16:9']);
+export type ExportImageAspect = z.infer<typeof ExportImageAspect>;
+export const ExportImageFit = z.enum(['fit', 'fill']);
+export type ExportImageFit = z.infer<typeof ExportImageFit>;
+/** `#RRGGBB`. Stored, so checked here: it is painted into files and into the page's style. */
+export const ExportBandColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 export const ExportPaper = z.enum(['a4', 'letter', 'slide']);
 export const ExportOrientation = z.enum(['portrait', 'landscape']);
 export const ExportAudience = z.enum(['client', 'team']).openapi({
@@ -81,6 +91,25 @@ export const ExportPreferences = z
     }),
     callSheet: z.boolean().openapi({
       description: 'PDF for the team: the call sheet of every shooting day of the board.',
+    }),
+    imageFormat: ExportImageFormat.optional().openapi({
+      description: 'The last picture format used. Left out until a picture is exported.',
+    }),
+    imageAspect: ExportImageAspect.optional().openapi({
+      description:
+        'The last picture shape used. `original` keeps the proportions of the content; the ' +
+        'others are 1080 px on the short side. Left out until a picture is exported.',
+    }),
+    imageFit: ExportImageFit.optional().openapi({
+      description:
+        '`fit`: all of the content, with bands of `imageBandColor`. `fill`: fills the shape and ' +
+        'crops the edges. Left out until a picture is exported.',
+    }),
+    imageBandColor: ExportBandColor.optional().openapi({
+      description:
+        'The colour of the bands of `fit`, also under the transparent areas of a JPEG, as ' +
+        '`#RRGGBB`: the same for everyone, whatever their theme. Left out until a picture is ' +
+        'exported, and black until then.',
     }),
   })
   .openapi('ExportPreferences');

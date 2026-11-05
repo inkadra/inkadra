@@ -16,6 +16,7 @@ import { isApproved } from '../film/film-status.ts';
 import { resolveTheme } from '../theme.ts';
 import { startUpload } from '../uploads.ts';
 import type { ExportRequest, ExportWhat } from './engine.ts';
+import { DEFAULT_BAND, type ImageOptions } from './image-format.ts';
 import type { PaperSize } from './layout.ts';
 
 /** Where the dialog was opened from: the canvas offers board scopes, film views their own. */
@@ -62,7 +63,7 @@ export function hasApprovedFrame(
   return false;
 }
 
-export type PresetChoices = Omit<ExportRequest, 'logo' | 'theme'>;
+export type PresetChoices = Omit<ExportRequest, 'logo' | 'theme' | 'image'>;
 
 /**
  * The existing export options (decision 0038/0039) a preset fills in. On an ordinary canvas
@@ -299,6 +300,26 @@ export function initialExportState(
 }
 
 /**
+ * What the picture options start from: what the project last used (older rows have none). A menu
+ * entry for a picture starts on the mockup's 4:5; the board's export on "Original", the page as it
+ * is. The focus point is never saved.
+ */
+export function initialImage(
+  loaded: Partial<ExportPreferences> | null,
+  imageEntry: boolean,
+): ImageOptions & { format: 'png' | 'jpeg' } {
+  const last = loaded?.format === 'jpeg' || loaded?.format === 'png' ? loaded.format : 'png';
+  return {
+    format: loaded?.imageFormat ?? last,
+    aspect: loaded?.imageAspect ?? (imageEntry ? '4:5' : 'original'),
+    fit: loaded?.imageFit ?? 'fill',
+    many: null,
+    foci: {},
+    band: loaded?.imageBandColor?.toUpperCase() ?? DEFAULT_BAND,
+  };
+}
+
+/**
  * The project's shared export settings (decision 0039): the dialog starts from them, editors
  * save their last choices back, and the logo is an asset of the project.
  */
@@ -340,9 +361,15 @@ export function preferencesPatch(
     'approvedOnly',
     'kickoffSummary',
     'callSheet',
+    'imageFormat',
+    'imageAspect',
+    'imageFit',
+    'imageBandColor',
   ] as const;
   for (const key of keys) {
-    if (stored[key] !== chosen[key]) (out as Record<string, unknown>)[key] = chosen[key];
+    // A PDF says nothing about the picture options: they stay as they were.
+    if (chosen[key] !== undefined && stored[key] !== chosen[key])
+      (out as Record<string, unknown>)[key] = chosen[key];
   }
   const storedPaper = stored.paper ?? localePaper(language);
   if (chosen.paper !== storedPaper) out.paper = chosen.paper;

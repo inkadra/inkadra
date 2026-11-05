@@ -3455,7 +3455,8 @@
             "type": "string",
             "enum": [
               "pdf",
-              "png"
+              "png",
+              "jpeg"
             ]
           },
           "framesPerPage": {
@@ -3535,6 +3536,38 @@
           "callSheet": {
             "type": "boolean",
             "description": "PDF for the team: the call sheet of every shooting day of the board."
+          },
+          "imageFormat": {
+            "type": "string",
+            "enum": [
+              "png",
+              "jpeg"
+            ],
+            "description": "The last picture format used. Left out until a picture is exported."
+          },
+          "imageAspect": {
+            "type": "string",
+            "enum": [
+              "original",
+              "4:5",
+              "1:1",
+              "9:16",
+              "16:9"
+            ],
+            "description": "The last picture shape used. `original` keeps the proportions of the content; the others are 1080 px on the short side. Left out until a picture is exported."
+          },
+          "imageFit": {
+            "type": "string",
+            "enum": [
+              "fit",
+              "fill"
+            ],
+            "description": "`fit`: all of the content, with bands of `imageBandColor`. `fill`: fills the shape and crops the edges. Left out until a picture is exported."
+          },
+          "imageBandColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "description": "The colour of the bands of `fit`, also under the transparent areas of a JPEG, as `#RRGGBB`: the same for everyone, whatever their theme. Left out until a picture is exported, and black until then."
           }
         },
         "required": [
@@ -3572,7 +3605,8 @@
             "type": "string",
             "enum": [
               "pdf",
-              "png"
+              "png",
+              "jpeg"
             ]
           },
           "framesPerPage": {
@@ -3652,6 +3686,38 @@
           "callSheet": {
             "type": "boolean",
             "description": "PDF for the team: the call sheet of every shooting day of the board."
+          },
+          "imageFormat": {
+            "type": "string",
+            "enum": [
+              "png",
+              "jpeg"
+            ],
+            "description": "The last picture format used. Left out until a picture is exported."
+          },
+          "imageAspect": {
+            "type": "string",
+            "enum": [
+              "original",
+              "4:5",
+              "1:1",
+              "9:16",
+              "16:9"
+            ],
+            "description": "The last picture shape used. `original` keeps the proportions of the content; the others are 1080 px on the short side. Left out until a picture is exported."
+          },
+          "imageFit": {
+            "type": "string",
+            "enum": [
+              "fit",
+              "fill"
+            ],
+            "description": "`fit`: all of the content, with bands of `imageBandColor`. `fill`: fills the shape and crops the edges. Left out until a picture is exported."
+          },
+          "imageBandColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "description": "The colour of the bands of `fit`, also under the transparent areas of a JPEG, as `#RRGGBB`: the same for everyone, whatever their theme. Left out until a picture is exported, and black until then."
           },
           "logoAssetId": {
             "type": [

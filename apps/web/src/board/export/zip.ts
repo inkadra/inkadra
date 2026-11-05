@@ -7,10 +7,17 @@ const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
   return c >>> 0;
 });
 
-function crc32(bytes: Uint8Array): number {
+/** Read in chunks: an original file can be far larger than what fits in one array. */
+async function crc32(blob: Blob): Promise<number> {
   let c = 0xffffffff;
-  for (const b of bytes) c = (CRC_TABLE[(c ^ b) & 0xff] as number) ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
+  const reader = blob.stream().getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return (c ^ 0xffffffff) >>> 0;
+    for (let i = 0; i < value.length; i++) {
+      c = (CRC_TABLE[(c ^ (value[i] as number)) & 0xff] as number) ^ (c >>> 8);
+    }
+  }
 }
 
 /**
@@ -26,7 +33,7 @@ export async function zipBlobs(files: readonly { name: string; blob: Blob }[]): 
   const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
   for (const { name, blob } of files) {
     const nameBytes = new TextEncoder().encode(name);
-    const crc = crc32(new Uint8Array(await blob.arrayBuffer()));
+    const crc = await crc32(blob);
     const head = new DataView(new ArrayBuffer(30));
     head.setUint32(0, 0x04034b50, true);
     head.setUint16(4, 20, true); // version needed

@@ -4,6 +4,7 @@ import {
   DEFAULT_EXPORT_PREFERENCES,
   DEFAULT_PROJECT_THEME,
   type ExportSettings,
+  type ProjectRole,
 } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -380,5 +381,148 @@ describe('ExportDialog preset state and customization', () => {
     await act(async () => bookRadio?.click());
     expect(bookRadio?.checked).toBe(true);
     expect(host.querySelector('.export__custom-body')?.textContent).toContain('whatSelection');
+  });
+
+  const renderImage = (
+    selection: Set<string>,
+    loaded: ExportSettings = freshSettings,
+    role: ProjectRole | null = 'editor',
+  ) => {
+    getMock.mockResolvedValue(loaded);
+    return act(async () => {
+      root.render(
+        <ExportDialog
+          source="canvas"
+          initialWhat="selection"
+          imageEntry
+          store={{ getSnapshot: () => ({ byId: new Map() }) } as unknown as BoardStore}
+          projectId="p1"
+          boardId="b1"
+          projectName="Spot Lagunc"
+          boardTitle="Canvas"
+          boards={null}
+          selection={selection}
+          visible={null}
+          role={role}
+          onClose={() => {}}
+        />,
+      );
+    });
+  };
+  const radio = (name: string) =>
+    [...host.querySelectorAll<HTMLLabelElement>('.ink-radio-group__option, .ink-tile')]
+      .find((el) => el.textContent?.trim() === name)
+      ?.querySelector<HTMLInputElement>('input');
+
+  it('opens a picture from a menu on the image options, with no presets', async () => {
+    await renderImage(new Set(['a']));
+    expect(radio('PNG')?.checked).toBe(true);
+    expect(radio('4:5')?.checked).toBe(true);
+    expect(radio('Riempi')?.checked).toBe(true);
+    expect(host.querySelector('.export__preset-input')).toBeNull();
+    expect(host.textContent).toContain('I preset 1–3 sono documenti PDF');
+    // One card: no choice of how many images.
+    expect(radio('Una per card')).toBeUndefined();
+    await act(async () => radio('PDF')?.click());
+    expect(host.querySelector('.export__preset-input')).not.toBeNull();
+    expect(host.textContent).not.toContain('I preset 1–3 sono documenti PDF');
+  });
+
+  it('defaults to one image per card with a social format, and to one picture with Original', async () => {
+    await renderImage(new Set(['a', 'b']));
+    expect(radio('Una per card')?.checked).toBe(true);
+    await act(async () => radio('Originale')?.click());
+    expect(radio('Una sola')?.checked).toBe(true);
+    // "Original" has no bands and nothing to fit.
+    expect(radio('Contieni')).toBeUndefined();
+    expect(radio('Nero')).toBeUndefined();
+    await act(async () => radio('1:1')?.click());
+    expect(radio('Una per card')?.checked).toBe(true);
+    // A choice made by hand stays, whatever the shape.
+    await act(async () => radio('Una sola')?.click());
+    await act(async () => radio('16:9')?.click());
+    expect(radio('Una sola')?.checked).toBe(true);
+  });
+
+  it('offers the colour of the bands with Fit only, black until the project remembers one', async () => {
+    await renderImage(new Set(['a']));
+    expect(radio('Nero')).toBeUndefined();
+    await act(async () => radio('Contieni')?.click());
+    expect(radio('Nero')?.checked).toBe(true);
+    await act(async () => radio('Bianco')?.click());
+    expect(radio('Bianco')?.checked).toBe(true);
+    expect(host.querySelector('.colorpicker')).toBeNull();
+    await act(async () => radio('Colore…')?.click());
+    expect(radio('Colore…')?.checked).toBe(true);
+    expect(host.querySelector('.colorpicker')).not.toBeNull();
+    await act(async () => radio('Riempi')?.click());
+    expect(radio('Nero')).toBeUndefined();
+  });
+
+  it('starts on a colour the project remembers, as Colore…', async () => {
+    await renderImage(new Set(['a']), {
+      ...freshSettings,
+      imageAspect: '9:16',
+      imageFit: 'fit',
+      imageBandColor: '#3a5a7c',
+      updatedAt: '2026-10-01T12:00:00.000Z',
+    });
+    expect(radio('Colore…')?.checked).toBe(true);
+  });
+
+  it('offers the original file with Original only, without format, fit or bands', async () => {
+    await renderImage(new Set(['a']));
+    expect(radio('File originale')).toBeUndefined();
+    await act(async () => radio('Originale')?.click());
+    expect(radio('Anteprima')?.checked).toBe(true);
+    expect(host.textContent).toContain("Un'immagine ridotta, senza metadati.");
+    await act(async () => radio('File originale')?.click());
+    expect(radio('File originale')?.checked).toBe(true);
+    expect(radio('PNG')).toBeUndefined();
+    expect(radio('JPEG')).toBeUndefined();
+    expect(radio('Contieni')).toBeUndefined();
+    // Not a remembered choice: the footer's note about it goes too.
+    expect(host.querySelector('.export__remembered')).toBeNull();
+    expect(host.querySelector('.export__field--warn')).not.toBeNull();
+  });
+
+  it('starts on Anteprima every time the dialog opens', async () => {
+    await renderImage(new Set(['a']));
+    await act(async () => radio('Originale')?.click());
+    await act(async () => radio('File originale')?.click());
+    expect(radio('File originale')?.checked).toBe(true);
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await renderImage(new Set(['a']));
+    await act(async () => radio('Originale')?.click());
+    expect(radio('Anteprima')?.checked).toBe(true);
+    expect(patchMock).not.toHaveBeenCalled();
+  });
+
+  it('disables the original file for people who can only view, and says why', async () => {
+    for (const role of ['viewer', null] as const) {
+      await renderImage(new Set(['a']), freshSettings, role);
+      await act(async () => radio('Originale')?.click());
+      expect(radio('File originale')?.disabled).toBe(true);
+      expect(radio('Anteprima')?.checked).toBe(true);
+      expect(host.textContent).toContain('solo guardare non può scaricare');
+    }
+    await renderImage(new Set(['a']), freshSettings, 'commenter');
+    expect(radio('File originale')?.disabled).toBe(false);
+  });
+
+  it('starts from the picture options the project remembers', async () => {
+    await renderImage(new Set(['a']), {
+      ...freshSettings,
+      imageFormat: 'jpeg',
+      imageAspect: '9:16',
+      imageFit: 'fit',
+      updatedAt: '2026-10-01T12:00:00.000Z',
+    });
+    expect(radio('JPEG')?.checked).toBe(true);
+    expect(radio('9:16')?.checked).toBe(true);
+    expect(radio('Contieni')?.checked).toBe(true);
+    // The use comes from a key without a colon, which i18next would read as a namespace.
+    expect(host.textContent).toContain('Storia e video verticale · 1080 × 1920 px');
   });
 });

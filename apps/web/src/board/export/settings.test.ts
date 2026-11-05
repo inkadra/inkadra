@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   hasApprovedFrame,
   initialExportState,
+  initialImage,
   LogoTimeoutError,
   localePaper,
   logoProblem,
@@ -307,6 +308,58 @@ describe('export settings on the client', () => {
         'it-IT',
       ),
     ).toEqual({ preset: null });
+  });
+
+  it('starts the picture options from what the project remembers, old rows included', () => {
+    // A row saved before #315 has none: a card's menu offers 4:5, the board export the page as is.
+    expect(initialImage(DEFAULT_EXPORT_PREFERENCES, true)).toMatchObject({
+      format: 'png',
+      aspect: '4:5',
+      fit: 'fill',
+      many: null,
+    });
+    expect(initialImage(DEFAULT_EXPORT_PREFERENCES, false).aspect).toBe('original');
+    expect(initialImage(null, true).format).toBe('png');
+    // Rows saved before the colour of the bands, and rows with one, in either case.
+    expect(initialImage(DEFAULT_EXPORT_PREFERENCES, true).band).toBe('#000000');
+    expect(initialImage({ imageBandColor: '#3a5a7c' }, true).band).toBe('#3A5A7C');
+    const remembered = initialImage(
+      { ...DEFAULT_EXPORT_PREFERENCES, imageFormat: 'jpeg', imageAspect: '9:16', imageFit: 'fit' },
+      true,
+    );
+    expect(remembered).toMatchObject({ format: 'jpeg', aspect: '9:16', fit: 'fit', foci: {} });
+  });
+
+  it('saves the picture options when they change, and a PDF leaves them alone', () => {
+    const chosen = { ...DEFAULT_EXPORT_PREFERENCES, paper: 'a4' as const };
+    expect(
+      preferencesPatch(
+        DEFAULT_EXPORT_PREFERENCES,
+        {
+          ...chosen,
+          imageFormat: 'jpeg',
+          imageAspect: '4:5',
+          imageFit: 'fit',
+          imageBandColor: '#FFFFFF',
+        },
+        'it-IT',
+      ),
+    ).toEqual({
+      imageFormat: 'jpeg',
+      imageAspect: '4:5',
+      imageFit: 'fit',
+      imageBandColor: '#FFFFFF',
+    });
+    const stored = { ...DEFAULT_EXPORT_PREFERENCES, imageAspect: '4:5' as const };
+    expect(preferencesPatch(stored, chosen, 'it-IT')).toEqual({});
+  });
+
+  it('a stored JPEG does not stop the presets from matching a PDF', () => {
+    const pitch = presetChoices('client-pitch', 'canvas', 'board', 'it-IT');
+    expect(matchesPreset({ ...pitch, format: 'jpeg' }, 'client-pitch', 'canvas', 'it-IT')).toBe(
+      false,
+    );
+    expect(matchesPreset(pitch, 'client-pitch', 'canvas', 'it-IT')).toBe(true);
   });
 
   it('accepts small PNG and JPEG logos only', () => {
