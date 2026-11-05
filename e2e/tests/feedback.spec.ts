@@ -230,9 +230,26 @@ test('leaves navigation, account and names out of the automatic screenshot', asy
     });
     await route.fulfill({ response, json });
   });
+  await page.route('**/api/v1/me/tasks', (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            projectId: project.id,
+            projectName: name,
+            boardId: project.rootBoardId,
+            boardTitle: 'Board',
+            elementId: 'element',
+            itemId: 'item',
+            text: 'Compito Riservato',
+          },
+        ],
+      },
+    }),
+  );
   const hidden = (text: string) => {
     // Not `toContain`: a failure would print the whole page, fonts included.
-    for (const secret of [name, 'Giulia', 'Persona Invitata'])
+    for (const secret of [name, 'Giulia', 'Persona Invitata', 'Compito Riservato'])
       expect(text.includes(secret), secret).toBe(false);
     // The copy of this panel can overflow where the page does not: no scrollbars in the image.
     if (text.includes('class="ink-main'))
@@ -246,6 +263,7 @@ test('leaves navigation, account and names out of the automatic screenshot', asy
     await page.goto('/');
     // They are really on screen: without the marks they would be drawn.
     await expect(page.getByText('Persona Invitata').first()).toBeVisible();
+    await expect(page.getByText('Compito Riservato').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
     hidden(await shootScreenshot(page, `capture-home-${width}`));
 
