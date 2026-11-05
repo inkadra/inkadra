@@ -128,11 +128,21 @@ docker compose run --rm --no-deps --user node --entrypoint bwrap office-worker \
 Then upload a DOCX: its card should show the first page. If the card only shows an icon, the
 worker log says `Office conversion unavailable` with the reason.
 
-**Other hosts.** Ubuntu hosts with AppArmor (the default `docker-default` profile denies
-`mount`, and 23.10+ restricts unprivileged user namespaces) need an AppArmor profile that allows
-them for this container (or `apparmor=unconfined` for the worker alone); rootless Docker and
-Podman need `kernel.unprivileged_userns_clone`/`user.max_user_namespaces` above zero. These were
-not tested with this change. Do not enable privileged mode or remove sandboxing to make it work.
+**Other hosts.** The worker log says what the sandbox hit. On a Linux host where Docker applies
+AppArmor, the seccomp profile is not enough, and these two lines of the log each have one fix, for
+the worker alone:
+
+| Worker log                                                  | Add to the worker's `security_opt` |
+| ----------------------------------------------------------- | ---------------------------------- |
+| `bwrap: Failed to make / slave: Permission denied`          | `apparmor=unconfined`              |
+| `bwrap: Can't mount proc on /proc: Operation not permitted` | `systempaths=unconfined`           |
+
+Both were checked on such a host, together, with `cap_drop: [ALL]` and `no-new-privileges`. They
+take protections off that container, which holds your database credentials, while the converter
+inside stays sandboxed: if you prefer, write an AppArmor profile that allows only these calls.
+Ubuntu 23.10+ also restricts unprivileged user namespaces. Rootless Docker and Podman need
+`kernel.unprivileged_userns_clone`/`user.max_user_namespaces` above zero; those were not tested.
+Do not enable privileged mode or remove sandboxing to make it work.
 Without `bubblewrap`, `prlimit`, LibreOffice, a permitted namespace or a supported architecture
 (x86-64 and arm64) the worker keeps the icon card.
 
