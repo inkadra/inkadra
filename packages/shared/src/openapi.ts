@@ -243,7 +243,7 @@ for (const prefix of ['/feedback', '/guest/links/{linkId}/feedback']) {
     summary:
       'Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.',
     description:
-      'Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.',
+      'Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: fifteen reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.',
     request: { ...params, body: { required: true, ...json(CreateFeedback) } },
     responses: {
       201: { description: 'Durably accepted', ...json(FeedbackReceipt) },
