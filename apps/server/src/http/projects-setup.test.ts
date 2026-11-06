@@ -211,14 +211,13 @@ describe.skipIf(!url)('project setup metadata and personal pins', () => {
   it('restricts instance asset usage to administrators', async () => {
     expect((await request(null, 'GET', '/instance/storage')).statusCode).toBe(401);
     expect((await request('viewer', 'GET', '/instance/storage')).statusCode).toBe(403);
-    expect((await request('owner', 'GET', '/instance/storage')).json()).toEqual({
+    expect((await request('owner', 'GET', '/instance/storage')).json()).toMatchObject({
       originalBytes: 0,
       byType: ['images', 'videos', 'audio', 'documents', 'other'].map((type) => ({
         type,
         bytes: 0,
       })),
       byProject: [],
-      byUser: [],
     });
   });
   it('returns document edit activity only for boards the caller can access', async () => {

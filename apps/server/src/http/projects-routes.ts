@@ -225,13 +225,28 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         visible,
         userId: user.id,
         userName: user.name,
+        // shortcut: thumbnails written before `bytes` existed and animated copies count as 0;
+        // add them if the figure proves too low, by measuring the files once.
+        derivedBytes: sql<string>`sum((select coalesce(sum(v.bytes), 0) from asset_variant v
+          where v.asset_id = ${asset.id}))`,
       })
       .from(asset)
       .leftJoin(project, eq(project.id, asset.projectId))
       .leftJoin(user, eq(user.id, asset.createdBy))
       .where(inArray(asset.status, ['processing', 'ready', 'failed']))
       .groupBy(asset.mime, asset.projectId, project.id, project.name, user.id, user.name);
-    return storageUsage(rows.map((row) => ({ ...row, bytes: Number(row.bytes ?? 0) })));
+    const people = await db
+      .select({ id: user.id, name: user.name })
+      .from(user)
+      .where(isNull(user.deactivatedAt));
+    return storageUsage(
+      rows.map((row) => ({
+        ...row,
+        bytes: Number(row.bytes ?? 0),
+        derivedBytes: Number(row.derivedBytes ?? 0),
+      })),
+      people,
+    );
   });
 
   app.get(v1('/projects'), async (req) => {

@@ -25,6 +25,7 @@ describe('original storage usage', () => {
         visible: true,
         userId: null,
         userName: null,
+        derivedBytes: 0,
       },
       {
         mime: 'video/mp4',
@@ -34,6 +35,7 @@ describe('original storage usage', () => {
         visible: false,
         userId: null,
         userName: null,
+        derivedBytes: 0,
       },
       {
         mime: 'audio/wav',
@@ -43,6 +45,7 @@ describe('original storage usage', () => {
         visible: false,
         userId: null,
         userName: null,
+        derivedBytes: 0,
       },
       {
         mime: 'application/pdf',
@@ -52,6 +55,7 @@ describe('original storage usage', () => {
         visible: true,
         userId: null,
         userName: null,
+        derivedBytes: 0,
       },
       {
         mime: 'application/zip',
@@ -61,6 +65,7 @@ describe('original storage usage', () => {
         visible: false,
         userId: null,
         userName: null,
+        derivedBytes: 0,
       },
     ]);
     expect(result.originalBytes).toBe(1150);
@@ -84,6 +89,7 @@ describe('original storage usage', () => {
       visible: true,
       userId: null,
       userName: null,
+      derivedBytes: 0,
       bytes: 100,
       mime: 'image/png',
     }));
@@ -98,19 +104,28 @@ describe('original storage usage', () => {
       visible,
       userId,
       userName: userId && `Name of ${userId}`,
+      derivedBytes: bytes / 10,
     });
-    const result = storageUsage([
-      group(100, 'a'),
-      group(50, 'b'),
-      group(200, 'a', false),
-      group(10, null),
-      group(5, null, false),
-    ]);
+    const result = storageUsage(
+      [
+        group(100, 'a'),
+        group(50, 'b'),
+        group(200, 'a', false),
+        group(10, null),
+        group(5, null, false),
+      ],
+      [
+        { id: 'a', name: 'Name of a' },
+        { id: 'idle', name: 'Idle' },
+      ],
+    );
     expect(result.byUser).toEqual([
-      { userId: 'a', name: 'Name of a', bytes: 300 },
-      { userId: 'b', name: 'Name of b', bytes: 50 },
-      { userId: null, name: null, bytes: 15 },
+      { userId: 'a', name: 'Name of a', bytes: 300, derivedBytes: 30 },
+      { userId: 'b', name: 'Name of b', bytes: 50, derivedBytes: 5 },
+      { userId: null, name: null, bytes: 15, derivedBytes: 1.5 },
+      { userId: 'idle', name: 'Idle', bytes: 0, derivedBytes: 0 },
     ]);
+    expect(result.derivedBytes).toBe(36.5);
     expect(JSON.stringify(result.byUser)).not.toContain('Secret');
   });
 });

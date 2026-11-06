@@ -76,7 +76,11 @@ function AdminGroups({ setup }: { setup: Setup }) {
         <Item
           to={href('workspace')}
           label={t('admin.storage')}
-          value={usage ? formatStorage(usage.originalBytes, i18n.language) : undefined}
+          value={
+            usage
+              ? formatStorage(usage.originalBytes + (usage.derivedBytes ?? 0), i18n.language)
+              : undefined
+          }
         />
         <Item to={href('classifications')} label={t('admin.classifications')} />
       </Group>

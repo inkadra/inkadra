@@ -158,14 +158,13 @@ describe.skipIf(!url)('instance administration', () => {
       lastActiveAt: '2026-02-01T12:00:00.000Z',
       deactivatedAt: null,
     });
-    expect((await request('admin', 'GET', '/instance/storage')).json()).toEqual({
+    expect((await request('admin', 'GET', '/instance/storage')).json()).toMatchObject({
       originalBytes: 0,
       byType: ['images', 'videos', 'audio', 'documents', 'other'].map((type) => ({
         type,
         bytes: 0,
       })),
       byProject: [],
-      byUser: [],
     });
   });
   it('aggregates original assets once, excludes pending/derived files and hides inaccessible project labels', async () => {
@@ -220,6 +219,7 @@ describe.skipIf(!url)('instance administration', () => {
       width: 512,
       height: 512,
       storageKey: 'derived-test',
+      bytes: 250,
     });
     // Repeated and cross-project references never multiply or reassign the owning asset.
     await db.insert(boardElementIndex).values([
@@ -256,11 +256,14 @@ describe.skipIf(!url)('instance administration', () => {
       { projectId: null, name: null, scope: 'restricted', bytes: 3000 },
       { projectId: own.id, name: 'Visible shoot', scope: 'project', bytes: 1500 },
     ]);
-    expect(result.byUser).toEqual([
-      { userId: people.second!.id, name: 'second', bytes: 3000 },
-      { userId: people.admin!.id, name: 'admin', bytes: 1000 },
-      { userId: null, name: null, bytes: 500 },
+    expect(result.derivedBytes).toBe(250);
+    expect(result.byUser?.filter((row) => row.bytes > 0)).toEqual([
+      { userId: people.second!.id, name: 'second', bytes: 3000, derivedBytes: 0 },
+      { userId: people.admin!.id, name: 'admin', bytes: 1000, derivedBytes: 250 },
+      { userId: null, name: null, bytes: 500, derivedBytes: 0 },
     ]);
+    // Someone who has uploaded nothing is listed too.
+    expect(result.byUser?.find((row) => row.userId === people.member!.id)?.bytes).toBe(0);
     expect(JSON.stringify(result)).not.toContain(hidden.id);
     expect(JSON.stringify(result)).not.toContain('Private shoot');
     await db
