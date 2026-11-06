@@ -1,4 +1,4 @@
-import { Avatar, Button, IconButton, useBackdropClick } from '@inkadra/ui';
+import { Avatar, Button, IconButton, useBackdropClick, useKeyboardInset } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
 import {
   type ReactNode,
@@ -13,7 +13,7 @@ import * as Y from 'yjs';
 import { useIsPhone } from '../lib/phone.ts';
 import type { ConnectionStatus, SaveStore } from './connection.ts';
 import { syncSummary } from './header-status.tsx';
-import { NotePhoneTools, useKeyboardInset } from './NotePhoneTools.tsx';
+import { NotePhoneTools } from './NotePhoneTools.tsx';
 import { NoteBody, NoteEditor, plainText } from './note.tsx';
 import { type Peer, TYPING_PAUSE_MS, typingIn } from './presence.ts';
 import type { BoardStore } from './store.ts';

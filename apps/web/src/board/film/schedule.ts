@@ -87,3 +87,20 @@ export function nowOnDay(day: ShootingDayInput, end: number | null, now: Date): 
   if (day.date === calendarDate(yesterday) && minutes + 1440 <= last) return minutes + 1440;
   return null;
 }
+
+/**
+ * Runs `refresh` when the tab comes back into view, and every minute while it stays in view: a sheet
+ * left open on a phone follows the changes made elsewhere. Returns the function that stops it.
+ * shortcut: up to a minute late, until the server can push schedule changes.
+ */
+export function whileVisible(refresh: () => void): () => void {
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') refresh();
+  };
+  document.addEventListener('visibilitychange', onVisible);
+  const timer = setInterval(onVisible, 60_000);
+  return () => {
+    document.removeEventListener('visibilitychange', onVisible);
+    clearInterval(timer);
+  };
+}

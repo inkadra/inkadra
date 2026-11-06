@@ -580,6 +580,53 @@ export interface DialogHandle {
   requestClose: () => void;
 }
 
+/** `env(safe-area-inset-bottom)` in pixels: CSS has it, scripts don't. */
+function safeAreaBottom(): number {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;visibility:hidden;height:env(safe-area-inset-bottom)';
+  document.body.append(probe);
+  const height = probe.getBoundingClientRect().height;
+  probe.remove();
+  return height;
+}
+
+/**
+ * How far the keyboard reaches over the page. Android Chrome drawn edge to edge (seen on a Pixel 11,
+ * Chrome 156) zeroes the bottom safe area while the keyboard is up, and its visual viewport then
+ * ends that much below the keyboard's top. iOS keeps the safe area and its viewport is exact.
+ */
+export function keyboardInset(covered: number, safe: number, safeWithoutKeyboard: number): number {
+  return covered > 0 ? covered + Math.max(0, safeWithoutKeyboard - safe) : 0;
+}
+
+/** Height of the on-screen keyboard, from the visual viewport; 0 without one. */
+export function useKeyboardInset(enabled = true): number {
+  const [inset, setInset] = useState(0);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!enabled || !viewport) return;
+    // shortcut: opened with the keyboard already up, there is no reading until it closes once.
+    let safeWithoutKeyboard = 0;
+    const update = () => {
+      const covered = Math.max(
+        0,
+        Math.round(window.innerHeight - viewport.height - viewport.offsetTop),
+      );
+      const safe = safeAreaBottom();
+      if (covered === 0) safeWithoutKeyboard = safe;
+      setInset(keyboardInset(covered, safe, safeWithoutKeyboard));
+    };
+    update();
+    viewport.addEventListener('resize', update);
+    viewport.addEventListener('scroll', update);
+    return () => {
+      viewport.removeEventListener('resize', update);
+      viewport.removeEventListener('scroll', update);
+    };
+  }, [enabled]);
+  return inset;
+}
+
 /**
  * Modal dialog on the native <dialog> element (focus trap and Escape for free). A click on the
  * backdrop closes it like Escape does: `onCancel` can still keep it open.
@@ -627,6 +674,9 @@ export function Dialog({
   };
   useImperativeHandle(handle, () => ({ requestClose }));
   const backdrop = useBackdropClick(requestClose);
+  const inset = useKeyboardInset(open);
+  // Centred, a dialog's actions end up under the keyboard: keep it in what is left of the screen.
+  const top = inset > 0 ? (window.visualViewport?.offsetTop ?? 0) + 8 : 0;
   useEffect(() => {
     if (!open || !dirty) setConfirming(false);
   }, [open, dirty]);
@@ -645,6 +695,16 @@ export function Dialog({
       ref={ref}
       className="ink-dialog"
       aria-labelledby={titleId}
+      style={
+        inset > 0
+          ? {
+              top,
+              bottom: 'auto',
+              margin: '0 auto',
+              maxHeight: window.innerHeight - inset - top - 8,
+            }
+          : undefined
+      }
       {...backdrop}
       // A second Escape in a row cannot be cancelled by the browser: take Escape first.
       onKeyDown={(event) => {
