@@ -299,7 +299,7 @@ for (const theme of ['dark', 'light'] as const) {
       for (const name of [/^Importa sceneggiatura/]) {
         await expect(start.getByRole('button', { name })).toBeVisible();
       }
-      await expect(start.getByText(phone ? /dalla barra/ : /doppio clic/)).toBeVisible();
+      await expect(start.getByText(phone ? /aggiungi una nota dalla barra/ : /doppio clic/)).toBeVisible();
       await page.screenshot({ path: `${out}/empty-${phone ? 'phone' : 'desktop'}-${theme}.png` });
       if (!phone) {
         await page.getByTestId('canvas').dblclick({ position: { x: 300, y: 200 } });
