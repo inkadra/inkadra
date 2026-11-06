@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { contentCounts, FrameShape, roots, Stroke } from '@inkadra/doc-schema';
+import { contentCounts, FrameShape, roots, Stroke, UNSORTED } from '@inkadra/doc-schema';
 import type { BoardCount, BoardPreview } from '@inkadra/shared';
 import * as Y from 'yjs';
 
@@ -120,4 +120,43 @@ export function boardCounts(state?: Uint8Array): Omit<BoardCount, 'boardId'> {
   if (counts.size >= 256) counts.delete(counts.keys().next().value ?? '');
   counts.set(key, result);
   return { ...result };
+}
+
+const unsorted = new Map<string, { count: number; assetIds: string[] }>();
+
+/**
+ * Cards directly in the unsorted tray of a stored document, with their first images or videos
+ * (unchecked ids: the route keeps only ready files of the board's project).
+ * shortcut: decodes each stored document, cached by its hash; store the count with the document
+ * if accounts reach hundreds of boards.
+ */
+export function unsortedOf(state?: Uint8Array): { count: number; assetIds: string[] } {
+  if (!state) return { count: 0, assetIds: [] };
+  const key = createHash('sha256').update(state).digest('hex');
+  const cached = unsorted.get(key);
+  if (cached) return structuredClone(cached);
+  const doc = new Y.Doc();
+  const result = { count: 0, assetIds: [] as string[] };
+  try {
+    Y.applyUpdate(doc, state);
+    const cards = [...roots(doc).elements.entries()]
+      .filter(
+        (entry): entry is [string, Y.Map<unknown>] =>
+          entry[1] instanceof Y.Map && entry[1].get('parent') === UNSORTED,
+      )
+      .sort(([a], [b]) => a.localeCompare(b));
+    result.count = cards.length;
+    for (const [, el] of cards) {
+      const id = el.get('assetId') ?? el.get('imageAssetId');
+      if (typeof id === 'string' && !result.assetIds.includes(id) && result.assetIds.length < 4)
+        result.assetIds.push(id);
+    }
+  } catch {
+    return { count: 0, assetIds: [] };
+  } finally {
+    doc.destroy();
+  }
+  if (unsorted.size >= 256) unsorted.delete(unsorted.keys().next().value ?? '');
+  unsorted.set(key, structuredClone(result));
+  return result;
 }

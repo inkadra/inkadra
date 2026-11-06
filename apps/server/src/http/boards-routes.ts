@@ -32,7 +32,7 @@ import {
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedColumns } from '../board-content.ts';
-import { boardCounts, projectPreview } from '../board-preview.ts';
+import { boardCounts, projectPreview, unsortedOf } from '../board-preview.ts';
 import type { Database } from '../db/client.ts';
 import { asset, board, boardDoc, clipBoardUse, project, shareLink } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
@@ -87,6 +87,37 @@ function breadcrumb(access: BoardAccess) {
     .reverse();
 }
 
+/** Boards of a project the person belongs to, or under a board shared with them. */
+const visibleTo = (userId: string) =>
+  sql`(exists (select 1 from project_member m
+      where m.project_id = ${board.projectId} and m.user_id = ${userId} and ${live('m')})
+    or ${board.id} in (
+      with recursive granted as (
+        select g.board_id as id from board_grant g
+        where g.user_id = ${userId} and ${live('g')}
+        union
+        select c.id from board c join granted on c.parent_board_id = granted.id
+      )
+      select id from granted))`;
+
+/** Ready images and videos among `candidates` that belong to the project. */
+async function projectMedia(db: Pick<Database, 'select'>, projectId: string, candidates: string[]) {
+  const valid = candidates.filter((id) => AssetId.safeParse(id).success);
+  if (valid.length === 0) return new Set<string>();
+  const files = await db
+    .select({ id: asset.id })
+    .from(asset)
+    .where(
+      and(
+        inArray(asset.id, valid),
+        eq(asset.projectId, projectId),
+        eq(asset.status, 'ready'),
+        inArray(asset.kind, ['image', 'video']),
+      ),
+    );
+  return new Set(files.map((f) => f.id));
+}
+
 async function lastChildPosition(db: Pick<Database, 'select'>, parentBoardId: string) {
   const [last] = await db
     .select({ position: board.position })
@@ -114,20 +145,7 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       (id): id is string => AssetId.safeParse(id).success,
     );
     // Cover references and imported documents cannot expose files from another project.
-    const files = candidates.length
-      ? await db
-          .select({ id: asset.id })
-          .from(asset)
-          .where(
-            and(
-              inArray(asset.id, candidates),
-              eq(asset.projectId, access.board.projectId),
-              eq(asset.status, 'ready'),
-              inArray(asset.kind, ['image', 'video']),
-            ),
-          )
-      : [];
-    const allowed = new Set(files.map((f) => f.id));
+    const allowed = await projectMedia(db, access.board.projectId, candidates);
     const body = { ...preview, assetIds: candidates.filter((id) => allowed.has(id)).slice(0, 4) };
     const etag = `"${createHash('sha256').update(JSON.stringify(body)).digest('hex')}"`;
     reply.header('etag', etag);
@@ -179,6 +197,46 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     return reply.status(204).send();
   });
 
+  app.get(v1('/me/unsorted'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const rows = await db
+      .select({ board, projectName: project.name, state: boardDoc.state })
+      .from(board)
+      .innerJoin(project, and(eq(project.id, board.projectId), isNull(project.archivedAt)))
+      .innerJoin(boardDoc, eq(boardDoc.boardId, board.id))
+      .where(and(isNull(board.deletedAt), visibleTo(actor.id)));
+    const waiting = rows
+      .map((r) => ({ ...r, unsorted: unsortedOf(r.state) }))
+      .filter((r) => r.unsorted.count > 0);
+    // Only people who can place the cards: the tray is hidden from guests and read-only roles.
+    const roles = await boardRoles(
+      db,
+      actor,
+      waiting.map((r) => r.board.id),
+    );
+    const editable = waiting
+      .filter((r) => {
+        const role = roles.get(r.board.id);
+        return role && atLeast(role, CAPABILITY_ROLE.edit);
+      })
+      .sort((a, b) => b.unsorted.count - a.unsorted.count || a.board.id.localeCompare(b.board.id))
+      .slice(0, 20);
+    const items = await Promise.all(
+      editable.map(async (r) => {
+        const allowed = await projectMedia(db, r.board.projectId, r.unsorted.assetIds);
+        return {
+          boardId: r.board.id,
+          projectId: r.board.projectId,
+          boardTitle: r.board.title,
+          projectName: r.projectName,
+          count: r.unsorted.count,
+          assetIds: r.unsorted.assetIds.filter((id) => allowed.has(id)).slice(0, 2),
+        };
+      }),
+    );
+    return { items, total: items.reduce((sum, item) => sum + item.count, 0) };
+  });
+
   app.get(v1('/me/recent-boards'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const { limit } = RecentBoardQuery.parse(req.query ?? {});
@@ -189,21 +247,7 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       .from(board)
       .innerJoin(project, and(eq(project.id, board.projectId), isNull(project.archivedAt)))
       .leftJoin(boardDoc, eq(boardDoc.boardId, board.id))
-      .where(
-        and(
-          isNull(board.deletedAt),
-          sql`(exists (select 1 from project_member m
-              where m.project_id = ${board.projectId} and m.user_id = ${actor.id} and ${live('m')})
-            or ${board.id} in (
-              with recursive granted as (
-                select g.board_id as id from board_grant g
-                where g.user_id = ${actor.id} and ${live('g')}
-                union
-                select c.id from board c join granted on c.parent_board_id = granted.id
-              )
-              select id from granted))`,
-        ),
-      )
+      .where(and(isNull(board.deletedAt), visibleTo(actor.id)))
       .orderBy(desc(editedAt), asc(board.id))
       .limit(limit);
     // The same rule as opening the board decides the role shown, and leaves out the rest.
