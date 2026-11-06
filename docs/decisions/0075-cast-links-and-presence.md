@@ -1,4 +1,4 @@
-# 0074. Cast links and presence on the call sheet
+# 0075. Cast links and presence on the call sheet
 
 ## Context
 
@@ -15,13 +15,18 @@ users at all, and nothing may change for them or for sheets without links.
 - **Only for oneself.** The route takes no person: it answers for the signed-in account, which must
   have access to the board and be linked to a name in that day's blocks. Guests have no account.
 - **Organisers see everybody, the others only themselves.** The list is filtered on the server.
+- **Where.** On a phone, everyone with access gets the sheet with their own call and, if linked,
+  the buttons. On a computer the printed sheet and its preview stay as they were: people who can
+  edit the plan get the same attendance panel beside them, outside the print, and only they ask the
+  server for it, once the sheet is open. Answering from a computer is left out for now.
 - **"Open in Maps" reuses the map cards' link** to OpenStreetMap search. The address leaves the
   browser only when the link is tapped, which is also why the sheet has no map picture: the map
   card's preview asks a geocoder on the server and stores a file as soon as it is requested.
 
 ## Consequences
 
-Renaming a cast name drops its link until it is set again. Links and answers point at accounts of
-one instance, so a project export leaves them out; the cast text travels as before. There is no
-notification for answers: the existing types are fixed events with their own texts and emails, and
+Renaming a cast name drops its link until it is set again. **Exporting a project and importing it
+loses every link and every answer:** they point at accounts of one instance, and neither is in the
+archive. The cast text travels as before, and links have to be set again after an import. There is
+no notification for answers: the existing types are fixed events with their own texts and emails, and
 a new one is a change of its own.

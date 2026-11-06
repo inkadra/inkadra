@@ -2348,6 +2348,7 @@
     "saveError": "Échec de l'enregistrement. Réessaie.",
     "linkAccount": "Compte de {{name}}",
     "noAccount": "Aucun compte",
+    "otherAccount": "Autre compte",
     "answer": {
       "confirmed": "Tu as confirmé ta présence.",
       "declined": "Tu as indiqué que tu ne peux pas venir."

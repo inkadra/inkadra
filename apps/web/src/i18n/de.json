@@ -2348,6 +2348,7 @@
     "saveError": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
     "linkAccount": "Konto von {{name}}",
     "noAccount": "Kein Konto",
+    "otherAccount": "Anderes Konto",
     "answer": {
       "confirmed": "Du hast deine Anwesenheit bestätigt.",
       "declined": "Du hast angegeben, dass du nicht kommen kannst."

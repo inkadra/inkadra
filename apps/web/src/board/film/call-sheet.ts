@@ -56,8 +56,9 @@ export function sheetRows(
   for (const { block, start } of scheduleTimes(day)) {
     const shot = shotOf(block.shotId);
     const previous = rows.at(-1);
+    // Without a scene number the labels say nothing about belonging together.
     if (
-      shot &&
+      shot?.scene &&
       previous?.first &&
       previous.scene === shot.scene &&
       castOf(previous.block) === castOf(block)

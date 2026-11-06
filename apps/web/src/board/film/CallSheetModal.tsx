@@ -46,6 +46,8 @@ export interface CallSheetModalProps {
   /** Who is looking and on which board: a phone shows their own call and presence with them. */
   boardId?: string | undefined;
   userId?: string | undefined;
+  /** Can edit the schedule: on a computer only these people ask for attendance and see it. */
+  canManage?: boolean | undefined;
   /** The day shown first, usually the one selected in the schedule. */
   initialDayId?: string | undefined;
   /** Some days have edits that are not saved yet: the sheet only knows the saved plan. */
@@ -93,6 +95,7 @@ export function CallSheetModal({
   projectId,
   boardId,
   userId,
+  canManage,
   initialDayId,
   unsaved,
   needed: neededOf,
@@ -105,7 +108,7 @@ export function CallSheetModal({
   const longDate = useDateLabel('long');
   const phoneDate = useDateLabel('phone');
   const isPhone = useIsPhone();
-  const attendance = useAttendance(boardId, isPhone);
+  const attendance = useAttendance(boardId, isPhone || !!canManage);
   const [dayId, setDayId] = useState(initialDayId ?? days[0]?.id ?? '');
   const [included, setIncluded] = useState<Record<Section, boolean>>({
     schedule: true,
@@ -260,6 +263,7 @@ export function CallSheetModal({
             )}
             {day && attendance.data?.canManage && (
               <PresencePanel
+                key={day.id}
                 day={day}
                 data={attendance.data}
                 people={people}

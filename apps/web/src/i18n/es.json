@@ -2348,6 +2348,7 @@
     "saveError": "No se pudo guardar. Inténtalo de nuevo.",
     "linkAccount": "Cuenta de {{name}}",
     "noAccount": "Ninguna cuenta",
+    "otherAccount": "Otra cuenta",
     "answer": {
       "confirmed": "Has confirmado tu asistencia.",
       "declined": "Has dicho que no puedes ir."

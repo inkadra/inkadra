@@ -11,7 +11,8 @@ import { pushBoardDoc, signIn } from './perf/seed.ts';
 
 // #110, mockup screen 8: the call sheet on a phone, with a person's own call and presence. Runs
 // after first-run.spec.ts as the administrator, on a project of its own. CALL_SHEET_SHOTS=<dir>
-// also saves light and dark screenshots at 390 and 360 px, and the desktop at 1280 px.
+// also saves light and dark screenshots at 390 and 360 px, and the computer's at 1280 px, where
+// organisers get the same attendance panel.
 test.describe.configure({ mode: 'serial' });
 const phone = { viewport: { width: 390, height: 844 }, hasTouch: true } as const;
 test.use(phone);
@@ -38,6 +39,8 @@ async function shots(page: Page, name: string, widths = [390, 360]) {
     for (const width of widths) {
       await page.setViewportSize({ width, height: size.height });
       await page.mouse.move(width - 1, size.height - 1);
+      // Buttons take a moment to reach the colours of the theme just switched to.
+      await page.waitForTimeout(300);
       await page.screenshot({ path: join(shotsDir, `${name}-${scheme}-${width}.png`) });
     }
   }
@@ -306,11 +309,105 @@ test('the organiser sees the answer, and a failed load says so', async ({ browse
   await other.context().close();
 });
 
-test('on a computer the dialog, its sheet and its requests stay as they were', async ({
+test('on a computer an organiser gets the panel, outside the sheet and the print', async ({
   browser,
   baseURL,
 }) => {
   const page = await session(browser, baseURL as string, admin.email, admin.password);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  let asked = 0;
+  page.on('request', (request) => {
+    if (request.url().includes('/schedule/attendance')) asked++;
+  });
+  await page.route('**/schedule/attendance', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await route.continue();
+  });
+  await page.goto(`/p/${seed.projectId}/b/${seed.boardId}?view=schedule`);
+  const open = page.getByRole('button', { name: 'Foglio di lavorazione' }).first();
+  await expect(open).toBeVisible();
+  expect(asked, 'nothing is asked before the sheet is open').toBe(0);
+  await open.click();
+  const sheet = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
+  await expect(sheet.getByRole('status').getByText('Caricamento delle presenze')).toBeVisible();
+  await shots(page, 'desktop-organiser-loading', [1280]);
+  const panel = sheet.locator('.call-sheet__controls .call-sheet__presence');
+  await expect(panel).toContainText('Non può');
+  await expect(panel).toContainText('confermati 0 di 2');
+  await expect(panel).toContainText(longName);
+  await page.unroute('**/schedule/attendance');
+  expect(asked).toBe(1);
+  // The preview, its table and the dialog's actions are the ones of before.
+  const article = sheet.getByRole('article');
+  await expect(article).not.toContainText('Presenze');
+  await expect(sheet.locator('.sheet__table--schedule')).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Stampa / esporta' })).toBeVisible();
+  await expect(sheet.locator('.sheet__phone-head, .sheet__rows, .sheet__maps')).toHaveCount(0);
+  // Not in the cast, or in it: on a computer there is nothing to answer yet.
+  await expect(sheet.getByRole('button', { name: 'Confermo la presenza' })).toHaveCount(0);
+  await panel.scrollIntoViewIfNeeded();
+  await shots(page, 'desktop-organiser', [1280]);
+
+  // By keyboard: the choice waits for its request, then the focus is back on the control.
+  await page.route('**/schedule/cast-links', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue();
+  });
+  const anna = panel.getByRole('combobox', { name: 'Account di Anna' });
+  await anna.focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('listbox').getByRole('option', { name: 'Spettatore' }).focus();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await expect(anna).toBeDisabled();
+  await expect(anna).toBeEnabled();
+  await expect(anna).toBeFocused();
+  // Two names, one person: the count is of people.
+  await expect(anna).toContainText('Spettatore');
+  await expect(panel).toContainText('confermati 0 di 1');
+  await page.unroute('**/schedule/cast-links');
+  await chooseSelect(anna, { label: 'Attrice' });
+  await expect(panel).toContainText('confermati 0 di 2');
+
+  // A refused choice says so in the panel.
+  await page.route('**/schedule/cast-links', (route) => route.abort());
+  await chooseSelect(anna, { label: 'Nessun account' });
+  await expect(panel.getByRole('alert')).toContainText('Salvataggio non riuscito');
+  await panel.scrollIntoViewIfNeeded();
+  await shots(page, 'desktop-organiser-save-error', [1280]);
+  await page.unroute('**/schedule/cast-links');
+
+  // Print: the sheet alone, as before, at a computer's width and from a phone.
+  for (const viewport of [{ width: 1280, height: 800 }, phone.viewport]) {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ media: 'print' });
+    await expect(sheet.locator('.sheet__head')).toBeVisible();
+    await expect(sheet.locator('.sheet__table--schedule')).toBeVisible();
+    await expect(panel).toBeHidden();
+    await expect(sheet.locator('.call-sheet__controls')).toBeHidden();
+    await page.emulateMedia({ media: 'screen' });
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  // Attendance that cannot be loaded says so, and the sheet still works.
+  await page.route('**/schedule/attendance', (route) => route.abort());
+  await page.reload();
+  await page.getByRole('button', { name: 'Foglio di lavorazione' }).first().click();
+  const failure = sheet.getByRole('alert');
+  await expect(failure).toContainText('Non è stato possibile caricare le presenze.');
+  await expect(article).toContainText('Foglio di lavorazione');
+  await shots(page, 'desktop-organiser-load-error', [1280]);
+  await page.unroute('**/schedule/attendance');
+  await failure.getByRole('button', { name: 'Riprova' }).click();
+  await expect(panel).toContainText('Non può');
+  await page.context().close();
+});
+
+test('on a computer someone who does not organise sees and asks nothing new', async ({
+  browser,
+  baseURL,
+}) => {
+  const page = await session(browser, baseURL as string, seed.actorEmail, admin.password);
   await page.setViewportSize({ width: 1280, height: 800 });
   let asked = false;
   page.on('request', (request) => {
@@ -319,22 +416,11 @@ test('on a computer the dialog, its sheet and its requests stay as they were', a
   await page.goto(`/p/${seed.projectId}/b/${seed.boardId}?view=schedule`);
   await page.getByRole('button', { name: 'Foglio di lavorazione' }).first().click();
   const sheet = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
-  await expect(sheet.getByRole('article')).toContainText('Foglio di lavorazione');
   await expect(sheet.locator('.sheet__table--schedule')).toBeVisible();
-  await expect(sheet.getByRole('button', { name: 'Stampa / esporta' })).toBeVisible();
-  await expect(
-    sheet.locator('.sheet__phone-head, .sheet__rows, .call-sheet__presence'),
-  ).toHaveCount(0);
+  await expect(sheet.locator('.call-sheet__presence')).toHaveCount(0);
+  await expect(sheet.getByRole('button', { name: 'Confermo la presenza' })).toHaveCount(0);
+  await expect(sheet.getByText('La tua convocazione')).toHaveCount(0);
   expect(asked).toBe(false);
   await shots(page, 'desktop', [1280]);
-  // Printing from a phone gives the same sheet, without the phone's parts.
-  await page.setViewportSize(phone.viewport);
-  await page.emulateMedia({ media: 'print' });
-  await expect(sheet.locator('.sheet__head')).toBeVisible();
-  await expect(sheet.locator('.sheet__table--schedule')).toBeVisible();
-  await expect(sheet.locator('.sheet__phone-head')).toBeHidden();
-  await expect(sheet.locator('.sheet__rows')).toBeHidden();
-  await expect(sheet.locator('.sheet__maps')).toBeHidden();
-  await page.emulateMedia({ media: 'screen' });
   await page.context().close();
 });

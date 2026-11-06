@@ -8,7 +8,11 @@ import { CallSheetModal } from './CallSheetModal.tsx';
 import { castCalls, departmentNotes, personalCall, plannedWrap, sheetRows } from './call-sheet.ts';
 
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+  useTranslation: () => ({
+    t: (key: string, o?: { confirmed?: number; total?: number }) =>
+      o?.total === undefined ? key : `${key}:${o.confirmed}/${o.total}`,
+    i18n: { language: 'en' },
+  }),
 }));
 const day: ShootingDay = {
   id: 'day-1',
@@ -59,7 +63,10 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-async function mount(days: ShootingDay[], props: { boardId?: string; userId?: string } = {}) {
+async function mount(
+  days: ShootingDay[],
+  props: { boardId?: string; userId?: string; canManage?: boolean } = {},
+) {
   vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
     this: HTMLDialogElement,
   ) {
@@ -214,6 +221,8 @@ it('joins shots in a row of one scene and cast, and nothing else', () => {
     ['4c', { label: '4C', scene: '4' }],
     ['4d', { label: '4D', scene: '4' }],
     ['3a', { label: '3A', scene: '3' }],
+    ['loose1', { label: '1' }],
+    ['loose2', { label: '2' }],
   ]);
   const rows = sheetRows(
     {
@@ -226,6 +235,8 @@ it('joins shots in a row of one scene and cast, and nothing else', () => {
         shot('3a', ['Bob']),
         shot('gone', ['Bob'], 'gone'),
         { ...shot('lunch', [], null), type: 'break' },
+        shot('loose1', ['Bob']),
+        shot('loose2', ['Bob']),
       ],
     },
     (id) => (id ? labels.get(id) : undefined),
@@ -236,16 +247,18 @@ it('joins shots in a row of one scene and cast, and nothing else', () => {
     ['3a', '3A', undefined],
     ['gone', undefined, undefined],
     ['lunch', undefined, undefined],
+    ['loose1', '1', undefined],
+    ['loose2', '2', undefined],
   ]);
 });
 describe('on a phone', () => {
   const answerPath = '/api/v1/boards/board/schedule/day-1/attendance';
-  function stubs(attendance: unknown, answered: unknown = {}) {
+  function stubs(attendance: unknown, answered: unknown = {}, phone = true) {
     vi.stubGlobal(
       'matchMedia',
       () =>
         ({
-          matches: true,
+          matches: phone,
           addEventListener() {},
           removeEventListener() {},
         }) as unknown as MediaQueryList,
@@ -303,6 +316,11 @@ describe('on a phone', () => {
     );
     expect(fetch.mock.calls.every(([url]) => String(url).startsWith('/'))).toBe(true);
   });
+  it('keeps the status region in place before the first answer', async () => {
+    stubs({ ...empty, links: [{ castKey: 'bob', userId: 'me' }] });
+    const host = await mountPhone();
+    expect(host.querySelector('.call-sheet__answer [role=status]')?.textContent).toBe('');
+  });
   it('says so when attendance cannot be loaded, and still shows the sheet', async () => {
     stubs(empty);
     vi.stubGlobal('fetch', async () => new Response('{}', { status: 500 }));
@@ -311,10 +329,90 @@ describe('on a phone', () => {
     expect(host.querySelector('article')?.textContent).toContain('Station');
   });
 });
-it('asks the server nothing and adds nothing on a computer', async () => {
+it('asks the server nothing and adds nothing on a computer, unless the person organises', async () => {
   const fetch = vi.fn();
   vi.stubGlobal('fetch', fetch);
   const host = await mount([day], { boardId: 'board', userId: 'me' });
   expect(fetch).not.toHaveBeenCalled();
-  expect(host.querySelector('.sheet__phone-head, .sheet__rows, .call-sheet__bar')).toBeNull();
+  expect(host.querySelector('.call-sheet__presence, .sheet__rows, .call-sheet__bar')).toBeNull();
+});
+describe('the presence panel on a computer', () => {
+  const organiser = {
+    canManage: true,
+    links: [
+      { castKey: 'anna', userId: 'u1' },
+      { castKey: 'bob', userId: 'u1' },
+    ],
+    responses: [{ dayId: 'day-1', userId: 'u1', status: 'confirmed' }],
+  };
+  const open = async (days = [day]) => {
+    const host = await mount(days, { boardId: 'board', userId: 'u1', canManage: true });
+    await act(async () => new Promise((resolve) => setTimeout(resolve)));
+    return host;
+  };
+  const stub = (handler: (init?: RequestInit) => Response | Promise<Response>) => {
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) => handler(init));
+    vi.stubGlobal('fetch', fetch);
+    return fetch;
+  };
+  const accounts = (host: HTMLElement) => [
+    ...host.querySelectorAll<HTMLButtonElement>('.call-sheet__person .ink-select'),
+  ];
+
+  it('counts people, not names, and leaves the phone parts and the buttons out', async () => {
+    stub(() => Response.json(organiser));
+    const host = await open();
+    expect(host.querySelector('.call-sheet__presence h3')?.textContent).toContain(
+      'callSheet.presenceCount:1/1',
+    );
+    expect(host.querySelector('.sheet__phone-head, .sheet__rows, .sheet__maps')).toBeNull();
+    expect(host.querySelector('.call-sheet__answers')).toBeNull();
+    // The panel is outside the sheet: the preview and the print have nothing new.
+    expect(host.querySelector('article .call-sheet__presence')).toBeNull();
+  });
+  it('names an account the list does not show instead of leaving the choice blank', async () => {
+    stub(() => Response.json({ ...organiser, links: [{ castKey: 'anna', userId: 'ghost' }] }));
+    const host = await open();
+    expect(accounts(host)[0]?.textContent).toContain('callSheet.otherAccount');
+    expect(accounts(host)[1]?.textContent).toContain('callSheet.noAccount');
+  });
+  it('disables a choice until its request returns', async () => {
+    let finish = () => {};
+    stub((init) =>
+      init?.method === 'PUT'
+        ? new Promise((resolve) => {
+            finish = () => resolve(new Response(null, { status: 204 }));
+          })
+        : Response.json({ ...organiser, links: [] }),
+    );
+    const host = await open();
+    const select = accounts(host)[0] as HTMLButtonElement;
+    await act(async () => chooseSelect(select, 'u1'));
+    expect(accounts(host)[0]?.disabled).toBe(true);
+    expect(accounts(host)[1]?.disabled).toBe(false);
+    await act(async () => {
+      finish();
+      await new Promise((resolve) => setTimeout(resolve));
+    });
+    expect(accounts(host)[0]?.disabled).toBe(false);
+    expect(accounts(host)[0]?.textContent).toContain('Giulia Rossi');
+  });
+  it('forgets a failed choice when the day changes', async () => {
+    stub((init) =>
+      init?.method === 'PUT'
+        ? new Response('{}', { status: 500 })
+        : Response.json({ ...organiser, links: [] }),
+    );
+    const host = await open([day, { ...day, id: 'day-2', date: '2026-11-03' }]);
+    await act(async () => {
+      chooseSelect(accounts(host)[0] as HTMLButtonElement, 'u1');
+      await new Promise((resolve) => setTimeout(resolve));
+    });
+    const alert = () => host.querySelector('.call-sheet__presence [role=alert]');
+    expect(alert()?.textContent).toBe('callSheet.saveError');
+    await act(async () => {
+      chooseSelect(host.querySelector('.ink-select') as HTMLButtonElement, 'day-2');
+    });
+    expect(alert()).toBeNull();
+  });
 });

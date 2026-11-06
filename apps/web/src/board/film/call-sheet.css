@@ -251,6 +251,51 @@
 @media (prefers-reduced-motion: reduce) {
 }
 
+/* Who answered and which account a cast name belongs to: for organisers, outside the printed
+   sheet. On a computer it sits under the switches, in a column that scrolls by itself. */
+.call-sheet__controls:has(.call-sheet__presence, .call-sheet__state) {
+  max-height: calc(100dvh - 190px);
+  overflow-y: auto;
+  margin: -4px;
+  padding: 4px;
+}
+.call-sheet__state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.call-sheet__state p {
+  margin: 0;
+}
+/* A failure comes first: the column may be taller than the screen. */
+.call-sheet__state[role="alert"] {
+  order: -1;
+}
+.call-sheet__presence .call-sheet__row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.call-sheet__presence .call-sheet__row-text {
+  flex-basis: 100%;
+  cursor: default;
+  overflow-wrap: anywhere;
+}
+.call-sheet__presence .is-confirmed {
+  color: var(--ink-status-ok);
+}
+.call-sheet__presence .is-declined {
+  color: var(--ink-status-danger);
+}
+.call-sheet__person {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.call-sheet__person .ink-select {
+  width: 100%;
+}
+
 /* The phone's own sheet (mockup of #110, screen 8): screen only, so printing from a phone gives
    the same pages as a computer. */
 @media screen and (width < 768px) {
@@ -320,8 +365,7 @@
     display: contents;
   }
   /* The sheet first, as in the mockup; the day, the switches and printing below it. */
-  .call-sheet__notice:not(.call-sheet__state),
-  .call-sheet__state[role="alert"] {
+  .call-sheet__notice:not(.call-sheet__state) {
     order: 0;
   }
   .call-sheet__preview {
@@ -332,7 +376,7 @@
     border: 0;
     background: none;
   }
-  .call-sheet__state,
+  .call-sheet__state:not([role="alert"]),
   .call-sheet__presence {
     order: 2;
   }
@@ -345,33 +389,11 @@
   .call-sheet__print {
     order: 5;
   }
-  .call-sheet__state {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .call-sheet__state p {
-    margin: 0;
-  }
-  .call-sheet__presence .call-sheet__row {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
   .call-sheet__presence .call-sheet__row-text {
     flex-basis: 40%;
-    cursor: default;
-    overflow-wrap: anywhere;
-  }
-  .call-sheet__presence .is-confirmed {
-    color: var(--ink-status-ok);
-  }
-  .call-sheet__presence .is-declined {
-    color: var(--ink-status-danger);
   }
   .call-sheet__person {
     flex: 1 1 150px;
-    min-width: 0;
   }
   .call-sheet__paper {
     max-width: none;
@@ -419,8 +441,8 @@
     overflow-wrap: anywhere;
   }
   .sheet__phone-line > :first-child:has(.sheet__phone-call) {
-    flex: none;
-    max-width: 40%;
+    flex: 1 1 auto;
+    min-width: 40%;
     overflow-wrap: normal;
   }
   .sheet__phone-date {
@@ -442,7 +464,8 @@
     font-size: 12px;
   }
   .sheet__phone-own {
-    flex: 0 1 60%;
+    flex: 0 1 auto;
+    max-width: 60%;
     padding: 6px 10px;
     border: 1.5px solid var(--ink-text-primary);
     border-radius: var(--ink-radius-sm);
@@ -492,6 +515,10 @@
   }
   .call-sheet__answer p {
     margin: 0;
+  }
+  /* The empty live region takes no room: not even the gap above the buttons. */
+  .call-sheet__answer:has(> :only-child:empty) {
+    margin-bottom: -8px;
   }
   .call-sheet__answers {
     display: flex;

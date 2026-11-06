@@ -2348,6 +2348,7 @@
     "saveError": "Salvataggio non riuscito. Riprova.",
     "linkAccount": "Account di {{name}}",
     "noAccount": "Nessun account",
+    "otherAccount": "Altro account",
     "answer": {
       "confirmed": "Hai confermato la presenza.",
       "declined": "Hai detto che non puoi esserci."

@@ -9,7 +9,7 @@ import {
   type ShootingDayInput,
 } from '@inkadra/shared';
 import { Button, DialogActions, Icon, IconButton, Select } from '@inkadra/ui';
-import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api.ts';
 import { openInMapsUrl } from '../maps.ts';
@@ -232,12 +232,13 @@ export function PresenceActions({
       .catch(() => setFailed(true))
       .finally(() => setSaving(false));
   };
-  let message: ReactNode = null;
-  if (failed) message = <p role="alert">{t('callSheet.saveError')}</p>;
-  else if (status) message = <p role="status">{t(`callSheet.answer.${status}`)}</p>;
   return (
     <DialogActions>
-      {message && <div className="call-sheet__answer">{message}</div>}
+      <div className="call-sheet__answer">
+        {/* Always there, empty or not: a live region only announces changes it was present for. */}
+        <p role="status">{!failed && status ? t(`callSheet.answer.${status}`) : ''}</p>
+        {failed && <p role="alert">{t('callSheet.saveError')}</p>}
+      </div>
       <div className="call-sheet__answers">
         <Button
           variant="primary"
@@ -262,8 +263,62 @@ export function PresenceActions({
   );
 }
 
+/** Which account a cast name belongs to; waits for its request before the next choice. */
+function PersonSelect({
+  name,
+  userId,
+  people,
+  onLink,
+}: {
+  name: string;
+  userId: string | undefined;
+  people: Person[];
+  onLink: (name: string, userId: string | null) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [pending, setPending] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const hadFocus = useRef(false);
+  // A disabled control drops the keyboard's focus: give it back unless it has moved on.
+  useEffect(() => {
+    if (pending || !hadFocus.current) return;
+    hadFocus.current = false;
+    box.current?.querySelector('button')?.focus();
+  }, [pending]);
+  return (
+    <div ref={box} className="call-sheet__person">
+      <Select
+        aria-label={t('callSheet.linkAccount', { name })}
+        value={userId ?? ''}
+        disabled={pending}
+        onChange={(next) => {
+          if (next === (userId ?? '')) return;
+          setPending(true);
+          onLink(name, next || null).finally(() => {
+            const focused = document.activeElement;
+            hadFocus.current = focused === document.body || !!box.current?.contains(focused);
+            setPending(false);
+          });
+        }}
+      >
+        <option value="">{t('callSheet.noAccount')}</option>
+        {/* Linked to someone the list does not show, such as a person with a grant on the board. */}
+        {userId && !people.some((person) => person.id === userId) && (
+          <option value={userId}>{t('callSheet.otherAccount')}</option>
+        )}
+        {people.map((person) => (
+          <option key={person.id} value={person.id}>
+            {person.name}
+          </option>
+        ))}
+      </Select>
+    </div>
+  );
+}
+
 /**
- * For organisers: who of the day's cast answered, and which account each name belongs to.
+ * For organisers, on a phone and on a computer: who of the day's cast answered, and which account
+ * each name belongs to.
  * shortcut: the choice lists project members, not people with a grant on this board only;
  * extend it if those turn out to be cast too.
  */
@@ -289,18 +344,23 @@ export function PresencePanel({
     const userId = data.links.find((l) => l.castKey === castNameKey(call.name))?.userId;
     return { ...call, userId, status: statusOf(userId) };
   });
-  const linked = rows.filter((row) => row.userId);
+  // One person can play two names: the count is of people, not of rows.
+  const linked = [...new Set(rows.flatMap((row) => row.userId ?? []))];
   return (
     <section className="call-sheet__group call-sheet__presence" aria-labelledby={titleId}>
       <h3 id={titleId} className="call-sheet__group-title">
         {t('callSheet.presence')}
         {linked.length > 0 &&
           ` · ${t('callSheet.presenceCount', {
-            confirmed: linked.filter((row) => row.status === 'confirmed').length,
+            confirmed: linked.filter((userId) => statusOf(userId) === 'confirmed').length,
             total: linked.length,
           })}`}
       </h3>
-      {failed && <p role="alert">{t('callSheet.saveError')}</p>}
+      {failed && (
+        <p role="alert" className="call-sheet__notice">
+          {t('callSheet.saveError')}
+        </p>
+      )}
       {rows.map((row) => (
         <div key={row.name} className="call-sheet__row">
           <div className="call-sheet__row-text">
@@ -310,22 +370,15 @@ export function PresencePanel({
               {row.userId && ` · ${t(`callSheet.status.${row.status ?? 'waiting'}`)}`}
             </span>
           </div>
-          <Select
-            className="ink-input call-sheet__person"
-            aria-label={t('callSheet.linkAccount', { name: row.name })}
-            value={row.userId ?? ''}
-            onChange={(userId) => {
+          <PersonSelect
+            name={row.name}
+            userId={row.userId}
+            people={people}
+            onLink={(name, userId) => {
               setFailed(false);
-              onLink(row.name, userId || null).catch(() => setFailed(true));
+              return onLink(name, userId).catch(() => setFailed(true));
             }}
-          >
-            <option value="">{t('callSheet.noAccount')}</option>
-            {people.map((person) => (
-              <option key={person.id} value={person.id}>
-                {person.name}
-              </option>
-            ))}
-          </Select>
+          />
         </div>
       ))}
     </section>
