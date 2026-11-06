@@ -31,6 +31,7 @@ import {
   CreateBoard,
   RecentBoard,
   RecentBoardQuery,
+  UnsortedSummary,
   UpdateBoard,
 } from './boards.ts';
 import { CalendarFeed } from './calendar.ts';
@@ -1247,6 +1248,17 @@ registry.registerPath({
   responses: { 204: { description: 'Forgotten (also when already absent)' }, ...errors },
 });
 
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/unsorted'),
+  tags: ['Boards'],
+  security: secured,
+  summary: 'Boards you can edit whose unsorted tray holds cards, fullest first.',
+  description:
+    'For the Home on a phone: counts the cards waiting in the "Non ordinati" tray of each ' +
+    'board of a project that is not archived, from the last stored document. At most 20 boards.',
+  responses: { 200: { description: 'Unsorted cards', ...json(UnsortedSummary) }, ...errors },
+});
 registry.registerPath({
   method: 'get',
   path: v1('/me/recent-boards'),

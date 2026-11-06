@@ -78,6 +78,32 @@ export const RecentBoardQuery = z
   .openapi('RecentBoardQuery');
 export type RecentBoardQuery = z.infer<typeof RecentBoardQuery>;
 
+/** A board whose "Non ordinati" tray holds cards, for the phone Home. */
+export const UnsortedBoard = z
+  .object({
+    boardId: Id,
+    projectId: Id,
+    boardTitle: z.string(),
+    projectName: z.string(),
+    count: z.int().positive().openapi({ description: 'Cards directly in the unsorted tray.' }),
+    assetIds: z
+      .array(Id)
+      .max(2)
+      .openapi({ description: 'Ready images or videos of those cards, from the same project.' }),
+  })
+  .openapi('UnsortedBoard');
+export type UnsortedBoard = z.infer<typeof UnsortedBoard>;
+export const UnsortedSummary = z
+  .object({
+    items: z.array(UnsortedBoard).max(20),
+    total: z
+      .int()
+      .nonnegative()
+      .openapi({ description: 'Cards waiting on all the boards listed.' }),
+  })
+  .openapi('UnsortedSummary');
+export type UnsortedSummary = z.infer<typeof UnsortedSummary>;
+
 /** Bounded projection of the last persisted document, never a full canvas download. */
 export const BoardPreview = z
   .object({
