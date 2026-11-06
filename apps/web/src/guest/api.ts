@@ -4,8 +4,10 @@ import type {
   GuestCommentThread,
   GuestElementReview,
   GuestPick,
+  GuestReviewSummary,
   GuestSession,
   GuestSetElementReview,
+  GuestVersions,
   ReactionEmoji,
   Reactions,
   SetPick,
@@ -141,6 +143,16 @@ export const guestApi = {
       `/links/${linkId}/boards/${boardId}/elements/${elementId}/review`,
       json('PUT', body),
     ),
+
+  /** Named versions of the board with the frames this link shows (decision 0074). */
+  versions: (linkId: string, boardId: string) =>
+    send<GuestVersions>(`/links/${linkId}/boards/${boardId}/versions`, { method: 'GET' }),
+
+  /** Tells the team the review is done; `sent` is false when nothing changed since. */
+  sendReview: (linkId: string, boardId: string) =>
+    send<GuestReviewSummary>(`/links/${linkId}/boards/${boardId}/review-summary`, {
+      method: 'POST',
+    }),
 
   pick: (linkId: string, boardId: string, elementId: string, body: SetPick) =>
     send<GuestPick>(

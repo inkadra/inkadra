@@ -376,7 +376,29 @@
     "note": {
       "placeholder": "Escreva…",
       "label": "Texto da nota",
-      "empty": "Nota vazia"
+      "empty": "Nota vazia",
+      "toolbar": "Formatação da nota",
+      "style": "Título ou texto",
+      "mention": "Mencionar alguém",
+      "mentions": "Pessoas",
+      "more": "Mais ações",
+      "typingOne": "{{name}} está escrevendo…",
+      "typingMany": "{{names}} estão escrevendo…",
+      "picture": "Imagem da nota",
+      "pictureMissing": "Imagem indisponível",
+      "pictureLoading": "Carregando a imagem…",
+      "pictureUploading": "Enviando a imagem",
+      "pictureFailed": "Não foi possível enviar a imagem. Tente novamente.",
+      "slash": {
+        "label": "Inserir",
+        "frame": "Plano",
+        "frameHint": "Vincular uma linha da lista de planos",
+        "noFrames": "Nenhum plano neste quadro",
+        "todo": "Tarefas",
+        "todoHint": "Lista com caixas",
+        "image": "Imagem",
+        "imageHint": "Da galeria ou dos arquivos"
+      }
     },
     "caption": {
       "label": "Legenda",
@@ -1727,6 +1749,21 @@
         "approved": "Card aprovado.",
         "changes_requested": "Alterações solicitadas.",
         "none": "Decisão retirada."
+      },
+      "phone": {
+        "title": "Revisão",
+        "empty": "Não há planos para revisar neste quadro.",
+        "board": "Ver o quadro",
+        "versions": "Versão a mostrar",
+        "versionsFailed": "As versões anteriores não estão disponíveis agora.",
+        "now": "Agora",
+        "send": "Enviar revisão · {{approved}}, {{changes}}",
+        "approved_one": "{{count}} aprovado",
+        "approved_other": "{{count}} aprovados",
+        "changes_one": "{{count}} alteração",
+        "changes_other": "{{count}} alterações",
+        "sent": "Revisão enviada à equipe",
+        "alreadySent": "Já enviada: nenhuma decisão nova desde então"
       }
     },
     "comments": {

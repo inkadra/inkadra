@@ -3625,6 +3625,24 @@ button.moodboard__card:focus-visible {
   }
 }
 
+/* On a phone the review goes one shot at a time, as for guests (#110, mockup screen 9):
+   the strip of frames gives way to the arrows and the position (cards keep their list). */
+@media (width < 768px) {
+  .client-review:not(.client-review--cards) .client-review__frames {
+    display: none;
+  }
+  .client-review__step,
+  .client-review__decision .story__mode {
+    min-height: 44px;
+  }
+  .client-review__decision {
+    display: flex;
+  }
+  .client-review__decision .story__mode {
+    flex: 1 1 0;
+  }
+}
+
 /* Compact scene navigation replaces the fixed sidebar on narrow screens. */
 .story__scene-picker {
   display: none;

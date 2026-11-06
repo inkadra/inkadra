@@ -376,7 +376,29 @@
     "note": {
       "placeholder": "Scrivi…",
       "label": "Testo della nota",
-      "empty": "Nota vuota"
+      "empty": "Nota vuota",
+      "toolbar": "Formattazione della nota",
+      "style": "Titolo o testo",
+      "mention": "Menziona qualcuno",
+      "mentions": "Persone",
+      "more": "Altre azioni",
+      "typingOne": "{{name}} sta scrivendo…",
+      "typingMany": "{{names}} stanno scrivendo…",
+      "picture": "Immagine della nota",
+      "pictureMissing": "Immagine non disponibile",
+      "pictureLoading": "Caricamento dell’immagine…",
+      "pictureUploading": "Invio dell’immagine",
+      "pictureFailed": "Impossibile caricare l’immagine. Riprova.",
+      "slash": {
+        "label": "Inserisci",
+        "frame": "Inquadratura",
+        "frameHint": "Collega una riga della shot list",
+        "noFrames": "Nessuna inquadratura in questa board",
+        "todo": "To-do",
+        "todoHint": "Lista con caselle",
+        "image": "Immagine",
+        "imageHint": "Dalla libreria o dai file"
+      }
     },
     "caption": {
       "label": "Didascalia",
@@ -1727,6 +1749,21 @@
         "approved": "Card approvata.",
         "changes_requested": "Modifiche richieste.",
         "none": "Decisione ritirata."
+      },
+      "phone": {
+        "title": "Revisione",
+        "empty": "Non ci sono inquadrature da rivedere in questa board.",
+        "board": "Vedi la board",
+        "versions": "Versione da mostrare",
+        "versionsFailed": "Le versioni precedenti non sono disponibili ora.",
+        "now": "Ora",
+        "send": "Invia revisione · {{approved}}, {{changes}}",
+        "approved_one": "{{count}} approvata",
+        "approved_other": "{{count}} approvate",
+        "changes_one": "{{count}} modifica",
+        "changes_other": "{{count}} modifiche",
+        "sent": "Revisione inviata al team",
+        "alreadySent": "Già inviata: nessuna decisione nuova dall’ultimo invio"
       }
     },
     "comments": {

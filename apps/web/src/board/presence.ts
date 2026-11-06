@@ -47,6 +47,14 @@ export function usePeers(provider: HocuspocusProvider): Peer[] {
   return peers;
 }
 
+/** People typing in a note right now, each once; the server never marks viewers. */
+export function typingIn(peers: readonly Peer[], elementId: string): Peer[] {
+  return uniquePeople(peers.filter((p) => p.editing === elementId && p.typing && !p.readOnly));
+}
+
+/** How long after the last key someone still counts as typing. */
+export const TYPING_PAUSE_MS = 2000;
+
 /** One avatar per person, even with several tabs open; editors before viewers. */
 export function uniquePeople(peers: readonly Peer[]): Peer[] {
   const byUser = new Map<string, Peer>();
@@ -87,7 +95,15 @@ export function useLocalPresence(provider: HocuspocusProvider | null) {
       },
       selection(ids: string[], editing: string | null) {
         state.selection = ids.slice(0, 500);
+        if (state.editing !== editing) state.typing = false;
         state.editing = editing;
+        flush();
+      },
+      /** Writing in a note outside the canvas (the full-screen note); typing while keys go. */
+      writing(elementId: string | null, typing: boolean) {
+        if (state.editing === elementId && (state.typing ?? false) === typing) return;
+        state.editing = elementId;
+        state.typing = elementId !== null && typing;
         flush();
       },
     };

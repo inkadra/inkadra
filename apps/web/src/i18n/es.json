@@ -376,7 +376,29 @@
     "note": {
       "placeholder": "Escribe…",
       "label": "Texto de la nota",
-      "empty": "Nota vacía"
+      "empty": "Nota vacía",
+      "toolbar": "Formato de la nota",
+      "style": "Título o texto",
+      "mention": "Mencionar a alguien",
+      "mentions": "Personas",
+      "more": "Más acciones",
+      "typingOne": "{{name}} está escribiendo…",
+      "typingMany": "{{names}} están escribiendo…",
+      "picture": "Imagen de la nota",
+      "pictureMissing": "Imagen no disponible",
+      "pictureLoading": "Cargando la imagen…",
+      "pictureUploading": "Subiendo la imagen",
+      "pictureFailed": "No se pudo subir la imagen. Inténtalo de nuevo.",
+      "slash": {
+        "label": "Insertar",
+        "frame": "Plano",
+        "frameHint": "Enlaza una línea de la lista de planos",
+        "noFrames": "No hay planos en este tablero",
+        "todo": "Tareas",
+        "todoHint": "Lista con casillas",
+        "image": "Imagen",
+        "imageHint": "De la galería o de tus archivos"
+      }
     },
     "caption": {
       "label": "Pie de imagen",
@@ -1727,6 +1749,21 @@
         "approved": "Tarjeta aprobada.",
         "changes_requested": "Cambios solicitados.",
         "none": "Decisión retirada."
+      },
+      "phone": {
+        "title": "Revisión",
+        "empty": "No hay planos que revisar en este tablero.",
+        "board": "Ver el tablero",
+        "versions": "Versión que mostrar",
+        "versionsFailed": "Las versiones anteriores no están disponibles ahora.",
+        "now": "Ahora",
+        "send": "Enviar revisión · {{approved}}, {{changes}}",
+        "approved_one": "{{count}} aprobado",
+        "approved_other": "{{count}} aprobados",
+        "changes_one": "{{count}} cambio",
+        "changes_other": "{{count}} cambios",
+        "sent": "Revisión enviada al equipo",
+        "alreadySent": "Ya enviada: ninguna decisión nueva desde entonces"
       }
     },
     "comments": {
