@@ -115,7 +115,7 @@ test('seed a board and a portrait storyboard', async ({ page, baseURL }) => {
   };
 });
 
-test('#11 an image card takes the shape of its picture', async ({ page }) => {
+test('an image card takes the shape of its picture', async ({ page }) => {
   await signInPage(page);
   await page.goto(`/p/${seeded.projectId}/b/${seeded.rootId}`);
   const card = page.locator(`.card[data-el="${seeded.imageId}"]`);
@@ -128,7 +128,7 @@ test('#11 an image card takes the shape of its picture', async ({ page }) => {
   if (shots) await page.screenshot({ path: `${shots}/image-card.png` });
 });
 
-test('#12 the export dialog stays centred and the format label fits', async ({ page }) => {
+test('the export dialog stays centred and the format label fits', async ({ page }) => {
   await signInPage(page);
   await page.goto(`/p/${seeded.projectId}/b/${seeded.storyboardId}`);
   const select = page.locator('.story__aspect .ink-select span').first();
@@ -144,7 +144,7 @@ test('#12 the export dialog stays centred and the format label fits', async ({ p
   if (shots) await page.screenshot({ path: `${shots}/export.png` });
 });
 
-test('#17 the invite field can be seen and typed in', async ({ page }) => {
+test('the invite field can be seen and typed in', async ({ page }) => {
   await signInPage(page);
   await page.goto(`/p/${seeded.projectId}/b/${seeded.rootId}`);
   await page.getByRole('button', { name: 'Condividi', exact: true }).click();
@@ -155,7 +155,7 @@ test('#17 the invite field can be seen and typed in', async ({ page }) => {
   if (shots) await page.screenshot({ path: `${shots}/share.png` });
 });
 
-test('#18 the drawing stays on the picture in the presentation', async ({ page }) => {
+test('the drawing stays on the picture in the presentation', async ({ page }) => {
   await signInPage(page);
   await page.goto(`/p/${seeded.projectId}/b/${seeded.storyboardId}`);
   await page.getByRole('button', { name: 'Presenta', exact: true }).click();
@@ -170,4 +170,31 @@ test('#18 the drawing stays on the picture in the presentation', async ({ page }
   expect(image).toEqual(box);
   expect(ink).toEqual(box);
   if (shots) await page.screenshot({ path: `${shots}/presentation.png` });
+});
+
+test('the same screens in the light theme and on a phone', async ({ page }) => {
+  test.skip(!shots, 'only makes screenshots');
+  await signInPage(page);
+  for (const [name, width, height, colorScheme] of [
+    ['light', 1280, 800, 'light'],
+    ['phone', 390, 844, 'dark'],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ colorScheme });
+    await page.goto(`/p/${seeded.projectId}/b/${seeded.rootId}`);
+    await page.getByRole('button', { name: 'Condividi', exact: true }).first().click();
+    const field = page.getByRole('combobox', { name: 'Email o nome' });
+    await expect(field).toBeVisible();
+    expect((await field.boundingBox())?.width ?? 0).toBeGreaterThan(100);
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `${shots}/share-${name}.png` });
+    await page.goto(`/p/${seeded.projectId}/b/${seeded.storyboardId}`);
+    if (name === 'light') {
+      await page.getByRole('button', { name: 'Presenta', exact: true }).click();
+      const present = page.getByRole('dialog', { name: 'Presenta' });
+      await expect(present.locator('.present-stage__canvas > .frame-pic')).toBeVisible();
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: `${shots}/presentation-light.png` });
+    }
+  }
 });

@@ -10,7 +10,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-it('moves an area without reading the finished event (error 018a-aa26)', async () => {
+it('moves an area without reading the finished event', async () => {
   class LoadedImage {
     width = 800;
     height = 600;
