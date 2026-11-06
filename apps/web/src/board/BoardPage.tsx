@@ -943,7 +943,7 @@ const MAX_AVATARS = 5;
  * The connection and the people on the board: how many are online and when our last change
  * was saved, who is writing in which card, and an avatar per person ringed in their colour.
  */
-function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId: string | null }) {
+export function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId: string | null }) {
   const { t } = useTranslation();
   const { people, online, writing } = boardPeople(usePeers(conn.provider), selfId);
   const shown = people.slice(0, MAX_AVATARS);
@@ -960,7 +960,7 @@ function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId: string
               style={{ ['--peer' as string]: p.color }}
               title={name(p)}
             >
-              <Avatar name={p.user.name} size={24} />
+              <Avatar name={p.user.name} image={p.user.image} size={24} />
             </li>
           ))}
           {people.length > shown.length && (
