@@ -160,7 +160,12 @@ export async function resolveLink(
     const view = await viewFor(id);
     const elements = linkElements(view, included);
     shown.set(id, elements);
-    for (const el of elements) for (const assetId of elementAssetIds(el)) assets.shown.add(assetId);
+    for (const el of elements) {
+      for (const assetId of elementAssetIds(el)) assets.shown.add(assetId);
+      // Pictures inside a note's text (schema 19) are shown with the note.
+      const body = view.bodies.get(el.id);
+      if (body) for (const assetId of bodyAssetIds(body)) assets.shown.add(assetId);
+    }
     if (row.coverAssetId) assets.covers.add(row.coverAssetId);
     if (row.kind === 'storyboard' && view.audio) assets.audio.add(view.audio.assetId);
   }
@@ -228,6 +233,7 @@ export class DocViews {
   private cache = new Map<string, { stamp: number; view: BoardView }>();
   private links = new Map<string, LinkContents>();
   constructor(private readonly max = 200) {}
+
   linkContents(key: string) {
     const known = this.links.get(key);
     if (known) {
@@ -340,11 +346,21 @@ export function proseMirrorJson(fragment: Y.XmlFragment): PmNode {
   return { type: 'doc', content: children(fragment) };
 }
 
+/** Asset ids of the `noteImage` nodes of a note body in ProseMirror JSON. */
+export function bodyAssetIds(node: PmNode): string[] {
+  const attrs = node.attrs as { assetId?: unknown } | undefined;
+  const own = node.type === 'noteImage' && typeof attrs?.assetId === 'string' ? [attrs.assetId] : [];
+  const content = Array.isArray(node.content) ? (node.content as PmNode[]) : [];
+  return [...own, ...content.flatMap(bodyAssetIds)];
+}
+
 function children(node: Y.XmlFragment | Y.XmlElement): PmNode[] {
   const out: PmNode[] = [];
   for (const child of node.toArray()) {
     if (child instanceof Y.XmlElement) {
       const attrs = child.getAttributes();
+      // Guests get the name written in a mention, never the account id behind it.
+      if (child.nodeName === 'mention') delete attrs.id;
       const content = children(child);
       out.push({
         type: child.nodeName,

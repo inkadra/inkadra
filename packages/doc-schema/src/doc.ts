@@ -4,15 +4,42 @@ import { z } from 'zod';
 import { AspectRatio, Element, type ElementType, type TableRow } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 18;
+export const CURRENT_SCHEMA_VERSION = 19;
 
 /** Persisted ProseMirror additions: older editor schemas can destructively normalize them. */
 export const NOTE_BODY_FORMAT = {
-  version: 16,
+  version: 19,
   marks: ['noteInk'],
-  nodes: ['taskList', 'taskItem'],
+  nodes: ['taskList', 'taskItem', 'mention', 'noteImage'],
   blockAttributes: ['textAlign'],
 } as const;
+
+/**
+ * Inline `mention` node of a note body (schema 19): an account of the project, by id, with
+ * the name it had when it was written. Guests receive the name only.
+ */
+export const NoteMention = z.object({ id: z.string().min(1).max(64), label: z.string().max(200) });
+export type NoteMention = z.infer<typeof NoteMention>;
+
+/** Block `noteImage` node of a note body (schema 19): an uploaded picture of the project. */
+export const NoteImage = z.object({
+  assetId: z.string().min(1).max(64),
+  alt: z.string().max(500).nullable().optional(),
+});
+export type NoteImage = z.infer<typeof NoteImage>;
+
+/** Asset ids of the `noteImage` nodes of a note body, in document order. */
+export function noteImageAssetIds(body: Y.XmlFragment | Y.XmlElement): string[] {
+  const out: string[] = [];
+  for (const child of body.toArray()) {
+    if (!(child instanceof Y.XmlElement)) continue;
+    if (child.nodeName === 'noteImage') {
+      const id = child.getAttribute('assetId');
+      if (typeof id === 'string' && id) out.push(id);
+    } else out.push(...noteImageAssetIds(child));
+  }
+  return out;
+}
 
 export const DOC_NAME_PREFIX = 'board:';
 
@@ -117,6 +144,10 @@ const migrations: Record<number, Migration> = {
   // 18: optional `percent` on plan icons, any proportional size of a symbol (decision 0071).
   // Existing icons keep their S, M or L; older clients stay read-only and cannot drop the field.
   17: () => {},
+  // 19: `mention` and `noteImage` nodes in note bodies (NOTE_BODY_FORMAT, decision 0074).
+  // Existing notes stay unchanged; the bump keeps older editors, which would drop the unknown
+  // nodes when they normalize a note, read-only.
+  18: () => {},
 };
 
 /**
