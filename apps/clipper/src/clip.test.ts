@@ -1,11 +1,54 @@
 // SPDX-License-Identifier: MPL-2.0
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InkadraApi } from './api.ts';
-import { boardUrl, type ClipDeps, imageFilename, parseTags, saveClip, webUrl } from './clip.ts';
+import {
+  boardUrl,
+  type ClipDeps,
+  imageFilename,
+  parseTags,
+  readTabSelection,
+  saveClip,
+  webUrl,
+} from './clip.ts';
 import { ClipperError } from './errors.ts';
+import { readSelectionInPage } from './page-scripts.ts';
 
 const BOARD = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 const RESULT = { boardId: BOARD, elementId: 'e1', assetId: null };
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe('note from the selection', () => {
+  const selecting = (text: string) =>
+    vi.stubGlobal('getSelection', () => ({ toString: () => text }));
+
+  it('reads the selection in the main frame, up to the limit of the API', async () => {
+    selecting(`  ${'x'.repeat(2_500)}  `);
+    const executeScript = vi.fn(
+      async ({ func, args }: { func: typeof readSelectionInPage; args: [number] }) => [
+        { result: func(...args) },
+      ],
+    );
+    vi.stubGlobal('chrome', { scripting: { executeScript } });
+    expect(await readTabSelection(7)).toBe('x'.repeat(2_000));
+    expect(executeScript.mock.calls[0]?.[0]).toMatchObject({ target: { tabId: 7 } });
+    expect(executeScript.mock.calls[0]?.[0]).not.toHaveProperty('target.allFrames');
+  });
+
+  it('does not split an emoji at the limit', () => {
+    selecting('ab😀');
+    expect(readSelectionInPage(3)).toBe('ab');
+    expect(readSelectionInPage(4)).toBe('ab😀');
+  });
+
+  it('stays empty on pages that refuse scripts', async () => {
+    const executeScript = vi.fn(async () => {
+      throw new Error('Cannot access a chrome:// URL');
+    });
+    vi.stubGlobal('chrome', { scripting: { executeScript } });
+    expect(await readTabSelection(7)).toBe('');
+  });
+});
 
 function deps(overrides: Partial<ClipDeps> = {}) {
   const api = {

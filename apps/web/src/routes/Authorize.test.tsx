@@ -50,3 +50,16 @@ it('reauthenticates an old session and preserves the complete app authorization 
   expect(assign).toHaveBeenCalledWith(`/login?next=${encodeURIComponent(path)}`);
   expect(host.textContent).toContain('auth.errors.reauthRequired');
 });
+
+it('names the clipper once next to its device', async () => {
+  const path =
+    '/authorize?client_id=clipper&redirect_uri=https%3A%2F%2Fa.chromiumapp.org%2Fauth&code_challenge=abc&code_challenge_method=S256&device_name=Inkadra%20Clipper%20%C2%B7%20Chrome%20%C2%B7%20Linux';
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={[path]}>
+        <Authorize />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.textContent).toContain('authorize.clients.clipper · Chrome · Linux');
+});

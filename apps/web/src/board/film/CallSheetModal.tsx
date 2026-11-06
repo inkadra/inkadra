@@ -10,12 +10,22 @@ import { Field } from '../export/fields.tsx';
 import { fetchExportSettings, logoUrl } from '../export/settings.ts';
 import { kitList } from '../plan/kit.ts';
 import { PlanDrawing, type PlanLike } from '../plan/PlanDrawing.tsx';
-import { castCalls, departmentNotes, plannedWrap } from './call-sheet.ts';
+import { castCalls, departmentNotes, personalCall, plannedWrap, sheetRows } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
 import type { NeededRow } from './needed.ts';
 import { clockLabel, scheduleTimes } from './schedule.ts';
 import './call-sheet.css';
 import { formatClock } from '../../lib/datetime.ts';
+import { useIsPhone } from '../../lib/phone.ts';
+import {
+  MapsLink,
+  PhoneBar,
+  PhoneSchedule,
+  PhoneSheetHead,
+  PresenceActions,
+  PresencePanel,
+  useAttendance,
+} from './CallSheetPhone.tsx';
 
 /** What the sheet prints for a shot: its label, what happens in it and its scene. */
 export interface CallSheetShot {
@@ -33,6 +43,11 @@ export interface CallSheetModalProps {
   projectName?: string | undefined;
   /** The logo of the project's export settings is printed when there is one (decision 0039). */
   projectId?: string | undefined;
+  /** Who is looking and on which board: a phone shows their own call and presence with them. */
+  boardId?: string | undefined;
+  userId?: string | undefined;
+  /** Can edit the schedule: on a computer only these people ask for attendance and see it. */
+  canManage?: boolean | undefined;
   /** The day shown first, usually the one selected in the schedule. */
   initialDayId?: string | undefined;
   /** Some days have edits that are not saved yet: the sheet only knows the saved plan. */
@@ -58,15 +73,15 @@ const sections = [
 const planOptions = ['kit', 'moves', 'fullPage'] as const;
 type Section = (typeof sections)[number];
 
-function useDateLabel(style: 'short' | 'long') {
+function useDateLabel(style: 'short' | 'long' | 'phone') {
   const { i18n } = useTranslation();
   return (date: string) => {
     const time = Date.parse(`${date}T00:00:00Z`);
     if (Number.isNaN(time)) return date;
     return new Intl.DateTimeFormat(i18n.language, {
-      weekday: style,
+      weekday: style === 'long' ? 'long' : 'short',
       day: 'numeric',
-      month: style,
+      month: style === 'short' ? 'short' : 'long',
       ...(style === 'long' ? { year: 'numeric' } : {}),
       timeZone: 'UTC',
     }).format(time);
@@ -78,6 +93,9 @@ export function CallSheetModal({
   shots,
   projectName,
   projectId,
+  boardId,
+  userId,
+  canManage,
   initialDayId,
   unsaved,
   needed: neededOf,
@@ -88,6 +106,9 @@ export function CallSheetModal({
   const { t } = useTranslation();
   const shortDate = useDateLabel('short');
   const longDate = useDateLabel('long');
+  const phoneDate = useDateLabel('phone');
+  const isPhone = useIsPhone();
+  const attendance = useAttendance(boardId, isPhone || !!canManage);
   const [dayId, setDayId] = useState(initialDayId ?? days[0]?.id ?? '');
   const [included, setIncluded] = useState<Record<Section, boolean>>({
     schedule: true,
@@ -156,10 +177,23 @@ export function CallSheetModal({
       .join(', ');
   };
   const [place = '', ...address] = (day?.location ?? '').trim().split('\n');
+  const personal = day && attendance.data ? personalCall(day, attendance.data.links, userId) : null;
+  const myAnswer = attendance.data?.responses.find(
+    (r) => r.dayId === day?.id && r.userId === userId,
+  );
 
   return (
     <div className="phone-sheet">
       <Dialog open title={t('shells.callSheet')} onClose={onClose}>
+        {isPhone && (
+          <PhoneBar
+            title={[t('shells.callSheet'), day && t('schedule.dayNumber', { n: index + 1 })]
+              .filter(Boolean)
+              .join(' · ')}
+            subtitle={day && t('callSheet.revision', { revision: day.revision })}
+            onBack={onClose}
+          />
+        )}
         <div className="call-sheet">
           <div className="call-sheet__controls">
             <Field label={t('schedule.date')}>
@@ -216,10 +250,50 @@ export function CallSheetModal({
                 ))}
             </section>
             {unsaved && <p className="call-sheet__notice">{t('callSheet.unsaved')}</p>}
+            {attendance.loading && (
+              <p role="status" className="call-sheet__notice call-sheet__state">
+                {t('callSheet.presenceLoading')}
+              </p>
+            )}
+            {attendance.failed && (
+              <div className="call-sheet__notice call-sheet__state" role="alert">
+                <p>{t('callSheet.presenceError')}</p>
+                <Button onClick={attendance.retry}>{t('callSheet.retry')}</Button>
+              </div>
+            )}
+            {day && attendance.data?.canManage && (
+              <PresencePanel
+                key={day.id}
+                day={day}
+                data={attendance.data}
+                people={people}
+                onLink={attendance.link}
+              />
+            )}
+            {isPhone && (
+              <Button
+                className="call-sheet__print"
+                icon="file"
+                block
+                disabled={!day}
+                onClick={() => window.print()}
+              >
+                {t('shells.print')}
+              </Button>
+            )}
           </div>
           <div className="call-sheet__preview">
             {day ? (
               <article className="call-sheet__paper ink-paper" aria-label={t('callSheet.preview')}>
+                {isPhone && (
+                  <PhoneSheetHead
+                    project={projectName}
+                    date={phoneDate(day.date)}
+                    call={formatClock(day.callTime)}
+                    wrap={wrap === null ? '—' : clockLabel(wrap)}
+                    personal={personal}
+                  />
+                )}
                 <header className="sheet__head">
                   <div>
                     <p className="sheet__project">{projectName}</p>
@@ -245,10 +319,12 @@ export function CallSheetModal({
                     {address.length > 0 && (
                       <p className="sheet__muted sheet__pre">{address.join('\n')}</p>
                     )}
+                    {isPhone && <MapsLink location={day.location} />}
                   </SheetSection>
                 )}
                 {included.schedule && (
                   <SheetSection title={t('callSheet.schedule')}>
+                    {isPhone && slots.length > 0 && <PhoneSchedule rows={sheetRows(day, shotOf)} />}
                     {slots.length ? (
                       <table className="sheet__table sheet__table--schedule">
                         <thead>
@@ -425,12 +501,21 @@ export function CallSheetModal({
             )}
           </div>
         </div>
-        <DialogActions>
-          <Button onClick={onClose}>{t('shells.close')}</Button>
-          <Button variant="primary" icon="file" disabled={!day} onClick={() => window.print()}>
-            {t('shells.print')}
-          </Button>
-        </DialogActions>
+        {!isPhone && (
+          <DialogActions>
+            <Button onClick={onClose}>{t('shells.close')}</Button>
+            <Button variant="primary" icon="file" disabled={!day} onClick={() => window.print()}>
+              {t('shells.print')}
+            </Button>
+          </DialogActions>
+        )}
+        {isPhone && day && personal && (
+          <PresenceActions
+            key={day.id}
+            status={myAnswer?.status ?? null}
+            onAnswer={(status) => attendance.answer(day.id, status)}
+          />
+        )}
       </Dialog>
     </div>
   );

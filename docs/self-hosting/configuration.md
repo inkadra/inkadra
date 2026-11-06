@@ -399,7 +399,7 @@ when the setting is saved and before every delivery; a failed check keeps the re
 With destination GitHub and no token yet, reports wait locally and are delivered once the token
 is set. Existing direct GitHub installations retain their chosen destination.
 
-**Limits.** Members can submit five reports/hour and guests two; the instance limit is 100/hour.
+**Limits.** Members can submit fifteen reports/hour and guests two; the instance limit is 100/hour.
 Members may attach one screenshot, five files up to 25 MB each, and one video up to 100 MB.
 Guests may send text (description up to 4,000 characters), one screenshot up to 5 MB, environment
 and sanitized page information. Types are sniffed from the bytes: images, videos, PDF and plain

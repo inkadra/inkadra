@@ -110,6 +110,7 @@ export const de: MailTexts = {
     review: 'hat das Review geändert',
     task_assigned: 'hat dir eine Aufgabe zugewiesen',
     invitation_accepted: 'hat deine Einladung angenommen',
+    review_submitted: 'hat das Review gesendet',
   },
   wrote: 'schrieb',
   unknownVerb: 'hat etwas Neues für dich',

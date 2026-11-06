@@ -101,8 +101,31 @@ export function remapDoc(doc: Y.Doc, boardId: string, maps: IdMaps): void {
       }
       const by = el.get('createdBy');
       if (typeof by === 'string') el.set('createdBy', maps.person(by));
+      const body = el.get('body');
+      if (el.get('type') === 'note' && body instanceof Y.XmlFragment) remapNoteBody(body, maps);
     }
   });
+}
+
+/**
+ * Pictures in a note's text (schema 19) follow their file, or go when it was not stored, so a
+ * note can never reach a file of another project. Mentions become plain `@Name`, as in
+ * comments: people are never matched to accounts here (decision 0037).
+ */
+function remapNoteBody(node: Y.XmlFragment | Y.XmlElement, maps: IdMaps) {
+  for (let i = node.length - 1; i >= 0; i--) {
+    const child = node.get(i);
+    if (!(child instanceof Y.XmlElement)) continue;
+    if (child.nodeName === 'noteImage') {
+      const to = maps.assets.get(child.getAttribute('assetId') ?? '');
+      if (to) child.setAttribute('assetId', to);
+      else node.delete(i, 1);
+    } else if (child.nodeName === 'mention') {
+      const text = `@${child.getAttribute('label') ?? '?'}`;
+      node.delete(i, 1);
+      node.insert(i, [new Y.XmlText(text)]);
+    } else remapNoteBody(child, maps);
+  }
 }
 
 const MENTION = /@\{([0-9a-f-]{36})\}/gi;

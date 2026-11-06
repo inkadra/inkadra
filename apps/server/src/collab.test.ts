@@ -424,6 +424,23 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     b.close();
   });
 
+  it('keeps a viewer from appearing to be typing', async () => {
+    const editor = connect(as('editor'));
+    const viewer = connect(as('viewer'));
+    await Promise.all([editor.synced, viewer.synced]);
+    const state = { cursor: null, selection: [], editing: 'noteAAAAAAAAA', typing: true };
+    editor.provider.awareness?.setLocalState({ ...state, cursor: { x: 7, y: 7 } });
+    viewer.provider.awareness?.setLocalState({ ...state, cursor: { x: 9, y: 9 } });
+    const seenBy = (c: typeof editor, x: number) =>
+      [...(c.provider.awareness?.getStates().values() ?? [])]
+        .map(readPresence)
+        .find((p) => p?.cursor?.x === x)?.typing;
+    await expect.poll(() => seenBy(editor, 9), { timeout: 5000 }).toBe(false);
+    await expect.poll(() => seenBy(viewer, 7), { timeout: 5000 }).toBe(true);
+    editor.close();
+    viewer.close();
+  });
+
   it('closes the connection when access is removed and applies a lower role', async () => {
     const editor = connect(as('editor'));
     await editor.synced;

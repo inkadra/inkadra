@@ -32,6 +32,13 @@ export function toBoardRef(board: BoardRef): BoardRef {
   };
 }
 
+/** The name to confirm a save with: two boards can share a title. */
+export function boardLabel(board: BoardRef): string {
+  return board.projectName && board.projectName !== board.title
+    ? `${board.title} · ${board.projectName}`
+    : board.title;
+}
+
 interface Stored {
   connection?: Connection;
   lastBoard?: BoardRef;

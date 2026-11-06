@@ -4,7 +4,7 @@ import { ElementId } from './elements.ts';
 
 /**
  * Presence on a board: the Yjs awareness state each client publishes over the collab
- * WebSocket. It is not stored. Clients set `cursor`, `selection` and `editing`; the server
+ * WebSocket. It is not stored. Clients set `cursor`, `selection`, `editing` and `typing`; the server
  * writes `user` and `readOnly` from the signed-in account on every update, so nobody can
  * appear as someone else, and drops states that do not match this schema.
  */
@@ -25,6 +25,13 @@ export const PresenceState = z.object({
     .describe('Pointer in board coordinates; null when it is off the canvas.'),
   selection: z.array(ElementId).max(500),
   editing: ElementId.nullable().describe('Element whose text is being edited.'),
+  typing: z
+    .boolean()
+    .optional()
+    .describe(
+      'Keys pressed in `editing` within the last seconds, for "is typing". Optional: older ' +
+        'clients leave it out; the server keeps it false for read-only connections.',
+    ),
 });
 export type PresenceState = z.infer<typeof PresenceState>;
 

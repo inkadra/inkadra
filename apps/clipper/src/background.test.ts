@@ -9,19 +9,36 @@ const response = (status: number, body: unknown) => new Response(JSON.stringify(
 const event = () => ({ addListener: vi.fn() });
 let chromeMock: ReturnType<typeof mockChrome>;
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>;
+const menuIds = new Set<string>();
+let duplicateIds = 0;
 
 function mockChrome() {
   return {
     runtime: {
       id: extensionId,
       onInstalled: event(),
+      onStartup: event(),
+      openOptionsPage: vi.fn(async () => {}),
+      OnInstalledReason: { INSTALL: 'install' },
       onMessage: event(),
       getPlatformInfo: vi.fn(async () => ({ os: 'linux', arch: 'x86-64' })),
     },
-    contextMenus: { onClicked: event() },
+    contextMenus: {
+      onClicked: event(),
+      removeAll: vi.fn(async () => {
+        await Promise.resolve();
+        menuIds.clear();
+      }),
+      create: vi.fn(({ id }: { id: string }, done: () => void) => {
+        duplicateIds += menuIds.has(id) ? 1 : 0;
+        menuIds.add(id);
+        setTimeout(done, 1);
+      }),
+    },
     commands: { onCommand: event() },
     storage: {
       local: {
+        onChanged: event(),
         setAccessLevel: vi.fn(),
         set: vi.fn(async () => {}),
         remove: vi.fn(async () => {}),
@@ -45,6 +62,8 @@ function mockChrome() {
 }
 
 beforeEach(async () => {
+  menuIds.clear();
+  duplicateIds = 0;
   vi.useFakeTimers();
   vi.resetModules();
   chromeMock = mockChrome();
@@ -216,5 +235,137 @@ describe('background clip entry points', () => {
     fail(new TypeError('Network failure'));
     expect(await two).toMatchObject({ ok: false });
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe('save-to menus', () => {
+  const other = { id: 'o', projectId: 'p', title: 'Other', projectName: null };
+  const click = (info: object) =>
+    chromeMock.contextMenus.onClicked.addListener.mock.calls[0]![0](info, { id: 1 });
+  const storageChange = (changes: object) =>
+    chromeMock.storage.local.onChanged.addListener.mock.calls[0]![0](changes);
+  const stored = (connection: unknown, recentBoards: unknown) =>
+    chromeMock.storage.local.get.mockImplementation((async (key: string) => ({
+      [key]: key === 'connection' ? connection : key === 'recentBoards' ? recentBoards : undefined,
+    })) as never);
+  const connection = { serverUrl: 'https://ink.example', token: 'test-token', uploadMaxBytes: 0 };
+  const clipBody = () =>
+    JSON.parse(String(fetchMock.mock.calls.find((c) => c[1]?.method === 'POST')?.[1]?.body));
+
+  it('rebuilds on install, startup and storage changes, without overlapping', async () => {
+    chromeMock.runtime.onInstalled.addListener.mock.calls[0]![0]({ reason: 'update' });
+    chromeMock.runtime.onStartup.addListener.mock.calls[0]![0]();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(menuIds).toContain('save-to-page:b');
+    expect(menuIds).not.toContain('save-page');
+    stored(connection, [other]);
+    for (let i = 0; i < 3; i++) storageChange({ recentBoards: {} });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(duplicateIds).toBe(0);
+    expect(menuIds).toContain('save-to-page:o');
+    expect(menuIds).not.toContain('save-to-page:b');
+  });
+
+  it.each([
+    ['disconnected', undefined, [other]],
+    ['revoked', { ...connection, token: null }, [other]],
+    ['connected without recent boards', connection, []],
+  ])('keeps only the one-click item when %s', async (_state, current, recent) => {
+    stored(current, recent);
+    storageChange({ connection: {} });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(menuIds).toContain('save-page');
+    expect([...menuIds].filter((id) => id.startsWith('save-to-'))).toEqual([]);
+  });
+
+  it('lists first the board the shortcut saves to', async () => {
+    stored(connection, [other, board]);
+    storageChange({ recentBoards: {} });
+    await vi.advanceTimersByTimeAsync(10);
+    const created = chromeMock.contextMenus.create.mock.calls.map(([item]) => item.id);
+    expect(created.find((id) => id.startsWith('save-to-page:'))).toBe('save-to-page:o');
+    fetchMock.mockResolvedValueOnce(
+      response(200, {
+        items: [
+          { ...other, myRole: 'editor' },
+          { ...board, myRole: 'editor' },
+        ],
+      }),
+    );
+    chromeMock.commands.onCommand.addListener.mock.calls[0]![0]('save-page', {
+      id: 1,
+      url: 'https://a.example',
+    });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(clipBody()).toMatchObject({ boardId: 'o' });
+  });
+
+  it('ignores storage changes that do not affect the menus', async () => {
+    storageChange({ lastBoard: {} });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(chromeMock.contextMenus.removeAll).not.toHaveBeenCalled();
+  });
+
+  it('saves to the chosen board, not the last one', async () => {
+    stored(connection, [board, other]);
+    click({
+      menuItemId: 'save-to-selection:o',
+      selectionText: 'quote',
+      pageUrl: 'https://a.example',
+    });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(clipBody()).toMatchObject({ boardId: 'o', text: 'quote' });
+    expect(chromeMock.scripting.executeScript.mock.calls.at(-1)).toMatchObject([
+      { args: [{ tone: 'ok', text: 'toast_saved' }] },
+    ]);
+  });
+
+  it('forgets a chosen board that no longer exists and reports it', async () => {
+    stored(connection, [board, other]);
+    fetchMock.mockImplementation(async () => response(404, { error: {} }));
+    click({ menuItemId: 'save-to-link:o', linkUrl: 'https://l.example' });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(chromeMock.storage.local.set).toHaveBeenCalledWith({ recentBoards: [board] });
+    expect(chromeMock.scripting.executeScript.mock.calls.at(-1)).toMatchObject([
+      { args: [{ tone: 'error', text: 'error_not_found' }] },
+    ]);
+  });
+
+  it('refreshes the list and keeps the choice honest when the role was lowered', async () => {
+    stored(connection, [other, board]);
+    fetchMock.mockImplementation(async (_url, init) =>
+      init?.method === 'POST'
+        ? response(403, { error: {} })
+        : response(200, { items: [{ ...board, myRole: 'editor' }] }),
+    );
+    click({ menuItemId: 'save-to-link:o', linkUrl: 'https://l.example' });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(chromeMock.storage.local.set).toHaveBeenCalledWith(
+      expect.objectContaining({ recentBoards: [board] }),
+    );
+    expect(chromeMock.scripting.executeScript.mock.calls.at(-1)).toMatchObject([
+      { args: [{ tone: 'error', text: 'error_forbidden' }] },
+    ]);
+  });
+
+  it.each([
+    ['disconnected', undefined],
+    ['revoked', { ...connection, token: null }],
+  ])('opens the settings on a click when %s, without saving', async (_state, current) => {
+    stored(current, [other]);
+    click({ menuItemId: 'save-to-link:o', linkUrl: 'https://l.example' });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(chromeMock.runtime.openOptionsPage).toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('reports a chosen board that left the recent list, without saving', async () => {
+    stored(connection, [board]);
+    click({ menuItemId: 'save-to-link:gone', linkUrl: 'https://l.example' });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(chromeMock.scripting.executeScript.mock.calls.at(-1)).toMatchObject([
+      { args: [{ tone: 'error', text: 'error_not_found' }] },
+    ]);
   });
 });

@@ -1,3 +1,4 @@
+import { noteImageAssetIds } from '@inkadra/doc-schema';
 import Collaboration from '@tiptap/extension-collaboration';
 import { Placeholder } from '@tiptap/extensions';
 import { TextSelection } from '@tiptap/pm/state';
@@ -8,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
 import { isFeedbackKey } from '../feedback/state.ts';
 import { NoteAppearance, NoteInk, noteColor, TaskItem, TaskList } from './note-format.ts';
+import { NoteImageNode, NoteMention, NotePicture } from './note-nodes.tsx';
 
 /**
  * Notes keep their rich text in a Y.XmlFragment (the ProseMirror document, as y-prosemirror
@@ -32,11 +34,17 @@ export function NoteBody({ fragment }: { fragment: Y.XmlFragment }) {
 }
 
 export function isEmpty(fragment: Y.XmlFragment): boolean {
-  return fragment.toArray().every((n) => n instanceof Y.XmlElement && plainText(n).trim() === '');
+  // A picture alone is content too: a note holding only one must not count as blank.
+  return (
+    noteImageAssetIds(fragment).length === 0 &&
+    fragment.toArray().every((n) => n instanceof Y.XmlElement && plainText(n).trim() === '')
+  );
 }
 
 export function plainText(node: Y.XmlElement | Y.XmlFragment | Y.XmlText): string {
   if (node instanceof Y.XmlText) return node.toString().replace(/<[^>]+>/g, '');
+  if (node instanceof Y.XmlElement && node.nodeName === 'mention')
+    return `@${node.getAttribute('label') ?? ''}`;
   return node
     .toArray()
     .map((c) => plainText(c as Y.XmlElement | Y.XmlText))
@@ -60,6 +68,21 @@ function renderNode(node: unknown, key: number): ReactNode {
   if (node instanceof Y.XmlText) return renderText(node, key);
   if (!(node instanceof Y.XmlElement)) return null;
   const children = node.toArray().map((c, i) => renderNode(c, i));
+  if (node.nodeName === 'mention')
+    return (
+      <span key={key} className="note-mention">
+        @{node.getAttribute('label')}
+      </span>
+    );
+  if (node.nodeName === 'noteImage')
+    return (
+      <figure key={key} className="note-picture">
+        <NotePicture
+          assetId={node.getAttribute('assetId') ?? null}
+          alt={node.getAttribute('alt')}
+        />
+      </figure>
+    );
   const align = node.getAttribute('textAlign');
   const style = ['left', 'center', 'right'].includes(align ?? '')
     ? { textAlign: align as 'left' | 'center' | 'right' }
@@ -185,6 +208,8 @@ export function NoteEditor({
       NoteInk,
       TaskList,
       TaskItem,
+      NoteMention,
+      NoteImageNode,
       Collaboration.configure({ fragment }),
       Placeholder.configure({ placeholder: t('board.note.placeholder') }),
     ],

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  boardLabel,
   clearConnection,
   forgetBoard,
   getLastBoard,
@@ -40,6 +41,12 @@ beforeEach(async () => {
   await rememberBoard(board);
 });
 afterEach(() => vi.unstubAllGlobals());
+
+it('confirms a save with the project, unless it only repeats the title', () => {
+  expect(boardLabel(board)).toBe('Board · Project');
+  expect(boardLabel({ ...board, projectName: 'Board' })).toBe('Board');
+  expect(boardLabel({ ...board, projectName: null })).toBe('Board');
+});
 
 describe('server clip history with a local cache', () => {
   it('replaces cache with server ordering and derives last from the first item', async () => {

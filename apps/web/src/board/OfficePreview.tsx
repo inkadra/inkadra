@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type Asset, OfficePreview as OfficePreviewSchema } from '@inkadra/shared';
 import { Button } from '@inkadra/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fileBadge, fileFamily } from './file-kinds.ts';
 import { isNumeric, type OfficePreview, officeUrl, SHEET_PREVIEW, tableable } from './office.ts';
@@ -47,15 +47,24 @@ export function OfficeStage({
   const { t } = useTranslation();
   const [zoom, setZoom] = useState(100);
   const [failed, setFailed] = useState(false);
+  const tabsId = useId();
   const selected = data?.sheets[sheet] ?? data?.sheets[0];
   const pages = data?.pageCount ?? 0;
   if (data === undefined) return <p role="status">{t('office.loading')}</p>;
   if (selected) {
     const columns = Math.max(1, ...selected.rows.map((r) => r.length));
+    const tabbed = (data?.sheets.length ?? 0) > 1;
     return (
       <div className="office-sheet">
-        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users must be able to scroll the bounded sheet */}
-        <section className="office-sheet__scroll ink-paper" tabIndex={0} aria-label={selected.name}>
+        <section
+          className="office-sheet__scroll ink-paper"
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users must be able to scroll the bounded sheet
+          tabIndex={0}
+          // With tabs below, the sheet is the panel of its tab, which carries the same name.
+          {...(tabbed
+            ? { role: 'tabpanel', id: `${tabsId}-panel`, 'aria-labelledby': `${tabsId}-${sheet}` }
+            : { 'aria-label': selected.name })}
+        >
           {selected.rows.length > 0 ? (
             <table>
               <tbody>
@@ -92,13 +101,15 @@ export function OfficeStage({
             {t('office.truncated', SHEET_PREVIEW)}
           </p>
         )}
-        {data && data.sheets.length > 1 && (
+        {tabbed && data && (
           <div className="office-sheet__tabs" role="tablist" aria-label={t('office.sheets')}>
             {data.sheets.map((s, i) => (
               <button
                 type="button"
                 role="tab"
+                id={`${tabsId}-${i}`}
                 aria-selected={sheet === i}
+                aria-controls={`${tabsId}-panel`}
                 tabIndex={sheet === i ? 0 : -1}
                 key={i}
                 onClick={() => setSheet(i)}

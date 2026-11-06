@@ -33,6 +33,9 @@ function inside(s, px, py) {
 
 function drawIcon(size) {
   const SS = 4; // samples per side, for anti-aliased edges
+  // The Web Store's guidelines want a 128 icon with 96 of art and a transparent margin.
+  const art = size === 128 ? 96 : size;
+  const margin = (size - art) / 2;
   const rgba = Buffer.alloc(size * size * 4);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -42,8 +45,8 @@ function drawIcon(size) {
       let a = 0;
       for (let sy = 0; sy < SS; sy++) {
         for (let sx = 0; sx < SS; sx++) {
-          const px = ((x + (sx + 0.5) / SS) * 32) / size;
-          const py = ((y + (sy + 0.5) / SS) * 32) / size;
+          const px = ((x - margin + (sx + 0.5) / SS) * 32) / art;
+          const py = ((y - margin + (sy + 0.5) / SS) * 32) / art;
           // Composite the shapes over transparency, then accumulate premultiplied colour.
           let cr = 0;
           let cg = 0;

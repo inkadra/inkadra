@@ -117,6 +117,7 @@ export const it = {
     review: 'ha cambiato la revisione',
     task_assigned: 'ti ha assegnato un compito',
     invitation_accepted: 'ha accettato il tuo invito',
+    review_submitted: 'ha inviato la sua revisione',
   } as Record<string, string>,
   wrote: 'ha scritto',
   unknownVerb: 'ha una novità per te',

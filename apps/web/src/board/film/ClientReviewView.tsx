@@ -141,7 +141,7 @@ export function ClientReviewView({
         else if (e.key === 'ArrowRight') step(1);
       }}
       onKeyUp={(e) => e.stopPropagation()}
-      className="client-review"
+      className={`client-review${cardMode ? ' client-review--cards' : ''}`}
       aria-label={t('film.views.review')}
     >
       <div className="story__bar" data-chrome>

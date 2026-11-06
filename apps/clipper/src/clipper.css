@@ -243,7 +243,7 @@ select:disabled {
   list-style: none;
   margin: 0;
   padding: 4px;
-  max-height: 180px;
+  max-height: 132px;
   overflow-y: auto;
   border-radius: 8px;
   border: 1px solid var(--ink-border-default);
@@ -318,12 +318,21 @@ select:disabled {
   padding: 8px;
 }
 
+/* Chrome cuts popups at 600px: saving and its outcome stay in view while the form scrolls. */
+.actions {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px;
+  background: var(--ink-bg-panel);
+}
+
 .result {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 0 12px 12px;
   padding: 10px 12px;
   border-radius: 10px;
   background: var(--ink-surface-float);

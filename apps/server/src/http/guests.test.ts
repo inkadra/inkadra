@@ -2625,6 +2625,185 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     );
   });
 
+  it('shows guest_approve guests the frames of named versions that the link shows, nothing else', async () => {
+    const S = await insertBoard(P, 'Storyboard', B.R);
+    const old = await makeAsset(P, 'before.jpg');
+    const now = await makeAsset(P, 'after.jpg');
+    const hiddenThen = await makeAsset(P, 'hidden-then.jpg');
+    const frame = (id: string, assetId: string, extra: Partial<Element> = {}) =>
+      ({ ...el, id, type: 'frame', parent: null, assetId, ...extra }) as Element;
+    await saveDoc(S, [
+      frame('shotA_____', now, { notes: 'Regia' }),
+      frame('shotB_____', now, { guestHidden: true }),
+      frame('shotC_____', now),
+    ]);
+    const versionDoc = createBoardDoc(S);
+    for (const item of [
+      frame('shotA_____', old, { notes: 'Solo regia', status: 'retake' }),
+      frame('shotB_____', old),
+      frame('shotC_____', hiddenThen, { guestHidden: true }),
+      { ...el, id: 'notev_____', type: 'note', parent: null } as Element,
+    ])
+      addElement(versionDoc, item);
+    const state = Y.encodeStateAsUpdate(versionDoc);
+    const values = { schemaVersion: 19, size: state.byteLength, elementCount: 4 };
+    const [named] = await db
+      .insert(boardVersion)
+      .values({ boardId: S, kind: 'named', name: 'v1', state, ...values })
+      .returning({ id: boardVersion.id });
+    await db.insert(boardVersion).values({ boardId: S, kind: 'auto', state, ...values });
+    const [elsewhere] = await db
+      .insert(boardVersion)
+      .values({ boardId: B.A, kind: 'named', name: 'other', state, ...values })
+      .returning({ id: boardVersion.id });
+    const approve = await createLink('editor', S, { role: 'guest_approve' });
+    const viewOnly = await createLink('editor', S, { role: 'guest_view' });
+    const guest = (await open(approve, { name: 'Cliente' })).cookie;
+    const viewer = (await open(viewOnly)).cookie;
+
+    const res = await call({ cookie: guest }, 'GET', g(approve, `/boards/${S}/versions`));
+    expect(res.status).toBe(200);
+    expect(res.body.versions).toHaveLength(1);
+    expect(res.body.versions[0]).toMatchObject({ id: named?.id, name: 'v1' });
+    // Only shotA: shotB is hidden now, shotC was hidden then; the note never leaves.
+    expect(res.body.versions[0].frames.map((f: { id: string }) => f.id)).toEqual(['shotA_____']);
+    expect(res.body.versions[0].frames[0]).not.toHaveProperty('notes');
+    expect(res.body.versions[0].frames[0]).not.toHaveProperty('status');
+    expect(res.body.assets.map((a: { id: string }) => a.id)).toEqual([old]);
+    const thumb = res.body.assets[0].variants[0].url as string;
+    expect(res.body.assets[0].downloadUrl).toBeNull();
+    expect((await call({ cookie: guest }, 'GET', thumb)).status).toBe(200);
+
+    const variant = (version: string, assetId: string) =>
+      g(approve, `/boards/${S}/versions/${version}/assets/${assetId}/variants/256`);
+    // Refused: a picture the version does not show to guests, a version of another board, a
+    // board outside the link, the plain asset route, a link without review, and no session.
+    expect(
+      (await call({ cookie: guest }, 'GET', variant(named?.id ?? '', hiddenThen))).status,
+    ).toBe(404);
+    expect((await call({ cookie: guest }, 'GET', variant(elsewhere?.id ?? '', old))).status).toBe(
+      404,
+    );
+    expect(
+      (await call({ cookie: guest }, 'GET', g(approve, `/boards/${B.A}/versions`))).status,
+    ).toBe(404);
+    expect(
+      (await call({ cookie: guest }, 'GET', g(approve, `/assets/${old}/variants/256`))).status,
+    ).toBe(404);
+    expect(
+      (await call({ cookie: viewer }, 'GET', g(viewOnly, `/boards/${S}/versions`))).status,
+    ).toBe(403);
+    expect((await call(null, 'GET', variant(named?.id ?? '', old))).status).toBe(401);
+  });
+
+  it('lists and serves the pictures inside a visible note, not those of a hidden one', async () => {
+    const S = await insertBoard(P, 'Notes', B.R);
+    const shown = await makeAsset(P, 'in-note.jpg');
+    const hidden = await makeAsset(P, 'in-hidden-note.jpg');
+    const picture = (assetId: string) => {
+      const node = new Y.XmlElement('noteImage');
+      node.setAttribute('assetId', assetId);
+      return node;
+    };
+    await saveDoc(
+      S,
+      [
+        { ...el, id: 'notep_____', type: 'note', parent: null },
+        { ...el, id: 'noteh_____', type: 'note', parent: null, guestHidden: true },
+      ] as Element[],
+      (doc) => {
+        for (const [id, assetId] of [
+          ['notep_____', shown],
+          ['noteh_____', hidden],
+        ] as const) {
+          const body = roots(doc).elements.get(id)?.get('body') as Y.XmlFragment;
+          body.insert(0, [picture(assetId)]);
+        }
+      },
+    );
+    const link = await createLink('editor', S, { role: 'guest_view' });
+    const guest = (await open(link)).cookie;
+    const snap = await call({ cookie: guest }, 'GET', g(link, `/boards/${S}`));
+    expect(snap.body.assets.map((a: { id: string }) => a.id)).toEqual([shown]);
+    expect(
+      (await call({ cookie: guest }, 'GET', g(link, `/assets/${shown}/variants/256`))).status,
+    ).toBe(200);
+    expect(
+      (await call({ cookie: guest }, 'GET', g(link, `/assets/${hidden}/variants/256`))).status,
+    ).toBe(404);
+  });
+
+  it('sends the team one summary per state of the review', async () => {
+    const S = await insertBoard(P, 'Storyboard 2', B.R);
+    const pic = await makeAsset(P, 'shot.jpg');
+    await saveDoc(S, [
+      { ...el, id: 'shot1_____', type: 'frame', parent: null, assetId: pic },
+      { ...el, id: 'shot2_____', type: 'frame', parent: null, assetId: pic },
+    ] as Element[]);
+    const link = await createLink('editor', S, { role: 'guest_approve' });
+    const guest = (await open(link, { name: 'Cliente' })).cookie;
+    const send = () => call({ cookie: guest }, 'POST', g(link, `/boards/${S}/review-summary`));
+    const sent = () =>
+      db
+        .select()
+        .from(notification)
+        .where(and(eq(notification.boardId, S), eq(notification.type, 'review_submitted')));
+
+    expect((await send()).body).toEqual({ approved: 0, changesRequested: 0, sent: false });
+    const review = (id: string, status: string) =>
+      call({ cookie: guest }, 'PUT', g(link, `/boards/${S}/elements/${id}/review`), { status });
+    expect((await review('shot1_____', 'approved')).status).toBe(200);
+    expect((await review('shot2_____', 'changes_requested')).status).toBe(200);
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 1, sent: true });
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 1, sent: false });
+    const rows = await sent();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ userId: as.editor.id, shareLinkId: link.id });
+    // A changed decision makes a new summary.
+    await review('shot2_____', 'approved');
+    expect((await send()).body).toEqual({ approved: 2, changesRequested: 0, sent: true });
+    expect(await sent()).toHaveLength(2);
+    // Without a name, or on a view-only link, nothing is sent.
+    const anonymous = (await open(link)).cookie;
+    expect(
+      (await call({ cookie: anonymous }, 'POST', g(link, `/boards/${S}/review-summary`))).status,
+    ).toBe(403);
+  });
+
+  it('tells summaries from changes without the clock of the app server', async () => {
+    const S = await insertBoard(P, 'Storyboard 3', B.R);
+    const pic = await makeAsset(P, 'shot.jpg');
+    await saveDoc(S, [
+      { ...el, id: 'shot1_____', type: 'frame', parent: null, assetId: pic },
+      { ...el, id: 'shot2_____', type: 'frame', parent: null, assetId: pic },
+    ] as Element[]);
+    const link = await createLink('editor', S, { role: 'guest_approve' });
+    const guest = (await open(link, { name: 'Cliente' })).cookie;
+    const send = () => call({ cookie: guest }, 'POST', g(link, `/boards/${S}/review-summary`));
+    /** A decision stamped by an app server whose clock is off by `skew` from the database's. */
+    const decide = async (id: string, status: string, skew: number) => {
+      const path = g(link, `/boards/${S}/elements/${id}/review`);
+      expect((await call({ cookie: guest }, 'PUT', path, { status })).status).toBe(200);
+      await db
+        .update(elementReview)
+        .set({ changedAt: new Date(Date.now() + skew) })
+        .where(and(eq(elementReview.boardId, S), eq(elementReview.elementId, id)));
+    };
+    const hour = 60 * 60 * 1000;
+
+    // Clock ahead: the decision looks newer than its own summary, which must not be sent twice.
+    await decide('shot1_____', 'approved', hour);
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 0, sent: true });
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 0, sent: false });
+    // Clock behind: a new decision looks older than the last summary, which must not lose it.
+    await decide('shot2_____', 'changes_requested', -hour);
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 1, sent: true });
+    // Withdrawing one of the decisions changes the counts, so it makes a new summary too.
+    await decide('shot2_____', 'none', -hour);
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 0, sent: true });
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 0, sent: false });
+  });
+
   it('limits previews per address', async () => {
     const where = { 'x-forwarded-for': '10.40.0.1' };
     for (let i = 0; i < 60; i++)

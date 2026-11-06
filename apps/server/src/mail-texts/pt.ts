@@ -107,6 +107,7 @@ export const pt: MailTexts = {
     review: 'alterou a revisão',
     task_assigned: 'atribuiu uma tarefa a você',
     invitation_accepted: 'aceitou seu convite',
+    review_submitted: 'enviou a revisão',
   },
   wrote: 'escreveu',
   unknownVerb: 'tem uma novidade para você',

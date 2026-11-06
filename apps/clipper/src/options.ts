@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { connect, disconnect } from './auth.ts';
+import { connect, disconnect, isStoreInstall } from './auth.ts';
 import { ClipperError, errorMessageKey, serializeError } from './errors.ts';
 import { localize, t } from './i18n.ts';
 import { send } from './messages.ts';
@@ -17,13 +17,14 @@ const errorBox = $<HTMLParagraphElement>('error');
 const connectedPanel = $<HTMLElement>('connected');
 const connectPanel = $<HTMLElement>('connect-panel');
 
+$('selfhost').hidden = isStoreInstall();
 $('extension-id').textContent = chrome.runtime.id;
 $('redirect-uri').textContent = chrome.identity.getRedirectURL('auth');
 
 function showError(err: unknown) {
   const { kind } = serializeError(err);
   errorBox.textContent = t(errorMessageKey(kind));
-  if (kind === 'auth_cancelled' || kind === 'auth_failed')
+  if ((kind === 'auth_cancelled' || kind === 'auth_failed') && !isStoreInstall())
     errorBox.textContent += ` ${t('connect_hint_ids')}`;
   errorBox.hidden = false;
 }
@@ -72,6 +73,10 @@ $('shortcuts').addEventListener('click', () => {
 });
 
 void render();
+// A click in a menu can find the token revoked while this page is already open.
+chrome.storage.local.onChanged.addListener((changes) => {
+  if ('connection' in changes) void render();
+});
 
 void chrome.commands.getAll().then((commands) => {
   const shortcut = commands.find((c) => c.name === 'save-page')?.shortcut;

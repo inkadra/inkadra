@@ -7,6 +7,7 @@ import type {
   GuestElementReview,
   GuestPick,
   GuestRole,
+  GuestVersion,
   PickValue,
   SetPick,
 } from '@inkadra/shared';
@@ -292,4 +293,38 @@ export function storyboardOrder<T extends GuestElement>(
   const frames = cards.filter((c) => position.has(c.id));
   frames.sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0));
   return [...frames, ...cards.filter((c) => !position.has(c.id))];
+}
+
+/** Decisions this link made on the given cards: what "Send review" sums up (decision 0074). */
+export function linkDecisions(
+  reviews: ReadonlyMap<string, GuestElementReview>,
+  ids: readonly string[],
+): { approved: number; changes: number } {
+  let approved = 0;
+  let changes = 0;
+  for (const id of ids) {
+    const review = reviews.get(id);
+    if (review?.changedBy.kind !== 'guest') continue;
+    if (review.status === 'approved') approved += 1;
+    else if (review.status === 'changes_requested') changes += 1;
+  }
+  return { approved, changes };
+}
+
+const COMPARED = ['assetId', 'strokes', 'shapes', 'aspect', 'action', 'shot'] as const;
+
+/**
+ * Named versions where a frame looked different from now, newest first: the "before" a guest
+ * can compare with. A version where the frame was the same has nothing to show.
+ */
+export function framesBefore(
+  versions: readonly GuestVersion[],
+  current: GuestElement,
+): Array<{ version: GuestVersion; frame: GuestElement }> {
+  const key = (el: GuestElement) => JSON.stringify(COMPARED.map((k) => el[k] ?? null));
+  const now = key(current);
+  return versions.flatMap((version) => {
+    const frame = version.frames.find((f) => f.id === current.id);
+    return frame && key(frame) !== now ? [{ version, frame }] : [];
+  });
 }

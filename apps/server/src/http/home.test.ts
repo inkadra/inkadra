@@ -321,4 +321,65 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
     expect(after.headers.etag).not.toBe(before.headers.etag);
     doc.destroy();
   });
+  it('counts unsorted cards of boards the caller can edit, with media of the same project only', async () => {
+    expect((await request(null, 'GET', '/me/unsorted')).statusCode).toBe(401);
+    const own = (await request('owner', 'POST', '/projects', { name: 'Tray test' })).json();
+    expect(
+      (
+        await request('owner', 'PUT', `/projects/${own.id}/members/${people.viewer?.id}`, {
+          role: 'viewer',
+        })
+      ).statusCode,
+    ).toBe(200);
+    const other = (await request('stranger', 'POST', '/projects', { name: 'Elsewhere' })).json();
+    const files = await db
+      .insert(asset)
+      .values(
+        [own.id, other.id].map((projectId, i) => ({
+          projectId,
+          kind: 'image' as const,
+          mime: 'image/jpeg',
+          filename: `tray-${i}.jpg`,
+          size: 10,
+          storageKey: `tray-${i}`,
+          status: 'ready' as const,
+        })),
+      )
+      .returning();
+    const doc = new Y.Doc();
+    for (const [id, parent, assetId] of [
+      ['a', 'unsorted', files[0]!.id],
+      ['b', 'unsorted', files[1]!.id],
+      ['c', null, undefined],
+    ] as const) {
+      const element = new Y.Map<unknown>();
+      roots(doc).elements.set(id, element);
+      element.set('type', assetId ? 'image' : 'note');
+      element.set('parent', parent);
+      if (assetId) element.set('assetId', assetId);
+    }
+    const state = Y.encodeStateAsUpdate(doc);
+    await db.insert(boardDoc).values({
+      boardId: own.rootBoardId,
+      state: Buffer.from(state),
+      schemaVersion: 4,
+      size: state.byteLength,
+    });
+    doc.destroy();
+    const mine = (await request('owner', 'GET', '/me/unsorted')).json();
+    expect(mine.items).toContainEqual({
+      boardId: own.rootBoardId,
+      projectId: own.id,
+      boardTitle: own.name,
+      projectName: 'Tray test',
+      count: 2,
+      assetIds: [files[0]!.id],
+    });
+    expect(mine.total).toBeGreaterThanOrEqual(2);
+    // A viewer cannot place the cards, and strangers never see the board.
+    for (const as of ['viewer', 'stranger']) {
+      const body = (await request(as, 'GET', '/me/unsorted')).json();
+      expect(body.items.map((i: { boardId: string }) => i.boardId)).not.toContain(own.rootBoardId);
+    }
+  });
 });

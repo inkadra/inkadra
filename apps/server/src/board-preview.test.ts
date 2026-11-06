@@ -1,7 +1,7 @@
 import { roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { boardCounts, projectPreview } from './board-preview.ts';
+import { boardCounts, projectPreview, unsortedOf } from './board-preview.ts';
 
 describe('persisted board preview', () => {
   it('handles empty boards and rejects corrupt persisted state', () => {
@@ -114,6 +114,25 @@ describe('board counts for the navigation', () => {
       fileCount: 1,
       boardCount: 0,
     });
+    doc.destroy();
+  });
+  it('counts the cards directly in the unsorted tray', () => {
+    expect(unsortedOf()).toEqual({ count: 0, assetIds: [] });
+    expect(unsortedOf(new Uint8Array([255]))).toEqual({ count: 0, assetIds: [] });
+    const doc = new Y.Doc();
+    const { elements } = roots(doc);
+    const add = (id: string, parent: string | null, assetId?: string) => {
+      const map = new Y.Map<unknown>();
+      elements.set(id, map);
+      map.set('type', assetId ? 'image' : 'note');
+      map.set('parent', parent);
+      if (assetId) map.set('assetId', assetId);
+    };
+    add('a', 'unsorted', 'asset-a');
+    add('b', 'unsorted');
+    add('c', null, 'asset-c');
+    add('d', 'column-1');
+    expect(unsortedOf(Y.encodeStateAsUpdate(doc))).toEqual({ count: 2, assetIds: ['asset-a'] });
     doc.destroy();
   });
 });
