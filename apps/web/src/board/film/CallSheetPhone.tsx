@@ -23,9 +23,9 @@ export function useAttendance(boardId: string | undefined, enabled: boolean) {
   const [attempt, setAttempt] = useState(0);
   const path = `/boards/${boardId}/schedule`;
   const on = enabled && !!boardId;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: attempt asks for the data again.
   // A check started before a save answers with what the save replaced: `saves` drops it.
   const saves = useRef(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: attempt asks for the data again.
   useEffect(() => {
     if (!on) return;
     let live = true;
