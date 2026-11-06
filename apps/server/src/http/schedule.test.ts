@@ -71,7 +71,7 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
     );
     await db.execute(sql`truncate table "user", project, instance_setting cascade`);
     app = await createApp({ config, db, auth: createAuth(config, db), log, ...testDeps(db, log) });
-    for (const name of ['owner', 'editor', 'viewer', 'stranger']) {
+    for (const name of ['owner', 'editor', 'viewer', 'actor', 'stranger']) {
       const response = await app.inject({
         method: 'POST',
         url: '/api/auth/sign-up/email',
@@ -95,10 +95,14 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
     projectId = project.json().id;
     const other = await request('owner', 'POST', '/projects', { name: 'Other' });
     otherBoardId = other.json().rootBoardId;
-    for (const role of ['editor', 'viewer']) {
+    for (const [person, role] of [
+      ['editor', 'editor'],
+      ['viewer', 'viewer'],
+      ['actor', 'viewer'],
+    ] as const) {
       expect(
         (
-          await request('owner', 'PUT', `/projects/${projectId}/members/${people[role]?.id}`, {
+          await request('owner', 'PUT', `/projects/${projectId}/members/${people[person]?.id}`, {
             role,
           })
         ).statusCode,
@@ -123,6 +127,66 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
     const read = await request('viewer', 'GET', base());
     expect(read.statusCode).toBe(200);
     expect(Schedule.parse(read.json()).items).toEqual([day]);
+  });
+  describe('cast links and presence', () => {
+    const presence = () => `${base()}/${day.id}/attendance`;
+    const attendance = () => `${base()}/attendance`;
+    const link = (as: string, name: string, userId: string | null | undefined) =>
+      request(as, 'PUT', `${base()}/cast-links`, { name, userId });
+
+    it('lets only editors link a cast name, and only to someone with access', async () => {
+      expect((await link('viewer', 'Anna', people.actor?.id)).statusCode).toBe(403);
+      expect((await link('stranger', 'Anna', people.actor?.id)).statusCode).toBe(404);
+      expect((await link('editor', 'Anna', people.stranger?.id)).statusCode).toBe(400);
+      expect((await link('editor', ' ANNA ', people.actor?.id)).statusCode).toBe(204);
+    });
+    it('refuses answers from people who are not linked to this day', async () => {
+      const answer = { status: 'confirmed' };
+      expect((await request(null, 'PUT', presence(), answer)).statusCode).toBe(401);
+      expect((await request('stranger', 'PUT', presence(), answer)).statusCode).toBe(404);
+      expect((await request('viewer', 'PUT', presence(), answer)).statusCode).toBe(403);
+      // An organiser who is not in the cast has nothing to answer either.
+      expect((await request('owner', 'PUT', presence(), answer)).statusCode).toBe(403);
+      const other = `/boards/${otherBoardId}/schedule/${day.id}/attendance`;
+      expect((await request('owner', 'PUT', other, answer)).statusCode).toBe(404);
+    });
+    it('refuses an answer on behalf of someone else', async () => {
+      const response = await request('actor', 'PUT', presence(), {
+        status: 'declined',
+        userId: people.viewer?.id,
+      });
+      expect(response.statusCode).toBe(400);
+    });
+    it('saves and changes the answer of the linked person, per day', async () => {
+      const answer = async (status: string) => {
+        const response = await request('actor', 'PUT', presence(), { status });
+        expect(response.statusCode).toBe(200);
+        expect(response.json()).toEqual({ dayId: day.id, userId: people.actor?.id, status });
+      };
+      await answer('confirmed');
+      await answer('declined');
+      const read = await request('editor', 'GET', attendance());
+      expect(read.json().responses).toEqual([
+        { dayId: day.id, userId: people.actor?.id, status: 'declined' },
+      ]);
+    });
+    it('shows everybody to organisers and only their own to the others', async () => {
+      const organiser = (await request('editor', 'GET', attendance())).json();
+      expect(organiser.canManage).toBe(true);
+      expect(organiser.links).toEqual([{ castKey: 'anna', userId: people.actor?.id }]);
+      const actor = (await request('actor', 'GET', attendance())).json();
+      expect(actor).toEqual({ ...organiser, canManage: false });
+      const viewer = (await request('viewer', 'GET', attendance())).json();
+      expect(viewer).toEqual({ canManage: false, links: [], responses: [] });
+      expect((await request('stranger', 'GET', attendance())).statusCode).toBe(404);
+      expect((await request(null, 'GET', attendance())).statusCode).toBe(401);
+    });
+    it('forgets the link on request and stops accepting answers', async () => {
+      expect((await link('editor', 'anna', null)).statusCode).toBe(204);
+      const response = await request('actor', 'PUT', presence(), { status: 'confirmed' });
+      expect(response.statusCode).toBe(403);
+      expect((await link('editor', 'Anna', people.actor?.id)).statusCode).toBe(204);
+    });
   });
   it('refuses every write by viewers', async () => {
     expect((await request('viewer', 'POST', base(), input)).statusCode).toBe(403);

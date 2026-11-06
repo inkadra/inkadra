@@ -1,18 +1,21 @@
 import {
   API_PREFIX,
+  castNameKey,
   Id,
   MyScheduleQuery,
   type PlannedShootingDay,
+  SetCastLink,
+  SetDayAttendance,
   ShootingDayInput,
   UpdateShootingDay,
   z,
 } from '@inkadra/shared';
 import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { live, requireBoardRole } from '../access.ts';
+import { atLeast, boardRolesForPeople, live, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
-import { board, project, shootingDay } from '../db/schema.ts';
+import { board, castLink, project, shootingDay, shootingDayAttendance } from '../db/schema.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -92,6 +95,91 @@ export function registerScheduleRoutes(
       .returning();
     if (!row) throw new Error('Shooting day missing');
     return reply.code(201).send(publicDay(row));
+  });
+  // People who cannot edit the schedule only learn about themselves. A person whose access
+  // ended keeps their rows, in case it comes back, but drops out of the answer.
+  app.get(`${base}/attendance`, async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { boardId } = BoardParams.parse(req.params);
+    const access = await requireBoardRole(db, actor, boardId, 'viewer');
+    const canManage = atLeast(access.role, 'editor');
+    const mine = (column: typeof castLink.userId | typeof shootingDayAttendance.userId) =>
+      canManage ? undefined : eq(column, actor.id);
+    const [links, responses] = await Promise.all([
+      db
+        .select({ castKey: castLink.castKey, userId: castLink.userId })
+        .from(castLink)
+        .where(and(eq(castLink.boardId, boardId), mine(castLink.userId))),
+      db
+        .select({
+          dayId: shootingDayAttendance.dayId,
+          userId: shootingDayAttendance.userId,
+          status: shootingDayAttendance.status,
+        })
+        .from(shootingDayAttendance)
+        .innerJoin(shootingDay, eq(shootingDay.id, shootingDayAttendance.dayId))
+        .where(and(eq(shootingDay.boardId, boardId), mine(shootingDayAttendance.userId))),
+    ]);
+    const roles = await boardRolesForPeople(db, boardId, [
+      ...links.map((link) => link.userId),
+      ...responses.map((response) => response.userId),
+    ]);
+    return {
+      canManage,
+      links: links.filter((link) => roles.has(link.userId)),
+      responses: responses.filter((response) => roles.has(response.userId)),
+    };
+  });
+  app.put(`${base}/cast-links`, async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    const { boardId } = BoardParams.parse(req.params);
+    await requireBoardRole(db, actor, boardId, 'editor');
+    const { name, userId } = SetCastLink.parse(req.body);
+    const castKey = castNameKey(name);
+    if (!userId) {
+      await db
+        .delete(castLink)
+        .where(and(eq(castLink.boardId, boardId), eq(castLink.castKey, castKey)));
+      return reply.code(204).send();
+    }
+    const roles = await boardRolesForPeople(db, boardId, [userId]);
+    if (!roles.has(userId))
+      throw new HttpError('bad_request', 'That person has no access to this board.');
+    await db
+      .insert(castLink)
+      .values({ boardId, castKey, userId })
+      .onConflictDoUpdate({
+        target: [castLink.boardId, castLink.castKey],
+        set: { userId, updatedAt: sql`now()` },
+      });
+    return reply.code(204).send();
+  });
+  // The person answering is always the signed-in one: the request cannot name anybody else.
+  app.put(`${base}/:dayId/attendance`, async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { boardId, dayId } = DayParams.parse(req.params);
+    await requireBoardRole(db, actor, boardId, 'viewer');
+    const { status } = SetDayAttendance.parse(req.body);
+    const [day] = await db
+      .select({ blocks: shootingDay.blocks })
+      .from(shootingDay)
+      .where(and(eq(shootingDay.id, dayId), eq(shootingDay.boardId, boardId)));
+    if (!day) throw new HttpError('not_found', 'Shooting day not found.');
+    const links = await db
+      .select({ castKey: castLink.castKey })
+      .from(castLink)
+      .where(and(eq(castLink.boardId, boardId), eq(castLink.userId, actor.id)));
+    const cast = new Set(day.blocks.flatMap((block) => block.cast.map(castNameKey)));
+    if (!links.some((link) => cast.has(link.castKey)))
+      throw new HttpError('forbidden', 'Only people called on this day can answer.');
+    await db
+      .insert(shootingDayAttendance)
+      .values({ dayId, userId: actor.id, status })
+      .onConflictDoUpdate({
+        target: [shootingDayAttendance.dayId, shootingDayAttendance.userId],
+        set: { status, updatedAt: sql`now()` },
+      });
+    return { dayId, userId: actor.id, status };
   });
   app.put(`${base}/:dayId`, async (req) => {
     const actor = await requireActor(auth, req, db);
