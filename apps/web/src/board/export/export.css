@@ -156,6 +156,8 @@
   white-space: nowrap;
 }
 .export__custom-body {
+  /* Holds its hidden checkboxes: they would make the whole dialog scroll from outside the list. */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -167,6 +169,27 @@
 }
 .export__custom-body[hidden] {
   display: none;
+}
+/* The preview sets the height and the options fill it, with no gap under a list cut short. */
+@media (width >= 768px) {
+  .export {
+    min-height: 560px;
+  }
+  .export__controls {
+    height: 0;
+    min-height: 100%;
+  }
+  .export__custom:has(> .export__custom-body:not([hidden])) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .export__custom-body {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
 }
 .export__remembered {
   margin-right: auto;
