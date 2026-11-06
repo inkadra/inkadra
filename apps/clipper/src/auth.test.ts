@@ -56,9 +56,8 @@ it('loads the server history on connecting, and still connects if that fails', a
   const board = { id: 'b', projectId: 'p', title: 'Board', projectName: null };
   const issued = { token: 't', tokenId: 'i', user: { name: 'A', email: 'a@example.com' } };
   const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
-  const set = vi.fn(async () => {});
   const stored: Record<string, unknown> = {};
-  set.mockImplementation(async (items: object) => void Object.assign(stored, items));
+  const set = async (items: object) => void Object.assign(stored, items);
   vi.stubGlobal('chrome', {
     identity: {
       getRedirectURL: () => REDIRECT,
