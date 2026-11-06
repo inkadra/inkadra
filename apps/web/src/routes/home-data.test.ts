@@ -1,6 +1,6 @@
 import type { Project } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
-import { editableProjects, lastDay, localDate } from './home-data.ts';
+import { editableProjects, HOME_PROJECTS, homeProjects, lastDay, localDate } from './home-data.ts';
 
 describe('home data', () => {
   it('asks for the local calendar date, not the UTC one', () => {
@@ -37,5 +37,22 @@ describe('home data', () => {
       ]).map((p) => p.id),
     ).toEqual(['new', 'old']);
     expect(editableProjects(null)).toEqual([]);
+  });
+
+  it('lists pinned projects first, then the last changed, without archived ones', () => {
+    const project = (id: string, updatedAt: string, extra: Partial<Project> = {}) =>
+      ({ id, updatedAt, archivedAt: null, ...extra }) as Project;
+    expect(homeProjects(null)).toBeNull();
+    const list = [
+      project('old', '2026-10-01T00:00:00Z'),
+      project('new', '2026-10-20T00:00:00Z'),
+      project('pinned', '2026-09-01T00:00:00Z', { pinned: true }),
+      project('archived', '2026-10-30T00:00:00Z', { archivedAt: '2026-10-30T00:00:00Z' }),
+    ];
+    expect(homeProjects(list)?.map((p) => p.id)).toEqual(['pinned', 'new', 'old']);
+    const many = Array.from({ length: 9 }, (_, i) =>
+      project(`p${i}`, `2026-10-0${i + 1}T00:00:00Z`),
+    );
+    expect(homeProjects(many)).toHaveLength(HOME_PROJECTS);
   });
 });

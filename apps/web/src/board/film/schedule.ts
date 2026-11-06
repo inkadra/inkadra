@@ -64,3 +64,21 @@ export const textList = (value: string): string[] => [
       .filter(Boolean),
   ),
 ];
+
+const calendarDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * Where `now` falls on a day's clock, in minutes from that day's midnight, while the day is under
+ * way: from the call to its end (a night shoot runs past midnight, up to 1440 + minutes). Null on
+ * any other day or hour. Days have no time zone (decision 0022): the person's own clock is used.
+ */
+export function nowOnDay(day: ShootingDayInput, end: number | null, now: Date): number | null {
+  const call = clockMinutes(day.callTime);
+  const last = Math.max(call, end ?? call);
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  if (day.date === calendarDate(now) && minutes >= call && minutes <= last) return minutes;
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (day.date === calendarDate(yesterday) && minutes + 1440 <= last) return minutes + 1440;
+  return null;
+}

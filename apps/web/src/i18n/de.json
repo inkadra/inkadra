@@ -181,7 +181,11 @@
       "cards_one": "{{count}} Element",
       "cards_other": "{{count}} Elemente"
     },
-    "allProjects": "Alle Projekte →"
+    "allProjects": "Alle Projekte →",
+    "unsorted": {
+      "waiting_one": "{{count}} Element zu ordnen",
+      "waiting_other": "{{count}} Elemente zu ordnen"
+    }
   },
   "project": {
     "dialogTitle": "Neues Projekt",
@@ -286,7 +290,8 @@
   "board": {
     "canvasMenu": {
       "label": "Canvas",
-      "hint": "Canvas einfügen"
+      "hint": "Canvas einfügen",
+      "more": "Mehr"
     },
     "toolGroups": {
       "navigate": "Navigieren und verbinden",
@@ -1071,6 +1076,17 @@
       },
       "drawFailed": "Der Strich konnte nicht gespeichert werden. Versuch es noch mal; falls das Problem bleibt, lade das Board neu.",
       "updateApp": "Dieses Board braucht eine neuere Version. Aktualisiere die App, um es zu bearbeiten; ansehen kannst du es weiterhin."
+    },
+    "sheet": {
+      "edit": "Bearbeiten",
+      "comment": "Kommentieren",
+      "color": "Farbe",
+      "connect": "Verbinden",
+      "connectHint": "Von der Karte zu einer anderen ziehen, um sie zu verbinden",
+      "moveTo": "Verschieben nach…",
+      "showGuests": "Dem Kunden zeigen",
+      "toStoryboard": "Zum Storyboard hinzufügen",
+      "replyTo": "{{name}} antworten…"
     }
   },
   "tags": {
@@ -1996,7 +2012,10 @@
     "refresh": "Unterhaltung aktualisieren",
     "conversationUnavailable": "Unterhaltung nicht verfügbar",
     "cardFallback": "Karte",
-    "previewUnavailable": "Öffne das Board, um diese Karte zu sehen."
+    "previewUnavailable": "Öffne das Board, um diese Karte zu sehen.",
+    "swipeRead": "Gelesen",
+    "swipeResolve": "Erledigen",
+    "resolvedDone": "Diskussion erledigt"
   },
   "settings": {
     "sectionLead": {
@@ -2272,7 +2291,10 @@
     "summary_other": "{{planned}} geplant · {{count}} Blöcke",
     "castPlaceholder": "Name hinzufügen",
     "departmentsPlaceholder": "Abteilung: Notiz",
-    "removeToken": "{{name}} entfernen"
+    "removeToken": "{{name}} entfernen",
+    "pickDay": "Drehtage",
+    "now": "Jetzt {{time}}",
+    "current": "Läuft"
   },
   "moodboard": {
     "count_one": "{{count}} Referenz",

@@ -123,6 +123,23 @@ test('captures and redacts a screenshot, shows the scrubbed logs, waits for the 
   const editor = page.getByRole('dialog', { name: 'Modifica lo screenshot', exact: true });
   await editor.locator('canvas').focus();
   await page.keyboard.press('Enter');
+  // The new area spans a third of the width from the left quarter, and has no sharp edge left:
+  // neither a pattern of its own nor the text under it.
+  const sharpest = await editor.locator('canvas').evaluate((el: HTMLCanvasElement) => {
+    const width = Math.floor(el.width / 3) - 2;
+    const ctx = el.getContext('2d') as CanvasRenderingContext2D;
+    const { data } = ctx.getImageData(
+      Math.ceil(el.width / 4) + 1,
+      Math.ceil(el.height / 4) + 1,
+      width,
+      Math.floor(el.height / 4) - 2,
+    );
+    let most = 0;
+    for (let i = 4; i < data.length; i += 4)
+      if (i % (width * 4)) most = Math.max(most, Math.abs((data[i] ?? 0) - (data[i - 4] ?? 0)));
+    return most;
+  });
+  expect(sharpest).toBeLessThan(32);
   await editor.getByRole('button', { name: 'Applica', exact: true }).click();
   await expect(dialog.getByText('1 area sfocata')).toBeVisible();
   await dialog.getByRole('button', { name: 'Anteprima', exact: true }).click();
@@ -1020,9 +1037,12 @@ test('relay disclosure, mandatory preview, limits and admin switch', async ({ pa
   }
   await toggle.click();
   await expect(toggle).not.toBeChecked();
-  expect((await (await page.request.get('/api/v1/feedback/settings')).json()).destination).toBe(
-    'inbox',
-  );
+  // The switch moves before the save reaches the server.
+  await expect
+    .poll(
+      async () => (await (await page.request.get('/api/v1/feedback/settings')).json()).destination,
+    )
+    .toBe('inbox');
 });
 
 async function relayShots(page: Page, name: string, focus?: () => Promise<void>) {

@@ -309,7 +309,8 @@
   color: var(--ink-text-secondary);
   overflow-wrap: anywhere;
 }
-.notification > .ink-iconbtn {
+.notification > .ink-iconbtn,
+.swipe-row__front > .ink-iconbtn {
   margin-top: 4px;
 }
 .notification-matrix {
@@ -776,4 +777,62 @@
 .notifications--tasks .home__section {
   max-width: 960px;
   margin-inline: auto;
+}
+
+/* A row swiped left on a phone shows Read and Resolve (#110, SwipeRow.tsx). */
+.notification.swipe-row {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+.swipe-row__front {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  background: var(--ink-bg-panel);
+  touch-action: pan-y;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.notifications:not(.notifications--fixed) .swipe-row__front {
+  background: var(--ink-surface-float);
+}
+.swipe-row__front.is-dragging {
+  transition: none;
+}
+.swipe-row__actions {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: flex;
+}
+.swipe-row__action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 74px;
+  padding: 0 4px;
+  border: 0;
+  color: var(--ink-on-accent);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.swipe-row__action--read {
+  background: var(--ink-accent-button);
+}
+.swipe-row__action--resolve {
+  background: var(--ink-positive-button);
+}
+.swipe-row__action:focus-visible {
+  outline: 2px solid var(--ink-on-accent);
+  outline-offset: -4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .swipe-row__front {
+    transition: none;
+  }
 }

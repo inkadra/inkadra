@@ -181,7 +181,11 @@
       "cards_one": "{{count}} item",
       "cards_other": "{{count}} items"
     },
-    "allProjects": "All projects →"
+    "allProjects": "All projects →",
+    "unsorted": {
+      "waiting_one": "{{count}} item to sort",
+      "waiting_other": "{{count}} items to sort"
+    }
   },
   "project": {
     "dialogTitle": "New project",
@@ -286,7 +290,8 @@
   "board": {
     "canvasMenu": {
       "label": "Canvas",
-      "hint": "Insert a canvas"
+      "hint": "Insert a canvas",
+      "more": "More"
     },
     "toolGroups": {
       "navigate": "Navigate and connect",
@@ -1071,6 +1076,17 @@
       },
       "drawFailed": "Could not save the stroke. Try again; if the problem continues, reload the board.",
       "updateApp": "This board requires a newer version. Update the app to edit it; you can continue viewing it."
+    },
+    "sheet": {
+      "edit": "Edit",
+      "comment": "Comment",
+      "color": "Colour",
+      "connect": "Connect",
+      "connectHint": "Drag from the card to another one to connect them",
+      "moveTo": "Move to…",
+      "showGuests": "Show to the client",
+      "toStoryboard": "Add to Storyboard",
+      "replyTo": "Reply to {{name}}…"
     }
   },
   "tags": {
@@ -1996,7 +2012,10 @@
     "refresh": "Refresh conversation",
     "conversationUnavailable": "Conversation not available",
     "cardFallback": "Card",
-    "previewUnavailable": "Open the board to view this card."
+    "previewUnavailable": "Open the board to view this card.",
+    "swipeRead": "Read",
+    "swipeResolve": "Resolve",
+    "resolvedDone": "Thread resolved"
   },
   "settings": {
     "sectionLead": {
@@ -2272,7 +2291,10 @@
     "summary_other": "{{planned}} planned · {{count}} blocks",
     "castPlaceholder": "Add a name",
     "departmentsPlaceholder": "Department: note",
-    "removeToken": "Remove {{name}}"
+    "removeToken": "Remove {{name}}",
+    "pickDay": "Shooting days",
+    "now": "Now {{time}}",
+    "current": "Under way"
   },
   "moodboard": {
     "count_one": "{{count}} reference",
