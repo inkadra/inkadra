@@ -110,9 +110,9 @@ export function ClassificationSettings() {
       )}
       {!draft && !error && (
         <div className="catalogs__loading" aria-busy="true">
-          <div className="catalogs__skeleton" />
-          <div className="catalogs__skeleton" />
-          <div className="catalogs__skeleton" />
+          <div className="ink-skeleton" />
+          <div className="ink-skeleton" />
+          <div className="ink-skeleton" />
         </div>
       )}
       {draft && (

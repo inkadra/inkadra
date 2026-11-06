@@ -149,6 +149,10 @@ it('names an opened link by its label, with no guest or visit details', () => {
 });
 
 it('keeps the API unread count across pages and excludes comments from mentions', async () => {
+  // A phone's list keeps its own head with the count; on a desktop the navigation shows it.
+  const media = window.matchMedia('(width < 768px)');
+  Object.defineProperty(media, 'matches', { value: true });
+  const matchMedia = vi.spyOn(window, 'matchMedia').mockReturnValue(media);
   const host = document.createElement('div');
   const root = createRoot(host);
   vi.mocked(api.get)
@@ -208,6 +212,7 @@ it('keeps the API unread count across pages and excludes comments from mentions'
     expect(host.querySelector('h2 span')).toBeNull();
   } finally {
     await act(async () => root.unmount());
+    matchMedia.mockRestore();
   }
 });
 
@@ -288,7 +293,7 @@ it('has no tabs and no tabpanel in the peek of the bell', async () => {
   await act(async () => root.unmount());
 });
 
-it('renders the two-pane triage view and marks unread notification as read on open', async () => {
+it('renders the two-pane view and opens and reads a notification only when it is clicked', async () => {
   const host = document.createElement('div');
   const root = createRoot(host);
   const unreadItem = {
@@ -367,8 +372,18 @@ it('renders the two-pane triage view and marks unread notification as read on op
     expect(host.querySelector('.notifications__list-pane')).not.toBeNull();
     expect(host.querySelector('.notifications__detail-pane')).not.toBeNull();
 
-    // Mark read on open
+    // Nothing opens or is read by itself.
+    expect(api.post).not.toHaveBeenCalled();
+    expect(host.querySelector('[aria-current="true"]')).toBeNull();
+    expect(host.querySelector('.inbox-detail__empty')?.textContent).toBe(
+      'notifications.detailEmptyTitlenotifications.detailEmptyHint',
+    );
+
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-notification-id="n-unread"]')?.click(),
+    );
     expect(api.post).toHaveBeenCalledWith('/me/notifications/n-unread/read', {});
+    expect(host.querySelector('.inbox-detail__empty')).toBeNull();
     expect(onCount).toHaveBeenCalled();
 
     // Detail breadcrumb and comments
@@ -417,16 +432,21 @@ it('supports keyboard navigation with arrows, Enter, and Escape', async () => {
     const dialog = host.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
 
-    // Press ArrowDown on the list item to focus and select the second item
+    // ArrowDown only moves the focus to the second item
     await act(async () => {
       host
         .querySelector('[data-notification-id="n1"]')
         ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     });
 
-    // Selecting unread item marks it read only once scrolling stops (~400 ms debounce)
-    expect(api.post).not.toHaveBeenCalled();
     await act(async () => vi.advanceTimersByTime(400));
+    expect(api.post).not.toHaveBeenCalled();
+    expect(host.querySelector('[aria-current="true"]')).toBeNull();
+
+    // Enter is the focused button's native click
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-notification-id="n2"]')?.click(),
+    );
     expect(api.post).toHaveBeenCalledWith('/me/notifications/n2/read', {});
 
     // Press Escape to close
@@ -502,6 +522,10 @@ it('allows replying to and resolving threads from the inbox detail pane', async 
           />
         </MemoryRouter>,
       ),
+    );
+
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-notification-id="n1"]')?.click(),
     );
 
     // Resolve thread button
@@ -614,11 +638,11 @@ it('keeps Enter on action buttons and moves list focus with a roving tab stop', 
     expect(document.activeElement).toBe(second);
     expect(second.tabIndex).toBe(0);
     expect(first.tabIndex).toBe(-1);
+    expect(second.getAttribute('aria-current')).toBeNull();
+    await act(async () => second.click());
     expect(second.getAttribute('aria-current')).toBe('true');
-    const headerAction = host.querySelector<HTMLButtonElement>('.notifications__head button')!;
     const detailAction = host.querySelector<HTMLButtonElement>('.inbox-detail__actions button')!;
     await act(async () => {
-      headerAction.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       detailAction.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     });
     expect(onNavigate).not.toHaveBeenCalled();
@@ -628,7 +652,7 @@ it('keeps Enter on action buttons and moves list focus with a roving tab stop', 
   }
 });
 
-it('skips pathless items, focuses the first enabled item from the panel and debounces mark-read', async () => {
+it('skips pathless items, focuses the first enabled item from the panel and reads nothing on the way', async () => {
   vi.useFakeTimers();
   const host = document.createElement('div');
   document.body.append(host);
@@ -675,16 +699,12 @@ it('skips pathless items, focuses the first enabled item from the panel and debo
     expect(document.activeElement).toBe(first);
     expect(second.tabIndex).toBe(-1);
 
-    // Arrow navigation defers mark-read: no POST while scrolling, one ~400 ms after stopping
     await act(async () => {
       first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     });
     expect(document.activeElement).toBe(second);
-    expect(api.post).toHaveBeenCalledTimes(1);
-    expect(api.post).toHaveBeenCalledWith('/me/notifications/n1/read', {});
     await act(async () => vi.advanceTimersByTime(400));
-    expect(api.post).toHaveBeenCalledTimes(2);
-    expect(api.post).toHaveBeenLastCalledWith('/me/notifications/n2/read', {});
+    expect(api.post).not.toHaveBeenCalled();
   } finally {
     await act(async () => root.unmount());
     host.remove();
@@ -932,7 +952,7 @@ it('does not auto-read hidden assignment notifications when opening My tasks', a
   }
 });
 
-it('reads only the notification it shows when the Inbox opens, not the rest of the list', async () => {
+it('reads nothing when the Inbox opens, then only the notification clicked', async () => {
   const host = document.createElement('div');
   const root = createRoot(host);
   const items = ['n1', 'n2', 'n3', 'n4'].map((id, i) => ({
@@ -961,8 +981,86 @@ it('reads only the notification it shows when the Inbox opens, not the rest of t
       ),
     );
     await act(async () => new Promise((resolve) => setTimeout(resolve, 500)));
-    expect(vi.mocked(api.post).mock.calls).toEqual([['/me/notifications/n1/read', {}]]);
+    expect(api.post).not.toHaveBeenCalled();
+    expect(host.querySelectorAll('.notification.is-unread')).toHaveLength(4);
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-notification-id="n2"]')?.click(),
+    );
+    expect(vi.mocked(api.post).mock.calls).toEqual([['/me/notifications/n2/read', {}]]);
     expect(host.querySelectorAll('.notification.is-unread')).toHaveLength(3);
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
+
+it('puts Mark all as read in the top bar and stays open on a press outside, on a desktop', async () => {
+  const host = document.createElement('div');
+  const actions = document.createElement('div');
+  document.body.append(host, actions);
+  const root = createRoot(host);
+  const onNavigate = vi.fn();
+  vi.mocked(api.get).mockResolvedValue({ items: [], nextCursor: null });
+  vi.mocked(api.post).mockResolvedValue({});
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            actionsIn={actions}
+            unread={2}
+            onClose={vi.fn()}
+            onNavigate={onNavigate}
+            onCount={vi.fn().mockResolvedValue(undefined)}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    expect(host.querySelector('.notifications__head')).toBeNull();
+    const readAll = actions.querySelector('button');
+    expect(readAll?.textContent).toBe('notifications.readAll');
+    await act(async () => readAll?.click());
+    expect(api.post).toHaveBeenCalledWith(
+      '/me/notifications/read-all',
+      expect.objectContaining({ before: expect.any(String) }),
+    );
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(onNavigate).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    actions.remove();
+  }
+});
+
+it('shows placeholder lines, not a word, while the detail loads', async () => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  vi.mocked(api.get).mockImplementation((path: string) =>
+    path.startsWith('/me/notifications')
+      ? Promise.resolve({ items: [{ ...baseNotification, id: 'n1' }], nextCursor: null })
+      : new Promise(() => {}),
+  );
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={0}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-notification-id="n1"]')?.click(),
+    );
+    const status = host.querySelector('.inbox-detail__conversation [role="status"]');
+    expect(status?.querySelectorAll('.ink-skeleton')).toHaveLength(3);
+    expect(status?.querySelector('.ink-sr-only')?.textContent).toBe('comments.loading');
   } finally {
     await act(async () => root.unmount());
   }

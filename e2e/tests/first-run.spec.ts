@@ -409,6 +409,11 @@ test('real board restores canvas controls after the sidebar Inbox closes', async
     .poll(() => page.getByTestId('canvas').evaluate((el) => el.clientWidth))
     .toBeGreaterThan(0);
   await expect(page.locator('.notifications--fixed')).toBeVisible();
+  // A page of the shell: the navigation stays where it was, with nothing opened yet.
+  expect(await page.locator('.ink-sidebar').boundingBox()).toEqual(sidebar);
+  await expect(inbox).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.inbox-header__title')).toHaveText('Inbox');
+  await expect(page.getByText('Scegli una notifica', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('.notifications--fixed')).toHaveCount(0);
   const minimap = (await page.locator('.minimap').boundingBox())!;

@@ -13,6 +13,7 @@ import {
 } from '@inkadra/shared';
 import { Button, Checkbox, Icon, IconButton, Switch, swallowOutsidePress } from '@inkadra/ui';
 import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName, groupByDay, type Page, reviewKey } from '../board/review-model.ts';
@@ -24,7 +25,7 @@ import { moveTabFocus } from '../lib/tabs.ts';
 import { MyTasks } from '../routes/MyTasks.tsx';
 import { trackSave } from '../routes/settings-save.ts';
 import { Card, Row } from '../routes/settings-ui.tsx';
-import { InboxDetail } from './InboxDetail.tsx';
+import { InboxDetail, InboxSkeleton } from './InboxDetail.tsx';
 import {
   dayLabel,
   filterNotifications,
@@ -340,6 +341,7 @@ export function NotificationList({
   bell,
   unread,
   fixed,
+  actionsIn,
   onClose,
   onNavigate,
   onCount,
@@ -349,6 +351,8 @@ export function NotificationList({
   unread: number;
   bell?: RefObject<HTMLButtonElement | null>;
   fixed?: boolean;
+  /** The top bar's place for Mark all as read while the Inbox is a page of the shell. */
+  actionsIn?: HTMLElement | null;
   onClose: () => void;
   onNavigate: () => void;
   onCount: () => Promise<void>;
@@ -373,6 +377,9 @@ export function NotificationList({
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
+  // A page beside the navigation: the title and the actions are in the top bar, and pressing
+  // outside it (the navigation, the top bar) is not leaving it. A phone has its own layout.
+  const inPage = fixed && !mobile;
   const panel = useRef<HTMLDivElement>(null);
   // Marking all as read covers what was listed when the panel opened, not what arrives later.
   const openedAt = useRef(new Date().toISOString());
@@ -384,6 +391,7 @@ export function NotificationList({
   }, [load]);
 
   useEffect(() => {
+    if (inPage) return;
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
       if (panel.current?.contains(target) || bell?.current?.contains(target)) return;
@@ -392,16 +400,8 @@ export function NotificationList({
     };
     document.addEventListener('pointerdown', away, true);
     return () => document.removeEventListener('pointerdown', away, true);
-  }, [bell, onNavigate]);
+  }, [inPage, bell, onNavigate]);
 
-  // Arrow navigation batches reads: only the item where scrolling stops is marked, ~400 ms later.
-  const readTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearReadTimer = useCallback(() => {
-    if (readTimer.current) {
-      clearTimeout(readTimer.current);
-      readTimer.current = null;
-    }
-  }, []);
   const [resolved, setResolved] = useState(false);
   useEffect(() => {
     if (!resolved) return;
@@ -461,17 +461,6 @@ export function NotificationList({
         : []),
     ];
   };
-  const markReadDebounced = useCallback(
-    (id: string) => {
-      clearReadTimer();
-      readTimer.current = setTimeout(() => {
-        readTimer.current = null;
-        void markRead(id).catch(() => setActionError(true));
-      }, 400);
-    },
-    [clearReadTimer, markRead],
-  );
-  useEffect(() => clearReadTimer, [clearReadTimer]);
 
   const markAll = async () => {
     setActionError(false);
@@ -491,36 +480,11 @@ export function NotificationList({
       (id) => id !== undefined && filteredItems.some((n) => n.id === id && isNavigable(n)),
     ) ?? filteredItems.find(isNavigable)?.id;
 
-  // Mark read on open when selecting or when first enabled item loads on desktop
-  useEffect(() => {
-    if (
-      fixed &&
-      filter !== 'tasks' &&
-      !mobile &&
-      filteredItems.length > 0 &&
-      (!selectedId || !filteredItems.some((n) => n.id === selectedId))
-    ) {
-      const first = filteredItems.find(isNavigable);
-      if (first) {
-        setSelectedId(first.id);
-        if (!first.readAt) {
-          void markRead(first.id).catch(() => setActionError(true));
-        }
-      }
-    }
-  }, [fixed, filter, mobile, filteredItems, selectedId, markRead]);
-
+  // Only a click (or Enter on the focused row) opens a notification and marks it read.
   const selectNotification = useCallback(
-    (n: Notification, options?: { deferRead?: boolean }) => {
+    (n: Notification) => {
       setSelectedId(n.id);
-      if (!n.readAt) {
-        if (options?.deferRead) {
-          markReadDebounced(n.id);
-        } else {
-          clearReadTimer();
-          void markRead(n.id).catch(() => setActionError(true));
-        }
-      }
+      if (!n.readAt) void markRead(n.id).catch(() => setActionError(true));
       if (typeof window !== 'undefined' && window.matchMedia('(width < 768px)').matches) {
         const path = notificationPath(n);
         if (path) {
@@ -529,7 +493,7 @@ export function NotificationList({
         }
       }
     },
-    [clearReadTimer, markRead, markReadDebounced, onNavigate, navigate],
+    [markRead, onNavigate, navigate],
   );
 
   const selectedNotification = filteredItems.find((n) => n.id === selectedId) ?? null;
@@ -581,58 +545,66 @@ export function NotificationList({
           );
           el?.focus();
           el?.scrollIntoView({ block: 'nearest' });
-          if (fixed && !mobile) selectNotification(nextItem, { deferRead: true });
         }
       }}
       onKeyUp={(e) => e.stopPropagation()}
     >
       <div className="notifications__list-pane">
-        <header className="notifications__head">
-          <h2 id="notifications-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {t('nav.inbox')}
-            {unread > 0 && (
-              // The bell's label carries the count: the dialog is named "Inbox" alone.
-              <span
-                aria-hidden="true"
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  padding: '1px 7px',
-                  borderRadius: 'var(--ink-radius-full)',
-                  background: 'var(--ink-accent-primary)',
-                  color: 'var(--ink-on-accent)',
-                }}
-              >
-                {unreadBadge(unread)}
-              </span>
-            )}
-          </h2>
-          {fixed ? (
-            <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <IconButton
-                icon="check"
-                label={t('notifications.readAll')}
-                disabled={!anyUnread}
-                onClick={() => void markAll()}
-              />
-              <IconButton icon="close" label={t('notifications.close')} onClick={onClose} />
-            </div>
-          ) : (
-            <>
-              <Button variant="ghost" disabled={!anyUnread} onClick={() => void markAll()}>
-                {t('notifications.readAll')}
-              </Button>
-              <IconButton icon="close" label={t('notifications.close')} onClick={onClose} />
-            </>
+        {inPage &&
+          actionsIn &&
+          createPortal(
+            <Button variant="ghost" disabled={!anyUnread} onClick={() => void markAll()}>
+              {t('notifications.readAll')}
+            </Button>,
+            actionsIn,
           )}
-        </header>
+        {!inPage && (
+          <header className="notifications__head">
+            <h2 id="notifications-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {t('nav.inbox')}
+              {unread > 0 && (
+                // The bell's label carries the count: the dialog is named "Inbox" alone.
+                <span
+                  aria-hidden="true"
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '1px 7px',
+                    borderRadius: 'var(--ink-radius-full)',
+                    background: 'var(--ink-accent-primary)',
+                    color: 'var(--ink-on-accent)',
+                  }}
+                >
+                  {unreadBadge(unread)}
+                </span>
+              )}
+            </h2>
+            {fixed ? (
+              <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <IconButton
+                  icon="check"
+                  label={t('notifications.readAll')}
+                  disabled={!anyUnread}
+                  onClick={() => void markAll()}
+                />
+                <IconButton icon="close" label={t('notifications.close')} onClick={onClose} />
+              </div>
+            ) : (
+              <>
+                <Button variant="ghost" disabled={!anyUnread} onClick={() => void markAll()}>
+                  {t('notifications.readAll')}
+                </Button>
+                <IconButton icon="close" label={t('notifications.close')} onClick={onClose} />
+              </>
+            )}
+          </header>
+        )}
         {fixed && (
           <div
             role="tablist"
             aria-label={t('notifications.filter')}
             className="notifications-filter-tabs"
-            // The arrows only move the focus: choosing a tab reads its first notification, so
-            // that waits for Enter, Space or a click, and walking the tabs leaves all unread.
+            // The arrows only move the focus: choosing a tab waits for Enter, Space or a click.
             onKeyDown={moveTabFocus}
           >
             {INBOX_TABS.map((tab) => (
@@ -777,7 +749,9 @@ export function NotificationList({
                   </ul>
                 </section>
               ))}
-              {state === 'loading' && (
+              {/* In the page a list already shown refreshes silently: only Show more says so. */}
+              {state === 'loading' && inPage && items.length === 0 && <InboxSkeleton />}
+              {state === 'loading' && (!inPage || (items.length > 0 && next)) && (
                 <p role="status" className="ink-muted notifications__status">
                   {t('comments.loading')}
                 </p>
@@ -814,7 +788,7 @@ export function NotificationList({
           </footer>
         )}
       </div>
-      {fixed && !mobile && filter !== 'tasks' && (
+      {inPage && filter !== 'tasks' && (
         <InboxDetail
           notification={selectedNotification}
           onNavigate={onNavigate}

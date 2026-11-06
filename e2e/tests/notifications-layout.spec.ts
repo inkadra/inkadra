@@ -86,12 +86,12 @@ for (const theme of ['light', 'dark']) {
       await render(page, theme);
       await expect(page.locator('.notifications')).toHaveCSS('position', 'fixed');
       expect(await page.locator('.notifications').boundingBox()).toEqual({
-        // A floating surface (#333): after the collapsed navigation's logo button, over the
-        // header, 12 px from the window edges.
+        // A page's surface (#333): beside the navigation (here without a shell, so at the
+        // collapsed logo button's width), under the top bar, 12 px from the window edges.
         x: 66,
-        y: 12,
+        y: 66,
         width: width - 66 - 12,
-        height: 900 - 24,
+        height: 900 - 66 - 12,
       });
       await expect(page.locator('.notifications__detail-pane')).toBeVisible();
       const body = page.locator('.inbox-detail__body');

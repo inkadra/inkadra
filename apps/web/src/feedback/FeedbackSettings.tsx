@@ -14,7 +14,7 @@ import {
   Select,
   Switch,
 } from '@inkadra/ui';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { formatDateTime } from '../lib/datetime.ts';
@@ -467,7 +467,7 @@ export function FeedbackSettings() {
 }
 
 /** Opened from the notification of a new report. */
-export function FeedbackInbox() {
+export function FeedbackInbox({ loading }: { loading?: ReactNode }) {
   const { t } = useTranslation();
   const [items, setItems] = useState<FeedbackReport[] | null>(null);
   const [failed, fail] = useState(false);
@@ -484,11 +484,13 @@ export function FeedbackInbox() {
           {t('feedback.settingsFailed')}
         </p>
       )}
-      {!items && !failed && (
-        <p role="status" className="settings-card__empty settings-muted">
-          {t('admin.loading')}
-        </p>
-      )}
+      {!items &&
+        !failed &&
+        (loading ?? (
+          <p role="status" className="settings-card__empty settings-muted">
+            {t('admin.loading')}
+          </p>
+        ))}
       {items && <ReportList reports={items} />}
     </Card>
   );

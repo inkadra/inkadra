@@ -12,6 +12,7 @@ import {
   useSearchParams,
 } from 'react-router';
 import { expect, it, vi } from 'vitest';
+import { insideDialog } from '../board/shortcuts.ts';
 import { AppLayout } from './AppLayout.tsx';
 
 vi.mock('react-i18next', () => ({
@@ -79,10 +80,15 @@ it.each(['/projects', '/'])(
       expect(wrapper?.style.visibility).toBe('hidden');
       expect(wrapper?.hasAttribute('inert')).toBe(true);
       expect(wrapper?.getAttribute('aria-hidden')).toBe('true');
+      // The Inbox is a page of the shell: the navigation stays where it is.
       const shell = host.querySelector('.ink-shell');
-      expect(shell?.classList.contains('ink-shell--collapsed')).toBe(true);
-      expect(host.querySelector('.ink-sidebar__toggle')?.getAttribute('aria-expanded')).toBe(
-        'false',
+      expect(shell?.classList.contains('ink-shell--collapsed')).toBe(false);
+      const toggle = host.querySelector<HTMLButtonElement>('.ink-sidebar__toggle');
+      expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+      expect(toggle?.disabled).toBe(false);
+      expect(bell?.getAttribute('aria-pressed')).toBe('true');
+      expect(host.querySelector('.inbox-header #notifications-title')?.textContent).toBe(
+        'nav.inbox',
       );
       await act(async () =>
         [...host.querySelectorAll('button')].find((b) => b.textContent === 'Close inbox')?.click(),
@@ -97,6 +103,44 @@ it.each(['/projects', '/'])(
     }
   },
 );
+
+it('leaves the Inbox from a row of the navigation and keeps keys away from the covered page', async () => {
+  localStorage.clear();
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={['/projects']}>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="*" element={<div data-testid="outlet" />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>,
+      ),
+    );
+    const row = (label: string) =>
+      [...host.querySelectorAll<HTMLElement>('.ink-sidebar .ink-nav')].find((b) =>
+        b.textContent?.includes(label),
+      );
+    expect(insideDialog()).toBe(false);
+    await act(async () => row('nav.inbox')?.click());
+    expect(host.querySelector('.inbox-header')).not.toBeNull();
+    expect(insideDialog()).toBe(true);
+    // Only the Inbox is current while it is open.
+    expect(row('nav.projects')?.getAttribute('aria-current')).toBeNull();
+    // The page already underneath: the path does not change, the Inbox still closes.
+    await act(async () => row('nav.projects')?.click());
+    expect(host.querySelector('.inbox-header')).toBeNull();
+    expect(row('nav.projects')?.getAttribute('aria-current')).toBe('page');
+    expect(document.activeElement).not.toBe(row('nav.inbox'));
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
 
 const mounts = vi.hoisted(() => ({ page: 0 }));
 function Page() {
