@@ -10,9 +10,11 @@ What it does:
   2,000 characters); pages that refuse scripts leave it empty. The tab title is kept on link cards.
   The board is remembered for next time.
 - **Right-click menus**: on an image, a selection (a note with the quote and its page), a
-  link or the page itself. One item saves to the last board used; a "Save … to…" submenu next
-  to it lists up to 5 recent boards when connected. Chrome groups them under the extension's name.
-  Images are read inside the browser, with the page's cookies when it can, so pictures
+  link or the page itself. When connected with recent boards, each has one "Save … to…" item
+  listing up to 5 of them, the last used first. Otherwise one item saves in one click: to the first
+  board the server remembers, or it opens the board picker, or the settings when not connected.
+  A linked image or a selected link matches two contexts, so it shows two items and Chrome groups
+  them under the extension's name. Images are read inside the browser, with the page's cookies when it can, so pictures
   behind a login are uploaded as files; when they cannot be read the image address is sent
   instead.
 - **Shortcut**: `Alt+Shift+S` saves the page to the last board. Change it at

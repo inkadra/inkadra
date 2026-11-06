@@ -256,6 +256,7 @@ describe('save-to menus', () => {
     chromeMock.runtime.onStartup.addListener.mock.calls[0]![0]();
     await vi.advanceTimersByTimeAsync(10);
     expect(menuIds).toContain('save-to-page:b');
+    expect(menuIds).not.toContain('save-page');
     stored(connection, [other]);
     for (let i = 0; i < 3; i++) storageChange({ recentBoards: {} });
     await vi.advanceTimersByTimeAsync(10);
@@ -265,14 +266,30 @@ describe('save-to menus', () => {
   });
 
   it.each([
-    ['disconnected', undefined],
-    ['revoked', { ...connection, token: null }],
-  ])('has no save-to parent when %s', async (_state, current) => {
-    stored(current, [other]);
+    ['disconnected', undefined, [other]],
+    ['revoked', { ...connection, token: null }, [other]],
+    ['connected without recent boards', connection, []],
+  ])('keeps only the one-click item when %s', async (_state, current, recent) => {
+    stored(current, recent);
     storageChange({ connection: {} });
     await vi.advanceTimersByTimeAsync(10);
     expect(menuIds).toContain('save-page');
     expect([...menuIds].filter((id) => id.startsWith('save-to-'))).toEqual([]);
+  });
+
+  it('lists first the board the shortcut saves to', async () => {
+    stored(connection, [other, board]);
+    storageChange({ recentBoards: {} });
+    await vi.advanceTimersByTimeAsync(10);
+    const created = chromeMock.contextMenus.create.mock.calls.map(([item]) => item.id);
+    expect(created.find((id) => id.startsWith('save-to-page:'))).toBe('save-to-page:o');
+    fetchMock.mockResolvedValueOnce(response(200, { items: [{ ...other, myRole: 'editor' }] }));
+    chromeMock.commands.onCommand.addListener.mock.calls[0]![0]('save-page', {
+      id: 1,
+      url: 'https://a.example',
+    });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(clipBody()).toMatchObject({ boardId: 'o' });
   });
 
   it('ignores storage changes that do not affect the menus', async () => {

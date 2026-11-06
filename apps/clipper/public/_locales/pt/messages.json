@@ -154,7 +154,7 @@
     "message": "Alterar"
   },
   "help_menus": {
-    "message": "Clique com o botão direito em uma imagem, um texto selecionado, um link ou na página para salvar no último quadro usado ou escolha um quadro recente no mesmo menu."
+    "message": "Clique com o botão direito em uma imagem, um texto selecionado, um link ou na página e escolha um quadro recente. Se ainda não houver nenhum, um clique salva ou pede que você escolha um quadro."
   },
   "help_selfhost": {
     "message": "Extensão compilada por você"

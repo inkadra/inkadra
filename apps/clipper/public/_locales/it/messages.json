@@ -154,7 +154,7 @@
     "message": "Cambia"
   },
   "help_menus": {
-    "message": "Con il tasto destro su un’immagine, un testo selezionato, un link o la pagina, salvi nell’ultima board usata, oppure scegli una board recente dallo stesso menu."
+    "message": "Con il tasto destro su un’immagine, un testo selezionato, un link o la pagina, scegli una board recente. Se non ce ne sono ancora, un clic salva o ti chiede di scegliere una board."
   },
   "help_selfhost": {
     "message": "Estensione compilata da te"

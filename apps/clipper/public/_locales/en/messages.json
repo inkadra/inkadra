@@ -158,7 +158,7 @@
     "message": "Change"
   },
   "help_menus": {
-    "message": "Right-click an image, selected text, a link or the page to save it to the last board used, or pick a recent board from the same menu."
+    "message": "Right-click an image, selected text, a link or the page, then choose a recent board. If none is listed yet, one click saves it or asks you to pick a board."
   },
   "help_selfhost": {
     "message": "Extension you built yourself"

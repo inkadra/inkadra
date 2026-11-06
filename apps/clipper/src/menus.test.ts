@@ -18,11 +18,11 @@ describe('context menu construction', () => {
     ]);
   });
 
-  it('adds a parent per context with at most 5 recent boards', () => {
+  it('has one top-level parent per context with at most 5 recent boards, newest first', () => {
     const items = menuItems(['a', 'b', 'c', 'd', 'e', 'f'].map((id) => board(id)));
     expect(new Set(items.map((item) => item.id)).size).toBe(items.length);
-    const parents = items.filter((item) => item.id?.startsWith('save-to-') && !item.parentId);
-    expect(parents.map((item) => item.title)).toEqual([
+    const topLevel = items.filter((item) => !item.parentId);
+    expect(topLevel.map((item) => item.title)).toEqual([
       'menu_image_to',
       'menu_selection_to',
       'menu_link_to',
@@ -37,7 +37,7 @@ describe('context menu construction', () => {
 
   it('shows the access-key and selection markers of a board title literally', () => {
     expect(menuTitle('R&D & 100%s %%s')).toBe('R&&D && 100%​s %%​s');
-    const [, , child] = menuItems([board('a', 'A&B %s')]);
+    const [, child] = menuItems([board('a', 'A&B %s')]);
     expect(child?.title).toBe('A&&B %​s');
   });
 });

@@ -154,7 +154,7 @@
     "message": "Cambiar"
   },
   "help_menus": {
-    "message": "Haz clic derecho en una imagen, un texto seleccionado, un enlace o la página para guardarlo en el último tablero usado, o elige un tablero reciente en el mismo menú."
+    "message": "Haz clic derecho en una imagen, un texto seleccionado, un enlace o la página y elige un tablero reciente. Si aún no aparece ninguno, un clic lo guarda o te pide que elijas un tablero."
   },
   "help_selfhost": {
     "message": "Extensión compilada por ti"

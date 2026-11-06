@@ -154,7 +154,7 @@
     "message": "Modifier"
   },
   "help_menus": {
-    "message": "Faites un clic droit sur une image, un texte sélectionné, un lien ou la page pour l’enregistrer sur le dernier tableau utilisé, ou choisissez un tableau récent dans le même menu."
+    "message": "Faites un clic droit sur une image, un texte sélectionné, un lien ou la page, puis choisissez un tableau récent. S’il n’y en a pas encore, un clic l’enregistre ou vous demande de choisir un tableau."
   },
   "help_selfhost": {
     "message": "Extension compilée par vos soins"

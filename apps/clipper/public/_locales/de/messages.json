@@ -154,7 +154,7 @@
     "message": "Ändern"
   },
   "help_menus": {
-    "message": "Per Rechtsklick auf ein Bild, markierten Text, einen Link oder die Seite speicherst du im zuletzt verwendeten Board oder wählst im selben Menü eines der letzten Boards aus."
+    "message": "Per Rechtsklick auf ein Bild, markierten Text, einen Link oder die Seite wählst du eines der letzten Boards aus. Wird noch keines angezeigt, speichert ein Klick direkt oder fragt nach einem Board."
   },
   "help_selfhost": {
     "message": "Selbst gebaute Erweiterung"

@@ -19,15 +19,19 @@ export function menuTitle(title: string): string {
   );
 }
 
-/** One-click items on the last board, then a "Save … to…" parent with the recent boards. */
+/**
+ * One item per context, so Chrome shows it directly instead of nesting it under the extension's
+ * name: a "Save … to…" parent with the recent boards, newest first, or a one-click item without
+ * boards.
+ */
 export function menuItems(boards: BoardRef[]): chrome.contextMenus.CreateProperties[] {
   const recent = boards.slice(0, BOARDS_IN_MENU);
-  return CONTEXTS.flatMap((context) => {
+  return CONTEXTS.flatMap((context): chrome.contextMenus.CreateProperties[] => {
     const contexts: [MenuContext] = [context];
+    if (!recent.length) return [{ id: `save-${context}`, title: t(`menu_${context}`), contexts }];
     const parentId = `save-to-${context}`;
     return [
-      { id: `save-${context}`, title: t(`menu_${context}`), contexts },
-      ...(recent.length ? [{ id: parentId, title: t(`menu_${context}_to`), contexts }] : []),
+      { id: parentId, title: t(`menu_${context}_to`), contexts },
       ...recent.map((board) => ({
         id: `${parentId}:${board.id}`,
         parentId,
