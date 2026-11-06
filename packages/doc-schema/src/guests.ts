@@ -42,7 +42,8 @@ const COMMON_GUEST_FIELDS = [
 /**
  * The fields of each element type that guests of share links receive (decision 0013). It is
  * an allow list: a field added to an element later stays out of guest snapshots until it is
- * added here. Left out on purpose: `tags` (internal labels), `locked` (editing state),
+ * added here. Left out on purpose: `tags` (internal labels), `group` (how the team sorts its
+ * references, decision 0077), `locked` (editing state),
  * `guestHidden` (hidden elements are not sent at all) and, on frames, `status` (the production
  * status, not the review) and `notes` (the director's notes); on characters `contact` and
  * `notes`, on locations `address`, `mapUrl`, `availability`, `contact` and `notes` (people's
