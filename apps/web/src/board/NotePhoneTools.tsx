@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { Icon, type IconName } from '@inkadra/ui';
+import type { Transaction } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
+import { ySyncPluginKey } from '@tiptap/y-tiptap';
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStoryboard } from './film/storyboard-data.ts';
@@ -108,6 +110,7 @@ export function NotePhoneTools({
   const { t } = useTranslation();
   const id = useId();
   const file = useRef<HTMLInputElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
   const people = useReviews((s) => s.people);
   const { frames, labels } = useStoryboard(store);
   const { found, dismiss } = useTrigger(editor);
@@ -128,6 +131,28 @@ export function NotePhoneTools({
   const query = found?.query.toLocaleLowerCase() ?? '';
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new menu starts at its first item
   useEffect(() => setActive(0), [found?.char, query, pickingFrame]);
+
+  // The shot list has no trigger in the text to follow, and a phone has no Escape: it closes when
+  // this person moves on. Another person's edit also moves the selection, and is no reason to.
+  useEffect(() => {
+    if (!editor || !pickingFrame) return;
+    const close = () => setPickingFrame(false);
+    const onTransaction = ({ transaction: tr }: { transaction: Transaction }) => {
+      if ((tr.docChanged || tr.selectionSet) && !tr.getMeta(ySyncPluginKey)?.isChangeOrigin)
+        close();
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!menu.current?.contains(event.target as Node)) close();
+    };
+    editor.on('transaction', onTransaction);
+    editor.on('blur', close);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => {
+      editor.off('transaction', onTransaction);
+      editor.off('blur', close);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+    };
+  }, [editor, pickingFrame]);
 
   const pickPicture = useCallback(() => file.current?.click(), []);
 
@@ -251,6 +276,22 @@ export function NotePhoneTools({
   }
   const open = items.length > 0 || pickingFrame;
   const enabled = items.filter((item) => !item.disabled);
+  const menuId = `${id}-menu`;
+  const activeKey = open ? enabled[active]?.key : undefined;
+
+  // The focus stays in the editor, so the editor tells assistive technology what is highlighted.
+  useEffect(() => {
+    const dom = editor?.view.dom;
+    if (!dom || !open) return;
+    dom.setAttribute('aria-controls', menuId);
+    dom.setAttribute('aria-autocomplete', 'list');
+    if (activeKey) dom.setAttribute('aria-activedescendant', `${id}-item-${activeKey}`);
+    return () => {
+      dom.removeAttribute('aria-controls');
+      dom.removeAttribute('aria-autocomplete');
+      dom.removeAttribute('aria-activedescendant');
+    };
+  }, [editor, open, menuId, id, activeKey]);
 
   /** Arrow keys, Enter and Escape drive the menu before the editor sees them. */
   const onKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -318,11 +359,14 @@ export function NotePhoneTools({
     <div className="note-phone-tools">
       {open && (
         <div
-          id={`${id}-menu`}
+          ref={menu}
+          id={menuId}
           className="note-phone-menu"
           role="listbox"
           aria-label={listLabel}
           style={{ transform: `translateY(${-inset}px)` }}
+          // The editor keeps the focus and the phone its keyboard; a finger still scrolls the list.
+          onPointerDown={(e) => e.preventDefault()}
         >
           {items.length === 0 && (
             <p className="note-phone-menu__empty">{t('board.note.slash.noFrames')}</p>
@@ -330,16 +374,15 @@ export function NotePhoneTools({
           {items.map((item) => {
             const index = enabled.indexOf(item);
             return (
-              <button
+              // biome-ignore lint/a11y/useKeyWithClickEvents: the keys are the editor's, which keeps the focus and names this option with aria-activedescendant.
+              <div
                 key={item.key}
                 id={`${id}-item-${item.key}`}
-                type="button"
                 role="option"
                 tabIndex={-1}
                 aria-selected={index === active}
                 aria-disabled={item.disabled || undefined}
                 className="note-phone-menu__item"
-                onPointerDown={(e) => e.preventDefault()}
                 onClick={() => !item.disabled && item.run()}
               >
                 {item.icon && <Icon name={item.icon} size={18} />}
@@ -347,7 +390,7 @@ export function NotePhoneTools({
                   {item.label}
                   {item.hint && <small>{item.hint}</small>}
                 </span>
-              </button>
+              </div>
             );
           })}
         </div>

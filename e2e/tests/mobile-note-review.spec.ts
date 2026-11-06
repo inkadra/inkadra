@@ -5,7 +5,7 @@ import { deflateSync } from 'node:zlib';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { createElement } from '@inkadra/canvas-core';
 import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
-import { expect, type Locator, type Page, test } from '@playwright/test';
+import { type Browser, expect, type Locator, type Page, test } from '@playwright/test';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 
@@ -26,12 +26,14 @@ const teamState = join(tmpdir(), `inkadra-e2e-110-team-${process.env.E2E_PORT ??
 
 interface Seeded {
   projectId: string;
+  rootBoardId: string;
   storyboardId: string;
   noteId: string;
   pictureB: string;
 }
 let seeded: Seeded;
 let guestUrl = '';
+let shotsOnNoteBoard = false;
 
 async function shots(page: Page, name: string, widths = [390, 360]) {
   if (!shotsDir) return;
@@ -237,7 +239,13 @@ test.beforeAll(async ({ browser, baseURL }) => {
   });
   expect(link.ok()).toBe(true);
   guestUrl = (await link.json()).url;
-  seeded = { projectId: project.id, storyboardId: storyboard.id, noteId, pictureB };
+  seeded = {
+    projectId: project.id,
+    rootBoardId: project.rootBoardId,
+    storyboardId: storyboard.id,
+    noteId,
+    pictureB,
+  };
   await page.context().storageState({ path: teamState });
   await page.close();
 });
@@ -338,6 +346,177 @@ test('the full-screen note on a phone: bar, / menu, mentions, pictures and typin
   await expect(desktop).not.toHaveClass(/note-sidesheet--phone/);
   await expect(page.getByRole('toolbar', { name: 'Formattazione della nota' })).toHaveCount(0);
   await shots(page, 'note-desktop', [1280]);
+  await context.close();
+});
+
+/** The note on a phone, its board holding enough shots for the shot list to scroll. */
+async function noteWithShots(browser: Browser, baseURL: string) {
+  const context = await browser.newContext({
+    storageState: teamState,
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    locale: 'it-IT',
+    reducedMotion: 'reduce',
+  });
+  const page = await context.newPage();
+  const sheet = await openNote(page);
+  if (!shotsOnNoteBoard) {
+    shotsOnNoteBoard = true;
+    await editBoard(page, baseURL, seeded.rootBoardId, (doc) => {
+      const opts = { userId: null };
+      const scene = createElement(
+        doc,
+        'scene',
+        { x: 1600, y: 0 },
+        { number: '1', title: 'Sala' } as never,
+        opts,
+      );
+      for (let i = 0; i < 12; i++)
+        createElement(
+          doc,
+          'frame',
+          { x: 1600, y: 0 },
+          { parent: scene.id, assetId: seeded.pictureB, action: `Azione ${i}` } as never,
+          opts,
+        );
+    });
+  }
+  const editor = sheet.locator('.ProseMirror');
+  const bar = page.getByRole('toolbar', { name: 'Formattazione della nota' });
+  const slash = bar.getByRole('button', { name: 'Inserisci', exact: true });
+  const insert = page.getByRole('listbox', { name: 'Inserisci' });
+  const shotList = page.getByRole('listbox', { name: 'Inquadratura' });
+  await editor.click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.press('Enter');
+  /** With fingers only: `/` on the bar, then the first item of its menu. */
+  const openShotList = async () => {
+    await slash.tap();
+    await insert.getByRole('option', { name: /Inquadratura/ }).tap();
+    await expect(shotList.getByRole('option')).toHaveCount(12);
+    await expect(editor).toBeFocused();
+  };
+  return { context, page, sheet, editor, slash, insert, shotList, openShotList };
+}
+
+/** A finger through the browser's input pipeline, so that it scrolls as a real one does. */
+async function dragTouch(page: Page, from: { x: number; y: number }, to: { x: number; y: number }) {
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type: string, points: { x: number; y: number }[]) =>
+    cdp.send('Input.dispatchTouchEvent', { type: type as 'touchStart', touchPoints: points });
+  await touch('touchStart', [from]);
+  for (let step = 1; step <= 10; step++)
+    await touch('touchMove', [
+      { x: from.x + ((to.x - from.x) * step) / 10, y: from.y + ((to.y - from.y) * step) / 10 },
+    ]);
+  // Held still before lifting, so that no fling goes on to swallow the next tap.
+  await page.waitForTimeout(200);
+  await touch('touchEnd', []);
+  await cdp.detach();
+}
+
+test('the editor points assistive technology at the item of the phone menu', async ({
+  browser,
+  baseURL,
+}) => {
+  const { context, page, editor, slash, insert } = await noteWithShots(browser, baseURL!);
+  await expect(editor).toHaveRole('textbox');
+  await expect(editor).not.toHaveAttribute('aria-controls');
+  await slash.tap();
+  const options = insert.getByRole('option');
+  await expect(options).toHaveCount(3);
+  await expect(insert.locator('button')).toHaveCount(0);
+  await expect(editor).toHaveAttribute('aria-controls', (await insert.getAttribute('id'))!);
+  await expect(editor).toHaveAttribute('aria-autocomplete', 'list');
+  await expect(editor).toHaveAttribute(
+    'aria-activedescendant',
+    (await options.nth(0).getAttribute('id'))!,
+  );
+  await page.keyboard.press('ArrowDown');
+  await expect(options.nth(1)).toHaveAttribute('aria-selected', 'true');
+  await expect(editor).toHaveAttribute(
+    'aria-activedescendant',
+    (await options.nth(1).getAttribute('id'))!,
+  );
+  await page.keyboard.press('Escape');
+  await expect(insert).toBeHidden();
+  await expect(editor).not.toHaveAttribute('aria-controls');
+  await expect(editor).not.toHaveAttribute('aria-activedescendant');
+  await context.close();
+});
+
+test('the shot list of a phone note closes when the note moves on', async ({
+  browser,
+  baseURL,
+}) => {
+  const { context, page, sheet, editor, shotList, openShotList } = await noteWithShots(
+    browser,
+    baseURL!,
+  );
+  // A tap in the text, with no Escape key on a phone.
+  await openShotList();
+  await editor.locator('p').first().tap();
+  await expect(shotList).toBeHidden();
+  // A tap outside the note's text.
+  await openShotList();
+  await sheet.locator('.note-phone__title').tap();
+  await expect(shotList).toBeHidden();
+  // The focus going elsewhere.
+  await editor.locator('p').first().tap();
+  await openShotList();
+  await editor.evaluate((el) => (el as HTMLElement).blur());
+  await expect(shotList).toBeHidden();
+  // Typing on.
+  await editor.locator('p').first().tap();
+  await openShotList();
+  await page.keyboard.type('x');
+  await expect(shotList).toBeHidden();
+  // Another person writing in the note is no reason to close it.
+  await openShotList();
+  await editBoard(page, baseURL!, seeded.rootBoardId, (doc) => {
+    const body = roots(doc).elements.get(seeded.noteId)?.get('body') as Y.XmlFragment;
+    const line = new Y.XmlElement('paragraph');
+    line.insert(0, [new Y.XmlText('Riga di un altro.')]);
+    body.insert(0, [line]);
+  });
+  await expect(editor).toContainText('Riga di un altro.');
+  await expect(shotList).toBeVisible();
+  await context.close();
+});
+
+test('touching the phone menu keeps the editor focused and the list scrolling', async ({
+  browser,
+  baseURL,
+}) => {
+  const { context, page, editor, shotList, openShotList } = await noteWithShots(browser, baseURL!);
+  // A finger's area snaps to the nearest item across the real 6 px, so widen the bare background.
+  await page.addStyleTag({ content: '.note-phone-menu { padding: 60px !important; }' });
+  await openShotList();
+  const box = (await shotList.boundingBox())!;
+  const scrolled = () => shotList.evaluate((el) => el.scrollTop);
+  const bare = box.x + 30;
+  await dragTouch(
+    page,
+    { x: bare, y: box.y + box.height - 10 },
+    { x: bare, y: box.y + box.height / 3 },
+  );
+  await expect.poll(scrolled).toBeGreaterThan(0);
+  await expect(shotList).toBeVisible();
+  await expect(editor).toBeFocused();
+  await page.touchscreen.tap(bare, box.y + box.height / 2);
+  await expect(shotList).toBeVisible();
+  await expect(editor).toBeFocused();
+  // On an item, back up: the list scrolls and nothing is picked.
+  const before = await scrolled();
+  const middle = box.x + box.width / 2;
+  await dragTouch(
+    page,
+    { x: middle, y: box.y + box.height / 3 },
+    { x: middle, y: box.y + box.height - 10 },
+  );
+  await expect.poll(scrolled).toBeLessThan(before);
+  await expect(shotList).toBeVisible();
+  await expect(editor).toBeFocused();
   await context.close();
 });
 
