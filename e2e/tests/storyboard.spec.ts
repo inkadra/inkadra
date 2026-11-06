@@ -132,11 +132,12 @@ test('the board menu presents from another view and renames in place', async ({ 
 
   await menu.click();
   await page.getByRole('menuitem', { name: 'Presenta' }).click();
-  await expect(page.getByRole('button', { name: 'Esci' })).toBeVisible();
+  const exit = page.getByRole('button', { name: 'Esci Esc' });
+  await expect(exit).toBeVisible();
   await expect(page).not.toHaveURL(/present=/);
   await expect(page).not.toHaveURL(/view=shotlist/);
-  await page.getByRole('button', { name: 'Esci' }).click();
-  await expect(page.getByRole('button', { name: 'Esci' })).toHaveCount(0);
+  await exit.click();
+  await expect(exit).toHaveCount(0);
 });
 
 test('arrows join two cards and keep a label', async ({ page }) => {
