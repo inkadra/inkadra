@@ -1843,6 +1843,10 @@ body:has(.colorpicker) .card-reactions {
   background: var(--ink-surface-2);
   color: var(--ink-text-primary);
 }
+.toolbar__btn[aria-expanded="true"] {
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
+}
 .toolbar__btn[aria-pressed="true"] {
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
@@ -5145,12 +5149,30 @@ button.card__play {
 .card-sheet__comment b {
   color: var(--ink-text-primary);
 }
-.card-sheet__reply-field {
-  display: flex;
-  gap: 8px;
+.card-sheet__reply .comment-audience {
+  margin: 0;
 }
-.card-sheet__reply-field .ink-input {
-  flex: 1;
-  min-width: 0;
+/* The comments' composer on one line beside its button; the hint comes with the focus. */
+.card-sheet__reply .comment-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 8px;
+  align-items: start;
+}
+.card-sheet__reply .comment-composer > * {
+  grid-column: 1 / -1;
+}
+.card-sheet__reply .comment-composer > .comment-composer__field {
+  grid-area: 1 / 1;
+}
+.card-sheet__reply .comment-composer > .review-row {
+  grid-area: 1 / 2;
+}
+.card-sheet__reply .comment-composer:not(.is-open) > .comment-hint {
+  display: none;
+}
+.card-sheet__reply .comment-composer:not(.is-open) textarea {
+  height: 44px;
   min-height: 44px;
+  resize: none;
 }

@@ -11,6 +11,7 @@ import {
   type UserSummary,
 } from '@inkadra/shared';
 import { Button, ChoiceTile, Icon, IconButton, Segmented, Select, Switch } from '@inkadra/ui';
+import type { TFunction } from 'i18next';
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -734,14 +735,7 @@ export const Thread = memo(function Thread({
     ? t('comments.oneLinkNamed', { label: linkLabel })
     : t('comments.oneLink');
 
-  const audience =
-    thread.visibility === 'team'
-      ? undefined
-      : thread.shareLinkId
-        ? linkLabel
-          ? t('comments.replyLink', { link: linkLabel })
-          : t('comments.replyOwnLink')
-        : t('comments.replyGuests');
+  const audience = threadAudience(thread, t);
 
   const run = async (action: () => Promise<unknown>) => {
     setError(false);
@@ -1125,9 +1119,18 @@ function CommentItem({
   );
 }
 
-function Composer({
+/** Who else reads a reply to the thread, to say so beside the field; nobody for the team's. */
+export function threadAudience(thread: CommentThread, t: TFunction) {
+  if (thread.visibility === 'team') return undefined;
+  if (!thread.shareLinkId) return t('comments.replyGuests');
+  const link = shareLinkTag(thread);
+  return link ? t('comments.replyLink', { link }) : t('comments.replyOwnLink');
+}
+
+export function Composer({
   onSend,
   submitLabel,
+  placeholder,
   initial,
   draft,
   onCancel,
@@ -1139,6 +1142,7 @@ function Composer({
 }: {
   onSend: (body: string) => Promise<void>;
   submitLabel: string;
+  placeholder?: string;
   initial?: Comment;
   /** Keeps the text of a new thread while the panel closes or switches scope. */
   draft?: { elementId: string | null; visibility: CommentVisibility };
@@ -1287,7 +1291,7 @@ function Composer({
           aria-activedescendant={listOpen ? `${id}-person-${active}` : undefined}
           aria-describedby={`${id}-hint`}
           aria-invalid={tooLong || undefined}
-          placeholder={t('comments.placeholder')}
+          placeholder={placeholder ?? t('comments.placeholder')}
           value={text}
           readOnly={busy}
           onBlur={() => setArmed(false)}

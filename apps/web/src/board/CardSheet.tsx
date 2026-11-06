@@ -1,10 +1,10 @@
 import type { Element } from '@inkadra/doc-schema';
 import type { CommentThread } from '@inkadra/shared';
-import { Button, Dialog, Icon, type IconName, Switch } from '@inkadra/ui';
+import { Dialog, Icon, type IconName, Switch } from '@inkadra/ui';
 import { type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
-import { useCardLabel } from './CommentsPanel.tsx';
+import { Composer, threadAudience, useCardLabel } from './CommentsPanel.tsx';
 import { NOTE_COLORS } from './cards.tsx';
 import type { MenuItem, SheetSlot } from './chrome.tsx';
 import { authorName, commentParts } from './review-model.ts';
@@ -294,43 +294,23 @@ function Row({
 
 const latest = (thread: CommentThread) => (thread.replies.at(-1) ?? thread).createdAt;
 
-/** The card's latest open thread and a field to answer it, without leaving the sheet. */
-function Reply({ boardId, elementId }: { boardId: string; elementId: string }) {
+/**
+ * The card's latest open thread and the comments' composer to answer it, without leaving the sheet:
+ * a thread guests read says so, and only the button sends to it.
+ */
+export function Reply({ boardId, elementId }: { boardId: string; elementId: string }) {
   const { t } = useTranslation();
   const role = useReviews((s) => s.role);
   const threads = useReviews((s) => s.threads);
-  const [text, setText] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
   const thread = threads
     .filter((th) => th.elementId === elementId && !th.resolvedAt && !th.deletedAt)
     .sort((a, b) => latest(b).localeCompare(latest(a)))[0];
   if (!thread || !canComment(role)) return null;
   const last = thread.replies.at(-1) ?? thread;
   const name = authorName(last.author) ?? '';
-  const fieldId = `reply-${thread.id}`;
-  const send = async () => {
-    if (!text.trim() || busy) return;
-    setBusy(true);
-    setFailed(false);
-    try {
-      await api.post(`/boards/${boardId}/comments`, { body: text.trim(), parentId: thread.id });
-      setText('');
-      refreshReviews('comments', elementId);
-    } catch {
-      setFailed(true);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const audience = threadAudience(thread, t);
   return (
-    <form
-      className="card-sheet__reply"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void send();
-      }}
-    >
+    <div className="card-sheet__reply">
       <p className="card-sheet__comment" data-feedback-secret>
         <b>{name}</b>{' '}
         {commentParts(last).map((part, i) =>
@@ -338,26 +318,21 @@ function Reply({ boardId, elementId }: { boardId: string; elementId: string }) {
           'text' in part ? <span key={i}>{part.text}</span> : <span key={i}>@{part.mention}</span>,
         )}
       </p>
-      <div className="card-sheet__reply-field">
-        <label htmlFor={fieldId} className="ink-sr-only">
-          {t('board.sheet.replyTo', { name })}
-        </label>
-        <input
-          id={fieldId}
-          className="ink-input"
-          value={text}
-          placeholder={t('board.sheet.replyTo', { name })}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <Button type="submit" variant="primary" disabled={busy || !text.trim()}>
-          {t('comments.sendReply')}
-        </Button>
-      </div>
-      {failed && (
-        <p role="alert" className="review-error">
-          {t('comments.error')}
+      {audience && (
+        <p className="comment-audience">
+          <Icon name="people" size={14} />
+          <span>{audience}</span>
         </p>
       )}
-    </form>
+      <Composer
+        publicAudience={thread.visibility !== 'team'}
+        placeholder={t('board.sheet.replyTo', { name })}
+        submitLabel={t('comments.sendReply')}
+        onSend={async (body) => {
+          await api.post(`/boards/${boardId}/comments`, { body, parentId: thread.id });
+          refreshReviews('comments', elementId);
+        }}
+      />
+    </div>
   );
 }

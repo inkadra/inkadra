@@ -279,7 +279,7 @@ function CanvasMenuButton({
       <button
         ref={button}
         type="button"
-        className="toolbar__btn toolbar__btn--canvas"
+        className={`toolbar__btn${more ? '' : ' toolbar__btn--canvas'}`}
         aria-haspopup="menu"
         aria-expanded={!!at}
         aria-label={label}
@@ -293,7 +293,7 @@ function CanvasMenuButton({
         }}
       >
         <Icon name={more ? 'more' : 'plus'} size={18} />
-        <span className="toolbar__label">{label}</span>
+        {!more && <span className="toolbar__label">{label}</span>}
         {!more && <Icon name="caretDown" size={10} />}
       </button>
       {at &&
