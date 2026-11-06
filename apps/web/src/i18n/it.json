@@ -682,8 +682,7 @@
       "action": "Esporta…"
     },
     "present": {
-      "action": "Presenta",
-      "soon": "Usa il pulsante Presenta nella vista Storyboard"
+      "action": "Presenta"
     },
     "access": {
       "readOnly": "Il tuo ruolo è cambiato: ora puoi solo guardare questa board.",

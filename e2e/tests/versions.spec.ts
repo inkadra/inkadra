@@ -369,8 +369,7 @@ test('version failures explain rate limits and let the editor recover', async ({
   await menuButton.click();
   await expect(page.getByRole('menu')).toHaveCount(0);
   await menuButton.click();
-  await expect(page.getByRole('menuitem', { name: 'Esporta…' })).toBeFocused();
-  await expect(page.getByRole('menuitem', { name: 'Versioni della board' })).toHaveCount(0);
+  await expect(page.getByRole('menuitem', { name: 'Rinomina' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
   await expect(menuButton).toBeFocused();

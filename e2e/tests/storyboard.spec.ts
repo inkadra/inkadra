@@ -115,6 +115,29 @@ test('search finds the frame and opens it where it is', async ({ page }) => {
   await expect(page.locator('[data-type="frame"].is-selected')).toBeVisible();
 });
 
+test('the board menu presents from another view and renames in place', async ({ page }) => {
+  await openProject(page);
+  await page.locator('[data-type="board"]', { hasText: 'Binario 21' }).dblclick();
+  await page.getByRole('tab', { name: 'Shot list' }).click();
+  const menu = page.getByRole('button', { name: 'Menu della board' });
+
+  await menu.click();
+  await page.getByRole('menuitem', { name: 'Rinomina' }).click();
+  const title = page.getByRole('textbox', { name: 'Titolo della board' });
+  await expect(title).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(title).toHaveCount(0);
+
+  await menu.click();
+  await page.getByRole('menuitem', { name: 'Presenta' }).click();
+  const exit = page.getByRole('button', { name: 'Esci Esc' });
+  await expect(exit).toBeVisible();
+  await expect(page).not.toHaveURL(/present=/);
+  await expect(page).not.toHaveURL(/view=shotlist/);
+  await exit.click();
+  await expect(exit).toHaveCount(0);
+});
+
 test('arrows join two cards and keep a label', async ({ page }) => {
   await openProject(page);
   const canvas = page.getByTestId('canvas');

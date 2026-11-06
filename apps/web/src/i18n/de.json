@@ -682,8 +682,7 @@
       "action": "Exportieren…"
     },
     "present": {
-      "action": "Präsentieren",
-      "soon": "Nutze die Schaltfläche Präsentieren in der Storyboard-Ansicht"
+      "action": "Präsentieren"
     },
     "access": {
       "readOnly": "Deine Rolle hat sich geändert: Du kannst dieses Board jetzt nur noch ansehen.",
