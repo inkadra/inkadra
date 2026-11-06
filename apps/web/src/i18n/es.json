@@ -2842,16 +2842,11 @@
     "closeNotes": "Contraer notas",
     "fullscreen": "Pantalla completa",
     "exitFullscreen": "Salir de pantalla completa",
-    "timer": "Tiempo",
-    "clock": "Hora",
     "nextSlide": "Siguiente",
     "noSlides": "No hay planos ni tarjetas para presentar",
     "noNotes": "Sin notas en esta diapositiva",
     "audio": "Audio: {{value}}",
-    "slideLabel": "Diapositiva {{n}} · {{label}}",
-    "timerPause": "Pausar",
-    "timerResume": "Reanudar",
-    "timerReset": "Reiniciar"
+    "slideLabel": "Diapositiva {{n}} · {{label}}"
   },
   "catalogs": {
     "title": "Clasificaciones",

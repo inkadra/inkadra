@@ -36,13 +36,6 @@ export interface SlideItem {
   frames?: readonly FrameElement[];
 }
 
-/** Formats elapsed seconds as mm:ss */
-export function formatElapsed(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
 export function PresentationView({
   store,
   projectId,
@@ -67,12 +60,7 @@ export function PresentationView({
   const getPreset = usePresetText();
   const [index, setIndex] = useState(0);
   const [showNotes, setShowNotes] = useState(true);
-  const [elapsed, setElapsed] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [clock, setClock] = useState(() =>
-    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  );
   const rootRef = useRef<HTMLDialogElement>(null);
   const [settings, setSettings] = useState<ExportSettings | null>(null);
   useEffect(() => {
@@ -101,15 +89,6 @@ export function PresentationView({
       if (el instanceof HTMLElement && el.isConnected) el.focus();
     };
   }, []);
-
-  // Timer for presentation elapsed time and wall-clock
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (!paused) setElapsed((s) => s + 1);
-      setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [paused]);
 
   // Modal dialog: the page behind is inert and Tab stays inside.
   useEffect(() => {
@@ -429,33 +408,6 @@ export function PresentationView({
                 label={t('present.closeNotes')}
                 onClick={() => setShowNotes(false)}
               />
-            </div>
-
-            <div className="present-sidebar__timer-box">
-              <div>
-                <span className="present-sidebar__label">{t('present.timer')}</span>
-                <span className="present-sidebar__clock">{formatElapsed(elapsed)}</span>
-                <button
-                  type="button"
-                  className="present-toolbar__btn"
-                  aria-pressed={paused}
-                  onClick={() => setPaused((v) => !v)}
-                >
-                  {paused ? t('present.timerResume') : t('present.timerPause')}
-                </button>
-                <button
-                  type="button"
-                  className="present-toolbar__btn"
-                  disabled={elapsed === 0}
-                  onClick={() => setElapsed(0)}
-                >
-                  {t('present.timerReset')}
-                </button>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span className="present-sidebar__label">{t('present.clock')}</span>
-                <span style={{ fontSize: 13, color: 'var(--ink-text-muted)' }}>{clock}</span>
-              </div>
             </div>
 
             <div className="present-sidebar__notes">

@@ -2842,16 +2842,11 @@
     "closeNotes": "Comprimi pannello",
     "fullscreen": "Schermo intero",
     "exitFullscreen": "Esci da schermo intero",
-    "timer": "Tempo",
-    "clock": "Ora",
     "nextSlide": "Prossima",
     "noSlides": "Nessuna inquadratura o scheda da presentare",
     "noNotes": "Nessuna nota per questa slide",
     "audio": "Audio: {{value}}",
-    "slideLabel": "Slide {{n}} · {{label}}",
-    "timerPause": "Pausa",
-    "timerResume": "Riprendi",
-    "timerReset": "Azzera"
+    "slideLabel": "Slide {{n}} · {{label}}"
   },
   "catalogs": {
     "title": "Classificazioni",

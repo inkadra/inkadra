@@ -2842,16 +2842,11 @@
     "closeNotes": "Notizen einklappen",
     "fullscreen": "Vollbild",
     "exitFullscreen": "Vollbild beenden",
-    "timer": "Zeit",
-    "clock": "Uhrzeit",
     "nextSlide": "Nächste",
     "noSlides": "Keine Frames oder Karten zum Präsentieren",
     "noNotes": "Keine Notizen zu dieser Folie",
     "audio": "Audio: {{value}}",
-    "slideLabel": "Folie {{n}} · {{label}}",
-    "timerPause": "Pause",
-    "timerResume": "Fortsetzen",
-    "timerReset": "Zurücksetzen"
+    "slideLabel": "Folie {{n}} · {{label}}"
   },
   "catalogs": {
     "title": "Klassifizierungen",

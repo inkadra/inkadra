@@ -2842,16 +2842,11 @@
     "closeNotes": "Recolher notas",
     "fullscreen": "Tela cheia",
     "exitFullscreen": "Sair da tela cheia",
-    "timer": "Tempo",
-    "clock": "Hora",
     "nextSlide": "Próximo",
     "noSlides": "Nenhum frame ou card para apresentar",
     "noNotes": "Nenhuma nota para este slide",
     "audio": "Áudio: {{value}}",
-    "slideLabel": "Slide {{n}} · {{label}}",
-    "timerPause": "Pausar",
-    "timerResume": "Retomar",
-    "timerReset": "Zerar"
+    "slideLabel": "Slide {{n}} · {{label}}"
   },
   "catalogs": {
     "title": "Classificações",

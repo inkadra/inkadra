@@ -2842,16 +2842,11 @@
     "closeNotes": "Collapse notes",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen",
-    "timer": "Time",
-    "clock": "Clock",
     "nextSlide": "Next",
     "noSlides": "No frames or cards to present",
     "noNotes": "No notes for this slide",
     "audio": "Audio: {{value}}",
-    "slideLabel": "Slide {{n}} · {{label}}",
-    "timerPause": "Pause",
-    "timerResume": "Resume",
-    "timerReset": "Reset"
+    "slideLabel": "Slide {{n}} · {{label}}"
   },
   "catalogs": {
     "title": "Classifications",
