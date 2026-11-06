@@ -18,6 +18,7 @@ import {
   croppedRotatedSize,
   FULL_CROP,
   fitCropToAspect,
+  fittedImageHeight,
   hasImageTransform,
   inscribeCrop,
   isIdentityCrop,
@@ -370,5 +371,18 @@ describe('CroppedImage component & BoardStore integration', () => {
       expect(placement.drawW).toBeGreaterThan(imgOp.w);
       expect(placement.drawH).toBeGreaterThan(imgOp.h);
     }
+  });
+});
+
+describe('fittedImageHeight', () => {
+  const picture = { width: 3, height: 2 };
+  it('gives a card with the 4:3 placeholder the height of its picture', () => {
+    expect(fittedImageHeight(300, 225, 0, picture)).toBe(200);
+  });
+  it('keeps what sits under the picture', () => {
+    expect(fittedImageHeight(300, 225, 40, picture)).toBe(240);
+  });
+  it('leaves a card that already fits, rounding included', () => {
+    expect(fittedImageHeight(300, 201, 0, picture)).toBeNull();
   });
 });

@@ -46,7 +46,10 @@ export const FramePicture = memo(function FramePicture({
   const src = (assetId && localPreview(assetId)) || (ready ? pickVariant(ready, pixels) : '');
   const empty = !src && (strokes?.length ?? 0) === 0 && (shapes?.length ?? 0) === 0 && !under;
   return (
-    <div className="frame-pic" style={{ aspectRatio: String(ratio) }}>
+    <div
+      className="frame-pic"
+      style={{ aspectRatio: String(ratio), ['--frame-ratio' as string]: ratio }}
+    >
       {src && !hideReference && (
         <img
           src={src}

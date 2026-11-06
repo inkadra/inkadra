@@ -2279,6 +2279,7 @@ body:has(.colorpicker) .card-reactions {
   align-items: center;
   gap: 8px;
   height: 32px;
+  white-space: nowrap;
   padding: 0 10px;
   border-radius: var(--ink-radius-md);
   border: 1px solid var(--ink-border-default);

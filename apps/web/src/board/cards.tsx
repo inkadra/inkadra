@@ -44,7 +44,7 @@ import { StoryPicture } from './film/StoryCardPanel.tsx';
 import { useSlugline } from './film/storyboard-data.ts';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';
-import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
+import { croppedRotatedSize, fittedImageHeight, rotatedBounds } from './image-crop.ts';
 import { appendImageStroke } from './image-drawing.ts';
 import { playInline, stopInline, useInlinePlaying, useInlineStops } from './inline-player.ts';
 import { webUrl } from './links.ts';
@@ -507,9 +507,22 @@ function ImageCard({
     ? rotatedBounds(baseW, baseH, element.rotation)
     : croppedRotatedSize(baseW, baseH, element.crop, element.rotation);
   const ratio = `${dims.width} / ${dims.height}`;
+  const media = useRef<HTMLDivElement>(null);
+  const known = !!ready?.width && !!ready.height;
+  useEffect(() => {
+    const el = media.current;
+    if (!el || !known || isCropping || board.readOnly) return;
+    if (!element.h || element.parent !== null) return;
+    const card = el.parentElement;
+    const fixed = card ? Math.max(0, card.offsetHeight - el.offsetHeight) : 0;
+    const h = fittedImageHeight(element.w, element.h, fixed, dims);
+    // Not an undo step: nobody asked for it, and undoing it would only bring the bands back.
+    if (h !== null) updateElement(board.store.doc, element.id, { h });
+  }, [known, isCropping, board.readOnly, board.store, element, dims]);
   return (
     <>
       <div
+        ref={media}
         className="card__media"
         style={{
           aspectRatio: element.h && !isCropping && element.parent === null ? undefined : ratio,
