@@ -3,7 +3,13 @@ import { CATALOG_UUID, type ShotCatalogKey } from '@inkadra/shared';
 import { Select } from '@inkadra/ui';
 import { type KeyboardEvent, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { shotOptionLabel, shotText, useShotCatalogs } from '../../lib/classifications.ts';
+import {
+  addClassification,
+  shotOptionLabel,
+  shotText,
+  useShotCatalogs,
+} from '../../lib/classifications.ts';
+import { useIsAdmin } from '../../lib/session-context.ts';
 import type { ShotDisplayStatus } from './film-status.ts';
 
 /**
@@ -107,6 +113,7 @@ export function PresetField({
 export function ShotField({ catalog, ...field }: FieldProps & { catalog: ShotCatalogKey }) {
   const { t } = useTranslation();
   const options = useShotCatalogs()[catalog];
+  const admin = useIsAdmin();
   // A value added to a catalog not loaded yet stays selected, and its id is never shown as text.
   const { value } = field;
   const notLoaded = !!value && CATALOG_UUID.test(value) && !options.some((o) => o.id === value);
@@ -115,7 +122,17 @@ export function ShotField({ catalog, ...field }: FieldProps & { catalog: ShotCat
     .filter((o) => !o.archived || o.id === value)
     .map((o) => ({ id: o.id, label: shotOptionLabel(catalog, o, t) }));
   if (notLoaded) choices.push({ id: value, label: t('film.frame.unavailable') });
-  return <ChoiceField {...field} choices={choices} />;
+  const commit = (next: string | undefined) => {
+    field.onCommit(next);
+    // What an administrator types joins the list; if that fails the frame keeps the text.
+    if (admin && next && !choices.some((c) => c.id === next)) {
+      void addClassification(catalog, next).then(
+        (option) => field.onCommit(option.id),
+        () => {},
+      );
+    }
+  };
+  return <ChoiceField {...field} onCommit={commit} choices={choices} />;
 }
 
 function ChoiceField({
@@ -169,7 +186,8 @@ function ChoiceField({
       autoFocus={custom && isCode}
       onBlur={(e) => {
         const next = e.target.value.trim();
-        if (!next) setCustom(false);
+        // Typed text stays in this field by itself; a value added to the list goes to the menu.
+        setCustom(false);
         if ((next || undefined) !== value) onCommit(next || undefined);
       }}
       onKeyDown={blurOnEnter}

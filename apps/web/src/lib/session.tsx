@@ -1,19 +1,12 @@
 import type { Instance, User } from '@inkadra/shared';
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import i18n, { LOCALES, type Locale } from '../i18n/index.ts';
 import { api, RequestError } from './api.ts';
 import { setSignedInId } from './me.ts';
 import { loadPreferences } from './preferences.ts';
+import { SessionContext } from './session-context.ts';
 
-interface SessionState {
+export interface SessionState {
   instance: Instance | null;
   user: User | null;
   loading: boolean;
@@ -21,8 +14,6 @@ interface SessionState {
   enrollmentRequired?: boolean;
   refresh: () => Promise<void>;
 }
-
-const SessionContext = createContext<SessionState | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [instance, setInstance] = useState<Instance | null>(null);

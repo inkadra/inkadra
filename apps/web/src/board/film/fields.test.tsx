@@ -2,9 +2,20 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
-import { AutoTime, TokenField } from './fields.tsx';
+import { AutoTime, ShotField, TokenField } from './fields.tsx';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+const session = vi.hoisted(() => ({ admin: false }));
+vi.mock('../../lib/session-context.ts', () => ({ useIsAdmin: () => session.admin }));
+vi.mock('../../lib/api.ts', async () => {
+  const { DEFAULT_CLASSIFICATIONS } = await import('@inkadra/shared');
+  return {
+    api: {
+      get: vi.fn(async () => DEFAULT_CLASSIFICATIONS),
+      put: vi.fn(async (_: string, body: unknown) => body),
+    },
+  };
+});
 const cleanups: Array<() => void> = [];
 afterEach(() => {
   for (const cleanup of cleanups.splice(0)) cleanup();
@@ -62,4 +73,29 @@ it('shows the computed time until a time is set, then a time input', async () =>
   expect(host.querySelector('input[type=time]')).not.toBeNull();
   await rerender(view('23:30'));
   expect(host.querySelector<HTMLInputElement>('input')?.value).toBe('23:30');
+});
+
+it('adds a shot value typed by an administrator, and only keeps the text for a member', async () => {
+  for (const admin of [true, false]) {
+    session.admin = admin;
+    const onCommit = vi.fn();
+    const { host } = await mount(
+      <ShotField
+        label="Campo"
+        value="Controluce"
+        catalog="shotSizes"
+        readOnly={false}
+        onCommit={onCommit}
+      />,
+    );
+    const input = host.querySelector('input') as HTMLInputElement;
+    await act(async () => {
+      type(input, 'Totale largo');
+      input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    });
+    expect(onCommit.mock.calls[0]).toEqual(['Totale largo']);
+    if (admin) expect(onCommit.mock.calls[1]?.[0]).toMatch(/^[0-9a-f-]{36}$/);
+    else expect(onCommit).toHaveBeenCalledTimes(1);
+  }
+  session.admin = false;
 });

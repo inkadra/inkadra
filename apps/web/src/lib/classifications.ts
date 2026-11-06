@@ -49,6 +49,31 @@ export function refreshClassifications() {
       });
   return pending;
 }
+/**
+ * Adds a value to a catalog from where it is used, for an administrator; the server refuses anyone
+ * else. Reads the catalogs first, as the update must carry the current revision. A value that
+ * exists under that name is returned as it is.
+ */
+export async function addClassification(key: 'tags' | ShotCatalogKey, label: string) {
+  const current = ClassificationCatalogs.parse(
+    await api.get<ClassificationCatalogs>('/instance/classifications'),
+  );
+  const name = label.trim().slice(0, 40);
+  const known = current[key].find((o) => o.label.toLowerCase() === name.toLowerCase());
+  if (known) {
+    setClassifications(current);
+    return known;
+  }
+  const id = crypto.randomUUID();
+  const next = ClassificationCatalogs.parse(
+    await api.put<ClassificationCatalogs>('/instance/classifications', {
+      ...current,
+      [key]: [...current[key], { id, label: name, archived: false }],
+    }),
+  );
+  setClassifications(next);
+  return next[key].find((o) => o.id === id) as ClassificationOption;
+}
 const onFocus = () => {
   void refreshClassifications();
 };

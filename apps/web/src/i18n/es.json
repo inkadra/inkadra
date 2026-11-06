@@ -1117,6 +1117,8 @@
     "add": "Añadir una etiqueta",
     "placeholder": "Elige una etiqueta y pulsa Intro",
     "notInCatalog": "«{{tag}}» no está en el catálogo. Solo los administradores añaden etiquetas, en Ajustes → Clasificaciones.",
+    "pressEnterToCreate": "Press Enter to create the tag “{{tag}}”.",
+    "createFailed": "The tag could not be created. Try again.",
     "remove": "Quitar la etiqueta {{tag}}",
     "max": "Como máximo {{count}} etiquetas",
     "suggested": "Usadas en el proyecto",
