@@ -554,15 +554,12 @@
   height: 44px;
   flex: none;
 }
-.guest-review__title h2 {
+.guest-review__jump {
   flex: 1;
   min-width: 0;
-  margin: 0;
-  overflow: hidden;
+  min-height: 44px;
   font-size: 15px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .guest-review__position {
   flex: none;

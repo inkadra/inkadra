@@ -77,15 +77,18 @@ test('the card list of a guest follows the storyboard, not the order the cards c
   await shoot(guest, 'guest-cards-desktop');
   await guest.keyboard.press('Escape');
   await guest.setViewportSize({ width: 390, height: 844 });
-  // A phone opens the review one shot at a time (#110), in the same order; the list is on the board.
-  const review = guest.getByRole('region', { name: 'Revisione' });
-  await expect(review.getByRole('heading', { name: '2A' })).toBeVisible();
-  await review.getByRole('button', { name: 'Inquadratura successiva', exact: true }).click();
-  await expect(review.getByRole('heading', { name: '2B' })).toBeVisible();
-  await review.getByRole('button', { name: 'Vedi la board', exact: true }).click();
+  // On a phone the link opens the review one shot at a time (#110): its Card list jumps to any
+  // shot, in the same storyboard order.
+  await expect(guest.getByRole('region', { name: 'Revisione' })).toBeVisible();
   await guest.getByLabel('Card', { exact: true }).scrollIntoViewIfNeeded();
   await guest.getByLabel('Card', { exact: true }).click();
-  await expect(guest.getByRole('listbox').getByRole('option').nth(1)).toBeVisible();
+  const shotList = guest.getByRole('listbox');
+  await expect(shotList.getByRole('option').nth(1)).toBeVisible();
+  expect(
+    (await shotList.getByRole('option').allTextContents()).map((t) => t.match(/^\d+[A-Z]/)?.[0]),
+  ).toEqual(['2A', '2B', '8A', '13A', '13B']);
   await shoot(guest, 'guest-cards-phone');
+  await shotList.getByRole('option').nth(3).click();
+  await expect(guest.getByText('4 di 5')).toBeVisible();
   await context.close();
 });

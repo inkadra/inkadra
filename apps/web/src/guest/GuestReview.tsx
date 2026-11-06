@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { AspectRatio } from '@inkadra/doc-schema';
 import type { GuestBoardSnapshot, GuestElement, GuestVersion } from '@inkadra/shared';
-import { Button, EmptyState, IconButton, Segmented } from '@inkadra/ui';
+import { Button, EmptyState, IconButton, Segmented, Select } from '@inkadra/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { primeAsset } from '../board/assets.ts';
@@ -162,7 +162,21 @@ export function GuestReview({
           disabled={index === 0}
           onClick={() => setCurrentId(frames[index - 1]?.id ?? null)}
         />
-        <h2>{label(frame)}</h2>
+        {/* The shot's name opens the list of every shot, in storyboard order: a guest jumps
+            to any one, as with the card list of the guest panel. */}
+        <h2 className="guest-sr">{label(frame)}</h2>
+        <Select
+          className="guest-review__jump"
+          variant="quiet"
+          aria-label={t('guest.card.choose')}
+          value={frame.id}
+          onChange={(id) => setCurrentId(id)}
+          options={frames.map((f) => ({
+            value: f.id,
+            label: label(f),
+            ...(typeof f.action === 'string' && f.action ? { description: f.action } : {}),
+          }))}
+        />
         <span className="guest-review__position">
           {t('clientReview.position', { index: index + 1, total: frames.length })}
         </span>
