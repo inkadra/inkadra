@@ -539,7 +539,9 @@ function BoardScreen({
               </Fragment>
             ))}
           </nav>
-          {tabs.length > 0 && <ViewTabs id={tabsId} tabs={tabs} view={view} onChoose={chooseView} />}
+          {tabs.length > 0 && (
+            <ViewTabs id={tabsId} tabs={tabs} view={view} onChoose={chooseView} />
+          )}
           {editable && (
             <div className="board-header-menu" ref={headerMenuAnchor}>
               <IconButton
@@ -655,6 +657,7 @@ function BoardScreen({
       projectRole,
       selfId,
       projectIcon,
+      tabsId,
     ],
   );
   useHeaderContent(header);

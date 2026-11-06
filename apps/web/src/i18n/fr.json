@@ -731,7 +731,7 @@
       },
       "snap": "Aligner sur la grille",
       "library": "Icônes de plateau",
-      "categories": "Catégories d'icônes",
+      "categoryTabs": "Catégories d'icônes",
       "icons": {
         "fresnel": "Fresnel",
         "led": "Panneau LED",

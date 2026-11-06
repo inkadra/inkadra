@@ -731,7 +731,7 @@
       },
       "snap": "Alinhar à grade",
       "library": "Ícones de set",
-      "categories": "Categorias de ícones",
+      "categoryTabs": "Categorias de ícones",
       "icons": {
         "fresnel": "Fresnel",
         "led": "Painel de LED",

@@ -56,9 +56,9 @@ export function OfficeStage({
     const tabbed = (data?.sheets.length ?? 0) > 1;
     return (
       <div className="office-sheet">
-        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users must be able to scroll the bounded sheet */}
         <section
           className="office-sheet__scroll ink-paper"
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users must be able to scroll the bounded sheet
           tabIndex={0}
           // With tabs below, the sheet is the panel of its tab, which carries the same name.
           {...(tabbed

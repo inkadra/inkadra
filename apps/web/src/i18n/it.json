@@ -731,7 +731,7 @@
       },
       "snap": "Aggancia alla griglia",
       "library": "Icone da set",
-      "categories": "Categorie di icone",
+      "categoryTabs": "Categorie di icone",
       "icons": {
         "fresnel": "Fresnel",
         "led": "Pannello LED",

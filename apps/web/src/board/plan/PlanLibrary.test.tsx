@@ -28,7 +28,7 @@ it('names the category tabs and walks them by keyboard, switching only on a choi
       ),
     );
     const list = host.querySelector('[role="tablist"]');
-    expect(list?.getAttribute('aria-label')).toBe('board.plan.categories');
+    expect(list?.getAttribute('aria-label')).toBe('board.plan.categoryTabs');
     await walkTabs(list);
     const next = document.activeElement as HTMLElement;
     await act(async () => next.click());

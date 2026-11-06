@@ -218,7 +218,7 @@ export function PlanLibrary({
         <div
           className="plan-lib__tabs"
           role="tablist"
-          aria-label={t('board.plan.categories')}
+          aria-label={t('board.plan.categoryTabs')}
           onKeyDown={moveTabFocus}
         >
           {CATEGORIES.map((c) => (

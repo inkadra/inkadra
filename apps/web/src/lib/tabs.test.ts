@@ -10,7 +10,8 @@ it('walks the tabs with wrap, Home and End, and leaves other keys alone', () => 
     .map((id) => `<button type="button" role="tab" id="${id}" tabindex="-1"></button>`)
     .join('')}</div><button type="button" id="out"></button>`;
   const choose = vi.fn();
-  for (const tab of document.querySelectorAll('[role="tab"]')) tab.addEventListener('click', choose);
+  for (const tab of document.querySelectorAll('[role="tab"]'))
+    tab.addEventListener('click', choose);
   const press = (key: string, extra: KeyboardEventInit = {}) => {
     const e = new KeyboardEvent('keydown', { key, cancelable: true, ...extra });
     Object.defineProperty(e, 'target', { value: document.activeElement });
