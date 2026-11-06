@@ -187,7 +187,7 @@ const details = [
     angle: 'ots',
     movement: 'steadicam',
     lens: '50mm',
-   
+
     cast: 'Elena, Marco',
   },
   { shot: 'ms', angle: 'pov', movement: 'pan', lens: '35mm', cast: 'Marco' },

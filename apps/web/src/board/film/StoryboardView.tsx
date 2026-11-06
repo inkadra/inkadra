@@ -269,9 +269,7 @@ export function StoryboardView({
     </label>
   );
   const totalLabel = (
-    <span className="story__total">
-      {t('film.total', { count: frames.length })}
-    </span>
+    <span className="story__total">{t('film.total', { count: frames.length })}</span>
   );
   return (
     <div className={`story story--${size}`}>

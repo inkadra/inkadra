@@ -346,9 +346,7 @@ function storyboardCell(
     );
   }
   top += labelSize + 6 * f;
-  const meta = [shot.size, shot.angle, shot.movement, shot.frame.lens]
-    .filter(Boolean)
-    .join(' · ');
+  const meta = [shot.size, shot.angle, shot.movement, shot.frame.lens].filter(Boolean).join(' · ');
   const width = pic.w;
   const bottom = cell.y + cell.h;
   const block = (value: string, size: number, weight: FontWeight, color: string) => {

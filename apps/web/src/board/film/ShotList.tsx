@@ -24,13 +24,7 @@ import { DrawingEditor } from './DrawingEditor.tsx';
 import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
-import {
-  blurOnEnter,
-  ShotField,
-  StatusChip,
-  StatusSelect,
-  usePresetText,
-} from './fields.tsx';
+import { blurOnEnter, ShotField, StatusChip, StatusSelect, usePresetText } from './fields.tsx';
 import {
   getFrameStatus,
   type KanbanColumnKey,
@@ -596,9 +590,7 @@ export function ShotList({
         ) : (
           <span>{g.title}</span>
         )}
-        <span className="shots__scene-meta">
-          {t('film.total', { count: g.frames.length })}
-        </span>
+        <span className="shots__scene-meta">{t('film.total', { count: g.frames.length })}</span>
         <span className="shots__group-pills">
           {grpCounts.shot > 0 && (
             <span className="shots__group-pill shots__group-pill--shot">

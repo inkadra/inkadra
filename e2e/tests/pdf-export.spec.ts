@@ -643,10 +643,7 @@ test('the Storyboard recommends the pitch only once a frame is approved', async 
   const frameIds = [
     'Mara walks to the end of the pier as the sun comes up.',
     'Close on her hands.',
-  ].map(
-    (action) =>
-      addFrame(story, scene.id, null, { action, shot: 'ws', assetId }, opts).id,
-  );
+  ].map((action) => addFrame(story, scene.id, null, { action, shot: 'ws', assetId }, opts).id);
   await pushBoardDoc(base, cookie, storyboard.id, story);
 
   // No approved frame: the pitch would be empty, so the production book is recommended.
