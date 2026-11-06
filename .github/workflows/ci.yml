@@ -151,7 +151,7 @@ jobs:
       # apt checks each cached file against its signed index, so a stale one is downloaded again.
       - name: Let the cache restore apt's downloads
         run: sudo chown "$USER" /var/cache/apt/archives
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 # zizmor: ignore[cache-poisoning] publishes nothing; apt checks the files
         with:
           path: /var/cache/apt/archives/*.deb
           key: apt-e2e-ubuntu-24.04-${{ hashFiles('pnpm-lock.yaml') }}
