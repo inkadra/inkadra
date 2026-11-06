@@ -5,7 +5,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { Thread } from './CommentsPanel.tsx';
-import { resetReviews } from './review-store.ts';
+import { getReviews, resetReviews } from './review-store.ts';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
@@ -82,4 +82,41 @@ it('puts the caret after a picked mention at once, so the next key lands after i
   const at = 'Schiarire @Giulia Bianchi '.length;
   expect([field.selectionStart, field.selectionEnd]).toEqual([at, at]);
   expect(document.activeElement).toBe(field);
+});
+
+it('reloads the people on a new mention and says when no one matches', async () => {
+  await act(async () =>
+    root.render(
+      <Thread
+        thread={thread}
+        writable
+        targetLabel="Card"
+        pinNumber={0}
+        showTarget={false}
+        canJump={false}
+        onJump={vi.fn()}
+      />,
+    ),
+  );
+  const reply = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'comments.reply',
+  );
+  await act(async () => reply?.click());
+  const field = host.querySelector('textarea') as HTMLTextAreaElement;
+  const before = getReviews().peopleRevision;
+
+  await act(async () => type(field, 'Ciao @ma', 'Ciao @ma'.length));
+  expect(getReviews().peopleRevision).toBe(before + 1);
+  expect(host.querySelector('[role="option"]')).toBeNull();
+  expect(host.textContent).toContain('comments.noMentionMatch');
+
+  // Another letter of the same mention does not ask again; the sentence going on is no mention.
+  await act(async () => type(field, 'Ciao @mar', 'Ciao @mar'.length));
+  expect(getReviews().peopleRevision).toBe(before + 1);
+  await act(async () => type(field, 'Ciao @mar come va', 'Ciao @mar come va'.length));
+  expect(host.textContent).not.toContain('comments.noMentionMatch');
+
+  await act(async () => type(field, 'Ciao @Giu', 'Ciao @Giu'.length));
+  expect(host.querySelector('[role="option"]')?.textContent).toBe('Giulia Bianchi');
+  expect(host.textContent).not.toContain('comments.noMentionMatch');
 });

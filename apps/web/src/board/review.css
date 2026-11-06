@@ -414,7 +414,7 @@ button.review-link:hover:not(:disabled) {
 }
 .comment-mention {
   font-weight: 600;
-  color: var(--ink-text-primary);
+  color: var(--ink-accent-soft-fg);
 }
 .comment-replies {
   display: flex;

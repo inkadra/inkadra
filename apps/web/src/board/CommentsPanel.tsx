@@ -1216,6 +1216,12 @@ export function Composer({
           )
           .slice(0, 6);
   const listOpen = suggestions.length > 0;
+  const mentioning = query !== null;
+  useEffect(() => {
+    if (mentioning) setReviews({ peopleRevision: getReviews().peopleRevision + 1 });
+  }, [mentioning]);
+  // Text after a space is probably the sentence going on, not a name that was not found.
+  const noMatch = query !== null && !listOpen && !/\s/.test(query);
   const body = encodeMentions(text, picked);
   const tooLong = body.length > MAX_COMMENT_LENGTH;
 
@@ -1368,6 +1374,8 @@ export function Composer({
           t('comments.tooLong', { max: MAX_COMMENT_LENGTH })
         ) : armed ? (
           t('comments.escapeAgain')
+        ) : noMatch ? (
+          t('comments.noMentionMatch')
         ) : (
           <>
             {t('comments.mentionHint')}
