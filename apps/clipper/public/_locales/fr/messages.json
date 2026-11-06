@@ -31,6 +31,18 @@
     "message": "Enregistrer la page dans Inkadra",
     "description": "Context menu on a page."
   },
+  "menu_image_to": {
+    "message": "Enregistrer l’image dans…"
+  },
+  "menu_selection_to": {
+    "message": "Enregistrer la sélection dans…"
+  },
+  "menu_link_to": {
+    "message": "Enregistrer le lien dans…"
+  },
+  "menu_page_to": {
+    "message": "Enregistrer la page dans…"
+  },
   "toast_saved": {
     "message": "Enregistré sur $BOARD$",
     "description": "After saving.",
@@ -117,6 +129,9 @@
   "connect_intro": {
     "message": "Connectez le clipper à votre serveur Inkadra. Vous devrez vous connecter et autoriser l’accès."
   },
+  "connect_server_help": {
+    "message": "C’est l’adresse du serveur Inkadra, le vôtre ou celui de votre équipe : par exemple https://inkadra.example.com."
+  },
   "connect_permission": {
     "message": "Chrome demandera l’autorisation de contacter cette adresse uniquement."
   },
@@ -139,7 +154,7 @@
     "message": "Modifier"
   },
   "help_menus": {
-    "message": "Faites un clic droit sur une image, un texte sélectionné, un lien ou la page pour l’enregistrer sur le dernier tableau choisi depuis le bouton de la barre d’outils."
+    "message": "Faites un clic droit sur une image, un texte sélectionné, un lien ou la page, puis choisissez un tableau récent. S’il n’y en a pas encore, un clic l’enregistre ou vous demande de choisir un tableau."
   },
   "help_selfhost": {
     "message": "Extension compilée par vos soins"

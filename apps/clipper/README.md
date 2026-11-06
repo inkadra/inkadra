@@ -6,11 +6,15 @@ an Inkadra board. It talks to the server only through the public API of `@inkadr
 
 What it does:
 - **Toolbar button**: saves the current page as a link card, with a board (recent boards
-  first, then projects and their sub-boards, or search), a column, a note and tags. The tab title is kept on link cards. The board is
-  remembered for next time.
+  first, then projects and their sub-boards, or search), a column, a note and tags. Text selected in the page's main frame fills the empty note (up to the API's
+  2,000 characters); pages that refuse scripts leave it empty. The tab title is kept on link cards.
+  The board is remembered for next time.
 - **Right-click menus**: on an image, a selection (a note with the quote and its page), a
-  link or the page itself. They save to the board last chosen from the toolbar button.
-  Images are read inside the browser, with the page's cookies when it can, so pictures
+  link or the page itself. When connected with recent boards, each has one "Save … to…" item
+  listing up to 5 of them, the last used first. Otherwise one item saves in one click: to the first
+  board the server remembers, or it opens the board picker, or the settings when not connected.
+  A linked image or a selected link matches two contexts, so it shows two items and Chrome groups
+  them under the extension's name. Images are read inside the browser, with the page's cookies when it can, so pictures
   behind a login are uploaded as files; when they cannot be read the image address is sent
   instead.
 - **Shortcut**: `Alt+Shift+S` saves the page to the last board. Change it at
@@ -38,7 +42,8 @@ Other commands: `pnpm --filter @inkadra/clipper test` (unit tests) and `… type
 1. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`).
 2. Turn on **Developer mode** and choose **Load unpacked**, then select `apps/clipper/dist`.
 3. The settings page opens. Its **Extension you built yourself** section shows the extension
-   id and the redirect address.
+   id and the redirect address. Copies installed from a store don't show it: they are detected by
+   the `update_url` that stores add to the manifest.
 
 An unpacked extension gets an id derived from its folder path, so it changes when the folder
 moves. To keep the same id across machines, add a `key` (public key) to `manifest.json` of
@@ -73,13 +78,13 @@ Until then, the `/authorize` page answers that the app is not one of the officia
 
 ## Permissions
 
-| Permission                                    | Why                                                                                              |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `storage`                                     | Server address, token, last and recent boards                                                    |
-| `identity`                                    | The sign-in window (`launchWebAuthFlow`)                                                         |
-| `contextMenus`                                | The right-click menus                                                                            |
-| `activeTab`, `scripting`                      | Read an image with the page's cookies and show a confirmation, only on the tab where you clicked |
-| `optional_host_permissions` (`http(s)://*/*`) | Lets the settings page ask for **your server's origin only**; nothing is granted at install      |
+| Permission                                    | Why                                                                                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `storage`                                     | Server address, token, last and recent boards                                                                                         |
+| `identity`                                    | The sign-in window (`launchWebAuthFlow`)                                                                                              |
+| `contextMenus`                                | The right-click menus                                                                                                                 |
+| `activeTab`, `scripting`                      | Read an image with the page's cookies, read the selected text for the note and show a confirmation, only on the tab where you clicked |
+| `optional_host_permissions` (`http(s)://*/*`) | Lets the settings page ask for **your server's origin only**; nothing is granted at install                                           |
 
 ## Not in this version
 
@@ -93,7 +98,8 @@ remembered board), in the order returned by the server. An empty title is shown 
 "Untitled column". "Unsorted" always omits `columnId`; an empty list or an unsupported
 endpoint (404, 405, 501) leaves only that option. Changing boards resets the column and
 ignores late responses for the previous board. Other errors remain visible. Menus and the
-shortcut still use Unsorted on the last board; the column choice is not persisted.
+shortcut still use Unsorted, on the last board or the one chosen in the menu; the column choice
+is not persisted.
 
 Search hides board and card hits whose `myRole` is below editor, while missing roles from
 servers before API 0.5.0 remain visible. Page saves send the tab title (up to 500 characters);

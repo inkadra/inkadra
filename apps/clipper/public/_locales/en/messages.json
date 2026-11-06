@@ -31,6 +31,22 @@
     "message": "Save page to Inkadra",
     "description": "Context menu on a page."
   },
+  "menu_image_to": {
+    "message": "Save image to…",
+    "description": "Submenu of recent boards on an image."
+  },
+  "menu_selection_to": {
+    "message": "Save selection to…",
+    "description": "Submenu of recent boards on selected text."
+  },
+  "menu_link_to": {
+    "message": "Save link to…",
+    "description": "Submenu of recent boards on a link."
+  },
+  "menu_page_to": {
+    "message": "Save page to…",
+    "description": "Submenu of recent boards on a page."
+  },
   "toast_saved": {
     "message": "Saved to $BOARD$",
     "description": "After saving.",
@@ -117,6 +133,9 @@
   "connect_intro": {
     "message": "Connect the clipper to your Inkadra server. You will be asked to sign in and allow access."
   },
+  "connect_server_help": {
+    "message": "This is the address of the Inkadra server, your own or your team’s: for example https://inkadra.example.com."
+  },
   "connect_permission": {
     "message": "Chrome will ask for permission to contact this address only."
   },
@@ -139,7 +158,7 @@
     "message": "Change"
   },
   "help_menus": {
-    "message": "Right-click an image, selected text, a link or the page to save it to the last board chosen from the toolbar button."
+    "message": "Right-click an image, selected text, a link or the page, then choose a recent board. If none is listed yet, one click saves it or asks you to pick a board."
   },
   "help_selfhost": {
     "message": "Extension you built yourself"

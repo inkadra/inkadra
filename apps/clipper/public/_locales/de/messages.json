@@ -31,6 +31,18 @@
     "message": "Seite in Inkadra speichern",
     "description": "Context menu on a page."
   },
+  "menu_image_to": {
+    "message": "Bild speichern in…"
+  },
+  "menu_selection_to": {
+    "message": "Auswahl speichern in…"
+  },
+  "menu_link_to": {
+    "message": "Link speichern in…"
+  },
+  "menu_page_to": {
+    "message": "Seite speichern in…"
+  },
   "toast_saved": {
     "message": "Gespeichert in $BOARD$",
     "description": "After saving.",
@@ -117,6 +129,9 @@
   "connect_intro": {
     "message": "Verbinde den Clipper mit deinem Inkadra-Server. Du wirst gebeten, dich anzumelden und den Zugriff zu erlauben."
   },
+  "connect_server_help": {
+    "message": "Das ist die Adresse des Inkadra-Servers, deines eigenen oder des deines Teams, zum Beispiel https://inkadra.example.com."
+  },
   "connect_permission": {
     "message": "Chrome fragt nach der Berechtigung, nur diese Adresse zu kontaktieren."
   },
@@ -139,7 +154,7 @@
     "message": "Ändern"
   },
   "help_menus": {
-    "message": "Per Rechtsklick auf ein Bild, markierten Text, einen Link oder die Seite speicherst du im Board, das zuletzt über die Schaltfläche in der Leiste gewählt wurde."
+    "message": "Per Rechtsklick auf ein Bild, markierten Text, einen Link oder die Seite wählst du eines der letzten Boards aus. Wird noch keines angezeigt, speichert ein Klick direkt oder fragt nach einem Board."
   },
   "help_selfhost": {
     "message": "Selbst gebaute Erweiterung"
