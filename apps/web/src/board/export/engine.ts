@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
   castAppearances,
-  formatDuration,
   frameLabels,
   listElements,
   type Rect,
   storyboardOf,
-  totalDurationMs,
 } from '@inkadra/canvas-core';
 import { aspectValue, type Element, getBoardAspect, hiddenFromGuests } from '@inkadra/doc-schema';
 import type { Asset, AssetTrack, Board, CommentThread, ShotCatalogKey } from '@inkadra/shared';
@@ -259,7 +257,6 @@ export async function buildPages(
   const labels = frameLabels(groupsAll);
   const preset = (catalog: ShotCatalogKey, value: string | undefined) =>
     shotText(getClassifications(), catalog, value, t);
-  const seconds = (ms: number | undefined) => (ms ? `${Math.round(ms / 100) / 10} s` : '');
   const slugline = (scene: Extract<Element, { type: 'scene' }>) =>
     [
       scene.setting && t(`film.scene.settings.${scene.setting}`),
@@ -294,7 +291,6 @@ export async function buildPages(
         preset('shotAngles', frame.angle),
         preset('shotMovements', frame.movement),
         frame.lens,
-        seconds(frame.durationMs),
       ]
         .filter(Boolean)
         .join(' · '),
@@ -409,17 +405,13 @@ export async function buildPages(
           size: preset('shotSizes', frame.shot),
           angle: preset('shotAngles', frame.angle),
           movement: preset('shotMovements', frame.movement),
-          duration: seconds(frame.durationMs),
           status: team ? t(`film.status.${getFrameStatus(frame)}`) : undefined,
         });
       }
     }
     const sceneCount = new Set(shots.map((s) => s.scene?.id).filter(Boolean)).size;
     summary = [
-      t('film.total', {
-        count: shots.length,
-        duration: formatDuration(totalDurationMs(shots.map((s) => s.frame))),
-      }),
+      t('film.total', { count: shots.length }),
       sceneCount ? t('export.scenes', { count: sceneCount }) : '',
     ]
       .filter(Boolean)

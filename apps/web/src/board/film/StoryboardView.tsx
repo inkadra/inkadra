@@ -3,7 +3,6 @@ import {
   addScene,
   deleteElements,
   type FrameElement,
-  formatDuration,
   moveFrames,
   type SceneElement,
   type SceneGroup,
@@ -26,7 +25,6 @@ import { type BoardStore, LOCAL } from '../store.ts';
 import { startUpload } from '../uploads.ts';
 import { aspectLabel, useBoardAspect } from './aspect.ts';
 import { DrawingEditor } from './DrawingEditor.tsx';
-import { estimatedDurationMs } from './duration.ts';
 import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
@@ -233,7 +231,6 @@ export function StoryboardView({
         ? fileMark.index
         : null;
 
-  const total = estimatedDurationMs(frames);
   // Size, aspect and total sit in the bar; on a phone they fold into View options.
   const sizeControl = (
     <fieldset className="story__modes" aria-label={t('film.playback.size')}>
@@ -272,9 +269,7 @@ export function StoryboardView({
     </label>
   );
   const totalLabel = (
-    <span className="story__total">
-      {t('film.total', { count: frames.length, duration: formatDuration(total) })}
-    </span>
+    <span className="story__total">{t('film.total', { count: frames.length })}</span>
   );
   return (
     <div className={`story story--${size}`}>
@@ -491,8 +486,6 @@ function SceneList({
   const { t } = useTranslation();
   const pickerId = useId();
   const frames = groups.reduce((n, g) => n + g.frames.length, 0);
-  // Frames without a duration count one second.
-  const total = estimatedDurationMs(groups.flatMap((g) => g.frames));
   return (
     <>
       <label className="story__scene-picker" htmlFor={pickerId}>
@@ -555,9 +548,7 @@ function SceneList({
                     )}
                   </span>
                   <span className="story__side-count">{count}</span>
-                  <span className="story__sr">
-                    {`, ${progress}, ${formatDuration(estimatedDurationMs(g.frames))}`}
-                  </span>
+                  <span className="story__sr">{`, ${progress}`}</span>
                   <span className="story__side-bar" aria-hidden="true">
                     <span style={{ width: count ? `${(drawn / count) * 100}%` : 0 }} />
                   </span>
@@ -566,9 +557,7 @@ function SceneList({
             );
           })}
         </ul>
-        <p className="story__side-total">
-          {t('film.playback.estimated', { count: frames, duration: formatDuration(total) })}
-        </p>
+        <p className="story__side-total">{t('film.playback.summary', { count: frames })}</p>
       </nav>
     </>
   );
@@ -591,15 +580,12 @@ function SceneSection({
   const { scene, frames } = group;
   const [localCollapsed, setLocalCollapsed] = useState<boolean | null>(null);
   const collapsed = readOnly ? (localCollapsed ?? !!scene?.collapsed) : !!scene?.collapsed;
-  const duration = formatDuration(estimatedDurationMs(frames));
   if (!scene) {
     return (
       <section className="story__scene" data-story-scene={LOOSE}>
         <header className="story__scene-head">
           <span className="story__scene-title">{t('film.loose')}</span>
-          <span className="story__scene-meta">
-            {t('film.total', { count: frames.length, duration })}
-          </span>
+          <span className="story__scene-meta">{t('film.total', { count: frames.length })}</span>
         </header>
         <ul className="story__grid">{children}</ul>
       </section>
@@ -694,9 +680,7 @@ function SceneSection({
           }}
           onKeyDown={blurOnEnter}
         />
-        <span className="story__scene-meta">
-          {t('film.total', { count: frames.length, duration })}
-        </span>
+        <span className="story__scene-meta">{t('film.total', { count: frames.length })}</span>
         <ScenePlanButton plans={plansOfScene(store.getSnapshot().byId.values(), scene.id)} />
         {/* An editor's pressed toggle already says the scene is hidden. */}
         {(readOnly || !scene.guestHidden) && <GuestVisibility store={store} element={scene} />}
@@ -823,9 +807,6 @@ const FrameTile = memo(function FrameTile({
         <span className="story__tile-label">{label}</span>
         {shot && <span className="story__tile-shot">{shot}</span>}
         <span className="ink-header__spacer" />
-        {frame.durationMs !== undefined && (
-          <span className="story__tile-duration">{formatDuration(frame.durationMs)}</span>
-        )}
         <StatusChip status={frame.status} />
         <FrameVisibilityButton store={store} frame={frame} readOnly={readOnly} />
         {onExport && (

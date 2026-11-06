@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { formatDuration } from '@inkadra/canvas-core';
 import type { ReviewStatus } from '@inkadra/shared';
 import { Button, EmptyState, Select } from '@inkadra/ui';
 import { type KeyboardEvent, useId, useState } from 'react';
@@ -258,9 +257,6 @@ export function ClientReviewView({
               <p className="client-review__caption">
                 <strong>{nameOf(current.id)}</strong>
                 {shot && <span>{shot}</span>}
-                {frame?.durationMs !== undefined && (
-                  <span className="story__tile-duration">{formatDuration(frame.durationMs)}</span>
-                )}
                 {frame?.action && (
                   <span className="client-review__caption-action">{frame.action}</span>
                 )}

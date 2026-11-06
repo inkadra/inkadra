@@ -410,6 +410,7 @@ export const FrameElement = Base.extend({
     .optional()
     .describe('The id of a catalog value (a SHOT_MOVEMENTS code or a UUID) or free text.'),
   lens: z.string().max(60).optional().describe('Focal length or lens name, e.g. "35mm".'),
+  // Retired: nothing shows or edits it any more; kept so existing documents still validate.
   durationMs: z.int().min(0).max(3_600_000).optional(),
   audio: z.string().max(500).optional(),
   dialogue: z.string().max(4000).optional(),

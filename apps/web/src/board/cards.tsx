@@ -1,6 +1,5 @@
 import {
   addTodoItem,
-  formatDuration,
   isContainer,
   removeTodoItem,
   updateElement,
@@ -423,9 +422,6 @@ function FrameCard({ element, width }: { element: Of<'frame'>; width: number }) 
           <span className={`film-chip film-status--${element.status ?? 'draft'}`}>
             {t(`film.status.${element.status ?? 'draft'}`)}
           </span>
-        )}
-        {element.durationMs !== undefined && (
-          <span className="card__desc">{formatDuration(element.durationMs)}</span>
         )}
       </div>
       {element.action && <div className="card__caption">{element.action}</div>}

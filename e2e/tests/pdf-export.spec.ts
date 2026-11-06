@@ -159,7 +159,7 @@ test.beforeAll(async ({ baseURL }) => {
       story,
       scene.id,
       null,
-      { action: `Frame action ${i + 1}`, shot: 'ws', durationMs: 3000 },
+      { action: `Frame action ${i + 1}`, shot: 'ws' },
       opts,
     );
     frameIds.push(frame.id);
@@ -643,10 +643,7 @@ test('the Storyboard recommends the pitch only once a frame is approved', async 
   const frameIds = [
     'Mara walks to the end of the pier as the sun comes up.',
     'Close on her hands.',
-  ].map(
-    (action) =>
-      addFrame(story, scene.id, null, { action, shot: 'ws', durationMs: 4000, assetId }, opts).id,
-  );
+  ].map((action) => addFrame(story, scene.id, null, { action, shot: 'ws', assetId }, opts).id);
   await pushBoardDoc(base, cookie, storyboard.id, story);
 
   // No approved frame: the pitch would be empty, so the production book is recommended.

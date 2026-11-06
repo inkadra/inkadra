@@ -1205,8 +1205,8 @@
       "label": "Seitenverhältnis",
       "board": "Board ({{ratio}})"
     },
-    "total_one": "{{count}} Frame · {{duration}}",
-    "total_other": "{{count}} Frames · {{duration}}",
+    "total_one": "{{count}} Frame",
+    "total_other": "{{count}} Frames",
     "loose": "Ohne Szene",
     "drop": {
       "notImage_one": "Hier lassen sich nur Bilder ablegen: {{count}} Datei übersprungen.",
@@ -1255,7 +1255,6 @@
       "cast": "Figuren",
       "castHint": "Durch Kommas getrennt",
       "lens": "Objektiv",
-      "duration": "Dauer (s)",
       "shot": "Einstellungsgröße",
       "angle": "Perspektive",
       "movement": "Bewegung",
@@ -1429,7 +1428,6 @@
       "groupNone": "Keine Gruppierung",
       "sortManual": "Storyboard",
       "sortLabel": "Shot-Nummer",
-      "sortDuration": "Dauer",
       "collapseGroup": "Gruppe einklappen",
       "expandGroup": "Gruppe ausklappen",
       "noLocation": "Keine Location",
@@ -1439,7 +1437,6 @@
       "shownShots": "{{shown}} von {{count}} Shots",
       "shownShots_one": "{{shown}} von {{count}} Shot",
       "shownShots_other": "{{shown}} von {{count}} Shots",
-      "estimatedDuration": "Geschätzte Dauer",
       "moveCard": "Nach {{column}} verschieben",
       "moveToColumn": "Karte in Spalte verschieben",
       "moreCards": "weitere",
@@ -1458,8 +1455,8 @@
       "scenes": "Szenen",
       "allScenes": "Alle Szenen",
       "drawn": "{{drawn}} von {{total}} gezeichnet",
-      "estimated_one": "{{count}} Frame · geschätzte Dauer {{duration}}. Der Balken zeigt die gezeichneten Frames.",
-      "estimated_other": "{{count}} Frames · geschätzte Dauer {{duration}}. Der Balken zeigt die gezeichneten Frames."
+      "summary_one": "{{count}} Frame. Der Balken zeigt die gezeichneten Frames.",
+      "summary_other": "{{count}} Frames. Der Balken zeigt die gezeichneten Frames."
     }
   },
   "roles": {
@@ -3129,7 +3126,6 @@
       "angle": "Perspektive",
       "movement": "Bewegung",
       "lens": "Objektiv",
-      "duration": "Dauer",
       "action": "Handlung und Dialog",
       "location": "Location",
       "cast": "Figuren",

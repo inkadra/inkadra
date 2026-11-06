@@ -108,10 +108,6 @@ export function frameLabels(groups: readonly SceneGroup[]): Map<string, string> 
   return labels;
 }
 
-export function totalDurationMs(frames: readonly FrameElement[]): number {
-  return frames.reduce((sum, f) => sum + (f.durationMs ?? 0), 0);
-}
-
 /** 1:05, 0:04: minutes and seconds, rounded up to the second. */
 export function formatDuration(ms: number): string {
   const total = Math.ceil(ms / 1000);

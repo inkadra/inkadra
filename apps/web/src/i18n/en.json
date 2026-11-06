@@ -1205,8 +1205,8 @@
       "label": "Aspect ratio",
       "board": "Storyboard aspect ratio ({{ratio}})"
     },
-    "total_one": "{{count}} frame · {{duration}}",
-    "total_other": "{{count}} frames · {{duration}}",
+    "total_one": "{{count}} frame",
+    "total_other": "{{count}} frames",
     "loose": "No scene",
     "drop": {
       "notImage_one": "Only pictures can be dropped here: {{count}} file skipped.",
@@ -1255,7 +1255,6 @@
       "cast": "Cast",
       "castHint": "Separated by commas",
       "lens": "Lens",
-      "duration": "Duration (s)",
       "shot": "Shot size",
       "angle": "Angle",
       "movement": "Movement",
@@ -1429,7 +1428,6 @@
       "groupNone": "No grouping",
       "sortManual": "Storyboard order",
       "sortLabel": "Shot number",
-      "sortDuration": "Duration",
       "collapseGroup": "Collapse group",
       "expandGroup": "Expand group",
       "noLocation": "No location",
@@ -1439,7 +1437,6 @@
       "shownShots": "{{shown}} of {{count}} shots",
       "shownShots_one": "{{shown}} of {{count}} shot",
       "shownShots_other": "{{shown}} of {{count}} shots",
-      "estimatedDuration": "Estimated duration",
       "moveCard": "Move to {{column}}",
       "moveToColumn": "Move card to column",
       "moreCards": "more",
@@ -1458,8 +1455,8 @@
       "scenes": "Scenes",
       "allScenes": "All scenes",
       "drawn": "{{drawn}} of {{total}} drawn",
-      "estimated_one": "{{count}} frame · estimated duration {{duration}}. The bar shows the drawn frames.",
-      "estimated_other": "{{count}} frames · estimated duration {{duration}}. The bar shows the drawn frames."
+      "summary_one": "{{count}} frame. The bar shows the drawn frames.",
+      "summary_other": "{{count}} frames. The bar shows the drawn frames."
     }
   },
   "roles": {
@@ -3129,7 +3126,6 @@
       "angle": "Angle",
       "movement": "Movement",
       "lens": "Lens",
-      "duration": "Dur.",
       "action": "Action and dialogue",
       "location": "Location",
       "cast": "Cast",

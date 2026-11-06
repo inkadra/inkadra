@@ -1205,8 +1205,8 @@
       "label": "Formato",
       "board": "Tablero ({{ratio}})"
     },
-    "total_one": "{{count}} plano · {{duration}}",
-    "total_other": "{{count}} planos · {{duration}}",
+    "total_one": "{{count}} plano",
+    "total_other": "{{count}} planos",
     "loose": "Sin escena",
     "drop": {
       "notImage_one": "Aquí solo se pueden arrastrar imágenes: {{count}} archivo omitido.",
@@ -1255,7 +1255,6 @@
       "cast": "Personajes",
       "castHint": "Separados por comas",
       "lens": "Objetivo",
-      "duration": "Duración (s)",
       "shot": "Tamaño de plano",
       "angle": "Angulación",
       "movement": "Movimiento",
@@ -1429,7 +1428,6 @@
       "groupNone": "Sin agrupar",
       "sortManual": "Storyboard",
       "sortLabel": "Número de plano",
-      "sortDuration": "Duración",
       "collapseGroup": "Contraer grupo",
       "expandGroup": "Expandir grupo",
       "noLocation": "Sin localización",
@@ -1439,7 +1437,6 @@
       "shownShots": "{{shown}} de {{count}} planos",
       "shownShots_one": "{{shown}} de {{count}} plano",
       "shownShots_other": "{{shown}} de {{count}} planos",
-      "estimatedDuration": "Duración estimada",
       "moveCard": "Mover a {{column}}",
       "moveToColumn": "Mover la tarjeta a la columna",
       "moreCards": "más",
@@ -1458,8 +1455,8 @@
       "scenes": "Escenas",
       "allScenes": "Todas las escenas",
       "drawn": "{{drawn}} de {{total}} dibujados",
-      "estimated_one": "{{count}} plano · duración estimada {{duration}}. La barra muestra los planos dibujados.",
-      "estimated_other": "{{count}} planos · duración estimada {{duration}}. La barra muestra los planos dibujados."
+      "summary_one": "{{count}} plano. La barra muestra los planos dibujados.",
+      "summary_other": "{{count}} planos. La barra muestra los planos dibujados."
     }
   },
   "roles": {
@@ -3129,7 +3126,6 @@
       "angle": "Angulación",
       "movement": "Movimiento",
       "lens": "Objetivo",
-      "duration": "Dur.",
       "action": "Acción y diálogo",
       "location": "Lugar",
       "cast": "Personajes",

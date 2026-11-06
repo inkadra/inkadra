@@ -48,7 +48,7 @@ own server.
   tools, and a toolbar above each card follows what you select. Uploaded videos and YouTube and Vimeo
   links play inside their card.
 - **Storyboards, shot lists and schedules.** Scenes and frames with shot size, angle, movement,
-  lens, duration, cast and status. Draw on a frame full screen, drag a picture into it, or take a
+  lens, cast and status. Draw on a frame full screen, drag a picture into it, or take a
   still from a video. The shot list is the same data as a table you can filter and export to CSV;
   the shooting schedule plans the days from the same shots.
 - **Set plans and character sheets.** Draw the location with cameras, actors, lights and movement
@@ -80,7 +80,7 @@ own server.
     <td width="50%">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme/storyboard-dark.png">
-        <img src="docs/screenshots/readme/storyboard-light.png" alt="A storyboard: scenes with their frames, shot sizes, durations and status">
+        <img src="docs/screenshots/readme/storyboard-light.png" alt="A storyboard: scenes with their frames, shot sizes and status">
       </picture>
       <p align="center"><sub>Storyboard: scenes, frames and the data of each shot</sub></p>
     </td>

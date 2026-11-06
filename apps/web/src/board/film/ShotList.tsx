@@ -6,7 +6,6 @@ import {
   deleteElements,
   duplicateElements,
   type FrameElement,
-  formatDuration,
   moveFrames,
   updateElement,
 } from '@inkadra/canvas-core';
@@ -22,19 +21,10 @@ import { insideDialog, isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
 import { DrawingEditor } from './DrawingEditor.tsx';
-import { estimatedDurationMs } from './duration.ts';
 import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
-import {
-  blurOnEnter,
-  parseSeconds,
-  ShotField,
-  StatusChip,
-  StatusSelect,
-  secondsText,
-  usePresetText,
-} from './fields.tsx';
+import { blurOnEnter, ShotField, StatusChip, StatusSelect, usePresetText } from './fields.tsx';
 import {
   getFrameStatus,
   type KanbanColumnKey,
@@ -88,7 +78,7 @@ export function ShotList({
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedCast, setSelectedCast] = useState<string>('');
   const [groupBy, setGroupBy] = useState<'scene' | 'location' | 'status' | 'none'>('scene');
-  const [sortBy, setSortBy] = useState<'manual' | 'label' | 'duration'>('manual');
+  const [sortBy, setSortBy] = useState<'manual' | 'label'>('manual');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string | null>(null);
@@ -179,15 +169,9 @@ export function ShotList({
     (items: FrameElement[]) => {
       if (sortBy === 'manual') return items;
       return [...items].sort((a, b) => {
-        if (sortBy === 'label') {
-          const la = labels.get(a.id) ?? a.label ?? '';
-          const lb = labels.get(b.id) ?? b.label ?? '';
-          return la.localeCompare(lb, undefined, { numeric: true });
-        }
-        if (sortBy === 'duration') {
-          return (b.durationMs ?? 0) - (a.durationMs ?? 0);
-        }
-        return 0;
+        const la = labels.get(a.id) ?? a.label ?? '';
+        const lb = labels.get(b.id) ?? b.label ?? '';
+        return la.localeCompare(lb, undefined, { numeric: true });
       });
     },
     [sortBy, labels],
@@ -432,7 +416,6 @@ export function ShotList({
       t('film.frame.angle'),
       t('film.frame.movement'),
       t('film.frame.lens'),
-      t('film.frame.duration'),
       t('film.frame.action'),
       t('film.frame.dialogue'),
       t('film.frame.audio'),
@@ -450,7 +433,6 @@ export function ShotList({
         presetText('shotAngles', f.angle),
         presetText('shotMovements', f.movement),
         f.lens ?? '',
-        secondsText(f.durationMs),
         f.action ?? '',
         f.dialogue ?? '',
         f.audio ?? '',
@@ -554,16 +536,13 @@ export function ShotList({
         className="ink-input"
         value={sortBy}
         aria-label={t('film.list.sortBy')}
-        onChange={(e) => setSortBy(e as 'manual' | 'label' | 'duration')}
+        onChange={(e) => setSortBy(e as 'manual' | 'label')}
       >
         <option value="manual">
           {t('film.list.sortBy')}: {t('film.list.sortManual')}
         </option>
         <option value="label">
           {t('film.list.sortBy')}: {t('film.list.sortLabel')}
-        </option>
-        <option value="duration">
-          {t('film.list.sortBy')}: {t('film.list.sortDuration')}
         </option>
       </Select>
     </>
@@ -611,12 +590,7 @@ export function ShotList({
         ) : (
           <span>{g.title}</span>
         )}
-        <span className="shots__scene-meta">
-          {t('film.total', {
-            count: g.frames.length,
-            duration: formatDuration(estimatedDurationMs(g.frames)),
-          })}
-        </span>
+        <span className="shots__scene-meta">{t('film.total', { count: g.frames.length })}</span>
         <span className="shots__group-pills">
           {grpCounts.shot > 0 && (
             <span className="shots__group-pill shots__group-pill--shot">
@@ -686,11 +660,7 @@ export function ShotList({
                   const label = labels.get(f.id) ?? '';
                   const isOpen = selected === f.id;
                   const isChecked = selectedIds.has(f.id);
-                  const meta = [
-                    presetText('shotSizes', f.shot),
-                    f.lens,
-                    f.durationMs !== undefined ? `${secondsText(f.durationMs)}s` : '',
-                  ].filter(Boolean);
+                  const meta = [presetText('shotSizes', f.shot), f.lens].filter(Boolean);
                   return (
                     <li
                       key={f.id}
@@ -943,7 +913,6 @@ export function ShotList({
                   <th>{t('film.frame.angle')}</th>
                   <th>{t('film.frame.movement')}</th>
                   <th>{t('film.frame.lens')}</th>
-                  <th>{t('film.frame.duration')}</th>
                   <th className="shots__wide">{t('film.frame.action')}</th>
                   <th className="shots__wide">{t('film.frame.dialogue')}</th>
                   <th>{t('film.frame.location')}</th>
@@ -957,7 +926,7 @@ export function ShotList({
                 return (
                   <tbody key={g.id}>
                     <tr className="shots__scene">
-                      <th colSpan={readOnly ? 12 : 13} scope="rowgroup">
+                      <th colSpan={readOnly ? 11 : 12} scope="rowgroup">
                         {groupHeading(g, isCollapsed)}
                       </th>
                     </tr>
@@ -1042,15 +1011,6 @@ export function ShotList({
                                 }
                               />
                             </td>
-                            <td>
-                              <Cell
-                                label={t('film.frame.duration')}
-                                value={secondsText(f.durationMs)}
-                                readOnly={readOnly}
-                                narrow
-                                onCommit={(v) => set(f.id, { durationMs: parseSeconds(v) })}
-                              />
-                            </td>
                             <td className="shots__wide">
                               <Cell
                                 label={t('film.frame.action')}
@@ -1112,7 +1072,7 @@ export function ShotList({
                       })}
                     {!isCollapsed && canAddInGroup(g) && (
                       <tr className="shots__add-row">
-                        <td colSpan={readOnly ? 12 : 13}>{addShotButton(g)}</td>
+                        <td colSpan={readOnly ? 11 : 12}>{addShotButton(g)}</td>
                       </tr>
                     )}
                   </tbody>
@@ -1214,10 +1174,6 @@ export function ShotList({
               : t('film.list.totalShots', { count: allFilteredFrames.length })}
           </b>
         </span>
-        <span>
-          {t('film.list.estimatedDuration')}{' '}
-          <b>{formatDuration(estimatedDurationMs(allFilteredFrames))}</b>
-        </span>
         <span className="shots__footer-dots">
           {statusCounts.shot > 0 && (
             <span className="shots__footer-dot-item">
@@ -1272,14 +1228,12 @@ function Cell({
   onCommit,
   readOnly,
   multiline,
-  narrow,
 }: {
   label: string;
   value: string;
   onCommit: (value: string) => void;
   readOnly: boolean;
   multiline?: boolean;
-  narrow?: boolean;
 }) {
   if (multiline) {
     return (
@@ -1297,7 +1251,7 @@ function Cell({
   return (
     <input
       key={value}
-      className={`shots__cell${narrow ? ' shots__cell--narrow' : ''}`}
+      className="shots__cell"
       defaultValue={value}
       aria-label={label}
       readOnly={readOnly}

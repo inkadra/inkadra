@@ -19,7 +19,7 @@ import { type BoardStore, LOCAL } from '../store.ts';
 import { TagEditor } from '../tags.tsx';
 import { aspectLabel } from './aspect.ts';
 import { FramePicture } from './FramePicture.tsx';
-import { parseSeconds, ShotField, StatusSelect, secondsText, TextField } from './fields.tsx';
+import { ShotField, StatusSelect, TextField } from './fields.tsx';
 import { moveImageToFrame } from './frame-image.ts';
 import { FrameUploadState, uploadToFrame } from './frame-upload.tsx';
 import { VideoReferencePicker } from './VideoReferencePicker.tsx';
@@ -258,21 +258,12 @@ export function FramePanel({
             onCommit={(v) => set({ lens: text(v)?.slice(0, 60) })}
           />
         </div>
-        <div className="film-panel__row">
-          <TextField
-            label={t('film.frame.duration')}
-            value={secondsText(frame.durationMs)}
-            type="number"
-            readOnly={readOnly}
-            onCommit={(v) => set({ durationMs: parseSeconds(v) })}
-          />
-          <TextField
-            label={t('film.frame.location')}
-            value={frame.location ?? ''}
-            readOnly={readOnly}
-            onCommit={(v) => set({ location: text(v)?.slice(0, 200) })}
-          />
-        </div>
+        <TextField
+          label={t('film.frame.location')}
+          value={frame.location ?? ''}
+          readOnly={readOnly}
+          onCommit={(v) => set({ location: text(v)?.slice(0, 200) })}
+        />
         <TextField
           label={t('film.frame.cast')}
           value={(frame.cast ?? []).join(', ')}
