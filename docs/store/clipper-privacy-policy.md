@@ -20,7 +20,8 @@ links to a board on an Inkadra server. This policy covers the extension only.
 
 **On your server, when you act:**
 
-- the page address and title, when you save a page or a link;
+- the page address and title, when you save a page;
+- the link's address and the address of the page it is on, when you save a link;
 - the selected text and the address of its page, when you save a selection;
 - the image and its file name, or its address if the image can't be read, with the address of its
   page, when you save an image;
@@ -53,7 +54,7 @@ That text stays in the window, and leaves your browser only if you then save.
 
 ## Where data goes
 
-**Your server.** It is the one whose address you typed: your own or your team's. Chrome asks your
+**Your server.** It is the one whose address you typed, for example your own or your team's. Chrome asks your
 permission for that address when you connect, and the extension has no standing access to other
 sites. What happens to data on the server is up to whoever runs it, and this policy doesn't cover
 it. Ask its administrator.
@@ -62,8 +63,8 @@ it. Ask its administrator.
 hosted, as the page did, using the page's cookies when it can so that pictures behind a login can be
 saved. The extension adds no data of yours to that request.
 
-There are no other recipients. The extension's data isn't shared with Matteo Maraffio, or with
-any analytics or advertising service.
+There are no other recipients. The extension's data isn't shared with Matteo Maraffio, unless he
+also runs the server you connect to, or with any analytics or advertising service.
 
 ## Your choices
 
