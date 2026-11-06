@@ -731,6 +731,7 @@
       },
       "snap": "Snap to grid",
       "library": "Set icons",
+      "categories": "Icon categories",
       "icons": {
         "fresnel": "Fresnel",
         "led": "LED panel",

@@ -731,6 +731,7 @@
       },
       "snap": "Ajustar a la cuadrícula",
       "library": "Iconos de set",
+      "categories": "Categorías de iconos",
       "icons": {
         "fresnel": "Fresnel",
         "led": "Panel LED",
