@@ -423,13 +423,18 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
       .set({ expiresAt: new Date(0) })
       .where(eq(feedbackAttachment.id, attachment.id));
     expect((await app.inject(link)).statusCode).toBe(404);
-    for (let i = 0; i < 3; i++)
-      await app.inject({
-        method: 'POST',
-        url: '/api/v1/feedback',
-        headers: headers(),
-        payload: submit({ type: 'idea' }),
-      });
+    // Two sent above: thirteen more reach the limit of fifteen an hour.
+    for (let i = 0; i < 13; i++)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/api/v1/feedback',
+            headers: headers(),
+            payload: submit({ type: 'idea' }),
+          })
+        ).statusCode,
+      ).toBe(201);
     const limited = await app.inject({
       method: 'POST',
       url: '/api/v1/feedback',
@@ -441,7 +446,7 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     const reports = (
       await app.inject({ url: '/api/v1/feedback/reports', headers: headers() })
     ).json();
-    expect(reports.items.length).toBeGreaterThanOrEqual(5);
+    expect(reports.items.length).toBeGreaterThanOrEqual(15);
     const [saved] = await db
       .select()
       .from(feedbackReport)

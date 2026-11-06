@@ -181,7 +181,11 @@
       "cards_one": "{{count}} item",
       "cards_other": "{{count}} itens"
     },
-    "allProjects": "Todos os projetos →"
+    "allProjects": "Todos os projetos →",
+    "unsorted": {
+      "waiting_one": "{{count}} item por organizar",
+      "waiting_other": "{{count}} itens por organizar"
+    }
   },
   "project": {
     "dialogTitle": "Novo projeto",
@@ -286,7 +290,8 @@
   "board": {
     "canvasMenu": {
       "label": "Canvas",
-      "hint": "Inserir um canvas"
+      "hint": "Inserir um canvas",
+      "more": "Mais"
     },
     "toolGroups": {
       "navigate": "Navegar e conectar",
@@ -1093,6 +1098,17 @@
       },
       "drawFailed": "Não foi possível salvar o traço. Tente novamente; se o problema continuar, recarregue o quadro.",
       "updateApp": "Este quadro requer uma versão mais recente. Atualize o app para editá-lo; você pode continuar visualizando."
+    },
+    "sheet": {
+      "edit": "Editar",
+      "comment": "Comentar",
+      "color": "Cor",
+      "connect": "Ligar",
+      "connectHint": "Arraste do cartão para outro para os ligar",
+      "moveTo": "Mover para…",
+      "showGuests": "Mostrar ao cliente",
+      "toStoryboard": "Adicionar ao Storyboard",
+      "replyTo": "Responder a {{name}}…"
     }
   },
   "tags": {
@@ -2034,7 +2050,10 @@
     "refresh": "Atualizar a conversa",
     "conversationUnavailable": "Conversa indisponível",
     "cardFallback": "Card",
-    "previewUnavailable": "Abra o quadro para ver este card."
+    "previewUnavailable": "Abra o quadro para ver este card.",
+    "swipeRead": "Lida",
+    "swipeResolve": "Resolver",
+    "resolvedDone": "Conversa resolvida"
   },
   "settings": {
     "sectionLead": {
@@ -2310,7 +2329,10 @@
     "summary_other": "{{planned}} agendados · {{count}} blocos",
     "castPlaceholder": "Adicionar um nome",
     "departmentsPlaceholder": "Departamento: nota",
-    "removeToken": "Remover {{name}}"
+    "removeToken": "Remover {{name}}",
+    "pickDay": "Dias de rodagem",
+    "now": "Agora {{time}}",
+    "current": "Em curso"
   },
   "moodboard": {
     "count_one": "{{count}} referência",
@@ -2373,7 +2395,29 @@
     "kitHelp": "Conta os ícones por tipo e rótulo.",
     "moves": "Movimentos numerados",
     "fullPage": "Plantas em página inteira",
-    "new": "Novo"
+    "new": "Novo",
+    "general": "Geral",
+    "yourCall": "A tua convocatória",
+    "confirm": "Confirmo a presença",
+    "decline": "Não posso",
+    "presence": "Presenças",
+    "presenceCount": "{{confirmed}} de {{total}} confirmados",
+    "presenceLoading": "A carregar as presenças…",
+    "presenceError": "Não foi possível carregar as presenças.",
+    "retry": "Tentar novamente",
+    "saveError": "Não foi possível guardar. Tenta novamente.",
+    "linkAccount": "Conta de {{name}}",
+    "noAccount": "Nenhuma conta",
+    "otherAccount": "Outra conta",
+    "answer": {
+      "confirmed": "Confirmaste a presença.",
+      "declined": "Disseste que não podes estar presente."
+    },
+    "status": {
+      "confirmed": "Confirmado",
+      "declined": "Não pode",
+      "waiting": "Em espera"
+    }
   },
   "needed": {
     "title": "A levar",

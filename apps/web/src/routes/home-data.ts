@@ -4,10 +4,13 @@ import type {
   PlannedShootingDay,
   Project,
   RecentBoard,
+  UnsortedBoard,
+  UnsortedSummary,
 } from '@inkadra/shared';
 import { useEffect, useState } from 'react';
 import type { Page } from '../board/review-model.ts';
 import { api } from '../lib/api.ts';
+import { type ProjectOverview, projectOverviews } from './projects-overview.ts';
 
 /** Loaded items, or what the section shows instead: never placeholder content. */
 export type Loadable<T> =
@@ -17,6 +20,7 @@ export type Loadable<T> =
 
 export const RECENT_BOARDS = 4;
 export const ACTIVITY_ITEMS = 5;
+export const HOME_PROJECTS = 5;
 const DAY_MS = 86_400_000;
 
 /** The calendar date where the person is: shooting days have no timezone (decision 0022). */
@@ -45,10 +49,11 @@ export function editableProjects(projects: Project[] | null): Project[] {
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-function useList<T>(path: string, pick: (body: unknown) => T[]): Loadable<T> {
+function useList<T>(path: string | null, pick: (body: unknown) => T[]): Loadable<T> {
   const [value, setValue] = useState<Loadable<T>>({ state: 'loading' });
   // biome-ignore lint/correctness/useExhaustiveDependencies: pick is a pure accessor.
   useEffect(() => {
+    if (path === null) return;
     let alive = true;
     setValue({ state: 'loading' });
     api
@@ -77,4 +82,41 @@ export function useShootingDays(date: string): Loadable<PlannedShootingDay> {
 export function useActivity(now: Date): Loadable<Notification> {
   const list = useList('/me/notifications?limit=30', (body) => (body as Page<Notification>).items);
   return list.state === 'ready' ? { state: 'ready', items: lastDay(list.items, now) } : list;
+}
+
+/** Unsorted cards of every board the person can edit; nothing is requested while `enabled` is off. */
+export function useUnsorted(enabled: boolean): Loadable<UnsortedBoard> {
+  return useList(enabled ? '/me/unsorted' : null, (body) => (body as UnsortedSummary).items);
+}
+
+/** The phone Home's project list: pinned first, then the last changed, at most HOME_PROJECTS. */
+export function homeProjects(projects: Project[] | null): Project[] | null {
+  if (!projects) return null;
+  return [...projects]
+    .filter((p) => !p.archivedAt)
+    .sort(
+      (a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.updatedAt.localeCompare(a.updatedAt),
+    )
+    .slice(0, HOME_PROJECTS);
+}
+
+/** Board counts and last activity of `projects`; null while the project list itself loads. */
+export function useProjectRows(projects: Project[] | null): Loadable<ProjectOverview> {
+  const [value, setValue] = useState<Loadable<ProjectOverview>>({ state: 'loading' });
+  const key = projects?.map((p) => `${p.id}:${p.updatedAt}`).join(',') ?? null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the key stands for the projects.
+  useEffect(() => {
+    if (key === null || !projects) {
+      setValue({ state: 'loading' });
+      return;
+    }
+    let alive = true;
+    projectOverviews(projects)
+      .then((items) => alive && setValue({ state: 'ready', items }))
+      .catch(() => alive && setValue({ state: 'error' }));
+    return () => {
+      alive = false;
+    };
+  }, [key]);
+  return value;
 }

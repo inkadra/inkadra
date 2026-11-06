@@ -79,6 +79,22 @@ afterEach(async () => {
   host.remove();
 });
 
+it('shows received reports inside the padded, scrolling detail pane', async () => {
+  vi.mocked(api.get).mockResolvedValue({ items: [] });
+  await act(async () =>
+    root.render(
+      <InboxDetail
+        notification={{ ...notification('a'), type: 'feedback_received' }}
+        onNavigate={vi.fn()}
+        onCount={vi.fn()}
+      />,
+    ),
+  );
+  expect(
+    host.querySelector('.notifications__detail-pane .inbox-detail__body .settings-card'),
+  ).not.toBeNull();
+});
+
 it('clears actionable state during A to B loading and ignores late loads', async () => {
   const pageA = deferred<{ items: CommentThread[]; nextCursor: null }>();
   const pageB = deferred<{ items: CommentThread[]; nextCursor: null }>();

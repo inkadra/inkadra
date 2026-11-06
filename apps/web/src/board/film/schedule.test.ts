@@ -5,6 +5,7 @@ import {
   castConflicts,
   clockLabel,
   newScheduleBlock,
+  nowOnDay,
   scheduleTimes,
   textList,
 } from './schedule.ts';
@@ -51,5 +52,21 @@ describe('schedule planning', () => {
     expect(resolveDroppedShot(data, 'board', [], false)).toBeNull();
     expect(resolveDroppedShot(data, 'board', ['shot'], true)).toBeNull();
     expect(resolveDroppedShot('{', 'board', ['shot'], false)).toBeNull();
+  });
+});
+
+describe('the hour on a shooting day', () => {
+  const night = { ...day(), callTime: '18:30' };
+  it('is on the day from the call to the end, past midnight too', () => {
+    const end = 28 * 60 + 30; // 04:30 the next morning
+    expect(nowOnDay(night, end, new Date(2026, 10, 2, 22, 47))).toBe(22 * 60 + 47);
+    expect(nowOnDay(night, end, new Date(2026, 10, 3, 1, 15))).toBe(25 * 60 + 15);
+    expect(nowOnDay(night, end, new Date(2026, 10, 2, 17, 0))).toBeNull();
+    expect(nowOnDay(night, end, new Date(2026, 10, 3, 5, 0))).toBeNull();
+    expect(nowOnDay(night, end, new Date(2026, 10, 4, 20, 0))).toBeNull();
+  });
+  it('without blocks or wrap only marks the call minute', () => {
+    expect(nowOnDay(night, null, new Date(2026, 10, 2, 18, 30))).toBe(18 * 60 + 30);
+    expect(nowOnDay(night, null, new Date(2026, 10, 2, 18, 31))).toBeNull();
   });
 });

@@ -181,7 +181,11 @@
       "cards_one": "{{count}} élément",
       "cards_other": "{{count}} éléments"
     },
-    "allProjects": "Tous les projets →"
+    "allProjects": "Tous les projets →",
+    "unsorted": {
+      "waiting_one": "{{count}} élément à ranger",
+      "waiting_other": "{{count}} éléments à ranger"
+    }
   },
   "project": {
     "dialogTitle": "Nouveau projet",
@@ -286,7 +290,8 @@
   "board": {
     "canvasMenu": {
       "label": "Canevas",
-      "hint": "Insérer un canevas"
+      "hint": "Insérer un canevas",
+      "more": "Plus"
     },
     "toolGroups": {
       "navigate": "Naviguer et relier",
@@ -1093,6 +1098,17 @@
       },
       "drawFailed": "Impossible d’enregistrer le trait. Réessayez ; si le problème persiste, rechargez le tableau.",
       "updateApp": "Ce tableau nécessite une version plus récente. Mettez à jour l’application pour le modifier ; vous pouvez continuer à le consulter."
+    },
+    "sheet": {
+      "edit": "Modifier",
+      "comment": "Commenter",
+      "color": "Couleur",
+      "connect": "Relier",
+      "connectHint": "Faites glisser de la carte vers une autre pour les relier",
+      "moveTo": "Déplacer vers…",
+      "showGuests": "Montrer au client",
+      "toStoryboard": "Ajouter au storyboard",
+      "replyTo": "Répondre à {{name}}…"
     }
   },
   "tags": {
@@ -2034,7 +2050,10 @@
     "refresh": "Actualiser la conversation",
     "conversationUnavailable": "Conversation indisponible",
     "cardFallback": "Carte",
-    "previewUnavailable": "Ouvrez le tableau pour voir cette carte."
+    "previewUnavailable": "Ouvrez le tableau pour voir cette carte.",
+    "swipeRead": "Lue",
+    "swipeResolve": "Résoudre",
+    "resolvedDone": "Discussion résolue"
   },
   "settings": {
     "sectionLead": {
@@ -2310,7 +2329,10 @@
     "summary_other": "{{planned}} planifiés · {{count}} blocs",
     "castPlaceholder": "Ajouter un nom",
     "departmentsPlaceholder": "Département : note",
-    "removeToken": "Retirer {{name}}"
+    "removeToken": "Retirer {{name}}",
+    "pickDay": "Jours de tournage",
+    "now": "Maintenant {{time}}",
+    "current": "En cours"
   },
   "moodboard": {
     "count_one": "{{count}} référence",
@@ -2373,7 +2395,29 @@
     "kitHelp": "Compte les icônes par type et libellé.",
     "moves": "Mouvements numérotés",
     "fullPage": "Plans en pleine page",
-    "new": "Nouveau"
+    "new": "Nouveau",
+    "general": "Général",
+    "yourCall": "Ta convocation",
+    "confirm": "Je confirme ma présence",
+    "decline": "Je ne peux pas",
+    "presence": "Présences",
+    "presenceCount": "{{confirmed}} sur {{total}} confirmés",
+    "presenceLoading": "Chargement des présences…",
+    "presenceError": "Impossible de charger les présences.",
+    "retry": "Réessayer",
+    "saveError": "Échec de l'enregistrement. Réessaie.",
+    "linkAccount": "Compte de {{name}}",
+    "noAccount": "Aucun compte",
+    "otherAccount": "Autre compte",
+    "answer": {
+      "confirmed": "Tu as confirmé ta présence.",
+      "declined": "Tu as indiqué que tu ne peux pas venir."
+    },
+    "status": {
+      "confirmed": "Confirmé",
+      "declined": "Ne peut pas",
+      "waiting": "En attente"
+    }
   },
   "needed": {
     "title": "À apporter",

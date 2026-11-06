@@ -4,12 +4,15 @@ import {
   type PlannedShootingDay,
   type Project,
   type RecentBoard,
+  type UnsortedBoard,
 } from '@inkadra/shared';
 import { Avatar, kindStyle, ProjectGlyph } from '@inkadra/ui';
 import { type MouseEvent, type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
+import { pickVariant, useAsset } from '../board/assets.ts';
 import { api } from '../lib/api.ts';
+import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
 import {
   avatarBg,
@@ -20,12 +23,15 @@ import {
 import { useProjects } from './AppLayout.tsx';
 import { BoardPreview } from './BoardPreview.tsx';
 import {
+  homeProjects,
   type Loadable,
   localDate,
   RECENT_BOARDS,
   useActivity,
+  useProjectRows,
   useRecentBoards,
   useShootingDays,
+  useUnsorted,
 } from './home-data.ts';
 import { MyTasks } from './MyTasks.tsx';
 import './home.css';
@@ -46,6 +52,10 @@ export function Home() {
   const today = useShootingDays(localDate(now));
   const recent = useRecentBoards();
   const activity = useActivity(now);
+  // Phones get the unsorted cards and a project list here; wider screens have the sidebar.
+  const phone = useIsPhone();
+  const unsorted = useUnsorted(phone);
+  const projectRows = useProjectRows(phone ? homeProjects(projects) : null);
   const days = today.state === 'ready' ? today.items : [];
   // Several days on the same date would stretch the card: show the first, the rest on request.
   const [allDays, setAllDays] = useState(false);
@@ -135,8 +145,9 @@ export function Home() {
         id="home-recent"
         title={t('home.recentBoards')}
         action={
-          // Guests with shared boards only have no projects page to go to.
-          projects && projects.length > 0 ? (
+          // Guests with shared boards only have no projects page to go to; a phone has the link
+          // under its project list instead.
+          !phone && projects && projects.length > 0 ? (
             <a className="home__more" href="/projects" onClick={go('/projects')}>
               {t('home.allProjects')}
             </a>
@@ -160,6 +171,50 @@ export function Home() {
           )}
         </LoadState>
       </Section>
+
+      {phone && (
+        <>
+          <UnsortedCard list={unsorted} boardHref={boardHref} go={go} />
+          <Section
+            id="home-projects"
+            title={t('nav.projects')}
+            action={
+              projects && projects.length > 0 ? (
+                <a className="home__more" href="/projects" onClick={go('/projects')}>
+                  {t('home.allProjects')}
+                </a>
+              ) : undefined
+            }
+          >
+            <LoadState list={projectRows} empty={t('home.noProjects')}>
+              {(rows) => (
+                <ul className="home__projects" data-feedback-secret>
+                  {rows.map((row) => (
+                    <li key={row.project.id}>
+                      <a
+                        className="home__project"
+                        href={`/p/${row.project.id}`}
+                        onClick={go(`/p/${row.project.id}`)}
+                      >
+                        <span className="home__project-glyph" aria-hidden="true">
+                          <ProjectGlyph {...row.project.icon} />
+                        </span>
+                        <span className="home__project-text">
+                          <span className="home__name">{row.project.name}</span>
+                          <span className="ink-muted home__when">
+                            {t('projectsPage.boards', { count: row.boards.length })} ·{' '}
+                            {relativeTime(row.activity, i18n.language)}
+                          </span>
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </LoadState>
+          </Section>
+        </>
+      )}
 
       <Section
         id="home-activity"
@@ -257,6 +312,89 @@ function LoadState<T>({
     );
   if (list.items.length === 0) return <p className="ink-muted home__status">{empty}</p>;
   return children(list.items);
+}
+
+/**
+ * "Non ordinati" across the boards the person can edit: hidden while loading and when nothing
+ * waits, so the Home does not jump; a failed load says so instead of reading as an empty tray.
+ */
+function UnsortedCard({
+  list,
+  boardHref,
+  go,
+}: {
+  list: Loadable<UnsortedBoard>;
+  boardHref: (projectId: string, boardId: string) => string;
+  go: (to: string) => (e: MouseEvent) => void;
+}) {
+  const { t } = useTranslation();
+  if (list.state === 'loading' || (list.state === 'ready' && list.items.length === 0)) return null;
+  const items = list.state === 'ready' ? list.items : [];
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+  const href = (b: UnsortedBoard) => `${boardHref(b.projectId, b.boardId)}?unsorted=open`;
+  const first = items[0];
+  const head = (
+    <>
+      <span className="home__unsorted-text">
+        <span className="home__name">{t('nav.unsorted')}</span>
+        <span className="ink-muted home__when">
+          {list.state === 'error'
+            ? t('home.loadError')
+            : t('home.unsorted.waiting', { count: total })}
+        </span>
+      </span>
+      <span className="home__unsorted-thumbs" aria-hidden="true">
+        {items
+          .flatMap((b) => b.assetIds)
+          .slice(0, 2)
+          .map((id) => (
+            <Thumb key={id} id={id} />
+          ))}
+      </span>
+    </>
+  );
+  return (
+    <section
+      className="ink-card home__unsorted"
+      aria-label={t('nav.unsorted')}
+      data-feedback-secret
+    >
+      {first && items.length === 1 ? (
+        <a className="home__unsorted-head" href={href(first)} onClick={go(href(first))}>
+          {head}
+        </a>
+      ) : (
+        <div className="home__unsorted-head" role={list.state === 'error' ? 'alert' : undefined}>
+          {head}
+        </div>
+      )}
+      {items.length > 1 && (
+        <ul className="home__unsorted-boards">
+          {items.map((b) => (
+            <li key={b.boardId}>
+              <a href={href(b)} onClick={go(href(b))}>
+                <span className="home__unsorted-board">
+                  {b.boardTitle}
+                  {/* A project's root board carries the project's name. */}
+                  {b.boardTitle !== b.projectName && (
+                    <span className="ink-muted"> · {b.projectName}</span>
+                  )}
+                </span>
+                <span className="ink-muted">{b.count}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** A small square of an unsorted image; nothing while it loads or when it is gone. */
+function Thumb({ id }: { id: string }) {
+  const asset = useAsset(id);
+  const src = asset && asset !== 'missing' ? pickVariant(asset, 128) : '';
+  return src ? <img className="home__thumb" src={src} alt="" loading="lazy" /> : null;
 }
 
 function TodayDay({

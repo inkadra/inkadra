@@ -108,6 +108,7 @@ import {
   setBoardCover,
   setBoardIcon,
 } from './boards.ts';
+import { CardSheet } from './CardSheet.tsx';
 import { ColorPicker } from './ColorPicker.tsx';
 import { loadBoardGrid, loadTidyGap, saveBoardGrid, saveTidyGap } from './canvas-prefs.ts';
 import { Card, NOTE_COLORS } from './cards.tsx';
@@ -134,6 +135,7 @@ import { decodeClipboard, encodeClipboard } from './clipboard.ts';
 import { addPalette, swatchColors } from './colors.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
+import { isDoubleTap, stayedStill, type Tap } from './double-tap.ts';
 import { EmptyBoardStart } from './EmptyBoardStart.tsx';
 import { easeCards } from './ease-cards.ts';
 import { isContextualFocus, restoreEditingFocus } from './editing-focus.ts';
@@ -576,6 +578,10 @@ export function Canvas({
   const touchesOutside = useRef(new Set<number>());
   /** Set once two fingers touched: the one left after a pinch starts nothing until all lift. */
   const touchHeld = useRef(false);
+  /** The last tap of one finger on the empty board, to tell a double tap (phones only). */
+  const lastTap = useRef<Tap | null>(null);
+  /** The finger on the empty board that may become a tap, if it lifts where it went down. */
+  const fingerDown = useRef<(Tap & { id: number }) | null>(null);
   /** Selection when the first finger landed, restored if a second one turns it into a pinch. */
   const touchSelection = useRef<ReadonlySet<string>>(EMPTY_SET);
   const unsortedRef = useRef<HTMLDivElement>(null);
@@ -1749,6 +1755,9 @@ export function Canvas({
     setOverlay(NO_OVERLAY);
     if (g && g.kind !== 'pan') setSelection(touchSelection.current);
     setMenu(null);
+    // Two fingers are not a tap: neither the one just lifted nor the one going down counts.
+    lastTap.current = null;
+    fingerDown.current = null;
     touchHeld.current = true;
     holding.current = true;
     pinch.current = pinchPair();
@@ -1848,6 +1857,16 @@ export function Canvas({
     }
 
     if (!targetId) {
+      // A phone has no room for a new note under the finger: a double tap fits the board instead.
+      if (isPhone && e.pointerType === 'touch' && !e.shiftKey) {
+        const tap = { at: e.timeStamp, x: p.x, y: p.y };
+        if (isDoubleTap(lastTap.current, tap)) {
+          lastTap.current = null;
+          zoomTo('fit');
+          return;
+        }
+        fingerDown.current = { ...tap, id: e.pointerId };
+      }
       setStoryPanel(null);
       setFramePanel(null);
       if (editing || appearance) {
@@ -2098,6 +2117,11 @@ export function Canvas({
   }
 
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    const down = fingerDown.current;
+    if (down?.id === e.pointerId) {
+      fingerDown.current = null;
+      lastTap.current = e.type === 'pointerup' && stayedStill(down, screenPoint(e)) ? down : null;
+    }
     if (touchUp(e)) return;
     const g = gesture.current;
     gesture.current = null;
@@ -2232,7 +2256,13 @@ export function Canvas({
     if (target.closest('[data-play-link]')) return;
     const targetId = canvasElementId(target);
     if (!targetId) {
-      if (target.closest('[data-chrome]') || readOnly || !getPreferences().doubleClickNote) return;
+      if (target.closest('[data-chrome]')) return;
+      // The pointer handler fits on a double tap; a mouse on a phone-sized window does the same.
+      if (isPhone) {
+        zoomTo('fit');
+        return;
+      }
+      if (readOnly || !getPreferences().doubleClickNote) return;
       const at = toWorld(e.clientX, e.clientY);
       void add('note', { x: at.x - 20, y: at.y - 20 });
       return;
@@ -2905,6 +2935,21 @@ export function Canvas({
     if (el.parent === UNSORTED) setUnsortedOpen(true);
   }, [preview, focusId, conn.status, size, snap, liveRect, select, setParams, setViewport]);
 
+  // The Home's "Non ordinati" links here with ?unsorted=open: open the tray, once.
+  const openTray = params.get('unsorted') === 'open';
+  useEffect(() => {
+    if (!openTray) return;
+    setUnsortedOpen(true);
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p);
+        next.delete('unsorted');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [openTray, setParams]);
+
   const menuItems = useMemo<MenuItem[]>(() => {
     if (!menu) return [];
     if (selection.size === 0) {
@@ -3124,7 +3169,11 @@ export function Canvas({
         : []),
       ...(single?.type === 'image' && !readOnly && !single.locked
         ? [
-            { label: t('film.frame.moveImage'), action: () => setMenu({ ...menu, frames: true }) },
+            {
+              sheet: 'storyboard' as const,
+              label: t('film.frame.moveImage'),
+              action: () => setMenu({ ...menu, frames: true }),
+            },
             {
               toolbar: true,
               label: t('board.image.cropRotate'),
@@ -3194,6 +3243,7 @@ export function Canvas({
         ? [
             {
               toolbar: true,
+              sheet: 'comment' as const,
               label: t('comments.open'),
               action: () => openComments({ elementId: single.id }),
             },
@@ -3218,6 +3268,7 @@ export function Canvas({
               ? [
                   {
                     toolbar: !inMoreMenu,
+                    sheet: 'guest' as const,
                     label: t(
                       selectedEls.filter((e) => e.type !== 'arrow').every((e) => e.guestHidden)
                         ? 'guestVisibility.show'
@@ -3234,12 +3285,14 @@ export function Canvas({
             },
             {
               toolbar: !inMoreMenu,
+              sheet: 'duplicate' as const,
               label: t('board.menu.duplicate'),
               shortcut: '⌘D',
               action: duplicate,
             },
             {
               toolbar: true,
+              sheet: 'lock' as const,
               label: locked ? t('board.menu.unlock') : t('board.menu.lock'),
               shortcut: '⌘L',
               action: toggleLock,
@@ -3255,6 +3308,7 @@ export function Canvas({
               action: () => sendToBack(doc, [...selection], LOCAL),
             },
             {
+              sheet: 'unsorted' as const,
               label: t('board.menu.toUnsorted'),
               action: () => moveToUnsorted(doc, [...selection], LOCAL),
             },
@@ -3273,6 +3327,7 @@ export function Canvas({
             ...(menu.fromToolbar ? [] : [{ divider: true as const }]),
             {
               toolbar: !inMoreMenu,
+              sheet: 'delete' as const,
               label: t('board.menu.delete'),
               shortcut: '⌫',
               danger: true,
@@ -3282,10 +3337,12 @@ export function Canvas({
     ];
     // These flags mark actions actually rendered by ContextBar for the same selection.
     // Standalone right-click menus keep the complete permission-filtered action list.
-    return menu.fromToolbar && !menu.fromEditing
+    // The phone's card sheet lists them all: its quick actions take the bar's place.
+    return menu.fromToolbar && !menu.fromEditing && !isPhone
       ? items.filter((item) => !('toolbar' in item && item.toolbar))
       : items;
   }, [
+    isPhone,
     menu,
     labels,
     frameInserted,
@@ -3320,6 +3377,61 @@ export function Canvas({
     detectedScripts,
     openDetectedScript,
   ]);
+
+  /** The phone card sheet's own actions (#110), beside the menu's: only with the menu open. */
+  const sheetActions = (() => {
+    // A list opened from the sheet (frames, scenes) is only that list.
+    if (!isPhone || !menu || readOnly || menu.frames || menu.scenes)
+      return { moveTargets: [], guestShown: false };
+    const single = selectedEls.length === 1 ? selectedEls[0] : undefined;
+    const cards = selectedEls.filter((e) => e.type !== 'arrow');
+    const free = cards.every((e) => !e.locked);
+    const movable = cards.filter((e) => !isContainer(e)).map((e) => e.id);
+    return {
+      guestShown: !cards.every((e) => e.guestHidden),
+      onEdit:
+        single && free && (single.type === 'note' || single.type === 'image')
+          ? () => setEditing(single.id)
+          : undefined,
+      onColor:
+        free &&
+        cards.length > 0 &&
+        cards.length === selectedEls.length &&
+        cards.every((e) => e.type === 'note' || e.type === 'column' || e.type === 'table')
+          ? (color: (typeof NOTE_COLORS)[number] | undefined) => {
+              for (const el of cards) updateElement(doc, el.id, { color }, LOCAL);
+            }
+          : undefined,
+      onConnect:
+        single && single.parent === null && single.type !== 'arrow'
+          ? () => {
+              setTool('arrow');
+              notify(t('board.sheet.connectHint'));
+            }
+          : undefined,
+      moveTargets:
+        free && movable.length === cards.length && movable.length > 0
+          ? [...snap.byId.values()]
+              .filter((e) => e.type === 'column' && !e.locked && !movable.includes(e.id))
+              .map((column) => ({
+                id: column.id,
+                label: (column.type === 'column' && column.title.trim()) || t('board.types.column'),
+                action: () =>
+                  moveIntoParent(
+                    doc,
+                    movable,
+                    column.id,
+                    snap.columns.get(column.id)?.length ?? 0,
+                    LOCAL,
+                  ),
+              }))
+          : [],
+      reply:
+        single && single.type !== 'arrow' && !preview
+          ? { boardId, elementId: single.id }
+          : undefined,
+    };
+  })();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
   const rectOf = useCallback((el: Element) => store.rectOf(el), [store, sizeVersion]);
@@ -3931,15 +4043,26 @@ export function Canvas({
             onClose={closePicker}
           />
         )}
-        {menu && menuItems.length > 0 && (
-          <ContextMenu
-            key={menu.scenes ? 'scenes' : 'main'}
-            x={menu.x}
-            y={menu.y}
-            items={menuItems}
-            onClose={() => setMenu(null)}
-          />
-        )}
+        {menu &&
+          menuItems.length > 0 &&
+          (isPhone && selectedEls.length > 0 ? (
+            <CardSheet
+              key={menu.scenes ? 'scenes' : menu.frames ? 'frames' : 'main'}
+              store={store}
+              elements={selectedEls}
+              items={menuItems}
+              {...sheetActions}
+              onClose={() => setMenu(null)}
+            />
+          ) : (
+            <ContextMenu
+              key={menu.scenes ? 'scenes' : 'main'}
+              x={menu.x}
+              y={menu.y}
+              items={menuItems}
+              onClose={() => setMenu(null)}
+            />
+          ))}
 
         {/* Guests don't see the unsorted tray; members and previews still do. */}
         {!guest && (
@@ -3987,6 +4110,7 @@ export function Canvas({
               onCanvas={() => void insertCanvas()}
               onScreenplay={() => setImportingScript(true)}
               onVoiceNote={canRecord() ? () => setRecording(center()) : undefined}
+              phone={isPhone}
             />
           </div>
         )}

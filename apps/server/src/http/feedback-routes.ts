@@ -521,7 +521,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
             .select({ n: count() })
             .from(report)
             .where(and(window, eq(report.owner, who.owner)));
-          if ((all?.n ?? 0) >= 100 || (person?.n ?? 0) >= (guest ? 2 : 5)) {
+          if ((all?.n ?? 0) >= 100 || (person?.n ?? 0) >= (guest ? 2 : 15)) {
             // The oldest report of the window is the next to leave it.
             const [oldest] = await tx
               .select({ at: report.createdAt })
@@ -529,7 +529,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
               .where(
                 and(
                   window,
-                  (person?.n ?? 0) >= (guest ? 2 : 5) ? eq(report.owner, who.owner) : undefined,
+                  (person?.n ?? 0) >= (guest ? 2 : 15) ? eq(report.owner, who.owner) : undefined,
                 ),
               )
               .orderBy(asc(report.createdAt))

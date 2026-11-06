@@ -181,7 +181,11 @@
       "cards_one": "{{count}} item",
       "cards_other": "{{count}} items"
     },
-    "allProjects": "All projects →"
+    "allProjects": "All projects →",
+    "unsorted": {
+      "waiting_one": "{{count}} item to sort",
+      "waiting_other": "{{count}} items to sort"
+    }
   },
   "project": {
     "dialogTitle": "New project",
@@ -286,7 +290,8 @@
   "board": {
     "canvasMenu": {
       "label": "Canvas",
-      "hint": "Insert a canvas"
+      "hint": "Insert a canvas",
+      "more": "More"
     },
     "toolGroups": {
       "navigate": "Navigate and connect",
@@ -1093,6 +1098,17 @@
       },
       "drawFailed": "Could not save the stroke. Try again; if the problem continues, reload the board.",
       "updateApp": "This board requires a newer version. Update the app to edit it; you can continue viewing it."
+    },
+    "sheet": {
+      "edit": "Edit",
+      "comment": "Comment",
+      "color": "Colour",
+      "connect": "Connect",
+      "connectHint": "Drag from the card to another one to connect them",
+      "moveTo": "Move to…",
+      "showGuests": "Show to the client",
+      "toStoryboard": "Add to Storyboard",
+      "replyTo": "Reply to {{name}}…"
     }
   },
   "tags": {
@@ -2034,7 +2050,10 @@
     "refresh": "Refresh conversation",
     "conversationUnavailable": "Conversation not available",
     "cardFallback": "Card",
-    "previewUnavailable": "Open the board to view this card."
+    "previewUnavailable": "Open the board to view this card.",
+    "swipeRead": "Read",
+    "swipeResolve": "Resolve",
+    "resolvedDone": "Thread resolved"
   },
   "settings": {
     "sectionLead": {
@@ -2310,7 +2329,10 @@
     "summary_other": "{{planned}} planned · {{count}} blocks",
     "castPlaceholder": "Add a name",
     "departmentsPlaceholder": "Department: note",
-    "removeToken": "Remove {{name}}"
+    "removeToken": "Remove {{name}}",
+    "pickDay": "Shooting days",
+    "now": "Now {{time}}",
+    "current": "Under way"
   },
   "moodboard": {
     "count_one": "{{count}} reference",
@@ -2373,7 +2395,29 @@
     "kitHelp": "Counts the icons by type and label.",
     "moves": "Numbered moves",
     "fullPage": "Plans on a full page",
-    "new": "New"
+    "new": "New",
+    "general": "General",
+    "yourCall": "Your call",
+    "confirm": "Confirm I'll be there",
+    "decline": "I can't",
+    "presence": "Attendance",
+    "presenceCount": "{{confirmed}} of {{total}} confirmed",
+    "presenceLoading": "Loading attendance…",
+    "presenceError": "Attendance could not be loaded.",
+    "retry": "Try again",
+    "saveError": "Could not save. Try again.",
+    "linkAccount": "Account of {{name}}",
+    "noAccount": "No account",
+    "otherAccount": "Other account",
+    "answer": {
+      "confirmed": "You confirmed you'll be there.",
+      "declined": "You said you can't be there."
+    },
+    "status": {
+      "confirmed": "Confirmed",
+      "declined": "Can't come",
+      "waiting": "Waiting"
+    }
   },
   "needed": {
     "title": "To bring",

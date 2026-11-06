@@ -2,6 +2,8 @@ import { updatePreferences, usePreferences } from '../lib/preferences.ts';
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import {
+  type BoardDetail,
+  type CommentThread,
   INBOX_ALWAYS,
   type Notification,
   NotificationChannelType,
@@ -14,6 +16,7 @@ import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useStat
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName, groupByDay, type Page, reviewKey } from '../board/review-model.ts';
+import { canComment } from '../board/review-store.ts';
 import { expiryDate } from '../lib/access.ts';
 import { api } from '../lib/api.ts';
 import { signedInId } from '../lib/me.ts';
@@ -29,6 +32,7 @@ import {
   KNOWN_TYPES,
   unreadBadge,
 } from './model.ts';
+import { type SwipeAction, SwipeRow } from './SwipeRow.tsx';
 import './notifications.css';
 
 const POLL_MS = 60_000;
@@ -41,6 +45,28 @@ const INBOX_TABS: { value: InboxFilter; label: string }[] = [
 
 /** Pathless notifications render disabled: keep them out of selection and keyboard order. */
 const isNavigable = (n: Notification) => Boolean(notificationPath(n));
+
+/**
+ * Whether the signed-in person can resolve the notification's thread now, as the Inbox detail
+ * decides it: the list carries neither their role on the board nor the thread's state.
+ */
+async function canResolve({ boardId, elementId, threadId }: Notification): Promise<boolean> {
+  if (!boardId || !threadId) return false;
+  const board = await api.get<BoardDetail>(`/boards/${boardId}`);
+  if (!canComment(board.myRole ?? null)) return false;
+  const card = elementId ? `&elementId=${encodeURIComponent(elementId)}` : '';
+  let cursor: string | null = null;
+  do {
+    const after: string = cursor ? `&cursor=${encodeURIComponent(cursor)}` : '';
+    const page: Page<CommentThread> = await api.get(
+      `/boards/${boardId}/comments?status=all&limit=100${card}${after}`,
+    );
+    const thread = page.items.find((item) => item.id === threadId);
+    if (thread) return !thread.resolvedAt && !thread.deletedAt;
+    cursor = page.nextCursor;
+  } while (cursor);
+  return false;
+}
 
 /** Hook to fetch and periodically poll the unread notification count. */
 export function useUnreadCount(): [number, () => Promise<void>] {
@@ -373,6 +399,65 @@ export function NotificationList({
       readTimer.current = null;
     }
   }, []);
+  const [resolved, setResolved] = useState(false);
+  useEffect(() => {
+    if (!resolved) return;
+    const timer = setTimeout(() => setResolved(false), 4000);
+    return () => clearTimeout(timer);
+  }, [resolved]);
+  // Threads a person can resolve, by id, once a swipe has asked; Resolve waits for the answer.
+  // shortcut: asked once per opening, so a thread resolved elsewhere still offers Resolve, which
+  // then changes nothing; ask at every swipe if that ever confuses anyone.
+  const [resolvable, setResolvable] = useState<ReadonlyMap<string, boolean>>(new Map());
+  const asked = useRef(new Set<string>());
+  const askResolvable = (n: Notification) => {
+    const id = n.threadId;
+    if (!id || asked.current.has(id)) return;
+    asked.current.add(id);
+    canResolve(n).then(
+      (can) => setResolvable((known) => new Map(known).set(id, can)),
+      // Unknown stays hidden; the next swipe asks again.
+      () => asked.current.delete(id),
+    );
+  };
+  const resolve = async (n: Notification, thread: string) => {
+    setActionError(false);
+    setResolved(false);
+    try {
+      await api.post(`/comments/${thread}/resolve`, {});
+      setResolvable((known) => new Map(known).set(thread, false));
+      setResolved(true);
+      if (!n.readAt) await markRead(n.id);
+    } catch {
+      setActionError(true);
+    }
+  };
+  /** Read and Resolve, the actions the inbox already has, for a swipe on a phone (#110). */
+  const swipeActions = (n: Notification): SwipeAction[] => {
+    const thread = n.threadId;
+    return [
+      ...(n.readAt
+        ? []
+        : [
+            {
+              label: t('notifications.swipeRead'),
+              icon: 'check' as const,
+              tone: 'read' as const,
+              onClick: () => void markRead(n.id).catch(() => setActionError(true)),
+            },
+          ]),
+      ...(thread && resolvable.get(thread)
+        ? [
+            {
+              label: t('notifications.swipeResolve'),
+              icon: 'todo' as const,
+              tone: 'resolve' as const,
+              onClick: () => void resolve(n, thread),
+            },
+          ]
+        : []),
+    ];
+  };
   const markReadDebounced = useCallback(
     (id: string) => {
       clearReadTimer();
@@ -592,13 +677,15 @@ export function NotificationList({
                       const path = notificationPath(n);
                       const actor = notificationActor(n, t);
                       const isSelected = n.id === selectedId;
-                      return (
-                        <li
-                          key={n.id}
-                          className={`notification ${n.readAt ? '' : 'is-unread'} ${
-                            isSelected ? 'is-selected' : ''
-                          }`}
-                        >
+                      const rowClass = `notification ${n.readAt ? '' : 'is-unread'} ${
+                        isSelected ? 'is-selected' : ''
+                      }`;
+                      const swipe = mobile ? swipeActions(n) : [];
+                      // A row of a thread may still turn out to have Resolve: only a swipe asks.
+                      const swipable =
+                        swipe.length > 0 || (mobile && !!n.threadId && !resolvable.has(n.threadId));
+                      const row = (
+                        <>
                           <button
                             type="button"
                             data-notification-id={n.id}
@@ -667,6 +754,20 @@ export function NotificationList({
                               }}
                             />
                           )}
+                        </>
+                      );
+                      return swipable ? (
+                        <SwipeRow
+                          key={n.id}
+                          className={rowClass}
+                          actions={swipe}
+                          onSwipe={() => askResolvable(n)}
+                        >
+                          {row}
+                        </SwipeRow>
+                      ) : (
+                        <li key={n.id} className={rowClass}>
+                          {row}
                         </li>
                       );
                     })}
@@ -691,6 +792,9 @@ export function NotificationList({
                   {t('notifications.actionError')}
                 </p>
               )}
+              <p role="status" className="ink-muted notifications__status" hidden={!resolved}>
+                {resolved && t('notifications.resolvedDone')}
+              </p>
               {next && state === 'ready' && (
                 <Button variant="ghost" onClick={() => void load(next)}>
                   {t('notifications.more')}

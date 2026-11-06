@@ -51,8 +51,12 @@ type DetailProps = {
 export function InboxDetail(props: DetailProps) {
   if (props.notification?.type === 'feedback_received')
     return (
-      <div className="inbox-detail">
-        <FeedbackInbox />
+      <div className="notifications__detail-pane inbox-detail">
+        <div className="inbox-detail__body">
+          <div className="inbox-detail__conversation">
+            <FeedbackInbox />
+          </div>
+        </div>
       </div>
     );
   return props.notification?.boardId && props.notification.elementId ? (

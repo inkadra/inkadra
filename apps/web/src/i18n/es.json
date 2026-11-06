@@ -181,7 +181,11 @@
       "cards_one": "{{count}} elemento",
       "cards_other": "{{count}} elementos"
     },
-    "allProjects": "Todos los proyectos →"
+    "allProjects": "Todos los proyectos →",
+    "unsorted": {
+      "waiting_one": "{{count}} elemento por ordenar",
+      "waiting_other": "{{count}} elementos por ordenar"
+    }
   },
   "project": {
     "dialogTitle": "Nuevo proyecto",
@@ -286,7 +290,8 @@
   "board": {
     "canvasMenu": {
       "label": "Lienzo",
-      "hint": "Insertar un lienzo"
+      "hint": "Insertar un lienzo",
+      "more": "Más"
     },
     "toolGroups": {
       "navigate": "Navegar y conectar",
@@ -1093,6 +1098,17 @@
       },
       "drawFailed": "No se pudo guardar el trazo. Inténtalo de nuevo; si el problema continúa, recarga el tablero.",
       "updateApp": "Este tablero requiere una versión más reciente. Actualiza la app para editarlo; puedes seguir leyéndolo."
+    },
+    "sheet": {
+      "edit": "Editar",
+      "comment": "Comentar",
+      "color": "Color",
+      "connect": "Conectar",
+      "connectHint": "Arrastra desde la tarjeta hasta otra para conectarlas",
+      "moveTo": "Mover a…",
+      "showGuests": "Mostrar al cliente",
+      "toStoryboard": "Añadir al Storyboard",
+      "replyTo": "Responder a {{name}}…"
     }
   },
   "tags": {
@@ -2034,7 +2050,10 @@
     "refresh": "Actualizar conversación",
     "conversationUnavailable": "Conversación no disponible",
     "cardFallback": "Tarjeta",
-    "previewUnavailable": "Abre el tablero para ver esta tarjeta."
+    "previewUnavailable": "Abre el tablero para ver esta tarjeta.",
+    "swipeRead": "Leída",
+    "swipeResolve": "Resolver",
+    "resolvedDone": "Conversación resuelta"
   },
   "settings": {
     "sectionLead": {
@@ -2310,7 +2329,10 @@
     "summary_other": "{{planned}} planificados · {{count}} bloques",
     "castPlaceholder": "Añadir un nombre",
     "departmentsPlaceholder": "Departamento: nota",
-    "removeToken": "Quitar {{name}}"
+    "removeToken": "Quitar {{name}}",
+    "pickDay": "Días de rodaje",
+    "now": "Ahora {{time}}",
+    "current": "En curso"
   },
   "moodboard": {
     "count_one": "{{count}} referencia",
@@ -2373,7 +2395,29 @@
     "kitHelp": "Cuenta los iconos por tipo y etiqueta.",
     "moves": "Movimientos numerados",
     "fullPage": "Plantas a página completa",
-    "new": "Nuevo"
+    "new": "Nuevo",
+    "general": "General",
+    "yourCall": "Tu citación",
+    "confirm": "Confirmo mi asistencia",
+    "decline": "No puedo",
+    "presence": "Asistencia",
+    "presenceCount": "{{confirmed}} de {{total}} confirmados",
+    "presenceLoading": "Cargando la asistencia…",
+    "presenceError": "No se pudo cargar la asistencia.",
+    "retry": "Reintentar",
+    "saveError": "No se pudo guardar. Inténtalo de nuevo.",
+    "linkAccount": "Cuenta de {{name}}",
+    "noAccount": "Ninguna cuenta",
+    "otherAccount": "Otra cuenta",
+    "answer": {
+      "confirmed": "Has confirmado tu asistencia.",
+      "declined": "Has dicho que no puedes ir."
+    },
+    "status": {
+      "confirmed": "Confirmado",
+      "declined": "No puede",
+      "waiting": "Pendiente"
+    }
   },
   "needed": {
     "title": "Para llevar",

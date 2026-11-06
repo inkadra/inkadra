@@ -31,6 +31,7 @@ import {
   CreateBoard,
   RecentBoard,
   RecentBoardQuery,
+  UnsortedSummary,
   UpdateBoard,
 } from './boards.ts';
 import { CalendarFeed } from './calendar.ts';
@@ -128,9 +129,13 @@ import {
   SetElementReview,
 } from './reviews.ts';
 import {
+  DayAttendance,
   MySchedule,
   MyScheduleQuery,
   Schedule,
+  ScheduleAttendance,
+  SetCastLink,
+  SetDayAttendance,
   ShootingDay,
   ShootingDayInput,
   UpdateShootingDay,
@@ -245,7 +250,7 @@ for (const prefix of ['/feedback', '/guest/links/{linkId}/feedback']) {
     summary:
       'Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.',
     description:
-      'Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.',
+      'Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: fifteen reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.',
     request: { ...params, body: { required: true, ...json(CreateFeedback) } },
     responses: {
       201: { description: 'Durably accepted', ...json(FeedbackReceipt) },
@@ -406,6 +411,39 @@ registry.registerPath({
   summary: 'Create a project shooting day anchored to this board; requires editor access.',
   request: { params: idParam('boardId'), body: json(ShootingDayInput) },
   responses: { 201: { description: 'Created', ...json(ShootingDay) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: `${schedulePath}/attendance`,
+  tags: ['Schedule'],
+  security: secured,
+  summary: 'Read cast links and presence responses; requires viewer access.',
+  description:
+    'People who can edit the schedule get every link and response; the others only their own.',
+  request: { params: idParam('boardId') },
+  responses: {
+    200: { description: 'Links and responses', ...json(ScheduleAttendance) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'put',
+  path: `${schedulePath}/cast-links`,
+  tags: ['Schedule'],
+  security: secured,
+  summary: 'Link a cast name to an account with access to the board; requires editor access.',
+  request: { params: idParam('boardId'), body: json(SetCastLink) },
+  responses: { 204: { description: 'Saved' }, ...errors },
+});
+registry.registerPath({
+  method: 'put',
+  path: `${schedulePath}/{dayId}/attendance`,
+  tags: ['Schedule'],
+  security: secured,
+  summary: 'Answer for yourself whether you can be on set this day.',
+  description: 'Only people linked to a cast name of that day can answer, always for themselves.',
+  request: { params: z.object({ boardId: Id, dayId: Id }), body: json(SetDayAttendance) },
+  responses: { 200: { description: 'Saved', ...json(DayAttendance) }, ...errors },
 });
 registry.registerPath({
   method: 'put',
@@ -1249,6 +1287,17 @@ registry.registerPath({
   responses: { 204: { description: 'Forgotten (also when already absent)' }, ...errors },
 });
 
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/unsorted'),
+  tags: ['Boards'],
+  security: secured,
+  summary: 'Boards you can edit whose unsorted tray holds cards, fullest first.',
+  description:
+    'For the Home on a phone: counts the cards waiting in the "Non ordinati" tray of each ' +
+    'board of a project that is not archived, from the last stored document. At most 20 boards.',
+  responses: { 200: { description: 'Unsorted cards', ...json(UnsortedSummary) }, ...errors },
+});
 registry.registerPath({
   method: 'get',
   path: v1('/me/recent-boards'),

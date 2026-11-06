@@ -857,6 +857,118 @@
         ],
         "additionalProperties": false
       },
+      "ScheduleAttendance": {
+        "type": "object",
+        "properties": {
+          "canManage": {
+            "type": "boolean",
+            "description": "The caller can edit the schedule."
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CastLink"
+            },
+            "description": "Every link for people who can edit the schedule, else the caller's own."
+          },
+          "responses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DayAttendance"
+            },
+            "description": "Every response for people who can edit the schedule, else the caller's own."
+          }
+        },
+        "required": [
+          "canManage",
+          "links",
+          "responses"
+        ]
+      },
+      "CastLink": {
+        "type": "object",
+        "properties": {
+          "castKey": {
+            "type": "string",
+            "description": "The cast name after castNameKey."
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          }
+        },
+        "required": [
+          "castKey",
+          "userId"
+        ]
+      },
+      "DayAttendance": {
+        "type": "object",
+        "properties": {
+          "dayId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AttendanceStatus"
+          }
+        },
+        "required": [
+          "dayId",
+          "userId",
+          "status"
+        ]
+      },
+      "AttendanceStatus": {
+        "type": "string",
+        "enum": [
+          "confirmed",
+          "declined"
+        ]
+      },
+      "SetCastLink": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "userId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "The account to link; null removes the link."
+          }
+        },
+        "required": [
+          "name",
+          "userId"
+        ],
+        "additionalProperties": false
+      },
+      "SetDayAttendance": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/AttendanceStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      },
       "UpdateShootingDay": {
         "type": "object",
         "properties": {
@@ -4232,6 +4344,71 @@
           "myRole",
           "projectName",
           "usedAt"
+        ]
+      },
+      "UnsortedSummary": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnsortedBoard"
+            },
+            "maxItems": 20
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cards waiting on all the boards listed."
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "UnsortedBoard": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "boardTitle": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "Cards directly in the unsorted tray."
+          },
+          "assetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "maxItems": 2,
+            "description": "Ready images or videos of those cards, from the same project."
+          }
+        },
+        "required": [
+          "boardId",
+          "projectId",
+          "boardTitle",
+          "projectName",
+          "count",
+          "assetIds"
         ]
       },
       "RecentBoard": {
@@ -8299,7 +8476,7 @@
           }
         ],
         "summary": "Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.",
-        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
+        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: fifteen reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8573,7 +8750,7 @@
           }
         ],
         "summary": "Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.",
-        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
+        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: fifteen reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
         "parameters": [
           {
             "schema": {
@@ -9508,6 +9685,269 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ShootingDay"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/schedule/attendance": {
+      "get": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read cast links and presence responses; requires viewer access.",
+        "description": "People who can edit the schedule get every link and response; the others only their own.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Links and responses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleAttendance"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/schedule/cast-links": {
+      "put": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Link a cast name to an account with access to the board; requires editor access.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCastLink"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Saved"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/schedule/{dayId}/attendance": {
+      "put": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answer for yourself whether you can be on set this day.",
+        "description": "Only people linked to a cast name of that day can answer, always for themselves.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "dayId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDayAttendance"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayAttendance"
                 }
               }
             }
@@ -14491,6 +14931,75 @@
         "responses": {
           "204": {
             "description": "Forgotten (also when already absent)"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/unsorted": {
+      "get": {
+        "tags": [
+          "Boards"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Boards you can edit whose unsorted tray holds cards, fullest first.",
+        "description": "For the Home on a phone: counts the cards waiting in the \"Non ordinati\" tray of each board of a project that is not archived, from the last stored document. At most 20 boards.",
+        "responses": {
+          "200": {
+            "description": "Unsorted cards",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnsortedSummary"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request",

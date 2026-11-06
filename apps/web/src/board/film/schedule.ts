@@ -1,10 +1,12 @@
-import type { ScheduleBlock, ShootingDayInput } from '@inkadra/shared';
+import {
+  clockMinutes,
+  type ScheduleBlock,
+  type ShootingDayInput,
+  scheduleTimes,
+} from '@inkadra/shared';
 import { formatClock } from '../../lib/datetime.ts';
 
-export function clockMinutes(time: string): number {
-  const [hours = 0, minutes = 0] = time.split(':').map(Number);
-  return hours * 60 + minutes;
-}
+export { clockMinutes, scheduleTimes } from '@inkadra/shared';
 
 export function clockLabel(minutes: number): string {
   const day = Math.floor(minutes / 1440);
@@ -12,18 +14,6 @@ export function clockLabel(minutes: number): string {
   const clock = `${String(Math.floor(local / 60)).padStart(2, '0')}:${String(local % 60).padStart(2, '0')}`;
   // In the person's time format (#302): 24 h unless they chose 12 h.
   return `${formatClock(clock)}${day ? ` (+${day})` : ''}`;
-}
-
-export function scheduleTimes(day: ShootingDayInput) {
-  const call = clockMinutes(day.callTime);
-  let cursor = call;
-  return day.blocks.map((block) => {
-    let start = block.start === null ? cursor : clockMinutes(block.start);
-    if (block.start !== null && start < call) start += 1440;
-    const end = start + block.duration;
-    cursor = end;
-    return { block, start, end };
-  });
 }
 
 /** Case-insensitive cast matches, including blocks on neighbouring calendar dates. */
@@ -79,3 +69,21 @@ export const textList = (value: string): string[] => [
       .filter(Boolean),
   ),
 ];
+
+const calendarDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * Where `now` falls on a day's clock, in minutes from that day's midnight, while the day is under
+ * way: from the call to its end (a night shoot runs past midnight, up to 1440 + minutes). Null on
+ * any other day or hour. Days have no time zone (decision 0022): the person's own clock is used.
+ */
+export function nowOnDay(day: ShootingDayInput, end: number | null, now: Date): number | null {
+  const call = clockMinutes(day.callTime);
+  const last = Math.max(call, end ?? call);
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  if (day.date === calendarDate(now) && minutes >= call && minutes <= last) return minutes;
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (day.date === calendarDate(yesterday) && minutes + 1440 <= last) return minutes + 1440;
+  return null;
+}
