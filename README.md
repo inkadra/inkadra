@@ -125,7 +125,7 @@ choose, and troubleshooting. It also covers reverse proxies (Caddy, Traefik, Ngi
 Manager, Pangolin), sign-in, [data on different disks](docs/self-hosting/storage.md#data-on-different-disks),
 S3 and split mode. Images are published for amd64 and arm64 as `ghcr.io/inkadra/inkadra`.
 
-To pin a release instead of following `latest`, set `INKADRA_TAG=0.8.0` (or `0.8` for its patch
+To pin a release instead of following `latest`, set `INKADRA_TAG=0.9.0` (or `0.9` for its patch
 releases) in `.env`.
 
 > [!IMPORTANT]

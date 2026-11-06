@@ -191,9 +191,9 @@ with the standard one unless you need what the others add: you can change later 
 
 | Variant  | Tag example    | Size    | What it adds                                                                                                                                                                                                                                 |
 | -------- | -------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Standard | `0.8.0`        | ~0.6 GB | Everything in Inkadra. Videos play in their card when the browser can play the original; other files get a generic card                                                                                                                      |
-| Media    | `0.8.0-media`  | ~1.4 GB | ffmpeg, exiftool and poppler: video posters, playable copies of ProRes, MKV, AVI, MXF and HEVC, stills taken from the original video, audio waveforms, camera RAW and PDF thumbnails, video reports from a device. Hardware encoding drivers |
-| Office   | `0.8.0-office` | ~2 GB   | The media image plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental                                                                                                                      |
+| Standard | `0.9.0`        | ~0.6 GB | Everything in Inkadra. Videos play in their card when the browser can play the original; other files get a generic card                                                                                                                      |
+| Media    | `0.9.0-media`  | ~1.4 GB | ffmpeg, exiftool and poppler: video posters, playable copies of ProRes, MKV, AVI, MXF and HEVC, stills taken from the original video, audio waveforms, camera RAW and PDF thumbnails, video reports from a device. Hardware encoding drivers |
+| Office   | `0.9.0-office` | ~2 GB   | The media image plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental                                                                                                                      |
 
 Sizes are uncompressed, measured on amd64. The image's command selects the role:
 
@@ -220,13 +220,13 @@ switches to uid 1000, which drops them. Each role has its own health check.
 
 | Tag           | What it is                                                  |
 | ------------- | ----------------------------------------------------------- |
-| `0.8.0`       | One release. Recommended: pin it in `INKADRA_TAG`           |
-| `0.8`         | The latest patch release of 0.8                             |
+| `0.9.0`       | One release. Recommended: pin it in `INKADRA_TAG`           |
+| `0.9`         | The latest patch release of 0.9                             |
 | `latest`      | The latest stable release                                   |
 | `edge`        | The latest commit of `main`: for testing, not for real work |
 | `sha-1a2b3c4` | One commit                                                  |
 
-Every tag also exists with the suffix `-media` (`0.8.0-media`, `latest-media`, `edge-media`…):
+Every tag also exists with the suffix `-media` (`0.9.0-media`, `latest-media`, `edge-media`…):
 the same image plus ffmpeg, exiftool and poppler, about 800 MB larger. With it, videos get a
 poster thumbnail on the board, their duration and codecs, and a playable H.264 copy when the
 browser cannot play the original (ProRes, MKV, AVI, MXF, HEVC); camera RAW files get thumbnails
@@ -247,7 +247,7 @@ image under `/usr/share/doc/<package>/copyright`. The GPL is compatible with dis
 under the AGPL-3.0. The server only runs the `ffmpeg`, `ffprobe`, `exiftool`, `pdftoppm` and
 `pdfinfo` programs and does not link to them.
 
-The suffix `-office` (`0.8.0-office`, `latest-office`, `edge-office`…) is the `-media` image plus LibreOffice, for
+The suffix `-office` (`0.9.0-office`, `latest-office`, `edge-office`…) is the `-media` image plus LibreOffice, for
 the worker role only when you enable [Office document previews](office.md).
 
 ## Compose variants

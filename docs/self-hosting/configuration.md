@@ -201,7 +201,7 @@ These change `compose.yaml` itself, not the server.
 
 | Variable                  | Default                   | Meaning                                                                        |
 | ------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
-| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.8.0` (recommended), `latest` or `edge`         |
+| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.9.0` (recommended), `latest` or `edge`         |
 | `INKADRA_IMAGE`           | `ghcr.io/inkadra/inkadra` | Image name, for a mirror or your own build                                     |
 | `INKADRA_PORT`            | `3000`                    | Host port of the web app                                                       |
 | `INKADRA_COLLAB_PORT`     | `3001`                    | Host port of `collab`, in split mode                                           |
