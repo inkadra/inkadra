@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { ShootingDayInput } from '@inkadra/shared';
+import {
+  type CastLink,
+  castNameKey,
+  type ScheduleBlock,
+  type ShootingDayInput,
+} from '@inkadra/shared';
 import { clockMinutes, scheduleTimes } from './schedule.ts';
 
 /** First scheduled appearance, in local minutes from the shooting date (including overnight). */
@@ -9,12 +14,60 @@ export function castCalls(day: ShootingDayInput) {
     for (const value of block.cast) {
       const name = value.trim();
       if (!name) continue;
-      const key = name.toLocaleLowerCase();
+      const key = castNameKey(name);
       const previous = calls.get(key);
       if (!previous || start < previous.start) calls.set(key, { name, start });
     }
   }
   return [...calls.values()].sort((a, b) => a.start - b.start || a.name.localeCompare(b.name));
+}
+
+/** The person's first call of the day through the cast names linked to them. */
+export function personalCall(
+  day: ShootingDayInput,
+  links: readonly CastLink[],
+  userId: string | undefined,
+) {
+  const mine = new Set(links.filter((link) => link.userId === userId).map((l) => l.castKey));
+  return castCalls(day).find((call) => mine.has(castNameKey(call.name))) ?? null;
+}
+
+export interface SheetRow {
+  id: string;
+  start: number;
+  block: ScheduleBlock;
+  scene?: string | undefined;
+  /** Label of the shot, or of the first of several. */
+  first?: string | undefined;
+  /** Label of the last of several shots in a row. */
+  last?: string | undefined;
+}
+
+/**
+ * The schedule for a narrow screen: shots in a row of one scene with the same cast read as one
+ * line, "Sc. 4 · 4A–4C", at the time of the first.
+ */
+export function sheetRows(
+  day: ShootingDayInput,
+  shotOf: (id: string | null) => { label: string; scene?: string | undefined } | undefined,
+): SheetRow[] {
+  const castOf = (block: ScheduleBlock) => block.cast.map(castNameKey).join('\n');
+  const rows: SheetRow[] = [];
+  for (const { block, start } of scheduleTimes(day)) {
+    const shot = shotOf(block.shotId);
+    const previous = rows.at(-1);
+    if (
+      shot &&
+      previous?.first &&
+      previous.scene === shot.scene &&
+      castOf(previous.block) === castOf(block)
+    ) {
+      previous.last = shot.label;
+    } else {
+      rows.push({ id: block.id, start, block, scene: shot?.scene, first: shot?.label });
+    }
+  }
+  return rows;
 }
 
 /**

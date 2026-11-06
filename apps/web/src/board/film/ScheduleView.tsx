@@ -606,6 +606,8 @@ export function ScheduleView({
           people={people}
           projectName={projectName}
           projectId={projectId}
+          boardId={boardId}
+          userId={userId}
           initialDayId={active?.day.id}
           unsaved={drafted.some((item) => item.dirty)}
           onClose={() => setCallSheetOpen(false)}

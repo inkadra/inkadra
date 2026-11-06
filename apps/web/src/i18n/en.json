@@ -2335,7 +2335,28 @@
     "kitHelp": "Counts the icons by type and label.",
     "moves": "Numbered moves",
     "fullPage": "Plans on a full page",
-    "new": "New"
+    "new": "New",
+    "general": "General",
+    "yourCall": "Your call",
+    "confirm": "Confirm I'll be there",
+    "decline": "I can't",
+    "presence": "Attendance",
+    "presenceCount": "{{confirmed}} of {{total}} confirmed",
+    "presenceLoading": "Loading attendance…",
+    "presenceError": "Attendance could not be loaded.",
+    "retry": "Try again",
+    "saveError": "Could not save. Try again.",
+    "linkAccount": "Account of {{name}}",
+    "noAccount": "No account",
+    "answer": {
+      "confirmed": "You confirmed you'll be there.",
+      "declined": "You said you can't be there."
+    },
+    "status": {
+      "confirmed": "Confirmed",
+      "declined": "Can't come",
+      "waiting": "Waiting"
+    }
   },
   "needed": {
     "title": "To bring",
