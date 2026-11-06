@@ -297,6 +297,20 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       inboxOpener.current = null;
     }
   }, [inboxOpen]);
+  // The panel closes on its own Escape; this one is for focus left in the sidebar or on the page.
+  useEffect(() => {
+    if (!inboxInPage) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      // That Escape belongs to what is open above, or to the field being typed in.
+      if (document.querySelector('dialog[open], [role="menu"]')) return;
+      if ((e.target as Element | null)?.closest?.('input, textarea, [contenteditable="true"]'))
+        return;
+      setInboxOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [inboxInPage]);
   // Going to another page leaves the Inbox, however it happens (search, a new project, a link).
   // biome-ignore lint/correctness/useExhaustiveDependencies: the path is what triggers this.
   useEffect(() => {

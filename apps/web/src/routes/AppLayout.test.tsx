@@ -97,6 +97,13 @@ it.each(['/projects', '/'])(
       expect(wrapper?.style.position).toBe('relative');
       expect(wrapper?.style.height).toBe('100%');
       expect(document.activeElement).toBe(bell);
+      // Escape closes it with the focus outside the panel too.
+      await act(async () => bell?.click());
+      toggle?.focus();
+      await act(async () => {
+        toggle?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      });
+      expect(host.querySelector('.inbox-header')).toBeNull();
     } finally {
       await act(async () => root.unmount());
       host.remove();
