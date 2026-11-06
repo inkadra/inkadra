@@ -241,6 +241,40 @@ test.describe('with motion', () => {
   });
 });
 
+test('the keyboard walks the view tabs and only Enter or Space opens a view', async ({
+  page,
+  baseURL,
+}) => {
+  await openProject(page, baseURL!, `View tabs keys ${Date.now()}`);
+  const tabs = page.getByRole('tablist', { name: 'Vista' }).getByRole('tab');
+  const names = await tabs.evaluateAll((all) => all.map((t) => t.getAttribute('aria-label')));
+  const first = names[0] ?? '';
+  const last = names.at(-1) ?? '';
+  // One tab stop, on the open view's tab, whose view is the panel.
+  await expect(tab(page, 'Lavagna')).toHaveAttribute('tabindex', '0');
+  await expect(tabs.and(page.locator('[tabindex="0"]'))).toHaveCount(1);
+  const panel = page.getByRole('tabpanel', { name: 'Lavagna' });
+  await expect(panel).toHaveCount(1);
+  await tab(page, 'Lavagna').focus();
+  await page.keyboard.press('End');
+  await expect(tab(page, last)).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(tab(page, first)).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(tab(page, last)).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(tab(page, first)).toBeFocused();
+  // Walking opened nothing.
+  await expect(tab(page, 'Lavagna')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('canvas')).toBeVisible();
+  await expect(page).not.toHaveURL(/view=/);
+  await tab(page, 'Moodboard').focus();
+  await page.keyboard.press('Enter');
+  await expect(tab(page, 'Moodboard')).toHaveAttribute('aria-selected', 'true');
+  await expect(tab(page, 'Moodboard')).toBeFocused();
+  await expect(page.getByRole('tabpanel', { name: 'Moodboard' })).toHaveCount(1);
+});
+
 test('reduced motion switches at once, without a transition', async ({ page, baseURL }) => {
   await openProject(page, baseURL!, `View tabs reduced ${Date.now()}`);
   await tab(page, 'Moodboard').click();

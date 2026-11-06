@@ -731,6 +731,7 @@
       },
       "snap": "Snap to grid",
       "library": "Set icons",
+      "categoryTabs": "Icon categories",
       "icons": {
         "fresnel": "Fresnel",
         "led": "LED panel",
@@ -1364,6 +1365,7 @@
       "scene": "Scene",
       "noMatch": "No frame matches the filter",
       "table": "Table",
+      "layouts": "Shot list layout",
       "kanban": "Kanban",
       "addInStatus": "Add in {{status}}",
       "cardAria": "Frame {{label}}",

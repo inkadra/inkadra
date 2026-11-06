@@ -8,9 +8,10 @@ import {
 import { PLAN_ICON_KINDS, type PlanIconKind } from '@inkadra/doc-schema';
 import { Icon, IconButton } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
-import { type PointerEvent, useMemo, useRef, useState } from 'react';
+import { type PointerEvent, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getPreferences, updatePreferences, usePreferences } from '../../lib/preferences.ts';
+import { moveTabFocus } from '../../lib/tabs.ts';
 import { PlanGlyph } from './PlanDrawing.tsx';
 
 /** What a library tile places: a set icon, or an annotation tool (arrow, text, measure, zone). */
@@ -91,6 +92,7 @@ export function PlanLibrary({
   const prefs = usePreferences();
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<CategoryId | 'recent' | 'starred'>('lights');
+  const tabsId = useId();
   const [tall, setTall] = useState(false);
   const drag = useRef<{ item: LibraryItem; x: number; y: number; moved: boolean } | null>(null);
   const known = (list: readonly string[]) => list.filter((k) => KNOWN.has(k)) as LibraryItem[];
@@ -213,13 +215,21 @@ export function PlanLibrary({
       </div>
       {search}
       {!found && (
-        <div className="plan-lib__tabs" role="tablist">
+        <div
+          className="plan-lib__tabs"
+          role="tablist"
+          aria-label={t('board.plan.categoryTabs')}
+          onKeyDown={moveTabFocus}
+        >
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
               type="button"
               role="tab"
+              id={`${tabsId}-${c.id}`}
               aria-selected={tab === c.id}
+              aria-controls={`${tabsId}-panel`}
+              tabIndex={tab === c.id ? 0 : -1}
               onClick={() => setTab(c.id)}
             >
               {t(`board.plan.tabs.${c.id}`)}
@@ -228,7 +238,10 @@ export function PlanLibrary({
           <button
             type="button"
             role="tab"
+            id={`${tabsId}-recent`}
             aria-selected={tab === 'recent'}
+            aria-controls={`${tabsId}-panel`}
+            tabIndex={tab === 'recent' ? 0 : -1}
             aria-label={t('board.plan.recent')}
             data-ink-tooltip={t('board.plan.recent')}
             onClick={() => setTab('recent')}
@@ -238,7 +251,10 @@ export function PlanLibrary({
           <button
             type="button"
             role="tab"
+            id={`${tabsId}-starred`}
             aria-selected={tab === 'starred'}
+            aria-controls={`${tabsId}-panel`}
+            tabIndex={tab === 'starred' ? 0 : -1}
             aria-label={t('board.plan.starred')}
             data-ink-tooltip={t('board.plan.starred')}
             onClick={() => setTab('starred')}
@@ -247,7 +263,13 @@ export function PlanLibrary({
           </button>
         </div>
       )}
-      <div className="plan-lib__body">
+      <div
+        className="plan-lib__body"
+        // Search results replace the tabs, and then the list is no tab's panel.
+        {...(found
+          ? {}
+          : { role: 'tabpanel', id: `${tabsId}-panel`, 'aria-labelledby': `${tabsId}-${tab}` })}
+      >
         {grid(list)}
         {found?.length === 0 && <p className="plan-lib__hint">{t('board.plan.noMatch')}</p>}
         {found && found.length > 0 && (

@@ -731,6 +731,7 @@
       },
       "snap": "Am Raster ausrichten",
       "library": "Set-Symbole",
+      "categoryTabs": "Symbolkategorien",
       "icons": {
         "fresnel": "Fresnel",
         "led": "LED-Panel",
@@ -1364,6 +1365,7 @@
       "scene": "Szene",
       "noMatch": "Kein Frame passt zum Filter",
       "table": "Tabelle",
+      "layouts": "Layout der Shotliste",
       "kanban": "Kanban",
       "addInStatus": "In {{status}} hinzufügen",
       "cardAria": "Frame {{label}}",

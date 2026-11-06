@@ -7,6 +7,7 @@ import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
 import { formatDateTime } from '../lib/datetime.ts';
+import { moveTabFocus } from '../lib/tabs.ts';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { addPalette } from './colors.ts';
@@ -379,24 +380,9 @@ export function MediaViewer({
         e.preventDefault();
         onClose();
       }
+      // The sheet tabs walk with the arrows, Home and End; choosing one waits for Enter or Space.
+      if (moveTabFocus(e)) return;
       if (office && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-        const target = e.target instanceof HTMLElement ? e.target.closest('[role="tab"]') : null;
-        if (target) {
-          e.preventDefault();
-          const tabs = [
-            ...(target.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? []),
-          ];
-          const next =
-            tabs[
-              (tabs.indexOf(target as HTMLButtonElement) +
-                (e.key === 'ArrowLeft' ? -1 : 1) +
-                tabs.length) %
-                tabs.length
-            ];
-          next?.click();
-          next?.focus();
-          return;
-        }
         // A page to turn, else the arrow goes on to the gallery like for any other file.
         const button = dialogRef.current?.querySelector<HTMLButtonElement>(
           e.key === 'ArrowLeft' ? '[data-office-prev]' : '[data-office-next]',

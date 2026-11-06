@@ -22,6 +22,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { useIsPhone } from '../../lib/phone.ts';
+import { moveTabFocus } from '../../lib/tabs.ts';
 import { plansOfScene, ScenePlanButton } from '../plan/scenes.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
@@ -855,7 +856,12 @@ function DayInspector({
           {t('schedule.summary', { count: draft.blocks.length, planned: minutesLabel(planned) })}
         </p>
       </header>
-      <div className="schedule__tabs" role="tablist" aria-label={t('schedule.inspector')}>
+      <div
+        className="schedule__tabs"
+        role="tablist"
+        aria-label={t('schedule.inspector')}
+        onKeyDown={moveTabFocus}
+      >
         {(['plan', 'needed'] as const).map((value) => (
           <button
             key={value}
@@ -867,13 +873,6 @@ function DayInspector({
             aria-controls={`${idBase}-panel`}
             tabIndex={tab === value ? 0 : -1}
             onClick={() => onTab(value)}
-            onKeyDown={(event) => {
-              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-              event.preventDefault();
-              const next = value === 'plan' ? 'needed' : 'plan';
-              onTab(next);
-              document.getElementById(`${idBase}-tab-${next}`)?.focus();
-            }}
           >
             {t(value === 'plan' ? 'callSheet.schedule' : 'needed.title')}
             {value === 'needed' && neededCount > 0 && (

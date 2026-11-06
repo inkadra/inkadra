@@ -731,6 +731,7 @@
       },
       "snap": "Ajustar a la cuadrícula",
       "library": "Iconos de set",
+      "categoryTabs": "Categorías de iconos",
       "icons": {
         "fresnel": "Fresnel",
         "led": "Panel LED",
@@ -1364,6 +1365,7 @@
       "scene": "Escena",
       "noMatch": "Ningún plano coincide con el filtro",
       "table": "Tabla",
+      "layouts": "Diseño de la lista de planos",
       "kanban": "Kanban",
       "addInStatus": "Añadir en {{status}}",
       "cardAria": "Plano {{label}}",

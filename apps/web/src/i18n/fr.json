@@ -731,6 +731,7 @@
       },
       "snap": "Aligner sur la grille",
       "library": "Icônes de plateau",
+      "categoryTabs": "Catégories d'icônes",
       "icons": {
         "fresnel": "Fresnel",
         "led": "Panneau LED",
@@ -1364,6 +1365,7 @@
       "scene": "Scène",
       "noMatch": "Aucun plan ne correspond au filtre",
       "table": "Table",
+      "layouts": "Disposition de la liste de plans",
       "kanban": "Kanban",
       "addInStatus": "Ajouter dans {{status}}",
       "cardAria": "Plan {{label}}",

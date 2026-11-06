@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type GuestActions, GuestActionsContext } from '../guest/actions.ts';
 import { GuestViewer } from '../guest/GuestViewer.tsx';
+import { walkTabs } from '../test/tabs.ts';
 import { GuestModeContext } from './context.ts';
 import { resetReviews, setReviews } from './review-store.ts';
 import { isUnplayableVideoError, MediaViewer, VideoUnplayable } from './viewer.tsx';
@@ -1060,6 +1061,13 @@ describe('MediaViewer Office documents', () => {
     expect(container.querySelector('td.n')?.textContent).toBe('1080.5');
     await arrow('ArrowRight');
     expect(next).toHaveBeenCalledTimes(1);
+    // On the sheet tabs the keys walk the tabs: no gallery, no other sheet until one is chosen.
+    await walkTabs(container.querySelector('.office-sheet__tabs'));
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('td.n')?.textContent).toBe('1080.5');
+    await act(async () => (document.activeElement as HTMLElement).click());
+    expect(container.querySelector('[role="tabpanel"]')?.getAttribute('aria-label')).toBeNull();
+    expect(container.querySelector('th')?.textContent).toBe('Nome');
   });
 
   it('keeps guests on the thumbnail and download viewer: no Office derivatives are asked for', async () => {

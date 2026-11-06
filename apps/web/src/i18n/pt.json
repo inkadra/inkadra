@@ -731,6 +731,7 @@
       },
       "snap": "Alinhar à grade",
       "library": "Ícones de set",
+      "categoryTabs": "Categorias de ícones",
       "icons": {
         "fresnel": "Fresnel",
         "led": "Painel de LED",
@@ -1364,6 +1365,7 @@
       "scene": "Cena",
       "noMatch": "Nenhum frame corresponde ao filtro",
       "table": "Tabela",
+      "layouts": "Layout da decupagem",
       "kanban": "Kanban",
       "addInStatus": "Adicionar em {{status}}",
       "cardAria": "Frame {{label}}",
