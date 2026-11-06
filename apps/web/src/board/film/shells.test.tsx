@@ -318,3 +318,48 @@ it('keeps review threads read-only for viewers', async () => {
   expect(host.textContent).not.toContain('comments.reply');
   expect(host.textContent).not.toContain('comments.resolve');
 });
+
+it('stays on the day it opened on, on a phone, as the hours pass', async () => {
+  const { store } = board();
+  const dateOf = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const today = new Date(2026, 9, 22, 12, 0);
+  const tomorrow = new Date(2026, 9, 23, 12, 0);
+  const day = (id: string, date: Date) => ({
+    id,
+    revision: 1,
+    date: dateOf(date),
+    callTime: '08:00',
+    wrap: '20:00',
+    location: `Location ${id}`,
+    notes: '',
+    blocks: [],
+  });
+  vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'], now: today });
+  const realMatchMedia = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    matches: true,
+    media: query,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  })) as unknown as typeof window.matchMedia;
+  try {
+    vi.spyOn(api, 'get').mockResolvedValue({
+      items: [day('a', tomorrow), day('b', today)],
+      nextCursor: null,
+    });
+    const host = await mount(<ScheduleView store={store} boardId="board" />);
+    // A phone shows one day at a time.
+    const shown = () => host.querySelector('.schedule__day-sub')?.textContent;
+    expect(shown()).toContain('Location b');
+    // A day later the day being shot is the other one: the view stays.
+    await act(async () => {
+      vi.setSystemTime(tomorrow);
+      vi.advanceTimersByTime(30_000);
+    });
+    expect(shown()).toContain('Location b');
+  } finally {
+    window.matchMedia = realMatchMedia;
+    vi.useRealTimers();
+  }
+});

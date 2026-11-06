@@ -16,6 +16,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -238,12 +239,15 @@ export function ScheduleView({
   );
   const phone = useIsPhone();
   const now = useMinute(phone);
-  // A phone opens on the day being shot, when there is one; a wider screen on the first.
+  // A phone opens on the day being shot, when there is one; a wider screen on the first. Picked
+  // once, when the days arrive: the day must not change under someone reading it as time passes.
+  const openingDay = useRef<string | null>(null);
+  if (phone && openingDay.current === null && drafted.length > 0)
+    openingDay.current =
+      drafted.find((d) => nowOnDay(d.draft, plannedWrap(d.draft), now) !== null)?.day.id ?? '';
   const activeIndex = Math.max(
     0,
-    selection.day === null && phone
-      ? drafted.findIndex((d) => nowOnDay(d.draft, plannedWrap(d.draft), now) !== null)
-      : drafted.findIndex((d) => d.day.id === selection.day),
+    drafted.findIndex((d) => d.day.id === (selection.day ?? (phone ? openingDay.current : null))),
   );
   const active = drafted[activeIndex];
   const disabled = readOnly || busy;
