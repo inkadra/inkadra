@@ -4,7 +4,8 @@ import { Icon } from '@inkadra/ui';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
-import { useClassifications } from '../lib/classifications.ts';
+import { addClassification, useClassifications } from '../lib/classifications.ts';
+import { useIsAdmin } from '../lib/session-context.ts';
 
 /** Tags already used in each project, for suggestions; refreshed when a picker opens. */
 const known = new Map<string, TagCount[]>();
@@ -111,10 +112,25 @@ export function TagEditor({
   const [unknown, setUnknown] = useState<string | null>(null);
   const used = useProjectTags(projectId);
   const full = tags.length >= MAX_TAGS;
-  const add = (text: string) => {
+  const admin = useIsAdmin();
+  const [failed, setFailed] = useState(false);
+  /** Enter creates a tag for an administrator; leaving the field never does, it may be a typo. */
+  const add = (text: string, create = false) => {
     const option =
       tagOption(text) ?? catalogs.tags.find((o) => o.label.toLowerCase() === normaliseTag(text));
     const tag = option?.id;
+    if (!option && admin && create && text.trim()) {
+      setUnknown(null);
+      setFailed(false);
+      addClassification('tags', text).then(
+        (created) => {
+          setDraft('');
+          if (!full) onChange([...tags, created.id]);
+        },
+        () => setFailed(true),
+      );
+      return;
+    }
     if (!option || option.archived) {
       setUnknown(text.trim());
       return;
@@ -174,11 +190,12 @@ export function TagEditor({
             onChange={(e) => {
               setDraft(e.target.value);
               setUnknown(null);
+              setFailed(false);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ',') {
                 e.preventDefault();
-                add(draft);
+                add(draft, true);
               } else if (e.key === 'Backspace' && !draft && tags.length > 0) {
                 remove(tags.at(-1) as string);
               }
@@ -187,7 +204,12 @@ export function TagEditor({
           />
           {unknown && (
             <p role="alert" className="ink-muted">
-              {t('tags.notInCatalog', { tag: unknown })}
+              {t(admin ? 'tags.pressEnterToCreate' : 'tags.notInCatalog', { tag: unknown })}
+            </p>
+          )}
+          {failed && (
+            <p role="alert" className="ink-muted">
+              {t('tags.createFailed')}
             </p>
           )}
           {suggestions.length > 0 && (

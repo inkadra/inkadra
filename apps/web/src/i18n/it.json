@@ -1116,6 +1116,8 @@
     "add": "Aggiungi un tag",
     "placeholder": "Scegli un tag e premi Invio",
     "notInCatalog": "«{{tag}}» non è nel catalogo. Solo gli amministratori aggiungono tag, in Impostazioni → Classificazioni.",
+    "pressEnterToCreate": "Premi Invio per creare il tag «{{tag}}».",
+    "createFailed": "Non è stato possibile creare il tag. Riprova.",
     "remove": "Togli il tag {{tag}}",
     "max": "Al massimo {{count}} tag",
     "suggested": "Usati nel progetto",

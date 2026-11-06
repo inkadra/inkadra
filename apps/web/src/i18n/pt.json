@@ -1116,6 +1116,8 @@
     "add": "Adicionar uma tag",
     "placeholder": "Escolha uma tag e pressione Enter",
     "notInCatalog": "“{{tag}}” não está no catálogo. Somente administradores adicionam tags, em Configurações → Classificações.",
+    "pressEnterToCreate": "Press Enter to create the tag “{{tag}}”.",
+    "createFailed": "The tag could not be created. Try again.",
     "remove": "Remover a tag {{tag}}",
     "max": "No máximo {{count}} tags",
     "suggested": "Usadas no projeto",

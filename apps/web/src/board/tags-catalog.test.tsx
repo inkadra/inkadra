@@ -8,8 +8,13 @@ import { TagEditor, TagList, TagPopover } from './tags.tsx';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../lib/api.ts', () => ({
-  api: { get: vi.fn(async (path: string) => (path.includes('/tags') ? { items: [] } : catalog)) },
+  api: {
+    get: vi.fn(async (path: string) => (path.includes('/tags') ? { items: [] } : catalog)),
+    put: vi.fn(async (_: string, body: unknown) => body),
+  },
 }));
+const session = vi.hoisted(() => ({ admin: false }));
+vi.mock('../lib/session-context.ts', () => ({ useIsAdmin: () => session.admin }));
 const catalog = {
   ...DEFAULT_CLASSIFICATIONS,
   tags: [
@@ -25,6 +30,7 @@ const catalog = {
 const host = document.createElement('div');
 const root = createRoot(host);
 afterEach(async () => {
+  session.admin = false;
   await act(async () => root.render(null));
   setClassifications(DEFAULT_CLASSIFICATIONS);
 });
@@ -123,4 +129,29 @@ it('does not duplicate a legacy tag when adding its managed ID to multiple cards
     { id: 'a', tags: [catalog.tags[0]!.id, 'unmanaged'] },
     { id: 'b', tags: [catalog.tags[0]!.id] },
   ]);
+});
+
+it('lets an administrator create a tag with Enter, never by leaving the field', async () => {
+  session.admin = true;
+  const change = vi.fn();
+  setClassifications(catalog);
+  await act(async () =>
+    root.render(<TagEditor tags={[]} onChange={change} readOnly={false} projectId="p" />),
+  );
+  const input = host.querySelector('input') as HTMLInputElement;
+  const type = (value: string) =>
+    act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  await type('Tramonto');
+  await act(async () => {
+    input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+  });
+  expect(change).not.toHaveBeenCalled();
+  expect(host.textContent).toContain('tags.pressEnterToCreate');
+  await act(async () => {
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  });
+  expect(change).toHaveBeenCalledWith([expect.stringMatching(/^[0-9a-f-]{36}$/)]);
 });
