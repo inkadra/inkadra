@@ -4,7 +4,7 @@
     "description": "Name of the extension."
   },
   "ext_description": {
-    "message": "Enregistrez des images, du texte et des liens sur un tableau Inkadra.",
+    "message": "Enregistrez images, texte et liens sur un tableau Inkadra. Nécessite un serveur Inkadra, le vôtre ou celui de votre équipe.",
     "description": "Store description."
   },
   "action_title": {
