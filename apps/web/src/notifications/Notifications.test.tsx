@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import {
   describeNotification,
@@ -10,6 +10,7 @@ import {
   NotificationBell,
   NotificationList,
   notificationActor,
+  relativeTime,
   useNotificationFeed,
 } from './Notifications.tsx';
 
@@ -36,6 +37,97 @@ const baseNotification = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe('swiping a notification on a phone', () => {
+  const realMatchMedia = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => {
+    window.matchMedia = realMatchMedia;
+    vi.useRealTimers();
+    vi.mocked(api.get).mockReset();
+    vi.mocked(api.post).mockReset();
+  });
+
+  /** A list of one notification of a thread, with this role and thread, swiped by a finger. */
+  async function swiped(
+    role: string,
+    resolvedAt: string | null,
+    notification: object = baseNotification,
+  ) {
+    vi.mocked(api.get).mockImplementation(async (path: string) => {
+      if (path.startsWith('/me/notifications'))
+        return {
+          items: [{ id: 'n', type: 'reply', excerpt: 'x', ...notification }],
+          nextCursor: null,
+        };
+      if (path === '/boards/b1') return { myRole: role };
+      return { items: [{ id: 't1', resolvedAt, deletedAt: null }], nextCursor: null };
+    });
+    vi.mocked(api.post).mockResolvedValue({});
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList unread={0} onClose={vi.fn()} onNavigate={vi.fn()} onCount={vi.fn()} />
+        </MemoryRouter>,
+      ),
+    );
+    const front = host.querySelector('.swipe-row__front') as HTMLElement;
+    front.setPointerCapture = vi.fn();
+    const finger = (type: string, clientX: number) =>
+      front.dispatchEvent(
+        new PointerEvent(type, { pointerType: 'touch', clientX, clientY: 0, bubbles: true }),
+      );
+    await act(async () => {
+      finger('pointerdown', 200);
+      finger('pointermove', 120);
+    });
+    const action = (name: string) =>
+      [...host.querySelectorAll('.swipe-row__action')].find((b) => b.textContent === name) as
+        | HTMLButtonElement
+        | undefined;
+    return { host, action, unmount: () => act(async () => root.unmount()) };
+  }
+
+  it('offers Resolve to who can comment, on an open thread', async () => {
+    const { action, unmount } = await swiped('commenter', null);
+    expect(action('notifications.swipeResolve')).toBeDefined();
+    await unmount();
+  });
+
+  it('hides Resolve from who can only read, and on a thread already resolved', async () => {
+    const reader = await swiped('viewer', null);
+    expect(reader.action('notifications.swipeResolve')).toBeUndefined();
+    await reader.unmount();
+    const done = await swiped('editor', '2026-10-25T12:00:00Z');
+    expect(done.action('notifications.swipeResolve')).toBeUndefined();
+    await done.unmount();
+  });
+
+  it('marks the notification read after resolving, and the message goes away', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { host, action, unmount } = await swiped('editor', null, {
+      ...baseNotification,
+      readAt: null,
+    });
+    await act(async () => action('notifications.swipeResolve')?.click());
+    expect(api.post).toHaveBeenCalledWith('/comments/t1/resolve', {});
+    expect(api.post).toHaveBeenCalledWith('/me/notifications/n/read', {});
+    expect(host.textContent).toContain('notifications.resolvedDone');
+    expect(action('notifications.swipeResolve')).toBeUndefined();
+    await act(async () => vi.advanceTimersByTime(4000));
+    expect(host.textContent).not.toContain('notifications.resolvedDone');
+    await unmount();
+  });
 });
 
 it('builds initials from the first two words, ignoring extra whitespace', () => {
@@ -874,4 +966,15 @@ it('reads only the notification it shows when the Inbox opens, not the rest of t
   } finally {
     await act(async () => root.unmount());
   }
+});
+
+describe('relativeTime', () => {
+  afterEach(() => vi.useRealTimers());
+  it('counts calendar days, as the day headings of the list', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 6, 17, 0));
+    expect(relativeTime(new Date(2026, 10, 4, 22, 0).toISOString(), 'en')).toBe('2 days ago');
+    expect(relativeTime(new Date(2026, 10, 5, 9, 0).toISOString(), 'en')).toBe('yesterday');
+    expect(relativeTime(new Date(2026, 10, 6, 15, 0).toISOString(), 'en')).toBe('2 hr. ago');
+  });
 });

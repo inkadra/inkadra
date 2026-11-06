@@ -50,7 +50,8 @@ export function noteBlocks(body: unknown): NoteBlock[] {
       blocks.push({ kind: 'code', text: inline(node) });
       return;
     }
-    if (name === 'horizontalRule') return;
+    // shortcut: pictures inside a note are not printed yet; add an image block when asked.
+    if (name === 'horizontalRule' || name === 'noteImage') return;
     blocks.push({ kind: 'p', text: inline(node) });
   };
   for (const node of body.toArray()) walk(node, null);
@@ -65,7 +66,12 @@ function inline(node: Y.XmlElement): string {
         if (typeof op.insert === 'string') out += op.insert;
       }
     } else if (child instanceof Y.XmlElement) {
-      out += child.nodeName === 'hardBreak' ? '\n' : inline(child);
+      out +=
+        child.nodeName === 'hardBreak'
+          ? '\n'
+          : child.nodeName === 'mention'
+            ? `@${child.getAttribute('label') ?? ''}`
+            : inline(child);
     }
   }
   return out;

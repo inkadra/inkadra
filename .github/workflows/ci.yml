@@ -111,10 +111,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run test --filter=@inkadra/server
 
-  e2e:
-    name: End-to-end (Playwright)
+  # The suite runs on one worker, so it is split across runners, each with its own database.
+  # Playwright repeats the first-run project (the administrator) in every shard.
+  e2e-shard:
+    name: End-to-end (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     services:
       postgres:
         image: postgres:18-alpine
@@ -141,6 +147,24 @@ jobs:
           cache: pnpm # zizmor: ignore[cache-poisoning] publishes nothing; publish jobs use no cache
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run build
+      # The clipper's package for the Chrome Web Store. Every shard builds it, but an artifact name
+      # is unique within a run: the first shard uploads it.
+      - if: matrix.shard == 1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: inkadra-clipper
+          path: apps/clipper/release/*.zip
+          if-no-files-found: error
+          retention-days: 7
+      # A mirror can crawl for many minutes, and every shard would wait for it: keep the packages.
+      # apt checks each cached file against its signed index, so a stale one is downloaded again.
+      - name: Let the cache restore apt's downloads
+        run: sudo chown "$USER" /var/cache/apt/archives
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 # zizmor: ignore[cache-poisoning] publishes nothing; apt checks the files
+        with:
+          path: /var/cache/apt/archives/*.deb
+          key: apt-e2e-ubuntu-24.04-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: apt-e2e-ubuntu-24.04-
       - run: pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium
       # media-cards.spec.ts checks page counts, codecs and playable copies made by these.
       - name: Media tools of the -media image
@@ -152,13 +176,28 @@ jobs:
             [ "$attempt" -lt 3 ] || exit 1
             sleep 15
           done
-      - run: pnpm test:e2e
+      - run: pnpm test:e2e "--shard=$SHARD/4"
+        env:
+          SHARD: ${{ matrix.shard }}
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: e2e/playwright-report
           retention-days: 7
+
+  # The check the ruleset of main requires: keep its name.
+  e2e:
+    name: End-to-end (Playwright)
+    if: ${{ !cancelled() }}
+    needs: e2e-shard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every shard passed
+        env:
+          RESULT: ${{ needs.e2e-shard.result }}
+        run: test "$RESULT" = success
 
   perf:
     name: Canvas performance
@@ -199,6 +238,15 @@ jobs:
         run: pnpm install --frozen-lockfile
       - if: steps.suite.outputs.present
         run: pnpm turbo run build
+      # The packages the end-to-end shards keep; this job only reads them.
+      - if: steps.suite.outputs.present
+        run: sudo chown "$USER" /var/cache/apt/archives
+      - if: steps.suite.outputs.present
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /var/cache/apt/archives/*.deb
+          key: apt-e2e-ubuntu-24.04-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: apt-e2e-ubuntu-24.04-
       - if: steps.suite.outputs.present
         run: pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium
       - if: steps.suite.outputs.present

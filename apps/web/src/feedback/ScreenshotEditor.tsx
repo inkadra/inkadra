@@ -4,6 +4,33 @@ import { useTranslation } from 'react-i18next';
 import { useIsPhone } from '../lib/phone.ts';
 
 type Box = { id: string; x: number; y: number; w: number; h: number; tool: 'draw' | 'redact' };
+
+/**
+ * Looks like a blur, but keeps almost nothing of the source: each cell is wider than a line of
+ * text and its average colour keeps 3 bits per channel, too little to reconstruct hidden text.
+ * Not a canvas filter: a real blur can be reversed, and Safari has no `ctx.filter`.
+ */
+function blurArea(ctx: CanvasRenderingContext2D, img: HTMLImageElement, box: Box) {
+  const cell = Math.max(48, img.width / 48);
+  const grid = document.createElement('canvas');
+  grid.width = Math.ceil(box.w / cell) || 1;
+  grid.height = Math.ceil(box.h / cell) || 1;
+  const gridCtx = grid.getContext('2d');
+  if (!gridCtx) return;
+  gridCtx.imageSmoothingQuality = 'high';
+  gridCtx.drawImage(img, box.x, box.y, box.w, box.h, 0, 0, grid.width, grid.height);
+  const cells = gridCtx.getImageData(0, 0, grid.width, grid.height);
+  for (let i = 0; i < cells.data.length; i += 4) {
+    cells.data[i] = ((cells.data[i] ?? 0) & 0xe0) | 0x10;
+    cells.data[i + 1] = ((cells.data[i + 1] ?? 0) & 0xe0) | 0x10;
+    cells.data[i + 2] = ((cells.data[i + 2] ?? 0) & 0xe0) | 0x10;
+    cells.data[i + 3] = 255;
+  }
+  gridCtx.putImageData(cells, 0, 0);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(grid, box.x, box.y, box.w, box.h);
+}
+
 export function ScreenshotEditor({
   source,
   initialTool,
@@ -57,24 +84,7 @@ export function ScreenshotEditor({
         ctx.lineWidth = Math.max(3, img.width / 320);
         ctx.strokeRect(box.x, box.y, box.w, box.h);
       } else {
-        // Opaque mosaic independent of source pixels: hidden text cannot be reconstructed.
-        const cell = Math.max(8, img.width / 64);
-        for (let x = 0; x < box.w; x += cell)
-          for (let y = 0; y < box.h; y += cell) {
-            ctx.fillStyle = tokens
-              .getPropertyValue(
-                (Math.round(x / cell) + Math.round(y / cell)) % 2
-                  ? '--ink-surface-3'
-                  : '--ink-text-muted',
-              )
-              .trim();
-            ctx.fillRect(
-              box.x + x,
-              box.y + y,
-              Math.min(cell, box.w - x),
-              Math.min(cell, box.h - y),
-            );
-          }
+        blurArea(ctx, img, box);
       }
     }
   }

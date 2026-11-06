@@ -417,3 +417,99 @@ a.home__activity-item:hover {
   margin-left: auto;
   font-size: 11px;
 }
+
+/* Phone only (Home.tsx renders them below 768 px): unsorted cards and the project list. */
+.home__unsorted {
+  margin-top: 24px;
+  padding: 0;
+  border-radius: var(--ink-radius-md);
+  overflow: hidden;
+}
+.home__unsorted-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 14px;
+  color: inherit;
+  text-decoration: none;
+}
+.home__unsorted-text,
+.home__project-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.home__unsorted-thumbs {
+  display: flex;
+  flex: none;
+}
+.home__thumb {
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: var(--ink-radius-sm);
+  border: 2px solid var(--ink-surface-1);
+}
+.home__thumb + .home__thumb {
+  margin-left: -8px;
+}
+.home__unsorted-boards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--ink-border-subtle);
+}
+.home__unsorted-boards a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 14px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 13px;
+}
+.home__unsorted-board {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home__projects {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.home__project {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  color: inherit;
+  text-decoration: none;
+}
+.home__project-glyph {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-2);
+}
+.home__project .home__name,
+.home__unsorted .home__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home__unsorted-head:focus-visible,
+.home__unsorted-boards a:focus-visible,
+.home__project:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
+}

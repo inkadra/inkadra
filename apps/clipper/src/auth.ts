@@ -2,9 +2,24 @@
 import { InkadraApi } from './api.ts';
 import { ClipperError } from './errors.ts';
 import { challengeS256, createState, createVerifier } from './pkce.ts';
-import { type Connection, clearConnection, getConnection, setConnection } from './storage.ts';
+import {
+  type Connection,
+  clearConnection,
+  getConnection,
+  refreshClipBoards,
+  setConnection,
+} from './storage.ts';
 
 export const CLIENT_ID = 'clipper';
+
+/**
+ * Stores add update_url to the manifest of the copies they serve; ours has none, so unpacked
+ * builds never carry it. shortcut: a self-built copy packed with its own update_url counts as a
+ * store install; use chrome.management.getSelf() if such copies need the self-built help.
+ */
+export function isStoreInstall(): boolean {
+  return 'update_url' in chrome.runtime.getManifest();
+}
 
 export interface AuthorizeRequest {
   url: string;
@@ -69,6 +84,19 @@ export function deviceName(): string {
  * be granted: chrome.permissions.request needs the click, so the page asks before calling this.
  */
 export async function connect(serverUrl: string): Promise<Connection> {
+  try {
+    return await signIn(serverUrl);
+  } catch (err) {
+    // The prompt was accepted for this attempt: a failure must not leave access to this address.
+    const { origin } = new URL(serverUrl);
+    const current = await getConnection();
+    if (!current || new URL(current.serverUrl).origin !== origin)
+      await chrome.permissions.remove({ origins: [`${origin}/*`] }).catch(() => {});
+    throw err;
+  }
+}
+
+async function signIn(serverUrl: string): Promise<Connection> {
   const anonymous = new InkadraApi({ baseUrl: serverUrl });
   let uploadMaxBytes = 0;
   try {
@@ -116,6 +144,8 @@ export async function connect(serverUrl: string): Promise<Connection> {
       await chrome.permissions.remove({ origins: [`${oldOrigin}/*`] }).catch(() => {});
   }
   await setConnection(connection);
+  // The server's history fills the menus right away; the next save or popup retries a failure.
+  await refreshClipBoards().catch(() => {});
   return connection;
 }
 

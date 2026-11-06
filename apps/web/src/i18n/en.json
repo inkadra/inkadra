@@ -181,7 +181,11 @@
       "cards_one": "{{count}} item",
       "cards_other": "{{count}} items"
     },
-    "allProjects": "All projects →"
+    "allProjects": "All projects →",
+    "unsorted": {
+      "waiting_one": "{{count}} item to sort",
+      "waiting_other": "{{count}} items to sort"
+    }
   },
   "project": {
     "dialogTitle": "New project",
@@ -286,7 +290,8 @@
   "board": {
     "canvasMenu": {
       "label": "Canvas",
-      "hint": "Insert a canvas"
+      "hint": "Insert a canvas",
+      "more": "More"
     },
     "toolGroups": {
       "navigate": "Navigate and connect",
@@ -342,7 +347,7 @@
     "empty": {
       "title": "Where do we start?",
       "body": "Pick a starting point, or double-click to write a note.",
-      "bodyTouch": "Pick a starting point, or double-tap to write a note.",
+      "bodyTouch": "Pick a starting point, or add a note from the bar.",
       "screenplay": "Import screenplay",
       "screenplayBody": "Fountain, Final Draft or PDF",
       "hint": "You can also drop files and images here.",
@@ -376,7 +381,29 @@
     "note": {
       "placeholder": "Write…",
       "label": "Note text",
-      "empty": "Empty note"
+      "empty": "Empty note",
+      "toolbar": "Note formatting",
+      "style": "Heading or text",
+      "mention": "Mention someone",
+      "mentions": "People",
+      "more": "More actions",
+      "typingOne": "{{name}} is typing…",
+      "typingMany": "{{names}} are typing…",
+      "picture": "Picture in the note",
+      "pictureMissing": "Picture not available",
+      "pictureLoading": "Loading the picture…",
+      "pictureUploading": "Uploading the picture",
+      "pictureFailed": "The picture could not be uploaded. Try again.",
+      "slash": {
+        "label": "Insert",
+        "frame": "Shot",
+        "frameHint": "Link a line of the shot list",
+        "noFrames": "No shots on this board",
+        "todo": "To-do",
+        "todoHint": "List with checkboxes",
+        "image": "Picture",
+        "imageHint": "From the library or your files"
+      }
     },
     "caption": {
       "label": "Caption",
@@ -731,6 +758,7 @@
       },
       "snap": "Snap to grid",
       "library": "Set icons",
+      "categoryTabs": "Icon categories",
       "icons": {
         "fresnel": "Fresnel",
         "led": "LED panel",
@@ -1070,6 +1098,17 @@
       },
       "drawFailed": "Could not save the stroke. Try again; if the problem continues, reload the board.",
       "updateApp": "This board requires a newer version. Update the app to edit it; you can continue viewing it."
+    },
+    "sheet": {
+      "edit": "Edit",
+      "comment": "Comment",
+      "color": "Colour",
+      "connect": "Connect",
+      "connectHint": "Drag from the card to another one to connect them",
+      "moveTo": "Move to…",
+      "showGuests": "Show to the client",
+      "toStoryboard": "Add to Storyboard",
+      "replyTo": "Reply to {{name}}…"
     }
   },
   "tags": {
@@ -1364,6 +1403,7 @@
       "scene": "Scene",
       "noMatch": "No frame matches the filter",
       "table": "Table",
+      "layouts": "Shot list layout",
       "kanban": "Kanban",
       "addInStatus": "Add in {{status}}",
       "cardAria": "Frame {{label}}",
@@ -1725,6 +1765,21 @@
         "approved": "Card approved.",
         "changes_requested": "Changes requested.",
         "none": "Decision withdrawn."
+      },
+      "phone": {
+        "title": "Review",
+        "empty": "There are no shots to review on this board.",
+        "board": "See the board",
+        "versions": "Version to show",
+        "versionsFailed": "Earlier versions are not available right now.",
+        "now": "Now",
+        "send": "Send review · {{approved}}, {{changes}}",
+        "approved_one": "{{count}} approved",
+        "approved_other": "{{count}} approved",
+        "changes_one": "{{count}} change",
+        "changes_other": "{{count}} changes",
+        "sent": "Review sent to the team",
+        "alreadySent": "Already sent: no new decision since then"
       }
     },
     "comments": {
@@ -1953,7 +2008,8 @@
       "guest": "A guest",
       "link_opened": "opened the board",
       "task_assigned": "assigned you a task",
-      "feedback_received": "New in-app report received"
+      "feedback_received": "New in-app report received",
+      "review_submitted": "sent their review"
     },
     "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
@@ -1994,7 +2050,10 @@
     "refresh": "Refresh conversation",
     "conversationUnavailable": "Conversation not available",
     "cardFallback": "Card",
-    "previewUnavailable": "Open the board to view this card."
+    "previewUnavailable": "Open the board to view this card.",
+    "swipeRead": "Read",
+    "swipeResolve": "Resolve",
+    "resolvedDone": "Thread resolved"
   },
   "settings": {
     "sectionLead": {
@@ -2270,7 +2329,10 @@
     "summary_other": "{{planned}} planned · {{count}} blocks",
     "castPlaceholder": "Add a name",
     "departmentsPlaceholder": "Department: note",
-    "removeToken": "Remove {{name}}"
+    "removeToken": "Remove {{name}}",
+    "pickDay": "Shooting days",
+    "now": "Now {{time}}",
+    "current": "Under way"
   },
   "moodboard": {
     "count_one": "{{count}} reference",
@@ -2333,7 +2395,29 @@
     "kitHelp": "Counts the icons by type and label.",
     "moves": "Numbered moves",
     "fullPage": "Plans on a full page",
-    "new": "New"
+    "new": "New",
+    "general": "General",
+    "yourCall": "Your call",
+    "confirm": "Confirm I'll be there",
+    "decline": "I can't",
+    "presence": "Attendance",
+    "presenceCount": "{{confirmed}} of {{total}} confirmed",
+    "presenceLoading": "Loading attendance…",
+    "presenceError": "Attendance could not be loaded.",
+    "retry": "Try again",
+    "saveError": "Could not save. Try again.",
+    "linkAccount": "Account of {{name}}",
+    "noAccount": "No account",
+    "otherAccount": "Other account",
+    "answer": {
+      "confirmed": "You confirmed you'll be there.",
+      "declined": "You said you can't be there."
+    },
+    "status": {
+      "confirmed": "Confirmed",
+      "declined": "Can't come",
+      "waiting": "Waiting"
+    }
   },
   "needed": {
     "title": "To bring",

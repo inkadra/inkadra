@@ -857,6 +857,118 @@
         ],
         "additionalProperties": false
       },
+      "ScheduleAttendance": {
+        "type": "object",
+        "properties": {
+          "canManage": {
+            "type": "boolean",
+            "description": "The caller can edit the schedule."
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CastLink"
+            },
+            "description": "Every link for people who can edit the schedule, else the caller's own."
+          },
+          "responses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DayAttendance"
+            },
+            "description": "Every response for people who can edit the schedule, else the caller's own."
+          }
+        },
+        "required": [
+          "canManage",
+          "links",
+          "responses"
+        ]
+      },
+      "CastLink": {
+        "type": "object",
+        "properties": {
+          "castKey": {
+            "type": "string",
+            "description": "The cast name after castNameKey."
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          }
+        },
+        "required": [
+          "castKey",
+          "userId"
+        ]
+      },
+      "DayAttendance": {
+        "type": "object",
+        "properties": {
+          "dayId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AttendanceStatus"
+          }
+        },
+        "required": [
+          "dayId",
+          "userId",
+          "status"
+        ]
+      },
+      "AttendanceStatus": {
+        "type": "string",
+        "enum": [
+          "confirmed",
+          "declined"
+        ]
+      },
+      "SetCastLink": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "userId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "The account to link; null removes the link."
+          }
+        },
+        "required": [
+          "name",
+          "userId"
+        ],
+        "additionalProperties": false
+      },
+      "SetDayAttendance": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/AttendanceStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      },
       "UpdateShootingDay": {
         "type": "object",
         "properties": {
@@ -4234,6 +4346,71 @@
           "usedAt"
         ]
       },
+      "UnsortedSummary": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnsortedBoard"
+            },
+            "maxItems": 20
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cards waiting on all the boards listed."
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "UnsortedBoard": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "boardTitle": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "Cards directly in the unsorted tray."
+          },
+          "assetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "maxItems": 2,
+            "description": "Ready images or videos of those cards, from the same project."
+          }
+        },
+        "required": [
+          "boardId",
+          "projectId",
+          "boardTitle",
+          "projectName",
+          "count",
+          "assetIds"
+        ]
+      },
       "RecentBoard": {
         "allOf": [
           {
@@ -5810,9 +5987,10 @@
               "access_expired",
               "link_opened",
               "task_assigned",
-              "feedback_received"
+              "feedback_received",
+              "review_submitted"
             ],
-            "description": "`feedback_received`: a new in-app report, for instance administrators only; in-app only, no report content; open Settings About Reports. `mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on `projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three days before to that person and to the project owners. `access_expired`: it has ended. Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you made for the first time, or for the first time since a new named version of the board; it has no actor (`shareLinkLabel` says which link) and nothing about the visit. Open: clients show types they do not know as a plain line with the actor, the board and the time."
+            "description": "`feedback_received`: a new in-app report, for instance administrators only; in-app only, no report content; open Settings About Reports. `mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on `projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three days before to that person and to the project owners. `access_expired`: it has ended. Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you made for the first time, or for the first time since a new named version of the board; it has no actor (`shareLinkLabel` says which link) and nothing about the visit. `review_submitted`: a guest sent their review of `boardId` through a link you made (`shareLinkLabel`); the decisions themselves are in the board reviews. Open: clients show types they do not know as a plain line with the actor, the board and the time."
           },
           "actor": {
             "allOf": [
@@ -5946,7 +6124,7 @@
               "string",
               "null"
             ],
-            "description": "For link_opened: the label of the link that was opened; null without one, or when you have no role on its board. Missing from servers before this notification existed."
+            "description": "For link_opened and review_submitted: the label of the link that was opened; null without one, or when you have no role on its board. Missing from servers before this notification existed."
           },
           "readAt": {
             "type": [
@@ -7561,6 +7739,82 @@
           "updatedAt"
         ]
       },
+      "GuestVersions": {
+        "type": "object",
+        "properties": {
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GuestVersion"
+            },
+            "description": "The newest named versions of the board, newest first, at most 5."
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GuestAsset"
+            },
+            "description": "Pictures of those frames that the snapshot does not list: thumbnails only, through URLs of the version; never downloads or streams."
+          }
+        },
+        "required": [
+          "versions",
+          "assets"
+        ]
+      },
+      "GuestVersion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "frames": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GuestElement"
+            },
+            "description": "Storyboard frames as they were in this version, shaped like the snapshot: only frames that guests of this link see in the version and still see now."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdAt",
+          "frames"
+        ]
+      },
+      "GuestReviewSummary": {
+        "type": "object",
+        "properties": {
+          "approved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "changesRequested": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sent": {
+            "type": "boolean",
+            "description": "True when the team was notified now; false when nothing changed since the last summary of this guest on this board, or there is no decision to send."
+          }
+        },
+        "required": [
+          "approved",
+          "changesRequested",
+          "sent"
+        ]
+      },
       "GuestCommentThread": {
         "allOf": [
           {
@@ -8222,7 +8476,7 @@
           }
         ],
         "summary": "Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.",
-        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
+        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: fifteen reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8496,7 +8750,7 @@
           }
         ],
         "summary": "Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.",
-        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
+        "description": "Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: fifteen reports/hour; instance: 100/hour. Attachments expire after the configured retention, 90 days unless an administrator chose otherwise. Only administrators receive issue links.",
         "parameters": [
           {
             "schema": {
@@ -9431,6 +9685,269 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ShootingDay"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/schedule/attendance": {
+      "get": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read cast links and presence responses; requires viewer access.",
+        "description": "People who can edit the schedule get every link and response; the others only their own.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Links and responses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleAttendance"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/schedule/cast-links": {
+      "put": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Link a cast name to an account with access to the board; requires editor access.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCastLink"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Saved"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/schedule/{dayId}/attendance": {
+      "put": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answer for yourself whether you can be on set this day.",
+        "description": "Only people linked to a cast name of that day can answer, always for themselves.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "dayId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDayAttendance"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayAttendance"
                 }
               }
             }
@@ -14414,6 +14931,75 @@
         "responses": {
           "204": {
             "description": "Forgotten (also when already absent)"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/unsorted": {
+      "get": {
+        "tags": [
+          "Boards"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Boards you can edit whose unsorted tray holds cards, fullest first.",
+        "description": "For the Home on a phone: counts the cards waiting in the \"Non ordinati\" tray of each board of a project that is not archived, from the last stored document. At most 20 boards.",
+        "responses": {
+          "200": {
+            "description": "Unsorted cards",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnsortedSummary"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request",
@@ -20321,6 +20907,327 @@
           },
           "404": {
             "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/boards/{boardId}/versions": {
+      "get": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "Named versions of a storyboard, to compare a shot before and after. For guest_approve.",
+        "description": "The newest named versions of the board with their frames, shaped like the snapshot and cut down to frames guests of this link see both in the version and now: no other card, no hidden frame and no field outside the guest allow list. Pictures not in the snapshot are listed in `assets` as thumbnails of a version. From API 0.10.0 (decision 0074).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestVersions"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/boards/{boardId}/versions/{versionId}/assets/{assetId}/variants/{size}": {
+      "get": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "A WebP thumbnail of a frame picture of a named version. For guest_approve.",
+        "description": "Only for the picture of a frame listed by GET …/versions for this version; a version of another board, one no longer among the newest, or any other file is a 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "versionId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "256",
+                "512",
+                "1024",
+                "2048"
+              ]
+            },
+            "required": true,
+            "name": "size",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ],
+              "description": "Ask for the moving copy of the thumbnail, when the asset has one (`Asset.animated`). The poster comes back when the flag is missing."
+            },
+            "required": false,
+            "description": "Ask for the moving copy of the thumbnail, when the asset has one (`Asset.animated`). The poster comes back when the flag is missing.",
+            "name": "animated",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "WebP image",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/boards/{boardId}/review-summary": {
+      "post": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "Send the team a summary of the review of this board. For guest_approve.",
+        "description": "Decisions are saved one at a time with PUT …/review; this only tells the person who made the link (`review_submitted` notification) and answers the counts of this link on the board. Idempotent: without a decision changed since the last summary, or without any decision, nobody is notified and `sent` is false. Needs a name; counted as a guest write.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestReviewSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {

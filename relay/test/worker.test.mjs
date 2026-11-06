@@ -439,12 +439,12 @@ const setCount = (e, key, count, since) =>
   e.METER.sql.exec('INSERT OR REPLACE INTO counts (key, count, since, last) VALUES (?, ?, ?, ?)', key, count, since, since);
 const getCount = (e, key) => e.METER.sql.exec('SELECT count, since FROM counts WHERE key = ?', key).toArray()[0];
 
-test('the wait before a report is capped at 15 minutes', async () => {
+test('the wait before a report is capped at 5 minutes', async () => {
   const e = env();
   const key = await counterKey(e);
   setCount(e, key, 20, Math.floor(Date.now() / 1000));
   const wait = (await ticketFor(e)).nbf - Date.now();
-  assert.ok(wait > 14 * 60 * 1000 && wait <= 15 * 60 * 1000 + 2_000, `waited ${wait} ms`);
+  assert.ok(wait > 4 * 60 * 1000 && wait <= 5 * 60 * 1000 + 2_000, `waited ${wait} ms`);
 });
 
 test('the report count starts over a day after the first report', async () => {

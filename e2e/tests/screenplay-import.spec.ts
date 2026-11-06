@@ -322,8 +322,11 @@ for (const theme of ['dark', 'light'] as const) {
       });
       await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-hint`);
       await page.getByRole('button', { name: 'Altre azioni', exact: true }).click();
+      // A phone opens the card's sheet (#110), where the actions are buttons.
       await expect(
-        page.getByRole('menuitem', { name: 'Crea storyboard da questa sceneggiatura…' }),
+        page.getByRole(phone ? 'button' : 'menuitem', {
+          name: 'Crea storyboard da questa sceneggiatura…',
+        }),
       ).toBeVisible();
       await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-menu`);
       await page.keyboard.press('Escape');

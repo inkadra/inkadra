@@ -114,8 +114,12 @@ for (const scenario of [
         'aria-selected',
         'true',
       );
+      // The arrows only move the focus between the sheets; Enter opens the focused one.
       await page.getByRole('tab', { name: 'Troupe' }).focus();
       await page.keyboard.press('ArrowRight');
+      await expect(page.getByRole('tab', { name: 'Noleggi' })).toBeFocused();
+      await expect(page.getByText('Foglio 2 di 3', { exact: true })).toBeVisible();
+      await page.keyboard.press('Enter');
       await expect(page.getByRole('tab', { name: 'Noleggi' })).toHaveAttribute(
         'aria-selected',
         'true',

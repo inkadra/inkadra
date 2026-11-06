@@ -7,6 +7,7 @@ import {
   setAnimaticAudio,
 } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
+import * as Y from 'yjs';
 import { remapDoc, remapMentions } from './remap.ts';
 
 const oldBoard = '11111111-1111-4111-8111-111111111111';
@@ -21,6 +22,30 @@ const importer = '99999999-9999-4999-8999-999999999999';
 const base = { x: 0, y: 0, w: 200, z: 'a0', parent: null, createdAt: 1, createdBy: author };
 
 describe('remapDoc', () => {
+  it('remaps pictures in notes, drops those not stored and writes mentions as names', () => {
+    const doc = createBoardDoc(oldBoard);
+    const note = addElement(doc, { ...base, id: 'note-card', type: 'note' });
+    const body = note.get('body') as Y.XmlFragment;
+    const line = new Y.XmlElement('paragraph');
+    const mention = new Y.XmlElement('mention');
+    mention.setAttribute('id', author);
+    mention.setAttribute('label', 'Giulia');
+    line.insert(0, [new Y.XmlText('Ask '), mention]);
+    const kept = new Y.XmlElement('noteImage');
+    kept.setAttribute('assetId', file);
+    const foreign = new Y.XmlElement('noteImage');
+    foreign.setAttribute('assetId', elsewhere);
+    body.insert(0, [line, kept, foreign]);
+    remapDoc(doc, newBoard, {
+      boards: new Map(),
+      assets: new Map([[file, newFile]]),
+      person: () => importer,
+    });
+    expect(body.toJSON()).toBe(
+      `<paragraph>Ask @Giulia</paragraph><noteimage assetId="${newFile}"></noteimage>`,
+    );
+    doc.destroy();
+  });
   it('carries task due dates and remaps assignees to the importing account', () => {
     const doc = createBoardDoc(oldBoard);
     addElement(doc, {

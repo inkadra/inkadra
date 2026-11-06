@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { api } from '../../lib/api.ts';
+import { walkTabs } from '../../test/tabs.ts';
 import { BoardStore } from '../store.ts';
 import { ScheduleView } from './ScheduleView.tsx';
 
@@ -96,4 +97,13 @@ it('reloads the saved version only when the user asks', async () => {
   await act(async () => button(host, 'schedule.staleReload')?.click());
   expect(notes()?.value).toBe('Theirs');
   expect(host.textContent).not.toContain('schedule.staleBody');
+});
+
+it('walks the day tabs by keyboard, Home and End at the ends, and switches only on a choice', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  await walkTabs(host.querySelector('.schedule__tabs'));
+  expect(host.querySelector('.schedule__inspector--wide')).toBeNull();
+  await act(async () => (document.activeElement as HTMLElement).click());
+  expect(host.querySelector('.schedule__inspector--wide')).not.toBeNull();
 });

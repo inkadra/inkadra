@@ -18,8 +18,9 @@
         <p id="revoked" class="notice" data-i18n="error_unauthorized" hidden>L’accesso è stato revocato o è scaduto: riconnetti il clipper.</p>
         <form id="connect-form" class="field">
           <label class="ink-label" for="server-url" data-i18n="field_server">Indirizzo del server</label>
-          <input id="server-url" type="url" inputmode="url" autocomplete="url" required placeholder="https://inkadra.example.com" />
-          <p class="ink-muted small" data-i18n="connect_permission">Chrome chiederà il permesso di contattare solo questo indirizzo.</p>
+          <input id="server-url" type="url" inputmode="url" autocomplete="url" required placeholder="https://inkadra.example.com" aria-describedby="server-url-help server-url-permission" />
+          <p id="server-url-help" class="ink-muted small" data-i18n="connect_server_help">È l’indirizzo del server Inkadra, tuo o del tuo team: ad esempio https://inkadra.example.com.</p>
+          <p id="server-url-permission" class="ink-muted small" data-i18n="connect_permission">Chrome chiederà il permesso di contattare solo questo indirizzo.</p>
           <button id="connect" type="submit" class="btn btn--primary" data-i18n="action_connect">Connetti</button>
         </form>
       </section>
@@ -40,8 +41,8 @@
           <kbd id="shortcut"></kbd>
           <button id="shortcuts" type="button" class="link" data-i18n="help_shortcut_change">Cambia</button>
         </p>
-        <p data-i18n="help_menus">Con il tasto destro su un’immagine, un testo selezionato, un link o la pagina, salvi nell’ultima board scelta dal pulsante della barra.</p>
-        <details>
+        <p data-i18n="help_menus">Con il tasto destro su un’immagine, un testo selezionato, un link o la pagina, scegli una board recente. Se non ce ne sono ancora, un clic salva o ti chiede di scegliere una board.</p>
+        <details id="selfhost">
           <summary data-i18n="help_selfhost">Estensione compilata da te</summary>
           <p data-i18n="help_selfhost_text">Il server accetta solo le estensioni ufficiali. Per questa, chi amministra il server aggiunge l’ID qui sotto a CLIPPER_EXTENSION_IDS e riavvia.</p>
           <p><span data-i18n="help_extension_id">ID dell’estensione:</span> <code id="extension-id"></code></p>

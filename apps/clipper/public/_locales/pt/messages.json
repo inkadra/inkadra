@@ -4,7 +4,7 @@
     "description": "Name of the extension."
   },
   "ext_description": {
-    "message": "Salve imagens, texto e links em um quadro do Inkadra.",
+    "message": "Salve imagens, texto e links em um quadro do Inkadra. Requer um servidor Inkadra, seu ou da sua equipe.",
     "description": "Store description."
   },
   "action_title": {
@@ -30,6 +30,18 @@
   "menu_page": {
     "message": "Salvar página no Inkadra",
     "description": "Context menu on a page."
+  },
+  "menu_image_to": {
+    "message": "Salvar imagem em…"
+  },
+  "menu_selection_to": {
+    "message": "Salvar seleção em…"
+  },
+  "menu_link_to": {
+    "message": "Salvar link em…"
+  },
+  "menu_page_to": {
+    "message": "Salvar página em…"
   },
   "toast_saved": {
     "message": "Salvo em $BOARD$",
@@ -117,6 +129,9 @@
   "connect_intro": {
     "message": "Conecte o clipper ao seu servidor Inkadra. Será preciso entrar e permitir o acesso."
   },
+  "connect_server_help": {
+    "message": "É o endereço do servidor Inkadra, seu ou da sua equipe: por exemplo, https://inkadra.example.com."
+  },
   "connect_permission": {
     "message": "O Chrome pedirá permissão para acessar somente este endereço."
   },
@@ -139,7 +154,7 @@
     "message": "Alterar"
   },
   "help_menus": {
-    "message": "Clique com o botão direito em uma imagem, um texto selecionado, um link ou na página para salvar no último quadro escolhido pelo botão da barra de ferramentas."
+    "message": "Clique com o botão direito em uma imagem, um texto selecionado, um link ou na página e escolha um quadro recente. Se ainda não houver nenhum, um clique salva ou pede que você escolha um quadro."
   },
   "help_selfhost": {
     "message": "Extensão compilada por você"

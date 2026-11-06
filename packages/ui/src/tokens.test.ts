@@ -42,6 +42,8 @@ describe('tokens', () => {
       }
     }
     expect(ratio(dark['on-accent'], dark['accent-button'])).toBeGreaterThan(4.5);
+    expect(ratio(dark['on-accent'], dark['positive-button'])).toBeGreaterThan(4.5);
+    expect(ratio(light['on-accent'], light['positive-button'])).toBeGreaterThan(4.5);
     expect(ratio(dark['text-muted'], dark['bg-app'])).toBeGreaterThan(4.5);
     expect(ratio(light['text-secondary'], light['bg-panel'])).toBeGreaterThan(4.5);
   });

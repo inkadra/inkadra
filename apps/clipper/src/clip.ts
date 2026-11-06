@@ -2,6 +2,7 @@
 import type { ClipResult } from '@inkadra/shared';
 import type { InkadraApi } from './api.ts';
 import { ClipperError } from './errors.ts';
+import { readSelectionInPage } from './page-scripts.ts';
 
 /** What can be saved: a link card, a quote (note) or an image. */
 export type ClipContent =
@@ -42,6 +43,21 @@ const EXTENSIONS: Record<string, string> = {
   'image/heic': 'heic',
   'image/bmp': 'bmp',
 };
+
+/** The selection in a tab's main frame, for the note. Empty on pages that refuse scripts. */
+export async function readTabSelection(tabId: number): Promise<string> {
+  try {
+    const [injection] = await chrome.scripting.executeScript({
+      target: { tabId },
+      injectImmediately: true, // The popup should not wait for a slow page to finish loading.
+      func: readSelectionInPage,
+      args: [MAX_NOTE],
+    });
+    return injection?.result ?? '';
+  } catch {
+    return ''; // chrome:// pages, the Web Store and PDFs.
+  }
+}
 
 /** Splits "a, b,,c" into tags the API accepts: trimmed, unique, at most 20 of 40 characters. */
 export function parseTags(input: string): string[] {

@@ -181,7 +181,11 @@
       "cards_one": "{{count}} Element",
       "cards_other": "{{count}} Elemente"
     },
-    "allProjects": "Alle Projekte →"
+    "allProjects": "Alle Projekte →",
+    "unsorted": {
+      "waiting_one": "{{count}} Element zu ordnen",
+      "waiting_other": "{{count}} Elemente zu ordnen"
+    }
   },
   "project": {
     "dialogTitle": "Neues Projekt",
@@ -286,7 +290,8 @@
   "board": {
     "canvasMenu": {
       "label": "Canvas",
-      "hint": "Canvas einfügen"
+      "hint": "Canvas einfügen",
+      "more": "Mehr"
     },
     "toolGroups": {
       "navigate": "Navigieren und verbinden",
@@ -342,7 +347,7 @@
     "empty": {
       "title": "Womit fangen wir an?",
       "body": "Wähle einen Startpunkt oder schreib per Doppelklick eine Notiz.",
-      "bodyTouch": "Wähle einen Startpunkt oder schreib per Doppeltipp eine Notiz.",
+      "bodyTouch": "Wähle einen Startpunkt oder füge über die Leiste eine Notiz hinzu.",
       "screenplay": "Drehbuch importieren",
       "screenplayBody": "Fountain, Final Draft oder PDF",
       "hint": "Du kannst auch Dateien und Bilder hierher ziehen.",
@@ -376,7 +381,29 @@
     "note": {
       "placeholder": "Schreiben…",
       "label": "Text der Notiz",
-      "empty": "Leere Notiz"
+      "empty": "Leere Notiz",
+      "toolbar": "Notizformatierung",
+      "style": "Überschrift oder Text",
+      "mention": "Jemanden erwähnen",
+      "mentions": "Personen",
+      "more": "Weitere Aktionen",
+      "typingOne": "{{name}} schreibt…",
+      "typingMany": "{{names}} schreiben…",
+      "picture": "Bild in der Notiz",
+      "pictureMissing": "Bild nicht verfügbar",
+      "pictureLoading": "Bild wird geladen…",
+      "pictureUploading": "Bild wird hochgeladen",
+      "pictureFailed": "Das Bild konnte nicht hochgeladen werden. Versuche es erneut.",
+      "slash": {
+        "label": "Einfügen",
+        "frame": "Einstellung",
+        "frameHint": "Eine Zeile der Shotlist verknüpfen",
+        "noFrames": "Keine Einstellungen auf diesem Board",
+        "todo": "To-do",
+        "todoHint": "Liste mit Kästchen",
+        "image": "Bild",
+        "imageHint": "Aus der Mediathek oder den Dateien"
+      }
     },
     "caption": {
       "label": "Bildunterschrift",
@@ -731,6 +758,7 @@
       },
       "snap": "Am Raster ausrichten",
       "library": "Set-Symbole",
+      "categoryTabs": "Symbolkategorien",
       "icons": {
         "fresnel": "Fresnel",
         "led": "LED-Panel",
@@ -1070,6 +1098,17 @@
       },
       "drawFailed": "Der Strich konnte nicht gespeichert werden. Versuch es noch mal; falls das Problem bleibt, lade das Board neu.",
       "updateApp": "Dieses Board braucht eine neuere Version. Aktualisiere die App, um es zu bearbeiten; ansehen kannst du es weiterhin."
+    },
+    "sheet": {
+      "edit": "Bearbeiten",
+      "comment": "Kommentieren",
+      "color": "Farbe",
+      "connect": "Verbinden",
+      "connectHint": "Von der Karte zu einer anderen ziehen, um sie zu verbinden",
+      "moveTo": "Verschieben nach…",
+      "showGuests": "Dem Kunden zeigen",
+      "toStoryboard": "Zum Storyboard hinzufügen",
+      "replyTo": "{{name}} antworten…"
     }
   },
   "tags": {
@@ -1364,6 +1403,7 @@
       "scene": "Szene",
       "noMatch": "Kein Frame passt zum Filter",
       "table": "Tabelle",
+      "layouts": "Layout der Shotliste",
       "kanban": "Kanban",
       "addInStatus": "In {{status}} hinzufügen",
       "cardAria": "Frame {{label}}",
@@ -1725,6 +1765,21 @@
         "approved": "Karte freigegeben.",
         "changes_requested": "Änderungen angefragt.",
         "none": "Entscheidung zurückgezogen."
+      },
+      "phone": {
+        "title": "Review",
+        "empty": "Auf diesem Board gibt es keine Einstellungen zu prüfen.",
+        "board": "Board ansehen",
+        "versions": "Angezeigte Version",
+        "versionsFailed": "Frühere Versionen sind gerade nicht verfügbar.",
+        "now": "Jetzt",
+        "send": "Review senden · {{approved}}, {{changes}}",
+        "approved_one": "{{count}} freigegeben",
+        "approved_other": "{{count}} freigegeben",
+        "changes_one": "{{count}} Änderung",
+        "changes_other": "{{count}} Änderungen",
+        "sent": "Review an das Team gesendet",
+        "alreadySent": "Bereits gesendet: seitdem keine neue Entscheidung"
       }
     },
     "comments": {
@@ -1953,7 +2008,8 @@
       "guest": "Ein Gast",
       "link_opened": "hat das Board geöffnet",
       "task_assigned": "hat dir eine Aufgabe zugewiesen",
-      "feedback_received": "Neue In-App-Meldung erhalten"
+      "feedback_received": "Neue In-App-Meldung erhalten",
+      "review_submitted": "hat das Review gesendet"
     },
     "emailTitle": "E-Mail-Benachrichtigungen",
     "emailHint": "Erwähnungen, Antworten und Reviews auch per E-Mail, wenn der Server sie senden kann.",
@@ -1994,7 +2050,10 @@
     "refresh": "Unterhaltung aktualisieren",
     "conversationUnavailable": "Unterhaltung nicht verfügbar",
     "cardFallback": "Karte",
-    "previewUnavailable": "Öffne das Board, um diese Karte zu sehen."
+    "previewUnavailable": "Öffne das Board, um diese Karte zu sehen.",
+    "swipeRead": "Gelesen",
+    "swipeResolve": "Erledigen",
+    "resolvedDone": "Diskussion erledigt"
   },
   "settings": {
     "sectionLead": {
@@ -2270,7 +2329,10 @@
     "summary_other": "{{planned}} geplant · {{count}} Blöcke",
     "castPlaceholder": "Name hinzufügen",
     "departmentsPlaceholder": "Abteilung: Notiz",
-    "removeToken": "{{name}} entfernen"
+    "removeToken": "{{name}} entfernen",
+    "pickDay": "Drehtage",
+    "now": "Jetzt {{time}}",
+    "current": "Läuft"
   },
   "moodboard": {
     "count_one": "{{count}} Referenz",
@@ -2333,7 +2395,29 @@
     "kitHelp": "Zählt die Symbole nach Typ und Beschriftung.",
     "moves": "Nummerierte Bewegungen",
     "fullPage": "Pläne ganzseitig",
-    "new": "Neu"
+    "new": "Neu",
+    "general": "Allgemein",
+    "yourCall": "Dein Drehbeginn",
+    "confirm": "Anwesenheit bestätigen",
+    "decline": "Kann nicht",
+    "presence": "Anwesenheit",
+    "presenceCount": "{{confirmed}} von {{total}} bestätigt",
+    "presenceLoading": "Anwesenheit wird geladen…",
+    "presenceError": "Die Anwesenheit konnte nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "saveError": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+    "linkAccount": "Konto von {{name}}",
+    "noAccount": "Kein Konto",
+    "otherAccount": "Anderes Konto",
+    "answer": {
+      "confirmed": "Du hast deine Anwesenheit bestätigt.",
+      "declined": "Du hast angegeben, dass du nicht kommen kannst."
+    },
+    "status": {
+      "confirmed": "Bestätigt",
+      "declined": "Kann nicht",
+      "waiting": "Ausstehend"
+    }
   },
   "needed": {
     "title": "Mitbringen",

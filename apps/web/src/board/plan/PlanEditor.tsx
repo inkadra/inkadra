@@ -88,6 +88,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { moveTabFocus } from '../../lib/tabs.ts';
 import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { pathOf } from '../film/strokes.ts';
 import { isMac } from '../shortcuts.ts';
@@ -629,6 +630,8 @@ export function PlanEditor({
     // copy and paste or a tool letter would act on the plan card (as DrawingEditor.tsx).
     e.stopImmediatePropagation();
     if (e.type !== 'keydown') return;
+    // The library's tabs keep their arrows, Home and End.
+    if (moveTabFocus(e)) return;
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
     if (e.key === 'Escape') {

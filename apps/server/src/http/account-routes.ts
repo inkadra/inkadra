@@ -67,7 +67,7 @@ const CLIENT_NAMES: Record<AppClient, string> = { clipper: 'Inkadra Clipper', mo
  * Chrome Web Store ids of the official clipper. Pinned so that no other extension can get a
  * token from someone who clicks "Allow"; self-built ones are added with CLIPPER_EXTENSION_IDS.
  */
-export const OFFICIAL_CLIPPER_IDS: readonly string[] = [];
+export const OFFICIAL_CLIPPER_IDS: readonly string[] = ['hdajoikapihpjfbgioeagenmoalckjkh'];
 
 /** Exact redirect addresses each official app may use (decision 0011). */
 export function allowedRedirects(config: Config, client: AppClient): string[] {

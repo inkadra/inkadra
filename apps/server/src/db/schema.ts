@@ -809,6 +809,7 @@ export const notification = pgTable(
         'link_opened',
         'task_assigned',
         'feedback_received',
+        'review_submitted',
       ],
     }).notNull(),
     actorId: uuid('actor_id').references(() => user.id, { onDelete: 'set null' }),
@@ -821,7 +822,7 @@ export const notification = pgTable(
     /** access_expiring/access_expired: whose access, and when it ends (decision 0041). */
     subjectUserId: uuid('subject_user_id').references(() => user.id, { onDelete: 'cascade' }),
     accessExpiresAt: timestamp('access_expires_at', { withTimezone: true }),
-    /** link_opened: the link a guest opened; the notification shows its label. */
+    /** link_opened, review_submitted: the link of the guest; the notification shows its label. */
     shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
     readAt: timestamp('read_at', { withTimezone: true }),
     /** Set once the notification went out by email, alone or in a digest. */
@@ -1072,6 +1073,46 @@ export const shootingDay = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => [index('shooting_day_board_date_idx').on(t.boardId, t.date)],
+);
+
+/** An optional link from a free-text cast name of a board's schedule to an account. */
+export const castLink = pgTable(
+  'cast_link',
+  {
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    castKey: text('cast_key').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.boardId, t.castKey] }),
+    index('cast_link_user_idx').on(t.userId),
+  ],
+);
+
+/** What a person linked to the cast of a shooting day answered about being on set. */
+export const shootingDayAttendance = pgTable(
+  'shooting_day_attendance',
+  {
+    dayId: uuid('day_id')
+      .notNull()
+      .references(() => shootingDay.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    status: text('status', { enum: ['confirmed', 'declined'] }).notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.dayId, t.userId] }),
+    index('shooting_day_attendance_user_idx').on(t.userId),
+  ],
 );
 
 /** Bounded personal history of confirmed clip destinations. */

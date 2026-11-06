@@ -6,6 +6,7 @@ import {
   type MouseEvent,
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -19,6 +20,7 @@ import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
 import { useHeaderContent } from '../lib/header.tsx';
 import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
+import { moveTabFocus } from '../lib/tabs.ts';
 import { useProjects } from '../routes/AppLayout.tsx';
 import { NotFound } from '../routes/NotFound.tsx';
 import { renameProject } from '../routes/projects.ts';
@@ -205,10 +207,13 @@ function CurrentCrumb({
 
 /** The bar of a board's views in the header. */
 function ViewTabs({
+  id,
   tabs,
   view,
   onChoose,
 }: {
+  /** Names the tabs `${id}-${view}` and the view they control `${id}-panel`. */
+  id: string;
   tabs: BoardView[];
   view: BoardView;
   onChoose: (view: BoardView) => void;
@@ -222,22 +227,18 @@ function ViewTabs({
       className="view-tabs"
       role="tablist"
       aria-label={t('film.views.label')}
-      onKeyDown={(e) => {
-        // Arrow keys walk the tabs; Enter and Space pick one, as on any button.
-        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-        const all = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-        const at = all.indexOf(document.activeElement as HTMLButtonElement);
-        e.preventDefault();
-        all[(at + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length]?.focus();
-      }}
+      // The arrows walk the tabs; Enter and Space pick one, as on any button.
+      onKeyDown={moveTabFocus}
     >
       <span className="view-tabs__pill" aria-hidden="true" />
       {tabs.map((v) => (
         <button
           key={v}
+          id={`${id}-${v}`}
           type="button"
           role="tab"
           aria-selected={view === v}
+          aria-controls={`${id}-panel`}
           tabIndex={view === v ? 0 : -1}
           className="view-tabs__tab"
           // On narrow desktops only the open tab keeps its name: the rest say it on hover.
@@ -297,6 +298,7 @@ function BoardScreen({
   const [headerMenu, setHeaderMenu] = useState(false);
   const reportingOn = !!useFeedbackStatus()?.enabled;
   const isPhone = useIsPhone();
+  const tabsId = useId();
   const liveSelection = useRef<ReadonlySet<string>>(new Set());
   const [exporting, setExporting] = useState<{
     source: ExportSource;
@@ -537,7 +539,9 @@ function BoardScreen({
               </Fragment>
             ))}
           </nav>
-          {tabs.length > 0 && <ViewTabs tabs={tabs} view={view} onChoose={chooseView} />}
+          {tabs.length > 0 && (
+            <ViewTabs id={tabsId} tabs={tabs} view={view} onChoose={chooseView} />
+          )}
           {editable && (
             <div className="board-header-menu" ref={headerMenuAnchor}>
               <IconButton
@@ -653,6 +657,7 @@ function BoardScreen({
       projectRole,
       selfId,
       projectIcon,
+      tabsId,
     ],
   );
   useHeaderContent(header);
@@ -771,6 +776,10 @@ function BoardScreen({
     <div
       className={preview ? 'board-preview' : undefined}
       style={preview ? undefined : { display: 'contents' }}
+      // The view under the header's tabs is their panel; phones pick views from a menu instead.
+      {...(!isPhone && tabs.includes(view)
+        ? { role: 'tabpanel', id: `${tabsId}-panel`, 'aria-labelledby': `${tabsId}-${view}` }
+        : {})}
     >
       {conn.schemaTooNew && (
         <div role="alert" className="board-update-notice">

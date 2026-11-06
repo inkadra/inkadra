@@ -181,7 +181,11 @@
       "cards_one": "{{count}} elemento",
       "cards_other": "{{count}} elementos"
     },
-    "allProjects": "Todos los proyectos →"
+    "allProjects": "Todos los proyectos →",
+    "unsorted": {
+      "waiting_one": "{{count}} elemento por ordenar",
+      "waiting_other": "{{count}} elementos por ordenar"
+    }
   },
   "project": {
     "dialogTitle": "Nuevo proyecto",
@@ -286,7 +290,8 @@
   "board": {
     "canvasMenu": {
       "label": "Lienzo",
-      "hint": "Insertar un lienzo"
+      "hint": "Insertar un lienzo",
+      "more": "Más"
     },
     "toolGroups": {
       "navigate": "Navegar y conectar",
@@ -342,7 +347,7 @@
     "empty": {
       "title": "¿Por dónde empezamos?",
       "body": "Elige un punto de partida o haz doble clic para escribir una nota.",
-      "bodyTouch": "Elige un punto de partida o toca dos veces para escribir una nota.",
+      "bodyTouch": "Elige un punto de partida o añade una nota desde la barra.",
       "screenplay": "Importar guion",
       "screenplayBody": "Fountain, Final Draft o PDF",
       "hint": "También puedes arrastrar aquí archivos e imágenes.",
@@ -376,7 +381,29 @@
     "note": {
       "placeholder": "Escribe…",
       "label": "Texto de la nota",
-      "empty": "Nota vacía"
+      "empty": "Nota vacía",
+      "toolbar": "Formato de la nota",
+      "style": "Título o texto",
+      "mention": "Mencionar a alguien",
+      "mentions": "Personas",
+      "more": "Más acciones",
+      "typingOne": "{{name}} está escribiendo…",
+      "typingMany": "{{names}} están escribiendo…",
+      "picture": "Imagen de la nota",
+      "pictureMissing": "Imagen no disponible",
+      "pictureLoading": "Cargando la imagen…",
+      "pictureUploading": "Subiendo la imagen",
+      "pictureFailed": "No se pudo subir la imagen. Inténtalo de nuevo.",
+      "slash": {
+        "label": "Insertar",
+        "frame": "Plano",
+        "frameHint": "Enlaza una línea de la lista de planos",
+        "noFrames": "No hay planos en este tablero",
+        "todo": "Tareas",
+        "todoHint": "Lista con casillas",
+        "image": "Imagen",
+        "imageHint": "De la galería o de tus archivos"
+      }
     },
     "caption": {
       "label": "Pie de imagen",
@@ -731,6 +758,7 @@
       },
       "snap": "Ajustar a la cuadrícula",
       "library": "Iconos de set",
+      "categoryTabs": "Categorías de iconos",
       "icons": {
         "fresnel": "Fresnel",
         "led": "Panel LED",
@@ -1070,6 +1098,17 @@
       },
       "drawFailed": "No se pudo guardar el trazo. Inténtalo de nuevo; si el problema continúa, recarga el tablero.",
       "updateApp": "Este tablero requiere una versión más reciente. Actualiza la app para editarlo; puedes seguir leyéndolo."
+    },
+    "sheet": {
+      "edit": "Editar",
+      "comment": "Comentar",
+      "color": "Color",
+      "connect": "Conectar",
+      "connectHint": "Arrastra desde la tarjeta hasta otra para conectarlas",
+      "moveTo": "Mover a…",
+      "showGuests": "Mostrar al cliente",
+      "toStoryboard": "Añadir al Storyboard",
+      "replyTo": "Responder a {{name}}…"
     }
   },
   "tags": {
@@ -1364,6 +1403,7 @@
       "scene": "Escena",
       "noMatch": "Ningún plano coincide con el filtro",
       "table": "Tabla",
+      "layouts": "Diseño de la lista de planos",
       "kanban": "Kanban",
       "addInStatus": "Añadir en {{status}}",
       "cardAria": "Plano {{label}}",
@@ -1725,6 +1765,21 @@
         "approved": "Tarjeta aprobada.",
         "changes_requested": "Cambios solicitados.",
         "none": "Decisión retirada."
+      },
+      "phone": {
+        "title": "Revisión",
+        "empty": "No hay planos que revisar en este tablero.",
+        "board": "Ver el tablero",
+        "versions": "Versión que mostrar",
+        "versionsFailed": "Las versiones anteriores no están disponibles ahora.",
+        "now": "Ahora",
+        "send": "Enviar revisión · {{approved}}, {{changes}}",
+        "approved_one": "{{count}} aprobado",
+        "approved_other": "{{count}} aprobados",
+        "changes_one": "{{count}} cambio",
+        "changes_other": "{{count}} cambios",
+        "sent": "Revisión enviada al equipo",
+        "alreadySent": "Ya enviada: ninguna decisión nueva desde entonces"
       }
     },
     "comments": {
@@ -1953,7 +2008,8 @@
       "guest": "Un invitado",
       "link_opened": "abrió el tablero",
       "task_assigned": "te asignó una tarea",
-      "feedback_received": "Nuevo informe recibido desde la app"
+      "feedback_received": "Nuevo informe recibido desde la app",
+      "review_submitted": "envió su revisión"
     },
     "emailTitle": "Notificaciones por correo",
     "emailHint": "Menciones, respuestas y revisiones también por correo, si el servidor puede enviarlo.",
@@ -1994,7 +2050,10 @@
     "refresh": "Actualizar conversación",
     "conversationUnavailable": "Conversación no disponible",
     "cardFallback": "Tarjeta",
-    "previewUnavailable": "Abre el tablero para ver esta tarjeta."
+    "previewUnavailable": "Abre el tablero para ver esta tarjeta.",
+    "swipeRead": "Leída",
+    "swipeResolve": "Resolver",
+    "resolvedDone": "Conversación resuelta"
   },
   "settings": {
     "sectionLead": {
@@ -2270,7 +2329,10 @@
     "summary_other": "{{planned}} planificados · {{count}} bloques",
     "castPlaceholder": "Añadir un nombre",
     "departmentsPlaceholder": "Departamento: nota",
-    "removeToken": "Quitar {{name}}"
+    "removeToken": "Quitar {{name}}",
+    "pickDay": "Días de rodaje",
+    "now": "Ahora {{time}}",
+    "current": "En curso"
   },
   "moodboard": {
     "count_one": "{{count}} referencia",
@@ -2333,7 +2395,29 @@
     "kitHelp": "Cuenta los iconos por tipo y etiqueta.",
     "moves": "Movimientos numerados",
     "fullPage": "Plantas a página completa",
-    "new": "Nuevo"
+    "new": "Nuevo",
+    "general": "General",
+    "yourCall": "Tu citación",
+    "confirm": "Confirmo mi asistencia",
+    "decline": "No puedo",
+    "presence": "Asistencia",
+    "presenceCount": "{{confirmed}} de {{total}} confirmados",
+    "presenceLoading": "Cargando la asistencia…",
+    "presenceError": "No se pudo cargar la asistencia.",
+    "retry": "Reintentar",
+    "saveError": "No se pudo guardar. Inténtalo de nuevo.",
+    "linkAccount": "Cuenta de {{name}}",
+    "noAccount": "Ninguna cuenta",
+    "otherAccount": "Otra cuenta",
+    "answer": {
+      "confirmed": "Has confirmado tu asistencia.",
+      "declined": "Has dicho que no puedes ir."
+    },
+    "status": {
+      "confirmed": "Confirmado",
+      "declined": "No puede",
+      "waiting": "Pendiente"
+    }
   },
   "needed": {
     "title": "Para llevar",

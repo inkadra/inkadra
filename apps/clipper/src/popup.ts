@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
-import { parseTags, webUrl } from './clip.ts';
+import { parseTags, readTabSelection, webUrl } from './clip.ts';
 import { ColumnPicker } from './columns.ts';
 import { serializeError } from './errors.ts';
 import { errorText, localize, t } from './i18n.ts';
 import { type BoardOption, send } from './messages.ts';
-import type { BoardRef } from './storage.ts';
+import { type BoardRef, boardLabel } from './storage.ts';
 import { applyTokens } from './theme.ts';
 
 applyTokens();
@@ -41,6 +41,7 @@ const SECTION_LABELS: Record<BoardOption['section'], string> = {
 let pageUrl: string | undefined;
 let pageTitle: string | undefined;
 let saving = false;
+let noteEdited = false;
 let selected: BoardRef | null = null;
 let starting: BoardOption[] = [];
 let found: BoardOption[] = [];
@@ -217,6 +218,7 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!selected || !pageUrl || saving || columns.loading) return;
   saving = true;
+  noteEdited = true; // A selection read late must not refill the note after this save.
   updateSelection();
   result.hidden = true;
   try {
@@ -230,7 +232,7 @@ form.addEventListener('submit', async (event) => {
     });
     note.value = '';
     tags.value = '';
-    showResult('ok', t('toast_saved', saved.board.title), {
+    showResult('ok', t('toast_saved', boardLabel(saved.board)), {
       label: t('toast_open_board'),
       run: () => {
         void chrome.tabs.create({ url: saved.boardUrl });
@@ -245,6 +247,9 @@ form.addEventListener('submit', async (event) => {
   }
 });
 
+note.addEventListener('input', () => {
+  noteEdited = true;
+});
 $('open-options').addEventListener('click', openOptions);
 $('connect').addEventListener('click', openOptions);
 
@@ -261,12 +266,17 @@ async function start() {
     return;
   }
   form.hidden = false;
+  save.hidden = false;
 
   pageUrl = webUrl(tab?.url);
   pageTitle = tab?.title;
   $('page-title').textContent = tab?.title || tab?.url || '';
   $('page-url').textContent = pageUrl ? new URL(pageUrl).host : t('page_not_web');
   if (!pageUrl) save.title = t('page_not_web');
+  if (tab?.id !== undefined)
+    void readTabSelection(tab.id).then((text) => {
+      if (!noteEdited) note.value = text;
+    });
 
   selected = status.lastBoard;
   if (selected) void columns.select(selected.id).catch(showError);

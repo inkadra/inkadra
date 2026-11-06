@@ -174,7 +174,16 @@ for (const theme of ['dark', 'light'] as const)
 
       // The day that shoots scenes 3, 5 and 8 lists what they need, duplicates merged.
       await page.goto(`/p/${project.id}/b/${board.id}?view=schedule`);
-      await page.locator('.schedule__day-head').nth(1).click();
+      // A phone shows one day at a time: pick the second from the row of days first.
+      const openSecondDay = async () => {
+        if (phone) {
+          await page.locator('.schedule__picker-day').nth(1).click();
+          await page.locator('.schedule__day-head').first().click();
+        } else {
+          await page.locator('.schedule__day-head').nth(1).click();
+        }
+      };
+      await openSecondDay();
       const inspector = page.getByRole('complementary', { name: 'Dettagli del giorno di riprese' });
       await inspector.getByRole('tab', { name: /^Da portare/ }).click();
       await expect(inspector.getByRole('tab', { name: /^Da portare/ })).toContainText('7');
@@ -227,7 +236,7 @@ for (const theme of ['dark', 'light'] as const)
       // The tick is on the card, for everyone and after a reload.
       if (phone) {
         await page.reload();
-        await page.locator('.schedule__day-head').nth(1).click();
+        await openSecondDay();
         await inspector.getByRole('tab', { name: /^Da portare/ }).click();
         await expect(
           inspector.getByRole('checkbox', { name: 'Giacca a vento rossa' }),

@@ -8,7 +8,7 @@ import type {
   ShareLinkPreview,
 } from '@inkadra/shared';
 import { API_PREFIX } from '@inkadra/shared/constants';
-import { Logo } from '@inkadra/ui';
+import { Button, Logo } from '@inkadra/ui';
 import {
   Fragment,
   type MouseEvent,
@@ -26,11 +26,13 @@ import { Canvas } from '../board/Canvas.tsx';
 import { type BoardConnection, createSaveStore } from '../board/connection.ts';
 import { CardExtrasContext, GuestModeContext } from '../board/context.ts';
 import { BoardStore } from '../board/store.ts';
+import { useIsPhone } from '../lib/phone.ts';
 import { NoSessionProvider } from '../lib/session.tsx';
 import { type GuestActions, GuestActionsContext } from './actions.ts';
 import { GuestRequestError, guestApi } from './api.ts';
 import { GuestCardExtras } from './GuestCardExtras.tsx';
 import { GuestPanel } from './GuestPanel.tsx';
+import { GuestReview } from './GuestReview.tsx';
 import { GuestViewer } from './GuestViewer.tsx';
 import { toAsset } from './guest-assets.ts';
 import { createGuestDoc, syncGuestDoc } from './guest-doc.ts';
@@ -393,6 +395,13 @@ export function GuestBoardScreen({
   }, []);
   const extras = useCallback((el: Element) => <GuestCardExtras element={el} />, []);
 
+  // On a phone a storyboard opens as a review, one shot at a time (#110, mockup screen 9).
+  const phone = useIsPhone();
+  const [showBoard, setShowBoard] = useState(false);
+  const canReview =
+    phone && rights.review && (snapshot?.elements.some((e) => e.type === 'frame') ?? false);
+  const reviewing = canReview && !showBoard;
+
   const crumbs = snapshot
     ? [...snapshot.breadcrumb, { id: snapshot.board.id, title: snapshot.board.title }]
     : [];
@@ -442,58 +451,71 @@ export function GuestBoardScreen({
               {t('guest.sharedBy', { name: sharedBy })}
             </span>
           )}
+          {canReview && showBoard && (
+            <Button onClick={() => setShowBoard(false)}>{t('guest.review.phone.title')}</Button>
+          )}
           <span className="guest__badge">{t(`guest.roles.${rightsKey(rights)}`)}</span>
         </header>
-        <div className="guest__body">
-          <div className="guest__canvas">
-            {conn && loaded === boardId ? (
-              <NoSessionProvider>
-                <GuestModeContext.Provider value={true}>
-                  <CardExtrasContext.Provider value={extras}>
-                    <Canvas
-                      key={boardId}
-                      conn={conn}
-                      preview
-                      projectId=""
-                      breadcrumb={crumbs.map((c) => c.title)}
-                      boardId={boardId}
-                      userId=""
-                      boards={boards}
-                      canEdit={false}
-                      peers={[]}
-                      onOpenBoard={openBoard}
-                      onSelectionChange={onSelectionChange}
-                      onOpen={onOpen}
-                      guestMaps={
-                        session.maps
-                          ? {
-                              attribution: session.maps.attribution,
-                              satelliteAttribution: session.maps.satelliteAttribution,
-                              tiles: `${API_PREFIX}/guest/links/${session.linkId}/map-tiles/{z}/{x}/{y}`,
-                            }
-                          : undefined
-                      }
-                    />
-                  </CardExtrasContext.Provider>
-                </GuestModeContext.Provider>
-              </NoSessionProvider>
-            ) : (
-              <p className="guest__loading ink-muted" role="status">
-                {t('guest.loading')}
-              </p>
-            )}
-            {loaded === boardId && snapshot && snapshot.elements.length === 0 && (
-              <p className="guest__empty ink-muted">{t('guest.emptyBoard')}</p>
-            )}
+        {reviewing ? (
+          <div className="guest__body guest__body--review">
+            <GuestReview
+              snapshot={loaded === boardId ? snapshot : null}
+              boardTitle={snapshot?.board.title ?? ''}
+              onShowBoard={() => setShowBoard(true)}
+            />
           </div>
-          <GuestPanel
-            session={session}
-            snapshot={snapshot}
-            selected={selected ? (elements.get(selected) ?? null) : null}
-            onOpenBoard={openBoard}
-            onAskName={() => setNaming({ next: () => {} })}
-          />
-        </div>
+        ) : (
+          <div className="guest__body">
+            <div className="guest__canvas">
+              {conn && loaded === boardId ? (
+                <NoSessionProvider>
+                  <GuestModeContext.Provider value={true}>
+                    <CardExtrasContext.Provider value={extras}>
+                      <Canvas
+                        key={boardId}
+                        conn={conn}
+                        preview
+                        projectId=""
+                        breadcrumb={crumbs.map((c) => c.title)}
+                        boardId={boardId}
+                        userId=""
+                        boards={boards}
+                        canEdit={false}
+                        peers={[]}
+                        onOpenBoard={openBoard}
+                        onSelectionChange={onSelectionChange}
+                        onOpen={onOpen}
+                        guestMaps={
+                          session.maps
+                            ? {
+                                attribution: session.maps.attribution,
+                                satelliteAttribution: session.maps.satelliteAttribution,
+                                tiles: `${API_PREFIX}/guest/links/${session.linkId}/map-tiles/{z}/{x}/{y}`,
+                              }
+                            : undefined
+                        }
+                      />
+                    </CardExtrasContext.Provider>
+                  </GuestModeContext.Provider>
+                </NoSessionProvider>
+              ) : (
+                <p className="guest__loading ink-muted" role="status">
+                  {t('guest.loading')}
+                </p>
+              )}
+              {loaded === boardId && snapshot && snapshot.elements.length === 0 && (
+                <p className="guest__empty ink-muted">{t('guest.emptyBoard')}</p>
+              )}
+            </div>
+            <GuestPanel
+              session={session}
+              snapshot={snapshot}
+              selected={selected ? (elements.get(selected) ?? null) : null}
+              onOpenBoard={openBoard}
+              onAskName={() => setNaming({ next: () => {} })}
+            />
+          </div>
+        )}
         {viewed && <GuestViewer element={viewed} onClose={() => setViewing(null)} />}
         <NameDialog
           open={naming !== null}
