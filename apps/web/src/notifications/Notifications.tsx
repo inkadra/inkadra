@@ -29,6 +29,7 @@ import {
   KNOWN_TYPES,
   unreadBadge,
 } from './model.ts';
+import { type SwipeAction, SwipeRow } from './SwipeRow.tsx';
 import './notifications.css';
 
 const POLL_MS = 60_000;
@@ -373,6 +374,36 @@ export function NotificationList({
       readTimer.current = null;
     }
   }, []);
+  const [resolved, setResolved] = useState(false);
+  /** Read and Resolve, the actions the inbox already has, for a swipe on a phone (#110). */
+  const swipeActions = (n: Notification): SwipeAction[] => [
+    ...(n.readAt
+      ? []
+      : [
+          {
+            label: t('notifications.swipeRead'),
+            tone: 'neutral' as const,
+            onClick: () => void markRead(n.id).catch(() => setActionError(true)),
+          },
+        ]),
+    // Only notifications of a comment thread can resolve it.
+    ...(n.threadId
+      ? [
+          {
+            label: t('notifications.swipeResolve'),
+            tone: 'positive' as const,
+            onClick: () => {
+              setActionError(false);
+              setResolved(false);
+              api.post(`/comments/${n.threadId}/resolve`, {}).then(
+                () => setResolved(true),
+                () => setActionError(true),
+              );
+            },
+          },
+        ]
+      : []),
+  ];
   const markReadDebounced = useCallback(
     (id: string) => {
       clearReadTimer();
@@ -592,13 +623,12 @@ export function NotificationList({
                       const path = notificationPath(n);
                       const actor = notificationActor(n, t);
                       const isSelected = n.id === selectedId;
-                      return (
-                        <li
-                          key={n.id}
-                          className={`notification ${n.readAt ? '' : 'is-unread'} ${
-                            isSelected ? 'is-selected' : ''
-                          }`}
-                        >
+                      const rowClass = `notification ${n.readAt ? '' : 'is-unread'} ${
+                        isSelected ? 'is-selected' : ''
+                      }`;
+                      const swipe = mobile ? swipeActions(n) : [];
+                      const row = (
+                        <>
                           <button
                             type="button"
                             data-notification-id={n.id}
@@ -667,6 +697,15 @@ export function NotificationList({
                               }}
                             />
                           )}
+                        </>
+                      );
+                      return swipe.length > 0 ? (
+                        <SwipeRow key={n.id} className={rowClass} actions={swipe}>
+                          {row}
+                        </SwipeRow>
+                      ) : (
+                        <li key={n.id} className={rowClass}>
+                          {row}
                         </li>
                       );
                     })}
@@ -691,6 +730,9 @@ export function NotificationList({
                   {t('notifications.actionError')}
                 </p>
               )}
+              <p role="status" className="ink-muted notifications__status" hidden={!resolved}>
+                {resolved && t('notifications.resolvedDone')}
+              </p>
               {next && state === 'ready' && (
                 <Button variant="ghost" onClick={() => void load(next)}>
                   {t('notifications.more')}

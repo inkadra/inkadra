@@ -58,19 +58,36 @@ test('a card on a phone: selection bar, menu and inline editor fit the screen', 
     expect(box!.height).toBeGreaterThanOrEqual(44);
   }
 
-  // The card menu stays inside the board, above the phone navigation, and scrolls if it must.
+  // A long press or ⋯ opens the card's sheet from the bottom edge (#110), with every action of
+  // the menu and finger-sized rows; Escape closes it and gives the focus back.
   await card.click({ button: 'right' });
-  const menu = page.getByRole('menu');
-  await expect(menu).toBeVisible();
-  const menuBox = await inside(menu);
-  const nav = await page
-    .getByRole('navigation', { name: 'Navigazione principale', exact: true })
-    .boundingBox();
-  expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(nav!.y);
-  const item = await menu.getByRole('menuitem').first().boundingBox();
-  expect(item!.height).toBeGreaterThanOrEqual(44);
+  const sheet = page.getByRole('dialog', { name: 'Nota · Ultimo treno', exact: true });
+  await expect(sheet).toBeVisible();
+  await inside(sheet);
+  const sheetBox = await sheet.boundingBox();
+  expect(Math.round(sheetBox!.y + sheetBox!.height)).toBeGreaterThanOrEqual(779);
+  for (const name of ['Modifica', 'Commenta', 'Colore', 'Collega', 'Duplica', 'Blocca posizione'])
+    await expect(sheet.getByRole('button', { name, exact: true })).toBeVisible();
+  for (const name of ['Sposta in…', 'Tag…', 'Porta in primo piano', 'Elimina']) {
+    const row = sheet.getByRole('button', { name, exact: true });
+    await row.scrollIntoViewIfNeeded();
+    expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  }
+  await expect(sheet.getByRole('switch', { name: 'Mostra al cliente' })).toBeChecked();
+  await sheet.getByRole('button', { name: 'Colore', exact: true }).tap();
+  await sheet.getByRole('button', { name: 'Blu', exact: true }).tap();
+  await expect(card).toHaveClass(/card--tint-blue/);
   await page.keyboard.press('Escape');
-  await expect(menu).toBeHidden();
+  await expect(sheet).toBeHidden();
+
+  // ⋯ on the selection bar opens the same sheet.
+  await bar.getByRole('button', { name: 'Altre azioni', exact: true }).tap();
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('button', { name: 'Duplica', exact: true }).tap();
+  await expect(sheet).toBeHidden();
+  await expect(page.locator('.card[data-type="note"]', { hasText: 'Ultimo treno' })).toHaveCount(2);
+  await page.keyboard.press('Control+z');
+  await expect(card).toHaveCount(1);
 
   // Editing transforms the same bar and keeps the note on the canvas.
   await card.dblclick();

@@ -777,3 +777,56 @@
   max-width: 960px;
   margin-inline: auto;
 }
+
+/* A row swiped left on a phone shows Read and Resolve (#110, SwipeRow.tsx). */
+.notification.swipe-row {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+.swipe-row__front {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  background: var(--ink-bg-panel);
+  touch-action: pan-y;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.notifications:not(.notifications--fixed) .swipe-row__front {
+  background: var(--ink-surface-float);
+}
+.swipe-row__front.is-dragging {
+  transition: none;
+}
+.swipe-row__actions {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: flex;
+}
+.swipe-row__action {
+  min-width: 80px;
+  padding: 0 12px;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.swipe-row__action--neutral {
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+}
+.swipe-row__action--positive {
+  background: var(--ink-tag-green-bg);
+  color: var(--ink-tag-green);
+}
+.swipe-row__action:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .swipe-row__front {
+    transition: none;
+  }
+}

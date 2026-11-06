@@ -5019,3 +5019,139 @@ button.card__play {
 .unsorted__panel .card--image .card__media img {
   object-fit: contain;
 }
+
+/* The phone's card sheet (#110): CardSheet.tsx, inside a .phone-sheet dialog. */
+.card-sheet .ink-dialog {
+  width: min(480px, 100vw);
+}
+.card-sheet .ink-dialog__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-sheet__quick {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.card-sheet__quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.card-sheet__quick-btn[aria-expanded="true"] {
+  box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
+}
+.card-sheet__quick-btn > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-sheet__colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+}
+.card-sheet__colors .ctxbar__swatch {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+}
+.card-sheet__rows {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+  border-top: 1px solid var(--ink-border-subtle);
+}
+.card-sheet__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 1px solid var(--ink-border-subtle);
+  background: none;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.card-sheet__row.is-danger {
+  color: var(--ink-danger-fg);
+}
+.card-sheet__row[aria-disabled="true"] {
+  color: var(--ink-text-muted);
+  cursor: default;
+}
+.card-sheet__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-sheet__hint {
+  font-size: 12px;
+}
+.card-sheet__sub {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 16px;
+}
+.card-sheet__heading {
+  margin: 12px 4px 4px;
+  font-size: 11px;
+  color: var(--ink-text-secondary);
+}
+.card-sheet__divider {
+  margin: 0;
+  border: 0;
+}
+.card-sheet__quick-btn:focus-visible,
+.card-sheet__row:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
+}
+.card-sheet__reply {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.card-sheet__comment {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-text-secondary);
+  overflow-wrap: anywhere;
+}
+.card-sheet__comment b {
+  color: var(--ink-text-primary);
+}
+.card-sheet__reply-field {
+  display: flex;
+  gap: 8px;
+}
+.card-sheet__reply-field .ink-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}

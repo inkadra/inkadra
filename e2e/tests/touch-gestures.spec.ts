@@ -165,10 +165,10 @@ test('a finger on the toolbar works its button and never joins a pinch', async (
   const canvas = await page.getByTestId('canvas').boundingBox();
   if (!canvas) throw new Error('canvas missing');
   const toolbar = page.locator('.canvas .toolbar');
-  const hand = toolbar.getByRole('button', { name: 'Mano', exact: true });
-  await hand.scrollIntoViewIfNeeded();
-  const button = await hand.boundingBox();
-  if (!button) throw new Error('hand tool missing');
+  // The phone bar's last button: the "More" menu.
+  const more = toolbar.getByRole('button', { name: 'Altro', exact: true });
+  const button = await more.boundingBox();
+  if (!button) throw new Error('more button missing');
   const tap = { x: button.x + button.width / 2, y: button.y + button.height / 2 };
   // Empty canvas near the top, away from the note in the middle.
   const board = { x: canvas.x + 60, y: canvas.y + 140 };
@@ -178,7 +178,7 @@ test('a finger on the toolbar works its button and never joins a pinch', async (
   // A finger on the board, then a tap on a toolbar button: the button works, nothing pinches.
   // Chrome only clicks for a lone finger, so the tap is the events a phone sends for it.
   await touch('touchStart', [{ ...board, id: 1 }]);
-  await hand.evaluate((button: HTMLElement) => {
+  await more.evaluate((button: HTMLElement) => {
     const at = button.getBoundingClientRect();
     const init = {
       pointerId: 99,
@@ -196,7 +196,7 @@ test('a finger on the toolbar works its button and never joins a pinch', async (
     await touch('touchMove', [{ x: board.x + 20 * i, y: board.y + 30 * i, id: 1 }]);
   }
   await settle(page);
-  await expect(hand).toHaveAttribute('aria-pressed', 'true');
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
   expect(await view(page)).toEqual(start);
   // The finger on the board goes on with its selection rectangle.
   await expect(page.locator('.canvas__marquee')).toBeVisible();
@@ -204,8 +204,8 @@ test('a finger on the toolbar works its button and never joins a pinch', async (
   expect(await view(page)).toEqual(start);
 
   // The other way round: a finger on the button, then one on the board.
-  await toolbar.getByRole('button', { name: 'Seleziona', exact: true }).tap();
-  await expect(hand).toHaveAttribute('aria-pressed', 'false');
+  await page.keyboard.press('Escape');
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
   await touch('touchStart', [{ ...tap, id: 1 }]);
   await touch('touchStart', [
     { ...tap, id: 1 },
@@ -229,7 +229,12 @@ test('with the hand tool a finger on a note being written leaves no pan behind',
   const card = await boardWithNote(page, baseURL!);
   const canvas = await page.getByTestId('canvas').boundingBox();
   if (!canvas) throw new Error('canvas missing');
-  await page.locator('.canvas .toolbar').getByRole('button', { name: 'Mano', exact: true }).tap();
+  // On a phone the hand tool is in the "More" menu.
+  await page.locator('.canvas .toolbar').getByRole('button', { name: 'Altro', exact: true }).tap();
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Mano', exact: true }).tap();
+  await expect(
+    page.locator('.canvas .toolbar').getByRole('button', { name: 'Mano', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await card.dblclick();
   const editor = card.locator('[data-no-drag] [contenteditable="true"]');
   await expect(editor).toBeVisible();
@@ -327,4 +332,45 @@ test('with three fingers the pinch follows the two most recent', async ({ page, 
   await settle(page);
   expect((await view(page)).zoom).toBeGreaterThan(three.zoom);
   await touch('touchEnd', []);
+});
+
+test('a double tap on the empty board fits the view instead of adding a note', async ({
+  page,
+  baseURL,
+}) => {
+  const card = await boardWithNote(page, baseURL!);
+  const canvas = await page.getByTestId('canvas').boundingBox();
+  if (!canvas) throw new Error('canvas missing');
+  // Zoom in from the controls, so that fitting has something to undo.
+  const zoomIn = page.getByRole('button', { name: 'Ingrandisci', exact: true });
+  await zoomIn.tap();
+  await zoomIn.tap();
+  await settle(page);
+  const zoomed = await view(page);
+  // Where fitting lands, from the "Fit" button, then back to the zoomed view.
+  await page.getByRole('button', { name: 'Adatta alla vista', exact: true }).tap();
+  await settle(page);
+  const fitted = await view(page);
+  expect(fitted.zoom).not.toBeCloseTo(zoomed.zoom, 2);
+  await zoomIn.tap();
+  await zoomIn.tap();
+  await settle(page);
+
+  // Two real taps through the touchscreen, on empty board near the top.
+  const empty = { x: canvas.x + 40, y: canvas.y + 120 };
+  const { touch } = await touchscreen(page);
+  for (let i = 0; i < 2; i++) {
+    await touch('touchStart', [{ ...empty, id: 1 }]);
+    await touch('touchEnd', []);
+  }
+  await settle(page);
+  const after = await view(page);
+  expect(after.zoom).toBeCloseTo(fitted.zoom, 3);
+  await expect(page.locator('.card[data-type="note"]')).toHaveCount(1);
+  await expect(card).toBeVisible();
+
+  // A double tap on the card still opens it for writing, as before.
+  await card.tap();
+  await card.dblclick();
+  await expect(card.locator('[contenteditable="true"]')).toBeVisible();
 });

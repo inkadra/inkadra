@@ -4614,3 +4614,72 @@ button.moodboard__card:focus-visible {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* The day on a phone (#110): a row of days, the hour as a line, the block under way outlined. */
+.schedule__picker {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  border: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  margin: 0 -12px;
+  padding: 0 12px 4px;
+}
+.schedule__picker-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+  min-width: 52px;
+  min-height: 52px;
+  padding: 6px 8px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.schedule__picker-day b {
+  font-size: 16px;
+  color: var(--ink-text-primary);
+}
+.schedule__picker-day[aria-pressed="true"] {
+  border-color: var(--ink-accent-primary);
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-text-primary);
+}
+.schedule__picker-day:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.schedule__now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-accent-soft-fg);
+  font-size: 11px;
+  font-weight: 600;
+}
+.schedule__now::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-accent-primary);
+}
+.schedule__block.is-current .schedule__block-select {
+  box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
+}
+.schedule__current {
+  align-self: flex-start;
+  padding: 1px 6px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+  font-size: 11px;
+  font-weight: 600;
+}
