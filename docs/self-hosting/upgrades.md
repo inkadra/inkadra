@@ -9,7 +9,7 @@ major version does.
 Pin a version in `.env`, so an upgrade happens when you decide:
 
 ```sh
-INKADRA_TAG=0.8.0
+INKADRA_TAG=0.9.0
 ```
 
 To move to a new version, read its [release notes](https://github.com/inkadra/inkadra/releases),
@@ -31,13 +31,16 @@ taken before the upgrade instead, with that older version
 (see [Restoring](README.md#restoring)). A backup restores on the same or any newer version, so it
 also carries data across an upgrade.
 
-## Upgrading to the version after 0.8
+## Upgrading to 0.9
 
 - **Reports go to the Inkadra developers by default,** also on an instance where they were off, unless
   an administrator saved a choice. Nothing leaves until someone writes a report, sees its preview and
   sends it. To avoid it, set an empty `FEEDBACK_RELAY_URL=` in `.env` **before** upgrading, then save a
   choice in **Settings → About → Reports**. See
   [What leaves your server](README.md#what-leaves-your-server).
+- **Emails can switch to English.** People who never opened the language setting get them in English
+  until they come back to the app, also on accounts that got Italian emails until now.
+- **Board and project templates are gone.** Existing projects and boards stay as they are.
 - Board documents move to a newer version. Tabs and installed apps from before the upgrade stay
   read-only and show an update notice until they reload: nothing they hold can overwrite the new fields.
 
@@ -337,13 +340,13 @@ in this repository, and a software bill of materials. To check that an image was
 repository by its CI and nothing else:
 
 ```sh
-gh attestation verify oci://ghcr.io/inkadra/inkadra:0.8.0 --repo inkadra/inkadra
+gh attestation verify oci://ghcr.io/inkadra/inkadra:0.9.0 --repo inkadra/inkadra
 ```
 
 To list the packages inside it:
 
 ```sh
-docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.8.0 --format '{{ json .SBOM }}'
+docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.9.0 --format '{{ json .SBOM }}'
 ```
 
 ## How releases are made
