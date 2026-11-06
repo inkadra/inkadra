@@ -2450,6 +2450,39 @@
                 "bytes"
               ]
             }
+          },
+          "byUser": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid",
+                  "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+                  "description": "Who uploaded the files; null when no account is linked to them."
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "bytes": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "userId",
+                "name",
+                "bytes"
+              ]
+            },
+            "description": "Original bytes by uploader. Servers before this field omit it."
           }
         },
         "required": [

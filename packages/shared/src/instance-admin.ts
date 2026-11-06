@@ -94,6 +94,18 @@ export const StorageUsage = z
         bytes: z.number().nonnegative(),
       }),
     ),
+    byUser: z
+      .array(
+        z.object({
+          userId: Id.nullable().openapi({
+            description: 'Who uploaded the files; null when no account is linked to them.',
+          }),
+          name: z.string().nullable(),
+          bytes: z.number().nonnegative(),
+        }),
+      )
+      .optional()
+      .openapi({ description: 'Original bytes by uploader. Servers before this field omit it.' }),
   })
   .openapi('StorageUsage', {
     description:
