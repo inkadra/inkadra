@@ -147,14 +147,16 @@ jobs:
           cache: pnpm # zizmor: ignore[cache-poisoning] publishes nothing; publish jobs use no cache
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run build
-      - name: Install Chromium and its system packages
-        run: |
-          # Goes through apt, so a mirror can hang here too: try again instead.
-          for attempt in 1 2 3; do
-            timeout 240 pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium && break
-            [ "$attempt" -lt 3 ] || exit 1
-            sleep 15
-          done
+      # A mirror can crawl for many minutes, and every shard would wait for it: keep the packages.
+      # apt checks each cached file against its signed index, so a stale one is downloaded again.
+      - name: Let the cache restore apt's downloads
+        run: sudo chown "$USER" /var/cache/apt/archives
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /var/cache/apt/archives/*.deb
+          key: apt-e2e-ubuntu-24.04-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: apt-e2e-ubuntu-24.04-
+      - run: pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium
       # media-cards.spec.ts checks page counts, codecs and playable copies made by these.
       - name: Media tools of the -media image
         run: |
@@ -227,15 +229,17 @@ jobs:
         run: pnpm install --frozen-lockfile
       - if: steps.suite.outputs.present
         run: pnpm turbo run build
+      # The packages the end-to-end shards keep; this job only reads them.
       - if: steps.suite.outputs.present
-        name: Install Chromium and its system packages
-        run: |
-          # Goes through apt, so a mirror can hang here too: try again instead.
-          for attempt in 1 2 3; do
-            timeout 240 pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium && break
-            [ "$attempt" -lt 3 ] || exit 1
-            sleep 15
-          done
+        run: sudo chown "$USER" /var/cache/apt/archives
+      - if: steps.suite.outputs.present
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /var/cache/apt/archives/*.deb
+          key: apt-e2e-ubuntu-24.04-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: apt-e2e-ubuntu-24.04-
+      - if: steps.suite.outputs.present
+        run: pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium
       - if: steps.suite.outputs.present
         run: pnpm test:perf
       - if: always() && steps.suite.outputs.present
