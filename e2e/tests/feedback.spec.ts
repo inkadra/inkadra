@@ -1037,9 +1037,12 @@ test('relay disclosure, mandatory preview, limits and admin switch', async ({ pa
   }
   await toggle.click();
   await expect(toggle).not.toBeChecked();
-  expect((await (await page.request.get('/api/v1/feedback/settings')).json()).destination).toBe(
-    'inbox',
-  );
+  // The switch moves before the save reaches the server.
+  await expect
+    .poll(
+      async () => (await (await page.request.get('/api/v1/feedback/settings')).json()).destination,
+    )
+    .toBe('inbox');
 });
 
 async function relayShots(page: Page, name: string, focus?: () => Promise<void>) {
