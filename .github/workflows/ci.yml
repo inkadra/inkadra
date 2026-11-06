@@ -147,6 +147,15 @@ jobs:
           cache: pnpm # zizmor: ignore[cache-poisoning] publishes nothing; publish jobs use no cache
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run build
+      # The clipper's package for the Chrome Web Store. Every shard builds it, but an artifact name
+      # is unique within a run: the first shard uploads it.
+      - if: matrix.shard == 1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: inkadra-clipper
+          path: apps/clipper/release/*.zip
+          if-no-files-found: error
+          retention-days: 7
       # A mirror can crawl for many minutes, and every shard would wait for it: keep the packages.
       # apt checks each cached file against its signed index, so a stale one is downloaded again.
       - name: Let the cache restore apt's downloads
