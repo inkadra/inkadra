@@ -20,6 +20,8 @@ export interface SlideItem {
   type: 'frame' | 'card' | 'scene';
   title?: string;
   label: string;
+  sceneHeading?: string;
+  location?: string;
   action?: string;
   /** Shot, lens, movement and audio on one line. */
   specs?: string;
@@ -130,6 +132,14 @@ export function PresentationView({
 
     for (const group of groups) {
       const scene = group.scene;
+      const sceneHeading = [
+        scene ? t('film.scene.heading', { number: scene.number }).toUpperCase() : undefined,
+        scene?.title ? scene.title.toUpperCase() : undefined,
+        scene?.setting ? scene.setting.toUpperCase() : undefined,
+        scene?.time ? scene.time.toUpperCase() : undefined,
+      ]
+        .filter(Boolean)
+        .join(' · ');
       // The plan of the scene first, unless the plan leaves itself out of the slides.
       const plan = scene
         ? plansOfScene(store.getSnapshot().byId.values(), scene.id).find(
@@ -142,6 +152,8 @@ export function PresentationView({
           id: `scene-${scene.id}`,
           type: 'scene',
           label: t('needed.sceneNumber', { number: scene.number }),
+          sceneHeading: sceneHeading || undefined,
+          location: scene.location,
           action: scene.synopsis || '',
           notes: scene.synopsis || '',
           plan: base?.type === 'plan' ? variantView(plan, base) : plan,
@@ -154,6 +166,8 @@ export function PresentationView({
           id: frame.id,
           type: 'frame',
           label,
+          sceneHeading: sceneHeading || undefined,
+          location: scene?.location || frame.location,
           action: frame.action || frame.notes || '',
           specs: [
             frame.shot ? getPreset('shotSizes', frame.shot) : undefined,
@@ -291,6 +305,14 @@ export function PresentationView({
               <p className="present-sr-only" aria-live="polite">
                 {`${slideAria} · ${current.label}`}
               </p>
+              {(current.sceneHeading || current.location) && (
+                <div className="present-stage__meta">
+                  <span className="present-stage__heading">{current.sceneHeading}</span>
+                  {current.location && (
+                    <span className="present-stage__location">{current.location}</span>
+                  )}
+                </div>
+              )}
 
               <div
                 className={`present-stage__canvas${current.plan ? ' present-stage__canvas--scene' : ''}`}

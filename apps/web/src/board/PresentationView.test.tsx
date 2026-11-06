@@ -148,6 +148,19 @@ describe('PresentationView', () => {
     expect(document.activeElement).toBe(opener);
   });
 
+  it('names the scene and its place above the picture', async () => {
+    const { doc, store } = setup();
+    const scene = addScene(
+      doc,
+      { number: '2', title: 'Il cortile', location: 'Milano' },
+      { userId: 'u1' },
+    );
+    addFrame(doc, scene.id, null, { action: 'Entra' }, { userId: 'u1' });
+    const host = await mount(view(store));
+    expect(host.querySelector('.present-stage__heading')?.textContent).toContain('IL CORTILE');
+    expect(host.querySelector('.present-stage__location')?.textContent).toBe('Milano');
+  });
+
   it('only presents the frames it is given (scene filter / guest visibility)', async () => {
     const { doc, store } = setup();
     const a = addScene(doc, { title: 'Visibile' }, { userId: 'u1' });
