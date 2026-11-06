@@ -34,9 +34,11 @@ The browser rasterizes the current page, with the approved new `html-to-image` d
 Cross-origin embeds and video may be blank; capture failure does not prevent text reporting.
 The capture leaves out password and read-only fields and anything marked `data-feedback-secret`:
 every new place that shows a secret on screen needs that attribute.
-Screenshot redaction replaces pixels with an opaque mosaic before upload. Optional desktop
-recording uses getDisplayMedia and MediaRecorder, never requests audio, stops after 60 seconds,
-and is reviewed before attachment. Unsupported mobile browsers attach a system recording.
+Screenshot redaction replaces pixels before upload with a blur built from a coarse grid: each cell
+is wider than a line of text and keeps only 3 bits per channel of its average colour, because a
+real blur filter can be reversed. Optional desktop recording uses getDisplayMedia and
+MediaRecorder, never requests audio, stops after 60 seconds, and is reviewed before attachment.
+Unsupported mobile browsers attach a system recording.
 
 The person must preview the selected diagnostics and attachments before sending. Console
 warnings/errors use a 50-entry, ten-minute buffer. No request bodies, headers or unrelated
