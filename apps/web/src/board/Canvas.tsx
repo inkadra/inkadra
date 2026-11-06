@@ -2369,7 +2369,7 @@ export function Canvas({
     // A tab, such as the header's views, chooses itself with Enter or Space, and the keys that
     // walk the tabs (lib/tabs.ts, which prevents their default) never nudge the selection.
     if (
-      e.target instanceof Element &&
+      e.target instanceof HTMLElement &&
       e.target.closest('[role="tab"]') &&
       (e.key === 'Enter' || e.key === ' ' || e.defaultPrevented)
     )
