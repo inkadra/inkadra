@@ -55,8 +55,8 @@ That text stays in the window, and leaves your browser only if you then save.
 ## Where data goes
 
 **Your server.** It is the one whose address you typed, for example your own or your team's. Chrome asks your
-permission for that address when you connect, and the extension has no standing access to other
-sites. What happens to data on the server is up to whoever runs it, and this policy doesn't cover
+permission for that address when you connect. The extension asks for no other server's address, and
+it removes the permission when you disconnect or switch server. What happens to data on the server is up to whoever runs it, and this policy doesn't cover
 it. Ask its administrator.
 
 **The site that hosts an image.** To save an image, your browser requests it from where it is
