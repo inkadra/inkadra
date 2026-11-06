@@ -10,6 +10,13 @@ describe('presence', () => {
     expect(readPresence(state)).toEqual(state);
   });
 
+  it('reads the optional typing flag, and states of clients that predate it', () => {
+    const state = { user, readOnly: false, cursor: null, selection: [], editing: 'noteAAAAAAAAA' };
+    expect(readPresence({ ...state, typing: true })?.typing).toBe(true);
+    expect(readPresence(state)?.typing).toBeUndefined();
+    expect(readPresence({ ...state, typing: 'yes' })).toBeNull();
+  });
+
   it('ignores malformed states', () => {
     expect(readPresence(null)).toBeNull();
     expect(readPresence({ user })).toBeNull();

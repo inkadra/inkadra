@@ -3876,6 +3876,11 @@ export function Canvas({
             noteId={noteSheet}
             store={store}
             readOnly={readOnly}
+            live={
+              guest || preview
+                ? undefined
+                : { peers, presence, saves: conn.saves, status: conn.status, projectId, boardId }
+            }
             onClose={() => setNoteSheet(null)}
             onEditOnCanvas={() => {
               setEditing(noteSheet);

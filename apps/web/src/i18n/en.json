@@ -381,7 +381,29 @@
     "note": {
       "placeholder": "Write…",
       "label": "Note text",
-      "empty": "Empty note"
+      "empty": "Empty note",
+      "toolbar": "Note formatting",
+      "style": "Heading or text",
+      "mention": "Mention someone",
+      "mentions": "People",
+      "more": "More actions",
+      "typingOne": "{{name}} is typing…",
+      "typingMany": "{{names}} are typing…",
+      "picture": "Picture in the note",
+      "pictureMissing": "Picture not available",
+      "pictureLoading": "Loading the picture…",
+      "pictureUploading": "Uploading the picture",
+      "pictureFailed": "The picture could not be uploaded. Try again.",
+      "slash": {
+        "label": "Insert",
+        "frame": "Shot",
+        "frameHint": "Link a line of the shot list",
+        "noFrames": "No shots on this board",
+        "todo": "To-do",
+        "todoHint": "List with checkboxes",
+        "image": "Picture",
+        "imageHint": "From the library or your files"
+      }
     },
     "caption": {
       "label": "Caption",
@@ -1743,6 +1765,21 @@
         "approved": "Card approved.",
         "changes_requested": "Changes requested.",
         "none": "Decision withdrawn."
+      },
+      "phone": {
+        "title": "Review",
+        "empty": "There are no shots to review on this board.",
+        "board": "See the board",
+        "versions": "Version to show",
+        "versionsFailed": "Earlier versions are not available right now.",
+        "now": "Now",
+        "send": "Send review · {{approved}}, {{changes}}",
+        "approved_one": "{{count}} approved",
+        "approved_other": "{{count}} approved",
+        "changes_one": "{{count}} change",
+        "changes_other": "{{count}} changes",
+        "sent": "Review sent to the team",
+        "alreadySent": "Already sent: no new decision since then"
       }
     },
     "comments": {
@@ -1971,7 +2008,8 @@
       "guest": "A guest",
       "link_opened": "opened the board",
       "task_assigned": "assigned you a task",
-      "feedback_received": "New in-app report received"
+      "feedback_received": "New in-app report received",
+      "review_submitted": "sent their review"
     },
     "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",

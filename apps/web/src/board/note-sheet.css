@@ -128,6 +128,187 @@
     white-space: nowrap;
   }
 }
+/* Mentions and pictures in notes (document version 19), on the canvas and in the sheet. */
+.note-mention {
+  padding: 0 3px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+  white-space: nowrap;
+}
+.note-picture {
+  margin: 8px 0;
+  position: relative;
+}
+.note-picture img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--ink-radius-sm);
+}
+.note-picture.is-selected img {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.note-picture__missing,
+.note-picture__loading {
+  display: block;
+  padding: 16px;
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.note-picture__progress {
+  position: absolute;
+  inset: auto 8px 8px;
+  width: calc(100% - 16px);
+}
+
+/* The note on a phone (#110, mockup screen 4). */
+.note-phone__header {
+  gap: 4px;
+}
+.note-phone__header .ink-iconbtn {
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+.note-phone__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.note-phone__status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.note-phone__typing {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.note-phone__saved {
+  flex: none;
+}
+.note-phone__error {
+  margin: 0 0 12px;
+  color: var(--ink-danger-fg);
+  font-size: 12px;
+}
+.note-sidesheet--phone .note-sidesheet__doc {
+  padding-top: 12px;
+}
+.note-phone-bar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 2px;
+  min-height: 52px;
+  padding: 4px max(6px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom))
+    max(6px, env(safe-area-inset-left));
+  box-sizing: border-box;
+  background: var(--ink-surface-1);
+  border-top: 1px solid var(--ink-border-default);
+  transition: transform var(--ink-dur-fast) var(--ink-ease-out);
+}
+.note-phone-bar__tool {
+  display: grid;
+  place-items: center;
+  flex: 1 1 0;
+  min-width: 36px;
+  max-width: 48px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: none;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-weight: 600;
+}
+.note-phone-bar__tool[aria-pressed="true"] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.note-phone-bar__tool:focus-visible,
+.note-phone-menu__item:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
+}
+.note-phone-bar__tool:disabled {
+  opacity: 0.5;
+}
+.note-phone-menu {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(60px + env(safe-area-inset-bottom));
+  z-index: 2;
+  max-height: 40dvh;
+  overflow-y: auto;
+  padding: 6px;
+  -webkit-user-select: none;
+  user-select: none;
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  box-shadow:
+    inset 0 0 0 1px var(--ink-border-default),
+    var(--ink-shadow-menu);
+}
+.note-phone-menu__item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: none;
+  color: var(--ink-text-primary);
+  font: inherit;
+  text-align: left;
+}
+.note-phone-menu__item small {
+  display: block;
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+}
+.note-phone-menu__item[aria-selected="true"] {
+  background: var(--ink-accent-soft-bg);
+}
+.note-phone-menu__item[aria-disabled="true"] {
+  color: var(--ink-text-muted);
+}
+.note-phone-menu__empty {
+  margin: 8px;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-phone-bar {
+    transition: none;
+  }
+}
 @keyframes note-slide-in {
   from {
     transform: translateX(100%);

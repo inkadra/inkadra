@@ -7,7 +7,14 @@ import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
 import { checkSameOrigin } from './http/csrf.ts';
 import { createGuestAuth } from './http/guest-context.ts';
-import { DocViews, guestElement, linkElements, pictureAssetId, viewOf } from './share-links.ts';
+import {
+  bodyAssetIds,
+  DocViews,
+  guestElement,
+  linkElements,
+  pictureAssetId,
+  viewOf,
+} from './share-links.ts';
 
 const base = { w: 100, z: 'a0', createdBy: 'user-1', createdAt: 1 };
 const id = (n: string) => n.padEnd(10, '_');
@@ -155,6 +162,34 @@ describe('guest view of a board document', () => {
         },
       ],
     });
+  });
+
+  it('gives guests the name of a mention but not the account, and the pictures of a note', () => {
+    const d2 = doc([{ ...base, id: id('note2'), type: 'note', x: 0, y: 0, parent: null }]);
+    const body2 = roots(d2).elements.get(id('note2'))?.get('body') as Y.XmlFragment;
+    const line = new Y.XmlElement('paragraph');
+    const mention = new Y.XmlElement('mention');
+    mention.setAttribute('id', 'user-secret');
+    mention.setAttribute('label', 'Giulia');
+    line.insert(0, [new Y.XmlText('Ask '), mention]);
+    const picture = new Y.XmlElement('noteImage');
+    picture.setAttribute('assetId', 'a9');
+    body2.insert(0, [line, picture]);
+    const v2 = viewOf(d2);
+    const out = guestElement(v2, v2.visible[0] as Element).body as Record<string, unknown>;
+    expect(JSON.stringify(out)).not.toContain('user-secret');
+    expect(out.content).toEqual([
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'Ask ' },
+          { type: 'mention', attrs: { label: 'Giulia' } },
+        ],
+      },
+      { type: 'noteImage', attrs: { assetId: 'a9' } },
+    ]);
+    expect(bodyAssetIds(out)).toEqual(['a9']);
+    d2.destroy();
   });
 
   it('hides children whose container is malformed', () => {

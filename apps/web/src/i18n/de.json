@@ -381,7 +381,29 @@
     "note": {
       "placeholder": "Schreiben…",
       "label": "Text der Notiz",
-      "empty": "Leere Notiz"
+      "empty": "Leere Notiz",
+      "toolbar": "Notizformatierung",
+      "style": "Überschrift oder Text",
+      "mention": "Jemanden erwähnen",
+      "mentions": "Personen",
+      "more": "Weitere Aktionen",
+      "typingOne": "{{name}} schreibt…",
+      "typingMany": "{{names}} schreiben…",
+      "picture": "Bild in der Notiz",
+      "pictureMissing": "Bild nicht verfügbar",
+      "pictureLoading": "Bild wird geladen…",
+      "pictureUploading": "Bild wird hochgeladen",
+      "pictureFailed": "Das Bild konnte nicht hochgeladen werden. Versuche es erneut.",
+      "slash": {
+        "label": "Einfügen",
+        "frame": "Einstellung",
+        "frameHint": "Eine Zeile der Shotlist verknüpfen",
+        "noFrames": "Keine Einstellungen auf diesem Board",
+        "todo": "To-do",
+        "todoHint": "Liste mit Kästchen",
+        "image": "Bild",
+        "imageHint": "Aus der Mediathek oder den Dateien"
+      }
     },
     "caption": {
       "label": "Bildunterschrift",
@@ -1743,6 +1765,21 @@
         "approved": "Karte freigegeben.",
         "changes_requested": "Änderungen angefragt.",
         "none": "Entscheidung zurückgezogen."
+      },
+      "phone": {
+        "title": "Review",
+        "empty": "Auf diesem Board gibt es keine Einstellungen zu prüfen.",
+        "board": "Board ansehen",
+        "versions": "Angezeigte Version",
+        "versionsFailed": "Frühere Versionen sind gerade nicht verfügbar.",
+        "now": "Jetzt",
+        "send": "Review senden · {{approved}}, {{changes}}",
+        "approved_one": "{{count}} freigegeben",
+        "approved_other": "{{count}} freigegeben",
+        "changes_one": "{{count}} Änderung",
+        "changes_other": "{{count}} Änderungen",
+        "sent": "Review an das Team gesendet",
+        "alreadySent": "Bereits gesendet: seitdem keine neue Entscheidung"
       }
     },
     "comments": {
@@ -1971,7 +2008,8 @@
       "guest": "Ein Gast",
       "link_opened": "hat das Board geöffnet",
       "task_assigned": "hat dir eine Aufgabe zugewiesen",
-      "feedback_received": "Neue In-App-Meldung erhalten"
+      "feedback_received": "Neue In-App-Meldung erhalten",
+      "review_submitted": "hat das Review gesendet"
     },
     "emailTitle": "E-Mail-Benachrichtigungen",
     "emailHint": "Erwähnungen, Antworten und Reviews auch per E-Mail, wenn der Server sie senden kann.",

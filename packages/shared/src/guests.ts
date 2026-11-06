@@ -394,6 +394,50 @@ export const GuestBoardSnapshot = z
   .openapi('GuestBoardSnapshot');
 export type GuestBoardSnapshot = z.infer<typeof GuestBoardSnapshot>;
 
+/** Named versions a guest may compare shots with (decision 0074). */
+export const GUEST_VERSIONS_LIMIT = 5;
+
+export const GuestVersion = z
+  .object({
+    id: Id,
+    name: z.string(),
+    createdAt: Timestamp,
+    frames: z.array(GuestElement).openapi({
+      description:
+        'Storyboard frames as they were in this version, shaped like the snapshot: only frames ' +
+        'that guests of this link see in the version and still see now.',
+    }),
+  })
+  .openapi('GuestVersion');
+export type GuestVersion = z.infer<typeof GuestVersion>;
+
+export const GuestVersions = z
+  .object({
+    versions: z.array(GuestVersion).openapi({
+      description: `The newest named versions of the board, newest first, at most ${GUEST_VERSIONS_LIMIT}.`,
+    }),
+    assets: z.array(GuestAsset).openapi({
+      description:
+        'Pictures of those frames that the snapshot does not list: thumbnails only, through ' +
+        'URLs of the version; never downloads or streams.',
+    }),
+  })
+  .openapi('GuestVersions');
+export type GuestVersions = z.infer<typeof GuestVersions>;
+
+export const GuestReviewSummary = z
+  .object({
+    approved: z.int().min(0),
+    changesRequested: z.int().min(0),
+    sent: z.boolean().openapi({
+      description:
+        'True when the team was notified now; false when nothing changed since the last ' +
+        'summary of this guest on this board, or there is no decision to send.',
+    }),
+  })
+  .openapi('GuestReviewSummary');
+export type GuestReviewSummary = z.infer<typeof GuestReviewSummary>;
+
 export const SetPick = z
   .object({
     pick: PickValue.nullable().optional().openapi({ description: 'Null clears it.' }),

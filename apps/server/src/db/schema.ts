@@ -809,6 +809,7 @@ export const notification = pgTable(
         'link_opened',
         'task_assigned',
         'feedback_received',
+        'review_submitted',
       ],
     }).notNull(),
     actorId: uuid('actor_id').references(() => user.id, { onDelete: 'set null' }),
@@ -821,7 +822,7 @@ export const notification = pgTable(
     /** access_expiring/access_expired: whose access, and when it ends (decision 0041). */
     subjectUserId: uuid('subject_user_id').references(() => user.id, { onDelete: 'cascade' }),
     accessExpiresAt: timestamp('access_expires_at', { withTimezone: true }),
-    /** link_opened: the link a guest opened; the notification shows its label. */
+    /** link_opened, review_submitted: the link of the guest; the notification shows its label. */
     shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
     readAt: timestamp('read_at', { withTimezone: true }),
     /** Set once the notification went out by email, alone or in a digest. */

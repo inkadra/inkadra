@@ -22,6 +22,7 @@ export const NotificationType = z
     'link_opened',
     'task_assigned',
     'feedback_received',
+    'review_submitted',
   ])
   .openapi({
     description:
@@ -37,7 +38,9 @@ export const NotificationType = z
       'days before to that person and to the project owners. `access_expired`: it has ended. ' +
       'Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you ' +
       'made for the first time, or for the first time since a new named version of the board; ' +
-      'it has no actor (`shareLinkLabel` says which link) and nothing about the visit. Open: clients show types they do not know as a plain line ' +
+      'it has no actor (`shareLinkLabel` says which link) and nothing about the visit. ' +
+      '`review_submitted`: a guest sent their review of `boardId` through a link you made ' +
+      '(`shareLinkLabel`); the decisions themselves are in the board reviews. Open: clients show types they do not know as a plain line ' +
       'with the actor, the board and the time.',
   });
 export type NotificationType = z.infer<typeof NotificationType>;
@@ -87,7 +90,7 @@ export const Notification = z
       .optional()
       .openapi({
         description:
-          'For link_opened: the label of the link that was opened; null without one, or when ' +
+          'For link_opened and review_submitted: the label of the link that was opened; null without one, or when ' +
           'you have no role on its board. Missing from servers before this notification existed.',
       }),
     readAt: Timestamp.nullable(),

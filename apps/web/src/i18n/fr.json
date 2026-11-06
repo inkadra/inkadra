@@ -381,7 +381,29 @@
     "note": {
       "placeholder": "Écrivez…",
       "label": "Texte de la note",
-      "empty": "Note vide"
+      "empty": "Note vide",
+      "toolbar": "Mise en forme de la note",
+      "style": "Titre ou texte",
+      "mention": "Mentionner quelqu’un",
+      "mentions": "Personnes",
+      "more": "Plus d’actions",
+      "typingOne": "{{name}} écrit…",
+      "typingMany": "{{names}} écrivent…",
+      "picture": "Image de la note",
+      "pictureMissing": "Image indisponible",
+      "pictureLoading": "Chargement de l’image…",
+      "pictureUploading": "Envoi de l’image",
+      "pictureFailed": "Impossible d’envoyer l’image. Réessayez.",
+      "slash": {
+        "label": "Insérer",
+        "frame": "Plan",
+        "frameHint": "Lier une ligne de la liste des plans",
+        "noFrames": "Aucun plan dans ce tableau",
+        "todo": "À faire",
+        "todoHint": "Liste avec cases",
+        "image": "Image",
+        "imageHint": "Depuis la photothèque ou vos fichiers"
+      }
     },
     "caption": {
       "label": "Légende",
@@ -1743,6 +1765,21 @@
         "approved": "Carte approuvée.",
         "changes_requested": "Modifications demandées.",
         "none": "Décision retirée."
+      },
+      "phone": {
+        "title": "Relecture",
+        "empty": "Il n’y a aucun plan à relire dans ce tableau.",
+        "board": "Voir le tableau",
+        "versions": "Version à afficher",
+        "versionsFailed": "Les versions précédentes ne sont pas disponibles pour le moment.",
+        "now": "Maintenant",
+        "send": "Envoyer la relecture · {{approved}}, {{changes}}",
+        "approved_one": "{{count}} approuvé",
+        "approved_other": "{{count}} approuvés",
+        "changes_one": "{{count}} modification",
+        "changes_other": "{{count}} modifications",
+        "sent": "Relecture envoyée à l’équipe",
+        "alreadySent": "Déjà envoyée : aucune nouvelle décision depuis"
       }
     },
     "comments": {
@@ -1971,7 +2008,8 @@
       "guest": "Un invité",
       "link_opened": "a ouvert le tableau",
       "task_assigned": "vous a attribué une tâche",
-      "feedback_received": "Nouveau signalement reçu dans l’application"
+      "feedback_received": "Nouveau signalement reçu dans l’application",
+      "review_submitted": "a envoyé sa relecture"
     },
     "emailTitle": "Notifications par e-mail",
     "emailHint": "Mentions, réponses et révisions aussi par e-mail, si le serveur peut les envoyer.",

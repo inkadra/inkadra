@@ -255,6 +255,10 @@ export function createCollabServer(deps: {
         owners.set(key, connection.socketId);
         const stamped: PresenceState = {
           ...local.data,
+          // Only someone who can write may appear to be typing.
+          ...(local.data.typing !== undefined
+            ? { typing: local.data.typing && !connection.readOnly && local.data.editing !== null }
+            : {}),
           user: ctx.user,
           readOnly: connection.readOnly,
         };
