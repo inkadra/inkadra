@@ -10,6 +10,7 @@ import { createRouter, type Handlers, type SavedClip } from './messages.ts';
 import { type PageToast, readImageInPage, showToastInPage } from './page-scripts.ts';
 import {
   type BoardRef,
+  boardLabel,
   type Connection,
   forgetBoard,
   getConnection,
@@ -154,7 +155,7 @@ async function clipFromPage(
     const saved = await clipTo(board, content, { tab, frameId });
     await toast(tab, {
       tone: 'ok',
-      text: t('toast_saved', saved.board.title),
+      text: t('toast_saved', boardLabel(saved.board)),
       linkText: t('toast_open_board'),
       linkUrl: saved.boardUrl,
     });

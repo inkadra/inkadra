@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it, vi } from 'vitest';
-import { buildAuthorizeRequest, isStoreInstall, readAuthorizationCode } from './auth.ts';
+import { buildAuthorizeRequest, connect, isStoreInstall, readAuthorizationCode } from './auth.ts';
 import { ClipperError } from './errors.ts';
 import { challengeS256 } from './pkce.ts';
 
@@ -50,4 +50,43 @@ describe('authorize request', () => {
     }
     expect(error).toMatchObject({ kind: 'auth_cancelled' });
   });
+});
+
+it('loads the server history on connecting, and still connects if that fails', async () => {
+  const board = { id: 'b', projectId: 'p', title: 'Board', projectName: null };
+  const issued = { token: 't', tokenId: 'i', user: { name: 'A', email: 'a@example.com' } };
+  const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+  const set = vi.fn(async () => {});
+  const stored: Record<string, unknown> = {};
+  set.mockImplementation(async (items: object) => void Object.assign(stored, items));
+  vi.stubGlobal('chrome', {
+    identity: {
+      getRedirectURL: () => REDIRECT,
+      launchWebAuthFlow: async ({ url }: { url: string }) =>
+        `${REDIRECT}?code=c&state=${new URL(url).searchParams.get('state')}`,
+    },
+    storage: {
+      local: {
+        set,
+        remove: vi.fn(async () => {}),
+        get: async (key: string) => ({ [key]: stored[key] }),
+      },
+    },
+  });
+  let boardsFail = false;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/instance')) return json({ limits: { uploadMaxBytes: 0 } });
+      if (!url.endsWith('/me/clip-boards')) return json(issued);
+      if (boardsFail) throw new TypeError('offline');
+      return json({ items: [{ ...board, myRole: 'editor' }] });
+    }),
+  );
+  await connect('https://ink.example');
+  expect(stored.recentBoards).toEqual([board]);
+
+  boardsFail = true;
+  await expect(connect('https://ink.example')).resolves.toMatchObject({ token: 't' });
+  vi.unstubAllGlobals();
 });

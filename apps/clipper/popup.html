@@ -50,10 +50,12 @@
         <input id="tags" type="text" autocomplete="off" data-i18n-placeholder="tags_placeholder" />
       </div>
 
-      <button id="save" type="submit" class="btn btn--primary btn--block" data-i18n="action_save_page" disabled>Salva pagina</button>
     </form>
 
-    <div id="result" class="result" role="status" hidden></div>
+    <div class="actions">
+      <button id="save" type="submit" form="clip-form" class="btn btn--primary btn--block" data-i18n="action_save_page" disabled hidden>Salva pagina</button>
+      <div id="result" class="result" role="status" hidden></div>
+    </div>
     <script type="module" src="./src/popup.ts"></script>
   </body>
 </html>

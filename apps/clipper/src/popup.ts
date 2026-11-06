@@ -4,7 +4,7 @@ import { ColumnPicker } from './columns.ts';
 import { serializeError } from './errors.ts';
 import { errorText, localize, t } from './i18n.ts';
 import { type BoardOption, send } from './messages.ts';
-import type { BoardRef } from './storage.ts';
+import { type BoardRef, boardLabel } from './storage.ts';
 import { applyTokens } from './theme.ts';
 
 applyTokens();
@@ -232,7 +232,7 @@ form.addEventListener('submit', async (event) => {
     });
     note.value = '';
     tags.value = '';
-    showResult('ok', t('toast_saved', saved.board.title), {
+    showResult('ok', t('toast_saved', boardLabel(saved.board)), {
       label: t('toast_open_board'),
       run: () => {
         void chrome.tabs.create({ url: saved.boardUrl });
@@ -266,6 +266,7 @@ async function start() {
     return;
   }
   form.hidden = false;
+  save.hidden = false;
 
   pageUrl = webUrl(tab?.url);
   pageTitle = tab?.title;

@@ -2,7 +2,13 @@
 import { InkadraApi } from './api.ts';
 import { ClipperError } from './errors.ts';
 import { challengeS256, createState, createVerifier } from './pkce.ts';
-import { type Connection, clearConnection, getConnection, setConnection } from './storage.ts';
+import {
+  type Connection,
+  clearConnection,
+  getConnection,
+  refreshClipBoards,
+  setConnection,
+} from './storage.ts';
 
 export const CLIENT_ID = 'clipper';
 
@@ -125,6 +131,8 @@ export async function connect(serverUrl: string): Promise<Connection> {
       await chrome.permissions.remove({ origins: [`${oldOrigin}/*`] }).catch(() => {});
   }
   await setConnection(connection);
+  // The server's history fills the menus right away; the next save or popup retries a failure.
+  await refreshClipBoards().catch(() => {});
   return connection;
 }
 

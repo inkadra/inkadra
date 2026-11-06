@@ -73,6 +73,10 @@ $('shortcuts').addEventListener('click', () => {
 });
 
 void render();
+// A click in a menu can find the token revoked while this page is already open.
+chrome.storage.local.onChanged.addListener((changes) => {
+  if ('connection' in changes) void render();
+});
 
 void chrome.commands.getAll().then((commands) => {
   const shortcut = commands.find((c) => c.name === 'save-page')?.shortcut;

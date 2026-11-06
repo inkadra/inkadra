@@ -32,6 +32,8 @@ export function Authorize() {
     state: params.get('state') ?? undefined,
     deviceName: params.get('device_name')?.slice(0, 80) || undefined,
   };
+  // The clipper's device name starts with its own name, for the list of tokens.
+  const device = request.deviceName?.replace(/^Inkadra Clipper · /, '');
   const valid =
     !!client &&
     CLIENTS.includes(client) &&
@@ -111,7 +113,7 @@ export function Authorize() {
             <div className="login__invite">
               <p>
                 <b>{t(`authorize.clients.${client}`)}</b>
-                {request.deviceName ? ` · ${request.deviceName}` : ''}
+                {device ? ` · ${device}` : ''}
               </p>
               <p className="ink-muted">{t('authorize.asks', { instance: instance?.name ?? '' })}</p>
             </div>
