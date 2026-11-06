@@ -1,4 +1,9 @@
-import { type ScheduleBlock, type ShootingDayInput, scheduleTimes } from '@inkadra/shared';
+import {
+  type ScheduleBlock,
+  type ShootingDayInput,
+  clockMinutes,
+  scheduleTimes,
+} from '@inkadra/shared';
 import { formatClock } from '../../lib/datetime.ts';
 
 export { clockMinutes, scheduleTimes } from '@inkadra/shared';
