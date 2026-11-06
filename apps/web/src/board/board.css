@@ -5056,9 +5056,8 @@ button.card__play {
 }
 .card-sheet__quick-btn > span {
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 .card-sheet__colors {
   display: flex;
