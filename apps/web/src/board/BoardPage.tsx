@@ -681,7 +681,8 @@ function BoardScreen({
                 label={t('board.export.action')}
                 onClick={() => openExport(exportSourceOf(view))}
               />
-              {canPresent && (
+              {/* The Storyboard view has its own Presenta button, with the same name. */}
+              {canPresent && view !== 'storyboard' && (
                 <IconButton
                   icon="play"
                   className="board-header-present"
