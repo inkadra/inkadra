@@ -101,7 +101,7 @@ export function OfficeStage({
             {t('office.truncated', SHEET_PREVIEW)}
           </p>
         )}
-        {tabbed && (
+        {tabbed && data && (
           <div className="office-sheet__tabs" role="tablist" aria-label={t('office.sheets')}>
             {data.sheets.map((s, i) => (
               <button
