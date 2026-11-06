@@ -1,10 +1,19 @@
 // SPDX-License-Identifier: MPL-2.0
-import { describe, expect, it } from 'vitest';
-import { buildAuthorizeRequest, readAuthorizationCode } from './auth.ts';
+import { describe, expect, it, vi } from 'vitest';
+import { buildAuthorizeRequest, isStoreInstall, readAuthorizationCode } from './auth.ts';
 import { ClipperError } from './errors.ts';
 import { challengeS256 } from './pkce.ts';
 
 const REDIRECT = 'https://abcdefghijklmnopabcdefghijklmnop.chromiumapp.org/auth';
+
+it.each([
+  [{ update_url: 'https://clients2.google.com/service/update2/crx' }, true],
+  [{}, false],
+])('tells store installs from unpacked copies: %j', (manifest, expected) => {
+  vi.stubGlobal('chrome', { runtime: { getManifest: () => manifest } });
+  expect(isStoreInstall()).toBe(expected);
+  vi.unstubAllGlobals();
+});
 
 describe('authorize request', () => {
   it('opens /authorize with the parameters the web page reads', async () => {

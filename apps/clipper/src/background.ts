@@ -5,6 +5,7 @@ import { boardUrl, type ClipContent, type ImageFetcher, saveClip } from './clip.
 import { ClipperError, serializeError } from './errors.ts';
 import { errorText, t } from './i18n.ts';
 import { whileClipping } from './keep-alive.ts';
+import { menuItems, parseMenuId } from './menus.ts';
 import { createRouter, type Handlers, type SavedClip } from './messages.ts';
 import { type PageToast, readImageInPage, showToastInPage } from './page-scripts.ts';
 import {
@@ -13,6 +14,7 @@ import {
   forgetBoard,
   getConnection,
   getLastBoard,
+  getRecentBoards,
   markRevoked,
   refreshClipBoards,
   rememberBoard,
@@ -21,13 +23,6 @@ import {
 
 // Content scripts the clipper injects into pages must never read the token.
 void chrome.storage.local.setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' });
-
-const MENU = {
-  image: 'save-image',
-  selection: 'save-selection',
-  link: 'save-link',
-  page: 'save-page',
-} as const;
 
 async function connected(): Promise<{ api: InkadraApi; connection: Connection }> {
   const connection = await getConnection();
@@ -146,10 +141,13 @@ async function clipFromPage(
   content: ClipContent,
   tab: chrome.tabs.Tab | undefined,
   frameId?: number,
+  boardId?: string,
 ): Promise<void> {
   try {
-    const board = (await refreshClipBoards())[0] ?? null;
-    if (!board) throw new ClipperError('no_board');
+    const board = boardId
+      ? (await getRecentBoards()).find((b) => b.id === boardId)
+      : (await refreshClipBoards())[0];
+    if (!board) throw new ClipperError(boardId ? 'not_found' : 'no_board');
     const saved = await clipTo(board, content, { tab, frameId });
     await toast(tab, {
       tone: 'ok',
@@ -182,17 +180,27 @@ function pageContent(tab: chrome.tabs.Tab | undefined): ClipContent | null {
 
 // Wiring ------------------------------------------------------------------------------------
 
+async function rebuildMenus(): Promise<void> {
+  const [connection, recent] = await Promise.all([getConnection(), getRecentBoards()]);
+  await chrome.contextMenus.removeAll();
+  await Promise.all(
+    menuItems(connection?.token ? recent : []).map(
+      (item) =>
+        new Promise<void>((resolve) => {
+          chrome.contextMenus.create(item, () => {
+            if (chrome.runtime.lastError) console.warn(chrome.runtime.lastError.message);
+            resolve();
+          });
+        }),
+    ),
+  );
+}
+
+let menuRebuild = Promise.resolve();
+
+/** One rebuild at a time: a removeAll overlapping another's creates gives duplicate ids. */
 function createMenus(): void {
-  chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: MENU.image, title: t('menu_image'), contexts: ['image'] });
-    chrome.contextMenus.create({
-      id: MENU.selection,
-      title: t('menu_selection'),
-      contexts: ['selection'],
-    });
-    chrome.contextMenus.create({ id: MENU.link, title: t('menu_link'), contexts: ['link'] });
-    chrome.contextMenus.create({ id: MENU.page, title: t('menu_page'), contexts: ['page'] });
-  });
+  menuRebuild = menuRebuild.then(rebuildMenus).catch(console.warn);
 }
 
 chrome.runtime.onInstalled.addListener((details) => {
@@ -201,17 +209,25 @@ chrome.runtime.onInstalled.addListener((details) => {
     void chrome.runtime.openOptionsPage();
 });
 
+chrome.runtime.onStartup.addListener(createMenus);
+
+// Covers connecting, disconnecting, switching server and every change to the recent boards.
+chrome.storage.local.onChanged.addListener((changes) => {
+  if ('connection' in changes || 'recentBoards' in changes) createMenus();
+});
+
 chrome.contextMenus.onClicked.addListener((info, tab) => {
+  const target = parseMenuId(info.menuItemId);
   const sourceUrl = info.frameUrl ?? info.pageUrl ?? tab?.url;
   let content: ClipContent | null = null;
-  if (info.menuItemId === MENU.image && info.srcUrl)
+  if (target?.context === 'image' && info.srcUrl)
     content = { kind: 'image', srcUrl: info.srcUrl, sourceUrl };
-  else if (info.menuItemId === MENU.selection && info.selectionText)
+  else if (target?.context === 'selection' && info.selectionText)
     content = { kind: 'text', text: info.selectionText, sourceUrl };
-  else if (info.menuItemId === MENU.link && info.linkUrl)
+  else if (target?.context === 'link' && info.linkUrl)
     content = { kind: 'link', url: info.linkUrl, sourceUrl };
-  else if (info.menuItemId === MENU.page) content = pageContent(tab);
-  if (content) void clipFromPage(content, tab, info.frameId);
+  else if (target?.context === 'page') content = pageContent(tab);
+  if (content) void clipFromPage(content, tab, info.frameId, target?.boardId);
 });
 
 chrome.commands.onCommand.addListener((command, tab) => {

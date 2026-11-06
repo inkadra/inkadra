@@ -31,6 +31,18 @@
     "message": "Salva la pagina in Inkadra",
     "description": "Context menu on a page."
   },
+  "menu_image_to": {
+    "message": "Salva l’immagine in…"
+  },
+  "menu_selection_to": {
+    "message": "Salva la selezione in…"
+  },
+  "menu_link_to": {
+    "message": "Salva il link in…"
+  },
+  "menu_page_to": {
+    "message": "Salva la pagina in…"
+  },
   "toast_saved": {
     "message": "Salvato in $BOARD$",
     "description": "After saving.",
@@ -117,6 +129,9 @@
   "connect_intro": {
     "message": "Collega il clipper al tuo server Inkadra. Ti verrà chiesto di accedere e di consentire l’accesso."
   },
+  "connect_server_help": {
+    "message": "È l’indirizzo del server Inkadra, tuo o del tuo team: ad esempio https://inkadra.example.com."
+  },
   "connect_permission": {
     "message": "Chrome chiederà il permesso di contattare solo questo indirizzo."
   },
@@ -139,7 +154,7 @@
     "message": "Cambia"
   },
   "help_menus": {
-    "message": "Con il tasto destro su un’immagine, un testo selezionato, un link o la pagina, salvi nell’ultima board scelta dal pulsante della barra."
+    "message": "Con il tasto destro su un’immagine, un testo selezionato, un link o la pagina, salvi nell’ultima board usata, oppure scegli una board recente dallo stesso menu."
   },
   "help_selfhost": {
     "message": "Estensione compilata da te"

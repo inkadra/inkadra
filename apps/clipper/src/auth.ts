@@ -6,6 +6,15 @@ import { type Connection, clearConnection, getConnection, setConnection } from '
 
 export const CLIENT_ID = 'clipper';
 
+/**
+ * Stores add update_url to the manifest of the copies they serve; ours has none, so unpacked
+ * builds never carry it. shortcut: a self-built copy packed with its own update_url counts as a
+ * store install; use chrome.management.getSelf() if such copies need the self-built help.
+ */
+export function isStoreInstall(): boolean {
+  return 'update_url' in chrome.runtime.getManifest();
+}
+
 export interface AuthorizeRequest {
   url: string;
   verifier: string;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { parseTags, webUrl } from './clip.ts';
+import { parseTags, readTabSelection, webUrl } from './clip.ts';
 import { ColumnPicker } from './columns.ts';
 import { serializeError } from './errors.ts';
 import { errorText, localize, t } from './i18n.ts';
@@ -267,6 +267,10 @@ async function start() {
   $('page-title').textContent = tab?.title || tab?.url || '';
   $('page-url').textContent = pageUrl ? new URL(pageUrl).host : t('page_not_web');
   if (!pageUrl) save.title = t('page_not_web');
+  if (tab?.id !== undefined)
+    void readTabSelection(tab.id).then((text) => {
+      if (!note.value) note.value = text;
+    });
 
   selected = status.lastBoard;
   if (selected) void columns.select(selected.id).catch(showError);

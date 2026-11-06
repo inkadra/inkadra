@@ -41,6 +41,12 @@ export async function readImageInPage(srcUrl: string, maxBytes: number): Promise
   }
 }
 
+/** The selected text, cut to what the API accepts without splitting a character in two. */
+export function readSelectionInPage(maxLength: number): string {
+  const text = (getSelection()?.toString() ?? '').trim().slice(0, maxLength);
+  return text.replace(/[\uD800-\uDBFF]$/, '');
+}
+
 export interface PageToast {
   text: string;
   tone: 'ok' | 'error';

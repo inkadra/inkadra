@@ -31,6 +31,18 @@
     "message": "Guardar página en Inkadra",
     "description": "Context menu on a page."
   },
+  "menu_image_to": {
+    "message": "Guardar imagen en…"
+  },
+  "menu_selection_to": {
+    "message": "Guardar selección en…"
+  },
+  "menu_link_to": {
+    "message": "Guardar enlace en…"
+  },
+  "menu_page_to": {
+    "message": "Guardar página en…"
+  },
   "toast_saved": {
     "message": "Guardado en $BOARD$",
     "description": "After saving.",
@@ -117,6 +129,9 @@
   "connect_intro": {
     "message": "Conecta el clipper a tu servidor de Inkadra. Se te pedirá iniciar sesión y permitir el acceso."
   },
+  "connect_server_help": {
+    "message": "Es la dirección del servidor de Inkadra, tuyo o de tu equipo: por ejemplo, https://inkadra.example.com."
+  },
   "connect_permission": {
     "message": "Chrome pedirá permiso para contactar solo con esta dirección."
   },
@@ -139,7 +154,7 @@
     "message": "Cambiar"
   },
   "help_menus": {
-    "message": "Haz clic derecho en una imagen, un texto seleccionado, un enlace o la página para guardarlo en el último tablero elegido con el botón de la barra de herramientas."
+    "message": "Haz clic derecho en una imagen, un texto seleccionado, un enlace o la página para guardarlo en el último tablero usado, o elige un tablero reciente en el mismo menú."
   },
   "help_selfhost": {
     "message": "Extensión compilada por ti"
