@@ -204,6 +204,10 @@ export function GuestReview({
       )}
       {rights.comments && <GuestComments key={frame.id} elementId={frame.id} />}
       <div className="guest-review__footer">
+        {/* The guest panel, which says how actions went, is not on screen here. */}
+        <p className="guest-review__notice" role="status">
+          {actions.notice}
+        </p>
         {rights.review && (
           <Button
             size="lg"

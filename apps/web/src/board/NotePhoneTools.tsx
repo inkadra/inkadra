@@ -137,11 +137,14 @@ export function NotePhoneTools({
       file: picked,
       projectId,
       boardId,
-      onAsset: (assetId) =>
-        editor.chain().focus().insertContent({ type: 'noteImage', attrs: { assetId } }).run(),
+      // Closed before the server created the file: the upload goes on, the note is left as is.
+      onAsset: (assetId) => {
+        if (editor.isDestroyed) return;
+        editor.chain().focus().insertContent({ type: 'noteImage', attrs: { assetId } }).run();
+      },
       onFailed: () => onError(t('board.note.pictureFailed')),
       onCancelled: (assetId) => {
-        if (!assetId) return;
+        if (!assetId || editor.isDestroyed) return;
         editor.commands.command(({ tr, state }) => {
           state.doc.descendants((node, pos) => {
             if (node.type.name === 'noteImage' && node.attrs.assetId === assetId)
@@ -305,6 +308,11 @@ export function NotePhoneTools({
     </button>
   );
   const chain = () => editor?.chain().focus();
+  /** A menu opens only at the start of a word: after a letter, a space goes first. */
+  const trigger = (char: '@' | '/') => {
+    const last = editor?.state.selection.$from.nodeBefore?.text?.slice(-1);
+    return last && !/\s/u.test(last) ? ` ${char}` : char;
+  };
 
   return (
     <div className="note-phone-tools">
@@ -387,7 +395,7 @@ export function NotePhoneTools({
         )}
         {tool('mention', t('board.note.mention'), <span aria-hidden="true">@</span>, () =>
           chain()
-            ?.insertContent(found ? ' @' : '@')
+            ?.insertContent(trigger('@'))
             .run(),
         )}
         {projectId &&
@@ -399,7 +407,7 @@ export function NotePhoneTools({
           <span aria-hidden="true">/</span>,
           () =>
             chain()
-              ?.insertContent(found ? ' /' : '/')
+              ?.insertContent(trigger('/'))
               .run(),
           found?.char === '/' || pickingFrame,
         )}
