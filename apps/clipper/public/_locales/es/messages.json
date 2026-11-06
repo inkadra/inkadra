@@ -4,7 +4,7 @@
     "description": "Name of the extension."
   },
   "ext_description": {
-    "message": "Guarda imágenes, texto y enlaces en un tablero de Inkadra. Requiere un servidor Inkadra, tuyo o de tu equipo.",
+    "message": "Guarda imágenes, texto y enlaces en un tablero de Inkadra. Requiere un servidor de Inkadra, tuyo o de tu equipo.",
     "description": "Store description."
   },
   "action_title": {
