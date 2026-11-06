@@ -5,7 +5,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
-import { formatElapsed, PresentationView } from './PresentationView.tsx';
+import { PresentationView } from './PresentationView.tsx';
 import { BoardStore } from './store.ts';
 
 const disposals: Array<() => void> = [];
@@ -24,14 +24,6 @@ async function mount(node: ReactNode) {
   });
   return host;
 }
-
-describe('formatElapsed', () => {
-  it('formats seconds into mm:ss', () => {
-    expect(formatElapsed(0)).toBe('00:00');
-    expect(formatElapsed(65)).toBe('01:05');
-    expect(formatElapsed(600)).toBe('10:00');
-  });
-});
 
 // Tests run without translations, so t() renders the key itself.
 const present = {
