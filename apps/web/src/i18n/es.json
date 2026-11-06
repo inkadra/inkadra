@@ -2357,7 +2357,29 @@
     "kitHelp": "Cuenta los iconos por tipo y etiqueta.",
     "moves": "Movimientos numerados",
     "fullPage": "Plantas a página completa",
-    "new": "Nuevo"
+    "new": "Nuevo",
+    "general": "General",
+    "yourCall": "Tu citación",
+    "confirm": "Confirmo mi asistencia",
+    "decline": "No puedo",
+    "presence": "Asistencia",
+    "presenceCount": "{{confirmed}} de {{total}} confirmados",
+    "presenceLoading": "Cargando la asistencia…",
+    "presenceError": "No se pudo cargar la asistencia.",
+    "retry": "Reintentar",
+    "saveError": "No se pudo guardar. Inténtalo de nuevo.",
+    "linkAccount": "Cuenta de {{name}}",
+    "noAccount": "Ninguna cuenta",
+    "otherAccount": "Otra cuenta",
+    "answer": {
+      "confirmed": "Has confirmado tu asistencia.",
+      "declined": "Has dicho que no puedes ir."
+    },
+    "status": {
+      "confirmed": "Confirmado",
+      "declined": "No puede",
+      "waiting": "Pendiente"
+    }
   },
   "needed": {
     "title": "Para llevar",

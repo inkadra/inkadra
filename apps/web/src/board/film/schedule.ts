@@ -1,10 +1,12 @@
-import type { ScheduleBlock, ShootingDayInput } from '@inkadra/shared';
+import {
+  clockMinutes,
+  type ScheduleBlock,
+  type ShootingDayInput,
+  scheduleTimes,
+} from '@inkadra/shared';
 import { formatClock } from '../../lib/datetime.ts';
 
-export function clockMinutes(time: string): number {
-  const [hours = 0, minutes = 0] = time.split(':').map(Number);
-  return hours * 60 + minutes;
-}
+export { clockMinutes, scheduleTimes } from '@inkadra/shared';
 
 export function clockLabel(minutes: number): string {
   const day = Math.floor(minutes / 1440);
@@ -12,18 +14,6 @@ export function clockLabel(minutes: number): string {
   const clock = `${String(Math.floor(local / 60)).padStart(2, '0')}:${String(local % 60).padStart(2, '0')}`;
   // In the person's time format (#302): 24 h unless they chose 12 h.
   return `${formatClock(clock)}${day ? ` (+${day})` : ''}`;
-}
-
-export function scheduleTimes(day: ShootingDayInput) {
-  const call = clockMinutes(day.callTime);
-  let cursor = call;
-  return day.blocks.map((block) => {
-    let start = block.start === null ? cursor : clockMinutes(block.start);
-    if (block.start !== null && start < call) start += 1440;
-    const end = start + block.duration;
-    cursor = end;
-    return { block, start, end };
-  });
 }
 
 /** Case-insensitive cast matches, including blocks on neighbouring calendar dates. */

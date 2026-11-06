@@ -2357,7 +2357,29 @@
     "kitHelp": "Zählt die Symbole nach Typ und Beschriftung.",
     "moves": "Nummerierte Bewegungen",
     "fullPage": "Pläne ganzseitig",
-    "new": "Neu"
+    "new": "Neu",
+    "general": "Allgemein",
+    "yourCall": "Dein Drehbeginn",
+    "confirm": "Anwesenheit bestätigen",
+    "decline": "Kann nicht",
+    "presence": "Anwesenheit",
+    "presenceCount": "{{confirmed}} von {{total}} bestätigt",
+    "presenceLoading": "Anwesenheit wird geladen…",
+    "presenceError": "Die Anwesenheit konnte nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "saveError": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+    "linkAccount": "Konto von {{name}}",
+    "noAccount": "Kein Konto",
+    "otherAccount": "Anderes Konto",
+    "answer": {
+      "confirmed": "Du hast deine Anwesenheit bestätigt.",
+      "declined": "Du hast angegeben, dass du nicht kommen kannst."
+    },
+    "status": {
+      "confirmed": "Bestätigt",
+      "declined": "Kann nicht",
+      "waiting": "Ausstehend"
+    }
   },
   "needed": {
     "title": "Mitbringen",

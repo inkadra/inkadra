@@ -2357,7 +2357,29 @@
     "kitHelp": "Compte les icônes par type et libellé.",
     "moves": "Mouvements numérotés",
     "fullPage": "Plans en pleine page",
-    "new": "Nouveau"
+    "new": "Nouveau",
+    "general": "Général",
+    "yourCall": "Ta convocation",
+    "confirm": "Je confirme ma présence",
+    "decline": "Je ne peux pas",
+    "presence": "Présences",
+    "presenceCount": "{{confirmed}} sur {{total}} confirmés",
+    "presenceLoading": "Chargement des présences…",
+    "presenceError": "Impossible de charger les présences.",
+    "retry": "Réessayer",
+    "saveError": "Échec de l'enregistrement. Réessaie.",
+    "linkAccount": "Compte de {{name}}",
+    "noAccount": "Aucun compte",
+    "otherAccount": "Autre compte",
+    "answer": {
+      "confirmed": "Tu as confirmé ta présence.",
+      "declined": "Tu as indiqué que tu ne peux pas venir."
+    },
+    "status": {
+      "confirmed": "Confirmé",
+      "declined": "Ne peut pas",
+      "waiting": "En attente"
+    }
   },
   "needed": {
     "title": "À apporter",

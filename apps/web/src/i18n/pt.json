@@ -2357,7 +2357,29 @@
     "kitHelp": "Conta os ícones por tipo e rótulo.",
     "moves": "Movimentos numerados",
     "fullPage": "Plantas em página inteira",
-    "new": "Novo"
+    "new": "Novo",
+    "general": "Geral",
+    "yourCall": "A tua convocatória",
+    "confirm": "Confirmo a presença",
+    "decline": "Não posso",
+    "presence": "Presenças",
+    "presenceCount": "{{confirmed}} de {{total}} confirmados",
+    "presenceLoading": "A carregar as presenças…",
+    "presenceError": "Não foi possível carregar as presenças.",
+    "retry": "Tentar novamente",
+    "saveError": "Não foi possível guardar. Tenta novamente.",
+    "linkAccount": "Conta de {{name}}",
+    "noAccount": "Nenhuma conta",
+    "otherAccount": "Outra conta",
+    "answer": {
+      "confirmed": "Confirmaste a presença.",
+      "declined": "Disseste que não podes estar presente."
+    },
+    "status": {
+      "confirmed": "Confirmado",
+      "declined": "Não pode",
+      "waiting": "Em espera"
+    }
   },
   "needed": {
     "title": "A levar",
