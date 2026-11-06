@@ -183,6 +183,52 @@ describe('PresentationView', () => {
     Reflect.deleteProperty(document, 'exitFullscreen');
   });
 
+  it('keeps the counter, notes and fullscreen on the header and no arrow hint', async () => {
+    const { store } = twoFrames();
+    const host = await mount(view(store));
+    const header = host.querySelector('.present-header');
+    expect(header?.querySelector('.present-header__count')).not.toBeNull();
+    expect(header?.querySelector('button[aria-pressed]')).not.toBeNull();
+    expect(header?.querySelector(`button[aria-label="${present.fullscreen}"]`)).not.toBeNull();
+    expect(host.textContent).not.toContain('present.keysHint');
+  });
+
+  it('marks the view idle after 3 seconds without the mouse, until it moves', async () => {
+    vi.useFakeTimers();
+    try {
+      const { store } = twoFrames();
+      const host = await mount(view(store));
+      const idle = () => host.querySelector('dialog')?.classList.contains('is-idle');
+      await act(async () => vi.advanceTimersByTime(2999));
+      expect(idle()).toBe(false);
+      await act(async () => vi.advanceTimersByTime(1));
+      expect(idle()).toBe(true);
+      // The arrow keys change slide with the bars still away.
+      await press('ArrowRight');
+      expect(idle()).toBe(true);
+      await act(async () => {
+        document.dispatchEvent(new Event('mousemove'));
+      });
+      expect(idle()).toBe(false);
+      await act(async () => vi.advanceTimersByTime(3000));
+      expect(idle()).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('never marks the empty state idle: its way out stays in view', async () => {
+    vi.useFakeTimers();
+    try {
+      const { store } = setup();
+      const host = await mount(view(store));
+      await act(async () => vi.advanceTimersByTime(3000));
+      expect(host.querySelector('dialog')?.classList.contains('is-idle')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('toggles the speaker notes', async () => {
     const { doc, store } = setup();
     const scene = addScene(doc, { number: '1' }, { userId: 'u1' });

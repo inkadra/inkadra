@@ -19,22 +19,19 @@ export interface SlideItem {
   id: string;
   type: 'frame' | 'card' | 'scene';
   title?: string;
-  sceneHeading?: string;
-  location?: string;
   label: string;
   action?: string;
-  specs?: {
-    shot?: string;
-    lens?: string;
-    movement?: string;
-    audio?: string;
-  };
+  /** Shot, lens, movement and audio on one line. */
+  specs?: string;
   notes?: string;
   frame?: FrameElement;
   /** A scene slide (round 6, i): the scene's frames on the left, its set plan on the right. */
   plan?: PlanLike;
   frames?: readonly FrameElement[];
 }
+
+/** The bars and the strip step aside after this long without moving the mouse. */
+const IDLE_MS = 3000;
 
 export function PresentationView({
   store,
@@ -61,6 +58,7 @@ export function PresentationView({
   const [index, setIndex] = useState(0);
   const [showNotes, setShowNotes] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
+  const [idle, setIdle] = useState(false);
   const rootRef = useRef<HTMLDialogElement>(null);
   const [settings, setSettings] = useState<ExportSettings | null>(null);
   useEffect(() => {
@@ -110,19 +108,28 @@ export function PresentationView({
     };
   }, []);
 
+  // Only the mouse brings them back, so a remote or the arrow keys don't flash them at the audience.
+  // The stylesheet keeps them while they hold keyboard focus and where there is no mouse.
+  useEffect(() => {
+    let timer = 0;
+    const wake = () => {
+      setIdle(false);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setIdle(true), IDLE_MS);
+    };
+    wake();
+    document.addEventListener('mousemove', wake);
+    return () => {
+      document.removeEventListener('mousemove', wake);
+      window.clearTimeout(timer);
+    };
+  }, []);
+
   const slides = useMemo(() => {
     const list: SlideItem[] = [];
 
     for (const group of groups) {
       const scene = group.scene;
-      const headingParts = [
-        scene ? t('film.scene.heading', { number: scene.number }).toUpperCase() : undefined,
-        scene?.title ? scene.title.toUpperCase() : undefined,
-        scene?.setting ? scene.setting.toUpperCase() : undefined,
-        scene?.time ? scene.time.toUpperCase() : undefined,
-      ].filter(Boolean);
-      const sceneHeading = headingParts.join(' · ');
-
       // The plan of the scene first, unless the plan leaves itself out of the slides.
       const plan = scene
         ? plansOfScene(store.getSnapshot().byId.values(), scene.id).find(
@@ -135,8 +142,6 @@ export function PresentationView({
           id: `scene-${scene.id}`,
           type: 'scene',
           label: t('needed.sceneNumber', { number: scene.number }),
-          sceneHeading: sceneHeading || undefined,
-          location: scene.location,
           action: scene.synopsis || '',
           notes: scene.synopsis || '',
           plan: base?.type === 'plan' ? variantView(plan, base) : plan,
@@ -149,15 +154,15 @@ export function PresentationView({
           id: frame.id,
           type: 'frame',
           label,
-          sceneHeading: sceneHeading || undefined,
-          location: scene?.location || frame.location,
           action: frame.action || frame.notes || '',
-          specs: {
-            shot: frame.shot ? getPreset('shotSizes', frame.shot) : undefined,
-            lens: frame.lens,
-            movement: frame.movement ? getPreset('shotMovements', frame.movement) : undefined,
-            audio: frame.audio ? t('present.audio', { value: frame.audio }) : undefined,
-          },
+          specs: [
+            frame.shot ? getPreset('shotSizes', frame.shot) : undefined,
+            frame.lens,
+            frame.movement ? getPreset('shotMovements', frame.movement) : undefined,
+            frame.audio ? t('present.audio', { value: frame.audio }) : undefined,
+          ]
+            .filter(Boolean)
+            .join(' · '),
           notes: frame.notes || scene?.synopsis || '',
           frame,
         });
@@ -200,6 +205,15 @@ export function PresentationView({
     return () => document.removeEventListener('keydown', onKey, true);
   }, [onClose, goNext, goPrev]);
 
+  // The arrow keys can walk past the end of the strip: the current slide stays in view.
+  const stripRef = useRef<HTMLElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the slide changes.
+  useEffect(() => {
+    stripRef.current
+      ?.querySelector('[aria-current]')
+      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [safeIndex]);
+
   const toggleFullscreen = () => {
     if (document.fullscreenElement) {
       document.exitFullscreen?.().catch(() => {});
@@ -214,7 +228,7 @@ export function PresentationView({
   return (
     <dialog
       ref={rootRef}
-      className="present-view"
+      className={`present-view${idle && current ? ' is-idle' : ''}`}
       style={
         settings
           ? ({
@@ -226,37 +240,57 @@ export function PresentationView({
       tabIndex={-1}
       aria-label={t('present.title')}
       onCancel={(e) => e.preventDefault()}
+      // A click puts focus on the dialog. On a button, the next arrow key would make it keyboard
+      // focus to the browser, and the bars would stay up for the rest of the presentation.
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.currentTarget.focus();
+      }}
     >
-      <header className="present-header">
-        <button type="button" className="present-header__btn" onClick={onClose}>
-          <Icon name="arrow" size={14} style={{ transform: 'rotate(180deg)' }} />
-          <span>{t('present.exit')}</span>
-          <KeyCap>Esc</KeyCap>
-        </button>
-        <span className="present-header__sep">/</span>
-        {settings?.logo && (
-          <img className="present-header__logo" src={logoUrl(settings.logo)} alt="" />
-        )}
-        <span className="present-header__title">
-          {projectTitle ? `${projectTitle} · ` : ''}
-          {boardTitle}
-        </span>
-        <div className="present-header__spacer" />
-      </header>
-
       <div className="present-body">
         <main className="present-main">
+          <header className="present-header">
+            <button type="button" className="present-header__btn" onClick={onClose}>
+              <Icon name="arrow" size={14} style={{ transform: 'rotate(180deg)' }} />
+              <span>{t('present.exit')}</span>
+              <KeyCap>Esc</KeyCap>
+            </button>
+            <span className="present-header__sep">/</span>
+            {settings?.logo && (
+              <img className="present-header__logo" src={logoUrl(settings.logo)} alt="" />
+            )}
+            <span className="present-header__title">
+              {projectTitle ? `${projectTitle} · ` : ''}
+              {boardTitle}
+            </span>
+            <div className="present-header__spacer" />
+            {current && (
+              <>
+                <span className="present-header__count">
+                  {t('present.slideCounter', { current: safeIndex + 1, total })}
+                </span>
+                <button
+                  type="button"
+                  className={`present-header__btn present-header__notes${showNotes ? ' is-active' : ''}`}
+                  aria-pressed={showNotes}
+                  onClick={() => setShowNotes((v) => !v)}
+                >
+                  {t('present.speakerNotes')}
+                </button>
+              </>
+            )}
+            <IconButton
+              icon="fit"
+              label={fullscreen ? t('present.exitFullscreen') : t('present.fullscreen')}
+              onClick={toggleFullscreen}
+            />
+          </header>
+
           {current ? (
             <section className="present-stage" aria-label={slideAria}>
               <p className="present-sr-only" aria-live="polite">
                 {`${slideAria} · ${current.label}`}
               </p>
-              <div className="present-stage__meta">
-                <span className="present-stage__heading">{current.sceneHeading}</span>
-                {current.location && (
-                  <span className="present-stage__location">{current.location}</span>
-                )}
-              </div>
 
               <div
                 className={`present-stage__canvas${current.plan ? ' present-stage__canvas--scene' : ''}`}
@@ -297,17 +331,8 @@ export function PresentationView({
 
               <div className="present-stage__footer">
                 <span className="present-stage__shot-label">{current.label}</span>
-                <div className="present-stage__content">
-                  {current.action && <p className="present-stage__action">{current.action}</p>}
-                  {current.specs && (
-                    <div className="present-stage__specs">
-                      {current.specs.shot && <span>{current.specs.shot}</span>}
-                      {current.specs.lens && <span>{current.specs.lens}</span>}
-                      {current.specs.movement && <span>{current.specs.movement}</span>}
-                      {current.specs.audio && <span>{current.specs.audio}</span>}
-                    </div>
-                  )}
-                </div>
+                <p className="present-stage__action">{current.action}</p>
+                {current.specs && <span className="present-stage__specs">{current.specs}</span>}
               </div>
             </section>
           ) : (
@@ -320,7 +345,7 @@ export function PresentationView({
 
           <footer className="present-bottom">
             {total > 1 && (
-              <nav className="present-strip" aria-label={t('present.slides')}>
+              <nav ref={stripRef} className="present-strip" aria-label={t('present.slides')}>
                 {slides.map((s, i) => (
                   <button
                     key={s.id}
@@ -330,76 +355,51 @@ export function PresentationView({
                     aria-current={i === safeIndex ? 'true' : undefined}
                     onClick={() => setIndex(i)}
                   >
-                    <span className="present-thumb__pic">
-                      {s.plan && <PlanDrawing plan={s.plan} />}
-                      {s.frame && (
-                        <FramePicture
-                          assetId={s.frame.assetId}
-                          aspect={s.frame.aspect}
-                          boardAspect={boardAspect}
-                          strokes={s.frame.strokes}
-                          shapes={s.frame.shapes}
-                          referenceOpacity={s.frame.referenceOpacity}
-                          pixels={200}
-                        />
-                      )}
-                    </span>
-                    <span className="present-thumb__name">
-                      {i + 1} · {s.label}
-                    </span>
+                    {s.plan && <PlanDrawing plan={s.plan} />}
+                    {s.frame && (
+                      <FramePicture
+                        assetId={s.frame.assetId}
+                        aspect={s.frame.aspect}
+                        boardAspect={boardAspect}
+                        strokes={s.frame.strokes}
+                        shapes={s.frame.shapes}
+                        referenceOpacity={s.frame.referenceOpacity}
+                        pixels={200}
+                      />
+                    )}
                   </button>
                 ))}
               </nav>
             )}
 
-            <div className="present-progress">
-              <div className="present-progress__bar" style={{ width: `${progressPercent}%` }} />
-            </div>
+            {current && (
+              <div className="present-progress">
+                <div className="present-progress__bar" style={{ width: `${progressPercent}%` }} />
+              </div>
+            )}
 
-            <div role="toolbar" className="present-toolbar" aria-label={t('present.toolbar')}>
-              <IconButton
-                icon="chevronRight"
-                style={{ transform: 'rotate(180deg)' }}
-                label={t('present.prev')}
-                disabled={safeIndex <= 0}
-                onClick={goPrev}
-              />
-              <span className="present-toolbar__count">
-                {t('present.slideCounter', { current: total > 0 ? safeIndex + 1 : 0, total })}
-              </span>
-              <IconButton
-                icon="chevronRight"
-                label={t('present.next')}
-                disabled={safeIndex >= total - 1}
-                onClick={goNext}
-              />
-              <span className="present-toolbar__hint">
-                <KeyCap>←</KeyCap>
-                <KeyCap>→</KeyCap>
-                <span>{t('present.keysHint')}</span>
-              </span>
-
-              <div style={{ flex: 1 }} />
-
-              <button
-                type="button"
-                className={`present-toolbar__btn${showNotes ? ' is-active' : ''}`}
-                aria-pressed={showNotes}
-                onClick={() => setShowNotes((v) => !v)}
-              >
-                <span>{t('present.speakerNotes')}</span>
-              </button>
-
-              <IconButton
-                icon="fit"
-                label={fullscreen ? t('present.exitFullscreen') : t('present.fullscreen')}
-                onClick={toggleFullscreen}
-              />
-            </div>
+            {/* Phones have no strip: these are the only buttons to change slide there. */}
+            {current && (
+              <div role="toolbar" className="present-toolbar" aria-label={t('present.toolbar')}>
+                <IconButton
+                  icon="chevronRight"
+                  style={{ transform: 'rotate(180deg)' }}
+                  label={t('present.prev')}
+                  disabled={safeIndex <= 0}
+                  onClick={goPrev}
+                />
+                <IconButton
+                  icon="chevronRight"
+                  label={t('present.next')}
+                  disabled={safeIndex >= total - 1}
+                  onClick={goNext}
+                />
+              </div>
+            )}
           </footer>
         </main>
 
-        {showNotes && (
+        {current && showNotes && (
           <aside className="present-sidebar" aria-label={t('present.speakerNotes')}>
             <div className="present-sidebar__head">
               <span className="present-sidebar__title">{t('present.speakerNotes')}</span>
@@ -410,25 +410,24 @@ export function PresentationView({
               />
             </div>
 
-            <div className="present-sidebar__notes">
-              <span className="present-sidebar__label">
-                {t('present.slideLabel', { n: safeIndex + 1, label: current?.label ?? '' })}
-              </span>
-              {current?.notes ? (
-                <p style={{ margin: 0 }}>{current.notes}</p>
-              ) : (
-                <p style={{ margin: 0, color: 'var(--ink-text-muted)', fontStyle: 'italic' }}>
-                  {t('present.noNotes')}
-                </p>
-              )}
-            </div>
+            <span className="present-sidebar__label">
+              {t('present.slideLabel', { n: safeIndex + 1, label: current.label })}
+            </span>
+            {current.notes ? (
+              <p className="present-sidebar__notes">{current.notes}</p>
+            ) : (
+              <p className="present-sidebar__notes present-sidebar__notes--empty">
+                {t('present.noNotes')}
+              </p>
+            )}
 
             {nextSlide && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span className="present-sidebar__label">
+              <>
+                <span className="present-sidebar__label present-sidebar__label--next">
                   {t('present.nextSlide')} · {nextSlide.label}
                 </span>
                 <div className="present-sidebar__preview-pic">
+                  {nextSlide.plan && <PlanDrawing plan={nextSlide.plan} />}
                   {nextSlide.frame && (
                     <FramePicture
                       assetId={nextSlide.frame.assetId}
@@ -441,13 +440,7 @@ export function PresentationView({
                     />
                   )}
                 </div>
-                {nextSlide.specs?.shot && (
-                  <span style={{ fontSize: 12, color: 'var(--ink-text-muted)' }}>
-                    {nextSlide.specs.shot}
-                    {nextSlide.specs.lens ? ` · ${nextSlide.specs.lens}` : ''}
-                  </span>
-                )}
-              </div>
+              </>
             )}
           </aside>
         )}
