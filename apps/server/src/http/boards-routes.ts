@@ -200,34 +200,54 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
   app.get(v1('/me/unsorted'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const rows = await db
-      .select({ board, projectName: project.name, state: boardDoc.state })
+      .select({
+        id: board.id,
+        projectId: board.projectId,
+        title: board.title,
+        projectName: project.name,
+      })
       .from(board)
       .innerJoin(project, and(eq(project.id, board.projectId), isNull(project.archivedAt)))
-      .innerJoin(boardDoc, eq(boardDoc.boardId, board.id))
       .where(and(isNull(board.deletedAt), visibleTo(actor.id)));
-    const waiting = rows
-      .map((r) => ({ ...r, unsorted: unsortedOf(r.state) }))
-      .filter((r) => r.unsorted.count > 0);
     // Only people who can place the cards: the tray is hidden from guests and read-only roles.
+    // Documents are large: only the boards that pass are read.
     const roles = await boardRoles(
       db,
       actor,
-      waiting.map((r) => r.board.id),
+      rows.map((r) => r.id),
     );
-    const editable = waiting
-      .filter((r) => {
-        const role = roles.get(r.board.id);
-        return role && atLeast(role, CAPABILITY_ROLE.edit);
+    const placeable = rows.filter((r) => {
+      const role = roles.get(r.id);
+      return role && atLeast(role, CAPABILITY_ROLE.edit);
+    });
+    const docs = placeable.length
+      ? await db
+          .select({ boardId: boardDoc.boardId, state: boardDoc.state })
+          .from(boardDoc)
+          .where(
+            inArray(
+              boardDoc.boardId,
+              placeable.map((r) => r.id),
+            ),
+          )
+      : [];
+    const states = new Map(docs.map((d) => [d.boardId, d.state]));
+    const editable = placeable
+      .flatMap((r) => {
+        const state = states.get(r.id);
+        if (!state) return [];
+        const unsorted = unsortedOf(state);
+        return unsorted.count > 0 ? [{ ...r, unsorted }] : [];
       })
-      .sort((a, b) => b.unsorted.count - a.unsorted.count || a.board.id.localeCompare(b.board.id))
+      .sort((a, b) => b.unsorted.count - a.unsorted.count || a.id.localeCompare(b.id))
       .slice(0, 20);
     const items = await Promise.all(
       editable.map(async (r) => {
-        const allowed = await projectMedia(db, r.board.projectId, r.unsorted.assetIds);
+        const allowed = await projectMedia(db, r.projectId, r.unsorted.assetIds);
         return {
-          boardId: r.board.id,
-          projectId: r.board.projectId,
-          boardTitle: r.board.title,
+          boardId: r.id,
+          projectId: r.projectId,
+          boardTitle: r.title,
           projectName: r.projectName,
           count: r.unsorted.count,
           assetIds: r.unsorted.assetIds.filter((id) => allowed.has(id)).slice(0, 2),
