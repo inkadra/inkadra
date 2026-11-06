@@ -16,14 +16,42 @@ import { startUpload } from './uploads.ts';
  * on-screen keyboard, the `/` menu (shot, to-do, picture) and `@` mentions.
  */
 
+/** `env(safe-area-inset-bottom)` in pixels: CSS has it, scripts don't. */
+function safeAreaBottom(): number {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;visibility:hidden;height:env(safe-area-inset-bottom)';
+  document.body.append(probe);
+  const height = probe.getBoundingClientRect().height;
+  probe.remove();
+  return height;
+}
+
+/**
+ * How far the keyboard reaches over the page. Android Chrome drew edge to edge (seen on a Pixel 11,
+ * Chrome 156) zeroes the bottom safe area while the keyboard is up, and its visual viewport then
+ * ends that much below the keyboard's top. iOS keeps the safe area and its viewport is exact.
+ */
+export function keyboardInset(covered: number, safe: number, safeWithoutKeyboard: number): number {
+  return covered > 0 ? covered + Math.max(0, safeWithoutKeyboard - safe) : 0;
+}
+
 /** Height of the on-screen keyboard, from the visual viewport; 0 without one. */
 export function useKeyboardInset(): number {
   const [inset, setInset] = useState(0);
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
-    const update = () =>
-      setInset(Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop)));
+    // shortcut: a note opened with the keyboard already up has no reading until it closes once.
+    let safeWithoutKeyboard = 0;
+    const update = () => {
+      const covered = Math.max(
+        0,
+        Math.round(window.innerHeight - viewport.height - viewport.offsetTop),
+      );
+      const safe = safeAreaBottom();
+      if (covered === 0) safeWithoutKeyboard = safe;
+      setInset(keyboardInset(covered, safe, safeWithoutKeyboard));
+    };
     update();
     viewport.addEventListener('resize', update);
     viewport.addEventListener('scroll', update);

@@ -347,7 +347,7 @@
     "empty": {
       "title": "Womit fangen wir an?",
       "body": "Wähle einen Startpunkt oder schreib per Doppelklick eine Notiz.",
-      "bodyTouch": "Wähle einen Startpunkt oder schreib per Doppeltipp eine Notiz.",
+      "bodyTouch": "Wähle einen Startpunkt oder füge über die Leiste eine Notiz hinzu.",
       "screenplay": "Drehbuch importieren",
       "screenplayBody": "Fountain, Final Draft oder PDF",
       "hint": "Du kannst auch Dateien und Bilder hierher ziehen.",

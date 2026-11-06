@@ -347,7 +347,7 @@
     "empty": {
       "title": "¿Por dónde empezamos?",
       "body": "Elige un punto de partida o haz doble clic para escribir una nota.",
-      "bodyTouch": "Elige un punto de partida o toca dos veces para escribir una nota.",
+      "bodyTouch": "Elige un punto de partida o añade una nota desde la barra.",
       "screenplay": "Importar guion",
       "screenplayBody": "Fountain, Final Draft o PDF",
       "hint": "También puedes arrastrar aquí archivos e imágenes.",

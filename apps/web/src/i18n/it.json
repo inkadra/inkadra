@@ -347,7 +347,7 @@
     "empty": {
       "title": "Da dove partiamo?",
       "body": "Scegli un punto di partenza, oppure fai doppio clic per scrivere una nota.",
-      "bodyTouch": "Scegli un punto di partenza, oppure tocca due volte per scrivere una nota.",
+      "bodyTouch": "Scegli un punto di partenza, oppure aggiungi una nota dalla barra.",
       "screenplay": "Importa sceneggiatura",
       "screenplayBody": "Fountain, Final Draft o PDF",
       "hint": "Puoi anche trascinare qui file e immagini.",
