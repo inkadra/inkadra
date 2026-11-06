@@ -57,6 +57,8 @@ export interface ReviewsState {
   /** Card whose threads are open in a popover beside it; null when none. */
   popover: string | null;
   commentsRevision: number;
+  /** Raised when someone starts a mention: people may have joined since the board opened. */
+  peopleRevision: number;
   reviewsRevision: number;
 }
 
@@ -80,6 +82,7 @@ const EMPTY: ReviewsState = {
   onBoard: true,
   popover: null,
   commentsRevision: 0,
+  peopleRevision: 0,
   reviewsRevision: 0,
 };
 

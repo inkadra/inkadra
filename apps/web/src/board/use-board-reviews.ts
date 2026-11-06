@@ -11,7 +11,7 @@ import type {
 } from '@inkadra/shared';
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
-import { api } from '../lib/api.ts';
+import { api, RequestError } from '../lib/api.ts';
 import type { BoardConnection } from './connection.ts';
 import {
   findThread,
@@ -69,6 +69,7 @@ export function useBoardReviews(
   const accessVersion = conn?.accessChangedAt;
   const commentsRevision = useReviews((s) => s.commentsRevision);
   const reviewsRevision = useReviews((s) => s.reviewsRevision);
+  const peopleRevision = useReviews((s) => s.peopleRevision);
   // Everything is fetched when the board opens, the connection comes back or access changes;
   // a notice or a local change then only fetches the threads of the card it is about.
   const loadedFor = useRef<string | null>(null);
@@ -182,18 +183,20 @@ export function useBoardReviews(
     if (!synced) return;
     let alive = true;
     void accessVersion;
+    void peopleRevision;
     api
       .get<BoardAccess>(`/boards/${boardId}/access`)
       .then((a) => {
         if (alive) setReviews({ people: a.items.map((entry) => entry.user) });
       })
-      .catch(() => {
-        if (alive) setReviews({ people: [] });
+      .catch((err) => {
+        // Only the server's answer empties the list: a network hiccup keeps who we know.
+        if (alive && err instanceof RequestError) setReviews({ people: [] });
       });
     return () => {
       alive = false;
     };
-  }, [boardId, synced, accessVersion]);
+  }, [boardId, synced, accessVersion, peopleRevision]);
 
   const provider = conn?.provider;
   useEffect(() => {

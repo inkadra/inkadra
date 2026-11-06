@@ -1924,6 +1924,7 @@
     "body": "Commentaire",
     "placeholder": "Écrivez un commentaire…",
     "mentionHint": "@ pour mentionner quelqu’un",
+    "noMentionMatch": "No one by that name: you can only mention people with access to the board.",
     "sendHint": "⌘/Ctrl+Entrée pour envoyer",
     "mentions": "Personnes à mentionner",
     "tooLong": "Le commentaire dépasse {{max}} caractères.",
