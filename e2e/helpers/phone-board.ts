@@ -11,12 +11,12 @@ export function cardAction(page: Page, name: string | RegExp, exact = typeof nam
 
 /** Adds a card from the bar, or from its "More" menu on a phone, where most tools wait (#110). */
 export async function addFromBar(page: Page, name: string) {
-  const toolbar = page.locator('.canvas .toolbar');
-  const tool = toolbar.getByRole('button', { name, exact: true });
+  const tool = page.getByRole('button', { name, exact: true });
   if (await tool.isVisible()) {
     await tool.click();
     return;
   }
+  const toolbar = page.locator('.canvas .toolbar');
   await toolbar.getByRole('button', { name: 'Altro', exact: true }).click();
   await page.getByRole('menu').getByRole('menuitem', { name, exact: true }).click();
 }
