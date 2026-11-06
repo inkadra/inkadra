@@ -44,7 +44,7 @@ const cards = [
     italic: true,
     align: 'center',
     color: 'orange',
-    background: 'teal',
+    background: 'black',
     line: false,
   },
   {
