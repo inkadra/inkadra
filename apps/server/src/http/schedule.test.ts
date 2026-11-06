@@ -188,6 +188,99 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
       expect((await link('editor', 'Anna', people.actor?.id)).statusCode).toBe(204);
     });
   });
+  describe('answers when the plan changes', () => {
+    const block = input.blocks[0] as ShootingDayInput['blocks'][number];
+    const first = { ...block, id: crypto.randomUUID(), start: '09:00', cast: ['Anna'] };
+    const second = { ...block, id: crypto.randomUUID(), start: '12:00', cast: ['Bob'] };
+    const plan = { ...input, date: '2026-12-01', blocks: [first, second] };
+    let dayId = '';
+    let revision = 0;
+    const save = async (patch: Partial<ShootingDayInput>) => {
+      const saved = await request('editor', 'PUT', `${base()}/${dayId}`, {
+        ...plan,
+        ...patch,
+        revision,
+      });
+      expect(saved.statusCode).toBe(200);
+      revision = saved.json().revision;
+    };
+    /** The plan as it started, with both linked people having confirmed. */
+    const answered = async () => {
+      await save({});
+      for (const person of ['actor', 'viewer']) {
+        const answer = { status: 'confirmed' };
+        const saved = await request(person, 'PUT', `${base()}/${dayId}/attendance`, answer);
+        expect(saved.statusCode).toBe(200);
+      }
+    };
+    const stillAnswered = async () => {
+      const { responses } = (await request('editor', 'GET', `${base()}/attendance`)).json();
+      return responses
+        .filter((response: { dayId: string }) => response.dayId === dayId)
+        .map((response: { userId: string }) =>
+          response.userId === people.actor?.id ? 'actor' : 'viewer',
+        )
+        .sort();
+    };
+    beforeAll(async () => {
+      const created = await request('editor', 'POST', base(), plan);
+      dayId = created.json().id;
+      revision = created.json().revision;
+      const linked = await request('editor', 'PUT', `${base()}/cast-links`, {
+        name: 'Bob',
+        userId: people.viewer?.id,
+      });
+      expect(linked.statusCode).toBe(204);
+    });
+    afterAll(async () => {
+      await request('editor', 'DELETE', `${base()}/${dayId}`, { revision });
+      await request('editor', 'PUT', `${base()}/cast-links`, { name: 'Bob', userId: null });
+    });
+
+    it('keeps them when nothing about their time changes', async () => {
+      await answered();
+      await save({ notes: 'New notes', location: 'Elsewhere', wrap: '20:00' });
+      await save({
+        blocks: [
+          { ...first, title: 'Renamed' },
+          second,
+          // A later block for someone already called leaves their first call where it was.
+          { ...first, id: crypto.randomUUID(), start: '15:00' },
+        ],
+      });
+      expect(await stillAnswered()).toEqual(['actor', 'viewer']);
+    });
+    it('clears the whole day when its date changes', async () => {
+      await answered();
+      await save({ date: '2026-12-02' });
+      expect(await stillAnswered()).toEqual([]);
+    });
+    it('clears the whole day when its call time changes', async () => {
+      await answered();
+      await save({ callTime: '07:30' });
+      expect(await stillAnswered()).toEqual([]);
+    });
+    it('clears only the person whose first block moves', async () => {
+      await answered();
+      await save({ blocks: [first, { ...second, start: '13:00' }] });
+      expect(await stillAnswered()).toEqual(['actor']);
+    });
+    it('clears someone taken out of the day, not the others', async () => {
+      await answered();
+      await save({ blocks: [{ ...first, cast: [] }, second] });
+      expect(await stillAnswered()).toEqual(['viewer']);
+    });
+    it('keeps them when a stale write is refused', async () => {
+      await answered();
+      const stale = await request('editor', 'PUT', `${base()}/${dayId}`, {
+        ...plan,
+        date: '2026-12-09',
+        revision: revision - 1,
+      });
+      expect(stale.statusCode).toBe(409);
+      expect(await stillAnswered()).toEqual(['actor', 'viewer']);
+    });
+  });
   it('refuses every write by viewers', async () => {
     expect((await request('viewer', 'POST', base(), input)).statusCode).toBe(403);
     expect(

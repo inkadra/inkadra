@@ -7,10 +7,11 @@ import {
   SetCastLink,
   SetDayAttendance,
   ShootingDayInput,
+  scheduleTimes,
   UpdateShootingDay,
   z,
 } from '@inkadra/shared';
-import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { atLeast, boardRolesForPeople, live, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
@@ -27,6 +28,23 @@ const publicDay = ({
   updatedAt: _updated,
   ...row
 }: typeof shootingDay.$inferSelect) => row;
+
+/** When each linked person is first called on a day, in minutes from the shooting date. */
+function firstCalls(
+  day: Pick<ShootingDayInput, 'callTime' | 'blocks'>,
+  links: ReadonlyArray<{ castKey: string; userId: string }>,
+) {
+  const owners = new Map(links.map((link) => [link.castKey, link.userId]));
+  const first = new Map<string, number>();
+  for (const { block, start } of scheduleTimes(day)) {
+    for (const name of block.cast) {
+      const userId = owners.get(castNameKey(name));
+      if (userId && start < (first.get(userId) ?? Number.POSITIVE_INFINITY))
+        first.set(userId, start);
+    }
+  }
+  return first;
+}
 
 export function registerScheduleRoutes(
   app: FastifyInstance,
@@ -186,17 +204,49 @@ export function registerScheduleRoutes(
     const { boardId, dayId } = DayParams.parse(req.params);
     await requireBoardRole(db, actor, boardId, 'editor');
     const { revision, ...input } = UpdateShootingDay.parse(req.body);
-    const [row] = await db
-      .update(shootingDay)
-      .set({ ...input, revision: sql`${shootingDay.revision} + 1` })
-      .where(
-        and(
-          eq(shootingDay.id, dayId),
-          eq(shootingDay.boardId, boardId),
-          eq(shootingDay.revision, revision),
-        ),
-      )
-      .returning();
+    const row = await db.transaction(async (tx) => {
+      const where = and(
+        eq(shootingDay.id, dayId),
+        eq(shootingDay.boardId, boardId),
+        eq(shootingDay.revision, revision),
+      );
+      const [before] = await tx
+        .select({
+          date: shootingDay.date,
+          callTime: shootingDay.callTime,
+          blocks: shootingDay.blocks,
+        })
+        .from(shootingDay)
+        .where(where)
+        .for('update');
+      if (!before) return null;
+      const [updated] = await tx
+        .update(shootingDay)
+        .set({ ...input, revision: sql`${shootingDay.revision} + 1` })
+        .where(where)
+        .returning();
+      if (!updated) return null;
+      // An answer was given for a time: when that time moves, the question is open again.
+      const ofDay = eq(shootingDayAttendance.dayId, dayId);
+      if (before.date !== input.date || before.callTime !== input.callTime) {
+        await tx.delete(shootingDayAttendance).where(ofDay);
+        return updated;
+      }
+      const links = await tx
+        .select({ castKey: castLink.castKey, userId: castLink.userId })
+        .from(castLink)
+        .where(eq(castLink.boardId, boardId));
+      const was = firstCalls(before, links);
+      const now = firstCalls(input, links);
+      const moved = [...new Set([...was.keys(), ...now.keys()])].filter(
+        (userId) => was.get(userId) !== now.get(userId),
+      );
+      if (moved.length)
+        await tx
+          .delete(shootingDayAttendance)
+          .where(and(ofDay, inArray(shootingDayAttendance.userId, moved)));
+      return updated;
+    });
     if (!row)
       throw new HttpError('conflict', 'The day changed or was removed. Reload the schedule.');
     return publicDay(row);

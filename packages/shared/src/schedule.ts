@@ -87,6 +87,24 @@ export const MySchedule = z
   .openapi('MySchedule');
 export type MySchedule = z.infer<typeof MySchedule>;
 
+export function clockMinutes(time: string): number {
+  const [hours = 0, minutes = 0] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+/** Start and end of each block in minutes from the shooting date, including overnight. */
+export function scheduleTimes(day: Pick<ShootingDayInput, 'callTime' | 'blocks'>) {
+  const call = clockMinutes(day.callTime);
+  let cursor = call;
+  return day.blocks.map((block) => {
+    let start = block.start === null ? cursor : clockMinutes(block.start);
+    if (block.start !== null && start < call) start += 1440;
+    const end = start + block.duration;
+    cursor = end;
+    return { block, start, end };
+  });
+}
+
 /** Cast names are free text; the same person matches whatever the case or surrounding spaces. */
 export const castNameKey = (name: string) => name.trim().toLowerCase();
 

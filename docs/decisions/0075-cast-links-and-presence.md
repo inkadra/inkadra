@@ -15,6 +15,9 @@ users at all, and nothing may change for them or for sheets without links.
 - **Only for oneself.** The route takes no person: it answers for the signed-in account, which must
   have access to the board and be linked to a name in that day's blocks. Guests have no account.
 - **Organisers see everybody, the others only themselves.** The list is filtered on the server.
+- **An answer holds for a time.** Saving a day clears its answers when the date or the call time
+  changes, and a person's answer when their first block moves or they leave the day. Other edits
+  keep them. Nobody is told: they find the buttons open again.
 - **Where.** On a phone, everyone with access gets the sheet with their own call and, if linked,
   the buttons. On a computer the printed sheet and its preview stay as they were: people who can
   edit the plan get the same attendance panel beside them, outside the print, and only they ask the
