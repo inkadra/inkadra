@@ -593,7 +593,7 @@
   min-height: 44px;
   justify-content: center;
 }
-.guest-review__decide .ink-btn[aria-pressed='true']:not(.ink-btn--primary) {
+.guest-review__decide .ink-btn[aria-pressed="true"]:not(.ink-btn--primary) {
   box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
 }
 .guest-review__footer {

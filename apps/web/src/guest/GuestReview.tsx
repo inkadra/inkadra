@@ -34,7 +34,11 @@ export function GuestReview({
   const { rights, linkId, boardId } = actions;
   const elements = snapshot?.elements ?? [];
   const frames = useMemo(
-    () => storyboardOrder(elements.filter((e) => e.type === 'frame'), elements),
+    () =>
+      storyboardOrder(
+        elements.filter((e) => e.type === 'frame'),
+        elements,
+      ),
     [elements],
   );
   const labels = useMemo(() => shotLabels(elements), [elements]);
@@ -79,7 +83,9 @@ export function GuestReview({
     );
 
   const label = (el: GuestElement) =>
-    (typeof el.label === 'string' && el.label.trim()) || labels.get(el.id) || t('board.types.frame');
+    (typeof el.label === 'string' && el.label.trim()) ||
+    labels.get(el.id) ||
+    t('board.types.frame');
   const status = shownStatus(actions.reviews.get(frame.id)?.status);
   const decide = (value: 'approved' | 'changes_requested') =>
     actions.withName(async () => {

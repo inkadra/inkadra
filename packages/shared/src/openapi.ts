@@ -72,8 +72,8 @@ import {
   GuestDenied,
   GuestPick,
   GuestReviewSummary,
-  GuestVersions,
   GuestSession,
+  GuestVersions,
   SetPick,
   ShareLink,
   ShareLinkPicks,
@@ -2222,7 +2222,9 @@ registry.registerPath({
 });
 registry.registerPath({
   method: 'get',
-  path: v1('/guest/links/{linkId}/boards/{boardId}/versions/{versionId}/assets/{assetId}/variants/{size}'),
+  path: v1(
+    '/guest/links/{linkId}/boards/{boardId}/versions/{versionId}/assets/{assetId}/variants/{size}',
+  ),
   tags: ['Guests'],
   security: guest,
   summary: 'A WebP thumbnail of a frame picture of a named version. For guest_approve.',

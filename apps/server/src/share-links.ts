@@ -368,7 +368,8 @@ export function proseMirrorJson(fragment: Y.XmlFragment): PmNode {
 /** Asset ids of the `noteImage` nodes of a note body in ProseMirror JSON. */
 export function bodyAssetIds(node: PmNode): string[] {
   const attrs = node.attrs as { assetId?: unknown } | undefined;
-  const own = node.type === 'noteImage' && typeof attrs?.assetId === 'string' ? [attrs.assetId] : [];
+  const own =
+    node.type === 'noteImage' && typeof attrs?.assetId === 'string' ? [attrs.assetId] : [];
   const content = Array.isArray(node.content) ? (node.content as PmNode[]) : [];
   return [...own, ...content.flatMap(bodyAssetIds)];
 }

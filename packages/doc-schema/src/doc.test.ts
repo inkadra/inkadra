@@ -536,7 +536,9 @@ describe('arrow path', () => {
     const element = arrow();
     addElement(doc, element);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([
+      6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    ]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(element.id)!)).not.toHaveProperty('path');
@@ -599,7 +601,9 @@ describe('story bible cards', () => {
     roots(doc).meta.set('schemaVersion', 6);
     addElement(doc, { ...base(), type: 'note' });
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([
+      7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    ]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
   });

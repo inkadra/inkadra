@@ -35,8 +35,10 @@ export function NoteBody({ fragment }: { fragment: Y.XmlFragment }) {
 
 export function isEmpty(fragment: Y.XmlFragment): boolean {
   // A picture alone is content too: a note holding only one must not count as blank.
-  return noteImageAssetIds(fragment).length === 0 &&
-    fragment.toArray().every((n) => n instanceof Y.XmlElement && plainText(n).trim() === '');
+  return (
+    noteImageAssetIds(fragment).length === 0 &&
+    fragment.toArray().every((n) => n instanceof Y.XmlElement && plainText(n).trim() === '')
+  );
 }
 
 export function plainText(node: Y.XmlElement | Y.XmlFragment | Y.XmlText): string {
@@ -75,7 +77,10 @@ function renderNode(node: unknown, key: number): ReactNode {
   if (node.nodeName === 'noteImage')
     return (
       <figure key={key} className="note-picture">
-        <NotePicture assetId={node.getAttribute('assetId') ?? null} alt={node.getAttribute('alt')} />
+        <NotePicture
+          assetId={node.getAttribute('assetId') ?? null}
+          alt={node.getAttribute('alt')}
+        />
       </figure>
     );
   const align = node.getAttribute('textAlign');

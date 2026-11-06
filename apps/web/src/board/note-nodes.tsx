@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { Node } from '@tiptap/core';
-import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from '@tiptap/react';
+import { NodeViewWrapper, type ReactNodeViewProps, ReactNodeViewRenderer } from '@tiptap/react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from './assets.ts';
 import { localPreview, useUploadProgress } from './uploads.ts';

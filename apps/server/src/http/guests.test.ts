@@ -2678,13 +2678,21 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       g(approve, `/boards/${S}/versions/${version}/assets/${assetId}/variants/256`);
     // Refused: a picture the version does not show to guests, a version of another board, a
     // board outside the link, the plain asset route, a link without review, and no session.
-    expect((await call({ cookie: guest }, 'GET', variant(named?.id ?? '', hiddenThen))).status).toBe(404);
-    expect((await call({ cookie: guest }, 'GET', variant(elsewhere?.id ?? '', old))).status).toBe(404);
+    expect(
+      (await call({ cookie: guest }, 'GET', variant(named?.id ?? '', hiddenThen))).status,
+    ).toBe(404);
+    expect((await call({ cookie: guest }, 'GET', variant(elsewhere?.id ?? '', old))).status).toBe(
+      404,
+    );
     expect(
       (await call({ cookie: guest }, 'GET', g(approve, `/boards/${B.A}/versions`))).status,
     ).toBe(404);
-    expect((await call({ cookie: guest }, 'GET', g(approve, `/assets/${old}/variants/256`))).status).toBe(404);
-    expect((await call({ cookie: viewer }, 'GET', g(viewOnly, `/boards/${S}/versions`))).status).toBe(403);
+    expect(
+      (await call({ cookie: guest }, 'GET', g(approve, `/assets/${old}/variants/256`))).status,
+    ).toBe(404);
+    expect(
+      (await call({ cookie: viewer }, 'GET', g(viewOnly, `/boards/${S}/versions`))).status,
+    ).toBe(403);
     expect((await call(null, 'GET', variant(named?.id ?? '', old))).status).toBe(401);
   });
 
@@ -2707,16 +2715,22 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
         for (const [id, assetId] of [
           ['notep_____', shown],
           ['noteh_____', hidden],
-        ] as const)
-          (roots(doc).elements.get(id)?.get('body') as Y.XmlFragment).insert(0, [picture(assetId)]);
+        ] as const) {
+          const body = roots(doc).elements.get(id)?.get('body') as Y.XmlFragment;
+          body.insert(0, [picture(assetId)]);
+        }
       },
     );
     const link = await createLink('editor', S, { role: 'guest_view' });
     const guest = (await open(link)).cookie;
     const snap = await call({ cookie: guest }, 'GET', g(link, `/boards/${S}`));
     expect(snap.body.assets.map((a: { id: string }) => a.id)).toEqual([shown]);
-    expect((await call({ cookie: guest }, 'GET', g(link, `/assets/${shown}/variants/256`))).status).toBe(200);
-    expect((await call({ cookie: guest }, 'GET', g(link, `/assets/${hidden}/variants/256`))).status).toBe(404);
+    expect(
+      (await call({ cookie: guest }, 'GET', g(link, `/assets/${shown}/variants/256`))).status,
+    ).toBe(200);
+    expect(
+      (await call({ cookie: guest }, 'GET', g(link, `/assets/${hidden}/variants/256`))).status,
+    ).toBe(404);
   });
 
   it('sends the team one summary per state of the review', async () => {

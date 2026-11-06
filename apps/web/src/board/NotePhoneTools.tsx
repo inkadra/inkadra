@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { Icon, type IconName } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStoryboard } from './film/storyboard-data.ts';
 import { toggleSelectedHeading } from './note.tsx';
@@ -145,11 +138,7 @@ export function NotePhoneTools({
       projectId,
       boardId,
       onAsset: (assetId) =>
-        editor
-          .chain()
-          .focus()
-          .insertContent({ type: 'noteImage', attrs: { assetId } })
-          .run(),
+        editor.chain().focus().insertContent({ type: 'noteImage', attrs: { assetId } }).run(),
       onFailed: () => onError(t('board.note.pictureFailed')),
       onCancelled: (assetId) => {
         if (!assetId) return;
@@ -165,7 +154,8 @@ export function NotePhoneTools({
   };
 
   const clearTrigger = () => {
-    if (editor && found) editor.chain().focus().deleteRange({ from: found.from, to: found.to }).run();
+    if (editor && found)
+      editor.chain().focus().deleteRange({ from: found.from, to: found.to }).run();
   };
 
   let items: Item[] = [];
@@ -396,7 +386,9 @@ export function NotePhoneTools({
           editor?.isActive('taskList') ?? false,
         )}
         {tool('mention', t('board.note.mention'), <span aria-hidden="true">@</span>, () =>
-          chain()?.insertContent(found ? ' @' : '@').run(),
+          chain()
+            ?.insertContent(found ? ' @' : '@')
+            .run(),
         )}
         {projectId &&
           boardId &&
@@ -405,7 +397,10 @@ export function NotePhoneTools({
           'slash',
           t('board.note.slash.label'),
           <span aria-hidden="true">/</span>,
-          () => chain()?.insertContent(found ? ' /' : '/').run(),
+          () =>
+            chain()
+              ?.insertContent(found ? ' /' : '/')
+              .run(),
           found?.char === '/' || pickingFrame,
         )}
       </div>
@@ -425,4 +420,3 @@ export function NotePhoneTools({
     </div>
   );
 }
-

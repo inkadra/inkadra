@@ -245,7 +245,7 @@
   font: inherit;
   font-weight: 600;
 }
-.note-phone-bar__tool[aria-pressed='true'] {
+.note-phone-bar__tool[aria-pressed="true"] {
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
 }
@@ -291,10 +291,10 @@
   color: var(--ink-text-secondary);
   font-size: 11px;
 }
-.note-phone-menu__item[aria-selected='true'] {
+.note-phone-menu__item[aria-selected="true"] {
   background: var(--ink-accent-soft-bg);
 }
-.note-phone-menu__item[aria-disabled='true'] {
+.note-phone-menu__item[aria-disabled="true"] {
   color: var(--ink-text-muted);
 }
 .note-phone-menu__empty {

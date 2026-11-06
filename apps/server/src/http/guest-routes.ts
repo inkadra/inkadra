@@ -480,17 +480,18 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     ctx: GuestContext,
     req: FastifyRequest,
     reply: FastifyReply,
-    { assetId, size, animated }: { assetId: string; size: ThumbnailSize; animated?: string | undefined },
+    {
+      assetId,
+      size,
+      animated,
+    }: { assetId: string; size: ThumbnailSize; animated?: string | undefined },
   ) {
     if ((await projectAsset(ctx, assetId)).status !== 'ready')
       throw new HttpError('not_found', 'The picture is not ready.');
     if (animated) {
       const key = animatedVariantKey(assetId, size);
-      if ((await storage.size(key)) === null)
-        throw new HttpError('not_found', 'No such variant.');
-      const etag = createHash('sha256')
-        .update(`${assetId}-${size}-animated-${key}`)
-        .digest('hex');
+      if ((await storage.size(key)) === null) throw new HttpError('not_found', 'No such variant.');
+      const etag = createHash('sha256').update(`${assetId}-${size}-animated-${key}`).digest('hex');
       guestFileHeaders(reply, etag);
       if (matchesEtag(req.headers['if-none-match'], etag)) return reply.status(304).send();
       reply.header('content-type', 'image/webp');

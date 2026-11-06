@@ -452,9 +452,7 @@ export function GuestBoardScreen({
             </span>
           )}
           {canReview && showBoard && (
-            <Button onClick={() => setShowBoard(false)}>
-              {t('guest.review.phone.title')}
-            </Button>
+            <Button onClick={() => setShowBoard(false)}>{t('guest.review.phone.title')}</Button>
           )}
           <span className="guest__badge">{t(`guest.roles.${rightsKey(rights)}`)}</span>
         </header>
@@ -467,56 +465,56 @@ export function GuestBoardScreen({
             />
           </div>
         ) : (
-        <div className="guest__body">
-          <div className="guest__canvas">
-            {conn && loaded === boardId ? (
-              <NoSessionProvider>
-                <GuestModeContext.Provider value={true}>
-                  <CardExtrasContext.Provider value={extras}>
-                    <Canvas
-                      key={boardId}
-                      conn={conn}
-                      preview
-                      projectId=""
-                      breadcrumb={crumbs.map((c) => c.title)}
-                      boardId={boardId}
-                      userId=""
-                      boards={boards}
-                      canEdit={false}
-                      peers={[]}
-                      onOpenBoard={openBoard}
-                      onSelectionChange={onSelectionChange}
-                      onOpen={onOpen}
-                      guestMaps={
-                        session.maps
-                          ? {
-                              attribution: session.maps.attribution,
-                              satelliteAttribution: session.maps.satelliteAttribution,
-                              tiles: `${API_PREFIX}/guest/links/${session.linkId}/map-tiles/{z}/{x}/{y}`,
-                            }
-                          : undefined
-                      }
-                    />
-                  </CardExtrasContext.Provider>
-                </GuestModeContext.Provider>
-              </NoSessionProvider>
-            ) : (
-              <p className="guest__loading ink-muted" role="status">
-                {t('guest.loading')}
-              </p>
-            )}
-            {loaded === boardId && snapshot && snapshot.elements.length === 0 && (
-              <p className="guest__empty ink-muted">{t('guest.emptyBoard')}</p>
-            )}
+          <div className="guest__body">
+            <div className="guest__canvas">
+              {conn && loaded === boardId ? (
+                <NoSessionProvider>
+                  <GuestModeContext.Provider value={true}>
+                    <CardExtrasContext.Provider value={extras}>
+                      <Canvas
+                        key={boardId}
+                        conn={conn}
+                        preview
+                        projectId=""
+                        breadcrumb={crumbs.map((c) => c.title)}
+                        boardId={boardId}
+                        userId=""
+                        boards={boards}
+                        canEdit={false}
+                        peers={[]}
+                        onOpenBoard={openBoard}
+                        onSelectionChange={onSelectionChange}
+                        onOpen={onOpen}
+                        guestMaps={
+                          session.maps
+                            ? {
+                                attribution: session.maps.attribution,
+                                satelliteAttribution: session.maps.satelliteAttribution,
+                                tiles: `${API_PREFIX}/guest/links/${session.linkId}/map-tiles/{z}/{x}/{y}`,
+                              }
+                            : undefined
+                        }
+                      />
+                    </CardExtrasContext.Provider>
+                  </GuestModeContext.Provider>
+                </NoSessionProvider>
+              ) : (
+                <p className="guest__loading ink-muted" role="status">
+                  {t('guest.loading')}
+                </p>
+              )}
+              {loaded === boardId && snapshot && snapshot.elements.length === 0 && (
+                <p className="guest__empty ink-muted">{t('guest.emptyBoard')}</p>
+              )}
+            </div>
+            <GuestPanel
+              session={session}
+              snapshot={snapshot}
+              selected={selected ? (elements.get(selected) ?? null) : null}
+              onOpenBoard={openBoard}
+              onAskName={() => setNaming({ next: () => {} })}
+            />
           </div>
-          <GuestPanel
-            session={session}
-            snapshot={snapshot}
-            selected={selected ? (elements.get(selected) ?? null) : null}
-            onOpenBoard={openBoard}
-            onAskName={() => setNaming({ next: () => {} })}
-          />
-        </div>
         )}
         {viewed && <GuestViewer element={viewed} onClose={() => setViewing(null)} />}
         <NameDialog
