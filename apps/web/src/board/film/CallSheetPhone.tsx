@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api.ts';
 import { openInMapsUrl } from '../maps.ts';
 import { castCalls, type SheetRow } from './call-sheet.ts';
-import { clockLabel } from './schedule.ts';
+import { clockLabel, whileVisible } from './schedule.ts';
 
 /** Cast links and presence of a board's schedule; nothing is asked of the server when off. */
 export function useAttendance(boardId: string | undefined, enabled: boolean) {
@@ -23,6 +23,8 @@ export function useAttendance(boardId: string | undefined, enabled: boolean) {
   const [attempt, setAttempt] = useState(0);
   const path = `/boards/${boardId}/schedule`;
   const on = enabled && !!boardId;
+  // A check started before a save answers with what the save replaced: `saves` drops it.
+  const saves = useRef(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: attempt asks for the data again.
   useEffect(() => {
     if (!on) return;
@@ -32,12 +34,22 @@ export function useAttendance(boardId: string | undefined, enabled: boolean) {
       (next) => live && setData(next),
       () => live && setFailed(true),
     );
+    const stop = whileVisible(() => {
+      const before = saves.current;
+      api.get<ScheduleAttendance>(`${path}/attendance`).then(
+        (next) => live && before === saves.current && setData(next),
+        // The answers on screen stay; the next check tries again.
+        () => {},
+      );
+    });
     return () => {
       live = false;
+      stop();
     };
   }, [on, path, attempt]);
   const answer = useCallback(
     async (dayId: string, status: AttendanceStatus) => {
+      saves.current += 1;
       const saved = await api.put<DayAttendance>(`${path}/${dayId}/attendance`, { status });
       setData(
         (current) =>
@@ -54,6 +66,7 @@ export function useAttendance(boardId: string | undefined, enabled: boolean) {
   );
   const link = useCallback(
     async (name: string, userId: string | null) => {
+      saves.current += 1;
       await api.put(`${path}/cast-links`, { name, userId });
       const castKey = castNameKey(name);
       setData(

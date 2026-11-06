@@ -10,6 +10,7 @@ import {
   NotificationBell,
   NotificationList,
   notificationActor,
+  relativeTime,
   useNotificationFeed,
 } from './Notifications.tsx';
 
@@ -965,4 +966,15 @@ it('reads only the notification it shows when the Inbox opens, not the rest of t
   } finally {
     await act(async () => root.unmount());
   }
+});
+
+describe('relativeTime', () => {
+  afterEach(() => vi.useRealTimers());
+  it('counts calendar days, as the day headings of the list', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 6, 17, 0));
+    expect(relativeTime(new Date(2026, 10, 4, 22, 0).toISOString(), 'en')).toBe('2 days ago');
+    expect(relativeTime(new Date(2026, 10, 5, 9, 0).toISOString(), 'en')).toBe('yesterday');
+    expect(relativeTime(new Date(2026, 10, 6, 15, 0).toISOString(), 'en')).toBe('2 hr. ago');
+  });
 });

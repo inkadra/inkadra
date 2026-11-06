@@ -347,7 +347,7 @@
     "empty": {
       "title": "Where do we start?",
       "body": "Pick a starting point, or double-click to write a note.",
-      "bodyTouch": "Pick a starting point, or double-tap to write a note.",
+      "bodyTouch": "Pick a starting point, or add a note from the bar.",
       "screenplay": "Import screenplay",
       "screenplayBody": "Fountain, Final Draft or PDF",
       "hint": "You can also drop files and images here.",

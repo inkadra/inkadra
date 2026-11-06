@@ -39,6 +39,7 @@ import {
   newScheduleBlock,
   nowOnDay,
   scheduleTimes,
+  whileVisible,
 } from './schedule.ts';
 import { useSlugline, useStoryboard } from './storyboard-data.ts';
 import './film.css';
@@ -164,8 +165,8 @@ export function ScheduleView({
     };
   }, [projectId]);
 
-  // Shooting days are saved over the API, not in the live board: they are fetched again when
-  // the tab comes back into view and after a conflict, so there is no manual reload.
+  // Shooting days are saved over the API, not in the live board: they are fetched again while
+  // the tab is in view and after a conflict, so there is no manual reload.
   useEffect(() => {
     let active = true;
     const fetchDays = (initial: boolean) => {
@@ -210,13 +211,10 @@ export function ScheduleView({
         });
     };
     fetchDays(refresh === 0);
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') fetchDays(false);
-    };
-    document.addEventListener('visibilitychange', onVisible);
+    const stop = whileVisible(() => fetchDays(false));
     return () => {
       active = false;
-      document.removeEventListener('visibilitychange', onVisible);
+      stop();
     };
   }, [path, refresh, t]);
 

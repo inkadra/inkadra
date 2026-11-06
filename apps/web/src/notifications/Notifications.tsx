@@ -330,7 +330,10 @@ export function relativeTime(iso: string, language: string): string {
   if (minutes < 60) return formatter.format(-minutes, 'minute');
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return formatter.format(-hours, 'hour');
-  return formatter.format(-Math.floor(hours / 24), 'day');
+  // In calendar days, as the list's day headings: 30 hours ago can be the day before yesterday.
+  const midnight = (date: Date) => new Date(date).setHours(0, 0, 0, 0);
+  const days = Math.round((midnight(new Date()) - midnight(new Date(iso))) / 86_400_000);
+  return formatter.format(-days, 'day');
 }
 
 export function NotificationList({
