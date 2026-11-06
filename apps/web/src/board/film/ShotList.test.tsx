@@ -6,6 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import mockEn from '../../i18n/en.json';
 import { chooseSelect } from '../../test/select.ts';
+import { walkTabs } from '../../test/tabs.ts';
 import { BoardStore } from '../store.ts';
 import { ShotList } from './ShotList.tsx';
 
@@ -372,4 +373,18 @@ it('shows each shot as a card on a phone and edits it in the frame panel', async
   });
   expect(host.querySelector('.film-panel')).toBeNull();
   expect(document.activeElement).toBe(body);
+});
+
+it('walks the view tabs by keyboard and switches only on a choice', async () => {
+  const { doc, store } = board();
+  const scene = addScene(doc, { number: '1', title: 'Bar' }, { userId: null });
+  addFrame(doc, scene.id, null, { label: '1A' }, { userId: null });
+  const host = await mount(<ShotList store={store} boardTitle="Test Board" readOnly={false} />);
+  await walkTabs(host.querySelector('[role="tablist"]'));
+  // Focus is on Kanban, the table is still shown; a click (or Enter, Space) chooses it.
+  expect(host.querySelector('.shots__table')).not.toBeNull();
+  await act(async () => (document.activeElement as HTMLElement).click());
+  const kanban = host.querySelector('[role="tab"][aria-selected="true"]');
+  expect(kanban?.textContent).toBe('Kanban');
+  expect(host.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe(kanban?.id);
 });

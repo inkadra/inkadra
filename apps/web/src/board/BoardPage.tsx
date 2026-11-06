@@ -773,8 +773,8 @@ function BoardScreen({
     <div
       className={preview ? 'board-preview' : undefined}
       style={preview ? undefined : { display: 'contents' }}
-      // The view under the header's tabs is their panel.
-      {...(tabs.includes(view)
+      // The view under the header's tabs is their panel; phones pick views from a menu instead.
+      {...(!isPhone && tabs.includes(view)
         ? { role: 'tabpanel', id: `${tabsId}-panel`, 'aria-labelledby': `${tabsId}-${view}` }
         : {})}
     >
