@@ -5,8 +5,8 @@ import { createElement, newTable } from '@inkadra/canvas-core';
 import { createBoardDoc, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import * as Y from 'yjs';
-import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 import { cardAction } from '../helpers/phone-board.ts';
+import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 const account = { name: 'Giulia', email: 'giulia@example.com', password: 'correct-horse-battery' };
 async function screenshot(page: Page, name: string) {

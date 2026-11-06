@@ -3,9 +3,9 @@ import { join } from 'node:path';
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc, readElement, roots } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
+import { addFromBar } from '../helpers/phone-board.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
-import { addFromBar } from '../helpers/phone-board.ts';
 
 for (const width of [1280, 390]) {
   for (const theme of ['dark', 'light'] as const) {

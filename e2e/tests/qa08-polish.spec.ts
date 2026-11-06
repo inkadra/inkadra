@@ -5,8 +5,8 @@ import { crc32, deflateSync } from 'node:zlib';
 import { addTodoItem, createElement, moveIntoParent } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
-import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 import { cardAction } from '../helpers/phone-board.ts';
+import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 /** Portrait with transparent edges and translucent stripes, for the alpha/contain checks. */
 function portraitPng() {

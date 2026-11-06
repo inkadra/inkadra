@@ -2,8 +2,8 @@
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
-import { pushBoardDoc, signIn } from './perf/seed.ts';
 import { cardAction } from '../helpers/phone-board.ts';
+import { pushBoardDoc, signIn } from './perf/seed.ts';
 
 // Leaving an inline field with a canvas click or "Done" keeps what was typed (toolbar A).
 for (const width of [1280, 390]) {

@@ -11,9 +11,8 @@ export function cardAction(page: Page, name: string | RegExp, exact = typeof nam
 
 /** Adds a card from the bar, or from its "More" menu on a phone, where most tools wait (#110). */
 export async function addFromBar(page: Page, name: string) {
-  const tool = page.getByRole('button', { name, exact: true });
-  if (await tool.isVisible()) {
-    await tool.click();
+  if ((page.viewportSize()?.width ?? 1280) >= 768) {
+    await page.getByRole('button', { name, exact: true }).click();
     return;
   }
   const toolbar = page.locator('.canvas .toolbar');

@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { createElement, moveIntoParent } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
-import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 import { cardAction } from '../helpers/phone-board.ts';
+import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 const account = { name: 'Giulia', email: 'giulia@example.com', password: 'correct-horse-battery' };
 const shots = process.env.QA08_SHOTS;

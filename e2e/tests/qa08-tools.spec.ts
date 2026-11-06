@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { addTodoItem, createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { chromium, expect, test } from '@playwright/test';
-import { pushBoardDoc, signIn } from './perf/seed.ts';
 import { addFromBar } from '../helpers/phone-board.ts';
+import { pushBoardDoc, signIn } from './perf/seed.ts';
 
 const out = process.env.QA08_SHOTS;
 
