@@ -1,9 +1,6 @@
-> **Draft: not in force.** This text needs the owner's approval before it is published. Add the
-> date and remove this note. It describes what the extension's code does and is not legal advice.
-
 # Inkadra Clipper privacy policy
 
-Last updated: `<DATE>`
+Last updated: 6 November 2026
 
 Inkadra Clipper is a browser extension published by Matteo Maraffio. It saves images, text and
 links to a board on an Inkadra server. This policy covers the extension only.
