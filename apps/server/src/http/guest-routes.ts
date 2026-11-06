@@ -47,6 +47,7 @@ import { afterCommit, notify, Recipients } from '../notifications.ts';
 import { addressBucket, Failures } from '../rate-limits.ts';
 import { safeEqual, sha256 } from '../secrets.ts';
 import {
+  bodyAssetIds,
   type DocViews,
   elementAssetIds,
   guestElement,
@@ -378,7 +379,10 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     const shown = await guests.shown(ctx, boardId);
     const ids = shown.map((e) => e.id);
     const visible = new Set(ids);
-    const shownAssets = new Set(shown.flatMap(elementAssetIds));
+    const shownAssets = new Set([
+      ...shown.flatMap(elementAssetIds),
+      ...shown.flatMap((el) => bodyAssetIds(view.bodies.get(el.id) ?? {})),
+    ]);
     const track = top.row.kind === 'storyboard' ? view.audio : null;
     const assetIds = [...new Set([...shownAssets, ...(track ? [track.assetId] : [])])];
     const [boards, listed, reviews, commentCounts, picks, commentsVersion] = await Promise.all([

@@ -2688,6 +2688,37 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect((await call(null, 'GET', variant(named?.id ?? '', old))).status).toBe(401);
   });
 
+  it('lists and serves the pictures inside a visible note, not those of a hidden one', async () => {
+    const S = await insertBoard(P, 'Notes', B.R);
+    const shown = await makeAsset(P, 'in-note.jpg');
+    const hidden = await makeAsset(P, 'in-hidden-note.jpg');
+    const picture = (assetId: string) => {
+      const node = new Y.XmlElement('noteImage');
+      node.setAttribute('assetId', assetId);
+      return node;
+    };
+    await saveDoc(
+      S,
+      [
+        { ...el, id: 'notep_____', type: 'note', parent: null },
+        { ...el, id: 'noteh_____', type: 'note', parent: null, guestHidden: true },
+      ] as Element[],
+      (doc) => {
+        for (const [id, assetId] of [
+          ['notep_____', shown],
+          ['noteh_____', hidden],
+        ] as const)
+          (roots(doc).elements.get(id)?.get('body') as Y.XmlFragment).insert(0, [picture(assetId)]);
+      },
+    );
+    const link = await createLink('editor', S, { role: 'guest_view' });
+    const guest = (await open(link)).cookie;
+    const snap = await call({ cookie: guest }, 'GET', g(link, `/boards/${S}`));
+    expect(snap.body.assets.map((a: { id: string }) => a.id)).toEqual([shown]);
+    expect((await call({ cookie: guest }, 'GET', g(link, `/assets/${shown}/variants/256`))).status).toBe(200);
+    expect((await call({ cookie: guest }, 'GET', g(link, `/assets/${hidden}/variants/256`))).status).toBe(404);
+  });
+
   it('sends the team one summary per state of the review', async () => {
     const S = await insertBoard(P, 'Storyboard 2', B.R);
     const pic = await makeAsset(P, 'shot.jpg');
