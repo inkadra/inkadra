@@ -258,7 +258,7 @@ export function ContextualTools({
           }}
           onClick={() => run(c)}
         >
-          {highlight ? '▰' : c ? 'A' : '∅'}
+          {!c ? '∅' : highlight ? '▰' : 'A'}
         </button>
       ))}
     </div>
