@@ -2013,7 +2013,11 @@
       "language": "Language",
       "languages": {
         "it": "Italiano",
-        "en": "English"
+        "en": "English",
+        "es": "Español",
+        "de": "Deutsch",
+        "fr": "Français",
+        "pt": "Português (Brasil)"
       },
       "avatarUpload": "Upload or replace avatar",
       "avatarRemove": "Remove avatar",
@@ -2933,7 +2937,7 @@
     "loadError": "Backups could not be loaded.",
     "last": "Last backup",
     "none": "No backups yet",
-    "filesListed_one": "lists 1 file ({{size}})",
+    "filesListed_one": "lists {{count}} file ({{size}})",
     "filesListed_other": "lists {{count}} files ({{size}})",
     "nightly": "Nightly backup",
     "next": "Next: {{time}}",

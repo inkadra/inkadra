@@ -26,7 +26,7 @@ it.each([true, false])(
     vi.stubGlobal('document', {
       documentElement: { dataset: {} },
       getElementById: (id: string) =>
-        id === 'messages' ? { dataset: { messages: '{"it":{}}' } } : { addEventListener: vi.fn() },
+        id === 'messages' ? { dataset: { messages: '{"en":{}}' } } : { addEventListener: vi.fn() },
     });
     // Execute the exact external script emitted in the build, with fake browser globals.
     new Function(offlineScript)();

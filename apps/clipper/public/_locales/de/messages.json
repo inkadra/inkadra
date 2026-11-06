@@ -1,0 +1,213 @@
+{
+  "ext_name": {
+    "message": "Inkadra Clipper",
+    "description": "Name of the extension."
+  },
+  "ext_description": {
+    "message": "Speichere Bilder, Text und Links in einem Inkadra-Board.",
+    "description": "Store description."
+  },
+  "action_title": {
+    "message": "In Inkadra speichern",
+    "description": "Tooltip of the toolbar button."
+  },
+  "command_save_page": {
+    "message": "Seite im letzten Board speichern",
+    "description": "Keyboard shortcut description."
+  },
+  "menu_image": {
+    "message": "In Inkadra speichern",
+    "description": "Context menu on an image."
+  },
+  "menu_selection": {
+    "message": "Auswahl in Inkadra speichern",
+    "description": "Context menu on selected text."
+  },
+  "menu_link": {
+    "message": "Link in Inkadra speichern",
+    "description": "Context menu on a link."
+  },
+  "menu_page": {
+    "message": "Seite in Inkadra speichern",
+    "description": "Context menu on a page."
+  },
+  "toast_saved": {
+    "message": "Gespeichert in $BOARD$",
+    "description": "After saving.",
+    "placeholders": {
+      "board": {
+        "content": "$1",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "toast_open_board": {
+    "message": "Board öffnen",
+    "description": "Link to the board."
+  },
+  "action_settings": {
+    "message": "Einstellungen"
+  },
+  "action_connect": {
+    "message": "Verbinden"
+  },
+  "action_reconnect": {
+    "message": "Neu verbinden"
+  },
+  "action_disconnect": {
+    "message": "Trennen"
+  },
+  "action_save_page": {
+    "message": "Seite speichern"
+  },
+  "action_expand": {
+    "message": "Unterboards anzeigen"
+  },
+  "action_collapse": {
+    "message": "Unterboards ausblenden"
+  },
+  "field_board": {
+    "message": "Board"
+  },
+  "field_column": {
+    "message": "Spalte"
+  },
+  "field_note": {
+    "message": "Notiz"
+  },
+  "field_tags": {
+    "message": "Tags"
+  },
+  "field_server": {
+    "message": "Serveradresse"
+  },
+  "board_search": {
+    "message": "Board suchen…"
+  },
+  "board_none_selected": {
+    "message": "Kein Board gewählt"
+  },
+  "boards_none": {
+    "message": "Keine Boards, in denen du Karten hinzufügen kannst."
+  },
+  "boards_none_found": {
+    "message": "Keine Boards gefunden."
+  },
+  "section_recent": {
+    "message": "Zuletzt"
+  },
+  "section_projects": {
+    "message": "Projekte"
+  },
+  "section_shared": {
+    "message": "Mit dir geteilt"
+  },
+  "section_search": {
+    "message": "Ergebnisse"
+  },
+  "column_unsorted": {
+    "message": "Unsortiert"
+  },
+  "tags_placeholder": {
+    "message": "durch Kommas getrennt"
+  },
+  "page_not_web": {
+    "message": "Diese Seite lässt sich nicht speichern."
+  },
+  "connect_intro": {
+    "message": "Verbinde den Clipper mit deinem Inkadra-Server. Du wirst gebeten, dich anzumelden und den Zugriff zu erlauben."
+  },
+  "connect_permission": {
+    "message": "Chrome fragt nach der Berechtigung, nur diese Adresse zu kontaktieren."
+  },
+  "connect_hint_ids": {
+    "message": "Wenn du die Erweiterung selbst gebaut hast, muss dein Admin ihre ID zu CLIPPER_EXTENSION_IDS hinzufügen."
+  },
+  "connected_as": {
+    "message": "Verbunden als"
+  },
+  "help_title": {
+    "message": "So funktioniert’s"
+  },
+  "help_shortcut": {
+    "message": "Seite im zuletzt verwendeten Board speichern:"
+  },
+  "help_shortcut_unset": {
+    "message": "kein Tastenkürzel"
+  },
+  "help_shortcut_change": {
+    "message": "Ändern"
+  },
+  "help_menus": {
+    "message": "Per Rechtsklick auf ein Bild, markierten Text, einen Link oder die Seite speicherst du im Board, das zuletzt über die Schaltfläche in der Leiste gewählt wurde."
+  },
+  "help_selfhost": {
+    "message": "Selbst gebaute Erweiterung"
+  },
+  "help_selfhost_text": {
+    "message": "Der Server akzeptiert nur die offiziellen Erweiterungen. Für diese hier fügt die Person, die den Server verwaltet, die untenstehende ID zu CLIPPER_EXTENSION_IDS hinzu und startet neu."
+  },
+  "help_extension_id": {
+    "message": "ID der Erweiterung:"
+  },
+  "help_redirect": {
+    "message": "Rückleitungsadresse:"
+  },
+  "error_not_connected": {
+    "message": "Der Clipper ist mit keinem Server verbunden."
+  },
+  "error_unauthorized": {
+    "message": "Der Zugriff wurde widerrufen oder ist abgelaufen: Verbinde den Clipper neu."
+  },
+  "error_forbidden": {
+    "message": "Du darfst diesem Board keine Karten hinzufügen."
+  },
+  "error_not_found": {
+    "message": "Das Board existiert nicht mehr oder ist nicht mehr mit dir geteilt."
+  },
+  "error_too_large": {
+    "message": "Die Datei ist zu groß für diesen Server."
+  },
+  "error_offline": {
+    "message": "Der Server antwortet nicht: Prüfe deine Verbindung."
+  },
+  "error_rate_limited": {
+    "message": "Zu viele Anfragen: Versuch es in einer Minute noch mal."
+  },
+  "error_invalid_server": {
+    "message": "Unter dieser Adresse gibt es keinen Inkadra-Server."
+  },
+  "error_auth_cancelled": {
+    "message": "Anmeldung nicht abgeschlossen."
+  },
+  "error_auth_failed": {
+    "message": "Die Anmeldung ist fehlgeschlagen: Versuch es noch mal."
+  },
+  "error_permission_denied": {
+    "message": "Ohne die Berechtigung, den Server zu kontaktieren, funktioniert der Clipper nicht."
+  },
+  "error_no_board": {
+    "message": "Wähle zuerst über die Inkadra-Schaltfläche in der Leiste ein Board."
+  },
+  "error_bad_request": {
+    "message": "Dieser Inhalt lässt sich nicht speichern."
+  },
+  "error_server": {
+    "message": "Auf dem Server ist etwas schiefgelaufen: Versuch es noch mal."
+  },
+  "error_clip_unconfirmed": {
+    "message": "Prüfe das Board, bevor du es noch mal versuchst."
+  },
+  "column_untitled": {
+    "message": "Spalte ohne Titel"
+  },
+  "error_too_large_limit": {
+    "message": "Die Datei ist zu groß. Das Limit des Servers ist $LIMIT$.",
+    "placeholders": {
+      "limit": {
+        "content": "$1",
+        "example": "50 MB"
+      }
+    }
+  }
+}

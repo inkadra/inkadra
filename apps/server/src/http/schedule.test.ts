@@ -260,9 +260,9 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
       const feed = await app.inject({ method: 'GET', url });
       expect(feed.statusCode).toBe(200);
       expect(feed.body).toContain('Hidden from guests');
-      expect(feed.body).toContain('SUMMARY:Scadenza: Hidden from guests · Feed');
+      expect(feed.body).toContain('SUMMARY:Due: Hidden from guests · Feed');
       expect(feed.body).toContain('LOCATION:Rifugio');
-      expect(feed.body).toContain('DESCRIPTION:Conv. 07:30 · Rifugio\\n');
+      expect(feed.body).toContain('DESCRIPTION:Call 07:30 · Rifugio\\n');
       expect(feed.body).not.toMatch(/Too late|Too early|Past|Future|SECRET NOTE/);
       // wrap == call: no 24 h event.
       expect(feed.body).not.toContain('DTEND:');

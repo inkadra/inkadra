@@ -4,7 +4,7 @@
   "short_name": "Inkadra",
   "description": "__MSG_ext_description__",
   "version": "0.1.0",
-  "default_locale": "it",
+  "default_locale": "en",
   "minimum_chrome_version": "120",
   "icons": {
     "16": "icons/icon-16.png",

@@ -1,0 +1,213 @@
+{
+  "ext_name": {
+    "message": "Inkadra Clipper",
+    "description": "Name of the extension."
+  },
+  "ext_description": {
+    "message": "Enregistrez des images, du texte et des liens sur un tableau Inkadra.",
+    "description": "Store description."
+  },
+  "action_title": {
+    "message": "Enregistrer dans Inkadra",
+    "description": "Tooltip of the toolbar button."
+  },
+  "command_save_page": {
+    "message": "Enregistrer la page sur le dernier tableau",
+    "description": "Keyboard shortcut description."
+  },
+  "menu_image": {
+    "message": "Enregistrer dans Inkadra",
+    "description": "Context menu on an image."
+  },
+  "menu_selection": {
+    "message": "Enregistrer la sélection dans Inkadra",
+    "description": "Context menu on selected text."
+  },
+  "menu_link": {
+    "message": "Enregistrer le lien dans Inkadra",
+    "description": "Context menu on a link."
+  },
+  "menu_page": {
+    "message": "Enregistrer la page dans Inkadra",
+    "description": "Context menu on a page."
+  },
+  "toast_saved": {
+    "message": "Enregistré sur $BOARD$",
+    "description": "After saving.",
+    "placeholders": {
+      "board": {
+        "content": "$1",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "toast_open_board": {
+    "message": "Ouvrir le tableau",
+    "description": "Link to the board."
+  },
+  "action_settings": {
+    "message": "Paramètres"
+  },
+  "action_connect": {
+    "message": "Connecter"
+  },
+  "action_reconnect": {
+    "message": "Reconnecter"
+  },
+  "action_disconnect": {
+    "message": "Déconnecter"
+  },
+  "action_save_page": {
+    "message": "Enregistrer la page"
+  },
+  "action_expand": {
+    "message": "Afficher les sous-tableaux"
+  },
+  "action_collapse": {
+    "message": "Masquer les sous-tableaux"
+  },
+  "field_board": {
+    "message": "Tableau"
+  },
+  "field_column": {
+    "message": "Colonne"
+  },
+  "field_note": {
+    "message": "Note"
+  },
+  "field_tags": {
+    "message": "Tags"
+  },
+  "field_server": {
+    "message": "Adresse du serveur"
+  },
+  "board_search": {
+    "message": "Rechercher un tableau…"
+  },
+  "board_none_selected": {
+    "message": "Aucun tableau choisi"
+  },
+  "boards_none": {
+    "message": "Aucun tableau où ajouter des cartes."
+  },
+  "boards_none_found": {
+    "message": "Aucun tableau trouvé."
+  },
+  "section_recent": {
+    "message": "Récents"
+  },
+  "section_projects": {
+    "message": "Projets"
+  },
+  "section_shared": {
+    "message": "Partagés avec vous"
+  },
+  "section_search": {
+    "message": "Résultats"
+  },
+  "column_unsorted": {
+    "message": "Non triés"
+  },
+  "tags_placeholder": {
+    "message": "séparés par des virgules"
+  },
+  "page_not_web": {
+    "message": "Cette page ne peut pas être enregistrée."
+  },
+  "connect_intro": {
+    "message": "Connectez le clipper à votre serveur Inkadra. Vous devrez vous connecter et autoriser l’accès."
+  },
+  "connect_permission": {
+    "message": "Chrome demandera l’autorisation de contacter cette adresse uniquement."
+  },
+  "connect_hint_ids": {
+    "message": "Si vous avez compilé l’extension vous-même, l’administrateur doit ajouter son ID à CLIPPER_EXTENSION_IDS."
+  },
+  "connected_as": {
+    "message": "Connecté en tant que"
+  },
+  "help_title": {
+    "message": "Mode d’emploi"
+  },
+  "help_shortcut": {
+    "message": "Enregistrer la page sur le dernier tableau utilisé :"
+  },
+  "help_shortcut_unset": {
+    "message": "aucun raccourci"
+  },
+  "help_shortcut_change": {
+    "message": "Modifier"
+  },
+  "help_menus": {
+    "message": "Faites un clic droit sur une image, un texte sélectionné, un lien ou la page pour l’enregistrer sur le dernier tableau choisi depuis le bouton de la barre d’outils."
+  },
+  "help_selfhost": {
+    "message": "Extension compilée par vos soins"
+  },
+  "help_selfhost_text": {
+    "message": "Le serveur n’accepte que les extensions officielles. Pour celle-ci, l’administrateur du serveur ajoute l’ID ci-dessous à CLIPPER_EXTENSION_IDS et redémarre."
+  },
+  "help_extension_id": {
+    "message": "ID de l’extension :"
+  },
+  "help_redirect": {
+    "message": "Adresse de redirection :"
+  },
+  "error_not_connected": {
+    "message": "Le clipper n’est connecté à aucun serveur."
+  },
+  "error_unauthorized": {
+    "message": "L’accès a été révoqué ou a expiré : reconnectez le clipper."
+  },
+  "error_forbidden": {
+    "message": "Vous n’êtes pas autorisé à ajouter des cartes à ce tableau."
+  },
+  "error_not_found": {
+    "message": "Ce tableau n’existe plus ou n’est plus partagé avec vous."
+  },
+  "error_too_large": {
+    "message": "Le fichier est trop lourd pour ce serveur."
+  },
+  "error_offline": {
+    "message": "Le serveur ne répond pas : vérifiez la connexion."
+  },
+  "error_rate_limited": {
+    "message": "Trop de requêtes : réessayez dans une minute."
+  },
+  "error_invalid_server": {
+    "message": "Il n’y a pas de serveur Inkadra à cette adresse."
+  },
+  "error_auth_cancelled": {
+    "message": "La connexion n’a pas été terminée."
+  },
+  "error_auth_failed": {
+    "message": "La connexion a échoué : réessayez."
+  },
+  "error_permission_denied": {
+    "message": "Sans l’autorisation de contacter le serveur, le clipper ne peut pas fonctionner."
+  },
+  "error_no_board": {
+    "message": "Choisissez d’abord un tableau depuis le bouton Inkadra de la barre d’outils."
+  },
+  "error_bad_request": {
+    "message": "Ce contenu ne peut pas être enregistré."
+  },
+  "error_server": {
+    "message": "Une erreur s’est produite sur le serveur : réessayez."
+  },
+  "error_clip_unconfirmed": {
+    "message": "Vérifiez le tableau avant de réessayer."
+  },
+  "column_untitled": {
+    "message": "Colonne sans titre"
+  },
+  "error_too_large_limit": {
+    "message": "Le fichier est trop lourd. La limite de ce serveur est de $LIMIT$.",
+    "placeholders": {
+      "limit": {
+        "content": "$1",
+        "example": "50 MB"
+      }
+    }
+  }
+}

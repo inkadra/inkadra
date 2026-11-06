@@ -1,11 +1,11 @@
 import './zod-jitless.ts';
 import '@inkadra/ui/styles.css';
-import './i18n/index.ts';
 import { TooltipProvider } from '@inkadra/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
 import { installFeedbackDiagnostics } from './feedback/diagnostics.ts';
+import { i18nReady } from './i18n/index.ts';
 import { DialogTexts } from './lib/DialogTexts.tsx';
 import { SessionProvider, useSession } from './lib/session.tsx';
 import { AppContextMenu } from './menus/AppContextMenu.tsx';
@@ -79,16 +79,19 @@ const router = createBrowserRouter([
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root');
-createRoot(root).render(
-  <StrictMode>
-    <TooltipProvider>
-      <DialogTexts>
-        <AppContextMenu>
-          <RouterProvider router={router} />
-        </AppContextMenu>
-      </DialogTexts>
-      <UpdatePrompt />
-    </TooltipProvider>
-  </StrictMode>,
-);
+// After the interface language has loaded, so nobody sees the English fallback flash by.
+void i18nReady.then(() => {
+  createRoot(root).render(
+    <StrictMode>
+      <TooltipProvider>
+        <DialogTexts>
+          <AppContextMenu>
+            <RouterProvider router={router} />
+          </AppContextMenu>
+        </DialogTexts>
+        <UpdatePrompt />
+      </TooltipProvider>
+    </StrictMode>,
+  );
+});
 registerServiceWorker();

@@ -2,7 +2,6 @@ import { Icon, type IconName } from '@inkadra/ui';
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
-import { LOCALES } from '../i18n/locales.ts';
 import { useSession } from '../lib/session.tsx';
 import { resetSaveState, type SaveState, useSaveState } from './settings-save.ts';
 import {
@@ -55,7 +54,7 @@ export function SettingsNav({
   members?: number | null;
   onClose?: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, instance, version } = useSession();
   const { pathname, search } = useLocation();
   const [query, setQuery] = useState('');
@@ -64,7 +63,7 @@ export function SettingsNav({
     SETTINGS_PAGES.filter((p) => !p.admin || user?.role === 'admin'),
     query,
     t,
-    LOCALES,
+    i18n.languages,
   );
   const groups = [...new Set(matches.map((m) => m.page.group))] as SettingsGroup[];
   return (

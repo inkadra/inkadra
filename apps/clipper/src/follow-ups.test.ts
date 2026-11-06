@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import de from '../public/_locales/de/messages.json';
 import en from '../public/_locales/en/messages.json';
+import es from '../public/_locales/es/messages.json';
+import fr from '../public/_locales/fr/messages.json';
 import itMessages from '../public/_locales/it/messages.json';
+import pt from '../public/_locales/pt/messages.json';
 import { InkadraApi } from './api.ts';
 import { searchBoards } from './boards.ts';
 import { saveClip } from './clip.ts';
@@ -100,27 +104,30 @@ describe('clip errors', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it.each([en, itMessages])('localizes uncertain outcomes, limits and rate limits', (messages) => {
-    vi.stubGlobal('chrome', {
-      i18n: {
-        getMessage: (key: keyof typeof en, value?: string) =>
-          messages[key].message.replace('$LIMIT$', value ?? ''),
-      },
-    });
-    expect(errorText(new ClipperError('clip_unconfirmed'))).toBe(
-      messages.error_clip_unconfirmed.message,
-    );
-    expect(errorText(new ClipperError('rate_limited'))).toBe(messages.error_rate_limited.message);
-    expect(errorText(new ClipperError('too_large', undefined, { uploadMaxBytes: 1024 }))).toContain(
-      '1 KB',
-    );
-    expect(formatBytes(52_428_800)).toBe('50 MB');
-    expect(formatBytes(500)).toBe('500 B');
-    for (const uploadMaxBytes of [0, undefined]) {
-      expect(errorText(new ClipperError('too_large', undefined, { uploadMaxBytes }))).toBe(
-        messages.error_too_large.message,
+  it.each([en, itMessages, es, de, fr, pt])(
+    'localizes uncertain outcomes, limits and rate limits',
+    (messages) => {
+      vi.stubGlobal('chrome', {
+        i18n: {
+          getMessage: (key: keyof typeof en, value?: string) =>
+            messages[key].message.replace('$LIMIT$', value ?? ''),
+        },
+      });
+      expect(errorText(new ClipperError('clip_unconfirmed'))).toBe(
+        messages.error_clip_unconfirmed.message,
       );
-    }
-    expect(Object.keys(en).sort()).toEqual(Object.keys(itMessages).sort());
-  });
+      expect(errorText(new ClipperError('rate_limited'))).toBe(messages.error_rate_limited.message);
+      expect(
+        errorText(new ClipperError('too_large', undefined, { uploadMaxBytes: 1024 })),
+      ).toContain('1 KB');
+      expect(formatBytes(52_428_800)).toBe('50 MB');
+      expect(formatBytes(500)).toBe('500 B');
+      for (const uploadMaxBytes of [0, undefined]) {
+        expect(errorText(new ClipperError('too_large', undefined, { uploadMaxBytes }))).toBe(
+          messages.error_too_large.message,
+        );
+      }
+      expect(Object.keys(messages).sort()).toEqual(Object.keys(itMessages).sort());
+    },
+  );
 });

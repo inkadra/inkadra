@@ -236,7 +236,7 @@ describe('account emails', () => {
   it('invites to the instance without a role', () => {
     const m = inviteMail({
       to: 'new@example.com',
-      from: {},
+      from: { locale: 'it' },
       who: 'Admin',
       projectName: null,
       boardTitle: null,
@@ -263,7 +263,7 @@ describe('account emails', () => {
     expect(magic.subject).toBe('Your sign-in link for Aurora');
     expect(magic.text.match(/https?:\/\/\S+/)?.[0]).toBe('https://x.test/m?t=1');
     expect(magic.html).toContain('<strong');
-    const reset = resetMail('a@example.com', {}, 'https://x.test/r?t=1', 'Aurora');
+    const reset = resetMail('a@example.com', { locale: 'it' }, 'https://x.test/r?t=1', 'Aurora');
     expect(reset.subject).toBe('Reimposta la password di Aurora');
     expect(reset.text.match(/https?:\/\/\S+/)?.[0]).toBe('https://x.test/r?t=1');
     expectSafeDocument(reset.html, 'it');

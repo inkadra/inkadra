@@ -361,14 +361,20 @@ test('PWA update notification remains above the viewer', async ({ page }) => {
   ).toBe(true);
 });
 
-async function openSettings(page: Page, width: number, height: number, desktopSite = false) {
+async function openSettings(
+  page: Page,
+  width: number,
+  height: number,
+  desktopSite = false,
+  locale = 'en',
+) {
   await page.setViewportSize({ width, height });
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname;
     const json = path.endsWith('/instance')
       ? { name: 'Inkadra', version: '0.4.2', setupComplete: true }
       : path.endsWith('/me')
-        ? { id: 'u', name: 'Test', email: 't@example.com', role: 'member', locale: 'en' }
+        ? { id: 'u', name: 'Test', email: 't@example.com', role: 'member', locale }
         : { items: [], nextCursor: null, count: 0 };
     return route.fulfill({ json });
   });
@@ -381,14 +387,14 @@ async function openSettings(page: Page, width: number, height: number, desktopSi
   return dialog;
 }
 
-test('settings search finds settings by their Italian names with the interface in English', async ({
+test('settings search finds settings by their English names with the interface in Italian', async ({
   page,
 }) => {
-  const dialog = await openSettings(page, 1280, 800);
-  const search = dialog.getByRole('searchbox', { name: 'Search settings' });
+  const dialog = await openSettings(page, 1280, 800, false, 'it');
+  const search = dialog.getByRole('searchbox', { name: 'Cerca nelle impostazioni' });
   for (const [word, title, setting] of [
-    ['tema', 'Preferences', 'Theme'],
-    ['lingua', 'Preferences', 'Language'],
+    ['theme', 'Preferenze', 'Tema'],
+    ['language', 'Preferenze', 'Lingua'],
     ['password', 'Account', 'Password'],
   ] as const) {
     await search.fill(word);

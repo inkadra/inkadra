@@ -51,13 +51,26 @@ it('applies the language saved in the profile on load', async () => {
 });
 
 it('keeps the detected language when the profile has none or an unsupported one', async () => {
+  vi.spyOn(api, 'patch').mockResolvedValue({});
   respond(user(null));
   unmount = await mount();
   expect(i18n.language).toBe('it');
   unmount();
-  respond(user('fr'));
+  respond(user('xx'));
   unmount = await mount();
   expect(i18n.language).toBe('it');
+});
+
+it('saves the language in use only for an account with none, tolerating a failure', async () => {
+  const patch = vi.spyOn(api, 'patch').mockRejectedValue(new Error('offline'));
+  respond(user(null));
+  unmount = await mount();
+  expect(patch).toHaveBeenCalledExactlyOnceWith('/me', { locale: 'it' });
+  unmount();
+  patch.mockClear();
+  respond(user('en-GB'));
+  unmount = await mount();
+  expect(patch).not.toHaveBeenCalled();
 });
 
 it('ignores an older refresh that finishes after a newer one', async () => {

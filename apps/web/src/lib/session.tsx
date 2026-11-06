@@ -69,6 +69,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (LOCALES.includes(base) && i18n.language !== base) {
         await i18n.changeLanguage(base);
       }
+    } else if (me) {
+      // Sign-up sets no language, and emails need one. A failed save retries on the next load.
+      void api.patch('/me', { locale: i18n.language }).catch(() => {});
     }
     setLoading(false);
   }, []);

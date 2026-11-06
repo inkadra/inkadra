@@ -16,7 +16,8 @@ What it does:
 - **Shortcut**: `Alt+Shift+S` saves the page to the last board. Change it at
   `chrome://extensions/shortcuts`.
 
-Interface text is in `public/_locales` (Italian is the default, English the other).
+Interface text is in `public/_locales`: English is the default, used when the browser's language
+is not among the others (Italian, Spanish, German, French and Brazilian Portuguese, in `pt`).
 
 ## Build
 

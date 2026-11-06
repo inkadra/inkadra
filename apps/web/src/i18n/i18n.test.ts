@@ -1,8 +1,10 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import i18next from 'i18next';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { localeBackend, withManyForms } from './backend.ts';
 import en from './en.json';
-import i18n from './index.ts';
+import i18n, { detect, LOCALES } from './index.ts';
 import itMessages from './it.json';
 
 function keys(obj: object, prefix = ''): string[] {
@@ -10,6 +12,145 @@ function keys(obj: object, prefix = ''): string[] {
     typeof v === 'object' && v !== null ? keys(v, `${prefix}${k}.`) : [`${prefix}${k}`],
   );
 }
+
+/** Read from disk, as a catalogue is a chunk of its own in the app. */
+const catalogue = (locale: string): object =>
+  JSON.parse(readFileSync(join(__dirname, `${locale}.json`), 'utf8'));
+
+const flat = (messages: object) =>
+  Object.fromEntries(
+    keys(messages).map((key) => [key, key.split('.').reduce<any>((o, k) => o[k], messages)]),
+  ) as Record<string, string>;
+
+/** Not text: the kinds of element that take a feminine word, empty where no word changes. */
+const MAY_BE_EMPTY = ['board.added.feminine'];
+
+describe.each(LOCALES.filter((locale) => locale !== 'it'))('the %s catalogue', (locale) => {
+  const reference = flat(itMessages);
+  const messages = flat(catalogue(locale));
+  // `_many` is optional: withManyForms fills it from `_other`.
+  const own = Object.keys(messages).filter(
+    (key) => !(key.endsWith('_many') && messages[key.replace(/_many$/, '_other')]),
+  );
+
+  it('has every Italian key and nothing more', () => {
+    expect(own.sort()).toEqual(Object.keys(reference).sort());
+  });
+
+  it('keeps the placeholders, nested keys and markup of each text', () => {
+    const tokens = (text = '') =>
+      (text.match(/\{\{[^}]+\}\}|\$t\([^)]*\)|<\/?\w[^>]*>/g) ?? []).sort();
+    const differ = Object.keys(reference).filter(
+      (key) => tokens(messages[key]).join() !== tokens(reference[key]).join(),
+    );
+    expect(differ).toEqual([]);
+  });
+
+  it('leaves no text empty', () => {
+    const empty = Object.keys(messages).filter(
+      (key) => !messages[key]?.trim() && !MAY_BE_EMPTY.includes(key),
+    );
+    expect(empty).toEqual([]);
+  });
+
+  it('lists as many settings in each search keyword list, since search goes by position', () => {
+    const count = (text = '') => text.split(',').length;
+    const differ = Object.keys(reference)
+      .filter((key) => key.startsWith('settingsUi.keywords.'))
+      .filter((key) => count(messages[key]) !== count(reference[key]));
+    expect(differ).toEqual([]);
+  });
+});
+
+describe('choosing a language', () => {
+  it('takes the first browser language the app speaks, by its base, English otherwise', () => {
+    expect(detect(['pt-BR', 'en'])).toBe('pt');
+    expect(detect(['de-AT'])).toBe('de');
+    expect(detect(['ja-JP', 'fr-CA', 'it'])).toBe('fr');
+    expect(detect(['ja-JP'])).toBe('en');
+    expect(detect([])).toBe('en');
+  });
+});
+
+describe('loading a language on demand', () => {
+  afterEach(() => vi.useRealTimers());
+
+  const app = async (loaders: Parameters<typeof localeBackend>[0], lng = 'en') => {
+    const instance = i18next.createInstance();
+    await instance.use(localeBackend(loaders)).init({
+      resources: { en: { translation: { hello: 'Hello', only: 'English only' } } },
+      partialBundledLanguages: true,
+      lng,
+      fallbackLng: 'en',
+    });
+    return instance;
+  };
+
+  it('loads the catalogue when the language is chosen, and only then', async () => {
+    const es = vi.fn(async () => ({ default: { hello: 'Hola' } }));
+    const instance = await app({ es });
+    expect(es).not.toHaveBeenCalled();
+    expect(instance.t('hello')).toBe('Hello');
+    await instance.changeLanguage('es');
+    expect(es).toHaveBeenCalledOnce();
+    expect(instance.t('hello')).toBe('Hola');
+    expect(instance.t('only')).toBe('English only');
+  });
+
+  it('starts in a language that has to be loaded', async () => {
+    const instance = await app({ es: async () => ({ default: { hello: 'Hola' } }) }, 'es');
+    expect(instance.t('hello')).toBe('Hola');
+  });
+
+  it('keeps working in English when the chunk fails', async () => {
+    const instance = await app({
+      es: () => Promise.reject(new TypeError('Failed to fetch dynamically imported module')),
+    });
+    await instance.changeLanguage('es');
+    expect(instance.t('hello')).toBe('Hello');
+  });
+
+  it('keeps working in English when the language has no catalogue', async () => {
+    const instance = await app({});
+    await instance.changeLanguage('xx');
+    expect(instance.t('hello')).toBe('Hello');
+  });
+
+  it('does not wait for a chunk that never arrives', async () => {
+    vi.useFakeTimers();
+    const instance = await app({ es: () => new Promise(() => {}) });
+    const changing = instance.changeLanguage('es');
+    await vi.advanceTimersByTimeAsync(10_000);
+    await changing;
+    expect(instance.t('hello')).toBe('Hello');
+  });
+
+  it.each(LOCALES.filter((locale) => locale !== 'en'))('finds the %s chunk', async (locale) => {
+    await i18n.loadLanguages(locale);
+    expect(i18n.hasResourceBundle(locale, 'translation')).toBe(true);
+  });
+
+  it('reads a count of a million in the language, not in English', async () => {
+    expect(withManyForms({ a: { b_one: 'x', b_other: 'y' } })).toEqual({
+      a: { b_one: 'x', b_other: 'y', b_many: 'y' },
+    });
+    expect(withManyForms({ b_other: 'y', b_many: 'de y' })).toEqual({
+      b_other: 'y',
+      b_many: 'de y',
+    });
+    const instance = await app(
+      { es: async () => ({ default: { n_one: '{{count}} cosa', n_other: '{{count}} cosas' } }) },
+      'es',
+    );
+    expect(instance.t('n', { count: 1_000_000 })).toBe('1000000 cosas');
+  });
+
+  it('shows a count of 0 where French reads 0 as singular', async () => {
+    await i18n.loadLanguages('fr');
+    const zero = i18n.getFixedT('fr')('backups.filesListed', { count: 0, size: '0 B' });
+    expect(zero).toBe('répertorie 0 fichier (0 B)');
+  });
+});
 
 describe('translations', () => {
   it('English has every Italian key and nothing more', () => {
@@ -47,17 +188,12 @@ describe('translations', () => {
     'office.page',
     'office.sheetOf',
   ];
-  it.each([
-    ['Italian', itMessages],
-    ['English', en],
-  ])('%s counts have a singular and a plural form', (_name, messages) => {
-    const all = Object.fromEntries(
-      keys(messages).map((key) => [key, key.split('.').reduce<any>((o, k) => o[k], messages)]),
-    ) as Record<string, string>;
+  it.each(LOCALES)('%s counts have a singular and a plural form', (locale) => {
+    const all = flat(catalogue(locale));
     const alone = Object.keys(all).filter(
       (key) =>
         /\{\{count\}\}/.test(all[key] ?? '') &&
-        !/_(one|other)$/.test(key) &&
+        !/_(one|other|many)$/.test(key) &&
         !INVARIABLE.includes(key) &&
         !(all[`${key}_one`] && all[`${key}_other`]),
     );

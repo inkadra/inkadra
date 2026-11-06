@@ -1,0 +1,213 @@
+{
+  "ext_name": {
+    "message": "Inkadra Clipper",
+    "description": "Name of the extension."
+  },
+  "ext_description": {
+    "message": "Guarda imágenes, texto y enlaces en un tablero de Inkadra.",
+    "description": "Store description."
+  },
+  "action_title": {
+    "message": "Guardar en Inkadra",
+    "description": "Tooltip of the toolbar button."
+  },
+  "command_save_page": {
+    "message": "Guardar la página en el último tablero",
+    "description": "Keyboard shortcut description."
+  },
+  "menu_image": {
+    "message": "Guardar en Inkadra",
+    "description": "Context menu on an image."
+  },
+  "menu_selection": {
+    "message": "Guardar selección en Inkadra",
+    "description": "Context menu on selected text."
+  },
+  "menu_link": {
+    "message": "Guardar enlace en Inkadra",
+    "description": "Context menu on a link."
+  },
+  "menu_page": {
+    "message": "Guardar página en Inkadra",
+    "description": "Context menu on a page."
+  },
+  "toast_saved": {
+    "message": "Guardado en $BOARD$",
+    "description": "After saving.",
+    "placeholders": {
+      "board": {
+        "content": "$1",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "toast_open_board": {
+    "message": "Abrir tablero",
+    "description": "Link to the board."
+  },
+  "action_settings": {
+    "message": "Ajustes"
+  },
+  "action_connect": {
+    "message": "Conectar"
+  },
+  "action_reconnect": {
+    "message": "Reconectar"
+  },
+  "action_disconnect": {
+    "message": "Desconectar"
+  },
+  "action_save_page": {
+    "message": "Guardar página"
+  },
+  "action_expand": {
+    "message": "Mostrar subtableros"
+  },
+  "action_collapse": {
+    "message": "Ocultar subtableros"
+  },
+  "field_board": {
+    "message": "Tablero"
+  },
+  "field_column": {
+    "message": "Columna"
+  },
+  "field_note": {
+    "message": "Nota"
+  },
+  "field_tags": {
+    "message": "Etiquetas"
+  },
+  "field_server": {
+    "message": "Dirección del servidor"
+  },
+  "board_search": {
+    "message": "Busca un tablero…"
+  },
+  "board_none_selected": {
+    "message": "Ningún tablero elegido"
+  },
+  "boards_none": {
+    "message": "No hay tableros a los que puedas añadir tarjetas."
+  },
+  "boards_none_found": {
+    "message": "No se encontraron tableros."
+  },
+  "section_recent": {
+    "message": "Recientes"
+  },
+  "section_projects": {
+    "message": "Proyectos"
+  },
+  "section_shared": {
+    "message": "Compartidos contigo"
+  },
+  "section_search": {
+    "message": "Resultados"
+  },
+  "column_unsorted": {
+    "message": "Sin ordenar"
+  },
+  "tags_placeholder": {
+    "message": "separadas por comas"
+  },
+  "page_not_web": {
+    "message": "Esta página no se puede guardar."
+  },
+  "connect_intro": {
+    "message": "Conecta el clipper a tu servidor de Inkadra. Se te pedirá iniciar sesión y permitir el acceso."
+  },
+  "connect_permission": {
+    "message": "Chrome pedirá permiso para contactar solo con esta dirección."
+  },
+  "connect_hint_ids": {
+    "message": "Si compilaste tú la extensión, el administrador debe añadir su ID a CLIPPER_EXTENSION_IDS."
+  },
+  "connected_as": {
+    "message": "Conectado como"
+  },
+  "help_title": {
+    "message": "Cómo usarlo"
+  },
+  "help_shortcut": {
+    "message": "Guarda la página en el último tablero usado:"
+  },
+  "help_shortcut_unset": {
+    "message": "sin atajo"
+  },
+  "help_shortcut_change": {
+    "message": "Cambiar"
+  },
+  "help_menus": {
+    "message": "Haz clic derecho en una imagen, un texto seleccionado, un enlace o la página para guardarlo en el último tablero elegido con el botón de la barra de herramientas."
+  },
+  "help_selfhost": {
+    "message": "Extensión compilada por ti"
+  },
+  "help_selfhost_text": {
+    "message": "El servidor solo acepta las extensiones oficiales. Para esta, el administrador del servidor añade el ID de abajo a CLIPPER_EXTENSION_IDS y reinicia."
+  },
+  "help_extension_id": {
+    "message": "ID de la extensión:"
+  },
+  "help_redirect": {
+    "message": "Dirección de redirección:"
+  },
+  "error_not_connected": {
+    "message": "El clipper no está conectado a un servidor."
+  },
+  "error_unauthorized": {
+    "message": "El acceso se revocó o caducó: vuelve a conectar el clipper."
+  },
+  "error_forbidden": {
+    "message": "No tienes permiso para añadir tarjetas a este tablero."
+  },
+  "error_not_found": {
+    "message": "El tablero ya no existe o ya no está compartido contigo."
+  },
+  "error_too_large": {
+    "message": "El archivo es demasiado grande para este servidor."
+  },
+  "error_offline": {
+    "message": "El servidor no responde: comprueba la conexión."
+  },
+  "error_rate_limited": {
+    "message": "Demasiadas solicitudes: inténtalo de nuevo en un minuto."
+  },
+  "error_invalid_server": {
+    "message": "No hay ningún servidor de Inkadra en esta dirección."
+  },
+  "error_auth_cancelled": {
+    "message": "No se completó el inicio de sesión."
+  },
+  "error_auth_failed": {
+    "message": "Falló el inicio de sesión: inténtalo de nuevo."
+  },
+  "error_permission_denied": {
+    "message": "Sin permiso para contactar con el servidor, el clipper no puede funcionar."
+  },
+  "error_no_board": {
+    "message": "Primero elige un tablero con el botón de Inkadra en la barra de herramientas."
+  },
+  "error_bad_request": {
+    "message": "Este contenido no se puede guardar."
+  },
+  "error_server": {
+    "message": "Algo salió mal en el servidor: inténtalo de nuevo."
+  },
+  "error_clip_unconfirmed": {
+    "message": "Revisa el tablero antes de volver a intentarlo."
+  },
+  "column_untitled": {
+    "message": "Columna sin título"
+  },
+  "error_too_large_limit": {
+    "message": "El archivo es demasiado grande. El límite de este servidor es $LIMIT$.",
+    "placeholders": {
+      "limit": {
+        "content": "$1",
+        "example": "50 MB"
+      }
+    }
+  }
+}

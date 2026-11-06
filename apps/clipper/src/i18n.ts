@@ -20,7 +20,7 @@ export function formatBytes(bytes: number): string {
   return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unit}`;
 }
 
-/** Text from _locales (Italian is the default locale). Falls back to the key when missing. */
+/** Text from _locales (English is the default locale). Falls back to the key when missing. */
 export function t(key: string, substitutions?: string | string[]): string {
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
@@ -35,5 +35,5 @@ export function localize(root: ParentNode = document): void {
     el.title = t(el.dataset.i18nTitle ?? '');
   for (const el of root.querySelectorAll<HTMLElement>('[data-i18n-aria-label]'))
     el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel ?? ''));
-  document.documentElement.lang = chrome.i18n.getUILanguage().split('-')[0] ?? 'it';
+  document.documentElement.lang = chrome.i18n.getUILanguage().split('-')[0] ?? 'en';
 }

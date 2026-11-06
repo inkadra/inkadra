@@ -207,7 +207,7 @@ export function describeNotification(
   if (type === 'access_expiring' || type === 'access_expired') {
     const own = !n.subject || n.subject.id === (me?.id ?? signedInId());
     const date = n.accessExpiresAt
-      ? expiryDate(n.accessExpiresAt, me?.locale ?? document.documentElement.lang ?? 'it')
+      ? expiryDate(n.accessExpiresAt, me?.locale ?? document.documentElement.lang ?? 'en')
       : '';
     return t(`notifications.type.${type}${own ? 'Own' : ''}`, {
       name: n.subject?.name ?? '',

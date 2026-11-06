@@ -35,15 +35,33 @@ it.each([
 const instance = { instanceName: 'Studio Aurora', publicUrl: 'https://boards.example.com' };
 
 it('renders localised fallback with only the project release URL', async () => {
-  for (const locale of ['it', 'en']) {
+  const subjects = {
+    it: 'Novità di Inkadra 99.0.0',
+    en: 'Inkadra 99.0.0 news',
+    es: 'Novedades de Inkadra 99.0.0',
+    de: 'Neuigkeiten in Inkadra 99.0.0',
+    fr: 'Nouveautés d’Inkadra 99.0.0',
+    pt: 'Novidades do Inkadra 99.0.0',
+  };
+  for (const [locale, subject] of Object.entries(subjects)) {
     const mail = await releaseNewsMail({ email: 'news@example.com', locale }, '99.0.0', instance);
-    expect(mail.subject).toContain(locale === 'it' ? 'Novità' : 'news');
+    expect(mail.subject).toBe(subject);
     expect(mail.html).not.toContain('<img');
     expect(mail.html?.match(/href="[^"]+"/g)).toEqual([
       'href="https://github.com/inkadra/inkadra/releases/tag/v99.0.0"',
       'href="https://boards.example.com/settings?section=notifications"',
     ]);
   }
+});
+
+it('gives the English highlights to the languages the notes are not written in', async () => {
+  const mailFor = (locale: string) =>
+    releaseNewsMail({ email: 'news@example.com', locale }, '0.8.0', instance);
+  const [english, spanish] = await Promise.all([mailFor('en'), mailFor('es')]);
+  expect(spanish.html).toMatch(/^<!doctype html><html lang="es">/);
+  const listed = (text: string) => text.match(/^\d+\. .*$/gm);
+  expect(listed(english.text)).toBeTruthy();
+  expect(listed(spanish.text)).toEqual(listed(english.text));
 });
 
 it('extracts a bounded first-section list without HTML, Markdown or remote URLs', () => {
