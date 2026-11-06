@@ -84,6 +84,19 @@ export function deviceName(): string {
  * be granted: chrome.permissions.request needs the click, so the page asks before calling this.
  */
 export async function connect(serverUrl: string): Promise<Connection> {
+  try {
+    return await signIn(serverUrl);
+  } catch (err) {
+    // The prompt was accepted for this attempt: a failure must not leave access to this address.
+    const { origin } = new URL(serverUrl);
+    const current = await getConnection();
+    if (!current || new URL(current.serverUrl).origin !== origin)
+      await chrome.permissions.remove({ origins: [`${origin}/*`] }).catch(() => {});
+    throw err;
+  }
+}
+
+async function signIn(serverUrl: string): Promise<Connection> {
   const anonymous = new InkadraApi({ baseUrl: serverUrl });
   let uploadMaxBytes = 0;
   try {

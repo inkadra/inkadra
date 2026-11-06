@@ -89,3 +89,34 @@ it('loads the server history on connecting, and still connects if that fails', a
   await expect(connect('https://ink.example')).resolves.toMatchObject({ token: 't' });
   vi.unstubAllGlobals();
 });
+
+describe('a connection that fails', () => {
+  const failing = (connection?: object) => {
+    const remove = vi.fn(async () => true);
+    vi.stubGlobal('chrome', {
+      permissions: { remove },
+      storage: { local: { get: async (key: string) => ({ [key]: connection }) } },
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('offline');
+      }),
+    );
+    return remove;
+  };
+
+  it('gives back the permission for the address it tried', async () => {
+    const remove = failing();
+    await expect(connect('https://new.example')).rejects.toBeInstanceOf(ClipperError);
+    expect(remove).toHaveBeenCalledWith({ origins: ['https://new.example/*'] });
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps it for the server already connected', async () => {
+    const remove = failing({ serverUrl: 'https://new.example' });
+    await expect(connect('https://new.example')).rejects.toBeInstanceOf(ClipperError);
+    expect(remove).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+});
