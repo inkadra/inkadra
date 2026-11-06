@@ -8,6 +8,7 @@ import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema
 import { type Browser, expect, type Locator, type Page, test } from '@playwright/test';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
+import { cardAction } from '../helpers/phone-board.ts';
 
 // #110, mockup screens 4 (full-screen note) and 9 (client review) on a phone. Runs after
 // first-run.spec.ts as the administrator, on a project of its own. NOTE_REVIEW_SHOTS=<dir>
@@ -255,7 +256,7 @@ async function openNote(page: Page) {
   const card = page.locator('.card[data-type="note"]', { hasText: 'Logline' });
   await expect(card).toBeVisible({ timeout: 20_000 });
   await card.click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Apri documento', exact: true }).click();
+  await cardAction(page, 'Apri documento').click();
   const sheet = page.locator('.note-sidesheet');
   await expect(sheet).toBeVisible();
   return sheet;
