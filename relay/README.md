@@ -16,7 +16,7 @@ existing durable queue and sends selected fields/files here, without reporter or
 Tickets last 30 minutes, are installation-bound and single-use. One SQLite Durable Object makes
 claims atomic. Abuse guards:
 
-- A wait that doubles from 5 seconds to 15 minutes per installation and per network, counted from
+- A wait that doubles from 5 seconds to 5 minutes per installation and per network, counted from
   the last report.
 - `NETWORK_DAILY_LIMIT` (40) reports a day per network, IPv6 by /64 and by /48. An instance is one
   network, so a busy one queues the rest until the next day: raise it if real use needs it.
