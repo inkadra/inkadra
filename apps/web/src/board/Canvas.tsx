@@ -2366,6 +2366,14 @@ export function Canvas({
     if (e.target instanceof HTMLVideoElement && /^( |Arrow)/.test(e.key)) return;
     // Contextual controls keep native Enter/Space activation instead of board edit/pan shortcuts.
     if (isContextualFocus(e.target) && (e.key === 'Enter' || e.key === ' ')) return;
+    // A tab, such as the header's views, chooses itself with Enter or Space, and the keys that
+    // walk the tabs (lib/tabs.ts, which prevents their default) never nudge the selection.
+    if (
+      e.target instanceof Element &&
+      e.target.closest('[role="tab"]') &&
+      (e.key === 'Enter' || e.key === ' ' || e.defaultPrevented)
+    )
+      return;
     // A menu or the version banner already handled this Escape; a preview has nothing to clear.
     if (e.key === 'Escape' && (e.defaultPrevented || preview)) return;
     if (e.key === ' ' && canSpacePan(e.target)) {
