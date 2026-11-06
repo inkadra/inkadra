@@ -1207,7 +1207,7 @@ body:has(.colorpicker) .card-reactions {
   color: var(--ink-text-muted);
 }
 
-/* Section heading (#318): large quiet text over a thin rule, no card chrome. */
+/* Section heading (#318): large quiet text, no card chrome, with an optional tint behind it. */
 .card--section {
   background: transparent;
   border-color: transparent;
@@ -1215,9 +1215,8 @@ body:has(.colorpicker) .card-reactions {
 .section__title {
   display: block;
   width: 100%;
-  padding: 4px 2px 8px;
+  padding: 6px 2px;
   border: 0;
-  border-bottom: 1px solid var(--ink-border-default);
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -4866,13 +4865,10 @@ button.card__play {
   white-space: nowrap;
 }
 
-.section-heading.has-rule::after {
-  content: "";
-  display: block;
-  height: 3px;
-  background:
-    linear-gradient(currentColor, currentColor) left center / 48px 3px no-repeat,
-    linear-gradient(var(--ink-border-strong), var(--ink-border-strong)) center / 100% 1px no-repeat;
+.section-heading.has-background {
+  min-height: 100%;
+  padding-inline: 10px;
+  border-radius: var(--ink-radius-md);
 }
 
 .contextual-desktop {

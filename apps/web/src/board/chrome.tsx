@@ -569,6 +569,13 @@ export function ContextBar({
           {onComments && (
             <BarButton icon="comment" label={t('comments.open')} onClick={onComments} />
           )}
+          {/* A heading has only its look to change: no need to open it first. */}
+          {elements.length === 1 && elements[0]?.type === 'section' && !locked && (
+            <>
+              <ContextualTools key={elements[0].id} element={elements[0]} editor={editor} />
+              <span className="ctxbar__sep" aria-hidden="true" />
+            </>
+          )}
           {colored.length > 0 && colored.length === elements.length && (
             <>
               <button

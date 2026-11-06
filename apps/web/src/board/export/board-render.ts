@@ -185,42 +185,24 @@ export function drawBoard(items: readonly Placed[], ctx: CardContext): Op[] {
 export function drawCard(p: Placed, ctx: CardContext): Op[] {
   const { el } = p;
   const c = ctx.colors;
-  // A section heading has no card: large text over a thin rule, as on the board.
+  // A section heading has no card: large text, on its tint if it has one, as on the board.
   if (el.type === 'section') {
     const size = el.size ? { S: 20, M: 26, L: 34 }[el.size] : 20;
     const weight = el.bold === undefined ? 600 : el.bold ? 700 : 400;
     const color = el.color ? light[`tag-${el.color}`] : c['text-primary'];
-    const title = ellipsize(el.title, p.w - 4, size, weight, ctx.measure);
+    const inset = el.background ? 12 : 2;
+    const title = ellipsize(el.title, p.w - inset * 2, size, weight, ctx.measure);
     const width = ctx.measure(title, size, weight);
     const x =
       el.align === 'center'
         ? p.x + (p.w - width) / 2
         : el.align === 'right'
-          ? p.x + p.w - width - 2
-          : p.x + 2;
-    const ops: Op[] = [{ kind: 'text', x, y: p.y + size + 6, text: title, size, weight, color }];
-    if (el.line !== false) {
-      ops.push({
-        kind: 'line',
-        x1: p.x,
-        y1: p.y + p.h - 1,
-        x2: p.x + p.w,
-        y2: p.y + p.h - 1,
-        color: c['border-default'],
-        width: 1,
-      });
-      if (el.size || el.bold !== undefined)
-        ops.push({
-          kind: 'line',
-          x1: p.x,
-          y1: p.y + p.h - 1,
-          x2: p.x + 48,
-          y2: p.y + p.h - 1,
-          color,
-          width: 3,
-        });
-    }
-    return ops;
+          ? p.x + p.w - width - inset
+          : p.x + inset;
+    const text: Op = { kind: 'text', x, y: p.y + size + 6, text: title, size, weight, color };
+    if (!el.background) return [text];
+    const tint = light[`tag-${el.background}-bg`];
+    return [{ kind: 'rect', x: p.x, y: p.y, w: p.w, h: p.h, radius: RADIUS, fill: tint }, text];
   }
   const tint =
     el.type === 'note' && el.color && el.color in TINTS

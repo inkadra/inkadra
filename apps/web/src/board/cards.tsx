@@ -282,17 +282,14 @@ function SectionCard({ element, editing }: { element: Of<'section'>; editing: bo
     fontStyle: element.italic ? 'italic' : 'normal',
     textAlign: element.align ?? 'left',
     color: noteColor(element.color),
-    borderBottom:
-      element.line === false || element.size || element.bold !== undefined ? 'none' : undefined,
   } as const;
   return (
     <div
-      className={
-        element.line !== false && (element.size || element.bold !== undefined)
-          ? 'section-heading has-rule'
-          : 'section-heading'
-      }
-      style={{ color: noteColor(element.color) }}
+      className={element.background ? 'section-heading has-background' : 'section-heading'}
+      style={{
+        color: noteColor(element.color),
+        backgroundColor: noteColor(element.background, true),
+      }}
     >
       {editing ? (
         <input

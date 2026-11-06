@@ -149,12 +149,14 @@ for (const width of [1280, 390]) {
       await expect(editor).toHaveCount(0);
       await expect(bar).toHaveCount(1);
       const heading = page.locator(`[data-el="${section.id}"]`);
-      await heading.dblclick();
+      // A single click is enough for a heading's look; opening it changes nothing here.
+      await heading.click();
       await bar.getByRole('button', { name: 'Corsivo', exact: true }).click();
-      await bar.getByRole('switch', { name: 'Linea', exact: true }).click();
-      await expect(heading.locator('.has-rule')).toHaveCount(0);
+      await bar.getByRole('button', { name: 'Sfondo', exact: true }).click();
+      await page.getByRole('button', { name: 'Sfondo: Turchese', exact: true }).click();
+      await expect(heading.locator('.has-background')).toBeVisible();
+      await page.keyboard.press('Escape');
       await screenshot(page, `${width}-section`);
-      await bar.getByRole('button', { name: 'Fatto', exact: true }).click();
       const photo = page.locator(`[data-el="${image.id}"]`);
       await photo.dblclick();
       await bar.getByRole('button', { name: 'Ruota di 90° a destra', exact: true }).click();

@@ -231,13 +231,18 @@ export function ContextualTools({
       {display ?? label}
     </button>
   );
-  const palette = (value: unknown, run: (c: string | undefined) => void, highlight = false) => (
+  const palette = (
+    value: unknown,
+    run: (c: string | undefined) => void,
+    highlight = false,
+    label = t(highlight ? 'board.contextual.highlight' : 'board.contextual.textColor'),
+  ) => (
     <div className="contextual-palette">
       {[undefined, ...TEXT_COLORS].map((c) => (
         <button
           key={c ?? 'none'}
           type="button"
-          aria-label={`${t(highlight ? 'board.contextual.highlight' : 'board.contextual.textColor')}: ${c ? t(`board.contextual.colors.${c}`) : t('board.colors.none')}`}
+          aria-label={`${label}: ${c ? t(`board.contextual.colors.${c}`) : t('board.colors.none')}`}
           aria-pressed={c ? value === c : value == null}
           disabled={noSelection}
           style={{
@@ -472,15 +477,14 @@ export function ContextualTools({
         <ToolPopover label={t('board.contextual.textColor')} icon="textColor">
           {palette(el.color, (color) => patch({ color }))}
         </ToolPopover>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={el.line !== false}
-          className="ctxbar__btn ctxbar__done"
-          onClick={() => patch({ line: el.line === false })}
-        >
-          {t('board.contextual.line')}
-        </button>
+        <ToolPopover label={t('board.contextual.background')} icon="color">
+          {palette(
+            el.background,
+            (background) => patch({ background }),
+            true,
+            t('board.contextual.background'),
+          )}
+        </ToolPopover>
       </>
     );
   if (el.type === 'image')
