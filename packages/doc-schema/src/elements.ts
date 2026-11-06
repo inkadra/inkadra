@@ -180,6 +180,9 @@ export const BoardLinkElement = Base.extend({
 export const SECTION_COLORS = [...CARD_COLORS, 'teal', 'yellow', 'red', 'pink'] as const;
 export const SectionColor = z.enum(SECTION_COLORS);
 export type SectionColor = z.infer<typeof SectionColor>;
+/** A heading's background: a colour's tint, or Inkadra's white or black in any theme. */
+export const SECTION_BACKGROUNDS = [...SECTION_COLORS, 'white', 'black'] as const;
+export const SectionBackground = z.enum(SECTION_BACKGROUNDS);
 
 export const SectionElement = Base.extend({
   type: z.literal('section'),
@@ -191,8 +194,10 @@ export const SectionElement = Base.extend({
   bold: z.boolean().optional().describe('True = 700, false = 400; omitted = legacy 600.'),
   italic: z.boolean().optional().describe('Omitted = false.'),
   align: z.enum(['left', 'center', 'right']).optional().describe('Omitted = left.'),
-  color: SectionColor.optional().describe('Text and leading rule accent; omitted = primary text.'),
-  line: z.boolean().optional().describe('False hides the rule; omitted = true.'),
+  color: SectionColor.optional().describe('Text colour; omitted = primary text.'),
+  background: SectionBackground.optional().describe('Behind the text; omitted = none.'),
+  // Retired in version 20: headings no longer draw a rule. Kept so older documents still validate.
+  line: z.boolean().optional(),
   moveCards: z
     .boolean()
     .optional()

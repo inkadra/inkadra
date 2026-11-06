@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AspectRatio, Element, type ElementType, type TableRow } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 19;
+export const CURRENT_SCHEMA_VERSION = 20;
 
 /** Persisted ProseMirror additions: older editor schemas can destructively normalize them. */
 export const NOTE_BODY_FORMAT = {
@@ -148,6 +148,9 @@ const migrations: Record<number, Migration> = {
   // Existing notes stay unchanged; the bump keeps older editors, which would drop the unknown
   // nodes when they normalize a note, read-only.
   18: () => {},
+  // 20: optional `background` on section headings (decision 0076). Existing headings stay
+  // unchanged; older builds must not drop the field when copying a heading.
+  19: () => {},
 };
 
 /**
