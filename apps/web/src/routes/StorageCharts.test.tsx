@@ -59,3 +59,20 @@ it('shows an explicit empty state without NaN shares or misleading capacity bars
   expect(host.querySelector('table')).toBeNull();
   expect(host.textContent).not.toContain('NaN');
 });
+
+it('lists the storage of each user, and files with no account under one label', async () => {
+  const usage: StorageUsage = {
+    originalBytes: 4000,
+    byType: [{ type: 'images', bytes: 4000 }],
+    byProject: [{ projectId: 'p', name: 'Shoot', scope: 'project', bytes: 4000 }],
+    byUser: [
+      { userId: 'u', name: 'Paola Rossi', bytes: 3000 },
+      { userId: null, name: null, bytes: 1000 },
+    ],
+  };
+  await act(async () => root.render(<StorageCharts usage={usage} />));
+  expect(host.querySelectorAll('table')).toHaveLength(3);
+  expect(host.textContent).toContain('admin.storageCharts.byUser');
+  expect(host.textContent).toContain('Paola Rossi');
+  expect(host.textContent).toContain('admin.storageCharts.noUser');
+});

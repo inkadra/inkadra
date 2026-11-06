@@ -2799,11 +2799,14 @@
     "storageCharts": {
       "byType": "Nutzung nach Dateityp",
       "byProject": "Nutzung nach Projekt",
+      "byUser": "Usage by user",
+      "noUser": "No linked account",
       "category": "Kategorie / Projekt",
       "size": "Originaldateien",
       "share": "Anteil",
       "percentScope": "Jeder Prozentwert bezieht sich auf die oben genannte Gesamtmenge der Originaldateien.",
       "attribution": "Jedes Asset wird einmal im besitzenden Projekt gezählt, auch wenn es in mehreren Boards oder Projekten verwendet wird. Projekte ohne Zugriff werden anonym zusammengefasst.",
+      "attributionUser": "Each file counts for the person who uploaded it.",
       "unassigned": "Ohne Projekt",
       "restricted": "Eingeschränkte Projekte",
       "types": {

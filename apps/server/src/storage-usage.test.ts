@@ -17,13 +17,23 @@ describe('original storage usage', () => {
   ])('categorizes %s as %s', (mime, category) => expect(fileCategory(mime)).toBe(category));
   it('keeps totals equal, combines restricted projects anonymously and attributes once per owner', () => {
     const result = storageUsage([
-      { mime: 'image/jpeg', bytes: 300, projectId: 'visible', projectName: 'Shoot', visible: true },
+      {
+        mime: 'image/jpeg',
+        bytes: 300,
+        projectId: 'visible',
+        projectName: 'Shoot',
+        visible: true,
+        userId: null,
+        userName: null,
+      },
       {
         mime: 'video/mp4',
         bytes: 500,
         projectId: 'secret-one',
         projectName: 'Secret one',
         visible: false,
+        userId: null,
+        userName: null,
       },
       {
         mime: 'audio/wav',
@@ -31,6 +41,8 @@ describe('original storage usage', () => {
         projectId: 'secret-two',
         projectName: 'Secret two',
         visible: false,
+        userId: null,
+        userName: null,
       },
       {
         mime: 'application/pdf',
@@ -38,8 +50,18 @@ describe('original storage usage', () => {
         projectId: 'visible',
         projectName: 'Shoot',
         visible: true,
+        userId: null,
+        userName: null,
       },
-      { mime: 'application/zip', bytes: 50, projectId: null, projectName: null, visible: false },
+      {
+        mime: 'application/zip',
+        bytes: 50,
+        projectId: null,
+        projectName: null,
+        visible: false,
+        userId: null,
+        userName: null,
+      },
     ]);
     expect(result.originalBytes).toBe(1150);
     expect(result.byType.reduce((n, row) => n + row.bytes, 0)).toBe(1150);
@@ -60,9 +82,35 @@ describe('original storage usage', () => {
       projectId,
       projectName: projectId,
       visible: true,
+      userId: null,
+      userName: null,
       bytes: 100,
       mime: 'image/png',
     }));
     expect(storageUsage(groups).byProject).toEqual(storageUsage(groups.reverse()).byProject);
+  });
+  it('adds up each uploader across projects, including those the reader cannot see', () => {
+    const group = (bytes: number, userId: string | null, visible = true) => ({
+      mime: 'image/png',
+      bytes,
+      projectId: visible ? 'open' : 'secret',
+      projectName: visible ? 'Open' : 'Secret',
+      visible,
+      userId,
+      userName: userId && `Name of ${userId}`,
+    });
+    const result = storageUsage([
+      group(100, 'a'),
+      group(50, 'b'),
+      group(200, 'a', false),
+      group(10, null),
+      group(5, null, false),
+    ]);
+    expect(result.byUser).toEqual([
+      { userId: 'a', name: 'Name of a', bytes: 300 },
+      { userId: 'b', name: 'Name of b', bytes: 50 },
+      { userId: null, name: null, bytes: 15 },
+    ]);
+    expect(JSON.stringify(result.byUser)).not.toContain('Secret');
   });
 });
