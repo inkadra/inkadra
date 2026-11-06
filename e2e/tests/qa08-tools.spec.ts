@@ -4,6 +4,7 @@ import { addTodoItem, createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { chromium, expect, test } from '@playwright/test';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
+import { addFromBar } from '../helpers/phone-board.ts';
 
 const out = process.env.QA08_SHOTS;
 
@@ -251,7 +252,7 @@ for (const width of [1280, 390]) {
           await expect(page.locator('.viewer')).toHaveCount(0);
           await expect(page.locator('.map-dialog .leaflet-container')).toBeVisible();
           await page.getByRole('button', { name: 'Chiudi la mappa' }).click();
-          await page.getByRole('button', { name: 'Mappa', exact: true }).click();
+          await addFromBar(page, 'Mappa');
           const address = page.getByRole('combobox', { name: 'Indirizzo o link di una mappa' });
           await address.fill('Via Roma, Milano');
           await address.press('Enter');

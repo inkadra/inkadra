@@ -3,6 +3,7 @@ import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
+import { cardAction } from '../helpers/phone-board.ts';
 
 // Leaving an inline field with a canvas click or "Done" keeps what was typed (toolbar A).
 for (const width of [1280, 390]) {
@@ -55,7 +56,7 @@ for (const width of [1280, 390]) {
     await card.locator('input').fill('Second title');
     const bar = page.locator('.ctxbar');
     await bar.getByRole('button', { name: 'Altre azioni', exact: true }).click();
-    await expect(page.getByRole('menuitem', { name: /^Elimina/ })).toBeVisible();
+    await expect(cardAction(page, /^Elimina/)).toBeVisible();
     await page.keyboard.press('Escape');
     await card.dblclick();
     await card.locator('input').fill('Second title');

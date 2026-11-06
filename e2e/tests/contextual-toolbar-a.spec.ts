@@ -6,6 +6,7 @@ import { createBoardDoc, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import * as Y from 'yjs';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
+import { cardAction } from '../helpers/phone-board.ts';
 
 const account = { name: 'Giulia', email: 'giulia@example.com', password: 'correct-horse-battery' };
 async function screenshot(page: Page, name: string) {
@@ -233,7 +234,7 @@ for (const width of [1280, 390]) {
       const card = page.locator(`[data-el="${link.id}"]`);
       await card.click();
       await page.locator('.ctxbar [aria-haspopup=menu]').last().click();
-      await page.getByRole('menuitem', { name: 'Aspetto', exact: true }).click();
+      await cardAction(page, 'Aspetto').click();
       const bar = page.locator('.ctxbar');
       await bar.getByRole('switch', { name: 'Info', exact: true }).click();
       await expect(card.getByText('Appunti di regia')).toHaveCount(0);

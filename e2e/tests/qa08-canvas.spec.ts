@@ -5,6 +5,7 @@ import { createElement, moveIntoParent } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
+import { cardAction } from '../helpers/phone-board.ts';
 
 const account = { name: 'Giulia', email: 'giulia@example.com', password: 'correct-horse-battery' };
 const shots = process.env.QA08_SHOTS;
@@ -170,7 +171,7 @@ for (const width of [1280, 390]) {
     }) => {
       const card = page.locator(`[data-el="${imageId}"]`);
       await card.click({ button: 'right' });
-      await page.getByRole('menuitem', { name: /Tag/ }).click();
+      await cardAction(page, /Tag/).click();
       const popup = page.locator('.tag-popover');
       await expect(popup).toBeVisible();
       const before = (await popup.boundingBox())!;
@@ -185,7 +186,7 @@ for (const width of [1280, 390]) {
       await page.keyboard.up('Control');
       await page.getByRole('button', { name: 'Fatto', exact: true }).click();
       await card.click({ button: 'right' });
-      await page.getByRole('menuitem', { name: /Tag/ }).click();
+      await cardAction(page, /Tag/).click();
       await expect(popup).toBeVisible();
       await shoot(page, `${width}-tags`);
       const box = (await popup.boundingBox())!;

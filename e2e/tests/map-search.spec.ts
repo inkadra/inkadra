@@ -5,6 +5,7 @@ import { createBoardDoc, readElement, roots } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
+import { addFromBar } from '../helpers/phone-board.ts';
 
 for (const width of [1280, 390]) {
   for (const theme of ['dark', 'light'] as const) {
@@ -42,7 +43,7 @@ for (const width of [1280, 390]) {
         }
       };
       const open = async () => {
-        await page.getByRole('button', { name: 'Mappa', exact: true }).click();
+        await addFromBar(page, 'Mappa');
         return page.getByRole('combobox', { name: 'Indirizzo o link di una mappa' });
       };
       let previews = 0;

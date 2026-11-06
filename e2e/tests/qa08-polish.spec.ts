@@ -6,6 +6,7 @@ import { addTodoItem, createElement, moveIntoParent } from '@inkadra/canvas-core
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
+import { cardAction } from '../helpers/phone-board.ts';
 
 /** Portrait with transparent edges and translucent stripes, for the alpha/contain checks. */
 function portraitPng() {
@@ -216,7 +217,7 @@ for (const width of [1280, 390]) {
         );
       await shot('zoom-toolbar');
       await card.click({ button: 'right' });
-      await page.getByRole('menuitem', { name: 'Apri immagine', exact: true }).click();
+      await cardAction(page, 'Apri immagine').click();
       const viewer = page.locator('.viewer');
       await expect(viewer).toBeVisible();
       await viewer.getByRole('button', { name: 'Ingrandisci', exact: true }).click();
