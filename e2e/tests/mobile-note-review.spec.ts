@@ -186,15 +186,26 @@ test.beforeAll(async ({ browser, baseURL }) => {
   const frameIds: string[] = [];
   await editBoard(page, baseURL!, storyboard.id, (doc) => {
     const opts = { userId: null };
-    const scene = createElement(doc, 'scene', { x: 0, y: 0 }, { number: '4', title: 'Stazione' } as never, opts);
+    const scene = createElement(
+      doc,
+      'scene',
+      { x: 0, y: 0 },
+      { number: '4', title: 'Stazione' } as never,
+      opts,
+    );
     for (const [assetId, action] of [
       [pictureA, 'Antonio guarda il tabellone. Luce solo dal neon.'],
       [pictureA, 'Il treno entra in stazione.'],
       [pictureB, 'Primo piano del biglietto.'],
     ] as const)
       frameIds.push(
-        createElement(doc, 'frame', { x: 0, y: 0 }, { parent: scene.id, assetId, action } as never, opts)
-          .id,
+        createElement(
+          doc,
+          'frame',
+          { x: 0, y: 0 },
+          { parent: scene.id, assetId, action } as never,
+          opts,
+        ).id,
       );
   });
   const version = await page.request.post(`/api/v1/boards/${storyboard.id}/versions`, {
@@ -288,7 +299,10 @@ test('the full-screen note on a phone: bar, / menu, mentions, pictures and typin
   ]);
   await shots(page, 'note-slash');
   // The shot is unavailable here, so To-do is the first choice.
-  await expect(menu.getByRole('option', { name: /To-do/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(menu.getByRole('option', { name: /To-do/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
   await page.keyboard.press('Enter');
   await expect(editor.locator('ul[data-type="taskList"]')).toHaveCount(1);
   await page.keyboard.type('Sopralluogo');
@@ -304,7 +318,11 @@ test('the full-screen note on a phone: bar, / menu, mentions, pictures and typin
   const input = sheet.locator('input[type="file"]');
   await expect(input).toHaveAttribute('accept', 'image/*');
   await expect(input).not.toHaveAttribute('capture');
-  await input.setInputFiles({ name: 'sopralluogo.png', mimeType: 'image/png', buffer: png([90, 160, 110]) });
+  await input.setInputFiles({
+    name: 'sopralluogo.png',
+    mimeType: 'image/png',
+    buffer: png([90, 160, 110]),
+  });
   await expect(editor.locator('.note-picture img')).toBeVisible({ timeout: 30_000 });
   await shots(page, 'note-mention-picture');
 
@@ -373,7 +391,9 @@ test('a guest reviews a storyboard on a phone, compares v1 and sends the review'
   await send.click();
   await expect(page.getByText('Revisione inviata al team')).toBeVisible();
   await send.click();
-  await expect(page.getByText('Già inviata: nessuna decisione nuova dall’ultimo invio')).toBeVisible();
+  await expect(
+    page.getByText('Già inviata: nessuna decisione nuova dall’ultimo invio'),
+  ).toBeVisible();
 
   // The board is one tap away, and back.
   await review.getByRole('button', { name: 'Vedi la board', exact: true }).click();

@@ -394,9 +394,7 @@ export function NotePhoneTools({
           editor?.isActive('taskList') ?? false,
         )}
         {tool('mention', t('board.note.mention'), <span aria-hidden="true">@</span>, () =>
-          chain()
-            ?.insertContent(trigger('@'))
-            .run(),
+          chain()?.insertContent(trigger('@')).run(),
         )}
         {projectId &&
           boardId &&
@@ -405,10 +403,7 @@ export function NotePhoneTools({
           'slash',
           t('board.note.slash.label'),
           <span aria-hidden="true">/</span>,
-          () =>
-            chain()
-              ?.insertContent(trigger('/'))
-              .run(),
+          () => chain()?.insertContent(trigger('/')).run(),
           found?.char === '/' || pickingFrame,
         )}
       </div>
