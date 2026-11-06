@@ -135,7 +135,7 @@ import { decodeClipboard, encodeClipboard } from './clipboard.ts';
 import { addPalette, swatchColors } from './colors.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
-import { isDoubleTap, type Tap } from './double-tap.ts';
+import { isDoubleTap, stayedStill, type Tap } from './double-tap.ts';
 import { EmptyBoardStart } from './EmptyBoardStart.tsx';
 import { easeCards } from './ease-cards.ts';
 import { isContextualFocus, restoreEditingFocus } from './editing-focus.ts';
@@ -580,6 +580,8 @@ export function Canvas({
   const touchHeld = useRef(false);
   /** The last tap of one finger on the empty board, to tell a double tap (phones only). */
   const lastTap = useRef<Tap | null>(null);
+  /** The finger on the empty board that may become a tap, if it lifts where it went down. */
+  const fingerDown = useRef<(Tap & { id: number }) | null>(null);
   /** Selection when the first finger landed, restored if a second one turns it into a pinch. */
   const touchSelection = useRef<ReadonlySet<string>>(EMPTY_SET);
   const unsortedRef = useRef<HTMLDivElement>(null);
@@ -1753,6 +1755,9 @@ export function Canvas({
     setOverlay(NO_OVERLAY);
     if (g && g.kind !== 'pan') setSelection(touchSelection.current);
     setMenu(null);
+    // Two fingers are not a tap: neither the one just lifted nor the one going down counts.
+    lastTap.current = null;
+    fingerDown.current = null;
     touchHeld.current = true;
     holding.current = true;
     pinch.current = pinchPair();
@@ -1855,12 +1860,12 @@ export function Canvas({
       // A phone has no room for a new note under the finger: a double tap fits the board instead.
       if (isPhone && e.pointerType === 'touch' && !e.shiftKey) {
         const tap = { at: e.timeStamp, x: p.x, y: p.y };
-        const twice = isDoubleTap(lastTap.current, tap);
-        lastTap.current = twice ? null : tap;
-        if (twice) {
+        if (isDoubleTap(lastTap.current, tap)) {
+          lastTap.current = null;
           zoomTo('fit');
           return;
         }
+        fingerDown.current = { ...tap, id: e.pointerId };
       }
       setStoryPanel(null);
       setFramePanel(null);
@@ -2112,6 +2117,11 @@ export function Canvas({
   }
 
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    const down = fingerDown.current;
+    if (down?.id === e.pointerId) {
+      fingerDown.current = null;
+      lastTap.current = e.type === 'pointerup' && stayedStill(down, screenPoint(e)) ? down : null;
+    }
     if (touchUp(e)) return;
     const g = gesture.current;
     gesture.current = null;
@@ -3370,7 +3380,9 @@ export function Canvas({
 
   /** The phone card sheet's own actions (#110), beside the menu's: only with the menu open. */
   const sheetActions = (() => {
-    if (!isPhone || !menu || readOnly) return { moveTargets: [], guestShown: false };
+    // A list opened from the sheet (frames, scenes) is only that list.
+    if (!isPhone || !menu || readOnly || menu.frames || menu.scenes)
+      return { moveTargets: [], guestShown: false };
     const single = selectedEls.length === 1 ? selectedEls[0] : undefined;
     const cards = selectedEls.filter((e) => e.type !== 'arrow');
     const free = cards.every((e) => !e.locked);

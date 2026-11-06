@@ -370,7 +370,12 @@ test('a double tap on the empty board fits the view instead of adding a note', a
   await expect(card).toBeVisible();
 
   // A double tap on the card still opens it for writing, as before.
-  await card.tap();
-  await card.dblclick();
+  const box = await card.boundingBox();
+  if (!box) throw new Error('card missing');
+  const middle = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  for (let i = 0; i < 2; i++) {
+    await touch('touchStart', [{ ...middle, id: 1 }]);
+    await touch('touchEnd', []);
+  }
   await expect(card.locator('[contenteditable="true"]')).toBeVisible();
 });
