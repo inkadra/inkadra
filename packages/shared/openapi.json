@@ -2385,6 +2385,11 @@
             "type": "number",
             "minimum": 0
           },
+          "derivedBytes": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Previews and playable copies of all files, where their size is known. Servers before this field omit it."
+          },
           "byType": {
             "type": "array",
             "items": {
@@ -2474,6 +2479,11 @@
                 "bytes": {
                   "type": "number",
                   "minimum": 0
+                },
+                "derivedBytes": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Previews and playable copies of those files, where their size is known."
                 }
               },
               "required": [

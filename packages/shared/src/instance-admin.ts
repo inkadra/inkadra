@@ -80,6 +80,10 @@ export const UpdateInstanceMember = z
 export const StorageUsage = z
   .object({
     originalBytes: z.number().nonnegative(),
+    derivedBytes: z.number().nonnegative().optional().openapi({
+      description:
+        'Previews and playable copies of all files, where their size is known. Servers before this field omit it.',
+    }),
     byType: z.array(
       z.object({
         type: z.enum(['images', 'videos', 'audio', 'documents', 'other']),
@@ -102,6 +106,9 @@ export const StorageUsage = z
           }),
           name: z.string().nullable(),
           bytes: z.number().nonnegative(),
+          derivedBytes: z.number().nonnegative().optional().openapi({
+            description: 'Previews and playable copies of those files, where their size is known.',
+          }),
         }),
       )
       .optional()
