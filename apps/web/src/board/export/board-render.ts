@@ -28,7 +28,7 @@ import {
   type Stroke,
 } from '@inkadra/doc-schema';
 import type { AssetTrack } from '@inkadra/shared';
-import { light } from '@inkadra/ui/tokens';
+import { dark, light } from '@inkadra/ui/tokens';
 import { croppedRotatedSize } from '../image-crop.ts';
 import { iconLabel, LABEL_SIZE, measureText, planToken } from '../plan/PlanDrawing.tsx';
 import { videoEmbedUrl } from '../youtube.ts';
@@ -189,7 +189,9 @@ export function drawCard(p: Placed, ctx: CardContext): Op[] {
   if (el.type === 'section') {
     const size = el.size ? { S: 20, M: 26, L: 34 }[el.size] : 20;
     const weight = el.bold === undefined ? 600 : el.bold ? 700 : 400;
-    const color = el.color ? light[`tag-${el.color}`] : c['text-primary'];
+    // Inkadra's white and black are pieces of a theme, on the board too.
+    const surface = el.background === 'white' ? light : el.background === 'black' ? dark : null;
+    const color = el.color ? (surface ?? light)[`tag-${el.color}`] : (surface ?? c)['text-primary'];
     const inset = el.background ? 12 : 2;
     const title = ellipsize(el.title, p.w - inset * 2, size, weight, ctx.measure);
     const width = ctx.measure(title, size, weight);
@@ -201,8 +203,14 @@ export function drawCard(p: Placed, ctx: CardContext): Op[] {
           : p.x + inset;
     const text: Op = { kind: 'text', x, y: p.y + size + 6, text: title, size, weight, color };
     if (!el.background) return [text];
-    const tint = light[`tag-${el.background}-bg`];
-    return [{ kind: 'rect', x: p.x, y: p.y, w: p.w, h: p.h, radius: RADIUS, fill: tint }, text];
+    const box = { kind: 'rect', x: p.x, y: p.y, w: p.w, h: p.h, radius: RADIUS } as const;
+    if (surface)
+      return [
+        { ...box, fill: surface['bg-canvas'], stroke: surface['border-default'], lineWidth: 1 },
+        text,
+      ];
+    if (el.background === 'white' || el.background === 'black') return [text];
+    return [{ ...box, fill: light[`tag-${el.background}-bg`] }, text];
   }
   const tint =
     el.type === 'note' && el.color && el.color in TINTS

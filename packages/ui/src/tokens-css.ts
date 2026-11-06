@@ -12,7 +12,8 @@ export function tokensCss(): string {
 /* Generated from tokens.ts with \`pnpm --filter @inkadra/ui tokens\`. Do not edit by hand. */
 
 :root,
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+.ink-dark {
   color-scheme: dark;
 ${vars(layers, '  ')}
 ${vars(effects, '  ')}

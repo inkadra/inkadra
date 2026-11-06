@@ -540,6 +540,9 @@ describe('board elements (#307, #318, #322)', () => {
     expect(render({ ...section, title: 'Tinted', background: 'teal' } as Element)).toContain(
       'background-color:var(--ink-tag-teal-bg)',
     );
+    expect(render({ ...section, title: 'Black', background: 'black' } as Element)).toContain(
+      'has-surface ink-dark',
+    );
   });
 });
 

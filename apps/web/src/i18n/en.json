@@ -1078,7 +1078,9 @@
         "teal": "Teal",
         "yellow": "Yellow",
         "red": "Red",
-        "pink": "Pink"
+        "pink": "Pink",
+        "white": "White",
+        "black": "Black"
       },
       "appearance": "Appearance",
       "rows": "Rows",

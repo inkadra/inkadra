@@ -1078,7 +1078,9 @@
         "teal": "Turquoise",
         "yellow": "Jaune",
         "red": "Rouge",
-        "pink": "Rose"
+        "pink": "Rose",
+        "white": "Blanc",
+        "black": "Noir"
       },
       "appearance": "Apparence",
       "rows": "Lignes",

@@ -18,7 +18,7 @@ import { BarButton } from './chrome.tsx';
 import { useBoard } from './context.ts';
 import { rotateImageQuarterTurn } from './ImageCropEditor.tsx';
 import { normalizeNoteLink } from './links.ts';
-import { noteColor, selectedBlocks, TEXT_COLORS } from './note-format.ts';
+import { noteColor, SECTION_SURFACES, selectedBlocks, TEXT_COLORS } from './note-format.ts';
 import { LOCAL } from './store.ts';
 import { videoEmbedUrl } from './youtube.ts';
 
@@ -236,18 +236,25 @@ export function ContextualTools({
     run: (c: string | undefined) => void,
     highlight = false,
     label = t(highlight ? 'board.contextual.highlight' : 'board.contextual.textColor'),
+    surfaces: readonly string[] = [],
   ) => (
     <div className="contextual-palette">
-      {[undefined, ...TEXT_COLORS].map((c) => (
+      {[undefined, ...TEXT_COLORS, ...surfaces].map((c) => (
         <button
           key={c ?? 'none'}
           type="button"
+          className={c ? SECTION_SURFACES[c] : undefined}
           aria-label={`${label}: ${c ? t(`board.contextual.colors.${c}`) : t('board.colors.none')}`}
           aria-pressed={c ? value === c : value == null}
           disabled={noSelection}
           style={{
-            color: noteColor(c),
-            backgroundColor: highlight ? noteColor(c, true) : undefined,
+            color: c && SECTION_SURFACES[c] ? 'var(--ink-text-primary)' : noteColor(c),
+            backgroundColor:
+              c && SECTION_SURFACES[c]
+                ? 'var(--ink-bg-canvas)'
+                : highlight
+                  ? noteColor(c, true)
+                  : undefined,
           }}
           onClick={() => run(c)}
         >
@@ -483,6 +490,7 @@ export function ContextualTools({
             (background) => patch({ background }),
             true,
             t('board.contextual.background'),
+            Object.keys(SECTION_SURFACES),
           )}
         </ToolPopover>
       </>

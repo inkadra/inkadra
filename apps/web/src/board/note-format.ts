@@ -13,6 +13,11 @@ export const TEXT_COLORS = [
   'red',
   'pink',
 ] as const;
+/** Inkadra's white and black: a piece of the matching theme, so what sits on them stays legible. */
+export const SECTION_SURFACES: Readonly<Record<string, string>> = {
+  white: 'ink-paper',
+  black: 'ink-dark',
+};
 export function noteColor(value: unknown, highlight = false): string | undefined {
   return typeof value === 'string' && (TEXT_COLORS as readonly string[]).includes(value)
     ? `var(--ink-tag-${value}${highlight ? '-bg' : ''})`
