@@ -116,7 +116,17 @@ export const GUEST_ELEMENT_FIELDS = {
     'scenes',
   ],
   location: [...COMMON_GUEST_FIELDS, 'name', 'setting', 'assetId', 'light', 'scenes'],
-  section: [...COMMON_GUEST_FIELDS, 'title', 'size', 'bold', 'italic', 'align', 'color', 'line'],
+  section: [
+    ...COMMON_GUEST_FIELDS,
+    'title',
+    'size',
+    'bold',
+    'italic',
+    'align',
+    'color',
+    'background',
+    'line',
+  ],
   table: [...COMMON_GUEST_FIELDS, 'columns', 'rows', 'header', 'color'],
   map: [...COMMON_GUEST_FIELDS, 'name', 'address', 'url', 'lat', 'lon', 'zoom', 'imageAssetId'],
   plan: [

@@ -191,8 +191,10 @@ export const SectionElement = Base.extend({
   bold: z.boolean().optional().describe('True = 700, false = 400; omitted = legacy 600.'),
   italic: z.boolean().optional().describe('Omitted = false.'),
   align: z.enum(['left', 'center', 'right']).optional().describe('Omitted = left.'),
-  color: SectionColor.optional().describe('Text and leading rule accent; omitted = primary text.'),
-  line: z.boolean().optional().describe('False hides the rule; omitted = true.'),
+  color: SectionColor.optional().describe('Text colour; omitted = primary text.'),
+  background: SectionColor.optional().describe('Tint behind the text; omitted = none.'),
+  // Retired in version 20: headings no longer draw a rule. Kept so older documents still validate.
+  line: z.boolean().optional(),
   moveCards: z
     .boolean()
     .optional()
