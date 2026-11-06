@@ -1,9 +1,11 @@
-import { type ReactNode, useRef, useState } from 'react';
+import { Icon, type IconName } from '@inkadra/ui';
+import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import { SLOP_PX, settle, startsSwipe, swipeOffset } from './swipe.ts';
 
 export interface SwipeAction {
   label: string;
-  tone: 'neutral' | 'positive';
+  icon: IconName;
+  tone: 'read' | 'resolve';
   onClick: () => void;
 }
 
@@ -15,10 +17,13 @@ export interface SwipeAction {
 export function SwipeRow({
   className,
   actions,
+  onSwipe,
   children,
 }: {
   className: string;
   actions: readonly SwipeAction[];
+  /** A finger started swiping: the moment to find out about actions not known yet. */
+  onSwipe?: () => void;
   children: ReactNode;
 }) {
   const [offset, setOffset] = useState(0);
@@ -28,6 +33,11 @@ export function SwipeRow({
   const moved = useRef(false);
   const width = () => drawer.current?.offsetWidth ?? 0;
   const open = offset !== 0;
+  // An action that arrives while the row is open: it stays open on all of them.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new action moves the row
+  useLayoutEffect(() => {
+    if (open && !gesture.current) setOffset(-width());
+  }, [actions.length]);
   return (
     <li className={`${className} swipe-row`}>
       <div ref={drawer} className="swipe-row__actions" inert={!open}>
@@ -41,6 +51,7 @@ export function SwipeRow({
               action.onClick();
             }}
           >
+            <Icon name={action.icon} size={18} />
             {action.label}
           </button>
         ))}
@@ -66,6 +77,7 @@ export function SwipeRow({
             if (Math.abs(dx) <= SLOP_PX) return;
             g.swiping = true;
             moved.current = true;
+            onSwipe?.();
             setDragging(true);
             e.currentTarget.setPointerCapture(e.pointerId);
           }

@@ -309,7 +309,8 @@
   color: var(--ink-text-secondary);
   overflow-wrap: anywhere;
 }
-.notification > .ink-iconbtn {
+.notification > .ink-iconbtn,
+.swipe-row__front > .ink-iconbtn {
   margin-top: 4px;
 }
 .notification-matrix {
@@ -805,25 +806,30 @@
   display: flex;
 }
 .swipe-row__action {
-  min-width: 80px;
-  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 74px;
+  padding: 0 4px;
   border: 0;
+  color: var(--ink-on-accent);
   font: inherit;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
-.swipe-row__action--neutral {
-  background: var(--ink-surface-3);
-  color: var(--ink-text-primary);
+.swipe-row__action--read {
+  background: var(--ink-accent-button);
 }
-.swipe-row__action--positive {
-  background: var(--ink-tag-green-bg);
-  color: var(--ink-tag-green);
+.swipe-row__action--resolve {
+  background: var(--ink-positive-button);
 }
 .swipe-row__action:focus-visible {
-  outline: 2px solid var(--ink-accent-primary);
-  outline-offset: -2px;
+  outline: 2px solid var(--ink-on-accent);
+  outline-offset: -4px;
 }
 @media (prefers-reduced-motion: reduce) {
   .swipe-row__front {
