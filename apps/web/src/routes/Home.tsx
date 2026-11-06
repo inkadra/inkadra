@@ -145,8 +145,9 @@ export function Home() {
         id="home-recent"
         title={t('home.recentBoards')}
         action={
-          // Guests with shared boards only have no projects page to go to.
-          projects && projects.length > 0 ? (
+          // Guests with shared boards only have no projects page to go to; a phone has the link
+          // under its project list instead.
+          !phone && projects && projects.length > 0 ? (
             <a className="home__more" href="/projects" onClick={go('/projects')}>
               {t('home.allProjects')}
             </a>
@@ -374,7 +375,10 @@ function UnsortedCard({
               <a href={href(b)} onClick={go(href(b))}>
                 <span className="home__unsorted-board">
                   {b.boardTitle}
-                  <span className="ink-muted"> · {b.projectName}</span>
+                  {/* A project's root board carries the project's name. */}
+                  {b.boardTitle !== b.projectName && (
+                    <span className="ink-muted"> · {b.projectName}</span>
+                  )}
                 </span>
                 <span className="ink-muted">{b.count}</span>
               </a>

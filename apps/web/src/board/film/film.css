@@ -4683,3 +4683,9 @@ button.moodboard__card:focus-visible {
   font-size: 11px;
   font-weight: 600;
 }
+@media (width < 768px) {
+  /* The day comes first on a phone; the shots still to plan follow it. */
+  .schedule .story__main > .schedule__board {
+    order: -1;
+  }
+}
