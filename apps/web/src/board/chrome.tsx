@@ -90,6 +90,9 @@ const MENU_CARDS = [
 
 const mod = () => (isMac() ? '⌘' : 'Ctrl+');
 
+/** The phone bar of the mockup (#110): note, photo and to-do beside Select and More. */
+const PHONE_BAR: readonly BarTool[] = ['note', 'image', 'todo'];
+
 /**
  * Marks a sideways-scrolling row with `data-more-start` and `data-more-end` while there is more
  * of it past that edge, so CSS can fade the edge instead of showing a tool cut in half.
@@ -124,6 +127,7 @@ export function Toolbar({
   onCanvas,
   onScreenplay,
   onVoiceNote,
+  phone = false,
 }: {
   tool: CanvasTool;
   onTool: (tool: CanvasTool) => void;
@@ -134,10 +138,13 @@ export function Toolbar({
   onScreenplay?: () => void;
   /** Records a voice note from the microphone, saved as an audio card (#327). */
   onVoiceNote?: (() => void) | undefined;
+  /** Select, note, photo and to-do on the bar; every other tool waits in the "More" menu. */
+  phone?: boolean;
 }) {
   const { t } = useTranslation();
   const tools = useScrollEdges<HTMLDivElement>();
-  const shown = barTools(usePreferences().toolbar);
+  const saved = barTools(usePreferences().toolbar);
+  const shown = phone ? PHONE_BAR : saved;
   return (
     <div className="toolbar" role="toolbar" aria-label={t('board.toolbar')} data-chrome>
       {/* On phones the tools scroll sideways and the Canvas button stays pinned beside them. */}
@@ -154,15 +161,18 @@ export function Toolbar({
             pressed={tool === 'select'}
             onClick={() => onTool('select')}
           />
-          <ToolButton
-            icon="hand"
-            kind="hand"
-            label={t('board.tools.hand')}
-            keyHint="H"
-            pressed={tool === 'hand'}
-            onClick={() => onTool('hand')}
-          />
-          {shown.includes('arrow') && (
+          {/* On a phone the hand comes from "More" and shows here only while it is on. */}
+          {(!phone || tool === 'hand') && (
+            <ToolButton
+              icon="hand"
+              kind="hand"
+              label={t('board.tools.hand')}
+              keyHint="H"
+              pressed={tool === 'hand'}
+              onClick={() => onTool(phone ? 'select' : 'hand')}
+            />
+          )}
+          {(shown.includes('arrow') || (phone && tool === 'arrow')) && (
             <ToolButton
               icon="arrow"
               kind="arrow"
@@ -173,7 +183,7 @@ export function Toolbar({
             />
           )}
         </fieldset>
-        {(['create', 'organize'] as const).map((group) => (
+        {(phone ? (['create'] as const) : (['create', 'organize'] as const)).map((group) => (
           <fieldset
             key={group}
             className={`toolbar__group toolbar__group--${group}`}
@@ -214,6 +224,7 @@ export function Toolbar({
       >
         <CanvasMenuButton
           hidden={DEFAULT_BAR.filter((tl) => !shown.includes(tl))}
+          more={phone}
           onTool={onTool}
           onCanvas={onCanvas}
           onScreenplay={onScreenplay}
@@ -231,6 +242,7 @@ export function Toolbar({
  */
 function CanvasMenuButton({
   hidden,
+  more = false,
   onTool,
   onCanvas,
   onScreenplay,
@@ -239,6 +251,8 @@ function CanvasMenuButton({
 }: {
   /** Tools of the default bar this person hid (#302): they open the menu. */
   hidden: readonly BarTool[];
+  /** The phone's "More": an icon, with the hand tool first in the menu. */
+  more?: boolean;
   onTool: (tool: CanvasTool) => void;
   onCanvas: () => void;
   onScreenplay?: (() => void) | undefined;
@@ -250,7 +264,7 @@ function CanvasMenuButton({
   const { t } = useTranslation();
   const button = useRef<HTMLButtonElement>(null);
   const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
-  const label = t('board.canvasMenu.label');
+  const label = t(more ? 'board.canvasMenu.more' : 'board.canvasMenu.label');
   // Above the button, its right edge on the button's.
   const open = () => {
     const rect = button.current?.getBoundingClientRect();
@@ -265,7 +279,7 @@ function CanvasMenuButton({
       <button
         ref={button}
         type="button"
-        className="toolbar__btn toolbar__btn--canvas"
+        className={`toolbar__btn toolbar__btn--canvas${more ? ' toolbar__btn--more' : ''}`}
         aria-haspopup="menu"
         aria-expanded={!!at}
         aria-label={label}
@@ -278,9 +292,9 @@ function CanvasMenuButton({
           }
         }}
       >
-        <Icon name="plus" size={18} />
+        <Icon name={more ? 'more' : 'plus'} size={18} />
         <span className="toolbar__label">{label}</span>
-        <Icon name="caretDown" size={10} />
+        {!more && <Icon name="caretDown" size={10} />}
       </button>
       {at &&
         createPortal(
@@ -290,6 +304,16 @@ function CanvasMenuButton({
             style={{ right: at.right, bottom: at.bottom }}
             anchor={button}
             items={[
+              ...(more
+                ? [
+                    {
+                      label: t('board.tools.hand'),
+                      icon: 'hand',
+                      kind: 'canvas',
+                      action: () => onTool('hand'),
+                    } as MenuItem,
+                  ]
+                : []),
               ...hidden
                 .filter((tool) => tool !== 'voice' || onVoiceNote)
                 .map(
@@ -794,6 +818,15 @@ function ArrangeButton({
   );
 }
 
+export type SheetSlot =
+  | 'comment'
+  | 'duplicate'
+  | 'lock'
+  | 'guest'
+  | 'unsorted'
+  | 'storyboard'
+  | 'delete';
+
 export type MenuItem =
   | {
       label: string;
@@ -812,6 +845,8 @@ export type MenuItem =
       content?: ReactNode;
       /** One choice of a set, ticked when it is the current one. */
       checked?: boolean;
+      /** Where the phone's card sheet puts the action, out of the list of other actions. */
+      sheet?: SheetSlot;
       divider?: never;
       heading?: never;
     }

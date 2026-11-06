@@ -16,6 +16,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -32,7 +33,13 @@ import { plannedWrap } from './call-sheet.ts';
 import { AutoTime, TokenField } from './fields.tsx';
 import { NeededItems } from './NeededItems.tsx';
 import { neededForDay, updateNeededRow } from './needed.ts';
-import { castConflicts, clockLabel, newScheduleBlock, scheduleTimes } from './schedule.ts';
+import {
+  castConflicts,
+  clockLabel,
+  newScheduleBlock,
+  nowOnDay,
+  scheduleTimes,
+} from './schedule.ts';
 import { useSlugline, useStoryboard } from './storyboard-data.ts';
 import './film.css';
 import { formatClock } from '../../lib/datetime.ts';
@@ -230,9 +237,17 @@ export function ScheduleView({
   const scheduled = new Set(
     drafted.flatMap((d) => d.draft.blocks.map((block) => block.shotId).filter(Boolean)),
   );
+  const phone = useIsPhone();
+  const now = useMinute(phone);
+  // A phone opens on the day being shot, when there is one; a wider screen on the first. Picked
+  // once, when the days arrive: the day must not change under someone reading it as time passes.
+  const openingDay = useRef<string | null>(null);
+  if (phone && openingDay.current === null && drafted.length > 0)
+    openingDay.current =
+      drafted.find((d) => nowOnDay(d.draft, plannedWrap(d.draft), now) !== null)?.day.id ?? '';
   const activeIndex = Math.max(
     0,
-    drafted.findIndex((d) => d.day.id === selection.day),
+    drafted.findIndex((d) => d.day.id === (selection.day ?? (phone ? openingDay.current : null))),
   );
   const active = drafted[activeIndex];
   const disabled = readOnly || busy;
@@ -357,7 +372,6 @@ export function ScheduleView({
         .map((name) => [name.trim().toLocaleLowerCase(), name.trim()]),
     ).values(),
   ].sort((a, b) => a.localeCompare(b));
-  const phone = useIsPhone();
   const [sheetOpen, setSheetOpen] = useState(false);
   const neededOf = (day: ShootingDayInput) => neededForDay(day, snap.byId.values());
   const boardAspect = useBoardAspect(store.doc);
@@ -449,9 +463,12 @@ export function ScheduleView({
           </span>
         )}
         <span className="ink-header__spacer" />
-        <Button icon="file" disabled={loading || !!error} onClick={() => setCallSheetOpen(true)}>
-          {t('shells.callSheet')}
-        </Button>
+        {/* A phone has the call sheet under the day, as the mockup of #110. */}
+        {!phone && (
+          <Button icon="file" disabled={loading || !!error} onClick={() => setCallSheetOpen(true)}>
+            {t('shells.callSheet')}
+          </Button>
+        )}
         {/* With no days the empty state carries the same action. */}
         {!readOnly && days.length > 0 && (
           <Button variant="primary" icon="plus" disabled={busy || loading} onClick={addDay}>
@@ -547,33 +564,53 @@ export function ScheduleView({
               </div>
             ) : (
               <div className="schedule__days">
-                {drafted.map(({ day, draft, dirty, stale }, index) => (
-                  <DayColumn
-                    key={day.id}
-                    draft={draft}
-                    index={index}
-                    dirty={dirty}
-                    stale={stale}
-                    selected={day.id === active?.day.id}
-                    selectedBlock={day.id === active?.day.id ? selection.block : null}
-                    conflicts={conflicts}
-                    shotTitle={shotTitle}
-                    readOnly={readOnly}
-                    onSelect={(block) => {
-                      setSelection({ day: day.id, block });
-                      setSheetOpen(true);
-                    }}
-                    onDrop={(payload) => {
-                      const id = resolveDroppedShot(
-                        payload,
-                        boardId,
-                        frames.map((frame) => frame.id),
-                        disabled,
-                      );
-                      if (id) addShot(index, id);
-                    }}
+                {phone && drafted.length > 1 && (
+                  <DayPicker
+                    dates={drafted.map(({ day, draft }) => ({ id: day.id, date: draft.date }))}
+                    selected={active?.day.id ?? null}
+                    onSelect={(id) => setSelection({ day: id, block: null })}
                   />
-                ))}
+                )}
+                {drafted.map(({ day, draft, dirty, stale }, index) =>
+                  phone && day.id !== active?.day.id ? null : (
+                    <DayColumn
+                      key={day.id}
+                      now={phone ? nowOnDay(draft, plannedWrap(draft), now) : null}
+                      draft={draft}
+                      index={index}
+                      dirty={dirty}
+                      stale={stale}
+                      selected={day.id === active?.day.id}
+                      selectedBlock={day.id === active?.day.id ? selection.block : null}
+                      conflicts={conflicts}
+                      shotTitle={shotTitle}
+                      readOnly={readOnly}
+                      onSelect={(block) => {
+                        setSelection({ day: day.id, block });
+                        setSheetOpen(true);
+                      }}
+                      onDrop={(payload) => {
+                        const id = resolveDroppedShot(
+                          payload,
+                          boardId,
+                          frames.map((frame) => frame.id),
+                          disabled,
+                        );
+                        if (id) addShot(index, id);
+                      }}
+                    />
+                  ),
+                )}
+                {phone && (
+                  <Button
+                    block
+                    icon="file"
+                    disabled={loading || !!error}
+                    onClick={() => setCallSheetOpen(true)}
+                  >
+                    {t('shells.callSheet')}
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -653,7 +690,57 @@ function QueueShot({
   );
 }
 
+/** The days of the plan as a row of chips, on a phone that shows one day at a time. */
+function DayPicker({
+  dates,
+  selected,
+  onSelect,
+}: {
+  dates: ReadonlyArray<{ id: string; date: string }>;
+  selected: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const part = (date: string, options: Intl.DateTimeFormatOptions) => {
+    const time = Date.parse(`${date}T00:00:00Z`);
+    return Number.isNaN(time)
+      ? date
+      : new Intl.DateTimeFormat(i18n.language, { ...options, timeZone: 'UTC' }).format(time);
+  };
+  return (
+    <fieldset className="schedule__picker">
+      <legend className="ink-sr-only">{t('schedule.pickDay')}</legend>
+      {dates.map(({ id, date }, index) => (
+        <button
+          key={id}
+          type="button"
+          className="schedule__picker-day"
+          aria-pressed={id === selected}
+          aria-label={`${t('schedule.dayNumber', { n: index + 1 })} · ${part(date, { weekday: 'long', day: 'numeric', month: 'long' })}`}
+          onClick={() => onSelect(id)}
+        >
+          <span>{part(date, { weekday: 'short' })}</span>
+          <b>{part(date, { day: 'numeric' })}</b>
+        </button>
+      ))}
+    </fieldset>
+  );
+}
+
+/** The current minute, kept fresh while `enabled`; the first render reads the clock once. */
+function useMinute(enabled: boolean): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!enabled) return;
+    setNow(new Date());
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, [enabled]);
+  return now;
+}
+
 function DayColumn({
+  now,
   draft,
   index,
   dirty,
@@ -677,9 +764,19 @@ function DayColumn({
   readOnly: boolean;
   onSelect: (block: string | null) => void;
   onDrop: (payload: string) => void;
+  /** Minutes on this day's clock while it is under way (nowOnDay), else null. */
+  now: number | null;
 }) {
   const { t } = useTranslation();
   const dayLabel = useDayLabel();
+  const times = scheduleTimes(draft);
+  // The line of the hour goes before the first block still to start.
+  const nowAt = now === null ? -1 : times.findIndex(({ start }) => start > now);
+  const nowLine = now !== null && (
+    <li key="now" className="schedule__now">
+      <span>{t('schedule.now', { time: clockLabel(now % 1440) })}</span>
+    </li>
+  );
   const [over, setOver] = useState(false);
   // Without a saved wrap time the day ends with its last block.
   const wrap = plannedWrap(draft);
@@ -721,10 +818,11 @@ function DayColumn({
         <li className="schedule__marker">
           {formatClock(draft.callTime)} {t('schedule.callRow')}
         </li>
-        {scheduleTimes(draft).map(({ block, start, end }) => (
+        {times.map(({ block, start, end }, i) => [
+          i === nowAt && nowLine,
           <li
             key={block.id}
-            className={`schedule__block schedule__block--${block.type}${conflicts.has(block.id) ? ' has-conflict' : ''}${selectedBlock === block.id ? ' is-selected' : ''}`}
+            className={`schedule__block schedule__block--${block.type}${conflicts.has(block.id) ? ' has-conflict' : ''}${selectedBlock === block.id ? ' is-selected' : ''}${now !== null && start <= now && now < end ? ' is-current' : ''}`}
             style={{ '--block-span': Math.min(block.duration, 240) } as CSSProperties}
           >
             <button
@@ -753,9 +851,13 @@ function DayColumn({
               {conflicts.has(block.id) && (
                 <span className="schedule__flag">{t('schedule.castFlag')}</span>
               )}
+              {now !== null && start <= now && now < end && (
+                <span className="schedule__current">{t('schedule.current')}</span>
+              )}
             </button>
-          </li>
-        ))}
+          </li>,
+        ])}
+        {nowAt === -1 && nowLine}
         {wrap !== null && (
           <li className="schedule__marker">
             {clockLabel(wrap)} {t('schedule.wrapRow')}

@@ -48,6 +48,7 @@
   --ink-on-accent: #FFFFFF;
   --ink-accent-soft-bg: #1E2A44;
   --ink-accent-soft-fg: #9DB8F2;
+  --ink-positive-button: #23743F;
   --ink-status-ok: #46A758;
   --ink-status-warn: #F2B08A;
   --ink-status-danger: #E5484D;
@@ -121,6 +122,7 @@
   --ink-on-accent: #FFFFFF;
   --ink-accent-soft-bg: #E6EDFB;
   --ink-accent-soft-fg: #2F5AAE;
+  --ink-positive-button: #23743F;
   --ink-status-ok: #23743F;
   --ink-status-warn: #A5521F;
   --ink-status-danger: #C8343A;
@@ -193,6 +195,7 @@
     --ink-on-accent: #FFFFFF;
     --ink-accent-soft-bg: #E6EDFB;
     --ink-accent-soft-fg: #2F5AAE;
+    --ink-positive-button: #23743F;
     --ink-status-ok: #23743F;
     --ink-status-warn: #A5521F;
     --ink-status-danger: #C8343A;
