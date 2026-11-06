@@ -682,8 +682,7 @@
       "action": "Exportar…"
     },
     "present": {
-      "action": "Apresentar",
-      "soon": "Use o botão Apresentar na visualização Storyboard"
+      "action": "Apresentar"
     },
     "access": {
       "readOnly": "Sua função mudou: agora você só pode visualizar este quadro.",

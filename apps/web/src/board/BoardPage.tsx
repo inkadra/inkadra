@@ -1,5 +1,11 @@
 import type { Rect } from '@inkadra/canvas-core';
-import type { Board, BoardDetail, Project, ProjectRole } from '@inkadra/shared';
+import {
+  type Board,
+  type BoardDetail,
+  defaultProjectIcon,
+  type Project,
+  type ProjectRole,
+} from '@inkadra/shared';
 import { Avatar, Button, EmptyState, Icon, IconButton, ProjectGlyph } from '@inkadra/ui';
 import {
   Fragment,
@@ -23,8 +29,16 @@ import { useSession } from '../lib/session.tsx';
 import { moveTabFocus } from '../lib/tabs.ts';
 import { useProjects } from '../routes/AppLayout.tsx';
 import { NotFound } from '../routes/NotFound.tsx';
+import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
 import { renameProject } from '../routes/projects.ts';
-import { boardPath, fetchBoard, renameBoard, useProjectBoards } from './boards.ts';
+import {
+  boardPath,
+  canRenameBoard,
+  fetchBoard,
+  renameBoard,
+  setBoardIcon,
+  useProjectBoards,
+} from './boards.ts';
 import { Canvas } from './Canvas.tsx';
 import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
 import { ContextMenu, Toast } from './chrome.tsx';
@@ -134,16 +148,19 @@ function CurrentCrumb({
   ariaLabel,
   maxLength,
   canRename,
+  editing,
+  setEditing,
   onRename,
 }: {
   title: string;
   ariaLabel?: string;
   maxLength: number;
   canRename: boolean;
+  editing: boolean;
+  setEditing: (editing: boolean) => void;
   onRename: (title: string) => void;
 }) {
   const { t } = useTranslation();
-  const [editing, setEditing] = useState(false);
   const cancelledRef = useRef(false);
 
   if (!canRename) {
@@ -296,6 +313,8 @@ function BoardScreen({
   const [sharing, setSharing] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [headerMenu, setHeaderMenu] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [iconBoard, setIconBoard] = useState<Board | null>(null);
   const reportingOn = !!useFeedbackStatus()?.enabled;
   const isPhone = useIsPhone();
   const tabsId = useId();
@@ -380,6 +399,21 @@ function BoardScreen({
     },
     [boardId, kind, rootBoardId, storyboardId, reviewBoard, navigate, projectId, setView, view],
   );
+
+  /** Opens the storyboard and starts its presentation, which StoryboardView reads from the URL. */
+  const startPresentation = useCallback(() => {
+    const destination = viewDestination(
+      'storyboard',
+      { boardId, kind, rootBoardId },
+      storyboardId,
+      reviewBoard,
+    );
+    const href = viewHref(projectId, destination, { boardId, rootBoardId, kind });
+    navigate(
+      `${href}${href.includes('?') ? '&' : '?'}present=1`,
+      beginViewSwitch(view, 'storyboard'),
+    );
+  }, [boardId, kind, rootBoardId, storyboardId, reviewBoard, navigate, projectId, view]);
 
   // The layout builds its links anew on every render: the tabs depend on their fields, so the
   // palette's actions below are not registered again each time.
@@ -500,6 +534,13 @@ function BoardScreen({
   );
 
   const selfId = user?.id ?? null;
+  const canRenameCurrent = editable && (boardId !== rootBoardId || canEdit(projectRole));
+  // The root board's icon is the project's, which the sidebar changes.
+  const currentBoard = boards?.find((b) => b.id === boardId);
+  const iconTarget =
+    editable && boardId !== rootBoardId && canRenameBoard(currentBoard) ? currentBoard : undefined;
+  const canPresent = tabs.includes('storyboard');
+  const importable = kind === 'storyboard' && !preview;
 
   const header = useMemo(
     () => ({
@@ -521,7 +562,9 @@ function BoardScreen({
                     ariaLabel={c.id === rootBoardId ? t('project.name') : t('board.board.title')}
                     // The limits of UpdateProject.name and UpdateBoard.title.
                     maxLength={c.id === rootBoardId ? 120 : 200}
-                    canRename={editable && (boardId !== rootBoardId || canEdit(projectRole))}
+                    canRename={canRenameCurrent}
+                    editing={renaming}
+                    setEditing={setRenaming}
                     onRename={handleRenameCurrentBoard}
                   />
                 ) : (
@@ -557,22 +600,52 @@ function BoardScreen({
                   onClose={closeHeaderMenu}
                   anchor={headerMenuAnchor}
                   items={[
-                    // The clock icon covers Versions on desktop; phones hide it, so the menu keeps it.
-                    ...(isPhone
+                    ...(canRenameCurrent
                       ? [
-                          { label: t('versions.title'), action: () => setVersionsOpen(true) },
-                          { divider: true as const },
+                          {
+                            label: t('board.menu.rename'),
+                            icon: 'pen' as const,
+                            action: () => setRenaming(true),
+                          },
+                        ]
+                      : []),
+                    ...(iconTarget
+                      ? [
+                          {
+                            label: t('board.menu.boardIcon'),
+                            icon: 'iconLibrary' as const,
+                            action: () => setIconBoard(iconTarget),
+                          },
+                        ]
+                      : []),
+                    ...(canRenameCurrent || iconTarget ? [{ divider: true as const }] : []),
+                    ...(importable
+                      ? [
+                          {
+                            label: t('screenplay.open'),
+                            icon: 'upload' as const,
+                            action: openScriptImport,
+                          },
                         ]
                       : []),
                     {
                       label: t('board.export.action'),
+                      icon: 'download' as const,
                       action: () => openExport(exportSourceOf(view)),
                     },
-                    // Presenting lives in the Storyboard view.
+                    ...(canPresent
+                      ? [
+                          {
+                            label: t('board.present.action'),
+                            icon: 'play' as const,
+                            action: startPresentation,
+                          },
+                        ]
+                      : []),
                     {
-                      label: t('board.present.action'),
-                      disabled: true,
-                      hint: t('board.present.soon'),
+                      label: t('versions.title'),
+                      icon: 'clock' as const,
+                      action: () => setVersionsOpen(true),
                     },
                     ...(reportingOn
                       ? [
@@ -608,13 +681,14 @@ function BoardScreen({
                 label={t('board.export.action')}
                 onClick={() => openExport(exportSourceOf(view))}
               />
-              {/* Presenting lives in the Storyboard view. */}
-              <IconButton
-                icon="play"
-                className="board-header-present"
-                label={`${t('board.present.action')} · ${t('board.present.soon')}`}
-                disabled
-              />
+              {canPresent && (
+                <IconButton
+                  icon="play"
+                  className="board-header-present"
+                  label={t('board.present.action')}
+                  onClick={startPresentation}
+                />
+              )}
             </>
           )}
           {(editable || detail) && <span className="ink-header__divider" aria-hidden="true" />}
@@ -653,8 +727,13 @@ function BoardScreen({
       closeHeaderMenu,
       openExport,
       handleRenameCurrentBoard,
-      boardId,
-      projectRole,
+      canRenameCurrent,
+      renaming,
+      iconTarget,
+      importable,
+      openScriptImport,
+      canPresent,
+      startPresentation,
       selfId,
       projectIcon,
       tabsId,
@@ -701,6 +780,7 @@ function BoardScreen({
         onExport={exportStoryboard}
         onExportFrame={exportFrame}
         onImportScript={openScriptImport}
+        ready={conn.status === 'synced'}
       />
     ) : view === 'shotlist' ? (
       <ShotList
@@ -789,6 +869,18 @@ function BoardScreen({
       {versions}
       {content}
       {shareDialog}
+      {iconBoard && (
+        <ProjectAppearanceDialog
+          project={{
+            id: iconBoard.id,
+            name: iconBoard.title,
+            icon: iconBoard.icon ?? defaultProjectIcon(iconBoard.id),
+            myRole: iconBoard.myRole,
+          }}
+          board={{ save: (icon) => setBoardIcon(projectId, iconBoard.id, icon) }}
+          onClose={() => setIconBoard(null)}
+        />
+      )}
       {importingScript && editable && !preview && (
         <ScreenplayImportDialog
           targets={['append', 'new']}

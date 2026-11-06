@@ -77,6 +77,7 @@ export function StoryboardView({
   onExport,
   onExportFrame,
   onImportScript,
+  ready = true,
 }: {
   store: BoardStore;
   projectId: string;
@@ -90,6 +91,8 @@ export function StoryboardView({
   onExportFrame?: ((frameId: string) => void) | undefined;
   /** Opens the screenplay import, which adds scenes and frames from a script file. */
   onImportScript?: (() => void) | undefined;
+  /** False until the board has loaded: an empty storyboard may only be still arriving. */
+  ready?: boolean;
 }) {
   const { t } = useTranslation();
   const boardAspect = useBoardAspect(store.doc);
@@ -106,6 +109,16 @@ export function StoryboardView({
       ?.scrollIntoView({ block: 'start' });
   }, [sceneParam, takeSceneParam, groups]);
   const [present, setPresent] = useState(false);
+  // The board menu links to ?present=1 from any view: start once, when there is something to show.
+  const [presentParam, takePresentParam] = useTakeParam('present');
+  const hasFrames = frames.length > 0;
+  useEffect(() => {
+    if (!presentParam || (!ready && !hasFrames)) return;
+    takePresentParam();
+    if (!hasFrames) return;
+    setSelected(null);
+    setPresent(true);
+  }, [presentParam, takePresentParam, ready, hasFrames]);
   const [selected, setSelected] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
   const [drop, setDrop] = useState<{ scene: string; index: number } | null>(null);

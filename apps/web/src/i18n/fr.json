@@ -682,8 +682,7 @@
       "action": "Exporter…"
     },
     "present": {
-      "action": "Présenter",
-      "soon": "Utilisez le bouton Présenter de la vue Storyboard"
+      "action": "Présenter"
     },
     "access": {
       "readOnly": "Votre rôle a changé : vous pouvez seulement consulter ce tableau.",
