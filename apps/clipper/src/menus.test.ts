@@ -36,9 +36,26 @@ describe('context menu construction', () => {
   });
 
   it('shows the access-key and selection markers of a board title literally', () => {
-    expect(menuTitle('R&D & 100%s %%s')).toBe('R&&D && 100%​s %%​s');
+    expect(menuTitle('R&D & 100%s %%s')).toBe('R&&D && 100%\u200Bs %%\u200Bs');
     const [, child] = menuItems([board('a', 'A&B %s')]);
-    expect(child?.title).toBe('A&&B %​s');
+    expect(child?.title).toBe('A&&B %\u200Bs');
+  });
+
+  it('names the project only when two boards share a title', () => {
+    const inProject = (id: string, title: string, projectName: string) => ({
+      ...board(id, title),
+      projectName,
+    });
+    const items = menuItems([
+      inProject('a', 'Moodboard', 'Film & TV'),
+      inProject('b', 'Moodboard', 'Ads'),
+      inProject('c', 'Notes', 'Ads'),
+    ]);
+    expect(items.filter((item) => item.parentId === 'save-to-page').map((i) => i.title)).toEqual([
+      'Moodboard · Film && TV',
+      'Moodboard · Ads',
+      'Notes',
+    ]);
   });
 });
 

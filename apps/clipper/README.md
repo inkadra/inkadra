@@ -6,7 +6,7 @@ an Inkadra board. It talks to the server only through the public API of `@inkadr
 
 What it does:
 - **Toolbar button**: saves the current page as a link card, with a board (recent boards
-  first, then projects and their sub-boards, or search), a column, a note and tags. Text selected on the page fills the empty note (up to the API's
+  first, then projects and their sub-boards, or search), a column, a note and tags. Text selected in the page's main frame fills the empty note (up to the API's
   2,000 characters); pages that refuse scripts leave it empty. The tab title is kept on link cards.
   The board is remembered for next time.
 - **Right-click menus**: on an image, a selection (a note with the quote and its page), a

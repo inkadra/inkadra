@@ -49,6 +49,7 @@ export async function readTabSelection(tabId: number): Promise<string> {
   try {
     const [injection] = await chrome.scripting.executeScript({
       target: { tabId },
+      injectImmediately: true, // The popup should not wait for a slow page to finish loading.
       func: readSelectionInPage,
       args: [MAX_NOTE],
     });

@@ -18,9 +18,9 @@
         <p id="revoked" class="notice" data-i18n="error_unauthorized" hidden>L’accesso è stato revocato o è scaduto: riconnetti il clipper.</p>
         <form id="connect-form" class="field">
           <label class="ink-label" for="server-url" data-i18n="field_server">Indirizzo del server</label>
-          <input id="server-url" type="url" inputmode="url" autocomplete="url" required placeholder="https://inkadra.example.com" aria-describedby="server-url-help" />
+          <input id="server-url" type="url" inputmode="url" autocomplete="url" required placeholder="https://inkadra.example.com" aria-describedby="server-url-help server-url-permission" />
           <p id="server-url-help" class="ink-muted small" data-i18n="connect_server_help">È l’indirizzo del server Inkadra, tuo o del tuo team: ad esempio https://inkadra.example.com.</p>
-          <p class="ink-muted small" data-i18n="connect_permission">Chrome chiederà il permesso di contattare solo questo indirizzo.</p>
+          <p id="server-url-permission" class="ink-muted small" data-i18n="connect_permission">Chrome chiederà il permesso di contattare solo questo indirizzo.</p>
           <button id="connect" type="submit" class="btn btn--primary" data-i18n="action_connect">Connetti</button>
         </form>
       </section>

@@ -41,6 +41,7 @@ const SECTION_LABELS: Record<BoardOption['section'], string> = {
 let pageUrl: string | undefined;
 let pageTitle: string | undefined;
 let saving = false;
+let noteEdited = false;
 let selected: BoardRef | null = null;
 let starting: BoardOption[] = [];
 let found: BoardOption[] = [];
@@ -217,6 +218,7 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!selected || !pageUrl || saving || columns.loading) return;
   saving = true;
+  noteEdited = true; // A selection read late must not refill the note after this save.
   updateSelection();
   result.hidden = true;
   try {
@@ -245,6 +247,9 @@ form.addEventListener('submit', async (event) => {
   }
 });
 
+note.addEventListener('input', () => {
+  noteEdited = true;
+});
 $('open-options').addEventListener('click', openOptions);
 $('connect').addEventListener('click', openOptions);
 
@@ -269,7 +274,7 @@ async function start() {
   if (!pageUrl) save.title = t('page_not_web');
   if (tab?.id !== undefined)
     void readTabSelection(tab.id).then((text) => {
-      if (!note.value) note.value = text;
+      if (!noteEdited) note.value = text;
     });
 
   selected = status.lastBoard;

@@ -18,6 +18,7 @@ function mockChrome() {
       id: extensionId,
       onInstalled: event(),
       onStartup: event(),
+      openOptionsPage: vi.fn(async () => {}),
       OnInstalledReason: { INSTALL: 'install' },
       onMessage: event(),
       getPlatformInfo: vi.fn(async () => ({ os: 'linux', arch: 'x86-64' })),
@@ -283,7 +284,14 @@ describe('save-to menus', () => {
     await vi.advanceTimersByTimeAsync(10);
     const created = chromeMock.contextMenus.create.mock.calls.map(([item]) => item.id);
     expect(created.find((id) => id.startsWith('save-to-page:'))).toBe('save-to-page:o');
-    fetchMock.mockResolvedValueOnce(response(200, { items: [{ ...other, myRole: 'editor' }] }));
+    fetchMock.mockResolvedValueOnce(
+      response(200, {
+        items: [
+          { ...other, myRole: 'editor' },
+          { ...board, myRole: 'editor' },
+        ],
+      }),
+    );
     chromeMock.commands.onCommand.addListener.mock.calls[0]![0]('save-page', {
       id: 1,
       url: 'https://a.example',
@@ -321,6 +329,34 @@ describe('save-to menus', () => {
     expect(chromeMock.scripting.executeScript.mock.calls.at(-1)).toMatchObject([
       { args: [{ tone: 'error', text: 'error_not_found' }] },
     ]);
+  });
+
+  it('refreshes the list and keeps the choice honest when the role was lowered', async () => {
+    stored(connection, [other, board]);
+    fetchMock.mockImplementation(async (_url, init) =>
+      init?.method === 'POST'
+        ? response(403, { error: {} })
+        : response(200, { items: [{ ...board, myRole: 'editor' }] }),
+    );
+    click({ menuItemId: 'save-to-link:o', linkUrl: 'https://l.example' });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(chromeMock.storage.local.set).toHaveBeenCalledWith(
+      expect.objectContaining({ recentBoards: [board] }),
+    );
+    expect(chromeMock.scripting.executeScript.mock.calls.at(-1)).toMatchObject([
+      { args: [{ tone: 'error', text: 'error_forbidden' }] },
+    ]);
+  });
+
+  it.each([
+    ['disconnected', undefined],
+    ['revoked', { ...connection, token: null }],
+  ])('opens the settings on a click when %s, without saving', async (_state, current) => {
+    stored(current, [other]);
+    click({ menuItemId: 'save-to-link:o', linkUrl: 'https://l.example' });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(chromeMock.runtime.openOptionsPage).toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('reports a chosen board that left the recent list, without saving', async () => {

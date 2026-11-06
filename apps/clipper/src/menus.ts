@@ -15,7 +15,7 @@ export function menuTitle(title: string): string {
       .replaceAll('&', '&&')
       // Chrome replaces every %s with the selection and has no escape for it (see
       // MenuItem::TitleWithReplacement in Chromium): an invisible space breaks the sequence.
-      .replaceAll('%s', '%​s')
+      .replaceAll('%s', '%\u200Bs')
   );
 }
 
@@ -35,7 +35,12 @@ export function menuItems(boards: BoardRef[]): chrome.contextMenus.CreatePropert
       ...recent.map((board) => ({
         id: `${parentId}:${board.id}`,
         parentId,
-        title: menuTitle(board.title),
+        // Two boards can share a title: the project tells them apart.
+        title: menuTitle(
+          board.projectName && recent.some((b) => b !== board && b.title === board.title)
+            ? `${board.title} · ${board.projectName}`
+            : board.title,
+        ),
         contexts,
       })),
     ];

@@ -39,6 +39,8 @@ async function handleFailure(err: unknown, board?: BoardRef): Promise<void> {
   if (err.kind === 'unauthorized') await markRevoked();
   // The board was deleted or moved out of reach: stop offering it.
   if (err.kind === 'not_found' && board) await forgetBoard(board.id).catch(() => {});
+  // The role was lowered and may come back: only the server's list decides what to offer.
+  if (err.kind === 'forbidden') await refreshClipBoards().catch(() => {});
 }
 
 /**
@@ -144,6 +146,7 @@ async function clipFromPage(
   boardId?: string,
 ): Promise<void> {
   try {
+    await connected(); // Without it the empty board list would hide the real problem.
     const board = boardId
       ? (await getRecentBoards()).find((b) => b.id === boardId)
       : (await refreshClipBoards())[0];
