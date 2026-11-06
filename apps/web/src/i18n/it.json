@@ -1063,8 +1063,8 @@
       "ink": "Colore testo ed evidenziatore",
       "textColor": "Colore testo",
       "highlight": "Evidenziatore",
+      "background": "Sfondo",
       "clear": "Cancella formattazione",
-      "line": "Linea",
       "gridFit": "Adatta alla griglia",
       "draw": "Disegna",
       "info": "Info",
@@ -1077,7 +1077,9 @@
         "teal": "Turchese",
         "yellow": "Giallo",
         "red": "Rosso",
-        "pink": "Rosa"
+        "pink": "Rosa",
+        "white": "Bianco",
+        "black": "Nero"
       },
       "appearance": "Aspetto",
       "rows": "Righe",

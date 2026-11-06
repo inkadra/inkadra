@@ -1063,8 +1063,8 @@
       "ink": "Cor do texto e marca-texto",
       "textColor": "Cor do texto",
       "highlight": "Marca-texto",
+      "background": "Fundo",
       "clear": "Limpar formatação",
-      "line": "Linha",
       "gridFit": "Ajustar à grade",
       "draw": "Desenhar",
       "info": "Info",
@@ -1077,7 +1077,9 @@
         "teal": "Turquesa",
         "yellow": "Amarelo",
         "red": "Vermelho",
-        "pink": "Rosa"
+        "pink": "Rosa",
+        "white": "Branco",
+        "black": "Preto"
       },
       "appearance": "Aparência",
       "rows": "Linhas",

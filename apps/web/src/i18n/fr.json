@@ -1063,8 +1063,8 @@
       "ink": "Couleur du texte et surlignage",
       "textColor": "Couleur du texte",
       "highlight": "Surlignage",
+      "background": "Arrière-plan",
       "clear": "Effacer la mise en forme",
-      "line": "Ligne",
       "gridFit": "Ajuster à la grille",
       "draw": "Dessiner",
       "info": "Infos",
@@ -1077,7 +1077,9 @@
         "teal": "Turquoise",
         "yellow": "Jaune",
         "red": "Rouge",
-        "pink": "Rose"
+        "pink": "Rose",
+        "white": "Blanc",
+        "black": "Noir"
       },
       "appearance": "Apparence",
       "rows": "Lignes",

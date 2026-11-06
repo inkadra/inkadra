@@ -1063,8 +1063,8 @@
       "ink": "Color de texto y resaltado",
       "textColor": "Color de texto",
       "highlight": "Resaltado",
+      "background": "Fondo",
       "clear": "Borrar formato",
-      "line": "Línea",
       "gridFit": "Ajustar a la cuadrícula",
       "draw": "Dibujar",
       "info": "Info",
@@ -1077,7 +1077,9 @@
         "teal": "Turquesa",
         "yellow": "Amarillo",
         "red": "Rojo",
-        "pink": "Rosa"
+        "pink": "Rosa",
+        "white": "Blanco",
+        "black": "Negro"
       },
       "appearance": "Apariencia",
       "rows": "Filas",

@@ -536,7 +536,13 @@ describe('board elements (#307, #318, #322)', () => {
     } as Element);
     expect(styled).toContain('font-size:34px;font-weight:400;font-style:italic;text-align:right');
     expect(styled).toContain('var(--ink-tag-teal)');
-    expect(styled).not.toContain('has-rule');
+    expect(styled).not.toContain('has-background');
+    expect(render({ ...section, title: 'Tinted', background: 'teal' } as Element)).toContain(
+      'background-color:var(--ink-tag-teal-bg)',
+    );
+    expect(render({ ...section, title: 'Black', background: 'black' } as Element)).toContain(
+      'has-surface ink-dark',
+    );
   });
 });
 

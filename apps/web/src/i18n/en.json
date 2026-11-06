@@ -1063,8 +1063,8 @@
       "ink": "Text color and highlight",
       "textColor": "Text color",
       "highlight": "Highlight",
+      "background": "Background",
       "clear": "Clear formatting",
-      "line": "Line",
       "gridFit": "Fit to grid",
       "draw": "Draw",
       "info": "Info",
@@ -1077,7 +1077,9 @@
         "teal": "Teal",
         "yellow": "Yellow",
         "red": "Red",
-        "pink": "Pink"
+        "pink": "Pink",
+        "white": "White",
+        "black": "Black"
       },
       "appearance": "Appearance",
       "rows": "Rows",

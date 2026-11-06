@@ -1063,8 +1063,8 @@
       "ink": "Textfarbe und Markierung",
       "textColor": "Textfarbe",
       "highlight": "Markierung",
+      "background": "Hintergrund",
       "clear": "Formatierung löschen",
-      "line": "Linie",
       "gridFit": "Ans Raster anpassen",
       "draw": "Zeichnen",
       "info": "Info",
@@ -1077,7 +1077,9 @@
         "teal": "Türkis",
         "yellow": "Gelb",
         "red": "Rot",
-        "pink": "Rosa"
+        "pink": "Rosa",
+        "white": "Weiß",
+        "black": "Schwarz"
       },
       "appearance": "Darstellung",
       "rows": "Zeilen",

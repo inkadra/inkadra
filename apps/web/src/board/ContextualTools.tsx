@@ -18,7 +18,7 @@ import { BarButton } from './chrome.tsx';
 import { useBoard } from './context.ts';
 import { rotateImageQuarterTurn } from './ImageCropEditor.tsx';
 import { normalizeNoteLink } from './links.ts';
-import { noteColor, selectedBlocks, TEXT_COLORS } from './note-format.ts';
+import { noteColor, SECTION_SURFACES, selectedBlocks, TEXT_COLORS } from './note-format.ts';
 import { LOCAL } from './store.ts';
 import { videoEmbedUrl } from './youtube.ts';
 
@@ -231,22 +231,34 @@ export function ContextualTools({
       {display ?? label}
     </button>
   );
-  const palette = (value: unknown, run: (c: string | undefined) => void, highlight = false) => (
+  const palette = (
+    value: unknown,
+    run: (c: string | undefined) => void,
+    highlight = false,
+    label = t(highlight ? 'board.contextual.highlight' : 'board.contextual.textColor'),
+    surfaces: readonly string[] = [],
+  ) => (
     <div className="contextual-palette">
-      {[undefined, ...TEXT_COLORS].map((c) => (
+      {[undefined, ...TEXT_COLORS, ...surfaces].map((c) => (
         <button
           key={c ?? 'none'}
           type="button"
-          aria-label={`${t(highlight ? 'board.contextual.highlight' : 'board.contextual.textColor')}: ${c ? t(`board.contextual.colors.${c}`) : t('board.colors.none')}`}
+          className={c ? SECTION_SURFACES[c] : undefined}
+          aria-label={`${label}: ${c ? t(`board.contextual.colors.${c}`) : t('board.colors.none')}`}
           aria-pressed={c ? value === c : value == null}
           disabled={noSelection}
           style={{
-            color: noteColor(c),
-            backgroundColor: highlight ? noteColor(c, true) : undefined,
+            color: c && SECTION_SURFACES[c] ? 'var(--ink-text-primary)' : noteColor(c),
+            backgroundColor:
+              c && SECTION_SURFACES[c]
+                ? 'var(--ink-bg-canvas)'
+                : highlight
+                  ? noteColor(c, true)
+                  : undefined,
           }}
           onClick={() => run(c)}
         >
-          {highlight ? '▰' : c ? 'A' : '∅'}
+          {!c ? '∅' : highlight ? '▰' : 'A'}
         </button>
       ))}
     </div>
@@ -472,15 +484,15 @@ export function ContextualTools({
         <ToolPopover label={t('board.contextual.textColor')} icon="textColor">
           {palette(el.color, (color) => patch({ color }))}
         </ToolPopover>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={el.line !== false}
-          className="ctxbar__btn ctxbar__done"
-          onClick={() => patch({ line: el.line === false })}
-        >
-          {t('board.contextual.line')}
-        </button>
+        <ToolPopover label={t('board.contextual.background')} icon="color">
+          {palette(
+            el.background,
+            (background) => patch({ background }),
+            true,
+            t('board.contextual.background'),
+            Object.keys(SECTION_SURFACES),
+          )}
+        </ToolPopover>
       </>
     );
   if (el.type === 'image')

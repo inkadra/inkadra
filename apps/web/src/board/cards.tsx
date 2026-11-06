@@ -51,7 +51,7 @@ import { MapCard } from './MapCard.tsx';
 import { useMeasure } from './measure.ts';
 import { movingVariantUrl } from './moving.tsx';
 import { NoteBody, NoteEditor, useFragment } from './note.tsx';
-import { noteColor } from './note-format.ts';
+import { noteColor, SECTION_SURFACES } from './note-format.ts';
 import { PlanCard } from './plan/PlanCard.tsx';
 import { LOCAL } from './store.ts';
 import { TableCard } from './TableCard.tsx';
@@ -271,6 +271,7 @@ function CardBody({
 function SectionCard({ element, editing }: { element: Of<'section'>; editing: boolean }) {
   const { store, setEditing } = useBoard();
   const { t } = useTranslation();
+  const surface = element.background && SECTION_SURFACES[element.background];
   const style = {
     margin: element.size || element.bold !== undefined ? 0 : undefined,
     whiteSpace: element.size || element.bold !== undefined ? 'nowrap' : undefined,
@@ -281,17 +282,20 @@ function SectionCard({ element, editing }: { element: Of<'section'>; editing: bo
     fontStyle: element.italic ? 'italic' : 'normal',
     textAlign: element.align ?? 'left',
     color: noteColor(element.color),
-    borderBottom:
-      element.line === false || element.size || element.bold !== undefined ? 'none' : undefined,
   } as const;
   return (
     <div
-      className={
-        element.line !== false && (element.size || element.bold !== undefined)
-          ? 'section-heading has-rule'
-          : 'section-heading'
-      }
-      style={{ color: noteColor(element.color) }}
+      className={[
+        'section-heading',
+        element.background && 'has-background',
+        surface && `has-surface ${surface}`,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      style={{
+        color: noteColor(element.color),
+        backgroundColor: surface ? undefined : noteColor(element.background, true),
+      }}
     >
       {editing ? (
         <input
