@@ -1,7 +1,7 @@
 import {
+  clockMinutes,
   type ScheduleBlock,
   type ShootingDayInput,
-  clockMinutes,
   scheduleTimes,
 } from '@inkadra/shared';
 import { formatClock } from '../../lib/datetime.ts';
