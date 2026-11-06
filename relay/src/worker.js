@@ -98,7 +98,7 @@ const clamp = (text, limit = SECTION_LIMIT) =>
   text.length <= limit ? text : `${text.slice(0, limit)}\n… (cut here, the full text is in the local report)`;
 const TICKET_TTL = 30 * 60; // seconds
 const DAY = 24 * 60 * 60;
-const MAX_WAIT = 15 * 60; // seconds
+const MAX_WAIT = 5 * 60; // seconds
 const MIN_WAIT = 5; // seconds
 /** How long a write may still be running: a retry inside it waits instead of looking for the issue. */
 const WRITE_GRACE = 10 * 60; // seconds
