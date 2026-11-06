@@ -165,6 +165,7 @@ describe.skipIf(!url)('instance administration', () => {
         bytes: 0,
       })),
       byProject: [],
+      byUser: [],
     });
   });
   it('aggregates original assets once, excludes pending/derived files and hides inaccessible project labels', async () => {
@@ -180,6 +181,7 @@ describe.skipIf(!url)('instance administration', () => {
         size: 1000,
         storageKey: 'test-photo',
         status: 'ready',
+        createdBy: people.admin!.id,
       })
       .returning();
     await db.insert(asset).values([
@@ -191,6 +193,7 @@ describe.skipIf(!url)('instance administration', () => {
         size: 3000,
         storageKey: 'test-video',
         status: 'processing',
+        createdBy: people.second!.id,
       },
       {
         projectId: own.id,
@@ -252,6 +255,11 @@ describe.skipIf(!url)('instance administration', () => {
     expect(result.byProject).toEqual([
       { projectId: null, name: null, scope: 'restricted', bytes: 3000 },
       { projectId: own.id, name: 'Visible shoot', scope: 'project', bytes: 1500 },
+    ]);
+    expect(result.byUser).toEqual([
+      { userId: people.second!.id, name: 'second', bytes: 3000 },
+      { userId: people.admin!.id, name: 'admin', bytes: 1000 },
+      { userId: null, name: null, bytes: 500 },
     ]);
     expect(JSON.stringify(result)).not.toContain(hidden.id);
     expect(JSON.stringify(result)).not.toContain('Private shoot');

@@ -22,6 +22,8 @@ export interface UsageGroup {
   projectId: string | null;
   projectName: string | null;
   visible: boolean;
+  userId: string | null;
+  userName: string | null;
 }
 
 /** Aggregated originals, attributed to their owning project, never to card references. */
@@ -30,6 +32,10 @@ export function storageUsage(groups: UsageGroup[]): StorageUsage {
     (type) => ({ type: type as StorageUsage['byType'][number]['type'], bytes: 0 }),
   );
   const projects = new Map<string, StorageUsage['byProject'][number]>();
+  const users = new Map<
+    string | null,
+    { userId: string | null; name: string | null; bytes: number }
+  >();
   let originalBytes = 0;
   for (const row of groups) {
     originalBytes += row.bytes;
@@ -48,12 +54,18 @@ export function storageUsage(groups: UsageGroup[]): StorageUsage {
     };
     entry.bytes += row.bytes;
     projects.set(key, entry);
+    const uploader = users.get(row.userId) ?? { userId: row.userId, name: row.userName, bytes: 0 };
+    uploader.bytes += row.bytes;
+    users.set(row.userId, uploader);
   }
   return {
     originalBytes,
     byType: types,
     byProject: [...projects.values()].sort(
       (a, b) => b.bytes - a.bytes || (a.projectId ?? a.scope).localeCompare(b.projectId ?? b.scope),
+    ),
+    byUser: [...users.values()].sort(
+      (a, b) => b.bytes - a.bytes || (a.userId ?? '').localeCompare(b.userId ?? ''),
     ),
   };
 }

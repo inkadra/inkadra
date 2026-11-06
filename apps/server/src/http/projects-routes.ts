@@ -223,11 +223,14 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         projectId: project.id,
         projectName: project.name,
         visible,
+        userId: user.id,
+        userName: user.name,
       })
       .from(asset)
       .leftJoin(project, eq(project.id, asset.projectId))
+      .leftJoin(user, eq(user.id, asset.createdBy))
       .where(inArray(asset.status, ['processing', 'ready', 'failed']))
-      .groupBy(asset.mime, asset.projectId, project.id, project.name);
+      .groupBy(asset.mime, asset.projectId, project.id, project.name, user.id, user.name);
     return storageUsage(rows.map((row) => ({ ...row, bytes: Number(row.bytes ?? 0) })));
   });
 

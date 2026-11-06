@@ -2802,11 +2802,14 @@
     "storageCharts": {
       "byType": "Uso por tipo de arquivo",
       "byProject": "Uso por projeto",
+      "byUser": "Usage by user",
+      "noUser": "No linked account",
       "category": "Categoria / projeto",
       "size": "Arquivos originais",
       "share": "Percentual",
       "percentScope": "Cada percentual se refere ao total de arquivos originais indicado acima.",
       "attribution": "Cada arquivo é contado uma só vez no projeto ao qual pertence, mesmo quando usado em vários quadros ou projetos. Os projetos a que você não tem acesso são agrupados de forma anônima.",
+      "attributionUser": "Each file counts for the person who uploaded it.",
       "unassigned": "Sem projeto",
       "restricted": "Projetos restritos",
       "types": {

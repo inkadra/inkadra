@@ -114,6 +114,17 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
               bytes: row.bytes,
             }))}
           />
+          {usage.byUser && (
+            <Breakdown
+              title={t('admin.storageCharts.byUser')}
+              total={usage.originalBytes}
+              rows={usage.byUser.map((row) => ({
+                id: row.userId ?? 'none',
+                label: row.name ?? t('admin.storageCharts.noUser'),
+                bytes: row.bytes,
+              }))}
+            />
+          )}
           <Breakdown
             title={t('admin.storageCharts.byType')}
             total={usage.originalBytes}
@@ -127,6 +138,7 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
       )}
       <p className="settings-footnote">
         {t('admin.storageHelp')} {t('admin.storageCharts.attribution')}
+        {usage.byUser && ` ${t('admin.storageCharts.attributionUser')}`}
       </p>
     </div>
   );

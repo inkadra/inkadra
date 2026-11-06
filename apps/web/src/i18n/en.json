@@ -2802,11 +2802,14 @@
     "storageCharts": {
       "byType": "Usage by file type",
       "byProject": "Usage by project",
+      "byUser": "Usage by user",
+      "noUser": "No linked account",
       "category": "Category / project",
       "size": "Original files",
       "share": "Share",
       "percentScope": "Each percentage is a share of the total original-file usage above.",
       "attribution": "Each asset is counted once in its owning project, even when referenced by multiple boards or projects. Projects you cannot access are grouped anonymously.",
+      "attributionUser": "Each file counts for the person who uploaded it.",
       "unassigned": "Without a project",
       "restricted": "Restricted projects",
       "types": {

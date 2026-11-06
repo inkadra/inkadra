@@ -218,6 +218,7 @@ describe.skipIf(!url)('project setup metadata and personal pins', () => {
         bytes: 0,
       })),
       byProject: [],
+      byUser: [],
     });
   });
   it('returns document edit activity only for boards the caller can access', async () => {
