@@ -763,7 +763,8 @@ export function ShotList({
         <div
           className="view-tabs"
           role="tablist"
-          aria-label={t('film.views.label')}
+          // Not the header's "View": two tab bars with one name would be told apart by nothing.
+          aria-label={t('film.list.layouts')}
           onKeyDown={moveTabFocus}
         >
           <button

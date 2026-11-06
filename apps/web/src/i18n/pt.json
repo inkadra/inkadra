@@ -1365,6 +1365,7 @@
       "scene": "Cena",
       "noMatch": "Nenhum frame corresponde ao filtro",
       "table": "Tabela",
+      "layouts": "Layout da decupagem",
       "kanban": "Kanban",
       "addInStatus": "Adicionar em {{status}}",
       "cardAria": "Frame {{label}}",

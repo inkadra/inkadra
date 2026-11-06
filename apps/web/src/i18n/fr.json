@@ -1365,6 +1365,7 @@
       "scene": "Scène",
       "noMatch": "Aucun plan ne correspond au filtre",
       "table": "Table",
+      "layouts": "Disposition de la liste de plans",
       "kanban": "Kanban",
       "addInStatus": "Ajouter dans {{status}}",
       "cardAria": "Plan {{label}}",
