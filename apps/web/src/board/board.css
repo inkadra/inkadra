@@ -1843,10 +1843,6 @@ body:has(.colorpicker) .card-reactions {
   background: var(--ink-surface-2);
   color: var(--ink-text-primary);
 }
-.toolbar__btn[aria-expanded="true"] {
-  background: var(--ink-surface-2);
-  color: var(--ink-text-primary);
-}
 .toolbar__btn[aria-pressed="true"] {
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
@@ -1877,6 +1873,17 @@ body:has(.colorpicker) .card-reactions {
 .toolbar .toolbar__btn.toolbar__btn--canvas[aria-expanded="true"] {
   background: var(--ink-accent-button-active);
   color: var(--ink-on-accent);
+}
+/* The phone's More sits in the same place but is a tool like the others (mockup of #110). */
+.toolbar .toolbar__btn.toolbar__btn--more {
+  background: transparent;
+  color: var(--ink-text-secondary);
+}
+.toolbar .toolbar__btn.toolbar__btn--more:hover,
+.toolbar .toolbar__btn.toolbar__btn--more:active,
+.toolbar .toolbar__btn.toolbar__btn--more[aria-expanded="true"] {
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
 }
 /*
  * The bar sizes to the canvas, not the window (a sidebar can take 260 px): below the width
