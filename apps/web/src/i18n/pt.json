@@ -1205,8 +1205,8 @@
       "label": "Proporção",
       "board": "Quadro ({{ratio}})"
     },
-    "total_one": "{{count}} frame · {{duration}}",
-    "total_other": "{{count}} frames · {{duration}}",
+    "total_one": "{{count}} frame",
+    "total_other": "{{count}} frames",
     "loose": "Sem cena",
     "drop": {
       "notImage_one": "Só é possível soltar imagens aqui: {{count}} arquivo ignorado.",
@@ -1255,7 +1255,6 @@
       "cast": "Elenco",
       "castHint": "Separados por vírgulas",
       "lens": "Lente",
-      "duration": "Duração (s)",
       "shot": "Tipo de plano",
       "angle": "Ângulo",
       "movement": "Movimento",
@@ -1429,7 +1428,6 @@
       "groupNone": "Sem agrupamento",
       "sortManual": "Storyboard",
       "sortLabel": "Número do plano",
-      "sortDuration": "Duração",
       "collapseGroup": "Recolher grupo",
       "expandGroup": "Expandir grupo",
       "noLocation": "Sem locação",
@@ -1439,7 +1437,6 @@
       "shownShots": "{{shown}} de {{count}} planos",
       "shownShots_one": "{{shown}} de {{count}} plano",
       "shownShots_other": "{{shown}} de {{count}} planos",
-      "estimatedDuration": "Duração estimada",
       "moveCard": "Mover para {{column}}",
       "moveToColumn": "Mover card para a coluna",
       "moreCards": "mais",
@@ -1458,8 +1455,8 @@
       "scenes": "Cenas",
       "allScenes": "Todas as cenas",
       "drawn": "{{drawn}} de {{total}} desenhados",
-      "estimated_one": "{{count}} frame · duração estimada {{duration}}. A barra mostra os frames desenhados.",
-      "estimated_other": "{{count}} frames · duração estimada {{duration}}. A barra mostra os frames desenhados."
+      "summary_one": "{{count}} frame. A barra mostra os frames desenhados.",
+      "summary_other": "{{count}} frames. A barra mostra os frames desenhados."
     }
   },
   "roles": {
@@ -3129,7 +3126,6 @@
       "angle": "Ângulo",
       "movement": "Movimento",
       "lens": "Lente",
-      "duration": "Dur.",
       "action": "Ação e diálogo",
       "location": "Locação",
       "cast": "Elenco",

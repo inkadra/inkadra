@@ -818,10 +818,6 @@ html[data-view-direction]::view-transition-new(board-view) {
   font: inherit;
   resize: vertical;
 }
-.shots__cell--narrow {
-  min-width: 44px;
-  width: 56px;
-}
 .shots__cell:hover:not([readonly]) {
   border-color: var(--ink-border-default);
 }
@@ -1258,12 +1254,6 @@ html[data-view-direction]::view-transition-new(board-view) {
   font-weight: 600;
   font-size: 13px;
   color: var(--ink-text-primary);
-}
-
-.kanban__card-duration {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--ink-text-muted);
 }
 
 .kanban__card-action {
@@ -2515,11 +2505,6 @@ html[data-view-direction]::view-transition-new(board-view) {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ink-text-secondary);
-}
-.schedule__shot-meta {
-  grid-column: 2;
-  color: var(--ink-text-muted);
-  font-variant-numeric: tabular-nums;
 }
 .schedule__board {
   flex: 1;

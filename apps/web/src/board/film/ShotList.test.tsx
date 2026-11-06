@@ -291,19 +291,6 @@ it('guards Cmd+D / Ctrl+D against editable targets, open dialogs, and lack of fo
   expect(elementsMap.has(f1.id)).toBe(true);
 });
 
-it('estimates scene and footer durations like the storyboard (one second per untimed frame)', async () => {
-  const { doc, store } = board();
-  const scene = addScene(doc, { number: '1', title: 'Bar' }, { userId: null });
-  addFrame(doc, scene.id, null, { label: '1A', durationMs: 4_000 }, { userId: null });
-  addFrame(doc, scene.id, null, { label: '1B' }, { userId: null });
-  addFrame(doc, scene.id, null, { label: '1C' }, { userId: null });
-
-  const host = await mount(<ShotList store={store} boardTitle="Test Board" readOnly={false} />);
-
-  expect(host.querySelector('.shots__scene-meta')?.textContent).toContain('0:06');
-  expect(host.querySelector('.shots__footer')?.textContent).toContain('0:06');
-});
-
 it('shows each shot as a card on a phone and edits it in the frame panel', async () => {
   vi.spyOn(window, 'matchMedia').mockImplementation(
     (query: string) =>
@@ -332,7 +319,7 @@ it('shows each shot as a card on a phone and edits it in the frame panel', async
   expect(host.querySelector('input[aria-label="Lens"]')).toBeNull();
   const card = host.querySelector('.shot-card');
   expect(card?.querySelector('.shot-card__label')?.textContent).toBe('4C');
-  expect(card?.querySelector('.shot-card__meta')?.textContent).toBe('Close-up · 85mm · 4s');
+  expect(card?.querySelector('.shot-card__meta')?.textContent).toBe('Close-up · 85mm');
   expect(card?.querySelector('.shot-card__action')?.textContent).toBe('Neon on half his face');
   expect(card?.querySelector('.film-chip')).not.toBeNull();
   // The chip counts an approved shot as approved, like the scene pills and the footer.

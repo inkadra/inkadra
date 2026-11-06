@@ -44,7 +44,7 @@ playable copy, and a video gets a poster and its details.
 
 A storyboard is made of scenes and frames, and it has more views of the same data: the shot list, the
 schedule and the review. Double-click a frame to open its panel: action, shot size, angle, movement,
-lens, duration, cast and status. The panel follows your selection, and closes when you pick
+lens, cast and status. The panel follows your selection, and closes when you pick
 something else.
 
 Drag a picture from the board onto a frame and it becomes the frame's picture and leaves the board,
@@ -54,7 +54,7 @@ no place for those. A still from a video comes from the original file on the ser
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="screenshots/guide/frame-panel-dark.png">
-  <img src="screenshots/guide/frame-panel-light.png" alt="A storyboard on the canvas, two scenes of frames, with the first frame selected and its panel open: picture, Draw, number, action, shot size, angle, movement, lens and duration">
+  <img src="screenshots/guide/frame-panel-light.png" alt="A storyboard on the canvas, two scenes of frames, with the first frame selected and its panel open: picture, Draw, number, action, shot size, angle, movement and lens">
 </picture>
 
 **Draw** opens the frame full screen, with one floating bar: pens, eraser, shapes, text, colour and
@@ -71,7 +71,7 @@ frame. Move around with space and drag, the wheel or two fingers.
     <td width="50%">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="screenshots/readme/storyboard-dark.png">
-        <img src="screenshots/readme/storyboard-light.png" alt="The Storyboard view: scenes with their frames, shot sizes, durations and status">
+        <img src="screenshots/readme/storyboard-light.png" alt="The Storyboard view: scenes with their frames, shot sizes and status">
       </picture>
       <p align="center"><sub>Storyboard</sub></p>
     </td>

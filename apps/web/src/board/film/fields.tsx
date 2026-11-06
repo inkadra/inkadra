@@ -241,17 +241,6 @@ export function StatusChip({ status }: { status: ShotDisplayStatus | undefined }
   return <span className={`film-chip film-status--${s}`}>{t(`film.status.${s}`)}</span>;
 }
 
-/** Seconds typed by a person ("4", "2,5") to milliseconds; empty or invalid = none. */
-export function parseSeconds(text: string): number | undefined {
-  const n = Number(text.trim().replace(',', '.'));
-  if (!text.trim() || !Number.isFinite(n) || n < 0) return undefined;
-  return Math.min(3_600_000, Math.round(n * 1000));
-}
-
-export function secondsText(ms: number | undefined): string {
-  return ms === undefined ? '' : String(Math.round(ms / 100) / 10);
-}
-
 /**
  * A list of short names typed as chips: Enter, comma or leaving the field adds the text,
  * Backspace on an empty field takes the last one back. Suggestions come from a datalist.

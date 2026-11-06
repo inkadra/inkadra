@@ -72,7 +72,6 @@ export interface Shot {
   size: string;
   angle: string;
   movement: string;
-  duration: string;
   status?: string | undefined;
 }
 
@@ -347,7 +346,7 @@ function storyboardCell(
     );
   }
   top += labelSize + 6 * f;
-  const meta = [shot.size, shot.angle, shot.movement, shot.frame.lens, shot.duration]
+  const meta = [shot.size, shot.angle, shot.movement, shot.frame.lens]
     .filter(Boolean)
     .join(' · ');
   const width = pic.w;
@@ -381,7 +380,6 @@ export const SHOT_COLUMNS = [
   'angle',
   'movement',
   'lens',
-  'duration',
   'action',
   'location',
   'cast',
@@ -396,7 +394,6 @@ const COLUMN_WEIGHT: Record<ShotColumn, number> = {
   angle: 0.85,
   movement: 0.85,
   lens: 0.6,
-  duration: 0.55,
   action: 3,
   location: 1.1,
   cast: 1.1,
@@ -437,8 +434,6 @@ function cellText(shot: Shot, key: ShotColumn, words: Words): string {
       return shot.movement;
     case 'lens':
       return f.lens ?? '';
-    case 'duration':
-      return shot.duration;
     case 'action':
       return [f.action, f.dialogue && `${words.dialogue}: “${f.dialogue}”`]
         .filter(Boolean)

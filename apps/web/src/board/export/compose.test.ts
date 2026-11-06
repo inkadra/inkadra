@@ -49,7 +49,6 @@ const words: Words = {
     angle: 'Angle',
     movement: 'Movement',
     lens: 'Lens',
-    duration: 'Dur.',
     action: 'Action',
     location: 'Location',
     cast: 'Cast',
@@ -91,7 +90,6 @@ function shots(n: number, notes?: string): Shot[] {
     size: 'Primo piano',
     angle: '',
     movement: '',
-    duration: '2 s',
   }));
 }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type FrameElement, formatDuration, variantView } from '@inkadra/canvas-core';
+import { type FrameElement, variantView } from '@inkadra/canvas-core';
 import {
   ShootingDayInput as DaySchema,
   type Person,
@@ -684,9 +684,6 @@ function QueueShot({
     >
       <span className="schedule__shot-label">{label}</span>
       {frame.action && <span className="schedule__shot-action">{frame.action}</span>}
-      {frame.durationMs !== undefined && (
-        <span className="schedule__shot-meta">{formatDuration(frame.durationMs)}</span>
-      )}
     </button>
   );
 }

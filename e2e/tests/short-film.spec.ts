@@ -176,23 +176,23 @@ async function readPdf(path: string) {
 
 /** What the shooting crew sets on the first ten frames. */
 const details = [
-  { shot: 'ws', angle: 'high', movement: 'static', lens: '24mm', seconds: '5', cast: 'Elena' },
-  { shot: 'fs', angle: 'eye', movement: 'handheld', lens: '35mm', seconds: '3', cast: 'Elena' },
-  { shot: 'ms', angle: 'low', movement: 'dolly', lens: '50mm', seconds: '4', cast: 'Marco' },
-  { shot: 'cu', angle: 'eye', movement: 'handheld', lens: '85mm', seconds: '3', cast: 'Elena' },
-  { shot: 'insert', angle: 'overhead', movement: 'static', lens: '100mm', seconds: '2', cast: '' },
-  { shot: 'ws', angle: 'eye', movement: 'tilt', lens: '24mm', seconds: '6', cast: '' },
+  { shot: 'ws', angle: 'high', movement: 'static', lens: '24mm', cast: 'Elena' },
+  { shot: 'fs', angle: 'eye', movement: 'handheld', lens: '35mm', cast: 'Elena' },
+  { shot: 'ms', angle: 'low', movement: 'dolly', lens: '50mm', cast: 'Marco' },
+  { shot: 'cu', angle: 'eye', movement: 'handheld', lens: '85mm', cast: 'Elena' },
+  { shot: 'insert', angle: 'overhead', movement: 'static', lens: '100mm', cast: '' },
+  { shot: 'ws', angle: 'eye', movement: 'tilt', lens: '24mm', cast: '' },
   {
     shot: 'mcu',
     angle: 'ots',
     movement: 'steadicam',
     lens: '50mm',
-    seconds: '4',
+   
     cast: 'Elena, Marco',
   },
-  { shot: 'ms', angle: 'pov', movement: 'pan', lens: '35mm', seconds: '3', cast: 'Marco' },
-  { shot: 'ews', angle: 'high', movement: 'crane', lens: '18mm', seconds: '5', cast: '' },
-  { shot: 'ecu', angle: 'dutch', movement: 'zoom', lens: '100mm', seconds: '2', cast: 'Elena' },
+  { shot: 'ms', angle: 'pov', movement: 'pan', lens: '35mm', cast: 'Marco' },
+  { shot: 'ews', angle: 'high', movement: 'crane', lens: '18mm', cast: '' },
+  { shot: 'ecu', angle: 'dutch', movement: 'zoom', lens: '100mm', cast: 'Elena' },
 ] as const;
 
 /** The rows of an RFC 4180 file, as the CSV export writes it (every field quoted). */
@@ -412,14 +412,11 @@ test('a short film is prepared from the moodboard to the shot list', async ({
       await chooseSelect(panel.getByLabel('Movimento', { exact: true }), d.movement);
       await panel.getByLabel('Obiettivo', { exact: true }).fill(d.lens);
       await panel.getByLabel('Obiettivo', { exact: true }).press('Enter');
-      await panel.getByLabel('Durata (s)').fill(d.seconds);
-      await panel.getByLabel('Durata (s)').press('Enter');
       if (d.cast) {
         await panel.getByLabel('Personaggi', { exact: true }).fill(d.cast);
         await panel.getByLabel('Personaggi', { exact: true }).press('Enter');
       }
     }
-    await expect(scene1.locator('.story__tile').nth(0)).toContainText('0:05');
 
     // A pen sketch on 1B.
     await page.getByRole('button', { name: '1B', exact: true }).click();

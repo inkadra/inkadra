@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type FrameElement, formatDuration, updateElement } from '@inkadra/canvas-core';
+import { type FrameElement, updateElement } from '@inkadra/canvas-core';
 import type { AspectRatio } from '@inkadra/doc-schema';
 import { Icon, Select } from '@inkadra/ui';
 import { type DragEvent, useState } from 'react';
@@ -197,11 +197,6 @@ export function ShotlistKanban({
                           />
                         </div>
                         <b className="kanban__card-label">{label}</b>
-                        {f.durationMs ? (
-                          <span className="kanban__card-duration">
-                            {formatDuration(f.durationMs)}
-                          </span>
-                        ) : null}
                       </div>
 
                       {(f.action || f.dialogue) && (

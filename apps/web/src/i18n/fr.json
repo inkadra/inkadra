@@ -1205,8 +1205,8 @@
       "label": "Format",
       "board": "Tableau ({{ratio}})"
     },
-    "total_one": "{{count}} plan · {{duration}}",
-    "total_other": "{{count}} plans · {{duration}}",
+    "total_one": "{{count}} plan",
+    "total_other": "{{count}} plans",
     "loose": "Sans scène",
     "drop": {
       "notImage_one": "Seules les images peuvent être déposées ici : {{count}} fichier ignoré.",
@@ -1255,7 +1255,6 @@
       "cast": "Personnages",
       "castHint": "Séparés par des virgules",
       "lens": "Objectif",
-      "duration": "Durée (s)",
       "shot": "Valeur de plan",
       "angle": "Angle",
       "movement": "Mouvement",
@@ -1429,7 +1428,6 @@
       "groupNone": "Aucun groupe",
       "sortManual": "Ordre du storyboard",
       "sortLabel": "Numéro de plan",
-      "sortDuration": "Durée",
       "collapseGroup": "Réduire le groupe",
       "expandGroup": "Développer le groupe",
       "noLocation": "Aucun décor",
@@ -1439,7 +1437,6 @@
       "shownShots": "{{shown}} plans sur {{count}}",
       "shownShots_one": "{{shown}} plan sur {{count}}",
       "shownShots_other": "{{shown}} plans sur {{count}}",
-      "estimatedDuration": "Durée estimée",
       "moveCard": "Déplacer vers {{column}}",
       "moveToColumn": "Déplacer la carte vers la colonne",
       "moreCards": "de plus",
@@ -1458,8 +1455,8 @@
       "scenes": "Scènes",
       "allScenes": "Toutes les scènes",
       "drawn": "{{drawn}} dessinés sur {{total}}",
-      "estimated_one": "{{count}} plan · durée estimée {{duration}}. La barre indique les plans dessinés.",
-      "estimated_other": "{{count}} plans · durée estimée {{duration}}. La barre indique les plans dessinés."
+      "summary_one": "{{count}} plan. La barre indique les plans dessinés.",
+      "summary_other": "{{count}} plans. La barre indique les plans dessinés."
     }
   },
   "roles": {
@@ -3129,7 +3126,6 @@
       "angle": "Angle",
       "movement": "Mouvement",
       "lens": "Objectif",
-      "duration": "Durée",
       "action": "Action et dialogue",
       "location": "Décor",
       "cast": "Personnages",

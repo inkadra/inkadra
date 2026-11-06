@@ -1205,8 +1205,8 @@
       "label": "Formato",
       "board": "Formato dello storyboard ({{ratio}})"
     },
-    "total_one": "{{count}} inquadratura · {{duration}}",
-    "total_other": "{{count}} inquadrature · {{duration}}",
+    "total_one": "{{count}} inquadratura",
+    "total_other": "{{count}} inquadrature",
     "loose": "Senza scena",
     "drop": {
       "notImage_one": "Qui si possono trascinare solo immagini: {{count}} file ignorato.",
@@ -1255,7 +1255,6 @@
       "cast": "Personaggi",
       "castHint": "Separati da virgole",
       "lens": "Obiettivo",
-      "duration": "Durata (s)",
       "shot": "Campo",
       "angle": "Angolazione",
       "movement": "Movimento",
@@ -1429,7 +1428,6 @@
       "groupNone": "Nessun raggruppamento",
       "sortManual": "Ordine storyboard",
       "sortLabel": "Numero inquadratura",
-      "sortDuration": "Durata",
       "collapseGroup": "Comprimi gruppo",
       "expandGroup": "Espandi gruppo",
       "noLocation": "Nessuna location",
@@ -1439,7 +1437,6 @@
       "shownShots": "{{shown}} di {{count}} inquadrature",
       "shownShots_one": "{{shown}} di {{count}} inquadratura",
       "shownShots_other": "{{shown}} di {{count}} inquadrature",
-      "estimatedDuration": "Durata stimata",
       "moveCard": "Sposta in {{column}}",
       "moveToColumn": "Sposta card in colonna",
       "moreCards": "altre",
@@ -1458,8 +1455,8 @@
       "scenes": "Scene",
       "allScenes": "Tutte le scene",
       "drawn": "{{drawn}} di {{total}} disegnate",
-      "estimated_one": "{{count}} inquadratura · durata stimata {{duration}}. La barra mostra le inquadrature disegnate.",
-      "estimated_other": "{{count}} inquadrature · durata stimata {{duration}}. La barra mostra le inquadrature disegnate."
+      "summary_one": "{{count}} inquadratura. La barra mostra le inquadrature disegnate.",
+      "summary_other": "{{count}} inquadrature. La barra mostra le inquadrature disegnate."
     }
   },
   "roles": {
@@ -3129,7 +3126,6 @@
       "angle": "Angolazione",
       "movement": "Movimento",
       "lens": "Obiettivo",
-      "duration": "Durata",
       "action": "Azione e dialogo",
       "location": "Luogo",
       "cast": "Personaggi",

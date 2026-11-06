@@ -1,12 +1,9 @@
-import type { FrameElement } from '@inkadra/canvas-core';
 import { describe, expect, it } from 'vitest';
 import { parseQuery } from '../../routes/SearchDialog.tsx';
 import { commandFor } from '../shortcuts.ts';
 import { normaliseTag } from '../tags.tsx';
 import { exifRows, shutterText } from '../viewer.tsx';
 import { aspectLabel } from './aspect.ts';
-import { estimatedDurationMs } from './duration.ts';
-import { parseSeconds, secondsText } from './fields.tsx';
 import { getFrameKanbanColumn, getFrameStatus, isApproved } from './film-status.ts';
 import { toCsv } from './ShotList.tsx';
 import { KANBAN_COLUMNS } from './ShotlistKanban.tsx';
@@ -21,22 +18,6 @@ const key = (k: string) => ({
 });
 
 describe('film helpers', () => {
-  it('counts a frame without a duration for one second and a zero duration for nothing', () => {
-    const frames = [4000, undefined, 0].map((durationMs) => ({ durationMs }) as FrameElement);
-    expect(estimatedDurationMs(frames)).toBe(5000);
-    expect(estimatedDurationMs([])).toBe(0);
-  });
-
-  it('reads durations typed in seconds, with a comma or a dot', () => {
-    expect(parseSeconds('2,5')).toBe(2500);
-    expect(parseSeconds(' 4 ')).toBe(4000);
-    expect(parseSeconds('')).toBeUndefined();
-    expect(parseSeconds('-1')).toBeUndefined();
-    expect(parseSeconds('abc')).toBeUndefined();
-    expect(secondsText(2500)).toBe('2.5');
-    expect(secondsText(undefined)).toBe('');
-  });
-
   it('labels aspect ratios', () => {
     expect(aspectLabel('2.39')).toBe('2.39 : 1');
     expect(aspectLabel('16:9')).toBe('16 : 9');

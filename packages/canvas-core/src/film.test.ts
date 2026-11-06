@@ -23,7 +23,6 @@ import {
   storyboardOf,
   strokeHit,
   toGrid,
-  totalDurationMs,
 } from './film.ts';
 
 const opts = { userId: null };
@@ -72,16 +71,16 @@ describe('storyboards', () => {
     const s5 = addScene(doc, { title: "Sala d'attesa" }, opts);
     expect(s5.number).toBe('5');
     expect(s5.x).toBeGreaterThan(s4.x);
-    const a = addFrame(doc, s4.id, null, { durationMs: 12_000 }, opts);
-    const c = addFrame(doc, s4.id, null, { durationMs: 4000 }, opts);
-    const b = addFrame(doc, s4.id, 1, { durationMs: 6000, label: '4B-bis' }, opts);
+    const a = addFrame(doc, s4.id, null, {}, opts);
+    const c = addFrame(doc, s4.id, null, {}, opts);
+    const b = addFrame(doc, s4.id, 1, { label: '4B-bis' }, opts);
     const loose = addFrame(doc, null, null, {}, opts);
     const groups = storyboardOf(listElements(doc));
     expect(groups.map((g) => g.scene?.number ?? null)).toEqual(['4', '5', null]);
     expect(groups[0]?.frames.map((f) => f.id)).toEqual([a.id, b.id, c.id]);
     const labels = frameLabels(groups);
     expect([a, b, c, loose].map((f) => labels.get(f.id))).toEqual(['4A', '4B-bis', '4C', '1']);
-    expect(formatDuration(totalDurationMs(groups[0]?.frames ?? []))).toBe('0:22');
+    expect(formatDuration(22_000)).toBe('0:22');
 
     moveFrames(doc, [c.id], s5.id, 0);
     const after = storyboardOf(listElements(doc));

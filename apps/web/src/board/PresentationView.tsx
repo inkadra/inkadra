@@ -27,7 +27,6 @@ export interface SlideItem {
     shot?: string;
     lens?: string;
     movement?: string;
-    duration?: string;
     audio?: string;
   };
   notes?: string;
@@ -178,7 +177,6 @@ export function PresentationView({
             shot: frame.shot ? getPreset('shotSizes', frame.shot) : undefined,
             lens: frame.lens,
             movement: frame.movement ? getPreset('shotMovements', frame.movement) : undefined,
-            duration: frame.durationMs ? `${Math.round(frame.durationMs / 1000)} s` : undefined,
             audio: frame.audio ? t('present.audio', { value: frame.audio }) : undefined,
           },
           notes: frame.notes || scene?.synopsis || '',
@@ -327,7 +325,6 @@ export function PresentationView({
                       {current.specs.shot && <span>{current.specs.shot}</span>}
                       {current.specs.lens && <span>{current.specs.lens}</span>}
                       {current.specs.movement && <span>{current.specs.movement}</span>}
-                      {current.specs.duration && <span>{current.specs.duration}</span>}
                       {current.specs.audio && <span>{current.specs.audio}</span>}
                     </div>
                   )}

@@ -63,9 +63,7 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
     .getByLabel('Azione', { exact: true })
     .fill('Il treno entra, il neon le taglia il viso');
   await chooseSelect(panel.getByLabel('Campo', { exact: true }), 'cu');
-  await panel.getByLabel('Durata (s)').fill('4,5');
-  await panel.getByLabel('Durata (s)').press('Enter');
-  await expect(page.getByText('4 inquadrature · 0:08').first()).toBeVisible();
+  await expect(page.getByText('4 inquadrature').first()).toBeVisible();
 
   // The pen: one line is one stroke in the frame.
   await panel.getByRole('button', { name: 'Disegna' }).click();
