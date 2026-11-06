@@ -157,14 +157,21 @@
   font-weight: 600;
 }
 .login__invite {
+  /* Same width as the card it sits in: the brand block centres and would shrink it to its text. */
+  align-self: stretch;
   padding: 14px 16px;
   border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-subtle);
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
   text-align: center;
+  overflow-wrap: anywhere;
+}
+.login__invite:has(> .ink-avatar) {
+  gap: 8px;
 }
 .login__invite p {
   margin: 0;
