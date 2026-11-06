@@ -286,6 +286,11 @@ html[data-view-direction]::view-transition-new(board-view) {
   font-size: 12px;
   color: var(--ink-text-secondary);
 }
+.story__aspect .ink-select,
+.film-panel__head .ink-select {
+  flex: none;
+  width: auto;
+}
 .story__total {
   font-size: 12px;
   color: var(--ink-text-secondary);

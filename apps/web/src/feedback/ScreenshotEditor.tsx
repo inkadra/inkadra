@@ -233,6 +233,8 @@ export function ScreenshotEditor({
               const d = drag.current;
               if (!d) return;
               const p = point(e);
+              // Read now: React runs the updater later, when the event has no currentTarget.
+              const { width, height } = e.currentTarget;
               setBoxes((old) =>
                 old.map((box) =>
                   box.id !== d.original.id
@@ -247,14 +249,8 @@ export function ScreenshotEditor({
                         }
                       : {
                           ...box,
-                          x: Math.max(
-                            0,
-                            Math.min(e.currentTarget.width - box.w, d.original.x + p.x - d.x),
-                          ),
-                          y: Math.max(
-                            0,
-                            Math.min(e.currentTarget.height - box.h, d.original.y + p.y - d.y),
-                          ),
+                          x: Math.max(0, Math.min(width - box.w, d.original.x + p.x - d.x)),
+                          y: Math.max(0, Math.min(height - box.h, d.original.y + p.y - d.y)),
                         },
                 ),
               );

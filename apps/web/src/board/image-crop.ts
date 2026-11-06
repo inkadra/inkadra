@@ -112,6 +112,20 @@ export function croppedRotatedSize(
 }
 
 /** Numeric width/height ratio for a preset, or null for `'free'`. */
+/**
+ * The height an image card should have, or null when it already fits. A card resized before its
+ * picture was known keeps the placeholder's 4:3 and shows bands around the picture.
+ */
+export function fittedImageHeight(
+  width: number,
+  height: number,
+  fixed: number,
+  picture: { width: number; height: number },
+): number | null {
+  const fitted = Math.round((width * picture.height) / picture.width + fixed);
+  return Math.abs(fitted - height) > Math.max(2, fitted * 0.01) ? fitted : null;
+}
+
 export function cropAspectValue(preset: ImageCropAspect | undefined): number | null {
   switch (preset) {
     case '1:1':

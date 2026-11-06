@@ -58,6 +58,8 @@
   outline: none;
 }
 .share__select {
+  flex: none;
+  width: auto;
   height: 28px;
   padding: 0 6px;
   border-radius: var(--ink-radius-sm);

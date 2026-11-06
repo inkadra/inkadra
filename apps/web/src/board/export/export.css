@@ -1,6 +1,5 @@
 /* Export dialog: options on the left, the first page on the right; stacked on phones. */
 .ink-dialog:has(.export) {
-  position: relative;
   width: min(880px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
 }
