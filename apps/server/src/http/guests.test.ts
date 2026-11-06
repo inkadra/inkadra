@@ -2770,6 +2770,40 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     ).toBe(403);
   });
 
+  it('tells summaries from changes without the clock of the app server', async () => {
+    const S = await insertBoard(P, 'Storyboard 3', B.R);
+    const pic = await makeAsset(P, 'shot.jpg');
+    await saveDoc(S, [
+      { ...el, id: 'shot1_____', type: 'frame', parent: null, assetId: pic },
+      { ...el, id: 'shot2_____', type: 'frame', parent: null, assetId: pic },
+    ] as Element[]);
+    const link = await createLink('editor', S, { role: 'guest_approve' });
+    const guest = (await open(link, { name: 'Cliente' })).cookie;
+    const send = () => call({ cookie: guest }, 'POST', g(link, `/boards/${S}/review-summary`));
+    /** A decision stamped by an app server whose clock is off by `skew` from the database's. */
+    const decide = async (id: string, status: string, skew: number) => {
+      const path = g(link, `/boards/${S}/elements/${id}/review`);
+      expect((await call({ cookie: guest }, 'PUT', path, { status })).status).toBe(200);
+      await db
+        .update(elementReview)
+        .set({ changedAt: new Date(Date.now() + skew) })
+        .where(and(eq(elementReview.boardId, S), eq(elementReview.elementId, id)));
+    };
+    const hour = 60 * 60 * 1000;
+
+    // Clock ahead: the decision looks newer than its own summary, which must not be sent twice.
+    await decide('shot1_____', 'approved', hour);
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 0, sent: true });
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 0, sent: false });
+    // Clock behind: a new decision looks older than the last summary, which must not lose it.
+    await decide('shot2_____', 'changes_requested', -hour);
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 1, sent: true });
+    // Withdrawing one of the decisions changes the counts, so it makes a new summary too.
+    await decide('shot2_____', 'none', -hour);
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 0, sent: true });
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 0, sent: false });
+  });
+
   it('limits previews per address', async () => {
     const where = { 'x-forwarded-for': '10.40.0.1' };
     for (let i = 0; i < 60; i++)

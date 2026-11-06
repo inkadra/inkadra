@@ -49,5 +49,6 @@ It needs the review right (`guest_approve`), like deciding.
 Decisions stay saved one at a time. `POST …/review-summary` tells the person who made the link
 (new `review_submitted` notification, without new database columns) and answers the counts of the
 link's decisions on the visible cards. It is idempotent: without a decision changed since the
-last summary of the link on that board, nobody is notified. It counts as a guest write (60 a
-minute per guest).
+last summary of the link on that board, nobody is notified. A change is a review event on a
+visible card, withdrawn decisions included; events and notifications both take their time from the
+database clock, never the app server's. It counts as a guest write (60 a minute per guest).

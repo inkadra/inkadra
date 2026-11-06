@@ -10,10 +10,10 @@ import {
   VariantQuery,
   z,
 } from '@inkadra/shared';
-import { and, desc, eq, gte, inArray, max, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, notExists, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Database } from '../db/client.ts';
-import { boardVersion, elementReview, notification } from '../db/schema.ts';
+import { boardVersion, elementReview, elementReviewEvent, notification } from '../db/schema.ts';
 import { notify, Recipients } from '../notifications.ts';
 import { type DocViews, guestElement } from '../share-links.ts';
 import { iso } from './api-routes.ts';
@@ -154,7 +154,7 @@ export function registerGuestReviewRoutes(app: FastifyInstance, deps: Deps) {
       visible.length === 0
         ? []
         : await db
-            .select({ status: elementReview.status, changedAt: elementReview.changedAt })
+            .select({ status: elementReview.status })
             .from(elementReview)
             .where(
               and(
@@ -166,32 +166,42 @@ export function registerGuestReviewRoutes(app: FastifyInstance, deps: Deps) {
             );
     const approved = decisions.filter((d) => d.status === 'approved').length;
     const changesRequested = decisions.length - approved;
-    const latest = decisions.reduce<Date | null>(
-      (at, d) => (!at || d.changedAt > at ? d.changedAt : at),
-      null,
-    );
     const creator = ctx.link.createdBy;
     let sent = false;
-    if (latest && creator) {
+    if (decisions.length > 0 && creator) {
       // One summary per state of the decisions: sending again without a change notifies nobody.
-      // shortcut: compares the app clock (changedAt) with the database clock (createdAt); fine
-      // while both run on synchronised hosts, else store the summarised state on a row.
+      // Events and notifications both take their time from the database clock.
+      // shortcut: a decision whose transaction started before this one and commits after it counts
+      // as summarised, a window of milliseconds; store the summarised event if it ever matters.
       sent = await db.transaction(async (tx) => {
         await tx.execute(
           sql`select pg_advisory_xact_lock(hashtext(${`review-summary:${linkId}:${boardId}`}))`,
         );
-        const [already] = await tx
-          .select({ at: max(notification.createdAt) })
-          .from(notification)
+        const [changed] = await tx
+          .select({ id: elementReviewEvent.id })
+          .from(elementReviewEvent)
           .where(
             and(
-              eq(notification.type, 'review_submitted'),
-              eq(notification.boardId, boardId),
-              eq(notification.shareLinkId, linkId),
-              gte(notification.createdAt, latest),
+              eq(elementReviewEvent.boardId, boardId),
+              eq(elementReviewEvent.shareLinkId, linkId),
+              inArray(elementReviewEvent.elementId, visible),
+              notExists(
+                tx
+                  .select({ id: notification.id })
+                  .from(notification)
+                  .where(
+                    and(
+                      eq(notification.type, 'review_submitted'),
+                      eq(notification.boardId, boardId),
+                      eq(notification.shareLinkId, linkId),
+                      gte(notification.createdAt, elementReviewEvent.createdAt),
+                    ),
+                  ),
+              ),
             ),
-          );
-        if (already?.at) return false;
+          )
+          .limit(1);
+        if (!changed) return false;
         const count = await notify(
           tx as unknown as Database,
           {
