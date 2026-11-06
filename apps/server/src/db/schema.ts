@@ -1074,6 +1074,46 @@ export const shootingDay = pgTable(
   (t) => [index('shooting_day_board_date_idx').on(t.boardId, t.date)],
 );
 
+/** An optional link from a free-text cast name of a board's schedule to an account. */
+export const castLink = pgTable(
+  'cast_link',
+  {
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    castKey: text('cast_key').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.boardId, t.castKey] }),
+    index('cast_link_user_idx').on(t.userId),
+  ],
+);
+
+/** What a person linked to the cast of a shooting day answered about being on set. */
+export const shootingDayAttendance = pgTable(
+  'shooting_day_attendance',
+  {
+    dayId: uuid('day_id')
+      .notNull()
+      .references(() => shootingDay.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    status: text('status', { enum: ['confirmed', 'declined'] }).notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.dayId, t.userId] }),
+    index('shooting_day_attendance_user_idx').on(t.userId),
+  ],
+);
+
 /** Bounded personal history of confirmed clip destinations. */
 export const clipBoardUse = pgTable(
   'clip_board_use',

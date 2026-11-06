@@ -86,3 +86,46 @@ export const MySchedule = z
   .object({ items: z.array(PlannedShootingDay), nextCursor: z.null() })
   .openapi('MySchedule');
 export type MySchedule = z.infer<typeof MySchedule>;
+
+/** Cast names are free text; the same person matches whatever the case or surrounding spaces. */
+export const castNameKey = (name: string) => name.trim().toLowerCase();
+
+export const CastLink = z
+  .object({
+    castKey: z.string().openapi({ description: 'The cast name after castNameKey.' }),
+    userId: Id,
+  })
+  .openapi('CastLink');
+export type CastLink = z.infer<typeof CastLink>;
+export const SetCastLink = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    userId: Id.nullable().openapi({ description: 'The account to link; null removes the link.' }),
+  })
+  .strict()
+  .openapi('SetCastLink');
+export type SetCastLink = z.infer<typeof SetCastLink>;
+
+export const AttendanceStatus = z.enum(['confirmed', 'declined']).openapi('AttendanceStatus');
+export type AttendanceStatus = z.infer<typeof AttendanceStatus>;
+export const DayAttendance = z
+  .object({ dayId: Id, userId: Id, status: AttendanceStatus })
+  .openapi('DayAttendance');
+export type DayAttendance = z.infer<typeof DayAttendance>;
+export const SetDayAttendance = z
+  .object({ status: AttendanceStatus })
+  .strict()
+  .openapi('SetDayAttendance');
+export type SetDayAttendance = z.infer<typeof SetDayAttendance>;
+export const ScheduleAttendance = z
+  .object({
+    canManage: z.boolean().openapi({ description: 'The caller can edit the schedule.' }),
+    links: z.array(CastLink).openapi({
+      description: "Every link for people who can edit the schedule, else the caller's own.",
+    }),
+    responses: z.array(DayAttendance).openapi({
+      description: "Every response for people who can edit the schedule, else the caller's own.",
+    }),
+  })
+  .openapi('ScheduleAttendance');
+export type ScheduleAttendance = z.infer<typeof ScheduleAttendance>;
