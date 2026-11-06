@@ -1,5 +1,5 @@
 import { addFrame, addScene, createElement, updateElement } from '@inkadra/canvas-core';
-import { initBoardDoc, setBoardAspect, STROKE_GRID } from '@inkadra/doc-schema';
+import { initBoardDoc, STROKE_GRID, setBoardAspect } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import * as Y from 'yjs';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
@@ -23,7 +23,8 @@ async function picture(page: Page, width: number, height: number) {
       fill.addColorStop(1, '#5c6b3a');
       ctx.fillStyle = fill;
       ctx.fillRect(0, 0, w as number, h as number);
-      const blob = (await new Promise((r) => canvas.toBlob(r, 'image/png'))) as Blob;
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'));
+      if (!blob) throw new Error('no picture');
       return [...new Uint8Array(await blob.arrayBuffer())];
     },
     [width, height],

@@ -249,14 +249,8 @@ export function ScreenshotEditor({
                         }
                       : {
                           ...box,
-                          x: Math.max(
-                            0,
-                            Math.min(width - box.w, d.original.x + p.x - d.x),
-                          ),
-                          y: Math.max(
-                            0,
-                            Math.min(height - box.h, d.original.y + p.y - d.y),
-                          ),
+                          x: Math.max(0, Math.min(width - box.w, d.original.x + p.x - d.x)),
+                          y: Math.max(0, Math.min(height - box.h, d.original.y + p.y - d.y)),
                         },
                 ),
               );
