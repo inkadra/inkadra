@@ -71,6 +71,8 @@ import {
   GuestBoardSnapshot,
   GuestDenied,
   GuestPick,
+  GuestReviewSummary,
+  GuestVersions,
   GuestSession,
   SetPick,
   ShareLink,
@@ -2202,6 +2204,61 @@ registry.registerPath({
     200: { description: 'Snapshot', ...json(GuestBoardSnapshot) },
     304: { description: 'Not changed since If-None-Match' },
     ...guestErrors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/boards/{boardId}/versions'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Named versions of a storyboard, to compare a shot before and after. For guest_approve.',
+  description:
+    'The newest named versions of the board with their frames, shaped like the snapshot and ' +
+    'cut down to frames guests of this link see both in the version and now: no other card, ' +
+    'no hidden frame and no field outside the guest allow list. Pictures not in the snapshot ' +
+    'are listed in `assets` as thumbnails of a version. From API 0.10.0 (decision 0074).',
+  request: { params: guestBoardParams },
+  responses: { 200: { description: 'Versions', ...json(GuestVersions) }, ...guestErrors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/boards/{boardId}/versions/{versionId}/assets/{assetId}/variants/{size}'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'A WebP thumbnail of a frame picture of a named version. For guest_approve.',
+  description:
+    'Only for the picture of a frame listed by GET …/versions for this version; a version of ' +
+    'another board, one no longer among the newest, or any other file is a 404.',
+  request: {
+    params: z.object({
+      linkId: Id,
+      boardId: Id,
+      versionId: Id,
+      assetId: Id,
+      size: ThumbnailSize,
+    }),
+    query: VariantQuery,
+  },
+  responses: {
+    200: { description: 'WebP image', content: { 'image/webp': { schema: z.string() } } },
+    ...guestErrors,
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/guest/links/{linkId}/boards/{boardId}/review-summary'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Send the team a summary of the review of this board. For guest_approve.',
+  description:
+    'Decisions are saved one at a time with PUT …/review; this only tells the person who made ' +
+    'the link (`review_submitted` notification) and answers the counts of this link on the ' +
+    'board. Idempotent: without a decision changed since the last summary, or without any ' +
+    'decision, nobody is notified and `sent` is false. Needs a name; counted as a guest write.',
+  request: { params: guestBoardParams },
+  responses: {
+    200: { description: 'Summary', ...json(GuestReviewSummary) },
+    ...guestWriteErrors,
   },
 });
 registry.registerPath({

@@ -232,8 +232,27 @@ export function viewOf(doc: Y.Doc): BoardView {
 export class DocViews {
   private cache = new Map<string, { stamp: number; view: BoardView }>();
   private links = new Map<string, LinkContents>();
+  private versions = new Map<string, BoardView>();
   constructor(private readonly max = 200) {}
 
+  /** The guest view of a saved version; its state never changes, so it is decoded once. */
+  versionView(versionId: string, state: Uint8Array): BoardView {
+    const known = this.versions.get(versionId);
+    if (known) return known;
+    const doc = new Y.Doc();
+    try {
+      Y.applyUpdate(doc, state);
+      const view = viewOf(doc);
+      this.versions.set(versionId, view);
+      if (this.versions.size > this.max) {
+        const oldest = this.versions.keys().next().value;
+        if (oldest) this.versions.delete(oldest);
+      }
+      return view;
+    } finally {
+      doc.destroy();
+    }
+  }
   linkContents(key: string) {
     const known = this.links.get(key);
     if (known) {

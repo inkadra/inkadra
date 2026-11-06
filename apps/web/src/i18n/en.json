@@ -1955,7 +1955,8 @@
       "guest": "A guest",
       "link_opened": "opened the board",
       "task_assigned": "assigned you a task",
-      "feedback_received": "New in-app report received"
+      "feedback_received": "New in-app report received",
+      "review_submitted": "sent their review"
     },
     "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",

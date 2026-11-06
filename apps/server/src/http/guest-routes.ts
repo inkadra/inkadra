@@ -77,6 +77,7 @@ import {
   guestPath,
   linkStopped,
 } from './guest-context.ts';
+import { registerGuestReviewRoutes } from './guest-review.ts';
 import { RateLimiter } from './link-previews.ts';
 import { createTileServer } from './map-tiles.ts';
 
@@ -470,6 +471,41 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     return row;
   }
 
+  /** A WebP thumbnail of a project file, once the caller checked the guest may see it. */
+  async function sendVariant(
+    ctx: GuestContext,
+    req: FastifyRequest,
+    reply: FastifyReply,
+    { assetId, size, animated }: { assetId: string; size: ThumbnailSize; animated?: string | undefined },
+  ) {
+    if ((await projectAsset(ctx, assetId)).status !== 'ready')
+      throw new HttpError('not_found', 'The picture is not ready.');
+    if (animated) {
+      const key = animatedVariantKey(assetId, size);
+      if ((await storage.size(key)) === null)
+        throw new HttpError('not_found', 'No such variant.');
+      const etag = createHash('sha256')
+        .update(`${assetId}-${size}-animated-${key}`)
+        .digest('hex');
+      guestFileHeaders(reply, etag);
+      if (matchesEtag(req.headers['if-none-match'], etag)) return reply.status(304).send();
+      reply.header('content-type', 'image/webp');
+      return reply.send(await storage.read(key));
+    }
+    const [variant] = await db
+      .select({ ...getTableColumns(assetVariant), revision: sql<string>`xmin::text` })
+      .from(assetVariant)
+      .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, size)));
+    if (!variant) throw new HttpError('not_found', 'No such variant.');
+    const etag = createHash('sha256')
+      .update(`${assetId}-${size}-${variant.storageKey}-${variant.revision}`)
+      .digest('hex');
+    guestFileHeaders(reply, etag);
+    if (matchesEtag(req.headers['if-none-match'], etag)) return reply.status(304).send();
+    reply.header('content-type', 'image/webp');
+    return reply.send(await storage.read(variant.storageKey));
+  }
+
   function guestFileHeaders(reply: FastifyReply, etag: string) {
     fileHeaders(reply, etag);
     // Checked on every request: a revoked link must stop serving at once.
@@ -663,32 +699,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       const reachable = ctx.assets;
       if (!reachable.shown.has(assetId) && !reachable.covers.has(assetId))
         throw new HttpError('not_found', 'Asset not found.');
-      if ((await projectAsset(ctx, assetId)).status !== 'ready')
-        throw new HttpError('not_found', 'The picture is not ready.');
-      if (animated) {
-        const key = animatedVariantKey(assetId, size);
-        if ((await storage.size(key)) === null)
-          throw new HttpError('not_found', 'No such variant.');
-        const etag = createHash('sha256')
-          .update(`${assetId}-${size}-animated-${key}`)
-          .digest('hex');
-        guestFileHeaders(reply, etag);
-        if (matchesEtag(req.headers['if-none-match'], etag)) return reply.status(304).send();
-        reply.header('content-type', 'image/webp');
-        return reply.send(await storage.read(key));
-      }
-      const [variant] = await db
-        .select({ ...getTableColumns(assetVariant), revision: sql<string>`xmin::text` })
-        .from(assetVariant)
-        .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, size)));
-      if (!variant) throw new HttpError('not_found', 'No such variant.');
-      const etag = createHash('sha256')
-        .update(`${assetId}-${size}-${variant.storageKey}-${variant.revision}`)
-        .digest('hex');
-      guestFileHeaders(reply, etag);
-      if (matchesEtag(req.headers['if-none-match'], etag)) return reply.status(304).send();
-      reply.header('content-type', 'image/webp');
-      return reply.send(await storage.read(variant.storageKey));
+      return sendVariant(ctx, req, reply, { assetId, size, animated });
     });
 
     // Tiles are public map data: any guest of a working link may pan the maps of its boards.
@@ -934,5 +945,6 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     );
 
     registerGuestCommentRoutes(scope, { db, guests, afterWrite: afterGuestWrite });
+    registerGuestReviewRoutes(scope, { db, docs, guests, guestAssets, sendVariant });
   });
 }

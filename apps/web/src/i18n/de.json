@@ -1955,7 +1955,8 @@
       "guest": "Ein Gast",
       "link_opened": "hat das Board geöffnet",
       "task_assigned": "hat dir eine Aufgabe zugewiesen",
-      "feedback_received": "Neue In-App-Meldung erhalten"
+      "feedback_received": "Neue In-App-Meldung erhalten",
+      "review_submitted": "hat das Review gesendet"
     },
     "emailTitle": "E-Mail-Benachrichtigungen",
     "emailHint": "Erwähnungen, Antworten und Reviews auch per E-Mail, wenn der Server sie senden kann.",

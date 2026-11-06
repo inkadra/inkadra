@@ -42,7 +42,7 @@ describe('remapDoc', () => {
       person: () => importer,
     });
     expect(body.toJSON()).toBe(
-      `<paragraph>Ask @Giulia</paragraph><noteImage assetId="${newFile}"></noteImage>`,
+      `<paragraph>Ask @Giulia</paragraph><noteimage assetId="${newFile}"></noteimage>`,
     );
     doc.destroy();
   });

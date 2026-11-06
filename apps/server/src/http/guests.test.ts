@@ -2625,6 +2625,106 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     );
   });
 
+  it('shows guest_approve guests the frames of named versions that the link shows, nothing else', async () => {
+    const S = await insertBoard(P, 'Storyboard', B.R);
+    const old = await makeAsset(P, 'before.jpg');
+    const now = await makeAsset(P, 'after.jpg');
+    const hiddenThen = await makeAsset(P, 'hidden-then.jpg');
+    const frame = (id: string, assetId: string, extra: Partial<Element> = {}) =>
+      ({ ...el, id, type: 'frame', parent: null, assetId, ...extra }) as Element;
+    await saveDoc(S, [
+      frame('shotA_____', now, { notes: 'Regia' }),
+      frame('shotB_____', now, { guestHidden: true }),
+      frame('shotC_____', now),
+    ]);
+    const versionDoc = createBoardDoc(S);
+    for (const item of [
+      frame('shotA_____', old, { notes: 'Solo regia', status: 'retake' }),
+      frame('shotB_____', old),
+      frame('shotC_____', hiddenThen, { guestHidden: true }),
+      { ...el, id: 'notev_____', type: 'note', parent: null } as Element,
+    ])
+      addElement(versionDoc, item);
+    const state = Y.encodeStateAsUpdate(versionDoc);
+    const values = { schemaVersion: 19, size: state.byteLength, elementCount: 4 };
+    const [named] = await db
+      .insert(boardVersion)
+      .values({ boardId: S, kind: 'named', name: 'v1', state, ...values })
+      .returning({ id: boardVersion.id });
+    await db.insert(boardVersion).values({ boardId: S, kind: 'auto', state, ...values });
+    const [elsewhere] = await db
+      .insert(boardVersion)
+      .values({ boardId: B.A, kind: 'named', name: 'other', state, ...values })
+      .returning({ id: boardVersion.id });
+    const approve = await createLink('editor', S, { role: 'guest_approve' });
+    const viewOnly = await createLink('editor', S, { role: 'guest_view' });
+    const guest = (await open(approve, { name: 'Cliente' })).cookie;
+    const viewer = (await open(viewOnly)).cookie;
+
+    const res = await call({ cookie: guest }, 'GET', g(approve, `/boards/${S}/versions`));
+    expect(res.status).toBe(200);
+    expect(res.body.versions).toHaveLength(1);
+    expect(res.body.versions[0]).toMatchObject({ id: named?.id, name: 'v1' });
+    // Only shotA: shotB is hidden now, shotC was hidden then; the note never leaves.
+    expect(res.body.versions[0].frames.map((f: { id: string }) => f.id)).toEqual(['shotA_____']);
+    expect(res.body.versions[0].frames[0]).not.toHaveProperty('notes');
+    expect(res.body.versions[0].frames[0]).not.toHaveProperty('status');
+    expect(res.body.assets.map((a: { id: string }) => a.id)).toEqual([old]);
+    const thumb = res.body.assets[0].variants[0].url as string;
+    expect(res.body.assets[0].downloadUrl).toBeNull();
+    expect((await call({ cookie: guest }, 'GET', thumb)).status).toBe(200);
+
+    const variant = (version: string, assetId: string) =>
+      g(approve, `/boards/${S}/versions/${version}/assets/${assetId}/variants/256`);
+    // Refused: a picture the version does not show to guests, a version of another board, a
+    // board outside the link, the plain asset route, a link without review, and no session.
+    expect((await call({ cookie: guest }, 'GET', variant(named?.id ?? '', hiddenThen))).status).toBe(404);
+    expect((await call({ cookie: guest }, 'GET', variant(elsewhere?.id ?? '', old))).status).toBe(404);
+    expect(
+      (await call({ cookie: guest }, 'GET', g(approve, `/boards/${B.A}/versions`))).status,
+    ).toBe(404);
+    expect((await call({ cookie: guest }, 'GET', g(approve, `/assets/${old}/variants/256`))).status).toBe(404);
+    expect((await call({ cookie: viewer }, 'GET', g(viewOnly, `/boards/${S}/versions`))).status).toBe(403);
+    expect((await call(null, 'GET', variant(named?.id ?? '', old))).status).toBe(401);
+  });
+
+  it('sends the team one summary per state of the review', async () => {
+    const S = await insertBoard(P, 'Storyboard 2', B.R);
+    const pic = await makeAsset(P, 'shot.jpg');
+    await saveDoc(S, [
+      { ...el, id: 'shot1_____', type: 'frame', parent: null, assetId: pic },
+      { ...el, id: 'shot2_____', type: 'frame', parent: null, assetId: pic },
+    ] as Element[]);
+    const link = await createLink('editor', S, { role: 'guest_approve' });
+    const guest = (await open(link, { name: 'Cliente' })).cookie;
+    const send = () => call({ cookie: guest }, 'POST', g(link, `/boards/${S}/review-summary`));
+    const sent = () =>
+      db
+        .select()
+        .from(notification)
+        .where(and(eq(notification.boardId, S), eq(notification.type, 'review_submitted')));
+
+    expect((await send()).body).toEqual({ approved: 0, changesRequested: 0, sent: false });
+    const review = (id: string, status: string) =>
+      call({ cookie: guest }, 'PUT', g(link, `/boards/${S}/elements/${id}/review`), { status });
+    expect((await review('shot1_____', 'approved')).status).toBe(200);
+    expect((await review('shot2_____', 'changes_requested')).status).toBe(200);
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 1, sent: true });
+    expect((await send()).body).toEqual({ approved: 1, changesRequested: 1, sent: false });
+    const rows = await sent();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ userId: as.editor.id, shareLinkId: link.id });
+    // A changed decision makes a new summary.
+    await review('shot2_____', 'approved');
+    expect((await send()).body).toEqual({ approved: 2, changesRequested: 0, sent: true });
+    expect(await sent()).toHaveLength(2);
+    // Without a name, or on a view-only link, nothing is sent.
+    const anonymous = (await open(link)).cookie;
+    expect(
+      (await call({ cookie: anonymous }, 'POST', g(link, `/boards/${S}/review-summary`))).status,
+    ).toBe(403);
+  });
+
   it('limits previews per address', async () => {
     const where = { 'x-forwarded-for': '10.40.0.1' };
     for (let i = 0; i < 60; i++)

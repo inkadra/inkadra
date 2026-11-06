@@ -1955,7 +1955,8 @@
       "guest": "Un ospite",
       "link_opened": "ha aperto la board",
       "task_assigned": "ti ha assegnato un compito",
-      "feedback_received": "Nuova segnalazione in-app ricevuta"
+      "feedback_received": "Nuova segnalazione in-app ricevuta",
+      "review_submitted": "ha inviato la revisione"
     },
     "emailTitle": "Notifiche email",
     "emailHint": "Menzioni, risposte e revisioni anche per email, se il server può inviarle.",

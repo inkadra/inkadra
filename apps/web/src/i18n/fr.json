@@ -1955,7 +1955,8 @@
       "guest": "Un invité",
       "link_opened": "a ouvert le tableau",
       "task_assigned": "vous a attribué une tâche",
-      "feedback_received": "Nouveau signalement reçu dans l’application"
+      "feedback_received": "Nouveau signalement reçu dans l’application",
+      "review_submitted": "a envoyé sa relecture"
     },
     "emailTitle": "Notifications par e-mail",
     "emailHint": "Mentions, réponses et révisions aussi par e-mail, si le serveur peut les envoyer.",

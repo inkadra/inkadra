@@ -1955,7 +1955,8 @@
       "guest": "Un invitado",
       "link_opened": "abrió el tablero",
       "task_assigned": "te asignó una tarea",
-      "feedback_received": "Nuevo informe recibido desde la app"
+      "feedback_received": "Nuevo informe recibido desde la app",
+      "review_submitted": "envió su revisión"
     },
     "emailTitle": "Notificaciones por correo",
     "emailHint": "Menciones, respuestas y revisiones también por correo, si el servidor puede enviarlo.",
