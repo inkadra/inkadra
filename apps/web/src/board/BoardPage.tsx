@@ -822,6 +822,9 @@ function BoardScreen({
         userId={user.id}
         readOnly={!!preview || !editable}
         boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
+        storyboardBoardId={
+          viewDestination('storyboard', { boardId, kind, rootBoardId }, storyboardId).boardId
+        }
       />
     ) : preview ? (
       <Canvas

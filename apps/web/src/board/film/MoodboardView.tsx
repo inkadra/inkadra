@@ -1,26 +1,46 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { createElement, deleteElements, frameLabels, storyboardOf } from '@inkadra/canvas-core';
-import type { Element } from '@inkadra/doc-schema';
-import { Button, EmptyState, Icon } from '@inkadra/ui';
-import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  createElement,
+  deleteElements,
+  type FrameElement,
+  frameLabels,
+  type SceneGroup,
+  storyboardOf,
+  updateElements,
+} from '@inkadra/canvas-core';
+import { ASPECT_RATIOS, aspectValue, type Element, MAX_TAGS } from '@inkadra/doc-schema';
+import { Button, Checkbox, EmptyState, Icon, IconButton } from '@inkadra/ui';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
-import { pickVariant, useAsset } from '../assets.ts';
+import { getCachedAsset, pickVariant, useAsset, useAssetPalettes } from '../assets.ts';
 import { CroppedImage } from '../CroppedImage.tsx';
 import { CopyHexButton } from '../cards.tsx';
 import { Toast, UploadPanel } from '../chrome.tsx';
-import { hexToRgb } from '../colors.ts';
+import { copyHex, hexToRgb } from '../colors.ts';
 import { uploadBoardId } from '../frame-grab.ts';
-import { hasImageTransform } from '../image-crop.ts';
+import { croppedRotatedSize, hasImageTransform } from '../image-crop.ts';
 import { fillLinkPreview, webUrl } from '../links.ts';
+import { PresentationView } from '../PresentationView.tsx';
+import { isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { normaliseTag } from '../tags.tsx';
 import { startUpload } from '../uploads.ts';
 import { MediaViewer } from '../viewer.tsx';
+import { addFramesToBoard, framesFromReferences, placeFrames } from './send-to-storyboard.ts';
 import './film.css';
 
 export type Reference = Extract<Element, { type: 'image' | 'link' | 'color' }>;
 export type MediaReference = Exclude<Reference, { type: 'color' }>;
+type ImageElement = Extract<Element, { type: 'image' }>;
 
 export function referencesOf(elements: readonly Element[], tag = ''): Reference[] {
   return elements
@@ -30,6 +50,97 @@ export function referencesOf(elements: readonly Element[], tag = ''): Reference[
         (!tag || (el.tags ?? []).some((value) => normaliseTag(value) === normaliseTag(tag))),
     )
     .sort((a, b) => a.z.localeCompare(b.z) || a.id.localeCompare(b.id));
+}
+
+/** The named groups by name and, last, the references without one (decision 0077). */
+export function referenceGroups(
+  references: readonly Reference[],
+): Array<{ name: string | null; items: Reference[] }> {
+  const named = new Map<string, { name: string; items: Reference[] }>();
+  const loose: Reference[] = [];
+  for (const el of references) {
+    if (!el.group) {
+      loose.push(el);
+      continue;
+    }
+    const key = normaliseTag(el.group);
+    const group = named.get(key) ?? { name: el.group, items: [] };
+    group.items.push(el);
+    named.set(key, group);
+  }
+  return [
+    ...[...named.values()].sort((a, b) => a.name.localeCompare(b.name)),
+    ...(loose.length ? [{ name: null, items: loose }] : []),
+  ];
+}
+
+/** Up to five colours: the strongest of each picture, then the next of each, without repeats. */
+export function mergePalette(palettes: readonly (readonly string[])[], max = 5): string[] {
+  const out = new Set<string>();
+  const longest = Math.max(0, ...palettes.map((palette) => palette.length));
+  for (let rank = 0; rank < longest; rank += 1)
+    for (const palette of palettes) {
+      const hex = palette[rank];
+      if (hex && out.size < max) out.add(hex);
+    }
+  return [...out];
+}
+
+/** Whether a picture, as cropped and rotated, is taller than wide: it takes two rows of tiles. */
+function isUpright(
+  image: Pick<ImageElement, 'crop' | 'rotation'>,
+  width: number | null | undefined,
+  height: number | null | undefined,
+): boolean {
+  if (!width || !height) return false;
+  const out = croppedRotatedSize(width, height, image.crop, image.rotation);
+  return out.height > out.width;
+}
+
+const nearestAspect = (ratio: number) =>
+  ASPECT_RATIOS.reduce((best, next) =>
+    Math.abs(aspectValue(next) - ratio) < Math.abs(aspectValue(best) - ratio) ? next : best,
+  );
+
+/**
+ * The pictures on screen as the slides of a presentation: frames that exist only for it, with
+ * the note as the action and the group as the place.
+ * shortcut: slides draw the original picture, not its crop or drawing, because frames have
+ * neither; give FramePicture the image's transform if people present cropped references.
+ */
+export function referenceSlides(references: readonly Reference[]): {
+  groups: SceneGroup[];
+  labels: Map<string, string>;
+} {
+  const frames = references.flatMap((el): FrameElement[] => {
+    const assetId = el.type === 'image' ? el.assetId : el.type === 'link' ? el.imageAssetId : '';
+    if (!assetId) return [];
+    const asset = getCachedAsset(assetId);
+    const known = asset && asset !== 'missing' && asset.width && asset.height ? asset : null;
+    return [
+      {
+        id: el.id,
+        type: 'frame',
+        x: 0,
+        y: 0,
+        w: el.w,
+        z: el.z,
+        parent: null,
+        createdBy: el.createdBy,
+        createdAt: el.createdAt,
+        assetId,
+        aspect: known
+          ? nearestAspect((known.width as number) / (known.height as number))
+          : undefined,
+        action: noteOf(el),
+        location: el.group,
+      } as FrameElement,
+    ];
+  });
+  return {
+    groups: [{ scene: null, frames }],
+    labels: new Map(frames.map((frame, i) => [frame.id, String(i + 1)])),
+  };
 }
 
 function ReferenceImage({ element }: { element: MediaReference }) {
@@ -304,28 +415,114 @@ function AddReferences({
   );
 }
 
+const TILE_SIZES = ['s', 'm', 'l'] as const;
+type TileSize = (typeof TILE_SIZES)[number];
+const KINDS = ['image', 'link', 'color'] as const;
+type Kind = (typeof KINDS)[number];
+const KIND_LABELS = {
+  image: 'moodboard.images',
+  link: 'moodboard.links',
+  color: 'moodboard.colors',
+};
+type BulkPanel = null | 'group' | 'tag' | 'note';
+
+/** The field each kind of reference already has for a line about it (decision 0077). */
+const NOTE_FIELDS = {
+  image: { key: 'caption', max: 2000 },
+  link: { key: 'title', max: 500 },
+  color: { key: 'label', max: 80 },
+} as const;
+const noteOf = (el: Reference) =>
+  el.type === 'image' ? el.caption : el.type === 'link' ? el.title : el.label;
+
+/** The tile of one reference: its checkbox beside the card, and a taller row for an upright picture. */
+function ReferenceTile({
+  element,
+  name,
+  picked,
+  picking,
+  onToggle,
+  children,
+}: {
+  element: Reference;
+  name: string;
+  picked: boolean;
+  picking: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const asset = useAsset(element.type === 'image' ? element.assetId : undefined);
+  const tall =
+    element.type === 'image' &&
+    !!asset &&
+    asset !== 'missing' &&
+    isUpright(element, asset.width, asset.height);
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: a pointer shortcut; the checkbox is the keyboard's way
+    // biome-ignore lint/a11y/useKeyWithClickEvents: a pointer shortcut; the checkbox is the keyboard's way
+    <div
+      className="moodboard__tile"
+      data-tall={tall || undefined}
+      data-picked={picked || undefined}
+      data-picking={picking || undefined}
+      onClickCapture={(event) => {
+        if (!(picking || event.ctrlKey || event.metaKey)) return;
+        if ((event.target as HTMLElement).closest('.moodboard__check')) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onToggle();
+      }}
+    >
+      {children}
+      <span className="moodboard__check">
+        <Checkbox
+          checked={picked}
+          aria-label={t('moodboard.select', { name })}
+          onChange={onToggle}
+        />
+      </span>
+    </div>
+  );
+}
+
 export function MoodboardView({
   store,
   projectId,
   userId,
   readOnly,
   boardTitle,
+  storyboardBoardId = null,
 }: {
   store: BoardStore;
   projectId: string;
   userId: string;
   readOnly: boolean;
   boardTitle?: string;
+  /** The board that holds the project's storyboard; null when it is this one. */
+  storyboardBoardId?: string | null;
 }) {
   const { tagLabel, tagOption } = useClassifications();
   const { t } = useTranslation();
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [tag, setTag] = useState('');
-  const [selected, setSelected] = useState<string | null>(null);
+  const [kind, setKind] = useState<Kind | ''>('');
+  const [size, setSize] = useState<TileSize>('m');
+  const [opened, setOpened] = useState<string | null>(null);
+  const [compared, setCompared] = useState<ReadonlySet<string> | null>(null);
+  const [presenting, setPresenting] = useState(false);
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const [panel, setPanel] = useState<BulkPanel>(null);
+  const [sending, setSending] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [copied, setCopied] = useState('');
   const closeCopied = useCallback(() => setCopied(''), []);
   const opener = useRef<HTMLButtonElement | null>(null);
+  const bar = useRef<HTMLFieldSetElement | null>(null);
+  const root = useRef<HTMLElement | null>(null);
+  // The group whose heading gets the focus back once a rename by keyboard ends.
+  const refocusGroup = useRef<string | null>(null);
   const all = [...snapshot.byId.values()];
   const references = referencesOf(all);
   const tagIds = (el: Reference) =>
@@ -334,16 +531,29 @@ export function MoodboardView({
   for (const el of references)
     for (const id of new Set(tagIds(el))) counts.set(id, (counts.get(id) ?? 0) + 1);
   const tags = [...counts.keys()].sort();
-  const filtered = references.filter((el) => !tag || tagIds(el).includes(tag));
-  const media = filtered.filter((el): el is MediaReference => el.type !== 'color');
-  const index = media.findIndex((el) => el.id === selected);
+  const sections = referenceGroups(
+    references.filter((el) => (!tag || tagIds(el).includes(tag)) && (!kind || el.type === kind)),
+  );
+  // What is on screen, in the order it is on screen: the keys of the viewer follow it.
+  const shown = sections.flatMap((section) => section.items);
+  const groupNames = referenceGroups(references).flatMap((s) => (s.name ? [s.name] : []));
+  const chosen = shown.filter((el) => picked.has(el.id));
+  const chosenMedia = chosen.filter((el): el is MediaReference => el.type !== 'color');
+  const media = shown.filter(
+    (el): el is MediaReference => el.type !== 'color' && (!compared || compared.has(el.id)),
+  );
+  const index = media.findIndex((el) => el.id === opened);
   const current = media[index];
+  const palette = mergePalette(
+    useAssetPalettes(shown.flatMap((el) => (el.type === 'image' ? [el.assetId] : []))),
+  );
   useEffect(() => {
-    if (selected && !current) {
-      setSelected(null);
+    if (opened && !current) {
+      setOpened(null);
+      setCompared(null);
       opener.current?.focus();
     }
-  }, [selected, current]);
+  }, [opened, current]);
   const groups = storyboardOf(all);
   const labels = frameLabels(groups);
   const assetId = current?.type === 'image' ? current.assetId : current?.imageAssetId;
@@ -355,7 +565,8 @@ export function MoodboardView({
       )
     : [];
   const closeViewer = () => {
-    setSelected(null);
+    setOpened(null);
+    setCompared(null);
     opener.current?.focus();
   };
   const choose = (id: string) => setTag(id === tag ? '' : id);
@@ -366,46 +577,242 @@ export function MoodboardView({
   ];
   const open = (element: MediaReference) => (event: { currentTarget: HTMLButtonElement }) => {
     opener.current = event.currentTarget;
-    setSelected(element.id);
+    setOpened(element.id);
   };
   const nameOf = (element: MediaReference) =>
     element.type === 'image' ? element.caption : element.title || element.url;
+  const toggle = (id: string) =>
+    setPicked((before) => {
+      const next = new Set(before);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const closePanel = () => {
+    bar.current?.querySelector<HTMLElement>('[aria-expanded="true"]')?.focus();
+    setPanel(null);
+  };
+
+  // Escape closes the open panel of the selection bar, then the selection itself. The viewer and
+  // the presentation have their own Escape.
+  const picking = chosen.length > 0;
+  const blocked = !!current || presenting;
+  useEffect(() => {
+    if (!picking || blocked) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (panel) closePanel();
+      // A tile's checkbox is an input too, but nobody types there.
+      else if (!isTyping(event.target) || (event.target as HTMLInputElement).type === 'checkbox')
+        clearSelection();
+    };
+    const away = (event: PointerEvent) => {
+      if (panel && !bar.current?.contains(event.target as Node)) setPanel(null);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', away);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', away);
+    };
+  });
+  const clearSelection = () => {
+    // The bar goes with the focus in it: back to a tile that was selected.
+    if (bar.current?.contains(document.activeElement))
+      bar.current.closest('.moodboard')?.querySelector<HTMLElement>('[data-picked] input')?.focus();
+    setPicked(new Set());
+    setPanel(null);
+  };
+
+  /** Changes the chosen references that are not locked, as one step of undo. */
+  const change = (patch: (el: Reference) => Partial<Reference> | null) => {
+    const editable = chosen.filter((el) => !el.locked);
+    const skipped = chosen.length - editable.length;
+    setNotice(skipped ? t('moodboard.lockedSkipped', { count: skipped }) : '');
+    store.undo.stopCapturing();
+    updateElements(
+      store.doc,
+      editable.flatMap((el) => {
+        const fields = patch(el);
+        return fields ? [{ id: el.id, patch: fields }] : [];
+      }),
+      LOCAL,
+    );
+    store.undo.stopCapturing();
+    closePanel();
+  };
+  const moveToGroup = (typed: string | undefined) => {
+    const name = typed?.trim();
+    // A name the board already uses, in another case, joins that group.
+    const group =
+      name && (groupNames.find((known) => normaliseTag(known) === normaliseTag(name)) ?? name);
+    change(() => ({ group: group || undefined }));
+  };
+  const addTag = (typed: string) => {
+    const value = typed.trim();
+    if (!value) return;
+    change((el) => {
+      const before = el.tags ?? [];
+      const id = tagOption(value)?.id ?? normaliseTag(value);
+      const has = before.some((v) => (tagOption(v)?.id ?? normaliseTag(v)) === id);
+      return has || before.length >= MAX_TAGS ? null : { tags: [...before, value] };
+    });
+  };
+  const saveNote = (typed: string) => {
+    const el = chosen[0];
+    if (el) change(() => ({ [NOTE_FIELDS[el.type].key]: typed.trim() || undefined }));
+  };
+  useEffect(() => {
+    if (renaming || !refocusGroup.current) return;
+    const wanted = refocusGroup.current;
+    refocusGroup.current = null;
+    root.current
+      ?.querySelector<HTMLElement>(`[data-group="${CSS.escape(wanted)}"] button`)
+      ?.focus();
+  });
+  const renameGroup = (from: string, to: string) => {
+    const name = to.trim();
+    setRenaming(null);
+    if (refocusGroup.current) refocusGroup.current = normaliseTag(name || from);
+    if (!name || name === from) return;
+    store.undo.stopCapturing();
+    updateElements(
+      store.doc,
+      references
+        .filter((el) => el.group && normaliseTag(el.group) === normaliseTag(from))
+        .map((el) => ({ id: el.id, patch: { group: name } })),
+      LOCAL,
+    );
+    store.undo.stopCapturing();
+  };
+  const sendToStoryboard = async () => {
+    const lookup = (id: string) => snapshot.byId.get(id);
+    const frames = framesFromReferences(chosenMedia, lookup);
+    setNotice('');
+    setSending(true);
+    try {
+      if (storyboardBoardId) await addFramesToBoard(storyboardBoardId, frames, userId);
+      else {
+        store.undo.stopCapturing();
+        placeFrames(store.doc, frames, { userId, origin: LOCAL });
+        store.undo.stopCapturing();
+      }
+      setCopied(t('moodboard.sent', { count: frames.length }));
+    } catch {
+      setNotice(t('moodboard.sendFailed'));
+    } finally {
+      setSending(false);
+    }
+  };
+  const copyPalette = () =>
+    void copyHex(palette.join(' ')).then((ok) => ok && setCopied(t('moodboard.paletteCopied')));
+  const slides = presenting ? referenceSlides(shown) : null;
+
+  const card = (element: Reference) => {
+    if (element.type === 'color')
+      return (
+        <article
+          className="moodboard__card moodboard__card--color"
+          style={{ background: element.hex }}
+          data-light={isLight(element.hex) || undefined}
+        >
+          <span className="card__rgb ink-mono" aria-hidden="true">
+            {hexToRgb(element.hex).join(' ')}
+          </span>
+          <CopyHexButton hex={element.hex} onCopied={setCopied} />
+          <code>{element.hex}</code>
+          {element.label && <span>{element.label}</span>}
+        </article>
+      );
+    const label = t('moodboard.open', { name: nameOf(element) || t('viewer.title') });
+    if (element.type === 'link')
+      return (
+        <button
+          type="button"
+          className="moodboard__card moodboard__card--link"
+          aria-label={label}
+          onClick={open(element)}
+        >
+          <ReferenceImage element={element} />
+          <span className="moodboard__text">
+            {element.title || element.url}
+            <small>{domainOf(element.url)}</small>
+          </span>
+        </button>
+      );
+    const tagged = (element.tags ?? []).map(tagLabel).join(' · ');
+    return (
+      <button
+        type="button"
+        className="moodboard__card moodboard__card--image"
+        aria-label={label}
+        onClick={open(element)}
+      >
+        <ReferenceImage element={element} />
+        {(element.caption || tagged) && (
+          <span className="moodboard__caption">
+            {element.caption && <span>{element.caption}</span>}
+            {tagged && <small>{tagged}</small>}
+          </span>
+        )}
+      </button>
+    );
+  };
+  const gallery = (items: readonly Reference[]) => (
+    <div className="moodboard__gallery">
+      {items.map((element) => (
+        <ReferenceTile
+          key={element.id}
+          element={element}
+          name={
+            element.type === 'color'
+              ? element.label || element.hex
+              : nameOf(element) || t('viewer.title')
+          }
+          picked={picked.has(element.id)}
+          picking={picking}
+          onToggle={() => toggle(element.id)}
+        >
+          {card(element)}
+        </ReferenceTile>
+      ))}
+    </div>
+  );
 
   return (
-    <section className="moodboard" aria-label={t('nav.moodboard')}>
-      <aside className="moodboard__side">
-        <strong>{boardTitle || t('nav.moodboard')}</strong>
-        <span>{t('moodboard.count', { count: references.length })}</span>
-        {chips.length > 0 && (
-          <>
-            <h2>{t('moodboard.tags')}</h2>
-            <ul>
-              {chips.map((value) => (
-                <li key={value}>
-                  <button type="button" aria-pressed={tag === value} onClick={() => choose(value)}>
-                    <span>#{tagLabel(value)}</span>
-                    <small>{counts.get(value) ?? 0}</small>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </aside>
+    <section className="moodboard" ref={root} aria-label={t('nav.moodboard')} data-size={size}>
       <div className="moodboard__main">
         <div className="moodboard__bar">
-          <span className="moodboard__count" role="status">
-            {t('moodboard.count', { count: filtered.length })}
+          <h2 className="moodboard__title">{t('moodboard.title')}</h2>
+          <span
+            className="moodboard__count"
+            role="status"
+            aria-label={t('moodboard.count', { count: shown.length })}
+          >
+            · {shown.length}
           </span>
           <fieldset className="moodboard__chips" aria-label={t('moodboard.filter')}>
             <button
               type="button"
               className="moodboard__chip"
-              aria-pressed={tag === ''}
-              onClick={() => setTag('')}
+              aria-pressed={tag === '' && kind === ''}
+              onClick={() => {
+                setTag('');
+                setKind('');
+              }}
             >
               {t('moodboard.all')}
             </button>
+            {KINDS.map((value) => (
+              <button
+                key={value}
+                type="button"
+                className="moodboard__chip"
+                aria-pressed={kind === value}
+                onClick={() => setKind(kind === value ? '' : value)}
+              >
+                {t(KIND_LABELS[value])}
+              </button>
+            ))}
             {chips.map((value) => (
               <button
                 key={value}
@@ -418,21 +825,59 @@ export function MoodboardView({
               </button>
             ))}
           </fieldset>
-          {!readOnly && (
-            <AddReferences
-              store={store}
-              projectId={projectId}
-              userId={userId}
-              onNotice={setNotice}
-            />
-          )}
+          <div className="moodboard__tools">
+            <fieldset className="story__modes" aria-label={t('film.playback.size')}>
+              {TILE_SIZES.map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  className="story__mode"
+                  aria-pressed={size === value}
+                  aria-label={t(`film.playback.sizes.${value}`)}
+                  data-ink-tooltip={t(`film.playback.sizes.${value}`)}
+                  onClick={() => setSize(value)}
+                >
+                  {value.toUpperCase()}
+                </button>
+              ))}
+            </fieldset>
+            <Button
+              disabled={!shown.some((el) => el.type !== 'color')}
+              onClick={() => setPresenting(true)}
+            >
+              {t('film.playback.present')}
+            </Button>
+            {!readOnly && (
+              <AddReferences
+                store={store}
+                projectId={projectId}
+                userId={userId}
+                onNotice={setNotice}
+              />
+            )}
+          </div>
         </div>
+        {palette.length > 0 && (
+          <div className="moodboard__palette">
+            <span id="moodboard-palette">{t('moodboard.palette')}</span>
+            <ul aria-labelledby="moodboard-palette">
+              {palette.map((hex) => (
+                <li key={hex} style={{ background: hex }} title={hex}>
+                  <span className="story__sr">{hex}</span>
+                </li>
+              ))}
+            </ul>
+            <Button className="moodboard__palette-copy" icon="copy" onClick={copyPalette}>
+              {t('moodboard.copy')}
+            </Button>
+          </div>
+        )}
         {notice && (
           <p className="moodboard__notice" role="alert">
             {notice}
           </p>
         )}
-        {filtered.length === 0 ? (
+        {shown.length === 0 ? (
           <div className="moodboard__empty">
             <EmptyState
               icon="image"
@@ -450,66 +895,164 @@ export function MoodboardView({
               }
             />
           </div>
+        ) : groupNames.length === 0 ? (
+          gallery(shown)
         ) : (
-          <div className="moodboard__gallery">
-            {filtered.map((element) => {
-              if (element.type === 'color')
-                return (
-                  <article
-                    key={element.id}
-                    className="moodboard__card moodboard__card--color"
-                    style={{ background: element.hex }}
-                    data-light={isLight(element.hex) || undefined}
-                  >
-                    <span className="card__rgb ink-mono" aria-hidden="true">
-                      {hexToRgb(element.hex).join(' ')}
-                    </span>
-                    <CopyHexButton hex={element.hex} onCopied={setCopied} />
-                    <code>{element.hex}</code>
-                    {element.label && <span>{element.label}</span>}
-                  </article>
-                );
-              const label = t('moodboard.open', { name: nameOf(element) || t('viewer.title') });
-              if (element.type === 'link')
-                return (
+          sections.map(({ name, items }) => (
+            <section key={name ?? ''} className="moodboard__group">
+              <h3
+                className="moodboard__group-title"
+                data-group={name ? normaliseTag(name) : undefined}
+              >
+                {name && renaming === name ? (
+                  <input
+                    className="ink-input"
+                    // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
+                    autoFocus
+                    defaultValue={name}
+                    maxLength={60}
+                    aria-label={t('moodboard.groupName')}
+                    onBlur={(event) => renameGroup(name, event.currentTarget.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === 'Escape')
+                        refocusGroup.current = name;
+                      if (event.key === 'Enter') {
+                        // The focus moves to the heading's button: this Enter must not press it.
+                        event.preventDefault();
+                        event.currentTarget.blur();
+                      }
+                      if (event.key === 'Escape') {
+                        event.currentTarget.value = name;
+                        event.currentTarget.blur();
+                      }
+                    }}
+                  />
+                ) : name && !readOnly ? (
                   <button
-                    key={element.id}
                     type="button"
-                    className="moodboard__card moodboard__card--link"
-                    aria-label={label}
-                    onClick={open(element)}
+                    aria-label={t('moodboard.renameGroup', { name })}
+                    data-ink-tooltip={t('moodboard.renameGroup', { name })}
+                    onClick={() => setRenaming(name)}
                   >
-                    <ReferenceImage element={element} />
-                    <span className="moodboard__text">
-                      {element.title || element.url}
-                      <small>{domainOf(element.url)}</small>
-                    </span>
+                    {name}
                   </button>
-                );
-              const tagged = (element.tags ?? []).map(tagLabel).join(' · ');
-              return (
-                <button
-                  key={element.id}
-                  type="button"
-                  className="moodboard__card moodboard__card--image"
-                  aria-label={label}
-                  onClick={open(element)}
+                ) : (
+                  <span>{name ?? t('moodboard.ungrouped')}</span>
+                )}
+                <small>{items.length}</small>
+              </h3>
+              {gallery(items)}
+            </section>
+          ))
+        )}
+        {picking && (
+          <fieldset
+            className="moodboard__selection"
+            ref={bar}
+            aria-label={t('moodboard.selection')}
+          >
+            <span className="moodboard__selection-count" role="status">
+              {t('moodboard.selected', { count: chosen.length })}
+            </span>
+            {!readOnly && (
+              <>
+                <Button
+                  aria-expanded={panel === 'group'}
+                  onClick={() => setPanel(panel === 'group' ? null : 'group')}
                 >
-                  <ReferenceImage element={element} />
-                  {(element.caption || tagged) && (
-                    <span className="moodboard__caption">
-                      {element.caption}
-                      {tagged && <small>{tagged}</small>}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                  {t('moodboard.moveToGroup')}
+                </Button>
+                <Button
+                  aria-expanded={panel === 'tag'}
+                  onClick={() => setPanel(panel === 'tag' ? null : 'tag')}
+                >
+                  {t('moodboard.tags')}
+                </Button>
+                {chosen.length === 1 && (
+                  <Button
+                    aria-expanded={panel === 'note'}
+                    onClick={() => setPanel(panel === 'note' ? null : 'note')}
+                  >
+                    {t('moodboard.note')}
+                  </Button>
+                )}
+                <Button
+                  disabled={sending || chosenMedia.length === 0}
+                  onClick={() => void sendToStoryboard()}
+                >
+                  {t('moodboard.sendToStoryboard')}
+                </Button>
+              </>
+            )}
+            <Button
+              disabled={chosenMedia.length < 2}
+              onClick={(event) => {
+                opener.current = event.currentTarget;
+                setCompared(new Set(chosenMedia.map((el) => el.id)));
+                setOpened(chosenMedia[0]?.id ?? null);
+              }}
+            >
+              {t('moodboard.compare')}
+            </Button>
+            <IconButton
+              icon="close"
+              label={t('moodboard.clearSelection')}
+              onClick={clearSelection}
+            />
+            {panel === 'group' && (
+              <div className="moodboard__popover moodboard__popover--up">
+                <div className="moodboard__options">
+                  {groupNames.map((name) => (
+                    <button key={name} type="button" onClick={() => moveToGroup(name)}>
+                      {name}
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => moveToGroup(undefined)}>
+                    {t('moodboard.noGroup')}
+                  </button>
+                </div>
+                <BulkInput label={t('moodboard.newGroup')} max={60} onSubmit={moveToGroup} />
+              </div>
+            )}
+            {panel === 'tag' && (
+              <div className="moodboard__popover moodboard__popover--up">
+                {tags.length > 0 && (
+                  <div className="moodboard__options">
+                    {tags.map((value) => (
+                      <button key={value} type="button" onClick={() => addTag(value)}>
+                        #{tagLabel(value)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <BulkInput label={t('moodboard.addTag')} max={40} onSubmit={addTag} />
+              </div>
+            )}
+            {panel === 'note' && chosen[0] && (
+              <div className="moodboard__popover moodboard__popover--up">
+                <BulkInput
+                  label={t('moodboard.note')}
+                  initial={noteOf(chosen[0])}
+                  max={NOTE_FIELDS[chosen[0].type].max}
+                  onSubmit={saveNote}
+                />
+              </div>
+            )}
+          </fieldset>
         )}
       </div>
       <UploadPanel />
       {copied && <Toast key={copied} text={copied} ok onClose={closeCopied} />}
+      {slides && (
+        <PresentationView
+          store={store}
+          projectId={projectId}
+          groups={slides.groups}
+          labels={slides.labels}
+          boardTitle={boardTitle || t('nav.moodboard')}
+          onClose={() => setPresenting(false)}
+        />
+      )}
       {current && (
         <MediaViewer
           store={store}
@@ -521,9 +1064,9 @@ export function MoodboardView({
           gallery={{
             index,
             total: media.length,
-            onPrevious: () => setSelected(media[index - 1]?.id ?? current.id),
-            onNext: () => setSelected(media[index + 1]?.id ?? current.id),
-            onSelect: (i: number) => setSelected(media[i]?.id ?? current.id),
+            onPrevious: () => setOpened(media[index - 1]?.id ?? current.id),
+            onNext: () => setOpened(media[index + 1]?.id ?? current.id),
+            onSelect: (i: number) => setOpened(media[i]?.id ?? current.id),
             items: media.map((m) => ({
               id: m.id,
               assetId: m.type === 'link' ? m.imageAssetId : m.assetId,
@@ -535,6 +1078,40 @@ export function MoodboardView({
         />
       )}
     </section>
+  );
+}
+
+/** One field of the selection bar's panels: Enter applies it. */
+function BulkInput({
+  label,
+  initial = '',
+  max,
+  onSubmit,
+}: {
+  label: string;
+  initial?: string | undefined;
+  max: number;
+  onSubmit: (value: string) => void;
+}) {
+  const [value, setValue] = useState(initial);
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(value);
+      }}
+    >
+      <input
+        className="ink-input"
+        // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked for it
+        autoFocus
+        value={value}
+        maxLength={max}
+        placeholder={label}
+        aria-label={label}
+        onChange={(event) => setValue(event.target.value)}
+      />
+    </form>
   );
 }
 
