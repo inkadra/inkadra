@@ -85,7 +85,15 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
       <dl className="storage-tiles">
         <div>
           <dt>{t('settingsUi.storage.used')}</dt>
-          <dd>{formatStorage(usage.originalBytes, i18n.language)}</dd>
+          <dd>{formatStorage(usage.originalBytes + (usage.derivedBytes ?? 0), i18n.language)}</dd>
+          {usage.derivedBytes !== undefined && (
+            <dd className="storage-tiles__detail">
+              {t('admin.storageCharts.usedDetail', {
+                originals: formatStorage(usage.originalBytes, i18n.language),
+                previews: formatStorage(usage.derivedBytes, i18n.language),
+              })}
+            </dd>
+          )}
         </div>
         <div>
           <dt>{t('admin.projects')}</dt>
@@ -117,11 +125,11 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
           {usage.byUser && (
             <Breakdown
               title={t('admin.storageCharts.byUser')}
-              total={usage.originalBytes}
+              total={usage.originalBytes + (usage.derivedBytes ?? 0)}
               rows={usage.byUser.map((row) => ({
                 id: row.userId ?? 'none',
                 label: row.name ?? t('admin.storageCharts.noUser'),
-                bytes: row.bytes,
+                bytes: row.bytes + (row.derivedBytes ?? 0),
               }))}
             />
           )}
@@ -137,7 +145,8 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
         </>
       )}
       <p className="settings-footnote">
-        {t('admin.storageHelp')} {t('admin.storageCharts.attribution')}
+        {t(usage.derivedBytes === undefined ? 'admin.storageHelp' : 'admin.storageCharts.scope')}{' '}
+        {t('admin.storageCharts.attribution')}
         {usage.byUser && ` ${t('admin.storageCharts.attributionUser')}`}
       </p>
     </div>
