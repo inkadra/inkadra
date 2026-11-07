@@ -86,6 +86,7 @@ import { Diagnostics, Health, Instance, InstanceVersion } from './instance.ts';
 import {
   InstanceMember,
   InstanceSettings,
+  InstanceUpdates,
   StorageUsage,
   UpdateInstanceMember,
   UpdateInstanceSettings,
@@ -543,6 +544,24 @@ registry.registerPath({
     'Administrator only: persist instance name, registration mode and who can create projects.',
   request: { body: { required: true, ...json(UpdateInstanceSettings) } },
   responses: { 200: { description: 'Saved settings', ...json(InstanceSettings) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/updates'),
+  tags: ['Instance'],
+  security: secured,
+  summary:
+    'Administrator only: the running version and the releases last read from GitHub; asks ' +
+    'GitHub again first when the answer is older than 6 hours and the check is on.',
+  responses: { 200: { description: 'Updates', ...json(InstanceUpdates) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/instance/updates/check'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: ask GitHub for releases now (at most once a minute; "Check now").',
+  responses: { 200: { description: 'Updates', ...json(InstanceUpdates) }, ...errors },
 });
 registry.registerPath({
   method: 'get',

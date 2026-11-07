@@ -12,6 +12,15 @@ it('requires the effective administrator policy in responses and in generated Op
   );
 });
 
+it('checks for updates on the stable channel unless an administrator chose otherwise (#515)', () => {
+  expect(
+    InstanceSettings.parse({ name: 'S', registration: 'invite', requireAdminTwoFactor: false }),
+  ).toMatchObject({ updateCheck: true, updateChannel: 'stable' });
+  expect(UpdateInstanceSettings.parse({ updateChannel: 'preview' })).toEqual({
+    updateChannel: 'preview',
+  });
+});
+
 it('does not apply a read default to a PATCH omission', () => {
   expect(UpdateInstanceSettings.parse({ name: 'Studio' })).toEqual({ name: 'Studio' });
 });

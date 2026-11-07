@@ -69,6 +69,19 @@ const fields = {
   tutorialHints: z.boolean().openapi({
     description: "Offer a feature's tutorial the first time this person opens it (#502).",
   }),
+  updateSeen: z
+    .string()
+    .max(64)
+    .nullable()
+    .openapi({
+      description:
+        'Administrators: the release whose update pop-up this person already saw, so it shows ' +
+        'once per version (#515).',
+    }),
+  updateSkipped: z.string().max(64).nullable().openapi({
+    description:
+      'Administrators: the release this person chose to skip; the settings stop pointing at it.',
+  }),
 };
 
 export const UserPreferences = z.object(fields).openapi('UserPreferences');
@@ -98,6 +111,8 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   toolbar: null,
   tutorialsSeen: [],
   tutorialHints: true,
+  updateSeen: null,
+  updateSkipped: null,
 };
 
 /**

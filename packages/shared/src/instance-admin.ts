@@ -21,6 +21,22 @@ export const InstanceSettings = z
           'per-account choice (InstanceMember.canCreateProjectsOverride) wins over it. Defaults ' +
           'to true; missing from servers before API 0.9.0.',
       }),
+    updateCheck: z
+      .boolean()
+      .default(true)
+      .openapi({
+        description:
+          'Ask GitHub for new Inkadra releases every 6 hours and tell administrators (#515). ' +
+          'Nothing about the instance is sent. Defaults to true; missing from servers before 0.10.0.',
+      }),
+    updateChannel: z
+      .enum(['stable', 'preview'])
+      .default('stable')
+      .openapi({
+        description:
+          'Which releases are announced: `stable` only, or `preview` release candidates too. It ' +
+          'never changes the running image. Defaults to `stable`; missing before 0.10.0.',
+      }),
   })
   .openapi('InstanceSettings');
 export type InstanceSettings = z.infer<typeof InstanceSettings>;
@@ -31,6 +47,8 @@ export const UpdateInstanceSettings = InstanceSettings.partial()
     calendarFeedEnabled: z.boolean().optional(),
     requireAdminTwoFactor: z.boolean().optional(),
     membersCanCreateProjects: z.boolean().optional(),
+    updateCheck: z.boolean().optional(),
+    updateChannel: z.enum(['stable', 'preview']).optional(),
   })
   .strict()
   .openapi('UpdateInstanceSettings');
@@ -119,3 +137,48 @@ export const StorageUsage = z
       'Completed original uploads (processing, ready or failed), once per asset row. Pending uploads, derived files, database and physical capacity excluded. Attribution uses asset.projectId, independent of references. Inaccessible projects are combined without names or IDs.',
   });
 export type StorageUsage = z.infer<typeof StorageUsage>;
+
+/** A release of Inkadra on GitHub, reduced to plain text by the server (#515). */
+export const InstanceRelease = z
+  .object({
+    version: z.string().openapi({ example: '0.9.0' }),
+    publishedAt: Timestamp.nullable(),
+    prerelease: z.boolean().openapi({ description: 'A release candidate (`X.Y.Z-rc.N`).' }),
+    url: z.url().openapi({ description: 'The release on GitHub.' }),
+    highlights: z
+      .array(z.string().max(280))
+      .max(5)
+      .openapi({
+        description:
+          'The main news, plain text: release notes come from outside and are never sent as ' +
+          'Markdown or HTML.',
+      }),
+    beforeUpdating: z.array(z.string().max(280)).max(10).openapi({
+      description: 'The "Read before upgrading" section of the notes, plain text.',
+    }),
+  })
+  .openapi('InstanceRelease');
+export type InstanceRelease = z.infer<typeof InstanceRelease>;
+
+export const InstanceUpdates = z
+  .object({
+    current: z.string().openapi({ description: 'The running version.' }),
+    checkEnabled: z.boolean().openapi({ description: 'InstanceSettings.updateCheck.' }),
+    channel: z.enum(['stable', 'preview']),
+    checkedAt: Timestamp.nullable().openapi({
+      description: 'Last answer from GitHub; null: never.',
+    }),
+    failed: z.boolean().openapi({ description: 'The last check could not reach GitHub.' }),
+    available: InstanceRelease.nullable().openapi({
+      description: 'The newest release of the channel newer than the running one; null: none.',
+    }),
+    earlier: z.array(InstanceRelease).max(10).openapi({
+      description: 'Stable releases up to the running one, newest first; the running one too.',
+    }),
+  })
+  .openapi('InstanceUpdates', {
+    description:
+      'Releases of Inkadra as last read from GitHub (#515). Edge builds are not compared: a ' +
+      'running version that is not SemVer never has an update available.',
+  });
+export type InstanceUpdates = z.infer<typeof InstanceUpdates>;
