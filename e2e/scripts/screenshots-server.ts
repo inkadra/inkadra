@@ -230,13 +230,13 @@ async function shots(page: Page, name: string) {
   await page.mouse.move(0, 0);
   await page.screenshot({ path: join(out, `${name}.png`) });
   console.log(`${name}.png`);
+  // The window keeps one height and scrolls inside: grow it to its content for a whole view.
+  const body = page.locator('.settings-window__body');
+  const height = await body.evaluate((el) => el.scrollHeight + 57);
   const size = page.viewportSize() ?? { width: 1280, height: 860 };
-  await page.setViewportSize({ width: size.width, height: 6000 });
+  await page.setViewportSize({ width: size.width, height: height + 48 });
   await page.addStyleTag({
-    content:
-      '.settings-window{position:static!important;height:auto!important;max-height:none!important;margin:24px auto!important}' +
-      '.settings-window__frame{height:auto!important}.settings-window__body{overflow:visible!important}' +
-      'details.server-more{display:none}',
+    content: `.settings-window{height:${height}px!important;max-height:none!important}`,
   });
   await page.waitForTimeout(400);
   await page.locator('.settings-window').screenshot({ path: join(out, `${name}-full.png`) });
