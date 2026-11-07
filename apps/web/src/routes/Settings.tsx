@@ -23,6 +23,8 @@ import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
 import { encode } from 'uqr';
+import chromeWebStore from '../assets/chrome-web-store.png';
+import chromeWebStoreBorder from '../assets/chrome-web-store-border.png';
 import { setKeepsPlayingOffscreen, useKeepsPlayingOffscreen } from '../board/inline-player.ts';
 import {
   BAR_ICONS,
@@ -34,8 +36,6 @@ import {
 } from '../board/toolbar-prefs.ts';
 import { FeedbackRow } from '../feedback/FeedbackSettings.tsx';
 import { LOCALES } from '../i18n/index.ts';
-import chromeWebStore from '../assets/chrome-web-store.png';
-import chromeWebStoreBorder from '../assets/chrome-web-store-border.png';
 import { api, authApi, RequestError } from '../lib/api.ts';
 import { CLIPPER_STORE_URL } from '../lib/clipper.ts';
 import { formatClock } from '../lib/datetime.ts';

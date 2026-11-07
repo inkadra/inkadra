@@ -160,7 +160,10 @@ it('points to the clipper in the store until a clipper token exists, then shows 
   expect(row()?.textContent).not.toContain('settings.tokens.clipper.connected');
 
   vi.mocked(api.get).mockImplementation(async (path: string) => ({
-    items: path === '/me/tokens' ? [{ id: 't1', name: 'Chrome', prefix: 'ink_', client: 'clipper' }] : [],
+    items:
+      path === '/me/tokens'
+        ? [{ id: 't1', name: 'Chrome', prefix: 'ink_', client: 'clipper' }]
+        : [],
   }));
   await render('/settings?section=account&again');
   expect(row()?.querySelector('a')).toBeNull();

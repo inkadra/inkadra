@@ -2591,7 +2591,7 @@
       "search": "⌘K / Ctrl+K busca proyectos, tableros y comandos.",
       "drag": "Arrastra archivos y enlaces al lienzo.",
       "phone": "Desde el teléfono guarda en Sin ordenar.",
-      "clipper": "Desde el navegador, guarda con <link>Inkadra Clipper ↗</link>"
+      "clipper": "Desde el navegador, guarda con <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Ajustes, configuración de la instancia incompleta",
     "details": "Detalles",

@@ -49,7 +49,7 @@ export function Onboarding() {
               <Trans
                 i18nKey="onboarding.tips.clipper"
                 components={{
-                  link: (
+                  store: (
                     // biome-ignore lint/a11y/useAnchorContent: Trans fills it with the link text.
                     <a href={CLIPPER_STORE_URL} target="_blank" rel="noopener" />
                   ),

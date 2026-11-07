@@ -2591,7 +2591,7 @@
       "search": "⌘K / Ctrl+K recherche les projets, tableaux et commandes.",
       "drag": "Glissez des fichiers et des liens sur le canevas.",
       "phone": "Depuis le téléphone, enregistrez dans Non triés.",
-      "clipper": "Depuis le navigateur, enregistrez avec <link>Inkadra Clipper ↗</link>"
+      "clipper": "Depuis le navigateur, enregistrez avec <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Paramètres, configuration de l’instance incomplète",
     "details": "Détails",

@@ -2591,7 +2591,7 @@
       "search": "⌘K / Ctrl+K searches projects, boards and commands.",
       "drag": "Drag files and links onto the canvas.",
       "phone": "Save to Unsorted from your phone.",
-      "clipper": "From the browser, save with <link>Inkadra Clipper ↗</link>"
+      "clipper": "From the browser, save with <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Settings, instance setup incomplete",
     "details": "Details",
