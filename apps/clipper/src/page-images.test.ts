@@ -89,7 +89,12 @@ describe('pickImages', () => {
 
 describe('imageLabel', () => {
   it('names a tile by alt text, then file name, then the fallback', () => {
-    const image = { url: 'https://a.example/x/photo%201.jpg?w=2', alt: '', width: 1920, height: 1080 };
+    const image = {
+      url: 'https://a.example/x/photo%201.jpg?w=2',
+      alt: '',
+      width: 1920,
+      height: 1080,
+    };
     expect(imageLabel(image, 'Image')).toBe('photo 1.jpg, 1920×1080');
     expect(imageLabel({ ...image, alt: 'Hero' }, 'Image')).toBe('Hero, 1920×1080');
     expect(imageLabel({ ...image, url: 'data:image/png;base64,AA', width: 0 }, 'Image')).toBe(

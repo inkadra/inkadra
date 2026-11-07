@@ -59,8 +59,7 @@ function updateSelection() {
   const count = picked.size;
   const ready = mode === 'page' ? !!pageUrl : count > 0;
   save.disabled = saving || columns.loading || !selected || !ready;
-  save.textContent =
-    mode === 'page' ? t('action_save_page') : plural('action_save_images', count);
+  save.textContent = mode === 'page' ? t('action_save_page') : plural('action_save_images', count);
   $('selected-board').textContent = selected ? selected.title : t('board_none_selected');
 }
 
@@ -242,11 +241,14 @@ function setMode(next: typeof mode) {
 
 function renderImages() {
   const list = images ?? [];
-  $('mode-images').textContent = images ? t('mode_images_count', String(list.length)) : t('mode_images');
+  $('mode-images').textContent = images
+    ? t('mode_images_count', String(list.length))
+    : t('mode_images');
   $('images-count').textContent = plural('images_selected', picked.size);
   $('images-empty').hidden = !images || list.length > 0;
   grid.hidden = list.length === 0;
-  for (const id of ['images-all', 'images-none']) $<HTMLButtonElement>(id).disabled = list.length === 0;
+  for (const id of ['images-all', 'images-none'])
+    $<HTMLButtonElement>(id).disabled = list.length === 0;
   grid.replaceChildren(
     ...list.map((image) => {
       const tile = document.createElement('button');

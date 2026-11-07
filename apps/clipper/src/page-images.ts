@@ -80,7 +80,11 @@ function resolve(url: string, baseUrl: string): string | undefined {
 
 function usable(url: string): boolean {
   if (url.startsWith('data:'))
-    return url.startsWith('data:image/') && !url.startsWith('data:image/svg') && url.length <= MAX_DATA_URL;
+    return (
+      url.startsWith('data:image/') &&
+      !url.startsWith('data:image/svg') &&
+      url.length <= MAX_DATA_URL
+    );
   if (!/^https?:/.test(url)) return false; // blob: and the rest cannot be read from the extension.
   try {
     return !new URL(url).pathname.toLowerCase().endsWith('.svg'); // Icons and logos.
