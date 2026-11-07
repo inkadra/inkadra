@@ -82,6 +82,9 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   const zoomBounds = await page.locator('.canvas__corner .zoom').boundingBox();
   expect(zoomBounds!.y + zoomBounds!.height).toBeLessThanOrEqual(toolbarBounds!.y);
   const unsortedBounds = await page.locator('.canvas .unsorted__toggle').boundingBox();
+  // Both at the top of the board, under the header.
+  const boardTop = (await page.locator('.canvas').boundingBox())!.y;
+  expect(zoomBounds!.y - boardTop).toBeLessThanOrEqual(16);
   // On the zoom's row, to its right, without touching it.
   expect(unsortedBounds!.x).toBeGreaterThanOrEqual(zoomBounds!.x + zoomBounds!.width);
   expect(unsortedBounds!.x + unsortedBounds!.width).toBeLessThanOrEqual(390);

@@ -305,16 +305,22 @@
   .canvas .canvas__corner {
     /* Five 44 px targets: zoom out, the value, zoom in, fit and the magnet. */
     width: 226px;
-    /* Above the touch toolbar: one row of 44px targets, its padding and a gap. */
-    bottom: 80px;
+    /* At the top of the board, under the header: the bottom is the toolbar's and the thumb's. */
+    top: 12px;
+    bottom: auto;
     left: max(12px, env(safe-area-inset-left));
   }
-  /* Bottom right on the zoom's row, above the touch toolbar: the toggle shrinks to its icon and
-     count so both fit at 390 px. */
+  /* Top right on the zoom's row: the toggle shrinks to its icon and count so both fit at 390 px,
+     and what it opens (or the uploads) hangs below it. */
   .canvas .canvas__tray {
-    bottom: 80px;
+    top: 12px;
+    bottom: auto;
     right: max(12px, env(safe-area-inset-right));
     max-width: calc(100vw - 24px);
+    flex-direction: column-reverse;
+  }
+  .canvas .unsorted {
+    flex-direction: column-reverse;
   }
   .canvas .unsorted__toggle {
     height: 44px;
