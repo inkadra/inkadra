@@ -18,6 +18,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   useSyncExternalStore,
@@ -758,6 +759,8 @@ function TodoCard({
   const guest = useContext(GuestModeContext);
   const [people, setPeople] = useState<Person[]>([]);
   const [peopleFailed, setPeopleFailed] = useState(false);
+  const [peopleAsked, askPeople] = useReducer((n: number) => n + 1, 0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: peopleAsked reloads an old list.
   useEffect(() => {
     if (guest) return;
     let alive = true;
@@ -775,7 +778,7 @@ function TodoCard({
     return () => {
       alive = false;
     };
-  }, [projectId, guest]);
+  }, [projectId, guest, peopleAsked]);
   const { t } = useTranslation();
   const [draft, setDraft] = useState('');
   const [assigning, setAssigning] = useState<string | null>(null);
@@ -869,6 +872,7 @@ function TodoCard({
             <TodoAssignment
               people={people}
               failed={peopleFailed}
+              onOpenPicker={askPeople}
               elementId={element.id}
               item={item}
               editing={editing && activeItem === item.id}

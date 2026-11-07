@@ -79,6 +79,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0072](0072-social-image-formats.md)                 | Pictures in social formats, with bars in the board background colour                   |
 | [0073](0073-more-languages-english-fallback.md)      | Four more languages, English as the fallback, catalogues loaded on demand              |
 | [0075](0075-cast-links-and-presence.md)              | Optional cast links and presence per day, answered only for oneself                    |
+| [0077](0077-removed-assignees-are-corrected.md)      | A stale assignee is corrected, not refused                                             |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

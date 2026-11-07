@@ -23,7 +23,12 @@ import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
-import { assignedItems, notifyAssignment, validateTaskUpdate } from './tasks.ts';
+import {
+  assignedItems,
+  dropRemovedAssignees,
+  notifyAssignment,
+  validateTaskUpdate,
+} from './tasks.ts';
 import { actorFromToken, isToken } from './tokens.ts';
 import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 
@@ -287,12 +292,13 @@ export function createCollabServer(deps: {
       return document;
     },
 
-    async beforeSync({ document, context, type, payload }) {
-      if (type !== 1 && type !== 2) return;
+    async beforeSync({ connection, document, context, type, payload }) {
+      // Hocuspocus answers a read-only connection without applying what it sent.
+      if ((type !== 1 && type !== 2) || connection.readOnly) return;
       await validateTaskUpdate(db, context.boardId, context.actor?.id, document, payload);
     },
 
-    async onChange({ document, context }) {
+    async onChange({ connection: from, document, context }) {
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
         if (
           (connection.context?.supportedSchemaVersion ?? 0) < getSchemaVersion(document) &&
@@ -311,6 +317,13 @@ export function createCollabServer(deps: {
       }
       assignments.set(document, after);
       pendingAssignments.set(document, pending);
+      // Only what a client sent: the server's own writes are trusted, its corrections included.
+      if (!from || !context?.boardId) return;
+      try {
+        await dropRemovedAssignees(db, context.boardId, document, before, after);
+      } catch (err) {
+        log.error({ err, boardId: context.boardId }, 'assignee check failed');
+      }
     },
 
     async onStoreDocument({ document, documentName }) {

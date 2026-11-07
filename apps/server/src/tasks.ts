@@ -7,18 +7,27 @@ import type { Database } from './db/client.ts';
 import { board, boardDoc, project, projectMember } from './db/schema.ts';
 import { notify, Recipients } from './notifications.ts';
 
+/** Read raw: one item that no longer fits the schema must not hide or block the others. */
+function rawTodoItems(doc: Y.Doc) {
+  const items = new Map<string, { elementId: string; itemId: string; item: Y.Map<unknown> }>();
+  for (const map of roots(doc).elements.values()) {
+    const list = map.get('items');
+    if (map.get('type') !== 'todo' || !(list instanceof Y.Array)) continue;
+    for (const item of list)
+      if (item instanceof Y.Map) {
+        const elementId = String(map.get('id'));
+        const itemId = String(item.get('id'));
+        items.set(`${elementId}:${itemId}`, { elementId, itemId, item });
+      }
+  }
+  return items;
+}
+
 export function assignedItems(doc: Y.Doc) {
   const items = new Map<string, { elementId: string; itemId: string; assigneeId: string }>();
-  for (const map of roots(doc).elements.values()) {
-    const el = readElement(map);
-    if (el?.type !== 'todo') continue;
-    for (const item of el.items)
-      if (item.assigneeId)
-        items.set(`${el.id}:${item.id}`, {
-          elementId: el.id,
-          itemId: item.id,
-          assigneeId: item.assigneeId,
-        });
+  for (const [key, { elementId, itemId, item }] of rawTodoItems(doc)) {
+    const assigneeId = item.get('assigneeId');
+    if (typeof assigneeId === 'string') items.set(key, { elementId, itemId, assigneeId });
   }
   return items;
 }
@@ -109,7 +118,14 @@ export async function myTasks(db: Database, userId: string): Promise<MyTask[]> {
   );
 }
 
-/** Validate a prospective CRDT update before broadcasting or storing it. */
+const TaskFields = TodoItem.pick({ assigneeId: true, dueDate: true });
+
+/**
+ * Refuse a prospective CRDT update only for what its sender may not do. It has to stay that way:
+ * a refused update closes the document, and the client resends it forever with all its other edits.
+ * Who can be assigned changes while a client is offline, so that is corrected afterwards instead
+ * (dropRemovedAssignees).
+ */
 export async function validateTaskUpdate(
   db: Database,
   boardId: string,
@@ -121,32 +137,58 @@ export async function validateTaskUpdate(
   try {
     Y.applyUpdate(candidate, Y.encodeStateAsUpdate(document));
     Y.applyUpdate(candidate, update);
-    const before = assignedItems(document);
-    const changed = new Set<string>();
-    for (const map of roots(candidate).elements.values()) {
-      if (map.get('type') !== 'todo') continue;
-      const items = map.get('items');
-      if (!(items instanceof Y.Array)) continue;
-      for (const item of items) {
-        if (!(item instanceof Y.Map)) continue;
-        if (!item.has('assigneeId') && !item.has('dueDate')) continue;
-        const parsed = TodoItem.parse(item.toJSON());
-        if (
-          parsed.assigneeId &&
-          before.get(`${map.get('id')}:${parsed.id}`)?.assigneeId !== parsed.assigneeId
-        )
-          changed.add(parsed.assigneeId);
-      }
+    const stored = rawTodoItems(document);
+    let assigns = false;
+    for (const [key, { item }] of rawTodoItems(candidate)) {
+      const was = stored.get(key)?.item;
+      const assigneeId = item.get('assigneeId');
+      const dueDate = item.get('dueDate');
+      const newAssignee = assigneeId !== was?.get('assigneeId');
+      // What is already stored can't be helped by refusing this sender.
+      if (!newAssignee && dueDate === was?.get('dueDate')) continue;
+      TaskFields.parse({ assigneeId, dueDate });
+      if (newAssignee && assigneeId) assigns = true;
     }
-    if (!changed.size) return;
+    if (!assigns) return;
     if (!actorId) throw new Error('Guests cannot assign tasks');
     const access = await boardRole(db, { id: actorId }, boardId);
     if (!access?.role || !atLeast(access.role, 'editor'))
       throw new Error('Assignment requires editor access');
-    for (const id of changed)
-      if (!(await projectRole(db, { id }, access.projectId)))
-        throw new Error('Assignee must be a project member');
   } finally {
     candidate.destroy();
+  }
+}
+
+/**
+ * An applied update assigned someone who isn't in the project (any more): put back the assignee it
+ * replaced, or none, for every client. Runs after the update is shared, so others can see the name
+ * for a moment; Tasks and notifications check membership themselves.
+ */
+export async function dropRemovedAssignees(
+  db: Database,
+  boardId: string,
+  document: Y.Doc,
+  before: ReturnType<typeof assignedItems>,
+  after: ReturnType<typeof assignedItems>,
+) {
+  const changed = [...after].filter(([key, a]) => before.get(key)?.assigneeId !== a.assigneeId);
+  if (!changed.length) return;
+  const [row] = await db
+    .select({ projectId: board.projectId })
+    .from(board)
+    .where(eq(board.id, boardId));
+  if (!row) return;
+  const isMember = (id: string) => projectRole(db, { id }, row.projectId);
+  for (const [key, { assigneeId }] of changed) {
+    if (await isMember(assigneeId)) continue;
+    const previous = before.get(key)?.assigneeId;
+    const restore = previous && (await isMember(previous)) ? previous : null;
+    // Reread after the queries: a newer edit may already have changed it.
+    const { item } = rawTodoItems(document).get(key) ?? {};
+    if (item?.get('assigneeId') !== assigneeId) continue;
+    document.transact(() => {
+      if (restore) item?.set('assigneeId', restore);
+      else item?.delete('assigneeId');
+    });
   }
 }
