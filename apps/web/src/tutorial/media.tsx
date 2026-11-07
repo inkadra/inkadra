@@ -438,6 +438,117 @@ function Scene({ id }: { id: MediaId }): ReactNode {
           <i className="tm-line" />
         </div>
       ));
+    case 'pan':
+      return (
+        <>
+          <span className="tm-kbd tm-space">
+            <i />
+          </span>
+          <div className="tm-pan">
+            <svg className="tm-pan__sheet" viewBox="-40 -21 280 150" aria-hidden="true">
+              <path d="M14 86 L186 86 M40 86 L40 40 L70 40 L70 86 M120 86 C120 60 140 50 150 60 S170 80 160 86" />
+              <path d="M88 30 l18 -8 l0 16 z M106 30 L170 30" />
+              <path d="M-30 70 L-8 70 L-8 86 L-30 86 Z M205 40 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0" />
+            </svg>
+          </div>
+          <span className="tm-hand">
+            <Icon name="hand" size={16} />
+          </span>
+          <span className="tm-finger tm-finger--a" />
+          <span className="tm-finger tm-finger--b" />
+        </>
+      );
+    case 'extension':
+      return (
+        <div className="tm-stage">
+          <div className="tm-urlbar">
+            <span className="tm-browser__bar">
+              <i />
+              <i />
+              <i />
+            </span>
+            <i className="tm-line" />
+            <span className="tm-ext">
+              <Icon name="board" size={12} />
+            </span>
+          </div>
+          <div className="tm-pic tm-pic--c tm-urlbar__page" />
+          <span className="tm-ext__link" />
+          <span className="tm-server">
+            <span className="tm-server__dot" />
+            <i className="tm-line" />
+            <Icon name="check" size={12} />
+          </span>
+        </div>
+      );
+    case 'columns':
+      return (
+        <div className="tm-stage">
+          <div className="tm-popup">
+            <span className="tm-popup__pick" />
+            {(['unsorted', 'column', 'column'] as const).map((n, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed decoration
+              <span key={i} className="tm-popup__row">
+                <Icon name={n} size={12} />
+                {i === 0 ? t('nav.unsorted') : <i className="tm-line" />}
+              </span>
+            ))}
+          </div>
+          <div className="tm-cols">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className="tm-cols__col">
+                <i className="tm-line" />
+                <i className="tm-cols__card" />
+                {i === 1 && <i className="tm-pic tm-pic--c tm-cols__card tm-cols__new" />}
+              </span>
+            ))}
+          </div>
+          <div className="tm-pic tm-pic--c tm-send tm-send--col" />
+        </div>
+      );
+    case 'tabbar':
+      return (
+        <div className="tm-stage">
+          <div className="tm-screen">
+            {PICS.slice(0, 2).map((p) => (
+              <div key={p} className={`tm-pic ${p}`} />
+            ))}
+          </div>
+          <div className="tm-tabs">
+            {(
+              [
+                ['home', t('nav.home')],
+                ['board', t('nav.projects')],
+                ['plus', t('mobile.new')],
+                ['inbox', t('nav.inbox')],
+                ['user', t('mobile.profile')],
+              ] as const
+            ).map(([n, label], i) => (
+              <span key={n} className={`tm-tab${i === 0 ? ' is-on' : ''}`} style={delay(i * 0.9)}>
+                <Icon name={n} size={15} />
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+    case 'capture':
+      return (
+        <div className="tm-stage">
+          <div className="tm-handset">
+            <div className="tm-pic tm-pic--d" />
+            <span className="tm-handset__flash" />
+            <span className="tm-shutter" />
+          </div>
+          <div className="tm-bmini">
+            <div className="tm-pic tm-pic--d tm-bmini__photo" />
+            <div className="tm-bmini__note" style={tool('note')}>
+              <Lines n={2} />
+            </div>
+          </div>
+          <div className="tm-pic tm-pic--d tm-send tm-send--shot" />
+        </div>
+      );
   }
 }
 

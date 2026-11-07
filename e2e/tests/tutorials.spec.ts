@@ -126,6 +126,8 @@ test('the storyboard offers its tour the first time it is opened', async ({ brow
   await walk(page, ['storyboard-scene', 'storyboard-frame', 'storyboard-draw']);
   await expect(page.locator('.tour-toast')).toContainText('Storyboard: giro completato.');
   await expect(pill).toHaveCount(0);
+  // The pill that opened the tour is gone: the focus is on the page's region, never on body.
+  await expect(page.locator('body')).not.toBeFocused();
   await context.close();
 });
 
@@ -142,6 +144,7 @@ test('Settings → Tutorial replays a tour and counts what was seen', async ({ b
   await expect(tour.getByRole('heading', { name: 'Scene e frame' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(tour).toHaveCount(0);
+  await expect(page.locator('body')).not.toBeFocused();
   await expect(page.locator('.tour-toast')).toContainText('Giro saltato.');
   await context.close();
 });

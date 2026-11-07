@@ -1991,8 +1991,667 @@
   margin: 0;
 }
 
+/* The main region only receives the focus a closed tour hands back: no frame around the page. */
+main[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+/* a scene laid out on a fixed 254 × 132 stage, centred whatever the card's width */
+.tm-stage {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 254px;
+  margin-left: -127px;
+}
+.tm-stage .tm-line {
+  margin: 0;
+}
+/* pan: space and drag, then a pinch */
+.tm-space {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  top: 12px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 20px;
+  margin: 0;
+  background: var(--ink-surface-1);
+  animation: tm-hold 5s var(--ink-ease-out) infinite both;
+}
+.tm-space i {
+  width: 18px;
+  height: 6px;
+  border: 1.5px solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 var(--ink-radius-xs) var(--ink-radius-xs);
+}
+@keyframes tm-hold {
+  0%,
+  6%,
+  38%,
+  100% {
+    transform: none;
+  }
+  10%,
+  34% {
+    transform: translateY(1px) scale(0.94);
+  }
+}
+.tm-pan {
+  position: absolute;
+  left: 50%;
+  top: 20px;
+  width: 200px;
+  height: 108px;
+  margin-left: -100px;
+  overflow: hidden;
+  border-radius: var(--ink-radius-sm);
+  background: #f4f1ea;
+  box-shadow: 0 0 0 1px var(--ink-border-muted);
+}
+.tm-pan__sheet {
+  position: absolute;
+  left: -40px;
+  top: -21px;
+  width: 280px;
+  height: 150px;
+  animation: tm-pan-sheet 5s var(--ink-ease-out) infinite both;
+}
+.tm-pan__sheet path {
+  fill: none;
+  stroke: #222;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+.tm-pan__sheet path + path {
+  stroke: var(--ink-tool-plan);
+}
+@keyframes tm-pan-sheet {
+  0%,
+  8%,
+  48%,
+  100% {
+    transform: none;
+  }
+  30%,
+  38% {
+    transform: translate(-30px, -12px);
+  }
+  52% {
+    transform: none;
+  }
+  72%,
+  90% {
+    transform: scale(1.45);
+  }
+}
+.tm-hand,
+.tm-finger {
+  position: absolute;
+  left: 50%;
+  z-index: 3;
+  border-radius: 50%;
+}
+.tm-hand {
+  top: 58px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: -15px;
+  border: 1px solid var(--ink-border-strong);
+  background: var(--ink-surface-float);
+  color: var(--ink-text-primary);
+  animation: tm-hand 5s var(--ink-ease-out) infinite both;
+}
+@keyframes tm-hand {
+  0%,
+  8%,
+  48% {
+    opacity: 1;
+    transform: none;
+  }
+  30%,
+  38% {
+    opacity: 1;
+    transform: translate(-30px, -12px);
+  }
+  50%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+.tm-finger {
+  top: 66px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border: 1.5px solid var(--ink-accent-primary);
+  background: var(--ink-accent-soft-bg);
+  opacity: 0;
+  animation: tm-finger-a 5s var(--ink-ease-out) infinite both;
+}
+.tm-finger--b {
+  animation-name: tm-finger-b;
+}
+@keyframes tm-finger-a {
+  0%,
+  50%,
+  96%,
+  100% {
+    opacity: 0;
+  }
+  52% {
+    opacity: 1;
+    transform: translate(-8px, 6px);
+  }
+  72%,
+  90% {
+    opacity: 1;
+    transform: translate(-30px, 18px);
+  }
+}
+@keyframes tm-finger-b {
+  0%,
+  50%,
+  96%,
+  100% {
+    opacity: 0;
+  }
+  52% {
+    opacity: 1;
+    transform: translate(8px, -6px);
+  }
+  72%,
+  90% {
+    opacity: 1;
+    transform: translate(30px, -18px);
+  }
+}
+/* extension: it appears in the toolbar, then connects to the server */
+.tm-urlbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--ink-border-muted);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-1);
+}
+.tm-urlbar .tm-line {
+  flex: 1;
+}
+.tm-ext {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+  animation: tm-ext 4.8s var(--ink-ease-pop) infinite both;
+}
+@keyframes tm-ext {
+  0%,
+  8% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  18%,
+  90% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.tm-urlbar__page {
+  position: absolute;
+  left: 0;
+  top: 76px;
+  width: 96px;
+  height: 48px;
+}
+.tm-ext__link {
+  position: absolute;
+  left: 234px;
+  top: 63px;
+  height: 23px;
+  border-left: 1.5px dashed var(--ink-accent-primary);
+  transform-origin: top;
+  animation: tm-link 4.8s var(--ink-ease-out) infinite both;
+}
+@keyframes tm-link {
+  0%,
+  30% {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  46%,
+  90% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.tm-server {
+  position: absolute;
+  left: 110px;
+  right: 0;
+  top: 86px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--ink-border-muted);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+  color: var(--ink-status-ok);
+  animation: tm-server 4.8s var(--ink-ease-out) infinite both;
+}
+.tm-server .tm-line {
+  flex: 1;
+}
+.tm-server__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-status-ok);
+}
+@keyframes tm-server {
+  0%,
+  46% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  58%,
+  92% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+/* columns: the popup picks a column, the image lands in it */
+.tm-popup {
+  position: absolute;
+  left: 0;
+  top: 32px;
+  width: 108px;
+  padding: 5px;
+  box-sizing: border-box;
+  border: 1px solid var(--ink-border-muted);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-float);
+}
+.tm-popup__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 6px;
+  overflow: hidden;
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.tm-popup__row .tm-line {
+  flex: 1;
+}
+.tm-popup__pick {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 5px;
+  height: 26px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-accent-soft-bg);
+  transform: translateY(26px);
+  animation: tm-pick 4.8s var(--ink-ease-out) infinite both;
+}
+@keyframes tm-pick {
+  0%,
+  10% {
+    transform: none;
+  }
+  26%,
+  100% {
+    transform: translateY(26px);
+  }
+}
+.tm-cols {
+  position: absolute;
+  left: 128px;
+  top: 32px;
+  display: flex;
+  gap: 6px;
+  width: 126px;
+  height: 88px;
+}
+.tm-cols__col {
+  flex: 1;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--ink-border-muted);
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-surface-1);
+}
+.tm-cols__card {
+  display: block;
+  height: 14px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-surface-3);
+}
+.tm-cols__new {
+  height: 19px;
+  animation: tm-land 4.8s var(--ink-ease-pop) infinite both;
+}
+.tm-send {
+  position: absolute;
+  opacity: 0;
+}
+.tm-send--col {
+  left: 32px;
+  top: 104px;
+  width: 36px;
+  height: 24px;
+  animation: tm-send-col 4.8s var(--ink-ease-out) infinite both;
+}
+@keyframes tm-send-col {
+  0%,
+  30% {
+    opacity: 0;
+    transform: none;
+  }
+  36% {
+    opacity: 1;
+  }
+  58%,
+  60% {
+    opacity: 1;
+    transform: translate(141px, -41px) scale(0.8);
+  }
+  62%,
+  100% {
+    opacity: 0;
+    transform: translate(141px, -41px) scale(0.8);
+  }
+}
+@keyframes tm-land {
+  0%,
+  58% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  66%,
+  90% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+/* tabbar: the five items of the phone's bottom bar light up in turn */
+.tm-screen {
+  position: absolute;
+  left: 27px;
+  top: 32px;
+  width: 200px;
+  height: 100px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+  gap: 8px;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 3px solid var(--ink-text-primary);
+  border-bottom: 0;
+  border-radius: var(--ink-radius-lg) var(--ink-radius-lg) 0 0;
+  background: var(--ink-bg-canvas);
+}
+.tm-screen .tm-pic {
+  height: 30px;
+}
+.tm-tabs {
+  position: absolute;
+  left: 30px;
+  bottom: 0;
+  display: flex;
+  width: 194px;
+  height: 44px;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border-top: 1px solid var(--ink-border-muted);
+  background: var(--ink-surface-float);
+}
+.tm-tab {
+  position: relative;
+  isolation: isolate;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 4px 0;
+  overflow: hidden;
+  color: var(--ink-text-secondary);
+  font-size: 8px;
+  white-space: nowrap;
+  animation: tm-tab-up 4.5s var(--ink-ease-out) infinite both;
+}
+.tm-tab::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-accent-soft-bg);
+  opacity: 0;
+  animation: tm-tab-bg 4.5s var(--ink-ease-out) infinite both;
+  animation-delay: inherit;
+}
+.tm-tab.is-on::before {
+  opacity: 1;
+}
+@keyframes tm-tab-bg {
+  0%,
+  21%,
+  100% {
+    opacity: 0;
+  }
+  4%,
+  17% {
+    opacity: 1;
+  }
+}
+@keyframes tm-tab-up {
+  0%,
+  21%,
+  100% {
+    transform: none;
+  }
+  4%,
+  17% {
+    transform: translateY(-2px);
+  }
+}
+/* capture: a photo taken on the phone appears as a card on the board, then a note */
+.tm-handset {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 62px;
+  height: 116px;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 3px solid var(--ink-text-primary);
+  border-radius: var(--ink-radius-lg);
+  background: var(--ink-bg-canvas);
+}
+.tm-handset .tm-pic {
+  position: absolute;
+  inset: 4px 4px 34px;
+}
+.tm-handset__flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  animation: tm-flash 4.8s infinite both;
+}
+@keyframes tm-flash {
+  0%,
+  22%,
+  34%,
+  100% {
+    opacity: 0;
+  }
+  26% {
+    opacity: 0.85;
+  }
+}
+.tm-shutter {
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  box-sizing: border-box;
+  border: 2px solid var(--ink-text-primary);
+  border-radius: 50%;
+  animation: tm-shutter 4.8s infinite both;
+}
+.tm-shutter::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: var(--ink-text-primary);
+}
+@keyframes tm-shutter {
+  0%,
+  20%,
+  32%,
+  100% {
+    transform: none;
+  }
+  26% {
+    transform: scale(0.85);
+  }
+}
+.tm-bmini {
+  position: absolute;
+  left: 112px;
+  top: 32px;
+  width: 142px;
+  height: 90px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+  gap: 8px;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 1px dashed var(--ink-border-strong);
+  border-radius: var(--ink-radius-sm);
+}
+.tm-bmini__photo {
+  height: 36px;
+  animation: tm-land-photo 4.8s var(--ink-ease-pop) infinite both;
+}
+.tm-bmini__note {
+  height: 36px;
+  box-sizing: border-box;
+  padding: 7px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--kind-bg);
+  animation: tm-land-note 4.8s var(--ink-ease-pop) infinite both;
+}
+.tm-bmini__note .tm-line {
+  background: var(--kind-fg);
+  opacity: 0.6;
+}
+@keyframes tm-land-photo {
+  0%,
+  50% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  58%,
+  90% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes tm-land-note {
+  0%,
+  68% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  76%,
+  90% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.tm-send--shot {
+  left: 12px;
+  top: 18px;
+  width: 40px;
+  height: 25px;
+  animation: tm-send-shot 4.8s var(--ink-ease-out) infinite both;
+}
+@keyframes tm-send-shot {
+  0%,
+  28% {
+    opacity: 0;
+    transform: none;
+  }
+  32% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+    transform: translate(117px, 28px) scale(1.45);
+  }
+  54%,
+  100% {
+    opacity: 0;
+    transform: translate(117px, 28px) scale(1.45);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tour *,
+  .tour *::before,
   .tour *::after,
   .tour::backdrop,
   .tour-modal,

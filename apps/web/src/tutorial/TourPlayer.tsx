@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useIsPhone } from '../lib/phone.ts';
+import { returnFocus } from './focus.ts';
 import { TourMedia } from './media.tsx';
 import { stepKeys, type Tour, type TourStep } from './tours.ts';
 
@@ -157,9 +158,12 @@ export function TourPlayer({
       ended.current = true;
       // Closing first lets the browser give the focus back to where it was.
       dialog.current?.close();
+      // From the first-time pill the browser has nowhere to give it back: the pill is gone.
+      const first = tour.steps[0]?.anchor;
+      returnFocus(first ? findAnchor(first, true) : null);
       onEnd(finished);
     },
-    [onEnd],
+    [onEnd, tour],
   );
 
   // Before the card is placed: a closed dialog has no size to place it by.

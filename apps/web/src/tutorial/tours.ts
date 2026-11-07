@@ -38,7 +38,12 @@ export type MediaId =
   | 'tags'
   | 'backup'
   | 'users'
-  | 'home';
+  | 'home'
+  | 'pan'
+  | 'extension'
+  | 'columns'
+  | 'tabbar'
+  | 'capture';
 
 export interface TourStep {
   /** `data-tour` value of the element the spotlight goes to; null for a card without one. */
@@ -172,7 +177,7 @@ export const TOURS: Tour[] = [
     steps: [
       { anchor: 'draw-tools', media: 'draw', side: 'right' },
       { anchor: 'draw-nav', media: 'scenes', side: 'bottom', keys: ['←', '→'] },
-      { anchor: null, media: 'drag' },
+      { anchor: null, media: 'pan' },
     ],
   },
   {
@@ -297,8 +302,8 @@ export const TOURS: Tour[] = [
     offer: null,
     steps: [
       { anchor: null, media: 'clip' },
-      { anchor: null, media: 'gear' },
-      { anchor: null, media: 'drag' },
+      { anchor: null, media: 'extension' },
+      { anchor: null, media: 'columns' },
     ],
   },
   {
@@ -308,8 +313,8 @@ export const TOURS: Tour[] = [
     offer: null,
     steps: [
       { anchor: null, media: 'phone' },
-      { anchor: null, media: 'phone' },
-      { anchor: null, media: 'drag' },
+      { anchor: null, media: 'tabbar' },
+      { anchor: null, media: 'capture' },
     ],
   },
   {
