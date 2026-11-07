@@ -119,7 +119,9 @@ export function pickImages(images: RawImage[], baseUrl: string): PageImageOption
     seen.add(url);
     // A `w` descriptor wider than what loaded gives the saved size; the ratio stays the same.
     const scale =
-      loaded && best?.width && best.width > image.naturalWidth ? best.width / image.naturalWidth : 1;
+      loaded && best?.width && best.width > image.naturalWidth
+        ? best.width / image.naturalWidth
+        : 1;
     out.push({
       url,
       thumbUrl: (loaded && shown && resolve(shown, baseUrl)) || url,
