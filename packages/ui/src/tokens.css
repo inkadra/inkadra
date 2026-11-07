@@ -24,6 +24,7 @@
   --ink-ease-out: cubic-bezier(.22, 1, .36, 1);
   --ink-ease-in: cubic-bezier(.4, 0, 1, 1);
   --ink-ease-pop: cubic-bezier(.34, 1.4, .64, 1);
+  --ink-scrim-tour: rgba(10, 10, 12, 0.62);
   --ink-bg-rail: #0E0E10;
   --ink-bg-app: #141416;
   --ink-bg-panel: #121214;
@@ -98,6 +99,7 @@
 :root[data-theme='light'],
 .ink-paper {
   color-scheme: light;
+  --ink-scrim-tour: rgba(10, 10, 12, 0.72);
   --ink-bg-rail: #EFEFEC;
   --ink-bg-app: #EFEFEC;
   --ink-bg-panel: #FAFAF8;
@@ -171,6 +173,7 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     color-scheme: light;
+    --ink-scrim-tour: rgba(10, 10, 12, 0.72);
     --ink-bg-rail: #EFEFEC;
     --ink-bg-app: #EFEFEC;
     --ink-bg-panel: #FAFAF8;

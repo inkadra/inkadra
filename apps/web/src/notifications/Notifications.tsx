@@ -395,6 +395,8 @@ export function NotificationList({
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
       if (panel.current?.contains(target) || bell?.current?.contains(target)) return;
+      // A tutorial about the Inbox is played over it (#502).
+      if ((target as Element).closest?.('[data-tutorial]')) return;
       swallowOutsidePress(e);
       onNavigate();
     };
@@ -549,7 +551,7 @@ export function NotificationList({
       }}
       onKeyUp={(e) => e.stopPropagation()}
     >
-      <div className="notifications__list-pane">
+      <div className="notifications__list-pane" data-tour="inbox">
         {inPage &&
           actionsIn &&
           createPortal(
@@ -604,6 +606,7 @@ export function NotificationList({
             role="tablist"
             aria-label={t('notifications.filter')}
             className="notifications-filter-tabs"
+            data-tour="inbox-filters"
             // The arrows only move the focus: choosing a tab waits for Enter, Space or a click.
             onKeyDown={moveTabFocus}
           >

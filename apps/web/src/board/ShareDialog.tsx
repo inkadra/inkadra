@@ -348,7 +348,13 @@ function ShareTabs({
     document.getElementById(`${id}-tab-${next}`)?.focus();
   };
   return (
-    <div className="share__tabs" role="tablist" aria-label={t('share.tabs')} onKeyDown={onKeyDown}>
+    <div
+      className="share__tabs"
+      role="tablist"
+      aria-label={t('share.tabs')}
+      onKeyDown={onKeyDown}
+      data-tour="share-tabs"
+    >
       {TABS.map((value) => (
         <button
           key={value}
@@ -496,7 +502,7 @@ function InviteForm({
   }
 
   return (
-    <form className="share__invite" onSubmit={submit}>
+    <form className="share__invite" onSubmit={submit} data-tour="share-invite">
       <div className="share__field">
         <PeoplePicker
           className="share__picker"
@@ -590,7 +596,7 @@ function LinkSection({
     api.post('/invitations', { kind: 'link', boardId, role, expiresInDays: days });
 
   return (
-    <section className="share__link" aria-labelledby={`${boardId}-link`}>
+    <section className="share__link" aria-labelledby={`${boardId}-link`} data-tour="share-link">
       <div className="share__link-head">
         <span className="share__who">
           <b id={`${boardId}-link`}>{t('share.link.title')}</b>

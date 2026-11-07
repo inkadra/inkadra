@@ -382,6 +382,7 @@ function CommentsPanel() {
       ref={ref}
       tabIndex={-1}
       className="comments-panel"
+      data-tour="comments-panel"
       aria-labelledby="comments-panel-title"
       onKeyDown={onKeyDown}
       onKeyUp={(e) => e.stopPropagation()}
@@ -419,7 +420,7 @@ function CommentsPanel() {
           <div className="comments-panel__review-details" ref={setReviewDetails} />
 
           {canvas && !elementId && (
-            <label className="comments-panel__toggle">
+            <label className="comments-panel__toggle" data-tour="comments-on-board">
               {t('comments.showOnBoard')}
               <Switch checked={onBoard} onChange={(e) => setOnBoard(e.target.checked, user?.id)} />
             </label>
@@ -619,7 +620,10 @@ function NewThread({
   const draftKey = elementId ?? null;
   const [visibility, setVisibility] = useState<CommentVisibility>('team');
   return (
-    <div className={`comments-panel__composer${visibility === 'everyone' ? ' is-public' : ''}`}>
+    <div
+      className={`comments-panel__composer${visibility === 'everyone' ? ' is-public' : ''}`}
+      data-tour="comments-composer"
+    >
       <Composer
         key={draftKey ?? 'board'}
         draft={{ elementId: draftKey, visibility }}

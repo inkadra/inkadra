@@ -449,7 +449,7 @@ export function ScheduleView({
   const unscheduled = frames.filter((frame) => !scheduled.has(frame.id));
 
   return (
-    <section className="schedule" aria-label={t('nav.schedule')}>
+    <section className="schedule" aria-label={t('nav.schedule')} data-tour="schedule">
       <div className="story__bar" data-chrome>
         <span className="story__total">
           {t('schedule.days', { count: days.length })} ·{' '}
@@ -463,7 +463,12 @@ export function ScheduleView({
         <span className="ink-header__spacer" />
         {/* A phone has the call sheet under the day, as the mockup of #110. */}
         {!phone && (
-          <Button icon="file" disabled={loading || !!error} onClick={() => setCallSheetOpen(true)}>
+          <Button
+            icon="file"
+            data-tour="schedule-callsheet"
+            disabled={loading || !!error}
+            onClick={() => setCallSheetOpen(true)}
+          >
             {t('shells.callSheet')}
           </Button>
         )}
@@ -561,7 +566,7 @@ export function ScheduleView({
                 </EmptyState>
               </div>
             ) : (
-              <div className="schedule__days">
+              <div className="schedule__days" data-tour="schedule-days">
                 {phone && drafted.length > 1 && (
                   <DayPicker
                     dates={drafted.map(({ day, draft }) => ({ id: day.id, date: draft.date }))}

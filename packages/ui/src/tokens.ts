@@ -6,6 +6,8 @@
  */
 
 export const dark = {
+  // The tutorials' spotlight (#502): darker than --ink-scrim, so the lit element stands out.
+  'scrim-tour': 'rgba(10, 10, 12, 0.62)',
   'bg-rail': '#0E0E10',
   'bg-app': '#141416',
   'bg-panel': '#121214',
@@ -81,6 +83,8 @@ export const dark = {
 export type ColorToken = keyof typeof dark;
 
 export const light: Record<ColorToken, string> = {
+  // A light page needs more dimming than a dark one for the same lift (#502).
+  'scrim-tour': 'rgba(10, 10, 12, 0.72)',
   'bg-rail': '#EFEFEC',
   'bg-app': '#EFEFEC',
   'bg-panel': '#FAFAF8',

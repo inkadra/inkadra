@@ -38,13 +38,20 @@ export function MobileNavigation({
         <Icon name="home" />
         {t('nav.home')}
       </button>
-      <button type="button" aria-haspopup="dialog" aria-expanded={drawerOpen} onClick={onProjects}>
+      <button
+        type="button"
+        data-tour="projects"
+        aria-haspopup="dialog"
+        aria-expanded={drawerOpen}
+        onClick={onProjects}
+      >
         <Icon name="board" />
         {t('nav.projects')}
       </button>
       <button
         type="button"
         className="mobile-bottom-nav__new"
+        data-tour="home-new"
         aria-haspopup="dialog"
         aria-expanded={newOpen}
         onClick={onNew}
@@ -66,6 +73,7 @@ export function MobileNavigation({
       </button>
       <button
         type="button"
+        data-tour="settings"
         aria-current={
           pathname.startsWith('/settings') && !inboxOpen && !drawerOpen ? 'page' : undefined
         }

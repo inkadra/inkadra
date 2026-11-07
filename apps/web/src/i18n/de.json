@@ -2621,7 +2621,8 @@
     "pages": {
       "access": "Anmeldung",
       "about": "Über",
-      "toolbar": "Werkzeugleiste"
+      "toolbar": "Werkzeugleiste",
+      "tutorials": "Tutorials"
     },
     "leads": {
       "account": "Dein Profil und deine Anmeldung.",
@@ -2632,7 +2633,8 @@
       "registration": "Wer ein neues Konto erstellen darf.",
       "about": "Name, Adresse, Version und Einrichtungsstatus der Instanz.",
       "backups": "Nächtliche Kopien der Datenbank, um den Server nach einem Ausfall wiederherzustellen.",
-      "toolbar": "Wähle, was du in der unteren Leiste siehst. Ausgeblendete Werkzeuge bleiben in „+ ▾“ und in der Befehlspalette."
+      "toolbar": "Wähle, was du in der unteren Leiste siehst. Ausgeblendete Werkzeuge bleiben in „+ ▾“ und in der Befehlspalette.",
+      "tutorials": "Sieh dir die geführten Touren erneut an und wähle, ob sie angeboten werden."
     },
     "autosave": {
       "idle": "Automatisches Speichern",
@@ -2757,7 +2759,8 @@
       "registration": "Neue Konten, Offene Registrierung, Nur auf Einladung, Geschlossene Registrierung, Zwei-Faktor-Anmeldung für Admins verlangen",
       "instance": "Name der Instanz, Öffentliche Adresse, Version, Diagnose, Instanz-Status, Inkadra-Neuigkeiten, Meldungen, An die Inkadra-Entwickler senden, Ziel, Repository, GitHub-Token, Gäste dürfen melden, Aufbewahrung der Anhänge, Eingegangene Meldungen",
       "backups": "Backups, Jetzt sichern, Wiederherstellung, Aufbewahrung, Nächtliches Backup",
-      "toolbar": "Werkzeugleiste, Werkzeuge, Notiz, Bild, Link, To-do, Farbe, Pfeil, Frame, Storyboard, Standardleiste wiederherstellen"
+      "toolbar": "Werkzeugleiste, Werkzeuge, Notiz, Bild, Link, To-do, Farbe, Pfeil, Frame, Storyboard, Standardleiste wiederherstellen",
+      "tutorials": "Willkommenstour, Hinweise beim ersten Öffnen, Von vorn beginnen"
     },
     "close": "Einstellungen schließen",
     "dangerZone": "Gefahrenzone",
@@ -3840,5 +3843,512 @@
     "relayRefusedBanner_other": "Das Relay hat {{count}} Meldungen abgelehnt ({{reason}}): Ich versuche es nicht von selbst erneut. Sie sind hier sicher. Versuch es nach einem Inkadra-Update noch mal oder wähle ein anderes Ziel.",
     "relayRetentionHelp": "Nur lokale Anhänge. Kopien auf GitHub bleiben, bis das Inkadra-Team sie entfernt.",
     "relaySaved": "Meldung auf diesem Server gespeichert"
+  },
+  "tutorial": {
+    "welcome": {
+      "eyebrow": "Willkommen bei Inkadra",
+      "title": "Von der Idee zur Einstellung.",
+      "lead": "Eine unendliche Leinwand für Film und Foto, auf deinem Server.",
+      "go": "Tour starten · 1 Min.",
+      "skip": "Ich schaue mich selbst um",
+      "foot": "Du kannst sie jederzeit unter Einstellungen → Tutorials ansehen.",
+      "heroNote": "Der letzte Zug",
+      "heroTodoDone": "Motivsuche",
+      "heroTodo": "Regenprobe"
+    },
+    "finale": {
+      "title": "Du bist bereit.",
+      "text": "Den Rest zeigen wir dir, wenn du ihn zum ersten Mal brauchst.",
+      "more_one": "+ {{count}} weitere",
+      "more_other": "+ {{count}} weitere",
+      "go": "Loslegen"
+    },
+    "coach": {
+      "skip": "Überspringen",
+      "back": "Zurück",
+      "next": "Weiter",
+      "done": "Fertig",
+      "shortcut": "Kürzel",
+      "count": "{{index}}/{{total}}"
+    },
+    "pill": {
+      "question": "Zum ersten Mal in {{name}}?",
+      "go": "30-s-Tour",
+      "later": "Nicht jetzt"
+    },
+    "guest": {
+      "question": "{{name}} bittet um deine Meinung",
+      "questionAnonymous": "Man bittet um deine Meinung",
+      "go": "So geht’s · 20 s",
+      "help": "So geht’s"
+    },
+    "toast": {
+      "open": "Öffnen",
+      "welcomeSkipped": "Okay! Die Tour wartet unter Einstellungen → Tutorials.",
+      "tourSkipped": "Tour übersprungen. Du findest sie unter Einstellungen → Tutorials.",
+      "pillDismissed": "Okay, wir bieten sie nicht mehr an. Sie ist unter Einstellungen → Tutorials.",
+      "done": "{{name}}: Tour abgeschlossen.",
+      "guestDismissed": "Okay. Die Tour bleibt oben unter der Schaltfläche ?.",
+      "guestDone": "Das war’s. Viel Erfolg bei der Abnahme!"
+    },
+    "settings": {
+      "welcomeTitle": "Willkommenstour",
+      "welcomeSub": "Was Inkadra ist und wo du was findest · 7 Schritte · 1 Min.",
+      "play": "Abspielen",
+      "playNamed": "{{name}} abspielen",
+      "seen": "Gesehen",
+      "unseen": "Noch nicht gesehen",
+      "duration": "30 s",
+      "count": "{{seen}} von {{total}} gesehen",
+      "new": "Neu",
+      "hints": "Hinweise beim ersten Öffnen",
+      "hintsHelp": "Ein Hinweis bietet die Tour an, wenn du eine Funktion zum ersten Mal öffnest.",
+      "reset": "Von vorn beginnen",
+      "resetHelp": "Alle Touren als nicht gesehen markieren.",
+      "resetAction": "Zurücksetzen",
+      "adminOnly": "nur Admins"
+    },
+    "groups": {
+      "start": "Erste Schritte",
+      "canvas": "Leinwand",
+      "production": "Produktion",
+      "collaboration": "Zusammenarbeit",
+      "tools": "Werkzeuge",
+      "admin": "Verwaltung"
+    },
+    "media": {
+      "searchWord": "Bahnsteig",
+      "scene": "Szene 1 · Bahnsteig",
+      "picture": "Bahnsteig 4, 2 Uhr",
+      "approved": "Freigegeben",
+      "comment": "Enger?",
+      "dolly": "Dolly",
+      "night": "Nacht",
+      "day": "Tag {{n}}",
+      "restore": "Wiederherstellen",
+      "role0": "Bearbeiten",
+      "role1": "Kommentieren",
+      "role2": "Einladen"
+    },
+    "tours": {
+      "welcome": {
+        "steps": {
+          "0": {
+            "title": "Deine Projekte",
+            "text": "Jedes Projekt hält seine Boards zusammen. Die Farbe zeigt die Art."
+          },
+          "1": {
+            "title": "Alles durchsuchen",
+            "text": "Boards, Karten und Szenen, von überall."
+          },
+          "2": {
+            "title": "Karten hinzufügen",
+            "text": "Wähle ein Werkzeug und klicke auf die Leinwand. Oder zieh eine Datei hinein."
+          },
+          "3": {
+            "title": "Auswählen und bearbeiten",
+            "text": "Die Werkzeuge einer Karte erscheinen direkt darüber."
+          },
+          "4": {
+            "title": "Eine Geschichte, viele Ansichten",
+            "text": "Storyboard, Shotlist und Drehplan teilen dieselben Daten."
+          },
+          "5": {
+            "title": "Im Team arbeiten",
+            "text": "Teilen, kommentieren, vom Kunden freigeben lassen."
+          },
+          "6": {
+            "title": "Jederzeit wieder",
+            "text": "Du findest sie unter Einstellungen → Tutorials."
+          }
+        }
+      },
+      "guest": {
+        "steps": {
+          "0": {
+            "title": "Eine Karte kommentieren",
+            "text": "Wähle sie und schreib: Der Kommentar bleibt dort hängen."
+          },
+          "1": {
+            "title": "Gib dein OK",
+            "text": "Freigeben oder Änderungen anfragen. Das Team sieht es sofort."
+          }
+        }
+      },
+      "home": {
+        "name": "Startseite",
+        "steps": {
+          "0": {
+            "title": "Letzte Boards",
+            "text": "Mach weiter, wo du aufgehört hast."
+          },
+          "1": {
+            "title": "Was passiert ist",
+            "text": "Die Aktivität deiner Projekte, neueste zuerst."
+          },
+          "2": {
+            "title": "Neues Board",
+            "text": "Erstelle eines in einem deiner Projekte."
+          }
+        }
+      },
+      "inbox": {
+        "name": "Posteingang und Benachrichtigungen",
+        "steps": {
+          "0": {
+            "title": "Alles an einem Ort",
+            "text": "Erwähnungen, Antworten und Abnahmen deiner Projekte."
+          },
+          "1": {
+            "title": "Filtern",
+            "text": "Erwähnungen, Freigaben oder deine Aufgaben."
+          },
+          "2": {
+            "title": "Wähle, was du bekommst",
+            "text": "E-Mails stellst du unter Einstellungen → Benachrichtigungen ein."
+          }
+        }
+      },
+      "board": {
+        "name": "Boards und Karten",
+        "steps": {
+          "0": {
+            "title": "Die Werkzeuge",
+            "text": "Notizen, Fotos, Links, Listen: wählen und auf die Leinwand klicken."
+          },
+          "1": {
+            "title": "Alles andere",
+            "text": "+ fügt Storyboards und Shotlisten hinzu; die Leiste änderst du in den Einstellungen."
+          },
+          "2": {
+            "title": "Eine Karte auswählen",
+            "text": "Ihre Werkzeuge erscheinen direkt darüber."
+          }
+        }
+      },
+      "moodboard": {
+        "name": "Moodboard",
+        "steps": {
+          "0": {
+            "title": "Referenzen im Raster",
+            "text": "Bilder, Links und Farben des Projekts, zusammen."
+          },
+          "1": {
+            "title": "Filtern",
+            "text": "Nach Tag oder Art, mit einem Tipp."
+          },
+          "2": {
+            "title": "Die Palette",
+            "text": "Die Farben deiner Referenzen, zum Kopieren."
+          }
+        }
+      },
+      "video": {
+        "name": "Videos in Karten",
+        "steps": {
+          "0": {
+            "title": "In der Karte ansehen",
+            "text": "Drück Play: Das Video läuft dort, mit seinen Steuerelementen."
+          },
+          "1": {
+            "title": "Eins nach dem anderen",
+            "text": "Startest du ein anderes, hält das erste an."
+          },
+          "2": {
+            "title": "Auch Links",
+            "text": "YouTube und Vimeo laufen in der Karte."
+          }
+        }
+      },
+      "storyboard": {
+        "name": "Storyboard",
+        "steps": {
+          "0": {
+            "title": "Szenen und Frames",
+            "text": "Jede Szene sammelt ihre Frames, in Reihenfolge."
+          },
+          "1": {
+            "title": "Jeder Frame hat seine Daten",
+            "text": "Einstellungsgröße, Objektiv, Bewegung: Sie landen in der Shotlist."
+          },
+          "2": {
+            "title": "Auf dem Frame zeichnen",
+            "text": "Doppelklick auf einen Frame: Skizze im Vollbild."
+          }
+        }
+      },
+      "draw": {
+        "name": "Auf dem Frame zeichnen",
+        "steps": {
+          "0": {
+            "title": "Stifte und Formen",
+            "text": "Stift, Radierer, Formen und Text, mit Farbe und Stärke."
+          },
+          "1": {
+            "title": "Frame für Frame",
+            "text": "Die Pfeile wechseln zu den anderen Frames."
+          },
+          "2": {
+            "title": "Bewegen",
+            "text": "Leertaste und ziehen, das Mausrad oder zwei Finger."
+          }
+        }
+      },
+      "shotlist": {
+        "name": "Shotlist",
+        "steps": {
+          "0": {
+            "title": "Deine Einstellungen",
+            "text": "Die Frames des Storyboards, als Tabelle."
+          },
+          "1": {
+            "title": "Tabelle oder Kanban",
+            "text": "Wähle, wie du sie siehst."
+          },
+          "2": {
+            "title": "Exportieren",
+            "text": "CSV oder PDF, für die Crew."
+          }
+        }
+      },
+      "schedule": {
+        "name": "Drehplan",
+        "steps": {
+          "0": {
+            "title": "Drehtage",
+            "text": "Zieh die Einstellungen in die Tage."
+          },
+          "1": {
+            "title": "Jeder Tag",
+            "text": "Ort, Zeiten und Einstellungen; Konflikte fallen auf."
+          },
+          "2": {
+            "title": "Tagesdispo",
+            "text": "Fertig zum Verschicken an die Crew."
+          }
+        }
+      },
+      "setplan": {
+        "name": "Setplan",
+        "steps": {
+          "0": {
+            "title": "Das Set zeichnen",
+            "text": "Wände, Linien und Formen aus der unteren Leiste."
+          },
+          "1": {
+            "title": "Symbole",
+            "text": "Kameras, Darsteller, Licht und Möbel. Mit Umschalt mehrere setzen."
+          },
+          "2": {
+            "title": "Maßstab und Ebenen",
+            "text": "Oben: der Maßstab der Zeichnung und ihre Ebenen."
+          }
+        }
+      },
+      "characters": {
+        "name": "Figurenbögen",
+        "steps": {
+          "0": {
+            "title": "Der Bogen",
+            "text": "Identität, Aussehen, Geschichte: Abschnitte zum Auf- und Zuklappen."
+          },
+          "1": {
+            "title": "Ihre Szenen",
+            "text": "Sie kommen aus den Frames, deren Besetzung die Figur nennt."
+          },
+          "2": {
+            "title": "Nur fürs Team",
+            "text": "Kontakte und Notizen erreichen nie Gäste."
+          }
+        }
+      },
+      "review": {
+        "name": "Kundenabnahme",
+        "steps": {
+          "0": {
+            "title": "Die Einstellungen",
+            "text": "Der Kunde sieht sie einzeln, der Reihe nach."
+          },
+          "1": {
+            "title": "Der Frame",
+            "text": "Groß, mit Handlung und Kommentaren."
+          },
+          "2": {
+            "title": "Freigeben oder Änderungen anfragen",
+            "text": "Die Entscheidung erreicht das Team sofort."
+          }
+        }
+      },
+      "comments": {
+        "name": "Kommentare",
+        "steps": {
+          "0": {
+            "title": "Das ganze Gespräch",
+            "text": "Eine Spalte mit den Kommentaren des Boards."
+          },
+          "1": {
+            "title": "Auf dem Board",
+            "text": "Blasen neben Karten mit offenen Diskussionen."
+          },
+          "2": {
+            "title": "Wer es liest",
+            "text": "Das Team oder auch Gäste: Du wählst jedes Mal."
+          }
+        }
+      },
+      "sharing": {
+        "name": "Teilen und Rollen",
+        "steps": {
+          "0": {
+            "title": "Personen und Links",
+            "text": "Lade das Team ein oder erstelle einen Link für Gäste."
+          },
+          "1": {
+            "title": "Rollen",
+            "text": "Wer bearbeitet, wer kommentiert, wer schaut."
+          },
+          "2": {
+            "title": "Links für Gäste",
+            "text": "Mit Passwort, Ablaufdatum und Freigabe."
+          }
+        }
+      },
+      "versions": {
+        "name": "Versionen",
+        "steps": {
+          "0": {
+            "title": "Speicherstände",
+            "text": "Inkadra speichert selbst; du kannst einem Punkt einen Namen geben."
+          },
+          "1": {
+            "title": "Zurückgehen",
+            "text": "Öffne eine Version, sieh sie an, stelle sie wieder her."
+          },
+          "2": {
+            "title": "Ein Element zurückholen",
+            "text": "Du kannst auch eine einzelne gelöschte Karte wiederherstellen."
+          }
+        }
+      },
+      "present": {
+        "name": "Präsentation",
+        "steps": {
+          "0": {
+            "title": "Im Vollbild",
+            "text": "Das Storyboard, Frame für Frame."
+          },
+          "1": {
+            "title": "Wo du bist",
+            "text": "Titel, Frame-Nummer und Ausgang."
+          },
+          "2": {
+            "title": "Vor und zurück",
+            "text": "Mit den Pfeilen oder einem Tipp."
+          }
+        }
+      },
+      "export": {
+        "name": "Export und Import",
+        "steps": {
+          "0": {
+            "title": "Format",
+            "text": "PDF, PNG oder JPEG, mit seinen Optionen."
+          },
+          "1": {
+            "title": "Vorschau",
+            "text": "Sieh die Seite, bevor du sie herunterlädst."
+          },
+          "2": {
+            "title": "Das ganze Projekt",
+            "text": "Als ZIP exportieren und auf einem anderen Server importieren."
+          }
+        }
+      },
+      "clipper": {
+        "name": "Browser-Clipper",
+        "steps": {
+          "0": {
+            "title": "Aus dem Web speichern",
+            "text": "Bilder, Zitate und Links landen mit einem Klick im Board."
+          },
+          "1": {
+            "title": "Installieren",
+            "text": "Eine Erweiterung für Chrome, Edge, Brave und Arc, mit deinem Server verbunden."
+          },
+          "2": {
+            "title": "Wähle wohin",
+            "text": "Eine Spalte des Boards oder Unsortiert."
+          }
+        }
+      },
+      "phone": {
+        "name": "Inkadra auf dem Handy",
+        "steps": {
+          "0": {
+            "title": "App installieren",
+            "text": "Öffne Inkadra im Browser und füge es zum Startbildschirm hinzu."
+          },
+          "1": {
+            "title": "Die untere Leiste",
+            "text": "Start, Projekte, Neu, Posteingang und Profil."
+          },
+          "2": {
+            "title": "Am Set",
+            "text": "Fotos und Notizen gehen direkt ins Board."
+          }
+        }
+      },
+      "classifications": {
+        "name": "Klassifizierungen",
+        "steps": {
+          "0": {
+            "title": "Die Listen der Instanz",
+            "text": "Projekttypen, Tags, Einstellungsgrößen, Winkel und Bewegungen."
+          },
+          "1": {
+            "title": "Umbenennen",
+            "text": "Der neue Name ändert sich auf jedem Frame, der ihn nutzt."
+          },
+          "2": {
+            "title": "Archivieren",
+            "text": "Er verschwindet aus den Menüs, bleibt aber auf seinen Frames."
+          }
+        }
+      },
+      "backups": {
+        "name": "Backups",
+        "steps": {
+          "0": {
+            "title": "Automatische Backups",
+            "text": "Jede Nacht, zur gewählten Uhrzeit."
+          },
+          "1": {
+            "title": "Verlauf",
+            "text": "Jedes Backup, mit Datum und Größe."
+          },
+          "2": {
+            "title": "Sofort",
+            "text": "Mach jetzt eines, vor einem Update."
+          }
+        }
+      },
+      "users": {
+        "name": "Nutzer und Zugang",
+        "steps": {
+          "0": {
+            "title": "Die Personen",
+            "text": "Wer die Instanz nutzt, mit Rolle."
+          },
+          "1": {
+            "title": "Einladen",
+            "text": "Ein Link oder eine E-Mail zum Hereinkommen."
+          },
+          "2": {
+            "title": "Wie man sich anmeldet",
+            "text": "Die Anmeldemethoden stehen unter Anmeldung."
+          }
+        }
+      }
+    }
   }
 }

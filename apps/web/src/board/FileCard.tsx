@@ -386,6 +386,7 @@ function CardVideo({
     <video
       ref={video}
       className="fcard__video"
+      data-tour="video"
       data-play-link={id}
       aria-label={t('board.menu.videoPlayer', { title: name })}
       src={src}
@@ -469,6 +470,7 @@ function VideoPreview({
                 type="button"
                 className="card__play fcard__play"
                 data-play-link={element.id}
+                data-tour={plays ? 'video' : undefined}
                 aria-label={t('board.file.play', { name: asset.filename })}
                 onClick={(event) => {
                   event.stopPropagation();

@@ -10,6 +10,7 @@ export function Card({
   danger,
   children,
   className,
+  tour,
 }: {
   title?: string;
   body?: ReactNode;
@@ -17,6 +18,8 @@ export function Card({
   danger?: boolean;
   children: ReactNode;
   className?: string;
+  /** `data-tour` anchor of a tutorial step (#502). */
+  tour?: string;
 }) {
   const id = useId();
   return (
@@ -25,6 +28,7 @@ export function Card({
         .filter(Boolean)
         .join(' ')}
       aria-labelledby={title ? id : undefined}
+      data-tour={tour}
     >
       {title && (
         <header className="settings-card__head">

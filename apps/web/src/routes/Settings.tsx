@@ -44,6 +44,7 @@ import { useSession } from '../lib/session.tsx';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
 import { CalendarSettings } from '../notifications/CalendarSettings.tsx';
 import { EmailNotifications } from '../notifications/Notifications.tsx';
+import { TutorialSettings } from '../tutorial/TutorialSettings.tsx';
 import { useInstanceSetupState } from './AppLayout.tsx';
 import { ClassificationSettings } from './ClassificationSettings.tsx';
 import { InstanceSettings } from './InstanceSettings.tsx';
@@ -92,6 +93,12 @@ export function Settings() {
         <SettingsShell page={page}>
           <EmailNotifications releaseNewsAvailable={instance?.releaseNews === true} />
           <CalendarSettings />
+        </SettingsShell>
+      );
+    case 'tutorials':
+      return (
+        <SettingsShell page={page}>
+          <TutorialSettings />
         </SettingsShell>
       );
     case 'classifications':

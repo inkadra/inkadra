@@ -549,7 +549,12 @@ export function ShotList({
   );
   const exportButton = (
     <>
-      <Button icon="download" disabled={frames.length === 0} onClick={exportCsv}>
+      <Button
+        icon="download"
+        data-tour="shotlist-bar"
+        disabled={frames.length === 0}
+        onClick={exportCsv}
+      >
         {t('film.list.export')}
       </Button>
       {onExport && (
@@ -728,11 +733,12 @@ export function ShotList({
   );
 
   return (
-    <div className="shots" ref={containerRef}>
+    <div className="shots" ref={containerRef} data-tour="shotlist">
       <div className="story__bar" data-chrome>
         <div
           className="view-tabs"
           role="tablist"
+          data-tour="shotlist-layouts"
           // Not the header's "View": two tab bars with one name would be told apart by nothing.
           aria-label={t('film.list.layouts')}
           onKeyDown={moveTabFocus}

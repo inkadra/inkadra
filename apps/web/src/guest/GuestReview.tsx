@@ -144,7 +144,7 @@ export function GuestReview({
           {t('guest.review.phone.versionsFailed')}
         </p>
       )}
-      <div className="guest-review__picture">
+      <div className="guest-review__picture" data-tour="guest-canvas">
         <FramePicture
           key={`${picture?.id}-${shown}`}
           assetId={typeof picture?.assetId === 'string' ? picture.assetId : undefined}
@@ -194,7 +194,7 @@ export function GuestReview({
         </p>
       )}
       {rights.review && (
-        <div className="guest-review__decide">
+        <div className="guest-review__decide" data-tour="guest-panel">
           <Button
             variant="primary"
             size="lg"

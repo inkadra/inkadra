@@ -156,6 +156,11 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Storyboard', 'Storyboard'],
     ['Reset to default toolbar', 'Ripristina la barra predefinita'],
   ],
+  tutorials: [
+    ['Welcome tour', 'Giro di benvenuto'],
+    ['Hints the first time', 'Suggerimenti alla prima apertura'],
+    ['Start over', 'Ricomincia da capo'],
+  ],
   notifications: [
     ['Email notifications', 'Notifiche email'],
     ['Mentions', 'Menzioni'],

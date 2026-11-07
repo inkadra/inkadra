@@ -21,6 +21,8 @@ function cached(): UserPreferences {
 }
 
 let current = cached();
+/** Whether the account's preferences have been read this session, not only the cache. */
+let loaded = false;
 const listeners = new Set<() => void>();
 
 function set(next: UserPreferences) {
@@ -42,13 +44,19 @@ export function getPreferences(): UserPreferences {
   return current;
 }
 
+export function preferencesLoaded(): boolean {
+  return loaded;
+}
+
 export function usePreferences(): UserPreferences {
   return useSyncExternalStore(subscribe, getPreferences, getPreferences);
 }
 
 /** Reads the signed-in person's preferences; called with the session. */
 export async function loadPreferences() {
-  set(readUserPreferences(await api.get<UserPreferences>('/me/preferences')));
+  const read = readUserPreferences(await api.get<UserPreferences>('/me/preferences'));
+  loaded = true;
+  set(read);
 }
 
 /** Applies a change at once and saves it; a failed save puts the previous value back. */

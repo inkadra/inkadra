@@ -175,7 +175,12 @@ export function ClientReviewView({
         )}
       </div>
       <div className="story__main">
-        <section aria-label={t('nav.shotlist')} className="client-review__frames" data-scroll>
+        <section
+          aria-label={t('nav.shotlist')}
+          className="client-review__frames"
+          data-scroll
+          data-tour="review-frames"
+        >
           {visible.length === 0 && (
             <p className="schedule__hint">
               {t(entries.length ? 'review.filteredEmpty' : emptyKey)}
@@ -215,7 +220,7 @@ export function ClientReviewView({
             </button>
           ))}
         </section>
-        <div className="client-review__stage" data-scroll>
+        <div className="client-review__stage" data-scroll data-tour="review-stage">
           {current ? (
             <>
               {frame ? (
@@ -292,6 +297,7 @@ export function ClientReviewView({
                 {writable && (
                   <fieldset
                     className="story__modes client-review__decision"
+                    data-tour="review-decision"
                     aria-label={t('clientReview.yourDecision')}
                   >
                     {decisions.map((value) => (

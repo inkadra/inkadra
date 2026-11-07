@@ -148,7 +148,13 @@ export function Toolbar({
   const saved = barTools(usePreferences().toolbar);
   const shown = phone ? PHONE_BAR : saved;
   return (
-    <div className="toolbar" role="toolbar" aria-label={t('board.toolbar')} data-chrome>
+    <div
+      className="toolbar"
+      role="toolbar"
+      aria-label={t('board.toolbar')}
+      data-chrome
+      data-tour="dock"
+    >
       {/* On phones the tools scroll sideways and the Canvas button stays pinned beside them. */}
       <div ref={tools} className="toolbar__tools">
         <fieldset
@@ -282,6 +288,7 @@ function CanvasMenuButton({
         ref={button}
         type="button"
         className={`toolbar__btn toolbar__btn--canvas${more ? ' toolbar__btn--more' : ''}`}
+        data-tour="dock-more"
         aria-haspopup="menu"
         aria-expanded={!!at}
         aria-label={label}

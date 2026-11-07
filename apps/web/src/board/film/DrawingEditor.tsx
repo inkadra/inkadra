@@ -536,7 +536,7 @@ export function DrawingEditor({
       aria-modal="true"
       aria-label={title}
     >
-      <header className="pen__bar">
+      <header className="pen__bar" data-tour="draw-nav">
         <span className="pen__title">{title}</span>
         {goPrev && (
           <IconButton
@@ -577,7 +577,7 @@ export function DrawingEditor({
       </header>
       <div className="pen__main">
         {!readOnly && (
-          <div className="pen__tools" role="toolbar" aria-label={title}>
+          <div className="pen__tools" role="toolbar" aria-label={title} data-tour="draw-tools">
             <div className="pen__tool-picker">
               <IconButton
                 icon={TOOLS.find((x) => x.tool === tool)?.icon ?? 'pen'}

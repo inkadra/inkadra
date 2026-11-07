@@ -98,7 +98,7 @@ export function ClassificationSettings() {
   };
 
   return (
-    <div className="catalogs">
+    <div className="catalogs" data-tour="classifications">
       {error && (
         <div role="alert" className="catalogs__error">
           <div>

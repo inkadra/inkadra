@@ -2621,7 +2621,8 @@
     "pages": {
       "access": "Connexion",
       "about": "À propos",
-      "toolbar": "Barre d’outils"
+      "toolbar": "Barre d’outils",
+      "tutorials": "Tutoriels"
     },
     "leads": {
       "account": "Votre profil et votre mode de connexion.",
@@ -2632,7 +2633,8 @@
       "registration": "Qui peut créer un nouveau compte.",
       "about": "Nom, adresse, version et état de configuration de l’instance.",
       "backups": "Copies nocturnes de la base de données, pour restaurer le serveur après une panne.",
-      "toolbar": "Choisissez ce que vous voyez dans la barre du bas. Les outils masqués restent dans « + ▾ » et dans la palette de commandes."
+      "toolbar": "Choisissez ce que vous voyez dans la barre du bas. Les outils masqués restent dans « + ▾ » et dans la palette de commandes.",
+      "tutorials": "Revoyez les visites guidées et choisissez de les proposer ou non."
     },
     "autosave": {
       "idle": "Enregistrement automatique",
@@ -2757,7 +2759,8 @@
       "registration": "Nouveaux comptes, Inscriptions ouvertes, Sur invitation uniquement, Inscriptions fermées, Exiger la validation en deux étapes des administrateurs",
       "instance": "Nom de l’instance, Adresse publique, Version, Diagnostic, État de l’instance, Actualités d’Inkadra, Signalements, Envoyer aux développeurs d’Inkadra, Destination, Dépôt, Jeton GitHub, Les invités peuvent signaler, Conservation des pièces jointes, Signalements reçus",
       "backups": "Sauvegardes, Sauvegarder maintenant, Restauration, Conservation, Sauvegarde nocturne",
-      "toolbar": "Barre d’outils, Outils, Note, Image, Lien, À faire, Couleur, Flèche, Plan, Storyboard, Rétablir la barre par défaut"
+      "toolbar": "Barre d’outils, Outils, Note, Image, Lien, À faire, Couleur, Flèche, Plan, Storyboard, Rétablir la barre par défaut",
+      "tutorials": "Visite de bienvenue, Suggestions à la première ouverture, Recommencer"
     },
     "close": "Fermer les paramètres",
     "dangerZone": "Zone sensible",
@@ -3840,5 +3843,512 @@
     "relayRefusedBanner_other": "Le relais a refusé {{count}} signalements ({{reason}}) : pas de nouvel essai automatique. Ils sont conservés ici. Réessayez après avoir mis à jour Inkadra, ou choisissez une autre destination.",
     "relayRetentionHelp": "Uniquement les pièces jointes locales. Les copies sur GitHub restent jusqu’à leur suppression par l’équipe Inkadra.",
     "relaySaved": "Signalement enregistré sur ce serveur"
+  },
+  "tutorial": {
+    "welcome": {
+      "eyebrow": "Bienvenue dans Inkadra",
+      "title": "De l’idée au plan.",
+      "lead": "Un canevas infini pour le cinéma et la photo, sur votre serveur.",
+      "go": "Faire la visite · 1 min",
+      "skip": "J’explore seul",
+      "foot": "Vous pouvez la revoir quand vous voulez dans Réglages → Tutoriels.",
+      "heroNote": "Le dernier train",
+      "heroTodoDone": "Repérage",
+      "heroTodo": "Test de pluie"
+    },
+    "finale": {
+      "title": "Vous êtes prêt.",
+      "text": "Le reste, on vous le montre la première fois que vous en aurez besoin.",
+      "more_one": "+ {{count}} autre",
+      "more_other": "+ {{count}} autres",
+      "go": "Commencer à créer"
+    },
+    "coach": {
+      "skip": "Passer",
+      "back": "Précédent",
+      "next": "Suivant",
+      "done": "Terminé",
+      "shortcut": "Raccourci",
+      "count": "{{index}}/{{total}}"
+    },
+    "pill": {
+      "question": "Première fois dans {{name}} ?",
+      "go": "Visite de 30 s",
+      "later": "Pas maintenant"
+    },
+    "guest": {
+      "question": "{{name}} vous demande votre avis",
+      "questionAnonymous": "On vous demande votre avis",
+      "go": "Comment ça marche · 20 s",
+      "help": "Comment ça marche"
+    },
+    "toast": {
+      "open": "Ouvrir",
+      "welcomeSkipped": "D’accord ! La visite vous attend dans Réglages → Tutoriels.",
+      "tourSkipped": "Visite passée. Vous la retrouverez dans Réglages → Tutoriels.",
+      "pillDismissed": "D’accord, on ne la proposera plus. Elle est dans Réglages → Tutoriels.",
+      "done": "{{name}} : visite terminée.",
+      "guestDismissed": "D’accord. La visite reste sous le bouton ? en haut.",
+      "guestDone": "C’est tout. Bonne relecture !"
+    },
+    "settings": {
+      "welcomeTitle": "Visite de bienvenue",
+      "welcomeSub": "Ce qu’est Inkadra et où trouver les choses · 7 étapes · 1 min",
+      "play": "Lancer",
+      "playNamed": "Lancer {{name}}",
+      "seen": "Vu",
+      "unseen": "À voir",
+      "duration": "30 s",
+      "count": "{{seen}} sur {{total}} vus",
+      "new": "Nouveau",
+      "hints": "Suggestions à la première ouverture",
+      "hintsHelp": "Une pastille propose la visite quand vous ouvrez une fonction pour la première fois.",
+      "reset": "Recommencer",
+      "resetHelp": "Marquer toutes les visites comme à voir.",
+      "resetAction": "Réinitialiser",
+      "adminOnly": "admins seulement"
+    },
+    "groups": {
+      "start": "Pour commencer",
+      "canvas": "Canevas",
+      "production": "Production",
+      "collaboration": "Collaboration",
+      "tools": "Outils",
+      "admin": "Administration"
+    },
+    "media": {
+      "searchWord": "Quai",
+      "scene": "Scène 1 · Quai",
+      "picture": "Quai 4, 2 h",
+      "approved": "Approuvé",
+      "comment": "Plus serré ?",
+      "dolly": "Travelling",
+      "night": "Nuit",
+      "day": "Jour {{n}}",
+      "restore": "Restaurer",
+      "role0": "Modifier",
+      "role1": "Commenter",
+      "role2": "Inviter"
+    },
+    "tours": {
+      "welcome": {
+        "steps": {
+          "0": {
+            "title": "Vos projets",
+            "text": "Chaque projet regroupe ses tableaux. La couleur indique le type."
+          },
+          "1": {
+            "title": "Tout chercher",
+            "text": "Tableaux, cartes et scènes, depuis n’importe où."
+          },
+          "2": {
+            "title": "Ajouter des cartes",
+            "text": "Choisissez un outil et cliquez sur le canevas. Ou glissez un fichier."
+          },
+          "3": {
+            "title": "Sélectionner et modifier",
+            "text": "Les outils d’une carte apparaissent juste au-dessus."
+          },
+          "4": {
+            "title": "Une histoire, plusieurs vues",
+            "text": "Storyboard, liste des plans et plan de tournage partagent les mêmes données."
+          },
+          "5": {
+            "title": "Travailler en équipe",
+            "text": "Partagez, commentez, faites valider le client."
+          },
+          "6": {
+            "title": "La revoir quand vous voulez",
+            "text": "Elle est dans Réglages → Tutoriels."
+          }
+        }
+      },
+      "guest": {
+        "steps": {
+          "0": {
+            "title": "Commenter une carte",
+            "text": "Choisissez-la et écrivez : le commentaire y reste attaché."
+          },
+          "1": {
+            "title": "Donner votre accord",
+            "text": "Approuvez ou demandez des modifications. L’équipe le voit aussitôt."
+          }
+        }
+      },
+      "home": {
+        "name": "Accueil",
+        "steps": {
+          "0": {
+            "title": "Tableaux récents",
+            "text": "Reprenez là où vous vous êtes arrêté."
+          },
+          "1": {
+            "title": "Ce qui s’est passé",
+            "text": "L’activité de vos projets, la plus récente d’abord."
+          },
+          "2": {
+            "title": "Nouveau tableau",
+            "text": "Créez-en un dans l’un de vos projets."
+          }
+        }
+      },
+      "inbox": {
+        "name": "Boîte de réception et notifications",
+        "steps": {
+          "0": {
+            "title": "Tout au même endroit",
+            "text": "Mentions, réponses et relectures de vos projets."
+          },
+          "1": {
+            "title": "Filtrer",
+            "text": "Mentions, approbations ou vos tâches."
+          },
+          "2": {
+            "title": "Choisir ce que vous recevez",
+            "text": "Les e-mails se règlent dans Réglages → Notifications."
+          }
+        }
+      },
+      "board": {
+        "name": "Tableaux et cartes",
+        "steps": {
+          "0": {
+            "title": "Les outils",
+            "text": "Notes, photos, liens, listes : choisissez et cliquez sur le canevas."
+          },
+          "1": {
+            "title": "Tout le reste",
+            "text": "+ ajoute storyboards et listes de plans ; la barre se change dans les Réglages."
+          },
+          "2": {
+            "title": "Sélectionner une carte",
+            "text": "Ses outils apparaissent juste au-dessus."
+          }
+        }
+      },
+      "moodboard": {
+        "name": "Moodboard",
+        "steps": {
+          "0": {
+            "title": "Des références en grille",
+            "text": "Images, liens et couleurs du projet, ensemble."
+          },
+          "1": {
+            "title": "Filtrer",
+            "text": "Par tag ou par type, d’un geste."
+          },
+          "2": {
+            "title": "La palette",
+            "text": "Les couleurs de vos références, prêtes à copier."
+          }
+        }
+      },
+      "video": {
+        "name": "Vidéos dans les cartes",
+        "steps": {
+          "0": {
+            "title": "Regarder dans la carte",
+            "text": "Appuyez sur lecture : la vidéo démarre là, avec ses commandes."
+          },
+          "1": {
+            "title": "Une à la fois",
+            "text": "En lancer une autre arrête la première."
+          },
+          "2": {
+            "title": "Les liens aussi",
+            "text": "YouTube et Vimeo se lisent dans la carte."
+          }
+        }
+      },
+      "storyboard": {
+        "name": "Storyboard",
+        "steps": {
+          "0": {
+            "title": "Scènes et images",
+            "text": "Chaque scène regroupe ses images, dans l’ordre."
+          },
+          "1": {
+            "title": "Chaque image a ses données",
+            "text": "Valeur de plan, objectif, mouvement : elles passent dans la liste des plans."
+          },
+          "2": {
+            "title": "Dessiner sur l’image",
+            "text": "Double-cliquez sur une image pour esquisser en plein écran."
+          }
+        }
+      },
+      "draw": {
+        "name": "Dessiner sur l’image",
+        "steps": {
+          "0": {
+            "title": "Stylos et formes",
+            "text": "Stylo, gomme, formes et texte, avec couleur et épaisseur."
+          },
+          "1": {
+            "title": "Image après image",
+            "text": "Les flèches passent aux autres images."
+          },
+          "2": {
+            "title": "Se déplacer",
+            "text": "Espace et glisser, la molette ou deux doigts."
+          }
+        }
+      },
+      "shotlist": {
+        "name": "Liste des plans",
+        "steps": {
+          "0": {
+            "title": "Vos plans",
+            "text": "Les images du storyboard, en tableau."
+          },
+          "1": {
+            "title": "Table ou Kanban",
+            "text": "Choisissez comment la voir."
+          },
+          "2": {
+            "title": "Exporter",
+            "text": "CSV ou PDF, pour l’équipe."
+          }
+        }
+      },
+      "schedule": {
+        "name": "Plan de tournage",
+        "steps": {
+          "0": {
+            "title": "Jours de tournage",
+            "text": "Glissez les plans dans les jours."
+          },
+          "1": {
+            "title": "Chaque jour",
+            "text": "Lieu, horaires et plans ; les conflits se voient."
+          },
+          "2": {
+            "title": "Feuille de service",
+            "text": "Prête à envoyer à l’équipe."
+          }
+        }
+      },
+      "setplan": {
+        "name": "Plan de plateau",
+        "steps": {
+          "0": {
+            "title": "Dessiner le plateau",
+            "text": "Murs, lignes et formes depuis la barre du bas."
+          },
+          "1": {
+            "title": "Icônes",
+            "text": "Caméras, acteurs, lumières et mobilier. Maj pour en placer plusieurs."
+          },
+          "2": {
+            "title": "Échelle et calques",
+            "text": "En haut : l’échelle du dessin et ses calques."
+          }
+        }
+      },
+      "characters": {
+        "name": "Fiches personnage",
+        "steps": {
+          "0": {
+            "title": "La fiche",
+            "text": "Identité, apparence, histoire : des sections qui s’ouvrent et se ferment."
+          },
+          "1": {
+            "title": "Ses scènes",
+            "text": "Elles viennent des images dont la distribution le nomme."
+          },
+          "2": {
+            "title": "Pour l’équipe seulement",
+            "text": "Contacts et notes n’arrivent jamais aux invités."
+          }
+        }
+      },
+      "review": {
+        "name": "Relecture client",
+        "steps": {
+          "0": {
+            "title": "Les plans",
+            "text": "Le client les voit un par un, dans l’ordre."
+          },
+          "1": {
+            "title": "L’image",
+            "text": "En grand, avec l’action et les commentaires."
+          },
+          "2": {
+            "title": "Approuver ou demander des modifications",
+            "text": "La décision arrive aussitôt à l’équipe."
+          }
+        }
+      },
+      "comments": {
+        "name": "Commentaires",
+        "steps": {
+          "0": {
+            "title": "Toute la conversation",
+            "text": "Une colonne avec les commentaires du tableau."
+          },
+          "1": {
+            "title": "Sur le tableau",
+            "text": "Des bulles à côté des cartes aux discussions ouvertes."
+          },
+          "2": {
+            "title": "Qui le lit",
+            "text": "L’équipe, ou aussi les invités : vous choisissez à chaque fois."
+          }
+        }
+      },
+      "sharing": {
+        "name": "Partage et rôles",
+        "steps": {
+          "0": {
+            "title": "Personnes et liens",
+            "text": "Invitez l’équipe ou créez un lien pour les invités."
+          },
+          "1": {
+            "title": "Rôles",
+            "text": "Qui modifie, qui commente, qui regarde."
+          },
+          "2": {
+            "title": "Liens pour invités",
+            "text": "Avec mot de passe, expiration et validation."
+          }
+        }
+      },
+      "versions": {
+        "name": "Versions",
+        "steps": {
+          "0": {
+            "title": "Sauvegardes",
+            "text": "Inkadra enregistre tout seul ; vous pouvez nommer un point."
+          },
+          "1": {
+            "title": "Revenir en arrière",
+            "text": "Ouvrez une version, regardez-la, restaurez-la."
+          },
+          "2": {
+            "title": "Récupérer un élément",
+            "text": "Vous pouvez aussi récupérer une seule carte supprimée."
+          }
+        }
+      },
+      "present": {
+        "name": "Présentation",
+        "steps": {
+          "0": {
+            "title": "En plein écran",
+            "text": "Le storyboard, image après image."
+          },
+          "1": {
+            "title": "Où vous êtes",
+            "text": "Titre, numéro d’image et sortie."
+          },
+          "2": {
+            "title": "Avancer et reculer",
+            "text": "Avec les flèches ou d’un geste."
+          }
+        }
+      },
+      "export": {
+        "name": "Exporter et importer",
+        "steps": {
+          "0": {
+            "title": "Format",
+            "text": "PDF, PNG ou JPEG, avec ses options."
+          },
+          "1": {
+            "title": "Aperçu",
+            "text": "Voyez la page avant de la télécharger."
+          },
+          "2": {
+            "title": "Tout le projet",
+            "text": "Exportez-le en zip et importez-le sur un autre serveur."
+          }
+        }
+      },
+      "clipper": {
+        "name": "Clipper pour le navigateur",
+        "steps": {
+          "0": {
+            "title": "Enregistrer depuis le web",
+            "text": "Images, citations et liens arrivent sur le tableau en un clic."
+          },
+          "1": {
+            "title": "Installer",
+            "text": "Une extension pour Chrome, Edge, Brave et Arc, reliée à votre serveur."
+          },
+          "2": {
+            "title": "Choisir où",
+            "text": "Une colonne du tableau, ou Non triés."
+          }
+        }
+      },
+      "phone": {
+        "name": "Inkadra sur le téléphone",
+        "steps": {
+          "0": {
+            "title": "Installer l’app",
+            "text": "Ouvrez Inkadra dans le navigateur et ajoutez-la à l’écran d’accueil."
+          },
+          "1": {
+            "title": "La barre du bas",
+            "text": "Accueil, projets, nouveau, boîte de réception et profil."
+          },
+          "2": {
+            "title": "Sur le plateau",
+            "text": "Photos et notes vont directement dans le tableau."
+          }
+        }
+      },
+      "classifications": {
+        "name": "Classifications",
+        "steps": {
+          "0": {
+            "title": "Les listes de l’instance",
+            "text": "Types de projet, tags, valeurs de plan, angles et mouvements."
+          },
+          "1": {
+            "title": "Renommer",
+            "text": "Le nouveau nom change sur chaque image qui l’utilise."
+          },
+          "2": {
+            "title": "Archiver",
+            "text": "Il quitte les menus mais reste sur les images qui l’ont."
+          }
+        }
+      },
+      "backups": {
+        "name": "Sauvegardes",
+        "steps": {
+          "0": {
+            "title": "Sauvegardes automatiques",
+            "text": "Chaque nuit, à l’heure que vous choisissez."
+          },
+          "1": {
+            "title": "L’historique",
+            "text": "Chaque sauvegarde, avec sa date et sa taille."
+          },
+          "2": {
+            "title": "Tout de suite",
+            "text": "Faites-en une maintenant, avant une mise à jour."
+          }
+        }
+      },
+      "users": {
+        "name": "Utilisateurs et accès",
+        "steps": {
+          "0": {
+            "title": "Les personnes",
+            "text": "Qui utilise l’instance, avec son rôle."
+          },
+          "1": {
+            "title": "Inviter",
+            "text": "Un lien ou un e-mail pour entrer."
+          },
+          "2": {
+            "title": "Comment on se connecte",
+            "text": "Les méthodes de connexion sont dans Connexion."
+          }
+        }
+      }
+    }
   }
 }

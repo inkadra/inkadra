@@ -612,7 +612,7 @@ function SceneSection({
       aria-label={t('film.scene.heading', { number: scene.number })}
       data-story-scene={scene.id}
     >
-      <header className="story__scene-head">
+      <header className="story__scene-head" data-tour="storyboard-scene">
         <button
           type="button"
           className="column__toggle"
@@ -785,6 +785,7 @@ const FrameTile = memo(function FrameTile({
   return (
     <li
       className={`story__tile${selected ? ' is-selected' : ''}${dropBefore ? ' is-drop' : ''}${replacing ? ' is-replace' : ''}`}
+      data-tour="storyboard-frame"
       draggable={!readOnly}
       onDragStart={(e) => {
         e.dataTransfer.setData(FRAME_MIME, frame.id);
@@ -801,6 +802,7 @@ const FrameTile = memo(function FrameTile({
         type="button"
         className="story__tile-pic"
         data-story-frame={frame.id}
+        data-tour="storyboard-draw"
         onClick={onSelect}
         onDoubleClick={onDraw}
         aria-label={label}

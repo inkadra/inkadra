@@ -574,8 +574,8 @@ export function ExportDialog(props: ExportDialogProps) {
         >
           <Icon name="close" size={16} />
         </button>
-        <div className={`export${asImage ? ' export--image' : ''}`}>
-          <div className="export__controls">
+        <div className={`export${asImage ? ' export--image' : ''}`} data-tour="export">
+          <div className="export__controls" data-tour="export-controls">
             {!settingsLoaded ? (
               <p className="export__hint" role="status">
                 {t('export.previewLoading')}
@@ -1054,7 +1054,7 @@ function Preview({
     };
   }, [req, ready, env, onMissing, onPages]);
   return (
-    <figure className="export__preview">
+    <figure className="export__preview" data-tour="export-preview">
       <div className="export__paper" data-status={state.status}>
         <canvas
           ref={canvas}
