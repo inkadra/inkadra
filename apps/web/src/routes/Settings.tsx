@@ -1073,7 +1073,12 @@ function ClipperRow({ connected }: { connected: boolean }) {
         <Badge tone="ok">{t('settings.tokens.clipper.connected')}</Badge>
       ) : (
         // Google's badge, unchanged but for its size; the light or dark one follows the theme.
-        <a className="settings-clipper__store" href={CLIPPER_STORE_URL} target="_blank" rel="noopener">
+        <a
+          className="settings-clipper__store"
+          href={CLIPPER_STORE_URL}
+          target="_blank"
+          rel="noopener"
+        >
           <img
             className="settings-clipper__badge--light"
             src={chromeWebStore}
