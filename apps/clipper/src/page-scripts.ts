@@ -4,6 +4,8 @@
  * their own, so they must not use anything from outside their body.
  */
 
+import type { RawImage } from './page-images.ts';
+
 export type PageImage = { dataUrl: string } | { tooLarge: true } | { failed: string };
 
 /**
@@ -45,6 +47,23 @@ export async function readImageInPage(srcUrl: string, maxBytes: number): Promise
 export function readSelectionInPage(maxLength: number): string {
   const text = (getSelection()?.toString() ?? '').trim().slice(0, maxLength);
   return text.replace(/[\uD800-\uDBFF]$/, '');
+}
+
+/** What the page's <img> elements say, in document order; page-images.ts picks from it. */
+export function collectImagesInPage(): { baseUrl: string; images: RawImage[] } {
+  const images = Array.from(document.images, (img) => ({
+    currentSrc: img.currentSrc,
+    src: img.getAttribute('src') ? img.src : '',
+    srcset: img.srcset,
+    sources:
+      img.parentElement instanceof HTMLPictureElement
+        ? Array.from(img.parentElement.querySelectorAll('source'), (s) => s.srcset)
+        : [],
+    naturalWidth: img.naturalWidth,
+    naturalHeight: img.naturalHeight,
+    alt: img.alt,
+  }));
+  return { baseUrl: document.baseURI, images };
 }
 
 export interface PageToast {

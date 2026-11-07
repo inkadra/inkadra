@@ -35,6 +35,23 @@ export interface SavePageInput {
   tags?: string[];
 }
 
+export interface SaveImagesInput {
+  board: BoardRef;
+  /** The tab the pictures come from: they are read there first, with its cookies. */
+  tabId: number;
+  sourceUrl?: string;
+  srcUrls: string[];
+  columnId?: string;
+  tags?: string[];
+}
+
+export interface SavedImages {
+  board: BoardRef;
+  boardUrl: string;
+  saved: string[];
+  failed: { srcUrl: string; error: SerializedError }[];
+}
+
 /** Requests the popup and the options page send to the service worker. */
 export interface MessageMap {
   status: { request: Record<string, never>; response: Status };
@@ -44,6 +61,7 @@ export interface MessageMap {
   };
   columns: { request: { boardId: string }; response: BoardColumn[] };
   'save-page': { request: SavePageInput; response: SavedClip };
+  'save-images': { request: SaveImagesInput; response: SavedImages };
 }
 
 export type MessageType = keyof MessageMap;

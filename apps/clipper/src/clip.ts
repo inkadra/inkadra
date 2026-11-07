@@ -2,7 +2,8 @@
 import type { ClipResult } from '@inkadra/shared';
 import type { InkadraApi } from './api.ts';
 import { ClipperError } from './errors.ts';
-import { readSelectionInPage } from './page-scripts.ts';
+import { type PageImageOption, pickImages } from './page-images.ts';
+import { collectImagesInPage, readSelectionInPage } from './page-scripts.ts';
 
 /** What can be saved: a link card, a quote (note) or an image. */
 export type ClipContent =
@@ -56,6 +57,20 @@ export async function readTabSelection(tabId: number): Promise<string> {
     return injection?.result ?? '';
   } catch {
     return ''; // chrome:// pages, the Web Store and PDFs.
+  }
+}
+
+/** The pictures of a tab's main frame worth saving. Empty on pages that refuse scripts. */
+export async function readTabImages(tabId: number): Promise<PageImageOption[]> {
+  try {
+    const [injection] = await chrome.scripting.executeScript({
+      target: { tabId },
+      injectImmediately: true,
+      func: collectImagesInPage,
+    });
+    return injection?.result ? pickImages(injection.result.images, injection.result.baseUrl) : [];
+  } catch {
+    return []; // chrome:// pages, the Web Store and PDFs.
   }
 }
 

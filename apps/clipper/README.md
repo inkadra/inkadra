@@ -12,6 +12,13 @@ What it does:
   first, then projects and their sub-boards, or search), a column, a note and tags. Text selected in the page's main frame fills the empty note (up to the API's
   2,000 characters); pages that refuse scripts leave it empty. The tab title is kept on link cards.
   The board is remembered for next time.
+- **Images tab** in the toolbar popup: lists the pictures of the page (its `<img>` elements, with
+  the image the browser picked from `srcset`, or the largest candidate when it has not loaded yet;
+  without duplicates, SVG icons and pictures under 100 px on a side) so you can save several at
+  once, also on sites where right-click doesn't reach the image. Each becomes its own image card
+  on the chosen board and column, with the same tags; they are read and uploaded one at a time
+  like a right-clicked image. Pictures that fail stay selected to try again. CSS background images
+  are not listed; pages that refuse scripts show none.
 - **Right-click menus**: on an image, a selection (a note with the quote and its page), a
   link or the page itself. When connected with recent boards, each has one "Save … to…" item
   listing up to 5 of them, the last used first. Otherwise one item saves in one click: to the first
