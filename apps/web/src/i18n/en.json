@@ -567,6 +567,8 @@
       "front": "Bring to front",
       "back": "Send to back",
       "toUnsorted": "Move to Unsorted",
+      "organize": "Organize",
+      "share": "Share",
       "delete": "Delete",
       "more": "More actions",
       "newNote": "New note here",

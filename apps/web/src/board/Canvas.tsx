@@ -120,7 +120,9 @@ import {
   ContextBar,
   ContextMenu,
   HistoryControls,
+  joinMenuSections,
   type MenuItem,
+  type MenuSection,
   Minimap,
   TOOL_MIME,
   TOOLS,
@@ -3074,286 +3076,330 @@ export function Canvas({
         },
       ];
     };
-    const items: MenuItem[] = [
-      ...listItems,
-      ...(menu.fromEditing &&
-      single &&
-      !readOnly &&
-      !single.locked &&
-      ['note', 'table', 'column'].includes(single.type)
-        ? [
-            { heading: t('board.contextual.cardColor') },
-            ...[undefined, ...NOTE_COLORS].map((color) => ({
-              label: t(color ? `board.colors.${color}` : 'board.colors.none'),
-              action: () => updateElement(doc, single.id, { color }, LOCAL),
-            })),
-          ]
-        : []),
-      ...(single?.type === 'file' && !readOnly && detectedScripts[single.id]
-        ? [
-            {
-              label: t('screenplay.buildFromFile'),
-              icon: 'storyboard' as const,
-              action: () => openDetectedScript(single.id),
-            },
-          ]
-        : []),
-      ...(single &&
-      !readOnly &&
-      !single.locked &&
-      (single.type === 'link' ||
-        (single.type === 'file' &&
-          (() => {
-            const asset = getCachedAsset(single.assetId);
-            return asset && asset !== 'missing' && asset.kind === 'video';
-          })()))
-        ? [{ label: t('board.contextual.appearance'), action: () => setAppearance(single.id) }]
-        : []),
-      ...(editing && single?.type === 'note' && noteEditor.current
-        ? [
-            {
-              label: t('board.contextual.clear'),
-              disabled: noteEditor.current.state.selection.empty,
-              action: () =>
-                noteEditor.current &&
-                selectedBlocks(noteEditor.current).unsetAllMarks().clearNodes().run(),
-            },
-          ]
-        : []),
-      ...(single?.type === 'link' && !readOnly && !single.locked
-        ? [
-            {
-              label: t('board.menu.refreshPreview'),
-              action: () =>
-                void fillLinkPreview(doc, single.id, projectId, boardId, single.url).then((ok) => {
-                  if (!ok)
-                    setToast({
-                      text: t('board.menu.refreshPreviewFailed'),
-                      undo: false,
-                      error: true,
-                    });
-                }),
-            },
-          ]
-        : []),
-      ...(single && (single.type === 'board' || single.type === 'link')
-        ? [{ label: t('board.menu.open'), action: () => openElement(single) }]
-        : []),
-      ...(single &&
-      single.type === 'board' &&
-      !readOnly &&
-      !single.locked &&
-      canRenameBoard(boards?.find((b) => b.id === single.boardId))
-        ? [
-            { label: t('board.menu.rename'), shortcut: 'F2', action: () => setEditing(single.id) },
-            {
-              label: t('board.menu.boardIcon'),
-              action: () => setIconBoard(boards?.find((b) => b.id === single.boardId) ?? null),
-            },
-          ]
-        : []),
-      ...(single?.type === 'color' && !readOnly && !single.locked
-        ? [{ label: t('board.color.edit'), action: () => setEditing(single.id) }]
-        : []),
-      ...(single?.type === 'section' && !readOnly && !single.locked
-        ? [
-            {
-              label: t(single.moveCards ? 'board.menu.moveCardsOff' : 'board.menu.moveCardsOn'),
-              action: () =>
-                updateElement(
-                  doc,
-                  single.id,
-                  { moveCards: single.moveCards ? undefined : true },
-                  LOCAL,
-                ),
-            },
-          ]
-        : []),
-      ...(single?.type === 'table' && !readOnly && !single.locked
-        ? tableMenu(doc, single, menu.cell, t)
-        : []),
-      ...(single && (single.type === 'image' || single.type === 'file')
-        ? [
-            {
-              label: t(single.type === 'image' ? 'board.menu.viewImage' : 'board.menu.viewFile'),
-              action: () => openElement(single),
-            },
-          ]
-        : []),
-      ...(single?.type === 'image' && !readOnly && !single.locked
-        ? [
-            {
-              sheet: 'storyboard' as const,
-              label: t('film.frame.moveImage'),
-              action: () => setMenu({ ...menu, frames: true }),
-            },
-            {
-              toolbar: true,
-              label: t('board.image.cropRotate'),
-              shortcut: 'X',
-              action: () => setCropping(single.id),
-            },
-            ...(hasImageTransform(single)
-              ? [
-                  {
-                    toolbar: true,
-                    label: t('board.image.restoreOriginal'),
-                    action: () => restoreOriginalImage(store, single),
-                  },
-                ]
-              : []),
-            ...paletteItem(single),
-          ]
-        : []),
-      ...(single &&
-      (single.type === 'image' || single.type === 'file') &&
-      !readOnly &&
-      !single.locked
-        ? [{ label: t('board.caption.edit'), action: () => setEditing(single.id) }]
-        : []),
-      ...(single?.type === 'image' &&
-      single.assetId &&
-      !readOnly &&
-      !preview &&
-      canRenameBoard(boards?.find((b) => b.id === boardId))
-        ? [coverItem(single.assetId)]
-        : []),
-      ...(single?.type === 'note'
-        ? [{ label: t('board.menu.openDoc'), action: () => openElement(single) }]
-        : []),
-      ...(single?.type === 'plan'
-        ? [
-            ...(readOnly
-              ? []
-              : [
-                  { label: t('board.plan.edit'), shortcut: '↵', action: () => openElement(single) },
-                  {
-                    label: t('board.plan.linkSceneMenu'),
-                    action: () => setScenePicker({ id: single.id, x: menu.x, y: menu.y }),
-                  },
-                  {
-                    label: t('board.plan.variantMenu'),
-                    action: () => newVariant(single),
-                  },
-                ]),
-            ...scenesOfPlan(single, snap.byId)
-              .slice(0, 1)
-              .map((scene) => ({
-                label: t('board.plan.openScene', { number: scene.number }),
-                action: () => openScene(scene.id),
-              })),
-          ]
-        : []),
-      ...(single?.type === 'frame'
-        ? [
-            { label: t('board.menu.details'), action: () => openElement(single) },
-            ...(readOnly
-              ? []
-              : [{ label: t('board.menu.draw'), action: () => setDrawing(single.id) }]),
-          ]
-        : []),
-      ...(single && single.type !== 'arrow' && !preview
-        ? [
-            {
-              toolbar: true,
-              sheet: 'comment' as const,
-              label: t('comments.open'),
-              action: () => openComments({ elementId: single.id }),
-            },
-          ]
-        : []),
-      ...(onExportSelection && !preview
-        ? [
-            {
-              label: t(
-                selectedEls.filter((e) => e.type !== 'arrow').length === 1
-                  ? 'export.openImage'
-                  : 'export.openSelection',
-              ),
-              action: onExportSelection,
-            },
-          ]
-        : []),
-      ...(readOnly
-        ? []
-        : [
-            ...(selectedEls.some((e) => e.type !== 'arrow')
-              ? [
-                  {
-                    toolbar: !inMoreMenu,
-                    sheet: 'guest' as const,
-                    label: t(
-                      selectedEls.filter((e) => e.type !== 'arrow').every((e) => e.guestHidden)
-                        ? 'guestVisibility.show'
-                        : 'guestVisibility.hide',
+    const cards = selectedEls.filter((e) => e.type !== 'arrow');
+    // The menu in titled sections (open, the card's own tools, organize, share, delete) rather
+    // than one long list; joinMenuSections drops the empty ones.
+    const sections: MenuSection[] = [
+      {
+        items: [
+          ...listItems,
+          ...(menu.fromEditing &&
+          single &&
+          !readOnly &&
+          !single.locked &&
+          ['note', 'table', 'column'].includes(single.type)
+            ? [
+                { heading: t('board.contextual.cardColor') },
+                ...[undefined, ...NOTE_COLORS].map((color) => ({
+                  label: t(color ? `board.colors.${color}` : 'board.colors.none'),
+                  action: () => updateElement(doc, single.id, { color }, LOCAL),
+                })),
+              ]
+            : []),
+        ],
+      },
+      {
+        items: [
+          ...(single && (single.type === 'image' || single.type === 'file')
+            ? [
+                {
+                  label: t(
+                    single.type === 'image' ? 'board.menu.viewImage' : 'board.menu.viewFile',
+                  ),
+                  action: () => openElement(single),
+                },
+              ]
+            : []),
+          ...(single && (single.type === 'board' || single.type === 'link')
+            ? [{ label: t('board.menu.open'), action: () => openElement(single) }]
+            : []),
+          ...(single?.type === 'note'
+            ? [{ label: t('board.menu.openDoc'), action: () => openElement(single) }]
+            : []),
+          ...(single?.type === 'frame'
+            ? [{ label: t('board.menu.details'), action: () => openElement(single) }]
+            : []),
+          ...(single?.type === 'plan' && !readOnly
+            ? [{ label: t('board.plan.edit'), shortcut: '↵', action: () => openElement(single) }]
+            : []),
+          ...(single?.type === 'plan'
+            ? scenesOfPlan(single, snap.byId)
+                .slice(0, 1)
+                .map((scene) => ({
+                  label: t('board.plan.openScene', { number: scene.number }),
+                  action: () => openScene(scene.id),
+                }))
+            : []),
+          ...(single && single.type !== 'arrow' && !preview
+            ? [
+                {
+                  toolbar: true,
+                  sheet: 'comment' as const,
+                  label: t('comments.open'),
+                  action: () => openComments({ elementId: single.id }),
+                },
+              ]
+            : []),
+        ],
+      },
+      {
+        heading: single && t(`board.types.${single.type}`),
+        items: [
+          ...(single?.type === 'file' && !readOnly && detectedScripts[single.id]
+            ? [
+                {
+                  label: t('screenplay.buildFromFile'),
+                  icon: 'storyboard' as const,
+                  action: () => openDetectedScript(single.id),
+                },
+              ]
+            : []),
+          ...(single?.type === 'image' && !readOnly && !single.locked
+            ? [
+                {
+                  toolbar: true,
+                  label: t('board.image.cropRotate'),
+                  shortcut: 'X',
+                  action: () => setCropping(single.id),
+                },
+                ...(hasImageTransform(single)
+                  ? [
+                      {
+                        toolbar: true,
+                        label: t('board.image.restoreOriginal'),
+                        action: () => restoreOriginalImage(store, single),
+                      },
+                    ]
+                  : []),
+              ]
+            : []),
+          ...(single &&
+          (single.type === 'image' || single.type === 'file') &&
+          !readOnly &&
+          !single.locked
+            ? [{ label: t('board.caption.edit'), action: () => setEditing(single.id) }]
+            : []),
+          ...(single?.type === 'image' && !readOnly && !single.locked
+            ? [
+                ...paletteItem(single),
+                {
+                  sheet: 'storyboard' as const,
+                  label: t('film.frame.moveImage'),
+                  action: () => setMenu({ ...menu, frames: true }),
+                },
+              ]
+            : []),
+          ...(single?.type === 'image' &&
+          single.assetId &&
+          !readOnly &&
+          !preview &&
+          canRenameBoard(boards?.find((b) => b.id === boardId))
+            ? [coverItem(single.assetId)]
+            : []),
+          ...(single &&
+          !readOnly &&
+          !single.locked &&
+          (single.type === 'link' ||
+            (single.type === 'file' &&
+              (() => {
+                const asset = getCachedAsset(single.assetId);
+                return asset && asset !== 'missing' && asset.kind === 'video';
+              })()))
+            ? [{ label: t('board.contextual.appearance'), action: () => setAppearance(single.id) }]
+            : []),
+          ...(editing && single?.type === 'note' && noteEditor.current
+            ? [
+                {
+                  label: t('board.contextual.clear'),
+                  disabled: noteEditor.current.state.selection.empty,
+                  action: () =>
+                    noteEditor.current &&
+                    selectedBlocks(noteEditor.current).unsetAllMarks().clearNodes().run(),
+                },
+              ]
+            : []),
+          ...(single?.type === 'link' && !readOnly && !single.locked
+            ? [
+                {
+                  label: t('board.menu.refreshPreview'),
+                  action: () =>
+                    void fillLinkPreview(doc, single.id, projectId, boardId, single.url).then(
+                      (ok) => {
+                        if (!ok)
+                          setToast({
+                            text: t('board.menu.refreshPreviewFailed'),
+                            undo: false,
+                            error: true,
+                          });
+                      },
                     ),
-                    action: () => toggleGuestHidden(store, [...selection]),
-                  },
-                ]
-              : []),
-            {
-              toolbar: true,
-              label: t('board.menu.tags'),
-              action: () => setTagging({ x: menu.x, y: menu.y, ids: [...selection] }),
-            },
-            {
-              toolbar: !inMoreMenu,
-              sheet: 'duplicate' as const,
-              label: t('board.menu.duplicate'),
-              shortcut: '⌘D',
-              action: duplicate,
-            },
-            {
-              toolbar: true,
-              sheet: 'lock' as const,
-              label: locked ? t('board.menu.unlock') : t('board.menu.lock'),
-              shortcut: '⌘L',
-              action: toggleLock,
-            },
-            {
-              label: t('board.menu.front'),
-              shortcut: '⌘]',
-              action: () => bringToFront(doc, [...selection], LOCAL),
-            },
-            {
-              label: t('board.menu.back'),
-              shortcut: '⌘[',
-              action: () => sendToBack(doc, [...selection], LOCAL),
-            },
-            {
-              sheet: 'unsorted' as const,
-              label: t('board.menu.toUnsorted'),
-              action: () => moveToUnsorted(doc, [...selection], LOCAL),
-            },
-            // Arrange (#320): the tidy-ups; the selection bar's Arrange menu has them all.
-            ...(arrangeable > 1
-              ? [
-                  {
-                    toolbar: true,
-                    label: t('board.arrange.mosaic'),
-                    shortcut: '⇧T',
-                    action: () => arrange('mosaic'),
-                  },
-                  { toolbar: true, label: t('board.arrange.rows'), action: () => arrange('rows') },
-                ]
-              : []),
-            ...(menu.fromToolbar ? [] : [{ divider: true as const }]),
-            {
-              toolbar: !inMoreMenu,
-              sheet: 'delete' as const,
-              label: t('board.menu.delete'),
-              shortcut: '⌫',
-              danger: true,
-              action: removeSelection,
-            },
-          ]),
+                },
+              ]
+            : []),
+          ...(single &&
+          single.type === 'board' &&
+          !readOnly &&
+          !single.locked &&
+          canRenameBoard(boards?.find((b) => b.id === single.boardId))
+            ? [
+                {
+                  label: t('board.menu.rename'),
+                  shortcut: 'F2',
+                  action: () => setEditing(single.id),
+                },
+                {
+                  label: t('board.menu.boardIcon'),
+                  action: () => setIconBoard(boards?.find((b) => b.id === single.boardId) ?? null),
+                },
+              ]
+            : []),
+          ...(single?.type === 'color' && !readOnly && !single.locked
+            ? [{ label: t('board.color.edit'), action: () => setEditing(single.id) }]
+            : []),
+          ...(single?.type === 'section' && !readOnly && !single.locked
+            ? [
+                {
+                  label: t(
+                    single.moveCards ? 'board.menu.moveCardsOff' : 'board.menu.moveCardsOn',
+                  ),
+                  action: () =>
+                    updateElement(
+                      doc,
+                      single.id,
+                      { moveCards: single.moveCards ? undefined : true },
+                      LOCAL,
+                    ),
+                },
+              ]
+            : []),
+          ...(single?.type === 'table' && !readOnly && !single.locked
+            ? tableMenu(doc, single, menu.cell, t)
+            : []),
+          ...(single?.type === 'plan' && !readOnly
+            ? [
+                {
+                  label: t('board.plan.linkSceneMenu'),
+                  action: () => setScenePicker({ id: single.id, x: menu.x, y: menu.y }),
+                },
+                { label: t('board.plan.variantMenu'), action: () => newVariant(single) },
+              ]
+            : []),
+          ...(single?.type === 'frame' && !readOnly
+            ? [{ label: t('board.menu.draw'), action: () => setDrawing(single.id) }]
+            : []),
+        ],
+      },
+      {
+        heading: t('board.menu.organize'),
+        items: readOnly
+          ? []
+          : [
+              {
+                toolbar: true,
+                label: t('board.menu.tags'),
+                action: () => setTagging({ x: menu.x, y: menu.y, ids: [...selection] }),
+              },
+              {
+                toolbar: !inMoreMenu,
+                sheet: 'duplicate' as const,
+                label: t('board.menu.duplicate'),
+                shortcut: '⌘D',
+                action: duplicate,
+              },
+              {
+                toolbar: true,
+                sheet: 'lock' as const,
+                label: locked ? t('board.menu.unlock') : t('board.menu.lock'),
+                shortcut: '⌘L',
+                action: toggleLock,
+              },
+              {
+                label: t('board.menu.front'),
+                shortcut: '⌘]',
+                action: () => bringToFront(doc, [...selection], LOCAL),
+              },
+              {
+                label: t('board.menu.back'),
+                shortcut: '⌘[',
+                action: () => sendToBack(doc, [...selection], LOCAL),
+              },
+              {
+                sheet: 'unsorted' as const,
+                label: t('board.menu.toUnsorted'),
+                action: () => moveToUnsorted(doc, [...selection], LOCAL),
+              },
+              // Arrange (#320): the tidy-ups; the selection bar's Arrange menu has them all.
+              ...(arrangeable > 1
+                ? [
+                    {
+                      toolbar: true,
+                      label: t('board.arrange.mosaic'),
+                      shortcut: '⇧T',
+                      action: () => arrange('mosaic'),
+                    },
+                    {
+                      toolbar: true,
+                      label: t('board.arrange.rows'),
+                      action: () => arrange('rows'),
+                    },
+                  ]
+                : []),
+            ],
+      },
+      {
+        heading: t('board.menu.share'),
+        items: [
+          ...(onExportSelection && !preview
+            ? [
+                {
+                  label: t(cards.length === 1 ? 'export.openImage' : 'export.openSelection'),
+                  action: onExportSelection,
+                },
+              ]
+            : []),
+          ...(!readOnly && cards.length > 0
+            ? [
+                {
+                  toolbar: !inMoreMenu,
+                  sheet: 'guest' as const,
+                  label: t(
+                    cards.every((e) => e.guestHidden)
+                      ? 'guestVisibility.show'
+                      : 'guestVisibility.hide',
+                  ),
+                  action: () => toggleGuestHidden(store, [...selection]),
+                },
+              ]
+            : []),
+        ],
+      },
+      {
+        items: readOnly
+          ? []
+          : [
+              {
+                toolbar: !inMoreMenu,
+                sheet: 'delete' as const,
+                label: t('board.menu.delete'),
+                shortcut: '⌫',
+                danger: true,
+                action: removeSelection,
+              },
+            ],
+      },
     ];
     // These flags mark actions actually rendered by ContextBar for the same selection.
     // Standalone right-click menus keep the complete permission-filtered action list.
     // The phone's card sheet lists them all: its quick actions take the bar's place.
-    return menu.fromToolbar && !menu.fromEditing && !isPhone
-      ? items.filter((item) => !('toolbar' in item && item.toolbar))
-      : items;
+    const onBar = menu.fromToolbar && !menu.fromEditing && !isPhone;
+    return joinMenuSections(
+      sections.map((section) => ({
+        ...section,
+        items: onBar
+          ? section.items.filter((item) => !('toolbar' in item && item.toolbar))
+          : section.items,
+      })),
+    );
   }, [
     isPhone,
     menu,
