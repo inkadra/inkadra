@@ -429,6 +429,13 @@ select:disabled {
   border-color: var(--ink-accent-primary);
 }
 
+/* A ring apart from the border, so focus never reads as selection. */
+.tile:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--ink-bg-panel),
+    0 0 0 4px var(--ink-accent-primary);
+}
+
 .tile img {
   display: block;
   width: 100%;
@@ -449,8 +456,8 @@ select:disabled {
   height: 18px;
   border-radius: 50%;
   border: 1.5px solid #fff;
-  background: rgb(0 0 0 / 0.25);
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.2);
+  background: rgb(0 0 0 / 0.35);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25);
 }
 
 .tile[aria-pressed="true"] .tile__check {
