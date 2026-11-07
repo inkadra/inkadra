@@ -599,7 +599,8 @@
       "palette": "Aligner sur la grille : activer ou désactiver"
     },
     "unsorted": {
-      "empty": "Rien à trier. Ce que vous enregistrez depuis le navigateur ou le téléphone arrive ici."
+      "empty": "Rien à trier. Ce que vous enregistrez depuis le navigateur ou le téléphone arrive ici.",
+      "clipper": "Installer le clipper pour Chrome ↗"
     },
     "uploads": {
       "title": "Envois",
@@ -2145,7 +2146,15 @@
       "namePlaceholder": "Script de sauvegarde",
       "create": "Créer un jeton",
       "copyNow": "Jeton « {{name}} » créé. Copiez-le maintenant : vous ne le reverrez plus.",
-      "done": "Terminé"
+      "done": "Terminé",
+      "clipper": {
+        "title": "Inkadra Clipper pour Chrome",
+        "body": "Enregistrez pages, images, texte et liens depuis le navigateur dans les Non triés d’un tableau.",
+        "address": "Adresse à saisir dans le clipper :",
+        "copy": "Copier",
+        "connected": "Connecté",
+        "store": "Disponible sur le Chrome Web Store"
+      }
     },
     "delete": {
       "title": "Supprimer le compte",
@@ -2581,7 +2590,8 @@
     "tips": {
       "search": "⌘K / Ctrl+K recherche les projets, tableaux et commandes.",
       "drag": "Glissez des fichiers et des liens sur le canevas.",
-      "phone": "Depuis le téléphone, enregistrez dans Non triés."
+      "phone": "Depuis le téléphone, enregistrez dans Non triés.",
+      "clipper": "Depuis le navigateur, enregistrez avec <link>Inkadra Clipper ↗</link>"
     },
     "settingsPending": "Paramètres, configuration de l’instance incomplète",
     "details": "Détails",

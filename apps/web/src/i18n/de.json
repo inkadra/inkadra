@@ -599,7 +599,8 @@
       "palette": "Am Raster ausrichten: an oder aus"
     },
     "unsorted": {
-      "empty": "Nichts zu sortieren. Was du im Browser oder auf dem Handy speicherst, landet hier."
+      "empty": "Nichts zu sortieren. Was du im Browser oder auf dem Handy speicherst, landet hier.",
+      "clipper": "Clipper für Chrome installieren ↗"
     },
     "uploads": {
       "title": "Uploads",
@@ -2145,7 +2146,15 @@
       "namePlaceholder": "Backup-Skript",
       "create": "Token erstellen",
       "copyNow": "Token „{{name}}“ erstellt. Kopiere es jetzt: Du siehst es nicht noch einmal.",
-      "done": "Fertig"
+      "done": "Fertig",
+      "clipper": {
+        "title": "Inkadra Clipper für Chrome",
+        "body": "Speichere Seiten, Bilder, Text und Links aus dem Browser in Unsortiert eines Boards.",
+        "address": "Adresse für den Clipper:",
+        "copy": "Kopieren",
+        "connected": "Verbunden",
+        "store": "Im Chrome Web Store verfügbar"
+      }
     },
     "delete": {
       "title": "Konto löschen",
@@ -2581,7 +2590,8 @@
     "tips": {
       "search": "⌘K / Strg+K sucht Projekte, Boards und Befehle.",
       "drag": "Zieh Dateien und Links auf den Canvas.",
-      "phone": "Speichere vom Handy aus in Unsortiert."
+      "phone": "Speichere vom Handy aus in Unsortiert.",
+      "clipper": "Im Browser speicherst du mit <link>Inkadra Clipper ↗</link>"
     },
     "settingsPending": "Einstellungen, Einrichtung der Instanz unvollständig",
     "details": "Details",
