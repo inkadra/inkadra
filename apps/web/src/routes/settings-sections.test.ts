@@ -31,6 +31,7 @@ it('identifies all settings pages and localizes headings, descriptions and group
       'providers',
       'registration',
       'backups',
+      'server',
       'members',
     ]) {
       const pathname = section === 'members' ? '/settings/team' : '/settings';

@@ -2,12 +2,13 @@ import type { InstanceSettings as Settings, StorageUsage } from '@inkadra/shared
 import { Switch } from '@inkadra/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { FeedbackRow, FeedbackSettings } from '../feedback/FeedbackSettings.tsx';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { BackupSettings } from './BackupSettings.tsx';
 import { ProviderIcon } from './ProviderIcon.tsx';
-import { DiagnosticsLink } from './SettingsShell.tsx';
+import { ServerSettings } from './server/ServerSettings.tsx';
 import { formatStorage, StorageCharts } from './StorageCharts.tsx';
 import { trackSave } from './settings-save.ts';
 import { AutosaveText, Badge, Card, Row, Segmented } from './settings-ui.tsx';
@@ -118,10 +119,10 @@ function InstanceStatus({ setup }: { setup: Setup }) {
             </span>
           </Row>
         )}
-        <Row label={t('settingsUi.diagnostics')} help={t('settingsUi.about.diagnosticsHelp')}>
-          <DiagnosticsLink className="ink-btn ink-btn--secondary">
+        <Row label={t('settingsUi.pages.server')} help={t('settingsUi.about.serverHelp')}>
+          <Link className="ink-btn ink-btn--secondary" to="/settings?section=server" replace>
             {t('settingsUi.about.openDiagnostics')}
-          </DiagnosticsLink>
+          </Link>
         </Row>
         <FeedbackRow />
       </div>
@@ -201,6 +202,7 @@ export function InstanceSettings({ section, setup }: { section: string; setup: S
   if (section === 'workspace') return <StoragePage />;
   if (section === 'providers') return <AccessPage />;
   if (section === 'backups') return <BackupSettings />;
+  if (section === 'server') return <ServerSettings />;
   return <InstancePage section={section} setup={setup} />;
 }
 

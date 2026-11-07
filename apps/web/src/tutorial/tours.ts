@@ -344,6 +344,19 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    id: 'server',
+    group: 'admin',
+    icon: 'tiles',
+    admin: true,
+    offer: 'server',
+    href: '/settings?section=server',
+    steps: [
+      { anchor: 'server', media: 'gear', side: 'bottom' },
+      { anchor: 'server-problems', media: 'bell', side: 'top' },
+      { anchor: 'server-alerts', media: 'bell', side: 'top' },
+    ],
+  },
+  {
     id: 'users',
     group: 'admin',
     icon: 'user',

@@ -2019,7 +2019,12 @@
       "link_opened": "opened the board",
       "task_assigned": "assigned you a task",
       "feedback_received": "New in-app report received",
-      "review_submitted": "sent their review"
+      "review_submitted": "sent their review",
+      "server_alert_disk_full": "Almost out of space: {{free}} left of {{total}}",
+      "server_alert_service_down": "{{service}} is not answering",
+      "server_alert_backup_failed": "The backup failed",
+      "server_alert_repeated_errors": "The same error happened {{times}} times in the last hour",
+      "server_alert_unknown": "Something is wrong with the server"
     },
     "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
@@ -2622,7 +2627,8 @@
       "access": "Sign-in",
       "about": "About",
       "toolbar": "Toolbar",
-      "tutorials": "Tutorials"
+      "tutorials": "Tutorials",
+      "server": "Server"
     },
     "leads": {
       "account": "Your profile and how you sign in.",
@@ -2634,7 +2640,8 @@
       "about": "Instance name, address, version and setup status.",
       "backups": "Nightly copies of the database, to restore the server after a failure.",
       "toolbar": "Choose what you see in the bottom bar. Hidden tools stay in \"+ ▾\" and in the command palette.",
-      "tutorials": "Watch the guided tours again and choose whether to offer them."
+      "tutorials": "Watch the guided tours again and choose whether to offer them.",
+      "server": "How the server is doing: resources, services, jobs, problems and alerts."
     },
     "autosave": {
       "idle": "Autosave on",
@@ -2744,7 +2751,8 @@
       "version": "Version",
       "identity": "Instance",
       "diagnosticsHelp": "Network, proxy and service checks, useful when something does not work",
-      "openDiagnostics": "Open"
+      "openDiagnostics": "Open",
+      "serverHelp": "Server health, network and proxy checks, recent problems"
     },
     "search": "Search settings",
     "noResults": "No settings found",
@@ -2760,7 +2768,8 @@
       "instance": "Instance name, Public address, Version, Diagnostics, Instance status, Inkadra news, Reports, Send to the Inkadra developers, Destination, Repository, GitHub token, Guests can report, Attachment retention, Reports received",
       "backups": "Backups, Back up now, Restore, Retention, Nightly backup",
       "toolbar": "Toolbar, Tools, Note, Image, Link, To-do, Colour, Arrow, Frame, Storyboard, Reset to default toolbar",
-      "tutorials": "Welcome tour, Hints the first time, Start over"
+      "tutorials": "Welcome tour, Hints the first time, Start over",
+      "server": "Processor, Memory, Space, Services, Problems, Alerts, Diagnostics, Video"
     },
     "close": "Close settings",
     "dangerZone": "Danger zone",
@@ -4348,7 +4357,386 @@
             "text": "Sign-in methods are in Sign-in."
           }
         }
+      },
+      "server": {
+        "name": "Server",
+        "steps": {
+          "0": {
+            "title": "At a glance",
+            "text": "One sentence says whether the server is well."
+          },
+          "1": {
+            "title": "Problems",
+            "text": "Retry, mark as seen or send to the developers."
+          },
+          "2": {
+            "title": "Alerts",
+            "text": "Tells you when something is wrong."
+          }
+        }
       }
+    }
+  },
+  "server": {
+    "view": {
+      "label": "View",
+      "simple": "Simple",
+      "advanced": "Advanced"
+    },
+    "loadError": "I can’t read the state of the server.",
+    "when": {
+      "night": "last night at {{time}}",
+      "today": "today at {{time}}",
+      "yesterday": "yesterday at {{time}}"
+    },
+    "health": {
+      "ok": "Everything works",
+      "bad": "Something is wrong",
+      "uptime": "Up for {{time}}",
+      "backup": {
+        "ready": "last backup {{when}}, done",
+        "failed": "last backup {{when}}, failed",
+        "running": "backup running",
+        "none": "no backup yet"
+      },
+      "problems_one": "1 problem to look at",
+      "problems_other": "{{count}} problems to look at",
+      "noProblems": "no problems",
+      "seeProblem_one": "See the problem",
+      "seeProblem_other": "See the problems",
+      "whatToDo": "What to do",
+      "down": "{{service}} is not answering.",
+      "downSince": "{{service}} has not answered for {{time}}.",
+      "effects": {
+        "web": "The site is not answering.",
+        "collab": "Boards do not update live; everything else works.",
+        "worker": "New videos stay in the queue; everything else works.",
+        "database": "Inkadra cannot read or save anything.",
+        "queue": "Background jobs are stopped."
+      }
+    },
+    "meters": {
+      "label": "Resources now",
+      "of": "of {{total}}",
+      "cpu": {
+        "name": "Processor",
+        "hint": "How hard the server is working",
+        "ok": "Calm",
+        "busy": "Busy",
+        "high": "At the limit"
+      },
+      "memory": {
+        "name": "Memory",
+        "hint": "Memory used by Inkadra’s programs",
+        "ok": "Calm",
+        "busy": "Busy",
+        "high": "At the limit"
+      },
+      "storage": {
+        "name": "Space",
+        "years": "Enough for years",
+        "months_one": "Enough for about 1 month",
+        "months_other": "Enough for about {{count}} months",
+        "almostFull": "Almost full",
+        "split": "Originals {{originals}} · copies and previews {{derived}}",
+        "bucket": "S3 bucket",
+        "used": "used",
+        "s3Hint": "The storage provider does not report a total, so we don’t show how much is left.",
+        "growth": "Growing by about {{size}} a month."
+      },
+      "network": {
+        "name": "Internet",
+        "normal": "Normal",
+        "unknown": "Not measured",
+        "in": "received",
+        "out": "sent",
+        "hint": "↓ files received · ↑ files sent to people viewing boards"
+      },
+      "speed": {
+        "name": "Speed",
+        "unit": "seconds",
+        "fast": "Fast",
+        "slow": "A bit slow",
+        "verySlow": "Slow",
+        "idle": "No requests",
+        "hint": "How long Inkadra takes to answer. Under 0.5 s is fast"
+      },
+      "backup": {
+        "name": "Backup",
+        "ready": "Done",
+        "failed": "Failed",
+        "running": "Running",
+        "none": "Never made",
+        "off": "Off",
+        "next": "next {{when}}"
+      }
+    },
+    "services": {
+      "title": "Services",
+      "allOk": "all answering",
+      "someDown_one": "1 not answering",
+      "someDown_other": "{{count}} not answering",
+      "lastSignal": "last signal {{time}}",
+      "names": {
+        "web": "Site and sign-in",
+        "collab": "Live collaboration",
+        "worker": "Video and preview processing",
+        "database": "Database and job queue",
+        "configuration": "Configuration"
+      },
+      "long": {
+        "web": "The site",
+        "collab": "Live collaboration",
+        "worker": "Video and preview processing",
+        "database": "The database",
+        "queue": "The job queue",
+        "configuration": "The configuration"
+      },
+      "status": {
+        "ok": "Working",
+        "warning": "Slow to answer",
+        "down": "Not answering",
+        "off": "Not used"
+      },
+      "configuration": "Public address, HTTPS, proxy, data folder, file storage, video encoding",
+      "checksPassed_one": "1 check passed",
+      "checksPassed_other": "{{count}} checks passed",
+      "checksFailing_one": "1 to fix",
+      "checksFailing_other": "{{count}} to fix",
+      "checks": "Configuration checks"
+    },
+    "roles": {
+      "web": "web",
+      "collab": "collab",
+      "worker": "worker",
+      "all": "all in one"
+    },
+    "chart": {
+      "title": "Over time",
+      "metric": "What to show",
+      "period": "Period",
+      "cpu": "Processor",
+      "memory": "Memory",
+      "network": "Internet",
+      "received": "Received",
+      "sent": "Sent",
+      "ranges": {
+        "15m": "Last 15 minutes",
+        "1h": "Last hour",
+        "24h": "Last 24 hours",
+        "7d": "Last 7 days"
+      },
+      "start": {
+        "15m": "15 min ago",
+        "1h": "1 hour ago",
+        "24h": "24 hours ago",
+        "7d": "7 days ago"
+      },
+      "middle": {
+        "15m": "7 min ago",
+        "1h": "30 min ago",
+        "24h": "12 hours ago",
+        "7d": "3½ days ago"
+      },
+      "now": "now",
+      "videos_one": "1 video converted",
+      "videos_other": "{{count}} videos converted",
+      "backup": "Backup",
+      "backupFailed": "Backup failed",
+      "label": "{{metric}}, {{range}}",
+      "empty": "No data yet: the first arrives in a few seconds."
+    },
+    "videos": {
+      "title": "Videos being prepared",
+      "lead": "Inkadra makes a light copy of every video, so it plays well on phones too.",
+      "meta": "{{waiting}} waiting · {{ready}} ready today",
+      "empty": "No videos being prepared.",
+      "hidden": "A video of a project you are not a member of",
+      "progress": "{{percent}} · about {{time}} left"
+    },
+    "people": {
+      "title": "Who is connected now",
+      "meta": "{{people}} on {{boards}}",
+      "people_one": "1 person",
+      "people_other": "{{count}} people",
+      "boards_one": "1 board",
+      "boards_other": "{{count}} boards",
+      "peak": "peak {{count}}",
+      "empty": "Nobody is connected now.",
+      "hidden": "A board of a project you are not a member of",
+      "hiddenShort": "Project you are not a member of",
+      "since": "for {{time}}"
+    },
+    "problems": {
+      "title": "Recent problems",
+      "period": "last 7 days",
+      "send": "Send to the developers",
+      "reportTitle": "Server problems",
+      "empty": "No problems in the last 7 days.",
+      "times_one": "once",
+      "times_other": "{{count}} times",
+      "technical": "Technical details",
+      "retry": "Retry",
+      "seen": "Mark as seen",
+      "actionError": "That didn’t work. Try again in a moment.",
+      "retryError": "It can’t be retried: the job is gone.",
+      "file": "File {{file}}.",
+      "fileOnBoard": "File {{file}} on the board “{{board}}”.",
+      "kinds": {
+        "video_failed": {
+          "title": "A video was not converted",
+          "text": "The file may be damaged or incomplete. The original still plays."
+        },
+        "preview_failed": {
+          "title": "A preview was not made",
+          "text": "The file still downloads, but it has no thumbnail."
+        },
+        "office_failed": {
+          "title": "A document was not converted",
+          "text": "The document still downloads, but its pages don’t show on the board."
+        },
+        "email_failed": {
+          "title": "Some emails were not sent",
+          "text": "The mail service did not answer, even after a few tries."
+        },
+        "transfer_failed": {
+          "title": "An export or import failed",
+          "text": "Whoever asked for it can try again from the project."
+        },
+        "job_failed": {
+          "title": "A background job failed",
+          "text": "Inkadra usually tries again by itself next time."
+        },
+        "backup_failed": {
+          "title": "The backup failed",
+          "text": "Your data is safe, but check it before the next backup."
+        },
+        "disk_full": {
+          "title": "Almost out of space",
+          "text": "Free some space or add a disk before uploads stop."
+        },
+        "service_down": {
+          "title": "A service stopped answering",
+          "text": "{{service}} gave no signal for more than a minute and a half."
+        },
+        "server_error": {
+          "title": "The server had an error",
+          "text": "A request did not go through. If it keeps happening, send it to the developers."
+        },
+        "config_check": {
+          "title": "Configuration to fix",
+          "text": ""
+        },
+        "unknown": {
+          "title": "Something did not work",
+          "text": "The technical details say what."
+        }
+      }
+    },
+    "alerts": {
+      "title": "Alerts",
+      "enabled": "Tell me when something is wrong",
+      "enabledHelp": "Almost out of space, a service not answering, a failed backup, errors that keep happening. Every administrator gets the alert.",
+      "how": "How",
+      "howHelp": "Email goes out only for serious problems, at most once an hour.",
+      "noEmail": "To alert by email too, the server must be able to send email (SMTP).",
+      "inbox": "In notifications",
+      "email": "Notifications and email"
+    },
+    "details": {
+      "title": "Technical details",
+      "lead": "For whoever runs the server: processes, job queues, database, version",
+      "version": "Version",
+      "encoding": "Video encoding",
+      "encoder": {
+        "none": "Off",
+        "software": "Software (processor)",
+        "hardware": "Hardware ({{label}})"
+      },
+      "database": "Database",
+      "connections_one": "1 connection",
+      "connections_other": "{{count}} connections",
+      "responses": "Answers",
+      "responsesValue": "p95 {{p95}} · errors {{errors}} in the last hour",
+      "files": "File storage",
+      "driver": {
+        "local": "Local disk",
+        "s3": "S3 bucket"
+      },
+      "copy": "Copy the technical data",
+      "process": "Process",
+      "cpu": "Processor",
+      "memory": "Memory",
+      "uptime": "Up for",
+      "signal": "Signal",
+      "queue": "Job queue",
+      "waiting": "Waiting",
+      "active": "Running",
+      "failed": "Failed 24 h",
+      "queues": {
+        "proxies": "Video copies",
+        "media": "Previews",
+        "office": "Office documents",
+        "transfers": "Transfers",
+        "email": "Email",
+        "maintenance": "Maintenance"
+      }
+    },
+    "advanced": {
+      "version": "Version",
+      "uptime": "Up for",
+      "processes": "Processes",
+      "video": "Video",
+      "checks": "Checks",
+      "checksValue": "{{ok}} of {{total}} ok",
+      "p95": "p95 answer",
+      "backup": "Backup",
+      "range": "Period",
+      "ranges": {
+        "15m": "15 min",
+        "1h": "1 h",
+        "24h": "24 h",
+        "7d": "7 d"
+      },
+      "summary": "Summary",
+      "cpu": "CPU",
+      "cores_one": "1 core",
+      "cores_other": "{{count}} cores",
+      "memory": "Memory",
+      "limit": "limit {{size}}",
+      "network": "Network",
+      "container": "container",
+      "today": "today ↓ {{in}} ↑ {{out}}",
+      "storage": "Space",
+      "storageSplit": "originals {{originals}} · copies {{copies}} · previews {{previews}}",
+      "cpuMeta": "average {{avg}} · peak {{peak}}",
+      "cpuCap_one": "% of 1 core, all processes",
+      "cpuCap_other": "% of {{count}} cores, all processes",
+      "memoryMeta": "peak {{peak}}",
+      "memoryCap": "In use against the limit of {{limit}}",
+      "latency": "Response times",
+      "latencyMeta": "p95 · errors {{errors}}",
+      "latencyCap": "Milliseconds per request: 95 % of requests are faster than this",
+      "networkTitle": "Network",
+      "networkMeta": "Inkadra container traffic only",
+      "in": "Incoming (above)",
+      "out": "Outgoing (below)",
+      "transcodes": "Transcodes",
+      "transcodesMeta": "{{active}} running · {{waiting}} queued",
+      "speed": "{{speed}}× real time",
+      "transcodesFoot": "Today {{ready}} done, {{failed}} failed · average time {{average}}",
+      "queues": "Job queues",
+      "noQueues": "Without Valkey the jobs run inside the site: there are no queues.",
+      "processesTitle": "Processes",
+      "people": "People connected",
+      "log": "Error log",
+      "severity": "Severity",
+      "all": "Errors and warnings",
+      "errorsOnly": "Errors only",
+      "retryAll": "Retry failed",
+      "seenAll": "Mark all as seen",
+      "error": "Error",
+      "warning": "Warning"
     }
   }
 }
