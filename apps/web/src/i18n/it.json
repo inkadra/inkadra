@@ -602,7 +602,13 @@
     },
     "unsorted": {
       "empty": "Niente da smistare. Qui arriva ciò che salvi dal browser o dal telefono.",
-      "clipper": "Installa il clipper per Chrome ↗"
+      "clipper": "Installa il clipper per Chrome ↗",
+      "close": "Chiudi Non ordinati",
+      "hint": "Trascinali sulla lavagna per sistemarli.",
+      "count_one": "{{count}} elemento",
+      "count_other": "{{count}} elementi",
+      "placeAll": "Metti tutti sulla lavagna",
+      "drop": "Rilascia qui per metterlo da parte"
     },
     "uploads": {
       "title": "Caricamenti",

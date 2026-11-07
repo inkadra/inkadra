@@ -602,7 +602,13 @@
     },
     "unsorted": {
       "empty": "Nothing to sort. What you save from the browser or your phone lands here.",
-      "clipper": "Install the clipper for Chrome ↗"
+      "clipper": "Install the clipper for Chrome ↗",
+      "close": "Close Unsorted",
+      "hint": "Drag them onto the board to sort them.",
+      "count_one": "{{count}} item",
+      "count_other": "{{count}} items",
+      "placeAll": "Put them all on the board",
+      "drop": "Drop here to set it aside"
     },
     "uploads": {
       "title": "Uploads",

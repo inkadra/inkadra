@@ -82,8 +82,15 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   const zoomBounds = await page.locator('.canvas__corner .zoom').boundingBox();
   expect(zoomBounds!.y + zoomBounds!.height).toBeLessThanOrEqual(toolbarBounds!.y);
   const unsortedBounds = await page.locator('.canvas .unsorted__toggle').boundingBox();
-  expect(unsortedBounds!.y + unsortedBounds!.height).toBeLessThanOrEqual(zoomBounds!.y);
+  // Both at the top of the board, under the header.
+  const boardTop = (await page.locator('.canvas').boundingBox())!.y;
+  expect(zoomBounds!.y - boardTop).toBeLessThanOrEqual(16);
+  // On the zoom's row, to its right, without touching it.
+  expect(unsortedBounds!.x).toBeGreaterThanOrEqual(zoomBounds!.x + zoomBounds!.width);
+  expect(unsortedBounds!.x + unsortedBounds!.width).toBeLessThanOrEqual(390);
+  expect(unsortedBounds!.y + unsortedBounds!.height).toBeLessThanOrEqual(toolbarBounds!.y);
   expect(unsortedBounds!.height).toBeGreaterThanOrEqual(44);
+  await expect(page.getByRole('button', { name: /^Non ordinati/ })).toBeVisible();
   await toolbar.getByRole('button', { name: 'Nota', exact: true }).tap();
   await expect(page.locator('[data-type="note"] [contenteditable="true"]')).toBeFocused();
   await page.keyboard.press('Escape');

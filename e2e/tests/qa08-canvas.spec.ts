@@ -185,7 +185,17 @@ for (const width of [1280, 390]) {
       await page.mouse.wheel(0, -250);
       await page.keyboard.up('Control');
       await page.getByRole('button', { name: 'Fatto', exact: true }).click();
-      await card.click({ button: 'right' });
+      // On a phone the zoom sits at the top of the board and can cover the zoomed card's middle.
+      const zoomed = (await card.boundingBox())!;
+      const corner = (await page.locator('.canvas__corner').boundingBox())!;
+      const below = corner.y + corner.height + 12 - zoomed.y;
+      await card.click({
+        button: 'right',
+        position:
+          width < 768 && below > zoomed.height / 2
+            ? { x: zoomed.width / 2, y: Math.min(zoomed.height - 4, below) }
+            : undefined,
+      });
       await cardAction(page, /Tag/).click();
       await expect(popup).toBeVisible();
       await shoot(page, `${width}-tags`);

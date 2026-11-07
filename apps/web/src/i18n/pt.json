@@ -602,7 +602,13 @@
     },
     "unsorted": {
       "empty": "Nada para organizar. O que você salva do navegador ou do celular chega aqui.",
-      "clipper": "Instale o clipper para Chrome ↗"
+      "clipper": "Instale o clipper para Chrome ↗",
+      "close": "Fechar Não organizados",
+      "hint": "Arraste-os para o quadro para organizá-los.",
+      "count_one": "{{count}} item",
+      "count_other": "{{count}} itens",
+      "placeAll": "Colocar todos no quadro",
+      "drop": "Solte aqui para deixá-lo de lado"
     },
     "uploads": {
       "title": "Envios",

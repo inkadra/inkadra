@@ -602,7 +602,13 @@
     },
     "unsorted": {
       "empty": "Nichts zu sortieren. Was du im Browser oder auf dem Handy speicherst, landet hier.",
-      "clipper": "Clipper für Chrome installieren ↗"
+      "clipper": "Clipper für Chrome installieren ↗",
+      "close": "Unsortiert schließen",
+      "hint": "Zieh sie auf das Board, um sie einzuordnen.",
+      "count_one": "{{count}} Element",
+      "count_other": "{{count}} Elemente",
+      "placeAll": "Alle aufs Board legen",
+      "drop": "Hier ablegen, um es beiseitezulegen"
     },
     "uploads": {
       "title": "Uploads",

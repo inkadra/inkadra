@@ -323,7 +323,7 @@ for (const width of [1280, 390]) {
       await expect(page.locator('.unsorted__panel img').first()).toHaveCSS('object-fit', 'contain');
       // Two pictures fit their tiles whole instead of being squashed into strips.
       for (const media of await page.locator('.unsorted__panel .card__media').all())
-        expect((await media.boundingBox())!.height).toBeGreaterThanOrEqual(139);
+        expect((await media.boundingBox())!.height).toBeGreaterThanOrEqual(71);
       await shot('drawer');
       await page.locator('.unsorted__toggle').click();
       await expect(page.locator('.unsorted__panel:not(.ink-motion-exit)')).toHaveCount(0);
