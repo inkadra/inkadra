@@ -402,6 +402,11 @@ export interface CanvasProps {
 /** A character card narrower than this leaves its name no room next to the portrait. */
 const CHARACTER_MIN_WIDTH = 160;
 
+/** Cards whose height follows their content: resizing one sets only its width. */
+function resizesWidthOnly(el: Element): boolean {
+  return el.type === 'character' || el.type === 'link' || el.type === 'section' || isContainer(el);
+}
+
 export function Canvas({
   conn,
   breadcrumb,
@@ -1932,7 +1937,7 @@ export function Canvas({
             }
           : el.type === 'character'
             ? { widthOnly: true, minWidth: CHARACTER_MIN_WIDTH }
-            : { widthOnly: el.type === 'link' || el.type === 'section' || isContainer(el) };
+            : { widthOnly: resizesWidthOnly(el) };
       store.undo.stopCapturing();
       gesture.current = { kind: 'resize', id, corner: handle, start: p, rect, options };
       rootRef.current?.setPointerCapture(e.pointerId);
@@ -2171,11 +2176,7 @@ export function Canvas({
       if (!current || current.locked || readOnly || current.parent !== null) return;
       const { x, y, w, h } = o.resize;
       doc.transact(() => {
-        const widthOnly =
-          current.type === 'character' ||
-          current.type === 'link' ||
-          current.type === 'section' ||
-          isContainer(current);
+        const widthOnly = resizesWidthOnly(current);
         updateElement(
           doc,
           g.id,
@@ -2187,7 +2188,8 @@ export function Canvas({
           doc,
           arrowsOf(),
           [g.id],
-          (id) => (id === g.id ? { x, y, w, h } : cardRect(id)),
+          (id) =>
+            id === g.id ? { x, y, w, h: widthOnly ? store.heightOf(current) : h } : cardRect(id),
           LOCAL,
         );
       }, LOCAL);
@@ -2862,6 +2864,19 @@ export function Canvas({
     return out;
   }, [arrows, overlay, cardRect, sizeVersion]);
 
+  /**
+   * Where a card is drawn now: the rect being dragged, whose height, for a card that sets only its
+   * width, is the one its content takes at that width (a character's portrait grows at 260 px).
+   */
+  const shownRect = useCallback(
+    (el: Element): Rect => {
+      const r = overlay.resize;
+      if (r?.id !== el.id) return liveRect(el);
+      return resizesWidthOnly(el) ? { ...r, h: liveRect(el).h } : r;
+    },
+    [overlay.resize, liveRect],
+  );
+
   const selectedEls = useMemo(
     () => [...selection].map((id) => snap.byId.get(id)).filter((e): e is Element => !!e),
     [selection, snap],
@@ -2870,13 +2885,11 @@ export function Canvas({
   const selectionBox = useMemo(() => {
     const free = selectedEls.filter((e) => e.parent === null);
     // A card being resized carries the bar along, not only once it is let go.
-    const b = boundsOf(
-      free.map((e) => (overlay.resize?.id === e.id ? overlay.resize : liveRect(e))),
-    );
+    const b = boundsOf(free.map(shownRect));
     if (!b) return null;
     const a = worldToScreen(viewport, { x: b.x, y: b.y });
     return { x: a.x, y: a.y, w: b.w * viewport.zoom, h: b.h * viewport.zoom };
-  }, [selectedEls, viewport, liveRect, sizeVersion, overlay.resize]);
+  }, [selectedEls, viewport, shownRect, sizeVersion]);
 
   const visibleCards = useMemo(() => snap.canvas.filter((e) => e.type !== 'arrow'), [snap]);
   const frameOf = (id: string | null) => {
@@ -3541,12 +3554,11 @@ export function Canvas({
                   el.type !== 'arrow',
               )
               .map((el) => {
-                const rect = overlay.resize?.id === el.id ? overlay.resize : liveRect(el);
                 return (
                   <ResizeHandles
                     key={el.id}
                     id={el.id}
-                    rect={rect}
+                    rect={shownRect(el)}
                     zoom={viewport.zoom}
                     resizing={overlay.resize?.id === el.id}
                   />
