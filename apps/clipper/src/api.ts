@@ -28,6 +28,8 @@ export interface ClipFileFields {
   columnId?: string;
   sourceUrl?: string;
   note?: string;
+  /** One `tags` part each. */
+  tags?: string[];
 }
 
 const STATUS_KINDS: Record<number, ErrorKind> = {
@@ -121,7 +123,7 @@ export class InkadraApi {
   clipFile(fields: ClipFileFields, file: Blob, filename: string): Promise<ClipResult> {
     const form = new FormData();
     for (const [key, value] of Object.entries(fields))
-      if (value !== undefined) form.append(key, value);
+      for (const item of [value ?? []].flat()) form.append(key, item);
     // The file goes last so a streaming parser has the fields before the bytes.
     form.append('file', file, filename);
     return this.sendClip({ form });

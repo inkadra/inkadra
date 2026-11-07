@@ -171,8 +171,7 @@ export async function saveClip(
   if (blob) {
     if (deps.uploadMaxBytes > 0 && blob.size > deps.uploadMaxBytes)
       throw new ClipperError('too_large');
-    const { tags: _, ...fields } = common;
-    return deps.api.clipFile(fields, blob, imageFilename(content.srcUrl, blob.type));
+    return deps.api.clipFile(common, blob, imageFilename(content.srcUrl, blob.type));
   }
   const url = webUrl(content.srcUrl);
   if (!url) throw new ClipperError('bad_request', 'The image could not be read.');
