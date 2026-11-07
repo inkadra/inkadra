@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
+import { addTodoItem, createElement, updateTodoItem } from '@inkadra/canvas-core';
 import {
   addElement,
   boardDocName,
@@ -23,7 +24,7 @@ import { directBoardWriter } from './board-writer.ts';
 import { attachCollab, createCollabServer } from './collab.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
-import { boardDoc, boardElementIndex, projectMember } from './db/schema.ts';
+import { boardDoc, boardElementIndex, notification, projectMember } from './db/schema.ts';
 import { createApp } from './http/app.ts';
 import * as drawings from './image-drawing.ts';
 import { createRedis, QUEUES, queuedBoardNotifier, startBoardWorker } from './queues.ts';
@@ -149,6 +150,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     const conn = {
       doc,
       provider,
+      websocketProvider,
       synced,
       close() {
         provider.destroy();
@@ -525,6 +527,136 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     await expect.poll(() => roots(check.doc).elements.has(added.id), { timeout: 5000 }).toBe(true);
     await setRole('viewer');
     for (const c of [viewer, check]) c.close();
+  });
+
+  describe('an assignee who is not a project member', () => {
+    let runs = 0;
+    /** Its own project, so the other tests' role changes don't reach it. */
+    async function assignmentBoard() {
+      runs += 1;
+      const former = `former${runs}`;
+      const writer = `writer${runs}`;
+      for (const name of [former, writer]) await signUp(name);
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/v1/projects',
+        headers: as('owner'),
+        payload: { name: `Assignments ${runs}` },
+      });
+      const project = created.json().id as string;
+      const setRole = (who: string, role: 'editor' | 'viewer') =>
+        app.inject({
+          method: 'PUT',
+          url: `/api/v1/projects/${project}/members/${people[who]?.id}`,
+          headers: as('owner'),
+          payload: { role },
+        });
+      await setRole(former, 'editor');
+      await setRole(writer, 'editor');
+      const board = created.json().rootBoardId as string;
+      const late = connect(as(writer), undefined, CURRENT_SCHEMA_VERSION, board);
+      const other = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, board);
+      await Promise.all([late.synced, other.synced]);
+      const todo = createElement(late.doc, 'todo', { x: 0, y: 0 }, { items: [] }, { userId: null });
+      const itemId = addTodoItem(late.doc, todo.id, 'Permit') as string;
+      await expect.poll(() => assigneeOf(other.doc, todo.id, itemId)).toBeNull();
+      const offline = async () => {
+        late.websocketProvider.disconnect();
+        await expect.poll(() => late.websocketProvider.status).toBe('disconnected');
+      };
+      const removeFormer = () =>
+        app.inject({
+          method: 'DELETE',
+          url: `/api/v1/projects/${project}/members/${people[former]?.id}`,
+          headers: as('owner'),
+        });
+      return { board, former, writer, late, other, todo, itemId, offline, removeFormer, setRole };
+    }
+    /** Undefined until the card and the item arrive, null while the item has no assignee. */
+    function assigneeOf(doc: Y.Doc, elementId: string, itemId: string) {
+      const items = roots(doc).elements.get(elementId)?.get('items') as
+        | Y.Array<Y.Map<unknown>>
+        | undefined;
+      for (const item of items ?? [])
+        if (item.get('id') === itemId) return (item.get('assigneeId') as string) ?? null;
+      return undefined;
+    }
+
+    it('takes the offline edits and drops an assignee removed in the meantime', async () => {
+      const { board, former, late, other, todo, itemId, offline, removeFormer } =
+        await assignmentBoard();
+      await offline();
+      const note = column('Written offline');
+      updateTodoItem(late.doc, todo.id, itemId, { assigneeId: people[former]?.id });
+      addElement(late.doc, note);
+      expect((await removeFormer()).statusCode).toBe(204);
+      const closed = closedWith(late);
+      late.websocketProvider.connect();
+
+      await expect.poll(() => roots(other.doc).elements.has(note.id)).toBe(true);
+      // Both sides settle on no assignee, and the writer has nothing left to send.
+      await expect.poll(() => assigneeOf(late.doc, todo.id, itemId)).toBeNull();
+      await expect.poll(() => assigneeOf(other.doc, todo.id, itemId)).toBeNull();
+      await expect.poll(() => late.provider.unsyncedChanges).toBe(0);
+      expect(await closed).toBeNull();
+
+      collab.hocuspocus.flushPendingStores();
+      await expect
+        .poll(async () => {
+          const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, board));
+          const stored = new Y.Doc();
+          if (row) Y.applyUpdate(stored, row.state);
+          return roots(stored).elements.has(note.id) && assigneeOf(stored, todo.id, itemId);
+        })
+        .toBeNull();
+      const told = await db
+        .select()
+        .from(notification)
+        .where(eq(notification.userId, people[former]?.id ?? ''));
+      expect(told).toEqual([]);
+      late.close();
+      other.close();
+    });
+
+    it('keeps another person’s assignment when a stale list offers someone who left', async () => {
+      const { former, late, other, todo, itemId, removeFormer } = await assignmentBoard();
+      const owner = people.owner?.id;
+      updateTodoItem(other.doc, todo.id, itemId, { assigneeId: owner });
+      await expect.poll(() => assigneeOf(late.doc, todo.id, itemId)).toBe(owner);
+      expect((await removeFormer()).statusCode).toBe(204);
+      const closed = closedWith(late);
+
+      const note = column('Written after the stale pick');
+      updateTodoItem(late.doc, todo.id, itemId, { assigneeId: people[former]?.id });
+      addElement(late.doc, note);
+
+      await expect.poll(() => roots(other.doc).elements.has(note.id)).toBe(true);
+      await expect.poll(() => assigneeOf(late.doc, todo.id, itemId)).toBe(owner);
+      await expect.poll(() => assigneeOf(other.doc, todo.id, itemId)).toBe(owner);
+      await expect.poll(() => late.provider.unsyncedChanges).toBe(0);
+      expect(await closed).toBeNull();
+      late.close();
+      other.close();
+    });
+
+    it('keeps a person demoted while offline connected, without applying the assignment', async () => {
+      const { former, writer, late, other, todo, itemId, offline, setRole } =
+        await assignmentBoard();
+      await offline();
+      updateTodoItem(late.doc, todo.id, itemId, { assigneeId: people[former]?.id });
+      await setRole(writer, 'viewer');
+      const closed = closedWith(late);
+      late.websocketProvider.connect();
+      expect(await closed).toBeNull();
+
+      // Read-only, but still live: what others write keeps arriving without a reconnection.
+      const note = column('Written by someone else');
+      addElement(other.doc, note);
+      await expect.poll(() => roots(late.doc).elements.has(note.id)).toBe(true);
+      expect(assigneeOf(other.doc, todo.id, itemId)).toBeNull();
+      late.close();
+      other.close();
+    });
   });
 
   it('merges ten people editing the same board at once', async () => {

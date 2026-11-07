@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, it, vi } from 'vitest';
 import en from '../i18n/en.json';
@@ -46,6 +48,7 @@ function render(name: string, image: string | null = null, date = item.dueDate) 
       onClose={() => {}}
       people={[{ id: 'person', name, image, email: null }]}
       failed={false}
+      onOpenPicker={() => {}}
     />,
   );
   return host;
@@ -108,8 +111,36 @@ it('keeps empty controls on the active row or an explicitly opened picker only',
         onClose={() => {}}
         people={[]}
         failed={false}
+        onOpenPicker={() => {}}
       />,
     );
     expect(markup.includes('todo-assignment__person')).toBe(visible);
   }
+});
+
+it('asks for a fresh member list when the picker opens, not before', () => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  const onOpenPicker = vi.fn();
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  const show = (open: boolean) =>
+    act(() =>
+      root.render(
+        <TodoAssignment
+          elementId="todo-card"
+          item={item}
+          editing={false}
+          open={open}
+          onClose={() => {}}
+          people={[]}
+          failed={false}
+          onOpenPicker={onOpenPicker}
+        />,
+      ),
+    );
+  show(false);
+  expect(onOpenPicker).not.toHaveBeenCalled();
+  show(true);
+  expect(onOpenPicker).toHaveBeenCalledTimes(1);
+  act(() => root.unmount());
 });

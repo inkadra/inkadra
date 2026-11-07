@@ -35,9 +35,12 @@ export function TodoAssignment({
   onClose,
   people,
   failed,
+  onOpenPicker,
 }: {
   people: Person[];
   failed: boolean;
+  /** The list was loaded when the card mounted: someone may have left the project since. */
+  onOpenPicker: () => void;
   elementId: string;
   item: z.infer<typeof TodoItem>;
   editing: boolean;
@@ -51,6 +54,10 @@ export function TodoAssignment({
   const [dating, setDating] = useState(false);
   const [query, setQuery] = useState('');
   const root = useRef<HTMLDivElement>(null);
+  const pickerOpen = picking || open;
+  useEffect(() => {
+    if (pickerOpen) onOpenPicker();
+  }, [pickerOpen, onOpenPicker]);
   useEffect(() => {
     if (!picking && !open && !dating) return;
     const outside = (event: PointerEvent) => {
