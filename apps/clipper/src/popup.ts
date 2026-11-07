@@ -262,7 +262,7 @@ function renderImages() {
       thumb.loading = 'lazy';
       // A picture that will not load stays a neutral tile, still selectable.
       thumb.addEventListener('error', () => tile.classList.add('is-broken'), { once: true });
-      thumb.src = image.url;
+      thumb.src = image.thumbUrl;
       const check = document.createElement('span');
       check.className = 'tile__check';
       check.setAttribute('aria-hidden', 'true');

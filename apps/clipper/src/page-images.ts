@@ -17,9 +17,12 @@ export interface RawImage {
 }
 
 export interface PageImageOption {
+  /** The address saved: the largest the page offers. */
   url: string;
+  /** What the page shows, light enough for a tile. */
+  thumbUrl: string;
   alt: string;
-  /** 0 when unknown (not loaded yet). */
+  /** Of `url`; 0 when unknown (not loaded yet). */
   width: number;
   height: number;
 }
@@ -94,8 +97,9 @@ function usable(url: string): boolean {
 }
 
 /**
- * The pictures worth offering, in document order and once per address: what the browser shows
- * (`currentSrc`, chosen from srcset), else the largest srcset candidate, else `src`.
+ * The pictures worth offering, in document order and once per address. The saved address is the
+ * largest srcset candidate (Pinterest shows 236 px thumbnails but lists the original), else what
+ * the browser shows (`currentSrc`), else `src`; the tile shows what the browser shows.
  * Pictures smaller than 100 px on a side are left out; one not loaded yet stays only if its
  * srcset says it is wide enough.
  * shortcut: CSS background images are not found; read computed styles if pages need them.
@@ -105,18 +109,23 @@ export function pickImages(images: RawImage[], baseUrl: string): PageImageOption
   const out: PageImageOption[] = [];
   for (const image of images) {
     const best = largest([image.srcset, ...image.sources]);
-    const raw = image.currentSrc || best?.url || image.src;
+    const shown = image.currentSrc || image.src;
+    const raw = best?.url || shown;
     const url = raw ? resolve(raw, baseUrl) : undefined;
     if (!url || seen.has(url) || !usable(url)) continue;
     const loaded = image.naturalWidth > 0 && image.naturalHeight > 0;
     if (loaded && (image.naturalWidth < MIN_SIDE || image.naturalHeight < MIN_SIDE)) continue;
     if (!loaded && (best?.width ?? 0) < MIN_SIDE) continue;
     seen.add(url);
+    // A `w` descriptor wider than what loaded gives the saved size; the ratio stays the same.
+    const scale =
+      loaded && best?.width && best.width > image.naturalWidth ? best.width / image.naturalWidth : 1;
     out.push({
       url,
+      thumbUrl: (loaded && shown && resolve(shown, baseUrl)) || url,
       alt: image.alt.trim(),
-      width: loaded ? image.naturalWidth : 0,
-      height: loaded ? image.naturalHeight : 0,
+      width: loaded ? Math.round(image.naturalWidth * scale) : 0,
+      height: loaded ? Math.round(image.naturalHeight * scale) : 0,
     });
   }
   return out;

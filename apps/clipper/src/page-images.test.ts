@@ -35,7 +35,7 @@ describe('parseSrcset', () => {
 });
 
 describe('pickImages', () => {
-  it('prefers what the browser shows, else the largest candidate, and resolves addresses', () => {
+  it('saves the largest candidate, shows what the browser shows, and resolves addresses', () => {
     const picked = pickImages(
       [
         img({ currentSrc: 'https://cdn.example/shown.jpg', srcset: 'big.jpg 2000w' }),
@@ -55,10 +55,34 @@ describe('pickImages', () => {
       base,
     );
     expect(picked).toEqual([
-      { url: 'https://cdn.example/shown.jpg', alt: '', width: 800, height: 600 },
-      { url: 'https://site.example/project/large.jpg', alt: '', width: 0, height: 0 },
-      { url: 'https://site.example/pic-2x.webp', alt: '', width: 0, height: 0 },
-      { url: 'https://site.example/plain.png', alt: 'Cover', width: 800, height: 600 },
+      {
+        url: 'https://site.example/project/big.jpg',
+        thumbUrl: 'https://cdn.example/shown.jpg',
+        alt: '',
+        width: 2000,
+        height: 1500,
+      },
+      {
+        url: 'https://site.example/project/large.jpg',
+        thumbUrl: 'https://site.example/project/large.jpg',
+        alt: '',
+        width: 0,
+        height: 0,
+      },
+      {
+        url: 'https://site.example/pic-2x.webp',
+        thumbUrl: 'https://site.example/pic-2x.webp',
+        alt: '',
+        width: 0,
+        height: 0,
+      },
+      {
+        url: 'https://site.example/plain.png',
+        thumbUrl: 'https://site.example/plain.png',
+        alt: 'Cover',
+        width: 800,
+        height: 600,
+      },
     ]);
   });
 
@@ -91,6 +115,7 @@ describe('imageLabel', () => {
   it('names a tile by alt text, then file name, then the fallback', () => {
     const image = {
       url: 'https://a.example/x/photo%201.jpg?w=2',
+      thumbUrl: 'https://a.example/x/photo%201.jpg?w=1',
       alt: '',
       width: 1920,
       height: 1080,
