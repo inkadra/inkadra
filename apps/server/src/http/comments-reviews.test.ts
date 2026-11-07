@@ -359,11 +359,13 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
       DEFAULT_USER_PREFERENCES,
     );
     await call('owner', 'PATCH', '/me/preferences', { timeFormat: '12h' });
+    await call('owner', 'PATCH', '/me/preferences', { tutorialsSeen: ['welcome'] });
     const saved = await call('owner', 'PATCH', '/me/preferences', { toolbar: ['note', 'map'] });
     expect(saved.json()).toEqual({
       ...DEFAULT_USER_PREFERENCES,
       timeFormat: '12h',
       toolbar: ['note', 'map'],
+      tutorialsSeen: ['welcome'],
     });
     expect((await call('editor', 'GET', '/me/preferences')).json()).toEqual(
       DEFAULT_USER_PREFERENCES,
