@@ -24,10 +24,12 @@ describe('parseSrcset', () => {
       { url: 'c.jpg', rank: 2000 },
       { url: 'd.jpg', rank: 1000 },
     ]);
-    expect(parseSrcset('a.jpg,b.jpg 1.5x')).toEqual([
+    // As in the HTML rules, only whitespace ends a URL: a comma right after one is cut.
+    expect(parseSrcset('a.jpg, b.jpg 1.5x')).toEqual([
       { url: 'a.jpg', rank: 1000 },
       { url: 'b.jpg', rank: 1500 },
     ]);
+    expect(parseSrcset('a.jpg,b.jpg 1.5x')).toEqual([{ url: 'a.jpg,b.jpg', rank: 1500 }]);
     expect(parseSrcset('  ')).toEqual([]);
   });
 });
