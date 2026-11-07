@@ -8,8 +8,8 @@ import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { BackupSettings } from './BackupSettings.tsx';
 import { ProviderIcon } from './ProviderIcon.tsx';
-import { ServerSettings } from './server/ServerSettings.tsx';
 import { formatStorage, StorageCharts } from './StorageCharts.tsx';
+import { ServerSettings } from './server/ServerSettings.tsx';
 import { trackSave } from './settings-save.ts';
 import { AutosaveText, Badge, Card, Row, Segmented } from './settings-ui.tsx';
 

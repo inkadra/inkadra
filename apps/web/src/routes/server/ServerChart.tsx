@@ -20,7 +20,11 @@ export interface ChartMarker {
 const PAD = { left: 40, right: 6, top: 8, bottom: 20 };
 
 /** Points of a series, split where values are missing so the line does not lie across a gap. */
-function segments(values: Array<number | null>, x: (i: number) => number, y: (v: number) => number) {
+function segments(
+  values: Array<number | null>,
+  x: (i: number) => number,
+  y: (v: number) => number,
+) {
   const out: string[][] = [];
   let current: string[] = [];
   values.forEach((v, i) => {
@@ -128,7 +132,12 @@ export function ServerChart({
                     y1={y(tick, below)}
                     y2={y(tick, below)}
                   />
-                  <text className="server-chart__tick" x={pad.left - 6} y={y(tick, below) + 4} textAnchor="end">
+                  <text
+                    className="server-chart__tick"
+                    x={pad.left - 6}
+                    y={y(tick, below) + 4}
+                    textAnchor="end"
+                  >
                     {format(tick)}
                   </text>
                 </g>
@@ -166,14 +175,24 @@ export function ServerChart({
             markers.map((m) => (
               <g key={`${m.index}-${m.label}`} className="server-chart__marker">
                 <line x1={x(m.index)} x2={x(m.index)} y1={pad.top} y2={pad.top + innerH} />
-                <text x={Math.min(x(m.index) + 4, width - 4)} y={pad.top + 10} textAnchor={x(m.index) > width - 120 ? 'end' : 'start'}>
+                <text
+                  x={Math.min(x(m.index) + 4, width - 4)}
+                  y={pad.top + 10}
+                  textAnchor={x(m.index) > width - 120 ? 'end' : 'start'}
+                >
                   {m.label}
                 </text>
               </g>
             ))}
           {active !== null && (
             <g>
-              <line className="server-chart__cross" x1={x(active)} x2={x(active)} y1={pad.top} y2={pad.top + innerH} />
+              <line
+                className="server-chart__cross"
+                x1={x(active)}
+                x2={x(active)}
+                y1={pad.top}
+                y2={pad.top + innerH}
+              />
               {series.map((s) => {
                 const v = s.values[active];
                 return v === null || v === undefined ? null : (

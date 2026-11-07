@@ -12,6 +12,8 @@ import { Link } from 'react-router';
 import { useSession } from '../../lib/session.tsx';
 import { formatStorage } from '../StorageCharts.tsx';
 import { Card, Row } from '../settings-ui.tsx';
+import { HistoryChart } from './charts.tsx';
+import { type ServerActions, technicalSummary, useWhen } from './common.ts';
 import {
   bits,
   downServices,
@@ -23,8 +25,6 @@ import {
   speedVerdict,
   storageVerdict,
 } from './format.ts';
-import { type ServerActions, technicalSummary, useWhen } from './common.ts';
-import { HistoryChart } from './charts.tsx';
 
 type Props = { status: ServerStatus; checks: DiagnosticCheck[]; actions: ServerActions };
 
@@ -52,7 +52,9 @@ function Health({ status }: { status: ServerStatus }) {
   const now = new Date(status.checkedAt).getTime();
   const first = down[0];
   if (first) {
-    const since = first.since ? duration(now - new Date(first.since).getTime(), i18n.language) : null;
+    const since = first.since
+      ? duration(now - new Date(first.since).getTime(), i18n.language)
+      : null;
     return (
       <section className="server-health server-health--bad" data-tour="server" aria-live="polite">
         <span className="server-health__icon" aria-hidden="true">
@@ -62,7 +64,10 @@ function Health({ status }: { status: ServerStatus }) {
           <h3>{t('server.health.bad')}</h3>
           <p>
             {since
-              ? t('server.health.downSince', { service: t(`server.services.long.${first.id}`), time: since })
+              ? t('server.health.downSince', {
+                  service: t(`server.services.long.${first.id}`),
+                  time: since,
+                })
               : t('server.health.down', { service: t(`server.services.long.${first.id}`) })}{' '}
             {t(`server.health.effects.${first.id}`)}
           </p>
@@ -72,7 +77,9 @@ function Health({ status }: { status: ServerStatus }) {
     );
   }
   const backup = status.backup.lastAt
-    ? t(`server.health.backup.${status.backup.lastStatus ?? 'none'}`, { when: when(status.backup.lastAt, now) })
+    ? t(`server.health.backup.${status.backup.lastStatus ?? 'none'}`, {
+        when: when(status.backup.lastAt, now),
+      })
     : t('server.health.backup.none');
   return (
     <section className="server-health" data-tour="server" aria-live="polite">
@@ -94,7 +101,9 @@ function Health({ status }: { status: ServerStatus }) {
             .join(' · ')}
         </p>
       </div>
-      {open > 0 && <Button onClick={scrollToProblems}>{t('server.health.seeProblem', { count: open })}</Button>}
+      {open > 0 && (
+        <Button onClick={scrollToProblems}>{t('server.health.seeProblem', { count: open })}</Button>
+      )}
     </section>
   );
 }
@@ -175,7 +184,9 @@ function Meters({ status }: { status: ServerStatus }) {
         value={
           <>
             {formatStorage(memory.used, lang)}
-            {memory.limit && <small> {t('server.meters.of', { total: formatStorage(memory.limit, lang) })}</small>}
+            {memory.limit && (
+              <small> {t('server.meters.of', { total: formatStorage(memory.limit, lang) })}</small>
+            )}
           </>
         }
         bar={memory.limit ? memShare : null}
@@ -186,7 +197,9 @@ function Meters({ status }: { status: ServerStatus }) {
         <Meter
           name={t('server.meters.storage.name')}
           verdict={
-            space.key === 'unknown' ? null : t(`server.meters.storage.${space.key}`, { count: space.months ?? 0 })
+            space.key === 'unknown'
+              ? null
+              : t(`server.meters.storage.${space.key}`, { count: space.months ?? 0 })
           }
           warn={space.key === 'almostFull'}
           value={
@@ -214,7 +227,9 @@ function Meters({ status }: { status: ServerStatus }) {
           hint={[
             t('server.meters.storage.s3Hint'),
             store.growthPerMonth
-              ? t('server.meters.storage.growth', { size: formatStorage(store.growthPerMonth, lang) })
+              ? t('server.meters.storage.growth', {
+                  size: formatStorage(store.growthPerMonth, lang),
+                })
               : null,
           ]
             .filter(Boolean)
@@ -228,9 +243,10 @@ function Meters({ status }: { status: ServerStatus }) {
           network ? (
             <>
               <span aria-hidden="true">↓</span>
-              <span className="ink-sr-only">{t('server.meters.network.in')}</span> {bits(network.in, lang)}{' '}
-              <span aria-hidden="true">↑</span>
-              <span className="ink-sr-only">{t('server.meters.network.out')}</span> {bits(network.out, lang)}
+              <span className="ink-sr-only">{t('server.meters.network.in')}</span>{' '}
+              {bits(network.in, lang)} <span aria-hidden="true">↑</span>
+              <span className="ink-sr-only">{t('server.meters.network.out')}</span>{' '}
+              {bits(network.out, lang)}
             </>
           ) : (
             '—'
@@ -260,7 +276,9 @@ function Meters({ status }: { status: ServerStatus }) {
         name={t('server.meters.backup.name')}
         verdict={t(`server.meters.backup.${backupKey}`)}
         warn={backupKey === 'failed' || backupKey === 'none'}
-        value={<span className="server-meter__value--text">{b.lastAt ? when(b.lastAt, now) : '—'}</span>}
+        value={
+          <span className="server-meter__value--text">{b.lastAt ? when(b.lastAt, now) : '—'}</span>
+        }
         hint={
           <>
             {[
@@ -320,10 +338,10 @@ function Services({ status, checks }: { status: ServerStatus; checks: Diagnostic
     const s = service(id);
     const signal = s?.since
       ? t('server.services.lastSignal', {
-          time: new Intl.RelativeTimeFormat(i18n.language, { numeric: 'auto', style: 'short' }).format(
-            Math.min(0, Math.round((new Date(s.since).getTime() - now) / 1000)),
-            'second',
-          ),
+          time: new Intl.RelativeTimeFormat(i18n.language, {
+            numeric: 'auto',
+            style: 'short',
+          }).format(Math.min(0, Math.round((new Date(s.since).getTime() - now) / 1000)), 'second'),
         })
       : null;
     return {
@@ -383,13 +401,18 @@ function Services({ status, checks }: { status: ServerStatus; checks: Diagnostic
                 )}
                 {(c.expected || c.actual) && (
                   <code className="settings-env">
-                    {[c.expected && `${t('diagnostics.expected')}: ${c.expected}`, c.actual && `${t('diagnostics.actual')}: ${c.actual}`]
+                    {[
+                      c.expected && `${t('diagnostics.expected')}: ${c.expected}`,
+                      c.actual && `${t('diagnostics.actual')}: ${c.actual}`,
+                    ]
                       .filter(Boolean)
                       .join(' · ')}
                   </code>
                 )}
               </div>
-              <span className={`server-service__state server-service__state--${c.status === 'error' ? 'down' : c.status}`}>
+              <span
+                className={`server-service__state server-service__state--${c.status === 'error' ? 'down' : c.status}`}
+              >
                 {t(`diagnostics.status.${c.status}`)}
               </span>
             </li>
@@ -444,7 +467,9 @@ function Videos({ status }: { status: ServerStatus }) {
             return (
               <li key={job.assetId}>
                 <div className="settings-list__text">
-                  <span className={job.name ? 'server-name' : 'server-name server-name--hidden'}>{name}</span>
+                  <span className={job.name ? 'server-name' : 'server-name server-name--hidden'}>
+                    {name}
+                  </span>
                   <span className="settings-row__help">
                     {job.secondsLeft !== null
                       ? t('server.videos.progress', {
@@ -461,7 +486,10 @@ function Videos({ status }: { status: ServerStatus }) {
                     aria-valuemax={100}
                     aria-valuenow={job.progress}
                   >
-                    <span className="server-bar__fill server-bar__fill--cpu" style={{ width: `${job.progress}%` }} />
+                    <span
+                      className="server-bar__fill server-bar__fill--cpu"
+                      style={{ width: `${job.progress}%` }}
+                    />
                   </span>
                 </div>
               </li>
@@ -486,7 +514,9 @@ export function People({ status, advanced = false }: { status: ServerStatus; adv
       title={t(advanced ? 'server.advanced.people' : 'server.people.title')}
       action={
         <span className="settings-card__meta">
-          {advanced && p.peak !== null ? `${counts} · ${t('server.people.peak', { value: p.peak })}` : counts}
+          {advanced && p.peak !== null
+            ? `${counts} · ${t('server.people.peak', { value: p.peak })}`
+            : counts}
         </span>
       }
     >
@@ -501,20 +531,30 @@ export function People({ status, advanced = false }: { status: ServerStatus; adv
                   {b.title ?? t(advanced ? 'server.people.hiddenShort' : 'server.people.hidden')}
                 </span>
                 <span className="settings-row__help">
-                  {[b.projectName, t('server.people.since', { time: duration(now - new Date(b.since).getTime(), i18n.language) })]
+                  {[
+                    b.projectName,
+                    t('server.people.since', {
+                      time: duration(now - new Date(b.since).getTime(), i18n.language),
+                    }),
+                  ]
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
               </div>
               <span className="server-avatars">
                 {b.people.length > 0 ? (
-                  b.people.slice(0, 4).map((u) => <Avatar key={u.id} name={u.name} image={u.image} size={24} />)
+                  b.people
+                    .slice(0, 4)
+                    .map((u) => <Avatar key={u.id} name={u.name} image={u.image} size={24} />)
                 ) : (
-                  <span className="server-count" aria-label={t('server.people.people', { count: b.count })}>
-                    {b.count}
+                  <span className="server-count">
+                    <span aria-hidden="true">{b.count}</span>
+                    <span className="ink-sr-only">{t('server.people.people', { count: b.count })}</span>
                   </span>
                 )}
-                {b.people.length > 4 && <span className="server-count">+{b.people.length - 4}</span>}
+                {b.people.length > 4 && (
+                  <span className="server-count">+{b.people.length - 4}</span>
+                )}
               </span>
             </li>
           ))}
@@ -525,7 +565,10 @@ export function People({ status, advanced = false }: { status: ServerStatus; adv
 }
 
 /** A problem in plain words: what happened, which file, and what it means (#514). */
-export function problemText(t: (key: string, values?: Record<string, unknown>) => string, p: ServerProblem) {
+export function problemText(
+  t: (key: string, values?: Record<string, unknown>) => string,
+  p: ServerProblem,
+) {
   const kind = KINDS.has(p.kind) ? p.kind : 'unknown';
   const title = t(`server.problems.kinds.${kind}.title`);
   const text =
@@ -591,7 +634,11 @@ function Problems({ status, actions }: { status: ServerStatus; actions: ServerAc
                   <div className="settings-list__text">
                     <span className="settings-row__label">
                       {text.title}
-                      {p.count > 1 && <span className="settings-badge">{t('server.problems.times', { count: p.count })}</span>}
+                      {p.count > 1 && (
+                        <span className="settings-badge">
+                          {t('server.problems.times', { count: p.count })}
+                        </span>
+                      )}
                     </span>
                     <span className="settings-row__help">
                       {[text.where, text.text].filter(Boolean).join(' ')}
@@ -603,7 +650,11 @@ function Problems({ status, actions }: { status: ServerStatus; actions: ServerAc
                   </div>
                   {p.kind !== 'config_check' && (
                     <span className="server-problem__actions">
-                      {p.retry && <Button onClick={() => void actions.retry(p)}>{t('server.problems.retry')}</Button>}
+                      {p.retry && (
+                        <Button onClick={() => void actions.retry(p)}>
+                          {t('server.problems.retry')}
+                        </Button>
+                      )}
                       <Button variant="ghost" onClick={() => void actions.seen(p)}>
                         {t('server.problems.seen')}
                       </Button>
@@ -730,7 +781,13 @@ function TechnicalDetails({ status, checks }: { status: ServerStatus; checks: Di
   );
 }
 
-export function ProcessTable({ status, advanced = false }: { status: ServerStatus; advanced?: boolean }) {
+export function ProcessTable({
+  status,
+  advanced = false,
+}: {
+  status: ServerStatus;
+  advanced?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const now = new Date(status.checkedAt).getTime();
@@ -757,12 +814,22 @@ export function ProcessTable({ status, advanced = false }: { status: ServerStatu
               <th scope="row">
                 <span className={`server-dot server-dot--${p.status}`} aria-hidden="true" />
                 {t(`server.roles.${p.role}`)}
-                <span className="ink-sr-only"> · {t(`server.services.status.${p.status === 'ok' ? 'ok' : p.status === 'late' ? 'warning' : 'down'}`)}</span>
+                <span className="ink-sr-only">
+                  {' '}
+                  ·{' '}
+                  {t(
+                    `server.services.status.${p.status === 'ok' ? 'ok' : p.status === 'late' ? 'warning' : 'down'}`,
+                  )}
+                </span>
               </th>
               <td className="server-table__n">
-                {p.cpu === null || !status.now.cpu.cores ? '—' : percent(p.cpu / status.now.cpu.cores, lang)}
+                {p.cpu === null || !status.now.cpu.cores
+                  ? '—'
+                  : percent(p.cpu / status.now.cpu.cores, lang)}
               </td>
-              <td className="server-table__n">{p.memory === null ? '—' : formatStorage(p.memory, lang)}</td>
+              <td className="server-table__n">
+                {p.memory === null ? '—' : formatStorage(p.memory, lang)}
+              </td>
               <td className="server-table__n">
                 {advanced
                   ? new Intl.RelativeTimeFormat(lang, { numeric: 'auto', style: 'short' }).format(
@@ -818,7 +885,11 @@ export function QueueTable({ status }: { status: ServerStatus }) {
               <th scope="row">{t(`server.details.queues.${q.id}`)}</th>
               <td className="server-table__n">{q.waiting}</td>
               <td className="server-table__n">{q.active}</td>
-              <td className={q.failed24h ? 'server-table__n server-table__fail' : 'server-table__n'}>{q.failed24h}</td>
+              <td
+                className={q.failed24h ? 'server-table__n server-table__fail' : 'server-table__n'}
+              >
+                {q.failed24h}
+              </td>
             </tr>
           ))}
         </tbody>

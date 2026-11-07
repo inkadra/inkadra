@@ -1,4 +1,10 @@
-import type { DiagnosticCheck, ServerAlerts, ServerProblem, ServerRange, ServerStatus } from '@inkadra/shared';
+import type {
+  DiagnosticCheck,
+  ServerAlerts,
+  ServerProblem,
+  ServerRange,
+  ServerStatus,
+} from '@inkadra/shared';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../lib/datetime.ts';
 import { dayOf } from './format.ts';
@@ -49,4 +55,3 @@ export function useWhen() {
     return formatDateTime(iso, { dateStyle: 'medium', timeStyle: 'short' });
   };
 }
-

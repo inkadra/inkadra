@@ -14,9 +14,10 @@ export function speedVerdict(p95: number | null): 'fast' | 'slow' | 'verySlow' |
 }
 
 /** "Enough for about N months", or a warning when it is less than one. */
-export function storageVerdict(
-  storage: ServerStatus['storage'],
-): { key: 'years' | 'months' | 'almostFull' | 'unknown'; months?: number } {
+export function storageVerdict(storage: ServerStatus['storage']): {
+  key: 'years' | 'months' | 'almostFull' | 'unknown';
+  months?: number;
+} {
   if (storage.total !== null && storage.free !== null && storage.total > 0) {
     if (storage.free / storage.total < 0.1 || storage.free < 5e9) return { key: 'almostFull' };
   }
@@ -66,9 +67,7 @@ export function duration(ms: number, locale: string, display: 'long' | 'short' =
         : ms >= 60_000
           ? [minutes, 'minute']
           : [Math.max(0, Math.round(ms / 1000)), 'second'];
-  return new Intl.NumberFormat(locale, { style: 'unit', unit, unitDisplay: display }).format(
-    value,
-  );
+  return new Intl.NumberFormat(locale, { style: 'unit', unit, unitDisplay: display }).format(value);
 }
 
 /** "3 s ago", "2 min ago". */

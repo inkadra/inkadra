@@ -127,7 +127,8 @@ export function ServerSettings() {
         () => api.post(`/instance/server/problems/${encodeURIComponent(p.id)}/retry`, {}),
         'server.problems.retryError',
       ),
-    seen: (p) => act(() => api.post(`/instance/server/problems/${encodeURIComponent(p.id)}/seen`, {})),
+    seen: (p) =>
+      act(() => api.post(`/instance/server/problems/${encodeURIComponent(p.id)}/seen`, {})),
     retryAll: () => act(() => api.post('/instance/server/problems/retry', {})),
     seenAll: () => act(() => api.post('/instance/server/problems/seen', {})),
     saveAlerts: async (patch) => {
@@ -174,7 +175,11 @@ export function ServerSettings() {
             count: 1,
             seen: false,
             retry: false,
-            technical: [c.id, c.expected && `expected ${c.expected}`, c.actual && `found ${c.actual}`]
+            technical: [
+              c.id,
+              c.expected && `expected ${c.expected}`,
+              c.actual && `found ${c.actual}`,
+            ]
               .filter(Boolean)
               .join(' · '),
             checkId: c.id,

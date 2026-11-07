@@ -44,9 +44,7 @@ const status = (patch: Partial<ServerStatus> = {}): ServerStatus => ({
   startedAt: new Date(Date.now() - 6 * 86_400_000).toISOString(),
   range: '1h',
   step: 20,
-  history: [
-    { t: now, cpu: 34, memory: 1.9e9, in: 2e6, out: 5e5, p95: 120, errors: 0, people: 2 },
-  ],
+  history: [{ t: now, cpu: 34, memory: 1.9e9, in: 2e6, out: 5e5, p95: 120, errors: 0, people: 2 }],
   events: [],
   now: {
     cpu: { used: 1.36, cores: 4 },
@@ -55,7 +53,15 @@ const status = (patch: Partial<ServerStatus> = {}): ServerStatus => ({
     responses: { p95: 120, errors: 0.001 },
   },
   processes: [
-    { role: 'web', host: 'a', startedAt: now, lastSeenAt: now, status: 'ok', cpu: 0.2, memory: 4e8 },
+    {
+      role: 'web',
+      host: 'a',
+      startedAt: now,
+      lastSeenAt: now,
+      status: 'ok',
+      cpu: 0.2,
+      memory: 4e8,
+    },
   ],
   services: [
     { id: 'web', status: 'ok', since: now, detail: null },
@@ -163,7 +169,9 @@ it('says what is wrong when a service stopped', async () => {
   vi.mocked(api.get).mockResolvedValue({
     ...s,
     services: s.services.map((x) =>
-      x.id === 'worker' ? { ...x, status: 'down' as const, since: new Date(Date.now() - 720_000).toISOString() } : x,
+      x.id === 'worker'
+        ? { ...x, status: 'down' as const, since: new Date(Date.now() - 720_000).toISOString() }
+        : x,
     ),
   });
   await render();

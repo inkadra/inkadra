@@ -10,7 +10,11 @@ type T = (key: string, values?: Record<string, unknown>) => string;
 
 /** Under the chart: when the range starts, its middle, and now. */
 export function xLabels(t: T, range: ServerStatus['range']): [string, string, string] {
-  return [t(`server.chart.start.${range}`), t(`server.chart.middle.${range}`), t('server.chart.now')];
+  return [
+    t(`server.chart.start.${range}`),
+    t(`server.chart.middle.${range}`),
+    t('server.chart.now'),
+  ];
 }
 
 /** Videos converted and backups, at the nearest point of the history. */
@@ -57,22 +61,38 @@ export function HistoryChart({ status }: { status: ServerStatus }) {
   const chart =
     metric === 'cpu'
       ? {
-          series: [{ label: t('server.chart.cpu'), tone: 'cpu' as const, values: h.map((s) => s.cpu) }],
+          series: [
+            { label: t('server.chart.cpu'), tone: 'cpu' as const, values: h.map((s) => s.cpu) },
+          ],
           max: 100,
           ticks: [0, 50, 100],
           format: (v: number) => `${number(v, lang, 0)} %`,
         }
       : metric === 'memory'
         ? {
-            series: [{ label: t('server.chart.memory'), tone: 'memory' as const, values: h.map((s) => s.memory) }],
+            series: [
+              {
+                label: t('server.chart.memory'),
+                tone: 'memory' as const,
+                values: h.map((s) => s.memory),
+              },
+            ],
             max: memMax,
             ticks: [0, memMax / 2, memMax],
             format: (v: number) => formatStorage(v, lang),
           }
         : {
             series: [
-              { label: t('server.chart.received'), tone: 'in' as const, values: h.map((s) => mbit(s.in)) },
-              { label: t('server.chart.sent'), tone: 'out' as const, values: h.map((s) => mbit(s.out)) },
+              {
+                label: t('server.chart.received'),
+                tone: 'in' as const,
+                values: h.map((s) => mbit(s.in)),
+              },
+              {
+                label: t('server.chart.sent'),
+                tone: 'out' as const,
+                values: h.map((s) => mbit(s.out)),
+              },
             ],
             max: netMax,
             ticks: [0, netMax / 2, netMax],
