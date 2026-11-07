@@ -2675,13 +2675,21 @@ button.crumb--editable:focus-visible {
   }
 }
 
-/* Far zoom: text and controls are not drawn, only the card shapes, images and swatches, and a
-   video playing in its card, which must not be left as sound with nothing to see.
-   A hairline border vanishes at this scale, so plain cards are filled with its colour. */
-.canvas__world--far .card--free > :not(.card__media, .card__swatch, .fcard:has(.fcard__video)) {
+/* Far zoom: text and controls are not drawn, only the card shapes and what pictures them:
+   images, file and video thumbnails (a playing video too, which must not be left as sound with
+   nothing to see), frame drawings, portraits and swatches. Thumbnails stay small: each picks its
+   variant from its size on screen. A hairline border vanishes at this scale, so cards with no
+   picture are filled with its colour; a picture's card keeps its surface under the picture. */
+.canvas__world--far .card--free > * {
   visibility: hidden;
 }
-.canvas__world--far .card--free:not([class*="card--tint-"]) {
+.canvas__world--far
+  .card--free
+  :is(.card__media, .card__swatch, .fcard__media, .frame-pic, .story-picture) {
+  visibility: visible;
+}
+.canvas__world--far
+  .card--free:not([class*="card--tint-"], :has(.card__media, .card__swatch, .fcard__media, .frame-pic, .story-picture)) {
   background: var(--ink-border-default);
 }
 
