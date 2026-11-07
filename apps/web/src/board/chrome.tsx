@@ -861,6 +861,31 @@ export type MenuItem =
   | { divider: true; heading?: never }
   | { heading: string; divider?: never };
 
+/** One titled part of a menu; the heading is left out when the section has no action. */
+export type MenuSection = { heading?: string; items: readonly MenuItem[] };
+
+/**
+ * A long menu as sections (open, the card's tools, organize…) instead of one list: empty
+ * sections are dropped, the rest are joined by a divider, without a divider at either end or
+ * two in a row.
+ */
+export function joinMenuSections(sections: readonly MenuSection[]): MenuItem[] {
+  const out: MenuItem[] = [];
+  for (const section of sections) {
+    const items: MenuItem[] = [];
+    for (const item of section.items) {
+      if (item.divider && (items.length === 0 || items.at(-1)?.divider)) continue;
+      items.push(item);
+    }
+    if (items.at(-1)?.divider) items.pop();
+    if (!items.some((item) => 'label' in item)) continue;
+    if (out.length > 0) out.push({ divider: true });
+    if (section.heading) out.push({ heading: section.heading });
+    out.push(...items);
+  }
+  return out;
+}
+
 export function ContextMenu({
   x,
   y,

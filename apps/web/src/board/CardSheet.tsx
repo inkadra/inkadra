@@ -21,12 +21,18 @@ export function splitSheetItems(items: readonly MenuItem[]) {
     if ('label' in item && item.sheet) slots.set(item.sheet, item);
     else rest.push(item);
   }
-  // Separators at the edges, or two in a row, are left from the items taken out.
-  const tidy = rest.filter(
-    (item, i) =>
-      !item.divider ||
-      (i > 0 && i < rest.length - 1 && !rest[i - 1]?.divider && !rest[i + 1]?.heading),
-  );
+  // A heading over no action, separators at the edges or two in a row, are left from the
+  // items taken out.
+  const titled = rest.filter((item, i) => {
+    const next = rest[i + 1];
+    return item.heading === undefined || (next !== undefined && 'label' in next);
+  });
+  const tidy: MenuItem[] = [];
+  titled.forEach((item, i) => {
+    if (item.divider && (!tidy.length || tidy.at(-1)?.divider || titled[i + 1]?.heading)) return;
+    tidy.push(item);
+  });
+  if (tidy.at(-1)?.divider) tidy.pop();
   return { slots, rest: tidy };
 }
 
