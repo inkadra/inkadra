@@ -5,7 +5,13 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { BoardStore, LOCAL } from '../store.ts';
-import { MoodboardView, referencesOf } from './MoodboardView.tsx';
+import {
+  MoodboardView,
+  mergePalette,
+  referenceGroups,
+  referenceSlides,
+  referencesOf,
+} from './MoodboardView.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
@@ -28,10 +34,17 @@ vi.mock('../assets.ts', () => ({
             exif: null,
           }
         : undefined,
+  getCachedAsset: () => undefined,
+  useAssetPalettes: (ids: string[]) =>
+    ids.map((id) => (id === 'palette' ? ['#112233', '#445566'] : [])),
   pickVariant: (asset: { url: string }) => asset.url,
   playbackUrl: (asset: { url: string }) => asset.url,
 }));
-vi.mock('../chrome.tsx', () => ({ UploadPanel: () => null }));
+vi.mock('../connection.ts', () => ({ collabUrl: () => '' }));
+vi.mock('../chrome.tsx', () => ({
+  UploadPanel: () => null,
+  Toast: ({ text }: { text: string }) => <output className="toast">{text}</output>,
+}));
 const startUpload = vi.fn();
 vi.mock('../uploads.ts', () => ({
   startUpload: (input: unknown) => startUpload(input),
@@ -137,7 +150,7 @@ it('renders empty state, reacts to Yjs updates and filters the gallery and palet
   expect(host.textContent).toContain('moodboard.noMatches');
 });
 
-it('navigates the filtered gallery without a compare action, shows frame reuse and respects readOnly', async () => {
+it('navigates the filtered gallery, shows frame reuse and respects readOnly', async () => {
   const { doc, store, add } = board();
   const first = add('image', { assetId: 'one', caption: 'First', tags: ['Night'] });
   add('image', { assetId: 'excluded', tags: ['Day'] });
@@ -158,9 +171,6 @@ it('navigates the filtered gallery without a compare action, shows frame reuse a
   expect(dialog()?.querySelector('[data-tags-readonly="true"]')).not.toBeNull();
   expect(dialog()?.textContent).not.toContain('viewer.addColors');
   const buttons = () => [...(dialog()?.querySelectorAll('button') ?? [])];
-  expect(
-    buttons().some((button) => button.getAttribute('aria-label') === 'moodboard.compare'),
-  ).toBe(false);
   expect(dialog()?.querySelectorAll('.viewer__stage img')).toHaveLength(1);
   await key('ArrowRight');
   expect(dialog()?.textContent).toContain('2 / 2');
@@ -233,24 +243,193 @@ it('lays the gallery out by type: captions on images, domain on links, hex on co
   expect(host.querySelector('.moodboard__empty')).toBeNull();
 });
 
-it('names the board and counts its tags in the side column, and the chips filter the same way', async () => {
+it('filters by kind and by tag with the chips, and "All" clears both', async () => {
   const { store, add } = board();
   add('image', { assetId: 'one', tags: ['Night', 'Rain'] });
   add('image', { assetId: 'two', tags: ['night'] });
   add('color', { hex: '#112233', tags: ['Rain'] });
   const host = await mount(store);
-  const side = host.querySelector('.moodboard__side');
-  expect(side?.textContent).toContain('Last Train');
-  expect(side?.textContent).toContain('moodboard.count');
-  const rows = [...(side?.querySelectorAll('li button') ?? [])].map((b) => b.textContent);
-  expect(rows).toEqual(['#night2', '#rain2']);
-  await click(side?.querySelector<HTMLButtonElement>('li button') ?? null);
+  expect(host.querySelector('.moodboard__side')).toBeNull();
+  const named = (name: string) =>
+    [...host.querySelectorAll<HTMLButtonElement>('.moodboard__chips button')].find(
+      (button) => button.textContent === name,
+    ) ?? null;
+  await click(chip(host, 'night'));
   expect(host.querySelectorAll('.moodboard__card')).toHaveLength(2);
   expect(chip(host, 'night')?.getAttribute('aria-pressed')).toBe('true');
-  // The same chip again, or "All", clears the filter.
+  // The same chip again clears the filter.
   await click(chip(host, 'night'));
   expect(host.querySelectorAll('.moodboard__card')).toHaveLength(3);
+  await click(named('moodboard.colors'));
+  await click(chip(host, 'rain'));
+  expect(host.querySelectorAll('.moodboard__card')).toHaveLength(1);
+  await click(named('moodboard.all'));
+  expect(host.querySelectorAll('.moodboard__card')).toHaveLength(3);
   expect(host.querySelector('.moodboard__chips button')?.getAttribute('aria-pressed')).toBe('true');
+});
+
+it('shows no headings without groups, and named groups then the rest when there are', async () => {
+  const { doc, store, add } = board();
+  const first = add('image', { assetId: 'one' });
+  add('image', { assetId: 'two' });
+  const host = await mount(store);
+  expect(host.querySelector('.moodboard__group')).toBeNull();
+  expect(host.querySelectorAll('.moodboard__card')).toHaveLength(2);
+  await act(async () => updateElement(doc, first.id, { group: 'Luce' }, LOCAL));
+  const titles = [...host.querySelectorAll('.moodboard__group-title')].map((h) => h.textContent);
+  expect(titles).toEqual(['Luce1', 'moodboard.ungrouped1']);
+});
+
+it('sorts groups by name, merges names without case and puts the ungrouped last', () => {
+  const { store, add } = board();
+  add('image', { assetId: 'a', group: 'Notte' });
+  add('image', { assetId: 'b' });
+  add('image', { assetId: 'c', group: 'luce' });
+  add('color', { hex: '#112233', group: 'LUCE' });
+  const groups = referenceGroups(referencesOf([...store.getSnapshot().byId.values()]));
+  expect(groups.map((g) => [g.name, g.items.length])).toEqual([
+    ['luce', 2],
+    ['Notte', 1],
+    [null, 1],
+  ]);
+});
+
+it('takes the strongest colour of each picture first, without repeats, up to five', () => {
+  expect(mergePalette([['#A', '#B'], ['#A', '#C'], ['#D']])).toEqual(['#A', '#D', '#B', '#C']);
+  expect(mergePalette([['#1', '#2', '#3', '#4', '#5', '#6']])).toHaveLength(5);
+});
+
+it('shows the palette of the pictures and copies it', async () => {
+  const writeText = vi.fn(async () => {});
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+  const { store, add } = board();
+  add('image', { assetId: 'palette' });
+  const host = await mount(store);
+  expect(host.querySelectorAll('.moodboard__palette li')).toHaveLength(2);
+  await click(host.querySelector<HTMLButtonElement>('.moodboard__palette-copy'));
+  expect(writeText).toHaveBeenCalledWith('#112233 #445566');
+});
+
+const checks = (host: HTMLElement) => [
+  ...host.querySelectorAll<HTMLInputElement>('.moodboard__check input'),
+];
+const inBar = (host: HTMLElement, name: string) =>
+  [...host.querySelectorAll<HTMLButtonElement>('.moodboard__selection button')].find(
+    (button) => button.textContent === name,
+  ) ?? null;
+
+it('selects with the checkboxes and a click, then moves to a group and tags together', async () => {
+  const { store, add } = board();
+  const a = add('image', { assetId: 'one', tags: ['Old'] });
+  const b = add('color', { hex: '#112233', tags: ['new'] });
+  const locked = add('image', { assetId: 'two', locked: true });
+  const host = await mount(store, false);
+  expect(host.querySelector('.moodboard__selection')).toBeNull();
+  await click(checks(host)[0] ?? null);
+  expect(host.querySelector('.moodboard__selection')?.textContent).toContain('moodboard.selected');
+  // With a selection going, a click on a tile selects instead of opening the viewer.
+  await click(host.querySelector<HTMLElement>('.moodboard__card--color'));
+  await click(checks(host)[2] ?? null);
+  expect(document.querySelector('.viewer')).toBeNull();
+  expect(host.querySelectorAll('[data-picked]')).toHaveLength(3);
+
+  await click(inBar(host, 'moodboard.moveToGroup'));
+  const field = host.querySelector<HTMLInputElement>('.moodboard__popover input');
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+      field,
+      ' Luce ',
+    );
+    field?.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () => {
+    field?.form?.requestSubmit();
+  });
+  const byId = () => store.getSnapshot().byId;
+  expect(byId().get(a.id)).toMatchObject({ group: 'Luce' });
+  expect(byId().get(b.id)).toMatchObject({ group: 'Luce' });
+  expect(byId().get(locked.id)).not.toHaveProperty('group');
+  expect(host.querySelector('.moodboard__notice')?.textContent).toBe('moodboard.lockedSkipped');
+
+  await click(inBar(host, 'moodboard.tags'));
+  await click(
+    [...host.querySelectorAll<HTMLButtonElement>('.moodboard__options button')].find(
+      (button) => button.textContent === '#new',
+    ) ?? null,
+  );
+  expect((byId().get(a.id) as { tags: string[] }).tags).toEqual(['Old', 'new']);
+  expect((byId().get(b.id) as { tags: string[] }).tags).toEqual(['new']);
+
+  await act(async () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  });
+  expect(host.querySelector('.moodboard__selection')).toBeNull();
+});
+
+it('offers no selection to people who cannot edit', async () => {
+  const { store, add } = board();
+  add('image', { assetId: 'one' });
+  const host = await mount(store);
+  expect(checks(host)).toHaveLength(0);
+  const tile = host.querySelector('.moodboard__tile') as HTMLElement;
+  await act(async () => {
+    tile.firstElementChild?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, ctrlKey: true }),
+    );
+  });
+  expect(host.querySelector('.moodboard__selection')).toBeNull();
+});
+
+it('sends pictures to the storyboard as frames, keeps the references and skips colours', async () => {
+  const { store, add } = board();
+  const picture = add('image', { assetId: 'one', caption: 'Backlight', guestHidden: true });
+  add('color', { hex: '#112233' });
+  const host = await mount(store, false);
+  await click(checks(host)[0] ?? null);
+  await click(checks(host)[1] ?? null);
+  await click(inBar(host, 'moodboard.sendToStoryboard'));
+  const frames = [...store.getSnapshot().byId.values()].filter((el) => el.type === 'frame');
+  expect(frames).toHaveLength(1);
+  expect(frames[0]).toMatchObject({
+    assetId: 'one',
+    action: 'Backlight',
+    guestHidden: true,
+    parent: null,
+  });
+  expect(store.getSnapshot().byId.has(picture.id)).toBe(true);
+  expect(host.querySelector('.toast')?.textContent).toBe('moodboard.sent');
+});
+
+it('keeps slides to the pictures, with the note and the group', () => {
+  const { store, add } = board();
+  const image = add('image', { assetId: 'one', caption: 'Backlight', group: 'Luce' });
+  add('color', { hex: '#112233' });
+  const { groups, labels } = referenceSlides(referencesOf([...store.getSnapshot().byId.values()]));
+  expect(groups[0]?.frames).toHaveLength(1);
+  expect(groups[0]?.frames[0]).toMatchObject({
+    id: image.id,
+    assetId: 'one',
+    action: 'Backlight',
+    location: 'Luce',
+  });
+  expect(labels.get(image.id)).toBe('1');
+});
+
+it('renames a group on all its references, also those filtered out', async () => {
+  const { store, add } = board();
+  const a = add('image', { assetId: 'one', group: 'Luce', tags: ['x'] });
+  const b = add('image', { assetId: 'two', group: 'luce' });
+  const host = await mount(store, false);
+  await click(chip(host, 'x'));
+  await click(host.querySelector<HTMLButtonElement>('.moodboard__group-title button'));
+  const field = host.querySelector<HTMLInputElement>('.moodboard__group-title input');
+  if (field) field.value = 'Notte';
+  await act(async () => {
+    field?.focus();
+    field?.blur();
+  });
+  expect(store.getSnapshot().byId.get(a.id)).toMatchObject({ group: 'Notte' });
+  expect(store.getSnapshot().byId.get(b.id)).toMatchObject({ group: 'Notte' });
 });
 
 it('offers the existing ways to add a reference to editors only, in the bar and in the empty state', async () => {

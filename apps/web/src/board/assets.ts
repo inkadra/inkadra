@@ -166,6 +166,30 @@ export function useAsset(id: string | undefined): Asset | 'missing' | undefined 
   );
 }
 
+/** The palette the media worker found in each of these pictures; empty until it has. */
+export function useAssetPalettes(ids: readonly string[]): string[][] {
+  const key = ids.join(' ');
+  const joined = useSyncExternalStore(
+    useCallback(
+      (listener) => {
+        const stops = (key ? key.split(' ') : []).map((id) => subscribe(id, listener));
+        return () => {
+          for (const stop of stops) stop();
+        };
+      },
+      [key],
+    ),
+    () =>
+      (key ? key.split(' ') : [])
+        .map((id) => {
+          const asset = cache.get(id);
+          return asset && asset !== 'missing' ? (asset.palette ?? []).join(',') : '';
+        })
+        .join(' '),
+  );
+  return joined ? joined.split(' ').map((palette) => (palette ? palette.split(',') : [])) : [];
+}
+
 const BROWSER_IMAGES = new Set([
   'image/jpeg',
   'image/png',

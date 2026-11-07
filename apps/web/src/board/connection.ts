@@ -31,7 +31,7 @@ export interface BoardConnection {
   saves: SaveStore;
 }
 
-function collabUrl(): string {
+export function collabUrl(): string {
   const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
   return `${scheme}://${window.location.host}${COLLAB_PATH}?schemaVersion=${CURRENT_SCHEMA_VERSION}`;
 }
