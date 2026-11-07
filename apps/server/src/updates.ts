@@ -14,7 +14,8 @@ import { safeFetch } from './safe-fetch.ts';
 
 // UPDATE_CHECK_URL is for the end-to-end tests only, which must not reach GitHub.
 const RELEASES_URL =
-  process.env.UPDATE_CHECK_URL ?? 'https://api.github.com/repos/inkadra/inkadra/releases?per_page=30';
+  process.env.UPDATE_CHECK_URL ??
+  'https://api.github.com/repos/inkadra/inkadra/releases?per_page=30';
 export const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 /** "Check now" asks GitHub at most this often. */
 const CHECK_NOW_MS = 60 * 1000;
@@ -80,8 +81,7 @@ export function parseReleases(json: unknown): InstanceRelease[] {
     const news = section(lines, /highlights|novità|what'?s new/i, 5);
     out.push({
       version,
-      publishedAt:
-        published && !Number.isNaN(published.getTime()) ? published.toISOString() : null,
+      publishedAt: published && !Number.isNaN(published.getTime()) ? published.toISOString() : null,
       prerelease: !!parts[4],
       // Built from the version, never taken from the answer.
       url: `https://github.com/inkadra/inkadra/releases/tag/v${version}`,
@@ -190,11 +190,11 @@ export async function readUpdates(db: Database): Promise<InstanceUpdates> {
     channel: settings.channel,
     checkedAt: stored.checkedAt,
     failed: stored.failed,
-    available: settings.enabled ? availableRelease(stored.releases, VERSION, settings.channel) : null,
+    available: settings.enabled
+      ? availableRelease(stored.releases, VERSION, settings.channel)
+      : null,
     earlier: stored.releases
-      .filter(
-        (r) => !newerRelease(r.version, VERSION) && (!r.prerelease || r.version === VERSION),
-      )
+      .filter((r) => !newerRelease(r.version, VERSION) && (!r.prerelease || r.version === VERSION))
       .slice(0, 6),
   };
 }

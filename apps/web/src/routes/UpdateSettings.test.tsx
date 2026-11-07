@@ -117,7 +117,5 @@ it('saves the switch and the channel, then reads the updates again', async () =>
   const select = host.querySelector('[data-tour="updates-alerts"] button.ink-select');
   await act(async () => chooseSelect(select, 'preview'));
   expect(api.patch).toHaveBeenCalledWith('/instance/settings', { updateChannel: 'preview' });
-  expect(vi.mocked(api.get).mock.calls.filter(([p]) => p === '/instance/updates')).toHaveLength(
-    2,
-  );
+  expect(vi.mocked(api.get).mock.calls.filter(([p]) => p === '/instance/updates')).toHaveLength(2);
 });

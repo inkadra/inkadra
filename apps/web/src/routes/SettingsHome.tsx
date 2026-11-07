@@ -7,13 +7,13 @@ import { FeedbackProfileRow } from '../feedback/FeedbackSettings.tsx';
 import { api, authApi } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
+import { usePendingUpdate } from '../lib/updates.ts';
 import { useInstanceSettings, useStorageUsage } from './InstanceSettings.tsx';
 import { setCachedProjects } from './projects.ts';
 import { DiagnosticsLink, setupAttention } from './SettingsShell.tsx';
 import { formatStorage } from './StorageCharts.tsx';
 import { GROUP_TITLES, SETTINGS_PAGES } from './settings-sections.ts';
 import { Segmented } from './settings-ui.tsx';
-import { usePendingUpdate } from '../lib/updates.ts';
 
 type Setup = { checks: Array<{ id: string; ok: boolean }> | null; error: boolean };
 

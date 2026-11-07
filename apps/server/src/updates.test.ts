@@ -31,7 +31,11 @@ const body = [
 ].join('\n');
 
 const github = [
-  { tag_name: 'v1.0.0', published_at: '2026-11-01T10:00:00Z', body: "## What's Changed\n* feat(web): Fix uploads by @a in https://github.com/x/pull/2\n* build(deps): Bump vite by @dependabot[bot] in https://x" },
+  {
+    tag_name: 'v1.0.0',
+    published_at: '2026-11-01T10:00:00Z',
+    body: "## What's Changed\n* feat(web): Fix uploads by @a in https://github.com/x/pull/2\n* build(deps): Bump vite by @dependabot[bot] in https://x",
+  },
   { tag_name: 'v1.1.0-rc.1', prerelease: true, published_at: '2026-11-05T10:00:00Z', body },
   { tag_name: 'v1.1.0', published_at: 'not a date', body, html_url: 'https://evil.example' },
   { tag_name: 'v2.0.0', draft: true, body },
@@ -57,7 +61,9 @@ describe('releases from GitHub (#515)', () => {
     // Older notes have no highlights: the merged pull requests, without bumps and authors.
     expect(old?.highlights).toEqual(['Fix uploads']);
     expect(parseReleases({ message: 'rate limited' })).toEqual([]);
-    const long = parseReleases([{ tag_name: 'v3.0.0', body: `## Highlights\n- ${'word '.repeat(80)}` }]);
+    const long = parseReleases([
+      { tag_name: 'v3.0.0', body: `## Highlights\n- ${'word '.repeat(80)}` },
+    ]);
     expect(long[0]?.highlights[0]).toMatch(/^.{1,279}…$/);
   });
 
@@ -91,9 +97,9 @@ describe.skipIf(!url)('the update check', () => {
   });
 
   it('caches the answer, notifies administrators once per version and survives a failure', async () => {
-    const fetch = vi.spyOn(updateSource, 'fetchReleases').mockResolvedValue([
-      { tag_name: 'v999.0.0', published_at: '2026-11-06T10:00:00Z', body },
-    ]);
+    const fetch = vi
+      .spyOn(updateSource, 'fetchReleases')
+      .mockResolvedValue([{ tag_name: 'v999.0.0', published_at: '2026-11-06T10:00:00Z', body }]);
     await checkForUpdates(db);
     await checkForUpdates(db);
     expect(fetch).toHaveBeenCalledTimes(1);

@@ -83,7 +83,6 @@ import {
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
 import { TutorialHost } from '../tutorial/TutorialHost.tsx';
-import { UpdatePopup } from './UpdatePopup.tsx';
 import { addStoryboardItem } from './add-storyboard.ts';
 import { editableProjects } from './home-data.ts';
 import { useInstanceSetup } from './InstanceSetup.tsx';
@@ -105,6 +104,7 @@ import { SearchDialog } from './SearchDialog.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import { SeedQueue } from './seed-queue.tsx';
 import { isSettingsPath } from './settings-sections.ts';
+import { UpdatePopup } from './UpdatePopup.tsx';
 import './mobile-shell.css';
 
 interface ProjectsState {

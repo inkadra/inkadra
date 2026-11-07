@@ -35,10 +35,10 @@ import { markProxyFailed, runProxy } from './media/proxy.ts';
 import { ProxyTimeout } from './media/video.ts';
 import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
 import { enqueueReleaseNews, sendReleaseNews } from './release-news.ts';
-import { CHECK_EVERY_MS, checkForUpdates } from './updates.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
 import { runTransfer, sweepTransfers } from './transfers/service.ts';
+import { CHECK_EVERY_MS, checkForUpdates } from './updates.ts';
 import {
   applyVersionRetention,
   type RestoreVersion,

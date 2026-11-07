@@ -215,7 +215,9 @@ function NewVersion({ release, current }: { release: InstanceRelease; current: s
             <li>
               <Trans
                 i18nKey="updates.howBackup"
-                components={{ backup: <Link className="updates-link" to="/settings?section=backups" replace /> }}
+                components={{
+                  backup: <Link className="updates-link" to="/settings?section=backups" replace />,
+                }}
               />
             </li>
             <li>

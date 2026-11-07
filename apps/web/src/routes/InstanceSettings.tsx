@@ -9,9 +9,9 @@ import { BackupSettings } from './BackupSettings.tsx';
 import { ProviderIcon } from './ProviderIcon.tsx';
 import { DiagnosticsLink } from './SettingsShell.tsx';
 import { formatStorage, StorageCharts } from './StorageCharts.tsx';
-import { UpdateSettings } from './UpdateSettings.tsx';
 import { trackSave } from './settings-save.ts';
 import { AutosaveText, Badge, Card, Row, Segmented } from './settings-ui.tsx';
+import { UpdateSettings } from './UpdateSettings.tsx';
 
 type Setup = { checks: Array<{ id: string; ok: boolean }> | null; error: boolean };
 type Registration = Settings['registration'];

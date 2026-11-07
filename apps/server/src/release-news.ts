@@ -104,16 +104,18 @@ export function releaseHighlights(notes: string): string[] {
 
 /** One line of release notes as plain text: no Markdown, HTML, images or addresses. */
 export function plainLine(line: string, max = 280): string {
-  return line
-    .replace(/^\s*(?:[-*+] |\d+[.)] )/, '')
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/<[^>]*>/g, '')
-    .replace(/(?:https?:\/\/|www\.)[^\s]+/gi, '')
-    // Emphasis marks only: single underscores stay, as in FEEDBACK_RELAY_URL.
-    .replace(/\*\*|__|~~|[*`]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, max);
+  return (
+    line
+      .replace(/^\s*(?:[-*+] |\d+[.)] )/, '')
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/<[^>]*>/g, '')
+      .replace(/(?:https?:\/\/|www\.)[^\s]+/gi, '')
+      // Emphasis marks only: single underscores stay, as in FEEDBACK_RELAY_URL.
+      .replace(/\*\*|__|~~|[*`]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, max)
+  );
 }
 
 export type ReleaseMailInstance = { instanceName: string; publicUrl: string };
