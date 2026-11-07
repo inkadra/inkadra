@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type ArrangeItem,
+  gridAround,
   heightAtWidth,
   mosaicColumns,
   readingOrder,
@@ -143,5 +144,22 @@ describe('tidy up', () => {
   it('does nothing without cards', () => {
     expect(tidyMosaic([], 8)).toEqual({ rects: [], groups: [] });
     expect(tidyRows([], 8)).toEqual({ rects: [], groups: [] });
+  });
+});
+
+describe('gridAround', () => {
+  it('centres a grid of the given sizes on a point, keeping each size', () => {
+    const sizes = [
+      { w: 100, h: 50 },
+      { w: 60, h: 80 },
+      { w: 100, h: 40 },
+    ];
+    // Two columns (100 and 60 wide), two rows (80 and 40 tall), 10 apart: 170 by 130.
+    expect(gridAround(sizes, { x: 0, y: 0 }, 10)).toEqual([
+      { x: -85, y: -65 },
+      { x: 25, y: -65 },
+      { x: -85, y: 25 },
+    ]);
+    expect(gridAround([], { x: 0, y: 0 }, 10)).toEqual([]);
   });
 });

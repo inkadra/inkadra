@@ -309,17 +309,21 @@
     bottom: 80px;
     left: max(12px, env(safe-area-inset-left));
   }
-  /* Unsorted sits above the 44px zoom control instead of on top of it. */
-  .canvas .unsorted {
+  /* Bottom right above the touch toolbar, one row higher than the zoom on the left: at 390 px
+     the zoom's five targets and the toggle do not fit side by side. */
+  .canvas .canvas__tray {
     bottom: 132px;
-    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    max-width: calc(100vw - 24px);
   }
   .canvas .unsorted__toggle {
     height: 44px;
   }
   .canvas .unsorted__panel {
-    width: min(260px, calc(100vw - 24px));
-    max-height: min(420px, calc(100dvh - 360px));
+    width: min(272px, calc(100vw - 24px));
+  }
+  .canvas .unsorted__items {
+    max-height: min(360px, calc(100dvh - 420px));
   }
   .canvas__corner .minimap {
     display: none;

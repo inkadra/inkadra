@@ -80,6 +80,42 @@ export function mosaicColumns(n: number): number {
 }
 
 /**
+ * Top-left corners that lay out items of these sizes in a grid centred on `center`, in order,
+ * row by row, with `mosaicColumns` columns. Sizes are kept: a column is as wide as its widest
+ * item and a row as tall as its tallest.
+ */
+export function gridAround(
+  sizes: ReadonlyArray<{ w: number; h: number }>,
+  center: Point,
+  gap: number,
+): Point[] {
+  const columns = mosaicColumns(sizes.length);
+  const widths: number[] = [];
+  const heights: number[] = [];
+  sizes.forEach((s, i) => {
+    const c = i % columns;
+    const r = Math.floor(i / columns);
+    widths[c] = Math.max(widths[c] ?? 0, s.w);
+    heights[r] = Math.max(heights[r] ?? 0, s.h);
+  });
+  const starts = (list: number[], middle: number) => {
+    const total = list.reduce((sum, v) => sum + v, 0) + gap * Math.max(0, list.length - 1);
+    let at = middle - total / 2;
+    return list.map((v) => {
+      const start = at;
+      at += v + gap;
+      return start;
+    });
+  };
+  const xs = starts(widths, center.x);
+  const ys = starts(heights, center.y);
+  return sizes.map((_, i) => ({
+    x: Math.round(xs[i % columns] ?? center.x),
+    y: Math.round(ys[Math.floor(i / columns)] ?? center.y),
+  }));
+}
+
+/**
  * Packs the items into a mosaic (masonry) of `columns` columns of the same width, the median
  * width of the items, starting at the top-left of their bounds (or `origin`). Each card goes,
  * in reading order, to the shortest column; images keep their aspect ratio.

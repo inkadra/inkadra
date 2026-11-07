@@ -27,6 +27,7 @@ import {
   GRID,
   type Guide,
   gestureArea,
+  gridAround,
   inflate,
   intersects,
   isContainer,
@@ -2252,6 +2253,23 @@ export function Canvas({
     moveToCanvas(doc, moves, LOCAL);
   }
 
+  /** "Metti tutti sulla lavagna": the whole tray in a grid in the middle of the view, one undo. */
+  function placeAllUnsorted() {
+    const els = snap.unsorted;
+    const middle = screenToWorld(vp.current, { x: size.w / 2, y: size.h / 2 });
+    const sizes = els.map((el) => ({ w: el.w, h: store.heightOf(el) }));
+    const at = gridAround(sizes, middle, TIDY_GAPS.m);
+    store.undo.stopCapturing();
+    moveToCanvas(
+      doc,
+      els.map((el, i) => ({ id: el.id, ...(at[i] ?? middle) })),
+      LOCAL,
+    );
+    store.undo.stopCapturing();
+    setUnsortedOpen(false);
+    select(els.map((el) => el.id));
+  }
+
   function onDoubleClick(e: ReactMouseEvent<HTMLDivElement>) {
     // Pointer capture retargets the click to the canvas itself: look at what is under it.
     const target =
@@ -4120,19 +4138,6 @@ export function Canvas({
             />
           ))}
 
-        {/* Guests don't see the unsorted tray; members and previews still do. */}
-        {!guest && (
-          <UnsortedDrawer
-            ref={unsortedRef}
-            items={snap.unsorted}
-            open={unsortedOpen}
-            onToggle={() => setUnsortedOpen((o) => !o)}
-            selection={selection}
-            dropping={overlay.drop?.kind === 'unsorted'}
-            dragging={overlay.moving !== undefined}
-            draggingIds={draggingNested}
-          />
-        )}
         <div className="canvas__corner" data-chrome>
           {!readOnly && prefs.undoButtons && (
             <HistoryControls onUndo={() => store.undo.undo()} onRedo={() => store.undo.redo()} />
@@ -4176,7 +4181,24 @@ export function Canvas({
             onClose={() => setRecording(null)}
           />
         )}
-        <UploadPanel />
+        {/* Bottom right: uploads stack above the unsorted tray. */}
+        <div className="canvas__tray">
+          <UploadPanel />
+          {/* Guests don't see the unsorted tray; members and previews still do. */}
+          {!guest && (
+            <UnsortedDrawer
+              ref={unsortedRef}
+              items={snap.unsorted}
+              open={unsortedOpen}
+              onToggle={() => setUnsortedOpen((o) => !o)}
+              onPlaceAll={placeAllUnsorted}
+              selection={selection}
+              dropping={overlay.drop?.kind === 'unsorted'}
+              dragging={overlay.moving !== undefined}
+              draggingIds={draggingNested}
+            />
+          )}
+        </div>
         {/* On the body: the dialog is the viewport's, not a card of the board. */}
         {importingScript &&
           createPortal(

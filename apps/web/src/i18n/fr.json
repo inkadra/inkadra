@@ -602,7 +602,13 @@
     },
     "unsorted": {
       "empty": "Rien à trier. Ce que vous enregistrez depuis le navigateur ou le téléphone arrive ici.",
-      "clipper": "Installer le clipper pour Chrome ↗"
+      "clipper": "Installer le clipper pour Chrome ↗",
+      "close": "Fermer Non triés",
+      "hint": "Faites-les glisser sur le tableau pour les ranger.",
+      "count_one": "{{count}} élément",
+      "count_other": "{{count}} éléments",
+      "placeAll": "Tout placer sur le tableau",
+      "drop": "Déposez ici pour le mettre de côté"
     },
     "uploads": {
       "title": "Envois",

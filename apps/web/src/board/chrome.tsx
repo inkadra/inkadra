@@ -31,12 +31,13 @@ import { addActions, type PaletteAction, rankActions } from '../commands/actions
 import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
 import { CLIPPER_STORE_URL } from '../lib/clipper.ts';
 import { usePreferences } from '../lib/preferences.ts';
+import { pickVariant, useAsset } from './assets.ts';
 import { ContextualTools } from './ContextualTools.tsx';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
 import { isMac } from './shortcuts.ts';
 import { BAR_ICONS, type BarTool, barTools, DEFAULT_BAR } from './toolbar-prefs.ts';
-import { cancelUpload, retryUpload, useUploads } from './uploads.ts';
+import { cancelUpload, localPreview, retryUpload, useUploads } from './uploads.ts';
 
 export type ToolType =
   | 'note'
@@ -1218,14 +1219,26 @@ function UnsortedPanel({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const ref = useExitFade<HTMLElement>();
   return (
-    <section
-      ref={ref}
-      className="unsorted__panel ink-motion-rise"
-      aria-label={t('nav.unsorted')}
-      data-scroll
-    >
+    <section ref={ref} className="unsorted__panel ink-motion-rise" aria-label={t('nav.unsorted')}>
       {children}
     </section>
+  );
+}
+
+/** A waiting item on the closed toggle: its picture, or a text tile. */
+function UnsortedThumb({ element }: { element: Element }) {
+  const assetId = element.type === 'image' ? element.assetId : undefined;
+  const asset = useAsset(assetId);
+  const src =
+    (asset && asset !== 'missing' ? pickVariant(asset, 48) : '') ||
+    (assetId && localPreview(assetId)) ||
+    '';
+  return src ? (
+    <img className="unsorted__thumb" src={src} alt="" />
+  ) : (
+    <span className="unsorted__thumb">
+      <Icon name="text" size={10} />
+    </span>
   );
 }
 
@@ -1239,6 +1252,7 @@ export function UnsortedDrawer({
   items,
   open,
   onToggle,
+  onPlaceAll,
   selection,
   dropping,
   dragging,
@@ -1248,18 +1262,39 @@ export function UnsortedDrawer({
   items: readonly Element[];
   open: boolean;
   onToggle: () => void;
+  onPlaceAll: () => void;
   selection: ReadonlySet<string>;
   dropping: boolean;
   dragging: boolean;
   draggingIds: ReadonlySet<string> | undefined;
 }) {
   const { t } = useTranslation();
-  if (items.length === 0 && !open && !dragging) return null;
+  // One ring pulse each time something new arrives; the key restarts the animation.
+  const count = items.length;
+  const seen = useRef(count);
+  const [pulse, setPulse] = useState(0);
+  useEffect(() => {
+    if (count > seen.current) setPulse((p) => p + 1);
+    seen.current = count;
+  }, [count]);
+  if (count === 0 && !open && !dragging) return null;
   return (
     <div ref={ref} className={`unsorted${dropping ? ' is-dropping' : ''}`} data-chrome>
-      {open && (
+      {open ? (
         <UnsortedPanel>
-          {items.length === 0 ? (
+          <header className="unsorted__head">
+            <h2 className="unsorted__title">{t('nav.unsorted')}</h2>
+            {count > 0 && <span className="unsorted__badge">{count}</span>}
+            <button
+              type="button"
+              className="unsorted__close"
+              aria-label={t('board.unsorted.close')}
+              onClick={onToggle}
+            >
+              <Icon name="close" size={14} />
+            </button>
+          </header>
+          {count === 0 ? (
             <p className="ink-muted unsorted__empty">
               {t('board.unsorted.empty')}{' '}
               <a href={CLIPPER_STORE_URL} target="_blank" rel="noopener">
@@ -1267,22 +1302,49 @@ export function UnsortedDrawer({
               </a>
             </p>
           ) : (
-            items.map((el) => (
-              <Card
-                key={el.id}
-                element={el}
-                nested
-                selected={selection.has(el.id)}
-                dimmed={draggingIds?.has(el.id)}
-              />
-            ))
+            <>
+              <p className="ink-muted unsorted__hint">{t('board.unsorted.hint')}</p>
+              <div className="unsorted__items" data-scroll>
+                {items.map((el) => (
+                  <Card
+                    key={el.id}
+                    element={el}
+                    nested
+                    selected={selection.has(el.id)}
+                    dimmed={draggingIds?.has(el.id)}
+                  />
+                ))}
+              </div>
+              <footer className="unsorted__foot">
+                <span className="ink-muted">{t('board.unsorted.count', { count })}</span>
+                <button type="button" className="unsorted__place" onClick={onPlaceAll}>
+                  {t('board.unsorted.placeAll')}
+                </button>
+              </footer>
+            </>
           )}
         </UnsortedPanel>
+      ) : (
+        dragging && <div className="unsorted__drop">{t('board.unsorted.drop')}</div>
       )}
-      <button type="button" className="unsorted__toggle" aria-expanded={open} onClick={onToggle}>
+      <button
+        type="button"
+        className={`unsorted__toggle${count > 0 ? ' has-items' : ''}`}
+        aria-expanded={open}
+        onClick={onToggle}
+      >
         <Icon name="unsorted" size={14} />
-        {t('nav.unsorted')}
-        <span className="ink-muted">· {items.length}</span>
+        <span className="unsorted__label">{t('nav.unsorted')}</span>
+        {count > 0 && !open && (
+          <span className="unsorted__thumbs" aria-hidden="true">
+            {items.slice(-3).map((el) => (
+              <UnsortedThumb key={el.id} element={el} />
+            ))}
+          </span>
+        )}
+        <span className={count > 0 ? 'unsorted__badge' : 'unsorted__count'}>{count}</span>
+        {open && <Icon name="chevronDown" size={14} />}
+        {pulse > 0 && <span key={pulse} className="unsorted__ring" aria-hidden="true" />}
       </button>
     </div>
   );
