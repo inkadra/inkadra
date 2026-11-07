@@ -4,6 +4,13 @@ What the main tools do and where to find them. The pictures come from the sample
 `pnpm --filter @inkadra/e2e screenshots` builds on an empty instance: every name and image in them
 is invented.
 
+## Tutorials
+
+The first time you sign in, Inkadra offers a one-minute tour of the interface. Each feature has a
+tour of three steps, offered by a small pill the first time you open it; skip it and it waits in
+**Settings → Tutorial**, where you can replay any tour, see which ones are new, turn the pills off
+or start over. Guests of a review link get two steps, and **?** in their header plays them again.
+
 ## The board
 
 A board is an infinite canvas. The **dock** at the bottom holds the tools that add cards: notes,

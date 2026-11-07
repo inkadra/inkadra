@@ -76,6 +76,7 @@ export function GuestPanel({
     // Keys pressed in the panel are its own, not the canvas's shortcuts.
     <aside
       className="guest-panel"
+      data-tour="guest-panel"
       aria-label={t('guest.panel')}
       data-scroll
       onKeyDown={(e) => e.stopPropagation()}

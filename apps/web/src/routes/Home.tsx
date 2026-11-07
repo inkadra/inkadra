@@ -143,6 +143,7 @@ export function Home() {
       <MyTasks />
       <Section
         id="home-recent"
+        tour="home-recent"
         title={t('home.recentBoards')}
         action={
           // Guests with shared boards only have no projects page to go to; a phone has the link
@@ -218,6 +219,7 @@ export function Home() {
 
       <Section
         id="home-activity"
+        tour="home-activity"
         title={t('home.activity.title')}
         hint={t('home.activity.hint')}
         action={
@@ -262,19 +264,22 @@ export function Home() {
 
 function Section({
   id,
+  tour,
   title,
   hint,
   action,
   children,
 }: {
   id: string;
+  /** `data-tour` anchor of a tutorial step (#502). */
+  tour?: string;
   title: ReactNode;
   hint?: string;
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section className="home__section" aria-labelledby={id}>
+    <section className="home__section" aria-labelledby={id} data-tour={tour}>
       <div className="home__section-head">
         <h2 id={id} className="ink-label">
           {title}

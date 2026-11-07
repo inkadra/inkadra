@@ -263,7 +263,7 @@ export function PresentationView({
     >
       <div className="present-body">
         <main className="present-main">
-          <header className="present-header">
+          <header className="present-header" data-tour="present-header">
             <button type="button" className="present-header__btn" onClick={onClose}>
               <Icon name="arrow" size={14} style={{ transform: 'rotate(180deg)' }} />
               <span>{t('present.exit')}</span>
@@ -301,7 +301,7 @@ export function PresentationView({
           </header>
 
           {current ? (
-            <section className="present-stage" aria-label={slideAria}>
+            <section className="present-stage" aria-label={slideAria} data-tour="present">
               <p className="present-sr-only" aria-live="polite">
                 {`${slideAria} · ${current.label}`}
               </p>

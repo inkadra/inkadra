@@ -35,6 +35,13 @@ Take the first option that fully works:
   can't be built, ask; don't swap in a simpler widget or drop it on your own.
 - Wait for builds, tests and CI without ending your turn: nothing wakes you up afterwards.
 
+## Keep the tutorials up to date
+
+Any change that adds, moves, renames or removes interface must update the tour of that feature in
+`apps/web/src/tutorial/` (`tours.ts`: steps, `data-tour` anchors, texts in every catalogue, media).
+A new feature gets its own tour. `tutorial/tours.test.ts` is the safety net: it fails when an
+anchor is gone or a text is missing. See decision 0078.
+
 ## Bugs: find the cause before the fix
 
 Reproduce the bug first (a failing test or a recorded step), find the root cause, fix it once in

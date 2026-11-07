@@ -386,6 +386,7 @@ function CardVideo({
     <video
       ref={video}
       className="fcard__video"
+      data-tour="video"
       data-play-link={id}
       aria-label={t('board.menu.videoPlayer', { title: name })}
       src={src}

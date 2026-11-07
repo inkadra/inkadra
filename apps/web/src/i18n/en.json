@@ -2603,7 +2603,8 @@
     "pages": {
       "access": "Sign-in",
       "about": "About",
-      "toolbar": "Toolbar"
+      "toolbar": "Toolbar",
+      "tutorials": "Tutorials"
     },
     "leads": {
       "account": "Your profile and how you sign in.",
@@ -2614,7 +2615,8 @@
       "registration": "Who can create a new account.",
       "about": "Instance name, address, version and setup status.",
       "backups": "Nightly copies of the database, to restore the server after a failure.",
-      "toolbar": "Choose what you see in the bottom bar. Hidden tools stay in \"+ ▾\" and in the command palette."
+      "toolbar": "Choose what you see in the bottom bar. Hidden tools stay in \"+ ▾\" and in the command palette.",
+      "tutorials": "Watch the guided tours again and choose whether to offer them."
     },
     "autosave": {
       "idle": "Autosave on",
@@ -2739,7 +2741,8 @@
       "registration": "New accounts, Open registration, Invitation only, Closed registration, Require two-step verification for administrators",
       "instance": "Instance name, Public address, Version, Diagnostics, Instance status, Inkadra news, Reports, Send to the Inkadra developers, Destination, Repository, GitHub token, Guests can report, Attachment retention, Reports received",
       "backups": "Backups, Back up now, Restore, Retention, Nightly backup",
-      "toolbar": "Toolbar, Tools, Note, Image, Link, To-do, Colour, Arrow, Frame, Storyboard, Reset to default toolbar"
+      "toolbar": "Toolbar, Tools, Note, Image, Link, To-do, Colour, Arrow, Frame, Storyboard, Reset to default toolbar",
+      "tutorials": "Welcome tour, Hints the first time, Start over"
     },
     "close": "Close settings",
     "dangerZone": "Danger zone",
@@ -3822,5 +3825,512 @@
     "relayRefusedBanner_other": "The relay refused {{count}} reports ({{reason}}): I am not retrying by myself. They are safe here. Try again after updating Inkadra, or choose another destination.",
     "relayRetentionHelp": "Local attachments only. GitHub copies remain until removed by the Inkadra team.",
     "relaySaved": "Report saved on this server"
+  },
+  "tutorial": {
+    "welcome": {
+      "eyebrow": "Welcome to Inkadra",
+      "title": "From idea to shot.",
+      "lead": "An infinite canvas for film and photo, on your own server.",
+      "go": "Take the tour · 1 min",
+      "skip": "I’ll explore on my own",
+      "foot": "You can watch it again any time from Settings → Tutorials.",
+      "heroNote": "The last train",
+      "heroTodoDone": "Location scout",
+      "heroTodo": "Rain test"
+    },
+    "finale": {
+      "title": "You’re ready.",
+      "text": "We’ll show you the rest the first time you need it.",
+      "more_one": "+ {{count}} more",
+      "more_other": "+ {{count}} more",
+      "go": "Start creating"
+    },
+    "coach": {
+      "skip": "Skip",
+      "back": "Back",
+      "next": "Next",
+      "done": "Done",
+      "shortcut": "Shortcut",
+      "count": "{{index}}/{{total}}"
+    },
+    "pill": {
+      "question": "First time in {{name}}?",
+      "go": "30 s tour",
+      "later": "Not now"
+    },
+    "guest": {
+      "question": "{{name}} would like your opinion",
+      "questionAnonymous": "You’re asked for your opinion",
+      "go": "How it works · 20 s",
+      "help": "How it works"
+    },
+    "toast": {
+      "open": "Open",
+      "welcomeSkipped": "OK! The tour waits for you in Settings → Tutorials.",
+      "tourSkipped": "Tour skipped. You’ll find it in Settings → Tutorials.",
+      "pillDismissed": "OK, we won’t offer it again. It’s in Settings → Tutorials.",
+      "done": "{{name}}: tour complete.",
+      "guestDismissed": "OK. The tour stays under the ? button at the top.",
+      "guestDone": "That’s all. Enjoy the review!"
+    },
+    "settings": {
+      "welcomeTitle": "Welcome tour",
+      "welcomeSub": "What Inkadra is and where things are · 7 steps · 1 min",
+      "play": "Play",
+      "playNamed": "Play {{name}}",
+      "seen": "Seen",
+      "unseen": "Not seen yet",
+      "duration": "30 s",
+      "count": "{{seen}} of {{total}} seen",
+      "new": "New",
+      "hints": "Hints the first time",
+      "hintsHelp": "A pill offers the tour when you open a feature for the first time.",
+      "reset": "Start over",
+      "resetHelp": "Mark every tour as not seen.",
+      "resetAction": "Reset",
+      "adminOnly": "admins only"
+    },
+    "groups": {
+      "start": "Getting started",
+      "canvas": "Canvas",
+      "production": "Production",
+      "collaboration": "Collaboration",
+      "tools": "Tools",
+      "admin": "Administration"
+    },
+    "media": {
+      "searchWord": "Platform",
+      "scene": "Scene 1 · Platform",
+      "picture": "Platform 4, 2 am",
+      "approved": "Approved",
+      "comment": "Tighter?",
+      "dolly": "Dolly",
+      "night": "Night",
+      "day": "Day {{n}}",
+      "restore": "Restore",
+      "role0": "Edit",
+      "role1": "Comment",
+      "role2": "Invite"
+    },
+    "tours": {
+      "welcome": {
+        "steps": {
+          "0": {
+            "title": "Your projects",
+            "text": "Each project keeps its boards together. The colour tells the kind."
+          },
+          "1": {
+            "title": "Search everything",
+            "text": "Boards, cards and scenes, from anywhere."
+          },
+          "2": {
+            "title": "Add cards",
+            "text": "Pick a tool and click on the canvas. Or drop a file."
+          },
+          "3": {
+            "title": "Select and edit",
+            "text": "A card’s tools appear right above it."
+          },
+          "4": {
+            "title": "One story, many views",
+            "text": "Storyboard, shot list and schedule share the same data."
+          },
+          "5": {
+            "title": "Work as a team",
+            "text": "Share, comment, get the client’s approval."
+          },
+          "6": {
+            "title": "Watch it again",
+            "text": "It’s in Settings → Tutorials."
+          }
+        }
+      },
+      "guest": {
+        "steps": {
+          "0": {
+            "title": "Comment on a card",
+            "text": "Pick it and write: the comment stays attached to it."
+          },
+          "1": {
+            "title": "Give your OK",
+            "text": "Approve or ask for changes. The team sees it at once."
+          }
+        }
+      },
+      "home": {
+        "name": "Home",
+        "steps": {
+          "0": {
+            "title": "Recent boards",
+            "text": "Pick up where you left off."
+          },
+          "1": {
+            "title": "What happened",
+            "text": "Activity in your projects, newest first."
+          },
+          "2": {
+            "title": "New board",
+            "text": "Create one in any of your projects."
+          }
+        }
+      },
+      "inbox": {
+        "name": "Inbox and notifications",
+        "steps": {
+          "0": {
+            "title": "All in one place",
+            "text": "Mentions, replies and reviews from your projects."
+          },
+          "1": {
+            "title": "Filter",
+            "text": "Mentions, approvals or your tasks."
+          },
+          "2": {
+            "title": "Choose what you get",
+            "text": "Emails are set in Settings → Notifications."
+          }
+        }
+      },
+      "board": {
+        "name": "Boards and cards",
+        "steps": {
+          "0": {
+            "title": "The tools",
+            "text": "Notes, photos, links, lists: pick one and click the canvas."
+          },
+          "1": {
+            "title": "Everything else",
+            "text": "+ opens every tool; choose the bar in Settings."
+          },
+          "2": {
+            "title": "Select a card",
+            "text": "Its tools appear right above it."
+          }
+        }
+      },
+      "moodboard": {
+        "name": "Moodboard",
+        "steps": {
+          "0": {
+            "title": "References in a grid",
+            "text": "The project’s images, links and colours, together."
+          },
+          "1": {
+            "title": "Filter",
+            "text": "By tag or by kind, in one tap."
+          },
+          "2": {
+            "title": "The palette",
+            "text": "The colours of your references, ready to copy."
+          }
+        }
+      },
+      "video": {
+        "name": "Videos in cards",
+        "steps": {
+          "0": {
+            "title": "Watch in the card",
+            "text": "Press play: the video runs right there, with its controls."
+          },
+          "1": {
+            "title": "One at a time",
+            "text": "Start another and the first one stops."
+          },
+          "2": {
+            "title": "Links too",
+            "text": "YouTube and Vimeo play in the card."
+          }
+        }
+      },
+      "storyboard": {
+        "name": "Storyboard",
+        "steps": {
+          "0": {
+            "title": "Scenes and frames",
+            "text": "Each scene holds its frames, in order."
+          },
+          "1": {
+            "title": "Every frame has its data",
+            "text": "Shot size, lens, movement: they flow into the shot list."
+          },
+          "2": {
+            "title": "Draw on the frame",
+            "text": "Double-click a frame to sketch full screen."
+          }
+        }
+      },
+      "draw": {
+        "name": "Draw on a frame",
+        "steps": {
+          "0": {
+            "title": "Pens and shapes",
+            "text": "Pen, eraser, shapes and text, with colour and size."
+          },
+          "1": {
+            "title": "Frame after frame",
+            "text": "The arrows go to the other frames."
+          },
+          "2": {
+            "title": "Move around",
+            "text": "Space and drag, the wheel or two fingers."
+          }
+        }
+      },
+      "shotlist": {
+        "name": "Shot list",
+        "steps": {
+          "0": {
+            "title": "Your shots",
+            "text": "The storyboard’s frames, as a table."
+          },
+          "1": {
+            "title": "Table or cards",
+            "text": "Choose how to see it."
+          },
+          "2": {
+            "title": "Export",
+            "text": "CSV or PDF, for the crew."
+          }
+        }
+      },
+      "schedule": {
+        "name": "Shooting schedule",
+        "steps": {
+          "0": {
+            "title": "Shooting days",
+            "text": "Drag shots into the days."
+          },
+          "1": {
+            "title": "Each day",
+            "text": "Location, times and shots; conflicts stand out."
+          },
+          "2": {
+            "title": "Call sheet",
+            "text": "Ready to send to the crew."
+          }
+        }
+      },
+      "setplan": {
+        "name": "Set plan",
+        "steps": {
+          "0": {
+            "title": "Draw the set",
+            "text": "Walls, lines and shapes from the bottom bar."
+          },
+          "1": {
+            "title": "Icons",
+            "text": "Cameras, actors, lights and furniture. Shift places many."
+          },
+          "2": {
+            "title": "Scale and layers",
+            "text": "At the top: the drawing’s scale and its layers."
+          }
+        }
+      },
+      "characters": {
+        "name": "Character sheets",
+        "steps": {
+          "0": {
+            "title": "The sheet",
+            "text": "Identity, looks, story: sections that open and close."
+          },
+          "1": {
+            "title": "Their scenes",
+            "text": "They come from the frames whose cast names them."
+          },
+          "2": {
+            "title": "Team only",
+            "text": "Contacts and notes never reach guests."
+          }
+        }
+      },
+      "review": {
+        "name": "Client review",
+        "steps": {
+          "0": {
+            "title": "The shots",
+            "text": "The client sees them one by one, in order."
+          },
+          "1": {
+            "title": "The frame",
+            "text": "Large, with its action and comments."
+          },
+          "2": {
+            "title": "Approve or ask for changes",
+            "text": "The decision reaches the team at once."
+          }
+        }
+      },
+      "comments": {
+        "name": "Comments",
+        "steps": {
+          "0": {
+            "title": "The whole conversation",
+            "text": "One column with the board’s comments."
+          },
+          "1": {
+            "title": "On the board",
+            "text": "Bubbles next to cards with open threads."
+          },
+          "2": {
+            "title": "Who reads it",
+            "text": "The team, or guests too: you choose every time."
+          }
+        }
+      },
+      "sharing": {
+        "name": "Sharing and roles",
+        "steps": {
+          "0": {
+            "title": "People and links",
+            "text": "Invite the team or make a link for guests."
+          },
+          "1": {
+            "title": "Roles",
+            "text": "Who edits, who comments, who looks."
+          },
+          "2": {
+            "title": "Guest links",
+            "text": "With a password, an expiry and approvals."
+          }
+        }
+      },
+      "versions": {
+        "name": "Versions",
+        "steps": {
+          "0": {
+            "title": "Saved states",
+            "text": "Inkadra saves by itself; you can name a point."
+          },
+          "1": {
+            "title": "Go back",
+            "text": "Open a version, look at it, restore it."
+          },
+          "2": {
+            "title": "Bring one back",
+            "text": "You can recover a single deleted card too."
+          }
+        }
+      },
+      "present": {
+        "name": "Presentation",
+        "steps": {
+          "0": {
+            "title": "Full screen",
+            "text": "The storyboard, frame after frame."
+          },
+          "1": {
+            "title": "Where you are",
+            "text": "Title, frame number and the way out."
+          },
+          "2": {
+            "title": "Back and forth",
+            "text": "With the arrows or a tap."
+          }
+        }
+      },
+      "export": {
+        "name": "Export and import",
+        "steps": {
+          "0": {
+            "title": "Format",
+            "text": "PDF, PNG or JPEG, with its options."
+          },
+          "1": {
+            "title": "Preview",
+            "text": "See the page before you download it."
+          },
+          "2": {
+            "title": "The whole project",
+            "text": "Export it as a zip and import it on another server."
+          }
+        }
+      },
+      "clipper": {
+        "name": "Browser clipper",
+        "steps": {
+          "0": {
+            "title": "Save from the web",
+            "text": "Images, quotes and links go to a board in one click."
+          },
+          "1": {
+            "title": "Install",
+            "text": "An extension for Chrome, Edge, Brave and Arc, linked to your server."
+          },
+          "2": {
+            "title": "Choose where",
+            "text": "A column of the board, or Unsorted."
+          }
+        }
+      },
+      "phone": {
+        "name": "Inkadra on your phone",
+        "steps": {
+          "0": {
+            "title": "Install the app",
+            "text": "Open Inkadra in the browser and add it to the Home screen."
+          },
+          "1": {
+            "title": "The bottom bar",
+            "text": "Home, projects, new, inbox and profile."
+          },
+          "2": {
+            "title": "On set",
+            "text": "Photos and notes go straight to the board."
+          }
+        }
+      },
+      "classifications": {
+        "name": "Classifications",
+        "steps": {
+          "0": {
+            "title": "The instance’s lists",
+            "text": "Project types, tags, shot sizes, angles and movements."
+          },
+          "1": {
+            "title": "Rename",
+            "text": "The new name changes on every frame that uses it."
+          },
+          "2": {
+            "title": "Archive",
+            "text": "It leaves the menus but stays on the frames that have it."
+          }
+        }
+      },
+      "backups": {
+        "name": "Backups",
+        "steps": {
+          "0": {
+            "title": "Automatic backups",
+            "text": "Every night, at the time you choose."
+          },
+          "1": {
+            "title": "History",
+            "text": "Every backup, with its date and size."
+          },
+          "2": {
+            "title": "Right now",
+            "text": "Make one now, before an update."
+          }
+        }
+      },
+      "users": {
+        "name": "Users and access",
+        "steps": {
+          "0": {
+            "title": "People",
+            "text": "Who uses the instance, with their role."
+          },
+          "1": {
+            "title": "Invite",
+            "text": "A link or an email to get in."
+          },
+          "2": {
+            "title": "How people sign in",
+            "text": "Sign-in methods are in Sign-in."
+          }
+        }
+      }
+    }
   }
 }

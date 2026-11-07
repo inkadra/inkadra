@@ -51,6 +51,15 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     admin: false,
   },
   {
+    id: 'tutorials',
+    group: 'personal',
+    href: '/settings?section=tutorials',
+    title: 'settingsUi.pages.tutorials',
+    lead: 'settingsUi.leads.tutorials',
+    keywords: 'settingsUi.keywords.tutorials',
+    admin: false,
+  },
+  {
     id: 'members',
     group: 'workspace',
     href: '/settings/team',

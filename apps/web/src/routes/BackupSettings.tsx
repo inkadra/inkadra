@@ -94,10 +94,15 @@ export function BackupSettings() {
   return (
     <>
       <Card
+        tour="backups"
         title={t('backups.title')}
         body={t('backups.cardLead')}
         action={
-          <Button disabled={starting || running} onClick={() => void backUpNow()}>
+          <Button
+            data-tour="backups-now"
+            disabled={starting || running}
+            onClick={() => void backUpNow()}
+          >
             {t(running ? 'backups.running' : 'backups.now')}
           </Button>
         }
@@ -179,7 +184,7 @@ export function BackupSettings() {
         )}
       </Card>
 
-      <Card title={t('backups.history')}>
+      <Card tour="backups-history" title={t('backups.history')}>
         {data.items.length === 0 ? (
           <p className="backup-settings__empty">{t('backups.none')}</p>
         ) : (

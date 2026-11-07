@@ -2603,7 +2603,8 @@
     "pages": {
       "access": "Acesso",
       "about": "Sobre",
-      "toolbar": "Barra de ferramentas"
+      "toolbar": "Barra de ferramentas",
+      "tutorials": "Tutoriais"
     },
     "leads": {
       "account": "Seu perfil e como você entra.",
@@ -2614,7 +2615,8 @@
       "registration": "Quem pode criar uma nova conta.",
       "about": "Nome, endereço, versão e estado da configuração da instância.",
       "backups": "Cópias noturnas do banco de dados, para restaurar o servidor após uma falha.",
-      "toolbar": "Escolha o que aparece na barra inferior. As ferramentas ocultas ficam em \"+ ▾\" e na paleta de comandos."
+      "toolbar": "Escolha o que aparece na barra inferior. As ferramentas ocultas ficam em \"+ ▾\" e na paleta de comandos.",
+      "tutorials": "Reveja os tours guiados e escolha se são propostos."
     },
     "autosave": {
       "idle": "Salvamento automático ativado",
@@ -2739,7 +2741,8 @@
       "registration": "Novas contas, Cadastro aberto, Somente por convite, Cadastro fechado, Exigir verificação em duas etapas dos administradores",
       "instance": "Nome da instância, Endereço público, Versão, Diagnóstico, Estado da instância, Novidades do Inkadra, Relatos, Enviar aos desenvolvedores do Inkadra, Destino, Repositório, Token do GitHub, Convidados podem relatar, Retenção de anexos, Relatos recebidos",
       "backups": "Backups, Fazer backup agora, Restauração, Retenção, Backup noturno",
-      "toolbar": "Barra de ferramentas, Ferramentas, Nota, Imagem, Link, Tarefa, Cor, Seta, Frame, Storyboard, Restaurar a barra padrão"
+      "toolbar": "Barra de ferramentas, Ferramentas, Nota, Imagem, Link, Tarefa, Cor, Seta, Frame, Storyboard, Restaurar a barra padrão",
+      "tutorials": "Tour de boas-vindas, Sugestões na primeira vez, Recomeçar"
     },
     "close": "Fechar configurações",
     "dangerZone": "Zona de perigo",
@@ -3822,5 +3825,512 @@
     "relayRefusedBanner_other": "O relay recusou {{count}} relatos ({{reason}}): não haverá nova tentativa automática. Eles estão seguros aqui. Tente de novo depois de atualizar o Inkadra ou escolha outro destino.",
     "relayRetentionHelp": "Só os anexos locais. As cópias no GitHub ficam lá até serem removidas pela equipe do Inkadra.",
     "relaySaved": "Relato salvo neste servidor"
+  },
+  "tutorial": {
+    "welcome": {
+      "eyebrow": "Bem-vindo ao Inkadra",
+      "title": "Da ideia ao plano.",
+      "lead": "Uma tela infinita para cinema e foto, no seu servidor.",
+      "go": "Fazer o tour · 1 min",
+      "skip": "Vou explorar sozinho",
+      "foot": "Pode revê-lo quando quiser em Configurações → Tutoriais.",
+      "heroNote": "O último comboio",
+      "heroTodoDone": "Visita ao local",
+      "heroTodo": "Teste de chuva"
+    },
+    "finale": {
+      "title": "Está pronto.",
+      "text": "O resto mostramos na primeira vez que precisar.",
+      "more_one": "+ {{count}} outro",
+      "more_other": "+ {{count}} outros",
+      "go": "Começar a criar"
+    },
+    "coach": {
+      "skip": "Saltar",
+      "back": "Voltar",
+      "next": "Seguinte",
+      "done": "Concluído",
+      "shortcut": "Atalho",
+      "count": "{{index}}/{{total}}"
+    },
+    "pill": {
+      "question": "Primeira vez em {{name}}?",
+      "go": "Tour de 30 s",
+      "later": "Agora não"
+    },
+    "guest": {
+      "question": "{{name}} pede a sua opinião",
+      "questionAnonymous": "Pedem a sua opinião",
+      "go": "Como funciona · 20 s",
+      "help": "Como funciona"
+    },
+    "toast": {
+      "open": "Abrir",
+      "welcomeSkipped": "Ok! O tour espera por si em Configurações → Tutoriais.",
+      "tourSkipped": "Tour saltado. Encontra-o em Configurações → Tutoriais.",
+      "pillDismissed": "Ok, não voltamos a propô-lo. Está em Configurações → Tutoriais.",
+      "done": "{{name}}: tour concluído.",
+      "guestDismissed": "Ok. O tour fica no botão ? em cima.",
+      "guestDone": "É tudo. Boa revisão!"
+    },
+    "settings": {
+      "welcomeTitle": "Tour de boas-vindas",
+      "welcomeSub": "O que é o Inkadra e onde estão as coisas · 7 passos · 1 min",
+      "play": "Reproduzir",
+      "playNamed": "Reproduzir {{name}}",
+      "seen": "Visto",
+      "unseen": "Por ver",
+      "duration": "30 s",
+      "count": "{{seen}} de {{total}} vistos",
+      "new": "Novo",
+      "hints": "Sugestões na primeira vez",
+      "hintsHelp": "Um aviso propõe o tour quando abre uma funcionalidade nova.",
+      "reset": "Recomeçar",
+      "resetHelp": "Marcar todos os tours como por ver.",
+      "resetAction": "Repor",
+      "adminOnly": "só administradores"
+    },
+    "groups": {
+      "start": "Para começar",
+      "canvas": "Tela",
+      "production": "Produção",
+      "collaboration": "Colaboração",
+      "tools": "Ferramentas",
+      "admin": "Administração"
+    },
+    "media": {
+      "searchWord": "Plataforma",
+      "scene": "Cena 1 · Plataforma",
+      "picture": "Plataforma 4, 2 h",
+      "approved": "Aprovado",
+      "comment": "Mais fechado?",
+      "dolly": "Travelling",
+      "night": "Noite",
+      "day": "Dia {{n}}",
+      "restore": "Restaurar",
+      "role0": "Editar",
+      "role1": "Comentar",
+      "role2": "Convidar"
+    },
+    "tours": {
+      "welcome": {
+        "steps": {
+          "0": {
+            "title": "Os seus projetos",
+            "text": "Cada projeto junta os seus quadros. A cor diz o tipo."
+          },
+          "1": {
+            "title": "Pesquise tudo",
+            "text": "Quadros, cartões e cenas, a partir de qualquer lado."
+          },
+          "2": {
+            "title": "Adicione cartões",
+            "text": "Escolha uma ferramenta e clique na tela. Ou arraste um ficheiro."
+          },
+          "3": {
+            "title": "Selecione e edite",
+            "text": "As ferramentas do cartão aparecem logo acima dele."
+          },
+          "4": {
+            "title": "Uma história, várias vistas",
+            "text": "Storyboard, lista de planos e plano de rodagem usam os mesmos dados."
+          },
+          "5": {
+            "title": "Trabalhe em equipa",
+            "text": "Partilhe, comente, obtenha a aprovação do cliente."
+          },
+          "6": {
+            "title": "Reveja quando quiser",
+            "text": "Está em Configurações → Tutoriais."
+          }
+        }
+      },
+      "guest": {
+        "steps": {
+          "0": {
+            "title": "Comente um cartão",
+            "text": "Escolha-o e escreva: o comentário fica ligado a ele."
+          },
+          "1": {
+            "title": "Dê o seu ok",
+            "text": "Aprove ou peça alterações. A equipa vê logo."
+          }
+        }
+      },
+      "home": {
+        "name": "Início",
+        "steps": {
+          "0": {
+            "title": "Quadros recentes",
+            "text": "Continue onde parou."
+          },
+          "1": {
+            "title": "O que aconteceu",
+            "text": "A atividade dos seus projetos, do mais recente."
+          },
+          "2": {
+            "title": "Novo quadro",
+            "text": "Crie um em qualquer dos seus projetos."
+          }
+        }
+      },
+      "inbox": {
+        "name": "Caixa de entrada e notificações",
+        "steps": {
+          "0": {
+            "title": "Tudo num só lugar",
+            "text": "Menções, respostas e revisões dos seus projetos."
+          },
+          "1": {
+            "title": "Filtre",
+            "text": "Menções, aprovações ou as suas tarefas."
+          },
+          "2": {
+            "title": "Escolha o que recebe",
+            "text": "Os e-mails acertam-se em Configurações → Notificações."
+          }
+        }
+      },
+      "board": {
+        "name": "Quadros e cartões",
+        "steps": {
+          "0": {
+            "title": "As ferramentas",
+            "text": "Notas, fotos, ligações, listas: escolha e clique na tela."
+          },
+          "1": {
+            "title": "Todo o resto",
+            "text": "+ abre todas as ferramentas; a barra escolhe-se nas Configurações."
+          },
+          "2": {
+            "title": "Selecione um cartão",
+            "text": "As ferramentas dele aparecem logo acima."
+          }
+        }
+      },
+      "moodboard": {
+        "name": "Moodboard",
+        "steps": {
+          "0": {
+            "title": "Referências em grelha",
+            "text": "Imagens, ligações e cores do projeto, juntas."
+          },
+          "1": {
+            "title": "Filtre",
+            "text": "Por etiqueta ou por tipo, com um toque."
+          },
+          "2": {
+            "title": "A paleta",
+            "text": "As cores das referências, prontas a copiar."
+          }
+        }
+      },
+      "video": {
+        "name": "Vídeos nos cartões",
+        "steps": {
+          "0": {
+            "title": "Veja no cartão",
+            "text": "Carregue em play: o vídeo começa ali, com os controlos."
+          },
+          "1": {
+            "title": "Um de cada vez",
+            "text": "Se iniciar outro, o primeiro para."
+          },
+          "2": {
+            "title": "Ligações também",
+            "text": "YouTube e Vimeo veem-se no cartão."
+          }
+        }
+      },
+      "storyboard": {
+        "name": "Storyboard",
+        "steps": {
+          "0": {
+            "title": "Cenas e fotogramas",
+            "text": "Cada cena junta os seus fotogramas, por ordem."
+          },
+          "1": {
+            "title": "Cada fotograma tem os seus dados",
+            "text": "Plano, objetiva, movimento: passam para a lista de planos."
+          },
+          "2": {
+            "title": "Desenhe no fotograma",
+            "text": "Duplo clique num fotograma para esboçar em ecrã inteiro."
+          }
+        }
+      },
+      "draw": {
+        "name": "Desenhar no fotograma",
+        "steps": {
+          "0": {
+            "title": "Canetas e formas",
+            "text": "Caneta, borracha, formas e texto, com cor e espessura."
+          },
+          "1": {
+            "title": "Fotograma a fotograma",
+            "text": "As setas passam para os outros fotogramas."
+          },
+          "2": {
+            "title": "Mova-se",
+            "text": "Espaço e arrastar, a roda ou dois dedos."
+          }
+        }
+      },
+      "shotlist": {
+        "name": "Lista de planos",
+        "steps": {
+          "0": {
+            "title": "Os seus planos",
+            "text": "Os fotogramas do storyboard, numa tabela."
+          },
+          "1": {
+            "title": "Tabela ou cartões",
+            "text": "Escolha como a vê."
+          },
+          "2": {
+            "title": "Exporte",
+            "text": "CSV ou PDF, para a equipa."
+          }
+        }
+      },
+      "schedule": {
+        "name": "Plano de rodagem",
+        "steps": {
+          "0": {
+            "title": "Dias de rodagem",
+            "text": "Arraste os planos para os dias."
+          },
+          "1": {
+            "title": "Cada dia",
+            "text": "Local, horários e planos; os conflitos veem-se."
+          },
+          "2": {
+            "title": "Folha de serviço",
+            "text": "Pronta a enviar à equipa."
+          }
+        }
+      },
+      "setplan": {
+        "name": "Planta do set",
+        "steps": {
+          "0": {
+            "title": "Desenhe o set",
+            "text": "Paredes, linhas e formas a partir da barra de baixo."
+          },
+          "1": {
+            "title": "Ícones",
+            "text": "Câmaras, atores, luzes e mobília. Shift para colocar vários."
+          },
+          "2": {
+            "title": "Escala e camadas",
+            "text": "Em cima: a escala do desenho e as suas camadas."
+          }
+        }
+      },
+      "characters": {
+        "name": "Fichas de personagem",
+        "steps": {
+          "0": {
+            "title": "A ficha",
+            "text": "Identidade, aparência, história: secções que abrem e fecham."
+          },
+          "1": {
+            "title": "As suas cenas",
+            "text": "Vêm dos fotogramas cujo elenco a nomeia."
+          },
+          "2": {
+            "title": "Só para a equipa",
+            "text": "Contactos e notas nunca chegam aos convidados."
+          }
+        }
+      },
+      "review": {
+        "name": "Revisão do cliente",
+        "steps": {
+          "0": {
+            "title": "Os planos",
+            "text": "O cliente vê-os um a um, por ordem."
+          },
+          "1": {
+            "title": "O fotograma",
+            "text": "Em grande, com a ação e os comentários."
+          },
+          "2": {
+            "title": "Aprove ou peça alterações",
+            "text": "A decisão chega logo à equipa."
+          }
+        }
+      },
+      "comments": {
+        "name": "Comentários",
+        "steps": {
+          "0": {
+            "title": "Toda a conversa",
+            "text": "Uma coluna com os comentários do quadro."
+          },
+          "1": {
+            "title": "No quadro",
+            "text": "Balões junto aos cartões com conversas abertas."
+          },
+          "2": {
+            "title": "Quem o lê",
+            "text": "A equipa, ou também convidados: escolhe de cada vez."
+          }
+        }
+      },
+      "sharing": {
+        "name": "Partilha e funções",
+        "steps": {
+          "0": {
+            "title": "Pessoas e ligações",
+            "text": "Convide a equipa ou crie uma ligação para convidados."
+          },
+          "1": {
+            "title": "Funções",
+            "text": "Quem edita, quem comenta, quem vê."
+          },
+          "2": {
+            "title": "Ligações para convidados",
+            "text": "Com palavra-passe, validade e aprovação."
+          }
+        }
+      },
+      "versions": {
+        "name": "Versões",
+        "steps": {
+          "0": {
+            "title": "Gravações",
+            "text": "O Inkadra grava sozinho; pode dar nome a um ponto."
+          },
+          "1": {
+            "title": "Volte atrás",
+            "text": "Abra uma versão, veja-a, restaure-a."
+          },
+          "2": {
+            "title": "Recupere um elemento",
+            "text": "Também pode recuperar um único cartão eliminado."
+          }
+        }
+      },
+      "present": {
+        "name": "Apresentação",
+        "steps": {
+          "0": {
+            "title": "Em ecrã inteiro",
+            "text": "O storyboard, fotograma a fotograma."
+          },
+          "1": {
+            "title": "Onde está",
+            "text": "Título, número do fotograma e saída."
+          },
+          "2": {
+            "title": "Para a frente e para trás",
+            "text": "Com as setas ou um toque."
+          }
+        }
+      },
+      "export": {
+        "name": "Exportar e importar",
+        "steps": {
+          "0": {
+            "title": "Formato",
+            "text": "PDF, PNG ou JPEG, com as suas opções."
+          },
+          "1": {
+            "title": "Pré-visualização",
+            "text": "Veja a página antes de a descarregar."
+          },
+          "2": {
+            "title": "O projeto inteiro",
+            "text": "Exporte-o em zip e importe-o noutro servidor."
+          }
+        }
+      },
+      "clipper": {
+        "name": "Clipper para o navegador",
+        "steps": {
+          "0": {
+            "title": "Guarde da web",
+            "text": "Imagens, citações e ligações vão para o quadro num clique."
+          },
+          "1": {
+            "title": "Instale",
+            "text": "Uma extensão para Chrome, Edge, Brave e Arc, ligada ao seu servidor."
+          },
+          "2": {
+            "title": "Escolha onde",
+            "text": "Uma coluna do quadro, ou Sem ordem."
+          }
+        }
+      },
+      "phone": {
+        "name": "Inkadra no telemóvel",
+        "steps": {
+          "0": {
+            "title": "Instale a app",
+            "text": "Abra o Inkadra no navegador e adicione-o ao ecrã principal."
+          },
+          "1": {
+            "title": "A barra de baixo",
+            "text": "Início, projetos, novo, caixa de entrada e perfil."
+          },
+          "2": {
+            "title": "No set",
+            "text": "Fotos e notas vão logo para o quadro."
+          }
+        }
+      },
+      "classifications": {
+        "name": "Classificações",
+        "steps": {
+          "0": {
+            "title": "As listas da instância",
+            "text": "Tipos de projeto, etiquetas, planos, ângulos e movimentos."
+          },
+          "1": {
+            "title": "Mude o nome",
+            "text": "O novo nome muda em cada fotograma que o usa."
+          },
+          "2": {
+            "title": "Arquive",
+            "text": "Sai dos menus mas fica nos fotogramas que o têm."
+          }
+        }
+      },
+      "backups": {
+        "name": "Cópias de segurança",
+        "steps": {
+          "0": {
+            "title": "Cópias automáticas",
+            "text": "Todas as noites, à hora que escolher."
+          },
+          "1": {
+            "title": "O histórico",
+            "text": "Cada cópia, com data e tamanho."
+          },
+          "2": {
+            "title": "Já",
+            "text": "Faça uma agora, antes de uma atualização."
+          }
+        }
+      },
+      "users": {
+        "name": "Utilizadores e acessos",
+        "steps": {
+          "0": {
+            "title": "As pessoas",
+            "text": "Quem usa a instância, com a sua função."
+          },
+          "1": {
+            "title": "Convide",
+            "text": "Uma ligação ou um e-mail para entrar."
+          },
+          "2": {
+            "title": "Como se entra",
+            "text": "Os métodos de acesso estão em Início de sessão."
+          }
+        }
+      }
+    }
   }
 }

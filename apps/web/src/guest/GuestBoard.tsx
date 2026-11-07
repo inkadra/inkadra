@@ -28,6 +28,7 @@ import { CardExtrasContext, GuestModeContext } from '../board/context.ts';
 import { BoardStore } from '../board/store.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { NoSessionProvider } from '../lib/session.tsx';
+import { GuestTutorial } from '../tutorial/GuestTutorial.tsx';
 import { type GuestActions, GuestActionsContext } from './actions.ts';
 import { GuestRequestError, guestApi } from './api.ts';
 import { GuestCardExtras } from './GuestCardExtras.tsx';
@@ -455,6 +456,7 @@ export function GuestBoardScreen({
             <Button onClick={() => setShowBoard(false)}>{t('guest.review.phone.title')}</Button>
           )}
           <span className="guest__badge">{t(`guest.roles.${rightsKey(rights)}`)}</span>
+          {(rights.comments || rights.review) && <GuestTutorial sharedBy={sharedBy ?? null} />}
         </header>
         {reviewing ? (
           <div className="guest__body guest__body--review">
@@ -466,7 +468,7 @@ export function GuestBoardScreen({
           </div>
         ) : (
           <div className="guest__body">
-            <div className="guest__canvas">
+            <div className="guest__canvas" data-tour="guest-canvas">
               {conn && loaded === boardId ? (
                 <NoSessionProvider>
                   <GuestModeContext.Provider value={true}>

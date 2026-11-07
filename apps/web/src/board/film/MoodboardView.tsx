@@ -780,7 +780,13 @@ export function MoodboardView({
   );
 
   return (
-    <section className="moodboard" ref={root} aria-label={t('nav.moodboard')} data-size={size}>
+    <section
+      className="moodboard"
+      ref={root}
+      aria-label={t('nav.moodboard')}
+      data-size={size}
+      data-tour="moodboard"
+    >
       <div className="moodboard__main">
         <div className="moodboard__bar">
           <h2 className="moodboard__title">{t('moodboard.title')}</h2>
@@ -791,7 +797,11 @@ export function MoodboardView({
           >
             · {shown.length}
           </span>
-          <fieldset className="moodboard__chips" aria-label={t('moodboard.filter')}>
+          <fieldset
+            className="moodboard__chips"
+            aria-label={t('moodboard.filter')}
+            data-tour="moodboard-filter"
+          >
             <button
               type="button"
               className="moodboard__chip"
@@ -859,7 +869,7 @@ export function MoodboardView({
           </div>
         </div>
         {palette.length > 0 && (
-          <div className="moodboard__palette">
+          <div className="moodboard__palette" data-tour="moodboard-palette">
             <span id="moodboard-palette">{t('moodboard.palette')}</span>
             <ul aria-labelledby="moodboard-palette">
               {palette.map((hex) => (

@@ -102,6 +102,7 @@ export function StoryCardPanel({
     <aside
       ref={panel}
       className="film-panel story-panel"
+      data-tour="story-panel"
       aria-label={t(`story.${kind}.details`)}
       data-chrome
       data-scroll

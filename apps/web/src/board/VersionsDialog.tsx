@@ -194,8 +194,13 @@ export function VersionsDialog({
   return (
     <>
       <Dialog open={open} title={t('versions.title')} onCancel={holdWhileBusy} onClose={onClose}>
-        <div className="versions" aria-busy={busy}>
-          <div className="versions__tabs" role="tablist" aria-label={t('versions.title')}>
+        <div className="versions" aria-busy={busy} data-tour="versions">
+          <div
+            className="versions__tabs"
+            role="tablist"
+            aria-label={t('versions.title')}
+            data-tour="versions-tabs"
+          >
             {(['versions', 'trash'] as const).map((value) => (
               <Button
                 key={value}
@@ -288,7 +293,7 @@ export function VersionsDialog({
                 )}
                 {!page && !error && !loadError && <p role="status">{t('versions.loading')}</p>}
                 {page?.items.length === 0 && <p className="ink-muted">{t('versions.empty')}</p>}
-                <div className="versions__list">
+                <div className="versions__list" data-tour="versions-list">
                   {groupVersions(page?.items ?? []).map((group) => (
                     <section
                       key={group.day.toDateString()}

@@ -243,6 +243,7 @@ function ViewTabs({
       ref={list}
       className="view-tabs"
       role="tablist"
+      data-tour="views"
       aria-label={t('film.views.label')}
       // The arrows walk the tabs; Enter and Space pick one, as on any button.
       onKeyDown={moveTabFocus}
@@ -701,6 +702,7 @@ function BoardScreen({
               }
               icon="people"
               className="board-share"
+              data-tour="share"
               aria-label={t('share.open')}
               onClick={() => setSharing(true)}
             >

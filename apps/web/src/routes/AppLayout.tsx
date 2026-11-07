@@ -82,6 +82,7 @@ import {
   useNotificationFeed,
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
+import { TutorialHost } from '../tutorial/TutorialHost.tsx';
 import { addStoryboardItem } from './add-storyboard.ts';
 import { editableProjects } from './home-data.ts';
 import { useInstanceSetup } from './InstanceSetup.tsx';
@@ -626,6 +627,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <button
         type="button"
         className="ink-sidebar__search"
+        data-tour="search"
         aria-label={t('nav.search')}
         data-ink-tooltip={t('nav.search')}
         onClick={() => {
@@ -668,6 +670,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <div className="ink-sidebar__scroll">
         <div
           className={looseDrop.isOver ? 'project-group-loose is-drop' : 'project-group-loose'}
+          data-tour="projects"
           {...looseDrop.props}
         >
           <SidebarSection
@@ -742,6 +745,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           <span className={setupPending ? 'instance-setup-reminder' : undefined}>
             <IconButton
               icon="settings"
+              data-tour="settings"
               label={t(setupPending ? 'onboarding.settingsPending' : 'nav.settings')}
               aria-current={inSettings ? 'page' : undefined}
               onClick={go('/settings')}
@@ -764,6 +768,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <Button
         variant="primary"
         icon="plus"
+        data-tour="home-new"
         disabled={writable.length === 0}
         onClick={() => {
           setBoardProject(undefined);
@@ -1105,6 +1110,16 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         />
         {canCreate && importing && <ImportProjectDialog onClose={() => setImporting(false)} />}
         <SeedQueue />
+        <TutorialHost
+          admin={user.role === 'admin'}
+          ready={
+            user.role !== 'admin' ||
+            (!setup.error && !!setup.checks && setup.checks.every((c) => c.ok))
+          }
+          firstProject={projects?.[0]?.id}
+          settingsOpen={overlay.open}
+          closeSettings={closeSettings}
+        />
       </ProjectsContext.Provider>
     </InstanceSetupContext.Provider>
   );

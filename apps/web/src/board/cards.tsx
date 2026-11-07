@@ -178,6 +178,7 @@ export const Card = memo(function Card({
       data-el={element.id}
       data-type={element.type}
       data-nested={nested ? '' : undefined}
+      data-tour="card"
     >
       <CardBody
         element={element}

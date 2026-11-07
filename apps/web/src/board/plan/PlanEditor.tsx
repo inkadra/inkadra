@@ -1421,6 +1421,7 @@ export function PlanEditor({
   const tools = (
     <div
       className="plan-editor__tools ink-motion-pop"
+      data-tour="plan-tools"
       role="toolbar"
       aria-label={t('board.plan.tools')}
     >
@@ -1477,6 +1478,7 @@ export function PlanEditor({
       <button
         type="button"
         className="plan-editor__btn plan-editor__btn--wide"
+        data-tour="plan-icons"
         aria-pressed={library}
         aria-label={t('board.plan.panel.icons')}
         onClick={() => setLibrary((v) => !v)}

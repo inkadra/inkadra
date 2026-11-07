@@ -109,7 +109,12 @@ export function Team() {
   return (
     <SettingsShell
       actions={
-        <Button variant="primary" icon="plus" onClick={() => setInviting(true)}>
+        <Button
+          variant="primary"
+          icon="plus"
+          data-tour="users-invite"
+          onClick={() => setInviting(true)}
+        >
           {t('settingsUi.members.invite')}
         </Button>
       }
@@ -198,7 +203,7 @@ export function Team() {
       {members === null ? (
         !error && <p role="status">{t('admin.loading')}</p>
       ) : (
-        <Card className="team-card">
+        <Card className="team-card" tour="users">
           <table className="team-table">
             <caption className="ink-sr-only">
               {t('admin.membersCount', { count: members.length })}
