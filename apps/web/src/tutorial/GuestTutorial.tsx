@@ -10,7 +10,17 @@ import './tutorial.css';
  * The guest of a link that asks for comments or a decision (#502): a pill offers two steps, and
  * "?" in the header plays them again. No welcome: guests have no account.
  */
-export function GuestTutorial({ sharedBy }: { sharedBy: string | null }) {
+/** A link that only takes comments has no decision to show: its step is left out. */
+const GUEST_COMMENTS = { ...GUEST, steps: GUEST.steps.slice(0, 1) };
+
+export function GuestTutorial({
+  sharedBy,
+  decides,
+}: {
+  sharedBy: string | null;
+  /** Whether the link lets the guest approve or ask for changes. */
+  decides: boolean;
+}) {
   const { t } = useTranslation();
   const [pill, setPill] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -63,7 +73,7 @@ export function GuestTutorial({ sharedBy }: { sharedBy: string | null }) {
       )}
       {playing && (
         <TourPlayer
-          tour={GUEST}
+          tour={decides ? GUEST : GUEST_COMMENTS}
           onEnd={(finished) => {
             setPlaying(false);
             markGuestSeen();

@@ -12,14 +12,19 @@ import { useIsPhone } from '../lib/phone.ts';
 import { TourMedia } from './media.tsx';
 import { stepKeys, type Tour, type TourStep } from './tours.ts';
 
-/** The element a step points at: the first one with this `data-tour` that is on screen. */
-export function findAnchor(anchor: string): HTMLElement | null {
+/**
+ * The element a step points at: the first one with this `data-tour` that is on screen. With
+ * `scrolls`, one above or below the fold counts too (the tour scrolls to it); one off to a side
+ * is a closed drawer, never.
+ */
+export function findAnchor(anchor: string, scrolls = false): HTMLElement | null {
   for (const el of document.querySelectorAll<HTMLElement>(`[data-tour="${anchor}"]`)) {
     // A fading copy left by an exit animation is not the real thing.
     if (el.closest('.ink-motion-exit, [inert]')) continue;
     const r = el.getBoundingClientRect();
     if (r.width < 1 || r.height < 1) continue;
-    if (r.bottom < 0 || r.right < 0 || r.top > innerHeight || r.left > innerWidth) continue;
+    if (r.right < 0 || r.left > innerWidth) continue;
+    if (!scrolls && (r.bottom < 0 || r.top > innerHeight)) continue;
     if (getComputedStyle(el).visibility === 'hidden') continue;
     return el;
   }
@@ -48,39 +53,44 @@ const GAP = 18;
 type Rect = { x: number; y: number; w: number; h: number };
 
 /** The coach card's corner for a target, as in the approved mockup: beside it, else centred. */
-function placeCoach(
+export function placeCoach(
   r: Rect | null,
   side: TourStep['side'],
   card: { w: number; h: number },
   view: { w: number; h: number },
   phone: boolean,
 ) {
-  let x: number;
-  let y: number;
-  if (!r) {
-    x = (view.w - card.w) / 2;
-    y = (view.h - card.h) / 2;
-  } else if (phone) {
-    x = MARGIN;
-    y = r.y + r.h / 2 < view.h / 2 ? r.y + r.h + PAD + GAP : r.y - PAD - GAP - card.h;
-  } else if (side === 'right') {
-    x = r.x + r.w + PAD + GAP;
-    y = r.y - 8;
-  } else if (side === 'left') {
-    x = r.x - PAD - GAP - card.w;
-    y = r.y - 8;
-  } else if (side === 'bottom') {
-    x = r.x + r.w / 2 - card.w / 2;
-    y = r.y + r.h + PAD + GAP;
-  } else {
-    x = r.x + r.w / 2 - card.w / 2;
-    y = r.y - PAD - GAP - card.h;
-  }
-  return {
+  const clamp = ({ x, y }: { x: number; y: number }) => ({
     x: Math.max(MARGIN, Math.min(view.w - card.w - MARGIN, x)),
     y: Math.max(MARGIN, Math.min(view.h - card.h - MARGIN, y)),
+  });
+  if (!r) return clamp({ x: (view.w - card.w) / 2, y: (view.h - card.h) / 2 });
+  const off = PAD + GAP;
+  const at = (s: NonNullable<TourStep['side']>) => {
+    if (phone) return { x: MARGIN, y: s === 'bottom' ? r.y + r.h + off : r.y - off - card.h };
+    if (s === 'right') return { x: r.x + r.w + off, y: r.y - 8 };
+    if (s === 'left') return { x: r.x - off - card.w, y: r.y - 8 };
+    if (s === 'bottom') return { x: r.x + r.w / 2 - card.w / 2, y: r.y + r.h + off };
+    return { x: r.x + r.w / 2 - card.w / 2, y: r.y - off - card.h };
   };
+  const fits = (s: NonNullable<TourStep['side']>) => {
+    const p = at(s);
+    if (s === 'top' || s === 'bottom') return p.y >= MARGIN && p.y + card.h <= view.h - MARGIN;
+    return p.x >= MARGIN && p.x + card.w <= view.w - MARGIN;
+  };
+  // The asked side, else the opposite one, else any side with room; on a phone, below or above.
+  const first: NonNullable<TourStep['side']> = phone
+    ? r.y + r.h / 2 < view.h / 2
+      ? 'bottom'
+      : 'top'
+    : (side ?? 'bottom');
+  const sides = phone
+    ? [first, OPPOSITE[first]]
+    : [first, OPPOSITE[first], ...(['right', 'left', 'bottom', 'top'] as const)];
+  return clamp(at(sides.find(fits) ?? first));
 }
+
+const OPPOSITE = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' } as const;
 
 /**
  * Plays a tour: a scrim with a cut-out over the step's element and a coach card that glides
@@ -129,9 +139,9 @@ export function TourPlayer({
         timer = setTimeout(check, 150);
         return;
       }
-      const ready = anchored.some((s) => s.anchor && findAnchor(s.anchor));
+      const ready = anchored.some((s) => s.anchor && findAnchor(s.anchor, true));
       if (ready || anchored.length === 0 || late)
-        setShown(playable(tour.steps, (a) => !!findAnchor(a)));
+        setShown(playable(tour.steps, (a) => !!findAnchor(a, true)));
       else timer = setTimeout(check, 150);
     };
     check();
@@ -152,7 +162,8 @@ export function TourPlayer({
     [onEnd],
   );
 
-  useEffect(() => {
+  // Before the card is placed: a closed dialog has no size to place it by.
+  useLayoutEffect(() => {
     const el = dialog.current;
     if (shown && el && !el.open) el.showModal();
   }, [shown]);
@@ -160,10 +171,10 @@ export function TourPlayer({
   // Follow the element: it scrolls into view, and the spot keeps up with resizes and scrolling.
   useEffect(() => {
     if (!shown) return;
-    const target = anchor ? findAnchor(anchor) : null;
+    const target = anchor ? findAnchor(anchor, true) : null;
     target?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const measure = () => {
-      const el = anchor ? (target?.isConnected ? target : findAnchor(anchor)) : null;
+      const el = anchor ? (target?.isConnected ? target : findAnchor(anchor, true)) : null;
       const r = el?.getBoundingClientRect();
       setRect(r ? { x: r.left, y: r.top, w: r.width, h: r.height } : null);
     };
@@ -235,6 +246,7 @@ export function TourPlayer({
     <dialog
       ref={dialog}
       className={`tour${rect ? '' : ' tour--plain'}`}
+      data-tutorial
       // What the spotlight is on, for the end-to-end tests.
       data-anchor={rect ? (anchor ?? undefined) : undefined}
       aria-labelledby="tour-title"

@@ -4000,7 +4000,7 @@
           },
           "1": {
             "title": "Everything else",
-            "text": "+ opens every tool; choose the bar in Settings."
+            "text": "+ adds storyboards and shot lists; change the bar in Settings."
           },
           "2": {
             "title": "Select a card",
@@ -4084,7 +4084,7 @@
             "text": "The storyboard’s frames, as a table."
           },
           "1": {
-            "title": "Table or cards",
+            "title": "Table or Kanban",
             "text": "Choose how to see it."
           },
           "2": {

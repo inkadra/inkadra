@@ -3983,7 +3983,7 @@
           },
           "1": {
             "title": "Filtrer",
-            "text": "Mentions, validations ou vos tâches."
+            "text": "Mentions, approbations ou vos tâches."
           },
           "2": {
             "title": "Choisir ce que vous recevez",
@@ -4000,7 +4000,7 @@
           },
           "1": {
             "title": "Tout le reste",
-            "text": "+ ouvre tous les outils ; la barre se choisit dans les Réglages."
+            "text": "+ ajoute storyboards et listes de plans ; la barre se change dans les Réglages."
           },
           "2": {
             "title": "Sélectionner une carte",
@@ -4084,7 +4084,7 @@
             "text": "Les images du storyboard, en tableau."
           },
           "1": {
-            "title": "Tableau ou cartes",
+            "title": "Table ou Kanban",
             "text": "Choisissez comment la voir."
           },
           "2": {

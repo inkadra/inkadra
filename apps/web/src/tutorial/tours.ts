@@ -227,7 +227,8 @@ export const TOURS: Tour[] = [
     group: 'collaboration',
     icon: 'people',
     kind: 'review',
-    offer: 'review-frames',
+    // The stage, not the list of frames: a phone shows no list.
+    offer: 'review-stage',
     steps: [
       { anchor: 'review-frames', media: 'rows', side: 'right' },
       { anchor: 'review-stage', media: 'pin', side: 'left' },

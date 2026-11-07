@@ -456,7 +456,9 @@ export function GuestBoardScreen({
             <Button onClick={() => setShowBoard(false)}>{t('guest.review.phone.title')}</Button>
           )}
           <span className="guest__badge">{t(`guest.roles.${rightsKey(rights)}`)}</span>
-          {(rights.comments || rights.review) && <GuestTutorial sharedBy={sharedBy ?? null} />}
+          {(rights.comments || rights.review) && (
+            <GuestTutorial sharedBy={sharedBy ?? null} decides={rights.review} />
+          )}
         </header>
         {reviewing ? (
           <div className="guest__body guest__body--review">

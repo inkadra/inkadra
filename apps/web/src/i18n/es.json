@@ -4000,7 +4000,7 @@
           },
           "1": {
             "title": "Todo lo demás",
-            "text": "+ abre todas las herramientas; la barra se elige en Ajustes."
+            "text": "+ añade storyboards y shot lists; la barra se cambia en Ajustes."
           },
           "2": {
             "title": "Selecciona una tarjeta",
@@ -4084,7 +4084,7 @@
             "text": "Los fotogramas del storyboard, en una tabla."
           },
           "1": {
-            "title": "Tabla o tarjetas",
+            "title": "Tabla o Kanban",
             "text": "Elige cómo verla."
           },
           "2": {
@@ -4105,7 +4105,7 @@
             "text": "Lugar, horarios y planos; los conflictos se ven."
           },
           "2": {
-            "title": "Hoja de llamada",
+            "title": "Orden de rodaje",
             "text": "Lista para enviar al equipo."
           }
         }

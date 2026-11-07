@@ -21,7 +21,7 @@
 }
 /* No element to point at: the scrim covers everything. */
 .tour--plain::backdrop {
-  background: var(--ink-scrim);
+  background: var(--ink-scrim-tour);
   animation: ink-fade-in var(--ink-dur-slow) both;
 }
 .tour__spot {
@@ -30,7 +30,7 @@
   top: 0;
   transform-origin: 0 0;
   border-radius: var(--ink-radius-md);
-  box-shadow: 0 0 0 200vmax var(--ink-scrim);
+  box-shadow: 0 0 0 200vmax var(--ink-scrim-tour);
   transition: transform 480ms var(--ink-ease-out);
   pointer-events: none;
 }
@@ -536,11 +536,13 @@
 }
 
 /* ---------- pill, toast, guest help ---------- */
+/* Pill and toast share the bottom centre: the top is where the views keep their controls, and
+   Pill.tsx lifts both above the dock and the phone's tabs. */
 .tour-pill {
   position: fixed;
   z-index: var(--ink-layer-notification);
   left: 50%;
-  top: 70px;
+  bottom: 24px;
   translate: -50% 0;
   display: flex;
   align-items: center;
@@ -555,12 +557,12 @@
   color: var(--ink-text-primary);
   font-size: 13px;
   font-weight: 550;
-  animation: tour-drop 600ms 500ms var(--ink-ease-pop) both;
+  animation: tour-pop 600ms 500ms var(--ink-ease-pop) both;
 }
-@keyframes tour-drop {
+@keyframes tour-pop {
   from {
     opacity: 0;
-    transform: translateY(-16px) scale(0.95);
+    transform: translateY(16px) scale(0.95);
   }
 }
 .tour-pill__spark {
@@ -599,7 +601,7 @@
   .tour-pill {
     left: 12px;
     right: 12px;
-    top: 64px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
     translate: none;
   }
 }
@@ -607,7 +609,7 @@
   position: fixed;
   z-index: var(--ink-layer-notification);
   left: 50%;
-  bottom: 78px;
+  bottom: 24px;
   translate: -50% 0;
   display: flex;
   align-items: center;
@@ -645,7 +647,7 @@
 @media (width < 768px) {
   .tour-toast {
     width: calc(100vw - 32px);
-    bottom: 84px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
   }
 }
 .tour-help {

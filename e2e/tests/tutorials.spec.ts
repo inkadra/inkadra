@@ -77,7 +77,7 @@ test('an administrator prepares a project with a storyboard', async ({ page, bas
 
   const link = await page.request.post(`/api/v1/boards/${project.rootBoardId}/share-links`, {
     headers: { origin: baseURL as string },
-    data: { role: 'guest_comment', label: 'Cliente' },
+    data: { role: 'guest_approve', label: 'Cliente' },
   });
   expect(link.ok()).toBe(true);
   guestUrl = (await link.json()).url;

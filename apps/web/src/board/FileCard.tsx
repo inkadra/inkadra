@@ -470,6 +470,7 @@ function VideoPreview({
                 type="button"
                 className="card__play fcard__play"
                 data-play-link={element.id}
+                data-tour={plays ? 'video' : undefined}
                 aria-label={t('board.file.play', { name: asset.filename })}
                 onClick={(event) => {
                   event.stopPropagation();

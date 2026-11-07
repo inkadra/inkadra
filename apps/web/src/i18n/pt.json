@@ -4000,7 +4000,7 @@
           },
           "1": {
             "title": "Todo o resto",
-            "text": "+ abre todas as ferramentas; a barra escolhe-se nas Configurações."
+            "text": "+ adiciona storyboards e shot lists; a barra muda-se nas Configurações."
           },
           "2": {
             "title": "Selecione um cartão",
@@ -4084,7 +4084,7 @@
             "text": "Os fotogramas do storyboard, numa tabela."
           },
           "1": {
-            "title": "Tabela ou cartões",
+            "title": "Tabela ou Kanban",
             "text": "Escolha como a vê."
           },
           "2": {
@@ -4105,7 +4105,7 @@
             "text": "Local, horários e planos; os conflitos veem-se."
           },
           "2": {
-            "title": "Folha de serviço",
+            "title": "Ordem do dia",
             "text": "Pronta a enviar à equipa."
           }
         }

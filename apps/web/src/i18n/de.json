@@ -4000,7 +4000,7 @@
           },
           "1": {
             "title": "Alles andere",
-            "text": "+ öffnet jedes Werkzeug; die Leiste wählst du in den Einstellungen."
+            "text": "+ fügt Storyboards und Shotlisten hinzu; die Leiste änderst du in den Einstellungen."
           },
           "2": {
             "title": "Eine Karte auswählen",
@@ -4084,7 +4084,7 @@
             "text": "Die Frames des Storyboards, als Tabelle."
           },
           "1": {
-            "title": "Tabelle oder Karten",
+            "title": "Tabelle oder Kanban",
             "text": "Wähle, wie du sie siehst."
           },
           "2": {
@@ -4105,7 +4105,7 @@
             "text": "Ort, Zeiten und Einstellungen; Konflikte fallen auf."
           },
           "2": {
-            "title": "Dispo",
+            "title": "Tagesdispo",
             "text": "Fertig zum Verschicken an die Crew."
           }
         }

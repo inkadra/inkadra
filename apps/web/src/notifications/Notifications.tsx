@@ -395,6 +395,8 @@ export function NotificationList({
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
       if (panel.current?.contains(target) || bell?.current?.contains(target)) return;
+      // A tutorial about the Inbox is played over it (#502).
+      if ((target as Element).closest?.('[data-tutorial]')) return;
       swallowOutsidePress(e);
       onNavigate();
     };

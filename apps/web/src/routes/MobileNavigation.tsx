@@ -51,6 +51,7 @@ export function MobileNavigation({
       <button
         type="button"
         className="mobile-bottom-nav__new"
+        data-tour="home-new"
         aria-haspopup="dialog"
         aria-expanded={newOpen}
         onClick={onNew}

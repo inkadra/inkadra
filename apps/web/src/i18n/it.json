@@ -3983,7 +3983,7 @@
           },
           "1": {
             "title": "Filtra",
-            "text": "Menzioni, approvazioni o le tue attività."
+            "text": "Menzioni, approvazioni o i tuoi compiti."
           },
           "2": {
             "title": "Scegli cosa ricevere",
@@ -4000,7 +4000,7 @@
           },
           "1": {
             "title": "Tutto il resto",
-            "text": "+ apre ogni strumento; la barra si sceglie nelle Impostazioni."
+            "text": "Il + aggiunge storyboard e shot list; la barra si cambia nelle Impostazioni."
           },
           "2": {
             "title": "Seleziona una card",
@@ -4084,7 +4084,7 @@
             "text": "Gli stessi frame dello storyboard, in tabella."
           },
           "1": {
-            "title": "Tabella o schede",
+            "title": "Tabella o Kanban",
             "text": "Scegli come vederla."
           },
           "2": {
@@ -4105,7 +4105,7 @@
             "text": "Luogo, orari e inquadrature; i conflitti si vedono."
           },
           "2": {
-            "title": "Foglio di convocazione",
+            "title": "Foglio di lavorazione",
             "text": "Pronto da mandare alla troupe."
           }
         }

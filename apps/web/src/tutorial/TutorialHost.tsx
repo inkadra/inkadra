@@ -140,7 +140,7 @@ export function TutorialHost({
       {finale && (
         <Finale more={Math.max(0, toursFor(admin).length - 4)} onClose={() => setFinale(false)} />
       )}
-      {pill && !busy && (
+      {pill && !busy && !toast && (
         <TourPill
           key={pill.id}
           text={t('tutorial.pill.question', { name: name(pill.id) })}
