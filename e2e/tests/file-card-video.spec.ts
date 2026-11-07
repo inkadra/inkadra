@@ -155,13 +155,16 @@ test('a video plays in its card and stops with the card, the viewer and other pl
   await expect(page.locator('video')).toHaveCount(0);
   await page.keyboard.press('Escape');
 
-  // Far zoom hides what cards hold, except a video playing. Forced with the class: on a small
+  // Far zoom hides the text on cards but keeps their pictures: a video playing and the other
+  // card's thumbnail, not a grey block (inkadra-feedback#21). Forced with the class: on a small
   // board like this one how far the zoom goes depends on the timing of the view's limits.
   await first.locator('.fcard__play').click();
   const world = page.locator('.canvas__world');
   await world.evaluate((el) => el.classList.add('canvas__world--far'));
   await expect(first.locator('video')).toBeVisible();
+  await expect(second.locator('.fcard__media')).toBeVisible();
   await expect(second.locator('.fcard__footer')).toBeHidden();
+  await expect(first.locator('.fcard__footer')).toBeHidden();
   await world.evaluate((el) => el.classList.remove('canvas__world--far'));
   await page.keyboard.press('Escape');
   await expect(page.locator('video')).toHaveCount(0);
