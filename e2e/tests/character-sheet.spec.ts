@@ -210,7 +210,8 @@ for (const [device, width, height, theme] of matrix) {
     // Leaves a side panel by clicking the board; on a phone the sheet covers it: its own button.
     const emptyBoard = async () => {
       if (device === 'phone') await page.getByRole('button', { name: 'Chiudi la scheda' }).click();
-      else await page.mouse.click(760, 790);
+      // Left of the side panel's neighbour: a finished upload lingers bottom right, beside it.
+      else await page.mouse.click(500, 790);
     };
 
     // The face: two sizes, one line for a long name, scenes merged from another board.
