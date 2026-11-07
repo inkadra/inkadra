@@ -24,7 +24,7 @@ What it does:
   listing up to 5 of them, the last used first. Otherwise one item saves in one click: to the first
   board the server remembers, or it opens the board picker, or the settings when not connected.
   A linked image or a selected link matches two contexts, so it shows two items and Chrome groups
-  them under the extension's name. Images are read inside the browser, with the page's cookies when it can, so pictures
+  them under the extension's name. A right-clicked picture is saved in the largest size its `srcset` lists (a thumbnail becomes the original when the page offers it). Images are read inside the browser, with the page's cookies when it can, so pictures
   behind a login are uploaded as files; when they cannot be read the image address is sent
   instead.
 - **Shortcut**: `Alt+Shift+S` saves the page to the last board. Change it at

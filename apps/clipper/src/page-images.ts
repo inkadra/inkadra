@@ -133,6 +133,21 @@ export function pickImages(images: RawImage[], baseUrl: string): PageImageOption
   return out;
 }
 
+/**
+ * For a right-clicked picture: the largest srcset candidate of the <img> showing `srcUrl`, or
+ * `srcUrl` itself when no element matches or nothing larger is listed.
+ */
+export function largestFor(images: RawImage[], baseUrl: string, srcUrl: string): string {
+  const image = images.find(
+    (i) =>
+      (i.currentSrc && resolve(i.currentSrc, baseUrl) === srcUrl) ||
+      (i.src && resolve(i.src, baseUrl) === srcUrl),
+  );
+  const best = image && largest([image.srcset, ...image.sources]);
+  const url = best && resolve(best.url, baseUrl);
+  return url && usable(url) ? url : srcUrl;
+}
+
 /** A name for a tile: its alt text, else the file name, else `fallback`; with the size when known. */
 export function imageLabel(image: PageImageOption, fallback: string): string {
   let name = image.alt;

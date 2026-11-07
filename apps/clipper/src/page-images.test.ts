@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
-import { imageLabel, parseSrcset, pickImages, type RawImage } from './page-images.ts';
+import { imageLabel, largestFor, parseSrcset, pickImages, type RawImage } from './page-images.ts';
 
 const base = 'https://site.example/project/1';
 const img = (fields: Partial<RawImage>): RawImage => ({
@@ -124,6 +124,25 @@ describe('imageLabel', () => {
     expect(imageLabel({ ...image, alt: 'Hero' }, 'Image')).toBe('Hero, 1920×1080');
     expect(imageLabel({ ...image, url: 'data:image/png;base64,AA', width: 0 }, 'Image')).toBe(
       'Image',
+    );
+  });
+});
+
+describe('largestFor', () => {
+  it('swaps a right-clicked thumbnail for the largest picture its element lists', () => {
+    const pin = img({
+      currentSrc: 'https://i.example/236x/a.jpg',
+      srcset: 'https://i.example/236x/a.jpg 1x, https://i.example/originals/a.jpg 4x',
+    });
+    const other = img({ currentSrc: 'https://i.example/other.jpg' });
+    expect(largestFor([other, pin], base, 'https://i.example/236x/a.jpg')).toBe(
+      'https://i.example/originals/a.jpg',
+    );
+    expect(largestFor([other, pin], base, 'https://i.example/other.jpg')).toBe(
+      'https://i.example/other.jpg',
+    );
+    expect(largestFor([pin], base, 'https://i.example/missing.jpg')).toBe(
+      'https://i.example/missing.jpg',
     );
   });
 });
