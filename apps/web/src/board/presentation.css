@@ -38,29 +38,58 @@
   white-space: nowrap;
 }
 
-.present-header {
+.present-body {
   position: absolute;
-  top: 20px;
-  left: 40px;
-  right: 40px;
-  height: 40px;
+  inset: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.present-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 24px 24px;
+  box-sizing: border-box;
+}
+
+.present-header {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 14px;
-  z-index: 10;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Both only fade: nothing moves on the stage, and the buttons stay in the Tab order. */
+.present-header,
+.present-bottom {
+  transition: opacity var(--ink-dur-base) var(--ink-ease-out);
+}
+
+/* No mouse to bring them back on touch screens, so there they stay (#14). */
+@media (hover: hover) and (width >= 768px) {
+  .present-view.is-idle:not(:has(.present-header :focus-visible, .present-bottom :focus-visible))
+    :is(.present-header, .present-bottom) {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 .present-header__btn {
+  flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 12px;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
   border-radius: var(--ink-radius-sm);
-  background: var(--ink-bg-panel);
+  background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-default);
   color: var(--ink-text-primary);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
@@ -70,13 +99,19 @@
 }
 
 .present-header__btn:hover {
-  background: var(--ink-border-default);
+  background: var(--ink-surface-2);
   border-color: var(--ink-border-strong);
+}
+
+.present-header__notes.is-active,
+.present-header__notes.is-active:hover {
+  background: var(--ink-text-primary);
+  color: var(--ink-bg-canvas);
+  border-color: var(--ink-text-primary);
 }
 
 .present-header__sep {
   color: var(--ink-text-muted);
-  font-size: 14px;
 }
 
 .present-header__logo {
@@ -87,8 +122,10 @@
 }
 
 .present-header__title {
-  font-size: 13px;
-  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--ink-text-secondary);
 }
 
@@ -96,27 +133,15 @@
   flex: 1;
 }
 
-.present-body {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  overflow: hidden;
-}
-
-.present-main {
-  flex: 1;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 40px 140px;
-  box-sizing: border-box;
+.present-header__count {
+  flex: none;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .present-stage {
-  width: 100%;
-  max-width: 960px;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -126,6 +151,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 16px;
 }
 
 .present-stage__heading {
@@ -142,98 +168,96 @@
 }
 
 .present-stage__canvas {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  max-height: 52vh;
+  flex: 1;
+  min-height: 0;
   border-radius: var(--ink-radius-sm);
   overflow: hidden;
   box-shadow: 0 0 0 1px var(--ink-border-default);
-  background: var(--ink-bg-panel);
+  background: var(--ink-surface-1);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* The frame keeps its own ratio inside the 16:9 stage: its picture and drawing stay together. */
-.present-stage__canvas:not(.present-stage__canvas--scene) {
+/* The frame keeps its own ratio in its box: its picture and drawing stay together. */
+.present-stage__canvas:not(.present-stage__canvas--scene),
+.present-thumb,
+.present-sidebar__preview-pic {
   container-type: size;
 }
-.present-stage__canvas > .frame-pic {
+.present-stage__canvas > .frame-pic,
+.present-thumb > .frame-pic,
+.present-sidebar__preview-pic > .frame-pic {
   flex: none;
   width: min(100cqw, calc(100cqh * var(--frame-ratio)));
 }
 
 .present-stage__footer {
+  flex: none;
   display: flex;
-  align-items: flex-start;
-  gap: 32px;
-  margin-top: 14px;
+  align-items: baseline;
+  gap: 18px;
 }
 
 .present-stage__shot-label {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--present-heading, inherit);
-  font-size: 38px;
+  font-size: 28px;
   font-weight: 600;
   letter-spacing: -0.02em;
-  line-height: 1;
-  min-width: 60px;
 }
 
 /* The theme's accent over the shot (decision 0057); the space is kept while it loads. */
 .present-stage__shot-label::before {
   content: "";
   display: block;
-  width: 28px;
+  width: 24px;
   height: 3px;
-  margin-bottom: 10px;
   border-radius: var(--ink-radius-full);
   background: var(--present-accent, transparent);
 }
 
-.present-stage__content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-}
-
 .present-stage__action {
-  font-size: 18px;
-  line-height: 1.45;
-  color: var(--ink-text-primary);
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  /* shortcut: a very long action stops at three lines so the stage keeps the space; the notes
+     panel has no copy of it, upgrade if people ask to read it all. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .present-stage__specs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  flex: none;
+  max-width: 40%;
+  text-align: right;
   font-size: 12px;
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
 }
 
 .present-bottom {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  flex: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 0 40px 24px;
-  background: linear-gradient(
-    to top,
-    color-mix(in srgb, var(--ink-bg-canvas) 95%, transparent) 80%,
-    transparent
-  );
-  z-index: 10;
+  gap: 8px;
 }
 
 .present-strip {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 4px 0;
+  /* Room for the current slide's outline. */
+  padding: 4px;
+  scroll-padding-inline: 4px;
 }
 
 .present-strip::-webkit-scrollbar {
@@ -241,17 +265,19 @@
 }
 
 .present-thumb {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 84px;
   flex: none;
-  background: transparent;
-  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 34px;
   padding: 0;
+  border: none;
+  border-radius: var(--ink-radius-xs);
+  overflow: hidden;
+  background: var(--ink-surface-2);
+  box-shadow: 0 0 0 1px var(--ink-border-default);
   cursor: pointer;
-  text-align: left;
-  color: var(--ink-text-secondary);
   transition: opacity 0.15s;
 }
 
@@ -259,37 +285,20 @@
   opacity: 0.85;
 }
 
-.present-thumb__pic {
-  display: block;
-  width: 100%;
-  height: 42px;
-  border-radius: var(--ink-radius-xs);
-  overflow: hidden;
-  background: var(--ink-bg-panel);
-  box-shadow: 0 0 0 1px var(--ink-border-default);
-}
-
-.present-thumb.is-active .present-thumb__pic {
+.present-thumb.is-active {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
 }
 
-.present-thumb.is-active {
-  color: var(--ink-text-primary);
-}
-
-.present-thumb__name {
-  font-size: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Tight on the thumbnail, so the slide in focus and the current one read apart. */
+.present-thumb:focus-visible {
+  box-shadow: 0 0 0 2px var(--ink-accent-primary);
 }
 
 .present-progress {
-  width: 100%;
   height: 2px;
   border-radius: var(--ink-radius-full);
-  background: var(--ink-bg-panel);
+  background: var(--ink-surface-2);
   overflow: hidden;
 }
 
@@ -301,63 +310,20 @@
 }
 
 .present-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.present-toolbar__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-bg-panel);
-  border: 1px solid var(--ink-border-default);
-  color: var(--ink-text-primary);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.present-toolbar__btn:hover {
-  background: var(--ink-border-default);
-}
-
-.present-toolbar__btn.is-active {
-  background: var(--ink-text-primary);
-  color: var(--ink-bg-canvas);
-  border-color: var(--ink-text-primary);
-}
-
-.present-toolbar__count {
-  font-size: 13px;
-  font-weight: 500;
-  min-width: 60px;
-  text-align: center;
-}
-
-.present-toolbar__hint {
-  font-size: 11px;
-  color: var(--ink-text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 6px;
+  display: none;
 }
 
 .present-sidebar {
-  width: 320px;
-  background: var(--ink-bg-canvas);
-  border-left: 1px solid var(--ink-bg-panel);
-  padding: 20px;
+  flex: none;
+  width: 240px;
+  background: var(--ink-surface-1);
+  border-left: 1px solid var(--ink-border-default);
+  padding: 18px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   overflow-y: auto;
-  z-index: 20;
 }
 
 .present-sidebar__head {
@@ -367,37 +333,46 @@
 }
 
 .present-sidebar__title {
-  font-size: 14px;
   font-weight: 600;
 }
 
 .present-sidebar__label {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 10.5px;
+  font-weight: 600;
   color: var(--ink-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 2px;
+  letter-spacing: 0.06em;
+}
+
+.present-sidebar__label--next {
+  margin-top: 8px;
 }
 
 .present-sidebar__notes {
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--ink-text-secondary);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  margin: 0;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.present-sidebar__notes--empty {
+  color: var(--ink-text-muted);
+  font-style: italic;
 }
 
 .present-sidebar__preview-pic {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 92px;
   border-radius: var(--ink-radius-sm);
   overflow: hidden;
-  box-shadow: 0 0 0 1px var(--ink-bg-panel);
-  aspect-ratio: 16 / 9;
-  background: var(--ink-bg-panel);
+  background: var(--ink-surface-2);
 }
 
 .present-empty {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -407,28 +382,29 @@
   text-align: center;
 }
 
-/* Phones (#306 mockup): the picture edge to edge, the shot under it; no notes, strip or hints. */
+/* Phones (#306 mockup): the picture edge to edge, the shot under it; no notes or strip. */
 @media (width < 768px) {
-  .present-header {
-    top: 12px;
-    left: 16px;
-    right: 16px;
-  }
   .present-sidebar,
   .present-strip,
-  .present-toolbar__hint,
-  .present-toolbar > .present-toolbar__btn {
+  .present-header__notes {
     display: none;
   }
   .present-main {
-    padding: 64px 0 96px;
+    padding: 12px 0 16px;
   }
+  .present-header,
   .present-stage__meta,
-  .present-stage__footer {
+  .present-stage__footer,
+  .present-bottom {
     padding: 0 16px;
   }
+  .present-stage {
+    justify-content: center;
+    overflow-y: auto;
+  }
   .present-stage__canvas {
-    max-height: none;
+    flex: none;
+    aspect-ratio: 16 / 9;
     border-radius: 0;
     box-shadow: none;
   }
@@ -436,19 +412,34 @@
     flex-direction: column;
     gap: 6px;
   }
-  .present-stage__shot-label {
-    font-size: 28px;
+  .present-stage__shot-label,
+  .present-stage__specs {
+    max-width: 100%;
+    text-align: left;
   }
   .present-stage__action {
-    font-size: 15px;
+    flex: none;
+    display: block;
+    overflow: visible;
   }
-  .present-bottom {
-    padding: 0 16px 16px;
+  .present-toolbar {
+    display: flex;
+    justify-content: space-between;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .present-header,
+  .present-bottom,
+  .present-progress__bar {
+    transition: none;
   }
 }
 
 /* A scene slide with its set plan (#335 round 6, i). */
 .present-stage__canvas--scene {
+  padding: 16px;
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   gap: 16px;
@@ -464,7 +455,8 @@
   border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
 }
-.present-thumb__pic .plan__svg {
+.present-thumb .plan__svg,
+.present-sidebar__preview-pic .plan__svg {
   width: 100%;
   height: 100%;
 }
