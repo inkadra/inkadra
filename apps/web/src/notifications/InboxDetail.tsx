@@ -48,13 +48,26 @@ type DetailProps = {
   onCount: () => Promise<void>;
 };
 
+/** Placeholder lines for what is still loading; the words are for screen readers only. */
+export function InboxSkeleton() {
+  const { t } = useTranslation();
+  return (
+    <div role="status" className="inbox-skeleton">
+      <span className="ink-sr-only">{t('comments.loading')}</span>
+      <div className="ink-skeleton" />
+      <div className="ink-skeleton" />
+      <div className="ink-skeleton" />
+    </div>
+  );
+}
+
 export function InboxDetail(props: DetailProps) {
   if (props.notification?.type === 'feedback_received')
     return (
       <div className="notifications__detail-pane inbox-detail">
         <div className="inbox-detail__body">
           <div className="inbox-detail__conversation">
-            <FeedbackInbox />
+            <FeedbackInbox loading={<InboxSkeleton />} />
           </div>
         </div>
       </div>
@@ -373,8 +386,8 @@ function InboxDetailContent({
         aria-label={t('notifications.conversation')}
       >
         <div className="inbox-detail__empty">
-          <Icon name="inbox" size={32} />
-          <p>{t('notifications.noNotificationSelected')}</p>
+          <strong>{t('notifications.detailEmptyTitle')}</strong>
+          <span>{t('notifications.detailEmptyHint')}</span>
         </div>
       </aside>
     );
@@ -511,10 +524,12 @@ function InboxDetailContent({
                   </span>
                 )}
               </div>
+            ) : syncing ? (
+              <div className="ink-skeleton inbox-detail__preview-skeleton" />
             ) : (
               <div className="inbox-detail__preview-fallback">
                 <Icon name="board" size={32} />
-                <p>{t(syncing ? 'common.loading' : 'notifications.previewUnavailable')}</p>
+                <p>{t('notifications.previewUnavailable')}</p>
                 <Button variant="ghost" onClick={handleOpenInBoard}>
                   {t('notifications.openInBoard')}
                 </Button>
@@ -609,7 +624,7 @@ function InboxDetailContent({
           className="inbox-detail__conversation"
         >
           {loadState === 'loading' ? (
-            <p role="status">{t('comments.loading')}</p>
+            <InboxSkeleton />
           ) : loadState === 'error' ? (
             <p role="alert">
               {t('notifications.error')}{' '}

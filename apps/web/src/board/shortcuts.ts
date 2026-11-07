@@ -138,6 +138,8 @@ export function insideDialog(target?: EventTarget | null): boolean {
   return (
     Boolean(document.activeElement?.closest('dialog[open], [role="dialog"]')) ||
     Boolean(document.querySelector('dialog:modal')) ||
+    // The Inbox covers the page: it stays mounted, but no key reaches a board nobody can see.
+    Boolean(document.querySelector('.view-stage[inert]')) ||
     (target instanceof HTMLElement && Boolean(target.closest('dialog[open], [role="dialog"]')))
   );
 }

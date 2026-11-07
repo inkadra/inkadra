@@ -290,9 +290,9 @@ it('omits a generic card title and keeps inherited visibility inside the compose
   expect(host.querySelector('.inbox-detail__composer')?.textContent).toContain(
     'notifications.visibleToClient',
   );
-  expect(host.querySelector('.inbox-detail__preview-fallback')?.textContent).toContain(
-    'common.loading',
-  );
+  // Still syncing the board: a placeholder, not a word.
+  expect(host.querySelector('.inbox-detail__preview-fallback')).toBeNull();
+  expect(host.querySelector('.inbox-detail__preview-skeleton')).not.toBeNull();
 });
 
 it('does not repeat the project root in the breadcrumb', async () => {

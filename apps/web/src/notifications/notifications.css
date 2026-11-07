@@ -71,9 +71,7 @@
 
 .notifications__list-pane {
   min-height: 0;
-  width: 380px;
-  min-width: 380px;
-  max-width: 380px;
+  width: clamp(240px, 32%, 320px);
   height: 100%;
   border-right: 1px solid var(--ink-border-default);
   display: flex;
@@ -364,12 +362,12 @@
   background: var(--ink-bg-panel);
 }
 .inbox-detail__head {
-  height: 52px;
   min-height: 52px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding: 0 20px;
+  gap: 8px 12px;
+  padding: 8px 20px;
   box-sizing: border-box;
   border-bottom: 1px solid var(--ink-border-default);
   flex: none;
@@ -399,7 +397,8 @@
   align-items: center;
   gap: 8px;
   margin-left: auto;
-  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .inbox-detail__resolve-btn {
   display: inline-flex;
@@ -641,13 +640,40 @@
 }
 .inbox-detail__empty {
   margin: auto;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  color: var(--ink-text-muted);
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ink-text-secondary);
   text-align: center;
+}
+.inbox-detail__empty strong {
+  color: var(--ink-text-primary);
+  font-weight: 600;
+}
+.inbox-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+.inbox-skeleton .ink-skeleton {
+  height: 12px;
+}
+.inbox-skeleton .ink-skeleton:nth-of-type(1) {
+  width: 90%;
+}
+.inbox-skeleton .ink-skeleton:nth-of-type(2) {
+  width: 70%;
+}
+.inbox-skeleton .ink-skeleton:nth-of-type(3) {
+  width: 45%;
+}
+.inbox-detail__preview-skeleton {
+  height: 240px;
 }
 
 @media (max-width: 1200px) {
@@ -658,6 +684,9 @@
     width: 100%;
     max-width: 100%;
     min-width: 0;
+  }
+  .inbox-detail__conversation {
+    width: 100%;
   }
 }
 
@@ -692,19 +721,74 @@
   margin-top: 8px;
 }
 
-/* The Inbox owns the shell content while the navigation folds to its logo button: a surface
-   beside it, 12 px from the window edges, like the floating panels (#333). */
+/* A phone has no Inbox top bar: it keeps its own header, and the list has its own head. */
 @media (min-width: 768px) {
-  .ink-shell:has(.notifications--fixed) > .ink-header {
-    visibility: hidden;
+  /* The top bar stays, with the Inbox's title and actions; the page's groups wait hidden. */
+  .ink-shell:has(.notifications--fixed)
+    > .ink-header
+    .shell-header-content
+    > .ink-header__group:not(.inbox-header) {
+    display: none;
   }
+  .inbox-header__title {
+    margin: 0 6px 0 0;
+    font-size: inherit;
+    font-weight: 600;
+  }
+  /* The Inbox is a page of the shell: the surface a page has, beside the floating panels (#333). */
   .notifications--fixed {
-    top: 12px;
+    top: calc(var(--ink-float-gap, 12px) * 2 + var(--ink-header-height, 42px));
     bottom: 12px;
     left: var(--ink-shell-left, 66px);
     right: 12px;
+    z-index: 20;
     border-radius: var(--ink-radius-lg);
     box-shadow: var(--ink-float-shadow);
+    transition: left var(--ink-dur-slow) var(--ink-ease-out);
+  }
+  .notifications--fixed .notifications-filter-tabs {
+    flex-wrap: wrap;
+    gap: 0 12px;
+    padding: 4px 12px 0;
+  }
+  /* The dot says unread, the row's background says selected. */
+  .notifications--fixed .notification__bar {
+    display: none;
+  }
+}
+/* With a mouse a row's Mark as read waits for the row, over its dot: the text keeps its width. */
+@media (min-width: 768px) and (hover: hover) {
+  .notifications--fixed .notification {
+    position: relative;
+  }
+  .notifications--fixed .notification > .ink-iconbtn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    margin: 0;
+    opacity: 0;
+  }
+  .notifications--fixed .notification:hover > .ink-iconbtn,
+  .notifications--fixed .notification:focus-within > .ink-iconbtn {
+    opacity: 1;
+  }
+  .notifications--fixed .notification:hover .notification__dot,
+  .notifications--fixed .notification:focus-within .notification__dot {
+    opacity: 0;
+  }
+}
+/* A short fade over the page, which stays visible under it until the Inbox has covered it. */
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .notifications--fixed {
+    animation: ink-fade-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
+  }
+  .view-stage[inert] {
+    transition: visibility 0s linear var(--ink-dur-fast);
+  }
+}
+@media (min-width: 768px) and (prefers-reduced-motion: reduce) {
+  .notifications--fixed {
+    transition: none;
   }
 }
 .notification__open.notification__open--drawer {
@@ -745,9 +829,6 @@
   color: var(--ink-text-muted);
 }
 
-.ink-shell:not(.ink-shell--collapsed):has(.notifications--fixed) .notifications--fixed {
-  left: 240px;
-}
 .inbox-detail__preview {
   position: relative;
 }
@@ -756,12 +837,6 @@
   width: 100%;
   border-radius: var(--ink-radius-md);
 }
-@media (max-width: 767px) {
-  .ink-shell:has(.notifications--fixed) .notifications--fixed {
-    left: 0;
-  }
-}
-
 .notifications__list-container > .home__section {
   padding: 0 16px 16px;
   margin-top: 16px;

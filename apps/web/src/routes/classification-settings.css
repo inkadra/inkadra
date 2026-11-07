@@ -25,10 +25,8 @@
   flex-direction: column;
   gap: 8px;
 }
-.catalogs__skeleton {
+.catalogs__loading .ink-skeleton {
   height: 30px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-surface-3);
 }
 .catalogs__grid {
   display: flex;

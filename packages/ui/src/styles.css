@@ -1125,6 +1125,12 @@ select {
 }
 
 /* Visible to assistive technology only. */
+/* What is still loading: a still shape, so there is nothing to reduce for reduced motion. */
+.ink-skeleton {
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-3);
+}
+
 .ink-sr-only {
   position: absolute;
   width: 1px;

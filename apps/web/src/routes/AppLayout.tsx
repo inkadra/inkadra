@@ -73,6 +73,7 @@ import { FeedbackEntry } from '../feedback/FeedbackEntry.tsx';
 import { canCreateProjects } from '../lib/access.ts';
 import { authApi } from '../lib/api.ts';
 import { HeaderContext, type HeaderParts } from '../lib/header.tsx';
+import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
 import {
@@ -282,6 +283,11 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const [headerContent, setHeaderContent] = useState<HeaderParts | null>(null);
   const [searching, setSearching] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
+  // On a desktop the Inbox is a page of the shell; a phone keeps its own layout.
+  const phone = useIsPhone();
+  const inboxInPage = inboxOpen && !phone;
+  // Where the list puts its Mark all as read, in the top bar.
+  const [inboxActions, setInboxActions] = useState<HTMLElement | null>(null);
   const mobileInboxButton = useRef<HTMLButtonElement>(null);
   // The bell's "Open inbox" leaves the peek: closing the Inbox goes back to the bell.
   const inboxOpener = useRef<HTMLElement | null>(null);
@@ -291,6 +297,26 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       inboxOpener.current = null;
     }
   }, [inboxOpen]);
+  // The panel closes on its own Escape; this one is for focus left in the sidebar or on the page.
+  useEffect(() => {
+    if (!inboxInPage) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      // That Escape belongs to what is open above, or to the field being typed in.
+      if (document.querySelector('dialog[open], [role="menu"]')) return;
+      if ((e.target as Element | null)?.closest?.('input, textarea, [contenteditable="true"]'))
+        return;
+      setInboxOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [inboxInPage]);
+  // Going to another page leaves the Inbox, however it happens (search, a new project, a link).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the path is what triggers this.
+  useEffect(() => {
+    inboxOpener.current = null;
+    setInboxOpen(false);
+  }, [url.pathname]);
   const [unread, refreshUnread] = useUnreadCount();
   // One list behind the bell and the Inbox.
   const notifications = useNotificationFeed(refreshUnread);
@@ -335,11 +361,11 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       writeCollapsed(userId, !c);
       return !c;
     });
-  const peek = useSidebarPeek(collapsed || inboxOpen);
+  const peek = useSidebarPeek(collapsed);
   const launcherRef = useRef<HTMLButtonElement>(null);
   // A peek lays the page out as with the navigation open, so what sits beside it moves aside
-  // in step instead of being covered; over the Inbox it stays a layer above it.
-  const shellCollapsed = inboxOpen || (collapsed && !peek.shown);
+  // in step instead of being covered.
+  const shellCollapsed = collapsed && !peek.shown;
   const sliding = useSlide(shellCollapsed);
   // ⌘\ / Ctrl+\ folds the navigation column to its icons and back.
   useEffect(() => {
@@ -369,9 +395,16 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       />
     );
 
+  // A row of the navigation leaves the Inbox even when it leads to the page already underneath.
+  const leaveInbox = () => {
+    inboxOpener.current = null;
+    setInboxOpen(false);
+  };
+
   const go = (to: string) => (e: MouseEvent) => {
     e.preventDefault();
     setDrawerOpen(false);
+    leaveInbox();
     navigate(to);
   };
 
@@ -438,6 +471,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const showView = (v: BoardView, motion?: ViewSwitchMotion) => {
     if (!projectId) return;
     setDrawerOpen(false);
+    leaveInbox();
     const target = destination(v);
     if (target.boardId) {
       navigate(hrefFor(v), motion);
@@ -467,8 +501,9 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const showFilmLinks = links.film;
   const showReview = links.review;
   const filmRowActive = (v: BoardView) =>
-    currentView === v ||
-    (v === 'storyboard' && !filmView && !!storyboardId && openBoardId === storyboardId);
+    !inboxOpen &&
+    (currentView === v ||
+      (v === 'storyboard' && !filmView && !!storyboardId && openBoardId === storyboardId));
 
   const renderProject = (p: Project, onDropProject?: (id: string, after: boolean) => void) => (
     <div key={p.id} className={p.id === projectId ? undefined : 'ink-sidebar__collapsible'}>
@@ -479,7 +514,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           setDrawerOpen(false);
           navigate(to);
         })}
-        active={p.id === projectId && !boardId && !filmView}
+        active={!inboxOpen && p.id === projectId && !boardId && !filmView}
         onClick={go(`/p/${p.id}`)}
       />
       {p.id === projectId && (
@@ -549,7 +584,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           <ProjectBoards
             projectId={p.id}
             rootBoardId={p.rootBoardId}
-            activeId={boardId}
+            activeId={inboxOpen ? undefined : boardId}
             hiddenId={storyboardId}
             go={go}
             counts={counts}
@@ -578,8 +613,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           className={`ink-sidebar__toggle${collapsed ? ' is-collapsed' : ''}`}
           icon="splitPanel"
           label={t(collapsed ? 'nav.expand' : 'nav.collapse')}
-          aria-expanded={!(collapsed || inboxOpen)}
-          disabled={inboxOpen}
+          aria-expanded={!collapsed}
           onClick={() => {
             peek.hide();
             const collapsing = !collapsed;
@@ -609,7 +643,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         icon="home"
         label={t('nav.home')}
         href="/"
-        active={pathname === '/'}
+        active={!inboxOpen && pathname === '/'}
         onClick={go('/')}
       />
       <NavItem
@@ -628,7 +662,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         icon="board"
         label={t('nav.projects')}
         href="/projects"
-        active={pathname === '/projects'}
+        active={!inboxOpen && pathname === '/projects'}
         onClick={go('/projects')}
       />
       <div className="ink-sidebar__scroll">
@@ -683,7 +717,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
                 icon="people"
                 label={b.title}
                 href={`/p/${b.projectId}/b/${b.id}`}
-                active={b.id === boardId}
+                active={!inboxOpen && b.id === boardId}
                 onClick={go(`/p/${b.projectId}/b/${b.id}`)}
               />
             ))}
@@ -761,7 +795,6 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         onClick={() => {
           if (!shellCollapsed) return;
           peek.hide();
-          if (inboxOpen) setInboxOpen(false);
           if (collapsed) toggleCollapsed();
           // The button is only the logo now: the focus goes to the panel's own toggle.
           requestAnimationFrame(() =>
@@ -773,9 +806,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       >
         <Logo size={26} />
       </button>
-      {(collapsed || inboxOpen) && (
-        <div className="ink-shell__edge" aria-hidden="true" {...peek.edge} />
-      )}
+      {collapsed && <div className="ink-shell__edge" aria-hidden="true" {...peek.edge} />}
     </>
   );
 
@@ -793,6 +824,24 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         )}
       </div>
       <div className="shell-header-content">
+        {/* The page's own groups stay mounted under these: hidden, they keep their state. */}
+        {inboxInPage && (
+          <>
+            <div className="ink-header__group ink-header__start inbox-header">
+              <h2 id="notifications-title" className="inbox-header__title">
+                {t('nav.inbox')}
+              </h2>
+            </div>
+            <div className="ink-header__group ink-header__end inbox-header">
+              <span ref={setInboxActions} style={{ display: 'contents' }} />
+              {canCreate && (
+                <Button variant="ghost" onClick={() => setCreating(true)}>
+                  {t('nav.newProject')}
+                </Button>
+              )}
+            </div>
+          </>
+        )}
         <div className="ink-header__group ink-header__start">
           {headerContent?.start ?? (
             <nav
@@ -897,6 +946,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
               <NotificationList
                 fixed
                 bell={mobileInboxButton}
+                actionsIn={inboxActions}
                 onClose={() => {
                   setInboxOpen(false);
                   if (window.matchMedia('(width < 768px)').matches)
