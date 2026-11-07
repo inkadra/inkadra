@@ -17,6 +17,12 @@ export const MAX_TAGS = 20;
 /** A tag as the person typed it; search and filters compare tags without case. */
 export const Tag = z.string().trim().min(1).max(40);
 
+/**
+ * The named group of the moodboard a reference (image, link or colour) belongs to, since version
+ * 21. References with the same name, compared without case, form one group; omitted = no group.
+ */
+export const ReferenceGroup = z.string().trim().min(1).max(60);
+
 /** Aspect ratios offered for storyboards and frames; `2.39` is anamorphic scope. */
 export const ASPECT_RATIOS = ['2.39', '1.85', '16:9', '4:3', '3:2', '1:1', '4:5', '9:16'] as const;
 export const AspectRatio = z.enum(ASPECT_RATIOS);
@@ -100,6 +106,7 @@ export type ImageCrop = z.infer<typeof ImageCrop>;
 
 export const LinkElement = Base.extend({
   type: z.literal('link'),
+  group: ReferenceGroup.optional(),
   // Web addresses only: the card renders it as a link.
   url: z.url({ protocol: /^https?$/ }),
   title: z.string().max(500).optional(),
@@ -150,6 +157,7 @@ export const TodoElement = Base.extend({
 });
 export const ColorElement = Base.extend({
   type: z.literal('color'),
+  group: ReferenceGroup.optional(),
   hex: z.string().regex(/^#[0-9A-F]{6}$/),
   label: z.string().max(80).optional(),
 });
@@ -360,6 +368,7 @@ const FrameShapes = z
 
 export const ImageElement = Base.extend({
   type: z.literal('image'),
+  group: ReferenceGroup.optional(),
   source: VideoFrameSource.optional(),
   strokes: z
     .array(Stroke)

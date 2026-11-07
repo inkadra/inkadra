@@ -54,7 +54,9 @@ describe('guest element fields', () => {
   const omitted: Record<string, readonly string[]> = {
     common: ['tags', 'locked', 'guestHidden'],
     frame: ['status', 'notes', 'approved', 'source'],
-    image: ['source'],
+    image: ['source', 'group'],
+    link: ['group'],
+    color: ['group'],
     character: ['contact', 'notes'],
     location: ['address', 'mapUrl', 'availability', 'contact', 'notes'],
     // How the heading moves while editing; guests only look.
@@ -154,6 +156,23 @@ describe('guest element fields', () => {
       });
       expect(toGuestElement(element)).not.toHaveProperty('source');
     }
+  });
+
+  it('keeps moodboard groups from guests', () => {
+    const color = Element.parse({
+      id: 'color0000',
+      type: 'color',
+      x: 0,
+      y: 0,
+      w: 120,
+      z: 'a0',
+      parent: null,
+      createdBy: null,
+      createdAt: 1,
+      hex: '#112233',
+      group: 'Luce',
+    });
+    expect(toGuestElement(color)).not.toHaveProperty('group');
   });
 
   it('drops tags, locks and production fields, and the author', () => {
