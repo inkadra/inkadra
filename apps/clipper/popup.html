@@ -10,6 +10,11 @@
     <header class="bar">
       <img src="/icons/icon-32.png" width="20" height="20" alt="" />
       <span class="bar__title">Inkadra</span>
+      <fieldset id="modes" class="modes" hidden>
+        <legend class="sr-only" data-i18n="mode_label">What to save</legend>
+        <label class="modes__option"><input type="radio" name="mode" value="page" checked /><span data-i18n="mode_page">Page</span></label>
+        <label class="modes__option"><input type="radio" name="mode" value="images" /><span id="mode-images">Images</span></label>
+      </fieldset>
       <button type="button" id="open-options" class="icon-btn" data-i18n-aria-label="action_settings" data-i18n-title="action_settings" aria-label="Impostazioni" title="Impostazioni">⚙</button>
     </header>
 
@@ -17,12 +22,6 @@
       <p id="disconnected-text"></p>
       <button type="button" id="connect" class="btn btn--primary" data-i18n="action_connect">Connetti</button>
     </section>
-
-    <fieldset id="modes" class="modes" hidden>
-      <legend class="sr-only" data-i18n="mode_label">What to save</legend>
-      <label class="modes__option"><input type="radio" name="mode" value="page" checked /><span data-i18n="mode_page">Page</span></label>
-      <label class="modes__option"><input type="radio" name="mode" value="images" /><span id="mode-images">Images</span></label>
-    </fieldset>
 
     <form id="clip-form" class="panel" hidden>
       <div id="page" class="page">
@@ -39,7 +38,7 @@
             <button type="button" id="images-none" class="link" data-i18n="images_select_none">None</button>
           </span>
         </div>
-        <fieldset id="images-grid" class="images" data-i18n-aria-label="mode_images"></fieldset>
+        <ul id="images-grid" class="images" data-i18n-aria-label="mode_images"></ul>
         <p id="images-empty" class="images__empty ink-muted" data-i18n="images_none" hidden></p>
       </div>
 

@@ -327,11 +327,11 @@ select:disabled {
   white-space: nowrap;
 }
 
-/* Page | Images: the same segments as @inkadra/ui's Segmented, the chosen one raised, not blue. */
+/* Page | Images, in the bar: the same segments as @inkadra/ui's Segmented, the chosen one raised. */
 .modes {
   display: flex;
   gap: 2px;
-  margin: 12px 12px 0;
+  margin: 0 0 0 auto;
   padding: 2px;
   border: 1px solid var(--ink-border-default);
   border-radius: 8px;
@@ -339,13 +339,17 @@ select:disabled {
   min-width: 0;
 }
 
+.modes:not([hidden]) + .icon-btn {
+  margin-left: 0;
+}
+
 .modes__option {
   position: relative;
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 26px;
+  height: 24px;
+  padding: 0 10px;
   border-radius: 6px;
   color: var(--ink-text-secondary);
   font-size: 12px;
@@ -392,16 +396,22 @@ select:disabled {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  max-height: 226px;
-  min-width: 0;
+  max-height: 160px;
   overflow-y: auto;
+  list-style: none;
   padding: 3px;
   margin: -3px;
-  border: 0;
+}
+
+/* The board is usually already chosen: a shorter list leaves room for the pictures. */
+.popup[data-mode="images"] .boards {
+  max-height: 90px;
 }
 
 .tile {
   position: relative;
+  display: block;
+  width: 100%;
   aspect-ratio: 1;
   padding: 0;
   overflow: hidden;

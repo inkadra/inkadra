@@ -232,6 +232,7 @@ search.addEventListener('input', () => {
 
 function setMode(next: typeof mode) {
   mode = next;
+  document.body.dataset.mode = next;
   $('page').hidden = next !== 'page';
   $('note-field').hidden = next !== 'page';
   $('images').hidden = next !== 'images';
@@ -273,6 +274,8 @@ function renderImages() {
         size.textContent = `${image.width}×${image.height}`;
         tile.append(size);
       }
+      const item = document.createElement('li');
+      item.append(tile);
       tile.addEventListener('click', () => {
         if (picked.has(image.url)) picked.delete(image.url);
         else picked.add(image.url);
@@ -280,7 +283,7 @@ function renderImages() {
         $('images-count').textContent = plural('images_selected', picked.size);
         updateSelection();
       });
-      return tile;
+      return item;
     }),
   );
   updateSelection();
