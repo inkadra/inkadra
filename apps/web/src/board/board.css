@@ -2275,6 +2275,10 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .canvas__tray > * {
   pointer-events: auto;
 }
+/* Open, the tray's panel lies over the selection bar (.ctxbar) rather than under it. */
+.canvas__tray:has(.unsorted__panel) {
+  z-index: 6;
+}
 .unsorted {
   display: flex;
   flex-direction: column;
