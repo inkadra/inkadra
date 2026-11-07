@@ -3259,9 +3259,7 @@ export function Canvas({
           ...(single?.type === 'section' && !readOnly && !single.locked
             ? [
                 {
-                  label: t(
-                    single.moveCards ? 'board.menu.moveCardsOff' : 'board.menu.moveCardsOn',
-                  ),
+                  label: t(single.moveCards ? 'board.menu.moveCardsOff' : 'board.menu.moveCardsOn'),
                   action: () =>
                     updateElement(
                       doc,
