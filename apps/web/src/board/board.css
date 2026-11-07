@@ -1048,8 +1048,9 @@ textarea.card__todo-text {
   transform-origin: var(--ink-origin, top left);
   animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }
-/* The reactions under cards sit in a layer above the board: out of the open picker's way. */
-body:has(.colorpicker) .card-reactions {
+/* The reactions under cards sit in a layer above the board: out of the open picker's and the
+   open unsorted tray's way. */
+body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   visibility: hidden;
 }
 .colorpicker__square {
