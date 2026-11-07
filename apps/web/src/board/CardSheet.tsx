@@ -27,11 +27,12 @@ export function splitSheetItems(items: readonly MenuItem[]) {
     const next = rest[i + 1];
     return item.heading === undefined || (next !== undefined && 'label' in next);
   });
-  const tidy = titled.filter(
-    (item, i) =>
-      !item.divider ||
-      (i > 0 && i < titled.length - 1 && !titled[i - 1]?.divider && !titled[i + 1]?.heading),
-  );
+  const tidy: MenuItem[] = [];
+  titled.forEach((item, i) => {
+    if (item.divider && (!tidy.length || tidy.at(-1)?.divider || titled[i + 1]?.heading)) return;
+    tidy.push(item);
+  });
+  if (tidy.at(-1)?.divider) tidy.pop();
   return { slots, rest: tidy };
 }
 
