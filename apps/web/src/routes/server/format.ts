@@ -80,11 +80,11 @@ export function ago(iso: string, now: number, locale: string): string {
   return rtf.format(Math.round(seconds / 86_400), 'day');
 }
 
-/** The day of a moment against now: today, yesterday, or neither. */
-export function dayOf(iso: string, now: number): 'today' | 'yesterday' | 'other' {
+/** The day of a moment against now: today, yesterday, tomorrow, or another. */
+export function dayOf(iso: string, now: number): 'today' | 'yesterday' | 'tomorrow' | 'other' {
   const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((start(new Date(now)) - start(new Date(iso))) / 86_400_000);
-  return days === 0 ? 'today' : days === 1 ? 'yesterday' : 'other';
+  return days === 0 ? 'today' : days === 1 ? 'yesterday' : days === -1 ? 'tomorrow' : 'other';
 }
 
 /** A chart's top: the value rounded up to 1, 2, 2.5 or 5 times a power of ten. */

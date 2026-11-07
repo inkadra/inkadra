@@ -230,6 +230,8 @@ async function shots(page: Page, name: string) {
   await page.mouse.move(0, 0);
   await page.screenshot({ path: join(out, `${name}.png`) });
   console.log(`${name}.png`);
+  const size = page.viewportSize() ?? { width: 1280, height: 860 };
+  await page.setViewportSize({ width: size.width, height: 6000 });
   await page.addStyleTag({
     content:
       '.settings-window{position:static!important;height:auto!important;max-height:none!important;margin:24px auto!important}' +

@@ -4387,7 +4387,8 @@
     "when": {
       "night": "cette nuit à {{time}}",
       "today": "aujourd’hui à {{time}}",
-      "yesterday": "hier à {{time}}"
+      "yesterday": "hier à {{time}}",
+      "tomorrow": "demain à {{time}}"
     },
     "health": {
       "ok": "Tout fonctionne",

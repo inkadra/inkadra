@@ -4387,7 +4387,8 @@
     "when": {
       "night": "stanotte alle {{time}}",
       "today": "oggi alle {{time}}",
-      "yesterday": "ieri alle {{time}}"
+      "yesterday": "ieri alle {{time}}",
+      "tomorrow": "domani alle {{time}}"
     },
     "health": {
       "ok": "Tutto funziona",

@@ -52,6 +52,7 @@ export function useWhen() {
         ? t('server.when.night', { time })
         : t('server.when.today', { time });
     if (day === 'yesterday') return t('server.when.yesterday', { time });
+    if (day === 'tomorrow') return t('server.when.tomorrow', { time });
     return formatDateTime(iso, { dateStyle: 'medium', timeStyle: 'short' });
   };
 }

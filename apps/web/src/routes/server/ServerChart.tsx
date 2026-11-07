@@ -17,7 +17,7 @@ export interface ChartMarker {
   label: string;
 }
 
-const PAD = { left: 40, right: 6, top: 8, bottom: 20 };
+const PAD = { left: 52, right: 6, top: 8, bottom: 20 };
 
 /** Points of a series, split where values are missing so the line does not lie across a gap. */
 function segments(
