@@ -146,3 +146,28 @@ it('autosaves the profile name after typing stops, never an empty one', async ()
     vi.useRealTimers();
   }
 });
+
+it('points to the clipper in the store until a clipper token exists, then shows it connected', async () => {
+  await render('/settings?section=account');
+  const row = () => host.querySelector('.settings-clipper');
+  expect(row()?.querySelector('code')?.textContent).toBe('http://localhost:3000');
+  const store = row()?.querySelector('a');
+  expect(store?.getAttribute('href')).toBe(
+    'https://chromewebstore.google.com/detail/inkadra-clipper/hdajoikapihpjfbgioeagenmoalckjkh',
+  );
+  expect(store?.getAttribute('target')).toBe('_blank');
+  expect(store?.querySelector('img')?.getAttribute('alt')).toBe('settings.tokens.clipper.store');
+  expect(row()?.textContent).not.toContain('settings.tokens.clipper.connected');
+
+  vi.mocked(api.get).mockImplementation(async (path: string) => ({
+    items:
+      path === '/me/tokens'
+        ? [{ id: 't1', name: 'Chrome', prefix: 'ink_', client: 'clipper' }]
+        : [],
+  }));
+  await render('/settings?section=account&again');
+  expect(row()?.querySelector('a')).toBeNull();
+  expect(row()?.textContent).toContain('settings.tokens.clipper.connected');
+  expect(row()?.querySelector('code')).not.toBeNull();
+  vi.mocked(api.get).mockImplementation(async () => ({ items: [] }));
+});

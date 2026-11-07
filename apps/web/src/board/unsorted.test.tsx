@@ -27,3 +27,9 @@ it('shows Unsorted only while something waits, it is open or cards are dragged',
   expect(render([], true)).toContain('board.unsorted.empty');
   expect(render([], false, true)).toContain('unsorted__toggle');
 });
+
+it('offers the clipper from the empty Unsorted', () => {
+  expect(render([], true)).toContain(
+    'href="https://chromewebstore.google.com/detail/inkadra-clipper/hdajoikapihpjfbgioeagenmoalckjkh"',
+  );
+});

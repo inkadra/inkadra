@@ -1,5 +1,6 @@
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
+import { CLIPPER_STORE_URL } from '../lib/clipper.ts';
 import { useInstanceSetupState, useProjects } from './AppLayout.tsx';
 import { InstanceChecklist } from './InstanceSetup.tsx';
 import { ProjectSetupForm } from './NewProjectDialog.tsx';
@@ -44,6 +45,17 @@ export function Onboarding() {
             <li>{t('onboarding.tips.search')}</li>
             <li>{t('onboarding.tips.drag')}</li>
             <li>{t('onboarding.tips.phone')}</li>
+            <li>
+              <Trans
+                i18nKey="onboarding.tips.clipper"
+                components={{
+                  store: (
+                    // biome-ignore lint/a11y/useAnchorContent: Trans fills it with the link text.
+                    <a href={CLIPPER_STORE_URL} target="_blank" rel="noopener" />
+                  ),
+                }}
+              />
+            </li>
           </ul>
         </section>
       </aside>

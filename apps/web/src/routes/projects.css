@@ -393,6 +393,10 @@
   font-size: 12px;
   line-height: 1.8;
 }
+.instance-checklist li a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .ink-dialog:has(.project-setup) {
   width: min(480px, calc(100vw - 48px));
   border-radius: var(--ink-radius-lg);

@@ -599,7 +599,8 @@
       "palette": "Alinhar à grade: ativar ou desativar"
     },
     "unsorted": {
-      "empty": "Nada para organizar. O que você salva do navegador ou do celular chega aqui."
+      "empty": "Nada para organizar. O que você salva do navegador ou do celular chega aqui.",
+      "clipper": "Instale o clipper para Chrome ↗"
     },
     "uploads": {
       "title": "Envios",
@@ -2145,7 +2146,15 @@
       "namePlaceholder": "Script de backup",
       "create": "Criar token",
       "copyNow": "Token “{{name}}” criado. Copie agora: você não o verá de novo.",
-      "done": "Concluir"
+      "done": "Concluir",
+      "clipper": {
+        "title": "Inkadra Clipper para Chrome",
+        "body": "Salve páginas, imagens, texto e links do navegador em Não organizados de um quadro.",
+        "address": "Endereço para digitar no clipper:",
+        "copy": "Copiar",
+        "connected": "Conectado",
+        "store": "Disponível na Chrome Web Store"
+      }
     },
     "delete": {
       "title": "Excluir conta",
@@ -2581,7 +2590,8 @@
     "tips": {
       "search": "⌘K / Ctrl+K busca projetos, quadros e comandos.",
       "drag": "Arraste arquivos e links para o canvas.",
-      "phone": "Pelo celular, salve em Não organizados."
+      "phone": "Pelo celular, salve em Não organizados.",
+      "clipper": "No navegador, salve com <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Configurações, configuração da instância incompleta",
     "details": "Detalhes",

@@ -467,6 +467,50 @@
   font-size: 11px;
 }
 
+/* The clipper row: the store badge drops under the text when the card is narrow. */
+.settings-list li.settings-clipper {
+  flex-wrap: wrap;
+}
+.settings-clipper .settings-list__text {
+  flex: 1 1 240px;
+}
+.settings-clipper__address {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-top: 4px;
+}
+.settings-clipper__address code {
+  overflow-wrap: anywhere;
+}
+.settings-clipper__store {
+  display: block;
+  margin-inline-start: auto;
+  border-radius: var(--ink-radius-sm);
+}
+.settings-clipper__store img {
+  display: block;
+}
+.settings-clipper__store:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+:root[data-theme="dark"] .settings-clipper__badge--light,
+:root[data-theme="light"] .settings-clipper__badge--dark {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .settings-clipper__badge--light {
+    display: none;
+  }
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .settings-clipper__badge--dark {
+    display: none;
+  }
+}
+
 .settings-muted {
   color: var(--ink-text-secondary);
 }

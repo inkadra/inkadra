@@ -2304,6 +2304,10 @@ body:has(.colorpicker) .card-reactions {
   margin: 0;
   font-size: 12px;
 }
+.unsorted__empty a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 
 /* Uploads, palette, toast ---------------------------------------------------------- */
 

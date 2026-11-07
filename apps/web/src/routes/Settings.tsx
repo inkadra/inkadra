@@ -23,6 +23,8 @@ import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
 import { encode } from 'uqr';
+import chromeWebStore from '../assets/chrome-web-store.png';
+import chromeWebStoreBorder from '../assets/chrome-web-store-border.png';
 import { setKeepsPlayingOffscreen, useKeepsPlayingOffscreen } from '../board/inline-player.ts';
 import {
   BAR_ICONS,
@@ -35,6 +37,7 @@ import {
 import { FeedbackRow } from '../feedback/FeedbackSettings.tsx';
 import { LOCALES } from '../i18n/index.ts';
 import { api, authApi, RequestError } from '../lib/api.ts';
+import { CLIPPER_STORE_URL } from '../lib/clipper.ts';
 import { formatClock } from '../lib/datetime.ts';
 import { updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
@@ -955,6 +958,7 @@ function Tokens() {
       }
     >
       <ul className="settings-list">
+        <ClipperRow connected={items?.some((tk) => tk.client === 'clipper') ?? false} />
         {items?.length === 0 && <li className="settings-muted">{t('settings.tokens.none')}</li>}
         {items?.map((tk) => (
           <li key={tk.id}>
@@ -1030,6 +1034,68 @@ function Tokens() {
         )}
       </Dialog>
     </Card>
+  );
+}
+
+/** Where to get the clipper, and the address its first connection asks for. */
+function ClipperRow({ connected }: { connected: boolean }) {
+  const { t } = useTranslation();
+  const { instance } = useSession();
+  const [copied, setCopied] = useState(false);
+  // The clipper takes the web address, sub-path included; publicUrl is that address.
+  const address = instance?.publicUrl.replace(/\/+$/, '') ?? window.location.origin;
+  return (
+    <li className="settings-clipper">
+      <span className="settings-provider" aria-hidden="true">
+        <Icon name="unsorted" size={16} />
+      </span>
+      <span className="settings-list__text">
+        <span className="settings-row__label">{t('settings.tokens.clipper.title')}</span>
+        <span className="settings-row__help">{t('settings.tokens.clipper.body')}</span>
+        <span className="settings-row__help settings-clipper__address">
+          {t('settings.tokens.clipper.address')} <code>{address}</code>
+          <Button
+            variant="ghost"
+            icon="copy"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(address);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              } catch {}
+            }}
+          >
+            {copied ? t('share.copied') : t('settings.tokens.clipper.copy')}
+          </Button>
+        </span>
+      </span>
+      {connected ? (
+        <Badge tone="ok">{t('settings.tokens.clipper.connected')}</Badge>
+      ) : (
+        // Google's badge, unchanged but for its size; the light or dark one follows the theme.
+        <a
+          className="settings-clipper__store"
+          href={CLIPPER_STORE_URL}
+          target="_blank"
+          rel="noopener"
+        >
+          <img
+            className="settings-clipper__badge--light"
+            src={chromeWebStore}
+            alt={t('settings.tokens.clipper.store')}
+            width={142}
+            height={40}
+          />
+          <img
+            className="settings-clipper__badge--dark"
+            src={chromeWebStoreBorder}
+            alt={t('settings.tokens.clipper.store')}
+            width={142}
+            height={40}
+          />
+        </a>
+      )}
+    </li>
   );
 }
 

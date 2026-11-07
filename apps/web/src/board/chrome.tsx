@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
 import { addActions, type PaletteAction, rankActions } from '../commands/actions.ts';
 import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
+import { CLIPPER_STORE_URL } from '../lib/clipper.ts';
 import { usePreferences } from '../lib/preferences.ts';
 import { ContextualTools } from './ContextualTools.tsx';
 import { Card, NOTE_COLORS } from './cards.tsx';
@@ -1234,7 +1235,12 @@ export function UnsortedDrawer({
       {open && (
         <UnsortedPanel>
           {items.length === 0 ? (
-            <p className="ink-muted unsorted__empty">{t('board.unsorted.empty')}</p>
+            <p className="ink-muted unsorted__empty">
+              {t('board.unsorted.empty')}{' '}
+              <a href={CLIPPER_STORE_URL} target="_blank" rel="noopener">
+                {t('board.unsorted.clipper')}
+              </a>
+            </p>
           ) : (
             items.map((el) => (
               <Card

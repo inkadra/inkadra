@@ -599,7 +599,8 @@
       "palette": "Snap to grid: on or off"
     },
     "unsorted": {
-      "empty": "Nothing to sort. What you save from the browser or your phone lands here."
+      "empty": "Nothing to sort. What you save from the browser or your phone lands here.",
+      "clipper": "Install the clipper for Chrome ↗"
     },
     "uploads": {
       "title": "Uploads",
@@ -2145,7 +2146,15 @@
       "namePlaceholder": "Backup script",
       "create": "Create token",
       "copyNow": "Token “{{name}}” created. Copy it now: you won’t see it again.",
-      "done": "Done"
+      "done": "Done",
+      "clipper": {
+        "title": "Inkadra Clipper for Chrome",
+        "body": "Save pages, images, text and links from the browser to a board’s Unsorted.",
+        "address": "Address to enter in the clipper:",
+        "copy": "Copy",
+        "connected": "Connected",
+        "store": "Available in the Chrome Web Store"
+      }
     },
     "delete": {
       "title": "Delete account",
@@ -2581,7 +2590,8 @@
     "tips": {
       "search": "⌘K / Ctrl+K searches projects, boards and commands.",
       "drag": "Drag files and links onto the canvas.",
-      "phone": "Save to Unsorted from your phone."
+      "phone": "Save to Unsorted from your phone.",
+      "clipper": "From the browser, save with <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Settings, instance setup incomplete",
     "details": "Details",
