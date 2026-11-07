@@ -58,6 +58,17 @@ const fields = {
         'Tools in the bottom bar of the board, in order; null for the default bar. Open list: ' +
         'clients skip the tools they do not know, and hidden tools stay in the + menu.',
     }),
+  tutorialsSeen: z
+    .array(z.string().min(1).max(40))
+    .max(100)
+    .openapi({
+      description:
+        'Tutorials this person finished or skipped, so each is offered once (#502). Open list: ' +
+        'clients ignore ids they do not know.',
+    }),
+  tutorialHints: z.boolean().openapi({
+    description: "Offer a feature's tutorial the first time this person opens it (#502).",
+  }),
 };
 
 export const UserPreferences = z.object(fields).openapi('UserPreferences');
@@ -69,8 +80,8 @@ export const UpdateUserPreferences = z
   .openapi('UpdateUserPreferences', { description: 'Only the fields given change.' });
 export type UpdateUserPreferences = z.infer<typeof UpdateUserPreferences>;
 
-/** Lists of set plan icons and their limits, read entry by entry. */
-const ICON_LISTS = { planFavorites: 60, planRecents: 8 } as const;
+/** Lists of ids (set plan icons, tutorials) and their limits, read entry by entry. */
+const ID_LISTS = { planFavorites: 60, planRecents: 8, tutorialsSeen: 100 } as const;
 
 /** What a person who never changed anything gets. */
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
@@ -85,6 +96,8 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   planFavorites: [],
   planRecents: [],
   toolbar: null,
+  tutorialsSeen: [],
+  tutorialHints: true,
 };
 
 /**
@@ -97,7 +110,7 @@ export function readUserPreferences(stored: unknown): UserPreferences {
   for (const [key, schema] of Object.entries(fields)) {
     const parsed = schema.safeParse(record[key]);
     if (parsed.success && record[key] !== undefined) out[key] = parsed.data;
-    else if (key in ICON_LISTS && Array.isArray(record[key]))
+    else if (key in ID_LISTS && Array.isArray(record[key]))
       // One bad entry does not cost the person the whole list: keep the valid ones.
       out[key] = [
         ...new Set(
@@ -105,7 +118,7 @@ export function readUserPreferences(stored: unknown): UserPreferences {
             (v): v is string => typeof v === 'string' && v.length > 0 && v.length <= 40,
           ),
         ),
-      ].slice(0, ICON_LISTS[key as keyof typeof ICON_LISTS]);
+      ].slice(0, ID_LISTS[key as keyof typeof ID_LISTS]);
   }
   return out as UserPreferences;
 }

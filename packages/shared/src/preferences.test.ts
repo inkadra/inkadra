@@ -10,3 +10,13 @@ it('keeps the valid icons of a list with a bad entry, once each and within the l
   expect(read.planFavorites).toEqual(['led', 'hologram']);
   expect(read.planRecents).toHaveLength(8);
 });
+
+it('keeps the valid tutorial ids and offers tutorials by default', () => {
+  expect(readUserPreferences(null)).toMatchObject({ tutorialsSeen: [], tutorialHints: true });
+  const read = readUserPreferences({
+    tutorialsSeen: ['welcome', 'x'.repeat(41), 'welcome', 'storyboard'],
+    tutorialHints: false,
+  });
+  expect(read.tutorialsSeen).toEqual(['welcome', 'storyboard']);
+  expect(read.tutorialHints).toBe(false);
+});

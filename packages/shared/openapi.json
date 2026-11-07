@@ -6388,6 +6388,20 @@
             },
             "maxItems": 40,
             "description": "Tools in the bottom bar of the board, in order; null for the default bar. Open list: clients skip the tools they do not know, and hidden tools stay in the + menu."
+          },
+          "tutorialsSeen": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 100,
+            "description": "Tutorials this person finished or skipped, so each is offered once (#502). Open list: clients ignore ids they do not know."
+          },
+          "tutorialHints": {
+            "type": "boolean",
+            "description": "Offer a feature's tutorial the first time this person opens it (#502)."
           }
         },
         "required": [
@@ -6401,7 +6415,9 @@
           "keepAroundContent",
           "planFavorites",
           "planRecents",
-          "toolbar"
+          "toolbar",
+          "tutorialsSeen",
+          "tutorialHints"
         ]
       },
       "UpdateUserPreferences": {
@@ -6482,6 +6498,20 @@
             },
             "maxItems": 40,
             "description": "Tools in the bottom bar of the board, in order; null for the default bar. Open list: clients skip the tools they do not know, and hidden tools stay in the + menu."
+          },
+          "tutorialsSeen": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 100,
+            "description": "Tutorials this person finished or skipped, so each is offered once (#502). Open list: clients ignore ids they do not know."
+          },
+          "tutorialHints": {
+            "type": "boolean",
+            "description": "Offer a feature's tutorial the first time this person opens it (#502)."
           }
         },
         "description": "Only the fields given change."
