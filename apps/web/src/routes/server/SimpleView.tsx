@@ -428,19 +428,19 @@ const SIMPLE_RANGES: ServerRange[] = ['1h', '24h', '7d'];
 function Trend({ status, actions }: { status: ServerStatus; actions: ServerActions }) {
   const { t } = useTranslation();
   return (
-    <Card
-      title={t('server.chart.title')}
-      action={
-        <Select
-          aria-label={t('server.chart.period')}
-          variant="quiet"
-          value={SIMPLE_RANGES.includes(actions.range) ? actions.range : '1h'}
-          onChange={(v) => actions.setRange(v as ServerRange)}
-          options={SIMPLE_RANGES.map((r) => ({ value: r, label: t(`server.chart.ranges.${r}`) }))}
-        />
-      }
-    >
-      <HistoryChart status={status} />
+    <Card title={t('server.chart.title')}>
+      <HistoryChart
+        status={status}
+        period={
+          <Select
+            className="server-select"
+            aria-label={t('server.chart.period')}
+            value={SIMPLE_RANGES.includes(actions.range) ? actions.range : '1h'}
+            onChange={(v) => actions.setRange(v as ServerRange)}
+            options={SIMPLE_RANGES.map((r) => ({ value: r, label: t(`server.chart.ranges.${r}`) }))}
+          />
+        }
+      />
     </Card>
   );
 }
@@ -607,6 +607,7 @@ function Problems({ status, actions }: { status: ServerStatus; actions: ServerAc
   return (
     <section id={PROBLEMS_ID} className="server-anchor" data-tour="server-problems">
       <Card
+        className="server-card-wrap"
         title={t('server.problems.title')}
         action={
           <span className="server-card-actions">

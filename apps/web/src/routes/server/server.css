@@ -301,6 +301,18 @@
   gap: 4px;
 }
 
+.server-select {
+  width: auto;
+  min-width: 11em;
+}
+.server-trend__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 /* Charts: SVG strokes and fills from tokens, so both themes follow. */
 .server-trend {
   display: flex;
@@ -630,16 +642,33 @@
   .server-problem {
     flex-wrap: wrap;
   }
+  .server-problem .settings-list__text {
+    flex: 1 1 calc(100% - 40px);
+  }
   .server-problem__actions {
+    flex: 1 1 100%;
     flex-direction: row;
+    justify-content: flex-start;
     margin-left: 34px;
+  }
+  .server-card-wrap .settings-card__title {
+    flex-wrap: wrap;
+  }
+  .server-strip dl {
+    flex-basis: 100%;
   }
   .server-log li {
     flex-wrap: wrap;
   }
+  .server-log .settings-list__text {
+    flex: 1 1 100%;
+    order: 2;
+  }
   .server-log__when {
     flex-direction: row;
     align-items: center;
+    order: 1;
+    margin-left: auto;
   }
 }
 @media (prefers-reduced-motion: reduce) {

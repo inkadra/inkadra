@@ -454,6 +454,7 @@ function ErrorLog({ status, actions }: { status: ServerStatus; actions: ServerAc
       <Card title={t('server.advanced.log')}>
         <div className="server-toolbar">
           <Select
+            className="server-select"
             aria-label={t('server.advanced.severity')}
             value={filter}
             onChange={(v) => setFilter(v as 'all' | 'errors')}

@@ -1,6 +1,6 @@
 import type { ServerStatus } from '@inkadra/shared';
 import { Segmented } from '@inkadra/ui';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatStorage } from '../StorageCharts.tsx';
 import { niceMax, number } from './format.ts';
@@ -49,7 +49,7 @@ export function memoryMax(status: ServerStatus): number {
 export type Metric = 'cpu' | 'memory' | 'network';
 
 /** The one chart of the simple view: processor, memory or internet over the period. */
-export function HistoryChart({ status }: { status: ServerStatus }) {
+export function HistoryChart({ status, period }: { status: ServerStatus; period?: ReactNode }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const [metric, setMetric] = useState<Metric>('cpu');
@@ -100,15 +100,18 @@ export function HistoryChart({ status }: { status: ServerStatus }) {
           };
   return (
     <div className="server-trend">
+      <div className="server-trend__bar">
       <Segmented
-        label={t('server.chart.metric')}
-        value={metric}
-        onChange={setMetric}
-        options={(['cpu', 'memory', 'network'] as const).map((m) => ({
-          value: m,
-          label: t(`server.chart.${m}`),
-        }))}
-      />
+          label={t('server.chart.metric')}
+          value={metric}
+          onChange={setMetric}
+          options={(['cpu', 'memory', 'network'] as const).map((m) => ({
+            value: m,
+            label: t(`server.chart.${m}`),
+          }))}
+        />
+        {period}
+      </div>
       {h.length === 0 ? (
         <p className="settings-card__empty settings-muted">{t('server.chart.empty')}</p>
       ) : (
