@@ -98,8 +98,13 @@ async function measure(page: Page) {
     const box = canvas.getBoundingClientRect();
     // The scrolling part of the bar: its tools, or the whole bar before they were split.
     const tools = bar.querySelector<HTMLElement>('.toolbar__tools') ?? bar;
+    // A group narrower than its buttons lays them over the next group (it was squeezed).
+    const squeezed = Array.from(bar.querySelectorAll<HTMLElement>('.toolbar__group')).filter(
+      (g) => g.scrollWidth - g.clientWidth > 1,
+    ).length;
     return {
       tops: [...new Set(buttons.map((b) => Math.round(b.top)))],
+      squeezed,
       button: { left: box.left, right: box.right, width: box.width, height: box.height },
       partsInside: parts.every((p) => p.left >= box.left - 0.5 && p.right <= box.right + 0.5),
       labelShown: getComputedStyle(label).display !== 'none',
@@ -138,6 +143,7 @@ for (const [width, height, touch, viewportTag] of [
       const m = await measure(page);
       console.log(JSON.stringify({ scenario: 'toolbar', name, ...m }));
       expect(m.tops, 'one row of tools').toHaveLength(1);
+      expect(m.squeezed, 'no group narrower than its buttons').toBe(0);
       expect(m.partsInside, 'plus, label and caret inside the blue fill').toBe(true);
       expect(m.button.width).toBeGreaterThanOrEqual(m.button.height);
       if (m.labelShown) expect(m.button.width).toBeGreaterThan(m.button.height + 30);
@@ -189,5 +195,29 @@ for (const [width, height] of [
       expect(Math.abs(box.x + box.width - (after.x + after.width))).toBeLessThanOrEqual(1);
       expect(box.x).toBeGreaterThanOrEqual(0);
     });
+  });
+}
+
+// A side panel takes the right of the board: the dock between the navigation and it is narrow.
+for (const [width, height] of [
+  [900, 700],
+  [1024, 768],
+] as const) {
+  test(`canvas toolbar ${width}x${height} beside a side panel scrolls instead of squeezing`, async ({
+    page,
+  }, info) => {
+    await openCanvas(page, width, height, true);
+    // Only its presence matters to the layout (.canvas:has(.canvas__panel)).
+    await page.locator('.canvas').evaluate((canvas) => {
+      const panel = document.createElement('div');
+      panel.className = 'canvas__panel';
+      canvas.append(panel);
+    });
+    const m = await measure(page);
+    expect(m.tops, 'one row of tools').toHaveLength(1);
+    expect(m.squeezed, 'no group narrower than its buttons').toBe(0);
+    expect(m.barScroll, 'the bar itself does not scroll').toBeLessThanOrEqual(1);
+    expect(m.button.right).toBeLessThanOrEqual(m.bar.right);
+    await page.screenshot({ path: info.outputPath('beside-panel.png') });
   });
 }

@@ -1937,7 +1937,9 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
       transparent
     );
   }
-  .toolbar__group--canvas {
+  /* Every group keeps its width and the row scrolls: squeezed, a group laid its buttons over
+     the next one (a tablet beside a side panel). */
+  .toolbar__group {
     flex: none;
   }
 }
