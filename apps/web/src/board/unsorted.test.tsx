@@ -30,6 +30,6 @@ it('shows Unsorted only while something waits, it is open or cards are dragged',
 
 it('offers the clipper from the empty Unsorted', () => {
   expect(render([], true)).toContain(
-    'href="https://chromewebstore.google.com/detail/hdajoikapihpjfbgioeagenmoalckjkh"',
+    'href="https://chromewebstore.google.com/detail/inkadra-clipper/hdajoikapihpjfbgioeagenmoalckjkh"',
   );
 });

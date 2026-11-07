@@ -153,7 +153,7 @@ it('points to the clipper in the store until a clipper token exists, then shows 
   expect(row()?.querySelector('code')?.textContent).toBe('http://localhost:3000');
   const store = row()?.querySelector('a');
   expect(store?.getAttribute('href')).toBe(
-    'https://chromewebstore.google.com/detail/hdajoikapihpjfbgioeagenmoalckjkh',
+    'https://chromewebstore.google.com/detail/inkadra-clipper/hdajoikapihpjfbgioeagenmoalckjkh',
   );
   expect(store?.getAttribute('target')).toBe('_blank');
   expect(store?.querySelector('img')?.getAttribute('alt')).toBe('settings.tokens.clipper.store');

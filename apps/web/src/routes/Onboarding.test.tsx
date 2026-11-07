@@ -15,6 +15,6 @@ it('links the clipper tip to the Chrome Web Store', async () => {
   await i18n.changeLanguage('en');
   const html = renderToStaticMarkup(<Onboarding />);
   expect(html).toContain(
-    'From the browser, save with <a href="https://chromewebstore.google.com/detail/hdajoikapihpjfbgioeagenmoalckjkh" target="_blank" rel="noopener">Inkadra Clipper ↗</a>',
+    'From the browser, save with <a href="https://chromewebstore.google.com/detail/inkadra-clipper/hdajoikapihpjfbgioeagenmoalckjkh" target="_blank" rel="noopener">Inkadra Clipper ↗</a>',
   );
 });
