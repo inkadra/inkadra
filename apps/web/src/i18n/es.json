@@ -2019,7 +2019,8 @@
       "link_opened": "abrió el tablero",
       "task_assigned": "te asignó una tarea",
       "feedback_received": "Nuevo informe recibido desde la app",
-      "review_submitted": "envió su revisión"
+      "review_submitted": "envió su revisión",
+      "update_available": "Hay una nueva versión de Inkadra disponible"
     },
     "emailTitle": "Notificaciones por correo",
     "emailHint": "Menciones, respuestas y revisiones también por correo, si el servidor puede enviarlo.",
@@ -2622,7 +2623,8 @@
       "access": "Acceso",
       "about": "Información",
       "toolbar": "Barra de herramientas",
-      "tutorials": "Tutoriales"
+      "tutorials": "Tutoriales",
+      "updates": "Actualizaciones"
     },
     "leads": {
       "account": "Tu perfil y cómo inicias sesión.",
@@ -2634,7 +2636,8 @@
       "about": "Nombre, dirección, versión y estado de configuración de la instancia.",
       "backups": "Copias nocturnas de la base de datos, para restaurar el servidor tras un fallo.",
       "toolbar": "Elige qué ves en la barra inferior. Las herramientas ocultas siguen en \"+ ▾\" y en la paleta de comandos.",
-      "tutorials": "Vuelve a ver los recorridos guiados y elige si proponerlos."
+      "tutorials": "Vuelve a ver los recorridos guiados y elige si proponerlos.",
+      "updates": "La versión en uso, las novedades y un aviso cuando sale una nueva. Inkadra no se actualiza solo: la actualización la haces tú, en el servidor."
     },
     "autosave": {
       "idle": "Guardado automático",
@@ -2760,7 +2763,8 @@
       "instance": "Nombre de la instancia, Dirección pública, Versión, Diagnóstico, Estado de la instancia, Novedades de Inkadra, Informes, Enviar a los desarrolladores de Inkadra, Destino, Repositorio, Token de GitHub, Los invitados pueden informar, Conservación de adjuntos, Informes recibidos",
       "backups": "Copias de seguridad, Hacer copia ahora, Restauración, Conservación, Copia nocturna",
       "toolbar": "Barra de herramientas, Herramientas, Nota, Imagen, Enlace, Tareas, Color, Flecha, Plano, Storyboard, Restablecer la barra predeterminada",
-      "tutorials": "Recorrido de bienvenida, Sugerencias la primera vez, Empezar de nuevo"
+      "tutorials": "Recorrido de bienvenida, Sugerencias la primera vez, Empezar de nuevo",
+      "updates": "Versión, Comprobar ahora, Avisarme cuando salga una nueva versión, Qué versiones, Versiones preliminares, Versiones anteriores"
     },
     "close": "Cerrar ajustes",
     "dangerZone": "Zona de peligro",
@@ -4348,7 +4352,74 @@
             "text": "Los métodos de acceso están en Inicio de sesión."
           }
         }
+      },
+      "updates": {
+        "name": "Actualizaciones",
+        "steps": {
+          "0": {
+            "title": "Nueva versión",
+            "text": "Qué cambia y cómo actualizar paso a paso."
+          },
+          "1": {
+            "title": "Avisos",
+            "text": "Un aviso cuando sale una versión, estable o preliminar."
+          },
+          "2": {
+            "title": "Versiones anteriores",
+            "text": "Qué cambió en cada versión."
+          }
+        }
       }
     }
+  },
+  "updates": {
+    "loadError": "No se pudieron cargar las actualizaciones. Inténtalo más tarde.",
+    "newTitle": "Nueva versión",
+    "versionTitle": "Tu versión",
+    "checking": "Comprobando…",
+    "checkNow": "Comprobar ahora",
+    "offTitle": "La comprobación de actualizaciones está desactivada",
+    "failedTitle": "GitHub no responde",
+    "upToDate": "Estás al día",
+    "notChecked": "Aún no comprobado",
+    "running": "Usas la {{version}}",
+    "checkedAt": "comprobado {{time}}",
+    "offHelp": "Activa el aviso de abajo para saber cuándo sale una nueva versión.",
+    "alerts": "Avisos",
+    "notify": "Avisarme cuando salga una nueva versión",
+    "notifyHelp": "Inkadra consulta GitHub cada 6 horas y muestra un aviso a los administradores. No envía datos de tu servidor.",
+    "channel": "Qué versiones",
+    "channelHelp": "Las versiones preliminares llegan antes pero pueden tener algún problema. Solo cambia lo que se te avisa.",
+    "channels": {
+      "stable": "Solo estables (recomendado)",
+      "preview": "También las preliminares (release candidates)"
+    },
+    "earlier": "Versiones anteriores",
+    "allOnGitHub": "Todas en GitHub ↗",
+    "noSummary": "Correcciones",
+    "inUse": "En uso",
+    "available": "Hay una nueva versión disponible: {{version}}",
+    "released": "publicada el {{date}}",
+    "preview": "Preliminar",
+    "stable": "Estable",
+    "readAll": "Leer todas las novedades ↗",
+    "beforeUpdating_one": "{{count}} cosa que saber antes de actualizar",
+    "beforeUpdating_other": "{{count}} cosas que saber antes de actualizar",
+    "how": "Cómo actualizar",
+    "howBackup": "Haz una copia de seguridad, desde <backup>Copias de seguridad</backup>.",
+    "howTag": "En el servidor, en el archivo <file>.env</file>, escribe la nueva versión:",
+    "howRestart": "Reinicia Inkadra con la nueva versión:",
+    "howRest": "El resto lo hace Inkadra solo al arrancar.",
+    "guide": "Guía completa ↗",
+    "navAvailable": "Disponible {{version}}",
+    "popupTitle": "Inkadra {{version}} está disponible",
+    "releasedShort": "publicada el {{date}}",
+    "runningShort": "usas la {{version}}",
+    "close": "Cerrar",
+    "toRead_one": "{{count}} cosa que leer antes de actualizar",
+    "toRead_other": "{{count}} cosas que leer antes de actualizar",
+    "skip": "Omitir esta versión",
+    "github": "GitHub ↗",
+    "seeNews": "Ver las novedades"
   }
 }

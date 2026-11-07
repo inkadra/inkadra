@@ -13,6 +13,7 @@ import { DiagnosticsLink, setupAttention } from './SettingsShell.tsx';
 import { formatStorage } from './StorageCharts.tsx';
 import { GROUP_TITLES, SETTINGS_PAGES } from './settings-sections.ts';
 import { Segmented } from './settings-ui.tsx';
+import { usePendingUpdate } from '../lib/updates.ts';
 
 type Setup = { checks: Array<{ id: string; ok: boolean }> | null; error: boolean };
 
@@ -55,6 +56,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 function AdminGroups({ setup }: { setup: Setup }) {
   const { t, i18n } = useTranslation();
   const { version } = useSession();
+  const update = usePendingUpdate();
   const [members, setMembers] = useState<number | null>(null);
   const { usage } = useStorageUsage();
   const { settings } = useInstanceSettings();
@@ -96,6 +98,11 @@ function AdminGroups({ setup }: { setup: Setup }) {
           value={settings ? t(`admin.registrationModes.${settings.registration}`) : undefined}
         />
         <Item to={href('backups')} label={t('backups.title')} />
+        <Item
+          to={href('updates')}
+          label={t('settingsUi.pages.updates')}
+          value={update ? t('updates.navAvailable', { version: update.version }) : undefined}
+        />
         <Item
           to={href('instance')}
           label={t('settingsUi.pages.about')}

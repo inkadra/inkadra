@@ -83,6 +83,7 @@ import {
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
 import { TutorialHost } from '../tutorial/TutorialHost.tsx';
+import { UpdatePopup } from './UpdatePopup.tsx';
 import { addStoryboardItem } from './add-storyboard.ts';
 import { editableProjects } from './home-data.ts';
 import { useInstanceSetup } from './InstanceSetup.tsx';
@@ -919,6 +920,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         }}
       >
         <FeedbackLauncher />
+        {user?.role === 'admin' && <UpdatePopup />}
         <HeaderContext.Provider value={setHeaderContent}>
           <AppShell
             launcher={launcher}

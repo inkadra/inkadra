@@ -15,6 +15,7 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { instanceSetting, personalToken, session, user } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
+import { CHECK_NOW_MS, checkForUpdates, readUpdates } from '../updates.ts';
 import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -77,6 +78,19 @@ export function registerInstanceAdminRoutes(
         });
       return settings;
     });
+  });
+  // Decision 0079: the answer of GitHub is cached; a failed check is shown, never thrown.
+  app.get(`${API_PREFIX}/instance/updates`, async (req) => {
+    await admin(req);
+    await checkForUpdates(db).catch((err) => req.log.warn({ err }, 'update check failed'));
+    return readUpdates(db);
+  });
+  app.post(`${API_PREFIX}/instance/updates/check`, async (req) => {
+    await admin(req);
+    await checkForUpdates(db, CHECK_NOW_MS).catch((err) =>
+      req.log.warn({ err }, 'update check failed'),
+    );
+    return readUpdates(db);
   });
   app.get(`${API_PREFIX}/instance/members`, async (req) => {
     await admin(req);

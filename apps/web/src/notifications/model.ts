@@ -16,6 +16,7 @@ export const KNOWN_TYPES = [
   'task_assigned',
   'feedback_received',
   'review_submitted',
+  'update_available',
 ] as const;
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();

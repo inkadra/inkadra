@@ -117,6 +117,8 @@ describe.skipIf(!url)('instance administration', () => {
       ['PATCH', '/instance/settings'],
       ['PATCH', memberPath('member')],
       ['GET', '/instance/storage'],
+      ['GET', '/instance/updates'],
+      ['POST', '/instance/updates/check'],
     ] as const;
     for (const [method, path] of routes) {
       expect(

@@ -185,6 +185,22 @@
   border-radius: 50%;
   background: var(--ink-status-warn);
 }
+/* A new Inkadra release (#515): the accent dot of the new version, in the nav and its footer. */
+.settings-nav__item[data-update]::after,
+.settings-nav__update::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ink-accent-primary);
+}
+.settings-nav__footer a.settings-nav__update {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-accent-soft-fg);
+}
 .settings-nav__empty {
   margin: 14px 8px;
   font-size: 12px;

@@ -114,6 +114,15 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     admin: true,
   },
   {
+    id: 'updates',
+    group: 'instance',
+    href: '/settings?section=updates',
+    title: 'settingsUi.pages.updates',
+    lead: 'settingsUi.leads.updates',
+    keywords: 'settingsUi.keywords.updates',
+    admin: true,
+  },
+  {
     id: 'instance',
     group: 'instance',
     href: '/settings?section=instance',

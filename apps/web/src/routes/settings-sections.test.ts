@@ -31,6 +31,7 @@ it('identifies all settings pages and localizes headings, descriptions and group
       'providers',
       'registration',
       'backups',
+      'updates',
       'members',
     ]) {
       const pathname = section === 'members' ? '/settings/team' : '/settings';
@@ -209,6 +210,14 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Retention', 'Conservazione'],
     ['Nightly backup', 'Backup notturno'],
   ],
+  updates: [
+    ['Version', 'Versione'],
+    ['Check now', 'Controlla ora'],
+    ['Tell me when a new version is out', 'Avvisami quando esce una nuova versione'],
+    ['Which versions', 'Quali versioni'],
+    ['Previews', 'Anteprime'],
+    ['Earlier versions', 'Versioni precedenti'],
+  ],
   registration: [
     ['New accounts', 'Nuovi account'],
     ['Open registration', 'Registrazione aperta'],
@@ -256,6 +265,7 @@ const PAGE_LABELS: Record<string, string[]> = {
   ],
   registration: ['settingsUi.registration.label', 'admin.requireAdminTwoFactor'],
   backups: ['backups.nightly'],
+  updates: ['updates.notify', 'updates.channel', 'updates.earlier'],
 };
 
 it('finds every setting label shown on a page, in both languages', async () => {

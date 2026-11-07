@@ -344,6 +344,19 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    id: 'updates',
+    group: 'admin',
+    icon: 'upload',
+    admin: true,
+    offer: 'updates',
+    href: '/settings?section=updates',
+    steps: [
+      { anchor: 'updates', media: 'versions', side: 'bottom' },
+      { anchor: 'updates-alerts', media: 'bell', side: 'top' },
+      { anchor: 'updates-history', media: 'versions', side: 'top' },
+    ],
+  },
+  {
     id: 'users',
     group: 'admin',
     icon: 'user',

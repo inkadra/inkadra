@@ -2019,7 +2019,8 @@
       "link_opened": "opened the board",
       "task_assigned": "assigned you a task",
       "feedback_received": "New in-app report received",
-      "review_submitted": "sent their review"
+      "review_submitted": "sent their review",
+      "update_available": "A new version of Inkadra is available"
     },
     "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
@@ -2622,7 +2623,8 @@
       "access": "Sign-in",
       "about": "About",
       "toolbar": "Toolbar",
-      "tutorials": "Tutorials"
+      "tutorials": "Tutorials",
+      "updates": "Updates"
     },
     "leads": {
       "account": "Your profile and how you sign in.",
@@ -2634,7 +2636,8 @@
       "about": "Instance name, address, version and setup status.",
       "backups": "Nightly copies of the database, to restore the server after a failure.",
       "toolbar": "Choose what you see in the bottom bar. Hidden tools stay in \"+ ▾\" and in the command palette.",
-      "tutorials": "Watch the guided tours again and choose whether to offer them."
+      "tutorials": "Watch the guided tours again and choose whether to offer them.",
+      "updates": "The version in use, what’s new and a notice when a new one is out. Inkadra doesn’t update itself: you update it, on the server."
     },
     "autosave": {
       "idle": "Autosave on",
@@ -2760,7 +2763,8 @@
       "instance": "Instance name, Public address, Version, Diagnostics, Instance status, Inkadra news, Reports, Send to the Inkadra developers, Destination, Repository, GitHub token, Guests can report, Attachment retention, Reports received",
       "backups": "Backups, Back up now, Restore, Retention, Nightly backup",
       "toolbar": "Toolbar, Tools, Note, Image, Link, To-do, Colour, Arrow, Frame, Storyboard, Reset to default toolbar",
-      "tutorials": "Welcome tour, Hints the first time, Start over"
+      "tutorials": "Welcome tour, Hints the first time, Start over",
+      "updates": "Version, Check now, Tell me when a new version is out, Which versions, Previews, Earlier versions"
     },
     "close": "Close settings",
     "dangerZone": "Danger zone",
@@ -4348,7 +4352,74 @@
             "text": "Sign-in methods are in Sign-in."
           }
         }
+      },
+      "updates": {
+        "name": "Updates",
+        "steps": {
+          "0": {
+            "title": "New version",
+            "text": "What changes, and how to update step by step."
+          },
+          "1": {
+            "title": "Notices",
+            "text": "A notice when a version is out, stable or preview."
+          },
+          "2": {
+            "title": "Earlier versions",
+            "text": "What changed in each version."
+          }
+        }
       }
     }
+  },
+  "updates": {
+    "loadError": "Couldn’t load the updates. Try again later.",
+    "newTitle": "New version",
+    "versionTitle": "Your version",
+    "checking": "Checking…",
+    "checkNow": "Check now",
+    "offTitle": "The update check is off",
+    "failedTitle": "Couldn’t reach GitHub",
+    "upToDate": "You are up to date",
+    "notChecked": "Not checked yet",
+    "running": "You use {{version}}",
+    "checkedAt": "checked {{time}}",
+    "offHelp": "Turn on the notice below to know when a new version is out.",
+    "alerts": "Notices",
+    "notify": "Tell me when a new version is out",
+    "notifyHelp": "Inkadra checks GitHub every 6 hours and shows a notice to administrators. It sends no data about your server.",
+    "channel": "Which versions",
+    "channelHelp": "Previews come earlier but may have a few problems. This only changes what you are told about.",
+    "channels": {
+      "stable": "Stable only (recommended)",
+      "preview": "Also previews (release candidates)"
+    },
+    "earlier": "Earlier versions",
+    "allOnGitHub": "All on GitHub ↗",
+    "noSummary": "Fixes",
+    "inUse": "In use",
+    "available": "A new version is available: {{version}}",
+    "released": "released on {{date}}",
+    "preview": "Preview",
+    "stable": "Stable",
+    "readAll": "Read all the news ↗",
+    "beforeUpdating_one": "{{count}} thing to know before updating",
+    "beforeUpdating_other": "{{count}} things to know before updating",
+    "how": "How to update",
+    "howBackup": "Make a backup, from <backup>Backups</backup>.",
+    "howTag": "On the server, in the <file>.env</file> file, write the new version:",
+    "howRestart": "Restart Inkadra with the new version:",
+    "howRest": "Inkadra does the rest by itself when it starts.",
+    "guide": "Full guide ↗",
+    "navAvailable": "Available {{version}}",
+    "popupTitle": "Inkadra {{version}} is available",
+    "releasedShort": "released {{date}}",
+    "runningShort": "you use {{version}}",
+    "close": "Close",
+    "toRead_one": "{{count}} thing to read before updating",
+    "toRead_other": "{{count}} things to read before updating",
+    "skip": "Skip this version",
+    "github": "GitHub ↗",
+    "seeNews": "See what’s new"
   }
 }

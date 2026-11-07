@@ -9,6 +9,7 @@ import { BackupSettings } from './BackupSettings.tsx';
 import { ProviderIcon } from './ProviderIcon.tsx';
 import { DiagnosticsLink } from './SettingsShell.tsx';
 import { formatStorage, StorageCharts } from './StorageCharts.tsx';
+import { UpdateSettings } from './UpdateSettings.tsx';
 import { trackSave } from './settings-save.ts';
 import { AutosaveText, Badge, Card, Row, Segmented } from './settings-ui.tsx';
 
@@ -201,6 +202,7 @@ export function InstanceSettings({ section, setup }: { section: string; setup: S
   if (section === 'workspace') return <StoragePage />;
   if (section === 'providers') return <AccessPage />;
   if (section === 'backups') return <BackupSettings />;
+  if (section === 'updates') return <UpdateSettings />;
   return <InstancePage section={section} setup={setup} />;
 }
 
