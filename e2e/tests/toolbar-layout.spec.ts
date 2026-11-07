@@ -205,7 +205,7 @@ for (const [width, height] of [
 ] as const) {
   test(`canvas toolbar ${width}x${height} beside a side panel scrolls instead of squeezing`, async ({
     page,
-  }) => {
+  }, info) => {
     await openCanvas(page, width, height, true);
     // Only its presence matters to the layout (.canvas:has(.canvas__panel)).
     await page.locator('.canvas').evaluate((canvas) => {
@@ -218,5 +218,6 @@ for (const [width, height] of [
     expect(m.squeezed, 'no group narrower than its buttons').toBe(0);
     expect(m.barScroll, 'the bar itself does not scroll').toBeLessThanOrEqual(1);
     expect(m.button.right).toBeLessThanOrEqual(m.bar.right);
+    await page.screenshot({ path: info.outputPath('beside-panel.png') });
   });
 }
