@@ -549,7 +549,9 @@ export function People({ status, advanced = false }: { status: ServerStatus; adv
                 ) : (
                   <span className="server-count">
                     <span aria-hidden="true">{b.count}</span>
-                    <span className="ink-sr-only">{t('server.people.people', { count: b.count })}</span>
+                    <span className="ink-sr-only">
+                      {t('server.people.people', { count: b.count })}
+                    </span>
                   </span>
                 )}
                 {b.people.length > 4 && (

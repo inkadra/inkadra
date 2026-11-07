@@ -101,7 +101,7 @@ export function HistoryChart({ status, period }: { status: ServerStatus; period?
   return (
     <div className="server-trend">
       <div className="server-trend__bar">
-      <Segmented
+        <Segmented
           label={t('server.chart.metric')}
           value={metric}
           onChange={setMetric}
