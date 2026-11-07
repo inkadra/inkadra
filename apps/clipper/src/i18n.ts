@@ -25,6 +25,15 @@ export function t(key: string, substitutions?: string | string[]): string {
   return chrome.i18n.getMessage(key, substitutions) || key;
 }
 
+/**
+ * chrome.i18n has no plurals: a count uses `<key>_one` and `<key>_other`, with the count as $1
+ * and `rest` as $2…, chosen by the browser language's plural rules.
+ */
+export function plural(key: string, count: number, rest: string[] = []): string {
+  const form = new Intl.PluralRules(chrome.i18n.getUILanguage()).select(count);
+  return t(`${key}_${form === 'one' ? 'one' : 'other'}`, [String(count), ...rest]);
+}
+
 /** Fills `data-i18n`, `data-i18n-placeholder`, `data-i18n-title` and `data-i18n-aria-label`. */
 export function localize(root: ParentNode = document): void {
   for (const el of root.querySelectorAll<HTMLElement>('[data-i18n]'))

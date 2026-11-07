@@ -22,6 +22,12 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
       boardUrl: 'https://ink.example/p/p1/b/b1',
       elementId: 'e',
     })),
+    'save-images': vi.fn(async () => ({
+      board,
+      boardUrl: 'https://ink.example/p/p1/b/b1',
+      saved: [],
+      failed: [],
+    })),
     ...overrides,
   };
 }

@@ -224,5 +224,149 @@
         "example": "50 MB"
       }
     }
+  },
+  "mode_label": {
+    "message": "Contenu à enregistrer"
+  },
+  "mode_page": {
+    "message": "Page"
+  },
+  "mode_images": {
+    "message": "Images"
+  },
+  "mode_images_count": {
+    "message": "Images · $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "images_select_all": {
+    "message": "Tout sélectionner"
+  },
+  "images_select_none": {
+    "message": "Aucune"
+  },
+  "images_selected_one": {
+    "message": "$COUNT$ sélectionnée",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "images_selected_other": {
+    "message": "$COUNT$ sélectionnées",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "images_none": {
+    "message": "Aucune image assez grande sur cette page. Faites défiler pour en charger d’autres, puis rouvrez le clipper."
+  },
+  "images_untitled": {
+    "message": "Image"
+  },
+  "action_save_images_one": {
+    "message": "Enregistrer $COUNT$ image",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "action_save_images_other": {
+    "message": "Enregistrer $COUNT$ images",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "images_saved_one": {
+    "message": "$COUNT$ image enregistrée dans $BOARD$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      },
+      "board": {
+        "content": "$2",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "images_saved_other": {
+    "message": "$COUNT$ images enregistrées dans $BOARD$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      },
+      "board": {
+        "content": "$2",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "images_saved_partial_one": {
+    "message": "$COUNT$ sur $TOTAL$ enregistrée dans $BOARD$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      },
+      "total": {
+        "content": "$2",
+        "example": "3"
+      },
+      "board": {
+        "content": "$3",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "images_saved_partial_other": {
+    "message": "$COUNT$ sur $TOTAL$ enregistrées dans $BOARD$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      },
+      "total": {
+        "content": "$2",
+        "example": "3"
+      },
+      "board": {
+        "content": "$3",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "images_failed_one": {
+    "message": "$COUNT$ image n’a pas pu être lue : elle reste sélectionnée, vous pouvez réessayer.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "images_failed_other": {
+    "message": "$COUNT$ images n’ont pas pu être lues : elles restent sélectionnées, vous pouvez réessayer.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
   }
 }

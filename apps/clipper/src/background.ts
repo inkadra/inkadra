@@ -2,12 +2,18 @@
 import { InkadraApi } from './api.ts';
 import { childBoards, searchBoards, startingBoards } from './boards.ts';
 import { boardUrl, type ClipContent, type ImageFetcher, saveClip } from './clip.ts';
-import { ClipperError, serializeError } from './errors.ts';
+import { ClipperError, type ErrorKind, serializeError } from './errors.ts';
 import { errorText, t } from './i18n.ts';
 import { whileClipping } from './keep-alive.ts';
 import { menuItems, parseMenuId } from './menus.ts';
-import { createRouter, type Handlers, type SavedClip } from './messages.ts';
-import { type PageToast, readImageInPage, showToastInPage } from './page-scripts.ts';
+import { createRouter, type Handlers, type SavedClip, type SavedImages } from './messages.ts';
+import { largestFor } from './page-images.ts';
+import {
+  collectImagesInPage,
+  type PageToast,
+  readImageInPage,
+  showToastInPage,
+} from './page-scripts.ts';
 import {
   type BoardRef,
   boardLabel,
@@ -80,7 +86,7 @@ async function clipTo(
     columnId?: string;
     note?: string;
     tags?: string[];
-    tab?: chrome.tabs.Tab;
+    tabId?: number;
     frameId?: number;
   } = {},
 ): Promise<SavedClip> {
@@ -88,9 +94,9 @@ async function clipTo(
     const { api, connection } = await connected();
     const imageFetchers: ImageFetcher[] = [];
     if (content.kind === 'image') {
-      if (options.tab?.id !== undefined)
+      if (options.tabId !== undefined)
         imageFetchers.push(
-          pageImageFetcher(options.tab.id, options.frameId ?? 0, connection.uploadMaxBytes),
+          pageImageFetcher(options.tabId, options.frameId ?? 0, connection.uploadMaxBytes),
         );
       imageFetchers.push(directImageFetcher());
     }
@@ -140,6 +146,20 @@ async function toast(tab: chrome.tabs.Tab | undefined, message: PageToast): Prom
   setTimeout(() => void chrome.action.setBadgeText({ text: '' }), 4000);
 }
 
+/** A right-clicked picture often is a thumbnail: save the largest its element lists. */
+async function largestImage(tabId: number, frameId: number, srcUrl: string): Promise<string> {
+  try {
+    const [injection] = await chrome.scripting.executeScript({
+      target: { tabId, frameIds: [frameId] },
+      func: collectImagesInPage,
+    });
+    const page = injection?.result;
+    return page ? largestFor(page.images, page.baseUrl, srcUrl) : srcUrl;
+  } catch {
+    return srcUrl; // Pages that refuse scripts: the address Chrome gave.
+  }
+}
+
 async function clipFromPage(
   content: ClipContent,
   tab: chrome.tabs.Tab | undefined,
@@ -152,7 +172,9 @@ async function clipFromPage(
       ? (await getRecentBoards()).find((b) => b.id === boardId)
       : (await refreshClipBoards())[0];
     if (!board) throw new ClipperError(boardId ? 'not_found' : 'no_board');
-    const saved = await clipTo(board, content, { tab, frameId });
+    if (content.kind === 'image' && tab?.id !== undefined)
+      content = { ...content, srcUrl: await largestImage(tab.id, frameId ?? 0, content.srcUrl) };
+    const saved = await clipTo(board, content, { tabId: tab?.id, frameId });
     await toast(tab, {
       tone: 'ok',
       text: t('toast_saved', boardLabel(saved.board)),
@@ -240,6 +262,16 @@ chrome.commands.onCommand.addListener((command, tab) => {
   if (content) void clipFromPage(content, tab);
 });
 
+/** Failures that are about the connection or the board, not about one picture. */
+const STOP_ALL = new Set<ErrorKind>([
+  'not_connected',
+  'unauthorized',
+  'forbidden',
+  'not_found',
+  'offline',
+  'rate_limited',
+]);
+
 const handlers: Handlers = {
   async status() {
     const [connection, lastBoard] = await Promise.all([getConnection(), getLastBoard()]);
@@ -270,6 +302,32 @@ const handlers: Handlers = {
   },
   async 'save-page'({ board, url, title, columnId, note, tags }) {
     return clipTo(toBoardRef(board), { kind: 'link', url, title }, { columnId, note, tags });
+  },
+  async 'save-images'({ board, tabId, sourceUrl, srcUrls, columnId, tags }) {
+    const ref = toBoardRef(board);
+    const out: SavedImages = { board: ref, boardUrl: '', saved: [], failed: [] };
+    // One at a time: each is a separate upload, kept alive by clipTo like any other save.
+    for (const [index, srcUrl] of srcUrls.entries()) {
+      try {
+        const saved = await clipTo(
+          ref,
+          { kind: 'image', srcUrl, sourceUrl },
+          { columnId, tags, tabId },
+        );
+        out.board = saved.board;
+        out.boardUrl = saved.boardUrl;
+        out.saved.push(srcUrl);
+      } catch (err) {
+        const error = serializeError(err);
+        out.failed.push({ srcUrl, error });
+        // The rest would fail the same way: report them without asking the server again.
+        if (STOP_ALL.has(error.kind)) {
+          for (const rest of srcUrls.slice(index + 1)) out.failed.push({ srcUrl: rest, error });
+          break;
+        }
+      }
+    }
+    return out;
   },
 };
 

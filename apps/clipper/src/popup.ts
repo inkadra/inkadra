@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
-import { parseTags, readTabSelection, webUrl } from './clip.ts';
+import { parseTags, readTabImages, readTabSelection, webUrl } from './clip.ts';
 import { ColumnPicker } from './columns.ts';
-import { serializeError } from './errors.ts';
-import { errorText, localize, t } from './i18n.ts';
-import { type BoardOption, send } from './messages.ts';
+import { ClipperError, serializeError } from './errors.ts';
+import { errorText, localize, plural, t } from './i18n.ts';
+import { type BoardOption, type SavedImages, send } from './messages.ts';
+import { imageLabel, type PageImageOption } from './page-images.ts';
 import { type BoardRef, boardLabel } from './storage.ts';
 import { applyTokens } from './theme.ts';
 
@@ -30,6 +31,7 @@ const columns = new ColumnPicker(
   (boardId) => send('columns', { boardId }),
 );
 const result = $<HTMLElement>('result');
+const grid = $<HTMLElement>('images-grid');
 
 const SECTION_LABELS: Record<BoardOption['section'], string> = {
   recent: 'section_recent',
@@ -48,9 +50,16 @@ let found: BoardOption[] = [];
 const expanded = new Map<string, BoardOption[]>();
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let searchRun = 0;
+let mode: 'page' | 'images' = 'page';
+let tabId: number | undefined;
+let images: PageImageOption[] | null = null;
+const picked = new Set<string>();
 
 function updateSelection() {
-  save.disabled = saving || columns.loading || !selected || !pageUrl;
+  const count = picked.size;
+  const ready = mode === 'page' ? !!pageUrl : count > 0;
+  save.disabled = saving || columns.loading || !selected || !ready;
+  save.textContent = mode === 'page' ? t('action_save_page') : plural('action_save_images', count);
   $('selected-board').textContent = selected ? selected.title : t('board_none_selected');
 }
 
@@ -63,6 +72,7 @@ function showResult(
   tone: 'ok' | 'error',
   text: string,
   action?: { label: string; run: () => void },
+  warning?: string,
 ) {
   result.replaceChildren();
   result.dataset.tone = tone;
@@ -76,6 +86,12 @@ function showResult(
     button.textContent = action.label;
     button.addEventListener('click', action.run);
     result.append(button);
+  }
+  if (warning) {
+    const line = document.createElement('p');
+    line.className = 'result__warning';
+    line.textContent = warning;
+    result.append(line);
   }
   result.hidden = false;
 }
@@ -214,8 +230,126 @@ search.addEventListener('input', () => {
   }, 250);
 });
 
+function setMode(next: typeof mode) {
+  mode = next;
+  document.body.dataset.mode = next;
+  $('page').hidden = next !== 'page';
+  $('note-field').hidden = next !== 'page';
+  $('images').hidden = next !== 'images';
+  result.hidden = true;
+  updateSelection();
+}
+
+function renderImages() {
+  const list = images ?? [];
+  $('mode-images').textContent = images
+    ? t('mode_images_count', String(list.length))
+    : t('mode_images');
+  $('images-count').textContent = plural('images_selected', picked.size);
+  $('images-empty').hidden = !images || list.length > 0;
+  grid.hidden = list.length === 0;
+  for (const id of ['images-all', 'images-none'])
+    $<HTMLButtonElement>(id).disabled = list.length === 0;
+  grid.replaceChildren(
+    ...list.map((image) => {
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'tile';
+      tile.setAttribute('aria-pressed', String(picked.has(image.url)));
+      tile.setAttribute('aria-label', imageLabel(image, t('images_untitled')));
+      const thumb = document.createElement('img');
+      thumb.alt = '';
+      thumb.loading = 'lazy';
+      // A picture that will not load stays a neutral tile, still selectable.
+      thumb.addEventListener('error', () => tile.classList.add('is-broken'), { once: true });
+      thumb.src = image.thumbUrl;
+      const check = document.createElement('span');
+      check.className = 'tile__check';
+      check.setAttribute('aria-hidden', 'true');
+      tile.append(thumb, check);
+      if (image.width) {
+        const size = document.createElement('span');
+        size.className = 'tile__size';
+        size.setAttribute('aria-hidden', 'true');
+        size.textContent = `${image.width}×${image.height}`;
+        tile.append(size);
+      }
+      const item = document.createElement('li');
+      item.append(tile);
+      tile.addEventListener('click', () => {
+        if (picked.has(image.url)) picked.delete(image.url);
+        else picked.add(image.url);
+        tile.setAttribute('aria-pressed', String(picked.has(image.url)));
+        $('images-count').textContent = plural('images_selected', picked.size);
+        updateSelection();
+      });
+      return item;
+    }),
+  );
+  updateSelection();
+}
+
+function showSavedImages(outcome: SavedImages, total: number) {
+  for (const url of outcome.saved) picked.delete(url);
+  renderImages();
+  const first = outcome.failed[0]?.error;
+  if (outcome.saved.length === 0 && first) {
+    showError(new ClipperError(first.kind, first.message, first));
+    return;
+  }
+  const board = boardLabel(outcome.board);
+  const open = {
+    label: t('toast_open_board'),
+    run: () => {
+      void chrome.tabs.create({ url: outcome.boardUrl });
+      window.close();
+    },
+  };
+  if (!first) {
+    tags.value = '';
+    showResult('ok', plural('images_saved', outcome.saved.length, [board]), open);
+    return;
+  }
+  const unread = outcome.failed.every((f) => f.error.kind === 'bad_request');
+  showResult(
+    'ok',
+    plural('images_saved_partial', outcome.saved.length, [String(total), board]),
+    open,
+    unread ? plural('images_failed', outcome.failed.length) : errorText(first),
+  );
+}
+
+async function saveImages() {
+  if (!selected || tabId === undefined || picked.size === 0) return;
+  const srcUrls = (images ?? []).filter((i) => picked.has(i.url)).map((i) => i.url);
+  const outcome = await send('save-images', {
+    board: selected,
+    tabId,
+    sourceUrl: pageUrl,
+    srcUrls,
+    columnId: column.value || undefined,
+    tags: parseTags(tags.value),
+  });
+  showSavedImages(outcome, srcUrls.length);
+}
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (mode === 'images') {
+    if (saving || columns.loading) return;
+    saving = true;
+    updateSelection();
+    result.hidden = true;
+    try {
+      await saveImages();
+    } catch (err) {
+      showError(err);
+    } finally {
+      saving = false;
+      updateSelection();
+    }
+    return;
+  }
   if (!selected || !pageUrl || saving || columns.loading) return;
   saving = true;
   noteEdited = true; // A selection read late must not refill the note after this save.
@@ -250,6 +384,16 @@ form.addEventListener('submit', async (event) => {
 note.addEventListener('input', () => {
   noteEdited = true;
 });
+for (const radio of document.querySelectorAll<HTMLInputElement>('input[name="mode"]'))
+  radio.addEventListener('change', () => setMode(radio.value === 'images' ? 'images' : 'page'));
+$('images-all').addEventListener('click', () => {
+  for (const image of images ?? []) picked.add(image.url);
+  renderImages();
+});
+$('images-none').addEventListener('click', () => {
+  picked.clear();
+  renderImages();
+});
 $('open-options').addEventListener('click', openOptions);
 $('connect').addEventListener('click', openOptions);
 
@@ -267,16 +411,27 @@ async function start() {
   }
   form.hidden = false;
   save.hidden = false;
+  $('modes').hidden = false;
+  renderImages();
 
   pageUrl = webUrl(tab?.url);
   pageTitle = tab?.title;
   $('page-title').textContent = tab?.title || tab?.url || '';
   $('page-url').textContent = pageUrl ? new URL(pageUrl).host : t('page_not_web');
   if (!pageUrl) save.title = t('page_not_web');
-  if (tab?.id !== undefined)
+  tabId = tab?.id;
+  if (tab?.id !== undefined) {
     void readTabSelection(tab.id).then((text) => {
       if (!noteEdited) note.value = text;
     });
+    void readTabImages(tab.id).then((found) => {
+      images = found;
+      renderImages();
+    });
+  } else {
+    images = [];
+    renderImages();
+  }
 
   selected = status.lastBoard;
   if (selected) void columns.select(selected.id).catch(showError);

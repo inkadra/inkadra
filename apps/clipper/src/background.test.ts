@@ -369,3 +369,56 @@ describe('save-to menus', () => {
     ]);
   });
 });
+
+describe('save-images', () => {
+  const posts = () => fetchMock.mock.calls.filter((c) => c[1]?.method === 'POST');
+  const request = (srcUrls: string[]) => ({
+    type: 'save-images',
+    board,
+    tabId: 7,
+    sourceUrl: 'https://site.example/project',
+    srcUrls,
+    tags: ['ref'],
+  });
+
+  it('saves each picture as its own card and reports the ones that could not be read', async () => {
+    const reply = await send(
+      request(['https://a.example/1.jpg', 'blob:https://a.example/x', 'https://a.example/2.jpg']),
+    );
+    expect(reply).toMatchObject({
+      ok: true,
+      data: {
+        saved: ['https://a.example/1.jpg', 'https://a.example/2.jpg'],
+        failed: [{ srcUrl: 'blob:https://a.example/x', error: { kind: 'bad_request' } }],
+        boardUrl: 'https://ink.example/p/p/b/b',
+      },
+    });
+    // Read in the tab first, like a right-click save.
+    expect(chromeMock.scripting.executeScript.mock.calls[0]).toMatchObject([
+      { target: { tabId: 7, frameIds: [0] }, args: ['https://a.example/1.jpg', 1024] },
+    ]);
+    expect(posts().map((c) => JSON.parse(String(c[1]?.body)))).toEqual([
+      expect.objectContaining({ url: 'https://a.example/1.jpg', tags: ['ref'] }),
+      expect.objectContaining({ url: 'https://a.example/2.jpg', tags: ['ref'] }),
+    ]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('stops at a failure that would repeat for every picture', async () => {
+    fetchMock.mockImplementation(async (_url, init) =>
+      init?.method === 'POST' ? response(401, { error: {} }) : response(404, {}),
+    );
+    const reply = await send(request(['https://a.example/1.jpg', 'https://a.example/2.jpg']));
+    expect(reply).toMatchObject({
+      ok: true,
+      data: {
+        saved: [],
+        failed: [
+          { srcUrl: 'https://a.example/1.jpg', error: { kind: 'unauthorized' } },
+          { srcUrl: 'https://a.example/2.jpg', error: { kind: 'unauthorized' } },
+        ],
+      },
+    });
+    expect(posts()).toHaveLength(1);
+  });
+});

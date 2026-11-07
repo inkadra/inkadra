@@ -123,7 +123,7 @@ describe('saveClip', () => {
     const { api, deps: d } = deps({ imageFetchers: [first, second, third] });
     await saveClip(
       d,
-      { boardId: BOARD, tags: ['ignored'] },
+      { boardId: BOARD, tags: ['ref'] },
       {
         kind: 'image',
         srcUrl: 'https://cdn.example/a/still.png?x=1',
@@ -132,7 +132,7 @@ describe('saveClip', () => {
     );
     expect(third).toHaveBeenCalledWith('https://cdn.example/a/still.png?x=1');
     expect(api.clipFile).toHaveBeenCalledWith(
-      { boardId: BOARD, sourceUrl: 'https://a.example/' },
+      { boardId: BOARD, sourceUrl: 'https://a.example/', tags: ['ref'] },
       expect.any(Blob),
       'still.png',
     );

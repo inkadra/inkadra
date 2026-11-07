@@ -47,17 +47,18 @@ describe('InkadraApi', () => {
     expect(JSON.parse(String(init?.body))).toEqual({ boardId: BOARD, url: 'https://a.example/' });
   });
 
-  it('sends files as multipart, with the fields first and no tags', async () => {
+  it('sends files as multipart, with the fields and each tag first', async () => {
     const fetchImpl = mockFetch(201, { boardId: BOARD, elementId: 'e2', assetId: BOARD });
     const file = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
     await client(fetchImpl).clipFile(
-      { boardId: BOARD, sourceUrl: 'https://a.example/p', note: undefined },
+      { boardId: BOARD, sourceUrl: 'https://a.example/p', note: undefined, tags: ['a', 'b'] },
       file,
       'shot.png',
     );
     const init = fetchImpl.mock.calls[0]![1]!;
     const form = init.body as FormData;
-    expect([...form.keys()]).toEqual(['boardId', 'sourceUrl', 'file']);
+    expect([...form.keys()]).toEqual(['boardId', 'sourceUrl', 'tags', 'tags', 'file']);
+    expect(form.getAll('tags')).toEqual(['a', 'b']);
     expect(form.get('boardId')).toBe(BOARD);
     const sent = form.get('file') as File;
     expect(sent.name).toBe('shot.png');

@@ -224,5 +224,149 @@
         "example": "50 MB"
       }
     }
+  },
+  "mode_label": {
+    "message": "O que salvar"
+  },
+  "mode_page": {
+    "message": "Página"
+  },
+  "mode_images": {
+    "message": "Imagens"
+  },
+  "mode_images_count": {
+    "message": "Imagens · $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "images_select_all": {
+    "message": "Selecionar todas"
+  },
+  "images_select_none": {
+    "message": "Nenhuma"
+  },
+  "images_selected_one": {
+    "message": "$COUNT$ selecionada",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "images_selected_other": {
+    "message": "$COUNT$ selecionadas",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "images_none": {
+    "message": "Nenhuma imagem grande o suficiente nesta página. Role para carregar mais e abra o clipper de novo."
+  },
+  "images_untitled": {
+    "message": "Imagem"
+  },
+  "action_save_images_one": {
+    "message": "Salvar $COUNT$ imagem",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "action_save_images_other": {
+    "message": "Salvar $COUNT$ imagens",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "images_saved_one": {
+    "message": "$COUNT$ imagem salva em $BOARD$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      },
+      "board": {
+        "content": "$2",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "images_saved_other": {
+    "message": "$COUNT$ imagens salvas em $BOARD$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      },
+      "board": {
+        "content": "$2",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "images_saved_partial_one": {
+    "message": "$COUNT$ de $TOTAL$ salva em $BOARD$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      },
+      "total": {
+        "content": "$2",
+        "example": "3"
+      },
+      "board": {
+        "content": "$3",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "images_saved_partial_other": {
+    "message": "$COUNT$ de $TOTAL$ salvas em $BOARD$",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      },
+      "total": {
+        "content": "$2",
+        "example": "3"
+      },
+      "board": {
+        "content": "$3",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "images_failed_one": {
+    "message": "Não foi possível ler $COUNT$ imagem: ela continua selecionada, você pode tentar novamente.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "images_failed_other": {
+    "message": "Não foi possível ler $COUNT$ imagens: elas continuam selecionadas, você pode tentar novamente.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
   }
 }

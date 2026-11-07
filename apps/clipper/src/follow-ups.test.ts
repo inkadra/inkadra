@@ -10,7 +10,7 @@ import { InkadraApi } from './api.ts';
 import { searchBoards } from './boards.ts';
 import { saveClip } from './clip.ts';
 import { ClipperError } from './errors.ts';
-import { errorText, formatBytes } from './i18n.ts';
+import { errorText, formatBytes, plural } from './i18n.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 const result = { boardId, elementId: 'e1', assetId: null };
@@ -130,4 +130,22 @@ describe('clip errors', () => {
       expect(Object.keys(messages).sort()).toEqual(Object.keys(itMessages).sort());
     },
   );
+});
+
+it('picks the plural form by the browser language, with every count in both forms', () => {
+  const getMessage = vi.fn((key: string, values: string[]) => `${key}:${values.join('|')}`);
+  for (const [language, zero] of [
+    ['en', 'other'],
+    ['fr', 'one'],
+  ]) {
+    vi.stubGlobal('chrome', { i18n: { getMessage, getUILanguage: () => language } });
+    expect(plural('images_saved', 0, ['Board'])).toBe(`images_saved_${zero}:0|Board`);
+    expect(plural('images_saved', 1, ['Board'])).toBe('images_saved_one:1|Board');
+    expect(plural('images_saved', 3, ['Board'])).toBe('images_saved_other:3|Board');
+  }
+  for (const messages of [en, itMessages, es, de, fr, pt]) {
+    const keys = Object.keys(messages);
+    for (const key of keys.filter((k) => k.endsWith('_one')))
+      expect(keys).toContain(key.replace(/_one$/, '_other'));
+  }
 });

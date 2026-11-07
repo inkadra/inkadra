@@ -10,6 +10,11 @@
     <header class="bar">
       <img src="/icons/icon-32.png" width="20" height="20" alt="" />
       <span class="bar__title">Inkadra</span>
+      <fieldset id="modes" class="modes" hidden>
+        <legend class="sr-only" data-i18n="mode_label">What to save</legend>
+        <label class="modes__option"><input type="radio" name="mode" value="page" checked /><span data-i18n="mode_page">Page</span></label>
+        <label class="modes__option"><input type="radio" name="mode" value="images" /><span id="mode-images">Images</span></label>
+      </fieldset>
       <button type="button" id="open-options" class="icon-btn" data-i18n-aria-label="action_settings" data-i18n-title="action_settings" aria-label="Impostazioni" title="Impostazioni">⚙</button>
     </header>
 
@@ -19,9 +24,22 @@
     </section>
 
     <form id="clip-form" class="panel" hidden>
-      <div class="page">
+      <div id="page" class="page">
         <p id="page-title" class="page__title"></p>
         <p id="page-url" class="page__url ink-muted"></p>
+      </div>
+
+      <div id="images" class="field" hidden>
+        <div class="field__row">
+          <span id="images-count" class="ink-label" aria-live="polite"></span>
+          <span class="images__bulk">
+            <button type="button" id="images-all" class="link" data-i18n="images_select_all">Select all</button>
+            <span aria-hidden="true">·</span>
+            <button type="button" id="images-none" class="link" data-i18n="images_select_none">None</button>
+          </span>
+        </div>
+        <ul id="images-grid" class="images" data-i18n-aria-label="mode_images"></ul>
+        <p id="images-empty" class="images__empty ink-muted" data-i18n="images_none" hidden></p>
       </div>
 
       <div class="field">
@@ -40,7 +58,7 @@
         </select>
       </div>
 
-      <div class="field">
+      <div id="note-field" class="field">
         <label class="ink-label" for="note" data-i18n="field_note">Nota</label>
         <textarea id="note" rows="2" maxlength="2000"></textarea>
       </div>
