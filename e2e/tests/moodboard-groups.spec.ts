@@ -172,13 +172,6 @@ test('the moodboard groups, selects and sends references to the storyboard', asy
   await expect(gallery.getByRole('button', { name: '#tramonto' })).toBeVisible();
   await shoot(page, 'moodboard-1280-groups-selection');
 
-  // Confronta opens the viewer on the selection only.
-  await bar.getByRole('button', { name: 'Confronta' }).click();
-  const viewer = page.getByRole('dialog');
-  await expect(viewer).toContainText('1 / 2');
-  await page.keyboard.press('Escape');
-  await expect(viewer).toHaveCount(0);
-
   // To the storyboard, a document of its own: confirmed by the server, so read it back.
   await bar.getByRole('button', { name: 'Manda allo storyboard' }).click();
   await expect(page.locator('.toast:not(.ink-motion-exit)')).toContainText('2');

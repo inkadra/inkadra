@@ -2380,7 +2380,6 @@
     "sent_one": "{{count}} Einstellung zum Storyboard hinzugefügt",
     "sent_other": "{{count}} Einstellungen zum Storyboard hinzugefügt",
     "sendFailed": "Sie konnten nicht zum Storyboard hinzugefügt werden. Prüfe Verbindung und Berechtigungen und versuche es erneut.",
-    "compare": "Vergleichen",
     "lockedSkipped_one": "{{count}} Referenz ist gesperrt und wurde nicht geändert.",
     "lockedSkipped_other": "{{count}} Referenzen sind gesperrt und wurden nicht geändert."
   },

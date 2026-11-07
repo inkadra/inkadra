@@ -2380,7 +2380,6 @@
     "sent_one": "{{count}} frame added to the storyboard",
     "sent_other": "{{count}} frames added to the storyboard",
     "sendFailed": "They couldn't be added to the storyboard. Check your connection and permissions, then try again.",
-    "compare": "Compare",
     "lockedSkipped_one": "{{count}} reference is locked and didn't change.",
     "lockedSkipped_other": "{{count}} references are locked and didn't change."
   },

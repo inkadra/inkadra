@@ -150,7 +150,7 @@ it('renders empty state, reacts to Yjs updates and filters the gallery and palet
   expect(host.textContent).toContain('moodboard.noMatches');
 });
 
-it('navigates the filtered gallery without a compare action, shows frame reuse and respects readOnly', async () => {
+it('navigates the filtered gallery, shows frame reuse and respects readOnly', async () => {
   const { doc, store, add } = board();
   const first = add('image', { assetId: 'one', caption: 'First', tags: ['Night'] });
   add('image', { assetId: 'excluded', tags: ['Day'] });
@@ -171,9 +171,6 @@ it('navigates the filtered gallery without a compare action, shows frame reuse a
   expect(dialog()?.querySelector('[data-tags-readonly="true"]')).not.toBeNull();
   expect(dialog()?.textContent).not.toContain('viewer.addColors');
   const buttons = () => [...(dialog()?.querySelectorAll('button') ?? [])];
-  expect(
-    buttons().some((button) => button.getAttribute('aria-label') === 'moodboard.compare'),
-  ).toBe(false);
   expect(dialog()?.querySelectorAll('.viewer__stage img')).toHaveLength(1);
   await key('ArrowRight');
   expect(dialog()?.textContent).toContain('2 / 2');
@@ -369,19 +366,18 @@ it('selects with the checkboxes and a click, then moves to a group and tags toge
   expect(host.querySelector('.moodboard__selection')).toBeNull();
 });
 
-it('offers only comparing to people who cannot edit, with two pictures at least', async () => {
+it('offers no selection to people who cannot edit', async () => {
   const { store, add } = board();
   add('image', { assetId: 'one' });
-  add('image', { assetId: 'two' });
-  add('image', { assetId: 'three' });
   const host = await mount(store);
-  await click(checks(host)[0] ?? null);
-  expect(inBar(host, 'moodboard.moveToGroup')).toBeNull();
-  expect(inBar(host, 'moodboard.compare')?.disabled).toBe(true);
-  await click(checks(host)[2] ?? null);
-  await click(inBar(host, 'moodboard.compare'));
-  // The viewer goes through the selection only.
-  expect(host.querySelector('[role="dialog"]')?.textContent).toContain('1 / 2');
+  expect(checks(host)).toHaveLength(0);
+  const tile = host.querySelector('.moodboard__tile') as HTMLElement;
+  await act(async () => {
+    tile.firstElementChild?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, ctrlKey: true }),
+    );
+  });
+  expect(host.querySelector('.moodboard__selection')).toBeNull();
 });
 
 it('sends pictures to the storyboard as frames, keeps the references and skips colours', async () => {

@@ -2380,7 +2380,6 @@
     "sent_one": "{{count}} plan ajouté au storyboard",
     "sent_other": "{{count}} plans ajoutés au storyboard",
     "sendFailed": "Impossible de les ajouter au storyboard. Vérifiez la connexion et les autorisations, puis réessayez.",
-    "compare": "Comparer",
     "lockedSkipped_one": "{{count}} référence est verrouillée et n'a pas changé.",
     "lockedSkipped_other": "{{count}} références sont verrouillées et n'ont pas changé."
   },

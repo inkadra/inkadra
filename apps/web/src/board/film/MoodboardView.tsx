@@ -441,6 +441,7 @@ function ReferenceTile({
   name,
   picked,
   picking,
+  selectable,
   onToggle,
   children,
 }: {
@@ -448,6 +449,8 @@ function ReferenceTile({
   name: string;
   picked: boolean;
   picking: boolean;
+  /** Every action on a selection edits the board: people who can only read don't get one. */
+  selectable: boolean;
   onToggle: () => void;
   children: ReactNode;
 }) {
@@ -467,7 +470,7 @@ function ReferenceTile({
       data-picked={picked || undefined}
       data-picking={picking || undefined}
       onClickCapture={(event) => {
-        if (!(picking || event.ctrlKey || event.metaKey)) return;
+        if (!selectable || !(picking || event.ctrlKey || event.metaKey)) return;
         if ((event.target as HTMLElement).closest('.moodboard__check')) return;
         event.preventDefault();
         event.stopPropagation();
@@ -475,13 +478,15 @@ function ReferenceTile({
       }}
     >
       {children}
-      <span className="moodboard__check">
-        <Checkbox
-          checked={picked}
-          aria-label={t('moodboard.select', { name })}
-          onChange={onToggle}
-        />
-      </span>
+      {selectable && (
+        <span className="moodboard__check">
+          <Checkbox
+            checked={picked}
+            aria-label={t('moodboard.select', { name })}
+            onChange={onToggle}
+          />
+        </span>
+      )}
     </div>
   );
 }
@@ -509,7 +514,6 @@ export function MoodboardView({
   const [kind, setKind] = useState<Kind | ''>('');
   const [size, setSize] = useState<TileSize>('m');
   const [opened, setOpened] = useState<string | null>(null);
-  const [compared, setCompared] = useState<ReadonlySet<string> | null>(null);
   const [presenting, setPresenting] = useState(false);
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const [panel, setPanel] = useState<BulkPanel>(null);
@@ -539,9 +543,7 @@ export function MoodboardView({
   const groupNames = referenceGroups(references).flatMap((s) => (s.name ? [s.name] : []));
   const chosen = shown.filter((el) => picked.has(el.id));
   const chosenMedia = chosen.filter((el): el is MediaReference => el.type !== 'color');
-  const media = shown.filter(
-    (el): el is MediaReference => el.type !== 'color' && (!compared || compared.has(el.id)),
-  );
+  const media = shown.filter((el): el is MediaReference => el.type !== 'color');
   const index = media.findIndex((el) => el.id === opened);
   const current = media[index];
   const palette = mergePalette(
@@ -550,7 +552,6 @@ export function MoodboardView({
   useEffect(() => {
     if (opened && !current) {
       setOpened(null);
-      setCompared(null);
       opener.current?.focus();
     }
   }, [opened, current]);
@@ -566,7 +567,6 @@ export function MoodboardView({
     : [];
   const closeViewer = () => {
     setOpened(null);
-    setCompared(null);
     opener.current?.focus();
   };
   const choose = (id: string) => setTag(id === tag ? '' : id);
@@ -770,6 +770,7 @@ export function MoodboardView({
           }
           picked={picked.has(element.id)}
           picking={picking}
+          selectable={!readOnly}
           onToggle={() => toggle(element.id)}
         >
           {card(element)}
@@ -954,45 +955,31 @@ export function MoodboardView({
             <span className="moodboard__selection-count" role="status">
               {t('moodboard.selected', { count: chosen.length })}
             </span>
-            {!readOnly && (
-              <>
-                <Button
-                  aria-expanded={panel === 'group'}
-                  onClick={() => setPanel(panel === 'group' ? null : 'group')}
-                >
-                  {t('moodboard.moveToGroup')}
-                </Button>
-                <Button
-                  aria-expanded={panel === 'tag'}
-                  onClick={() => setPanel(panel === 'tag' ? null : 'tag')}
-                >
-                  {t('moodboard.tags')}
-                </Button>
-                {chosen.length === 1 && (
-                  <Button
-                    aria-expanded={panel === 'note'}
-                    onClick={() => setPanel(panel === 'note' ? null : 'note')}
-                  >
-                    {t('moodboard.note')}
-                  </Button>
-                )}
-                <Button
-                  disabled={sending || chosenMedia.length === 0}
-                  onClick={() => void sendToStoryboard()}
-                >
-                  {t('moodboard.sendToStoryboard')}
-                </Button>
-              </>
+            <Button
+              aria-expanded={panel === 'group'}
+              onClick={() => setPanel(panel === 'group' ? null : 'group')}
+            >
+              {t('moodboard.moveToGroup')}
+            </Button>
+            <Button
+              aria-expanded={panel === 'tag'}
+              onClick={() => setPanel(panel === 'tag' ? null : 'tag')}
+            >
+              {t('moodboard.tags')}
+            </Button>
+            {chosen.length === 1 && (
+              <Button
+                aria-expanded={panel === 'note'}
+                onClick={() => setPanel(panel === 'note' ? null : 'note')}
+              >
+                {t('moodboard.note')}
+              </Button>
             )}
             <Button
-              disabled={chosenMedia.length < 2}
-              onClick={(event) => {
-                opener.current = event.currentTarget;
-                setCompared(new Set(chosenMedia.map((el) => el.id)));
-                setOpened(chosenMedia[0]?.id ?? null);
-              }}
+              disabled={sending || chosenMedia.length === 0}
+              onClick={() => void sendToStoryboard()}
             >
-              {t('moodboard.compare')}
+              {t('moodboard.sendToStoryboard')}
             </Button>
             <IconButton
               icon="close"

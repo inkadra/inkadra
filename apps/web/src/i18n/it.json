@@ -2380,7 +2380,6 @@
     "sent_one": "{{count}} inquadratura aggiunta allo storyboard",
     "sent_other": "{{count}} inquadrature aggiunte allo storyboard",
     "sendFailed": "Non è stato possibile aggiungerle allo storyboard. Controlla la connessione e i permessi, poi riprova.",
-    "compare": "Confronta",
     "lockedSkipped_one": "{{count}} riferimento è bloccato e non è cambiato.",
     "lockedSkipped_other": "{{count}} riferimenti sono bloccati e non sono cambiati."
   },

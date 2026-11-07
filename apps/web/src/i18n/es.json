@@ -2380,7 +2380,6 @@
     "sent_one": "{{count}} plano añadido al storyboard",
     "sent_other": "{{count}} planos añadidos al storyboard",
     "sendFailed": "No se han podido añadir al storyboard. Comprueba la conexión y los permisos e inténtalo de nuevo.",
-    "compare": "Comparar",
     "lockedSkipped_one": "{{count}} referencia está bloqueada y no ha cambiado.",
     "lockedSkipped_other": "{{count}} referencias están bloqueadas y no han cambiado."
   },
