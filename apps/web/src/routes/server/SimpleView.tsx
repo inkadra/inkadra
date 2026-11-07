@@ -227,8 +227,10 @@ function Meters({ status }: { status: ServerStatus }) {
         value={
           network ? (
             <>
-              <span aria-label={t('server.meters.network.in')}>↓</span> {bits(network.in, lang)}{' '}
-              <span aria-label={t('server.meters.network.out')}>↑</span> {bits(network.out, lang)}
+              <span aria-hidden="true">↓</span>
+              <span className="ink-sr-only">{t('server.meters.network.in')}</span> {bits(network.in, lang)}{' '}
+              <span aria-hidden="true">↑</span>
+              <span className="ink-sr-only">{t('server.meters.network.out')}</span> {bits(network.out, lang)}
             </>
           ) : (
             '—'
@@ -484,7 +486,7 @@ export function People({ status, advanced = false }: { status: ServerStatus; adv
       title={t(advanced ? 'server.advanced.people' : 'server.people.title')}
       action={
         <span className="settings-card__meta">
-          {advanced && p.peak !== null ? `${counts} · ${t('server.people.peak', { count: p.peak })}` : counts}
+          {advanced && p.peak !== null ? `${counts} · ${t('server.people.peak', { value: p.peak })}` : counts}
         </span>
       }
     >

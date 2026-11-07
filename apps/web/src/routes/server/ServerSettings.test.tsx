@@ -19,15 +19,11 @@ vi.mock('../../lib/api.ts', async (load) => ({
   ...(await load<typeof import('../../lib/api.ts')>()),
   api: { get: vi.fn(), patch: vi.fn(), post: vi.fn() },
 }));
-vi.mock('../../lib/session.tsx', () => ({
-  useSession: () => ({
-    instance: {
-      publicUrl: window.location.origin,
-      collabPath: '/collab',
-      auth: { email: true },
-    },
-  }),
+// One session object, as the app's context gives: a new one each render would re-run the probes.
+const session = vi.hoisted(() => ({
+  instance: { publicUrl: window.location.origin, collabPath: '/collab', auth: { email: true } },
 }));
+vi.mock('../../lib/session.tsx', () => ({ useSession: () => session }));
 vi.mock('../Diagnostics.tsx', () => ({ probeWebSocket: async () => true }));
 
 const host = document.createElement('div');

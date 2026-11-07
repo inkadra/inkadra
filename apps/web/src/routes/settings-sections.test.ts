@@ -203,6 +203,16 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['SMTP', 'SMTP'],
     ['Outgoing email', 'Invio email'],
   ],
+  server: [
+    ['Processor', 'Processore'],
+    ['Memory', 'Memoria'],
+    ['Space', 'Spazio'],
+    ['Services', 'Servizi'],
+    ['Problems', 'Problemi'],
+    ['Alerts', 'Avvisi'],
+    ['Diagnostics', 'Diagnostica'],
+    ['Video', 'Video'],
+  ],
   backups: [
     ['Backups', 'Backup'],
     ['Back up now', 'Esegui backup ora'],

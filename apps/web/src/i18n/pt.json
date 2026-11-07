@@ -4561,7 +4561,7 @@
       "people_other": "{{count}} pessoas",
       "boards_one": "1 quadro",
       "boards_other": "{{count}} quadros",
-      "peak": "máximo {{count}}",
+      "peak": "máximo {{value}}",
       "empty": "Ninguém está ligado agora.",
       "hidden": "Um quadro de um projeto de que não faz parte",
       "hiddenShort": "Projeto de que não faz parte",
@@ -4625,7 +4625,7 @@
         },
         "config_check": {
           "title": "Configuração por corrigir",
-          "text": ""
+          "text": "A verificação abaixo diz o que corrigir."
         },
         "unknown": {
           "title": "Algo não funcionou",

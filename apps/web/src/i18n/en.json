@@ -4561,7 +4561,7 @@
       "people_other": "{{count}} people",
       "boards_one": "1 board",
       "boards_other": "{{count}} boards",
-      "peak": "peak {{count}}",
+      "peak": "peak {{value}}",
       "empty": "Nobody is connected now.",
       "hidden": "A board of a project you are not a member of",
       "hiddenShort": "Project you are not a member of",
@@ -4625,7 +4625,7 @@
         },
         "config_check": {
           "title": "Configuration to fix",
-          "text": ""
+          "text": "The check below says what to fix."
         },
         "unknown": {
           "title": "Something did not work",

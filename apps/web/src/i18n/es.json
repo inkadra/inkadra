@@ -4561,7 +4561,7 @@
       "people_other": "{{count}} personas",
       "boards_one": "1 tablero",
       "boards_other": "{{count}} tableros",
-      "peak": "máximo {{count}}",
+      "peak": "máximo {{value}}",
       "empty": "Nadie está conectado ahora.",
       "hidden": "Un tablero de un proyecto del que no formas parte",
       "hiddenShort": "Proyecto del que no formas parte",
@@ -4625,7 +4625,7 @@
         },
         "config_check": {
           "title": "Configuración por arreglar",
-          "text": ""
+          "text": "La comprobación de abajo dice qué arreglar."
         },
         "unknown": {
           "title": "Algo no ha funcionado",

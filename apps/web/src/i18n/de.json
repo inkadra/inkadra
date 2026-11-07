@@ -4561,7 +4561,7 @@
       "people_other": "{{count}} Personen",
       "boards_one": "1 Board",
       "boards_other": "{{count}} Boards",
-      "peak": "Spitze {{count}}",
+      "peak": "Spitze {{value}}",
       "empty": "Gerade ist niemand verbunden.",
       "hidden": "Ein Board aus einem Projekt, in dem du nicht Mitglied bist",
       "hiddenShort": "Projekt, in dem du nicht Mitglied bist",
@@ -4625,7 +4625,7 @@
         },
         "config_check": {
           "title": "Konfiguration zu beheben",
-          "text": ""
+          "text": "Die Prüfung unten sagt, was zu beheben ist."
         },
         "unknown": {
           "title": "Etwas hat nicht funktioniert",

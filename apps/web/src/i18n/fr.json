@@ -4561,7 +4561,7 @@
       "people_other": "{{count}} personnes",
       "boards_one": "1 tableau",
       "boards_other": "{{count}} tableaux",
-      "peak": "pic {{count}}",
+      "peak": "pic {{value}}",
       "empty": "Personne n’est connecté pour le moment.",
       "hidden": "Un tableau d’un projet dont vous n’êtes pas membre",
       "hiddenShort": "Projet dont vous n’êtes pas membre",
@@ -4625,7 +4625,7 @@
         },
         "config_check": {
           "title": "Configuration à corriger",
-          "text": ""
+          "text": "Le contrôle ci-dessous dit quoi corriger."
         },
         "unknown": {
           "title": "Quelque chose n’a pas marché",

@@ -4561,7 +4561,7 @@
       "people_other": "{{count}} persone",
       "boards_one": "1 board",
       "boards_other": "{{count}} board",
-      "peak": "picco {{count}}",
+      "peak": "picco {{value}}",
       "empty": "Nessuno è collegato adesso.",
       "hidden": "Una board di un progetto di cui non fai parte",
       "hiddenShort": "Progetto di cui non fai parte",
@@ -4625,7 +4625,7 @@
         },
         "config_check": {
           "title": "Configurazione da sistemare",
-          "text": ""
+          "text": "Il controllo qui sotto dice cosa sistemare."
         },
         "unknown": {
           "title": "Qualcosa non ha funzionato",
