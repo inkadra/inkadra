@@ -393,9 +393,11 @@ select:disabled {
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   max-height: 226px;
+  min-width: 0;
   overflow-y: auto;
   padding: 3px;
   margin: -3px;
+  border: 0;
 }
 
 .tile {
