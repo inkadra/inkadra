@@ -22,7 +22,8 @@
   <a href="docs/guide.md">Tour</a> ·
   <a href="#develop">Develop</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
-  <a href="docs/decisions">Decisions</a>
+  <a href="docs/decisions">Decisions</a> ·
+  <a href="#support">Support</a>
 </p>
 
 <p align="center">
@@ -172,6 +173,12 @@ Much of Inkadra's code, tests and reviews are written with AI coding agents, und
 the maintainer. Changes go through CI, tests and review before they are merged. That does not rule
 out mistakes: Inkadra is early software, so keep backups and
 [report what you find](https://github.com/inkadra/inkadra/issues/new/choose).
+
+## Support
+
+Inkadra is free, with no ads and no tracking. If it helps your work, you can
+[buy me a coffee on Ko-fi](https://ko-fi.com/teovader). Starring the repository, reporting bugs and
+telling other filmmakers and photographers about it help just as much.
 
 ## Licence
 
