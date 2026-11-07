@@ -2689,7 +2689,10 @@ button.crumb--editable:focus-visible {
   visibility: visible;
 }
 .canvas__world--far
-  .card--free:not([class*="card--tint-"], :has(.card__media, .card__swatch, .fcard__media, .frame-pic, .story-picture)) {
+  .card--free:not(
+    [class*="card--tint-"],
+    :has(.card__media, .card__swatch, .fcard__media, .frame-pic, .story-picture)
+  ) {
   background: var(--ink-border-default);
 }
 
