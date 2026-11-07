@@ -232,6 +232,9 @@ test.describe('with motion', () => {
       await expect(picker).toContainText('Lavagna');
       await chooseSelect(picker, 'moodboard');
       await expect(page).toHaveURL(/view=moodboard/);
+      // The address can change before the transition starts: count once the picker shows the
+      // new view, as the tabs test does with aria-selected.
+      await expect(picker).toHaveAttribute('data-value', 'moodboard');
       expect(await transitions(page)).toBe(1);
       await expectSettled(page);
       await chooseSelect(picker, 'canvas');
