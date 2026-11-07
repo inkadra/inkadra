@@ -23,8 +23,12 @@ import { chooseVideoEncoder, forgetVideoEncoder } from './media/encoder-setting.
 import type { VideoEncoder } from './media/hwaccel.ts';
 import { mapUserAgent } from './media/maps.ts';
 import { sweepJobDirs } from './media/scratch.ts';
+import { checkHealth } from './monitor/health.ts';
+import { LatencyRecorder, startSampler } from './monitor/sampler.ts';
+import { type MonitorStore, memoryStore, redisStore } from './monitor/store.ts';
 import {
   createQueues,
+  createRedis,
   inlineJobs,
   queuedBoardNotifier,
   queuedBoardWriter,
@@ -156,6 +160,12 @@ async function main() {
     () => sql.end({ timeout: 5 }),
   ];
 
+  // The Server page (#514): every role samples itself and tells the others it is alive.
+  const monitorRedis = config.REDIS_URL ? createRedis(config.REDIS_URL) : undefined;
+  const monitor: MonitorStore = monitorRedis ? redisStore(monitorRedis) : memoryStore();
+  if (monitorRedis) closers.push(async () => monitorRedis.disconnect());
+  const latency = command === 'web' || command === 'all' ? new LatencyRecorder() : undefined;
+
   if (command === 'worker' || command === 'all') {
     if (!config.REDIS_URL) throw new Error('REDIS_URL is required by the worker.');
     const workers = await startWorkers(config.REDIS_URL, log, {
@@ -166,6 +176,7 @@ async function main() {
       publicUrl: config.PUBLIC_URL,
       instanceName: config.INSTANCE_NAME,
       transfers,
+      monitor: { store: monitor, role: command },
     });
     closers.unshift(() => workers.close());
     log.info('worker started');
@@ -207,8 +218,10 @@ async function main() {
   if (command === 'web' || command === 'all') {
     let pingQueue: (() => Promise<boolean>) | undefined;
     let jobs: Jobs;
+    let queueHandles: ReturnType<typeof createQueues> | undefined;
     if (config.REDIS_URL) {
       const queues = createQueues(config.REDIS_URL);
+      queueHandles = queues;
       jobs = queues.jobs;
       closers.unshift(() => queues.close());
       pingQueue = async () => {
@@ -220,7 +233,7 @@ async function main() {
       };
     } else {
       log.warn('REDIS_URL is not set: processing uploads inside the web process');
-      jobs = inlineJobs(media, log, transfers);
+      jobs = inlineJobs(media, log, transfers, monitor);
       // Without a worker, ended access is swept here (decision 0041).
       const stopSweep = startInlineExpirySweep(db, log);
       closers.unshift(async () => stopSweep());
@@ -262,13 +275,43 @@ async function main() {
       versions,
       notices,
       tmpDir,
+      monitor: {
+        store: monitor,
+        latency,
+        queues: queueHandles?.queues,
+        redis: queueHandles?.connection,
+      },
     });
+    const health = setInterval(
+      () =>
+        void checkHealth({
+          db,
+          store: monitor,
+          mailer,
+          log,
+          config,
+          instanceName: config.INSTANCE_NAME,
+          publicUrl: config.PUBLIC_URL,
+        }).catch((err) => log.warn({ err }, 'server health check failed')),
+      60_000,
+    );
+    health.unref();
+    closers.unshift(async () => clearInterval(health));
     if (collab) {
       attachCollab(app.server, collab);
     }
     closers.unshift(() => app.close());
     await app.listen({ host: config.HOST, port: config.PORT });
   }
+
+  const sampler = startSampler({
+    role: command as 'web' | 'collab' | 'worker' | 'all',
+    store: monitor,
+    log,
+    latency,
+    ...(collab ? { presence: collab.presence } : {}),
+  });
+  closers.unshift(async () => sampler.stop());
 
   const shutdown = async (signal: string) => {
     log.info({ signal }, 'shutting down');

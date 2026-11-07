@@ -1,5 +1,5 @@
 import type { BoardNotice } from '@inkadra/doc-schema';
-import type { BackupSettings, BoardColumn } from '@inkadra/shared';
+import type { BackupSettings, BoardColumn, ServerQueueId } from '@inkadra/shared';
 import { type Job, Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
 import { and, eq, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
@@ -33,6 +33,8 @@ import { officeConverterInstalled } from './media/office.ts';
 import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
 import { markProxyFailed, runProxy } from './media/proxy.ts';
 import { ProxyTimeout } from './media/video.ts';
+import { jobProblem, recordProblem } from './monitor/problems.ts';
+import type { MonitorStore } from './monitor/store.ts';
 import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
 import { enqueueReleaseNews, sendReleaseNews } from './release-news.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
@@ -121,6 +123,7 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
   const transfers = new Queue(QUEUES.transfers, { connection, prefix: opts.prefix });
   const proxies = new Queue(QUEUES.proxies, { connection, prefix: opts.prefix });
   const office = new Queue(QUEUES.office, { connection, prefix: opts.prefix });
+  const email = new Queue(QUEUES.email, { connection, prefix: opts.prefix });
   const jobs: Jobs = {
     async processAsset(assetId) {
       // The job id makes a second enqueue of the same asset a no-op while the first is waiting.
@@ -177,6 +180,11 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
   return {
     connection,
     jobs,
+    /** For the Server page (#514): counts, the progress of copies, retries. */
+    queues: { media, maintenance, transfers, proxies, office, email } satisfies Record<
+      ServerQueueId,
+      Queue
+    >,
     async close() {
       await Promise.all([
         media.close(),
@@ -184,6 +192,7 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
         transfers.close(),
         proxies.close(),
         office.close(),
+        email.close(),
       ]);
       connection.disconnect();
     },
@@ -270,6 +279,8 @@ export async function startWorkers(
     proxyConcurrency?: number;
     publicUrl?: string;
     instanceName?: string;
+    /** Where failures go for the Server page (#514), as `role`. */
+    monitor?: { store: MonitorStore; role: 'worker' | 'all' };
   },
   opts: { prefix?: string } = {},
 ) {
@@ -495,8 +506,32 @@ export async function startWorkers(
     await scheduleBackups(scheduler, await readBackupSettings(deps.db));
   }
 
+  const monitor = deps.monitor;
   for (const w of [maintenance, media, proxies, email, transfers, ...(office ? [office] : [])]) {
-    w.on('failed', (job, err) => log.error({ queue: w.name, job: job?.id, err }, 'job failed'));
+    w.on('failed', (job, err) => {
+      log.error({ queue: w.name, job: job?.id, err }, 'job failed');
+      // Only once it gave up: a retry that works is not a problem.
+      const final =
+        job && (job.attemptsMade >= (job.opts.attempts ?? 1) || err instanceof UnrecoverableError);
+      if (monitor && final)
+        recordProblem(monitor.store, jobProblem(monitor.role, w.name, job, err), log);
+    });
+  }
+  if (monitor) {
+    const event = (kind: 'video_ready' | 'video_failed', job: Job) => {
+      const ms = (job.finishedOn ?? Date.now()) - (job.processedOn ?? Date.now());
+      monitor.store
+        .event({ t: Date.now(), kind, ms })
+        .catch((err) => log.warn({ err }, 'server event not saved'));
+    };
+    proxies.on('completed', (job) => event('video_ready', job));
+    proxies.on('failed', (job, err) => {
+      if (
+        job &&
+        (job.attemptsMade >= (job.opts.attempts ?? 1) || err instanceof UnrecoverableError)
+      )
+        event('video_failed', job);
+    });
   }
   return {
     async close() {
@@ -723,6 +758,8 @@ export function inlineJobs(
   deps: MediaDeps,
   log: Logger,
   transfers?: TransferWorkerDeps,
+  /** Failed files for the Server page (#514). */
+  monitor?: MonitorStore,
 ): Jobs & { idle(): Promise<void> } {
   const running = new Set<Promise<unknown>>();
   const track = (work: Promise<unknown>) => {
@@ -741,6 +778,11 @@ export function inlineJobs(
           assetId,
         ).catch(async (err) => {
           await markFailed(deps.db, assetId);
+          recordProblem(
+            monitor,
+            jobProblem('web', QUEUES.media, { name: 'process', data: { assetId } }, err),
+            log,
+          );
           throw err;
         }),
       );
@@ -749,6 +791,11 @@ export function inlineJobs(
       const run = proxyChain.then(() =>
         runProxy({ ...deps, log }, assetId).catch(async (err) => {
           await markProxyFailed(deps.db, assetId);
+          recordProblem(
+            monitor,
+            jobProblem('web', QUEUES.proxies, { name: 'make', data: { assetId } }, err),
+            log,
+          );
           throw err;
         }),
       );

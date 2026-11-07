@@ -2,7 +2,7 @@
  * Every email the server sends, as content for the shared layout (mail-layout.ts).
  * Builders are pure: the callers decide when and how to send.
  */
-import { type Notification, notificationPath } from '@inkadra/shared';
+import { type Notification, notificationPath, type ServerAlert } from '@inkadra/shared';
 import { type Chip, type MailContent, type MailRow, renderMail } from './mail-layout.ts';
 import {
   accessWhen,
@@ -128,6 +128,46 @@ export function securityMail(
     action: { label: t.security.action, url: `${instance.publicUrl}/settings?section=account` },
     note: { text: e.after },
     footer: { text: t.security.footer(instance.instanceName) },
+  });
+}
+
+/** A server alert for an administrator (#514): what is wrong, in plain words, and a way in. */
+export function serverAlertMail(
+  admin: { email: string; locale?: string | null },
+  alert: ServerAlert,
+  instance: MailInstance,
+): Mail {
+  const t = mailText(admin);
+  const a = t.serverAlert;
+  const gb = (bytes: number | null) =>
+    bytes === null
+      ? ''
+      : `${(bytes / 1e9).toLocaleString(t.locale, { maximumFractionDigits: bytes < 1e10 ? 1 : 0 })} GB`;
+  const title = a.titles[alert.kind];
+  const intro =
+    alert.kind === 'disk_full'
+      ? a.disk(
+          gb(alert.free),
+          gb(alert.total),
+          alert.weeksLeft ? a.weeks(Math.round(alert.weeksLeft)) : null,
+        )
+      : alert.kind === 'service_down'
+        ? a.down(a.services[alert.service ?? ''] ?? a.services.web ?? '')
+        : alert.kind === 'backup_failed'
+          ? a.backup
+          : a.errors(alert.count ?? 0);
+  return renderMail({
+    to: admin.email,
+    subject: a.subject(title, instance.instanceName),
+    lang: t.lang,
+    instanceName: instance.instanceName,
+    preheader: intro,
+    badge: { label: a.badge, tone: 'danger' },
+    title,
+    intro,
+    action: { label: a.action, url: `${instance.publicUrl}/settings?section=server` },
+    fallback: t.fallback,
+    footer: { text: a.footer(instance.instanceName) },
   });
 }
 

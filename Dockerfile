@@ -58,6 +58,8 @@ RUN apt-get update \
  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 ENV NODE_ENV=production \
     INKADRA_VERSION=${VERSION} \
+    INKADRA_MEDIA=${MEDIA} \
+    INKADRA_OFFICE=${OFFICE} \
     DATA_DIR=/data \
     TMPDIR=/data/tmp \
     PORT=3000 \
