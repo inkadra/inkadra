@@ -84,6 +84,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0079](0079-server-page.md)                          | A Server page for administrators, without a monitoring stack                           |
 | [0080](0080-update-check.md)                         | The server checks GitHub for new releases                                              |
 | [0081](0081-storage-limits.md)                       | Storage limits per instance and per person                                             |
+| [0082](0082-script-revisions.md)                     | Update a storyboard from a revised screenplay; omitted scenes stay in place            |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

@@ -139,7 +139,7 @@ test('a Final Draft screenplay makes a new storyboard named after its title', as
   const dialog = await pick(page, 'last-train.fdx');
   await expect(dialog.getByText(/3 scene · 2 personaggi/)).toBeVisible();
   await dialog.getByRole('radio', { name: 'Una', exact: true }).check();
-  await dialog.getByRole('radio', { name: 'Uno nuovo' }).check();
+  await dialog.getByRole('radio', { name: 'Nuovo storyboard' }).check();
   await expect(dialog.getByText('Crea 3 scene e 3 inquadrature.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Importa', exact: true }).click();
 

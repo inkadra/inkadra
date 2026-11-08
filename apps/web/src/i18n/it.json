@@ -1252,7 +1252,20 @@
       },
       "collapse": "Comprimi la scena",
       "expand": "Espandi la scena",
-      "addTitle": "Aggiungi un titolo"
+      "addTitle": "Aggiungi un titolo",
+      "omitted": "Omessa",
+      "showOmitted": "Mostra le scene omesse",
+      "hideOmitted": "Nascondi le scene omesse",
+      "menu": "Menu della scena {{number}}",
+      "omittedHeading": "Scena {{number}}, omessa",
+      "notInScript": "Non nel copione",
+      "restore": "Ripristina la scena",
+      "restoreHint": "Torna nella shot list e nel piano di ripresa",
+      "deleteAll": "Elimina scena e inquadrature",
+      "deleteAllHint": "Prima si salva una versione",
+      "deleteVersion": "Prima di eliminare la scena {{number}}",
+      "deleteFailed": "Non è stato possibile salvare la versione, quindi la scena non è stata eliminata.",
+      "omittedToggle": "Omesse"
     },
     "frame": {
       "add": "Nuova inquadratura",
@@ -3363,8 +3376,9 @@
     "cast": "Aggiungi al cast delle inquadrature i personaggi che parlano",
     "castHint": "Altrimenti vengono elencati nella sinossi della scena.",
     "target": "Dove",
-    "targetAppend": "Questo storyboard",
-    "targetNew": "Uno nuovo",
+    "targetAppend": "Aggiungi allo storyboard",
+    "targetRevise": "Aggiorna da revisione",
+    "targetNew": "Nuovo storyboard",
     "summary": "Crea {{scenes}} e {{frames}}.",
     "truncated": "La sceneggiatura è lunga: in un’importazione entrano solo le prime {{scenes}} e {{frames}}.",
     "submit": "Importa",
@@ -3388,7 +3402,67 @@
     "detected": "Sembra una sceneggiatura",
     "build": "Crea storyboard…",
     "buildFromFile": "Crea storyboard da questa sceneggiatura…",
-    "noTextDetail": "Sembra una scansione: Inkadra non legge il testo dalle immagini. Esporta di nuovo il PDF dal programma di scrittura, oppure usa un file Fountain o Final Draft."
+    "noTextDetail": "Sembra una scansione: Inkadra non legge il testo dalle immagini. Esporta di nuovo il PDF dal programma di scrittura, oppure usa un file Fountain o Final Draft.",
+    "revision": {
+      "hint": "Abbina la nuova stesura alle scene di “{{title}}”. Inquadrature, disegni e dati di ripresa restano come sono.",
+      "hintShort": "Inquadrature, disegni e dati di ripresa restano come sono.",
+      "show": "Mostra",
+      "list": "Scene di questa stesura",
+      "filters": {
+        "changes": "Modifiche",
+        "changed": "Modificate",
+        "new": "Nuove",
+        "omitted": "Omesse",
+        "all": "Tutte"
+      },
+      "badges": {
+        "changed": "Modificata",
+        "new": "Nuova",
+        "omitted": "Omessa",
+        "check": "Da verificare",
+        "same": "Uguali"
+      },
+      "notIn": "Non in {{draft}}",
+      "markedOmitted": "tenuta e segnata come omessa",
+      "keptAsIs": "tenuta così com'è",
+      "after": "Dopo la {{number}}",
+      "atStart": "All'inizio",
+      "bothChanged": "Cambiati sia intestazione sia numero",
+      "restored": "di nuovo in questa stesura",
+      "wasScene": "era la scena {{number}}",
+      "was": "era {{value}}",
+      "locationWas": "il luogo era “{{location}}”",
+      "titleWas": "il titolo era “{{title}}”",
+      "synopsis": "sinossi riscritta",
+      "sameAs": "Stessa scena di",
+      "asNew": "Una scena nuova",
+      "nothing": "Niente da mostrare per questa stesura.",
+      "unchanged_one": "{{count}} scena invariata, {{frames}}",
+      "unchanged_other": "{{count}} scene invariate, {{frames}}",
+      "framesKept_one": "{{count}} inquadratura tenuta",
+      "framesKept_other": "{{count}} inquadrature tenute",
+      "newFrames_one": "{{count}} inquadratura nuova",
+      "newFrames_other": "{{count}} inquadrature nuove",
+      "frames": "Inquadrature per le scene nuove",
+      "framesAction": "Per azione",
+      "details": "Aggiorna i dati delle scene",
+      "detailsHint": "Numero, intestazione, luogo, momento e sinossi delle scene modificate.",
+      "omit": "Segna le scene omesse",
+      "omitHint": "Restano con le loro inquadrature, attenuate, ed escono da shot list e piano di ripresa.",
+      "version": "Salva prima una versione",
+      "versionHint": "“{{name}}”, per tornare indietro in un passo.",
+      "versionName": "Prima di {{draft}}",
+      "updated_one": "{{count}} scena aggiornata",
+      "updated_other": "{{count}} scene aggiornate",
+      "added_one": "{{count}} aggiunta",
+      "added_other": "{{count}} aggiunte",
+      "omitted_one": "{{count}} segnata come omessa",
+      "omitted_other": "{{count}} segnate come omesse",
+      "summary": "<b>{{updated}}, {{added}}</b> con {{frames}}, <b>{{omitted}}</b>. {{kept}} come prima.",
+      "summaryPhone": "<b>{{updated}}, {{added}}, {{omitted}}.</b> Prima si salva una versione.",
+      "submit": "Aggiorna lo storyboard",
+      "done": "Storyboard aggiornato: {{updated}}, {{added}}, {{omitted}}."
+    }
   },
   "frameGrab": {
     "grab": "Cattura fotogramma",
@@ -4099,6 +4173,10 @@
           "2": {
             "title": "Disegna sul frame",
             "text": "Doppio clic sul frame: schizzi a tutto schermo."
+          },
+          "3": {
+            "title": "Una nuova stesura del copione",
+            "text": "Importala di nuovo e scegli Aggiorna da revisione: le scene si aggiornano, i frame restano come sono."
           }
         }
       },

@@ -353,6 +353,79 @@ html[data-view-direction]::view-transition-new(board-view) {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+/* A scene the script left out (decision 0082): in place, dimmed, struck through. */
+.story__scene.is-omitted {
+  padding: 4px 12px 12px;
+  border: 1px dashed var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-2);
+}
+.story__scene.is-omitted .story__grid,
+.story__scene.is-omitted .story__synopsis,
+.story__scene.is-omitted .story__scene-number,
+.story__scene.is-omitted .story__scene-location,
+.story__scene.is-omitted .story__scene-title {
+  opacity: 0.5;
+}
+.story__scene.is-omitted .story__scene-number,
+.story__scene.is-omitted .story__scene-location,
+.story__scene.is-omitted .story__scene-title {
+  text-decoration: line-through;
+}
+.story__omitted-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.story__omitted-n {
+  font-size: 11px;
+  color: var(--ink-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+/* Where the bar is short of room (1280 px with the sidebar open), its controls sit closer, as in
+   the shot list, and the Omitted toggle keeps its eye and count, so that New scene stays on the
+   same row; its name stays in the label. */
+.story {
+  container: story / inline-size;
+}
+@container story (max-width: 1120px) {
+  .story > .story__bar {
+    gap: 8px;
+  }
+  .story__omitted-word {
+    display: none;
+  }
+}
+/* The menu of an omitted scene: each action with a line saying what it does. */
+.menu:has(.story__menu-item) {
+  width: 230px;
+}
+.menu__item:has(.story__menu-item) {
+  height: auto;
+  padding: 8px 10px;
+}
+.story__menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.story__menu-item small {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-text-muted);
+}
+.story__side-item.is-omitted .story__side-name {
+  color: var(--ink-text-muted);
+  text-decoration: line-through;
+}
 .story__synopsis {
   width: 100%;
   margin: 8px 0 0;

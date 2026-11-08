@@ -166,6 +166,8 @@ export const TOURS: Tour[] = [
       { anchor: 'storyboard-scene', media: 'scenes', side: 'bottom' },
       { anchor: 'storyboard-frame', media: 'meta', side: 'right' },
       { anchor: 'storyboard-draw', media: 'draw', side: 'right' },
+      // A new draft of the script updates the scenes, never the frames (decision 0082).
+      { anchor: 'storyboard-import', media: 'scenes', side: 'bottom' },
     ],
   },
   {
