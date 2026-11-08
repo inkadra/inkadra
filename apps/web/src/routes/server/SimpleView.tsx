@@ -51,12 +51,13 @@ function Health({ status }: { status: ServerStatus }) {
   const open = openProblems(status.problems).length;
   const now = new Date(status.checkedAt).getTime();
   const first = down[0];
+  let section: ReactNode;
   if (first) {
     const since = first.since
       ? duration(now - new Date(first.since).getTime(), i18n.language)
       : null;
-    return (
-      <section className="server-health server-health--bad" data-tour="server" aria-live="polite">
+    section = (
+      <section className="server-health server-health--bad" data-tour="server">
         <span className="server-health__icon" aria-hidden="true">
           <Icon name="warning" size={20} />
         </span>
@@ -75,36 +76,50 @@ function Health({ status }: { status: ServerStatus }) {
         <Button onClick={scrollToProblems}>{t('server.health.whatToDo')}</Button>
       </section>
     );
+  } else {
+    const backup = status.backup.lastAt
+      ? t(`server.health.backup.${status.backup.lastStatus ?? 'none'}`, {
+          when: when(status.backup.lastAt, now),
+        })
+      : t('server.health.backup.none');
+    section = (
+      <section className="server-health" data-tour="server">
+        <span className="server-health__icon" aria-hidden="true">
+          <Icon name="check" size={20} />
+        </span>
+        <div className="server-health__text">
+          <h3>{t('server.health.ok')}</h3>
+          <p>
+            {[
+              status.startedAt &&
+                t('server.health.uptime', {
+                  time: duration(now - new Date(status.startedAt).getTime(), i18n.language),
+                }),
+              backup,
+              open ? t('server.health.problems', { count: open }) : t('server.health.noProblems'),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        </div>
+        {open > 0 && (
+          <Button onClick={scrollToProblems}>
+            {t('server.health.seeProblem', { count: open })}
+          </Button>
+        )}
+      </section>
+    );
   }
-  const backup = status.backup.lastAt
-    ? t(`server.health.backup.${status.backup.lastStatus ?? 'none'}`, {
-        when: when(status.backup.lastAt, now),
-      })
-    : t('server.health.backup.none');
   return (
-    <section className="server-health" data-tour="server" aria-live="polite">
-      <span className="server-health__icon" aria-hidden="true">
-        <Icon name="check" size={20} />
-      </span>
-      <div className="server-health__text">
-        <h3>{t('server.health.ok')}</h3>
-        <p>
-          {[
-            status.startedAt &&
-              t('server.health.uptime', {
-                time: duration(now - new Date(status.startedAt).getTime(), i18n.language),
-              }),
-            backup,
-            open ? t('server.health.problems', { count: open }) : t('server.health.noProblems'),
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </p>
-      </div>
-      {open > 0 && (
-        <Button onClick={scrollToProblems}>{t('server.health.seeProblem', { count: open })}</Button>
-      )}
-    </section>
+    <>
+      {/* Read out when the verdict changes, not at every reading as the uptime grows. */}
+      <p className="ink-sr-only" aria-live="polite">
+        {first
+          ? t('server.health.down', { service: t(`server.services.long.${first.id}`) })
+          : t('server.health.ok')}
+      </p>
+      {section}
+    </>
   );
 }
 

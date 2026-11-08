@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
-import type { ServerStatus } from '@inkadra/shared';
+import type { ServerRange, ServerStatus } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../../lib/api.ts';
 import { technicalSummary } from './common.ts';
-import { ServerSettings } from './ServerSettings.tsx';
+import { ServerSettings, useServerStatus } from './ServerSettings.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -207,4 +207,31 @@ it('sends no names in the summary for the developers', () => {
   expect(text).toContain('video_failed');
   expect(text).not.toContain('DJI_0412');
   expect(text).not.toContain('Sopralluoghi');
+});
+
+const probed: { status: ServerStatus | null } = { status: null };
+function Probe({ range }: { range: ServerRange }) {
+  probed.status = useServerStatus(range).status;
+  return null;
+}
+
+it('keeps the range just chosen when the answer for the one before comes late', async () => {
+  vi.useFakeTimers();
+  try {
+    const answers: Array<(s: ServerStatus) => void> = [];
+    vi.mocked(api.get).mockImplementation(
+      () => new Promise((resolve) => answers.push(resolve as (s: ServerStatus) => void)),
+    );
+    await act(async () => root.render(<Probe range="1h" />));
+    // A tick while the first answer is on its way asks nothing more.
+    await act(async () => vi.advanceTimersByTime(10_000));
+    expect(api.get).toHaveBeenCalledTimes(1);
+    await act(async () => root.render(<Probe range="24h" />));
+    expect(api.get).toHaveBeenLastCalledWith('/instance/server?range=24h');
+    await act(async () => answers[1]?.(status({ range: '24h' })));
+    await act(async () => answers[0]?.(status({ range: '1h' })));
+    expect(probed.status?.range).toBe('24h');
+  } finally {
+    vi.useRealTimers();
+  }
 });

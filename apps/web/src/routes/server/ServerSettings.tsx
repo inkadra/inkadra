@@ -19,22 +19,34 @@ import './server.css';
 /** The samples come every 10 s: the page asks as often while it is visible. */
 const POLL_MS = 10_000;
 
-/** Status of the instance, read again every 10 s while the page is on screen. */
-function useServerStatus(range: ServerRange) {
+/**
+ * Status of the instance, read again every 10 s while the page is on screen. A tick waits for
+ * the answer before; only the newest request counts, so a slow answer for the range before
+ * never replaces the one just chosen.
+ */
+export function useServerStatus(range: ServerRange) {
   const [status, setStatus] = useState<ServerStatus | null>(null);
   const [error, setError] = useState(false);
+  const latest = useRef(0);
+  const waiting = useRef(false);
   const load = useCallback(async () => {
+    const id = ++latest.current;
+    waiting.current = true;
     try {
-      setStatus(await api.get<ServerStatus>(`/instance/server?range=${range}`));
+      const next = await api.get<ServerStatus>(`/instance/server?range=${range}`);
+      if (id !== latest.current) return;
+      setStatus(next);
       setError(false);
     } catch {
-      setError(true);
+      if (id === latest.current) setError(true);
+    } finally {
+      if (id === latest.current) waiting.current = false;
     }
   }, [range]);
   useEffect(() => {
     void load();
     const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') void load();
+      if (document.visibilityState === 'visible' && !waiting.current) void load();
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [load]);

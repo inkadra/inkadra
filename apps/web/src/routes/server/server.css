@@ -78,7 +78,7 @@
 .server-tile__meta {
   min-width: 0;
   overflow: hidden;
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -107,7 +107,7 @@
   letter-spacing: -0.01em;
 }
 .server-meter__value small {
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0;
@@ -158,7 +158,7 @@
   color: var(--ink-status-warn);
 }
 .server-service__icon--off {
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
 }
 .server-service__state {
   flex: none;
@@ -171,7 +171,7 @@
   color: var(--ink-status-warn);
 }
 .server-service__state--off {
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
 }
 
 .server-tech {
@@ -191,7 +191,7 @@
   align-items: center;
   gap: 4px;
   border-radius: var(--ink-radius-xs);
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
   font-size: 12px;
 }
 .server-tech > summary::before {
@@ -339,9 +339,10 @@
 .server-chart__grid {
   stroke: var(--ink-border-muted);
 }
+/* Secondary, not muted: small text needs 4.5:1 on the light surfaces too. */
 .server-chart__tick,
 .server-chart__marker text {
-  fill: var(--ink-text-muted);
+  fill: var(--ink-text-secondary);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
@@ -409,7 +410,7 @@
   pointer-events: none;
 }
 .server-chart__tip-time {
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
 }
 .server-legend {
   display: flex;
@@ -449,7 +450,7 @@
 }
 .server-more > summary svg {
   flex: none;
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
   transition: transform var(--ink-dur-fast) var(--ink-ease-out);
 }
 .server-more[open] > summary svg {
@@ -469,7 +470,7 @@
   font-size: 13px;
 }
 .server-kv dt {
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
 }
 .server-kv dd {
   margin: 0;
@@ -496,7 +497,7 @@
 .server-table thead th {
   border-top: 0;
   border-bottom: 1px solid var(--ink-border-default);
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
   font-size: 12px;
   font-weight: 500;
 }
@@ -557,7 +558,7 @@
   gap: 6px;
 }
 .server-strip dt {
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
 }
 .server-strip dd {
   margin: 0;
@@ -583,7 +584,7 @@
 }
 .server-pct small {
   display: block;
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
   font-size: 12px;
   font-weight: 400;
 }
@@ -616,7 +617,7 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
   font-size: 12px;
   white-space: nowrap;
 }

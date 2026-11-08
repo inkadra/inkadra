@@ -4,7 +4,7 @@ import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatStorage } from '../StorageCharts.tsx';
 import { niceMax, number } from './format.ts';
-import { type ChartMarker, ServerChart } from './ServerChart.tsx';
+import { type ChartMarker, type ChartSpan, ServerChart } from './ServerChart.tsx';
 
 type T = (key: string, values?: Record<string, unknown>) => string;
 
@@ -17,20 +17,24 @@ export function xLabels(t: T, range: ServerStatus['range']): [string, string, st
   ];
 }
 
-/** Videos converted and backups, at the nearest point of the history. */
+const WINDOW_MS: Record<ServerStatus['range'], number> = {
+  '15m': 15 * 60_000,
+  '1h': 3_600_000,
+  '24h': 86_400_000,
+  '7d': 7 * 86_400_000,
+};
+
+/** From the start of the range to the time of the reading. */
+export function chartSpan(status: ServerStatus): ChartSpan {
+  const to = new Date(status.checkedAt).getTime();
+  return { from: to - WINDOW_MS[status.range], to, step: status.step * 1000 };
+}
+
+/** Videos converted and backups, when they happened. */
 export function markers(t: T, status: ServerStatus): ChartMarker[] {
-  const times = status.history.map((s) => new Date(s.t).getTime());
-  if (!times.length) return [];
-  const nearest = (iso: string) => {
-    const at = new Date(iso).getTime();
-    let best = 0;
-    times.forEach((time, i) => {
-      if (Math.abs(time - at) < Math.abs((times[best] ?? 0) - at)) best = i;
-    });
-    return best;
-  };
+  if (!status.history.length) return [];
   return status.events.map((e) => ({
-    index: nearest(e.t),
+    t: e.t,
     label:
       e.kind === 'videos'
         ? t('server.chart.videos', { count: e.count })
@@ -119,6 +123,7 @@ export function HistoryChart({ status, period }: { status: ServerStatus; period?
           <ServerChart
             label={t('server.chart.label', { metric: t(`server.chart.${metric}`), range })}
             times={times}
+            span={chartSpan(status)}
             {...chart}
             xLabels={xLabels(t, status.range)}
             markers={metric === 'network' ? [] : markers(t, status)}
