@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 import { preferencesLoaded, usePreferences } from '../lib/preferences.ts';
+import { SessionContext } from '../lib/session-context.ts';
 import { type ToastMessage, TourPill, TourToast } from './Pill.tsx';
 import { autoOffers, markSeen, requestTour, useRequestedTour } from './state.ts';
 import { findAnchor, TourPlayer } from './TourPlayer.tsx';
@@ -35,6 +36,7 @@ export function TutorialHost({
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const prefs = usePreferences();
+  const demo = !!useContext(SessionContext)?.instance?.demo;
   const requested = useRequestedTour();
   const [welcome, setWelcome] = useState(false);
   const [finale, setFinale] = useState(false);
@@ -97,7 +99,7 @@ export function TutorialHost({
       setPill((shown) => {
         if (shown) return shown.offer && findAnchor(shown.offer) ? shown : null;
         return (
-          toursFor(admin).find(
+          toursFor(admin, demo).find(
             (tour) => tour.offer && !seen.includes(tour.id) && findAnchor(tour.offer),
           ) ?? null
         );
@@ -106,7 +108,7 @@ export function TutorialHost({
     look();
     const timer = setInterval(look, OFFER_EVERY_MS);
     return () => clearInterval(timer);
-  }, [loaded, busy, prefs.tutorialHints, seen, admin]);
+  }, [loaded, busy, prefs.tutorialHints, seen, admin, demo]);
 
   const name = (id: string) => t(`tutorial.tours.${id}.name`);
   const ended = (finished: boolean) => {
@@ -138,7 +140,10 @@ export function TutorialHost({
       )}
       {playing && <TourPlayer key={playing.id} tour={playing} settle={settle} onEnd={ended} />}
       {finale && (
-        <Finale more={Math.max(0, toursFor(admin).length - 4)} onClose={() => setFinale(false)} />
+        <Finale
+          more={Math.max(0, toursFor(admin, demo).length - 4)}
+          onClose={() => setFinale(false)}
+        />
       )}
       {pill && !busy && !toast && (
         <TourPill

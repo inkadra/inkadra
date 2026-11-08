@@ -2,6 +2,8 @@ import { Logo, Wordmark } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
+import { DemoEnded, DemoStart } from '../demo/DemoSignIn.tsx';
+import { sandboxEnded } from '../demo/demo.ts';
 import { useSession } from '../lib/session.tsx';
 import { SignInOptions } from './SignInOptions.tsx';
 import './login.css';
@@ -37,8 +39,25 @@ export function Login() {
   const open = instance?.registration === 'open';
   const [creating, setCreating] = useState(false);
   const signUp = setup || (open && creating);
+  const demo = instance?.demo;
+  const [ended, setEnded] = useState(() => sandboxEnded());
 
+  // The demo (decision 0084): "Try the demo" instead of any sign-in, and its end.
+  if (demo && ended)
+    return (
+      <div className="login">
+        <div className="login__dots" aria-hidden="true" />
+        <DemoEnded onAgain={() => setEnded(false)} />
+      </div>
+    );
   if (user) return <Navigate to={next} replace />;
+  if (demo)
+    return (
+      <div className="login">
+        <div className="login__dots" aria-hidden="true" />
+        <DemoStart demo={demo} />
+      </div>
+    );
 
   return (
     <div className="login">
