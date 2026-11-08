@@ -5,7 +5,7 @@
 People should try Inkadra before installing it, at demo.inkadra.com, without an account. A server
 open to anyone on the internet is a different threat than a studio's own instance: bots that
 open sandboxes by the thousand, a free file host or spam relay, injection through files, and
-one visitor filling the memory or the disk of a small machine (2 ARM cores, 12 GB) for everyone.
+one visitor filling the memory or the disk of a small machine for everyone.
 A security audit of the demo listed the risks; this records what was done about them.
 
 ## Decision

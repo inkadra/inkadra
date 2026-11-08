@@ -74,7 +74,7 @@ SHOTS_BASE_URL=http://localhost:3100 pnpm --filter @inkadra/e2e exec tsx scripts
 
 `deploy/compose.demo.yaml` runs the demo with no port open on the machine: `cloudflared`
 connects out to Cloudflare and brings visitors to Inkadra over the stack's network. It is sized
-for a small VM (2 ARM cores, 12 GB of RAM): every container has CPU, memory and process limits,
+for a small machine: every container has CPU, memory and process limits,
 runs as an unprivileged user without capabilities and with a read-only file system, Valkey has a
 password (given as configuration on standard input, never on a command line), and PostgreSQL and
 Valkey sit on a network that reaches nothing outside. `cloudflared` is pinned to a release
@@ -107,7 +107,8 @@ Valkey sit on a network that reaches nothing outside. `cloudflared` is pinned to
 Inkadra and `cloudflared` share the `edge` network, which also reaches the internet: Inkadra
 uses it for Turnstile and the update check (it fetches nothing else for a sandbox). Inkadra
 trusts proxy headers only from `cloudflared`, at a fixed address (`TRUST_PROXY=172.31.250.2`,
-on the subnet `172.31.250.0/29`; change the three together if the subnet is taken). Cloudflare
+on the subnet `172.31.250.0/29`, with Inkadra fixed at `172.31.250.3` so it cannot take that
+address; change them together if the subnet is taken). Cloudflare
 appends the address it saw, the one it also sends as `CF-Connecting-IP`, to `X-Forwarded-For`,
 and Inkadra takes that last entry: a visitor cannot pick their address by writing the header
 themselves. Do not publish a port of the `inkadra` container or attach other containers to

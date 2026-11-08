@@ -1,5 +1,5 @@
 # The public demo (decision 0084, docs/demo.md): "Try the demo" sandboxes that go after an hour,
-# hardened for a small VM (2 ARM cores, 12 GB of RAM) behind a Cloudflare Tunnel. No port is
+# hardened for a small machine behind a Cloudflare Tunnel. No port is
 # published: cloudflared reaches Inkadra on the stack's network. Use together with compose.yaml:
 #   docker compose -f compose.yaml -f deploy/compose.demo.yaml up -d
 # Set in .env, besides PUBLIC_URL, AUTH_SECRET and POSTGRES_PASSWORD:
@@ -51,7 +51,9 @@ services:
           cpus: "1.25"
           memory: 4g
     networks:
-      edge: {}
+      edge:
+        # Fixed too: left to Docker, Inkadra can start first and take cloudflared's address.
+        ipv4_address: 172.31.250.3
       backend: {}
 
   postgres:
@@ -128,7 +130,8 @@ services:
 
 networks:
   # Out to the internet: cloudflared, and Inkadra for Turnstile and the update check. A fixed
-  # subnet, for cloudflared's fixed address; change both, and TRUST_PROXY, if it is taken.
+  # subnet, for the fixed addresses of cloudflared and Inkadra; change them with TRUST_PROXY if it is
+  # taken.
   edge:
     ipam:
       config:
