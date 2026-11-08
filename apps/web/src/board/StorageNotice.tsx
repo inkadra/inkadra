@@ -1,10 +1,10 @@
 import type { MyStorage, StorageFull } from '@inkadra/shared';
 import { Button, Dialog, DialogActions } from '@inkadra/ui';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { api } from '../lib/api.ts';
-import { useSession } from '../lib/session.tsx';
+import { SessionContext } from '../lib/session-context.ts';
 import { formatStorage } from '../routes/StorageCharts.tsx';
 import { LargestFilesDialog, spaceTone } from '../routes/StorageSpace.tsx';
 import { Toast } from './chrome.tsx';
@@ -80,7 +80,8 @@ export function StorageNotice() {
 /** What StorageNotice shows; mounted only with something to say, inside the app. */
 function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () => void }) {
   const { t, i18n } = useTranslation();
-  const { user } = useSession();
+  // The context, not useSession: no i18n set-up comes with it into the board's tests.
+  const user = useContext(SessionContext)?.user;
   const navigate = useNavigate();
   const [details, setDetails] = useState(notice.kind === 'refused' && notice.total > 1);
   const [files, setFiles] = useState(false);

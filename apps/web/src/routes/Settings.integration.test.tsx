@@ -78,6 +78,7 @@ it('lays Account out as one column of groups, ending with the danger zone', asyn
   expect(host.querySelector('aside')).toBeNull();
   const groups = [...host.querySelectorAll('.settings-card h3')].map((h) => h.textContent);
   expect(groups).toEqual([
+    'storageSpace.title',
     'settings.profile.title',
     'settings.methods.title',
     'settings.sessions.title',
