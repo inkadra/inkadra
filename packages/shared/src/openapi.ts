@@ -148,6 +148,13 @@ import {
   TagCount,
 } from './search.ts';
 import {
+  RetriedProblems,
+  ServerAlerts,
+  ServerStatus,
+  ServerStatusQuery,
+  UpdateServerAlerts,
+} from './server-status.ts';
+import {
   AcceptedInvitation,
   BoardAccess,
   BoardAccessEntry,
@@ -1045,6 +1052,67 @@ registry.registerPath({
     409: { description: 'A backup is already running', ...json(ApiError) },
     ...errors,
   },
+});
+
+// Server page (#514) ----------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/server'),
+  tags: ['Instance'],
+  security: secured,
+  summary:
+    'Administrator only, signed-in session: health, resources and their history over `range`, ' +
+    'jobs, people on boards, problems of the last 7 days and alert settings.',
+  request: { query: ServerStatusQuery },
+  responses: { 200: { description: 'Server status', ...json(ServerStatus) }, ...errors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/instance/server/alerts'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only, signed-in session: whether and how administrators are alerted.',
+  request: { body: { required: true, ...json(UpdateServerAlerts) } },
+  responses: { 200: { description: 'Saved settings', ...json(ServerAlerts) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/instance/server/problems/{problemId}/seen'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: marks a problem seen until it happens again.',
+  request: { params: z.object({ problemId: z.string().min(1).max(200) }) },
+  responses: { 204: { description: 'Marked' }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/instance/server/problems/seen'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: marks every problem seen.',
+  responses: { 204: { description: 'Marked' }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/instance/server/problems/{problemId}/retry'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: runs the failed job of a problem again.',
+  request: { params: z.object({ problemId: z.string().min(1).max(200) }) },
+  responses: {
+    202: { description: 'Queued again' },
+    409: { description: 'The job is gone or cannot run again', ...json(ApiError) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/instance/server/problems/retry'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: runs every failed job of the open problems again.',
+  responses: { 200: { description: 'How many were queued', ...json(RetriedProblems) }, ...errors },
 });
 
 // Projects -------------------------------------------------------------------

@@ -2842,6 +2842,972 @@
         },
         "additionalProperties": false
       },
+      "ServerStatus": {
+        "type": "object",
+        "properties": {
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "version": {
+            "type": "string"
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Image flavour, as `media`."
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "Oldest running process."
+          },
+          "range": {
+            "type": "string",
+            "enum": [
+              "15m",
+              "1h",
+              "24h",
+              "7d"
+            ]
+          },
+          "step": {
+            "type": "integer",
+            "description": "Seconds between history points."
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerSample"
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerEvent"
+            }
+          },
+          "now": {
+            "$ref": "#/components/schemas/ServerNow"
+          },
+          "processes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerProcess"
+            }
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerService"
+            }
+          },
+          "storage": {
+            "$ref": "#/components/schemas/ServerStorage"
+          },
+          "backup": {
+            "$ref": "#/components/schemas/ServerBackup"
+          },
+          "database": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "size": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "connections": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "version",
+              "size",
+              "connections"
+            ]
+          },
+          "encoder": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "backend": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "backend",
+              "label"
+            ]
+          },
+          "queues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerQueue"
+            }
+          },
+          "transcodes": {
+            "$ref": "#/components/schemas/ServerTranscodes"
+          },
+          "presence": {
+            "type": "object",
+            "properties": {
+              "people": {
+                "type": "integer"
+              },
+              "boards": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ServerPresenceBoard"
+                }
+              },
+              "peak": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Most people at once in range."
+              }
+            },
+            "required": [
+              "people",
+              "boards",
+              "peak"
+            ]
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticCheck"
+            }
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerProblem"
+            }
+          },
+          "alerts": {
+            "$ref": "#/components/schemas/ServerAlerts"
+          }
+        },
+        "required": [
+          "checkedAt",
+          "version",
+          "image",
+          "startedAt",
+          "range",
+          "step",
+          "history",
+          "events",
+          "now",
+          "processes",
+          "services",
+          "storage",
+          "backup",
+          "database",
+          "encoder",
+          "queues",
+          "transcodes",
+          "presence",
+          "checks",
+          "problems",
+          "alerts"
+        ]
+      },
+      "ServerSample": {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "cpu": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Percent of the cores Inkadra may use."
+          },
+          "memory": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Bytes in use."
+          },
+          "in": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Bytes per second received."
+          },
+          "out": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Bytes per second sent."
+          },
+          "p95": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Milliseconds, 95th percentile."
+          },
+          "errors": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Share of answers that failed, 0–1."
+          },
+          "people": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "People on boards."
+          }
+        },
+        "required": [
+          "t",
+          "cpu",
+          "memory",
+          "in",
+          "out",
+          "p95",
+          "errors",
+          "people"
+        ]
+      },
+      "ServerEvent": {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "videos",
+              "backup",
+              "backup_failed"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "description": "Videos converted in that slice; 1 else."
+          }
+        },
+        "required": [
+          "t",
+          "kind",
+          "count"
+        ]
+      },
+      "ServerNow": {
+        "type": "object",
+        "properties": {
+          "cpu": {
+            "type": "object",
+            "properties": {
+              "used": {
+                "type": "number",
+                "description": "Cores in use."
+              },
+              "cores": {
+                "type": "number",
+                "description": "Cores Inkadra may use (cgroup limit or host)."
+              }
+            },
+            "required": [
+              "used",
+              "cores"
+            ]
+          },
+          "memory": {
+            "type": "object",
+            "properties": {
+              "used": {
+                "type": "integer"
+              },
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "used",
+              "limit"
+            ]
+          },
+          "network": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "in": {
+                "type": "number"
+              },
+              "out": {
+                "type": "number"
+              },
+              "todayIn": {
+                "type": "number"
+              },
+              "todayOut": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "in",
+              "out",
+              "todayIn",
+              "todayOut"
+            ],
+            "description": "Bytes per second and today, the Inkadra containers only."
+          },
+          "responses": {
+            "type": "object",
+            "properties": {
+              "p95": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "errors": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "p95",
+              "errors"
+            ]
+          }
+        },
+        "required": [
+          "cpu",
+          "memory",
+          "network",
+          "responses"
+        ]
+      },
+      "ServerProcess": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "web",
+              "collab",
+              "worker",
+              "all"
+            ],
+            "description": "`all`: one process runs every role (the single-container setup)."
+          },
+          "host": {
+            "type": "string",
+            "description": "Host name of the container."
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "late",
+              "down"
+            ],
+            "description": "`late`: no signal for 30 s; `down`: none for 90 s."
+          },
+          "cpu": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Cores used by this process."
+          },
+          "memory": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Resident bytes."
+          }
+        },
+        "required": [
+          "role",
+          "host",
+          "startedAt",
+          "lastSeenAt",
+          "status",
+          "cpu",
+          "memory"
+        ]
+      },
+      "ServerService": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "web",
+              "collab",
+              "worker",
+              "database",
+              "queue",
+              "configuration"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "warning",
+              "down",
+              "off"
+            ],
+            "description": "`off`: not part of this setup (no queue without REDIS_URL)."
+          },
+          "since": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "Last signal of a process role."
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Versions, as `PostgreSQL 18`."
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "since",
+          "detail"
+        ]
+      },
+      "ServerStorage": {
+        "type": "object",
+        "properties": {
+          "driver": {
+            "type": "string",
+            "enum": [
+              "local",
+              "s3"
+            ]
+          },
+          "location": {
+            "type": "string",
+            "description": "DATA_DIR or the bucket name."
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Null on S3."
+          },
+          "free": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "used": {
+            "type": "integer",
+            "description": "The whole disk locally; files on S3."
+          },
+          "originals": {
+            "type": "integer"
+          },
+          "copies": {
+            "type": "integer",
+            "description": "Playable video and audio copies."
+          },
+          "previews": {
+            "type": "integer",
+            "description": "Thumbnails and waveforms."
+          },
+          "growthPerMonth": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Originals added in the last 30 days."
+          },
+          "monthsLeft": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Null without a total."
+          }
+        },
+        "required": [
+          "driver",
+          "location",
+          "total",
+          "free",
+          "used",
+          "originals",
+          "copies",
+          "previews",
+          "growthPerMonth",
+          "monthsLeft"
+        ]
+      },
+      "ServerBackup": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "lastAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "lastStatus": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "running",
+              "ready",
+              "failed",
+              null
+            ]
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "nextAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          }
+        },
+        "required": [
+          "enabled",
+          "lastAt",
+          "lastStatus",
+          "size",
+          "nextAt"
+        ]
+      },
+      "ServerQueue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "proxies",
+              "media",
+              "office",
+              "transfers",
+              "email",
+              "maintenance"
+            ]
+          },
+          "waiting": {
+            "type": "integer"
+          },
+          "active": {
+            "type": "integer"
+          },
+          "failed24h": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "waiting",
+          "active",
+          "failed24h"
+        ]
+      },
+      "ServerTranscodes": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerTranscode"
+            }
+          },
+          "waiting": {
+            "type": "integer"
+          },
+          "readyToday": {
+            "type": "integer"
+          },
+          "failedToday": {
+            "type": "integer"
+          },
+          "averageSeconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "active",
+          "waiting",
+          "readyToday",
+          "failedToday",
+          "averageSeconds"
+        ]
+      },
+      "ServerTranscode": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Null for a file of a project the administrator is not a member of."
+          },
+          "progress": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "secondsLeft": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "speed": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Times real time."
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Codec and lines, as `prores 2160p`."
+          },
+          "target": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "As `h264 1080p`."
+          }
+        },
+        "required": [
+          "assetId",
+          "name",
+          "progress",
+          "secondsLeft",
+          "speed",
+          "source",
+          "target"
+        ]
+      },
+      "ServerPresenceBoard": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Null, as title and project, on a board the administrator cannot open."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "projectName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "image": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "image"
+              ]
+            },
+            "description": "Empty on a board the administrator cannot open."
+          }
+        },
+        "required": [
+          "boardId",
+          "title",
+          "projectName",
+          "since",
+          "count",
+          "people"
+        ]
+      },
+      "ServerProblem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "video_failed",
+              "preview_failed",
+              "office_failed",
+              "email_failed",
+              "transfer_failed",
+              "job_failed",
+              "backup_failed",
+              "disk_full",
+              "service_down",
+              "server_error",
+              "config_check"
+            ],
+            "description": "Open list: clients show a kind they do not know with the generic text. `config_check`: a failing diagnostic check (`checkId`), gone once it passes; it cannot be marked seen."
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warning"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "web",
+              "collab",
+              "worker",
+              "all"
+            ],
+            "description": "`all`: one process runs every role (the single-container setup)."
+          },
+          "firstAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "lastAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "seen": {
+            "type": "boolean",
+            "description": "Marked seen and not happened again since."
+          },
+          "retry": {
+            "type": "boolean",
+            "description": "Whether `retry` can run it again."
+          },
+          "technical": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Where and what failed, without file contents, names or addresses."
+          },
+          "checkId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "service": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "web",
+              "collab",
+              "worker",
+              "database",
+              "queue",
+              "configuration",
+              null
+            ]
+          },
+          "file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "File the problem is about; null when the administrator cannot see it."
+          },
+          "board": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Its board, under the same rule."
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "severity",
+          "role",
+          "firstAt",
+          "lastAt",
+          "count",
+          "seen",
+          "retry",
+          "technical",
+          "checkId",
+          "service",
+          "file",
+          "board"
+        ]
+      },
+      "ServerAlerts": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Tell every administrator when the disk is almost full, a service stops answering, a backup fails or an error keeps happening."
+          },
+          "email": {
+            "type": "boolean",
+            "description": "Email too, for serious problems only and at most once an hour."
+          }
+        },
+        "required": [
+          "enabled",
+          "email"
+        ]
+      },
+      "UpdateServerAlerts": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Tell every administrator when the disk is almost full, a service stops answering, a backup fails or an error keeps happening."
+          },
+          "email": {
+            "type": "boolean",
+            "description": "Email too, for serious problems only and at most once an hour."
+          }
+        }
+      },
+      "RetriedProblems": {
+        "type": "object",
+        "properties": {
+          "retried": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "retried"
+        ]
+      },
       "Project": {
         "type": "object",
         "properties": {
@@ -6031,9 +6997,10 @@
               "link_opened",
               "task_assigned",
               "feedback_received",
-              "review_submitted"
+              "review_submitted",
+              "server_alert"
             ],
-            "description": "`feedback_received`: a new in-app report, for instance administrators only; in-app only, no report content; open Settings About Reports. `mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on `projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three days before to that person and to the project owners. `access_expired`: it has ended. Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you made for the first time, or for the first time since a new named version of the board; it has no actor (`shareLinkLabel` says which link) and nothing about the visit. `review_submitted`: a guest sent their review of `boardId` through a link you made (`shareLinkLabel`); the decisions themselves are in the board reviews. Open: clients show types they do not know as a plain line with the actor, the board and the time."
+            "description": "`server_alert`: something is wrong with the server (`serverAlert` says what), for instance administrators only, in-app (#514); open Settings Server. Missing from older servers. `feedback_received`: a new in-app report, for instance administrators only; in-app only, no report content; open Settings About Reports. `mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on `projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three days before to that person and to the project owners. `access_expired`: it has ended. Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you made for the first time, or for the first time since a new named version of the board; it has no actor (`shareLinkLabel` says which link) and nothing about the visit. `review_submitted`: a guest sent their review of `boardId` through a link you made (`shareLinkLabel`); the decisions themselves are in the board reviews. Open: clients show types they do not know as a plain line with the actor, the board and the time."
           },
           "actor": {
             "allOf": [
@@ -6168,6 +7135,73 @@
               "null"
             ],
             "description": "For link_opened and review_submitted: the label of the link that was opened; null without one, or when you have no role on its board. Missing from servers before this notification existed."
+          },
+          "serverAlert": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "disk_full",
+                  "service_down",
+                  "backup_failed",
+                  "repeated_errors"
+                ]
+              },
+              "service": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "web",
+                  "collab",
+                  "worker",
+                  "database",
+                  "queue",
+                  "configuration",
+                  null
+                ]
+              },
+              "free": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Bytes left, for `disk_full`."
+              },
+              "total": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "weeksLeft": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "count": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "For `repeated_errors`."
+              }
+            },
+            "required": [
+              "kind",
+              "service",
+              "free",
+              "total",
+              "weeksLeft",
+              "count"
+            ],
+            "description": "For server_alert. Missing from older servers."
           },
           "readAt": {
             "type": [
@@ -6402,6 +7436,14 @@
           "tutorialHints": {
             "type": "boolean",
             "description": "Offer a feature's tutorial the first time this person opens it (#502)."
+          },
+          "serverView": {
+            "type": "string",
+            "enum": [
+              "simple",
+              "advanced"
+            ],
+            "description": "How an administrator last looked at the Server settings page (#514)."
           }
         },
         "required": [
@@ -6417,7 +7459,8 @@
           "planRecents",
           "toolbar",
           "tutorialsSeen",
-          "tutorialHints"
+          "tutorialHints",
+          "serverView"
         ]
       },
       "UpdateUserPreferences": {
@@ -6512,6 +7555,14 @@
           "tutorialHints": {
             "type": "boolean",
             "description": "Offer a feature's tutorial the first time this person opens it (#502)."
+          },
+          "serverView": {
+            "type": "string",
+            "enum": [
+              "simple",
+              "advanced"
+            ],
+            "description": "How an administrator last looked at the Server settings page (#514)."
           }
         },
         "description": "Only the fields given change."
@@ -13095,6 +14146,454 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BackupSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/server": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only, signed-in session: health, resources and their history over `range`, jobs, people on boards, problems of the last 7 days and alert settings.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "15m",
+                "1h",
+                "24h",
+                "7d"
+              ],
+              "default": "1h"
+            },
+            "required": false,
+            "name": "range",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/server/alerts": {
+      "patch": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only, signed-in session: whether and how administrators are alerted.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServerAlerts"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerAlerts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/server/problems/{problemId}/seen": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: marks a problem seen until it happens again.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "problemId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Marked"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/server/problems/seen": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: marks every problem seen.",
+        "responses": {
+          "204": {
+            "description": "Marked"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/server/problems/{problemId}/retry": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: runs the failed job of a problem again.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "problemId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Queued again"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The job is gone or cannot run again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/server/problems/retry": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: runs every failed job of the open problems again.",
+        "responses": {
+          "200": {
+            "description": "How many were queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetriedProblems"
                 }
               }
             }

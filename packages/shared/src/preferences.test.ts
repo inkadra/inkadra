@@ -20,3 +20,9 @@ it('keeps the valid tutorial ids and offers tutorials by default', () => {
   expect(read.tutorialsSeen).toEqual(['welcome', 'storyboard']);
   expect(read.tutorialHints).toBe(false);
 });
+
+it('opens the Server page in the simple view until an administrator picks the advanced one', () => {
+  expect(readUserPreferences(null).serverView).toBe('simple');
+  expect(readUserPreferences({ serverView: 'advanced' }).serverView).toBe('advanced');
+  expect(readUserPreferences({ serverView: 'charts' }).serverView).toBe('simple');
+});

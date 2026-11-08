@@ -2,6 +2,7 @@
 import { Author, ElementRef, ListLimit } from './comments.ts';
 import { Cursor, Id, Timestamp, z } from './common.ts';
 import { ReviewStatus } from './reviews.ts';
+import { ServerAlert } from './server-status.ts';
 import { UserSummary } from './users.ts';
 
 /**
@@ -23,9 +24,12 @@ export const NotificationType = z
     'task_assigned',
     'feedback_received',
     'review_submitted',
+    'server_alert',
   ])
   .openapi({
     description:
+      '`server_alert`: something is wrong with the server (`serverAlert` says what), for ' +
+      'instance administrators only, in-app (#514); open Settings Server. Missing from older servers. ' +
       '`feedback_received`: a new in-app report, for instance administrators only; in-app only, no report content; open Settings About Reports. ' +
       '`mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote ' +
       'in. `comment`: a new thread on a card you created. `review`: the review status of a ' +
@@ -93,6 +97,9 @@ export const Notification = z
           'For link_opened and review_submitted: the label of the link that was opened; null without one, or when ' +
           'you have no role on its board. Missing from servers before this notification existed.',
       }),
+    serverAlert: ServerAlert.nullable()
+      .optional()
+      .openapi({ description: 'For server_alert. Missing from older servers.' }),
     readAt: Timestamp.nullable(),
     createdAt: Timestamp,
   })
@@ -106,6 +113,7 @@ export function notificationPath(
   },
 ): string | null {
   if (item.type === 'feedback_received') return '/settings?section=instance';
+  if (item.type === 'server_alert') return '/settings?section=server';
   if (!item.projectId) return null;
   const path = item.boardId ? `/p/${item.projectId}/b/${item.boardId}` : `/p/${item.projectId}`;
   if (!item.boardId) return path;
