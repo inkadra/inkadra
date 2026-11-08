@@ -27,6 +27,7 @@ const SECTION_ICONS: Record<string, IconName> = {
   providers: 'lock',
   registration: 'mail',
   backups: 'clock',
+  server: 'tiles',
   instance: 'settings',
 };
 
