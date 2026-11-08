@@ -8,6 +8,7 @@ Anything that shows the project follows this page, and a change to the project s
 The project itself is built by [`e2e/scripts/sample-project.ts`](../e2e/scripts/sample-project.ts)
 on an empty instance, with pictures drawn in
 [`e2e/scripts/sample-stills.ts`](../e2e/scripts/sample-stills.ts): no third-party images or fonts.
+The video, the voice note and the script are made by the seed too (the video with ffmpeg).
 
 ## The film
 
@@ -112,18 +113,22 @@ The grade lifts to dawn only in scene 3.
 
 ## Crew and shoot
 
-| Role              | Name           |
-| ----------------- | -------------- |
-| Director          | Giulia Bianchi |
-| Producer          | Chiara Fontana |
-| Cinematographer   | Tommaso Riva   |
-| Production design | Sara Leone     |
-| First AD          | Marco Gallo    |
-| Sound             | Ivo Santoro    |
-| Costume           | Nadia Greco    |
+| Role              | Name           | Account               | In the project       |
+| ----------------- | -------------- | --------------------- | -------------------- |
+| Director          | Giulia Bianchi | `giulia@example.com`  | Owner, administrator |
+| Producer          | Chiara Fontana | `chiara@example.com`  | Owner                |
+| Cinematographer   | Tommaso Riva   | `tommaso@example.com` | Editor               |
+| First AD          | Marco Gallo    | `marco@example.com`   | Editor               |
+| Sound             | Ivo Santoro    | `ivo@example.com`     | Editor               |
+| Production design | Sara Leone     | `sara@example.com`    | Commenter            |
+| Costume           | Nadia Greco    | `nadia@example.com`   | Viewer               |
 
-Giulia Bianchi is also the account the screenshots are taken with (`giulia@example.com`). All
+Giulia Bianchi is also the account the screenshots are taken with. Every account has the
+password `correct-horse-battery`; the others join through an invitation link to the project. All
 names are invented.
+
+The client is **Fondazione Cinema Costa** (invented), the film's co-funder. Its reviewer, Elena
+Marino, has no account: she opens a share link of the project that lets guests approve.
 
 The shoot is three days: two nights back to back, a rest day, then the dawn. The sample puts
 day 1 on the day it is built, so Home always shows "shooting today"; day 3 is three days later.
@@ -134,8 +139,61 @@ day 1 on the day it is built, so Home always shows "shooting today"; day 3 is th
 | 2   | Rosa's diner           | 19:00 | 05:30 | 2A, 2B, 2C at 4:40         |
 | 3   | Signal box, coast line | 03:30 | 09:00 | 3A, 3C (train at 5:52), 3B |
 
+## The boards
+
+| Board      | What is on it                                                                                          |
+| ---------- | ------------------------------------------------------------------------------------------------------ |
+| Last Train | The moodboard (root): the idea, the boards, a to-do list, the stills in groups, a link, Light, Palette |
+| Storyboard | The scenes and shots above, what each scene needs, the shooting days, a saved version                  |
+| Casting    | The four characters and the four locations, with arrows: who is what to whom and where they wait       |
+| Set plan   | Rosa's diner from above: counter, stools, practicals, the sodium light, two cameras                    |
+| Rushes     | Take 3 of 1A (video), a frame grabbed from it, Ivo's voice note of the hum, the teaser link            |
+| Production | Crew and budget tables, maps of the station and of Capo Bianco, the shooting script (PDF)              |
+
+The Production board is hidden from guests: contacts and money stay with the team.
+
+Moodboard groups: _Night_ (platform, rain, window, tunnel, train and the link), _Rosa's diner_
+(diner, cups), _Dawn_ (signal box, dawn, sea, field) and _Palette_. The dawn pictures in the Light
+column are tagged `dawn`, the sea also `drone`.
+
+Arrows on the casting board: Sandro _lets her stay_ (Anna); Anna and Leo, _strangers_; Leo and
+Rosa, _old friends_; Anna _waits here_ (Central station); Rosa, _her diner_.
+
+Budget: camera and lenses €2,400, six sodium lamps €660, rain and haze machines €850, the diner
+for two nights €1,200, railway escort and drone permit €540, catering €1,350; total €7,000.
+
+The teaser link points at `https://www.youtube.com/watch?v=LastTrain24`, an id that is not a
+real video; its picture is the `tunnel` still.
+
+## The team at work
+
+- **Comments.** On the moodboard's first note Tommaso asks whether the sodium orange is too much
+  in the grade; Giulia answers to keep it. On the board Chiara confirms the lamps and asks
+  Giulia (a mention, so it reaches her inbox) to tick the diner. On 2A Sara pins a comment on the
+  neon cup and asks Tommaso; he answers. On 1C Marco asks Ivo for the door chime; Ivo answers,
+  Marco resolves the thread, Giulia reacts ✅. Chiara and Sara put ❤️ on the diner still.
+- **To-dos.** Giulia has the diner (due today) and the lamps (tomorrow); Marco the rain test
+  (today); Chiara got the night permit.
+- **Review.** The team approved 1A and 1B and sent 1C, 1D and 2A to review. Elena approved 1C,
+  asked for changes on 2A ("We would like to see Rosa's face when she pours.") and commented on it;
+  1D waits for her.
+- **Versions.** The storyboard has a version named _Locked for the shoot_.
+
+## Lanterna Film's next project
+
+_Salt Road_, a documentary in development: the last salt pans along the coast line, worked by
+hand for one more summer. Its board holds the idea, a development to-do list, the `field` and
+`dawn` stills and a palette (Dawn `#F3D3A8`, Salt `#E9E4D8`, Sea `#5E8CA6`). Chiara is its
+other owner.
+
+On Home, Giulia keeps two groups: _In production_ (Last Train, also pinned) and _In
+development_ (Salt Road).
+
 ## Pictures
 
 Each still is drawn as SVG at 1600 × 900 (portraits at 1200 × 1200) and named as in the shot
 table. Besides the shots: `anna`, `leo`, `rosa` and `sandro` are the casting portraits, backlit
-profiles in the light of each character's place.
+profiles in the light of each character's place. `map-station` and `map-coast` are the maps of
+the Production board, flat street maps of the invented town at 1024 × 560, the size of the map
+pictures the server makes; the cards carry no coordinates, so nothing is fetched from a map
+server.

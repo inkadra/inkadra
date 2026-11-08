@@ -1,10 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { createElement } from '@inkadra/canvas-core';
 import { readElement, roots } from '@inkadra/doc-schema';
-import { type Browser, chromium, type Page } from '@playwright/test';
+import { chromium, type Page } from '@playwright/test';
 import { readBoard } from '../tests/frame-grab.helpers.ts';
-import { pushBoardDoc, uploadFile, waitForAssets } from '../tests/perf/seed.ts';
 import { type SampleProject, seedSampleProject } from './sample-project.ts';
 
 /**
@@ -23,29 +21,15 @@ const base = (process.env.SHOTS_BASE_URL ?? 'http://localhost:3100').replace(/\/
 const out = process.env.SHOTS_OUT ?? join(process.cwd(), 'mobile-shots');
 const tag = process.env.SHOTS_TAG ?? 'before';
 const only = process.env.SHOTS_ONLY?.split(',').filter(Boolean);
-const opts = { userId: null };
 
 interface Seed extends SampleProject {
   ids: { image: string; note: string; character: string; location: string; arrow: string };
-  guestUrl: string;
 }
 
-/** A video on the moodboard and a guest link; the ids of the cards the screens open. */
-async function seedExtras(browser: Browser, sample: SampleProject): Promise<Seed> {
+/** The ids of the sample's cards that the screens open. */
+async function seedExtras(sample: SampleProject): Promise<Seed> {
   const { cookie, project, casting, asset } = sample;
-  const page = await browser.newPage();
-  await page.goto(`${base}/login`);
-  const footage = await recordFootage(page);
-  await page.close();
-  const video = await uploadFile(base, cookie, project.id, {
-    body: footage,
-    name: 'Platform rehearsal.webm',
-    type: 'video/webm',
-  });
-  if (!video) throw new Error('This instance does not take uploads');
-  await waitForAssets(base, cookie, [video]);
-
-  // The sample's casting board already holds Anna, the station and the arrow between them.
+  // The sample's casting board holds Anna, the station and the arrow between them.
   const cast = [...roots(await readBoard(base, cookie, casting.id)).elements.values()].map(
     (m) => readElement(m)!,
   );
@@ -59,53 +43,7 @@ async function seedExtras(browser: Browser, sample: SampleProject): Promise<Seed
   const els = [...roots(mood).elements.values()].map((m) => readElement(m)!);
   const image = els.find((e) => e.type === 'image' && e.assetId === asset.platform)!.id;
   const noteId = els.find((e) => e.type === 'note')!.id;
-  mood.transact(() => {
-    createElement(mood, 'file', { x: 360, y: 900 }, { assetId: video }, opts);
-  });
-  await pushBoardDoc(base, cookie, project.rootBoardId, mood);
-
-  const res = await fetch(`${base}/api/v1/boards/${project.rootBoardId}/share-links`, {
-    method: 'POST',
-    headers: { cookie, 'content-type': 'application/json', origin: base },
-    body: JSON.stringify({ role: 'guest_view', label: 'Client' }),
-  });
-  if (!res.ok) throw new Error(`share link: ${res.status}`);
-  const { url } = (await res.json()) as { url: string };
-  return {
-    ...sample,
-    ids: { image, note: noteId, character, location, arrow },
-    guestUrl: url,
-  };
-}
-
-/** A few seconds of WebM drawn in the browser, for the frame grab. */
-async function recordFootage(page: Page): Promise<Buffer> {
-  const bytes = await page.evaluate(async () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1280;
-    canvas.height = 720;
-    const ctx = canvas.getContext('2d')!;
-    const stream = canvas.captureStream(30);
-    const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
-    const chunks: Blob[] = [];
-    recorder.ondataavailable = (e) => chunks.push(e.data);
-    const done = new Promise<Blob>((r) => {
-      recorder.onstop = () => r(new Blob(chunks, { type: 'video/webm' }));
-    });
-    recorder.start();
-    const started = performance.now();
-    for (let i = 0; performance.now() - started < 3000; i++) {
-      ctx.fillStyle = '#0b1a2a';
-      ctx.fillRect(0, 0, 1280, 720);
-      ctx.fillStyle = '#e07a3f';
-      ctx.fillRect(200 + (i % 60) * 10, 300, 400, 160);
-      await new Promise((r) => setTimeout(r, 33));
-    }
-    recorder.stop();
-    for (const track of stream.getTracks()) track.stop();
-    return [...new Uint8Array(await (await done).arrayBuffer())];
-  });
-  return Buffer.from(bytes);
+  return { ...sample, ids: { image, note: noteId, character, location, arrow } };
 }
 
 type Shot = [id: string, prepare: (page: Page, seed: Seed) => Promise<void>];
@@ -251,7 +189,7 @@ const shots: Shot[] = [
   [
     '21-frame-grab',
     async (page, seed) => {
-      await board(page, seed);
+      await board(page, seed, seed.rushes.id);
       await page.locator('[data-type="file"]').first().dblclick();
       const video = page.locator('.viewer video');
       await video.waitFor();
@@ -313,7 +251,7 @@ async function main() {
   let seed: Seed;
   if (existsSync(seedFile)) seed = JSON.parse(readFileSync(seedFile, 'utf8')) as Seed;
   else {
-    seed = await seedExtras(browser, await seedSampleProject(browser, base));
+    seed = await seedExtras(await seedSampleProject(browser, base));
     writeFileSync(seedFile, JSON.stringify(seed, null, 2));
   }
   const failures: string[] = [];
