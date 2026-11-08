@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 're
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import './context-menu.css';
+import { menuFloor, placeMenu } from './place-menu.ts';
 
 type Entry = { label: string; run: () => void | Promise<void> };
 type OpenMenu = {
@@ -152,7 +153,9 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
     const node = ref.current;
     const box = node.getBoundingClientRect();
     node.style.left = `${Math.max(8, Math.min(menu.x, window.innerWidth - box.width - 8))}px`;
-    node.style.top = `${Math.max(8, Math.min(menu.y, window.innerHeight - box.height - 8))}px`;
+    const { top, maxHeight } = placeMenu(menu.y, menu.y, node.offsetHeight, menuFloor());
+    node.style.top = `${top}px`;
+    if (maxHeight) node.style.maxHeight = `${maxHeight}px`;
     node.querySelector('button')?.focus();
   }, [menu]);
   useEffect(() => {

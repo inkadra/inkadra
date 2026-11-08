@@ -27,6 +27,7 @@ import {
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -42,6 +43,7 @@ import {
   uploadLogo,
 } from '../board/export/settings.ts';
 import { headingFamily, loadHeadingFont, paperAccent, screenAccent } from '../board/theme.ts';
+import { menuFloor, placeMenu } from '../menus/place-menu.ts';
 import { DeleteProjectDialog } from './DeleteProjectDialog.tsx';
 import { MoveToGroupDialog, useDropTarget, useProjectDrag } from './ProjectGroups.tsx';
 import { canExportProject, ExportProjectDialog } from './ProjectTransfer.tsx';
@@ -84,7 +86,7 @@ export interface ProjectMenuItem {
  * focus target to return to and the layer to render.
  */
 export function useMenu(label: string, items: ProjectMenuItem[]) {
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; above: number } | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const close = () => {
@@ -106,13 +108,23 @@ export function useMenu(label: string, items: ProjectMenuItem[]) {
     document.addEventListener('pointerdown', dismiss, true);
     return () => document.removeEventListener('pointerdown', dismiss, true);
   }, [menu]);
+  // Measured, so the separator, swatches and touch rows count, and kept above the phone's tabs.
+  useLayoutEffect(() => {
+    const node = menuRef.current;
+    if (!menu || !node) return;
+    node.style.maxHeight = '';
+    const { top, maxHeight } = placeMenu(menu.y, menu.above, node.offsetHeight, menuFloor());
+    node.style.top = `${top}px`;
+    node.style.maxHeight = maxHeight ? `${maxHeight}px` : '';
+  }, [menu]);
   /** Opens at `anchor`; focus returns to `focus` when the menu or its dialog closes. */
   const open = (anchor: HTMLElement, focus: HTMLElement | null, x?: number, y?: number) => {
     opener.current = focus;
     const rect = anchor.getBoundingClientRect();
     setMenu({
       x: Math.max(8, Math.min(x ?? rect.left, window.innerWidth - 240)),
-      y: Math.max(8, Math.min(y ?? rect.bottom, window.innerHeight - 48 - items.length * 40)),
+      y: y ?? rect.bottom,
+      above: y ?? rect.top,
     });
   };
   const choose = (item: ProjectMenuItem) => () => {
