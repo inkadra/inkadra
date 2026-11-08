@@ -721,6 +721,15 @@
 .team-table .team-col--space {
   white-space: nowrap;
 }
+.team-table thead .team-col--space {
+  width: 136px;
+}
+.team-table thead .team-col--projects {
+  width: 76px;
+}
+.team-table thead th:last-child {
+  width: 56px;
+}
 .team-pending th,
 .team-pending td {
   background: var(--ink-surface-2);

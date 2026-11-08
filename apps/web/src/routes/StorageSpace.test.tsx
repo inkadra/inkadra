@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 import { storageRefusal } from '../board/uploads.ts';
-import { joinSize, splitSize } from './StorageLimitsSettings.tsx';
+import { formatBinarySize, joinSize, splitSize } from './StorageLimitsSettings.tsx';
 import { SpaceMeter, spaceTone } from './StorageSpace.tsx';
 
 vi.mock('react-i18next', () => ({
@@ -25,6 +25,8 @@ describe('storage limits in the app (decision 0081)', () => {
     expect(splitSize(5e9)).toEqual({ amount: '5', unit: 'GB' });
     expect(splitSize(1.5e12)).toEqual({ amount: '1.5', unit: 'TB' });
     expect(splitSize(100e6)).toEqual({ amount: '100', unit: 'MB' });
+    expect(splitSize(1.1e6, 'it')).toEqual({ amount: '1,1', unit: 'MB' });
+    expect(formatBinarySize(20 * 1024 ** 3, 'en')).toBe('20 GB');
     expect(joinSize('2,5', 'GB')).toBe(2.5e9);
     expect(joinSize('0', 'GB')).toBeNull();
     expect(joinSize('abc', 'GB')).toBeNull();

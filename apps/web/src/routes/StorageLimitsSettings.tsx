@@ -18,10 +18,19 @@ const UNITS = [
 type Unit = (typeof UNITS)[number][0];
 const WARN_OPTIONS = [50, 60, 70, 75, 80, 85, 90, 95];
 
-/** The largest unit the size is at least one of, and the number in it. */
-export function splitSize(bytes: number): { amount: string; unit: Unit } {
+/** The largest unit the size is at least one of, and the number in it, as `locale` writes it. */
+export function splitSize(bytes: number, locale = 'en'): { amount: string; unit: Unit } {
   const [unit, size] = [...UNITS].reverse().find(([, s]) => bytes >= s) ?? UNITS[0];
-  return { amount: String(Math.round((bytes / size) * 100) / 100), unit };
+  const amount = new Intl.NumberFormat(locale, { maximumFractionDigits: 2, useGrouping: false });
+  return { amount: amount.format(bytes / size), unit };
+}
+
+/** UPLOAD_MAX_SIZE counts in powers of 1024 (`20GB`): shown as the operator wrote it. */
+export function formatBinarySize(bytes: number, locale: string): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const index = bytes > 0 ? Math.min(units.length - 1, Math.floor(Math.log2(bytes) / 10)) : 0;
+  const amount = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 });
+  return `${amount.format(bytes / 1024 ** index)} ${units[index]}`;
 }
 
 export function joinSize(amount: string, unit: Unit): number | null {
@@ -42,12 +51,12 @@ export function SizeInput({
   readOnly?: boolean;
   onCommit?: (bytes: number) => void;
 }) {
-  const { t } = useTranslation();
-  const [draft, setDraft] = useState(() => splitSize(value));
-  useEffect(() => setDraft(splitSize(value)), [value]);
+  const { t, i18n } = useTranslation();
+  const [draft, setDraft] = useState(() => splitSize(value, i18n.language));
+  useEffect(() => setDraft(splitSize(value, i18n.language)), [value, i18n.language]);
   const commit = (next: { amount: string; unit: Unit }) => {
     const bytes = joinSize(next.amount, next.unit);
-    if (bytes === null) setDraft(splitSize(value));
+    if (bytes === null) setDraft(splitSize(value, i18n.language));
     else if (bytes !== value) onCommit?.(bytes);
   };
   return (
@@ -111,8 +120,9 @@ export function useStorageLimits() {
 
 /** "Basta per circa 7 mesi": what is left at the pace of the last 30 days. */
 function lasts(left: number, perMonth: number, t: TFunction) {
-  if (perMonth <= 0) return null;
-  const months = left / perMonth;
+  const months = perMonth > 0 ? left / perMonth : Number.POSITIVE_INFINITY;
+  // Past two years a figure says nothing more than "there is room".
+  if (months > 24) return null;
   return months >= 1
     ? t('storageLimits.lastsMonths', { count: Math.round(months) })
     : t('storageLimits.lastsWeeks', { count: Math.max(1, Math.round(months * (30 / 7))) });
@@ -134,8 +144,7 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
   const tone = spaceTone(used, limits.total, limits.warnPercent);
   const left =
     limits.total !== null ? Math.max(0, limits.total - used) : (limits.disk?.free ?? null);
-  const verdict =
-    tone === 'danger' ? null : left === null ? null : lasts(left, limits.growthPerMonth, t);
+  const verdict = left === null ? null : lasts(left, limits.growthPerMonth, t);
   const locked = limits.locked.total || limits.locked.perUser;
   const warnLocked = locked;
   const limitRow = (
@@ -186,9 +195,9 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
         action={
           tone === 'danger' ? (
             <Badge tone="danger">{t('storageSpace.full')}</Badge>
-          ) : verdict ? (
-            <Badge tone={tone === 'warn' ? 'warn' : 'ok'}>{verdict}</Badge>
-          ) : null
+          ) : (
+            <Badge tone={tone === 'warn' ? 'warn' : 'ok'}>{verdict ?? t('storageSpace.room')}</Badge>
+          )
         }
       >
         <p className="space-card__big">
@@ -257,7 +266,7 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
           >
             <span className="settings-value">
               {limits.uploadMaxSize > 0
-                ? formatStorage(limits.uploadMaxSize, i18n.language)
+                ? formatBinarySize(limits.uploadMaxSize, i18n.language)
                 : t('storageLimits.none')}
             </span>
           </Row>

@@ -153,8 +153,19 @@ test('storage limits: own space, refused uploads, limits and members', async ({
     await shoot(page, 'largest-files');
     await files.getByRole('button', { name: 'Fatto' }).click();
 
-    // Administrators: limits in Storage, the space of each person in Members.
+    // Back to 1 MB: a file that fits, and a warning near the limit (once per page).
     await call(adminCookie, 'PATCH', `/instance/members/${me.id}`, { storageLimit: null });
+    await page.goto(`/p/${project.id}?view=canvas`);
+    await page.locator('input[type="file"][multiple]').setInputFiles({
+      name: 'Battute.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.alloc(5 * KB, 66),
+    });
+    const near = page.locator('.toast', { hasText: 'Spazio usato:' });
+    await expect(near).toBeVisible();
+    await shoot(page, 'upload-near', { phone: false });
+
+    // Administrators: limits in Storage, the space of each person in Members.
     expect(
       (await call(adminCookie, 'PATCH', '/instance/storage-limits', { total: 1100 * KB })).ok,
     ).toBe(true);
