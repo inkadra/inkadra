@@ -91,17 +91,17 @@ function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () =>
     return (
       <div className="storage-notice">
         <Toast
-        warning="warn"
-        text={t('storageSpace.nearToast', {
-          percent: Math.round((notice.used / notice.limit) * 100),
-          size: size(Math.max(0, notice.limit - notice.used)),
-        })}
-        showLabel={t('storageSpace.see')}
-        onShow={() => {
-          close();
-          navigate('/settings?section=account');
-        }}
-        onClose={close}
+          warning="warn"
+          text={t('storageSpace.nearToast', {
+            percent: Math.round((notice.used / notice.limit) * 100),
+            size: size(Math.max(0, notice.limit - notice.used)),
+          })}
+          showLabel={t('storageSpace.see')}
+          onShow={() => {
+            close();
+            navigate('/settings?section=account');
+          }}
+          onClose={close}
         />
       </div>
     );
@@ -114,15 +114,15 @@ function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () =>
       {!details && (
         <div className="storage-notice">
           <Toast
-          warning="danger"
-          text={
-            instance
-              ? t('storageSpace.instanceToast')
-              : t('storageSpace.fileToast', { name: single?.name ?? '' })
-          }
-          showLabel={t('storageSpace.details')}
-          onShow={() => setDetails(true)}
-          onClose={close}
+            warning="danger"
+            text={
+              instance
+                ? t('storageSpace.instanceToast')
+                : t('storageSpace.fileToast', { name: single?.name ?? '' })
+            }
+            showLabel={t('storageSpace.details')}
+            onShow={() => setDetails(true)}
+            onClose={close}
           />
         </div>
       )}

@@ -196,7 +196,9 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
           tone === 'danger' ? (
             <Badge tone="danger">{t('storageSpace.full')}</Badge>
           ) : (
-            <Badge tone={tone === 'warn' ? 'warn' : 'ok'}>{verdict ?? t('storageSpace.room')}</Badge>
+            <Badge tone={tone === 'warn' ? 'warn' : 'ok'}>
+              {verdict ?? t('storageSpace.room')}
+            </Badge>
           )
         }
       >
