@@ -195,7 +195,7 @@ test('storage limits: own space, refused uploads, limits and members', async ({
       await expect
         .poll(
           async () => {
-            const res = await call(adminCookie, 'GET', '/notifications?limit=20');
+            const res = await call(adminCookie, 'GET', '/me/notifications?limit=20');
             const { items } = (await res.json()) as {
               items: Array<{ serverAlert?: { kind: string } | null }>;
             };
