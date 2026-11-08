@@ -15,26 +15,83 @@ export const SECTIONS = [
   [
     'Self-hosting',
     [
-      ['Self-hosting', 'docs/self-hosting/README.md', 'Installing', 'From an empty folder to your first sign-in'],
-      ['Configuration', 'docs/self-hosting/configuration.md', 'Configuration', 'Every setting in `.env`'],
-      ['Sign-in', 'docs/self-hosting/sign-in.md', 'Sign-in', 'Google, OIDC, email, invitations, two-factor'],
-      ['Reverse-proxy', 'docs/self-hosting/reverse-proxy.md', 'Reverse proxy', 'Caddy, Traefik, Nginx, Nginx Proxy Manager, Pangolin'],
-      ['Storage', 'docs/self-hosting/storage.md', 'Storage', 'Volumes, data on different disks, S3, bundled RustFS'],
-      ['Upgrades', 'docs/self-hosting/upgrades.md', 'Upgrades', 'Versions, updating, verifying images'],
-      ['Troubleshooting', 'docs/self-hosting/troubleshooting.md', 'Troubleshooting', 'What to check when something does not work'],
-      ['Office-previews', 'docs/self-hosting/office.md', 'Office previews', 'The optional LibreOffice worker'],
+      [
+        'Self-hosting',
+        'docs/self-hosting/README.md',
+        'Installing',
+        'From an empty folder to your first sign-in',
+      ],
+      [
+        'Configuration',
+        'docs/self-hosting/configuration.md',
+        'Configuration',
+        'Every setting in `.env`',
+      ],
+      [
+        'Sign-in',
+        'docs/self-hosting/sign-in.md',
+        'Sign-in',
+        'Google, OIDC, email, invitations, two-factor',
+      ],
+      [
+        'Reverse-proxy',
+        'docs/self-hosting/reverse-proxy.md',
+        'Reverse proxy',
+        'Caddy, Traefik, Nginx, Nginx Proxy Manager, Pangolin',
+      ],
+      [
+        'Storage',
+        'docs/self-hosting/storage.md',
+        'Storage',
+        'Volumes, data on different disks, S3, bundled RustFS',
+      ],
+      [
+        'Upgrades',
+        'docs/self-hosting/upgrades.md',
+        'Upgrades',
+        'Versions, updating, verifying images',
+      ],
+      [
+        'Troubleshooting',
+        'docs/self-hosting/troubleshooting.md',
+        'Troubleshooting',
+        'What to check when something does not work',
+      ],
+      [
+        'Office-previews',
+        'docs/self-hosting/office.md',
+        'Office previews',
+        'The optional LibreOffice worker',
+      ],
     ],
   ],
   [
     'Formats',
     [
-      ['Project-archive', 'docs/formats/project-archive.md', 'Project archive', 'What a project export holds'],
-      ['Instance-backup', 'docs/formats/instance-backup.md', 'Instance backup', 'What a nightly backup holds'],
+      [
+        'Project-archive',
+        'docs/formats/project-archive.md',
+        'Project archive',
+        'What a project export holds',
+      ],
+      [
+        'Instance-backup',
+        'docs/formats/instance-backup.md',
+        'Instance backup',
+        'What a nightly backup holds',
+      ],
     ],
   ],
   [
     'Clipper',
-    [['Clipper-privacy-policy', 'docs/store/clipper-privacy-policy.md', 'Privacy policy', 'What the browser extension saves and sends']],
+    [
+      [
+        'Clipper-privacy-policy',
+        'docs/store/clipper-privacy-policy.md',
+        'Privacy policy',
+        'What the browser extension saves and sends',
+      ],
+    ],
   ],
 ];
 
@@ -73,9 +130,14 @@ export function wikiPage(text, from) {
 const picture = (light, dark, alt, width) =>
   `<picture><source media="(prefers-color-scheme: dark)" srcset="${RAW}/${dark}"><img src="${RAW}/${light}" alt="${alt}"${width ? ` width="${width}"` : ''}></picture>`;
 
-const LOGO = (width) => picture('docs/assets/logo-light.svg', 'docs/assets/logo-dark.svg', 'Inkadra', width);
+const LOGO = (width) =>
+  picture('docs/assets/logo-light.svg', 'docs/assets/logo-dark.svg', 'Inkadra', width);
 const SHOT = (name, alt) =>
-  picture(`docs/screenshots/readme/${name}-light.png`, `docs/screenshots/readme/${name}-dark.png`, alt);
+  picture(
+    `docs/screenshots/readme/${name}-light.png`,
+    `docs/screenshots/readme/${name}-dark.png`,
+    alt,
+  );
 
 function sidebar() {
   const sections = SECTIONS.map(

@@ -31,5 +31,8 @@ test('a link to a folder opens its README page', () => {
 });
 
 test('a page loses its H1, which the wiki already shows as the title', () => {
-  assert.equal(wikiPage('# Storage\n\nSee [Upgrades](upgrades.md).\n', 'docs/self-hosting/storage.md'), 'See [Upgrades](Upgrades).\n');
+  assert.equal(
+    wikiPage('# Storage\n\nSee [Upgrades](upgrades.md).\n', 'docs/self-hosting/storage.md'),
+    'See [Upgrades](Upgrades).\n',
+  );
 });
