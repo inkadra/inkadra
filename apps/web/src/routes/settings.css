@@ -664,11 +664,8 @@
   border-collapse: collapse;
   font-size: 13px;
 }
-.team-table thead th:first-child {
-  width: 30%;
-}
 .team-table thead th {
-  padding: 9px 12px;
+  padding: 9px 8px;
   border-bottom: 1px solid var(--ink-border-default);
   color: var(--ink-text-secondary);
   font-size: 12px;
@@ -678,7 +675,7 @@
 }
 .team-table tbody th,
 .team-table td {
-  padding: 9px 12px;
+  padding: 9px 8px;
   border-top: 1px solid var(--ink-border-muted);
   font-weight: 400;
   text-align: start;
@@ -715,21 +712,29 @@
   text-align: end;
   white-space: normal;
 }
-.team-col--last {
-  white-space: nowrap;
-}
-.team-table .team-col--space {
-  white-space: nowrap;
-}
-/* Fixed widths for the short columns: the role and the choices keep the rest. */
+/*
+ * Fixed widths for every column but the person, who keeps the rest. The role and the choice
+ * fit their longest label in every language ("Miembro", "Comme l’instance (non)") at 1280px.
+ */
 .team-table thead th:nth-child(2) {
-  width: 116px;
+  width: 120px;
+}
+.team-table thead .team-col--create {
+  width: 216px;
 }
 .team-table thead .team-col--space {
   width: 124px;
 }
+/* "251,66 MB / 1 MB": the limit goes to the next line whole, never split. */
+.team-table .space-mini em {
+  white-space: nowrap;
+}
 .team-table thead .team-col--projects {
-  width: 72px;
+  width: 64px;
+}
+.team-table thead .team-col--last {
+  width: 88px;
+  white-space: normal;
 }
 .team-table thead th:last-child {
   width: 48px;
@@ -931,6 +936,7 @@
   }
   .team-table tbody th,
   .team-table td {
+    padding-inline: 12px;
     border: 0;
   }
   .team-table tbody th {
