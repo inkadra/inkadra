@@ -3,6 +3,7 @@ import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { deleteProject } from './projects.ts';
+import './settings.css';
 import './transfer.css';
 
 /**
@@ -45,7 +46,7 @@ export function DeleteProjectDialog({
         if (busy) e.preventDefault();
       }}
     >
-      <form className="settings__form" onSubmit={submit}>
+      <form className="settings-form" onSubmit={submit}>
         <p>{t('projectDelete.body')}</p>
         <p className="ink-muted">{t('projectDelete.alternatives')}</p>
         <TextField
