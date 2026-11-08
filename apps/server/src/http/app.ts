@@ -45,6 +45,7 @@ import { registerLinkPreviews } from './link-previews.ts';
 import { registerMapPreviews } from './map-previews.ts';
 import { registerMapTiles } from './map-tiles.ts';
 import { registerNotificationRoutes } from './notifications-routes.ts';
+import { containsNul } from './nul.ts';
 import { registerProjectRoutes } from './projects-routes.ts';
 import { registerReviewRoutes } from './reviews-routes.ts';
 import { registerScheduleRoutes } from './schedule-routes.ts';
@@ -128,6 +129,12 @@ export async function createApp(deps: AppDeps) {
     } catch {
       return sendError(reply, 'bad_request', 'Invalid request origin.');
     }
+  });
+
+  // Every route at once, after parsing: text with U+0000 is refused before it reaches PostgreSQL.
+  app.addHook('preValidation', async (req) => {
+    if (containsNul(req.body) || containsNul(req.query) || containsNul(req.params))
+      throw new HttpError('bad_request', 'Text cannot contain the NUL character.');
   });
 
   app.addHook('onSend', async (req, reply) => {
