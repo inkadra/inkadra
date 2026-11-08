@@ -202,6 +202,14 @@ test.beforeAll(async ({ baseURL }) => {
     opts,
   );
   addFrame(doc, s13.id, null, { shot: 'ms', cast: ['Luca'], shapes: sketch(0.5) }, opts);
+  // A later draft left it out (decision 0082): no sheet, and Mara's continuity skips it.
+  const s13a = addScene(
+    doc,
+    { number: '13A', title: 'Stairs', setting: 'int', time: 'night', location: 'Stairs' },
+    opts,
+  );
+  updateElement(doc, s13a.id, { omitted: true });
+  addFrame(doc, s13a.id, null, { shot: 'ms', cast: ['Mara'], shapes: sketch(0.3) }, opts);
   const s14 = addScene(
     doc,
     { number: '14A', title: 'Rooftop', setting: 'ext', time: 'night', location: 'Rooftop' },
@@ -523,4 +531,40 @@ for (const theme of ['dark', 'light'] as const)
       .scrollIntoViewIfNeeded();
     await settle(page);
     await page.screenshot({ path: join(out, `dialog-phone-${theme}.png`) });
+  });
+
+for (const [theme, phone] of [
+  ['dark', false],
+  ['light', false],
+  ['dark', true],
+  ['light', true],
+] as const)
+  test(`omitted scenes are left out unless asked for (${theme}, ${phone ? 'phone' : 'desktop'})`, async ({
+    page,
+    baseURL,
+  }) => {
+    mkdirSync(out, { recursive: true });
+    await open(page, baseURL as string, theme, phone);
+    await page.getByRole('button', { name: 'Export PDF' }).first().click();
+    const dialog = page.getByRole('dialog', { name: /Export/ });
+    const customise = dialog.getByRole('button', { name: /Customise/ });
+    if ((await customise.getAttribute('aria-expanded')) === 'false') await customise.click();
+    await dialog.getByRole('combobox', { name: 'Content' }).click();
+    await page.getByRole('option', { name: 'Scene sheets' }).click();
+    const leaveOut = dialog.getByRole('checkbox', { name: 'Leave out omitted scenes' });
+    await expect(leaveOut).toBeChecked();
+    // The summary counts the sheets' pages: scene 13A takes one more.
+    const summary = dialog.locator('.export__summary');
+    await expect(summary).toHaveText(/^[1-9]\d* scene sheets/);
+    const pages = Number.parseInt((await summary.textContent()) ?? '', 10);
+    await leaveOut.uncheck();
+    await expect(summary).toHaveText(new RegExp(`^${pages + 1} scene sheets`));
+    await leaveOut.check();
+    await expect(summary).toHaveText(new RegExp(`^${pages} scene sheets`));
+    await expect(dialog.locator('.export__paper')).toHaveAttribute('data-status', 'ready');
+    await dialog.getByRole('combobox', { name: /^Scenes/ }).scrollIntoViewIfNeeded();
+    await settle(page);
+    await page.screenshot({
+      path: join(out, `omitted-${phone ? 'phone' : 'desktop'}-${theme}.png`),
+    });
   });

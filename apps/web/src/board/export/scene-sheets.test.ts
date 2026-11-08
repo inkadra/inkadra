@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import type { CardContext } from './board-render.ts';
 import { finish, type Words } from './compose.ts';
 import type { Op, Page } from './pages.ts';
-import { chosenScenes, type Department, selectedSceneIds } from './scene-choice.ts';
+import { chosenScenes, type Department, selectedSceneIds, withoutOmitted } from './scene-choice.ts';
 import { type SceneSheet, type SheetWords, sceneSheetPages, sceneSheets } from './scene-sheets.ts';
 
 const base = { x: 0, y: 0, w: 240, z: 'a0', createdBy: null, createdAt: 0 };
@@ -130,10 +130,10 @@ const text = {
     `${name}: ${previous || '-'} / ${next || '-'}`,
 };
 
-function build(scenes: string[], withDays = true): SceneSheet[] {
+function build(scenes: string[], withDays = true, storyboard = groups): SceneSheet[] {
   return sceneSheets({
     scenes: scenes.map((id) => byId.get(id) as Extract<Element, { type: 'scene' }>),
-    groups,
+    groups: storyboard,
     elements,
     days: withDays ? days : [],
     byId,
@@ -186,6 +186,18 @@ describe('what a sheet holds', () => {
 
   it('merges the items to bring, from typed lists only', () => {
     expect(sheet?.needed).toEqual(['Towel ×2']);
+  });
+
+  it('skips omitted scenes, left out of the export, in the continuity', () => {
+    const draft = elements.map((el) => (el.id === 's12' ? { ...el, omitted: true } : el));
+    const kept = withoutOmitted(storyboardOf(draft as Element[]));
+    expect(chosenScenes(kept, 'all', new Set(), days, byId).map((s) => s.number)).toEqual([
+      '11',
+      '13',
+      '14A',
+    ]);
+    const [first] = build(['s11'], false, kept);
+    expect(first?.characters[0]?.continuity).toBe('Mara: - / 14A');
   });
 
   it('has no schedule without shooting days, as for clients', () => {

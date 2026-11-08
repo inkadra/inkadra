@@ -3347,6 +3347,7 @@
       "scenes": "Cenas",
       "scenesAll": "Todas as cenas",
       "scenesSelection": "Cenas selecionadas",
+      "leaveOutOmitted": "Excluir as cenas omitidas",
       "scenesDay_one": "Dia {{n}} · {{date}} · {{count}} cena",
       "scenesDay_other": "Dia {{n}} · {{date}} · {{count}} cenas",
       "scenesDayShort_one": "Dia {{n}} · {{date}} · {{count}}",

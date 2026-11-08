@@ -86,7 +86,7 @@ import {
 } from './planning.ts';
 import { renderImages } from './render-canvas.ts';
 import { renderPdf } from './render-pdf.ts';
-import { chosenScenes, type Department, type SceneChoice } from './scene-choice.ts';
+import { chosenScenes, type Department, type SceneChoice, withoutOmitted } from './scene-choice.ts';
 import { sceneSheetPages, sceneSheets } from './scene-sheets.ts';
 import { logoUrl, teamPdf } from './settings.ts';
 import { missingGlyphs } from './text.ts';
@@ -127,6 +127,8 @@ export interface ExportRequest {
   department?: Department | undefined;
   /** Scene sheets: which scenes; left out, all of them. */
   scenes?: SceneChoice | undefined;
+  /** Scene sheets: no sheet and no continuity line for omitted scenes; left out, true. */
+  leaveOutOmitted?: boolean | undefined;
 }
 
 export interface ExportEnv {
@@ -421,8 +423,10 @@ export async function buildPages(
       content = [boardPage(asImage ? 'fit' : setup, items, region ?? empty, ctx)];
     }
   } else if (kind === 'scenesheets') {
-    // The storyboard as this export may show it: scenes and frames left out for clients go.
-    const groups = groupsAll.flatMap((group) => {
+    // The storyboard as this export may show it: scenes and frames left out for clients go, and
+    // the scenes the script left out unless asked for (decision 0082).
+    const kept = req.leaveOutOmitted === false ? groupsAll : withoutOmitted(groupsAll);
+    const groups = kept.flatMap((group) => {
       const scene = group.scene ? exportable(group.scene, lookup, filter) : null;
       if (group.scene && scene?.type !== 'scene') return [];
       const frames = group.frames.flatMap((raw) => {

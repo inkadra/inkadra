@@ -27,6 +27,11 @@ export function selectedSceneIds(
   return ids;
 }
 
+/** The storyboard without the scenes a later draft left out (decision 0082), nor their frames. */
+export function withoutOmitted(groups: readonly SceneGroup[]): SceneGroup[] {
+  return groups.filter((g) => !g.scene?.omitted);
+}
+
 /**
  * The scenes an export prints: all of them and a selection in storyboard order, a shooting day
  * in the order it shoots them. `groups` holds only the scenes the export may show.

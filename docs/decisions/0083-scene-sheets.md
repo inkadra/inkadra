@@ -42,3 +42,6 @@ board shows its name, from the cast of the frames, but not its actor or costume,
 export reads only the open board's document. The script revision of a scene and the choice to
 leave out omitted scenes depend on the script revisions work and are added with it. The department
 and the scenes are not remembered with the project's export preferences.
+
+**Omitted scenes** (decision 0082): when the board has some, the dialog shows _Leave out omitted
+scenes_ under Scenes, on by default; on, they get no sheet and no continuity line names them.
