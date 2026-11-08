@@ -274,8 +274,9 @@
   padding: 10px 0 0;
   font-size: 13px;
 }
-.server-problem {
-  align-items: flex-start !important;
+/* Above `.settings-list li`, which centres its rows. */
+.settings-list li.server-problem {
+  align-items: flex-start;
 }
 .server-problem__icon {
   display: grid;
@@ -515,9 +516,10 @@
 .server-table .server-table__n {
   text-align: end;
 }
-.server-table__fail {
+/* Above `.server-table td`, which sets the normal weight. */
+.server-table td.server-table__fail {
   color: var(--ink-status-warn);
-  font-weight: 600 !important;
+  font-weight: 600;
 }
 .server-dot {
   display: inline-block;
