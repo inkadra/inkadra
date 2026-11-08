@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -7,10 +8,12 @@ import { instanceSetting, notification, user } from './db/schema.ts';
 import {
   availableRelease,
   checkForUpdates,
+  parseNotes,
   parseReleases,
   readUpdates,
   updateSource,
   updatesView,
+  withNotes,
 } from './updates.ts';
 
 const body = [
@@ -28,7 +31,7 @@ const body = [
   '---',
   '',
   "## What's Changed",
-  '* Ignored when there are highlights by @someone in https://github.com/inkadra/inkadra/pull/1',
+  '* Never shown by @someone in https://github.com/inkadra/inkadra/pull/1',
 ].join('\n');
 
 const github = [
@@ -38,11 +41,78 @@ const github = [
     body: "## What's Changed\n* feat(web): Fix uploads by @a in https://github.com/x/pull/2\n* build(deps): Bump vite by @dependabot[bot] in https://x",
   },
   { tag_name: 'v1.1.0-rc.1', prerelease: true, published_at: '2026-11-05T10:00:00Z', body },
-  { tag_name: 'v1.1.0', published_at: 'not a date', body, html_url: 'https://evil.example' },
+  {
+    tag_name: 'v1.1.0',
+    published_at: 'not a date',
+    body,
+    html_url: 'https://evil.example',
+    assets: [
+      { name: 'release-notes.it.md', browser_download_url: 'https://evil.example/it.md' },
+      { name: 'release-notes.en.md' },
+      { name: 'release-notes.xx.md' },
+      { name: 'release-notes.it.md.exe' },
+      { name: 'inkadra.tar.gz' },
+    ],
+  },
   { tag_name: 'v2.0.0', draft: true, body },
   { tag_name: 'nightly', body },
   'garbage',
 ];
+
+const notesFile = (name: string) =>
+  readFileSync(new URL(`../../../docs/releases/${name}`, import.meta.url), 'utf8');
+
+describe('release notes', () => {
+  it('read the hand-written notes in every language they are written in', () => {
+    for (const lang of ['it', 'en']) {
+      const notes = parseNotes(notesFile(`0.9.0.${lang}.md`));
+      expect(notes.highlights).toHaveLength(5);
+      expect(notes.beforeUpdating).toHaveLength(4);
+      expect(JSON.stringify(notes)).not.toMatch(/\*\*|`|\]\(|https?:/);
+    }
+    const italian = parseNotes(notesFile('0.9.0.it.md'));
+    // "Altre novità" is not "Novità".
+    expect(italian.highlights[0]).toMatch(/^Inkadra su telefono/);
+    expect(italian.beforeUpdating[0]).toMatch(/^Segnalazioni/);
+    // 0.8.0 has nothing to read before upgrading.
+    expect(parseNotes(notesFile('0.8.0.it.md')).beforeUpdating).toEqual([]);
+  });
+
+  it('are fetched once per language for the newest releases, as plain text', async () => {
+    const fetch = vi.spyOn(updateSource, 'fetchNotes').mockImplementation(async (version, lang) => {
+      if (lang === 'en') throw new Error('offline');
+      return `## Novità\n- [${version}](https://evil.example) <img src=x onerror=alert(1)>**ok**\n## Prima di aggiornare\n- <script>alert(1)</script>Backup`;
+    });
+    const [latest, rc] = await withNotes(parseReleases(github), []);
+    expect(fetch.mock.calls).toEqual([
+      ['1.1.0', 'it'],
+      ['1.1.0', 'en'],
+    ]);
+    // A failed language is left out, to be asked again next time.
+    expect(latest?.notes).toEqual({
+      it: { highlights: ['1.1.0 ok'], beforeUpdating: ['Backup'] },
+    });
+    expect(latest && 'noteLangs' in latest).toBe(false);
+    expect(rc?.notes).toBeUndefined();
+    fetch.mockClear();
+    const again = await withNotes(parseReleases(github), [latest!]);
+    expect(fetch.mock.calls).toEqual([['1.1.0', 'en']]);
+    expect(again[0]?.notes?.it).toEqual(latest?.notes?.it);
+    fetch.mockRestore();
+  });
+
+  it('are read for the ten newest releases only', async () => {
+    const fetch = vi.spyOn(updateSource, 'fetchNotes').mockResolvedValue('## Highlights\n- x');
+    const many = Array.from({ length: 12 }, (_, i) => ({
+      tag_name: `v1.${i}.0`,
+      assets: [{ name: 'release-notes.en.md' }],
+    }));
+    const releases = await withNotes(parseReleases(many), []);
+    expect(fetch).toHaveBeenCalledTimes(10);
+    expect(releases.at(-1)?.notes).toBeUndefined();
+    fetch.mockRestore();
+  });
+});
 
 describe('releases from GitHub (#515)', () => {
   it('keep plain text only, newest first, with links built from the version', () => {
@@ -56,11 +126,15 @@ describe('releases from GitHub (#515)', () => {
       url: 'https://github.com/inkadra/inkadra/releases/tag/v1.1.0',
       highlights: ['Phones: Inkadra in the browser', 'Crew confirm from their phone'],
       beforeUpdating: ['Reports: set FEEDBACK_RELAY_URL= first.'],
+      // Only the assets named for a language the server speaks.
+      noteLangs: ['it', 'en'],
     });
     expect(rc?.prerelease).toBe(true);
     expect(rc?.publishedAt).toBe('2026-11-05T10:00:00.000Z');
-    // Older notes have no highlights: the merged pull requests, without bumps and authors.
-    expect(old?.highlights).toEqual(['Fix uploads']);
+    expect(rc?.noteLangs).toEqual([]);
+    // Notes without highlights show none: pull request titles are never news.
+    expect(old?.highlights).toEqual([]);
+    expect(JSON.stringify(releases)).not.toMatch(/Fix uploads|Never shown|Bump/);
     expect(parseReleases({ message: 'rate limited' })).toEqual([]);
     const long = parseReleases([
       { tag_name: 'v3.0.0', body: `## Highlights\n- ${'word '.repeat(80)}` },

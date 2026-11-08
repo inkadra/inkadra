@@ -3,13 +3,15 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { VERSION } from './config.ts';
 import type { Database } from './db/client.ts';
 import { instanceSetting, notification, user } from './db/schema.ts';
+import { LANGUAGES } from './mail-texts.ts';
 import { newerRelease, plainLine, semver } from './release-news.ts';
 import { safeFetch } from './safe-fetch.ts';
 
 /**
  * Update check (#515, decision 0080): the server reads the releases of Inkadra from GitHub every
  * 6 hours, sending nothing about the instance, and keeps the answer in `instance_setting`.
- * Release notes come from outside: only plain text lines leave this module.
+ * Release notes come from outside: only plain text lines leave this module. The hand-written
+ * notes of each language are the `release-notes.<lang>.md` assets of the release.
  */
 
 // UPDATE_CHECK_URL is for the end-to-end tests only, which must not reach GitHub.
@@ -33,6 +35,9 @@ type Stored = z.infer<typeof Stored>;
 
 type Channel = 'stable' | 'preview';
 
+/** The newest releases whose hand-written notes are read: the page shows no older ones. */
+const NOTES_RELEASES = 10;
+
 /** Overridable in tests, which never reach GitHub. */
 export const updateSource = {
   async fetchReleases(): Promise<unknown> {
@@ -43,9 +48,31 @@ export const updateSource = {
     });
     return JSON.parse(res.body.toString('utf8'));
   },
+  /** A `release-notes.<lang>.md` asset; the address is built here, never taken from the answer. */
+  async fetchNotes(version: string, lang: string): Promise<string> {
+    const res = await safeFetch(
+      `https://github.com/inkadra/inkadra/releases/download/v${version}/release-notes.${lang}.md`,
+      {
+        maxBytes: 256 * 1024,
+        accept: ['application/octet-stream', 'text/'],
+        timeoutMs: 10_000,
+      },
+    );
+    // Downloads redirect to GitHub's storage; nothing else is read.
+    const host = new URL(res.url).hostname;
+    if (host !== 'github.com' && !host.endsWith('.githubusercontent.com'))
+      throw new Error(`Release notes redirected to ${host}`);
+    return res.body.toString('utf8');
+  },
 };
 
-/** The lines under the first `##` heading matching `heading`, as plain text. */
+/** Section headings of the notes in the languages they are written in. */
+const HIGHLIGHTS =
+  /^#{2,6}\s+(?:highlights|what'?s new|novità|novedades|neuigkeiten|nouveautés|novidades)\s*$/i;
+const BEFORE_UPDATING =
+  /^#{2,6}\s.*(?:before (?:upgrading|updating)|prima di aggiornare|antes de (?:actualizar|atualizar)|vor dem (?:update|aktualisieren)|avant (?:de mettre à jour|la mise à jour))/i;
+
+/** The lines under the first heading matching `heading`, as plain text. */
 function section(lines: string[], heading: RegExp, limit: number): string[] {
   const start = lines.findIndex((l) => /^#{2,6}\s/.test(l) && heading.test(l));
   if (start < 0) return [];
@@ -53,21 +80,33 @@ function section(lines: string[], heading: RegExp, limit: number): string[] {
   const end = rest.findIndex((l) => /^#{1,6}\s/.test(l) || /^-{3,}\s*$/.test(l));
   return (end >= 0 ? rest.slice(0, end) : rest)
     .filter((l) => /^\s*(?:[-*+] |\d+[.)] )/.test(l))
-    .map((l) =>
-      plainLine(l, 4000)
-        .replace(/\s+by @[\w-]+(?:\[bot\])?\s+in\s*$/i, '')
-        // Conventional commit prefixes ("feat(web): ") say nothing to the people reading.
-        .replace(/^[a-z]+(?:\([\w-]+\))?!?:\s+/, ''),
-    )
-    .filter((l) => l && !/\bbump\b/i.test(l))
+    .map((l) => plainLine(l, 4000))
+    .filter(Boolean)
     .map((l) => (l.length > 280 ? `${l.slice(0, 279).trimEnd()}…` : l))
     .slice(0, limit);
 }
 
-/** The releases of a GitHub answer, newest first, reduced to plain text. */
-export function parseReleases(json: unknown): InstanceRelease[] {
+/** The news of release notes in Markdown, reduced to plain text. */
+export function parseNotes(markdown: string): { highlights: string[]; beforeUpdating: string[] } {
+  const lines = markdown
+    .slice(0, 64_000)
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .split(/\r?\n/);
+  return {
+    highlights: section(lines, HIGHLIGHTS, 5),
+    beforeUpdating: section(lines, BEFORE_UPDATING, 10),
+  };
+}
+
+type Parsed = InstanceRelease & { noteLangs: string[] };
+
+/**
+ * The releases of a GitHub answer, newest first, reduced to plain text. Pull request titles
+ * ("What's Changed") are never used: they are written for developers.
+ */
+export function parseReleases(json: unknown): Parsed[] {
   if (!Array.isArray(json)) return [];
-  const out: InstanceRelease[] = [];
+  const out: Parsed[] = [];
   for (const raw of json.slice(0, 100)) {
     if (!raw || typeof raw !== 'object') continue;
     const r = raw as Record<string, unknown>;
@@ -76,23 +115,55 @@ export function parseReleases(json: unknown): InstanceRelease[] {
     const parts = semver.exec(version);
     if (!parts || version.length > 64 || version.includes('+')) continue;
     const published = typeof r.published_at === 'string' ? new Date(r.published_at) : null;
-    const lines = (typeof r.body === 'string' ? r.body : '')
-      .slice(0, 64_000)
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-      .split(/\r?\n/);
-    const news = section(lines, /highlights|novità|what'?s new/i, 5);
+    const noteLangs = (Array.isArray(r.assets) ? r.assets : [])
+      .map((a) => /^release-notes\.([a-z]{2})\.md$/.exec(String(a?.name ?? ''))?.[1])
+      .filter((l): l is string => !!l && LANGUAGES.includes(l));
     out.push({
       version,
       publishedAt: published && !Number.isNaN(published.getTime()) ? published.toISOString() : null,
       prerelease: !!parts[4],
       // Built from the version, never taken from the answer.
       url: `https://github.com/inkadra/inkadra/releases/tag/v${version}`,
-      highlights: news.length ? news : section(lines, /what'?s changed/i, 5),
-      beforeUpdating: section(lines, /before (?:upgrading|updating)|prima di aggiornare/i, 10),
+      ...parseNotes(typeof r.body === 'string' ? r.body : ''),
+      noteLangs: [...new Set(noteLangs)],
     });
   }
   return out.sort((a, b) =>
     newerRelease(a.version, b.version) ? -1 : newerRelease(b.version, a.version) ? 1 : 0,
+  );
+}
+
+/**
+ * The hand-written notes of the newest releases, in every language the server speaks that has
+ * an asset. A missing or failed language is left out and asked again at the next check.
+ * shortcut: notes already cached for a version are not read again, so an asset replaced after
+ * the release shows only after the cache is cleared; compare the asset's `updated_at` if that
+ * ever matters.
+ */
+export async function withNotes(
+  releases: Parsed[],
+  cached: InstanceRelease[],
+): Promise<InstanceRelease[]> {
+  return Promise.all(
+    releases.map(async ({ noteLangs, ...release }, i) => {
+      const known = cached.find((c) => c.version === release.version)?.notes ?? {};
+      const notes: NonNullable<InstanceRelease['notes']> = {};
+      await Promise.all(
+        (i < NOTES_RELEASES ? noteLangs : []).map(async (lang) => {
+          const cachedNotes = known[lang];
+          if (cachedNotes) {
+            notes[lang] = cachedNotes;
+            return;
+          }
+          try {
+            notes[lang] = parseNotes(await updateSource.fetchNotes(release.version, lang));
+          } catch {
+            // Asked again at the next check.
+          }
+        }),
+      );
+      return Object.keys(notes).length ? { ...release, notes } : release;
+    }),
   );
 }
 
@@ -150,7 +221,10 @@ export function checkForUpdates(db: Database, maxAge = CHECK_EVERY_MS): Promise<
         if (fresh(stored, maxAge)) return;
         let releases: InstanceRelease[] | null = null;
         try {
-          releases = parseReleases(await updateSource.fetchReleases());
+          releases = await withNotes(
+            parseReleases(await updateSource.fetchReleases()),
+            stored.releases,
+          );
         } catch {
           releases = null;
         }

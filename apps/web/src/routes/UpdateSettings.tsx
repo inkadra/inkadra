@@ -4,7 +4,7 @@ import { useId } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { formatDateTime } from '../lib/datetime.ts';
-import { checkUpdatesNow, loadUpdates, useUpdates } from '../lib/updates.ts';
+import { checkUpdatesNow, loadUpdates, releaseNews, useUpdates } from '../lib/updates.ts';
 import { useInstanceSettings } from './InstanceSettings.tsx';
 import { Badge, Card, Row } from './settings-ui.tsx';
 import './update-settings.css';
@@ -17,7 +17,7 @@ const day = (value: string | null, month: 'long' | 'short' = 'long') =>
 
 /** Settings → Updates (#515, decision 0080): the running version, a new one, the history. */
 export function UpdateSettings() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data, error, checking } = useUpdates();
   const { settings, error: settingsError, save } = useInstanceSettings();
   const channelId = useId();
@@ -135,7 +135,7 @@ export function UpdateSettings() {
                   {r.version}
                 </a>
                 <span className="updates-history__summary">
-                  {r.highlights[0] ?? t('updates.noSummary')}
+                  {releaseNews(r, i18n.language).highlights[0] ?? t('updates.noSummary')}
                 </span>
                 {r.version === data.current && <Badge tone="ok">{t('updates.inUse')}</Badge>}
                 {r.publishedAt && (
@@ -154,8 +154,9 @@ export function UpdateSettings() {
 
 /** The release to update to: its news in plain words, the technical part folded away. */
 function NewVersion({ release, current }: { release: InstanceRelease; current: string }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const date = day(release.publishedAt);
+  const news = releaseNews(release, i18n.language);
   return (
     <div className="updates-new">
       <div className="updates-new__head">
@@ -176,9 +177,9 @@ function NewVersion({ release, current }: { release: InstanceRelease; current: s
           </p>
         </div>
       </div>
-      {release.highlights.length > 0 && (
+      {news.highlights.length > 0 && (
         <ul className="updates-news">
-          {release.highlights.map((line) => (
+          {news.highlights.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
@@ -194,18 +195,18 @@ function NewVersion({ release, current }: { release: InstanceRelease; current: s
         </a>
       </div>
       <div className="settings-rows updates-steps">
-        {release.beforeUpdating.length > 0 && (
+        {news.beforeUpdating.length > 0 && (
           <details>
             <summary className="settings-row">
               <span className="settings-row__text">
                 <span className="settings-row__label updates-steps__warn">
-                  {t('updates.beforeUpdating', { count: release.beforeUpdating.length })}
+                  {t('updates.beforeUpdating', { count: news.beforeUpdating.length })}
                 </span>
               </span>
               <Icon name="chevronRight" size={14} />
             </summary>
             <ul className="updates-news updates-steps__body">
-              {release.beforeUpdating.map((line) => (
+              {news.beforeUpdating.map((line) => (
                 <li key={line}>{line}</li>
               ))}
             </ul>

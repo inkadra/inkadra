@@ -66,6 +66,8 @@ export function rowWhen(at: Date, now: Date, texts: Texts, timeZone?: string): s
 }
 
 const TEXTS: Record<string, Texts> = { it, en, es, de, fr, pt };
+/** The languages the server speaks, as two-letter codes. */
+export const LANGUAGES = Object.keys(TEXTS);
 
 export function mailText(who: { locale?: string | null }): Texts {
   return TEXTS[who.locale?.slice(0, 2).toLowerCase() ?? ''] ?? en;

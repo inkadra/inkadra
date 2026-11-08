@@ -1461,7 +1461,7 @@
               "maxLength": 280
             },
             "maxItems": 5,
-            "description": "The main news, plain text: release notes come from outside and are never sent as Markdown or HTML."
+            "description": "The main news of the release body (its Highlights section), plain text: release notes come from outside and are never sent as Markdown or HTML. Empty when the body has none; pull request titles are never used."
           },
           "beforeUpdating": {
             "type": "array",
@@ -1471,6 +1471,35 @@
             },
             "maxItems": 10,
             "description": "The \"Read before upgrading\" section of the notes, plain text."
+          },
+          "notes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "highlights": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 280
+                  },
+                  "maxItems": 5
+                },
+                "beforeUpdating": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 280
+                  },
+                  "maxItems": 10
+                }
+              },
+              "required": [
+                "highlights",
+                "beforeUpdating"
+              ]
+            },
+            "description": "The hand-written notes of the release by language (`it`, `en`…), plain text, from its `release-notes.<lang>.md` assets. Clients pick the reader's language, then `en`, then `highlights` and `beforeUpdating`, which come from the release body."
           }
         },
         "required": [
