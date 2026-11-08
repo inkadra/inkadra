@@ -1373,6 +1373,19 @@ html[data-view-direction]::view-transition-new(board-view) {
   font-size: 11px;
   color: var(--ink-text-muted);
 }
+/* The move menu and the review badges; the badges wrap below it when the card is too narrow. */
+.kanban__card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.kanban__card-actions .card-review {
+  position: static;
+  max-width: 100%;
+}
 
 .kanban__cast {
   display: flex;

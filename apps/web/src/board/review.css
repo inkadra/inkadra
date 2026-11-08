@@ -51,29 +51,35 @@
 /* On the cards: small badges inside the top-right corner, so card heights never change
    and cards with `overflow: hidden` (image, link, colour, frame, file) never clip them. */
 .card-review {
+  --card-review-right: 6px;
   position: absolute;
   top: 6px;
-  right: 6px;
+  right: var(--card-review-right);
   z-index: 3;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 4px;
+  /* Never wider than what holds it (a 112 px shot list cell, a narrow frame): the status
+     word shortens and the count wraps below instead of spilling over the left edge. */
+  max-width: calc(100% - var(--card-review-right) - 6px);
 }
 /* Cards that are locked also show the lock badge there; move left so both stay visible. */
 .card-review--shifted {
-  right: 32px;
+  --card-review-right: 32px;
 }
 .card > .guest-visibility ~ .card-review {
-  right: 28px;
+  --card-review-right: 28px;
 }
 .card > .guest-visibility ~ .card-review--shifted {
-  right: 50px;
+  --card-review-right: 50px;
 }
 /* Columns and scenes carry their title, count and fold button across the top: the badges
    hang over the edge there (these cards never clip) instead of covering the header. */
 .card[data-type="column"] > .card-review,
 .card[data-type="scene"] > .card-review {
+  --card-review-right: 8px;
   top: -10px;
-  right: 8px;
 }
 .card-review__button {
   display: inline-flex;
@@ -94,6 +100,10 @@
 }
 .card-review__button:hover {
   color: var(--ink-text-primary);
+}
+.card-review__button,
+.card-review__button .review-chip {
+  min-width: 0;
 }
 .card-review__button .review-chip {
   border: 0;

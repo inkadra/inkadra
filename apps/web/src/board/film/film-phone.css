@@ -240,6 +240,7 @@
 }
 .shot-card__marks .card-review {
   position: static;
+  max-width: none;
 }
 .shot-cards__add {
   padding-top: 8px;
