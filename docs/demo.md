@@ -40,7 +40,8 @@ server that does not set it. On, the server:
   `DEMO_STORAGE` as its storage limit ([decision 0081](decisions/0081-storage-limits.md));
 - takes only JPEG, PNG, WebP, GIF, PDF and plain text files, and checks their bytes: pictures by
   their signature, a PDF by its header at the very start, text as valid UTF-8 without control
-  characters; only pictures open in the page, any other file is a download;
+  characters; only pictures open in the page, with the video and sound of the sample project
+  (a sandbox cannot upload them), any other file is a download;
 - caps each board at 500 cards and 2 MB, checked as it changes, and live messages at 1 MB: a
   board past a cap turns read-only, is not saved and is not copied into a version; a sandbox
   makes at most 30 boards;

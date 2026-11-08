@@ -38,8 +38,9 @@ A security audit of the demo listed the risks; this records what was done about 
 - **Files.** JPEG, PNG, WebP, GIF, PDF and plain text only, by type and extension when the
   upload starts and by their bytes when it ends: a picture's signature, a PDF's header at the
   very start, text whole as UTF-8 without control characters. In the demo only pictures open
-  in the page; every other file, PDF included, is a download, always with a sandboxing policy
-  and `nosniff`.
+  in the page, and the video and sound of the sample project, which a sandbox cannot upload
+  (Safari plays nothing sent as a download); every other file, PDF included, is a download,
+  always with a sandboxing policy and `nosniff`.
 - **Boards.** In the demo a board past 500 cards or 2 MB becomes read-only, is not saved and is
   not copied into a version or a restore backup; its size is checked as clients change it, not
   only when it is stored. A live message is 1 MB at most and a sandbox makes at most 30 boards,

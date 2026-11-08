@@ -318,11 +318,13 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
     fileHeaders(reply, etag);
     if (req.headers['if-none-match'] === `"${etag}"`) return reply.status(304).send();
 
-    // The demo serves strangers' files: only pictures open in the page (decision 0084).
+    // The demo serves strangers' files: only pictures open in the page (decision 0084). Video
+    // and sound too, since a sandbox cannot upload them: they come only from the sample project,
+    // and Safari plays nothing sent as a download.
     const inline =
       !download &&
       INLINE.test(row.mime) &&
-      (!deps.config?.DEMO_MODE || row.mime.startsWith('image/'));
+      (!deps.config?.DEMO_MODE || /^(image|video|audio)\//.test(row.mime));
     reply.header('content-type', inline ? row.mime : 'application/octet-stream');
     reply.header(
       'content-disposition',

@@ -746,7 +746,7 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     expect(res.headers.get('x-content-type-options')).toBe('nosniff');
   });
 
-  it('opens only pictures in the page: a PDF is a download', async () => {
+  it('opens pictures, video and sound in the page: a PDF is a download', async () => {
     const store = async (mime: string, filename: string, body: Buffer) => {
       const id = randomUUID();
       await deps.storage.write(originalKey(id), body, mime);
@@ -771,6 +771,15 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     expect((await store('image/png', 'frame.png', png)).get('content-disposition')).toMatch(
       /^inline/,
     );
+    // Only the sample project brings them: a sandbox cannot upload video or sound.
+    for (const [mime, name] of [
+      ['video/mp4', 'take.mp4'],
+      ['audio/wav', 'note.wav'],
+    ] as const) {
+      const media = await store(mime, name, Buffer.from('media'));
+      expect(media.get('content-type')).toBe(mime);
+      expect(media.get('content-disposition')).toMatch(/^inline/);
+    }
   });
 
   it('exports a sandbox once', async () => {
