@@ -216,16 +216,21 @@ function Tiles({ status }: { status: ServerStatus }) {
             {store.total !== null && <small> / {formatStorage(store.total, lang)}</small>}
           </>
         }
-        sub={[
-          t('server.advanced.storageSplit', {
-            originals: formatStorage(store.originals, lang),
-            copies: formatStorage(store.copies, lang),
-            previews: formatStorage(store.previews, lang),
-          }),
-          diskCompresses(store) ? t('server.meters.storage.compressed') : null,
-        ]
-          .filter(Boolean)
-          .join(' ')}
+        sub={
+          <>
+            {t('server.advanced.storageSplit', {
+              originals: formatStorage(store.originals, lang),
+              copies: formatStorage(store.copies, lang),
+              previews: formatStorage(store.previews, lang),
+            })}
+            {diskCompresses(store) && (
+              <>
+                <br />
+                {t('server.meters.storage.compressed')}
+              </>
+            )}
+          </>
+        }
       >
         {store.total !== null && (
           <span className="server-bar" aria-hidden="true">

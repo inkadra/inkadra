@@ -225,15 +225,20 @@ function Meters({ status }: { status: ServerStatus }) {
             </>
           }
           bar={store.used / store.total}
-          hint={[
-            t('server.meters.storage.split', {
-              originals: formatStorage(store.originals, lang),
-              derived: formatStorage(store.copies + store.previews, lang),
-            }),
-            diskCompresses(store) ? t('server.meters.storage.compressed') : null,
-          ]
-            .filter(Boolean)
-            .join(' ')}
+          hint={
+            <>
+              {t('server.meters.storage.split', {
+                originals: formatStorage(store.originals, lang),
+                derived: formatStorage(store.copies + store.previews, lang),
+              })}
+              {diskCompresses(store) && (
+                <>
+                  <br />
+                  {t('server.meters.storage.compressed')}
+                </>
+              )}
+            </>
+          }
         />
       ) : (
         <Meter
