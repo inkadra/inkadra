@@ -74,7 +74,7 @@ SHOTS_BASE_URL=http://localhost:3100 pnpm --filter @inkadra/e2e exec tsx scripts
 
 `deploy/compose.demo.yaml` runs the demo with no port open on the machine: `cloudflared`
 connects out to Cloudflare and brings visitors to Inkadra over the stack's network. It is sized
-for a small VM (2 ARM cores, 12 GB of RAM): every container has CPU, memory and process limits,
+for a small machine: every container has CPU, memory and process limits,
 runs as an unprivileged user without capabilities and with a read-only file system, Valkey has a
 password (given as configuration on standard input, never on a command line), and PostgreSQL and
 Valkey sit on a network that reaches nothing outside. `cloudflared` is pinned to a release

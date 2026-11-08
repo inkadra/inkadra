@@ -1,5 +1,5 @@
 # The public demo (decision 0084, docs/demo.md): "Try the demo" sandboxes that go after an hour,
-# hardened for a small VM (2 ARM cores, 12 GB of RAM) behind a Cloudflare Tunnel. No port is
+# hardened for a small machine behind a Cloudflare Tunnel. No port is
 # published: cloudflared reaches Inkadra on the stack's network. Use together with compose.yaml:
 #   docker compose -f compose.yaml -f deploy/compose.demo.yaml up -d
 # Set in .env, besides PUBLIC_URL, AUTH_SECRET and POSTGRES_PASSWORD:
