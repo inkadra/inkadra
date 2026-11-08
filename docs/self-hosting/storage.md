@@ -164,3 +164,13 @@ Switching `STORAGE_DRIVER` does not move the files already uploaded, so pick the
 you start real work. A command that moves files between drivers is planned for 1.0; meanwhile
 exporting projects and importing them on an instance with the other driver moves them one by
 one.
+
+## Space limits
+
+Off by default. In **Settings → Storage** an administrator can set the space of the whole
+instance, a default space for each person and, from **Members**, a limit of one's own for a
+person. They count originals and the copies and previews Inkadra makes of them; past a limit only
+new files are refused, nothing is deleted. To fix them for an instance you host for someone
+else, set `STORAGE_LIMIT` and `STORAGE_LIMIT_PER_USER` (see [Configuration](configuration.md)):
+the fields are then read-only in Settings. See
+[decision 0081](../decisions/0081-storage-limits.md).

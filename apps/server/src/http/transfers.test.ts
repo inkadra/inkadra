@@ -222,7 +222,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
         size: video.length,
         storageKey: 'pending',
         status: 'ready',
-        createdBy: people.owner?.id,
+        createdBy: null,
       })
       .returning();
     videoId = footage!.id;
@@ -523,6 +523,8 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     const videoB = importedFiles.find((f) => f.filename === 'last-train.mp4');
     expect(videoB?.id).toBeTruthy();
     expect(videoB?.id).not.toBe(videoId);
+    // Files without an author in the archive count for the importer too (decision 0081).
+    expect(importedFiles.every((f) => f.createdBy === importer.id)).toBe(true);
     expect(elements.get('image-00001')?.get('source')).toEqual({
       kind: 'uploaded-video',
       assetId: videoB?.id,

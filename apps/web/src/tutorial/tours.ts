@@ -166,6 +166,8 @@ export const TOURS: Tour[] = [
       { anchor: 'storyboard-scene', media: 'scenes', side: 'bottom' },
       { anchor: 'storyboard-frame', media: 'meta', side: 'right' },
       { anchor: 'storyboard-draw', media: 'draw', side: 'right' },
+      // A new draft of the script updates the scenes, never the frames (decision 0082).
+      { anchor: 'storyboard-import', media: 'scenes', side: 'bottom' },
     ],
   },
   {
@@ -369,6 +371,19 @@ export const TOURS: Tour[] = [
       { anchor: 'updates', media: 'versions', side: 'bottom' },
       { anchor: 'updates-alerts', media: 'bell', side: 'top' },
       { anchor: 'updates-history', media: 'versions', side: 'top' },
+    ],
+  },
+  {
+    id: 'storage',
+    group: 'admin',
+    icon: 'archive',
+    admin: true,
+    offer: 'storage-limits',
+    href: '/settings?section=workspace',
+    steps: [
+      { anchor: 'storage-used', media: 'gear', side: 'bottom' },
+      { anchor: 'storage-limits', media: 'gear', side: 'top' },
+      { anchor: null, media: 'users' },
     ],
   },
   {

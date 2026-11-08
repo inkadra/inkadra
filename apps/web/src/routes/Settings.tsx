@@ -50,6 +50,7 @@ import { ClassificationSettings } from './ClassificationSettings.tsx';
 import { InstanceSettings } from './InstanceSettings.tsx';
 import { SettingsHome } from './SettingsHome.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
+import { MySpaceCard } from './StorageSpace.tsx';
 import { trackSave } from './settings-save.ts';
 import { isSettingsHome, settingsSection } from './settings-sections.ts';
 import { AutosaveText, Badge, Card, Row, Segmented, useIsPhone } from './settings-ui.tsx';
@@ -379,6 +380,7 @@ function Account() {
   const hasPassword = accounts?.some((a) => a.providerId === 'credential') ?? false;
   return (
     <SettingsShell>
+      <MySpaceCard />
       <Profile />
       <SignInMethods accounts={accounts} hasPassword={hasPassword} onChange={loadAccounts} />
       <Sessions />

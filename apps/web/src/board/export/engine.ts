@@ -521,6 +521,8 @@ export async function buildPages(
   } else {
     const shots: Shot[] = [];
     for (const group of groupsAll) {
+      // Scenes the script left out stay out of exports (decision 0082).
+      if (group.scene?.omitted) continue;
       const scene = group.scene
         ? (exportable(group.scene, lookup, filter) as typeof group.scene)
         : null;

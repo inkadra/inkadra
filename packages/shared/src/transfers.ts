@@ -26,6 +26,8 @@ export const TRANSFER_FAILURES = [
   'too_new',
   /** Reading or writing files failed. */
   'storage',
+  /** The files do not fit in the importer's space or the instance's (decision 0081). */
+  'storage_full',
   /** The requester lost access to the project, or it was deleted, while the export ran. */
   'gone',
   /** The worker stopped (restart, crash) and the transfer made no progress for 15 minutes. */

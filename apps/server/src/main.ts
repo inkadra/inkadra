@@ -333,6 +333,10 @@ function transferDeps(config: Config) {
     dataDir: config.DATA_DIR,
     uploadMaxSize: config.UPLOAD_MAX_SIZE,
     importMaxSize: config.IMPORT_MAX_SIZE,
+    storageEnv: {
+      STORAGE_LIMIT: config.STORAGE_LIMIT,
+      STORAGE_LIMIT_PER_USER: config.STORAGE_LIMIT_PER_USER,
+    },
     migrationsFolder,
     bucket: config.STORAGE_DRIVER === 's3',
     databaseUrl: config.DATABASE_URL,

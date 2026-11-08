@@ -1252,7 +1252,20 @@
       },
       "collapse": "Recolher a cena",
       "expand": "Expandir a cena",
-      "addTitle": "Adicionar um título"
+      "addTitle": "Adicionar um título",
+      "omitted": "Omitida",
+      "showOmitted": "Mostrar cenas omitidas",
+      "hideOmitted": "Ocultar cenas omitidas",
+      "menu": "Menu da cena {{number}}",
+      "omittedHeading": "Cena {{number}}, omitida",
+      "notInScript": "Não está no guião",
+      "restore": "Restaurar cena",
+      "restoreHint": "De volta à lista de planos e ao plano de rodagem",
+      "deleteAll": "Eliminar cena e fotogramas",
+      "deleteAllHint": "Antes guarda-se uma versão",
+      "deleteVersion": "Antes de eliminar a cena {{number}}",
+      "deleteFailed": "Não foi possível guardar a versão, por isso a cena não foi eliminada.",
+      "omittedToggle": "Omitidas"
     },
     "frame": {
       "add": "Novo frame",
@@ -2025,7 +2038,9 @@
       "server_alert_backup_failed": "A cópia de segurança falhou",
       "server_alert_repeated_errors": "O mesmo erro repetiu-se {{times}} vezes na última hora",
       "server_alert_unknown": "Algo não está bem no servidor",
-      "update_available": "Uma nova versão do Inkadra está disponível"
+      "update_available": "Uma nova versão do Inkadra está disponível",
+      "server_alert_storage_limit": "Espaço da instância: {{percent}}% usado ({{used}} de {{limit}})",
+      "server_alert_storage_request": "pede mais espaço"
     },
     "emailTitle": "Notificações por e-mail",
     "emailHint": "Menções, respostas e revisões também por e-mail, quando o servidor puder enviar.",
@@ -2537,6 +2552,15 @@
     "pinned": "Fixado",
     "saveError": "Não foi possível salvar a alteração. Tente novamente."
   },
+  "projectDelete": {
+    "menu": "Excluir projeto…",
+    "title": "Excluir “{{name}}”?",
+    "body": "Todos os quadros, recursos e arquivos deste projeto são excluídos para todos os membros. Não é possível desfazer.",
+    "alternatives": "Para tirá-lo do caminho, arquive-o. Para guardar uma cópia, exporte-o antes.",
+    "confirmLabel": "Digite o nome do projeto para confirmar",
+    "confirm": "Excluir definitivamente",
+    "error": "Não foi possível excluir o projeto. Tente novamente."
+  },
   "groups": {
     "new": "Novo grupo",
     "rename": "Renomear",
@@ -2760,11 +2784,11 @@
     "search": "Buscar configurações",
     "noResults": "Nenhuma configuração encontrada",
     "keywords": {
-      "account": "Nome, E-mail, Foto do perfil, Senha, Verificação em duas etapas (2FA), Códigos de recuperação, Métodos de acesso, Sessões, Dispositivos, Apps e tokens, Excluir conta",
+      "account": "Nome, E-mail, Foto do perfil, Senha, Verificação em duas etapas (2FA), Códigos de recuperação, Métodos de acesso, Sessões, Dispositivos, Apps e tokens, Excluir conta, O seu espaço, Ficheiros maiores",
       "preferences": "Tema, Tema escuro, Tema claro, Idioma, Continuar reproduzindo vídeos fora da tela, Formato de data, Formato de hora, Grade de pontos, Alinhar à grade, Clique duplo cria uma nota, Manter o quadro em volta do conteúdo, Botões Desfazer e Refazer",
       "notifications": "Notificações por e-mail, Menções, Respostas, Revisões, Resumo diário, Caixa de entrada, Comentários nos seus cards",
-      "members": "Convidar membros, Convites, Link de convite, Função, Administradores, Desativar conta, Reativar conta, Pessoas",
-      "workspace": "Espaço usado, Arquivos enviados, Armazenamento",
+      "members": "Convidar membros, Convites, Link de convite, Função, Administradores, Desativar conta, Reativar conta, Pessoas, Espaço, Limite de espaço",
+      "workspace": "Espaço usado, Arquivos enviados, Armazenamento, Limites de espaço, Espaço por pessoa, Avisar aos",
       "classifications": "Tipos de projeto, Tags, Catálogos, Tipo de plano, Ângulo, Movimento",
       "providers": "Google, OIDC, Single sign-on (SSO), Link de acesso por e-mail, E-mail e senha, SMTP, Envio de e-mail",
       "registration": "Novas contas, Cadastro aberto, Somente por convite, Cadastro fechado, Exigir verificação em duas etapas dos administradores",
@@ -3068,7 +3092,8 @@
       "gone": "Você não pode mais editar este projeto, ou ele foi excluído.",
       "interrupted": "O servidor parou durante o trabalho. Tente novamente.",
       "cancelled": "Cancelado.",
-      "internal": "Algo deu errado. Tente novamente."
+      "internal": "Algo deu errado. Tente novamente.",
+      "storage_full": "Os ficheiros do arquivo não cabem no espaço restante. Liberte espaço ou peça a um administrador."
     },
     "importArchive": "Importar um arquivo…"
   },
@@ -3411,9 +3436,10 @@
     "maxFrames": "Máximo por cena",
     "cast": "Adicionar ao elenco dos frames os personagens que falam",
     "castHint": "Caso contrário, eles são listados na sinopse da cena.",
-    "target": "Onde",
-    "targetAppend": "Este storyboard",
-    "targetNew": "Um novo",
+    "target": "Para",
+    "targetAppend": "Adicionar ao storyboard",
+    "targetRevise": "Atualizar a partir da revisão",
+    "targetNew": "Novo storyboard",
     "summary": "Cria {{scenes}} e {{frames}}.",
     "truncated": "O roteiro é longo: em uma importação só cabem {{scenes}} e {{frames}}.",
     "submit": "Importar",
@@ -3437,7 +3463,67 @@
     "detected": "Parece um roteiro",
     "build": "Criar storyboard…",
     "buildFromFile": "Criar storyboard a partir deste roteiro…",
-    "noTextDetail": "Parece uma digitalização: o Inkadra não lê texto em imagens. Exporte o PDF de novo pelo programa de roteiro ou use um arquivo Fountain ou Final Draft."
+    "noTextDetail": "Parece uma digitalização: o Inkadra não lê texto em imagens. Exporte o PDF de novo pelo programa de roteiro ou use um arquivo Fountain ou Final Draft.",
+    "revision": {
+      "hint": "Associa a nova versão às cenas de “{{title}}”. Fotogramas, desenhos e dados de rodagem ficam como estão.",
+      "hintShort": "Fotogramas, desenhos e dados de rodagem ficam como estão.",
+      "show": "Mostrar",
+      "list": "Cenas desta versão",
+      "filters": {
+        "changes": "Alterações",
+        "changed": "Alteradas",
+        "new": "Novas",
+        "omitted": "Omitidas",
+        "all": "Todas"
+      },
+      "badges": {
+        "changed": "Alterada",
+        "new": "Nova",
+        "omitted": "Omitida",
+        "check": "Verificar",
+        "same": "Iguais"
+      },
+      "notIn": "Não está em {{draft}}",
+      "markedOmitted": "mantida e marcada como omitida",
+      "keptAsIs": "mantida como está",
+      "after": "Depois da {{number}}",
+      "atStart": "No início",
+      "bothChanged": "Mudaram o cabeçalho e o número",
+      "restored": "de volta nesta versão",
+      "wasScene": "era a cena {{number}}",
+      "was": "era {{value}}",
+      "locationWas": "o local era “{{location}}”",
+      "titleWas": "o título era “{{title}}”",
+      "synopsis": "sinopse reescrita",
+      "sameAs": "Mesma cena que",
+      "asNew": "Uma cena nova",
+      "nothing": "Nada a mostrar para esta versão.",
+      "unchanged_one": "{{count}} cena sem alterações, {{frames}}",
+      "unchanged_other": "{{count}} cenas sem alterações, {{frames}}",
+      "framesKept_one": "{{count}} fotograma mantido",
+      "framesKept_other": "{{count}} fotogramas mantidos",
+      "newFrames_one": "{{count}} fotograma novo",
+      "newFrames_other": "{{count}} fotogramas novos",
+      "frames": "Fotogramas para cenas novas",
+      "framesAction": "Por ação",
+      "details": "Atualizar dados das cenas",
+      "detailsHint": "Número, cabeçalho, local, momento e sinopse das cenas alteradas.",
+      "omit": "Marcar cenas omitidas",
+      "omitHint": "Ficam com os seus fotogramas, esbatidas, e saem da lista de planos e do plano de rodagem.",
+      "version": "Guardar antes uma versão",
+      "versionHint": "“{{name}}”, para voltar atrás num passo.",
+      "versionName": "Antes de {{draft}}",
+      "updated_one": "{{count}} cena atualizada",
+      "updated_other": "{{count}} cenas atualizadas",
+      "added_one": "{{count}} adicionada",
+      "added_other": "{{count}} adicionadas",
+      "omitted_one": "{{count}} marcada como omitida",
+      "omitted_other": "{{count}} marcadas como omitidas",
+      "summary": "<b>{{updated}}, {{added}}</b> com {{frames}}, <b>{{omitted}}</b>. {{kept}} sem alterações.",
+      "summaryPhone": "<b>{{updated}}, {{added}}, {{omitted}}.</b> Antes guarda-se uma versão.",
+      "submit": "Atualizar storyboard",
+      "done": "Storyboard atualizado: {{updated}}, {{added}}, {{omitted}}."
+    }
   },
   "frameGrab": {
     "grab": "Capturar fotograma",
@@ -4148,6 +4234,10 @@
           "2": {
             "title": "Desenhe no fotograma",
             "text": "Duplo clique num fotograma para esboçar em ecrã inteiro."
+          },
+          "3": {
+            "title": "Uma nova versão do guião",
+            "text": "Importe-a de novo e escolha Atualizar a partir da revisão: as cenas atualizam-se, os fotogramas ficam como estão."
           }
         }
       },
@@ -4462,6 +4552,23 @@
           "2": {
             "title": "Versões anteriores",
             "text": "O que mudou em cada versão."
+          }
+        }
+      },
+      "storage": {
+        "name": "Limites de espaço",
+        "steps": {
+          "0": {
+            "title": "O espaço usado",
+            "text": "Originais, cópias e pré-visualizações, e quanto tempo dura."
+          },
+          "1": {
+            "title": "Os limites",
+            "text": "Para a instância e por pessoa. Desligados até os ativar."
+          },
+          "2": {
+            "title": "Uma pessoa de cada vez",
+            "text": "Em Membros, no menu ⋯, um limite diferente para quem precisar."
           }
         }
       }
@@ -4881,5 +4988,80 @@
     "skip": "Pular esta versão",
     "github": "GitHub ↗",
     "seeNews": "Ver as novidades"
+  },
+  "storageSpace": {
+    "title": "O seu espaço",
+    "of": "{{used}} de {{limit}}",
+    "unlimited": "Sem limite",
+    "unlimitedShort": "sem limite",
+    "full": "Cheio",
+    "left": "Restam {{size}}",
+    "room": "Há espaço",
+    "used": "usados",
+    "ofLimit": "de {{limit}}",
+    "detail": "Originais {{originals}} · cópias e pré-visualizações {{derived}}. Conta o que você carregou, em todos os projetos.",
+    "instanceFull": "O servidor esgotou o espaço: ninguém pode carregar mais ficheiros. Avise um administrador.",
+    "fullHelp": "Não pode carregar mais ficheiros. Liberte espaço ou peça a um administrador.",
+    "largest": "Ver os ficheiros maiores",
+    "largestTitle": "Os seus ficheiros maiores",
+    "noFiles": "Nenhum ficheiro carregado.",
+    "file": "Ficheiro",
+    "hidden_one": "1 ficheiro num projeto que não pode abrir: {{size}}.",
+    "hidden_other": "{{count}} ficheiros em projetos que não pode abrir: {{size}}.",
+    "filesHelp": "Os ficheiros retirados das boards também contam: ficam no projeto, porque uma versão pode recuperá-los. O espaço volta quando o projeto é eliminado.",
+    "column": "Espaço",
+    "own": "{{size}} · próprio",
+    "actionsFor": "Ações para {{name}}",
+    "changeLimit": "Alterar o limite de espaço…",
+    "seeFiles": "Ver os ficheiros",
+    "filesOf": "Ficheiros de {{name}}",
+    "spaceOf": "Espaço de {{name}}",
+    "uses": "Usa {{size}}.",
+    "asEveryone": "Como todos ({{size}})",
+    "ownLimit": "Limite próprio",
+    "ceiling": "O gestor do servidor fixou {{size}} por pessoa: só pode baixá-lo.",
+    "lowerHelp": "Abaixo do que já usa, nada é apagado: apenas deixa de carregar ficheiros.",
+    "save": "Guardar",
+    "nearToast": "Usou {{percent}}% do seu espaço: restam {{size}}.",
+    "see": "Ver",
+    "instanceToast": "O servidor esgotou o espaço. Avise um administrador.",
+    "fileToast": "«{{name}}» não foi carregado: excede o espaço que lhe resta.",
+    "details": "Detalhes",
+    "blockedTitle": "Não há espaço suficiente",
+    "leftOf": "Restam-lhe {{size}} de {{limit}}.",
+    "instanceLeft": "Restam {{size}} ao servidor.",
+    "uploadedOf_one": "Carregámos {{done}} de {{total}} ficheiros; este não cabe:",
+    "uploadedOf_other": "Carregámos {{done}} de {{total}} ficheiros; estes {{count}} não cabem:",
+    "blockedHelp": "Liberte espaço ou peça a um administrador que aumente o seu limite. Notas, comentários e alterações continuam a funcionar.",
+    "instanceHelp": "Avise um administrador. Notas, comentários e alterações continuam a funcionar.",
+    "ask": "Pedir mais espaço",
+    "asked": "Os administradores foram avisados.",
+    "alreadyAsked": "Os administradores já foram avisados hoje.",
+    "close": "Fechar"
+  },
+  "storageLimits": {
+    "usedTitle": "Espaço usado",
+    "ofLimit": "de um limite de {{limit}}",
+    "disk": "disco {{size}}",
+    "usedDetail": "Originais {{originals}} · cópias e pré-visualizações {{derived}}. O limite não pode exceder o espaço livre no disco: se o disco encher, o Servidor avisa.",
+    "lastsMonths_one": "Chega para cerca de 1 mês",
+    "lastsMonths_other": "Chega para cerca de {{count}} meses",
+    "lastsWeeks_one": "Chega para cerca de 1 semana",
+    "lastsWeeks_other": "Chega para cerca de {{count}} semanas",
+    "title": "Limites de espaço",
+    "locked": "Definidos pelo gestor do servidor",
+    "lockedHelp": "Estes limites fazem parte do seu plano e são alterados pelo gestor do servidor",
+    "total": "Espaço total da instância",
+    "totalHelp": "Acima disto ninguém carrega mais ficheiros. Nada é apagado.",
+    "perUser": "Espaço por pessoa",
+    "perUserHelp": "O limite de quem não tem um próprio. Altere-o para uma pessoa em Membros.",
+    "none": "Sem limite",
+    "limit": "Limite",
+    "unit": "Unidade de {{label}}",
+    "largestFile": "Ficheiro maior",
+    "fromServer": "Do servidor:",
+    "warn": "Avisar aos",
+    "warnHelp": "As pessoas veem um aviso; os administradores recebem-no na Inbox.",
+    "openMembers": "Abrir em Membros"
   }
 }

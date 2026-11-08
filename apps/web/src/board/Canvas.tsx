@@ -1222,8 +1222,8 @@ export function Canvas({
             rememberScript(el.id);
             settled();
           },
-          onFailed: (assetId) => {
-            if (!assetId)
+          onFailed: (assetId, refused) => {
+            if (!assetId && !refused)
               setToast({
                 text: t('board.errors.upload', { name: file.name }),
                 undo: false,

@@ -1252,7 +1252,20 @@
       },
       "collapse": "Collapse the scene",
       "expand": "Expand the scene",
-      "addTitle": "Add a title"
+      "addTitle": "Add a title",
+      "omitted": "Omitted",
+      "showOmitted": "Show omitted scenes",
+      "hideOmitted": "Hide omitted scenes",
+      "menu": "Scene {{number}} menu",
+      "omittedHeading": "Scene {{number}}, omitted",
+      "notInScript": "Not in the script",
+      "restore": "Restore scene",
+      "restoreHint": "Back in the shot list and schedule",
+      "deleteAll": "Delete scene and frames",
+      "deleteAllHint": "A version is saved first",
+      "deleteVersion": "Before deleting scene {{number}}",
+      "deleteFailed": "The version could not be saved, so the scene was not deleted.",
+      "omittedToggle": "Omitted"
     },
     "frame": {
       "add": "New frame",
@@ -2025,7 +2038,9 @@
       "server_alert_backup_failed": "The backup failed",
       "server_alert_repeated_errors": "The same error happened {{times}} times in the last hour",
       "server_alert_unknown": "Something is wrong with the server",
-      "update_available": "A new version of Inkadra is available"
+      "update_available": "A new version of Inkadra is available",
+      "server_alert_storage_limit": "Instance space: {{percent}}% used ({{used}} of {{limit}})",
+      "server_alert_storage_request": "asks for more space"
     },
     "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
@@ -2537,6 +2552,15 @@
     "pinned": "Pinned",
     "saveError": "The change could not be saved. Try again."
   },
+  "projectDelete": {
+    "menu": "Delete project…",
+    "title": "Delete “{{name}}”?",
+    "body": "All boards, assets and files of this project are deleted for every member. This cannot be undone.",
+    "alternatives": "To put it out of the way, archive it instead. To keep a copy, export it first.",
+    "confirmLabel": "Type the project name to confirm",
+    "confirm": "Delete for good",
+    "error": "The project could not be deleted. Try again."
+  },
   "groups": {
     "new": "New group",
     "rename": "Rename",
@@ -2760,11 +2784,11 @@
     "search": "Search settings",
     "noResults": "No settings found",
     "keywords": {
-      "account": "Name, Email, Profile photo, Password, Two-step verification (2FA), Backup codes, Sign-in methods, Sessions, Devices, Apps and tokens, Delete account",
+      "account": "Name, Email, Profile photo, Password, Two-step verification (2FA), Backup codes, Sign-in methods, Sessions, Devices, Apps and tokens, Delete account, Your space, Largest files",
       "preferences": "Theme, Dark theme, Light theme, Language, Continue playing videos off-screen, Date format, Time format, Dot grid, Snap to grid, Double-click creates a note, Keep the board around its content, Undo and redo buttons",
       "notifications": "Email notifications, Mentions, Replies, Reviews, Daily digest, Inbox, Comments on your cards",
-      "members": "Invite members, Invitations, Invitation link, Role, Administrators, Deactivate account, Reactivate account, People",
-      "workspace": "Space used, Uploaded files, Storage",
+      "members": "Invite members, Invitations, Invitation link, Role, Administrators, Deactivate account, Reactivate account, People, Space, Space limit",
+      "workspace": "Space used, Uploaded files, Storage, Space limits, Space per person, Warn at",
       "classifications": "Project types, Tags, Catalogs, Shot size, Angle, Movement",
       "providers": "Google, OIDC, Single sign-on (SSO), Email sign-in link, Email and password, SMTP, Outgoing email",
       "registration": "New accounts, Open registration, Invitation only, Closed registration, Require two-step verification for administrators",
@@ -3068,7 +3092,8 @@
       "gone": "You can no longer edit this project, or it was deleted.",
       "interrupted": "The server stopped while working on it. Try again.",
       "cancelled": "Cancelled.",
-      "internal": "Something went wrong. Try again."
+      "internal": "Something went wrong. Try again.",
+      "storage_full": "The files of the archive do not fit in the space left. Free some space or ask an administrator."
     },
     "importArchive": "Import archive…"
   },
@@ -3411,9 +3436,10 @@
     "maxFrames": "At most per scene",
     "cast": "Add the characters who speak to the frames’ cast",
     "castHint": "Otherwise they are listed in the scene synopsis.",
-    "target": "Where",
-    "targetAppend": "This storyboard",
-    "targetNew": "A new one",
+    "target": "Into",
+    "targetAppend": "Add to storyboard",
+    "targetRevise": "Update from revision",
+    "targetNew": "New storyboard",
     "summary": "Creates {{scenes}} and {{frames}}.",
     "truncated": "The screenplay is long: only the first {{scenes}} and {{frames}} fit in one import.",
     "submit": "Import",
@@ -3437,7 +3463,67 @@
     "detected": "This looks like a screenplay",
     "build": "Build storyboard…",
     "buildFromFile": "Build storyboard from this script…",
-    "noTextDetail": "It looks like a scan: Inkadra cannot read text from images. Export the PDF again from your writing app, or use Fountain or Final Draft."
+    "noTextDetail": "It looks like a scan: Inkadra cannot read text from images. Export the PDF again from your writing app, or use Fountain or Final Draft.",
+    "revision": {
+      "hint": "Matches the new draft to the scenes of “{{title}}”. Frames, drawings and shot data stay as they are.",
+      "hintShort": "Frames, drawings and shot data stay as they are.",
+      "show": "Show",
+      "list": "Scenes in this draft",
+      "filters": {
+        "changes": "Changes",
+        "changed": "Changed",
+        "new": "New",
+        "omitted": "Omitted",
+        "all": "All"
+      },
+      "badges": {
+        "changed": "Changed",
+        "new": "New",
+        "omitted": "Omitted",
+        "check": "Check match",
+        "same": "Same"
+      },
+      "notIn": "Not in {{draft}}",
+      "markedOmitted": "kept and marked omitted",
+      "keptAsIs": "kept as it is",
+      "after": "After {{number}}",
+      "atStart": "At the start",
+      "bothChanged": "Heading and number both changed",
+      "restored": "back in this draft",
+      "wasScene": "was scene {{number}}",
+      "was": "was {{value}}",
+      "locationWas": "location was “{{location}}”",
+      "titleWas": "title was “{{title}}”",
+      "synopsis": "synopsis rewritten",
+      "sameAs": "Same scene as",
+      "asNew": "A new scene",
+      "nothing": "Nothing to show for this draft.",
+      "unchanged_one": "{{count}} unchanged scene, {{frames}}",
+      "unchanged_other": "{{count}} unchanged scenes, {{frames}}",
+      "framesKept_one": "{{count}} frame kept",
+      "framesKept_other": "{{count}} frames kept",
+      "newFrames_one": "{{count}} new frame",
+      "newFrames_other": "{{count}} new frames",
+      "frames": "Frames for new scenes",
+      "framesAction": "Per action",
+      "details": "Update scene details",
+      "detailsHint": "Number, heading, location, time and synopsis of changed scenes.",
+      "omit": "Mark omitted scenes",
+      "omitHint": "They stay with their frames, dimmed, and leave the shot list and schedule.",
+      "version": "Save a version first",
+      "versionHint": "“{{name}}”, to go back in one step.",
+      "versionName": "Before {{draft}}",
+      "updated_one": "{{count}} scene updated",
+      "updated_other": "{{count}} scenes updated",
+      "added_one": "{{count}} added",
+      "added_other": "{{count}} added",
+      "omitted_one": "{{count}} marked omitted",
+      "omitted_other": "{{count}} marked omitted",
+      "summary": "<b>{{updated}}, {{added}}</b> with {{frames}}, <b>{{omitted}}</b>. {{kept}} unchanged.",
+      "summaryPhone": "<b>{{updated}}, {{added}}, {{omitted}}.</b> A version is saved first.",
+      "submit": "Update storyboard",
+      "done": "Storyboard updated: {{updated}}, {{added}}, {{omitted}}."
+    }
   },
   "frameGrab": {
     "grab": "Grab frame",
@@ -4148,6 +4234,10 @@
           "2": {
             "title": "Draw on the frame",
             "text": "Double-click a frame to sketch full screen."
+          },
+          "3": {
+            "title": "A new draft of the script",
+            "text": "Import it again and choose Update from revision: scenes are updated, frames stay as they are."
           }
         }
       },
@@ -4462,6 +4552,23 @@
           "2": {
             "title": "Earlier versions",
             "text": "What changed in each version."
+          }
+        }
+      },
+      "storage": {
+        "name": "Space limits",
+        "steps": {
+          "0": {
+            "title": "The space used",
+            "text": "Originals, copies and previews, and how long it lasts."
+          },
+          "1": {
+            "title": "The limits",
+            "text": "For the instance and per person. Off until you turn them on."
+          },
+          "2": {
+            "title": "One person at a time",
+            "text": "In Members, from the ⋯ menu, a different limit for whoever needs it."
           }
         }
       }
@@ -4881,5 +4988,80 @@
     "skip": "Skip this version",
     "github": "GitHub ↗",
     "seeNews": "See what’s new"
+  },
+  "storageSpace": {
+    "title": "Your space",
+    "of": "{{used}} of {{limit}}",
+    "unlimited": "No limit",
+    "unlimitedShort": "no limit",
+    "full": "Full",
+    "left": "{{size}} left",
+    "room": "Room to spare",
+    "used": "used",
+    "ofLimit": "of {{limit}}",
+    "detail": "Originals {{originals}} · copies and previews {{derived}}. It counts what you uploaded, in every project.",
+    "instanceFull": "The server has used up its space: nobody can upload more files. Tell an administrator.",
+    "fullHelp": "You cannot upload more files. Free some space or ask an administrator.",
+    "largest": "See the largest files",
+    "largestTitle": "Your largest files",
+    "noFiles": "No files uploaded.",
+    "file": "File",
+    "hidden_one": "1 file in a project you cannot open: {{size}}.",
+    "hidden_other": "{{count}} files in projects you cannot open: {{size}}.",
+    "filesHelp": "Files removed from boards count too: they stay in the project, because a version can bring them back. The space comes back when the project is deleted.",
+    "column": "Space",
+    "own": "{{size}} · own",
+    "actionsFor": "Actions for {{name}}",
+    "changeLimit": "Change the space limit…",
+    "seeFiles": "See their files",
+    "filesOf": "Files of {{name}}",
+    "spaceOf": "Space of {{name}}",
+    "uses": "Uses {{size}}.",
+    "asEveryone": "Like everyone ({{size}})",
+    "ownLimit": "Own limit",
+    "ceiling": "The server operator set {{size}} per person: you can only lower it.",
+    "lowerHelp": "Below what they already use, nothing is deleted: they just stop uploading.",
+    "save": "Save",
+    "nearToast": "You have used {{percent}}% of your space: {{size}} left.",
+    "see": "See",
+    "instanceToast": "The server has used up its space. Tell an administrator.",
+    "fileToast": "“{{name}}” was not uploaded: it is larger than the space you have left.",
+    "details": "Details",
+    "blockedTitle": "Not enough space",
+    "leftOf": "You have {{size}} left of {{limit}}.",
+    "instanceLeft": "The server has {{size}} left.",
+    "uploadedOf_one": "We uploaded {{done}} of {{total}} files; this one does not fit:",
+    "uploadedOf_other": "We uploaded {{done}} of {{total}} files; these {{count}} do not fit:",
+    "blockedHelp": "Free some space or ask an administrator to raise your limit. Notes, comments and edits keep working.",
+    "instanceHelp": "Tell an administrator. Notes, comments and edits keep working.",
+    "ask": "Ask for more space",
+    "asked": "The administrators have been told.",
+    "alreadyAsked": "The administrators were already told today.",
+    "close": "Close"
+  },
+  "storageLimits": {
+    "usedTitle": "Space used",
+    "ofLimit": "of a {{limit}} limit",
+    "disk": "disk {{size}}",
+    "usedDetail": "Originals {{originals}} · copies and previews {{derived}}. The limit cannot go beyond the free disk space: if the disk fills up, Server says so.",
+    "lastsMonths_one": "Lasts about 1 month",
+    "lastsMonths_other": "Lasts about {{count}} months",
+    "lastsWeeks_one": "Lasts about 1 week",
+    "lastsWeeks_other": "Lasts about {{count}} weeks",
+    "title": "Space limits",
+    "locked": "Set by the server operator",
+    "lockedHelp": "These limits are part of your plan and are changed by the server operator",
+    "total": "Total space of the instance",
+    "totalHelp": "Beyond it nobody uploads more files. Nothing is deleted.",
+    "perUser": "Space per person",
+    "perUserHelp": "The limit of those without their own. Change it for one person in Members.",
+    "none": "No limit",
+    "limit": "Limit",
+    "unit": "Unit of {{label}}",
+    "largestFile": "Largest file",
+    "fromServer": "From the server:",
+    "warn": "Warn at",
+    "warnHelp": "People see a warning, administrators get it in their Inbox.",
+    "openMembers": "Open in Members"
   }
 }

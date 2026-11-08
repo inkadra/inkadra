@@ -282,6 +282,11 @@ export const SceneElement = Base.extend({
   location: z.string().max(200).optional(),
   synopsis: z.string().max(2000).optional(),
   collapsed: z.boolean().optional(),
+  /**
+   * The latest draft of the script left the scene out (decision 0082). It keeps its place and
+   * its frames, and stays out of the shot list, the schedule and exports.
+   */
+  omitted: z.boolean().optional(),
 });
 
 /**

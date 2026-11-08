@@ -75,6 +75,7 @@ export const GUEST_ELEMENT_FIELDS = {
     'location',
     'synopsis',
     'collapsed',
+    'omitted',
   ],
   frame: [
     ...COMMON_GUEST_FIELDS,

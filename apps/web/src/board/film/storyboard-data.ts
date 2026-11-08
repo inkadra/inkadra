@@ -1,4 +1,9 @@
-import { frameLabels, type SceneElement, storyboardOf } from '@inkadra/canvas-core';
+import {
+  frameLabels,
+  type SceneElement,
+  type SceneGroup,
+  storyboardOf,
+} from '@inkadra/canvas-core';
 import { useMemo, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BoardStore } from '../store.ts';
@@ -6,14 +11,23 @@ import type { BoardStore } from '../store.ts';
 // Kept apart from StoryboardView so that cards and the other film views, which only need these,
 // do not load the whole storyboard (its upload panel and the session) with them.
 
-/** Scenes and frames of the board, in order, from the live document. */
-export function useStoryboard(store: BoardStore) {
+/**
+ * Scenes and frames of the board, in order, from the live document. Without `omitted`, scenes
+ * the script left out and their frames are not listed (decision 0082); labels stay the same.
+ */
+export function useStoryboard(store: BoardStore, { omitted = true } = {}) {
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return useMemo(() => {
-    const groups = storyboardOf([...snap.byId.values()]);
+    const all = storyboardOf([...snap.byId.values()]);
+    const groups = omitted ? all : inShotList(all);
     const frames = groups.flatMap((g) => g.frames);
-    return { groups, frames, labels: frameLabels(groups) };
-  }, [snap]);
+    return { groups, frames, labels: frameLabels(all) };
+  }, [snap, omitted]);
+}
+
+/** The scenes the shot list counts: without those the script left out (decision 0082). */
+export function inShotList(groups: readonly SceneGroup[]): SceneGroup[] {
+  return groups.filter((g) => !g.scene?.omitted);
 }
 
 /** What a scene is called in lists: its title, else its location, as imported scenes are. */

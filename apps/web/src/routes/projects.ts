@@ -83,3 +83,11 @@ export async function updateProjectAppearance(
   emit();
   return project;
 }
+
+/** Deletes the project for everyone, then drops it from the cached list. */
+export async function deleteProject(projectId: string): Promise<void> {
+  await api.delete(`/projects/${projectId}`);
+  revision++;
+  if (cache) cache = cache.filter((p) => p.id !== projectId);
+  emit();
+}

@@ -14,6 +14,7 @@ import { type DragEvent, memo, useCallback, useEffect, useId, useRef, useState }
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
 import { duplicateInStore } from '../../commands/board-actions.ts';
+import { api } from '../../lib/api.ts';
 import { useSession } from '../../lib/session.tsx';
 import { CardReview } from '../CardReview.tsx';
 import { ContextMenu, Toast, UploadPanel } from '../chrome.tsx';
@@ -29,7 +30,7 @@ import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import { blurOnEnter, StatusChip, usePresetText } from './fields.tsx';
-import { sceneName, useStoryboard } from './storyboard-data.ts';
+import { inShotList, sceneName, useStoryboard } from './storyboard-data.ts';
 import {
   applyDrop,
   type DropTarget,
@@ -94,7 +95,11 @@ export function StoryboardView({
 }) {
   const { t } = useTranslation();
   const boardAspect = useBoardAspect(store.doc);
-  const { groups, frames, labels } = useStoryboard(store);
+  const { groups: allGroups, frames, labels } = useStoryboard(store);
+  const omittedCount = allGroups.filter((g) => g.scene?.omitted).length;
+  // Scenes the script left out stay in place, dimmed; the bar hides them (decision 0082).
+  const [showOmitted, setShowOmitted] = useState(true);
+  const groups = showOmitted ? allGroups : allGroups.filter((g) => !g.scene?.omitted);
   const [size, setSize] = useState<TileSize>('m');
   const [sceneFilter, setSceneFilter] = useState<string | null>(null);
   // A plan's scene badge links to ?scene=<id>: bring that scene into view, once.
@@ -135,6 +140,19 @@ export function StoryboardView({
   const newScene = () => {
     store.undo.stopCapturing();
     addScene(store.doc, {}, opts);
+  };
+  /** Deletes an omitted scene and its frames, after a named version to go back to. */
+  const deleteScene = async (scene: SceneElement) => {
+    try {
+      await api.post(`/boards/${boardId}/versions`, {
+        name: t('film.scene.deleteVersion', { number: scene.number }).slice(0, 120),
+      });
+    } catch {
+      setToast(t('film.scene.deleteFailed'));
+      return;
+    }
+    store.undo.stopCapturing();
+    deleteElements(store.doc, [scene.id], LOCAL);
   };
   const newFrame = (sceneId: string | null) => {
     store.undo.stopCapturing();
@@ -293,6 +311,21 @@ export function StoryboardView({
           {totalLabel}
         </div>
         <span className="ink-header__spacer" />
+        {omittedCount > 0 && (
+          <Button
+            icon={showOmitted ? 'eye' : 'eyeOff'}
+            className="film-compact-btn"
+            aria-pressed={showOmitted}
+            aria-label={`${t('film.scene.omittedToggle')} (${omittedCount})`}
+            data-ink-tooltip={t(showOmitted ? 'film.scene.hideOmitted' : 'film.scene.showOmitted')}
+            onClick={() => setShowOmitted((v) => !v)}
+          >
+            <span className="film-compact-btn__label">
+              <span className="story__omitted-word">{t('film.scene.omittedToggle')} </span>
+              <span className="story__omitted-n">{omittedCount}</span>
+            </span>
+          </Button>
+        )}
         <ViewOptions>
           {sizeControl}
           {aspectControl}
@@ -326,6 +359,7 @@ export function StoryboardView({
             className="film-compact-btn"
             aria-label={t('screenplay.open')}
             data-ink-tooltip={t('screenplay.open')}
+            data-tour="storyboard-import"
             onClick={onImportScript}
           >
             <span className="film-compact-btn__label">{t('screenplay.openShort')}</span>
@@ -389,6 +423,7 @@ export function StoryboardView({
               store={store}
               readOnly={readOnly}
               onAddFrame={() => newFrame(g.scene?.id ?? null)}
+              onDelete={deleteScene}
             >
               {g.frames.map((f, i) => (
                 <FrameTile
@@ -498,7 +533,8 @@ function SceneList({
 }) {
   const { t } = useTranslation();
   const pickerId = useId();
-  const frames = groups.reduce((n, g) => n + g.frames.length, 0);
+  // Like the shot list, the total leaves out the frames of omitted scenes.
+  const frames = inShotList(groups).reduce((n, g) => n + g.frames.length, 0);
   return (
     <>
       <label className="story__scene-picker" htmlFor={pickerId}>
@@ -546,7 +582,7 @@ function SceneList({
               <li key={key}>
                 <button
                   type="button"
-                  className="story__side-item"
+                  className={`story__side-item${g.scene?.omitted ? ' is-omitted' : ''}`}
                   aria-pressed={filter === key}
                   onClick={() => onFilter(filter === key ? null : key)}
                 >
@@ -561,7 +597,11 @@ function SceneList({
                     )}
                   </span>
                   <span className="story__side-count">{count}</span>
-                  <span className="story__sr">{`, ${progress}`}</span>
+                  <span className="story__sr">
+                    {g.scene?.omitted
+                      ? `, ${t('film.scene.omitted')}, ${progress}`
+                      : `, ${progress}`}
+                  </span>
                   <span className="story__side-bar" aria-hidden="true">
                     <span style={{ width: count ? `${(drawn / count) * 100}%` : 0 }} />
                   </span>
@@ -581,16 +621,21 @@ function SceneSection({
   store,
   readOnly,
   onAddFrame,
+  onDelete,
   children,
 }: {
   group: SceneGroup;
   store: BoardStore;
   readOnly: boolean;
   onAddFrame: () => void;
+  /** Deletes an omitted scene and its frames, saving a version first. */
+  onDelete: (scene: SceneElement) => void;
   children: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const { scene, frames } = group;
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
   const [localCollapsed, setLocalCollapsed] = useState<boolean | null>(null);
   const collapsed = readOnly ? (localCollapsed ?? !!scene?.collapsed) : !!scene?.collapsed;
   if (!scene) {
@@ -608,8 +653,10 @@ function SceneSection({
     !readOnly && updateElement(store.doc, scene.id, patch, LOCAL);
   return (
     <section
-      className="story__scene"
-      aria-label={t('film.scene.heading', { number: scene.number })}
+      className={`story__scene${scene.omitted ? ' is-omitted' : ''}`}
+      aria-label={t(scene.omitted ? 'film.scene.omittedHeading' : 'film.scene.heading', {
+        number: scene.number,
+      })}
       data-story-scene={scene.id}
     >
       <header className="story__scene-head" data-tour="storyboard-scene">
@@ -625,6 +672,7 @@ function SceneSection({
         >
           <Icon name="chevronDown" size={14} />
         </button>
+        {scene.omitted && <span className="story__omitted-badge">{t('film.scene.omitted')}</span>}
         <input
           key={`n${scene.number}`}
           className="card__inline-input story__scene-number"
@@ -693,11 +741,71 @@ function SceneSection({
           }}
           onKeyDown={blurOnEnter}
         />
-        <span className="story__scene-meta">{t('film.total', { count: frames.length })}</span>
+        <span className="story__scene-meta">
+          {scene.omitted && `${t('film.scene.notInScript')} · `}
+          {t('film.total', { count: frames.length })}
+        </span>
         <ScenePlanButton plans={plansOfScene(store.getSnapshot().byId.values(), scene.id)} />
         {/* An editor's pressed toggle already says the scene is hidden. */}
         {(readOnly || !scene.guestHidden) && <GuestVisibility store={store} element={scene} />}
-        {!readOnly && (
+        {!readOnly && scene.omitted && (
+          <>
+            <button
+              ref={menuButton}
+              type="button"
+              className="ink-iconbtn"
+              aria-label={t('film.scene.menu', { number: scene.number })}
+              data-ink-tooltip={t('film.scene.menu', { number: scene.number })}
+              aria-haspopup="menu"
+              aria-expanded={!!menuAt}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                setMenuAt((open) => (open ? null : { x: r.right - 230, y: r.bottom + 4 }));
+              }}
+            >
+              <Icon name="more" size={16} />
+            </button>
+            {menuAt && (
+              <ContextMenu
+                style={{ position: 'fixed', left: Math.max(8, menuAt.x), top: menuAt.y }}
+                anchor={menuButton}
+                label={t('film.scene.menu', { number: scene.number })}
+                onClose={(reason) => {
+                  setMenuAt(null);
+                  if (reason === 'escape') menuButton.current?.focus();
+                }}
+                items={[
+                  {
+                    label: t('film.scene.restore'),
+                    content: (
+                      <span className="story__menu-item">
+                        {t('film.scene.restore')}
+                        <small>{t('film.scene.restoreHint')}</small>
+                      </span>
+                    ),
+                    action: () => {
+                      store.undo.stopCapturing();
+                      set({ omitted: undefined });
+                    },
+                  },
+                  { divider: true },
+                  {
+                    label: t('film.scene.deleteAll'),
+                    danger: true,
+                    content: (
+                      <span className="story__menu-item">
+                        {t('film.scene.deleteAll')}
+                        <small>{t('film.scene.deleteAllHint')}</small>
+                      </span>
+                    ),
+                    action: () => onDelete(scene),
+                  },
+                ]}
+              />
+            )}
+          </>
+        )}
+        {!readOnly && !scene.omitted && (
           <>
             <button
               type="button"

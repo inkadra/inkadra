@@ -35,6 +35,7 @@ import { pickVariant, useAsset } from './assets.ts';
 import { ContextualTools } from './ContextualTools.tsx';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
+import { StorageNotice } from './StorageNotice.tsx';
 import { isMac } from './shortcuts.ts';
 import { BAR_ICONS, type BarTool, barTools, DEFAULT_BAR } from './toolbar-prefs.ts';
 import { cancelUpload, localPreview, retryUpload, useUploads } from './uploads.ts';
@@ -1359,44 +1360,58 @@ export function UnsortedDrawer({
 
 export function UploadPanel() {
   const { t } = useTranslation();
-  const uploads = useUploads();
-  if (uploads.length === 0) return null;
+  const all = useUploads();
+  // Refused for lack of space: told once for the batch by StorageNotice, not as rows here.
+  const uploads = all.filter((u) => u.state !== 'full');
   return (
-    <section className="uploads" aria-label={t('board.uploads.title')} data-chrome>
-      {uploads.map((u) => (
-        <div key={u.key} className="uploads__item">
-          <div className="uploads__row">
-            <span className="uploads__name">{u.name}</span>
-            <span className="ink-muted">
-              {u.state === 'uploading'
-                ? `${u.reconnecting ? `${t('board.uploads.reconnecting')} · ` : ''}${Math.round((u.sent / (u.size || 1)) * 100)}%`
-                : t(`board.uploads.${u.state}`)}
-            </span>
-            {u.state === 'failed' && (
-              <button type="button" className="uploads__cancel" onClick={() => retryUpload(u.key)}>
-                {t('board.uploads.retry')}
-              </button>
-            )}
-            {u.state !== 'done' && u.state !== 'cancelled' && (
-              <button type="button" className="uploads__cancel" onClick={() => cancelUpload(u.key)}>
-                {t('board.uploads.cancel')}
-              </button>
-            )}
-          </div>
-          {u.state === 'uploading' && !u.reconnecting && u.remainingSeconds !== null && (
-            <span className="ink-muted">
-              {t('board.uploads.transfer', {
-                speed: (u.bytesPerSecond / 1024 / 1024).toFixed(1),
-                seconds: u.remainingSeconds,
-              })}
-            </span>
-          )}
-          <div className="uploads__bar">
-            <span style={{ width: `${(u.sent / (u.size || 1)) * 100}%` }} />
-          </div>
-        </div>
-      ))}
-    </section>
+    <>
+      <StorageNotice />
+      {uploads.length > 0 && (
+        <section className="uploads" aria-label={t('board.uploads.title')} data-chrome>
+          {uploads.map((u) => (
+            <div key={u.key} className="uploads__item">
+              <div className="uploads__row">
+                <span className="uploads__name">{u.name}</span>
+                <span className="ink-muted">
+                  {u.state === 'uploading'
+                    ? `${u.reconnecting ? `${t('board.uploads.reconnecting')} · ` : ''}${Math.round((u.sent / (u.size || 1)) * 100)}%`
+                    : t(`board.uploads.${u.state}`)}
+                </span>
+                {u.state === 'failed' && (
+                  <button
+                    type="button"
+                    className="uploads__cancel"
+                    onClick={() => retryUpload(u.key)}
+                  >
+                    {t('board.uploads.retry')}
+                  </button>
+                )}
+                {u.state !== 'done' && u.state !== 'cancelled' && (
+                  <button
+                    type="button"
+                    className="uploads__cancel"
+                    onClick={() => cancelUpload(u.key)}
+                  >
+                    {t('board.uploads.cancel')}
+                  </button>
+                )}
+              </div>
+              {u.state === 'uploading' && !u.reconnecting && u.remainingSeconds !== null && (
+                <span className="ink-muted">
+                  {t('board.uploads.transfer', {
+                    speed: (u.bytesPerSecond / 1024 / 1024).toFixed(1),
+                    seconds: u.remainingSeconds,
+                  })}
+                </span>
+              )}
+              <div className="uploads__bar">
+                <span style={{ width: `${(u.sent / (u.size || 1)) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+    </>
   );
 }
 
@@ -1520,8 +1535,10 @@ export const TOAST_MS = 6000;
 export function Toast({
   text,
   ok,
+  warning,
   error,
   onShow,
+  showLabel,
   onUndo,
   history,
   onClose,
@@ -1529,6 +1546,10 @@ export function Toast({
   text: string;
   /** A check before the text: something was done. */
   ok?: boolean | undefined;
+  /** A warning sign before the text, orange or red: something needs a look. */
+  warning?: 'warn' | 'danger' | undefined;
+  /** The words of the `onShow` button, "Mostra" by default. */
+  showLabel?: string | undefined;
   /** Something failed: the toast offers to report it, when reporting is on. */
   error?: boolean | undefined;
   /** Brings what was added into view. */
@@ -1585,6 +1606,11 @@ export function Toast({
           <Icon name="check" size={11} />
         </span>
       )}
+      {warning && (
+        <span className={`toast__warning toast__warning--${warning}`} aria-hidden="true">
+          <Icon name="warning" size={14} />
+        </span>
+      )}
       <span className="toast__text">{text}</span>
       {canReport && (
         <button
@@ -1600,7 +1626,7 @@ export function Toast({
       )}
       {onShow && (
         <button type="button" className="toast__action" onClick={onShow}>
-          {t('board.show')}
+          {showLabel ?? t('board.show')}
         </button>
       )}
       {onUndo && !stale && (

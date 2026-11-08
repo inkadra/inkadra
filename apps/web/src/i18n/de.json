@@ -1252,7 +1252,20 @@
       },
       "collapse": "Szene einklappen",
       "expand": "Szene ausklappen",
-      "addTitle": "Titel hinzufügen"
+      "addTitle": "Titel hinzufügen",
+      "omitted": "Entfallen",
+      "showOmitted": "Entfallene Szenen anzeigen",
+      "hideOmitted": "Entfallene Szenen ausblenden",
+      "menu": "Menü der Szene {{number}}",
+      "omittedHeading": "Szene {{number}}, entfallen",
+      "notInScript": "Nicht im Drehbuch",
+      "restore": "Szene wiederherstellen",
+      "restoreHint": "Zurück in Shotlist und Drehplan",
+      "deleteAll": "Szene und Frames löschen",
+      "deleteAllHint": "Vorher wird eine Version gespeichert",
+      "deleteVersion": "Vor dem Löschen von Szene {{number}}",
+      "deleteFailed": "Die Version konnte nicht gespeichert werden, daher wurde die Szene nicht gelöscht.",
+      "omittedToggle": "Entfallen"
     },
     "frame": {
       "add": "Neuer Frame",
@@ -2025,7 +2038,9 @@
       "server_alert_backup_failed": "Die Sicherung ist fehlgeschlagen",
       "server_alert_repeated_errors": "Derselbe Fehler trat in der letzten Stunde {{times}}-mal auf",
       "server_alert_unknown": "Mit dem Server stimmt etwas nicht",
-      "update_available": "Eine neue Version von Inkadra ist verfügbar"
+      "update_available": "Eine neue Version von Inkadra ist verfügbar",
+      "server_alert_storage_limit": "Speicher der Instanz: {{percent}} % belegt ({{used}} von {{limit}})",
+      "server_alert_storage_request": "bittet um mehr Speicher"
     },
     "emailTitle": "E-Mail-Benachrichtigungen",
     "emailHint": "Erwähnungen, Antworten und Reviews auch per E-Mail, wenn der Server sie senden kann.",
@@ -2537,6 +2552,15 @@
     "pinned": "Angepinnt",
     "saveError": "Die Änderung konnte nicht gespeichert werden. Versuch es noch mal."
   },
+  "projectDelete": {
+    "menu": "Projekt löschen…",
+    "title": "„{{name}}“ löschen?",
+    "body": "Alle Boards, Assets und Dateien dieses Projekts werden für alle Mitglieder gelöscht. Das lässt sich nicht rückgängig machen.",
+    "alternatives": "Um es aus dem Weg zu räumen, archiviere es stattdessen. Um eine Kopie zu behalten, exportiere es vorher.",
+    "confirmLabel": "Gib zur Bestätigung den Projektnamen ein",
+    "confirm": "Endgültig löschen",
+    "error": "Das Projekt konnte nicht gelöscht werden. Versuch es noch mal."
+  },
   "groups": {
     "new": "Neue Gruppe",
     "rename": "Umbenennen",
@@ -2760,11 +2784,11 @@
     "search": "Einstellungen suchen",
     "noResults": "Keine Einstellungen gefunden",
     "keywords": {
-      "account": "Name, E-Mail, Profilfoto, Passwort, Zwei-Faktor-Anmeldung (2FA), Backup-Codes, Anmeldemethoden, Sitzungen, Geräte, Apps und Tokens, Konto löschen",
+      "account": "Name, E-Mail, Profilfoto, Passwort, Zwei-Faktor-Anmeldung (2FA), Backup-Codes, Anmeldemethoden, Sitzungen, Geräte, Apps und Tokens, Konto löschen, Dein Speicher, Größte Dateien",
       "preferences": "Design, Dunkles Design, Helles Design, Sprache, Videos außerhalb des Bildschirms weiterspielen, Datumsformat, Uhrzeitformat, Punktraster, Am Raster ausrichten, Doppelklick erstellt eine Notiz, Board um den Inhalt halten, Rückgängig und Wiederholen",
       "notifications": "E-Mail-Benachrichtigungen, Erwähnungen, Antworten, Reviews, Tägliche Zusammenfassung, Inbox, Kommentare zu deinen Karten",
-      "members": "Mitglieder einladen, Einladungen, Einladungslink, Rolle, Admins, Konto deaktivieren, Konto reaktivieren, Personen",
-      "workspace": "Belegter Speicher, Hochgeladene Dateien, Speicher",
+      "members": "Mitglieder einladen, Einladungen, Einladungslink, Rolle, Admins, Konto deaktivieren, Konto reaktivieren, Personen, Speicher, Speicherlimit",
+      "workspace": "Belegter Speicher, Hochgeladene Dateien, Speicher, Speicherlimits, Speicher pro Person, Warnen bei",
       "classifications": "Projekttypen, Tags, Kataloge, Einstellungsgröße, Perspektive, Bewegung",
       "providers": "Google, OIDC, Single Sign-on (SSO), Anmeldelink per E-Mail, E-Mail und Passwort, SMTP, Ausgehende E-Mails",
       "registration": "Neue Konten, Offene Registrierung, Nur auf Einladung, Geschlossene Registrierung, Zwei-Faktor-Anmeldung für Admins verlangen",
@@ -3068,7 +3092,8 @@
       "gone": "Du kannst dieses Projekt nicht mehr bearbeiten oder es wurde gelöscht.",
       "interrupted": "Der Server hat während der Arbeit angehalten. Versuch es noch mal.",
       "cancelled": "Abgebrochen.",
-      "internal": "Etwas ist schiefgelaufen. Versuch es noch mal."
+      "internal": "Etwas ist schiefgelaufen. Versuch es noch mal.",
+      "storage_full": "Die Dateien des Archivs passen nicht in den restlichen Speicher. Gib Speicher frei oder frag eine Administratorin oder einen Administrator."
     },
     "importArchive": "Archiv importieren…"
   },
@@ -3411,9 +3436,10 @@
     "maxFrames": "Höchstens pro Szene",
     "cast": "Sprechende Figuren zum Cast der Frames hinzufügen",
     "castHint": "Sonst werden sie in der Szenen-Synopsis aufgeführt.",
-    "target": "Wohin",
-    "targetAppend": "Dieses Storyboard",
-    "targetNew": "Ein neues",
+    "target": "Ziel",
+    "targetAppend": "Zum Storyboard hinzufügen",
+    "targetRevise": "Aus Revision aktualisieren",
+    "targetNew": "Neues Storyboard",
     "summary": "Erstellt {{scenes}} und {{frames}}.",
     "truncated": "Das Drehbuch ist lang: Nur die ersten {{scenes}} und {{frames}} passen in einen Import.",
     "submit": "Importieren",
@@ -3437,7 +3463,67 @@
     "detected": "Das sieht nach einem Drehbuch aus",
     "build": "Storyboard erstellen…",
     "buildFromFile": "Storyboard aus diesem Drehbuch erstellen…",
-    "noTextDetail": "Das sieht nach einem Scan aus: Inkadra kann keinen Text aus Bildern lesen. Exportiere das PDF noch mal aus deinem Schreibprogramm oder nutze Fountain oder Final Draft."
+    "noTextDetail": "Das sieht nach einem Scan aus: Inkadra kann keinen Text aus Bildern lesen. Exportiere das PDF noch mal aus deinem Schreibprogramm oder nutze Fountain oder Final Draft.",
+    "revision": {
+      "hint": "Ordnet die neue Fassung den Szenen von „{{title}}“ zu. Frames, Zeichnungen und Drehdaten bleiben, wie sie sind.",
+      "hintShort": "Frames, Zeichnungen und Drehdaten bleiben, wie sie sind.",
+      "show": "Anzeigen",
+      "list": "Szenen dieser Fassung",
+      "filters": {
+        "changes": "Änderungen",
+        "changed": "Geändert",
+        "new": "Neu",
+        "omitted": "Entfallen",
+        "all": "Alle"
+      },
+      "badges": {
+        "changed": "Geändert",
+        "new": "Neu",
+        "omitted": "Entfallen",
+        "check": "Zuordnung prüfen",
+        "same": "Gleich"
+      },
+      "notIn": "Nicht in {{draft}}",
+      "markedOmitted": "behalten und als entfallen markiert",
+      "keptAsIs": "unverändert behalten",
+      "after": "Nach {{number}}",
+      "atStart": "Am Anfang",
+      "bothChanged": "Überschrift und Nummer geändert",
+      "restored": "wieder in dieser Fassung",
+      "wasScene": "war Szene {{number}}",
+      "was": "war {{value}}",
+      "locationWas": "Ort war „{{location}}“",
+      "titleWas": "Titel war „{{title}}“",
+      "synopsis": "Inhalt neu geschrieben",
+      "sameAs": "Gleiche Szene wie",
+      "asNew": "Eine neue Szene",
+      "nothing": "Für diese Fassung gibt es hier nichts.",
+      "unchanged_one": "{{count}} unveränderte Szene, {{frames}}",
+      "unchanged_other": "{{count}} unveränderte Szenen, {{frames}}",
+      "framesKept_one": "{{count}} Frame behalten",
+      "framesKept_other": "{{count}} Frames behalten",
+      "newFrames_one": "{{count}} neuer Frame",
+      "newFrames_other": "{{count}} neue Frames",
+      "frames": "Frames für neue Szenen",
+      "framesAction": "Pro Handlung",
+      "details": "Szenendaten aktualisieren",
+      "detailsHint": "Nummer, Überschrift, Ort, Tageszeit und Inhalt geänderter Szenen.",
+      "omit": "Entfallene Szenen markieren",
+      "omitHint": "Sie bleiben mit ihren Frames, abgeblendet, und verlassen Shotlist und Drehplan.",
+      "version": "Vorher eine Version speichern",
+      "versionHint": "„{{name}}“, um in einem Schritt zurückzugehen.",
+      "versionName": "Vor {{draft}}",
+      "updated_one": "{{count}} Szene aktualisiert",
+      "updated_other": "{{count}} Szenen aktualisiert",
+      "added_one": "{{count}} hinzugefügt",
+      "added_other": "{{count}} hinzugefügt",
+      "omitted_one": "{{count}} als entfallen markiert",
+      "omitted_other": "{{count}} als entfallen markiert",
+      "summary": "<b>{{updated}}, {{added}}</b> mit {{frames}}, <b>{{omitted}}</b>. {{kept}} unverändert.",
+      "summaryPhone": "<b>{{updated}}, {{added}}, {{omitted}}.</b> Vorher wird eine Version gespeichert.",
+      "submit": "Storyboard aktualisieren",
+      "done": "Storyboard aktualisiert: {{updated}}, {{added}}, {{omitted}}."
+    }
   },
   "frameGrab": {
     "grab": "Standbild erfassen",
@@ -4148,6 +4234,10 @@
           "2": {
             "title": "Auf dem Frame zeichnen",
             "text": "Doppelklick auf einen Frame: Skizze im Vollbild."
+          },
+          "3": {
+            "title": "Eine neue Drehbuchfassung",
+            "text": "Importiere sie erneut und wähle Aus Revision aktualisieren: Szenen werden aktualisiert, Frames bleiben, wie sie sind."
           }
         }
       },
@@ -4462,6 +4552,23 @@
           "2": {
             "title": "Frühere Versionen",
             "text": "Was sich in jeder Version geändert hat."
+          }
+        }
+      },
+      "storage": {
+        "name": "Speicherlimits",
+        "steps": {
+          "0": {
+            "title": "Der belegte Speicher",
+            "text": "Originale, Kopien und Vorschauen, und wie lange er reicht."
+          },
+          "1": {
+            "title": "Die Limits",
+            "text": "Für die Instanz und pro Person. Aus, bis du sie einschaltest."
+          },
+          "2": {
+            "title": "Eine Person nach der anderen",
+            "text": "Unter Mitglieder, im ⋯-Menü, ein anderes Limit für wen es braucht."
           }
         }
       }
@@ -4881,5 +4988,80 @@
     "skip": "Diese Version überspringen",
     "github": "GitHub ↗",
     "seeNews": "Neuerungen ansehen"
+  },
+  "storageSpace": {
+    "title": "Dein Speicher",
+    "of": "{{used}} von {{limit}}",
+    "unlimited": "Ohne Limit",
+    "unlimitedShort": "ohne Limit",
+    "full": "Voll",
+    "left": "Noch {{size}}",
+    "room": "Genug Platz",
+    "used": "belegt",
+    "ofLimit": "von {{limit}}",
+    "detail": "Originale {{originals}} · Kopien und Vorschauen {{derived}}. Es zählt, was du hochgeladen hast, in allen Projekten.",
+    "instanceFull": "Der Server hat keinen Platz mehr: niemand kann weitere Dateien hochladen. Sag einer Administratorin oder einem Administrator Bescheid.",
+    "fullHelp": "Du kannst keine weiteren Dateien hochladen. Gib Speicher frei oder frag eine Administratorin oder einen Administrator.",
+    "largest": "Größte Dateien ansehen",
+    "largestTitle": "Deine größten Dateien",
+    "noFiles": "Keine Dateien hochgeladen.",
+    "file": "Datei",
+    "hidden_one": "1 Datei in einem Projekt, das du nicht öffnen kannst: {{size}}.",
+    "hidden_other": "{{count}} Dateien in Projekten, die du nicht öffnen kannst: {{size}}.",
+    "filesHelp": "Auch von Boards entfernte Dateien zählen: Sie bleiben im Projekt, weil eine Version sie zurückholen kann. Der Platz wird frei, wenn das Projekt gelöscht wird.",
+    "column": "Speicher",
+    "own": "{{size}} · eigenes",
+    "actionsFor": "Aktionen für {{name}}",
+    "changeLimit": "Speicherlimit ändern…",
+    "seeFiles": "Dateien ansehen",
+    "filesOf": "Dateien von {{name}}",
+    "spaceOf": "Speicher von {{name}}",
+    "uses": "Belegt {{size}}.",
+    "asEveryone": "Wie alle ({{size}})",
+    "ownLimit": "Eigenes Limit",
+    "ceiling": "Der Serverbetreiber hat {{size}} pro Person festgelegt: du kannst es nur senken.",
+    "lowerHelp": "Unter dem, was schon belegt ist, wird nichts gelöscht: nur das Hochladen stoppt.",
+    "save": "Speichern",
+    "nearToast": "Du hast {{percent}} % deines Speichers belegt: noch {{size}}.",
+    "see": "Ansehen",
+    "instanceToast": "Der Server hat keinen Platz mehr. Sag einer Administratorin oder einem Administrator Bescheid.",
+    "fileToast": "„{{name}}“ wurde nicht hochgeladen: Die Datei ist größer als dein restlicher Speicher.",
+    "details": "Details",
+    "blockedTitle": "Nicht genug Speicher",
+    "leftOf": "Dir bleiben {{size}} von {{limit}}.",
+    "instanceLeft": "Dem Server bleiben {{size}}.",
+    "uploadedOf_one": "{{done}} von {{total}} Dateien wurden hochgeladen; diese passt nicht:",
+    "uploadedOf_other": "{{done}} von {{total}} Dateien wurden hochgeladen; diese {{count}} passen nicht:",
+    "blockedHelp": "Gib Speicher frei oder bitte eine Administratorin oder einen Administrator, dein Limit zu erhöhen. Notizen, Kommentare und Änderungen funktionieren weiter.",
+    "instanceHelp": "Sag einer Administratorin oder einem Administrator Bescheid. Notizen, Kommentare und Änderungen funktionieren weiter.",
+    "ask": "Mehr Speicher anfragen",
+    "asked": "Die Administratoren wurden benachrichtigt.",
+    "alreadyAsked": "Die Administratoren wurden heute schon benachrichtigt.",
+    "close": "Schließen"
+  },
+  "storageLimits": {
+    "usedTitle": "Belegter Speicher",
+    "ofLimit": "von {{limit}} Limit",
+    "disk": "Festplatte {{size}}",
+    "usedDetail": "Originale {{originals}} · Kopien und Vorschauen {{derived}}. Das Limit kann den freien Platz auf der Festplatte nicht überschreiten: Wird sie voll, meldet es Server.",
+    "lastsMonths_one": "Reicht etwa 1 Monat",
+    "lastsMonths_other": "Reicht etwa {{count}} Monate",
+    "lastsWeeks_one": "Reicht etwa 1 Woche",
+    "lastsWeeks_other": "Reicht etwa {{count}} Wochen",
+    "title": "Speicherlimits",
+    "locked": "Vom Serverbetreiber festgelegt",
+    "lockedHelp": "Diese Limits gehören zu deinem Tarif und werden vom Serverbetreiber geändert",
+    "total": "Gesamtspeicher der Instanz",
+    "totalHelp": "Darüber lädt niemand mehr Dateien hoch. Nichts wird gelöscht.",
+    "perUser": "Speicher pro Person",
+    "perUserHelp": "Das Limit aller ohne eigenes. Für eine Person änderst du es unter Mitglieder.",
+    "none": "Ohne Limit",
+    "limit": "Limit",
+    "unit": "Einheit von {{label}}",
+    "largestFile": "Größte Datei",
+    "fromServer": "Vom Server:",
+    "warn": "Warnen bei",
+    "warnHelp": "Personen sehen eine Warnung, Administratoren bekommen sie in die Inbox.",
+    "openMembers": "In Mitglieder öffnen"
   }
 }

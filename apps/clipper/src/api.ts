@@ -198,11 +198,17 @@ async function toError(res: Response): Promise<ClipperError> {
     payload = undefined;
   }
   const code = payload?.error?.code;
-  const kind: ErrorKind =
-    code === 'payload_too_large'
+  const details = payload?.error?.details;
+  const full =
+    typeof details === 'object' &&
+    details !== null &&
+    'code' in details &&
+    details.code === 'storage_full';
+  const kind: ErrorKind = full
+    ? 'storage_full'
+    : code === 'payload_too_large'
       ? 'too_large'
       : (STATUS_KINDS[res.status] ?? (res.status >= 500 ? 'server' : 'bad_request'));
-  const details = payload?.error?.details;
   const reason =
     typeof details === 'object' &&
     details !== null &&

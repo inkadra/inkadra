@@ -44,7 +44,8 @@ export function FrameUploadState({ frameId }: { frameId: string }) {
   const uploads = useUploads();
   const key = waiting.get(frameId);
   const item = key ? uploads.find((i) => i.key === key) : undefined;
-  if (!key || !item || item.state === 'done' || item.state === 'cancelled') return null;
+  // A refusal for lack of space is told by the upload panel (StorageNotice).
+  if (!key || !item || ['done', 'cancelled', 'full'].includes(item.state)) return null;
   if (item.state === 'failed')
     return (
       <div className="frame-upload" role="alert">

@@ -302,9 +302,27 @@ export type RetriedProblems = z.infer<typeof RetriedProblems>;
 /** What a `server_alert` notification is about (#514). */
 export const ServerAlert = z
   .object({
-    kind: z.enum(['disk_full', 'service_down', 'backup_failed', 'repeated_errors']),
+    kind: z
+      .enum([
+        'disk_full',
+        'service_down',
+        'backup_failed',
+        'repeated_errors',
+        'storage_limit',
+        'storage_request',
+      ])
+      .openapi({
+        description:
+          '`storage_limit`: the instance total passed the warning share (`free` left of ' +
+          '`total`); `storage_request`: the actor asks for more space. Both open Settings ' +
+          'Storage and Members; added with storage limits.',
+      }),
     service: ServerServiceId.nullable(),
-    free: z.number().int().nullable().openapi({ description: 'Bytes left, for `disk_full`.' }),
+    free: z
+      .number()
+      .int()
+      .nullable()
+      .openapi({ description: 'Bytes left, for `disk_full` and `storage_limit`.' }),
     total: z.number().int().nullable(),
     weeksLeft: z.number().nullable(),
     count: z.number().int().nullable().openapi({ description: 'For `repeated_errors`.' }),

@@ -419,11 +419,13 @@
   white-space: nowrap;
 }
 .settings-badge--ok,
-.settings-badge--warn {
+.settings-badge--warn,
+.settings-badge--danger {
   background: var(--ink-surface-2);
 }
 .settings-badge--ok::before,
-.settings-badge--warn::before {
+.settings-badge--warn::before,
+.settings-badge--danger::before {
   content: "";
   width: 6px;
   height: 6px;
@@ -438,6 +440,12 @@
 }
 .settings-badge--warn::before {
   background: var(--ink-status-warn);
+}
+.settings-badge--danger {
+  color: var(--ink-status-danger);
+}
+.settings-badge--danger::before {
+  background: var(--ink-status-danger);
 }
 .settings-badge--accent {
   background: var(--ink-accent-soft-bg);
@@ -656,11 +664,8 @@
   border-collapse: collapse;
   font-size: 13px;
 }
-.team-table thead th:first-child {
-  width: 30%;
-}
 .team-table thead th {
-  padding: 9px 12px;
+  padding: 9px 8px;
   border-bottom: 1px solid var(--ink-border-default);
   color: var(--ink-text-secondary);
   font-size: 12px;
@@ -670,7 +675,7 @@
 }
 .team-table tbody th,
 .team-table td {
-  padding: 9px 12px;
+  padding: 9px 8px;
   border-top: 1px solid var(--ink-border-muted);
   font-weight: 400;
   text-align: start;
@@ -707,8 +712,32 @@
   text-align: end;
   white-space: normal;
 }
-.team-col--last {
+/*
+ * Fixed widths for every column but the person, who keeps the rest. The role and the choice
+ * fit their longest label in every language ("Miembro", "Comme l’instance (non)") at 1280px.
+ */
+.team-table thead th:nth-child(2) {
+  width: 120px;
+}
+.team-table thead .team-col--create {
+  width: 216px;
+}
+.team-table thead .team-col--space {
+  width: 124px;
+}
+/* "251,66 MB / 1 MB": the limit goes to the next line whole, never split. */
+.team-table .space-mini em {
   white-space: nowrap;
+}
+.team-table thead .team-col--projects {
+  width: 64px;
+}
+.team-table thead .team-col--last {
+  width: 88px;
+  white-space: normal;
+}
+.team-table thead th:last-child {
+  width: 48px;
 }
 .team-pending th,
 .team-pending td {
@@ -886,9 +915,10 @@
     flex-basis: 100%;
   }
   /*
-   * A member is a small card: who (with Disattiva at the end of that line), then one line each
-   * for the role and the right to create projects, title on the left and choice on the right,
-   * so every row lines up and no choice is cut ("Amministratore", "Come l’istanza (sì)").
+   * A member is a small card: who (with the ⋯ menu at the end of that line), then one line
+   * each for the role, the right to create projects and the space, title on the left and value
+   * on the right, so every row lines up and no choice is cut ("Amministratore", "Come
+   * l’istanza (sì)").
    */
   .team-table thead,
   .team-table .team-col--projects,
@@ -906,6 +936,7 @@
   }
   .team-table tbody th,
   .team-table td {
+    padding-inline: 12px;
     border: 0;
   }
   .team-table tbody th {
@@ -913,14 +944,15 @@
     padding-bottom: 6px;
   }
   .team-table tbody:first-of-type th {
-    /* The room of the Disattiva button, which sits at the end of this line. */
-    padding-right: 104px;
+    /* The room of the ⋯ button, which sits at the end of this line. */
+    padding-right: 48px;
   }
   .team-table td {
     padding-top: 2px;
   }
   .team-table .team-col--role,
-  .team-table .team-col--create {
+  .team-table .team-col--create,
+  .team-table .team-col--space {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -929,7 +961,8 @@
     padding-bottom: 8px;
   }
   .team-table .team-col--role::before,
-  .team-table .team-col--create::before {
+  .team-table .team-col--create::before,
+  .team-table .team-col--space::before {
     content: attr(data-label);
     font-size: 11px;
     color: var(--ink-text-muted);

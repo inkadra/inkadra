@@ -2687,6 +2687,22 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   background: color-mix(in srgb, var(--ink-status-ok) 15%, transparent);
   color: var(--ink-status-ok);
 }
+/* Space refusals and warnings (decision 0081): in the bottom-right tray, above the uploads. */
+.storage-notice > .toast {
+  position: static;
+  max-width: min(420px, calc(100vw - 32px));
+  transform: none;
+  white-space: normal;
+}
+.toast__warning {
+  display: grid;
+  flex: none;
+  place-items: center;
+  color: var(--ink-status-warn);
+}
+.toast__warning--danger {
+  color: var(--ink-status-danger);
+}
 .toast__text {
   margin-right: 6px;
 }
