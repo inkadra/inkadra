@@ -334,7 +334,7 @@ async function main() {
     tutorialsSeen: ['welcome', 'server'],
   });
   mkdirSync(out, { recursive: true });
-  for (const view of ['simple'] as const) {
+  for (const view of ['simple', 'advanced'] as const) {
     await call(cookie, 'PATCH', '/me/preferences', { serverView: view });
     for (const theme of ['dark', 'light'] as const)
       for (const phone of [false, true]) {
