@@ -9,6 +9,7 @@
 #   deploy/compose.nvidia.yaml         hardware video encoding on NVIDIA GPUs (-media image)
 #   deploy/proxy/<name>/compose.yaml   a reverse proxy in the same stack: caddy, traefik, nginx
 #   deploy/compose.postgres-old-layout.yaml   stay on PostgreSQL 16 for now (docs/self-hosting/upgrades.md)
+#   deploy/compose.demo.yaml           a public demo behind a Cloudflare Tunnel (docs/demo.md)
 
 name: inkadra
 

@@ -86,6 +86,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0081](0081-storage-limits.md)                       | Storage limits per instance and per person                                             |
 | [0082](0082-script-revisions.md)                     | Update a storyboard from a revised screenplay; omitted scenes stay in place            |
 | [0083](0083-scene-sheets.md)                         | Scene sheets by department, made of what the board already holds                       |
+| [0084](0084-public-demo.md)                          | A public demo, closed by default                                                       |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

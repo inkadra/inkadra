@@ -255,14 +255,15 @@ the worker role only when you enable [Office document previews](office.md).
 `compose.yaml` is the all-in-one setup. Other files in `deploy/` change it when added with `-f`
 after it; they combine, in this order:
 
-| File                                | Changes                                                     |
-| ----------------------------------- | ----------------------------------------------------------- |
-| `deploy/compose.split.yaml`         | `web`, `collab` and `worker` in separate containers         |
-| `deploy/compose.s3.yaml`            | Files in an S3-compatible bucket you already have           |
-| `deploy/compose.rustfs.yaml`        | Files in a bundled S3-compatible store (RustFS)             |
-| `deploy/compose.vaapi.yaml`         | Hardware video encoding on Intel or AMD GPUs (`-media`)     |
-| `deploy/compose.nvidia.yaml`        | Hardware video encoding on NVIDIA GPUs (`-media`)           |
-| `deploy/proxy/<proxy>/compose.yaml` | A reverse proxy in the stack: `caddy`, `traefik` or `nginx` |
+| File                                | Changes                                                       |
+| ----------------------------------- | ------------------------------------------------------------- |
+| `deploy/compose.split.yaml`         | `web`, `collab` and `worker` in separate containers           |
+| `deploy/compose.s3.yaml`            | Files in an S3-compatible bucket you already have             |
+| `deploy/compose.rustfs.yaml`        | Files in a bundled S3-compatible store (RustFS)               |
+| `deploy/compose.demo.yaml`          | A public demo behind a Cloudflare Tunnel ([demo](../demo.md)) |
+| `deploy/compose.vaapi.yaml`         | Hardware video encoding on Intel or AMD GPUs (`-media`)       |
+| `deploy/compose.nvidia.yaml`        | Hardware video encoding on NVIDIA GPUs (`-media`)             |
+| `deploy/proxy/<proxy>/compose.yaml` | A reverse proxy in the stack: `caddy`, `traefik` or `nginx`   |
 
 Split mode is for larger teams: you can restart or scale the parts on their own, and a busy
 worker does not slow down the web app. The proxy must send `/collab` to the `collab` container
