@@ -4366,10 +4366,14 @@
             "text": "One sentence says whether the server is well."
           },
           "1": {
+            "title": "Simple or advanced",
+            "text": "Plain words, or charts and figures for each part."
+          },
+          "2": {
             "title": "Problems",
             "text": "Retry, mark as seen or send to the developers."
           },
-          "2": {
+          "3": {
             "title": "Alerts",
             "text": "Tells you when something is wrong."
           }

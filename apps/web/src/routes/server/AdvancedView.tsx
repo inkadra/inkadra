@@ -4,11 +4,12 @@ import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatStorage } from '../StorageCharts.tsx';
 import { Card } from '../settings-ui.tsx';
-import { markers, mbit, memoryMax, xLabels } from './charts.tsx';
+import { chartSpan, markers, mbit, memoryMax, xLabels } from './charts.tsx';
 import { type ServerActions, useWhen } from './common.ts';
 import { bits, duration, niceMax, number, openProblems, percent } from './format.ts';
 import { ServerChart } from './ServerChart.tsx';
 import {
+  Alerts,
   configStatus,
   People,
   PROBLEMS_ID,
@@ -120,6 +121,7 @@ function Tiles({ status }: { status: ServerStatus }) {
   const lang = i18n.language;
   const h = status.history;
   const times = h.map((s) => s.t);
+  const span = chartSpan(status);
   const { cpu, memory, network } = status.now;
   const store = status.storage;
   const spark = (
@@ -132,6 +134,7 @@ function Tiles({ status }: { status: ServerStatus }) {
       compact
       label={label}
       times={times}
+      span={span}
       series={[{ label, tone, values }]}
       max={max}
       ticks={[]}
@@ -251,6 +254,7 @@ function Charts({ status }: { status: ServerStatus }) {
   const lang = i18n.language;
   const h = status.history;
   const times = h.map((s) => s.t);
+  const span = chartSpan(status);
   const labels = xLabels(t, status.range);
   const marks = markers(t, status);
   const cpu = h.map((s) => s.cpu);
@@ -281,6 +285,7 @@ function Charts({ status }: { status: ServerStatus }) {
           <ServerChart
             label={t('server.chart.label', { metric: t('server.advanced.cpu'), range })}
             times={times}
+            span={span}
             series={[{ label: t('server.advanced.cpu'), tone: 'cpu', values: cpu }]}
             max={100}
             ticks={[0, 50, 100]}
@@ -304,6 +309,7 @@ function Charts({ status }: { status: ServerStatus }) {
           <ServerChart
             label={t('server.chart.label', { metric: t('server.advanced.memory'), range })}
             times={times}
+            span={span}
             series={[{ label: t('server.advanced.memory'), tone: 'memory', values: mem }]}
             max={memMax}
             ticks={[0, memMax / 2, memMax]}
@@ -321,6 +327,7 @@ function Charts({ status }: { status: ServerStatus }) {
         <ServerChart
           label={t('server.chart.label', { metric: t('server.advanced.latency'), range })}
           times={times}
+          span={span}
           series={[{ label: 'p95', tone: 'cpu', values: lat }]}
           max={latMax}
           ticks={[0, latMax / 2, latMax]}
@@ -343,6 +350,7 @@ function Charts({ status }: { status: ServerStatus }) {
         <ServerChart
           label={t('server.chart.label', { metric: t('server.advanced.networkTitle'), range })}
           times={times}
+          span={span}
           series={[
             { label: t('server.chart.received'), tone: 'in', values: h.map((s) => mbit(s.in)) },
             {
@@ -537,6 +545,7 @@ export function AdvancedView({ status, checks, actions }: Props) {
         <People status={status} advanced />
       </div>
       <ErrorLog status={status} actions={actions} />
+      <Alerts status={status} actions={actions} />
     </>
   );
 }

@@ -4366,10 +4366,14 @@
             "text": "Uma frase diz se o servidor está bem."
           },
           "1": {
+            "title": "Simples ou avançada",
+            "text": "Palavras simples, ou gráficos e números de cada parte."
+          },
+          "2": {
             "title": "Os problemas",
             "text": "Tente de novo, marque como visto ou envie aos programadores."
           },
-          "2": {
+          "3": {
             "title": "Os alertas",
             "text": "Avisa se algo não estiver bem."
           }

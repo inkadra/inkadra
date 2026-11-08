@@ -94,15 +94,17 @@ export function ServerViewToggle() {
   const { t } = useTranslation();
   const { serverView } = usePreferences();
   return (
-    <Segmented
-      label={t('server.view.label')}
-      value={serverView}
-      onChange={(view) => void updatePreferences({ serverView: view }).catch(() => {})}
-      options={[
-        { value: 'simple', label: t('server.view.simple') },
-        { value: 'advanced', label: t('server.view.advanced') },
-      ]}
-    />
+    <span data-tour="server-view">
+      <Segmented
+        label={t('server.view.label')}
+        value={serverView}
+        onChange={(view) => void updatePreferences({ serverView: view }).catch(() => {})}
+        options={[
+          { value: 'simple', label: t('server.view.simple') },
+          { value: 'advanced', label: t('server.view.advanced') },
+        ]}
+      />
+    </span>
   );
 }
 
@@ -112,6 +114,10 @@ export function ServerSettings() {
   const { serverView } = usePreferences();
   const [range, setRange] = useState<ServerRange>('1h');
   const { status, setStatus, error, load } = useServerStatus(range);
+  // The simple view has no 15 minutes: back to its default, the hour, as its menu shows.
+  useEffect(() => {
+    if (serverView === 'simple' && range === '15m') setRange('1h');
+  }, [serverView, range]);
   const browserChecks = useBrowserChecks();
   const [actionError, setActionError] = useState<string | null>(null);
   const statusRef = useRef(status);

@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../../lib/api.ts';
+import { updatePreferences } from '../../lib/preferences.ts';
 import { technicalSummary } from './common.ts';
 import { ServerSettings, useServerStatus } from './ServerSettings.tsx';
 
@@ -234,4 +235,17 @@ it('keeps the range just chosen when the answer for the one before comes late', 
   } finally {
     vi.useRealTimers();
   }
+});
+
+it('goes back to the hour when the advanced view leaves the simple one on 15 minutes', async () => {
+  vi.mocked(api.get).mockResolvedValue(status());
+  vi.mocked(api.patch).mockImplementation(async (_path, body) => body);
+  await act(async () => updatePreferences({ serverView: 'advanced' }));
+  await render();
+  const quarter = host.querySelector<HTMLInputElement>('input[type="radio"][value="15m"]');
+  await act(async () => quarter?.click());
+  expect(api.get).toHaveBeenLastCalledWith('/instance/server?range=15m');
+  await act(async () => updatePreferences({ serverView: 'simple' }));
+  await act(async () => {});
+  expect(api.get).toHaveBeenLastCalledWith('/instance/server?range=1h');
 });
