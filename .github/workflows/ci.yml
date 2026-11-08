@@ -77,6 +77,8 @@ jobs:
         run: pnpm turbo run test
       - name: Licences of production dependencies
         run: pnpm check:licenses
+      - name: Script tests
+        run: node --test scripts/*.test.mjs
 
   # PostgreSQL 16 keeps working for one more release (deploy/compose.postgres16.yaml): the
   # suites that need a database run against it too. Remove with that file.

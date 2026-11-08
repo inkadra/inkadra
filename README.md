@@ -18,6 +18,7 @@
 
 <p align="center">
   <a href="#run-it">Run it</a> ·
+  <a href="https://github.com/inkadra/inkadra/wiki">Documentation</a> ·
   <a href="docs/self-hosting">Self-hosting guide</a> ·
   <a href="docs/guide.md">Tour</a> ·
   <a href="#develop">Develop</a> ·
