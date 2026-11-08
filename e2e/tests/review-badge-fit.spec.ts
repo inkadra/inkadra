@@ -85,9 +85,9 @@ async function expectInside(holder: Locator, name: string) {
   const inner = await badges.boundingBox();
   if (!outer || !inner) throw new Error(`${name}: no box`);
   expect.soft(inner.x, `${name}: left edge`).toBeGreaterThanOrEqual(outer.x - 0.5);
-  expect.soft(inner.x + inner.width, `${name}: right edge`).toBeLessThanOrEqual(
-    outer.x + outer.width + 0.5,
-  );
+  expect
+    .soft(inner.x + inner.width, `${name}: right edge`)
+    .toBeLessThanOrEqual(outer.x + outer.width + 0.5);
 }
 
 async function shoot(page: Page, name: string) {

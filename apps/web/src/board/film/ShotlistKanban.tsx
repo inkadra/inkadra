@@ -228,7 +228,7 @@ export function ShotlistKanban({
                       ) : (
                         <span />
                       )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div className="kanban__card-actions">
                         {!readOnly && (
                           <Select
                             className="kanban__move-select"
