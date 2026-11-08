@@ -159,10 +159,15 @@ export const fr: MailTexts = {
       service_down: 'Un service ne répond pas',
       backup_failed: 'La sauvegarde a échoué',
       repeated_errors: 'Une erreur se répète',
+      storage_limit: 'L’instance n’a presque plus d’espace',
+      storage_request: 'Plus d’espace demandé',
     },
     disk: (free, total, weeks) =>
       `Il reste ${free} sur ${total}.${weeks ? ` Au rythme actuel, cela suffit pour environ ${weeks}.` : ''} Libérez de l’espace ou ajoutez un disque avant que les envois ne s’arrêtent.`,
     weeks: (n) => plural(n, 'une semaine', 'semaines'),
+    storage: (used, total, weeks) =>
+      `L’instance utilise ${used} sur ${total}.${weeks ? ` Au rythme actuel, cela suffit pour environ ${weeks}.` : ''} Augmentez la limite ou libérez de l’espace avant que les envois ne s’arrêtent.`,
+    storageAction: 'Ouvrir Stockage',
     down: (service) =>
       `${service} ne répond pas. Le reste d’Inkadra fonctionne, mais cette partie est à l’arrêt jusqu’au redémarrage du service.`,
     backup:

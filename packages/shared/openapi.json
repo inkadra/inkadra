@@ -1574,6 +1574,27 @@
               "null"
             ],
             "description": "Per-account choice; null follows InstanceSettings.membersCanCreateProjects."
+          },
+          "storageBytes": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Originals uploaded by this person and the copies and previews the server made of them, as StorageUsage.byUser counts them. Missing from servers before storage limits."
+          },
+          "storageLimit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "description": "Effective limit in bytes; null: no limit. Missing from older servers."
+          },
+          "storageLimitOverride": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Per-account limit in bytes: null follows StorageLimits.perUser, 0 is no limit."
           }
         },
         "required": [
@@ -1605,6 +1626,14 @@
               "null"
             ],
             "description": "Override for this account; null goes back to the instance setting."
+          },
+          "storageLimit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Storage limit of this account in bytes; 0 is no limit, null goes back to StorageLimits.perUser. Refused above STORAGE_LIMIT_PER_USER when that is set."
           }
         },
         "additionalProperties": false
@@ -2670,6 +2699,218 @@
         ],
         "description": "Completed original uploads (processing, ready or failed), once per asset row. Pending uploads, derived files, database and physical capacity excluded. Attribution uses asset.projectId, independent of references. Inaccessible projects are combined without names or IDs."
       },
+      "StorageLimits": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "description": "Space for the whole instance; null: no limit."
+          },
+          "perUser": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "description": "Default space of a person without a limit of their own; null: no limit."
+          },
+          "warnPercent": {
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 95,
+            "description": "Share of a limit that warns people and, for the total, administrators."
+          },
+          "locked": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "boolean"
+              },
+              "perUser": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "total",
+              "perUser"
+            ],
+            "description": "Set by the server environment (STORAGE_LIMIT, STORAGE_LIMIT_PER_USER): read-only here."
+          },
+          "uploadMaxSize": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "UPLOAD_MAX_SIZE; 0: none."
+          },
+          "usedBytes": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Originals and their copies and previews, pending uploads excluded."
+          },
+          "disk": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "total": {
+                "type": "number",
+                "minimum": 0
+              },
+              "free": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "total",
+              "free"
+            ],
+            "description": "The disk under DATA_DIR; null on S3."
+          },
+          "growthPerMonth": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Bytes of originals added in the last 30 days."
+          }
+        },
+        "required": [
+          "total",
+          "perUser",
+          "warnPercent",
+          "locked",
+          "uploadMaxSize",
+          "usedBytes",
+          "disk",
+          "growthPerMonth"
+        ]
+      },
+      "UpdateStorageLimits": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0
+          },
+          "perUser": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0
+          },
+          "warnPercent": {
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 95
+          }
+        },
+        "additionalProperties": false
+      },
+      "StorageFiles": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "bytes": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Original and its copies."
+                },
+                "projectId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+                },
+                "projectName": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-11-02T09:30:00.000Z"
+                }
+              },
+              "required": [
+                "id",
+                "filename",
+                "bytes",
+                "projectId",
+                "projectName",
+                "createdAt"
+              ]
+            }
+          },
+          "hiddenCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Files in projects the viewer cannot open: counted, never named."
+          },
+          "hiddenBytes": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "hiddenCount",
+          "hiddenBytes"
+        ]
+      },
+      "MyStorage": {
+        "type": "object",
+        "properties": {
+          "originalBytes": {
+            "type": "number",
+            "minimum": 0
+          },
+          "derivedBytes": {
+            "type": "number",
+            "minimum": 0
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "description": "null: no limit."
+          },
+          "warnPercent": {
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 95
+          },
+          "instanceFull": {
+            "type": "boolean",
+            "description": "The instance total is used up: nobody can add files."
+          }
+        },
+        "required": [
+          "originalBytes",
+          "derivedBytes",
+          "limit",
+          "warnPercent",
+          "instanceFull"
+        ]
+      },
       "ProjectTransfer": {
         "type": "object",
         "properties": {
@@ -2726,7 +2967,7 @@
               "string",
               "null"
             ],
-            "description": "Why a transfer failed. Known values: `too_large`, `invalid_archive`, `unsupported_version`, `too_new`, `storage`, `gone`, `interrupted`, `cancelled`, `internal`. Open: clients show unknown values as a generic failure."
+            "description": "Why a transfer failed. Known values: `too_large`, `invalid_archive`, `unsupported_version`, `too_new`, `storage`, `storage_full`, `gone`, `interrupted`, `cancelled`, `internal`. Open: clients show unknown values as a generic failure."
           },
           "summary": {
             "$ref": "#/components/schemas/TransferSummary"
@@ -6122,6 +6363,38 @@
           "boardId"
         ]
       },
+      "StorageFull": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "storage_full"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "user",
+              "instance"
+            ]
+          },
+          "remaining": {
+            "type": "number",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "code",
+          "scope",
+          "remaining",
+          "limit"
+        ]
+      },
       "AudioWaveform": {
         "type": "object",
         "properties": {
@@ -7317,8 +7590,11 @@
                   "disk_full",
                   "service_down",
                   "backup_failed",
-                  "repeated_errors"
-                ]
+                  "repeated_errors",
+                  "storage_limit",
+                  "storage_request"
+                ],
+                "description": "`storage_limit`: the instance total passed the warning share (`free` left of `total`); `storage_request`: the actor asks for more space. Both open Settings Storage and Members; added with storage limits."
               },
               "service": {
                 "type": [
@@ -7340,7 +7616,7 @@
                   "integer",
                   "null"
                 ],
-                "description": "Bytes left, for `disk_full`."
+                "description": "Bytes left, for `disk_full` and `storage_limit`."
               },
               "total": {
                 "type": [
@@ -13775,6 +14051,444 @@
         }
       }
     },
+    "/api/v1/instance/storage-limits": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: storage limits, with the space used and the disk.",
+        "responses": {
+          "200": {
+            "description": "Limits",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageLimits"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: change storage limits (decision 0081).",
+        "description": "A limit below the space already used is allowed: nothing is deleted, new files are refused. A limit set by the server environment cannot be changed (403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStorageLimits"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageLimits"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/members/{userId}/files": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: the 50 largest files of a person.",
+        "description": "Files in projects the administrator cannot open are only counted.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Files",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageFiles"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/storage": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The space the signed-in person uses, and their limit.",
+        "responses": {
+          "200": {
+            "description": "Space",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyStorage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/storage/files": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The 50 largest files the signed-in person uploaded.",
+        "responses": {
+          "200": {
+            "description": "Files",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageFiles"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/storage/request": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask the administrators for more space: an Inbox alert, at most one a day.",
+        "responses": {
+          "200": {
+            "description": "Sent, or already sent today",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sent": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "sent"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{projectId}/exports": {
       "post": {
         "tags": [
@@ -18030,7 +18744,14 @@
             }
           },
           "413": {
-            "description": "Larger than the instance limit (see Instance.limits)"
+            "description": "Larger than UPLOAD_MAX_SIZE (plain text), or no space left for it: the body is then StorageFull as JSON. The space is checked again when the last byte arrives.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageFull"
+                }
+              }
+            }
           }
         }
       }

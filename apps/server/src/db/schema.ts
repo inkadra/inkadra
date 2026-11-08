@@ -52,6 +52,8 @@ export const user = pgTable('user', {
   deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
   /** Per-account choice over `membersCanCreateProjects`; null follows the instance (0041). */
   canCreateProjects: boolean('can_create_projects'),
+  /** Storage limit of this account in bytes (decision 0081): null follows the instance, 0 none. */
+  storageLimit: bigint('storage_limit', { mode: 'number' }),
   twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -488,7 +490,12 @@ export const asset = pgTable(
     importedAuthor: text('imported_author'),
     createdAt: createdAt(),
   },
-  (t) => [index('asset_project_idx').on(t.projectId), index('asset_sha_idx').on(t.sha256)],
+  (t) => [
+    index('asset_project_idx').on(t.projectId),
+    index('asset_sha_idx').on(t.sha256),
+    // Storage limits add up the files of the uploader at each new file (decision 0081).
+    index('asset_created_by_idx').on(t.createdBy),
+  ],
 );
 
 export const assetVariant = pgTable(

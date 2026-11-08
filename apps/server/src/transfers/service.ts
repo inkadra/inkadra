@@ -8,6 +8,7 @@ import type { Database } from '../db/client.ts';
 import { asset, notification, projectTransfer } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import type { Storage } from '../storage.ts';
+import type { StorageEnv } from '../storage-limits.ts';
 import { exportProject } from './export.ts';
 import { importProject } from './import.ts';
 import { ArchiveError } from './zip.ts';
@@ -21,6 +22,7 @@ export interface TransferDeps {
   dataDir: string;
   uploadMaxSize: number;
   importMaxSize: number;
+  storageEnv?: StorageEnv;
   log: Logger;
 }
 

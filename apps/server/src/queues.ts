@@ -39,6 +39,7 @@ import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifica
 import { enqueueReleaseNews, sendReleaseNews } from './release-news.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
+import type { StorageEnv } from './storage-limits.ts';
 import { runTransfer, sweepTransfers } from './transfers/service.ts';
 import { checkForUpdates, RETRY_MS } from './updates.ts';
 import {
@@ -251,6 +252,8 @@ export interface TransferWorkerDeps {
   dataDir: string;
   uploadMaxSize: number;
   importMaxSize: number;
+  /** STORAGE_LIMIT and STORAGE_LIMIT_PER_USER, which imports respect (decision 0081). */
+  storageEnv?: StorageEnv;
   migrationsFolder: string;
   /** Files live in S3: copy backups to the bucket too. */
   bucket: boolean;

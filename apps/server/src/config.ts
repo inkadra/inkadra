@@ -50,6 +50,16 @@ const Env = z.object({
   WEB_DIST: z.string().optional(),
   /** Largest file an upload may have: bytes or a size such as `500MB`, `20GB`; 0 = no limit. */
   UPLOAD_MAX_SIZE: z.string().default('20GB').transform(parseSize),
+  /**
+   * Space of the whole instance and default space of each person (decision 0081): bytes or a
+   * size such as `500GB`, in powers of 1000 as Settings shows sizes; 0 = no limit. Set, they
+   * win over Settings → Storage and lock it there.
+   */
+  STORAGE_LIMIT: z.preprocess(emptyToUndefined, z.string().transform(parseDecimalSize).optional()),
+  STORAGE_LIMIT_PER_USER: z.preprocess(
+    emptyToUndefined,
+    z.string().transform(parseDecimalSize).optional(),
+  ),
   /** Largest project archive an import accepts, compressed and uncompressed; 0 = no limit. */
   IMPORT_MAX_SIZE: z.string().default('20GB').transform(parseSize),
   /** Where files live: `local` (DATA_DIR/files) or any S3-compatible bucket. */
@@ -187,14 +197,20 @@ const UNITS: Record<string, number> = {
 };
 
 /** Parses `1048576`, `500MB`, `20 GB` or `2TiB` into bytes, with binary multiples. */
-export function parseSize(value: string, ctx: z.RefinementCtx): number {
+export function parseSize(value: string, ctx: z.RefinementCtx, base = 1024): number {
   const m = /^\s*(\d+(?:\.\d+)?)\s*([KMGT]?)(?:I?B)?\s*$/i.exec(value);
   const unit = UNITS[m?.[2]?.toUpperCase() ?? ''];
   if (!m || unit === undefined) {
     ctx.addIssue({ code: 'custom', message: 'Use bytes or a size such as 500MB or 20GB' });
     return z.NEVER;
   }
-  return Math.floor(Number(m[1]) * unit);
+  const power = Math.round(Math.log(unit) / Math.log(1024));
+  return Math.floor(Number(m[1]) * base ** power);
+}
+
+/** As parseSize, with `500GB` meaning 500 × 1000³ bytes: the storage limits (decision 0081). */
+export function parseDecimalSize(value: string, ctx: z.RefinementCtx): number {
+  return parseSize(value, ctx, 1000);
 }
 
 export type Config = z.infer<typeof Env>;

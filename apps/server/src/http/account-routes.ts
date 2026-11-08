@@ -30,6 +30,7 @@ import {
   assetVariant,
   board,
   boardGrant,
+  notification,
   personalToken,
   project,
   projectMember,
@@ -44,6 +45,7 @@ import { officeFiles } from '../media/office.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
 import { animatedVariantKey } from '../storage.ts';
+import { largestFiles, myStorage } from '../storage-limits.ts';
 import { issueToken, toPersonalToken } from '../tokens.ts';
 import { toUser } from './api-routes.ts';
 import { requireActor, requireSession, toHeaders } from './auth-routes.ts';
@@ -177,6 +179,60 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   // Sessions ---------------------------------------------------------------------
   // Better Auth's /list-sessions hands every session token to the page so it can revoke
   // them; these routes never send a token, and /list-sessions and /revoke-session are off.
+
+  // Storage limits (decision 0081): one's own space and largest files.
+  app.get(v1('/me/storage'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    reply.header('cache-control', 'private, no-store');
+    return myStorage(db, config, actor.id);
+  });
+  app.get(v1('/me/storage/files'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    reply.header('cache-control', 'private, no-store');
+    return largestFiles(db, actor.id, actor.id);
+  });
+  app.post(v1('/me/storage/request'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    // At most one a day per person: asking again tells nobody twice.
+    const [recent] = await db
+      .select({ id: notification.id })
+      .from(notification)
+      .where(
+        and(
+          eq(notification.actorId, actor.id),
+          eq(notification.type, 'server_alert'),
+          sql`${notification.serverAlert}->>'kind' = 'storage_request'`,
+          gt(notification.createdAt, new Date(Date.now() - 86_400_000)),
+        ),
+      )
+      .limit(1);
+    if (recent) return { sent: false };
+    const space = await myStorage(db, config, actor.id);
+    const admins = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(and(eq(user.role, 'admin'), isNull(user.deactivatedAt), ne(user.id, actor.id)));
+    if (!admins.length) return { sent: false };
+    const used = space.originalBytes + space.derivedBytes;
+    await db.insert(notification).values(
+      admins.map((a) => ({
+        userId: a.id,
+        type: 'server_alert' as const,
+        actorId: actor.id,
+        serverAlert: {
+          kind: 'storage_request' as const,
+          service: null,
+          free: space.limit === null ? null : Math.max(0, Math.round(space.limit - used)),
+          total: space.limit,
+          weeksLeft: null,
+          count: null,
+        },
+        // In-app only.
+        emailedAt: new Date(),
+      })),
+    );
+    return { sent: true };
+  });
 
   app.get(v1('/me/sessions'), async (req) => {
     const session = await requireSession(auth, req, db, true);

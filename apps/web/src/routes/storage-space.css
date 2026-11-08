@@ -1,0 +1,175 @@
+/* Storage limits (decision 0081): the space bar, the personal card and the largest files. */
+.space-meter {
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-3);
+}
+.space-meter--small {
+  height: 4px;
+}
+.space-meter > span {
+  display: block;
+  flex: none;
+  height: 100%;
+  background: var(--ink-accent-button);
+}
+.space-meter > span + span {
+  background: color-mix(in srgb, var(--ink-accent-button) 45%, transparent);
+}
+.space-meter--warn > span {
+  background: var(--ink-status-warn);
+}
+.space-meter--warn > span + span {
+  background: color-mix(in srgb, var(--ink-status-warn) 45%, transparent);
+}
+.space-meter--danger > span {
+  background: var(--ink-status-danger);
+}
+.space-meter--danger > span + span {
+  background: color-mix(in srgb, var(--ink-status-danger) 45%, transparent);
+}
+
+.space-card__big {
+  margin: 2px 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.space-card__big small {
+  color: var(--ink-text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.space-card__meta {
+  margin: 8px 0 0;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.space-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.space-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--ink-radius-sm);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.space-banner > svg {
+  flex: none;
+  margin-top: 1px;
+}
+.space-banner--danger {
+  border-color: var(--ink-danger-border);
+  background: var(--ink-danger-bg);
+  color: var(--ink-danger-fg);
+}
+.space-banner--info {
+  margin: 0 0 10px;
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+
+.space-files table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.space-files th,
+.space-files td {
+  padding: 7px 0;
+  border-bottom: 1px solid var(--ink-border-subtle);
+  font-weight: 400;
+  text-align: left;
+  vertical-align: top;
+}
+.space-files td {
+  padding-left: 12px;
+  color: var(--ink-text-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.space-files__name {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.space-files__project {
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.space-files > p {
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+/* Members: the Spazio column, a size over a short bar. */
+.space-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.space-mini em {
+  color: var(--ink-text-secondary);
+  font-style: normal;
+}
+
+/* Settings → Storage: the limits and the space used. */
+.space-limit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.space-limit .ink-input {
+  width: 80px;
+}
+.space-limit__unit {
+  width: 76px;
+}
+.space-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+}
+.space-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+}
+.space-choice label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.space-link {
+  color: var(--ink-accent-soft-fg);
+  font-size: 12px;
+}

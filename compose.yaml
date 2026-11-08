@@ -35,6 +35,9 @@ services:
       # A single dash on purpose: an empty value must stay empty, it turns the relay off.
       FEEDBACK_RELAY_URL: ${FEEDBACK_RELAY_URL-https://relay.inkadra.com}
       UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE:-20GB}
+      # Storage limits (decision 0081): empty leaves them to Settings → Storage.
+      STORAGE_LIMIT: ${STORAGE_LIMIT:-}
+      STORAGE_LIMIT_PER_USER: ${STORAGE_LIMIT_PER_USER:-}
       HEIC_PREVIEWS: ${HEIC_PREVIEWS:-true}
       RAW_PREVIEWS: ${RAW_PREVIEWS:-true}
       PDF_PREVIEWS: ${PDF_PREVIEWS:-true}

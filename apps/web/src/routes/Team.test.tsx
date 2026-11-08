@@ -104,12 +104,14 @@ it('changes global roles through the instance endpoint', async () => {
   });
   expect(api.patch).toHaveBeenCalledWith('/instance/members/member', { role: 'admin' });
 });
-it('requires confirmation before soft deactivation', async () => {
+it('requires confirmation before soft deactivation, from the ⋯ menu', async () => {
   await render();
-  const button = [...host.querySelectorAll('tbody button:not([role=combobox])')].find(
-    (b) => !b.hasAttribute('disabled'),
-  ) as HTMLButtonElement;
-  await act(async () => button.click());
+  const more = host.querySelectorAll<HTMLButtonElement>('.team-col--actions button')[1]!;
+  await act(async () => more.click());
+  const item = [...document.querySelectorAll<HTMLButtonElement>('[role=menuitem]')].find(
+    (b) => b.textContent === 'admin.deactivate',
+  )!;
+  await act(async () => item.click());
   expect(api.patch).not.toHaveBeenCalled();
   const confirm = [...document.querySelectorAll('button')].find(
     (b) => b.textContent === 'admin.deactivate' && b.closest('dialog'),
@@ -117,6 +119,48 @@ it('requires confirmation before soft deactivation', async () => {
   expect(confirm).toBeTruthy();
   await act(async () => confirm.click());
   expect(api.patch).toHaveBeenCalledWith('/instance/members/member', { active: false });
+});
+it('shows the space of each person and saves a limit of their own', async () => {
+  vi.mocked(api.get).mockImplementation(async (path) =>
+    path === '/instance/members'
+      ? {
+          items: people.map((p) => ({
+            ...p,
+            storageBytes: 4.6e9,
+            storageLimit: 5e9,
+            storageLimitOverride: null,
+          })),
+        }
+      : path === '/instance/storage-limits'
+        ? {
+            total: null,
+            perUser: 5e9,
+            warnPercent: 80,
+            locked: { total: false, perUser: false },
+            uploadMaxSize: 0,
+            usedBytes: 0,
+            disk: null,
+            growthPerMonth: 0,
+          }
+        : { items: [] },
+  );
+  await render();
+  const meter = host.querySelector('.team-col--space [role=meter]');
+  expect(meter?.getAttribute('aria-valuenow')).toBe(String(4.6e9));
+  expect(meter?.className).toContain('space-meter--warn');
+  const more = host.querySelectorAll<HTMLButtonElement>('.team-col--actions button')[1]!;
+  await act(async () => more.click());
+  const item = [...document.querySelectorAll<HTMLButtonElement>('[role=menuitem]')].find(
+    (b) => b.textContent === 'storageSpace.changeLimit',
+  )!;
+  await act(async () => item.click());
+  const none = document.querySelector<HTMLInputElement>('dialog input[value="none"]')!;
+  await act(async () => none.click());
+  const save = [...document.querySelectorAll<HTMLButtonElement>('dialog button')].find(
+    (b) => b.textContent === 'storageSpace.save',
+  )!;
+  await act(async () => save.click());
+  expect(api.patch).toHaveBeenCalledWith('/instance/members/member', { storageLimit: 0 });
 });
 it('shows a genuine empty directory and reports loading failures', async () => {
   vi.mocked(api.get).mockResolvedValue({ items: [] });

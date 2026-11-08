@@ -130,6 +130,8 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Devices', 'Dispositivi'],
     ['Apps and tokens', 'App e token'],
     ['Delete account', 'Elimina account'],
+    ['Your space', 'Il tuo spazio'],
+    ['Largest files', 'File più grandi'],
   ],
   preferences: [
     ['Theme', 'Tema'],
@@ -181,11 +183,16 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Deactivate account', 'Disattiva account'],
     ['Reactivate account', 'Riattiva account'],
     ['People', 'Persone'],
+    ['Space', 'Spazio'],
+    ['Space limit', 'Limite di spazio'],
   ],
   workspace: [
     ['Space used', 'Spazio usato'],
     ['Uploaded files', 'File caricati'],
     ['Storage', 'Archiviazione'],
+    ['Space limits', 'Limiti di spazio'],
+    ['Space per person', 'Spazio per persona'],
+    ['Warn at', 'Avvisa a'],
   ],
   classifications: [
     ['Project types', 'Tipi di progetto'],

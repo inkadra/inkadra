@@ -148,7 +148,9 @@ export function NotePhoneTools({
         if (editor.isDestroyed) return;
         editor.chain().focus().insertContent({ type: 'noteImage', attrs: { assetId } }).run();
       },
-      onFailed: () => onError(t('board.note.pictureFailed')),
+      onFailed: (_assetId, refused) => {
+        if (!refused) onError(t('board.note.pictureFailed'));
+      },
       onCancelled: (assetId) => {
         if (!assetId || editor.isDestroyed) return;
         editor.commands.command(({ tr, state }) => {

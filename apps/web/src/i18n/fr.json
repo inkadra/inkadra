@@ -2025,7 +2025,9 @@
       "server_alert_backup_failed": "La sauvegarde a échoué",
       "server_alert_repeated_errors": "La même erreur s’est produite {{times}} fois dans la dernière heure",
       "server_alert_unknown": "Quelque chose ne va pas sur le serveur",
-      "update_available": "Une nouvelle version d’Inkadra est disponible"
+      "update_available": "Une nouvelle version d’Inkadra est disponible",
+      "server_alert_storage_limit": "Espace de l’instance : {{percent}} % utilisé ({{used}} sur {{limit}})",
+      "server_alert_storage_request": "demande plus d’espace"
     },
     "emailTitle": "Notifications par e-mail",
     "emailHint": "Mentions, réponses et révisions aussi par e-mail, si le serveur peut les envoyer.",
@@ -2769,11 +2771,11 @@
     "search": "Chercher un réglage",
     "noResults": "Aucun paramètre trouvé",
     "keywords": {
-      "account": "Nom, E-mail, Photo de profil, Mot de passe, Validation en deux étapes (2FA), Codes de secours, Méthodes de connexion, Sessions, Appareils, Applications et jetons, Supprimer le compte",
+      "account": "Nom, E-mail, Photo de profil, Mot de passe, Validation en deux étapes (2FA), Codes de secours, Méthodes de connexion, Sessions, Appareils, Applications et jetons, Supprimer le compte, Votre espace, Plus gros fichiers",
       "preferences": "Thème, Thème sombre, Thème clair, Langue, Continuer à lire les vidéos hors écran, Format de date, Format d’heure, Grille de points, Aligner sur la grille, Double-clic crée une note, Garder le tableau autour du contenu, Boutons Annuler et Rétablir",
       "notifications": "Notifications par e-mail, Mentions, Réponses, Révisions, Récapitulatif quotidien, Réception, Commentaires sur vos cartes",
-      "members": "Inviter des membres, Invitations, Lien d’invitation, Rôle, Administrateurs, Désactiver le compte, Réactiver le compte, Personnes",
-      "workspace": "Espace utilisé, Fichiers envoyés, Stockage",
+      "members": "Inviter des membres, Invitations, Lien d’invitation, Rôle, Administrateurs, Désactiver le compte, Réactiver le compte, Personnes, Espace, Limite d’espace",
+      "workspace": "Espace utilisé, Fichiers envoyés, Stockage, Limites d’espace, Espace par personne, Avertir à",
       "classifications": "Types de projet, Tags, Catalogues, Valeur de plan, Angle, Mouvement",
       "providers": "Google, OIDC, Authentification unique (SSO), Lien de connexion par e-mail, E-mail et mot de passe, SMTP, E-mails sortants",
       "registration": "Nouveaux comptes, Inscriptions ouvertes, Sur invitation uniquement, Inscriptions fermées, Exiger la validation en deux étapes des administrateurs",
@@ -3077,7 +3079,8 @@
       "gone": "Vous ne pouvez plus modifier ce projet, ou il a été supprimé.",
       "interrupted": "Le serveur s’est arrêté pendant l’opération. Réessayez.",
       "cancelled": "Annulé.",
-      "internal": "Une erreur s’est produite. Réessayez."
+      "internal": "Une erreur s’est produite. Réessayez.",
+      "storage_full": "Les fichiers de l’archive ne tiennent pas dans l’espace restant. Libérez de l’espace ou demandez à un administrateur."
     },
     "importArchive": "Importer une archive…"
   },
@@ -4408,6 +4411,23 @@
             "text": "Ce qui a changé dans chaque version."
           }
         }
+      },
+      "storage": {
+        "name": "Limites d’espace",
+        "steps": {
+          "0": {
+            "title": "L’espace utilisé",
+            "text": "Originaux, copies et aperçus, et combien de temps cela dure."
+          },
+          "1": {
+            "title": "Les limites",
+            "text": "Pour l’instance et par personne. Désactivées tant que vous ne les activez pas."
+          },
+          "2": {
+            "title": "Une personne à la fois",
+            "text": "Dans Membres, depuis le menu ⋯, une limite différente pour qui en a besoin."
+          }
+        }
       }
     }
   },
@@ -4825,5 +4845,80 @@
     "skip": "Ignorer cette version",
     "github": "GitHub ↗",
     "seeNews": "Voir les nouveautés"
+  },
+  "storageSpace": {
+    "title": "Votre espace",
+    "of": "{{used}} sur {{limit}}",
+    "unlimited": "Sans limite",
+    "unlimitedShort": "sans limite",
+    "full": "Plein",
+    "left": "Il reste {{size}}",
+    "room": "De la place",
+    "used": "utilisés",
+    "ofLimit": "sur {{limit}}",
+    "detail": "Originaux {{originals}} · copies et aperçus {{derived}}. Compte ce que vous avez envoyé, dans tous les projets.",
+    "instanceFull": "Le serveur n’a plus d’espace : personne ne peut envoyer d’autres fichiers. Prévenez un administrateur.",
+    "fullHelp": "Vous ne pouvez plus envoyer de fichiers. Libérez de l’espace ou demandez à un administrateur.",
+    "largest": "Voir les plus gros fichiers",
+    "largestTitle": "Vos plus gros fichiers",
+    "noFiles": "Aucun fichier envoyé.",
+    "file": "Fichier",
+    "hidden_one": "1 fichier dans un projet que vous ne pouvez pas ouvrir : {{size}}.",
+    "hidden_other": "{{count}} fichiers dans des projets que vous ne pouvez pas ouvrir : {{size}}.",
+    "filesHelp": "Les fichiers retirés des boards comptent aussi : ils restent dans le projet, car une version peut les ramener. L’espace revient quand le projet est supprimé.",
+    "column": "Espace",
+    "own": "{{size}} · propre",
+    "actionsFor": "Actions pour {{name}}",
+    "changeLimit": "Modifier la limite d’espace…",
+    "seeFiles": "Voir ses fichiers",
+    "filesOf": "Fichiers de {{name}}",
+    "spaceOf": "Espace de {{name}}",
+    "uses": "Utilise {{size}}.",
+    "asEveryone": "Comme tout le monde ({{size}})",
+    "ownLimit": "Limite propre",
+    "ceiling": "L’hébergeur du serveur a fixé {{size}} par personne : vous pouvez seulement la baisser.",
+    "lowerHelp": "En dessous de ce qui est déjà utilisé, rien n’est supprimé : seuls les envois s’arrêtent.",
+    "save": "Enregistrer",
+    "nearToast": "Vous avez utilisé {{percent}} % de votre espace : il reste {{size}}.",
+    "see": "Voir",
+    "instanceToast": "Le serveur n’a plus d’espace. Prévenez un administrateur.",
+    "fileToast": "« {{name}} » n’a pas été envoyé : il dépasse l’espace qui vous reste.",
+    "details": "Détails",
+    "blockedTitle": "Pas assez d’espace",
+    "leftOf": "Il vous reste {{size}} sur {{limit}}.",
+    "instanceLeft": "Il reste {{size}} au serveur.",
+    "uploadedOf_one": "Nous avons envoyé {{done}} fichiers sur {{total}} ; celui-ci ne tient pas :",
+    "uploadedOf_other": "Nous avons envoyé {{done}} fichiers sur {{total}} ; ces {{count}} ne tiennent pas :",
+    "blockedHelp": "Libérez de l’espace ou demandez à un administrateur d’augmenter votre limite. Les notes, commentaires et modifications continuent de fonctionner.",
+    "instanceHelp": "Prévenez un administrateur. Les notes, commentaires et modifications continuent de fonctionner.",
+    "ask": "Demander plus d’espace",
+    "asked": "Les administrateurs ont été prévenus.",
+    "alreadyAsked": "Les administrateurs ont déjà été prévenus aujourd’hui.",
+    "close": "Fermer"
+  },
+  "storageLimits": {
+    "usedTitle": "Espace utilisé",
+    "ofLimit": "sur une limite de {{limit}}",
+    "disk": "disque {{size}}",
+    "usedDetail": "Originaux {{originals}} · copies et aperçus {{derived}}. La limite ne peut pas dépasser l’espace libre du disque : s’il se remplit, Serveur le signale.",
+    "lastsMonths_one": "Suffit pour environ 1 mois",
+    "lastsMonths_other": "Suffit pour environ {{count}} mois",
+    "lastsWeeks_one": "Suffit pour environ 1 semaine",
+    "lastsWeeks_other": "Suffit pour environ {{count}} semaines",
+    "title": "Limites d’espace",
+    "locked": "Fixées par l’hébergeur du serveur",
+    "lockedHelp": "Ces limites font partie de votre offre et se modifient chez l’hébergeur du serveur",
+    "total": "Espace total de l’instance",
+    "totalHelp": "Au-delà, personne n’envoie plus de fichiers. Rien n’est supprimé.",
+    "perUser": "Espace par personne",
+    "perUserHelp": "La limite de ceux qui n’en ont pas une propre. Modifiez-la pour une personne dans Membres.",
+    "none": "Sans limite",
+    "limit": "Limite",
+    "unit": "Unité de {{label}}",
+    "largestFile": "Plus gros fichier",
+    "fromServer": "Depuis le serveur :",
+    "warn": "Avertir à",
+    "warnHelp": "Les personnes voient un avertissement, les administrateurs le reçoivent dans leur Inbox.",
+    "openMembers": "Ouvrir dans Membres"
   }
 }

@@ -32,7 +32,7 @@ async function shoot(page: Page, name: string) {
   }
 }
 
-test('each member is a tidy card on a phone: the columns line up and Disattiva ends the first line', async ({
+test('each member is a tidy card on a phone: the columns line up and the ⋯ menu ends the first line', async ({
   page,
   baseURL,
 }) => {
@@ -77,7 +77,7 @@ test('each member is a tidy card on a phone: the columns line up and Disattiva e
     expect(Math.abs(c.create.left - first.create.left)).toBeLessThan(1);
     expect(Math.abs(c.role.width - first.role.width)).toBeLessThan(1);
     expect(c.create.top).toBeGreaterThanOrEqual(c.role.bottom - 1);
-    // Disattiva at the end of the first line, the same place on every row, inside the card.
+    // The ⋯ menu at the end of the first line, the same place on every row, inside the card.
     expect(Math.abs(c.action.right - first.action.right)).toBeLessThan(1);
     expect(c.action.right).toBeLessThanOrEqual(c.tr.right);
     expect(c.action.bottom).toBeLessThanOrEqual(c.person.bottom);
