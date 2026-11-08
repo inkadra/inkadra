@@ -79,12 +79,10 @@ describe('release notes', () => {
   });
 
   it('are fetched once per language for the newest releases, as plain text', async () => {
-    const fetch = vi
-      .spyOn(updateSource, 'fetchNotes')
-      .mockImplementation(async (version, lang) => {
-        if (lang === 'en') throw new Error('offline');
-        return `## Novità\n- [${version}](https://evil.example) <img src=x onerror=alert(1)>**ok**\n## Prima di aggiornare\n- <script>alert(1)</script>Backup`;
-      });
+    const fetch = vi.spyOn(updateSource, 'fetchNotes').mockImplementation(async (version, lang) => {
+      if (lang === 'en') throw new Error('offline');
+      return `## Novità\n- [${version}](https://evil.example) <img src=x onerror=alert(1)>**ok**\n## Prima di aggiornare\n- <script>alert(1)</script>Backup`;
+    });
     const [latest, rc] = await withNotes(parseReleases(github), []);
     expect(fetch.mock.calls).toEqual([
       ['1.1.0', 'it'],
