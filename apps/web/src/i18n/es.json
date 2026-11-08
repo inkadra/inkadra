@@ -3138,6 +3138,7 @@
     "whatVisible": "Área visible",
     "whatStoryboard": "Storyboard",
     "whatShotlist": "Lista de planos",
+    "whatScenesheets": "Hojas por escena",
     "framesPerPage": "Planos por página",
     "page": "Tamaño de página",
     "paperA4": "A4",
@@ -3314,7 +3315,67 @@
     "filesFailed_one": "Descarga fallida: {{names}}. Inténtalo de nuevo.",
     "filesFailed_other": "Descarga fallida: {{names}}. Inténtalo de nuevo.",
     "filesPartial_one": "El ZIP se ha descargado, pero falta {{names}}: el servidor no entregó el archivo. Inténtalo de nuevo.",
-    "filesPartial_other": "El ZIP se ha descargado, pero faltan {{names}}: el servidor no entregó los archivos. Inténtalo de nuevo."
+    "filesPartial_other": "El ZIP se ha descargado, pero faltan {{names}}: el servidor no entregó los archivos. Inténtalo de nuevo.",
+    "sheets": {
+      "department": "Departamento",
+      "new": "Nuevo",
+      "scenes": "Escenas",
+      "scenesAll": "Todas las escenas",
+      "scenesSelection": "Escenas seleccionadas",
+      "scenesDay_one": "Día {{n}} · {{date}} · {{count}} escena",
+      "scenesDay_other": "Día {{n}} · {{date}} · {{count}} escenas",
+      "scenesDayShort_one": "Día {{n}} · {{date}} · {{count}}",
+      "scenesDayShort_other": "Día {{n}} · {{date}} · {{count}}",
+      "summary_one": "{{count}} hoja por escena · {{page}}",
+      "summary_other": "{{count}} hojas por escena · {{page}}",
+      "previewPage": "Página {{n}} de {{total}}",
+      "departments": {
+        "everything": {
+          "name": "Todo",
+          "hint": "La hoja completa"
+        },
+        "camera": {
+          "name": "Cámara",
+          "hint": "Planos, objetivos, planta"
+        },
+        "lighting": {
+          "name": "Iluminación y maquinaria",
+          "hint": "Planta, momento, notas de luz"
+        },
+        "costume": {
+          "name": "Vestuario y maquillaje",
+          "hint": "Personajes y looks"
+        },
+        "production": {
+          "name": "Producción",
+          "hint": "Lugar, reparto, objetos"
+        }
+      },
+      "day": "Día {{n}}",
+      "dayOf": "Día {{n}} de {{total}} · escenas {{scenes}}",
+      "continuityBoth": "Escena anterior con {{name}}: {{previous}}. Siguiente: {{next}}.",
+      "continuityPrevious": "Escena anterior con {{name}}: {{previous}}.",
+      "continuityNext": "Escena siguiente con {{name}}: {{next}}.",
+      "pageOf": "{{n}} / {{total}}",
+      "none": "No hay escenas que imprimir.",
+      "call": "Citación",
+      "location": "Lugar",
+      "time": "Momento",
+      "cast": "Reparto",
+      "frames": "Planos",
+      "characters": "Personajes",
+      "inScene": "Personajes en la escena",
+      "playedBy": "Interpretado por {{actor}}",
+      "continuity": "Continuidad",
+      "frameNotes": "Notas de los planos",
+      "light": "Luz",
+      "shootingDay": "Día de rodaje",
+      "needed": "Necesario",
+      "notes": "Notas",
+      "frame": "Plano",
+      "count_one": "{{count}} hoja por escena",
+      "count_other": "{{count}} hojas por escena"
+    }
   },
   "screenplay": {
     "open": "Importar guion…",
@@ -4272,6 +4333,10 @@
             "text": "Mira la página antes de descargarla."
           },
           "2": {
+            "title": "Hojas por escena",
+            "text": "Una página por escena para un departamento: cámara, iluminación, vestuario o producción."
+          },
+          "3": {
             "title": "El proyecto entero",
             "text": "Expórtalo en zip e impórtalo en otro servidor."
           }

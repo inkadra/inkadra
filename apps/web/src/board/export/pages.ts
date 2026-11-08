@@ -85,6 +85,8 @@ export interface Page {
   background?: string | null;
   /** A picture at its own pixels: the most a PNG or JPEG may enlarge it. */
   maxScale?: number;
+  /** A page with a header of its own: draws its footer, given its number, instead of the usual. */
+  ownChrome?: (n: number, total: number) => Op[];
 }
 
 /** Natural size of a picture, used to keep its proportions. */

@@ -86,12 +86,20 @@ import {
 } from './planning.ts';
 import { renderImages } from './render-canvas.ts';
 import { renderPdf } from './render-pdf.ts';
+import { chosenScenes, type Department, type SceneChoice } from './scene-choice.ts';
+import { sceneSheetPages, sceneSheets } from './scene-sheets.ts';
 import { logoUrl, teamPdf } from './settings.ts';
 import { missingGlyphs } from './text.ts';
 import { zipBlobs } from './zip.ts';
 
 export type ExportFormat = 'pdf' | 'png' | 'jpeg';
-export type ExportWhat = 'board' | 'selection' | 'visible' | 'storyboard' | 'shotlist';
+export type ExportWhat =
+  | 'board'
+  | 'selection'
+  | 'visible'
+  | 'storyboard'
+  | 'shotlist'
+  | 'scenesheets';
 
 export interface ExportRequest {
   format: ExportFormat;
@@ -115,6 +123,10 @@ export interface ExportRequest {
   callSheet: boolean;
   /** PNG and JPEG: the shape of the picture; left out, "Original". */
   image?: ImageOptions | undefined;
+  /** Scene sheets (decision 0083): the department; left out, everything. */
+  department?: Department | undefined;
+  /** Scene sheets: which scenes; left out, all of them. */
+  scenes?: SceneChoice | undefined;
 }
 
 export interface ExportEnv {
@@ -144,6 +156,8 @@ export interface BuiltPages {
   missing: string[];
   /** Pictures that have no thumbnail yet: they print as an empty box. */
   notReady: number;
+  /** Scene sheets: how many pages they fill. */
+  sheets: number;
 }
 
 export interface ExportProgress {
@@ -158,6 +172,8 @@ export interface BuildOptions {
   preview?: boolean;
   /** With `preview`: the page shown, when it is not one of the first. */
   previewPage?: number;
+  /** With `preview`: how many of the first pages are shown; left out, two. */
+  previewCount?: number;
   signal?: AbortSignal;
   onProgress?: (progress: ExportProgress) => void;
 }
@@ -184,20 +200,27 @@ const EXPORT_PIXELS = 2048;
 
 function thumbnailPixels(req: ExportRequest, preview: boolean): number {
   if (preview) return 512;
-  if (req.what === 'shotlist') return 512;
+  if (req.what === 'shotlist' || req.what === 'scenesheets') return 512;
   if (req.what === 'storyboard') return req.framesPerPage <= 2 ? EXPORT_PIXELS : 1024;
   return EXPORT_PIXELS;
 }
 
 export function kindOf(what: ExportWhat): ExportKind {
-  return what === 'storyboard' || what === 'shotlist' ? what : 'board';
+  return what === 'storyboard' || what === 'shotlist' || what === 'scenesheets' ? what : 'board';
+}
+
+/** What the title page and the PDF's subject call the content. */
+function kindLabel(kind: ExportKind, t: TFunction): string {
+  if (kind === 'board') return t('export.kindBoard');
+  if (kind === 'scenesheets') return t('export.whatScenesheets');
+  return t(`film.views.${kind}`);
 }
 
 /** Lays out every page; with `preview`, loads only the pictures of the first pages. */
 export async function buildPages(
   req: ExportRequest,
   env: ExportEnv,
-  { preview = false, previewPage, signal, onProgress }: BuildOptions = {},
+  { preview = false, previewPage, previewCount = 2, signal, onProgress }: BuildOptions = {},
 ): Promise<BuiltPages> {
   const { store, t } = env;
   const fonts = await loadFonts(req.theme?.headingFont);
@@ -339,7 +362,20 @@ export async function buildPages(
   // A picture in a social format, or a card by itself, has no running header and footer.
   let bare = false;
   let summary = '';
+  let sheetCount = 0;
   const shownIds = new Set<string>();
+  // Shooting days and people come from the server, once per preview.
+  const fetchPlanning = (): Promise<Planning> =>
+    env.scope
+      ? loadPlanning(env.scope.projectId, env.scope.boardId)
+      : Promise.resolve({ days: [], members: [] });
+  const planningOnce = async () => {
+    const planning = preview
+      ? await env.cache.once('planning', fetchPlanning)
+      : await fetchPlanning();
+    signal?.throwIfAborted();
+    return planning;
+  };
 
   if (kind === 'board') {
     const scope: ExportScope =
@@ -384,6 +420,104 @@ export async function buildPages(
     } else {
       content = [boardPage(asImage ? 'fit' : setup, items, region ?? empty, ctx)];
     }
+  } else if (kind === 'scenesheets') {
+    // The storyboard as this export may show it: scenes and frames left out for clients go.
+    const groups = groupsAll.flatMap((group) => {
+      const scene = group.scene ? exportable(group.scene, lookup, filter) : null;
+      if (group.scene && scene?.type !== 'scene') return [];
+      const frames = group.frames.flatMap((raw) => {
+        const frame = exportable(raw, lookup, filter);
+        return frame?.type === 'frame' ? [frame] : [];
+      });
+      return [{ scene: scene?.type === 'scene' ? scene : null, frames }];
+    });
+    const elements = all.flatMap((raw) => {
+      if (
+        raw.type !== 'character' &&
+        raw.type !== 'location' &&
+        raw.type !== 'plan' &&
+        raw.type !== 'todo'
+      )
+        return [];
+      const el = exportable(raw, lookup, filter);
+      return el ? [el] : [];
+    });
+    const choice = req.scenes ?? 'all';
+    // Clients get no schedule: it holds the production's call times, cast and notes.
+    const { days } =
+      team || choice.startsWith('day:') ? await planningOnce() : { days: [] as Planning['days'] };
+    const scenes = chosenScenes(groups, choice, env.selection, days, snapshot.byId);
+    const department = req.department ?? 'everything';
+    const sheets = sceneSheets({
+      scenes,
+      groups,
+      elements,
+      days: team ? days : [],
+      byId: snapshot.byId,
+      shot: (frame, scene) => ({
+        frame,
+        label: labels.get(frame.id) ?? '',
+        scene,
+        size: preset('shotSizes', frame.shot),
+        angle: preset('shotAngles', frame.angle),
+        movement: preset('shotMovements', frame.movement),
+      }),
+      text: {
+        project: env.projectName || env.boardTitle,
+        slugline,
+        time: (scene) =>
+          [
+            scene.setting && t(`film.scene.settings.${scene.setting}`),
+            scene.time && t(`film.scene.times.${scene.time}`),
+          ]
+            .filter(Boolean)
+            .join(' · '),
+        day: (n, date) =>
+          `${t('export.sheets.day', { n })} · ${calendarDate(date, env.language, 'short')}`,
+        dayOf: (n, total, list) => t('export.sheets.dayOf', { n, total, scenes: list }),
+        continuity: (name, previous, next) =>
+          previous && next
+            ? t('export.sheets.continuityBoth', { name, previous, next })
+            : previous
+              ? t('export.sheets.continuityPrevious', { name, previous })
+              : t('export.sheets.continuityNext', { name, next }),
+      },
+    });
+    for (const scene of scenes) shownIds.add(scene.id);
+    for (const sheet of sheets) for (const shot of sheet.shots) shownIds.add(shot.frame.id);
+    content = sceneSheetPages(setup, sheets, department, ctx, {
+      department: t(`export.sheets.departments.${department}.name`),
+      footer: `Inkadra · ${team ? t('export.audienceTeam') : t('export.audienceClient')}`,
+      pageOf: (n, total) => t('export.sheets.pageOf', { n, total }),
+      none: t('export.sheets.none'),
+      call: t('export.sheets.call'),
+      location: t('export.sheets.location'),
+      time: t('export.sheets.time'),
+      cast: t('export.sheets.cast'),
+      frames: t('export.sheets.frames'),
+      characters: t('export.sheets.characters'),
+      inScene: t('export.sheets.inScene'),
+      playedBy: (actor) => t('export.sheets.playedBy', { actor }),
+      continuity: t('export.sheets.continuity'),
+      setPlan: t('board.plan.name'),
+      frameNotes: t('export.sheets.frameNotes'),
+      light: t('export.sheets.light'),
+      shootingDay: t('export.sheets.shootingDay'),
+      needed: t('export.sheets.needed'),
+      notes: t('export.sheets.notes'),
+      production: t('export.sheets.departments.production.name'),
+      columns: {
+        frame: t('export.sheets.frame'),
+        number: '#',
+        size: t('export.columns.size'),
+        angle: t('export.columns.angle'),
+        movement: t('export.columns.movement'),
+        lens: t('export.columns.lens'),
+        notes: t('export.sheets.notes'),
+      },
+    });
+    sheetCount = content.length;
+    summary = t('export.sheets.count', { count: sheets.length });
   } else {
     const shots: Shot[] = [];
     for (const group of groupsAll) {
@@ -447,14 +581,7 @@ export async function buildPages(
   const withSummary = req.kickoffSummary && teamPdf(req);
   const withSheets = req.callSheet && teamPdf(req);
   if (withSummary || withSheets) {
-    const fetchPlanning = (): Promise<Planning> =>
-      env.scope
-        ? loadPlanning(env.scope.projectId, env.scope.boardId)
-        : Promise.resolve({ days: [], members: [] });
-    const planning = preview
-      ? await env.cache.once('planning', fetchPlanning)
-      : await fetchPlanning();
-    signal?.throwIfAborted();
+    const planning = await planningOnce();
     if (withSummary) {
       const todos = all.flatMap((raw) => {
         const el = exportable(raw, lookup, filter);
@@ -487,7 +614,7 @@ export async function buildPages(
     boardTitle: env.boardTitle,
     date: dateFormat.format(new Date()),
     kind,
-    kindLabel: kind === 'board' ? t('export.kindBoard') : t(`film.views.${kind}`),
+    kindLabel: kindLabel(kind, t),
     summary,
     logo: logo ? { key: 'logo', width: logo.width, height: logo.height } : undefined,
     accent: req.theme ? paperAccent(req.theme.color) : undefined,
@@ -510,7 +637,7 @@ export async function buildPages(
     preview && previewPage !== undefined
       ? pages.slice(previewPage, previewPage + 1)
       : preview
-        ? pages.slice(0, 2)
+        ? pages.slice(0, previewCount)
         : pages;
   for (const page of shown) collectKeys(page.ops, needed);
   needed.delete('logo');
@@ -527,6 +654,7 @@ export async function buildPages(
     fonts,
     missing: missingGlyphs(pages, fonts.covers),
     notReady: notReady.size,
+    sheets: sheetCount,
   };
 }
 
@@ -676,10 +804,7 @@ export async function exportFile(
       {
         title: env.boardTitle || env.projectName,
         author: env.projectName,
-        subject:
-          kindOf(req.what) === 'board'
-            ? env.t('export.kindBoard')
-            : env.t(`film.views.${kindOf(req.what)}`),
+        subject: kindLabel(kindOf(req.what), env.t),
         language: env.language,
       },
       { ...(signal ? { signal } : {}), onPage: pageProgress },

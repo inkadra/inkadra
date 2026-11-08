@@ -24,7 +24,10 @@ export interface NeededRow {
 }
 
 /** The scenes a day shoots, by element id, in the order of its shot blocks. */
-function sceneIdsOf(day: ShootingDayInput, byId: ReadonlyMap<string, Element>): string[] {
+export function sceneIdsOf(
+  day: Pick<ShootingDayInput, 'blocks'>,
+  byId: ReadonlyMap<string, Element>,
+): string[] {
   const ids: string[] = [];
   for (const block of day.blocks) {
     const frame = block.shotId ? byId.get(block.shotId) : undefined;

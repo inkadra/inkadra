@@ -32,7 +32,7 @@ import { ellipsize, textBlock, wrapText } from './text.ts';
 type Frame = Extract<Element, { type: 'frame' }>;
 
 /** Board kinds with a colour of their own (packages/ui kind-color.ts); others stay neutral. */
-export type ExportKind = 'board' | 'storyboard' | 'shotlist';
+export type ExportKind = 'board' | 'storyboard' | 'shotlist' | 'scenesheets';
 
 export interface DocInfo {
   projectName: string;
@@ -95,6 +95,7 @@ const KIND_COLORS: Record<ExportKind, { fg: keyof Colors; bg: keyof Colors } | n
   storyboard: { fg: 'tag-purple', bg: 'tag-purple-bg' },
   shotlist: { fg: 'tag-green', bg: 'tag-green-bg' },
   board: null,
+  scenesheets: null,
 };
 
 function text(
@@ -781,7 +782,7 @@ export function sectionPages(
 
 /**
  * Adds the running header and footer. Page numbers count every page, the title page included,
- * which carries neither.
+ * which carries neither; pages with a header of their own number among themselves.
  */
 export function finish(
   pages: Page[],
@@ -790,9 +791,12 @@ export function finish(
   words: Words,
   hasTitle: boolean,
 ) {
+  // Scene sheets count among themselves: "1 / 6" is the first of six sheets.
+  const own = pages.filter((page) => page.ownChrome);
   pages.forEach((page, i) => {
     if (hasTitle && i === 0) return;
-    chrome(page, info, ctx, i + 1, pages.length, words);
+    if (page.ownChrome) page.ops.push(...page.ownChrome(own.indexOf(page) + 1, own.length));
+    else chrome(page, info, ctx, i + 1, pages.length, words);
   });
   return pages;
 }

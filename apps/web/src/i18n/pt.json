@@ -3138,6 +3138,7 @@
     "whatVisible": "Área visível",
     "whatStoryboard": "Storyboard",
     "whatShotlist": "Decupagem",
+    "whatScenesheets": "Folhas por cena",
     "framesPerPage": "Frames por página",
     "page": "Tamanho",
     "paperA4": "A4",
@@ -3314,7 +3315,67 @@
     "filesFailed_one": "Falha no download: {{names}}. Tente de novo.",
     "filesFailed_other": "Falha no download: {{names}}. Tente de novo.",
     "filesPartial_one": "O ZIP foi baixado, mas falta {{names}}: o servidor não entregou o arquivo. Tente de novo.",
-    "filesPartial_other": "O ZIP foi baixado, mas faltam {{names}}: o servidor não entregou os arquivos. Tente de novo."
+    "filesPartial_other": "O ZIP foi baixado, mas faltam {{names}}: o servidor não entregou os arquivos. Tente de novo.",
+    "sheets": {
+      "department": "Departamento",
+      "new": "Novo",
+      "scenes": "Cenas",
+      "scenesAll": "Todas as cenas",
+      "scenesSelection": "Cenas selecionadas",
+      "scenesDay_one": "Dia {{n}} · {{date}} · {{count}} cena",
+      "scenesDay_other": "Dia {{n}} · {{date}} · {{count}} cenas",
+      "scenesDayShort_one": "Dia {{n}} · {{date}} · {{count}}",
+      "scenesDayShort_other": "Dia {{n}} · {{date}} · {{count}}",
+      "summary_one": "{{count}} folha por cena · {{page}}",
+      "summary_other": "{{count}} folhas por cena · {{page}}",
+      "previewPage": "Página {{n}} de {{total}}",
+      "departments": {
+        "everything": {
+          "name": "Tudo",
+          "hint": "A folha completa"
+        },
+        "camera": {
+          "name": "Câmera",
+          "hint": "Planos, lentes, planta do set"
+        },
+        "lighting": {
+          "name": "Luz e maquinaria",
+          "hint": "Planta do set, momento, notas de luz"
+        },
+        "costume": {
+          "name": "Figurino e maquiagem",
+          "hint": "Personagens e visuais"
+        },
+        "production": {
+          "name": "Produção",
+          "hint": "Locação, elenco, objetos"
+        }
+      },
+      "day": "Dia {{n}}",
+      "dayOf": "Dia {{n}} de {{total}} · cenas {{scenes}}",
+      "continuityBoth": "Cena anterior com {{name}}: {{previous}}. Seguinte: {{next}}.",
+      "continuityPrevious": "Cena anterior com {{name}}: {{previous}}.",
+      "continuityNext": "Cena seguinte com {{name}}: {{next}}.",
+      "pageOf": "{{n}} / {{total}}",
+      "none": "Não há cenas para imprimir.",
+      "call": "Chamada",
+      "location": "Locação",
+      "time": "Momento",
+      "cast": "Elenco",
+      "frames": "Planos",
+      "characters": "Personagens",
+      "inScene": "Personagens nesta cena",
+      "playedBy": "Interpretado por {{actor}}",
+      "continuity": "Continuidade",
+      "frameNotes": "Notas dos planos",
+      "light": "Luz",
+      "shootingDay": "Dia de filmagem",
+      "needed": "Necessário",
+      "notes": "Notas",
+      "frame": "Plano",
+      "count_one": "{{count}} folha por cena",
+      "count_other": "{{count}} folhas por cena"
+    }
   },
   "screenplay": {
     "open": "Importar roteiro…",
@@ -4272,6 +4333,10 @@
             "text": "Veja a página antes de a descarregar."
           },
           "2": {
+            "title": "Folhas por cena",
+            "text": "Uma página por cena para um departamento: câmera, luz, figurino ou produção."
+          },
+          "3": {
             "title": "O projeto inteiro",
             "text": "Exporte-o em zip e importe-o noutro servidor."
           }

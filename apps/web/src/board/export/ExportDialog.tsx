@@ -9,6 +9,8 @@ import {
   type ExportPreset,
   type ExportSettings,
   type ProjectRole,
+  type Schedule,
+  type ShootingDay,
 } from '@inkadra/shared';
 import {
   Button,
@@ -18,11 +20,13 @@ import {
   type DialogHandle,
   Icon,
   IconButton,
+  Radio,
   Select,
 } from '@inkadra/ui';
 import {
   type Dispatch,
   type PointerEvent,
+  type ReactNode,
   type SetStateAction,
   useCallback,
   useEffect,
@@ -31,11 +35,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { api } from '../../lib/api.ts';
 import { refreshClassifications } from '../../lib/classifications.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import { ColorPicker } from '../ColorPicker.tsx';
 import { swatchColors } from '../colors.ts';
 import { formatBytes } from '../file-kinds.ts';
+import { sceneIdsOf } from '../film/needed.ts';
 import { getReviews, useReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
 import { ExportCache } from './cache.ts';
@@ -63,6 +69,13 @@ import {
 } from './image-format.ts';
 import { FRAMES_PER_PAGE, type FramesPerPage, type Orientation, type PaperSize } from './layout.ts';
 import type { OriginalFile, OriginalsPlan } from './originals.ts';
+import { calendarDate } from './planning.ts';
+import {
+  DEPARTMENTS,
+  type Department,
+  type SceneChoice,
+  selectedSceneIds,
+} from './scene-choice.ts';
 import {
   type ExportSource,
   fetchExportSettings,
@@ -132,6 +145,7 @@ export function ExportDialog(props: ExportDialogProps) {
   const [basePreset, setBasePreset] = useState<ExportPreset | null>(recommended);
   const [customOpen, setCustomOpen] = useState(false);
   const [pageCount, setPageCount] = useState(0);
+  const [sheetCount, setSheetCount] = useState(0);
   const [req, setReq] = useState<ExportRequest>(() => ({
     ...presetChoices(recommended, source, props.initialWhat, i18n.language),
     logo: null,
@@ -247,6 +261,8 @@ export function ExportDialog(props: ExportDialogProps) {
       ...presetChoices(next, source, r.what, i18n.language),
       logo: r.logo,
       theme: r.theme,
+      department: r.department,
+      scenes: r.scenes,
     }));
   };
   const updateReq = (updater: (prev: ExportRequest) => ExportRequest) => {
@@ -310,6 +326,24 @@ export function ExportDialog(props: ExportDialogProps) {
   };
   const envRef = useRef(env);
   envRef.current = env;
+
+  // Scene sheets: the shooting days to choose from, asked once the content is chosen.
+  const sheets = req.what === 'scenesheets';
+  const [days, setDays] = useState<ShootingDay[] | null>(null);
+  useEffect(() => {
+    if (!sheets || days) return;
+    let live = true;
+    api.get<Schedule>(`/boards/${boardId}/schedule`).then(
+      (r) => live && setDays([...(r.items ?? [])].sort((a, b) => a.date.localeCompare(b.date))),
+      () => live && setDays([]),
+    );
+    return () => {
+      live = false;
+    };
+  }, [sheets, days, boardId]);
+  const pickedScenes = sheets
+    ? selectedSceneIds(selection, store.getSnapshot().byId)
+    : new Set<string>();
 
   const board = req.what === 'board' || req.what === 'selection' || req.what === 'visible';
   const asImage = req.format !== 'pdf';
@@ -425,7 +459,12 @@ export function ExportDialog(props: ExportDialogProps) {
   }
 
   const whatOptions: ExportWhat[] = film
-    ? ['storyboard', 'shotlist', ...(asImage && props.selection.size ? ['selection' as const] : [])]
+    ? [
+        'storyboard',
+        'shotlist',
+        'scenesheets',
+        ...(asImage && props.selection.size ? ['selection' as const] : []),
+      ]
     : ['board', 'selection', 'visible'];
   const whatLabel = (w: ExportWhat) => {
     if (w !== 'selection') return t(`export.what${w[0]?.toUpperCase()}${w.slice(1)}`);
@@ -479,6 +518,82 @@ export function ExportDialog(props: ExportDialogProps) {
         </Select>
       )}
     </Field>
+  );
+  const department = req.department ?? 'everything';
+  const sceneChoice: SceneChoice =
+    req.scenes === 'selection' && pickedScenes.size === 0 ? 'all' : (req.scenes ?? 'all');
+  const departmentLegend = (
+    <>
+      {t('export.sheets.department')}
+      {!isPhone && <span className="export__new">{t('export.sheets.new')}</span>}
+    </>
+  );
+  const departmentField = sheets && (
+    <fieldset className="export__field export__departments" data-tour="export-departments">
+      <legend className="export__label">{departmentLegend}</legend>
+      {isPhone ? (
+        <div className="export__chips">
+          {DEPARTMENTS.map((d) => (
+            <ChoiceTile
+              key={d}
+              name={`${presetGroupName}-department`}
+              value={d}
+              checked={department === d}
+              onChange={() => set('department', d)}
+            >
+              {t(`export.sheets.departments.${d}.name`)}
+            </ChoiceTile>
+          ))}
+        </div>
+      ) : (
+        <div className="export__radios">
+          {DEPARTMENTS.map((d) => (
+            <label key={d} className="export__radio">
+              <Radio
+                name={`${presetGroupName}-department`}
+                value={d}
+                checked={department === d}
+                onChange={() => set('department', d as Department)}
+              />
+              <span>
+                {t(`export.sheets.departments.${d}.name`)}
+                <small>{t(`export.sheets.departments.${d}.hint`)}</small>
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+    </fieldset>
+  );
+  const scenesField = sheets && (
+    <div className="export__field">
+      <BadgeLabel label={t('export.sheets.scenes')} badge={isPhone ? '' : t('export.sheets.new')}>
+        {(id) => (
+          <Select
+            id={id}
+            className="ink-input"
+            value={sceneChoice}
+            onChange={(e) => set('scenes', e as SceneChoice)}
+          >
+            <option value="all">{t('export.sheets.scenesAll')}</option>
+            {pickedScenes.size > 0 && (
+              <option value="selection">
+                {t('export.sheets.scenesSelection', { count: pickedScenes.size })}
+              </option>
+            )}
+            {(days ?? []).map((day, i) => (
+              <option key={day.id} value={`day:${day.id}`}>
+                {t(isPhone ? 'export.sheets.scenesDayShort' : 'export.sheets.scenesDay', {
+                  n: i + 1,
+                  date: calendarDate(day.date, i18n.language, 'short'),
+                  count: sceneIdsOf(day, store.getSnapshot().byId).length,
+                })}
+              </option>
+            ))}
+          </Select>
+        )}
+      </BadgeLabel>
+    </div>
   );
   const framesField = req.what === 'storyboard' && (
     <Segmented
@@ -574,7 +689,10 @@ export function ExportDialog(props: ExportDialogProps) {
         >
           <Icon name="close" size={16} />
         </button>
-        <div className={`export${asImage ? ' export--image' : ''}`} data-tour="export">
+        <div
+          className={`export${asImage ? ' export--image' : sheets ? ' export--sheets' : ''}`}
+          data-tour="export"
+        >
           <div className="export__controls" data-tour="export-controls">
             {!settingsLoaded ? (
               <p className="export__hint" role="status">
@@ -605,6 +723,8 @@ export function ExportDialog(props: ExportDialogProps) {
                   <>
                     {!fileMode && <p className="export__presets-off">{t('export.presetsOff')}</p>}
                     {whatField}
+                    {departmentField}
+                    {scenesField}
                     {framesField}
                     {pageField}
                     {several && !fileMode && (
@@ -763,6 +883,8 @@ export function ExportDialog(props: ExportDialogProps) {
                         inert={!customOpen}
                       >
                         {whatField}
+                        {departmentField}
+                        {scenesField}
                         {framesField}
                         {pageField}
                         {audienceField}
@@ -885,8 +1007,12 @@ export function ExportDialog(props: ExportDialogProps) {
                 req={req}
                 ready={settingsLoaded}
                 env={envRef}
+                count={sheets && isPhone ? 3 : 1}
                 onMissing={setMissing}
-                onPages={setPageCount}
+                onPages={(pages, sheetPages) => {
+                  setPageCount(pages);
+                  setSheetCount(sheetPages);
+                }}
               />
             )}
             {failed && (
@@ -951,8 +1077,13 @@ export function ExportDialog(props: ExportDialogProps) {
               </div>
             )}
             <DialogActions>
-              {canEdit && !fileMode && (
-                <span className="export__remembered">{t('export.remembered')}</span>
+              {sheets && !asImage ? (
+                <span className="export__remembered export__summary">
+                  {t('export.sheets.summary', { count: sheetCount, page: pageLabel })}
+                </span>
+              ) : (
+                canEdit &&
+                !fileMode && <span className="export__remembered">{t('export.remembered')}</span>
               )}
               <Button className="export__cancel" onClick={() => dialog.current?.requestClose()}>
                 {t('export.cancel')}
@@ -992,24 +1123,32 @@ function Preview({
   req,
   ready,
   env,
+  count,
   onMissing,
   onPages,
 }: {
   req: ExportRequest;
   ready: boolean;
   env: { current: ExportEnv };
+  /** Pages drawn side by side: the scene sheets on a phone show their first three. */
+  count: number;
   onMissing: (chars: string[]) => void;
-  onPages: (pages: number) => void;
+  onPages: (pages: number, sheets: number) => void;
 }) {
   const { t } = useTranslation();
-  const canvas = useRef<HTMLCanvasElement>(null);
+  const canvases = useRef<Array<HTMLCanvasElement | null>>([]);
   const [state, setState] = useState<{
     status: 'loading' | 'ready' | 'error';
     pages: number;
+    sheets: number;
   }>({
     status: 'loading',
     pages: 0,
+    sheets: 0,
   });
+  // Stable for the effect: the dialog passes a new function each render.
+  const pagesRef = useRef(onPages);
+  pagesRef.current = onPages;
   useEffect(() => {
     if (!ready) return;
     // A newer preview stops the older one; pictures already decoded stay in the dialog's cache.
@@ -1026,23 +1165,28 @@ function Preview({
         await catalogsLoaded();
         const built = await buildPages(req, env.current, {
           preview: true,
+          previewCount: count + 1,
           signal: controller.signal,
         });
         // The title page says little about the layout: show the first page of content.
-        const withTitle = req.titlePage && built.pages.length > 1;
-        const page = built.pages[withTitle ? 1 : 0];
-        const el = canvas.current;
+        const withTitle = req.titlePage && req.format === 'pdf' && built.pages.length > 1;
+        const first = withTitle ? 1 : 0;
         if (cancelled()) return;
-        if (page && el) {
-          const cssWidth = el.parentElement?.clientWidth || 320;
+        for (let i = 0; i < count; i++) {
+          const page = built.pages[first + i];
+          const el = canvases.current[i];
+          if (!el) continue;
+          el.hidden = !page;
+          if (!page) continue;
+          const cssWidth = el.clientWidth || el.parentElement?.clientWidth || 320;
           const scale = (cssWidth / page.width) * (window.devicePixelRatio || 1);
           el.width = Math.round(page.width * scale);
           el.height = Math.round(page.height * scale);
           const ctx = el.getContext('2d');
           if (ctx) drawPage(ctx, page, scale, built.images, 0, built.fonts.headingFamily);
         }
-        setState({ status: 'ready', pages: built.pages.length });
-        onPages(built.pages.length);
+        setState({ status: 'ready', pages: built.pages.length, sheets: built.sheets });
+        pagesRef.current(built.pages.length, built.sheets);
         onMissing(built.missing);
       } catch {
         if (!cancelled()) setState((s) => ({ ...s, status: 'error' }));
@@ -1052,16 +1196,26 @@ function Preview({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [req, ready, env, onMissing, onPages]);
+  }, [req, ready, env, count, onMissing]);
   return (
     <figure className="export__preview" data-tour="export-preview">
       <div className="export__paper" data-status={state.status}>
-        <canvas
-          ref={canvas}
-          className="export__canvas"
-          role="img"
-          aria-label={t('export.preview')}
-        />
+        {Array.from({ length: count }, (_, i) => (
+          <canvas
+            // biome-ignore lint/suspicious/noArrayIndexKey: a fixed number of slots
+            key={i}
+            ref={(el) => {
+              canvases.current[i] = el;
+            }}
+            className="export__canvas"
+            role="img"
+            aria-label={
+              count > 1
+                ? `${t('export.preview')} · ${t('export.pageOf', { n: i + 1, total: state.pages })}`
+                : t('export.preview')
+            }
+          />
+        ))}
         <span className="export__preview-note" role="status">
           {state.status === 'loading' ? t('export.previewLoading') : ''}
         </span>
@@ -1072,9 +1226,34 @@ function Preview({
         )}
       </div>
       <figcaption className="export__hint">
-        {state.pages > 0 && `${t('export.preview')} · ${t('export.pages', { count: state.pages })}`}
+        {state.pages > 0 &&
+          (req.what === 'scenesheets'
+            ? t('export.sheets.previewPage', { n: 1, total: state.sheets })
+            : `${t('export.preview')} · ${t('export.pages', { count: state.pages })}`)}
       </figcaption>
     </figure>
+  );
+}
+
+/** A select's label with the "New" badge of a choice the dialog just gained. */
+function BadgeLabel({
+  label,
+  badge,
+  children,
+}: {
+  label: string;
+  badge: string;
+  children: (id: string) => ReactNode;
+}) {
+  const id = useId();
+  return (
+    <>
+      <label className="export__label" htmlFor={id}>
+        {label}
+        {badge && <span className="export__new">{badge}</span>}
+      </label>
+      {children(id)}
+    </>
   );
 }
 

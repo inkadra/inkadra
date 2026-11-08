@@ -3138,6 +3138,7 @@
     "whatVisible": "Zone visible",
     "whatStoryboard": "Storyboard",
     "whatShotlist": "Liste de plans",
+    "whatScenesheets": "Fiches par scène",
     "framesPerPage": "Plans par page",
     "page": "Format de page",
     "paperA4": "A4",
@@ -3314,7 +3315,67 @@
     "filesFailed_one": "Échec du téléchargement : {{names}}. Réessayez.",
     "filesFailed_other": "Échec du téléchargement : {{names}}. Réessayez.",
     "filesPartial_one": "Le ZIP est téléchargé, mais {{names}} manque : le serveur n’a pas fourni le fichier. Réessayez.",
-    "filesPartial_other": "Le ZIP est téléchargé, mais {{names}} manquent : le serveur n’a pas fourni les fichiers. Réessayez."
+    "filesPartial_other": "Le ZIP est téléchargé, mais {{names}} manquent : le serveur n’a pas fourni les fichiers. Réessayez.",
+    "sheets": {
+      "department": "Département",
+      "new": "Nouveau",
+      "scenes": "Scènes",
+      "scenesAll": "Toutes les scènes",
+      "scenesSelection": "Scènes sélectionnées",
+      "scenesDay_one": "Jour {{n}} · {{date}} · {{count}} scène",
+      "scenesDay_other": "Jour {{n}} · {{date}} · {{count}} scènes",
+      "scenesDayShort_one": "Jour {{n}} · {{date}} · {{count}}",
+      "scenesDayShort_other": "Jour {{n}} · {{date}} · {{count}}",
+      "summary_one": "{{count}} fiche par scène · {{page}}",
+      "summary_other": "{{count}} fiches par scène · {{page}}",
+      "previewPage": "Page {{n}} sur {{total}}",
+      "departments": {
+        "everything": {
+          "name": "Tout",
+          "hint": "La fiche complète"
+        },
+        "camera": {
+          "name": "Caméra",
+          "hint": "Plans, objectifs, plan au sol"
+        },
+        "lighting": {
+          "name": "Lumière et machinerie",
+          "hint": "Plan au sol, moment, notes lumière"
+        },
+        "costume": {
+          "name": "Costumes et maquillage",
+          "hint": "Personnages et looks"
+        },
+        "production": {
+          "name": "Production",
+          "hint": "Décor, distribution, objets"
+        }
+      },
+      "day": "Jour {{n}}",
+      "dayOf": "Jour {{n}} sur {{total}} · scènes {{scenes}}",
+      "continuityBoth": "Scène précédente avec {{name}} : {{previous}}. Suivante : {{next}}.",
+      "continuityPrevious": "Scène précédente avec {{name}} : {{previous}}.",
+      "continuityNext": "Scène suivante avec {{name}} : {{next}}.",
+      "pageOf": "{{n}} / {{total}}",
+      "none": "Aucune scène à imprimer.",
+      "call": "Convocation",
+      "location": "Décor",
+      "time": "Moment",
+      "cast": "Distribution",
+      "frames": "Plans",
+      "characters": "Personnages",
+      "inScene": "Personnages de la scène",
+      "playedBy": "Joué par {{actor}}",
+      "continuity": "Raccords",
+      "frameNotes": "Notes des plans",
+      "light": "Lumière",
+      "shootingDay": "Jour de tournage",
+      "needed": "À prévoir",
+      "notes": "Notes",
+      "frame": "Plan",
+      "count_one": "{{count}} fiche par scène",
+      "count_other": "{{count}} fiches par scène"
+    }
   },
   "screenplay": {
     "open": "Importer un scénario…",
@@ -4272,6 +4333,10 @@
             "text": "Voyez la page avant de la télécharger."
           },
           "2": {
+            "title": "Fiches par scène",
+            "text": "Une page par scène pour un département : caméra, lumière, costumes ou production."
+          },
+          "3": {
             "title": "Tout le projet",
             "text": "Exportez-le en zip et importez-le sur un autre serveur."
           }

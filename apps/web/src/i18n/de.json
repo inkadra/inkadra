@@ -3138,6 +3138,7 @@
     "whatVisible": "Sichtbarer Bereich",
     "whatStoryboard": "Storyboard",
     "whatShotlist": "Shotlist",
+    "whatScenesheets": "Szenenblätter",
     "framesPerPage": "Frames pro Seite",
     "page": "Seitenformat",
     "paperA4": "A4",
@@ -3314,7 +3315,67 @@
     "filesFailed_one": "Download fehlgeschlagen: {{names}}. Versuch es noch mal.",
     "filesFailed_other": "Download fehlgeschlagen: {{names}}. Versuch es noch mal.",
     "filesPartial_one": "Die ZIP-Datei ist gespeichert, aber {{names}} fehlt: Der Server hat die Datei nicht geliefert. Versuch es noch mal.",
-    "filesPartial_other": "Die ZIP-Datei ist gespeichert, aber {{names}} fehlen: Der Server hat die Dateien nicht geliefert. Versuch es noch mal."
+    "filesPartial_other": "Die ZIP-Datei ist gespeichert, aber {{names}} fehlen: Der Server hat die Dateien nicht geliefert. Versuch es noch mal.",
+    "sheets": {
+      "department": "Abteilung",
+      "new": "Neu",
+      "scenes": "Szenen",
+      "scenesAll": "Alle Szenen",
+      "scenesSelection": "Ausgewählte Szenen",
+      "scenesDay_one": "Tag {{n}} · {{date}} · {{count}} Szene",
+      "scenesDay_other": "Tag {{n}} · {{date}} · {{count}} Szenen",
+      "scenesDayShort_one": "Tag {{n}} · {{date}} · {{count}}",
+      "scenesDayShort_other": "Tag {{n}} · {{date}} · {{count}}",
+      "summary_one": "{{count}} Szenenblatt · {{page}}",
+      "summary_other": "{{count}} Szenenblätter · {{page}}",
+      "previewPage": "Seite {{n}} von {{total}}",
+      "departments": {
+        "everything": {
+          "name": "Alles",
+          "hint": "Das ganze Blatt"
+        },
+        "camera": {
+          "name": "Kamera",
+          "hint": "Einstellungen, Objektive, Setplan"
+        },
+        "lighting": {
+          "name": "Licht und Bühne",
+          "hint": "Setplan, Tageszeit, Lichtnotizen"
+        },
+        "costume": {
+          "name": "Kostüm und Maske",
+          "hint": "Figuren und Looks"
+        },
+        "production": {
+          "name": "Produktion",
+          "hint": "Location, Besetzung, Dinge"
+        }
+      },
+      "day": "Tag {{n}}",
+      "dayOf": "Tag {{n}} von {{total}} · Szenen {{scenes}}",
+      "continuityBoth": "Vorherige Szene mit {{name}}: {{previous}}. Nächste: {{next}}.",
+      "continuityPrevious": "Vorherige Szene mit {{name}}: {{previous}}.",
+      "continuityNext": "Nächste Szene mit {{name}}: {{next}}.",
+      "pageOf": "{{n}} / {{total}}",
+      "none": "Keine Szenen zu drucken.",
+      "call": "Call",
+      "location": "Location",
+      "time": "Zeit",
+      "cast": "Besetzung",
+      "frames": "Frames",
+      "characters": "Figuren",
+      "inScene": "Figuren in dieser Szene",
+      "playedBy": "Gespielt von {{actor}}",
+      "continuity": "Anschluss",
+      "frameNotes": "Notizen zu den Frames",
+      "light": "Licht",
+      "shootingDay": "Drehtag",
+      "needed": "Benötigt",
+      "notes": "Notizen",
+      "frame": "Frame",
+      "count_one": "{{count}} Szenenblatt",
+      "count_other": "{{count}} Szenenblätter"
+    }
   },
   "screenplay": {
     "open": "Drehbuch importieren…",
@@ -4272,6 +4333,10 @@
             "text": "Sieh die Seite, bevor du sie herunterlädst."
           },
           "2": {
+            "title": "Szenenblätter",
+            "text": "Eine Seite pro Szene für eine Abteilung: Kamera, Licht, Kostüm oder Produktion."
+          },
+          "3": {
             "title": "Das ganze Projekt",
             "text": "Als ZIP exportieren und auf einem anderen Server importieren."
           }

@@ -3138,6 +3138,7 @@
     "whatVisible": "Area visibile",
     "whatStoryboard": "Storyboard",
     "whatShotlist": "Shot list",
+    "whatScenesheets": "Fogli per scena",
     "framesPerPage": "Inquadrature per pagina",
     "page": "Formato pagina",
     "paperA4": "A4",
@@ -3314,7 +3315,67 @@
     "filesFailed_one": "Download non riuscito: {{names}}. Riprova.",
     "filesFailed_other": "Download non riuscito: {{names}}. Riprova.",
     "filesPartial_one": "Lo ZIP è scaricato, ma manca {{names}}: il server non ha dato il file. Riprova.",
-    "filesPartial_other": "Lo ZIP è scaricato, ma mancano {{names}}: il server non ha dato i file. Riprova."
+    "filesPartial_other": "Lo ZIP è scaricato, ma mancano {{names}}: il server non ha dato i file. Riprova.",
+    "sheets": {
+      "department": "Reparto",
+      "new": "Nuovo",
+      "scenes": "Scene",
+      "scenesAll": "Tutte le scene",
+      "scenesSelection": "Scene selezionate",
+      "scenesDay_one": "Giorno {{n}} · {{date}} · {{count}} scena",
+      "scenesDay_other": "Giorno {{n}} · {{date}} · {{count}} scene",
+      "scenesDayShort_one": "Giorno {{n}} · {{date}} · {{count}}",
+      "scenesDayShort_other": "Giorno {{n}} · {{date}} · {{count}}",
+      "summary_one": "{{count}} foglio per scena · {{page}}",
+      "summary_other": "{{count}} fogli per scena · {{page}}",
+      "previewPage": "Pagina {{n}} di {{total}}",
+      "departments": {
+        "everything": {
+          "name": "Tutto",
+          "hint": "Il foglio completo"
+        },
+        "camera": {
+          "name": "Camera",
+          "hint": "Inquadrature, obiettivi, pianta"
+        },
+        "lighting": {
+          "name": "Luci e macchinisti",
+          "hint": "Pianta, momento, note luce"
+        },
+        "costume": {
+          "name": "Costumi e trucco",
+          "hint": "Personaggi e look"
+        },
+        "production": {
+          "name": "Produzione",
+          "hint": "Luogo, cast, oggetti"
+        }
+      },
+      "day": "Giorno {{n}}",
+      "dayOf": "Giorno {{n}} di {{total}} · scene {{scenes}}",
+      "continuityBoth": "Scena precedente con {{name}}: {{previous}}. Successiva: {{next}}.",
+      "continuityPrevious": "Scena precedente con {{name}}: {{previous}}.",
+      "continuityNext": "Scena successiva con {{name}}: {{next}}.",
+      "pageOf": "{{n}} / {{total}}",
+      "none": "Nessuna scena da stampare.",
+      "call": "Convocazione",
+      "location": "Luogo",
+      "time": "Momento",
+      "cast": "Cast",
+      "frames": "Inquadrature",
+      "characters": "Personaggi",
+      "inScene": "Personaggi in scena",
+      "playedBy": "Interpretato da {{actor}}",
+      "continuity": "Continuità",
+      "frameNotes": "Note delle inquadrature",
+      "light": "Luce",
+      "shootingDay": "Giorno di ripresa",
+      "needed": "Da portare",
+      "notes": "Note",
+      "frame": "Inq.",
+      "count_one": "{{count}} foglio per scena",
+      "count_other": "{{count}} fogli per scena"
+    }
   },
   "screenplay": {
     "open": "Importa sceneggiatura…",
@@ -4272,6 +4333,10 @@
             "text": "Vedi la pagina prima di scaricarla."
           },
           "2": {
+            "title": "Fogli per scena",
+            "text": "Una pagina per scena per un reparto: camera, luci, costumi o produzione."
+          },
+          "3": {
             "title": "Il progetto intero",
             "text": "Esportalo in zip e importalo su un altro server."
           }

@@ -96,7 +96,8 @@ export function presetChoices(
     case 'production-book':
       return {
         format: 'pdf',
-        what: film ? 'shotlist' : currentWhat,
+        // The production book prints the shot list, or the scene sheets when they are chosen.
+        what: film ? (currentWhat === 'scenesheets' ? currentWhat : 'shotlist') : currentWhat,
         framesPerPage: 4,
         paper: 'a4',
         orientation: 'portrait',
