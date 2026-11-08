@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AspectRatio, Element, type ElementType, type TableRow } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 21;
+export const CURRENT_SCHEMA_VERSION = 22;
 
 /** Persisted ProseMirror additions: older editor schemas can destructively normalize them. */
 export const NOTE_BODY_FORMAT = {
@@ -154,6 +154,9 @@ const migrations: Record<number, Migration> = {
   // 21: optional `group` on images, links and colours, the moodboard's named groups (decision
   // 0077). Existing references stay ungrouped; older builds must not drop it when copying a card.
   20: () => {},
+  // 22: optional `omitted` on scenes, a scene the latest draft of the script left out (decision
+  // 0081). Existing scenes stay in; older clients stay read-only and cannot drop the mark.
+  21: () => {},
 };
 
 /**

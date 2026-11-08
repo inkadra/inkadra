@@ -38,7 +38,7 @@ describe('mentions and pictures in notes (schema 19)', () => {
     list.insert(0, [item]);
     body.insert(0, [list]);
     const before = body.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([19, 20, 21]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([19, 20, 21, 22]);
     expect(body.toJSON()).toBe(before);
   });
 
