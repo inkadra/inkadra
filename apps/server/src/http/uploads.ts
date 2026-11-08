@@ -18,6 +18,7 @@ import { originalKey, type Storage } from '../storage.ts';
 import { reserveSpace, StorageFullError } from '../storage-limits.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
+import { containsNul } from './nul.ts';
 
 interface Deps {
   config: Config;
@@ -165,6 +166,8 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
       const meta = UploadMetadata.safeParse(upload.metadata ?? {});
       if (!meta.success)
         throw tusError(400, 'Upload-Metadata needs projectId, filename and filetype.');
+      // Upload-Metadata is a header: the request hook that refuses U+0000 does not see it.
+      if (containsNul(meta.data)) throw tusError(400, 'Text cannot contain the NUL character.');
       try {
         await requireWriteAccess(db, ctx.actor, meta.data.projectId, meta.data.boardId);
       } catch (err) {

@@ -105,6 +105,19 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
     expect(res.json().role).toBe('admin');
   });
 
+  it('refuses text with the NUL character before it reaches the database', async () => {
+    const headers = { cookie, origin: config.PUBLIC_URL };
+    for (const req of [
+      { method: 'PATCH' as const, url: '/api/v1/me', headers, payload: { name: 'Gi\u0000ulia' } },
+      { method: 'PATCH' as const, url: '/api/v1/me', headers, payload: { ['na\u0000me']: 'x' } },
+      { method: 'GET' as const, url: '/api/v1/search?q=a%00b', headers },
+    ]) {
+      const res = await app.inject(req);
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.code).toBe('bad_request');
+    }
+  });
+
   it('rejects anonymous requests with the error contract', async () => {
     const res = await app.inject('/api/v1/me');
     expect(res.statusCode).toBe(401);
