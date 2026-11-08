@@ -6,8 +6,8 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { Projects } from './Projects.tsx';
-import { deleteProject } from './projects.ts';
 import { refreshGroups } from './project-groups.ts';
+import { deleteProject } from './projects.ts';
 import { projectOverviews } from './projects-overview.ts';
 
 const session = vi.hoisted(() => ({ role: 'member' }));
@@ -125,12 +125,15 @@ const type = (input: HTMLInputElement, value: string) => {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 };
 
-it.each(['editor', 'viewer'] as const)('offers Delete project… to owners only, not %s', async (myRole) => {
-  await render([member('me', 'Giulia')], { ...project, myRole });
-  await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
-  expect(menuItems()).not.toContain('projectDelete.menu');
-  expect(menuItems()).not.toContain('projectsPage.archive');
-});
+it.each(['editor', 'viewer'] as const)(
+  'offers Delete project… to owners only, not %s',
+  async (myRole) => {
+    await render([member('me', 'Giulia')], { ...project, myRole });
+    await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
+    expect(menuItems()).not.toContain('projectDelete.menu');
+    expect(menuItems()).not.toContain('projectsPage.archive');
+  },
+);
 
 it('deletes a project only once its name is typed, and keeps the dialog on an error', async () => {
   await render([member('me', 'Giulia')]);

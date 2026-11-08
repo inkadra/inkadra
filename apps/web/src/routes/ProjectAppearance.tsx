@@ -41,8 +41,8 @@ import {
   saveExportSettings,
   uploadLogo,
 } from '../board/export/settings.ts';
-import { DeleteProjectDialog } from './DeleteProjectDialog.tsx';
 import { headingFamily, loadHeadingFont, paperAccent, screenAccent } from '../board/theme.ts';
+import { DeleteProjectDialog } from './DeleteProjectDialog.tsx';
 import { MoveToGroupDialog, useDropTarget, useProjectDrag } from './ProjectGroups.tsx';
 import { canExportProject, ExportProjectDialog } from './ProjectTransfer.tsx';
 import { useDragging, useProjectGroups } from './project-groups.ts';

@@ -152,9 +152,11 @@ it('resets to deterministic defaults and keeps errors visible without closing', 
 it('keeps the context menu inside the active mobile navigation dialog', async () => {
   await act(async () =>
     root.render(
-      <dialog open>
-        <ProjectNavItem project={project} active onClick={(e) => e.preventDefault()} />
-      </dialog>,
+      <MemoryRouter>
+        <dialog open>
+          <ProjectNavItem project={project} active onClick={(e) => e.preventDefault()} />
+        </dialog>
+      </MemoryRouter>,
     ),
   );
   await act(async () =>
