@@ -17,8 +17,8 @@ than a small studio's server should carry.
   CPU and memory from cgroup v2, traffic from `/proc/net/dev` of its network namespace (the
   Inkadra containers only, never the host), its own process, and in the web role the p95 of JSON
   API answers and the share of 500s. Two roles in one container count it once; containers without
-limits of their own see the whole machine, so its cores and memory count once per machine (its
-boot id) and only real cgroup limits add up. Raw samples are kept
+  limits of their own see the whole machine, so its cores and memory count once per machine (its
+  boot id) and only real cgroup limits add up. Raw samples are kept
   for an hour, minute averages for 24 hours and ten-minute averages for 7 days, in Valkey lists;
   without Valkey (a web role alone) in memory. No new dependency, no Prometheus.
 - **Heartbeats.** The same tick writes a heartbeat per process: no signal for 30 s is late, 90 s is
