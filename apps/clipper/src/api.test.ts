@@ -132,6 +132,15 @@ describe('InkadraApi', () => {
     expect((await failure(client(fetchImpl).projects())).kind).toBe('server');
   });
 
+  it('tells no space left from a file too large (decision 0081)', async () => {
+    const details = { code: 'storage_full', scope: 'user', remaining: 10, limit: 5e9 };
+    const fetchImpl = mockFetch(413, {
+      error: { code: 'payload_too_large', message: 'No space.', details },
+    });
+    const err = await failure(client(fetchImpl).clipFile({ boardId: BOARD }, new Blob(['x']), 'x'));
+    expect(err.kind).toBe('storage_full');
+  });
+
   it('maps a proxy page without JSON by status', async () => {
     const fetchImpl = vi.fn<typeof fetch>(
       async () => new Response('<html>Too large</html>', { status: 413 }),

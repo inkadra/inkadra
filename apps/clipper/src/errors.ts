@@ -7,6 +7,8 @@ export type ErrorKind =
   | 'forbidden'
   | 'not_found'
   | 'too_large'
+  /** No space left for the file, the person's or the instance's (decision 0081). */
+  | 'storage_full'
   | 'offline'
   | 'rate_limited'
   | 'invalid_server'

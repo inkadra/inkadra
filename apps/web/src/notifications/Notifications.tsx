@@ -256,7 +256,7 @@ export function describeNotification(
       total: gb(alert?.total ?? null),
       used: size(used),
       limit: size(alert?.total ?? null),
-      percent: used !== null && alert?.total ? String(Math.round((used / alert.total) * 100)) : '',
+      percent: used !== null && alert?.total ? String(Math.floor((used / alert.total) * 100)) : '',
       service: alert?.service ? t(`server.services.long.${alert.service}`) : '',
       times: String(alert?.count ?? ''),
     });

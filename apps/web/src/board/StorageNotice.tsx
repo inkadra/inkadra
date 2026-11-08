@@ -93,7 +93,8 @@ function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () =>
         <Toast
           warning="warn"
           text={t('storageSpace.nearToast', {
-            percent: Math.round((notice.used / notice.limit) * 100),
+            // Down: under the limit it never reads 100 %.
+          percent: Math.floor((notice.used / notice.limit) * 100),
             size: size(Math.max(0, notice.limit - notice.used)),
           })}
           showLabel={t('storageSpace.see')}

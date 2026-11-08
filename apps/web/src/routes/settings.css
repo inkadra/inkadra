@@ -721,14 +721,18 @@
 .team-table .team-col--space {
   white-space: nowrap;
 }
+/* Fixed widths for the short columns: the role and the choices keep the rest. */
+.team-table thead th:nth-child(2) {
+  width: 116px;
+}
 .team-table thead .team-col--space {
-  width: 136px;
+  width: 124px;
 }
 .team-table thead .team-col--projects {
-  width: 76px;
+  width: 72px;
 }
 .team-table thead th:last-child {
-  width: 56px;
+  width: 48px;
 }
 .team-pending th,
 .team-pending td {
