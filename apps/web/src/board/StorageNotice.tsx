@@ -89,7 +89,8 @@ function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () =>
   const size = (bytes: number) => formatStorage(bytes, i18n.language);
   if (notice.kind === 'near')
     return (
-      <Toast
+      <div className="storage-notice">
+        <Toast
         warning="warn"
         text={t('storageSpace.nearToast', {
           percent: Math.round((notice.used / notice.limit) * 100),
@@ -101,7 +102,8 @@ function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () =>
           navigate('/settings?section=account');
         }}
         onClose={close}
-      />
+        />
+      </div>
     );
 
   const { refused, files: refusedFiles, total } = notice;
@@ -110,7 +112,8 @@ function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () =>
   return (
     <>
       {!details && (
-        <Toast
+        <div className="storage-notice">
+          <Toast
           warning="danger"
           text={
             instance
@@ -120,7 +123,8 @@ function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () =>
           showLabel={t('storageSpace.details')}
           onShow={() => setDetails(true)}
           onClose={close}
-        />
+          />
+        </div>
       )}
       <Dialog open={details} title={t('storageSpace.blockedTitle')} onClose={close}>
         <p className="settings-muted">
