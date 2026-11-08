@@ -2019,7 +2019,12 @@
       "link_opened": "abrió el tablero",
       "task_assigned": "te asignó una tarea",
       "feedback_received": "Nuevo informe recibido desde la app",
-      "review_submitted": "envió su revisión"
+      "review_submitted": "envió su revisión",
+      "server_alert_disk_full": "Casi sin espacio: quedan {{free}} de {{total}}",
+      "server_alert_service_down": "{{service}} no responde",
+      "server_alert_backup_failed": "La copia de seguridad ha fallado",
+      "server_alert_repeated_errors": "El mismo error se ha repetido {{times}} veces en la última hora",
+      "server_alert_unknown": "Algo va mal en el servidor"
     },
     "emailTitle": "Notificaciones por correo",
     "emailHint": "Menciones, respuestas y revisiones también por correo, si el servidor puede enviarlo.",
@@ -2622,7 +2627,8 @@
       "access": "Acceso",
       "about": "Información",
       "toolbar": "Barra de herramientas",
-      "tutorials": "Tutoriales"
+      "tutorials": "Tutoriales",
+      "server": "Servidor"
     },
     "leads": {
       "account": "Tu perfil y cómo inicias sesión.",
@@ -2634,7 +2640,8 @@
       "about": "Nombre, dirección, versión y estado de configuración de la instancia.",
       "backups": "Copias nocturnas de la base de datos, para restaurar el servidor tras un fallo.",
       "toolbar": "Elige qué ves en la barra inferior. Las herramientas ocultas siguen en \"+ ▾\" y en la paleta de comandos.",
-      "tutorials": "Vuelve a ver los recorridos guiados y elige si proponerlos."
+      "tutorials": "Vuelve a ver los recorridos guiados y elige si proponerlos.",
+      "server": "Cómo está el servidor: recursos, servicios, trabajos, problemas y avisos."
     },
     "autosave": {
       "idle": "Guardado automático",
@@ -2744,7 +2751,8 @@
       "version": "Versión",
       "identity": "Instancia",
       "diagnosticsHelp": "Comprobaciones de red, proxy y servicios, útiles cuando algo no funciona",
-      "openDiagnostics": "Abrir"
+      "openDiagnostics": "Abrir",
+      "serverHelp": "Salud del servidor, comprobaciones de red y proxy, problemas recientes"
     },
     "search": "Buscar en los ajustes",
     "noResults": "No se encontraron ajustes",
@@ -2760,7 +2768,8 @@
       "instance": "Nombre de la instancia, Dirección pública, Versión, Diagnóstico, Estado de la instancia, Novedades de Inkadra, Informes, Enviar a los desarrolladores de Inkadra, Destino, Repositorio, Token de GitHub, Los invitados pueden informar, Conservación de adjuntos, Informes recibidos",
       "backups": "Copias de seguridad, Hacer copia ahora, Restauración, Conservación, Copia nocturna",
       "toolbar": "Barra de herramientas, Herramientas, Nota, Imagen, Enlace, Tareas, Color, Flecha, Plano, Storyboard, Restablecer la barra predeterminada",
-      "tutorials": "Recorrido de bienvenida, Sugerencias la primera vez, Empezar de nuevo"
+      "tutorials": "Recorrido de bienvenida, Sugerencias la primera vez, Empezar de nuevo",
+      "server": "Procesador, Memoria, Espacio, Servicios, Problemas, Avisos, Diagnóstico, Vídeo"
     },
     "close": "Cerrar ajustes",
     "dangerZone": "Zona de peligro",
@@ -4348,7 +4357,387 @@
             "text": "Los métodos de acceso están en Inicio de sesión."
           }
         }
+      },
+      "server": {
+        "name": "Servidor",
+        "steps": {
+          "0": {
+            "title": "De un vistazo",
+            "text": "Una frase dice si el servidor está bien."
+          },
+          "1": {
+            "title": "Los problemas",
+            "text": "Reintenta, márcalos como vistos o envíalos a los desarrolladores."
+          },
+          "2": {
+            "title": "Los avisos",
+            "text": "Te avisa si algo va mal."
+          }
+        }
       }
+    }
+  },
+  "server": {
+    "view": {
+      "label": "Vista",
+      "simple": "Sencilla",
+      "advanced": "Avanzada"
+    },
+    "loadError": "No puedo leer el estado del servidor.",
+    "when": {
+      "night": "esta noche a las {{time}}",
+      "today": "hoy a las {{time}}",
+      "yesterday": "ayer a las {{time}}",
+      "tomorrow": "mañana a las {{time}}"
+    },
+    "health": {
+      "ok": "Todo funciona",
+      "bad": "Algo va mal",
+      "uptime": "Encendido desde hace {{time}}",
+      "backup": {
+        "ready": "última copia {{when}}, correcta",
+        "failed": "última copia {{when}}, fallida",
+        "running": "copia en curso",
+        "none": "todavía sin copias"
+      },
+      "problems_one": "1 problema que revisar",
+      "problems_other": "{{count}} problemas que revisar",
+      "noProblems": "ningún problema",
+      "seeProblem_one": "Ver el problema",
+      "seeProblem_other": "Ver los problemas",
+      "whatToDo": "Qué hacer",
+      "down": "{{service}} no responde.",
+      "downSince": "{{service}} no responde desde hace {{time}}.",
+      "effects": {
+        "web": "El sitio no responde.",
+        "collab": "Los tableros no se actualizan en directo; lo demás funciona.",
+        "worker": "Los vídeos nuevos se quedan en espera; lo demás funciona.",
+        "database": "Inkadra no puede leer ni guardar nada.",
+        "queue": "Los trabajos en segundo plano están parados."
+      }
+    },
+    "meters": {
+      "label": "Recursos ahora",
+      "of": "de {{total}}",
+      "cpu": {
+        "name": "Procesador",
+        "hint": "Cuánto está trabajando el servidor",
+        "ok": "Tranquilo",
+        "busy": "Ocupado",
+        "high": "Al límite"
+      },
+      "memory": {
+        "name": "Memoria",
+        "hint": "Memoria que usan los programas de Inkadra",
+        "ok": "Tranquila",
+        "busy": "Ocupada",
+        "high": "Al límite"
+      },
+      "storage": {
+        "name": "Espacio",
+        "years": "Alcanza para años",
+        "months_one": "Alcanza para 1 mes aprox.",
+        "months_other": "Alcanza para unos {{count}} meses",
+        "almostFull": "Casi lleno",
+        "split": "Originales {{originals}} · copias y vistas previas {{derived}}",
+        "bucket": "bucket S3",
+        "used": "usados",
+        "s3Hint": "El proveedor del espacio no indica el total, así que no mostramos cuánto queda.",
+        "growth": "Crece unos {{size}} al mes."
+      },
+      "network": {
+        "name": "Internet",
+        "normal": "Normal",
+        "unknown": "Sin medir",
+        "in": "recibidos",
+        "out": "enviados",
+        "hint": "↓ archivos recibidos · ↑ archivos enviados a quien mira los tableros"
+      },
+      "speed": {
+        "name": "Velocidad",
+        "unit": "segundos",
+        "fast": "Rápido",
+        "slow": "Algo lento",
+        "verySlow": "Lento",
+        "idle": "Sin peticiones",
+        "hint": "Cuánto tarda Inkadra en responder. Menos de 0,5 s es rápido"
+      },
+      "backup": {
+        "name": "Copia de seguridad",
+        "ready": "Correcta",
+        "failed": "Fallida",
+        "running": "En curso",
+        "none": "Nunca hecha",
+        "off": "Apagada",
+        "next": "la próxima {{when}}"
+      }
+    },
+    "services": {
+      "title": "Servicios",
+      "allOk": "todos responden",
+      "someDown_one": "1 no responde",
+      "someDown_other": "{{count}} no responden",
+      "lastSignal": "última señal {{time}}",
+      "names": {
+        "web": "Sitio y acceso",
+        "collab": "Trabajo conjunto en directo",
+        "worker": "Preparación de vídeos y vistas previas",
+        "database": "Base de datos y cola de trabajos",
+        "configuration": "Configuración"
+      },
+      "long": {
+        "web": "El sitio",
+        "collab": "El trabajo conjunto en directo",
+        "worker": "La preparación de vídeos y vistas previas",
+        "database": "La base de datos",
+        "queue": "La cola de trabajos",
+        "configuration": "La configuración"
+      },
+      "status": {
+        "ok": "Funciona",
+        "warning": "Tarda en responder",
+        "down": "No responde",
+        "off": "Sin uso"
+      },
+      "configuration": "Dirección pública, HTTPS, proxy, carpeta de datos, almacenamiento, codificación de vídeo",
+      "checksPassed_one": "1 comprobación superada",
+      "checksPassed_other": "{{count}} comprobaciones superadas",
+      "checksFailing_one": "1 por arreglar",
+      "checksFailing_other": "{{count}} por arreglar",
+      "checks": "Comprobaciones de la configuración"
+    },
+    "roles": {
+      "web": "web",
+      "collab": "collab",
+      "worker": "worker",
+      "all": "todo en uno"
+    },
+    "chart": {
+      "title": "Evolución",
+      "metric": "Qué mostrar",
+      "period": "Periodo",
+      "cpu": "Procesador",
+      "memory": "Memoria",
+      "network": "Internet",
+      "received": "Recibidos",
+      "sent": "Enviados",
+      "ranges": {
+        "15m": "Últimos 15 minutos",
+        "1h": "Última hora",
+        "24h": "Últimas 24 horas",
+        "7d": "Últimos 7 días"
+      },
+      "start": {
+        "15m": "hace 15 min",
+        "1h": "hace 1 hora",
+        "24h": "hace 24 horas",
+        "7d": "hace 7 días"
+      },
+      "middle": {
+        "15m": "hace 7 min",
+        "1h": "hace 30 min",
+        "24h": "hace 12 horas",
+        "7d": "hace 3 días y medio"
+      },
+      "now": "ahora",
+      "videos_one": "1 vídeo convertido",
+      "videos_other": "{{count}} vídeos convertidos",
+      "backup": "Copia de seguridad",
+      "backupFailed": "Copia fallida",
+      "label": "{{metric}}, {{range}}",
+      "empty": "Todavía sin datos: el primero llega en unos segundos."
+    },
+    "videos": {
+      "title": "Vídeos en preparación",
+      "lead": "Inkadra crea una copia ligera de cada vídeo para que se vea bien también en el móvil.",
+      "meta": "{{waiting}} en espera · {{ready}} listos hoy",
+      "empty": "Ningún vídeo en preparación.",
+      "hidden": "Un vídeo de un proyecto del que no formas parte",
+      "progress": "{{percent}} · quedan unos {{time}}"
+    },
+    "people": {
+      "title": "Quién está conectado ahora",
+      "meta": "{{people}} en {{boards}}",
+      "people_one": "1 persona",
+      "people_other": "{{count}} personas",
+      "boards_one": "1 tablero",
+      "boards_other": "{{count}} tableros",
+      "peak": "máximo {{value}}",
+      "empty": "Nadie está conectado ahora.",
+      "hidden": "Un tablero de un proyecto del que no formas parte",
+      "hiddenShort": "Proyecto del que no formas parte",
+      "since": "desde hace {{time}}"
+    },
+    "problems": {
+      "title": "Problemas recientes",
+      "period": "últimos 7 días",
+      "send": "Enviar a los desarrolladores",
+      "reportTitle": "Problemas del servidor",
+      "empty": "Ningún problema en los últimos 7 días.",
+      "times_one": "1 vez",
+      "times_other": "{{count}} veces",
+      "technical": "Detalles técnicos",
+      "retry": "Reintentar",
+      "seen": "Marcar como visto",
+      "actionError": "No se pudo hacer. Inténtalo de nuevo en un momento.",
+      "retryError": "No se puede reintentar: el trabajo ya no existe.",
+      "file": "Archivo {{file}}.",
+      "fileOnBoard": "Archivo {{file}} en el tablero «{{board}}».",
+      "kinds": {
+        "video_failed": {
+          "title": "Un vídeo no se ha convertido",
+          "text": "El archivo puede estar dañado o incompleto. El original se sigue viendo."
+        },
+        "preview_failed": {
+          "title": "No se ha creado una vista previa",
+          "text": "El archivo se sigue descargando, pero no tiene miniatura."
+        },
+        "office_failed": {
+          "title": "Un documento no se ha convertido",
+          "text": "El documento se sigue descargando, pero sus páginas no se ven en el tablero."
+        },
+        "email_failed": {
+          "title": "Algunos correos no han salido",
+          "text": "El servicio de correo no ha respondido, ni siquiera tras varios intentos."
+        },
+        "transfer_failed": {
+          "title": "Una exportación o importación ha fallado",
+          "text": "Quien la pidió puede volver a intentarlo desde el proyecto."
+        },
+        "job_failed": {
+          "title": "Un trabajo en segundo plano ha fallado",
+          "text": "Normalmente Inkadra vuelve a intentarlo solo en la siguiente ocasión."
+        },
+        "backup_failed": {
+          "title": "La copia de seguridad ha fallado",
+          "text": "Los datos están a salvo, pero conviene revisarla antes de la próxima."
+        },
+        "disk_full": {
+          "title": "Casi sin espacio",
+          "text": "Libera espacio o añade un disco antes de que se detengan las subidas."
+        },
+        "service_down": {
+          "title": "Un servicio ha dejado de responder",
+          "text": "{{service}} no ha dado señales durante más de un minuto y medio."
+        },
+        "server_error": {
+          "title": "El servidor ha dado un error",
+          "text": "Una petición no ha salido bien. Si se repite, envíala a los desarrolladores."
+        },
+        "config_check": {
+          "title": "Configuración por arreglar",
+          "text": "La comprobación de abajo dice qué arreglar."
+        },
+        "unknown": {
+          "title": "Algo no ha funcionado",
+          "text": "Los detalles técnicos dicen qué."
+        }
+      }
+    },
+    "alerts": {
+      "title": "Avisos",
+      "enabled": "Avísame si algo va mal",
+      "enabledHelp": "Casi sin espacio, un servicio que no responde, una copia fallida, errores que se repiten. El aviso llega a todos los administradores.",
+      "how": "Cómo",
+      "howHelp": "El correo solo sale para problemas graves y como mucho una vez por hora.",
+      "noEmail": "Para avisar también por correo, el servidor debe poder enviar correos (SMTP).",
+      "inbox": "En las notificaciones",
+      "email": "Notificaciones y correo"
+    },
+    "details": {
+      "title": "Detalles técnicos",
+      "lead": "Para quien gestiona el servidor: procesos, colas de trabajos, base de datos, versión",
+      "version": "Versión",
+      "encoding": "Codificación de vídeo",
+      "encoder": {
+        "none": "Desactivada",
+        "software": "Software (procesador)",
+        "hardware": "Hardware ({{label}})"
+      },
+      "database": "Base de datos",
+      "connections_one": "1 conexión",
+      "connections_other": "{{count}} conexiones",
+      "responses": "Respuestas",
+      "responsesValue": "p95 {{p95}} · errores {{errors}} en la última hora",
+      "files": "Almacenamiento",
+      "driver": {
+        "local": "Disco local",
+        "s3": "Bucket S3"
+      },
+      "copy": "Copiar los datos técnicos",
+      "process": "Proceso",
+      "cpu": "Procesador",
+      "memory": "Memoria",
+      "uptime": "Encendido desde",
+      "signal": "Señal",
+      "queue": "Cola de trabajos",
+      "waiting": "En espera",
+      "active": "En curso",
+      "failed": "Fallidos 24 h",
+      "queues": {
+        "proxies": "Copias de vídeo",
+        "media": "Vistas previas",
+        "office": "Documentos Office",
+        "transfers": "Transferencias",
+        "email": "Correo",
+        "maintenance": "Mantenimiento"
+      }
+    },
+    "advanced": {
+      "version": "Versión",
+      "uptime": "Encendido desde",
+      "processes": "Procesos",
+      "video": "Vídeo",
+      "checks": "Comprobaciones",
+      "checksValue": "{{ok}} de {{total}} ok",
+      "p95": "Respuesta p95",
+      "backup": "Copia",
+      "range": "Periodo",
+      "ranges": {
+        "15m": "15 min",
+        "1h": "1 h",
+        "24h": "24 h",
+        "7d": "7 d"
+      },
+      "summary": "Resumen",
+      "cpu": "CPU",
+      "cores_one": "1 núcleo",
+      "cores_other": "{{count}} núcleos",
+      "memory": "Memoria",
+      "limit": "límite {{size}}",
+      "network": "Red",
+      "container": "contenedor",
+      "today": "hoy ↓ {{in}} ↑ {{out}}",
+      "storage": "Espacio",
+      "storageSplit": "originales {{originals}} · copias {{copies}} · vistas previas {{previews}}",
+      "cpuMeta": "media {{avg}} · máximo {{peak}}",
+      "cpuCap_one": "% de 1 núcleo, todos los procesos",
+      "cpuCap_other": "% de {{count}} núcleos, todos los procesos",
+      "memoryMeta": "máximo {{peak}}",
+      "memoryCap": "En uso sobre el límite de {{limit}}",
+      "latency": "Tiempos de respuesta",
+      "latencyMeta": "p95 · errores {{errors}}",
+      "latencyCap": "Milisegundos por petición: el 95 % de las peticiones es más rápido",
+      "networkTitle": "Red",
+      "networkMeta": "solo el tráfico del contenedor de Inkadra",
+      "in": "Entrante (arriba)",
+      "out": "Saliente (abajo)",
+      "transcodes": "Transcodificaciones",
+      "transcodesMeta": "{{active}} activas · {{waiting}} en cola",
+      "speed": "{{speed}}× tiempo real",
+      "transcodesFoot": "Hoy {{ready}} completadas, {{failed}} fallidas · tiempo medio {{average}}",
+      "queues": "Colas de trabajos",
+      "noQueues": "Sin Valkey los trabajos se hacen dentro del sitio: no hay colas.",
+      "processesTitle": "Procesos",
+      "people": "Personas conectadas",
+      "log": "Registro de errores",
+      "severity": "Gravedad",
+      "all": "Errores y avisos",
+      "errorsOnly": "Solo errores",
+      "retryAll": "Reintentar los fallidos",
+      "seenAll": "Marcar todos como vistos",
+      "error": "Error",
+      "warning": "Aviso"
     }
   }
 }

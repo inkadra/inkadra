@@ -17,7 +17,7 @@ interface Row {
 }
 
 /** Opens the collaboration WebSocket through the proxy and waits for the upgrade. */
-function probeWebSocket(path: string): Promise<boolean> {
+export function probeWebSocket(path: string): Promise<boolean> {
   return new Promise((resolve) => {
     const url = new URL(path, window.location.href);
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';

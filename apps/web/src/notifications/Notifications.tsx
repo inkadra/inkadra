@@ -226,7 +226,7 @@ export function notificationActor(
 /** What happened, after the actor's name; unknown types read as a plain line. */
 export function describeNotification(
   n: Pick<Notification, 'type' | 'reviewStatus'> &
-    Partial<Pick<Notification, 'subject' | 'accessExpiresAt'>>,
+    Partial<Pick<Notification, 'subject' | 'accessExpiresAt' | 'serverAlert'>>,
   t: (key: string, values?: Record<string, string>) => string,
   /** The signed-in person, to tell their own access from a member's (decision 0041). */
   me?: { id?: string; locale?: string },
@@ -240,6 +240,17 @@ export function describeNotification(
     return t(`notifications.type.${type}${own ? 'Own' : ''}`, {
       name: n.subject?.name ?? '',
       date,
+    });
+  }
+  if (type === 'server_alert') {
+    const alert = n.serverAlert;
+    const gb = (bytes: number | null) =>
+      bytes === null ? '' : `${Math.round(bytes / 1e9).toLocaleString(me?.locale)} GB`;
+    return t(`notifications.type.server_alert_${alert?.kind ?? 'unknown'}`, {
+      free: gb(alert?.free ?? null),
+      total: gb(alert?.total ?? null),
+      service: alert?.service ? t(`server.services.long.${alert.service}`) : '',
+      times: String(alert?.count ?? ''),
     });
   }
   if (type === 'review' && n.reviewStatus)
