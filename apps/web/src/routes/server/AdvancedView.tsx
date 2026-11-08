@@ -6,7 +6,15 @@ import { formatStorage } from '../StorageCharts.tsx';
 import { Card } from '../settings-ui.tsx';
 import { chartSpan, markers, mbit, memoryMax, xLabels } from './charts.tsx';
 import { type ServerActions, useWhen } from './common.ts';
-import { bits, diskCompresses, duration, niceMax, number, openProblems, percent } from './format.ts';
+import {
+  bits,
+  diskCompresses,
+  duration,
+  niceMax,
+  number,
+  openProblems,
+  percent,
+} from './format.ts';
 import { ServerChart } from './ServerChart.tsx';
 import {
   Alerts,

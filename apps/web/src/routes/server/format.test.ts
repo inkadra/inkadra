@@ -1,5 +1,12 @@
 import { expect, it } from 'vitest';
-import { diskCompresses, duration, loadVerdict, niceMax, speedVerdict, storageVerdict } from './format.ts';
+import {
+  diskCompresses,
+  duration,
+  loadVerdict,
+  niceMax,
+  speedVerdict,
+  storageVerdict,
+} from './format.ts';
 
 const storage = {
   driver: 'local' as const,

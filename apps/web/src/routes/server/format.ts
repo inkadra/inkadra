@@ -35,7 +35,9 @@ export function storageVerdict(storage: ServerStatus['storage']): {
  * folder itself if admins still ask.
  */
 export function diskCompresses(storage: ServerStatus['storage']): boolean {
-  return storage.total !== null && storage.used < storage.originals + storage.copies + storage.previews;
+  return (
+    storage.total !== null && storage.used < storage.originals + storage.copies + storage.previews
+  );
 }
 
 /** Services that stop part of Inkadra; `configuration` warns only. */
