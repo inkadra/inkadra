@@ -37,7 +37,13 @@ it('renders consistent chart bars with accessible labeled tables and anonymized 
       { projectId: null, name: null, scope: 'restricted', bytes: 3000 },
     ],
   };
-  await act(async () => root.render(<MemoryRouter><StorageCharts usage={usage} /></MemoryRouter>));
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <StorageCharts usage={usage} />
+      </MemoryRouter>,
+    ),
+  );
   expect(host.textContent).toContain('4 KB');
   expect(host.querySelectorAll('table')).toHaveLength(2);
   expect(host.querySelectorAll('caption')).toHaveLength(2);
@@ -53,7 +59,11 @@ it('renders consistent chart bars with accessible labeled tables and anonymized 
 });
 it('shows an explicit empty state without NaN shares or misleading capacity bars', async () => {
   await act(async () =>
-    root.render(<MemoryRouter><StorageCharts usage={{ originalBytes: 0, byType: [], byProject: [] }} /></MemoryRouter>),
+    root.render(
+      <MemoryRouter>
+        <StorageCharts usage={{ originalBytes: 0, byType: [], byProject: [] }} />
+      </MemoryRouter>,
+    ),
   );
   expect(host.textContent).toContain('admin.storageEmpty');
   expect(host.textContent).toContain('0 B');
@@ -71,7 +81,13 @@ it('lists the storage of each user, and files with no account under one label', 
       { userId: null, name: null, bytes: 1000 },
     ],
   };
-  await act(async () => root.render(<MemoryRouter><StorageCharts usage={usage} /></MemoryRouter>));
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <StorageCharts usage={usage} />
+      </MemoryRouter>,
+    ),
+  );
   expect(host.querySelectorAll('table')).toHaveLength(3);
   expect(host.textContent).toContain('admin.storageCharts.byUser');
   expect(host.textContent).toContain('Paola Rossi');
@@ -89,7 +105,13 @@ it('counts previews in the space used and in the usage of each user', async () =
       { userId: 'idle', name: 'Luca Neri', bytes: 0, derivedBytes: 0 },
     ],
   };
-  await act(async () => root.render(<MemoryRouter><StorageCharts usage={usage} /></MemoryRouter>));
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <StorageCharts usage={usage} />
+      </MemoryRouter>,
+    ),
+  );
   expect(host.querySelector('.storage-tiles dd')?.textContent).toBe('4 KB');
   expect(host.textContent).toContain('admin.storageCharts.usedDetail');
   expect(host.textContent).toContain('Luca Neri');
