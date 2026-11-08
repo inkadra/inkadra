@@ -1375,6 +1375,10 @@
             "type": "string",
             "description": "The running version."
           },
+          "edge": {
+            "type": "boolean",
+            "description": "The running version is not SemVer (an edge build): it is never compared with the releases, so `available` is null and `earlier` is empty."
+          },
           "checkEnabled": {
             "type": "boolean",
             "description": "InstanceSettings.updateCheck."
@@ -1413,6 +1417,7 @@
         },
         "required": [
           "current",
+          "edge",
           "checkEnabled",
           "channel",
           "checkedAt",

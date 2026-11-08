@@ -98,18 +98,18 @@ it('stays away from a version already seen and from the Updates page itself', as
 
 it('closes on Escape with focus anywhere, unless a menu or a field takes that Escape', async () => {
   await render();
-  const escape = (target: EventTarget = document.body) =>
+  const pressEscape = (target: EventTarget = document.body) =>
     act(async () => {
       target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     });
   const menu = document.body.appendChild(document.createElement('div'));
   menu.setAttribute('role', 'menu');
-  await escape();
+  await pressEscape();
   menu.remove();
   const field = document.body.appendChild(document.createElement('input'));
-  await escape(field);
+  await pressEscape(field);
   field.remove();
   expect(prefs.value.updateSeen).not.toBe('0.9.0-rc.1');
-  await escape();
+  await pressEscape();
   expect(prefs.value).toMatchObject({ updateSeen: '0.9.0-rc.1' });
 });

@@ -79,7 +79,12 @@ describe('releases from GitHub (#515)', () => {
   });
 
   it('list no earlier versions and no update for an edge build', () => {
-    const stored = { checkedAt: null, failed: false, releases: parseReleases(github), notified: null };
+    const stored = {
+      checkedAt: null,
+      failed: false,
+      releases: parseReleases(github),
+      notified: null,
+    };
     const settings = { enabled: true, channel: 'stable' as const };
     const edge = updatesView(stored, settings, 'edge');
     expect(edge).toMatchObject({ edge: true, available: null, earlier: [] });

@@ -209,7 +209,9 @@ export function updatesView(
     checkedAt: stored.checkedAt,
     failed: stored.failed,
     available:
-      settings.enabled && !edge ? availableRelease(stored.releases, current, settings.channel) : null,
+      settings.enabled && !edge
+        ? availableRelease(stored.releases, current, settings.channel)
+        : null,
     earlier: edge
       ? []
       : stored.releases
