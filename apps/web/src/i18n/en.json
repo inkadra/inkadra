@@ -3163,6 +3163,7 @@
     "whatVisible": "Visible area",
     "whatStoryboard": "Storyboard",
     "whatShotlist": "Shot list",
+    "whatScenesheets": "Scene sheets",
     "framesPerPage": "Frames per page",
     "page": "Page size",
     "paperA4": "A4",
@@ -3339,7 +3340,67 @@
     "filesFailed_one": "Download failed: {{names}}. Try again.",
     "filesFailed_other": "Download failed: {{names}}. Try again.",
     "filesPartial_one": "The ZIP is saved, but {{names}} is missing: the server did not give the file. Try again.",
-    "filesPartial_other": "The ZIP is saved, but {{names}} are missing: the server did not give the files. Try again."
+    "filesPartial_other": "The ZIP is saved, but {{names}} are missing: the server did not give the files. Try again.",
+    "sheets": {
+      "department": "Department",
+      "new": "New",
+      "scenes": "Scenes",
+      "scenesAll": "All scenes",
+      "scenesSelection": "Selected scenes",
+      "scenesDay_one": "Day {{n}} · {{date}} · {{count}} scene",
+      "scenesDay_other": "Day {{n}} · {{date}} · {{count}} scenes",
+      "scenesDayShort_one": "Day {{n}} · {{date}} · {{count}}",
+      "scenesDayShort_other": "Day {{n}} · {{date}} · {{count}}",
+      "summary_one": "{{count}} scene sheet · {{page}}",
+      "summary_other": "{{count}} scene sheets · {{page}}",
+      "previewPage": "Page {{n}} of {{total}}",
+      "departments": {
+        "everything": {
+          "name": "Everything",
+          "hint": "All of the sheet"
+        },
+        "camera": {
+          "name": "Camera",
+          "hint": "Shots, lenses, set plan"
+        },
+        "lighting": {
+          "name": "Lighting & grip",
+          "hint": "Set plan, time, light notes"
+        },
+        "costume": {
+          "name": "Costume & make-up",
+          "hint": "Characters and looks"
+        },
+        "production": {
+          "name": "Production",
+          "hint": "Location, cast, items"
+        }
+      },
+      "day": "Day {{n}}",
+      "dayOf": "Day {{n}} of {{total}} · scenes {{scenes}}",
+      "continuityBoth": "Previous scene with {{name}}: {{previous}}. Next: {{next}}.",
+      "continuityPrevious": "Previous scene with {{name}}: {{previous}}.",
+      "continuityNext": "Next scene with {{name}}: {{next}}.",
+      "pageOf": "{{n}} / {{total}}",
+      "none": "No scenes to print.",
+      "call": "Call",
+      "location": "Location",
+      "time": "Time",
+      "cast": "Cast",
+      "frames": "Frames",
+      "characters": "Characters",
+      "inScene": "Characters in this scene",
+      "playedBy": "Played by {{actor}}",
+      "continuity": "Continuity",
+      "frameNotes": "Frame notes",
+      "light": "Light",
+      "shootingDay": "Shooting day",
+      "needed": "Needed",
+      "notes": "Notes",
+      "frame": "Frame",
+      "count_one": "{{count}} scene sheet",
+      "count_other": "{{count}} scene sheets"
+    }
   },
   "screenplay": {
     "open": "Import screenplay…",
@@ -4362,6 +4423,10 @@
             "text": "See the page before you download it."
           },
           "2": {
+            "title": "Scene sheets",
+            "text": "One page per scene for a department: camera, lighting, costume or production."
+          },
+          "3": {
             "title": "The whole project",
             "text": "Export it as a zip and import it on another server."
           }

@@ -526,3 +526,89 @@ describe('ExportDialog preset state and customization', () => {
     expect(host.textContent).toContain('Storia e video verticale · 1080 × 1920 px');
   });
 });
+
+describe('ExportDialog scene sheets', () => {
+  let host: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+    getMock.mockReset();
+    setReviews({ reviews: new Map(), reviewsStatus: 'ready' });
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+  });
+
+  it('offers the department and the scenes, keeping the production book preset', async () => {
+    // happy-dom has no popover: the list opens in place.
+    HTMLElement.prototype.showPopover ??= () => {};
+    HTMLElement.prototype.hidePopover ??= () => {};
+    const schedule = {
+      items: [
+        { id: 'd2', date: '2026-11-18', blocks: [{ shotId: 'f1' }] },
+        { id: 'd1', date: '2026-11-17', blocks: [] },
+      ],
+    };
+    getMock.mockImplementation(((url: string) =>
+      Promise.resolve(url.includes('/schedule') ? schedule : freshSettings)) as never);
+    const byId = new Map<string, object>([
+      ['s1', { id: 's1', type: 'scene', number: '1', parent: null }],
+      ['f1', { id: 'f1', type: 'frame', parent: 's1' }],
+    ]);
+    const store = { getSnapshot: () => ({ byId }) } as unknown as BoardStore;
+    await act(async () => {
+      root.render(
+        <ExportDialog
+          source="shotlist"
+          initialWhat="scenesheets"
+          store={store}
+          projectId="p1"
+          boardId="b1"
+          projectName="La lunga notte"
+          boardTitle="Storyboard"
+          boards={null}
+          selection={new Set(['f1'])}
+          visible={null}
+          onClose={() => {}}
+        />,
+      );
+    });
+    // The production book prints the scene sheets: the preset stays selected.
+    expect(
+      host.querySelector<HTMLInputElement>('input.export__preset-input[value="production-book"]')
+        ?.checked,
+    ).toBe(true);
+    const radios = [...host.querySelectorAll<HTMLInputElement>('.export__radio input')];
+    expect(radios.map((r) => r.value)).toEqual([
+      'everything',
+      'camera',
+      'lighting',
+      'costume',
+      'production',
+    ]);
+    expect(radios[0]?.checked).toBe(true);
+    expect(host.querySelector('.export__departments legend')?.textContent).toBe('RepartoNuovo');
+    await act(async () => radios[1]?.click());
+    expect(radios[1]?.checked).toBe(true);
+    expect(
+      host.querySelector<HTMLInputElement>('input.export__preset-input[value="production-book"]')
+        ?.checked,
+    ).toBe(true);
+
+    const scenes = [...host.querySelectorAll('.export__departments + .export__field')].at(0);
+    const trigger = scenes?.querySelector<HTMLButtonElement>('[role="combobox"]');
+    expect(trigger?.getAttribute('data-value')).toBe('all');
+    await act(async () => trigger?.click());
+    const options = [...document.querySelectorAll('[role="option"]')].map((o) => o.textContent);
+    // All, the selection, then the shooting days in date order.
+    expect(options).toHaveLength(4);
+    expect(options.slice(0, 2)).toEqual(['Tutte le scene', 'Scene selezionate']);
+    expect(getMock).toHaveBeenCalledWith('/boards/b1/schedule');
+  });
+});

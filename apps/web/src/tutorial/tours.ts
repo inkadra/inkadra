@@ -294,6 +294,7 @@ export const TOURS: Tour[] = [
     steps: [
       { anchor: 'export-controls', media: 'export', side: 'right' },
       { anchor: 'export-preview', media: 'export', side: 'left' },
+      { anchor: 'export-departments', media: 'export', side: 'right' },
       { anchor: null, media: 'clip' },
     ],
   },
