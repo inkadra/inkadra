@@ -90,7 +90,8 @@ export interface StartUpload {
   boardId: string;
   /** Called once, as soon as the server has created the asset (before the bytes arrive). */
   onAsset: (assetId: string) => void;
-  onFailed?: (assetId: string | null) => void;
+  /** `refused`: no space left for it (decision 0081); StorageNotice already tells the person. */
+  onFailed?: (assetId: string | null, refused?: StorageFull) => void;
   onComplete?: (assetId: string) => void;
   /**
    * The person cancelled: the server drops the asset (null when it had none yet), so whatever
@@ -273,8 +274,8 @@ export function startUpload({
         const hook = cancelHooks.get(key);
         cancelHooks.delete(key);
         if (assetId) hook?.(assetId);
-        onFailed?.(assetId);
-        for (const follower of waiting) follower.onFailed?.(assetId);
+        onFailed?.(assetId, refused);
+        for (const follower of waiting) follower.onFailed?.(assetId, refused);
         return;
       }
       patch(key, { state: 'failed', reconnecting: false });

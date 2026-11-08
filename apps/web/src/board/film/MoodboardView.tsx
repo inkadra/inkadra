@@ -270,8 +270,8 @@ function AddReferences({
           createElement(store.doc, 'image', at(), { assetId }, opts);
           store.undo.stopCapturing();
         },
-        onFailed: (assetId) => {
-          if (!assetId) onNotice(t('board.errors.upload', { name: file.name }));
+        onFailed: (assetId, refused) => {
+          if (!assetId && !refused) onNotice(t('board.errors.upload', { name: file.name }));
         },
         onCancelled: (assetId) =>
           deleteElements(
