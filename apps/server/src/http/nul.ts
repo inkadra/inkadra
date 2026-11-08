@@ -8,7 +8,9 @@ export function containsNul(value: unknown): boolean {
   if (typeof value === 'string') return value.includes('\0');
   if (Array.isArray(value)) return value.some(containsNul);
   if (value === null || typeof value !== 'object') return false;
+  // Plain objects, and Fastify's query object, whose prototype is itself a null-prototype object.
   const proto = Object.getPrototypeOf(value);
-  if (proto !== Object.prototype && proto !== null) return false;
+  if (proto !== null && proto !== Object.prototype && Object.getPrototypeOf(proto) !== null)
+    return false;
   return Object.entries(value).some(([key, v]) => key.includes('\0') || containsNul(v));
 }

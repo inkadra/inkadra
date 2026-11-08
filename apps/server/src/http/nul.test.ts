@@ -7,6 +7,9 @@ describe('containsNul', () => {
     expect(containsNul({ a: ['x', { b: 'y\u0000' }] })).toBe(true);
     expect(containsNul({ ['k\u0000']: 1 })).toBe(true);
     expect(containsNul(Object.assign(Object.create(null), { q: 'a\u0000' }))).toBe(true);
+    const query = Object.create(Object.create(null));
+    query.q = 'a\u0000b';
+    expect(containsNul(query)).toBe(true);
     expect(containsNul({ a: ['x', 1, null, true] })).toBe(false);
   });
 
