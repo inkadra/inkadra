@@ -40,6 +40,7 @@ export function SpaceMeter({
   const share = (bytes: number) => `${Math.min(100, Math.max(0, (bytes / limit) * 100))}%`;
   const used = originals + derived;
   return (
+    // biome-ignore lint/a11y/useSemanticElements: two segments (originals, copies), which <meter> cannot draw
     <div
       className={`space-meter space-meter--${tone}${small ? ' space-meter--small' : ''}`}
       role="meter"

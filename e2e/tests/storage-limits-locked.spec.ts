@@ -5,7 +5,11 @@ import { expect, test } from '@playwright/test';
 import { signIn } from './perf/seed.ts';
 
 const shots = process.env.E2E_SHOTS;
-const admin = { name: 'Giulia Bianchi', email: 'giulia@example.com', password: 'correct-horse-battery' };
+const admin = {
+  name: 'Giulia Bianchi',
+  email: 'giulia@example.com',
+  password: 'correct-horse-battery',
+};
 
 test('limits of the server environment are read-only in Settings', async ({ page, baseURL }) => {
   test.skip(!process.env.STORAGE_LIMIT, 'needs STORAGE_LIMIT');
@@ -31,7 +35,10 @@ test('limits of the server environment are read-only in Settings', async ({ page
     '',
   );
   if (!shots) return;
-  for (const size of [{ width: 1280, height: 860 }, { width: 390, height: 844 }]) {
+  for (const size of [
+    { width: 1280, height: 860 },
+    { width: 390, height: 844 },
+  ]) {
     await page.setViewportSize(size);
     await card.scrollIntoViewIfNeeded();
     for (const theme of ['dark', 'light'] as const) {

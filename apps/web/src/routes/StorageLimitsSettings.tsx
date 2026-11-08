@@ -1,6 +1,6 @@
 import type { StorageLimits, StorageUsage, UpdateStorageLimits } from '@inkadra/shared';
-import type { TFunction } from 'i18next';
 import { Icon, Segmented, Select } from '@inkadra/ui';
+import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';

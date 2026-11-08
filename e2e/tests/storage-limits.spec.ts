@@ -8,7 +8,11 @@ import { signIn, uploadFile } from './perf/seed.ts';
 import { signUpViaInvite } from './support/accounts.ts';
 
 const shots = process.env.E2E_SHOTS;
-const admin = { name: 'Giulia Bianchi', email: 'giulia@example.com', password: 'correct-horse-battery' };
+const admin = {
+  name: 'Giulia Bianchi',
+  email: 'giulia@example.com',
+  password: 'correct-horse-battery',
+};
 const stamp = Date.now();
 const member = {
   name: 'Sara Conti',
@@ -30,7 +34,9 @@ async function shoot(page: Page, name: string, opts: { phone?: boolean; full?: b
   if (!shots) return;
   const sizes = opts.phone === false ? ['desktop'] : ['desktop', 'phone'];
   for (const size of sizes) {
-    await page.setViewportSize(size === 'phone' ? { width: 390, height: 844 } : { width: 1280, height: 860 });
+    await page.setViewportSize(
+      size === 'phone' ? { width: 390, height: 844 } : { width: 1280, height: 860 },
+    );
     for (const value of ['dark', 'light'] as const) {
       await theme(page, value);
       await page.mouse.move(1, 1);
@@ -52,7 +58,10 @@ async function useCookie(context: BrowserContext, base: string, cookie: string) 
   );
 }
 
-test('storage limits: own space, refused uploads, limits and members', async ({ page, baseURL }) => {
+test('storage limits: own space, refused uploads, limits and members', async ({
+  page,
+  baseURL,
+}) => {
   test.setTimeout(shots ? 360_000 : 120_000);
   const base = baseURL as string;
   const adminCookie = await signIn(base, admin);
@@ -84,7 +93,9 @@ test('storage limits: own space, refused uploads, limits and members', async ({ 
     await shoot(page, 'space-unlimited', { phone: false });
 
     // 850 KB of 1 MB: past the warning share.
-    expect((await call(adminCookie, 'PATCH', '/instance/storage-limits', { perUser: 1000 * KB })).ok).toBe(true);
+    expect(
+      (await call(adminCookie, 'PATCH', '/instance/storage-limits', { perUser: 1000 * KB })).ok,
+    ).toBe(true);
     expect(await upload(850 * KB, 'Sopralluogo_stazione.mov')).not.toBeNull();
     await page.reload();
     await expect(card.getByText('Restano 150 KB')).toBeVisible();
@@ -95,12 +106,18 @@ test('storage limits: own space, refused uploads, limits and members', async ({ 
     await page.goto(`/p/${project.id}?view=canvas`);
     await page.locator('input[type="file"][multiple]').setInputFiles([
       { name: 'Note_luci.txt', mimeType: 'text/plain', buffer: Buffer.alloc(40 * KB, 65) },
-      { name: 'Prova_trucco_04.mov', mimeType: 'video/quicktime', buffer: Buffer.alloc(300 * KB, 1) },
+      {
+        name: 'Prova_trucco_04.mov',
+        mimeType: 'video/quicktime',
+        buffer: Buffer.alloc(300 * KB, 1),
+      },
       { name: 'Plancia_luci.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(140 * KB, 2) },
     ]);
     const dialog = page.getByRole('dialog', { name: 'Non c’è abbastanza spazio' });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText('Abbiamo caricato 1 file su 3; questi 2 non ci stanno:')).toBeVisible();
+    await expect(
+      dialog.getByText('Abbiamo caricato 1 file su 3; questi 2 non ci stanno:'),
+    ).toBeVisible();
     await expect(dialog.getByRole('rowheader', { name: 'Prova_trucco_04.mov' })).toBeVisible();
     await shoot(page, 'upload-blocked');
     await dialog.getByRole('button', { name: 'Chiedi più spazio' }).click();
@@ -118,7 +135,11 @@ test('storage limits: own space, refused uploads, limits and members', async ({ 
     await expect(toast).toBeVisible();
     await shoot(page, 'upload-toast', { phone: false });
     await toast.getByRole('button', { name: 'Dettagli' }).click();
-    await page.getByRole('dialog', { name: 'Non c’è abbastanza spazio' }).getByRole('button', { name: 'Chiudi', exact: true }).first().click();
+    await page
+      .getByRole('dialog', { name: 'Non c’è abbastanza spazio' })
+      .getByRole('button', { name: 'Chiudi', exact: true })
+      .first()
+      .click();
 
     // Full: the limit drops under what is used, nothing is deleted.
     await call(adminCookie, 'PATCH', `/instance/members/${me.id}`, { storageLimit: 800 * KB });
@@ -134,12 +155,16 @@ test('storage limits: own space, refused uploads, limits and members', async ({ 
 
     // Administrators: limits in Storage, the space of each person in Members.
     await call(adminCookie, 'PATCH', `/instance/members/${me.id}`, { storageLimit: null });
-    expect((await call(adminCookie, 'PATCH', '/instance/storage-limits', { total: 1100 * KB })).ok).toBe(true);
+    expect(
+      (await call(adminCookie, 'PATCH', '/instance/storage-limits', { total: 1100 * KB })).ok,
+    ).toBe(true);
     await useCookie(page.context(), base, adminCookie);
     await page.goto('/settings?section=workspace');
     const limits = page.locator('.settings-card', { hasText: 'Limiti di spazio' });
     await expect(limits.getByRole('radio', { name: 'Limite', exact: true }).first()).toBeChecked();
-    await expect(page.locator('.space-card', { hasText: 'Spazio usato' }).getByRole('meter')).toBeVisible();
+    await expect(
+      page.locator('.space-card', { hasText: 'Spazio usato' }).getByRole('meter'),
+    ).toBeVisible();
     await shoot(page, 'storage-limits', { full: true });
 
     await page.goto('/settings/team');
@@ -171,7 +196,9 @@ test('storage limits: own space, refused uploads, limits and members', async ({ 
         .poll(
           async () => {
             const res = await call(adminCookie, 'GET', '/notifications?limit=20');
-            const { items } = (await res.json()) as { items: Array<{ serverAlert?: { kind: string } | null }> };
+            const { items } = (await res.json()) as {
+              items: Array<{ serverAlert?: { kind: string } | null }>;
+            };
             return items.some((n) => n.serverAlert?.kind === 'storage_limit');
           },
           { timeout: 120_000, intervals: [5_000] },
@@ -182,7 +209,11 @@ test('storage limits: own space, refused uploads, limits and members', async ({ 
       await shoot(page, 'inbox-storage');
     }
   } finally {
-    await call(adminCookie, 'PATCH', '/instance/storage-limits', { total: null, perUser: null, warnPercent: 80 });
+    await call(adminCookie, 'PATCH', '/instance/storage-limits', {
+      total: null,
+      perUser: null,
+      warnPercent: 80,
+    });
     await call(adminCookie, 'PATCH', `/instance/members/${me.id}`, { storageLimit: null });
   }
 });
