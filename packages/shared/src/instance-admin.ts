@@ -81,17 +81,20 @@ export const InstanceMember = z
     canCreateProjectsOverride: z.boolean().nullable().optional().openapi({
       description: 'Per-account choice; null follows InstanceSettings.membersCanCreateProjects.',
     }),
-    storageBytes: z.number().nonnegative().optional().openapi({
-      description:
-        'Originals uploaded by this person and the copies and previews the server made of them, ' +
-        'as StorageUsage.byUser counts them. Missing from servers before storage limits.',
-    }),
+    storageBytes: z
+      .number()
+      .nonnegative()
+      .optional()
+      .openapi({
+        description:
+          'Originals uploaded by this person and the copies and previews the server made of them, ' +
+          'as StorageUsage.byUser counts them. Missing from servers before storage limits.',
+      }),
     storageLimit: z.number().int().positive().nullable().optional().openapi({
       description: 'Effective limit in bytes; null: no limit. Missing from older servers.',
     }),
     storageLimitOverride: z.number().int().min(0).nullable().optional().openapi({
-      description:
-        'Per-account limit in bytes: null follows StorageLimits.perUser, 0 is no limit.',
+      description: 'Per-account limit in bytes: null follows StorageLimits.perUser, 0 is no limit.',
     }),
   })
   .openapi('InstanceMember');
@@ -103,11 +106,17 @@ export const UpdateInstanceMember = z
     canCreateProjects: z.boolean().nullable().optional().openapi({
       description: 'Override for this account; null goes back to the instance setting.',
     }),
-    storageLimit: z.number().int().min(0).nullable().optional().openapi({
-      description:
-        'Storage limit of this account in bytes; 0 is no limit, null goes back to ' +
-        'StorageLimits.perUser. Refused above STORAGE_LIMIT_PER_USER when that is set.',
-    }),
+    storageLimit: z
+      .number()
+      .int()
+      .min(0)
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          'Storage limit of this account in bytes; 0 is no limit, null goes back to ' +
+          'StorageLimits.perUser. Refused above STORAGE_LIMIT_PER_USER when that is set.',
+      }),
   })
   .strict()
   .openapi('UpdateInstanceMember');

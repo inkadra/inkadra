@@ -1,4 +1,5 @@
 import type { StorageLimits, StorageUsage, UpdateStorageLimits } from '@inkadra/shared';
+import type { TFunction } from 'i18next';
 import { Icon, Segmented, Select } from '@inkadra/ui';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -109,7 +110,7 @@ export function useStorageLimits() {
 }
 
 /** "Basta per circa 7 mesi": what is left at the pace of the last 30 days. */
-function lasts(left: number, perMonth: number, t: (k: string, o?: object) => string) {
+function lasts(left: number, perMonth: number, t: TFunction) {
   if (perMonth <= 0) return null;
   const months = left / perMonth;
   return months >= 1
@@ -167,7 +168,11 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
           }
         />
         {value !== null && (
-          <SizeInput value={value} label={label} onCommit={(bytes) => void save({ [key]: bytes })} />
+          <SizeInput
+            value={value}
+            label={label}
+            onCommit={(bytes) => void save({ [key]: bytes })}
+          />
         )}
       </>
     );

@@ -154,10 +154,10 @@ export function serverAlertMail(
         : alert.kind === 'storage_request'
           ? title
           : alert.kind === 'service_down'
-        ? a.down(a.services[alert.service ?? ''] ?? a.services.web ?? '')
-        : alert.kind === 'backup_failed'
-          ? a.backup
-          : a.errors(alert.count ?? 0);
+            ? a.down(a.services[alert.service ?? ''] ?? a.services.web ?? '')
+            : alert.kind === 'backup_failed'
+              ? a.backup
+              : a.errors(alert.count ?? 0);
   return renderMail({
     to: admin.email,
     subject: a.subject(title, instance.instanceName),

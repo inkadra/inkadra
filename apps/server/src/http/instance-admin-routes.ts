@@ -19,8 +19,8 @@ import { instanceSetting, personalToken, session, user } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import { diskSpace, growthPerMonth } from '../monitor/health.ts';
 import {
-  largestFiles,
   type Limits,
+  largestFiles,
   overrideAllowed,
   personBytes,
   personLimit,

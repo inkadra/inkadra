@@ -15,7 +15,6 @@ import { Button, Checkbox, Icon, IconButton, Switch, swallowOutsidePress } from 
 import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { formatStorage } from '../routes/StorageCharts.tsx';
 import { useNavigate } from 'react-router';
 import { authorName, groupByDay, type Page, reviewKey } from '../board/review-model.ts';
 import { canComment } from '../board/review-store.ts';
@@ -24,6 +23,7 @@ import { api } from '../lib/api.ts';
 import { signedInId } from '../lib/me.ts';
 import { moveTabFocus } from '../lib/tabs.ts';
 import { MyTasks } from '../routes/MyTasks.tsx';
+import { formatStorage } from '../routes/StorageCharts.tsx';
 import { trackSave } from '../routes/settings-save.ts';
 import { Card, Row } from '../routes/settings-ui.tsx';
 import { InboxDetail, InboxSkeleton } from './InboxDetail.tsx';
@@ -256,8 +256,7 @@ export function describeNotification(
       total: gb(alert?.total ?? null),
       used: size(used),
       limit: size(alert?.total ?? null),
-      percent:
-        used !== null && alert?.total ? String(Math.round((used / alert.total) * 100)) : '',
+      percent: used !== null && alert?.total ? String(Math.round((used / alert.total) * 100)) : '',
       service: alert?.service ? t(`server.services.long.${alert.service}`) : '',
       times: String(alert?.count ?? ''),
     });

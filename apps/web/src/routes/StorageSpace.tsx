@@ -100,7 +100,9 @@ export function MySpaceCard() {
       <p className="space-card__big">
         {size(used)}{' '}
         <small>
-          {limit === null ? t('storageSpace.used') : t('storageSpace.ofLimit', { limit: size(limit) })}
+          {limit === null
+            ? t('storageSpace.used')
+            : t('storageSpace.ofLimit', { limit: size(limit) })}
         </small>
       </p>
       {limit !== null && (
@@ -121,7 +123,9 @@ export function MySpaceCard() {
       {(tone === 'danger' || storage.instanceFull) && (
         <p className="space-banner space-banner--danger" role="status">
           <Icon name="warning" size={14} />
-          <span>{t(storage.instanceFull ? 'storageSpace.instanceFull' : 'storageSpace.fullHelp')}</span>
+          <span>
+            {t(storage.instanceFull ? 'storageSpace.instanceFull' : 'storageSpace.fullHelp')}
+          </span>
         </p>
       )}
       <div className="space-card__actions">

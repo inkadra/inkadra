@@ -1,9 +1,4 @@
-import type {
-  MyStorage,
-  StorageFiles,
-  StorageFull,
-  UpdateStorageLimits,
-} from '@inkadra/shared';
+import type { MyStorage, StorageFiles, StorageFull, UpdateStorageLimits } from '@inkadra/shared';
 import { eq, type SQL, sql } from 'drizzle-orm';
 import { live } from './access.ts';
 import type { Config } from './config.ts';

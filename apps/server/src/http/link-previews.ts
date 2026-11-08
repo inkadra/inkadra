@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { API_PREFIX, CreateLinkPreview, type LinkPreview, youtubeVideoId } from '@inkadra/shared';
+import { eq } from 'drizzle-orm';
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import { Parser } from 'htmlparser2';
 import { requireWriteAccess } from '../access.ts';
-import { eq } from 'drizzle-orm';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';

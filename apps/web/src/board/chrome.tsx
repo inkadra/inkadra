@@ -35,9 +35,9 @@ import { pickVariant, useAsset } from './assets.ts';
 import { ContextualTools } from './ContextualTools.tsx';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
+import { StorageNotice } from './StorageNotice.tsx';
 import { isMac } from './shortcuts.ts';
 import { BAR_ICONS, type BarTool, barTools, DEFAULT_BAR } from './toolbar-prefs.ts';
-import { StorageNotice } from './StorageNotice.tsx';
 import { cancelUpload, localPreview, retryUpload, useUploads } from './uploads.ts';
 
 export type ToolType =
@@ -1367,41 +1367,49 @@ export function UploadPanel() {
     <>
       <StorageNotice />
       {uploads.length > 0 && (
-    <section className="uploads" aria-label={t('board.uploads.title')} data-chrome>
-      {uploads.map((u) => (
-        <div key={u.key} className="uploads__item">
-          <div className="uploads__row">
-            <span className="uploads__name">{u.name}</span>
-            <span className="ink-muted">
-              {u.state === 'uploading'
-                ? `${u.reconnecting ? `${t('board.uploads.reconnecting')} · ` : ''}${Math.round((u.sent / (u.size || 1)) * 100)}%`
-                : t(`board.uploads.${u.state}`)}
-            </span>
-            {u.state === 'failed' && (
-              <button type="button" className="uploads__cancel" onClick={() => retryUpload(u.key)}>
-                {t('board.uploads.retry')}
-              </button>
-            )}
-            {u.state !== 'done' && u.state !== 'cancelled' && (
-              <button type="button" className="uploads__cancel" onClick={() => cancelUpload(u.key)}>
-                {t('board.uploads.cancel')}
-              </button>
-            )}
-          </div>
-          {u.state === 'uploading' && !u.reconnecting && u.remainingSeconds !== null && (
-            <span className="ink-muted">
-              {t('board.uploads.transfer', {
-                speed: (u.bytesPerSecond / 1024 / 1024).toFixed(1),
-                seconds: u.remainingSeconds,
-              })}
-            </span>
-          )}
-          <div className="uploads__bar">
-            <span style={{ width: `${(u.sent / (u.size || 1)) * 100}%` }} />
-          </div>
-        </div>
-      ))}
-    </section>
+        <section className="uploads" aria-label={t('board.uploads.title')} data-chrome>
+          {uploads.map((u) => (
+            <div key={u.key} className="uploads__item">
+              <div className="uploads__row">
+                <span className="uploads__name">{u.name}</span>
+                <span className="ink-muted">
+                  {u.state === 'uploading'
+                    ? `${u.reconnecting ? `${t('board.uploads.reconnecting')} · ` : ''}${Math.round((u.sent / (u.size || 1)) * 100)}%`
+                    : t(`board.uploads.${u.state}`)}
+                </span>
+                {u.state === 'failed' && (
+                  <button
+                    type="button"
+                    className="uploads__cancel"
+                    onClick={() => retryUpload(u.key)}
+                  >
+                    {t('board.uploads.retry')}
+                  </button>
+                )}
+                {u.state !== 'done' && u.state !== 'cancelled' && (
+                  <button
+                    type="button"
+                    className="uploads__cancel"
+                    onClick={() => cancelUpload(u.key)}
+                  >
+                    {t('board.uploads.cancel')}
+                  </button>
+                )}
+              </div>
+              {u.state === 'uploading' && !u.reconnecting && u.remainingSeconds !== null && (
+                <span className="ink-muted">
+                  {t('board.uploads.transfer', {
+                    speed: (u.bytesPerSecond / 1024 / 1024).toFixed(1),
+                    seconds: u.remainingSeconds,
+                  })}
+                </span>
+              )}
+              <div className="uploads__bar">
+                <span style={{ width: `${(u.sent / (u.size || 1)) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </section>
       )}
     </>
   );

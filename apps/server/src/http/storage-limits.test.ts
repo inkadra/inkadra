@@ -70,7 +70,11 @@ describe.skipIf(!url)('storage limits on uploads (needs DATABASE_URL)', () => {
     headers: Record<string, string> = {},
   ) => {
     const body =
-      payload === undefined ? undefined : Buffer.isBuffer(payload) ? payload : JSON.stringify(payload);
+      payload === undefined
+        ? undefined
+        : Buffer.isBuffer(payload)
+          ? payload
+          : JSON.stringify(payload);
     const res = await fetch(`${base}${path}`, {
       method,
       headers: {

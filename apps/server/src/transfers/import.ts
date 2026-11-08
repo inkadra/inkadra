@@ -238,7 +238,8 @@ export async function importProject(
     await progress(0.05);
 
     // Files: streamed into storage with the size and checksum checked on the way.
-    const totalBytes = assets.reduce((n, a) => n + a.size, 0) || 1;
+    const archiveBytes = assets.reduce((n, a) => n + a.size, 0);
+    const totalBytes = archiveBytes || 1;
     // All or nothing: the files must fit before any is written, and again when the project is
     // committed (below), under the lock that keeps parallel uploads from passing a limit.
     const fits = async (tx: Pick<Database, 'select' | 'execute'>, bytes: number) => {
@@ -251,7 +252,7 @@ export async function importProject(
         throw err;
       }
     };
-    await db.transaction((tx) => fits(tx, assets.reduce((n, a) => n + a.size, 0)));
+    await db.transaction((tx) => fits(tx, archiveBytes));
     let bytesDone = 0;
     let skippedFiles = 0;
     const stored = new Map<string, { id: string; size: number; sha256: string }>();
