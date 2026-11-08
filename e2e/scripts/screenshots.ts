@@ -1,14 +1,8 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createElement } from '@inkadra/canvas-core';
-import { createBoardDoc, readElement, roots } from '@inkadra/doc-schema';
 import { type Browser, chromium, type Page } from '@playwright/test';
-import { readBoard } from '../tests/frame-grab.helpers.ts';
-import { pushBoardDoc, uploadFile, waitForAssets } from '../tests/perf/seed.ts';
-import { api, type SampleProject, seedSampleProject } from './sample-project.ts';
+import { type SampleProject, seedSampleProject } from './sample-project.ts';
 
 /**
  * Builds a sample project on an empty instance and takes the screenshots of the README
@@ -56,8 +50,6 @@ async function main() {
 
   const sample = await seedSampleProject(browser, base);
   const { project, storyboard } = sample;
-  const rushes = await seedRushes(sample);
-  await seedComments(sample);
 
   const boardUrl = `/p/${project.id}`;
   const storyUrl = `/p/${project.id}/b/${storyboard.id}`;
@@ -71,9 +63,9 @@ async function main() {
   }
   for (const theme of themes) {
     const { page, close } = await open(browser, sample.cookie, theme);
-    await shootGuide(page, sample, rushes, theme);
+    await shootGuide(page, sample, theme);
     await close();
-    await shootPhone(browser, sample, rushes, theme);
+    await shootPhone(browser, sample, theme);
   }
   await browser.close();
   console.log(`Screenshots in ${readme} and ${guide}`);
@@ -98,72 +90,8 @@ function cookies(cookie: string) {
   });
 }
 
-/** A board with an uploaded video: a slow push in on one still, made with ffmpeg. */
-async function seedRushes({ cookie, project, asset }: SampleProject) {
-  const dir = mkdtempSync(join(tmpdir(), 'inkadra-shots-'));
-  const still = join(dir, 'still.jpg');
-  const clip = join(dir, 'clip.mp4');
-  const stored = await fetch(`${base}/api/v1/assets/${asset.platform}`, {
-    headers: { cookie },
-  });
-  const { url } = (await stored.json()) as { url: string };
-  const picture = await fetch(new URL(url, base), { headers: { cookie } });
-  writeFileSync(still, Buffer.from(await picture.arrayBuffer()));
-  execFileSync('ffmpeg', [
-    '-y',
-    '-loglevel',
-    'error',
-    '-loop',
-    '1',
-    '-i',
-    still,
-    '-t',
-    '6',
-    '-vf',
-    "zoompan=z='1+0.001*on':d=150:s=1280x720:fps=25,format=yuv420p",
-    '-c:v',
-    'libx264',
-    clip,
-  ]);
-  const board = await api<{ id: string }>(base, cookie, `/projects/${project.id}/boards`, {
-    parentBoardId: project.rootBoardId,
-    kind: 'board',
-    title: 'Rushes',
-  });
-  const assetId = await uploadFile(base, cookie, project.id, {
-    body: readFileSync(clip),
-    name: 'platform-take-3.mp4',
-    type: 'video/mp4',
-  });
-  if (!assetId) throw new Error('This instance does not take uploads');
-  await waitForAssets(base, cookie, [assetId]);
-  const doc = createBoardDoc(board.id);
-  createElement(doc, 'file', { x: 0, y: 0 }, { assetId, w: 720 }, { userId: null });
-  await pushBoardDoc(base, cookie, board.id, doc);
-  return board;
-}
-
-/** Two threads on the moodboard's first note, one of them with a reply. */
-async function seedComments({ cookie, project }: SampleProject) {
-  const doc = await readBoard(base, cookie, project.rootBoardId);
-  const first = [...roots(doc).elements.values()]
-    .map((map) => readElement(map))
-    .find((element) => element?.type === 'note');
-  if (!first) throw new Error('The moodboard has no note');
-  const path = `/boards/${project.rootBoardId}/comments`;
-  const thread = await api<{ id: string }>(base, cookie, path, {
-    elementId: first.id,
-    body: 'Can we keep the sodium orange in the grade, or is it too much next to the blue?',
-  });
-  await api(base, cookie, path, {
-    parentId: thread.id,
-    body: 'Keep it. It is the only warm thing in the film until the ending.',
-  });
-  await api(base, cookie, path, { body: 'Lamp rental confirmed for the 14th.' });
-}
-
-async function shootGuide(page: Page, sample: SampleProject, rushes: { id: string }, theme: Theme) {
-  const { project, casting, setPlan, planId, storyboard } = sample;
+async function shootGuide(page: Page, sample: SampleProject, theme: Theme) {
+  const { project, casting, setPlan, planId, storyboard, rushes } = sample;
   const canvas = (board: string) => `/p/${project.id}/b/${board}?view=canvas`;
   const file = (name: string) => join(guide, `${name}-${theme}.png`);
 
@@ -179,15 +107,13 @@ async function shootGuide(page: Page, sample: SampleProject, rushes: { id: strin
   await page.locator('.comments-panel').waitFor();
   await save(page, file('comments'));
 
-  // A frame's panel, then Draw. Only the first theme draws, so the second keeps the same strokes.
+  // A frame's panel, then Draw, on the arrow the sample drew over the first frame.
   await fit(page, canvas(storyboard.id));
   await page.locator('.card--frame').first().dblclick();
   await page.locator('.film-panel').waitFor();
   await save(page, file('frame-panel'));
   await page.getByRole('button', { name: 'Draw', exact: true }).last().click();
-  const pen = page.locator('.pen');
-  await pen.waitFor();
-  if (theme === themes[0]) await sketch(page);
+  await page.locator('.pen').waitFor();
   await save(page, file('draw'));
 
   // The set plan with the camera selected: both bars.
@@ -206,8 +132,12 @@ async function shootGuide(page: Page, sample: SampleProject, rushes: { id: strin
   await page.locator('.story-panel').waitFor();
   await save(page, file('character'));
 
-  // A video playing inside its card, paused on a frame so the two themes match.
+  // A video playing inside its card, paused on a frame so the two themes match. The board holds
+  // more than the take: select it and zoom to it.
   await fit(page, canvas(rushes.id));
+  await page.locator('.card--file').first().locator('.fcard__footer').click();
+  await page.keyboard.press('Shift+Digit2');
+  await page.waitForTimeout(800);
   await page.locator('.card--file .fcard__play').first().click();
   const video = page.locator('.card--file video').first();
   await video.waitFor();
@@ -237,12 +167,7 @@ async function shootGuide(page: Page, sample: SampleProject, rushes: { id: strin
   await save(page, file('report-preview'));
 }
 
-async function shootPhone(
-  browser: Browser,
-  sample: SampleProject,
-  rushes: { id: string },
-  theme: Theme,
-) {
+async function shootPhone(browser: Browser, sample: SampleProject, theme: Theme) {
   const context = await browser.newContext({
     baseURL: base,
     viewport: { width: 390, height: 844 },
@@ -254,35 +179,12 @@ async function shootPhone(
   });
   await context.addCookies(cookies(sample.cookie));
   const page = await context.newPage();
-  await page.goto(`/p/${sample.project.id}/b/${rushes.id}?view=canvas`);
+  await page.goto(`/p/${sample.project.id}/b/${sample.rushes.id}?view=canvas`);
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(1500);
   await page.locator('.card--file').first().tap();
   await save(page, join(guide, `phone-${theme}.png`));
   await context.close();
-}
-
-/** A few strokes on the frame: an arrow where the figure enters. */
-async function sketch(page: Page) {
-  const { width, height } = page.viewportSize() as { width: number; height: number };
-  const line = async (points: Array<[number, number]>) => {
-    const [start, ...rest] = points as [[number, number], ...Array<[number, number]>];
-    await page.mouse.move(width * start[0], height * start[1], { steps: 4 });
-    await page.waitForTimeout(200);
-    await page.mouse.down();
-    for (const [x, y] of rest) await page.mouse.move(width * x, height * y, { steps: 8 });
-    await page.mouse.up();
-  };
-  await line([
-    [0.3, 0.32],
-    [0.42, 0.36],
-    [0.58, 0.48],
-  ]);
-  await line([
-    [0.53, 0.48],
-    [0.58, 0.48],
-    [0.57, 0.42],
-  ]);
 }
 
 async function shoot(page: Page, path: string, file: string) {

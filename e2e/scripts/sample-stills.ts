@@ -1006,6 +1006,79 @@ function portrait(o: {
   return wrap(c, body, { grade: o.rim, gradeOpacity: 0.12, vignette: 0.7 });
 }
 
+/** Pixel size of the map pictures, like the ones the server composites (decision 0053). */
+const MAP_W = 1024;
+const MAP_H = 560;
+
+/**
+ * A flat street map of the invented town, centred on the place of the map card (the card draws
+ * the pin in the middle): blocks, streets, the railway and the sea. No tiles from a map server.
+ */
+function townMap(place: 'station' | 'coast'): string {
+  const rnd = random(place === 'station' ? 31 : 47);
+  const ground = '#ECE7DE';
+  const block = '#DDD6CA';
+  const park = '#CFE1C4';
+  const sea = '#A9C8DA';
+  const road = '#FFFFFF';
+  const rail = '#8A8F96';
+  const parts: string[] = [`<rect width="${MAP_W}" height="${MAP_H}" fill="${ground}"/>`];
+  const blocks = (x0: number, y0: number, x1: number, y1: number) => {
+    for (let x = x0; x < x1; x += 92)
+      for (let y = y0; y < y1; y += 74) {
+        const w = 70 + rnd() * 10;
+        const h = 52 + rnd() * 10;
+        parts.push(
+          `<rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" rx="3" fill="${rnd() < 0.08 ? park : block}"/>`,
+        );
+      }
+  };
+  const street = (d: string, width: number) =>
+    parts.push(
+      `<path d="${d}" fill="none" stroke="#D2CBBF" stroke-width="${width + 3}" stroke-linecap="round"/>`,
+      `<path d="${d}" fill="none" stroke="${road}" stroke-width="${width}" stroke-linecap="round"/>`,
+    );
+  const railway = (d: string) =>
+    parts.push(
+      `<path d="${d}" fill="none" stroke="${rail}" stroke-width="5"/>`,
+      `<path d="${d}" fill="none" stroke="${ground}" stroke-width="2.4" stroke-dasharray="9 9"/>`,
+    );
+  const label = (x: number, y: number, text: string, size = 15, color = '#5C5F66') =>
+    parts.push(
+      `<text x="${f(x)}" y="${f(y)}" font-family="sans-serif" font-size="${size}" fill="${color}" text-anchor="middle">${text}</text>`,
+    );
+  if (place === 'station') {
+    blocks(10, 10, 1010, 200);
+    blocks(10, 340, 1010, 560);
+    // The station building and its platforms, the square in front.
+    parts.push(`<rect x="300" y="244" width="600" height="34" rx="4" fill="#C9C0B2"/>`);
+    parts.push(`<rect x="400" y="300" width="224" height="50" rx="6" fill="${park}"/>`);
+    railway('M-10 214H1034');
+    railway('M-10 226H1034');
+    street('M0 296H1024', 12);
+    street('M512 290V560', 10);
+    street('M140 0V200M330 0V200M700 0V200M880 0V200', 7);
+    street('M240 340V560M780 340V560', 7);
+    label(770, 266, 'Central station', 15, '#3F4248');
+    label(512, 330, 'Piazza della Stazione', 13);
+    label(860, 312, 'Via dei Binari', 13);
+  } else {
+    parts.push(`<path d="M0 330C180 312 300 352 470 320S780 270 1024 300V560H0Z" fill="${sea}"/>`);
+    parts.push(
+      `<path d="M0 330C180 312 300 352 470 320S780 270 1024 300" fill="none" stroke="#C7BCA8" stroke-width="10"/>`,
+    );
+    blocks(560, 10, 1010, 160);
+    parts.push(`<path d="M0 0H520V200C380 230 160 250 0 260Z" fill="${park}" opacity=".7"/>`);
+    railway('M-10 296C180 280 300 318 470 288S780 240 1034 268');
+    street('M-10 250C200 236 330 262 520 230S800 190 1034 210', 10);
+    street('M700 0V200', 7);
+    label(512, 452, 'Mare', 18, '#6E8FA3');
+    label(300, 230, 'Capo Bianco', 15, '#3F4248');
+    label(860, 182, 'Via del Faro', 13);
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${MAP_W}" height="${MAP_H}" viewBox="0 0 ${MAP_W} ${MAP_H}">${parts.join('')}</svg>`;
+}
+
 const stills: Record<string, () => string> = {
   platform,
   tunnel,
@@ -1057,6 +1130,8 @@ const stills: Record<string, () => string> = {
       accent: '#D9C24A',
       seed: 17,
     }),
+  'map-station': () => townMap('station'),
+  'map-coast': () => townMap('coast'),
 };
 
 export const STILL_NAMES = Object.keys(stills);
@@ -1067,8 +1142,9 @@ export function stillSvg(name: string): string {
   return draw();
 }
 
-/** Pixel size of a still: portraits are square, the rest 16:9. */
+/** Pixel size of a still: portraits are square, maps as the server makes them, the rest 16:9. */
 export function stillSize(name: string) {
+  if (name.startsWith('map-')) return { width: MAP_W, height: MAP_H };
   return ['anna', 'leo', 'rosa', 'sandro'].includes(name)
     ? { width: 1200, height: 1200 }
     : { width: W, height: H };
