@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { Timestamp, z } from './common.ts';
+import { DemoInfo } from './demo.ts';
 
 export const Health = z
   .object({
@@ -87,6 +88,9 @@ export const Instance = z
         .openapi({ description: 'Largest file an upload may have; 0 means no limit.' }),
     }),
     serverTime: Timestamp,
+    demo: DemoInfo.optional().openapi({
+      description: 'This server is a public demo: sign-in is "Try the demo" only.',
+    }),
   })
   .openapi('Instance');
 export type Instance = z.infer<typeof Instance>;

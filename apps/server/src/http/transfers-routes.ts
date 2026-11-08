@@ -26,6 +26,7 @@ import {
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { instanceBackup, instanceSetting, project, projectTransfer, user } from '../db/schema.ts';
+import { exportsOf, refuse } from '../demo.ts';
 import type { Jobs } from '../jobs.ts';
 import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
 import { canExport, toTransfer, transferFile, transfersDir } from '../transfers/service.ts';
@@ -86,10 +87,18 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
       );
     if (pending)
       return reply.status(202).header('location', location(pending.id)).send(toTransfer(pending));
-    const [row] = await db
-      .insert(projectTransfer)
-      .values({ kind: 'export', userId: actor.id, projectId, projectName: p.name })
-      .returning();
+    const [row] = await db.transaction(async (tx) => {
+      // A demo sandbox exports once (decision 0084): counted under a lock, so two clicks
+      // together cannot make two archives.
+      if (config.DEMO_MODE) {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`demo-export:${actor.id}`}))`);
+        if ((await exportsOf(tx, actor.id)) >= 1) throw refuse('rate_limited', 'demo_export');
+      }
+      return tx
+        .insert(projectTransfer)
+        .values({ kind: 'export', userId: actor.id, projectId, projectName: p.name })
+        .returning();
+    });
     if (!row) throw new Error('Transfer insert returned nothing');
     try {
       await enqueue(jobs.runTransfer(row.id));

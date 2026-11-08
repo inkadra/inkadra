@@ -185,6 +185,22 @@ const Env = z.object({
   MAIL_FROM: optional,
   /** Chrome extension ids allowed to ask for a token (`https://<id>.chromiumapp.org/`). */
   CLIPPER_EXTENSION_IDS: list,
+
+  /**
+   * The public demo (decision 0084): "Try the demo" makes a sandbox without an account, which
+   * goes after DEMO_TTL with its files. Off by default; on, everything that could be abused is
+   * closed (see `demoConfig`).
+   */
+  DEMO_MODE: bool('false'),
+  /** How long a sandbox lives: `1h`, `30m`, `90s` or seconds. */
+  DEMO_TTL: z.string().default('1h').transform(parseDuration),
+  /** Space of each sandbox, in powers of 1000 as the storage limits. */
+  DEMO_STORAGE: z.string().default('100MB').transform(parseDecimalSize),
+  /** Sandboxes open at once; the button says to come back later past it. */
+  DEMO_MAX_SANDBOXES: z.coerce.number().int().min(1).max(10_000).default(50),
+  /** Cloudflare Turnstile on "Try the demo", checked by the server; both or neither. */
+  TURNSTILE_SITE_KEY: optional,
+  TURNSTILE_SECRET: optional,
 });
 
 const UNITS: Record<string, number> = {
@@ -213,7 +229,59 @@ export function parseDecimalSize(value: string, ctx: z.RefinementCtx): number {
   return parseSize(value, ctx, 1000);
 }
 
+/** Parses `1h`, `30m`, `90s` or plain seconds into milliseconds; at least one minute. */
+export function parseDuration(value: string, ctx: z.RefinementCtx): number {
+  const m = /^\s*(\d+)\s*([smh]?)\s*$/i.exec(value);
+  const unit: Record<string, number> = { '': 1000, s: 1000, m: 60_000, h: 3_600_000 };
+  const ms = m ? Number(m[1]) * (unit[m[2]?.toLowerCase() ?? ''] ?? 0) : 0;
+  if (!m || !(ms >= 60_000)) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Use a duration of a minute or more, such as 1h or 30m',
+    });
+    return z.NEVER;
+  }
+  return ms;
+}
+
 export type Config = z.infer<typeof Env>;
+
+/** Largest file of a demo sandbox, whatever UPLOAD_MAX_SIZE says. */
+export const DEMO_FILE_MAX = 10_000_000;
+
+/**
+ * The demo closes what a stranger could abuse, whatever the environment says (decision 0084):
+ * no email, sign-in, feedback relay, maps or heavy media tools; the CSP enforced; files of
+ * 10 MB at most and a sandbox's space as everyone's limit.
+ */
+export function demoConfig(c: Config): Config {
+  if (!c.DEMO_MODE) return c;
+  return {
+    ...c,
+    CSP_ENFORCE: true,
+    REGISTRATION: 'closed',
+    UPLOAD_MAX_SIZE:
+      c.UPLOAD_MAX_SIZE > 0 ? Math.min(c.UPLOAD_MAX_SIZE, DEMO_FILE_MAX) : DEMO_FILE_MAX,
+    STORAGE_LIMIT_PER_USER: c.DEMO_STORAGE,
+    VIDEO_PROXIES: false,
+    RAW_PREVIEWS: false,
+    HEIC_PREVIEWS: false,
+    PDF_PREVIEWS: false,
+    MAPS: false,
+    MAP_GEOCODER_URL: undefined,
+    MAP_SATELLITE_TILE_URL: undefined,
+    SMTP_URL: undefined,
+    MAIL_FROM: undefined,
+    FEEDBACK_RELAY_URL: '',
+    FEEDBACK_GITHUB_TOKEN: undefined,
+    GOOGLE_CLIENT_ID: undefined,
+    GOOGLE_CLIENT_SECRET: undefined,
+    OIDC_CLIENT_ID: undefined,
+    OIDC_CLIENT_SECRET: undefined,
+    OIDC_DISCOVERY_URL: undefined,
+    CLIPPER_EXTENSION_IDS: [],
+  };
+}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = Env.superRefine((c, ctx) => {
@@ -237,12 +305,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     }
     if (c.SMTP_URL && !c.MAIL_FROM)
       ctx.addIssue({ code: 'custom', path: ['MAIL_FROM'], message: 'Required with SMTP_URL' });
+    if (Boolean(c.TURNSTILE_SITE_KEY) !== Boolean(c.TURNSTILE_SECRET))
+      ctx.addIssue({
+        code: 'custom',
+        path: [c.TURNSTILE_SITE_KEY ? 'TURNSTILE_SECRET' : 'TURNSTILE_SITE_KEY'],
+        message: 'Set together with the other Turnstile key',
+      });
   }).safeParse(env);
   if (!parsed.success) {
     const lines = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
     throw new Error(`Invalid configuration:\n${lines.join('\n')}\nSee .env.example.`);
   }
-  return parsed.data;
+  return demoConfig(parsed.data);
 }
 
 export const VERSION = process.env.INKADRA_VERSION ?? '0.1.0-dev';

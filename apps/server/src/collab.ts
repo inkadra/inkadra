@@ -1,6 +1,6 @@
 import type { Server as HttpServer, IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
-import { type Connection, Server } from '@hocuspocus/server';
+import { type Connection, type Document, Server } from '@hocuspocus/server';
 import {
   CURRENT_SCHEMA_VERSION,
   getSchemaVersion,
@@ -51,6 +51,25 @@ export interface AccessMessage {
 /** How often open connections are checked against the current roles (decision 0011). */
 export const ACCESS_RECHECK_MS = 30_000;
 
+export interface CollabLimits {
+  /** Largest WebSocket message. */
+  maxPayload: number;
+  /** Cards on one board. */
+  elements: number;
+  /** Size of a board's saved state. */
+  stateBytes: number;
+}
+
+/**
+ * The demo's caps (decision 0084): far above what a sample project needs, far below what
+ * would let one sandbox fill the memory or the database of a small server.
+ */
+export const DEMO_COLLAB_LIMITS: CollabLimits = {
+  maxPayload: 2 * 1024 * 1024,
+  elements: 500,
+  stateBytes: 5 * 1024 * 1024,
+};
+
 export function createCollabServer(deps: {
   db: Database;
   auth: Auth;
@@ -60,8 +79,23 @@ export function createCollabServer(deps: {
   recheckMs?: number;
   /** Clock for automatic versions; tests move it forward. */
   now?: () => Date;
+  /** The demo's caps (DEMO_COLLAB_LIMITS); none elsewhere, where boards can grow large. */
+  limits?: CollabLimits;
 }) {
-  const { db, auth, log } = deps;
+  const { db, auth, log, limits } = deps;
+  /** Boards past a cap: nobody writes to them and they are not saved (decision 0084). */
+  const frozen = new WeakSet<Y.Doc>();
+  const freeze = (document: Document, boardId: string | undefined) => {
+    if (!frozen.has(document)) log.warn({ boardId }, 'board over the demo caps: read-only');
+    frozen.add(document);
+    for (const connection of document.getConnections() as Array<Connection<Context>>) {
+      if (connection.readOnly) continue;
+      connection.readOnly = true;
+      connection.sendStateless(
+        JSON.stringify({ type: 'access', readOnly: true } satisfies AccessMessage),
+      );
+    }
+  };
   /** Yjs client ids each socket has published presence for, per document. */
   const owners = new Map<string, string>();
   // Seed lazily from the authoritative transaction, including after a process restart.
@@ -145,6 +179,7 @@ export function createCollabServer(deps: {
             connection.close({ code: 4403, reason: 'Forbidden' });
           } else {
             const readOnly =
+              frozen.has(document) ||
               !atLeast(access.role, 'editor') ||
               ctx.supportedSchemaVersion <
                 Math.max(CURRENT_SCHEMA_VERSION, getSchemaVersion(document));
@@ -180,7 +215,7 @@ export function createCollabServer(deps: {
     stopOnSignals: false,
     debounce: 2000,
     maxDebounce: 10_000,
-    websocketOptions: { maxPayload: 16 * 1024 * 1024 },
+    websocketOptions: { maxPayload: limits?.maxPayload ?? 16 * 1024 * 1024 },
 
     async onConfigure() {
       timer = setInterval(() => void recheck(server), deps.recheckMs ?? ACCESS_RECHECK_MS);
@@ -236,6 +271,8 @@ export function createCollabServer(deps: {
           : 0;
       connectionConfig.readOnly =
         !atLeast(access.role, 'editor') || supportedSchemaVersion < CURRENT_SCHEMA_VERSION;
+      const open = server.hocuspocus.documents.get(documentName);
+      if (open && frozen.has(open)) connectionConfig.readOnly = true;
       return {
         actor,
         supportedSchemaVersion,
@@ -303,6 +340,8 @@ export function createCollabServer(deps: {
     },
 
     async onChange({ connection: from, document, context }) {
+      if (limits && from && document.getMap('elements').size > limits.elements)
+        freeze(document, context?.boardId);
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
         if (
           (connection.context?.supportedSchemaVersion ?? 0) < getSchemaVersion(document) &&
@@ -335,8 +374,13 @@ export function createCollabServer(deps: {
       if (!boardId) return;
       const issues = validateBoardDoc(document);
       if (issues.length > 0) log.warn({ boardId, issues: issues.slice(0, 10) }, 'invalid elements');
+      if (frozen.has(document)) return;
       const pending = new Map(pendingAssignments.get(document));
       const state = Y.encodeStateAsUpdate(document);
+      if (limits && state.byteLength > limits.stateBytes) {
+        freeze(document, boardId);
+        return;
+      }
       const schemaVersion = document.getMap('meta').get('schemaVersion') as number;
       const elementCount = document.getMap('elements').size;
       await db

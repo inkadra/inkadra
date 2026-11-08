@@ -12,6 +12,8 @@ import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { designExtension } from '../media/design.ts';
+import { sniffImage } from '../media/heic.ts';
+import { isPdf } from '../media/pdf.ts';
 import { rawTypeOf } from '../media/raw.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { reserveSpace, StorageFullError } from '../storage-limits.ts';
@@ -57,6 +59,37 @@ export function cleanMime(mime: string, filename: string): string {
   if (HEIC.test(filename))
     return filename.toLowerCase().endsWith('.heif') ? 'image/heif' : 'image/heic';
   return rawTypeOf(filename) ?? 'application/octet-stream';
+}
+
+/** The files a demo sandbox may upload, by declared type, with their extensions. */
+const DEMO_TYPES: Record<string, RegExp> = {
+  'image/jpeg': /\.jpe?g$/i,
+  'image/png': /\.png$/i,
+  'image/webp': /\.webp$/i,
+  'image/gif': /\.gif$/i,
+  'application/pdf': /\.pdf$/i,
+  'text/plain': /\.txt$/i,
+};
+
+export function demoTypeAllowed(mime: string, filename: string): boolean {
+  return DEMO_TYPES[mime]?.test(filename) ?? false;
+}
+
+/** Whether the first bytes of an uploaded file match its type: no HTML or SVG named .png. */
+export function demoBytesMatch(mime: string, head: Uint8Array): boolean {
+  if (mime.startsWith('image/')) return sniffImage(head) === mime;
+  if (mime === 'application/pdf') return isPdf(head);
+  if (mime === 'text/plain') return !head.includes(0);
+  return false;
+}
+
+async function demoContentMatches(storage: Storage, key: string, assetId: string, db: Database) {
+  const [row] = await db.select({ mime: asset.mime }).from(asset).where(eq(asset.id, assetId));
+  if (!row) return false;
+  const chunks: Buffer[] = [];
+  for await (const chunk of await storage.read(key, { start: 0, end: 4095 }))
+    chunks.push(chunk as Buffer);
+  return demoBytesMatch(row.mime, Buffer.concat(chunks));
 }
 
 function tusError(status: number, message: string) {
@@ -126,6 +159,8 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
       }
       const { filename, filetype, projectId } = meta.data;
       const mime = cleanMime(filetype, filename);
+      if (config.DEMO_MODE && !demoTypeAllowed(mime, filename))
+        throw tusError(415, 'The demo takes JPEG, PNG, WebP, GIF, PDF and plain text files.');
       const size = upload.size;
       // The declared size holds its place from now on: see reserveSpace (decision 0081).
       await reserveSpace(db, config, ctx.actor.id, size, async (tx) => {
@@ -158,6 +193,11 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
           if (err instanceof StorageFullError) await datastore.remove(upload.id);
           throw full(err);
         }
+      // The demo checks what the file is, not only what it says (decision 0084).
+      if (config.DEMO_MODE && !(await demoContentMatches(storage, upload.id, assetId, db))) {
+        await datastore.remove(upload.id);
+        throw tusError(415, 'The file is not what its type says.');
+      }
       await jobs.processAsset(assetId);
       return {};
     },

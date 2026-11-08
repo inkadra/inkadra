@@ -1,3 +1,4 @@
+import type { BetterAuthPlugin } from 'better-auth';
 import { describe, expect, it, vi } from 'vitest';
 import { createAuth } from './auth.ts';
 import { loadConfig } from './config.ts';
@@ -29,7 +30,9 @@ describe('auth security regressions', () => {
     const { db, sql } = createDatabase(config.DATABASE_URL);
     const auth = createAuth(config, db);
     try {
-      const plugin = auth.options.plugins?.find((p) => p.id === 'two-factor');
+      const plugin = auth.options.plugins?.find((p) => p.id === 'two-factor') as
+        | BetterAuthPlugin
+        | undefined;
       const hook = plugin?.hooks?.after?.[0];
       if (!hook) throw new Error('Missing two-factor hook');
       for (const path of [
