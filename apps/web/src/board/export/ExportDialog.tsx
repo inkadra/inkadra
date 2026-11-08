@@ -263,6 +263,7 @@ export function ExportDialog(props: ExportDialogProps) {
       theme: r.theme,
       department: r.department,
       scenes: r.scenes,
+      leaveOutOmitted: r.leaveOutOmitted,
     }));
   };
   const updateReq = (updater: (prev: ExportRequest) => ExportRequest) => {
@@ -344,6 +345,10 @@ export function ExportDialog(props: ExportDialogProps) {
   const pickedScenes = sheets
     ? selectedSceneIds(selection, store.getSnapshot().byId)
     : new Set<string>();
+  // Offered only when a later draft left scenes out (decision 0082).
+  const hasOmitted =
+    sheets &&
+    [...store.getSnapshot().byId.values()].some((el) => el.type === 'scene' && el.omitted);
 
   const board = req.what === 'board' || req.what === 'selection' || req.what === 'visible';
   const asImage = req.format !== 'pdf';
@@ -593,6 +598,14 @@ export function ExportDialog(props: ExportDialogProps) {
           </Select>
         )}
       </BadgeLabel>
+      {hasOmitted && (
+        <Check
+          checked={req.leaveOutOmitted ?? true}
+          onChange={(v) => set('leaveOutOmitted', v)}
+        >
+          {t('export.sheets.leaveOutOmitted')}
+        </Check>
+      )}
     </div>
   );
   const framesField = req.what === 'storyboard' && (
