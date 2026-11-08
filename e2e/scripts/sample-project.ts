@@ -1247,9 +1247,10 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     location: 'Signal box, coast line',
     notes: 'Railway escort from 3:30. Drone permit for Capo Bianco from 5:00 to 7:00.',
     blocks: [
-      block('setup', 'Signal box practicals', 60, { start: '03:30' }),
-      block('shot', 'Leo pulls the lever', 60, { shot: '3A', cast: ['Leo'] }),
-      block('move', 'Unit move to the coast', 40),
+      // 03:30 + 45 + 45 + 30 ends at 05:30, before the train shot fixed at 05:45.
+      block('setup', 'Signal box practicals', 45, { start: '03:30' }),
+      block('shot', 'Leo pulls the lever', 45, { shot: '3A', cast: ['Leo'] }),
+      block('move', 'Unit move to the coast', 30),
       block('shot', 'The first train along the sea', 30, {
         start: '05:45',
         shot: '3C',
