@@ -107,7 +107,8 @@ Valkey sit on a network that reaches nothing outside. `cloudflared` is pinned to
 Inkadra and `cloudflared` share the `edge` network, which also reaches the internet: Inkadra
 uses it for Turnstile and the update check (it fetches nothing else for a sandbox). Inkadra
 trusts proxy headers only from `cloudflared`, at a fixed address (`TRUST_PROXY=172.31.250.2`,
-on the subnet `172.31.250.0/29`; change the three together if the subnet is taken). Cloudflare
+on the subnet `172.31.250.0/29`, with Inkadra fixed at `172.31.250.3` so it cannot take that
+address; change them together if the subnet is taken). Cloudflare
 appends the address it saw, the one it also sends as `CF-Connecting-IP`, to `X-Forwarded-For`,
 and Inkadra takes that last entry: a visitor cannot pick their address by writing the header
 themselves. Do not publish a port of the `inkadra` container or attach other containers to

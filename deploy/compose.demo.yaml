@@ -51,7 +51,9 @@ services:
           cpus: "1.25"
           memory: 4g
     networks:
-      edge: {}
+      edge:
+        # Fixed too: left to Docker, Inkadra can start first and take cloudflared's address.
+        ipv4_address: 172.31.250.3
       backend: {}
 
   postgres:
@@ -128,7 +130,8 @@ services:
 
 networks:
   # Out to the internet: cloudflared, and Inkadra for Turnstile and the update check. A fixed
-  # subnet, for cloudflared's fixed address; change both, and TRUST_PROXY, if it is taken.
+  # subnet, for the fixed addresses of cloudflared and Inkadra; change them with TRUST_PROXY if it is
+  # taken.
   edge:
     ipam:
       config:
