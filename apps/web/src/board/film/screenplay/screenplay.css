@@ -254,3 +254,202 @@
   color: var(--ink-accent-soft-fg);
   background: var(--ink-accent-soft-bg);
 }
+
+/* Update from a revision (decision 0081): the draft's scenes against the storyboard's. */
+.script-rev {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.script-rev__n {
+  font-size: 11px;
+  color: var(--ink-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.script-rev__box {
+  display: flex;
+  flex-direction: column;
+  height: 356px;
+  overflow: hidden;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+}
+.script-rev__list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.script-rev__row {
+  display: grid;
+  grid-template-columns: 82px 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ink-border-subtle);
+  font-size: 12px;
+  color: var(--ink-text-primary);
+}
+.script-rev__num {
+  font-weight: 500;
+  color: var(--ink-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.script-rev__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.script-rev__heading b,
+.script-rev__heading small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.script-rev__heading b {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.script-rev__heading small {
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+.script-rev__row.is-omitted .script-rev__heading b {
+  text-decoration: line-through;
+  color: var(--ink-text-muted);
+}
+.script-rev__pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.script-rev__pick label {
+  white-space: nowrap;
+}
+.script-rev__pick .ink-input {
+  min-width: 0;
+  max-width: 100%;
+  height: 26px;
+  font-size: 11px;
+}
+.script-rev__badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--ink-radius-full);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.script-rev__badge--changed {
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-tag-orange);
+}
+.script-rev__badge--new {
+  background: var(--ink-tag-blue-bg);
+  color: var(--ink-tag-blue);
+}
+.script-rev__badge--omitted {
+  border: 1px solid var(--ink-border-default);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+}
+.script-rev__badge--check {
+  background: var(--ink-tag-yellow-bg);
+  color: var(--ink-tag-yellow);
+}
+.script-rev__badge--same {
+  border: 1px dashed var(--ink-border-default);
+  color: var(--ink-text-muted);
+}
+.script-rev__empty {
+  padding: 16px 10px;
+  font-size: 12px;
+  color: var(--ink-text-muted);
+}
+.script-rev__more {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border-top: 1px solid var(--ink-border-subtle);
+  background: var(--ink-surface-2);
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.script-import__body:has(.script-rev) {
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 16px;
+}
+.script-rev__summary {
+  padding: 10px 12px;
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.script-rev__summary b {
+  font-weight: 600;
+  color: var(--ink-text-primary);
+}
+
+@media (width < 768px) {
+  .script-import__body:has(.script-rev) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .script-rev__box {
+    height: auto;
+    max-height: 46vh;
+  }
+  /* Two lines: badge, number and frames, then the heading and what changed. */
+  .script-rev__row {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-areas: "badge num count" "head head head";
+    gap: 3px 8px;
+    padding: 10px 12px;
+  }
+  .script-rev__row > .script-rev__badge {
+    grid-area: badge;
+    height: 22px;
+    font-size: 12px;
+  }
+  .script-rev__row > .script-rev__num {
+    grid-area: num;
+    font-weight: 600;
+  }
+  .script-rev__row > .script-import__count {
+    grid-area: count;
+    justify-self: end;
+  }
+  .script-rev__row > .script-rev__heading {
+    grid-area: head;
+  }
+  .script-rev__heading b {
+    font-size: 14px;
+    white-space: normal;
+  }
+  .script-rev__heading small {
+    font-size: 12px;
+    white-space: normal;
+  }
+  .script-rev__pick .ink-input {
+    height: 44px;
+    font-size: 16px;
+    flex: 1;
+  }
+  .script-rev__summary {
+    padding: 0;
+    background: none;
+    font-size: 13px;
+  }
+}

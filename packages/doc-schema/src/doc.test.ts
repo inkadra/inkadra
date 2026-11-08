@@ -704,7 +704,9 @@ describe('column colours and section headings', () => {
     const column = { ...base(), type: 'column' as const, title: 'Brief' };
     addElement(doc, column);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([
+      10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+    ]);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(column.id)!)).not.toHaveProperty('color');
   });

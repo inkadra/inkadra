@@ -1,3 +1,4 @@
+import type { SceneGroup } from '@inkadra/canvas-core';
 import {
   Button,
   Checkbox,
@@ -9,7 +10,8 @@ import {
   Select,
 } from '@inkadra/ui';
 import { type DragEvent, useId, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
+import { useIsPhone } from '../../../lib/phone.ts';
 import { Check, Field, Segmented } from '../../export/fields.tsx';
 import { readScreenplay, SCRIPT_EXTENSIONS } from './parse.ts';
 import {
@@ -23,10 +25,40 @@ import {
   planImport,
   sceneNumbers,
 } from './plan.ts';
+import { RevisionList } from './RevisionList.tsx';
+import {
+  type MatchOverrides,
+  matchRevision,
+  type RevisionOptions,
+  type RevisionRow,
+  revisionCounts,
+} from './revision.ts';
 import { type Script, ScriptError } from './script.ts';
 import './screenplay.css';
 
-export type ImportTarget = 'append' | 'new';
+/** `revise` lays a new draft over the storyboard's scenes (decision 0081). */
+export type ImportTarget = 'append' | 'revise' | 'new';
+
+/** What an update from a revision writes, for the caller to apply. */
+export interface RevisionChoice {
+  rows: RevisionRow[];
+  options: RevisionOptions;
+  /** Name of the version saved first, or null. */
+  version: string | null;
+}
+
+/** "Draft 3" from the title page, else the file name without its extension. */
+export function draftName(script: Script, fileName: string): string {
+  const page = script.titlePage;
+  const named = page.draft || page.revision || page['draft date'];
+  return (named?.split('\n')[0]?.trim() || fileName.replace(/\.[^.]+$/, '')).slice(0, 100);
+}
+const TARGET_LABELS: Record<ImportTarget, string> = {
+  append: 'screenplay.targetAppend',
+  revise: 'screenplay.targetRevise',
+  new: 'screenplay.targetNew',
+};
+const fold = (s: string) => s.toLocaleLowerCase().replace(/\s+/g, ' ').trim();
 
 /**
  * Pick or drop a Fountain or Final Draft file, check what was read, choose how many frames,
@@ -36,22 +68,44 @@ export function ScreenplayImportDialog({
   targets,
   initialFile,
   confirmLabel,
+  storyboard,
   onImport,
   onClose,
 }: {
-  /** `append` adds to the open storyboard; both offer the choice. */
+  /** `append` and `revise` work on the open storyboard; more than one offers the choice. */
   targets: readonly ImportTarget[];
   initialFile?: { name: string; script: Script };
   confirmLabel?: string;
-  onImport: (plan: ImportPlan, target: ImportTarget) => void | Promise<void>;
+  /** The open storyboard, for `revise`: its title and its scenes with their frames. */
+  storyboard?: { title: string; groups: readonly SceneGroup[] };
+  onImport: (
+    plan: ImportPlan,
+    target: ImportTarget,
+    revision?: RevisionChoice,
+  ) => void | Promise<void>;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const phone = useIsPhone();
   const [file, setFile] = useState<{ name: string; script: Script } | null>(initialFile ?? null);
   const [options, setOptions] = useState<ImportOptions | null>(
     initialFile ? defaultOptions(initialFile.script) : null,
   );
-  const [target, setTarget] = useState<ImportTarget>(targets[0] ?? 'new');
+  // A draft whose title is the storyboard's is most likely a revision of it.
+  const targetFor = (script: Script | undefined): ImportTarget =>
+    targets.includes('revise') &&
+    script?.title &&
+    storyboard &&
+    fold(castName(script.title)) === fold(storyboard.title)
+      ? 'revise'
+      : (targets[0] ?? 'new');
+  const [target, setTarget] = useState<ImportTarget>(() => targetFor(initialFile?.script));
+  const [overrides, setOverrides] = useState<MatchOverrides>(new Map());
+  const [revise, setRevise] = useState<RevisionOptions & { version: boolean }>({
+    details: true,
+    omit: true,
+    version: true,
+  });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
@@ -78,6 +132,29 @@ export function ScreenplayImportDialog({
     const all = { ...options, scenes: new Set(file.script.scenes.map((_, i) => i)) };
     return planImport(file.script, all, () => '').scenes.map((s) => s.frames.length);
   }, [file, options]);
+  const scenes = useMemo(
+    () => storyboard?.groups.flatMap((g) => (g.scene ? [g.scene] : [])) ?? [],
+    [storyboard],
+  );
+  // A revision covers every scene of the draft. Its fields are compared as a frame-per-scene
+  // import writes them, so the characters line of a frameless import is no change.
+  const revision = useMemo(() => {
+    if (target !== 'revise' || !file || !options) return null;
+    const all = { ...options, scenes: new Set(file.script.scenes.map((_, i) => i)), cast: true };
+    const line = (names: string[]) => t('screenplay.charactersLine', { names: names.join(', ') });
+    const plan = planImport(file.script, all, line, t('screenplay.prelude'));
+    const fields = planImport(
+      file.script,
+      { ...all, frames: 'one' },
+      line,
+      t('screenplay.prelude'),
+    );
+    plan.scenes = plan.scenes.map((s, i) => ({ ...fields.scenes[i], frames: s.frames }));
+    plan.characters = [];
+    return { plan, rows: matchRevision(plan.scenes, scenes, overrides) };
+  }, [target, file, options, scenes, overrides, t]);
+  const counts = revision ? revisionCounts(revision.rows, revision.plan.scenes, revise) : null;
+  const draft = file ? draftName(file.script, file.name) : '';
 
   async function read(picked: File | undefined) {
     if (!picked) return;
@@ -87,6 +164,8 @@ export function ScreenplayImportDialog({
       const script = await readScreenplay(picked);
       setFile({ name: picked.name, script });
       setOptions(defaultOptions(script));
+      setOverrides(new Map());
+      setTarget(targetFor(script));
     } catch (e) {
       setError(t(`screenplay.errors.${e instanceof ScriptError ? e.code : 'read'}`));
     } finally {
@@ -95,12 +174,23 @@ export function ScreenplayImportDialog({
     }
   }
 
+  const nothing = revision
+    ? !counts || counts.updated + counts.added + counts.omitted === 0
+    : !plan || plan.scenes.length === 0;
   async function submit() {
-    if (!plan || plan.scenes.length === 0 || busy) return;
+    if (nothing || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await onImport(plan, target);
+      if (revision)
+        await onImport(revision.plan, 'revise', {
+          rows: revision.rows,
+          options: { details: revise.details, omit: revise.omit },
+          version: revise.version
+            ? t('screenplay.revision.versionName', { draft }).slice(0, 120)
+            : null,
+        });
+      else if (plan) await onImport(plan, target);
       onClose();
     } catch {
       setError(t('screenplay.failed'));
@@ -124,6 +214,12 @@ export function ScreenplayImportDialog({
     void read(e.dataTransfer.files[0]);
   };
 
+  const intoHint =
+    target === 'revise'
+      ? t(phone ? 'screenplay.revision.hintShort' : 'screenplay.revision.hint', {
+          title: storyboard?.title ?? '',
+        })
+      : undefined;
   const script = file?.script;
   const chosen = options?.scenes.size ?? 0;
   const total = script?.scenes.length ?? 0;
@@ -180,7 +276,12 @@ export function ScreenplayImportDialog({
           <div className="script-import">
             <header className="script-import__head">
               <div className="script-import__file">
-                <strong className="script-import__name">{script.title || file.name}</strong>
+                <strong className="script-import__name">
+                  {/* An update names the draft it brings: "The Long Night · Draft 3". */}
+                  {[script.title, revision && draft !== file.name.replace(/\.[^.]+$/, '') && draft]
+                    .filter(Boolean)
+                    .join(' · ') || file.name}
+                </strong>
                 <span className="export__hint">
                   {[
                     script.titlePage.author &&
@@ -197,7 +298,38 @@ export function ScreenplayImportDialog({
                 {t('screenplay.another')}
               </Button>
             </header>
-            {script.characters.length > 0 && (
+            {targets.length > 1 &&
+              (phone ? (
+                <div>
+                  <Field label={t('screenplay.target')}>
+                    {(id) => (
+                      <Select
+                        id={id}
+                        className="ink-input"
+                        value={target}
+                        onChange={(v) => setTarget(v as ImportTarget)}
+                      >
+                        {targets.map((v) => (
+                          <option key={v} value={v}>
+                            {t(TARGET_LABELS[v])}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                  </Field>
+                  {intoHint && <p className="export__hint">{intoHint}</p>}
+                </div>
+              ) : (
+                <Segmented
+                  label={t('screenplay.target')}
+                  hideLabel={false}
+                  value={target}
+                  options={targets.map((v) => [v, t(TARGET_LABELS[v])])}
+                  onChange={(v) => setTarget(v as ImportTarget)}
+                  hint={intoHint}
+                />
+              ))}
+            {!revision && script.characters.length > 0 && (
               <ul
                 className="script-import__cast"
                 aria-label={count('characters', script.characters.length)}
@@ -209,115 +341,182 @@ export function ScreenplayImportDialog({
                 ))}
               </ul>
             )}
-            <div className="script-import__body">
-              <fieldset className="script-import__scenes" aria-describedby={listId}>
-                <legend className="export__label">{t('screenplay.sceneList')}</legend>
-                <label className="script-import__row script-import__row--all">
-                  <Checkbox
-                    checked={chosen === total}
-                    ref={(el) => {
-                      if (el) el.indeterminate = chosen > 0 && chosen < total;
-                    }}
-                    onChange={(e) =>
-                      set('scenes', new Set(e.target.checked ? script.scenes.map((_, i) => i) : []))
-                    }
-                  />
-                  <span className="script-import__heading">{t('screenplay.all')}</span>
-                  <span className="script-import__count">{count('scenes', chosen)}</span>
-                </label>
-                <ul className="script-import__list" data-scroll>
-                  {script.scenes.map((scene, i) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: scenes have no identity but their order
-                    <li key={i}>
-                      <label className="script-import__row">
-                        <Checkbox
-                          checked={options.scenes.has(i)}
-                          onChange={(e) => toggle(i, e.target.checked)}
-                        />
-                        <span className="script-import__number">{numbers[i] ?? '–'}</span>
-                        <span className="script-import__heading">
-                          {scene.prelude
-                            ? t('screenplay.prelude')
-                            : scene.heading.toLocaleUpperCase() || t('screenplay.noHeading')}
-                        </span>
-                        {options.frames !== 'none' && (
-                          <span className="script-import__count">
-                            {count('framesCount', perScene[i] ?? 0)}
-                          </span>
-                        )}
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </fieldset>
-              <div className="script-import__options">
-                <Segmented
-                  label={t('screenplay.frames')}
-                  value={options.frames}
-                  options={[
-                    ['none', t('screenplay.framesNone')],
-                    ['one', t('screenplay.framesOne')],
-                    ['action', t('screenplay.framesAction')],
-                  ]}
-                  onChange={(v) => set('frames', v as FramesMode)}
-                  hint={t(`screenplay.framesHint.${options.frames}`)}
+            {revision ? (
+              <div className="script-import__body">
+                <RevisionList
+                  key={file.name}
+                  rows={revision.rows}
+                  draft={revision.plan.scenes}
+                  script={script}
+                  groups={storyboard?.groups ?? []}
+                  draftName={draft}
+                  omit={revise.omit}
+                  phone={phone}
+                  onPick={(d, id) => setOverrides((o) => new Map(o).set(d, id))}
                 />
-                {options.frames === 'action' && (
-                  <Field label={t('screenplay.maxFrames')}>
-                    {(id) => (
-                      <Select
-                        id={id}
-                        className="ink-input script-import__cap"
-                        value={options.maxFrames}
-                        onChange={(e) => set('maxFrames', Number(e) as FrameCap)}
-                      >
-                        {FRAME_CAPS.map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
-                        ))}
-                      </Select>
-                    )}
-                  </Field>
-                )}
-                {options.frames !== 'none' && (
-                  <Check
-                    checked={options.cast}
-                    onChange={(v) => set('cast', v)}
-                    hint={t('screenplay.castHint')}
-                  >
-                    {t('screenplay.cast')}
-                  </Check>
-                )}
-                {script.characters.length > 0 && (
-                  <Check
-                    checked={options.characterCards}
-                    onChange={(v) => set('characterCards', v)}
-                    hint={t('screenplay.characterCardsHint')}
-                  >
-                    {t('screenplay.characterCards')}
-                  </Check>
-                )}
-                {targets.length > 1 && (
-                  <Segmented
-                    label={t('screenplay.target')}
-                    value={target}
-                    options={targets.map((v) => [
-                      v,
-                      t(v === 'append' ? 'screenplay.targetAppend' : 'screenplay.targetNew'),
-                    ])}
-                    onChange={(v) => setTarget(v as ImportTarget)}
-                  />
+                {/* The phone sheet keeps the defaults (PhoneRevision mockup). */}
+                {!phone && (
+                  <div className="script-import__options">
+                    <Segmented
+                      label={t('screenplay.revision.frames')}
+                      hideLabel={false}
+                      value={options.frames}
+                      options={[
+                        ['none', t('screenplay.framesNone')],
+                        ['one', t('screenplay.framesOne')],
+                        ['action', t('screenplay.revision.framesAction')],
+                      ]}
+                      onChange={(v) => set('frames', v as FramesMode)}
+                    />
+                    <Check
+                      checked={revise.details}
+                      onChange={(v) => setRevise((r) => ({ ...r, details: v }))}
+                      hint={t('screenplay.revision.detailsHint')}
+                    >
+                      {t('screenplay.revision.details')}
+                    </Check>
+                    <Check
+                      checked={revise.omit}
+                      onChange={(v) => setRevise((r) => ({ ...r, omit: v }))}
+                      hint={t('screenplay.revision.omitHint')}
+                    >
+                      {t('screenplay.revision.omit')}
+                    </Check>
+                    <Check
+                      checked={revise.version}
+                      onChange={(v) => setRevise((r) => ({ ...r, version: v }))}
+                      hint={t('screenplay.revision.versionHint', {
+                        name: t('screenplay.revision.versionName', { draft }),
+                      })}
+                    >
+                      {t('screenplay.revision.version')}
+                    </Check>
+                  </div>
                 )}
               </div>
-            </div>
-            {plan && (
-              <p id={listId} className="script-import__summary" role="status">
-                {t(plan.truncated ? 'screenplay.truncated' : 'screenplay.summary', {
-                  scenes: count('scenes', plan.scenes.length),
-                  frames: count('framesCount', plan.frameCount),
-                })}
+            ) : (
+              <div className="script-import__body">
+                <fieldset className="script-import__scenes" aria-describedby={listId}>
+                  <legend className="export__label">{t('screenplay.sceneList')}</legend>
+                  <label className="script-import__row script-import__row--all">
+                    <Checkbox
+                      checked={chosen === total}
+                      ref={(el) => {
+                        if (el) el.indeterminate = chosen > 0 && chosen < total;
+                      }}
+                      onChange={(e) =>
+                        set(
+                          'scenes',
+                          new Set(e.target.checked ? script.scenes.map((_, i) => i) : []),
+                        )
+                      }
+                    />
+                    <span className="script-import__heading">{t('screenplay.all')}</span>
+                    <span className="script-import__count">{count('scenes', chosen)}</span>
+                  </label>
+                  <ul className="script-import__list" data-scroll>
+                    {script.scenes.map((scene, i) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: scenes have no identity but their order
+                      <li key={i}>
+                        <label className="script-import__row">
+                          <Checkbox
+                            checked={options.scenes.has(i)}
+                            onChange={(e) => toggle(i, e.target.checked)}
+                          />
+                          <span className="script-import__number">{numbers[i] ?? '–'}</span>
+                          <span className="script-import__heading">
+                            {scene.prelude
+                              ? t('screenplay.prelude')
+                              : scene.heading.toLocaleUpperCase() || t('screenplay.noHeading')}
+                          </span>
+                          {options.frames !== 'none' && (
+                            <span className="script-import__count">
+                              {count('framesCount', perScene[i] ?? 0)}
+                            </span>
+                          )}
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </fieldset>
+                <div className="script-import__options">
+                  <Segmented
+                    label={t('screenplay.frames')}
+                    value={options.frames}
+                    options={[
+                      ['none', t('screenplay.framesNone')],
+                      ['one', t('screenplay.framesOne')],
+                      ['action', t('screenplay.framesAction')],
+                    ]}
+                    onChange={(v) => set('frames', v as FramesMode)}
+                    hint={t(`screenplay.framesHint.${options.frames}`)}
+                  />
+                  {options.frames === 'action' && (
+                    <Field label={t('screenplay.maxFrames')}>
+                      {(id) => (
+                        <Select
+                          id={id}
+                          className="ink-input script-import__cap"
+                          value={options.maxFrames}
+                          onChange={(e) => set('maxFrames', Number(e) as FrameCap)}
+                        >
+                          {FRAME_CAPS.map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+                    </Field>
+                  )}
+                  {options.frames !== 'none' && (
+                    <Check
+                      checked={options.cast}
+                      onChange={(v) => set('cast', v)}
+                      hint={t('screenplay.castHint')}
+                    >
+                      {t('screenplay.cast')}
+                    </Check>
+                  )}
+                  {script.characters.length > 0 && (
+                    <Check
+                      checked={options.characterCards}
+                      onChange={(v) => set('characterCards', v)}
+                      hint={t('screenplay.characterCardsHint')}
+                    >
+                      {t('screenplay.characterCards')}
+                    </Check>
+                  )}
+                </div>
+              </div>
+            )}
+            {revision && counts ? (
+              <p id={listId} className="script-import__summary script-rev__summary" role="status">
+                <Trans
+                  i18nKey={
+                    phone ? 'screenplay.revision.summaryPhone' : 'screenplay.revision.summary'
+                  }
+                  values={{
+                    updated: t('screenplay.revision.updated', { count: counts.updated }),
+                    added: t('screenplay.revision.added', { count: counts.added }),
+                    frames: t('screenplay.framesCount', { count: counts.frames }),
+                    omitted: t('screenplay.revision.omitted', { count: counts.omitted }),
+                    kept: t('screenplay.framesCount', {
+                      count: (storyboard?.groups ?? []).reduce((n, g) => n + g.frames.length, 0),
+                    }),
+                  }}
+                  components={{ b: <b /> }}
+                />
               </p>
+            ) : (
+              plan && (
+                <p id={listId} className="script-import__summary" role="status">
+                  {t(plan.truncated ? 'screenplay.truncated' : 'screenplay.summary', {
+                    scenes: count('scenes', plan.scenes.length),
+                    frames: count('framesCount', plan.frameCount),
+                  })}
+                </p>
+              )
             )}
           </div>
         )}
@@ -332,11 +531,11 @@ export function ScreenplayImportDialog({
           </Button>
           <Button
             variant="primary"
-            disabled={!plan || plan.scenes.length === 0 || busy}
+            disabled={nothing || busy}
             aria-busy={busy || undefined}
             onClick={() => void submit()}
           >
-            {confirmLabel ?? t('screenplay.submit')}
+            {revision ? t('screenplay.revision.submit') : (confirmLabel ?? t('screenplay.submit'))}
           </Button>
         </DialogActions>
       </Dialog>

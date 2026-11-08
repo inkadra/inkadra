@@ -6,14 +6,18 @@ import type { BoardStore } from '../store.ts';
 // Kept apart from StoryboardView so that cards and the other film views, which only need these,
 // do not load the whole storyboard (its upload panel and the session) with them.
 
-/** Scenes and frames of the board, in order, from the live document. */
-export function useStoryboard(store: BoardStore) {
+/**
+ * Scenes and frames of the board, in order, from the live document. Without `omitted`, scenes
+ * the script left out and their frames are not listed (decision 0081); labels stay the same.
+ */
+export function useStoryboard(store: BoardStore, { omitted = true } = {}) {
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return useMemo(() => {
-    const groups = storyboardOf([...snap.byId.values()]);
+    const all = storyboardOf([...snap.byId.values()]);
+    const groups = omitted ? all : all.filter((g) => !g.scene?.omitted);
     const frames = groups.flatMap((g) => g.frames);
-    return { groups, frames, labels: frameLabels(groups) };
-  }, [snap]);
+    return { groups, frames, labels: frameLabels(all) };
+  }, [snap, omitted]);
 }
 
 /** What a scene is called in lists: its title, else its location, as imported scenes are. */

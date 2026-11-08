@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
-import { addFrame, addScene, storyboardOf } from '@inkadra/canvas-core';
+import {
+  addFrame,
+  addScene,
+  listElements,
+  storyboardOf,
+  updateElement,
+} from '@inkadra/canvas-core';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
@@ -10,6 +16,11 @@ import { BoardStore } from '../store.ts';
 import { StoryboardView } from './StoryboardView.tsx';
 
 const started = vi.hoisted(() => [] as Array<{ file: File; onAsset: (id: string) => void }>);
+const post = vi.hoisted(() => vi.fn());
+vi.mock('../../lib/api.ts', async (original) => {
+  const real = await original<typeof import('../../lib/api.ts')>();
+  return { ...real, api: { ...real.api, post } };
+});
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../../lib/session.tsx', () => ({ useSession: () => ({ instance: null }) }));
 vi.mock('../uploads.ts', async (original) => ({
@@ -134,6 +145,81 @@ it('shares the scene filter between compact and desktop navigation without modif
     expect(picker?.value).toBe('');
     expect(host.querySelectorAll('.story__tile')).toHaveLength(3);
     expect(Y.encodeStateAsUpdate(doc)).toEqual(before);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    store.destroy();
+    doc.destroy();
+  }
+});
+
+it('keeps an omitted scene in place, hides it on request, restores or deletes it after a version', async () => {
+  const doc = new Y.Doc();
+  const store = new BoardStore(doc);
+  const opts = { userId: null };
+  const a = addScene(doc, { number: '14' }, opts);
+  const b = addScene(doc, { number: '15', title: 'Parking lot' }, opts);
+  addFrame(doc, a.id, null, {}, opts);
+  addFrame(doc, b.id, null, {}, opts);
+  addFrame(doc, b.id, null, {}, opts);
+  updateElement(doc, b.id, { omitted: true });
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const button = (label: string) =>
+    [...document.querySelectorAll<HTMLElement>('button, [role="menuitem"]')].find(
+      (el) => el.getAttribute('aria-label') === label || el.textContent?.startsWith(label),
+    );
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <StoryboardView store={store} projectId="p" boardId="b" userId="u" readOnly={false} />
+        </MemoryRouter>,
+      ),
+    );
+    const omitted = host.querySelector('.story__scene.is-omitted');
+    expect(omitted?.getAttribute('aria-label')).toBe('film.scene.omittedHeading');
+    expect(omitted?.querySelector('.story__omitted-badge')?.textContent).toBe('film.scene.omitted');
+    expect(host.querySelector('.story__side-item.is-omitted')?.textContent).toContain(
+      'Parking lot',
+    );
+    expect(host.querySelectorAll('.story__tile')).toHaveLength(3);
+
+    // The bar hides omitted scenes and shows them again; the document does not change.
+    const toggle = button('film.scene.omittedToggle (1)');
+    expect(toggle?.getAttribute('aria-pressed')).toBe('true');
+    await act(async () => toggle?.click());
+    expect(host.querySelector('.story__scene.is-omitted')).toBeNull();
+    expect(host.querySelectorAll('.story__tile')).toHaveLength(1);
+    await act(async () => toggle?.click());
+    expect(host.querySelectorAll('.story__tile')).toHaveLength(3);
+
+    await act(async () => button('film.scene.menu')?.click());
+    await act(async () => button('film.scene.restore')?.click());
+    expect(listElements(doc).find((e) => e.id === b.id)).not.toHaveProperty('omitted');
+
+    // Deleting needs the version first: without it nothing goes.
+    await act(async () => updateElement(doc, b.id, { omitted: true }));
+    post.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => button('film.scene.menu')?.click());
+    await act(async () => {
+      button('film.scene.deleteAll')?.click();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(host.querySelector('.toast')?.textContent).toBe('film.scene.deleteFailed');
+    expect(listElements(doc)).toHaveLength(5);
+    post.mockResolvedValueOnce({});
+    await act(async () => button('film.scene.menu')?.click());
+    await act(async () => {
+      button('film.scene.deleteAll')?.click();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(post).toHaveBeenLastCalledWith('/boards/b/versions', {
+      name: 'film.scene.deleteVersion',
+    });
+    expect(listElements(doc)).toHaveLength(2);
+    expect(storyboardOf(listElements(doc)).map((g) => g.scene?.number)).toEqual(['14']);
   } finally {
     await act(async () => root.unmount());
     host.remove();

@@ -66,7 +66,7 @@ export function ShotList({
   const { tagLabel } = useClassifications();
   const { t } = useTranslation();
   const boardAspect = useBoardAspect(store.doc);
-  const { groups, frames, labels } = useStoryboard(store);
+  const { groups, frames, labels } = useStoryboard(store, { omitted: false });
   const slugline = useSlugline();
   const presetText = usePresetText();
   const phone = useIsPhone();

@@ -1,4 +1,4 @@
-import type { Rect } from '@inkadra/canvas-core';
+import { listElements, type Rect, storyboardOf as sceneGroups } from '@inkadra/canvas-core';
 import {
   type Board,
   type BoardDetail,
@@ -23,6 +23,7 @@ import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useRegisterActions } from '../commands/actions.ts';
 import { setFeedbackConnection } from '../feedback/diagnostics.ts';
 import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
+import { api } from '../lib/api.ts';
 import { useHeaderContent } from '../lib/header.tsx';
 import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
@@ -54,8 +55,10 @@ import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
 import { applyImport, type ImportPlan } from './film/screenplay/plan.ts';
+import { applyRevision, revisionCounts } from './film/screenplay/revision.ts';
 import {
   type ImportTarget,
+  type RevisionChoice,
   ScreenplayImportDialog,
 } from './film/screenplay/ScreenplayImportDialog.tsx';
 import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
@@ -504,11 +507,42 @@ function BoardScreen({
     [boardId, rootBoardId, projectName, detail, boards],
   );
   const crumbTitles = useMemo(() => crumbs.map((c) => c.title), [crumbs]);
+  // The storyboard as it is when the import opens: an update from a revision matches against it.
+  const scriptStoryboard = useMemo(
+    () => ({
+      title: crumbs.at(-1)?.title ?? detail?.title ?? '',
+      groups: importingScript && conn ? sceneGroups(listElements(conn.store.doc)) : [],
+    }),
+    [importingScript, conn, crumbs, detail],
+  );
 
   /** Appends to this storyboard as one undo step, or makes a new one beside it and opens it. */
   const importScript = useCallback(
-    async (plan: ImportPlan, target: ImportTarget) => {
+    async (plan: ImportPlan, target: ImportTarget, revision?: RevisionChoice) => {
       if (!conn || !user) return;
+      if (target === 'revise' && revision) {
+        // The version comes first: without it the update does not happen (decision 0081).
+        if (revision.version)
+          await api.post(`/boards/${boardId}/versions`, { name: revision.version });
+        const scenes = sceneGroups(listElements(conn.store.doc)).flatMap((g) =>
+          g.scene ? [g.scene] : [],
+        );
+        conn.store.undo.stopCapturing();
+        applyRevision(conn.store.doc, revision.rows, plan.scenes, scenes, revision.options, {
+          userId: user.id,
+          origin: LOCAL,
+        });
+        conn.store.undo.stopCapturing();
+        const n = revisionCounts(revision.rows, plan.scenes, revision.options);
+        setScriptToast(
+          t('screenplay.revision.done', {
+            updated: t('screenplay.revision.updated', { count: n.updated }),
+            added: t('screenplay.revision.added', { count: n.added }),
+            omitted: t('screenplay.revision.omitted', { count: n.omitted }),
+          }),
+        );
+        return;
+      }
       if (target === 'append') {
         conn.store.undo.stopCapturing();
         applyImport(conn.store.doc, plan, { userId: user.id, origin: LOCAL });
@@ -889,7 +923,12 @@ function BoardScreen({
       )}
       {importingScript && editable && !preview && (
         <ScreenplayImportDialog
-          targets={['append', 'new']}
+          targets={
+            scriptStoryboard.groups.some((g) => g.scene)
+              ? ['append', 'revise', 'new']
+              : ['append', 'new']
+          }
+          storyboard={scriptStoryboard}
           onImport={importScript}
           onClose={() => setImportingScript(false)}
         />
