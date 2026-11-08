@@ -36,7 +36,7 @@ import {
 import { type Script, ScriptError } from './script.ts';
 import './screenplay.css';
 
-/** `revise` lays a new draft over the storyboard's scenes (decision 0081). */
+/** `revise` lays a new draft over the storyboard's scenes (decision 0082). */
 export type ImportTarget = 'append' | 'revise' | 'new';
 
 /** What an update from a revision writes, for the caller to apply. */

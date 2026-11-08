@@ -517,7 +517,7 @@ export function ScheduleView({
               </p>
             )}
             {groups.map((group) => {
-              // A scene the script left out is not offered for shooting (decision 0081).
+              // A scene the script left out is not offered for shooting (decision 0082).
               if (group.scene?.omitted) return null;
               const items = group.frames.filter((frame) => !scheduled.has(frame.id));
               if (!items.length) return null;

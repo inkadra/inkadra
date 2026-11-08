@@ -255,7 +255,7 @@
   background: var(--ink-accent-soft-bg);
 }
 
-/* Update from a revision (decision 0081): the draft's scenes against the storyboard's. */
+/* Update from a revision (decision 0082): the draft's scenes against the storyboard's. */
 .script-rev {
   display: flex;
   flex-direction: column;

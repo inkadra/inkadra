@@ -155,7 +155,7 @@ const migrations: Record<number, Migration> = {
   // 0077). Existing references stay ungrouped; older builds must not drop it when copying a card.
   20: () => {},
   // 22: optional `omitted` on scenes, a scene the latest draft of the script left out (decision
-  // 0081). Existing scenes stay in; older clients stay read-only and cannot drop the mark.
+  // 0082). Existing scenes stay in; older clients stay read-only and cannot drop the mark.
   21: () => {},
 };
 

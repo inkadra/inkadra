@@ -521,7 +521,7 @@ function BoardScreen({
     async (plan: ImportPlan, target: ImportTarget, revision?: RevisionChoice) => {
       if (!conn || !user) return;
       if (target === 'revise' && revision) {
-        // The version comes first: without it the update does not happen (decision 0081).
+        // The version comes first: without it the update does not happen (decision 0082).
         if (revision.version)
           await api.post(`/boards/${boardId}/versions`, { name: revision.version });
         const scenes = sceneGroups(listElements(conn.store.doc)).flatMap((g) =>

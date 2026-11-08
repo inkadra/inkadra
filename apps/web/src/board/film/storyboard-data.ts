@@ -13,7 +13,7 @@ import type { BoardStore } from '../store.ts';
 
 /**
  * Scenes and frames of the board, in order, from the live document. Without `omitted`, scenes
- * the script left out and their frames are not listed (decision 0081); labels stay the same.
+ * the script left out and their frames are not listed (decision 0082); labels stay the same.
  */
 export function useStoryboard(store: BoardStore, { omitted = true } = {}) {
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
@@ -25,7 +25,7 @@ export function useStoryboard(store: BoardStore, { omitted = true } = {}) {
   }, [snap, omitted]);
 }
 
-/** The scenes the shot list counts: without those the script left out (decision 0081). */
+/** The scenes the shot list counts: without those the script left out (decision 0082). */
 export function inShotList(groups: readonly SceneGroup[]): SceneGroup[] {
   return groups.filter((g) => !g.scene?.omitted);
 }

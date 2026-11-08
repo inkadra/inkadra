@@ -1,4 +1,4 @@
-# 0081 — Update a storyboard from a revised screenplay
+# 0082 — Update a storyboard from a revised screenplay
 
 Supersedes the last line of decision 0040 ("re-importing a revised script appends again rather than
 merging"). Scripts change while the storyboard is being drawn: a new draft renumbers scenes, adds

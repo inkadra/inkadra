@@ -353,7 +353,7 @@ html[data-view-direction]::view-transition-new(board-view) {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-/* A scene the script left out (decision 0081): in place, dimmed, struck through. */
+/* A scene the script left out (decision 0082): in place, dimmed, struck through. */
 .story__scene.is-omitted {
   padding: 4px 12px 12px;
   border: 1px dashed var(--ink-border-default);

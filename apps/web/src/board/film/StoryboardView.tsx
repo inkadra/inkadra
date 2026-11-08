@@ -97,7 +97,7 @@ export function StoryboardView({
   const boardAspect = useBoardAspect(store.doc);
   const { groups: allGroups, frames, labels } = useStoryboard(store);
   const omittedCount = allGroups.filter((g) => g.scene?.omitted).length;
-  // Scenes the script left out stay in place, dimmed; the bar hides them (decision 0081).
+  // Scenes the script left out stay in place, dimmed; the bar hides them (decision 0082).
   const [showOmitted, setShowOmitted] = useState(true);
   const groups = showOmitted ? allGroups : allGroups.filter((g) => !g.scene?.omitted);
   const [size, setSize] = useState<TileSize>('m');

@@ -15,7 +15,7 @@ const shown = (filter: RevisionFilter, status: RevisionStatus) =>
   filter === 'all' || (filter === 'changes' ? status !== 'same' : filter === status);
 
 /**
- * The scenes of a new draft against the storyboard (decision 0081): what changed, what is new,
+ * The scenes of a new draft against the storyboard (decision 0082): what changed, what is new,
  * what the draft left out. An uncertain match offers the scenes it could be, or a new scene.
  */
 export function RevisionList({

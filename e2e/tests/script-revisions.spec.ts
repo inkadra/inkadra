@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Runs after first-run.spec.ts in CI (the administrator exists).
-// Update a storyboard from a revised screenplay, in the suite's Italian (decision 0081): the dialog matches the draft to
+// Update a storyboard from a revised screenplay, in the suite's Italian (decision 0082): the dialog matches the draft to
 // the scenes, the update keeps every frame and marks the scene the draft left out as omitted.
 // Set E2E_SHOTS to a folder to also capture each state, light and dark, desktop and phone.
 import { mkdirSync } from 'node:fs';

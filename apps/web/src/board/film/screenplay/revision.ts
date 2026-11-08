@@ -8,7 +8,7 @@ import {
 import type * as Y from 'yjs';
 
 /**
- * A new draft of the script laid over the storyboard made from an older one (decision 0081).
+ * A new draft of the script laid over the storyboard made from an older one (decision 0082).
  * Pure: the dialog shows the same rows that `applyRevision` writes.
  */
 
