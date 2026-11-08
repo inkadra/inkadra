@@ -147,6 +147,35 @@ export const de: MailTexts = {
     link: 'Wähle, welche und wann',
     after: '.',
   },
+  serverAlert: {
+    badge: 'Serverwarnung',
+    subject: (title, instance) => `${title} auf ${instance}`,
+    titles: {
+      disk_full: 'Speicher fast voll',
+      service_down: 'Ein Dienst antwortet nicht',
+      backup_failed: 'Sicherung fehlgeschlagen',
+      repeated_errors: 'Ein Fehler wiederholt sich',
+    },
+    disk: (free, total, weeks) =>
+      `Noch ${free} von ${total} frei.${weeks ? ` Beim aktuellen Tempo reicht das etwa ${weeks}.` : ''} Gib Speicher frei oder füge eine Festplatte hinzu, bevor Uploads stoppen.`,
+    weeks: (n) => plural(n, 'eine Woche', 'Wochen'),
+    down: (service) =>
+      `${service} antwortet nicht. Der Rest von Inkadra funktioniert, aber dieser Teil steht, bis der Dienst wieder startet.`,
+    backup:
+      'Die Sicherung von heute Nacht ist fehlgeschlagen. Deine Daten sind sicher, prüfe sie aber vor der nächsten.',
+    errors: (n) => `Derselbe Fehler ist in der letzten Stunde ${n}-mal aufgetreten.`,
+    services: {
+      web: 'Die Website und die Anmeldung',
+      collab: 'Die Live-Zusammenarbeit',
+      worker: 'Die Aufbereitung von Videos und Vorschauen',
+      database: 'Die Datenbank',
+      queue: 'Die Auftragswarteschlange',
+      configuration: 'Die Konfiguration',
+    } as Record<string, string>,
+    action: 'Server öffnen',
+    footer: (instance) =>
+      `Serverwarnungen von ${instance} für Administratoren. Änderbar unter Einstellungen › Server.`,
+  },
   calendar: {
     deadline: (task, board) => `Fällig: ${task} · ${board}`,
     todo: (board) => `To-do · Board „${board}“ · ganztägig`,

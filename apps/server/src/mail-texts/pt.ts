@@ -144,6 +144,35 @@ export const pt: MailTexts = {
     link: 'Escolha quais e quando',
     after: '.',
   },
+  serverAlert: {
+    badge: 'Alerta do servidor',
+    subject: (title, instance) => `${title} em ${instance}`,
+    titles: {
+      disk_full: 'Quase sem espaço',
+      service_down: 'Um serviço não responde',
+      backup_failed: 'A cópia de segurança falhou',
+      repeated_errors: 'Um erro repete-se',
+    },
+    disk: (free, total, weeks) =>
+      `Restam ${free} de ${total}.${weeks ? ` Ao ritmo atual chega para cerca de ${weeks}.` : ''} Liberte espaço ou adicione um disco antes que os envios parem.`,
+    weeks: (n) => plural(n, 'uma semana', 'semanas'),
+    down: (service) =>
+      `${service} não responde. O resto do Inkadra funciona, mas esta parte está parada até o serviço voltar a arrancar.`,
+    backup:
+      'A cópia de segurança desta noite falhou. Os seus dados estão seguros, mas convém verificar antes da próxima.',
+    errors: (n) => `O mesmo erro aconteceu ${n} vezes na última hora.`,
+    services: {
+      web: 'O site e o acesso',
+      collab: 'A colaboração em direto',
+      worker: 'A preparação de vídeos e pré-visualizações',
+      database: 'A base de dados',
+      queue: 'A fila de trabalhos',
+      configuration: 'A configuração',
+    } as Record<string, string>,
+    action: 'Abrir Servidor',
+    footer: (instance) =>
+      `Alertas do servidor de ${instance} para os administradores. Mudam-se em Definições › Servidor.`,
+  },
   calendar: {
     deadline: (task, board) => `Prazo: ${task} · ${board}`,
     todo: (board) => `Tarefa · quadro "${board}" · dia inteiro`,
