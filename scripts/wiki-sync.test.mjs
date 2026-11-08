@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { rewritePage } from './wiki-sync.mjs';
+import { rewritePage, wikiPage } from './wiki-sync.mjs';
 
 const REPO = 'https://github.com/inkadra/inkadra';
 
@@ -27,5 +27,12 @@ test('a link to a folder opens its README page', () => {
   assert.equal(
     rewritePage('[Self-hosting](self-hosting)', 'docs/guide.md'),
     '[Self-hosting](Self-hosting)',
+  );
+});
+
+test('a page loses its H1, which the wiki already shows as the title', () => {
+  assert.equal(
+    wikiPage('# Storage\n\nSee [Upgrades](upgrades.md).\n', 'docs/self-hosting/storage.md'),
+    'See [Upgrades](Upgrades).\n',
   );
 });
