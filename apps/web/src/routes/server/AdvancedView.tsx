@@ -6,7 +6,7 @@ import { formatStorage } from '../StorageCharts.tsx';
 import { Card } from '../settings-ui.tsx';
 import { chartSpan, markers, mbit, memoryMax, xLabels } from './charts.tsx';
 import { type ServerActions, useWhen } from './common.ts';
-import { bits, duration, niceMax, number, openProblems, percent } from './format.ts';
+import { bits, diskCompresses, duration, niceMax, number, openProblems, percent } from './format.ts';
 import { ServerChart } from './ServerChart.tsx';
 import {
   Alerts,
@@ -208,11 +208,16 @@ function Tiles({ status }: { status: ServerStatus }) {
             {store.total !== null && <small> / {formatStorage(store.total, lang)}</small>}
           </>
         }
-        sub={t('server.advanced.storageSplit', {
-          originals: formatStorage(store.originals, lang),
-          copies: formatStorage(store.copies, lang),
-          previews: formatStorage(store.previews, lang),
-        })}
+        sub={[
+          t('server.advanced.storageSplit', {
+            originals: formatStorage(store.originals, lang),
+            copies: formatStorage(store.copies, lang),
+            previews: formatStorage(store.previews, lang),
+          }),
+          diskCompresses(store) ? t('server.meters.storage.compressed') : null,
+        ]
+          .filter(Boolean)
+          .join(' ')}
       >
         {store.total !== null && (
           <span className="server-bar" aria-hidden="true">

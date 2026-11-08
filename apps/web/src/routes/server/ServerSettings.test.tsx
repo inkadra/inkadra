@@ -249,3 +249,24 @@ it('goes back to the hour when the advanced view leaves the simple one on 15 min
   await act(async () => {});
   expect(api.get).toHaveBeenLastCalledWith('/instance/server?range=1h');
 });
+
+it('says the disk compresses the files only when they add up to more than the space used', async () => {
+  vi.mocked(api.get).mockResolvedValue(status());
+  await render();
+  expect(host.textContent).toContain('server.meters.storage.split');
+  expect(host.textContent).not.toContain('server.meters.storage.compressed');
+
+  const s = status();
+  vi.mocked(api.get).mockResolvedValue({ ...s, storage: { ...s.storage, used: 360e9 } });
+  act(() => root.unmount());
+  root = createRoot(host);
+  await render();
+  expect(host.textContent).toContain('server.meters.storage.compressed');
+
+  act(() => root.unmount());
+  root = createRoot(host);
+  await act(async () => updatePreferences({ serverView: 'advanced' }));
+  await render();
+  expect(host.textContent).toContain('server.advanced.storageSplit');
+  expect(host.textContent).toContain('server.meters.storage.compressed');
+});

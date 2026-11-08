@@ -4641,7 +4641,8 @@
         "bucket": "S3-Bucket",
         "used": "belegt",
         "s3Hint": "Der Speicheranbieter nennt keine Gesamtgröße, deshalb zeigen wir nicht, wie viel übrig ist.",
-        "growth": "Wächst um etwa {{size}} pro Monat."
+        "growth": "Wächst um etwa {{size}} pro Monat.",
+        "compressed": "Es wird weniger Platz belegt, weil die Festplatte die Dateien komprimiert."
       },
       "network": {
         "name": "Internet",

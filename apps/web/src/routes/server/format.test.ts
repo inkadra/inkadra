@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { duration, loadVerdict, niceMax, speedVerdict, storageVerdict } from './format.ts';
+import { diskCompresses, duration, loadVerdict, niceMax, speedVerdict, storageVerdict } from './format.ts';
 
 const storage = {
   driver: 'local' as const,
@@ -29,6 +29,15 @@ it('reads load, speed and space in plain words', () => {
   expect(
     storageVerdict({ ...storage, driver: 's3', total: null, free: null, monthsLeft: null }),
   ).toEqual({ key: 'unknown' });
+});
+
+it('tells when the local disk compresses the files', () => {
+  expect(diskCompresses(storage)).toBe(false);
+  expect(diskCompresses({ ...storage, used: 300e9 })).toBe(true);
+  // S3 reports what the files take, never less.
+  expect(diskCompresses({ ...storage, driver: 's3', total: null, free: null, used: 300e9 })).toBe(
+    false,
+  );
 });
 
 it('says how long in the largest unit that fits', () => {
