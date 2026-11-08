@@ -150,12 +150,28 @@ export const InstanceRelease = z
       .max(5)
       .openapi({
         description:
-          'The main news, plain text: release notes come from outside and are never sent as ' +
-          'Markdown or HTML.',
+          'The main news of the release body (its Highlights section), plain text: release ' +
+          'notes come from outside and are never sent as Markdown or HTML. Empty when the ' +
+          'body has none; pull request titles are never used.',
       }),
     beforeUpdating: z.array(z.string().max(280)).max(10).openapi({
       description: 'The "Read before upgrading" section of the notes, plain text.',
     }),
+    notes: z
+      .record(
+        z.string().regex(/^[a-z]{2}$/),
+        z.object({
+          highlights: z.array(z.string().max(280)).max(5),
+          beforeUpdating: z.array(z.string().max(280)).max(10),
+        }),
+      )
+      .optional()
+      .openapi({
+        description:
+          'The hand-written notes of the release by language (`it`, `en`…), plain text, from ' +
+          "its `release-notes.<lang>.md` assets. Clients pick the reader's language, then " +
+          '`en`, then `highlights` and `beforeUpdating`, which come from the release body.',
+      }),
   })
   .openapi('InstanceRelease');
 export type InstanceRelease = z.infer<typeof InstanceRelease>;
