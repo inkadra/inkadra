@@ -38,7 +38,7 @@ import { enqueueReleaseNews, sendReleaseNews } from './release-news.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
 import { runTransfer, sweepTransfers } from './transfers/service.ts';
-import { CHECK_EVERY_MS, checkForUpdates } from './updates.ts';
+import { checkForUpdates, RETRY_MS } from './updates.ts';
 import {
   applyVersionRetention,
   type RestoreVersion,
@@ -299,8 +299,8 @@ export async function startWorkers(
       if (job.name === 'version-retention') return applyVersionRetention(deps.db);
       if (job.name === 'purge-notifications') return purgeNotifications(deps.db);
       if (job.name === 'access-expiry') return sweepAccessExpiry(deps.db);
-      // A little under the period, so the job is not skipped by an answer it stored itself.
-      if (job.name === 'update-check') return checkForUpdates(deps.db, CHECK_EVERY_MS - 300_000);
+      // Asks GitHub only when the stored answer is 6 hours old, or 15 minutes after a failure.
+      if (job.name === 'update-check') return checkForUpdates(deps.db);
       if (job.name === 'anonymise-guests') return clearExpiredGuestNames(deps.db);
       if (job.name === 'backup' && backupDeps)
         return backupJob(backupDeps, (job.data as JobPayloads['maintenance:backup']).backupId);
@@ -431,7 +431,7 @@ export async function startWorkers(
   // Decision 0079: new releases on GitHub; the job does nothing while the check is off.
   await scheduler.upsertJobScheduler(
     'update-check',
-    { every: CHECK_EVERY_MS },
+    { every: RETRY_MS },
     { name: 'update-check', data: {}, opts: KEEP },
   );
   await scheduler.upsertJobScheduler(

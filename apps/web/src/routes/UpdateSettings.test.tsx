@@ -55,6 +55,7 @@ const release = (version: string, patch: Partial<InstanceRelease> = {}): Instanc
 });
 const updates = (patch: Partial<InstanceUpdates> = {}): InstanceUpdates => ({
   current: '0.8.0',
+  edge: false,
   checkEnabled: true,
   channel: 'stable',
   checkedAt: '2026-11-07T14:10:00.000Z',
@@ -90,6 +91,14 @@ it('says the instance is up to date, lists earlier versions and checks again on 
   await act(async () => check?.click());
   expect(api.post).toHaveBeenCalledWith('/instance/updates/check', {});
   expect(host.textContent).toContain('updates.available:{"version":"0.9.0"}');
+});
+
+it('tells an edge build it is not compared, instead of up to date', async () => {
+  await show(updates({ current: 'edge', edge: true, earlier: [] }));
+  expect(host.textContent).toContain('updates.edgeTitle');
+  expect(host.textContent).toContain('updates.edgeHelp');
+  expect(host.textContent).not.toContain('updates.upToDate');
+  expect(host.querySelector('[data-tour="updates-history"]')).toBeNull();
 });
 
 it('shows a new version as plain text, with what to read first and how to update', async () => {

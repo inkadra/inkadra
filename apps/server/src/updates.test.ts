@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { instanceSetting, notification, user } from './db/schema.ts';
@@ -10,6 +10,7 @@ import {
   parseReleases,
   readUpdates,
   updateSource,
+  updatesView,
 } from './updates.ts';
 
 const body = [
@@ -76,6 +77,17 @@ describe('releases from GitHub (#515)', () => {
     // Edge builds are not compared.
     expect(availableRelease(releases, 'edge', 'preview')).toBeNull();
   });
+
+  it('list no earlier versions and no update for an edge build', () => {
+    const stored = { checkedAt: null, failed: false, releases: parseReleases(github), notified: null };
+    const settings = { enabled: true, channel: 'stable' as const };
+    const edge = updatesView(stored, settings, 'edge');
+    expect(edge).toMatchObject({ edge: true, available: null, earlier: [] });
+    const release = updatesView(stored, settings, '1.0.0');
+    expect(release.edge).toBe(false);
+    expect(release.available?.version).toBe('1.1.0');
+    expect(release.earlier.map((r) => r.version)).toEqual(['1.0.0']);
+  });
 });
 
 const url = process.env.DATABASE_URL;
@@ -88,11 +100,13 @@ describe.skipIf(!url)('the update check', () => {
       .insert(user)
       .values({ id: admin, name: 'Updates', email: `${admin}@example.com`, role: 'admin' });
     await db.delete(instanceSetting).where(eq(instanceSetting.key, 'updates'));
+    await db.delete(instanceSetting).where(eq(instanceSetting.key, 'administration'));
   });
   afterAll(async () => {
     vi.restoreAllMocks();
     await db.delete(user).where(eq(user.id, admin));
     await db.delete(instanceSetting).where(eq(instanceSetting.key, 'updates'));
+    await db.delete(instanceSetting).where(eq(instanceSetting.key, 'administration'));
     await client.end();
   });
 
@@ -116,5 +130,50 @@ describe.skipIf(!url)('the update check', () => {
       .where(and(eq(notification.userId, admin), eq(notification.type, 'update_available')));
     expect(sent).toHaveLength(1);
     expect(sent[0]?.emailedAt).not.toBeNull();
+  });
+
+  const sentCount = async () =>
+    (
+      await db
+        .select()
+        .from(notification)
+        .where(and(eq(notification.userId, admin), eq(notification.type, 'update_available')))
+    ).length;
+  const channel = (updateChannel: 'stable' | 'preview') =>
+    db
+      .insert(instanceSetting)
+      .values({ key: 'administration', value: { updateChannel } })
+      .onConflictDoUpdate({ target: instanceSetting.key, set: { value: { updateChannel } } });
+
+  it('does not announce an older release again after the channel goes back to stable', async () => {
+    vi.spyOn(updateSource, 'fetchReleases').mockResolvedValue([
+      { tag_name: 'v999.0.0', body },
+      { tag_name: 'v999.1.0-rc.1', prerelease: true, body },
+    ]);
+    const before = await sentCount();
+    await channel('preview');
+    await checkForUpdates(db, 0);
+    expect(await sentCount()).toBe(before + 1);
+    await channel('stable');
+    await checkForUpdates(db, 0);
+    expect((await readUpdates(db)).available?.version).toBe('999.0.0');
+    expect(await sentCount()).toBe(before + 1);
+  });
+
+  it('retries a failed check after 15 minutes, not 6 hours', async () => {
+    const fetch = vi.spyOn(updateSource, 'fetchReleases').mockRejectedValue(new Error('offline'));
+    const failedAt = async (minutesAgo: number) => {
+      await checkForUpdates(db, 0);
+      await db.execute(
+        sql`update instance_setting set value = jsonb_set(value, '{checkedAt}', to_jsonb(${new Date(Date.now() - minutesAgo * 60_000).toISOString()}::text)) where key = 'updates'`,
+      );
+      fetch.mockClear();
+    };
+    await failedAt(10);
+    await checkForUpdates(db);
+    expect(fetch).not.toHaveBeenCalled();
+    await failedAt(16);
+    await checkForUpdates(db);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

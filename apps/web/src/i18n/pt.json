@@ -4382,6 +4382,8 @@
     "failedTitle": "O GitHub não responde",
     "upToDate": "Você está atualizado",
     "notChecked": "Ainda não verificado",
+    "edgeTitle": "Esta é uma build edge",
+    "edgeHelp": "As builds edge não são comparadas com as versões: as novidades estão no GitHub.",
     "running": "Você usa a {{version}}",
     "checkedAt": "verificado {{time}}",
     "offHelp": "Ligue o aviso abaixo para saber quando sai uma nova versão.",

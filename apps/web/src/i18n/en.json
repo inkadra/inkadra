@@ -4382,6 +4382,8 @@
     "failedTitle": "Couldn’t reach GitHub",
     "upToDate": "You are up to date",
     "notChecked": "Not checked yet",
+    "edgeTitle": "This is an edge build",
+    "edgeHelp": "Edge builds aren’t compared with releases: see GitHub for what’s new.",
     "running": "You use {{version}}",
     "checkedAt": "checked {{time}}",
     "offHelp": "Turn on the notice below to know when a new version is out.",

@@ -12,18 +12,22 @@ place in the app that says which version runs and what changed (#515).
   `api.github.com/repos/inkadra/inkadra/releases`. The request carries no instance data: no
   version, name, address or count. The answer is cached in `instance_setting` (key `updates`),
   so every administrator and every reload read the cache. "Check now" asks again at most once a
-  minute.
+  minute. A failed check is retried after 15 minutes (the job runs that often and does nothing
+  while the answer is fresh). Web and worker processes take a database lock before asking and
+  read the cache again under it, so one request goes out even in a split deployment.
 - **Off switch.** `InstanceSettings.updateCheck` (on by default) stops the requests, the
   notification and the pop-up.
 - **Channel.** `updateChannel` is `stable` (default, recommended) or `preview` (release
   candidates too). It only changes what is announced, never the running image: the image is the
   `INKADRA_TAG` of the deployment. Versions are compared with `newerRelease` (SemVer); a running
-  version that is not SemVer (an edge build) is never told about updates.
+  version that is not SemVer (an edge build) is never told about updates, lists no earlier
+  versions, and the page says it is an edge build (`InstanceUpdates.edge`).
 - **Untrusted notes.** Release notes come from outside. The server reduces them to plain text
   (the "Highlights" section, or the merged pull request titles of older releases, and "Read before
   upgrading"), at most 5 and 10 lines of 280 characters, and builds the release link itself from
   the version. The web app renders them as text, never as Markdown or HTML.
-- **Telling administrators.** Once per version and channel: an `update_available` notification
+- **Telling administrators.** Once per version, only for a release newer than the last one
+  announced (going back from previews to stable stays quiet): an `update_available` notification
   (in-app only) for every active administrator, and a pop-up in the bottom right that does not
   block work, shown once per version per person (`updateSeen`). "Skip this version"
   (`updateSkipped`) also hides the "Available X.Y.Z" hint in the settings navigation for that

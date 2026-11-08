@@ -31,6 +31,7 @@ vi.mock('../lib/preferences.ts', () => ({
 
 const updates: InstanceUpdates = {
   current: '0.8.0',
+  edge: false,
   checkEnabled: true,
   channel: 'preview',
   checkedAt: '2026-11-07T14:10:00.000Z',
@@ -93,4 +94,22 @@ it('stays away from a version already seen and from the Updates page itself', as
   root = createRoot(host);
   await render('/settings?section=updates');
   expect(host.querySelector('[role="dialog"]')).toBeNull();
+});
+
+it('closes on Escape with focus anywhere, unless a menu or a field takes that Escape', async () => {
+  await render();
+  const escape = (target: EventTarget = document.body) =>
+    act(async () => {
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+  const menu = document.body.appendChild(document.createElement('div'));
+  menu.setAttribute('role', 'menu');
+  await escape();
+  menu.remove();
+  const field = document.body.appendChild(document.createElement('input'));
+  await escape(field);
+  field.remove();
+  expect(prefs.value.updateSeen).not.toBe('0.9.0-rc.1');
+  await escape();
+  expect(prefs.value).toMatchObject({ updateSeen: '0.9.0-rc.1' });
 });

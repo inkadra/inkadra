@@ -37,6 +37,8 @@ export function UpdateSettings() {
     ? formatDateTime(data.checkedAt, { dateStyle: 'medium', timeStyle: 'short' })
     : null;
   const { available } = data;
+  // Edge builds are never compared with releases (decision 0079): no "up to date" for them.
+  const warn = data.checkEnabled && (data.failed || data.edge);
 
   return (
     <>
@@ -58,24 +60,29 @@ export function UpdateSettings() {
             <Row
               leading={
                 <span
-                  className={`updates-state updates-state--${data.failed ? 'warn' : 'ok'}`}
+                  className={`updates-state updates-state--${warn ? 'warn' : 'ok'}`}
                   aria-hidden="true"
                 >
-                  <Icon name={data.failed ? 'warning' : 'check'} size={14} />
+                  <Icon name={warn ? 'warning' : 'check'} size={14} />
                 </span>
               }
               label={t(
                 !data.checkEnabled
                   ? 'updates.offTitle'
-                  : data.failed
-                    ? 'updates.failedTitle'
-                    : data.checkedAt
-                      ? 'updates.upToDate'
-                      : 'updates.notChecked',
+                  : data.edge
+                    ? 'updates.edgeTitle'
+                    : data.failed
+                      ? 'updates.failedTitle'
+                      : data.checkedAt
+                        ? 'updates.upToDate'
+                        : 'updates.notChecked',
               )}
               help={[
                 t('updates.running', { version: data.current }),
-                data.checkEnabled && checked ? t('updates.checkedAt', { time: checked }) : null,
+                data.checkEnabled && data.edge ? t('updates.edgeHelp') : null,
+                data.checkEnabled && checked && !data.edge
+                  ? t('updates.checkedAt', { time: checked })
+                  : null,
                 !data.checkEnabled ? t('updates.offHelp') : null,
               ]
                 .filter(Boolean)

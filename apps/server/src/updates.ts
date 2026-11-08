@@ -17,6 +17,8 @@ const RELEASES_URL =
   process.env.UPDATE_CHECK_URL ??
   'https://api.github.com/repos/inkadra/inkadra/releases?per_page=30';
 export const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
+/** After a failed check GitHub is asked again this soon; the job runs this often. */
+export const RETRY_MS = 15 * 60 * 1000;
 /** "Check now" asks GitHub at most this often. */
 const CHECK_NOW_MS = 60 * 1000;
 
@@ -123,6 +125,13 @@ async function readStored(db: Pick<Database, 'select'>): Promise<Stored> {
   return Stored.parse(row?.value ?? {});
 }
 
+/** Whether the stored answer is recent enough; a failure is retried after `RETRY_MS`. */
+function fresh(stored: Stored, maxAge: number): boolean {
+  if (!stored.checkedAt) return false;
+  const age = Date.now() - Date.parse(stored.checkedAt);
+  return age < (stored.failed ? Math.min(maxAge, RETRY_MS) : maxAge);
+}
+
 let running: Promise<void> | null = null;
 
 /**
@@ -133,23 +142,28 @@ export function checkForUpdates(db: Database, maxAge = CHECK_EVERY_MS): Promise<
   running ??= (async () => {
     try {
       const settings = await readSettings(db);
-      const before = await readStored(db);
-      if (!settings.enabled) return;
-      if (before.checkedAt && Date.now() - Date.parse(before.checkedAt) < maxAge) return;
-      let releases: InstanceRelease[] | null = null;
-      try {
-        releases = parseReleases(await updateSource.fetchReleases());
-      } catch {
-        releases = null;
-      }
+      if (!settings.enabled || fresh(await readStored(db), maxAge)) return;
       await db.transaction(async (tx) => {
+        // Web and worker processes take turns: whoever waited finds the answer and asks nothing.
         await tx.execute(sql`select pg_advisory_xact_lock(377, 3)`);
         const stored = await readStored(tx);
+        if (fresh(stored, maxAge)) return;
+        let releases: InstanceRelease[] | null = null;
+        try {
+          releases = parseReleases(await updateSource.fetchReleases());
+        } catch {
+          releases = null;
+        }
         const next: Stored = releases
           ? { ...stored, checkedAt: new Date().toISOString(), failed: false, releases }
           : { ...stored, checkedAt: new Date().toISOString(), failed: true };
         const available = availableRelease(next.releases, VERSION, settings.channel);
-        if (releases && available && available.version !== stored.notified) {
+        // Newer than the last announced one: going back from previews to stable stays quiet.
+        if (
+          releases &&
+          available &&
+          (!stored.notified || newerRelease(available.version, stored.notified))
+        ) {
           const admins = await tx
             .select({ id: user.id })
             .from(user)
@@ -180,23 +194,34 @@ export function checkForUpdates(db: Database, maxAge = CHECK_EVERY_MS): Promise<
   return running;
 }
 
-/** What the Updates page shows, from the stored answer. */
-export async function readUpdates(db: Database): Promise<InstanceUpdates> {
-  const settings = await readSettings(db);
-  const stored = await readStored(db);
+/** What the Updates page shows. A running version that is not SemVer (edge) is never compared. */
+export function updatesView(
+  stored: Stored,
+  settings: { enabled: boolean; channel: Channel },
+  current: string,
+): InstanceUpdates {
+  const edge = !semver.test(current);
   return {
-    current: VERSION,
+    current,
+    edge,
     checkEnabled: settings.enabled,
     channel: settings.channel,
     checkedAt: stored.checkedAt,
     failed: stored.failed,
-    available: settings.enabled
-      ? availableRelease(stored.releases, VERSION, settings.channel)
-      : null,
-    earlier: stored.releases
-      .filter((r) => !newerRelease(r.version, VERSION) && (!r.prerelease || r.version === VERSION))
-      .slice(0, 6),
+    available:
+      settings.enabled && !edge ? availableRelease(stored.releases, current, settings.channel) : null,
+    earlier: edge
+      ? []
+      : stored.releases
+          .filter(
+            (r) => !newerRelease(r.version, current) && (!r.prerelease || r.version === current),
+          )
+          .slice(0, 6),
   };
+}
+
+export async function readUpdates(db: Database): Promise<InstanceUpdates> {
+  return updatesView(await readStored(db), await readSettings(db), VERSION);
 }
 
 export { CHECK_NOW_MS };

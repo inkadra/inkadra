@@ -163,6 +163,11 @@ export type InstanceRelease = z.infer<typeof InstanceRelease>;
 export const InstanceUpdates = z
   .object({
     current: z.string().openapi({ description: 'The running version.' }),
+    edge: z.boolean().openapi({
+      description:
+        'The running version is not SemVer (an edge build): it is never compared with the ' +
+        'releases, so `available` is null and `earlier` is empty.',
+    }),
     checkEnabled: z.boolean().openapi({ description: 'InstanceSettings.updateCheck.' }),
     channel: z.enum(['stable', 'preview']),
     checkedAt: Timestamp.nullable().openapi({

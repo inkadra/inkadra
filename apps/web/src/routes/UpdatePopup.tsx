@@ -1,5 +1,5 @@
 import { Icon } from '@inkadra/ui';
-import { useId, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 import { formatDateTime } from '../lib/datetime.ts';
@@ -47,6 +47,21 @@ function Card() {
   const titleId = useId();
   const descId = useId();
   useAboveChrome(ref);
+  const version = release?.version;
+  // The pop-up takes no focus, so Escape is heard on the whole page; dialogs, menus and fields
+  // that are open or being typed in keep their own Escape.
+  useEffect(() => {
+    if (!version) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (document.querySelector('dialog[open], [role="menu"]')) return;
+      if ((e.target as Element | null)?.closest?.('input, textarea, [contenteditable="true"]'))
+        return;
+      void updatePreferences({ updateSeen: version }).catch(() => {});
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [version]);
   if (!release || !data) return null;
   const seen = (skip = false) =>
     void updatePreferences({
@@ -64,9 +79,6 @@ function Card() {
       aria-labelledby={titleId}
       aria-describedby={descId}
       data-chrome
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') seen();
-      }}
     >
       <header className="update-popup__head">
         <span className="update-popup__icon" aria-hidden="true">
