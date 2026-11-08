@@ -341,8 +341,7 @@ data folder first, for example with `docker compose cp`.
 
 ## What leaves your server
 
-Inkadra sends no telemetry and does not check for updates. It talks to other servers only for
-what is listed here.
+Inkadra sends no telemetry. It talks to other servers only for what is listed here.
 
 | What                                                                        | Goes to                                                               | When                                                                   | To turn it off                                                 |
 | --------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
@@ -350,6 +349,7 @@ what is listed here.
 | Map tile requests, with this instance's address in the user agent           | `tile.openstreetmap.org`, or your `MAP_TILE_URL`                      | When someone adds or explores a map or a GPX file                      | `MAPS=false`, or your own tile server                          |
 | Requests for the pages behind pasted links, and their preview images        | That site; YouTube and Vimeo for their videos                         | When someone pastes a link or clips a page                             | No setting                                                     |
 | Address lookups                                                             | Your `MAP_GEOCODER_URL`                                               | When someone types an address in a map card                            | Off unless you set it                                          |
+| A request for the list of Inkadra releases, with no data about this server  | `api.github.com`                                                      | Every 6 hours, and on **Check now**. **On by default**                 | **Settings → Updates** → Tell me when a new version is out     |
 | Sign-in, email and files                                                    | Your Google or OIDC provider, your mail server, your S3 bucket        | Only if you configure them                                             | Leave them empty                                               |
 
 People's browsers load YouTube (from `youtube-nocookie.com`), Vimeo or Instagram players only when

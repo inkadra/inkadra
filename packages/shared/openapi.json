@@ -1305,6 +1305,20 @@
             "type": "boolean",
             "default": true,
             "description": "Whether members (not only administrators) can create and import projects. A per-account choice (InstanceMember.canCreateProjectsOverride) wins over it. Defaults to true; missing from servers before API 0.9.0."
+          },
+          "updateCheck": {
+            "type": "boolean",
+            "default": true,
+            "description": "Ask GitHub for new Inkadra releases every 6 hours and tell administrators (#515). Nothing about the instance is sent. Defaults to true; missing from servers before 0.10.0."
+          },
+          "updateChannel": {
+            "type": "string",
+            "enum": [
+              "stable",
+              "preview"
+            ],
+            "default": "stable",
+            "description": "Which releases are announced: `stable` only, or `preview` release candidates too. It never changes the running image. Defaults to `stable`; missing before 0.10.0."
           }
         },
         "required": [
@@ -1340,9 +1354,134 @@
           },
           "membersCanCreateProjects": {
             "type": "boolean"
+          },
+          "updateCheck": {
+            "type": "boolean"
+          },
+          "updateChannel": {
+            "type": "string",
+            "enum": [
+              "stable",
+              "preview"
+            ]
           }
         },
         "additionalProperties": false
+      },
+      "InstanceUpdates": {
+        "type": "object",
+        "properties": {
+          "current": {
+            "type": "string",
+            "description": "The running version."
+          },
+          "edge": {
+            "type": "boolean",
+            "description": "The running version is not SemVer (an edge build): it is never compared with the releases, so `available` is null and `earlier` is empty."
+          },
+          "checkEnabled": {
+            "type": "boolean",
+            "description": "InstanceSettings.updateCheck."
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "stable",
+              "preview"
+            ]
+          },
+          "checkedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "Last answer from GitHub; null: never."
+          },
+          "failed": {
+            "type": "boolean",
+            "description": "The last check could not reach GitHub."
+          },
+          "available": {
+            "$ref": "#/components/schemas/InstanceRelease"
+          },
+          "earlier": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InstanceRelease"
+            },
+            "maxItems": 10,
+            "description": "Stable releases up to the running one, newest first; the running one too."
+          }
+        },
+        "required": [
+          "current",
+          "edge",
+          "checkEnabled",
+          "channel",
+          "checkedAt",
+          "failed",
+          "available",
+          "earlier"
+        ],
+        "description": "Releases of Inkadra as last read from GitHub (#515). Edge builds are not compared: a running version that is not SemVer never has an update available."
+      },
+      "InstanceRelease": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "version": {
+            "type": "string",
+            "example": "0.9.0"
+          },
+          "publishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "prerelease": {
+            "type": "boolean",
+            "description": "A release candidate (`X.Y.Z-rc.N`)."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The release on GitHub."
+          },
+          "highlights": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 280
+            },
+            "maxItems": 5,
+            "description": "The main news, plain text: release notes come from outside and are never sent as Markdown or HTML."
+          },
+          "beforeUpdating": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 280
+            },
+            "maxItems": 10,
+            "description": "The \"Read before upgrading\" section of the notes, plain text."
+          }
+        },
+        "required": [
+          "version",
+          "publishedAt",
+          "prerelease",
+          "url",
+          "highlights",
+          "beforeUpdating"
+        ],
+        "description": "The newest release of the channel newer than the running one; null: none."
       },
       "InstanceMember": {
         "type": "object",
@@ -6998,9 +7137,10 @@
               "task_assigned",
               "feedback_received",
               "review_submitted",
-              "server_alert"
+              "server_alert",
+              "update_available"
             ],
-            "description": "`server_alert`: something is wrong with the server (`serverAlert` says what), for instance administrators only, in-app (#514); open Settings Server. Missing from older servers. `feedback_received`: a new in-app report, for instance administrators only; in-app only, no report content; open Settings About Reports. `mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on `projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three days before to that person and to the project owners. `access_expired`: it has ended. Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you made for the first time, or for the first time since a new named version of the board; it has no actor (`shareLinkLabel` says which link) and nothing about the visit. `review_submitted`: a guest sent their review of `boardId` through a link you made (`shareLinkLabel`); the decisions themselves are in the board reviews. Open: clients show types they do not know as a plain line with the actor, the board and the time."
+            "description": "`server_alert`: something is wrong with the server (`serverAlert` says what), for instance administrators only, in-app (#514); open Settings Server. Missing from older servers. `update_available`: a new Inkadra release, for instance administrators only, once per version; in-app only; open Settings Updates (from API 0.10.0). `feedback_received`: a new in-app report, for instance administrators only; in-app only, no report content; open Settings About Reports. `mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on `projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three days before to that person and to the project owners. `access_expired`: it has ended. Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you made for the first time, or for the first time since a new named version of the board; it has no actor (`shareLinkLabel` says which link) and nothing about the visit. `review_submitted`: a guest sent their review of `boardId` through a link you made (`shareLinkLabel`); the decisions themselves are in the board reviews. Open: clients show types they do not know as a plain line with the actor, the board and the time."
           },
           "actor": {
             "allOf": [
@@ -7444,6 +7584,22 @@
               "advanced"
             ],
             "description": "How an administrator last looked at the Server settings page (#514)."
+          },
+          "updateSeen": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "Administrators: the release whose update pop-up this person already saw, so it shows once per version (#515)."
+          },
+          "updateSkipped": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "Administrators: the release this person chose to skip; the settings stop pointing at it."
           }
         },
         "required": [
@@ -7460,7 +7616,9 @@
           "toolbar",
           "tutorialsSeen",
           "tutorialHints",
-          "serverView"
+          "serverView",
+          "updateSeen",
+          "updateSkipped"
         ]
       },
       "UpdateUserPreferences": {
@@ -7563,6 +7721,22 @@
               "advanced"
             ],
             "description": "How an administrator last looked at the Server settings page (#514)."
+          },
+          "updateSeen": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "Administrators: the release whose update pop-up this person already saw, so it shows once per version (#515)."
+          },
+          "updateSkipped": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "Administrators: the release this person chose to skip; the settings stop pointing at it."
           }
         },
         "description": "Only the fields given change."
@@ -11626,6 +11800,142 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InstanceSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/updates": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: the running version and the releases last read from GitHub; asks GitHub again first when the answer is older than 6 hours and the check is on.",
+        "responses": {
+          "200": {
+            "description": "Updates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceUpdates"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/updates/check": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: ask GitHub for releases now (at most once a minute; \"Check now\").",
+        "responses": {
+          "200": {
+            "description": "Updates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceUpdates"
                 }
               }
             }

@@ -81,6 +81,8 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0075](0075-cast-links-and-presence.md)              | Optional cast links and presence per day, answered only for oneself                    |
 | [0077](0077-removed-assignees-are-corrected.md)      | A stale assignee is corrected, not refused                                             |
 | [0078](0078-tutorials.md)                            | Animated tutorials, offered once and kept in step with the interface                   |
+| [0079](0079-server-page.md)                          | A Server page for administrators, without a monitoring stack                           |
+| [0080](0080-update-check.md)                         | The server checks GitHub for new releases                                              |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

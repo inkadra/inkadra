@@ -811,6 +811,7 @@ export const notification = pgTable(
         'feedback_received',
         'review_submitted',
         'server_alert',
+        'update_available',
       ],
     }).notNull(),
     actorId: uuid('actor_id').references(() => user.id, { onDelete: 'set null' }),

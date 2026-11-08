@@ -25,11 +25,14 @@ export const NotificationType = z
     'feedback_received',
     'review_submitted',
     'server_alert',
+    'update_available',
   ])
   .openapi({
     description:
       '`server_alert`: something is wrong with the server (`serverAlert` says what), for ' +
       'instance administrators only, in-app (#514); open Settings Server. Missing from older servers. ' +
+      '`update_available`: a new Inkadra release, for instance administrators only, once per ' +
+      'version; in-app only; open Settings Updates (from API 0.10.0). ' +
       '`feedback_received`: a new in-app report, for instance administrators only; in-app only, no report content; open Settings About Reports. ' +
       '`mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote ' +
       'in. `comment`: a new thread on a card you created. `review`: the review status of a ' +
@@ -114,6 +117,7 @@ export function notificationPath(
 ): string | null {
   if (item.type === 'feedback_received') return '/settings?section=instance';
   if (item.type === 'server_alert') return '/settings?section=server';
+  if (item.type === 'update_available') return '/settings?section=updates';
   if (!item.projectId) return null;
   const path = item.boardId ? `/p/${item.projectId}/b/${item.boardId}` : `/p/${item.projectId}`;
   if (!item.boardId) return path;

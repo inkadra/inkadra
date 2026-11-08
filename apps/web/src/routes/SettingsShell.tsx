@@ -3,6 +3,7 @@ import { createContext, type ReactNode, useContext, useEffect, useState } from '
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { useSession } from '../lib/session.tsx';
+import { usePendingUpdate } from '../lib/updates.ts';
 import { resetSaveState, type SaveState, useSaveState } from './settings-save.ts';
 import {
   GROUP_TITLES,
@@ -28,6 +29,7 @@ const SECTION_ICONS: Record<string, IconName> = {
   registration: 'mail',
   backups: 'clock',
   server: 'tiles',
+  updates: 'upload',
   instance: 'settings',
 };
 
@@ -60,6 +62,7 @@ export function SettingsNav({
   const { pathname, search } = useLocation();
   const [query, setQuery] = useState('');
   const current = settingsSection(pathname, search).id;
+  const update = usePendingUpdate();
   const matches = matchSettings(
     SETTINGS_PAGES.filter((p) => !p.admin || user?.role === 'admin'),
     query,
@@ -104,6 +107,11 @@ export function SettingsNav({
                         'data-attention': true,
                         title: t('onboarding.settingsPending'),
                       })}
+                      {...(p.id === 'updates' &&
+                        update && {
+                          'data-update': true,
+                          title: t('updates.navAvailable', { version: update.version }),
+                        })}
                     >
                       <Icon name={SECTION_ICONS[p.id] ?? 'settings'} size={16} />
                       <span className="settings-nav__label">{t(p.title)}</span>
@@ -128,6 +136,11 @@ export function SettingsNav({
           Inkadra {version}
           {instance?.name && ` · ${instance.name}`}
         </span>
+        {update && (
+          <Link to="/settings?section=updates" replace className="settings-nav__update">
+            {t('updates.navAvailable', { version: update.version })}
+          </Link>
+        )}
         <DiagnosticsLink>{t('settingsUi.diagnostics')}</DiagnosticsLink>
       </footer>
     </nav>

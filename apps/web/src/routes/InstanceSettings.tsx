@@ -12,6 +12,7 @@ import { formatStorage, StorageCharts } from './StorageCharts.tsx';
 import { ServerSettings } from './server/ServerSettings.tsx';
 import { trackSave } from './settings-save.ts';
 import { AutosaveText, Badge, Card, Row, Segmented } from './settings-ui.tsx';
+import { UpdateSettings } from './UpdateSettings.tsx';
 
 type Setup = { checks: Array<{ id: string; ok: boolean }> | null; error: boolean };
 type Registration = Settings['registration'];
@@ -203,6 +204,7 @@ export function InstanceSettings({ section, setup }: { section: string; setup: S
   if (section === 'providers') return <AccessPage />;
   if (section === 'backups') return <BackupSettings />;
   if (section === 'server') return <ServerSettings />;
+  if (section === 'updates') return <UpdateSettings />;
   return <InstancePage section={section} setup={setup} />;
 }
 

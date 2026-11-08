@@ -67,7 +67,7 @@ export function aboveChrome(box: Box, chrome: Box[], viewHeight: number): number
 }
 
 /** Lifts the element above the bottom chrome, now and when the window changes size. */
-function useAboveChrome(ref: RefObject<HTMLElement | null>) {
+export function useAboveChrome(ref: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
     const place = () => {
       const el = ref.current;

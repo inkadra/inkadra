@@ -15,7 +15,7 @@ import { mailText } from './mail-texts.ts';
 import type { Mailer } from './mailer.ts';
 
 // Strict SemVer, including numeric pre-release identifiers and build metadata.
-const semver =
+export const semver =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][\dA-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][\dA-Za-z-]*))*))?(?:\+[\dA-Za-z-]+(?:\.[\dA-Za-z-]+)*)?$/;
 export function newerRelease(current: string, previous: string): boolean {
   const a = semver.exec(current);
@@ -97,19 +97,25 @@ export function releaseHighlights(notes: string): string[] {
   const bullets = body.filter((line) => /^\s*(?:[-*+] |\d+[.)] )/.test(line));
   const paragraphs = body.join('\n').split(/\n\s*\n/);
   return (bullets.length ? bullets : paragraphs)
-    .map((line) =>
-      line
-        .replace(/^\s*(?:[-*+] |\d+[.)] )/, '')
-        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-        .replace(/<[^>]*>/g, '')
-        .replace(/(?:https?:\/\/|www\.)[^\s]+/gi, '')
-        .replace(/[*_`~]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 280),
-    )
+    .map((line) => plainLine(line))
     .filter(Boolean)
     .slice(0, 5);
+}
+
+/** One line of release notes as plain text: no Markdown, HTML, images or addresses. */
+export function plainLine(line: string, max = 280): string {
+  return (
+    line
+      .replace(/^\s*(?:[-*+] |\d+[.)] )/, '')
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/<[^>]*>/g, '')
+      .replace(/(?:https?:\/\/|www\.)[^\s]+/gi, '')
+      // Emphasis marks only: single underscores stay, as in FEEDBACK_RELAY_URL.
+      .replace(/\*\*|__|~~|[*`]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, max)
+  );
 }
 
 export type ReleaseMailInstance = { instanceName: string; publicUrl: string };

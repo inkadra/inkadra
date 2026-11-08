@@ -44,7 +44,7 @@ it('groups permitted pages, marks the current one and flags incomplete setup', a
     'admin.workspace',
     'settingsUi.groups.instance',
   ]);
-  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(13);
+  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(14);
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('admin.members6');
   expect(host.querySelector('[data-attention]')?.getAttribute('href')).toBe(
     '/settings?section=providers',

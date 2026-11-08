@@ -1,0 +1,91 @@
+/* The update pop-up (#515): a floating card like the app's toasts, in the bottom right. */
+.update-popup {
+  position: fixed;
+  z-index: var(--ink-layer-notification);
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  box-shadow: var(--ink-shadow-menu);
+  color: var(--ink-text-primary);
+  font-size: 13px;
+}
+.update-popup__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.update-popup__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.update-popup__text {
+  flex: 1;
+  min-width: 0;
+}
+.update-popup__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.update-popup__meta {
+  margin: 2px 0 0;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.update-popup__close {
+  flex: none;
+  margin: -4px -4px 0 0;
+}
+.update-popup__news {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-inline-start: 18px;
+  line-height: 1.45;
+}
+.update-popup__warn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ink-status-warn);
+  font-size: 12px;
+}
+.update-popup__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.update-popup__go {
+  display: flex;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+@media (width < 768px) {
+  .update-popup {
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-width: none;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+}

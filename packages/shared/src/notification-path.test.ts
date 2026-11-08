@@ -3,6 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { notificationPath } from './notifications.ts';
 
 describe('notificationPath', () => {
+  it('opens the Updates settings for a new release (#515)', () => {
+    expect(
+      notificationPath({
+        type: 'update_available',
+        projectId: null,
+        boardId: null,
+        elementId: null,
+        commentId: null,
+      }),
+    ).toBe('/settings?section=updates');
+  });
+
   it('opens the board on the card and the thread', () => {
     expect(
       notificationPath({ projectId: 'p', boardId: 'b', elementId: 'card', commentId: 'c' }),

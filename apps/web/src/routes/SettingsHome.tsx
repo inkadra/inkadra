@@ -7,6 +7,7 @@ import { FeedbackProfileRow } from '../feedback/FeedbackSettings.tsx';
 import { api, authApi } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
+import { usePendingUpdate } from '../lib/updates.ts';
 import { useInstanceSettings, useStorageUsage } from './InstanceSettings.tsx';
 import { setCachedProjects } from './projects.ts';
 import { DiagnosticsLink, setupAttention } from './SettingsShell.tsx';
@@ -55,6 +56,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 function AdminGroups({ setup }: { setup: Setup }) {
   const { t, i18n } = useTranslation();
   const { version } = useSession();
+  const update = usePendingUpdate();
   const [members, setMembers] = useState<number | null>(null);
   const { usage } = useStorageUsage();
   const { settings } = useInstanceSettings();
@@ -96,6 +98,11 @@ function AdminGroups({ setup }: { setup: Setup }) {
           value={settings ? t(`admin.registrationModes.${settings.registration}`) : undefined}
         />
         <Item to={href('backups')} label={t('backups.title')} />
+        <Item
+          to={href('updates')}
+          label={t('settingsUi.pages.updates')}
+          value={update ? t('updates.navAvailable', { version: update.version }) : undefined}
+        />
         <Item
           to={href('instance')}
           label={t('settingsUi.pages.about')}

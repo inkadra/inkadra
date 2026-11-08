@@ -104,6 +104,7 @@ import { SearchDialog } from './SearchDialog.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import { SeedQueue } from './seed-queue.tsx';
 import { isSettingsPath } from './settings-sections.ts';
+import { UpdatePopup } from './UpdatePopup.tsx';
 import './mobile-shell.css';
 
 interface ProjectsState {
@@ -919,6 +920,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         }}
       >
         <FeedbackLauncher />
+        {user?.role === 'admin' && <UpdatePopup />}
         <HeaderContext.Provider value={setHeaderContent}>
           <AppShell
             launcher={launcher}

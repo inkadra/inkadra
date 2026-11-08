@@ -2024,7 +2024,8 @@
       "server_alert_service_down": "{{service}} ne répond pas",
       "server_alert_backup_failed": "La sauvegarde a échoué",
       "server_alert_repeated_errors": "La même erreur s’est produite {{times}} fois dans la dernière heure",
-      "server_alert_unknown": "Quelque chose ne va pas sur le serveur"
+      "server_alert_unknown": "Quelque chose ne va pas sur le serveur",
+      "update_available": "Une nouvelle version d’Inkadra est disponible"
     },
     "emailTitle": "Notifications par e-mail",
     "emailHint": "Mentions, réponses et révisions aussi par e-mail, si le serveur peut les envoyer.",
@@ -2628,7 +2629,8 @@
       "about": "À propos",
       "toolbar": "Barre d’outils",
       "tutorials": "Tutoriels",
-      "server": "Serveur"
+      "server": "Serveur",
+      "updates": "Mises à jour"
     },
     "leads": {
       "account": "Votre profil et votre mode de connexion.",
@@ -2641,7 +2643,8 @@
       "backups": "Copies nocturnes de la base de données, pour restaurer le serveur après une panne.",
       "toolbar": "Choisissez ce que vous voyez dans la barre du bas. Les outils masqués restent dans « + ▾ » et dans la palette de commandes.",
       "tutorials": "Revoyez les visites guidées et choisissez de les proposer ou non.",
-      "server": "Comment va le serveur : ressources, services, tâches, problèmes et alertes."
+      "server": "Comment va le serveur : ressources, services, tâches, problèmes et alertes.",
+      "updates": "La version utilisée, les nouveautés et un avis quand une nouvelle sort. Inkadra ne se met pas à jour tout seul : c’est toi qui le mets à jour, sur le serveur."
     },
     "autosave": {
       "idle": "Enregistrement automatique",
@@ -2769,7 +2772,8 @@
       "backups": "Sauvegardes, Sauvegarder maintenant, Restauration, Conservation, Sauvegarde nocturne",
       "toolbar": "Barre d’outils, Outils, Note, Image, Lien, À faire, Couleur, Flèche, Plan, Storyboard, Rétablir la barre par défaut",
       "tutorials": "Visite de bienvenue, Suggestions à la première ouverture, Recommencer",
-      "server": "Processeur, Mémoire, Espace, Services, Problèmes, Alertes, Diagnostic, Vidéo"
+      "server": "Processeur, Mémoire, Espace, Services, Problèmes, Alertes, Diagnostic, Vidéo",
+      "updates": "Version, Vérifier maintenant, Me prévenir quand une nouvelle version sort, Quelles versions, Préversions, Versions précédentes"
     },
     "close": "Fermer les paramètres",
     "dangerZone": "Zone sensible",
@@ -4378,6 +4382,23 @@
             "text": "Vous prévient si quelque chose ne va pas."
           }
         }
+      },
+      "updates": {
+        "name": "Mises à jour",
+        "steps": {
+          "0": {
+            "title": "Nouvelle version",
+            "text": "Ce qui change, et comment mettre à jour pas à pas."
+          },
+          "1": {
+            "title": "Avis",
+            "text": "Un avis quand une version sort, stable ou préversion."
+          },
+          "2": {
+            "title": "Versions précédentes",
+            "text": "Ce qui a changé dans chaque version."
+          }
+        }
       }
     }
   },
@@ -4743,5 +4764,57 @@
       "error": "Erreur",
       "warning": "Avertissement"
     }
+  },
+  "updates": {
+    "loadError": "Impossible de charger les mises à jour. Réessaie plus tard.",
+    "newTitle": "Nouvelle version",
+    "versionTitle": "Ta version",
+    "checking": "Vérification…",
+    "checkNow": "Vérifier maintenant",
+    "offTitle": "La vérification des mises à jour est désactivée",
+    "failedTitle": "GitHub ne répond pas",
+    "upToDate": "Tu es à jour",
+    "notChecked": "Pas encore vérifié",
+    "edgeTitle": "C’est une build edge",
+    "edgeHelp": "Les builds edge ne sont pas comparées aux versions : les nouveautés sont sur GitHub.",
+    "running": "Tu utilises la {{version}}",
+    "checkedAt": "vérifié {{time}}",
+    "offHelp": "Active l’avis ci-dessous pour savoir quand une nouvelle version sort.",
+    "alerts": "Avis",
+    "notify": "Me prévenir quand une nouvelle version sort",
+    "notifyHelp": "Inkadra consulte GitHub toutes les 6 heures et affiche un avis aux administrateurs. Aucune donnée de ton serveur n’est envoyée.",
+    "channel": "Quelles versions",
+    "channelHelp": "Les préversions arrivent plus tôt mais peuvent avoir quelques problèmes. Cela change seulement ce qui t’est signalé.",
+    "channels": {
+      "stable": "Stables uniquement (recommandé)",
+      "preview": "Aussi les préversions (release candidates)"
+    },
+    "earlier": "Versions précédentes",
+    "allOnGitHub": "Toutes sur GitHub ↗",
+    "noSummary": "Corrections",
+    "inUse": "Utilisée",
+    "available": "Une nouvelle version est disponible : {{version}}",
+    "released": "sortie le {{date}}",
+    "preview": "Préversion",
+    "stable": "Stable",
+    "readAll": "Lire toutes les nouveautés ↗",
+    "beforeUpdating_one": "{{count}} chose à savoir avant la mise à jour",
+    "beforeUpdating_other": "{{count}} choses à savoir avant la mise à jour",
+    "how": "Comment mettre à jour",
+    "howBackup": "Fais une sauvegarde, depuis <backup>Sauvegardes</backup>.",
+    "howTag": "Sur le serveur, dans le fichier <file>.env</file>, écris la nouvelle version :",
+    "howRestart": "Redémarre Inkadra avec la nouvelle version :",
+    "howRest": "Inkadra fait le reste tout seul au démarrage.",
+    "guide": "Guide complet ↗",
+    "navAvailable": "Disponible : {{version}}",
+    "popupTitle": "Inkadra {{version}} est disponible",
+    "releasedShort": "sortie le {{date}}",
+    "runningShort": "tu utilises la {{version}}",
+    "close": "Fermer",
+    "toRead_one": "{{count}} chose à lire avant la mise à jour",
+    "toRead_other": "{{count}} choses à lire avant la mise à jour",
+    "skip": "Ignorer cette version",
+    "github": "GitHub ↗",
+    "seeNews": "Voir les nouveautés"
   }
 }

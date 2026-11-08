@@ -72,6 +72,19 @@ const fields = {
   serverView: z.enum(['simple', 'advanced']).openapi({
     description: 'How an administrator last looked at the Server settings page (#514).',
   }),
+  updateSeen: z
+    .string()
+    .max(64)
+    .nullable()
+    .openapi({
+      description:
+        'Administrators: the release whose update pop-up this person already saw, so it shows ' +
+        'once per version (#515).',
+    }),
+  updateSkipped: z.string().max(64).nullable().openapi({
+    description:
+      'Administrators: the release this person chose to skip; the settings stop pointing at it.',
+  }),
 };
 
 export const UserPreferences = z.object(fields).openapi('UserPreferences');
@@ -102,6 +115,8 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   tutorialsSeen: [],
   tutorialHints: true,
   serverView: 'simple',
+  updateSeen: null,
+  updateSkipped: null,
 };
 
 /**
