@@ -13,7 +13,12 @@ import type { z } from 'zod';
  */
 export class ArchiveError extends Error {
   constructor(
-    readonly reason: 'invalid_archive' | 'too_large' | 'unsupported_version' | 'too_new',
+    readonly reason:
+      | 'invalid_archive'
+      | 'too_large'
+      | 'unsupported_version'
+      | 'too_new'
+      | 'storage_full',
     message: string,
   ) {
     super(message);

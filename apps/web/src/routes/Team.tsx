@@ -3,6 +3,7 @@ import type {
   InstanceSettings,
   Invitation,
   InvitationResult,
+  StorageLimits,
 } from '@inkadra/shared';
 import {
   Avatar,
@@ -10,16 +11,22 @@ import {
   Dialog,
   DialogActions,
   Icon,
+  IconButton,
+  Radio,
   Select,
   Switch,
   TextField,
 } from '@inkadra/ui';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { formatDateTime } from '../lib/datetime.ts';
 import { useSession } from '../lib/session.tsx';
+import { useMenu } from './ProjectAppearance.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
+import { formatStorage } from './StorageCharts.tsx';
+import { SizeInput } from './StorageLimitsSettings.tsx';
+import { LargestFilesDialog, SpaceMeter, spaceTone } from './StorageSpace.tsx';
 import { trackSave } from './settings-save.ts';
 import { Badge, Card, Row } from './settings-ui.tsx';
 
@@ -52,15 +59,21 @@ export function Team() {
   const [inviting, setInviting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [deactivating, setDeactivating] = useState<InstanceMember | null>(null);
+  const [spaceOf, setSpaceOf] = useState<InstanceMember | null>(null);
+  const [filesOf, setFilesOf] = useState<InstanceMember | null>(null);
+  const [limits, setLimits] = useState<StorageLimits | null>(null);
   const admin = user?.role === 'admin';
   const load = useCallback(async () => {
-    const [people, pending, instanceSettings] = await Promise.all([
+    const [people, pending, instanceSettings, storageLimits] = await Promise.all([
       api.get<{ items: InstanceMember[] }>('/instance/members'),
       api.get<{ items: Invitation[] }>('/invitations'),
       api.get<InstanceSettings>('/instance/settings'),
+      // Older pages work without it: the column then shows the size alone.
+      api.get<StorageLimits>('/instance/storage-limits').catch(() => null),
     ]);
     setMembers(people.items);
     setSettings(instanceSettings);
+    setLimits(storageLimits);
     setInvitations(pending.items.filter((i) => i.projectId === null && i.boardId === null));
   }, []);
   useEffect(() => {
@@ -215,6 +228,9 @@ export function Team() {
                 <th scope="col" className="team-col--create">
                   {t('projectCreation.column')}
                 </th>
+                <th scope="col" className="team-col--space">
+                  {t('storageSpace.column')}
+                </th>
                 <th scope="col" className="team-col--projects">
                   {t('admin.projects')}
                 </th>
@@ -296,6 +312,9 @@ export function Team() {
                         </Select>
                       )}
                     </td>
+                    <td className="team-col--space" data-label={t('storageSpace.column')}>
+                      <MemberSpace member={m} warnPercent={limits?.warnPercent ?? 80} />
+                    </td>
                     <td className="team-col--projects">{m.projectsCount}</td>
                     <td className="team-col--last settings-muted">
                       {m.lastActiveAt ? (
@@ -307,16 +326,16 @@ export function Team() {
                       )}
                     </td>
                     <td className="team-col--actions">
-                      <Button
-                        variant="ghost"
-                        disabled={busy || last}
-                        data-ink-tooltip={last ? t('admin.lastAdmin') : undefined}
-                        onClick={() =>
+                      <MemberMenu
+                        member={m}
+                        disabled={busy}
+                        last={last}
+                        onSpace={() => setSpaceOf(m)}
+                        onFiles={() => setFilesOf(m)}
+                        onActive={() =>
                           m.deactivatedAt ? void update(m.id, { active: true }) : setDeactivating(m)
                         }
-                      >
-                        {t(m.deactivatedAt ? 'admin.reactivate' : 'admin.deactivate')}
-                      </Button>
+                      />
                     </td>
                   </tr>
                 );
@@ -326,7 +345,7 @@ export function Team() {
               <tbody className="team-pending">
                 {invitations.map((i) => (
                   <tr key={i.id}>
-                    <th scope="row" colSpan={5}>
+                    <th scope="row" colSpan={4}>
                       <span className="team-person">
                         <Badge>{t('settingsUi.members.pending')}</Badge>
                         <span>
@@ -339,7 +358,8 @@ export function Team() {
                         </span>
                       </span>
                     </th>
-                    <td className="team-col--actions">
+                    {/* Resend and Revoke need more than the ⋯ column of the members above. */}
+                    <td className="team-col--actions" colSpan={3}>
                       {i.kind === 'email' && (
                         <Button
                           variant="ghost"
@@ -397,6 +417,23 @@ export function Team() {
           setInviting(false);
           setCreated(null);
         }}
+      />
+      {spaceOf && (
+        <PersonSpaceDialog
+          member={spaceOf}
+          limits={limits}
+          busy={busy}
+          onSave={async (storageLimit) => {
+            if (await update(spaceOf.id, { storageLimit })) setSpaceOf(null);
+          }}
+          onClose={() => setSpaceOf(null)}
+        />
+      )}
+      <LargestFilesDialog
+        open={filesOf !== null}
+        path={`/instance/members/${filesOf?.id ?? ''}/files`}
+        title={t('storageSpace.filesOf', { name: filesOf?.name ?? '' })}
+        onClose={() => setFilesOf(null)}
       />
       <Dialog
         open={deactivating !== null}
@@ -486,6 +523,179 @@ function InviteDialog({
           </DialogActions>
         </form>
       )}
+    </Dialog>
+  );
+}
+
+/** The Spazio column: what a person uses over their limit, with a short bar. */
+function MemberSpace({ member, warnPercent }: { member: InstanceMember; warnPercent: number }) {
+  const { t, i18n } = useTranslation();
+  if (member.storageBytes === undefined) return null;
+  const size = (bytes: number) => formatStorage(bytes, i18n.language);
+  const limit = member.storageLimit ?? null;
+  const own = (member.storageLimitOverride ?? 0) > 0;
+  return (
+    <span className="space-mini">
+      <span>
+        {size(member.storageBytes)}{' '}
+        <em>
+          /{' '}
+          {limit === null
+            ? t('storageSpace.unlimitedShort')
+            : own
+              ? t('storageSpace.own', { size: size(limit) })
+              : size(limit)}
+        </em>
+      </span>
+      {limit !== null && (
+        <SpaceMeter
+          originals={member.storageBytes}
+          limit={limit}
+          tone={spaceTone(member.storageBytes, limit, warnPercent)}
+          label={member.name}
+          small
+        />
+      )}
+    </span>
+  );
+}
+
+/** The ⋯ menu of a member: space, files, then deactivation set apart. */
+function MemberMenu({
+  member,
+  disabled,
+  last,
+  onSpace,
+  onFiles,
+  onActive,
+}: {
+  member: InstanceMember;
+  disabled: boolean;
+  last: boolean;
+  onSpace: () => void;
+  onFiles: () => void;
+  onActive: () => void;
+}) {
+  const { t } = useTranslation();
+  const label = t('storageSpace.actionsFor', { name: member.name });
+  const menu = useMenu(label, [
+    { label: t('storageSpace.changeLimit'), action: onSpace },
+    { label: t('storageSpace.seeFiles'), action: onFiles },
+    {
+      label: t(member.deactivatedAt ? 'admin.reactivate' : 'admin.deactivate'),
+      action: onActive,
+      disabled: last,
+      danger: true,
+    },
+  ]);
+  return (
+    <>
+      <IconButton
+        icon="more"
+        label={label}
+        aria-haspopup="menu"
+        aria-expanded={menu.isOpen}
+        disabled={disabled}
+        onClick={(e) => menu.open(e.currentTarget, e.currentTarget)}
+      />
+      {menu.layer}
+    </>
+  );
+}
+
+type Choice = 'default' | 'own' | 'none';
+
+/** "Spazio di …": as everyone, a limit of their own, or none. */
+function PersonSpaceDialog({
+  member,
+  limits,
+  busy,
+  onSave,
+  onClose,
+}: {
+  member: InstanceMember;
+  limits: StorageLimits | null;
+  busy: boolean;
+  onSave: (storageLimit: number | null) => Promise<void>;
+  onClose: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const name = useId();
+  const size = (bytes: number) => formatStorage(bytes, i18n.language);
+  const override = member.storageLimitOverride ?? null;
+  const [choice, setChoice] = useState<Choice>(
+    override === null ? 'default' : override === 0 ? 'none' : 'own',
+  );
+  const perUser = limits?.perUser ?? null;
+  const [own, setOwn] = useState(override && override > 0 ? override : (perUser ?? 5e9));
+  // A limit of the environment can only be lowered for one person.
+  const ceiling = limits?.locked.perUser ? perUser : null;
+  const used = member.storageBytes ?? 0;
+  const limit = member.storageLimit ?? null;
+  const choices: Array<{ value: Choice; label: string; disabled?: boolean }> = [
+    {
+      value: 'default',
+      label: t('storageSpace.asEveryone', {
+        size: perUser === null ? t('storageSpace.unlimitedShort') : size(perUser),
+      }),
+    },
+    { value: 'own', label: t('storageSpace.ownLimit') },
+    { value: 'none', label: t('storageSpace.unlimited'), disabled: ceiling !== null },
+  ];
+  return (
+    <Dialog open title={t('storageSpace.spaceOf', { name: member.name })} onClose={onClose}>
+      <p className="settings-muted">{t('storageSpace.uses', { size: size(used) })}</p>
+      {limit !== null && (
+        <SpaceMeter
+          originals={used}
+          limit={limit}
+          tone={spaceTone(used, limit, limits?.warnPercent ?? 80)}
+          label={t('storageSpace.spaceOf', { name: member.name })}
+        />
+      )}
+      <fieldset className="space-choice">
+        <legend className="ink-sr-only">{t('storageSpace.changeLimit')}</legend>
+        {choices.map((c) => (
+          <label key={c.value}>
+            <Radio
+              name={name}
+              value={c.value}
+              checked={choice === c.value}
+              disabled={c.disabled}
+              onChange={() => setChoice(c.value)}
+            />
+            {c.label}
+            {c.value === 'own' && (
+              <span className="space-limit">
+                <SizeInput
+                  value={own}
+                  label={t('storageSpace.ownLimit')}
+                  readOnly={choice !== 'own'}
+                  onCommit={setOwn}
+                />
+              </span>
+            )}
+          </label>
+        ))}
+      </fieldset>
+      {ceiling !== null && choice === 'own' && own > ceiling && (
+        <p role="alert" className="settings-error">
+          {t('storageSpace.ceiling', { size: size(ceiling) })}
+        </p>
+      )}
+      <p className="settings-muted">{t('storageSpace.lowerHelp')}</p>
+      <DialogActions>
+        <Button variant="ghost" onClick={onClose}>
+          {t('project.cancel')}
+        </Button>
+        <Button
+          variant="primary"
+          disabled={busy || (ceiling !== null && choice === 'own' && own > ceiling)}
+          onClick={() => void onSave(choice === 'default' ? null : choice === 'none' ? 0 : own)}
+        >
+          {t('storageSpace.save')}
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 }

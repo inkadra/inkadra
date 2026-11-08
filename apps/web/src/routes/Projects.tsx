@@ -165,6 +165,9 @@ export function Projects() {
       busy={busy}
       mutate={mutate}
       onAppearanceSaved={replace}
+      onDeleted={() =>
+        setItems((current) => current?.filter((r) => r.project.id !== row.project.id) ?? null)
+      }
       onError={() => setError(true)}
     />
   );
@@ -417,11 +420,13 @@ function ProjectCard({
   busy,
   mutate,
   onAppearanceSaved,
+  onDeleted,
   onError,
 }: {
   row: ProjectOverview;
   onError: () => void;
   onAppearanceSaved: (project: Project) => void;
+  onDeleted: () => void;
   busy: boolean;
   mutate: (p: Project, change: Change) => Promise<boolean>;
 }) {
@@ -459,6 +464,7 @@ function ProjectCard({
         : []),
     ],
     onAppearanceSaved,
+    onDeleted,
   );
   const date = (value: string) =>
     formatDateTime(`${value}T12:00:00`, {

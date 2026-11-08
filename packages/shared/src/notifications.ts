@@ -113,10 +113,16 @@ export type Notification = z.infer<typeof Notification>;
 export function notificationPath(
   item: Pick<Notification, 'projectId' | 'boardId' | 'elementId' | 'commentId' | 'threadId'> & {
     type?: string;
+    serverAlert?: Pick<NonNullable<Notification['serverAlert']>, 'kind'> | null;
   },
 ): string | null {
   if (item.type === 'feedback_received') return '/settings?section=instance';
-  if (item.type === 'server_alert') return '/settings?section=server';
+  if (item.type === 'server_alert')
+    return item.serverAlert?.kind === 'storage_limit'
+      ? '/settings?section=workspace'
+      : item.serverAlert?.kind === 'storage_request'
+        ? '/settings/team'
+        : '/settings?section=server';
   if (item.type === 'update_available') return '/settings?section=updates';
   if (!item.projectId) return null;
   const path = item.boardId ? `/p/${item.projectId}/b/${item.boardId}` : `/p/${item.projectId}`;

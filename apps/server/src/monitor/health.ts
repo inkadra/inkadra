@@ -3,6 +3,7 @@ import { desc, gt, sql } from 'drizzle-orm';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { asset, instanceBackup } from '../db/schema.ts';
+import { readLimits, usedBytes } from '../storage-limits.ts';
 import { type AlertDeps, sendServerAlert } from './alerts.ts';
 import { type Beat, DAY_MS, lastHour, type StoredProblem } from './store.ts';
 
@@ -121,6 +122,32 @@ export async function checkHealth(deps: HealthDeps, now = Date.now()) {
           free: Math.round(disk.free),
           total: Math.round(disk.total),
           weeksLeft,
+          count: null,
+        },
+        true,
+      );
+    }
+  }
+
+  // The instance total past its warning share (decision 0081): at most once a day.
+  const limits = await readLimits(db, config);
+  if (limits.total !== null) {
+    const used = await usedBytes(db);
+    const bytes = used.originals + used.derived;
+    if (
+      bytes >= (limits.total * limits.warnPercent) / 100 &&
+      (await store.once('storage-limit', DAY_MS / 1000))
+    ) {
+      const growth = await growthPerMonth(db, now);
+      const free = Math.max(0, limits.total - bytes);
+      await sendServerAlert(
+        deps,
+        {
+          kind: 'storage_limit',
+          service: null,
+          free: Math.round(free),
+          total: limits.total,
+          weeksLeft: growth > 0 ? free / (growth / (30 / 7)) : null,
           count: null,
         },
         true,

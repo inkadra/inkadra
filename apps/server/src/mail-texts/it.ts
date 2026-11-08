@@ -163,10 +163,15 @@ export const it = {
       service_down: 'Un servizio non risponde',
       backup_failed: 'Backup non riuscito',
       repeated_errors: 'Errori che si ripetono',
+      storage_limit: 'Spazio dell’istanza quasi finito',
+      storage_request: 'Richiesta di più spazio',
     },
     disk: (free: string, total: string, weeks: string | null) =>
       `Restano ${free} su ${total}.${weeks ? ` Al ritmo attuale bastano circa ${weeks}.` : ''} Libera spazio o aggiungi un disco prima che i caricamenti si fermino.`,
     weeks: (n: number) => plural(n, 'una settimana', 'settimane'),
+    storage: (used: string, total: string, weeks: string | null) =>
+      `Lo spazio dell’istanza è usato per ${used} su ${total}.${weeks ? ` Al ritmo attuale basta per circa ${weeks}.` : ''} Alza il limite o libera spazio prima che i caricamenti si fermino.`,
+    storageAction: 'Apri Archiviazione',
     down: (service: string) =>
       `${service} non risponde. Il resto di Inkadra funziona, ma questa parte è ferma finché il servizio non riparte.`,
     backup:

@@ -373,6 +373,19 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    id: 'storage',
+    group: 'admin',
+    icon: 'archive',
+    admin: true,
+    offer: 'storage-limits',
+    href: '/settings?section=workspace',
+    steps: [
+      { anchor: 'storage-used', media: 'gear', side: 'bottom' },
+      { anchor: 'storage-limits', media: 'gear', side: 'top' },
+      { anchor: null, media: 'users' },
+    ],
+  },
+  {
     id: 'users',
     group: 'admin',
     icon: 'user',

@@ -1,5 +1,7 @@
 import type { StorageUsage } from '@inkadra/shared';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { Card } from './settings-ui.tsx';
 import './storage-charts.css';
 
@@ -27,16 +29,18 @@ function Breakdown({
   title,
   rows,
   total,
+  action,
 }: {
   title: string;
   rows: Array<{ id: string; label: string; bytes: number }>;
   total: number;
+  action?: ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const sorted = [...rows].sort((a, b) => b.bytes - a.bytes);
   const width = (bytes: number) => `${total ? (bytes / total) * 100 : 0}%`;
   return (
-    <Card title={title} className="storage-chart">
+    <Card title={title} className="storage-chart" action={action}>
       <div className="storage-chart__stack" aria-hidden="true">
         {sorted.map((row, i) => (
           <span
@@ -125,6 +129,11 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
           {usage.byUser && (
             <Breakdown
               title={t('admin.storageCharts.byUser')}
+              action={
+                <Link className="space-link" to="/settings/team">
+                  {t('storageLimits.openMembers')}
+                </Link>
+              }
               total={usage.originalBytes + (usage.derivedBytes ?? 0)}
               rows={usage.byUser.map((row) => ({
                 id: row.userId ?? 'none',

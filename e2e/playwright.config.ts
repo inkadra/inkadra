@@ -104,6 +104,9 @@ export default defineConfig({
         MAP_SATELLITE_TILE_URL: `http://127.0.0.1:${tilePort}/satellite/{z}/{x}/{y}.png`,
         MAP_GEOCODER_URL: process.env.E2E_GEOCODER_URL ?? `http://127.0.0.1:${tilePort}/geocode`,
         LOG_LEVEL: 'warn',
+        // storage-limits-locked.spec.ts: the limits of a managed server (decision 0081).
+        STORAGE_LIMIT: process.env.STORAGE_LIMIT ?? '',
+        STORAGE_LIMIT_PER_USER: process.env.STORAGE_LIMIT_PER_USER ?? '',
       },
     },
     // Last: canvas-06 and frame-grab drop the first entry (Vite) and keep the rest.

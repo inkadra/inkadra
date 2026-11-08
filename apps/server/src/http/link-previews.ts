@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { API_PREFIX, CreateLinkPreview, type LinkPreview, youtubeVideoId } from '@inkadra/shared';
+import { eq } from 'drizzle-orm';
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import { Parser } from 'htmlparser2';
 import { requireWriteAccess } from '../access.ts';
 import type { Auth } from '../auth.ts';
+import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
@@ -12,12 +14,14 @@ import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
 import { RateLimiter } from '../rate-limits.ts';
 import { FetchRefused, type SafeResponse, safeFetch } from '../safe-fetch.ts';
 import { originalKey, type Storage } from '../storage.ts';
+import { reserveSpace } from '../storage-limits.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
 export { RateLimiter } from '../rate-limits.ts';
 
 interface Deps {
+  config?: Config;
   db: Database;
   auth: Auth;
   storage: Storage;
@@ -174,6 +178,8 @@ export interface FetchDeps {
   db: Database;
   storage: Storage;
   allowAddresses: string[];
+  /** For the storage limits (decision 0081); without it nothing is checked. */
+  config?: Config;
 }
 
 /** Last part of the path of an address, decoded, for the name of a fetched file. */
@@ -192,7 +198,7 @@ export function nameFromUrl(url: string, fallback: string): string {
  * refused with FetchRefused.
  */
 export async function saveFetchedImage(
-  deps: Pick<FetchDeps, 'db' | 'storage'>,
+  deps: Pick<FetchDeps, 'db' | 'storage' | 'config'>,
   image: SafeResponse,
   opts: { projectId: string; actorId: string; sourceUrl: string; filename?: string },
 ): Promise<string> {
@@ -200,9 +206,8 @@ export async function saveFetchedImage(
   if (!mime) throw new FetchRefused('The address does not hold an image.');
   const id = randomUUID();
   const filename = opts.filename ?? nameFromUrl(image.url, 'image');
-  await deps.storage.write(originalKey(id), image.body, mime);
-  try {
-    await deps.db.insert(asset).values({
+  const insert = async (tx: Pick<Database, 'insert'>) => {
+    await tx.insert(asset).values({
       id,
       projectId: opts.projectId,
       kind: 'image',
@@ -213,9 +218,16 @@ export async function saveFetchedImage(
       sourceUrl: opts.sourceUrl,
       createdBy: opts.actorId,
     });
+  };
+  // The row first, pending, so that it holds its place within the storage limits.
+  if (deps.config)
+    await reserveSpace(deps.db, deps.config, opts.actorId, image.body.length, insert);
+  else await insert(deps.db);
+  try {
+    await deps.storage.write(originalKey(id), image.body, mime);
   } catch (err) {
-    // Without its row nothing would ever find the file.
-    await deps.storage.remove([originalKey(id)]).catch(() => {});
+    // A row without its file would show a broken picture.
+    await deps.db.delete(asset).where(eq(asset.id, id));
     throw err;
   }
   return id;
@@ -289,7 +301,7 @@ export function registerLinkPreviews(app: FastifyInstance, deps: Deps) {
       throw err;
     }
     const body = await pagePreview(
-      { db, storage, allowAddresses },
+      { db, storage, allowAddresses, config: deps.config },
       page,
       { projectId: input.projectId, actorId: actor.id },
       req.log,

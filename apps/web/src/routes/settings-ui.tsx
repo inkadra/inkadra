@@ -80,7 +80,7 @@ export function Badge({
   tone = 'neutral',
   children,
 }: {
-  tone?: 'ok' | 'warn' | 'neutral' | 'accent';
+  tone?: 'ok' | 'warn' | 'danger' | 'neutral' | 'accent';
   children: ReactNode;
 }) {
   return <span className={`settings-badge settings-badge--${tone}`}>{children}</span>;

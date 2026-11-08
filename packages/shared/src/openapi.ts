@@ -87,9 +87,14 @@ import {
   InstanceMember,
   InstanceSettings,
   InstanceUpdates,
+  MyStorage,
+  StorageFiles,
+  StorageFull,
+  StorageLimits,
   StorageUsage,
   UpdateInstanceMember,
   UpdateInstanceSettings,
+  UpdateStorageLimits,
 } from './instance-admin.ts';
 import {
   CreateMapPreview,
@@ -948,6 +953,64 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/storage-limits'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: storage limits, with the space used and the disk.',
+  responses: { 200: { description: 'Limits', ...json(StorageLimits) }, ...errors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/instance/storage-limits'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: change storage limits (decision 0081).',
+  description:
+    'A limit below the space already used is allowed: nothing is deleted, new files are ' +
+    'refused. A limit set by the server environment cannot be changed (403).',
+  request: { body: { required: true, ...json(UpdateStorageLimits) } },
+  responses: { 200: { description: 'Saved', ...json(StorageLimits) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/members/{userId}/files'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: the 50 largest files of a person.',
+  description: 'Files in projects the administrator cannot open are only counted.',
+  request: { params: z.object({ userId: Id }) },
+  responses: { 200: { description: 'Files', ...json(StorageFiles) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/storage'),
+  tags: ['Users'],
+  security: secured,
+  summary: 'The space the signed-in person uses, and their limit.',
+  responses: { 200: { description: 'Space', ...json(MyStorage) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/storage/files'),
+  tags: ['Users'],
+  security: secured,
+  summary: 'The 50 largest files the signed-in person uploaded.',
+  responses: { 200: { description: 'Files', ...json(StorageFiles) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/me/storage/request'),
+  tags: ['Users'],
+  security: secured,
+  summary: 'Ask the administrators for more space: an Inbox alert, at most one a day.',
+  responses: {
+    200: { description: 'Sent, or already sent today', ...json(z.object({ sent: z.boolean() })) },
+    ...errors,
+  },
+});
+
 // Project export and import, instance backups (decision 0037) -------------------
 
 const zipBody = z.string().openapi({ format: 'binary' });
@@ -1577,7 +1640,12 @@ registry.registerPath({
   responses: {
     201: { description: 'Upload created; Location header points to it' },
     ...errors,
-    413: { description: 'Larger than the instance limit (see Instance.limits)' },
+    413: {
+      description:
+        'Larger than UPLOAD_MAX_SIZE (plain text), or no space left for it: the body is then ' +
+        'StorageFull as JSON. The space is checked again when the last byte arrives.',
+      ...json(StorageFull),
+    },
   },
 });
 const uploadParams = z.object({ uploadId: Id });

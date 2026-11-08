@@ -183,6 +183,9 @@
   "error_too_large": {
     "message": "El archivo es demasiado grande para este servidor."
   },
+  "error_storage_full": {
+    "message": "No queda espacio para este archivo en Inkadra. Libera espacio o pide ayuda a un administrador."
+  },
   "error_offline": {
     "message": "El servidor no responde: comprueba la conexión."
   },

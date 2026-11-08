@@ -20,6 +20,7 @@ import {
   type NoteBlock,
 } from '../board-writer.ts';
 import { rememberClipBoard } from '../clip-board-history.ts';
+import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
@@ -27,6 +28,7 @@ import { sniffImage } from '../media/heic.ts';
 import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
 import { FetchRefused, type SafeResponse, safeFetch } from '../safe-fetch.ts';
 import { originalKey, type Storage } from '../storage.ts';
+import { reserveSpace } from '../storage-limits.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import {
@@ -39,6 +41,8 @@ import {
 import { cleanMime, kindOf } from './uploads.ts';
 
 interface Deps {
+  /** For the storage limits (decision 0081); tests may leave it out. */
+  config?: Config;
   db: Database;
   auth: Auth;
   storage: Storage;
@@ -175,7 +179,12 @@ async function readForm(
 
 export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth, storage, jobs } = deps;
-  const fetchDeps: FetchDeps = { db, storage, allowAddresses: deps.allowAddresses ?? [] };
+  const fetchDeps: FetchDeps = {
+    db,
+    storage,
+    allowAddresses: deps.allowAddresses ?? [],
+    config: deps.config,
+  };
   // Each clip can fetch two addresses or store a large file.
   const limiter = new RateLimiter(30, 60_000);
   const imageMax =
@@ -198,6 +207,23 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
     const kind = sniffed ? 'image' : kindOf(mime, file.filename);
     const id = randomUUID();
     const key = originalKey(id);
+    const insert = async (tx: Pick<Database, 'insert'>) => {
+      await tx.insert(asset).values({
+        id,
+        projectId: ctx.projectId,
+        kind,
+        mime,
+        filename: file.filename,
+        size: file.size,
+        storageKey: key,
+        sourceUrl: ctx.sourceUrl ?? null,
+        createdBy: ctx.actor.id,
+      });
+    };
+    // The row first, pending, so that it holds its place within the storage limits; a clip
+    // that fails later discards it with the other assets in `created`.
+    if (deps.config) await reserveSpace(db, deps.config, ctx.actor.id, file.size, insert);
+    else await insert(db);
     ctx.created.push(id);
     // Through the upload store, which streams large files to the bucket in parts.
     try {
@@ -218,17 +244,6 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
         .catch((e) => ctx.log.warn({ err: e, key }, 'unfinished clip file not removed'));
       throw err;
     }
-    await db.insert(asset).values({
-      id,
-      projectId: ctx.projectId,
-      kind,
-      mime,
-      filename: file.filename,
-      size: file.size,
-      storageKey: key,
-      sourceUrl: ctx.sourceUrl ?? null,
-      createdBy: ctx.actor.id,
-    });
     return { id, kind };
   }
 
