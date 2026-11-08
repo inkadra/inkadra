@@ -28,7 +28,7 @@ const about: Record<string, { tags: string[]; caption?: string }> = {
   platform: { tags: ['luce', 'location'], caption: 'Platform 4, 1:52 a.m.' },
   diner: { tags: ['location', 'costumi'], caption: "Rosa's, the only light still on" },
   rain: { tags: ['luce'], caption: 'The forecourt in the rain' },
-  window: { tags: ['luce'] },
+  window: { tags: ['luce'], caption: 'The carriages pull away' },
   train: { tags: ['location'], caption: 'The doors close' },
   cups: { tags: ['costumi'], caption: 'Two coffees, one ticket' },
   tunnel: { tags: ['location', 'luce'], caption: 'Tail lights into the tunnel' },

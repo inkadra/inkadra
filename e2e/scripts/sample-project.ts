@@ -31,7 +31,7 @@ export const account = {
 const opts = { userId: null };
 
 async function renderStills(browser: Browser): Promise<Record<string, Buffer>> {
-  const page = await browser.newPage();
+  const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   const result: Record<string, Buffer> = {};
   for (const name of STILL_NAMES) {
     await page.setViewportSize(stillSize(name));
@@ -93,9 +93,9 @@ function localDate(offset: number) {
 export async function seedSampleProject(browser: Browser, base: string): Promise<SampleProject> {
   const pictures = await renderStills(browser);
   const cookie = await signIn(base, account);
-  const me = (await (
-    await fetch(`${base}/api/v1/me`, { headers: { cookie } })
-  ).json()) as { id: string };
+  const me = (await (await fetch(`${base}/api/v1/me`, { headers: { cookie } })).json()) as {
+    id: string;
+  };
   const project = await api<{ id: string; rootBoardId: string }>(base, cookie, '/projects', {
     name: 'Last Train',
   });
@@ -211,9 +211,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
       createElement(mood, 'image', { x: 0, y: 0 }, { assetId: pic('dawn') }, opts).id,
       createElement(mood, 'image', { x: 0, y: 0 }, { assetId: pic('sea') }, opts).id,
       createElement(mood, 'image', { x: 0, y: 0 }, { assetId: pic('field') }, opts).id,
-      note(mood, { x: 0, y: 0 }, [
-        'Blue hour for the ending, the sky still holding some warmth.',
-      ]),
+      note(mood, { x: 0, y: 0 }, ['Blue hour for the ending, the sky still holding some warmth.']),
       note(mood, { x: 0, y: 0 }, [
         'Sound',
         'The lamps hum. That hum is the score until the diner: no music before the first train.',
@@ -359,7 +357,8 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
             lens: '32mm',
             status: 'ready',
             cast: ['Anna', 'Leo', 'Rosa'],
-            dialogue: 'LEO: Missed it too?\nANNA: By about a minute.\nLEO: Then you have six hours.',
+            dialogue:
+              'LEO: Missed it too?\nANNA: By about a minute.\nLEO: Then you have six hours.',
           },
         ],
         [
@@ -370,7 +369,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
             shot: 'insert',
             angle: 'high',
             movement: 'static',
-            lens: '100mm macro',
+            lens: '100mm',
             status: 'todo',
           },
         ],
@@ -444,7 +443,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
 
     // What the scenes need, for the shooting days that shoot them.
     const list = (
-      x: number,
+      y: number,
       title: string,
       kind: 'wardrobe' | 'props' | 'equipment',
       scene: string,
@@ -453,7 +452,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
       createElement(
         story,
         'todo',
-        { x, y: 1400 },
+        { x: 940, y },
         {
           title,
           list: kind,
@@ -467,8 +466,8 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
         opts,
       );
     list(0, 'Rain night', 'equipment', '1', ['Rain machine', 'Six sodium lamps', 'Haze machine']);
-    list(280, 'Anna, night 1', 'wardrobe', '1', ['Grey wool coat ×2', 'Red scarf']);
-    list(560, 'At the counter', 'props', '2', ['Two cups and saucers', 'Punched train ticket']);
+    list(220, 'Anna, night 1', 'wardrobe', '1', ['Grey wool coat ×2', 'Red scarf']);
+    list(420, 'At the counter', 'props', '2', ['Two cups and saucers', 'Punched train ticket']);
   });
   await pushBoardDoc(base, cookie, storyboard.id, story);
 
@@ -477,7 +476,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
   initBoardDoc(cast, casting.id);
   cast.transact(() => {
     createElement(cast, 'section', { x: 0, y: 0 }, { title: 'Characters', w: 1240 }, opts);
-    const character = (x: number, fields: Record<string, unknown>) =>
+    const character = (x: number, fields: { name: string } & Record<string, unknown>) =>
       createElement(cast, 'character', { x, y: 70 }, { w: 280, ...fields }, opts).id;
     const leo = character(320, {
       name: 'Leo',
@@ -550,7 +549,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     });
 
     createElement(cast, 'section', { x: 0, y: 330 }, { title: 'Locations', w: 1240 }, opts);
-    const location = (x: number, fields: Record<string, unknown>) =>
+    const location = (x: number, fields: { name: string } & Record<string, unknown>) =>
       createElement(cast, 'location', { x, y: 400 }, { w: 280, ...fields }, opts).id;
     const station = location(0, {
       name: 'Central station',
@@ -651,15 +650,16 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
           icon('Lamp2', 'practical', '#EDD963', 500, 220),
           icon('Lamp3', 'practical', '#EDD963', 640, 220),
           {
-            ...icon('Sodium', 'fresnel', '#F79B54', 480, 30),
-            rotation: 90,
+            ...icon('Sodium', 'fresnel', '#F79B54', 640, 30),
+            rotation: 110,
+            reach: 160,
             label: 'Sodium 2K',
             power: '2K',
             beam: 40,
             intensity: 0.6,
           },
           { ...icon('Bounce', 'bounce', grey, 250, 400), rotation: 30 },
-          { ...icon('Rosa', 'actor', '#5FC2B5', 500, 190), rotation: 90, label: 'Rosa' },
+          { ...icon('Rosa', 'actor', '#5FC2B5', 440, 160), rotation: 90, label: 'Rosa' },
           { ...icon('Anna', 'actor', '#B897F0', 420, 340), rotation: 270, label: 'Anna' },
           {
             ...icon('Leo', 'actor', '#F79B54', 580, 340),
@@ -691,7 +691,8 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
   });
   await pushBoardDoc(base, cookie, setPlan.id, planDoc);
 
-  // Three shooting nights from today: the card on Home, the schedule and the call sheets.
+  // Three shooting days from today, a rest day before the dawn one: the card on Home, the
+  // schedule and the call sheets.
   const block = (
     type: string,
     title: string,
@@ -760,7 +761,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
       block('shot', 'Dawn through the glass', 30, { start: '04:40', shot: '2C', cast: ['Leo'] }),
     ],
   });
-  await day(2, {
+  await day(3, {
     callTime: '03:30',
     wrap: '09:00',
     location: 'Signal box, coast line',

@@ -9,7 +9,7 @@
 
 type Stop = [offset: number, color: string, opacity?: number];
 
-const f = (n: number) => String(Math.round(n * 10) / 10);
+const f = (n: number) => String(Math.round(n * 100) / 100);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /** The same scattered details on every run. */
@@ -136,7 +136,7 @@ function personParts(p: Person) {
 
 function person(c: Canvas, p: Person) {
   const s = p.h / 100;
-  const transform = `translate(${f(p.x)} ${f(p.y - p.h)}) scale(${f(s * (p.broad ? 116 : 100)) / 100} ${f(s * 100) / 100})`;
+  const transform = `translate(${f(p.x)} ${f(p.y - p.h)}) scale(${f(s * (p.broad ? 1.16 : 1))} ${f(s)})`;
   const scarf = p.scarf
     ? `<path d="${SCARF}" fill="${p.scarf}"/><path d="${SCARF_TAIL}" fill="${p.scarf}"/>`
     : '';
@@ -155,7 +155,16 @@ function reflection(c: Canvas, p: Person, opacity = 0.35) {
 /** Someone on a stool, seen from behind: for the counter of the diner. */
 function seated(
   c: Canvas,
-  o: { x: number; y: number; h: number; fill: string; rim: string; cap?: boolean; bun?: boolean; scarf?: string },
+  o: {
+    x: number;
+    y: number;
+    h: number;
+    fill: string;
+    rim: string;
+    cap?: boolean;
+    bun?: boolean;
+    scarf?: string;
+  },
 ) {
   const parts = [
     HEAD,
@@ -170,7 +179,14 @@ function seated(
   ];
   const s = o.h / 100;
   const scarf = o.scarf ? `<path d="${SCARF}" fill="${o.scarf}"/>` : '';
-  return c.rimmed(parts, o.fill, o.rim, 1.3, `translate(${f(o.x)} ${f(o.y - o.h)}) scale(${f(s * 100) / 100})`, scarf);
+  return c.rimmed(
+    parts,
+    o.fill,
+    o.rim,
+    1.3,
+    `translate(${f(o.x)} ${f(o.y - o.h)}) scale(${f(s)})`,
+    scarf,
+  );
 }
 
 // Head and shoulders in profile, facing right, in a 1000 × 1000 box.
@@ -226,7 +242,15 @@ function wrap(c: Canvas, body: string, finish: Finish) {
 }
 
 /** A block of buildings with windows lit at random, for the far city. */
-function skyline(c: Canvas, x0: number, x1: number, base: number, seed: number, fill: string, lit: string) {
+function skyline(
+  c: Canvas,
+  x0: number,
+  x1: number,
+  base: number,
+  seed: number,
+  fill: string,
+  lit: string,
+) {
   const r = random(seed);
   let out = '';
   let x = x0;
@@ -534,7 +558,8 @@ function window_() {
     carriages += `<rect x="${x}" y="${312 + r() * 6}" width="${40 + r() * 10}" height="64" rx="6" fill="#F6D29A" opacity="${f(0.6 + r() * 0.35)}"/>`;
   }
   let lamps = '';
-  for (let i = 0; i < 9; i++) lamps += c.glow(100 + i * 190, 120 + (i % 2) * 30, 70, '#F2A65A', 0.8);
+  for (let i = 0; i < 9; i++)
+    lamps += c.glow(100 + i * 190, 120 + (i % 2) * 30, 70, '#F2A65A', 0.8);
   const t = 'translate(-60 150) scale(.92)';
   const scarf = `<path d="M560 640Q640 690 700 660L760 800Q640 850 520 800Z" fill="#9E2A25"/><path d="M600 720L640 720L620 820Z" fill="#7A1E1A"/>`;
   const body = `
@@ -577,7 +602,16 @@ function train() {
     }
     windows += c.glow(x + 110, 325, 200, '#F2C98A', 0.25);
   }
-  const anna: Person = { x: 1230, y: 900, h: 480, fill: '#050607', rim: '#F6B26B', light: 1.2, bun: true, scarf: '#9E2A25' };
+  const anna: Person = {
+    x: 1230,
+    y: 900,
+    h: 480,
+    fill: '#050607',
+    rim: '#F6B26B',
+    light: 1.2,
+    bun: true,
+    scarf: '#9E2A25',
+  };
   const body = `
   <rect width="${W}" height="${H}" fill="#0A0E12"/>
   <rect y="0" width="${W}" height="120" fill="#06080A"/>
@@ -904,7 +938,16 @@ function signalbox() {
       .join('')}
     ${c.glow(560, 50, 50, '#F2C76E', 1)}<circle cx="560" cy="50" r="5" fill="#FFF0C0"/>
   </g>`;
-  const leo: Person = { x: 1330, y: 960, h: 520, fill: '#06080A', rim: '#F2C76E', light: -1.2, cap: true, broad: true };
+  const leo: Person = {
+    x: 1330,
+    y: 960,
+    h: 520,
+    fill: '#06080A',
+    rim: '#F2C76E',
+    light: -1.2,
+    cap: true,
+    broad: true,
+  };
   const body = `
   <rect width="${W}" height="${H}" fill="${c.linear([
     [0, '#0A0E12'],
