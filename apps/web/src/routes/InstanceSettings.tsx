@@ -9,6 +9,7 @@ import { useSession } from '../lib/session.tsx';
 import { BackupSettings } from './BackupSettings.tsx';
 import { ProviderIcon } from './ProviderIcon.tsx';
 import { formatStorage, StorageCharts } from './StorageCharts.tsx';
+import { StorageLimitsCards } from './StorageLimitsSettings.tsx';
 import { ServerSettings } from './server/ServerSettings.tsx';
 import { trackSave } from './settings-save.ts';
 import { AutosaveText, Badge, Card, Row, Segmented } from './settings-ui.tsx';
@@ -211,12 +212,17 @@ export function InstanceSettings({ section, setup }: { section: string; setup: S
 function StoragePage() {
   const { t } = useTranslation();
   const storage = useStorageUsage();
-  return storage.error ? (
-    <LoadError />
-  ) : storage.usage ? (
-    <StorageCharts usage={storage.usage} />
-  ) : (
-    <p role="status">{t('admin.loading')}</p>
+  return (
+    <>
+      <StorageLimitsCards usage={storage.usage} />
+      {storage.error ? (
+        <LoadError />
+      ) : storage.usage ? (
+        <StorageCharts usage={storage.usage} />
+      ) : (
+        <p role="status">{t('admin.loading')}</p>
+      )}
+    </>
   );
 }
 

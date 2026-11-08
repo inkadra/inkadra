@@ -1,4 +1,4 @@
-import { isRawImageType } from '@inkadra/shared';
+import { isRawImageType, StorageFull } from '@inkadra/shared';
 import { API_PREFIX } from '@inkadra/shared/constants';
 import { useSyncExternalStore } from 'react';
 import { Upload } from 'tus-js-client';
@@ -12,8 +12,15 @@ export interface UploadItem {
   sent: number;
   bytesPerSecond: number;
   remainingSeconds: number | null;
-  /** `offline`: paused while the browser has no network, resumes by itself when it is back. */
-  state: 'uploading' | 'offline' | 'done' | 'failed' | 'cancelled';
+  /**
+   * `offline`: paused while the browser has no network, resumes by itself when it is back.
+   * `full`: refused for lack of space (decision 0081), never retried.
+   */
+  state: 'uploading' | 'offline' | 'done' | 'failed' | 'cancelled' | 'full';
+  /** Why a `full` upload was refused. */
+  refused?: StorageFull;
+  /** Files added together (one drop, one picker) share it: a refusal is told once for all. */
+  batch: number;
   /** A request failed and tus is retrying it, while the browser still reports a network. */
   reconnecting: boolean;
   /** Same file, same project: adding it again resumes this upload instead of starting another. */
@@ -31,6 +38,28 @@ let items: UploadItem[] = [];
 const uploads = new Map<string, Upload>();
 const listeners = new Set<() => void>();
 let seq = 0;
+let batch = 0;
+let batchOpen = false;
+/** Files started and finished in each batch: finished rows leave the panel before the rest. */
+const batchCounts = new Map<number, { total: number; done: number }>();
+
+export function batchCount(id: number) {
+  return batchCounts.get(id) ?? { total: 0, done: 0 };
+}
+
+/** The refusal of a 413 for lack of space, or null for any other failure. */
+export function storageRefusal(err: unknown): StorageFull | null {
+  const res = (
+    err as { originalResponse?: { getStatus(): number; getBody(): string } | null } | null
+  )?.originalResponse;
+  if (res?.getStatus() !== 413) return null;
+  try {
+    const parsed = StorageFull.safeParse(JSON.parse(res.getBody()));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
 
 const BUSY = 'uploads';
 
@@ -125,6 +154,14 @@ export function startUpload({
   }
   seq += 1;
   const key = `u${seq}`;
+  // Every upload started in the same task (a drop of 12 files) is one batch.
+  if (!batchOpen) {
+    batch += 1;
+    batchOpen = true;
+    queueMicrotask(() => {
+      batchOpen = false;
+    });
+  }
   const isImage =
     file.type.startsWith('image/') && !isDesignFile(file.name) && !isRawImageType(file.type);
   items.push({
@@ -139,7 +176,11 @@ export function startUpload({
     fingerprint,
     assetId: null,
     preview: isImage ? URL.createObjectURL(file) : null,
+    batch,
   });
+  const counts = batchCount(batch);
+  batchCounts.set(batch, { ...counts, total: counts.total + 1 });
+  const myBatch = batch;
   emit();
   let sampledAt = performance.now();
   let sampledBytes = 0;
@@ -202,6 +243,8 @@ export function startUpload({
     onSuccess: () => {
       if (!uploads.has(key)) return;
       patch(key, { state: 'done', sent: file.size, reconnecting: false });
+      const counts = batchCount(myBatch);
+      batchCounts.set(myBatch, { ...counts, done: counts.done + 1 });
       uploads.delete(key);
       cancelHooks.delete(key);
       const assetId = items.find((i) => i.key === key)?.assetId;
@@ -212,10 +255,26 @@ export function startUpload({
       followers.delete(key);
       setTimeout(() => dismiss(key), 4000);
     },
-    onError: () => {
+    onError: (err) => {
       if (!uploads.has(key)) return;
       if (!online()) {
         patch(key, { state: 'offline', reconnecting: false });
+        return;
+      }
+      const refused = storageRefusal(err);
+      if (refused) {
+        // The server keeps nothing of it: a card made for it goes, as on a cancel, and those
+        // waiting for it hear it failed.
+        const assetId = items.find((i) => i.key === key)?.assetId ?? null;
+        const waiting = followers.get(key) ?? [];
+        uploads.delete(key);
+        followers.delete(key);
+        patch(key, { state: 'full', refused, reconnecting: false });
+        const hook = cancelHooks.get(key);
+        cancelHooks.delete(key);
+        if (assetId) hook?.(assetId);
+        onFailed?.(assetId);
+        for (const follower of waiting) follower.onFailed?.(assetId);
         return;
       }
       patch(key, { state: 'failed', reconnecting: false });
@@ -259,6 +318,11 @@ export function cancelUpload(key: string) {
   cancelHooks.delete(key);
   hook?.(items.find((i) => i.key === key)?.assetId ?? null);
   setTimeout(() => dismiss(key), 1500);
+}
+
+/** Takes refused uploads out of the panel once their notice is closed. */
+export function dismissRefused(batchId: number) {
+  for (const item of items) if (item.batch === batchId && item.state === 'full') dismiss(item.key);
 }
 
 function dismiss(key: string) {

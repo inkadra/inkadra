@@ -2687,6 +2687,15 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   background: color-mix(in srgb, var(--ink-status-ok) 15%, transparent);
   color: var(--ink-status-ok);
 }
+.toast__warning {
+  display: grid;
+  flex: none;
+  place-items: center;
+  color: var(--ink-status-warn);
+}
+.toast__warning--danger {
+  color: var(--ink-status-danger);
+}
 .toast__text {
   margin-right: 6px;
 }

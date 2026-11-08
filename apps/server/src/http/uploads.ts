@@ -7,16 +7,19 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { type Actor, requireAssetRole, requireWriteAccess } from '../access.ts';
 import type { Auth } from '../auth.ts';
+import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { designExtension } from '../media/design.ts';
 import { rawTypeOf } from '../media/raw.ts';
 import { originalKey, type Storage } from '../storage.ts';
+import { reserveSpace, StorageFullError } from '../storage-limits.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
 
 interface Deps {
+  config: Config;
   db: Database;
   auth: Auth;
   storage: Storage;
@@ -80,11 +83,16 @@ function removingAssets(store: DataStore, db: Database): DataStore {
 }
 
 export function registerUploads(app: FastifyInstance, deps: Deps) {
-  const { db, auth, storage, jobs } = deps;
+  const { config, db, auth, storage, jobs } = deps;
+  const datastore = removingAssets(storage.uploads, db);
+
+  /** A refusal for lack of space, as the client reads it (StorageFull). */
+  const full = (err: unknown) =>
+    err instanceof StorageFullError ? tusError(413, JSON.stringify(err.refused)) : err;
 
   const tus = new TusServer({
     path: UPLOADS_PATH,
-    datastore: removingAssets(storage.uploads, db),
+    datastore,
     relativeLocation: true,
     // Finished uploads are assets: they are deleted with their board or project, not here.
     disableTerminationForFinishedUploads: true,
@@ -118,20 +126,38 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
       }
       const { filename, filetype, projectId } = meta.data;
       const mime = cleanMime(filetype, filename);
-      await db.insert(asset).values({
-        id: ctx.assetId,
-        projectId,
-        kind: kindOf(mime, filename),
-        mime,
-        filename,
-        size: upload.size,
-        storageKey: originalKey(ctx.assetId),
-        createdBy: ctx.actor.id,
+      const size = upload.size;
+      // The declared size holds its place from now on: see reserveSpace (decision 0081).
+      await reserveSpace(db, config, ctx.actor.id, size, async (tx) => {
+        await tx.insert(asset).values({
+          id: ctx.assetId,
+          projectId,
+          kind: kindOf(mime, filename),
+          mime,
+          filename,
+          size,
+          storageKey: originalKey(ctx.assetId),
+          createdBy: ctx.actor.id,
+        });
+      }).catch((err) => {
+        throw full(err);
       });
       return {};
     },
     async onUploadFinish(_req, upload) {
       const assetId = upload.id.slice('originals/'.length);
+      // Checked again with the last byte: a limit lowered meanwhile still applies.
+      const [row] = await db
+        .select({ createdBy: asset.createdBy })
+        .from(asset)
+        .where(eq(asset.id, assetId));
+      if (row?.createdBy && upload.size !== undefined)
+        try {
+          await reserveSpace(db, config, row.createdBy, upload.size, async () => {}, assetId);
+        } catch (err) {
+          if (err instanceof StorageFullError) await datastore.remove(upload.id);
+          throw full(err);
+        }
       await jobs.processAsset(assetId);
       return {};
     },

@@ -151,10 +151,15 @@ export const en: MailTexts = {
       service_down: 'A service is not answering',
       backup_failed: 'Backup failed',
       repeated_errors: 'An error keeps happening',
+      storage_limit: 'The instance is almost out of space',
+      storage_request: 'More space requested',
     },
     disk: (free, total, weeks) =>
       `${free} left of ${total}.${weeks ? ` At the current pace that lasts about ${weeks}.` : ''} Free some space or add a disk before uploads stop.`,
     weeks: (n) => plural(n, 'a week', 'weeks'),
+    storage: (used, total, weeks) =>
+      `The instance uses ${used} of ${total}.${weeks ? ` At the current pace that lasts about ${weeks}.` : ''} Raise the limit or free some space before uploads stop.`,
+    storageAction: 'Open Storage',
     down: (service) =>
       `${service} is not answering. The rest of Inkadra works, but this part is stopped until the service starts again.`,
     backup: 'Last night’s backup failed. Your data is safe, but check it before the next one.',

@@ -144,14 +144,16 @@ export function serverAlertMail(
       ? ''
       : `${(bytes / 1e9).toLocaleString(t.locale, { maximumFractionDigits: bytes < 1e10 ? 1 : 0 })} GB`;
   const title = a.titles[alert.kind];
+  const weeks = alert.weeksLeft ? a.weeks(Math.round(alert.weeksLeft)) : null;
+  const storage = alert.kind === 'storage_limit' || alert.kind === 'storage_request';
   const intro =
     alert.kind === 'disk_full'
-      ? a.disk(
-          gb(alert.free),
-          gb(alert.total),
-          alert.weeksLeft ? a.weeks(Math.round(alert.weeksLeft)) : null,
-        )
-      : alert.kind === 'service_down'
+      ? a.disk(gb(alert.free), gb(alert.total), weeks)
+      : alert.kind === 'storage_limit'
+        ? a.storage(gb((alert.total ?? 0) - (alert.free ?? 0)), gb(alert.total), weeks)
+        : alert.kind === 'storage_request'
+          ? title
+          : alert.kind === 'service_down'
         ? a.down(a.services[alert.service ?? ''] ?? a.services.web ?? '')
         : alert.kind === 'backup_failed'
           ? a.backup
@@ -165,7 +167,9 @@ export function serverAlertMail(
     badge: { label: a.badge, tone: 'danger' },
     title,
     intro,
-    action: { label: a.action, url: `${instance.publicUrl}/settings?section=server` },
+    action: storage
+      ? { label: a.storageAction, url: `${instance.publicUrl}/settings?section=workspace` }
+      : { label: a.action, url: `${instance.publicUrl}/settings?section=server` },
     fallback: t.fallback,
     footer: { text: a.footer(instance.instanceName) },
   });

@@ -81,6 +81,18 @@ export const InstanceMember = z
     canCreateProjectsOverride: z.boolean().nullable().optional().openapi({
       description: 'Per-account choice; null follows InstanceSettings.membersCanCreateProjects.',
     }),
+    storageBytes: z.number().nonnegative().optional().openapi({
+      description:
+        'Originals uploaded by this person and the copies and previews the server made of them, ' +
+        'as StorageUsage.byUser counts them. Missing from servers before storage limits.',
+    }),
+    storageLimit: z.number().int().positive().nullable().optional().openapi({
+      description: 'Effective limit in bytes; null: no limit. Missing from older servers.',
+    }),
+    storageLimitOverride: z.number().int().min(0).nullable().optional().openapi({
+      description:
+        'Per-account limit in bytes: null follows StorageLimits.perUser, 0 is no limit.',
+    }),
   })
   .openapi('InstanceMember');
 export type InstanceMember = z.infer<typeof InstanceMember>;
@@ -90,6 +102,11 @@ export const UpdateInstanceMember = z
     active: z.boolean().optional(),
     canCreateProjects: z.boolean().nullable().optional().openapi({
       description: 'Override for this account; null goes back to the instance setting.',
+    }),
+    storageLimit: z.number().int().min(0).nullable().optional().openapi({
+      description:
+        'Storage limit of this account in bytes; 0 is no limit, null goes back to ' +
+        'StorageLimits.perUser. Refused above STORAGE_LIMIT_PER_USER when that is set.',
     }),
   })
   .strict()
@@ -137,6 +154,95 @@ export const StorageUsage = z
       'Completed original uploads (processing, ready or failed), once per asset row. Pending uploads, derived files, database and physical capacity excluded. Attribution uses asset.projectId, independent of references. Inaccessible projects are combined without names or IDs.',
   });
 export type StorageUsage = z.infer<typeof StorageUsage>;
+
+/** Storage limits of the instance (decision 0081); every size in bytes. */
+export const StorageLimits = z
+  .object({
+    total: z.number().int().positive().nullable().openapi({
+      description: 'Space for the whole instance; null: no limit.',
+    }),
+    perUser: z.number().int().positive().nullable().openapi({
+      description: 'Default space of a person without a limit of their own; null: no limit.',
+    }),
+    warnPercent: z.number().int().min(50).max(95).openapi({
+      description: 'Share of a limit that warns people and, for the total, administrators.',
+    }),
+    locked: z.object({ total: z.boolean(), perUser: z.boolean() }).openapi({
+      description:
+        'Set by the server environment (STORAGE_LIMIT, STORAGE_LIMIT_PER_USER): read-only here.',
+    }),
+    uploadMaxSize: z.number().int().min(0).openapi({ description: 'UPLOAD_MAX_SIZE; 0: none.' }),
+    usedBytes: z.number().nonnegative().openapi({
+      description: 'Originals and their copies and previews, pending uploads excluded.',
+    }),
+    disk: z
+      .object({ total: z.number().nonnegative(), free: z.number().nonnegative() })
+      .nullable()
+      .openapi({ description: 'The disk under DATA_DIR; null on S3.' }),
+    growthPerMonth: z.number().nonnegative().openapi({
+      description: 'Bytes of originals added in the last 30 days.',
+    }),
+  })
+  .openapi('StorageLimits');
+export type StorageLimits = z.infer<typeof StorageLimits>;
+export const UpdateStorageLimits = z
+  .object({
+    total: z.number().int().positive().nullable().optional(),
+    perUser: z.number().int().positive().nullable().optional(),
+    warnPercent: z.number().int().min(50).max(95).optional(),
+  })
+  .strict()
+  .openapi('UpdateStorageLimits');
+export type UpdateStorageLimits = z.infer<typeof UpdateStorageLimits>;
+
+/** The space of the signed-in person. */
+export const MyStorage = z
+  .object({
+    originalBytes: z.number().nonnegative(),
+    derivedBytes: z.number().nonnegative(),
+    limit: z.number().int().positive().nullable().openapi({ description: 'null: no limit.' }),
+    warnPercent: z.number().int().min(50).max(95),
+    instanceFull: z.boolean().openapi({
+      description: 'The instance total is used up: nobody can add files.',
+    }),
+  })
+  .openapi('MyStorage');
+export type MyStorage = z.infer<typeof MyStorage>;
+
+/** The largest files of a person, biggest first. */
+export const StorageFiles = z
+  .object({
+    items: z.array(
+      z.object({
+        id: Id,
+        filename: z.string(),
+        bytes: z.number().nonnegative().openapi({ description: 'Original and its copies.' }),
+        projectId: Id,
+        projectName: z.string(),
+        createdAt: Timestamp,
+      }),
+    ),
+    hiddenCount: z.number().int().min(0).openapi({
+      description: 'Files in projects the viewer cannot open: counted, never named.',
+    }),
+    hiddenBytes: z.number().nonnegative(),
+  })
+  .openapi('StorageFiles');
+export type StorageFiles = z.infer<typeof StorageFiles>;
+
+/**
+ * Details of a 413 that refused a new file for lack of space (decision 0081): the body of a
+ * refused tus upload, and `details` of an API error.
+ */
+export const StorageFull = z
+  .object({
+    code: z.literal('storage_full'),
+    scope: z.enum(['user', 'instance']),
+    remaining: z.number().nonnegative(),
+    limit: z.number().int().positive(),
+  })
+  .openapi('StorageFull');
+export type StorageFull = z.infer<typeof StorageFull>;
 
 /** A release of Inkadra on GitHub, reduced to plain text by the server (#515). */
 export const InstanceRelease = z

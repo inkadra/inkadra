@@ -37,6 +37,7 @@ import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
 import { isMac } from './shortcuts.ts';
 import { BAR_ICONS, type BarTool, barTools, DEFAULT_BAR } from './toolbar-prefs.ts';
+import { StorageNotice } from './StorageNotice.tsx';
 import { cancelUpload, localPreview, retryUpload, useUploads } from './uploads.ts';
 
 export type ToolType =
@@ -1359,9 +1360,13 @@ export function UnsortedDrawer({
 
 export function UploadPanel() {
   const { t } = useTranslation();
-  const uploads = useUploads();
-  if (uploads.length === 0) return null;
+  const all = useUploads();
+  // Refused for lack of space: told once for the batch by StorageNotice, not as rows here.
+  const uploads = all.filter((u) => u.state !== 'full');
   return (
+    <>
+      <StorageNotice />
+      {uploads.length > 0 && (
     <section className="uploads" aria-label={t('board.uploads.title')} data-chrome>
       {uploads.map((u) => (
         <div key={u.key} className="uploads__item">
@@ -1397,6 +1402,8 @@ export function UploadPanel() {
         </div>
       ))}
     </section>
+      )}
+    </>
   );
 }
 
@@ -1520,8 +1527,10 @@ export const TOAST_MS = 6000;
 export function Toast({
   text,
   ok,
+  warning,
   error,
   onShow,
+  showLabel,
   onUndo,
   history,
   onClose,
@@ -1529,6 +1538,10 @@ export function Toast({
   text: string;
   /** A check before the text: something was done. */
   ok?: boolean | undefined;
+  /** A warning sign before the text, orange or red: something needs a look. */
+  warning?: 'warn' | 'danger' | undefined;
+  /** The words of the `onShow` button, "Mostra" by default. */
+  showLabel?: string | undefined;
   /** Something failed: the toast offers to report it, when reporting is on. */
   error?: boolean | undefined;
   /** Brings what was added into view. */
@@ -1585,6 +1598,11 @@ export function Toast({
           <Icon name="check" size={11} />
         </span>
       )}
+      {warning && (
+        <span className={`toast__warning toast__warning--${warning}`} aria-hidden="true">
+          <Icon name="warning" size={14} />
+        </span>
+      )}
       <span className="toast__text">{text}</span>
       {canReport && (
         <button
@@ -1600,7 +1618,7 @@ export function Toast({
       )}
       {onShow && (
         <button type="button" className="toast__action" onClick={onShow}>
-          {t('board.show')}
+          {showLabel ?? t('board.show')}
         </button>
       )}
       {onUndo && !stale && (

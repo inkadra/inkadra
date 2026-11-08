@@ -15,6 +15,7 @@ import { Button, Checkbox, Icon, IconButton, Switch, swallowOutsidePress } from 
 import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { formatStorage } from '../routes/StorageCharts.tsx';
 import { useNavigate } from 'react-router';
 import { authorName, groupByDay, type Page, reviewKey } from '../board/review-model.ts';
 import { canComment } from '../board/review-store.ts';
@@ -246,9 +247,17 @@ export function describeNotification(
     const alert = n.serverAlert;
     const gb = (bytes: number | null) =>
       bytes === null ? '' : `${Math.round(bytes / 1e9).toLocaleString(me?.locale)} GB`;
+    // Storage limits (decision 0081) can be small, as on a demo: sizes as Settings shows them.
+    const size = (bytes: number | null) =>
+      bytes === null ? '' : formatStorage(bytes, me?.locale ?? 'en');
+    const used = alert?.total != null && alert.free !== null ? alert.total - alert.free : null;
     return t(`notifications.type.server_alert_${alert?.kind ?? 'unknown'}`, {
       free: gb(alert?.free ?? null),
       total: gb(alert?.total ?? null),
+      used: size(used),
+      limit: size(alert?.total ?? null),
+      percent:
+        used !== null && alert?.total ? String(Math.round((used / alert.total) * 100)) : '',
       service: alert?.service ? t(`server.services.long.${alert.service}`) : '',
       times: String(alert?.count ?? ''),
     });

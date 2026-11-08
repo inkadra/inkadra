@@ -181,7 +181,7 @@ export function registerMapPreviews(app: FastifyInstance, deps: Deps) {
           url ??
           `https://www.openstreetmap.org/?mlat=${place.lat}&mlon=${place.lon}#map=${place.zoom ?? ADDRESS_ZOOM}/${place.lat}/${place.lon}`;
         imageAssetId = await saveFetchedImage(
-          { db, storage },
+          { db, storage, config },
           { url: sourceUrl, contentType: 'image/png', body: png },
           { projectId: input.projectId, actorId: actor.id, sourceUrl, filename: 'map.png' },
         );

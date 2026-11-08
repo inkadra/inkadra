@@ -419,11 +419,13 @@
   white-space: nowrap;
 }
 .settings-badge--ok,
-.settings-badge--warn {
+.settings-badge--warn,
+.settings-badge--danger {
   background: var(--ink-surface-2);
 }
 .settings-badge--ok::before,
-.settings-badge--warn::before {
+.settings-badge--warn::before,
+.settings-badge--danger::before {
   content: "";
   width: 6px;
   height: 6px;
@@ -438,6 +440,12 @@
 }
 .settings-badge--warn::before {
   background: var(--ink-status-warn);
+}
+.settings-badge--danger {
+  color: var(--ink-status-danger);
+}
+.settings-badge--danger::before {
+  background: var(--ink-status-danger);
 }
 .settings-badge--accent {
   background: var(--ink-accent-soft-bg);
@@ -710,6 +718,9 @@
 .team-col--last {
   white-space: nowrap;
 }
+.team-table .team-col--space {
+  white-space: nowrap;
+}
 .team-pending th,
 .team-pending td {
   background: var(--ink-surface-2);
@@ -886,9 +897,10 @@
     flex-basis: 100%;
   }
   /*
-   * A member is a small card: who (with Disattiva at the end of that line), then one line each
-   * for the role and the right to create projects, title on the left and choice on the right,
-   * so every row lines up and no choice is cut ("Amministratore", "Come l’istanza (sì)").
+   * A member is a small card: who (with the ⋯ menu at the end of that line), then one line
+   * each for the role, the right to create projects and the space, title on the left and value
+   * on the right, so every row lines up and no choice is cut ("Amministratore", "Come
+   * l’istanza (sì)").
    */
   .team-table thead,
   .team-table .team-col--projects,
@@ -913,14 +925,15 @@
     padding-bottom: 6px;
   }
   .team-table tbody:first-of-type th {
-    /* The room of the Disattiva button, which sits at the end of this line. */
-    padding-right: 104px;
+    /* The room of the ⋯ button, which sits at the end of this line. */
+    padding-right: 48px;
   }
   .team-table td {
     padding-top: 2px;
   }
   .team-table .team-col--role,
-  .team-table .team-col--create {
+  .team-table .team-col--create,
+  .team-table .team-col--space {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -929,7 +942,8 @@
     padding-bottom: 8px;
   }
   .team-table .team-col--role::before,
-  .team-table .team-col--create::before {
+  .team-table .team-col--create::before,
+  .team-table .team-col--space::before {
     content: attr(data-label);
     font-size: 11px;
     color: var(--ink-text-muted);

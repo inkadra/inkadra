@@ -2,8 +2,10 @@ import {
   API_PREFIX,
   ClassificationCatalogs,
   Id,
+  type StorageLimits,
   UpdateInstanceMember,
   UpdateInstanceSettings,
+  UpdateStorageLimits,
   z,
 } from '@inkadra/shared';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
@@ -15,6 +17,17 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { instanceSetting, personalToken, session, user } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
+import { diskSpace, growthPerMonth } from '../monitor/health.ts';
+import {
+  largestFiles,
+  type Limits,
+  overrideAllowed,
+  personBytes,
+  personLimit,
+  readLimits,
+  saveLimits,
+  usedBytes,
+} from '../storage-limits.ts';
 import { CHECK_NOW_MS, checkForUpdates, readUpdates } from '../updates.ts';
 import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -92,9 +105,38 @@ export function registerInstanceAdminRoutes(
     );
     return readUpdates(db);
   });
+  /** Limits as the Storage page shows them, with what is used and the disk (decision 0081). */
+  const storageLimits = async (limits: Limits): Promise<StorageLimits> => {
+    const used = await usedBytes(db);
+    return {
+      ...limits,
+      uploadMaxSize: config.UPLOAD_MAX_SIZE,
+      usedBytes: used.originals + used.derived,
+      disk: await diskSpace(config),
+      growthPerMonth: await growthPerMonth(db),
+    };
+  };
+  app.get(`${API_PREFIX}/instance/storage-limits`, async (req, reply) => {
+    await admin(req);
+    reply.header('cache-control', 'private, no-store');
+    return storageLimits(await readLimits(db, config));
+  });
+  app.patch(`${API_PREFIX}/instance/storage-limits`, async (req) => {
+    await admin(req);
+    const patch = UpdateStorageLimits.parse(req.body ?? {});
+    // A limit under what is used is allowed: nothing is deleted, new files are refused.
+    return storageLimits(await saveLimits(db, config, patch));
+  });
+  app.get(`${API_PREFIX}/instance/members/:userId/files`, async (req, reply) => {
+    const actor = await admin(req);
+    const { userId } = z.object({ userId: Id }).parse(req.params);
+    reply.header('cache-control', 'private, no-store');
+    return largestFiles(db, userId, actor.id);
+  });
   app.get(`${API_PREFIX}/instance/members`, async (req) => {
     await admin(req);
     const { membersCanCreateProjects } = await readInstanceSettings(db, config);
+    const limits = await readLimits(db, config);
     const rows = await db
       .select({
         id: user.id,
@@ -108,12 +150,16 @@ export function registerInstanceAdminRoutes(
         >`greatest((select max(updated_at) from session where user_id = "user"."id"), (select max(last_used_at) from personal_token where user_id = "user"."id"))`,
         projectsCount: sql<number>`(select count(*)::int from project_member m where m.user_id = "user"."id" and ${live('m')})`,
         canCreateProjectsOverride: user.canCreateProjects,
+        storageBytes: personBytes(sql`"user"."id"`),
+        storageLimitOverride: user.storageLimit,
       })
       .from(user)
       .orderBy(asc(user.name), asc(user.id));
     return {
       items: rows.map((r) => ({
         ...r,
+        storageBytes: Number(r.storageBytes),
+        storageLimit: personLimit(limits, r.storageLimitOverride),
         deactivatedAt: r.deactivatedAt?.toISOString() ?? null,
         lastActiveAt: r.lastActiveAt ? new Date(r.lastActiveAt).toISOString() : null,
         canCreateProjects:
@@ -125,6 +171,14 @@ export function registerInstanceAdminRoutes(
     const actor = await admin(req);
     const { userId } = z.object({ userId: Id }).parse(req.params);
     const patch = UpdateInstanceMember.parse(req.body ?? {});
+    if (
+      patch.storageLimit !== undefined &&
+      !overrideAllowed(await readLimits(db, config), patch.storageLimit)
+    )
+      throw new HttpError(
+        'forbidden',
+        'The server environment sets the space of each person: it can only be lowered.',
+      );
     await db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
       const [current] = await tx.select().from(user).where(eq(user.id, actor.id));
@@ -152,6 +206,7 @@ export function registerInstanceAdminRoutes(
             patch.canCreateProjects === undefined
               ? target.canCreateProjects
               : patch.canCreateProjects,
+          storageLimit: patch.storageLimit === undefined ? target.storageLimit : patch.storageLimit,
           deactivatedAt:
             patch.active === false
               ? (target.deactivatedAt ?? new Date())

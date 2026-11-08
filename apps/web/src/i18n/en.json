@@ -2025,7 +2025,9 @@
       "server_alert_backup_failed": "The backup failed",
       "server_alert_repeated_errors": "The same error happened {{times}} times in the last hour",
       "server_alert_unknown": "Something is wrong with the server",
-      "update_available": "A new version of Inkadra is available"
+      "update_available": "A new version of Inkadra is available",
+      "server_alert_storage_limit": "Instance space: {{percent}}% used ({{used}} of {{limit}})",
+      "server_alert_storage_request": "asks for more space"
     },
     "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
@@ -2760,11 +2762,11 @@
     "search": "Search settings",
     "noResults": "No settings found",
     "keywords": {
-      "account": "Name, Email, Profile photo, Password, Two-step verification (2FA), Backup codes, Sign-in methods, Sessions, Devices, Apps and tokens, Delete account",
+      "account": "Name, Email, Profile photo, Password, Two-step verification (2FA), Backup codes, Sign-in methods, Sessions, Devices, Apps and tokens, Delete account, Your space, Largest files",
       "preferences": "Theme, Dark theme, Light theme, Language, Continue playing videos off-screen, Date format, Time format, Dot grid, Snap to grid, Double-click creates a note, Keep the board around its content, Undo and redo buttons",
       "notifications": "Email notifications, Mentions, Replies, Reviews, Daily digest, Inbox, Comments on your cards",
-      "members": "Invite members, Invitations, Invitation link, Role, Administrators, Deactivate account, Reactivate account, People",
-      "workspace": "Space used, Uploaded files, Storage",
+      "members": "Invite members, Invitations, Invitation link, Role, Administrators, Deactivate account, Reactivate account, People, Space, Space limit",
+      "workspace": "Space used, Uploaded files, Storage, Space limits, Space per person, Warn at",
       "classifications": "Project types, Tags, Catalogs, Shot size, Angle, Movement",
       "providers": "Google, OIDC, Single sign-on (SSO), Email sign-in link, Email and password, SMTP, Outgoing email",
       "registration": "New accounts, Open registration, Invitation only, Closed registration, Require two-step verification for administrators",
@@ -3068,7 +3070,8 @@
       "gone": "You can no longer edit this project, or it was deleted.",
       "interrupted": "The server stopped while working on it. Try again.",
       "cancelled": "Cancelled.",
-      "internal": "Something went wrong. Try again."
+      "internal": "Something went wrong. Try again.",
+      "storage_full": "The files of the archive do not fit in the space left. Free some space or ask an administrator."
     },
     "importArchive": "Import archive…"
   },
@@ -4399,6 +4402,23 @@
             "text": "What changed in each version."
           }
         }
+      },
+      "storage": {
+        "name": "Space limits",
+        "steps": {
+          "0": {
+            "title": "The space used",
+            "text": "Originals, copies and previews, and how long it lasts."
+          },
+          "1": {
+            "title": "The limits",
+            "text": "For the instance and per person. Off until you turn them on."
+          },
+          "2": {
+            "title": "One person at a time",
+            "text": "In Members, from the ⋯ menu, a different limit for whoever needs it."
+          }
+        }
       }
     }
   },
@@ -4816,5 +4836,80 @@
     "skip": "Skip this version",
     "github": "GitHub ↗",
     "seeNews": "See what’s new"
+  },
+  "storageSpace": {
+    "title": "Your space",
+    "of": "{{used}} of {{limit}}",
+    "unlimited": "No limit",
+    "unlimitedShort": "no limit",
+    "full": "Full",
+    "left": "{{size}} left",
+    "room": "Room to spare",
+    "used": "used",
+    "ofLimit": "of {{limit}}",
+    "detail": "Originals {{originals}} · copies and previews {{derived}}. It counts what you uploaded, in every project.",
+    "instanceFull": "The server has used up its space: nobody can upload more files. Tell an administrator.",
+    "fullHelp": "You cannot upload more files. Free some space or ask an administrator.",
+    "largest": "See the largest files",
+    "largestTitle": "Your largest files",
+    "noFiles": "No files uploaded.",
+    "file": "File",
+    "hidden_one": "1 file in a project you cannot open: {{size}}.",
+    "hidden_other": "{{count}} files in projects you cannot open: {{size}}.",
+    "filesHelp": "Files removed from boards count too: they stay in the project, because a version can bring them back. The space comes back when the project is deleted.",
+    "column": "Space",
+    "own": "{{size}} · own",
+    "actionsFor": "Actions for {{name}}",
+    "changeLimit": "Change the space limit…",
+    "seeFiles": "See their files",
+    "filesOf": "Files of {{name}}",
+    "spaceOf": "Space of {{name}}",
+    "uses": "Uses {{size}}.",
+    "asEveryone": "Like everyone ({{size}})",
+    "ownLimit": "Own limit",
+    "ceiling": "The server operator set {{size}} per person: you can only lower it.",
+    "lowerHelp": "Below what they already use, nothing is deleted: they just stop uploading.",
+    "save": "Save",
+    "nearToast": "You have used {{percent}}% of your space: {{size}} left.",
+    "see": "See",
+    "instanceToast": "The server has used up its space. Tell an administrator.",
+    "fileToast": "“{{name}}” was not uploaded: it is larger than the space you have left.",
+    "details": "Details",
+    "blockedTitle": "Not enough space",
+    "leftOf": "You have {{size}} left of {{limit}}.",
+    "instanceLeft": "The server has {{size}} left.",
+    "uploadedOf_one": "We uploaded {{done}} of {{total}} files; this one does not fit:",
+    "uploadedOf_other": "We uploaded {{done}} of {{total}} files; these {{count}} do not fit:",
+    "blockedHelp": "Free some space or ask an administrator to raise your limit. Notes, comments and edits keep working.",
+    "instanceHelp": "Tell an administrator. Notes, comments and edits keep working.",
+    "ask": "Ask for more space",
+    "asked": "The administrators have been told.",
+    "alreadyAsked": "The administrators were already told today.",
+    "close": "Close"
+  },
+  "storageLimits": {
+    "usedTitle": "Space used",
+    "ofLimit": "of a {{limit}} limit",
+    "disk": "disk {{size}}",
+    "usedDetail": "Originals {{originals}} · copies and previews {{derived}}. The limit cannot go beyond the free disk space: if the disk fills up, Server says so.",
+    "lastsMonths_one": "Lasts about 1 month",
+    "lastsMonths_other": "Lasts about {{count}} months",
+    "lastsWeeks_one": "Lasts about 1 week",
+    "lastsWeeks_other": "Lasts about {{count}} weeks",
+    "title": "Space limits",
+    "locked": "Set by the server operator",
+    "lockedHelp": "These limits are part of your plan and are changed by the server operator",
+    "total": "Total space of the instance",
+    "totalHelp": "Beyond it nobody uploads more files. Nothing is deleted.",
+    "perUser": "Space per person",
+    "perUserHelp": "The limit of those without their own. Change it for one person in Members.",
+    "none": "No limit",
+    "limit": "Limit",
+    "unit": "Unit of {{label}}",
+    "largestFile": "Largest file",
+    "fromServer": "From the server:",
+    "warn": "Warn at",
+    "warnHelp": "People see a warning, administrators get it in their Inbox.",
+    "openMembers": "Open in Members"
   }
 }

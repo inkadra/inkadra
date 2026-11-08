@@ -54,6 +54,7 @@ import { cleanMime, kindOf } from '../http/uploads.ts';
 import type { Jobs } from '../jobs.ts';
 import { writeBoardIndex } from '../search/index-doc.ts';
 import { originalKey, type Storage } from '../storage.ts';
+import { assertSpace, type StorageEnv, StorageFullError } from '../storage-limits.ts';
 import { remapDoc, remapMentions } from './remap.ts';
 import { ArchiveError, piped, readZip, type ZipReader } from './zip.ts';
 
@@ -65,6 +66,8 @@ export interface ImportDeps {
   uploadMaxSize: number;
   /** Largest archive, uncompressed (IMPORT_MAX_SIZE). */
   importMaxSize: number;
+  /** Set: the files must fit in the importer's space and the instance's (decision 0081). */
+  storageEnv?: StorageEnv;
   log?: Logger;
 }
 
@@ -236,6 +239,19 @@ export async function importProject(
 
     // Files: streamed into storage with the size and checksum checked on the way.
     const totalBytes = assets.reduce((n, a) => n + a.size, 0) || 1;
+    // All or nothing: the files must fit before any is written, and again when the project is
+    // committed (below), under the lock that keeps parallel uploads from passing a limit.
+    const fits = async (tx: Pick<Database, 'select' | 'execute'>, bytes: number) => {
+      if (!deps.storageEnv) return;
+      try {
+        await assertSpace(tx, deps.storageEnv, userId, bytes);
+      } catch (err) {
+        if (err instanceof StorageFullError)
+          throw new ArchiveError('storage_full', 'The files do not fit in the space left.');
+        throw err;
+      }
+    };
+    await db.transaction((tx) => fits(tx, assets.reduce((n, a) => n + a.size, 0)));
     let bytesDone = 0;
     let skippedFiles = 0;
     const stored = new Map<string, { id: string; size: number; sha256: string }>();
@@ -499,6 +515,9 @@ export async function importProject(
         });
       }
 
+      // The files, already in this transaction, must still fit: another upload may have taken
+      // the space while they were written.
+      await fits(tx, 0);
       // The instance lock orders projects (and guards other instance-wide changes): taken
       // last, so it is held only for this update and the commit, not the whole import.
       await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
