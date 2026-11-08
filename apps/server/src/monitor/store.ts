@@ -1,5 +1,6 @@
 import type { ServerProblemKind, ServerRole, ServerServiceId } from '@inkadra/shared';
-import type IORedis from 'ioredis';
+import IORedis from 'ioredis';
+import type { Logger } from 'pino';
 
 /**
  * Where the roles leave their samples, heartbeats, problems and events for the Server page
@@ -38,6 +39,13 @@ export interface Point {
   err?: number;
   /** Collab roles: people on boards. */
   people?: number;
+  /**
+   * The machine (its boot id, shared by every container on it), and whether `cc` and `ml` are
+   * the whole machine's because the container has no limit of its own. Older samples lack them.
+   */
+  box?: string;
+  hc?: boolean;
+  hm?: boolean;
 }
 
 export interface PresenceBoard {
@@ -71,12 +79,22 @@ export interface StoredProblem {
   /** The BullMQ job that failed, to run it again. */
   job: { queue: string; id: string } | null;
   alertedAt: number | null;
+  /** When it happened within the last hour, newest last (at most `RECENT_MAX`). */
+  recent?: number[];
 }
 
 export type ProblemInput = Omit<
   StoredProblem,
-  'firstAt' | 'lastAt' | 'count' | 'seenAt' | 'alertedAt'
+  'firstAt' | 'lastAt' | 'count' | 'seenAt' | 'alertedAt' | 'recent'
 > & { at: number };
+
+const HOUR_MS = 3_600_000;
+// shortcut: an hour holds at most 100 occurrences; the alert only needs to know it is 5 or more.
+const RECENT_MAX = 100;
+
+/** How many times a problem happened in the hour before `now`. */
+export const lastHour = (p: Pick<StoredProblem, 'recent'>, now: number) =>
+  (p.recent ?? []).filter((t) => now - t < HOUR_MS && t <= now).length;
 
 export interface MonitorEvent {
   t: number;
@@ -90,7 +108,8 @@ export interface MonitorStore {
   /** Every process seen in the last 7 days. */
   beats(): Promise<Beat[]>;
   push(tier: Tier, process: string, point: Point): Promise<void>;
-  points(tier: Tier): Promise<Map<string, Point[]>>;
+  /** The samples of `processes` (process keys), only those since `since` when given. */
+  points(tier: Tier, processes: string[], since?: number): Promise<Map<string, Point[]>>;
   /** Adds an occurrence: a new problem, or one more of a known one (unseen again). */
   record(input: ProblemInput): Promise<void>;
   /** Problems of the last 7 days. */
@@ -113,6 +132,7 @@ function merge(old: StoredProblem | undefined, input: ProblemInput): StoredProbl
     count: (old?.count ?? 0) + 1,
     seenAt: null,
     alertedAt: old?.alertedAt ?? null,
+    recent: [...(old?.recent ?? []).filter((t) => at - t < HOUR_MS), at].slice(-RECENT_MAX),
   };
 }
 
@@ -138,11 +158,10 @@ export function memoryStore(now = () => Date.now()): MonitorStore {
       if (list.length > TIERS[tier].keep) list.shift();
       points.set(key, list);
     },
-    async points(tier) {
-      const out = new Map<string, Point[]>();
-      for (const [key, list] of points)
-        if (key.startsWith(`${tier}:`)) out.set(key.slice(tier.length + 1), [...list]);
-      return out;
+    async points(tier, processes, since = 0) {
+      return new Map(
+        processes.map((p) => [p, (points.get(`${tier}:${p}`) ?? []).filter((x) => x.t >= since)]),
+      );
     },
     async record(input) {
       problems.set(input.id, merge(problems.get(input.id), input));
@@ -171,6 +190,28 @@ export function memoryStore(now = () => Date.now()): MonitorStore {
 }
 
 const PREFIX = 'inkadra:monitor:';
+/** The longest a monitor command may take: past it Valkey counts as down. */
+export const MONITOR_TIMEOUT_MS = 2_000;
+
+/**
+ * The connection of the Server page: fails fast while Valkey is down, so the page, the sampler
+ * and the health check report it instead of waiting forever (the queue connection retries).
+ */
+export function monitorRedis(url: string, log: Pick<Logger, 'warn'>) {
+  const redis = new IORedis(url, {
+    maxRetriesPerRequest: 1,
+    enableOfflineQueue: false,
+    commandTimeout: MONITOR_TIMEOUT_MS,
+  });
+  let lastError = Number.NEGATIVE_INFINITY;
+  redis.on('error', () => {
+    if (Date.now() - lastError < 60_000) return;
+    lastError = Date.now();
+    // Never the driver error itself: the connection string may carry a password.
+    log.warn('server page storage unavailable');
+  });
+  return redis;
+}
 
 export function redisStore(redis: IORedis, now = () => Date.now()): MonitorStore {
   const k = (key: string) => `${PREFIX}${key}`;
@@ -206,18 +247,19 @@ export function redisStore(redis: IORedis, now = () => Date.now()): MonitorStore
         .pexpire(key, KEEP_MS + DAY_MS)
         .exec();
     },
-    async points(tier) {
-      // The processes are the ones with a heartbeat: no SCAN over the whole keyspace.
-      const processes = (await this.beats()).map(processKey);
+    async points(tier, processes, since) {
+      // Newest first: a start time reads only the samples after it, plus one for late ones.
+      const last =
+        since === undefined ? -1 : Math.ceil((now() - since) / (TIERS[tier].step * 1000)) + 1;
       const lists = await Promise.all(
-        processes.map((p) => redis.lrange(k(`points:${tier}:${p}`), 0, -1)),
+        processes.map((p) => redis.lrange(k(`points:${tier}:${p}`), 0, last)),
       );
       return new Map(
         processes.map((p, i) => [
           p,
           (lists[i] ?? [])
             .map((text) => parse<Point>(text))
-            .filter((x): x is Point => !!x)
+            .filter((x): x is Point => !!x && x.t >= (since ?? 0))
             .reverse(),
         ]),
       );
@@ -229,20 +271,41 @@ export function redisStore(redis: IORedis, now = () => Date.now()): MonitorStore
       await redis.hset(k('problems'), input.id, JSON.stringify(merge(old, input)));
     },
     async problems() {
-      const all = await redis.hgetall(k('problems'));
+      const [all, seen, alerted] = await Promise.all([
+        redis.hgetall(k('problems')),
+        redis.hgetall(k('problems:seenAt')),
+        redis.hgetall(k('problems:alertedAt')),
+      ]);
       const out: StoredProblem[] = [];
       const stale: string[] = [];
       for (const [id, text] of Object.entries(all)) {
         const p = parse<StoredProblem>(text);
-        if (p && fresh(now())(p)) out.push(p);
+        if (p && fresh(now())(p))
+          out.push({
+            ...p,
+            // A later occurrence makes it unseen again: the page compares seenAt with lastAt.
+            seenAt: seen[id] ? Number(seen[id]) : null,
+            alertedAt: alerted[id] ? Number(alerted[id]) : p.alertedAt,
+          });
         else stale.push(id);
       }
-      if (stale.length) await redis.hdel(k('problems'), ...stale);
+      if (stale.length)
+        await redis
+          .multi()
+          .hdel(k('problems'), ...stale)
+          .hdel(k('problems:seenAt'), ...stale)
+          .hdel(k('problems:alertedAt'), ...stale)
+          .exec();
       return out;
     },
     async update(id, patch) {
-      const old = parse<StoredProblem>(await redis.hget(k('problems'), id));
-      if (old) await redis.hset(k('problems'), id, JSON.stringify({ ...old, ...patch }));
+      // Fields of their own: a record() at the same moment cannot undo them, nor they it.
+      if (!(await redis.hexists(k('problems'), id))) return;
+      const m = redis.multi();
+      if (patch.seenAt !== undefined) m.hset(k('problems:seenAt'), id, String(patch.seenAt ?? ''));
+      if (patch.alertedAt !== undefined)
+        m.hset(k('problems:alertedAt'), id, String(patch.alertedAt ?? ''));
+      await m.exec();
     },
     async event(event) {
       await redis

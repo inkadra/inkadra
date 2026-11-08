@@ -18,6 +18,11 @@ export interface ContainerReading {
   /** Bytes received and sent since the namespace started, loopback left out. */
   rx: number | null;
   tx: number | null;
+  /** The machine: every container on it reads the same boot id. */
+  machine: string | null;
+  /** No limit of the container's own: `cores` and `memoryLimit` are the whole machine's. */
+  hostCores: boolean;
+  hostMemory: boolean;
 }
 
 /** `usage_usec 1234` from cpu.stat. */
@@ -73,16 +78,18 @@ function hostCpuUsec(): number {
 const read = (path: string) => readFile(path, 'utf8').catch(() => null);
 
 export async function readContainer(): Promise<ContainerReading> {
-  const [stat, max, current, memStat, memMax, net] = await Promise.all([
+  const [stat, max, current, memStat, memMax, net, boot] = await Promise.all([
     read(`${CGROUP}/cpu.stat`),
     read(`${CGROUP}/cpu.max`),
     read(`${CGROUP}/memory.current`),
     read(`${CGROUP}/memory.stat`),
     read(`${CGROUP}/memory.max`),
     read('/proc/net/dev'),
+    read('/proc/sys/kernel/random/boot_id'),
   ]);
   const host = availableParallelism();
   const cgroupCores = max ? parseCpuMax(max) : null;
+  const cgroupMemory = memMax ? parseMemoryMax(memMax) : null;
   const traffic = net ? parseNetDev(net) : null;
   const memory = current
     ? Number(current.trim()) - (memStat ? parseInactiveFile(memStat) : 0)
@@ -91,8 +98,11 @@ export async function readContainer(): Promise<ContainerReading> {
     cpuUsec: (stat ? parseCpuStat(stat) : null) ?? hostCpuUsec(),
     cores: cgroupCores ? Math.min(cgroupCores, host) : host,
     memory: Number.isFinite(memory) ? memory : totalmem() - freemem(),
-    memoryLimit: memMax ? (parseMemoryMax(memMax) ?? totalmem()) : totalmem(),
+    memoryLimit: cgroupMemory ? Math.min(cgroupMemory, totalmem()) : totalmem(),
     rx: traffic?.rx ?? null,
     tx: traffic?.tx ?? null,
+    machine: boot?.trim().slice(0, 36) || null,
+    hostCores: !cgroupCores || cgroupCores >= host,
+    hostMemory: !cgroupMemory || cgroupMemory >= totalmem(),
   };
 }

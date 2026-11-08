@@ -4,7 +4,7 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { asset, instanceBackup } from '../db/schema.ts';
 import { type AlertDeps, sendServerAlert } from './alerts.ts';
-import { type Beat, DAY_MS, type StoredProblem } from './store.ts';
+import { type Beat, DAY_MS, lastHour, type StoredProblem } from './store.ts';
 
 /** No signal for this long and a role is late; for twice as long, down. */
 export const LATE_MS = 30_000;
@@ -100,7 +100,8 @@ export async function checkHealth(deps: HealthDeps, now = Date.now()) {
     const growth = await growthPerMonth(db, now);
     const weeksLeft = growth > 0 ? disk.free / (growth / (30 / 7)) : null;
     const known = problems.get('disk_full');
-    if (!known || now - known.lastAt > DAY_MS)
+    // Recorded, and told, once a day while it lasts: not at every check.
+    if (!known || now - known.lastAt > DAY_MS) {
       await store.record({
         id: 'disk_full',
         kind: 'disk_full',
@@ -112,18 +113,19 @@ export async function checkHealth(deps: HealthDeps, now = Date.now()) {
         job: null,
         at: now,
       });
-    await sendServerAlert(
-      deps,
-      {
-        kind: 'disk_full',
-        service: null,
-        free: Math.round(disk.free),
-        total: Math.round(disk.total),
-        weeksLeft,
-        count: null,
-      },
-      true,
-    );
+      await sendServerAlert(
+        deps,
+        {
+          kind: 'disk_full',
+          service: null,
+          free: Math.round(disk.free),
+          total: Math.round(disk.total),
+          weeksLeft,
+          count: null,
+        },
+        true,
+      );
+    }
   }
 
   const [backup] = await db
@@ -170,7 +172,7 @@ export async function checkHealth(deps: HealthDeps, now = Date.now()) {
           free: null,
           total: null,
           weeksLeft: null,
-          count: p.count,
+          count: lastHour(p, now),
         },
         false,
       );
@@ -182,8 +184,7 @@ export async function checkHealth(deps: HealthDeps, now = Date.now()) {
 export function repeating(p: StoredProblem, now: number): boolean {
   return (
     !['service_down', 'disk_full', 'backup_failed'].includes(p.kind) &&
-    p.count >= REPEATED &&
-    now - p.lastAt < 3_600_000 &&
+    lastHour(p, now) >= REPEATED &&
     (p.alertedAt === null || now - p.alertedAt > 3_600_000)
   );
 }

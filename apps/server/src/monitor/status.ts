@@ -30,15 +30,17 @@ import {
 } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { readVideoEncoder } from '../media/encoder-setting.ts';
-import { QUEUES } from '../queues.ts';
+import { QUEUES, within } from '../queues.ts';
 import { readServerAlerts } from './alerts.ts';
 import { beatStatus, diskSpace, growthPerMonth, lastBeat } from './health.ts';
 import { average } from './sampler.ts';
 import {
   type Beat,
   DAY_MS,
+  MONITOR_TIMEOUT_MS,
   type MonitorStore,
   type Point,
+  processKey,
   type StoredProblem,
   type Tier,
 } from './store.ts';
@@ -50,6 +52,7 @@ export interface ServerDeps {
   jobs: Jobs;
   /** Without Valkey (a web role alone) there are no queues and no other processes. */
   queues?: Record<ServerQueueId, Queue>;
+  /** The monitor connection: it gives up after MONITOR_TIMEOUT_MS instead of waiting. */
   redis?: IORedis;
 }
 
@@ -66,6 +69,37 @@ const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
 const iso = (ms: number) => new Date(ms).toISOString();
 
 /**
+ * What the containers could use. Containers without limits of their own see the whole machine:
+ * its cores and memory count once per machine, however many such containers run on it, and the
+ * limits of the others add up.
+ */
+export function capacity(containers: Point[]): { cores: number; memory: number | null } {
+  const machines = new Map<string, Point[]>();
+  containers.forEach((p, i) => {
+    // Older samples do not tell their machine: each counts as one of its own.
+    const key = p.box ?? `#${i}`;
+    machines.set(key, [...(machines.get(key) ?? []), p]);
+  });
+  let cores = 0;
+  let memory: number | null = 0;
+  for (const list of machines.values()) {
+    const hostCores = list.filter((p) => p.hc);
+    cores += hostCores.length
+      ? Math.max(...hostCores.map((p) => p.cc))
+      : sum(list.map((p) => p.cc));
+    if (memory === null || list.some((p) => p.ml === null)) {
+      memory = null;
+      continue;
+    }
+    const hostMemory = list.filter((p) => p.hm);
+    memory += hostMemory.length
+      ? Math.max(...hostMemory.map((p) => p.ml ?? 0))
+      : sum(list.map((p) => p.ml ?? 0));
+  }
+  return { cores, memory };
+}
+
+/**
  * One series for the whole instance from the samples of every process: the container figures
  * once per host (two roles in one container read the same cgroup), added across hosts.
  */
@@ -75,28 +109,37 @@ export function combine(
   stepS: number,
 ): ServerSample[] {
   const step = stepS * 1000;
-  const buckets = new Map<number, Map<string, Point>>();
+  const slices = new Map<string, Map<number, Point>>();
+  const times = new Set<number>();
   for (const [process, points] of byProcess) {
-    const slices = new Map<number, Point[]>();
+    const lists = new Map<number, Point[]>();
     for (const p of points) {
       if (p.t < from) continue;
       const b = Math.floor(p.t / step) * step;
-      slices.set(b, [...(slices.get(b) ?? []), p]);
+      lists.set(b, [...(lists.get(b) ?? []), p]);
     }
-    for (const [b, list] of slices) {
-      const bucket = buckets.get(b) ?? new Map<string, Point>();
-      bucket.set(process, average(list, b));
-      buckets.set(b, bucket);
+    const own = new Map<number, Point>();
+    for (const [b, list] of lists) {
+      own.set(b, average(list, b));
+      times.add(b);
     }
+    slices.set(process, own);
   }
-  return [...buckets.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([t, processes]) => {
+  return [...times]
+    .sort((a, b) => a - b)
+    .map((t) => {
+      const processes = new Map<string, Point>();
+      for (const [process, own] of slices) {
+        // Samples every 10 s fall 0 or 2 to a slice on the clock: an empty slice keeps the one
+        // before, so a process does not drop out of the sums every other point.
+        const p = own.get(t) ?? own.get(t - step);
+        if (p) processes.set(process, p);
+      }
       const hosts = new Map<string, Point>();
       for (const [process, p] of processes)
         if (!hosts.has(hostOf(process))) hosts.set(hostOf(process), p);
       const containers = [...hosts.values()];
-      const cores = sum(containers.map((p) => p.cc));
+      const { cores } = capacity(containers);
       const known = (pick: (p: Point) => number | null) => {
         const values = containers.map(pick).filter((v): v is number => v !== null);
         return values.length ? sum(values) : null;
@@ -158,18 +201,28 @@ async function memberProjects(db: Database, adminId: string): Promise<Set<string
   return new Set(rows.map((r) => r.id));
 }
 
-async function queueCounts(queues: Record<ServerQueueId, Queue>, now: number) {
+/** The queue connection waits for Valkey forever: past the timeout the queue counts as down. */
+const bounded = <T>(work: Promise<T>) =>
+  within(work, MONITOR_TIMEOUT_MS, 'The queue did not answer in time.');
+
+async function queueCounts(
+  queues: Record<ServerQueueId, Queue>,
+  redis: IORedis | undefined,
+  now: number,
+): Promise<ServerQueue[]> {
   return Promise.all(
     (Object.keys(queues) as ServerQueueId[]).map(async (id): Promise<ServerQueue> => {
       const q = queues[id];
-      const counts = await q.getJobCounts('waiting', 'prioritized', 'delayed', 'active');
-      // shortcut: the newest 500 failed jobs; a queue failing more than that a day says enough.
-      const failed = await q.getJobs(['failed'], 0, 499);
+      const [counts, failed] = await Promise.all([
+        bounded(q.getJobCounts('waiting', 'prioritized', 'delayed', 'active')),
+        // BullMQ scores failed jobs by when they ended.
+        redis ? redis.zcount(q.toKey('failed'), now - DAY_MS, '+inf') : 0,
+      ]);
       return {
         id,
         waiting: (counts.waiting ?? 0) + (counts.prioritized ?? 0) + (counts.delayed ?? 0),
         active: counts.active ?? 0,
-        failed24h: failed.filter((j) => (j.finishedOn ?? 0) > now - DAY_MS).length,
+        failed24h: failed,
       };
     }),
   );
@@ -201,7 +254,7 @@ async function transcodes(
     .where(eq(asset.proxyStatus, 'queued'));
   const started = new Map<string, number>();
   if (deps.queues)
-    for (const job of await deps.queues.proxies.getActive())
+    for (const job of await bounded(deps.queues.proxies.getActive()).catch(() => []))
       if (job.processedOn) started.set((job.data as { assetId: string }).assetId, job.processedOn);
   const active = rows.map((r): ServerTranscode => {
     const progress = Math.max(0, Math.min(100, r.progress ?? 0));
@@ -242,6 +295,7 @@ async function transcodes(
 async function presence(
   deps: ServerDeps,
   adminId: string,
+  visible: Set<string>,
   beats: Beat[],
   now: number,
 ): Promise<Omit<ServerStatus['presence'], 'peak'>> {
@@ -258,14 +312,23 @@ async function presence(
   if (!merged.size) return { people: 0, boards: [] };
   const ids = [...merged.keys()];
   const readable = await boardRoles(deps.db, { id: adminId }, ids);
-  const open = ids.filter((id) => readable.has(id));
-  const titles = open.length
-    ? await deps.db
-        .select({ id: board.id, title: board.title, project: project.name })
-        .from(board)
-        .innerJoin(project, eq(project.id, board.projectId))
-        .where(inArray(board.id, open))
-    : [];
+  // Only boards of projects the administrator is a member of: a board shared with them alone
+  // would name a project, and people, they are not part of.
+  const titles = (
+    ids.length
+      ? await deps.db
+          .select({
+            id: board.id,
+            title: board.title,
+            projectId: board.projectId,
+            project: project.name,
+          })
+          .from(board)
+          .innerJoin(project, eq(project.id, board.projectId))
+          .where(inArray(board.id, ids))
+      : []
+  ).filter((t) => readable.has(t.id) && visible.has(t.projectId));
+  const open = titles.map((t) => t.id);
   const people = [...new Set(open.flatMap((id) => [...(merged.get(id)?.users ?? [])]))];
   const names = people.length
     ? await deps.db
@@ -276,7 +339,7 @@ async function presence(
   const byId = new Map(names.map((n) => [n.id, n]));
   const boards = ids.map((id): ServerPresenceBoard => {
     const entry = merged.get(id) as { since: number; users: Set<string> };
-    const shown = readable.has(id) ? titles.find((t) => t.id === id) : undefined;
+    const shown = titles.find((t) => t.id === id);
     return {
       boardId: shown ? id : null,
       title: shown?.title ?? null,
@@ -316,42 +379,39 @@ async function problems(
         .where(inArray(asset.id, assetIds))
     : [];
   const shown = files.filter((f) => visible.has(f.projectId));
-  const uses = shown.length
-    ? await deps.db
-        .selectDistinctOn([boardElementIndex.assetId], {
-          assetId: boardElementIndex.assetId,
-          boardId: boardElementIndex.boardId,
-        })
-        .from(boardElementIndex)
-        .where(
-          and(
-            isNotNull(boardElementIndex.assetId),
-            inArray(
-              boardElementIndex.assetId,
-              shown.map((f) => f.id),
+  // Where each file is used, on boards of projects the administrator is a member of only.
+  // shortcut: the first 1000 uses; a file on more boards than that is named by one of them.
+  const uses =
+    shown.length && visible.size
+      ? await deps.db
+          .select({
+            assetId: boardElementIndex.assetId,
+            boardId: boardElementIndex.boardId,
+            title: board.title,
+          })
+          .from(boardElementIndex)
+          .innerJoin(board, eq(board.id, boardElementIndex.boardId))
+          .where(
+            and(
+              isNotNull(boardElementIndex.assetId),
+              inArray(
+                boardElementIndex.assetId,
+                shown.map((f) => f.id),
+              ),
+              inArray(board.projectId, [...visible]),
             ),
-          ),
-        )
-    : [];
-  const readable = await boardRoles(
-    deps.db,
-    { id: adminId },
-    uses.map((u) => u.boardId),
-  );
-  const boardIds = uses.filter((u) => readable.has(u.boardId)).map((u) => u.boardId);
-  const titles = boardIds.length
-    ? await deps.db
-        .select({ id: board.id, title: board.title })
-        .from(board)
-        .where(inArray(board.id, boardIds))
-    : [];
+          )
+          .orderBy(boardElementIndex.assetId, board.createdAt, board.id)
+          .limit(1000)
+      : [];
+  const readable = await boardRoles(deps.db, { id: adminId }, [
+    ...new Set(uses.map((u) => u.boardId)),
+  ]);
   const fileName = new Map(shown.map((f) => [f.id, f.filename]));
-  const boardOf = new Map(
-    uses.flatMap((u) => {
-      const t = titles.find((x) => x.id === u.boardId);
-      return t && u.assetId ? [[u.assetId, t.title] as const] : [];
-    }),
-  );
+  const boardOf = new Map<string, string>();
+  for (const u of uses)
+    if (u.assetId && !boardOf.has(u.assetId) && readable.has(u.boardId))
+      boardOf.set(u.assetId, u.title);
   const out: ServerProblem[] = stored.map((p) => ({
     id: p.id,
     kind: p.kind,
@@ -458,20 +518,25 @@ export async function serverStatus(
   const { config, db, store } = deps;
   const { tier, window, step } = RANGES[range];
   const from = now - window * 1000;
-  const [beats, points, today, raw, visible, stored] = await Promise.all([
-    store.beats(),
-    store.points(tier),
-    store.points('m1'),
-    tier === 'raw' ? Promise.resolve(null) : store.points('raw'),
+  const midnight = new Date(now);
+  midnight.setHours(0, 0, 0, 0);
+  const beats = await store.beats();
+  // Only processes heard from since `since`: one stopped days ago has no samples to show.
+  const alive = (since: number) => beats.filter((b) => b.at >= since).map(processKey);
+  const [points, today, raw, visible, stored] = await Promise.all([
+    store.points(tier, alive(from), from),
+    // Today's traffic: the minute averages since midnight, already read for 24 h.
+    tier === 'm1' && from <= midnight.getTime()
+      ? null
+      : store.points('m1', alive(midnight.getTime()), midnight.getTime()),
+    tier === 'raw' ? Promise.resolve(null) : store.points('raw', alive(now - 3_600_000)),
     memberProjects(db, adminId),
     store.problems(),
   ]);
   const history = combine(points, from, step);
   const recent = combine(raw ?? points, now - 60_000, 60).at(-1);
   const hour = combine(raw ?? points, now - 3_600_000, 3600);
-  const midnight = new Date(now);
-  midnight.setHours(0, 0, 0, 0);
-  const day = combine(today, midnight.getTime(), 60);
+  const day = combine(today ?? points, midnight.getTime(), 60);
   const lastPoints = [...(raw ?? points).entries()].flatMap(([process, list]) => {
     const last = list.at(-1);
     return last && now - last.t < 60_000 ? [[process, last] as const] : [];
@@ -480,6 +545,7 @@ export async function serverStatus(
   for (const [process, p] of lastPoints)
     if (!hosts.has(hostOf(process))) hosts.set(hostOf(process), p);
   const containers = [...hosts.values()];
+  const room = capacity(containers);
   const webRecent = combine(raw ?? points, now - 5 * 60_000, 300).at(-1);
   const hourRequests = hour.at(-1);
 
@@ -526,10 +592,12 @@ export async function serverStatus(
       readServerAlerts(db),
       chartEvents(deps, from, now),
       transcodes(deps, visible, now),
-      presence(deps, adminId, running, now),
+      presence(deps, adminId, visible, running, now),
       problems(deps, adminId, visible, stored, checks, now),
     ]);
-  const queues = deps.queues ? await queueCounts(deps.queues, now).catch(() => []) : [];
+  const queues = deps.queues
+    ? await queueCounts(deps.queues, deps.redis, now).catch(() => null)
+    : [];
 
   const configStatus: ServerService['status'] = checks.some((c) => c.status === 'error')
     ? 'down'
@@ -545,7 +613,7 @@ export async function serverStatus(
     deps.redis
       ? {
           id: 'queue',
-          status: queueInfo.ok ? 'ok' : 'down',
+          status: queueInfo.ok && queues ? 'ok' : 'down',
           since: null,
           detail: queueInfo.version,
         }
@@ -573,13 +641,10 @@ export async function serverStatus(
     history,
     events,
     now: {
-      cpu: { used: sum(containers.map((p) => p.c)), cores: sum(containers.map((p) => p.cc)) },
+      cpu: { used: sum(containers.map((p) => p.c)), cores: room.cores },
       memory: {
         used: Math.round(sum(containers.map((p) => p.m))),
-        limit:
-          containers.every((p) => p.ml !== null) && containers.length
-            ? sum(containers.map((p) => p.ml ?? 0))
-            : null,
+        limit: containers.length ? room.memory : null,
       },
       network:
         recent && recent.in !== null && recent.out !== null
@@ -615,7 +680,7 @@ export async function serverStatus(
     },
     database: { version: dbInfo.version, size: dbInfo.size, connections: dbInfo.connections },
     encoder: encoder ? { backend: encoder.backend, label: encoder.label } : null,
-    queues,
+    queues: queues ?? [],
     transcodes: transcodeInfo,
     presence: { ...people, peak: peaks.length ? Math.max(...peaks) : null },
     checks,
@@ -627,19 +692,29 @@ export async function serverStatus(
 /** Runs the job of a problem again; false when there is nothing left to run. */
 export async function retryProblem(deps: ServerDeps, p: StoredProblem): Promise<boolean> {
   const { db, jobs } = deps;
+  // A file deleted since, or made since by an upload or a retry elsewhere, has nothing to run.
   if (p.kind === 'video_failed' && p.assetId && jobs.makeProxy) {
-    await db
+    const [queued] = await db
       .update(asset)
       .set({ proxyStatus: 'queued', proxyProgress: null })
-      .where(eq(asset.id, p.assetId));
+      .where(and(eq(asset.id, p.assetId), eq(asset.proxyStatus, 'failed')))
+      .returning({ id: asset.id });
+    if (!queued) return false;
     await jobs.makeProxy(p.assetId);
     return true;
   }
   if (p.kind === 'office_failed' && p.assetId && jobs.convertOffice) {
+    const [found] = await db.select({ id: asset.id }).from(asset).where(eq(asset.id, p.assetId));
+    if (!found) return false;
     await jobs.convertOffice(p.assetId);
     return true;
   }
   if (p.kind === 'preview_failed' && p.assetId) {
+    const [failed] = await db
+      .select({ id: asset.id })
+      .from(asset)
+      .where(and(eq(asset.id, p.assetId), eq(asset.status, 'failed')));
+    if (!failed) return false;
     await jobs.processAsset(p.assetId);
     return true;
   }
@@ -648,8 +723,8 @@ export async function retryProblem(deps: ServerDeps, p: StoredProblem): Promise<
     (k) => QUEUES[k] === p.job?.queue,
   );
   const queue = id && id in deps.queues ? deps.queues[id as ServerQueueId] : undefined;
-  const job = await queue?.getJob(p.job.id);
-  if (!job || !(await job.isFailed())) return false;
-  await job.retry();
+  const job = queue ? await bounded(queue.getJob(p.job.id)) : undefined;
+  if (!job || !(await bounded(job.isFailed()))) return false;
+  await bounded(job.retry());
   return true;
 }

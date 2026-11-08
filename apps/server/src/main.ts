@@ -25,10 +25,9 @@ import { mapUserAgent } from './media/maps.ts';
 import { sweepJobDirs } from './media/scratch.ts';
 import { checkHealth } from './monitor/health.ts';
 import { LatencyRecorder, startSampler } from './monitor/sampler.ts';
-import { type MonitorStore, memoryStore, redisStore } from './monitor/store.ts';
+import { type MonitorStore, memoryStore, monitorRedis, redisStore } from './monitor/store.ts';
 import {
   createQueues,
-  createRedis,
   inlineJobs,
   queuedBoardNotifier,
   queuedBoardWriter,
@@ -161,9 +160,9 @@ async function main() {
   ];
 
   // The Server page (#514): every role samples itself and tells the others it is alive.
-  const monitorRedis = config.REDIS_URL ? createRedis(config.REDIS_URL) : undefined;
-  const monitor: MonitorStore = monitorRedis ? redisStore(monitorRedis) : memoryStore();
-  if (monitorRedis) closers.push(async () => monitorRedis.disconnect());
+  const monitorConnection = config.REDIS_URL ? monitorRedis(config.REDIS_URL, log) : undefined;
+  const monitor: MonitorStore = monitorConnection ? redisStore(monitorConnection) : memoryStore();
+  if (monitorConnection) closers.push(async () => monitorConnection.disconnect());
   const latency = command === 'web' || command === 'all' ? new LatencyRecorder() : undefined;
 
   if (command === 'worker' || command === 'all') {
@@ -226,7 +225,8 @@ async function main() {
       closers.unshift(() => queues.close());
       pingQueue = async () => {
         try {
-          return (await queues.connection.ping()) === 'PONG';
+          // The monitor connection gives up after a timeout; the queue one would wait.
+          return (await monitorConnection?.ping()) === 'PONG';
         } catch {
           return false;
         }
@@ -279,7 +279,7 @@ async function main() {
         store: monitor,
         latency,
         queues: queueHandles?.queues,
-        redis: queueHandles?.connection,
+        redis: monitorConnection,
       },
     });
     const health = setInterval(

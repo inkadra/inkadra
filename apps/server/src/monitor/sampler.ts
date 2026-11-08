@@ -90,8 +90,12 @@ export function average(points: Point[], t: number): Point {
         }
       : {}),
     ...(people.length ? { people: Math.max(...people) } : {}),
+    ...machineOf(points.at(-1)?.box, points.at(-1)?.hc, points.at(-1)?.hm),
   };
 }
+
+const machineOf = (box: string | null | undefined, hc?: boolean, hm?: boolean) =>
+  box ? { box, hc: hc ?? false, hm: hm ?? false } : {};
 
 /** A sample from two readings `ms` apart. */
 export function pointFrom(
@@ -115,6 +119,7 @@ export function pointFrom(
     tx: rate(before.container.tx, after.container.tx),
     pc: Math.max(0, processUsec / 1e6 / seconds),
     pm: after.rss,
+    ...machineOf(after.container.machine, after.container.hostCores, after.container.hostMemory),
   };
 }
 

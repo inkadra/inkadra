@@ -3,18 +3,28 @@ import { redactFeedback, type ServerProblemKind, type ServerRole } from '@inkadr
 import type { Logger } from 'pino';
 import type { MonitorStore, ProblemInput } from './store.ts';
 
+/** Extensions of the server's own files: an error naming them names no one's work. */
+const TECHNICAL = new Set(['js', 'mjs', 'cjs', 'ts', 'mts', 'json', 'node', 'sql', 'wasm', 'map']);
+
 /**
  * The technical line of a problem (#514): where it happened and the error, with nothing a
  * board, a file or a person could be recognised by: what the feedback redaction removes
  * (addresses, tokens, ids), then quoted text, paths and file names (they carry titles).
  */
 export function technicalText(text: string): string {
-  const clean = redactFeedback(text)
+  // The first 2000 characters say what went wrong; the patterns below stay fast on them.
+  const clean = redactFeedback(text.slice(0, 2000))
     .replace(/"[^"\n]{0,300}"|'[^'\n]{0,300}'|«[^»\n]{0,300}»|“[^”\n]{0,300}”/g, '"…"')
-    .replace(/(?:[A-Za-z]:)?(?:[\\/][\w.@~+-]+){2,}/g, '[path]')
+    // A path runs to its first extension, spaces and all (`/data/My Film Final.mov: …`), or
+    // else to the end of the word.
     .replace(
-      /\b[\w-]+\.(?:mp4|mov|mkv|avi|webm|mxf|m4v|jpe?g|png|heic|tiff?|pdf|docx?|xlsx?|pptx?|wav|mp3|m4a|psd|raw|dng|cr[23]|nef|arw)\b/gi,
-      '[file]',
+      /(?:\b[A-Za-z]:)?[\\/](?:[\w.@~+-]+[\\/])+(?:[^\n:"'<>|]*?\.[A-Za-z][A-Za-z0-9]{1,4}\b|[^\s:"'<>|]*)/g,
+      '[path]',
+    )
+    // shortcut: a file name outside a path loses only its last word (`My Film Final.mov` keeps
+    // `My Film`): nothing tells where it starts. Any `name.ext`, but for code and data formats.
+    .replace(/\b[\w-]+(?:\.[\w-]+)*\.([A-Za-z][A-Za-z0-9]{1,4})\b/g, (match, ext: string) =>
+      TECHNICAL.has(ext.toLowerCase()) ? match : '[file]',
     )
     // A database error quotes the values it refused: `Key (email)=(x) already exists`.
     .replace(/=\([^)\n]{0,300}\)/g, '=(…)');

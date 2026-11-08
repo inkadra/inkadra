@@ -1,18 +1,31 @@
 import { fileURLToPath } from 'node:url';
 import { ServerStatus } from '@inkadra/shared';
+import type { Queue } from 'bullmq';
 import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { notification, user } from '../db/schema.ts';
+import { asset, board, boardElementIndex, boardGrant, notification, user } from '../db/schema.ts';
 import { memoryMailer } from '../mailer.ts';
 import { sendServerAlert } from '../monitor/alerts.ts';
 import { checkHealth } from '../monitor/health.ts';
+import { serverStatus } from '../monitor/status.ts';
 import { memoryStore } from '../monitor/store.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
+
+// A disk almost full, when a test asks for one.
+const disk = vi.hoisted(() => ({ full: false }));
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const real = await importOriginal<typeof import('node:fs/promises')>();
+  const statfs = ((path: string, opts?: object) =>
+    disk.full
+      ? Promise.resolve({ blocks: 1000, bsize: 1e6, bavail: 10 })
+      : real.statfs(path, opts as never)) as typeof real.statfs;
+  return { ...real, statfs, default: { ...real, statfs } };
+});
 
 const migrations = fileURLToPath(new URL('../../drizzle', import.meta.url));
 const url = process.env.DATABASE_URL;
@@ -98,6 +111,12 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
 
   it('names the boards the administrator can open and only counts the others', async () => {
     const now = Date.now();
+    // Shared with the administrator alone: still a project they are not a member of.
+    await db.insert(boardGrant).values({
+      boardId: boards.member as string,
+      userId: people.admin?.id as string,
+      role: 'viewer',
+    });
     await store.beat({
       role: 'collab',
       host: 'c1',
@@ -150,6 +169,94 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
     expect(status.problems.find((p) => p.id === 'job_failed:maintenance:x')?.seen).toBe(true);
   });
 
+  it('names a failed file by a board of a project the administrator is a member of', async () => {
+    const [own] = await db
+      .select({ projectId: board.projectId, title: board.title })
+      .from(board)
+      .where(eq(board.id, boards.admin as string));
+    const [secret] = await db
+      .select({ projectId: board.projectId })
+      .from(board)
+      .where(eq(board.id, boards.member as string));
+    const [file] = await db
+      .insert(asset)
+      .values({
+        projectId: own?.projectId as string,
+        kind: 'video',
+        mime: 'video/quicktime',
+        filename: 'Spot finale.mov',
+        size: 10,
+        storageKey: 'x',
+        status: 'ready',
+        proxyStatus: 'ready',
+      })
+      .returning({ id: asset.id });
+    const assetId = file?.id as string;
+    // On a board of the member's project first, then on one of the administrator's.
+    await db.insert(boardElementIndex).values([
+      {
+        boardId: boards.member as string,
+        projectId: secret?.projectId as string,
+        elementId: 'a',
+        type: 'video',
+        assetId,
+      },
+      {
+        boardId: boards.admin as string,
+        projectId: own?.projectId as string,
+        elementId: 'b',
+        type: 'video',
+        assetId,
+      },
+    ]);
+    await store.record({
+      id: `video_failed:${assetId}`,
+      kind: 'video_failed',
+      severity: 'error',
+      role: 'worker',
+      technical: 'worker · media-proxies · make',
+      assetId,
+      service: null,
+      job: null,
+      at: Date.now(),
+    });
+    const status = ServerStatus.parse((await request('admin', 'GET', '/instance/server')).json());
+    expect(status.problems.find((p) => p.id === `video_failed:${assetId}`)).toMatchObject({
+      file: 'Spot finale.mov',
+      board: own?.title,
+    });
+    // Its copy got made since: nothing to run again.
+    expect(
+      (await request('admin', 'POST', `/instance/server/problems/video_failed:${assetId}/retry`))
+        .statusCode,
+    ).toBe(409);
+  });
+
+  it('shows the queue down instead of waiting for it', async () => {
+    const stuck = { getJobCounts: () => new Promise(() => {}), toKey: () => 'x' };
+    const queues = Object.fromEntries(
+      ['media', 'maintenance', 'transfers', 'proxies', 'office', 'email'].map((id) => [
+        id,
+        { ...stuck, getActive: () => new Promise(() => {}) },
+      ]),
+    ) as unknown as Record<'media', Queue>;
+    const status = await serverStatus(
+      {
+        config,
+        db,
+        store,
+        jobs: testDeps(db, log).jobs,
+        queues: queues as never,
+        redis: { info: async () => 'redis_version:7.2.0' } as never,
+      },
+      people.admin?.id as string,
+      '1h',
+      [],
+    );
+    expect(status.services.find((s) => s.id === 'queue')?.status).toBe('down');
+    expect(status.queues).toEqual([]);
+  }, 10_000);
+
   it('saves the alert settings', async () => {
     const saved = await request('admin', 'PATCH', '/instance/server/alerts', { email: true });
     expect(saved.json()).toEqual({ enabled: true, email: true });
@@ -178,6 +285,29 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
     expect(mailer.sent.map((m) => m.to)).toEqual(['admin@example.com']);
     const inbox = await request('admin', 'GET', '/me/notifications');
     expect(inbox.json().items[0]).toMatchObject({ type: 'server_alert', serverAlert: alert });
+  });
+
+  it('tells about a disk almost full once, not at every check', async () => {
+    const before = mailer.sent.length;
+    let clock = Date.now();
+    const own = memoryStore(() => clock);
+    const deps = { ...alertDeps(), store: own };
+    disk.full = true;
+    try {
+      // Two checks an hour apart, past the hourly limit of the alerts themselves.
+      await checkHealth(deps, clock);
+      clock += 3_700_000;
+      await checkHealth(deps, clock);
+    } finally {
+      disk.full = false;
+    }
+    const rows = await db
+      .select()
+      .from(notification)
+      .where(eq(notification.userId, people.admin?.id as string));
+    expect(rows.filter((r) => r.serverAlert?.kind === 'disk_full')).toHaveLength(1);
+    expect((await own.problems()).find((p) => p.id === 'disk_full')?.count).toBe(1);
+    expect(mailer.sent.length - before).toBeLessThanOrEqual(1);
   });
 
   it('finds a stopped worker, once per outage', async () => {

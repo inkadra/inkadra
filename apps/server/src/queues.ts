@@ -524,7 +524,10 @@ export async function startWorkers(
         .event({ t: Date.now(), kind, ms })
         .catch((err) => log.warn({ err }, 'server event not saved'));
     };
-    proxies.on('completed', (job) => event('video_ready', job));
+    // A copy not needed (made already, not a video, turned off) is not one made.
+    proxies.on('completed', (job, result) => {
+      if (!(result && typeof result === 'object' && 'skipped' in result)) event('video_ready', job);
+    });
     proxies.on('failed', (job, err) => {
       if (
         job &&
@@ -788,17 +791,29 @@ export function inlineJobs(
       );
     },
     async makeProxy(assetId) {
-      const run = proxyChain.then(() =>
-        runProxy({ ...deps, log }, assetId).catch(async (err) => {
-          await markProxyFailed(deps.db, assetId);
-          recordProblem(
-            monitor,
-            jobProblem('web', QUEUES.proxies, { name: 'make', data: { assetId } }, err),
-            log,
-          );
-          throw err;
-        }),
-      );
+      // The copies made and failed today on the Server page, as the worker's events tell them.
+      const event = (kind: 'video_ready' | 'video_failed', started: number) =>
+        monitor
+          ?.event({ t: Date.now(), kind, ms: Date.now() - started })
+          .catch((err) => log.warn({ err }, 'server event not saved'));
+      const run = proxyChain.then(() => {
+        const started = Date.now();
+        return runProxy({ ...deps, log }, assetId).then(
+          (result) => {
+            if (!('skipped' in result)) event('video_ready', started);
+          },
+          async (err) => {
+            await markProxyFailed(deps.db, assetId);
+            recordProblem(
+              monitor,
+              jobProblem('web', QUEUES.proxies, { name: 'make', data: { assetId } }, err),
+              log,
+            );
+            event('video_failed', started);
+            throw err;
+          },
+        );
+      });
       proxyChain = run.catch(() => {});
       track(run);
     },
