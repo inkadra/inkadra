@@ -721,6 +721,11 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
       sql`select storage_key as key from asset where project_id = ${projectId}`,
     );
     expect(assets.length).toBeGreaterThan(0);
+    // Owners only: an editor is refused too.
+    const viewer = `/api/v1/projects/${projectId}/members/${as.viewer.id}`;
+    await call('owner', 'PUT', viewer, { role: 'editor' });
+    expect((await call('viewer', 'DELETE', `/api/v1/projects/${projectId}`)).statusCode).toBe(403);
+    await call('owner', 'PUT', viewer, { role: 'viewer' });
     expect((await call('viewer', 'DELETE', `/api/v1/projects/${projectId}`)).statusCode).toBe(403);
     expect((await call('owner', 'DELETE', `/api/v1/projects/${projectId}`)).statusCode).toBe(204);
     await deps.jobs.idle();

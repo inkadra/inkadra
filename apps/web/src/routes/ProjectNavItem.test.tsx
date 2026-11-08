@@ -2,14 +2,17 @@
 import type { Project } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { api } from '../lib/api.ts';
 import { ProjectNavItem } from './ProjectAppearance.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }));
-vi.mock('../lib/api.ts', () => ({ api: { get: vi.fn(), put: vi.fn(), patch: vi.fn() } }));
+vi.mock('../lib/api.ts', () => ({
+  api: { get: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn(async () => undefined) },
+}));
 vi.mock('./project-groups.ts', async (original) => ({
   ...(await original<typeof import('./project-groups.ts')>()),
   useProjectGroups: () => [{ id: 'g1', name: 'Caffè Aurora', color: 'orange' }],
@@ -92,4 +95,40 @@ it('ignores a mouse button held down', async () => {
   );
   await act(async () => vi.advanceTimersByTime(800));
   expect(items()).toEqual([]);
+});
+
+function Where() {
+  return <output>{useLocation().pathname}</output>;
+}
+
+it('sends the owner to Projects after deleting the project they are in', async () => {
+  act(() => root.unmount());
+  root = createRoot(host);
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/p/p1/b/b2']}>
+        <ProjectNavItem project={project} active onClick={open as never} />
+        <Where />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('.project-navigation__options')?.click(),
+  );
+  expect(items().at(-1)).toBe('projectDelete.menu');
+  await act(async () =>
+    [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].at(-1)?.click(),
+  );
+  const input = host.querySelector('dialog input') as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+      input,
+      'Last Train',
+    );
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () => host.querySelector<HTMLFormElement>('dialog form')?.requestSubmit());
+  expect(api.delete).toHaveBeenCalledWith('/projects/p1');
+  expect(host.querySelector('output')?.textContent).toBe('/projects');
+  expect(host.querySelector('dialog')).toBeNull();
 });

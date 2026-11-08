@@ -2537,6 +2537,15 @@
     "pinned": "Fissato",
     "saveError": "Non è stato possibile salvare la modifica. Riprova."
   },
+  "projectDelete": {
+    "menu": "Elimina progetto…",
+    "title": "Eliminare «{{name}}»?",
+    "body": "Tutte le board, gli asset e i file di questo progetto vengono eliminati per tutti i membri. Non si può annullare.",
+    "alternatives": "Per toglierlo di mezzo, archivialo. Per tenerne una copia, esportalo prima.",
+    "confirmLabel": "Scrivi il nome del progetto per confermare",
+    "confirm": "Elimina definitivamente",
+    "error": "Non è stato possibile eliminare il progetto. Riprova."
+  },
   "groups": {
     "new": "Nuovo gruppo",
     "rename": "Rinomina",
