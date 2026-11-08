@@ -345,7 +345,7 @@ export function Team() {
               <tbody className="team-pending">
                 {invitations.map((i) => (
                   <tr key={i.id}>
-                    <th scope="row" colSpan={6}>
+                    <th scope="row" colSpan={4}>
                       <span className="team-person">
                         <Badge>{t('settingsUi.members.pending')}</Badge>
                         <span>
@@ -358,7 +358,8 @@ export function Team() {
                         </span>
                       </span>
                     </th>
-                    <td className="team-col--actions">
+                    {/* Resend and Revoke need more than the ⋯ column of the members above. */}
+                    <td className="team-col--actions" colSpan={3}>
                       {i.kind === 'email' && (
                         <Button
                           variant="ghost"
