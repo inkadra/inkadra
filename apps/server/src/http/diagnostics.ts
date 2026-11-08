@@ -12,7 +12,7 @@ import type { Storage } from '../storage.ts';
 import { requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
-interface Deps {
+export interface DiagnosticsDeps {
   config: Config;
   db: Database;
   auth: Auth;
@@ -37,8 +37,8 @@ export function describeRequest(req: FastifyRequest): Diagnostics['request'] {
   };
 }
 
-export function registerDiagnostics(app: FastifyInstance, deps: Deps) {
-  const { config, db, auth, storage } = deps;
+export function registerDiagnostics(app: FastifyInstance, deps: DiagnosticsDeps) {
+  const { db, auth } = deps;
   // Open to anyone before the first account exists: a few checks a minute per address.
   const limiter = new RateLimiter(10, 60_000);
 
@@ -53,80 +53,7 @@ export function registerDiagnostics(app: FastifyInstance, deps: Deps) {
     }
 
     const request = describeRequest(req);
-    const publicUrl = new URL(config.PUBLIC_URL);
-    const checks: DiagnosticCheck[] = [];
-    // Before setup the endpoint is public: never reveal configuration or error messages.
-    const add = (
-      id: DiagnosticCheck['id'],
-      status: DiagnosticCheck['status'],
-      expected: string | null = null,
-      actual: string | null = null,
-    ) =>
-      checks.push({ id, status, expected: setup ? null : expected, actual: setup ? null : actual });
-
-    const local = LOCAL_HOSTS.has(publicUrl.hostname);
-    add(
-      'public_url_https',
-      publicUrl.protocol === 'https:' || local ? 'ok' : 'warning',
-      'https:',
-      publicUrl.protocol,
-    );
-
-    const seen = `${request.protocol}://${request.host}`;
-    add(
-      'public_url_matches_request',
-      seen === publicUrl.origin ? 'ok' : 'warning',
-      publicUrl.origin,
-      seen,
-    );
-
-    if (request.forwardedFor !== null) {
-      add(
-        'proxy_trusted',
-        request.proxyTrusted ? 'ok' : 'warning',
-        `TRUST_PROXY includes ${request.peerAddress}`,
-        `TRUST_PROXY=${String(config.TRUST_PROXY)}`,
-      );
-    }
-
-    try {
-      await db.execute(sql`select 1`);
-      add('database', 'ok');
-    } catch (err) {
-      add('database', 'error', null, message(err));
-    }
-
-    if (deps.pingQueue) add('queue', (await deps.pingQueue()) ? 'ok' : 'error');
-
-    try {
-      await access(config.DATA_DIR, constants.W_OK);
-      add('data_dir_writable', 'ok', null, config.DATA_DIR);
-    } catch (err) {
-      add('data_dir_writable', 'error', config.DATA_DIR, message(err));
-    }
-
-    const probe = `diagnostics/probe-${randomUUID()}`;
-    try {
-      await storage.write(probe, Buffer.from('inkadra'), 'text/plain');
-      await storage.remove([probe]);
-      add('storage', 'ok', null, config.STORAGE_DRIVER);
-    } catch (err) {
-      add('storage', 'error', config.STORAGE_DRIVER, message(err));
-    }
-
-    // Saved by the worker when it starts: the web role may run in another container.
-    const encoder = await readVideoEncoder(db).catch(() => null);
-    if (encoder) {
-      const forced = encoder.requested !== 'auto' && encoder.requested !== 'none';
-      const missed = forced && encoder.backend === 'software';
-      add(
-        'video_encoding',
-        missed ? 'warning' : 'ok',
-        missed ? `VIDEO_PROXY_HWACCEL=${encoder.requested}` : null,
-        encoder.label,
-      );
-    }
-
+    const checks = await runChecks(deps, req, setup);
     const body: Diagnostics = {
       version: VERSION,
       checkedAt: new Date().toISOString(),
@@ -135,6 +62,94 @@ export function registerDiagnostics(app: FastifyInstance, deps: Deps) {
     };
     return body;
   });
+}
+
+/**
+ * The server side checks of an installation, for the request `req`. Before setup (`setup`)
+ * they hide configuration and error messages; the Server page (#514) shows them in full.
+ */
+export async function runChecks(
+  deps: DiagnosticsDeps,
+  req: FastifyRequest,
+  setup = false,
+): Promise<DiagnosticCheck[]> {
+  const { config, db, storage } = deps;
+  const request = describeRequest(req);
+  const publicUrl = new URL(config.PUBLIC_URL);
+  const checks: DiagnosticCheck[] = [];
+  // Before setup the endpoint is public: never reveal configuration or error messages.
+  const add = (
+    id: DiagnosticCheck['id'],
+    status: DiagnosticCheck['status'],
+    expected: string | null = null,
+    actual: string | null = null,
+  ) =>
+    checks.push({ id, status, expected: setup ? null : expected, actual: setup ? null : actual });
+
+  const local = LOCAL_HOSTS.has(publicUrl.hostname);
+  add(
+    'public_url_https',
+    publicUrl.protocol === 'https:' || local ? 'ok' : 'warning',
+    'https:',
+    publicUrl.protocol,
+  );
+
+  const seen = `${request.protocol}://${request.host}`;
+  add(
+    'public_url_matches_request',
+    seen === publicUrl.origin ? 'ok' : 'warning',
+    publicUrl.origin,
+    seen,
+  );
+
+  if (request.forwardedFor !== null) {
+    add(
+      'proxy_trusted',
+      request.proxyTrusted ? 'ok' : 'warning',
+      `TRUST_PROXY includes ${request.peerAddress}`,
+      `TRUST_PROXY=${String(config.TRUST_PROXY)}`,
+    );
+  }
+
+  try {
+    await db.execute(sql`select 1`);
+    add('database', 'ok');
+  } catch (err) {
+    add('database', 'error', null, message(err));
+  }
+
+  if (deps.pingQueue) add('queue', (await deps.pingQueue()) ? 'ok' : 'error');
+
+  try {
+    await access(config.DATA_DIR, constants.W_OK);
+    add('data_dir_writable', 'ok', null, config.DATA_DIR);
+  } catch (err) {
+    add('data_dir_writable', 'error', config.DATA_DIR, message(err));
+  }
+
+  const probe = `diagnostics/probe-${randomUUID()}`;
+  try {
+    await storage.write(probe, Buffer.from('inkadra'), 'text/plain');
+    await storage.remove([probe]);
+    add('storage', 'ok', null, config.STORAGE_DRIVER);
+  } catch (err) {
+    add('storage', 'error', config.STORAGE_DRIVER, message(err));
+  }
+
+  // Saved by the worker when it starts: the web role may run in another container.
+  const encoder = await readVideoEncoder(db).catch(() => null);
+  if (encoder) {
+    const forced = encoder.requested !== 'auto' && encoder.requested !== 'none';
+    const missed = forced && encoder.backend === 'software';
+    add(
+      'video_encoding',
+      missed ? 'warning' : 'ok',
+      missed ? `VIDEO_PROXY_HWACCEL=${encoder.requested}` : null,
+      encoder.label,
+    );
+  }
+
+  return checks;
 }
 
 function message(err: unknown) {

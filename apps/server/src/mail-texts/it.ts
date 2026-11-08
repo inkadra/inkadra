@@ -155,6 +155,35 @@ export const it = {
     link: 'Scegli quali e quando',
     after: '.',
   },
+  serverAlert: {
+    badge: 'Avviso del server',
+    subject: (title: string, instance: string) => `${title} su ${instance}`,
+    titles: {
+      disk_full: 'Spazio quasi finito',
+      service_down: 'Un servizio non risponde',
+      backup_failed: 'Backup non riuscito',
+      repeated_errors: 'Errori che si ripetono',
+    },
+    disk: (free: string, total: string, weeks: string | null) =>
+      `Restano ${free} su ${total}.${weeks ? ` Al ritmo attuale bastano circa ${weeks}.` : ''} Libera spazio o aggiungi un disco prima che i caricamenti si fermino.`,
+    weeks: (n: number) => plural(n, 'una settimana', 'settimane'),
+    down: (service: string) =>
+      `${service} non risponde. Il resto di Inkadra funziona, ma questa parte è ferma finché il servizio non riparte.`,
+    backup:
+      'Il backup di stanotte non è riuscito. I dati sono al sicuro, ma conviene controllare prima del prossimo.',
+    errors: (n: number) => `Lo stesso errore è successo ${n} volte nell’ultima ora.`,
+    services: {
+      web: 'Il sito e l’accesso',
+      collab: 'Il lavoro insieme dal vivo',
+      worker: 'La preparazione di video e anteprime',
+      database: 'Il database',
+      queue: 'La coda dei lavori',
+      configuration: 'La configurazione',
+    } as Record<string, string>,
+    action: 'Apri Server',
+    footer: (instance: string) =>
+      `Avvisi del server di ${instance} per gli amministratori. Si cambiano in Impostazioni › Server.`,
+  },
   calendar: {
     deadline: (task: string, board: string) => `Scadenza: ${task} · ${board}`,
     todo: (board: string) => `To-do · board "${board}" · tutto il giorno`,

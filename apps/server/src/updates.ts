@@ -7,7 +7,7 @@ import { newerRelease, plainLine, semver } from './release-news.ts';
 import { safeFetch } from './safe-fetch.ts';
 
 /**
- * Update check (#515, decision 0079): the server reads the releases of Inkadra from GitHub every
+ * Update check (#515, decision 0080): the server reads the releases of Inkadra from GitHub every
  * 6 hours, sending nothing about the instance, and keeps the answer in `instance_setting`.
  * Release notes come from outside: only plain text lines leave this module.
  */

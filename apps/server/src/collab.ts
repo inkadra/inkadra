@@ -21,6 +21,7 @@ import type { Auth } from './auth.ts';
 import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
+import type { PresenceBoard } from './monitor/store.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import {
@@ -66,6 +67,8 @@ export function createCollabServer(deps: {
   // Seed lazily from the authoritative transaction, including after a process restart.
   const lastAutoAt = new Map<string, number>();
   const ownerKey = (documentName: string, clientId: number) => `${documentName}#${clientId}`;
+  /** When each board was opened, for the people on it in the Server page (#514). */
+  const openedAt = new WeakMap<object, number>();
 
   async function signedIn(
     token: string,
@@ -289,6 +292,7 @@ export function createCollabServer(deps: {
       if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
       prepareImageDrawings(document);
       assignments.set(document, assignedItems(document));
+      openedAt.set(document, Date.now());
       return document;
     },
 
@@ -394,7 +398,25 @@ export function createCollabServer(deps: {
   hocuspocus.shouldUnloadDocument = (document) =>
     hocuspocus.documents.get(document.name) === document && shouldUnload(document);
 
-  return Object.assign(server, { recheck: () => recheck(server) });
+  /** Who is on which board now: ids only, the web role names them for whoever may see them. */
+  function presence(): PresenceBoard[] {
+    const out: PresenceBoard[] = [];
+    for (const document of server.hocuspocus.documents.values()) {
+      const users = new Set<string>();
+      let boardId: string | null = null;
+      for (const connection of document.getConnections() as Array<Connection<Context>>) {
+        const ctx = connection.context;
+        if (!ctx?.user) continue;
+        users.add(ctx.user.id);
+        boardId = ctx.boardId;
+      }
+      if (boardId && users.size)
+        out.push({ boardId, since: openedAt.get(document) ?? Date.now(), users: [...users] });
+    }
+    return out;
+  }
+
+  return Object.assign(server, { recheck: () => recheck(server), presence });
 }
 
 export type CollabServer = ReturnType<typeof createCollabServer>;

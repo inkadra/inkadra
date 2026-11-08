@@ -151,6 +151,35 @@ export const fr: MailTexts = {
     link: 'Choisissez lesquels et quand',
     after: '.',
   },
+  serverAlert: {
+    badge: 'Alerte du serveur',
+    subject: (title, instance) => `${title} sur ${instance}`,
+    titles: {
+      disk_full: 'Presque plus d’espace',
+      service_down: 'Un service ne répond pas',
+      backup_failed: 'La sauvegarde a échoué',
+      repeated_errors: 'Une erreur se répète',
+    },
+    disk: (free, total, weeks) =>
+      `Il reste ${free} sur ${total}.${weeks ? ` Au rythme actuel, cela suffit pour environ ${weeks}.` : ''} Libérez de l’espace ou ajoutez un disque avant que les envois ne s’arrêtent.`,
+    weeks: (n) => plural(n, 'une semaine', 'semaines'),
+    down: (service) =>
+      `${service} ne répond pas. Le reste d’Inkadra fonctionne, mais cette partie est à l’arrêt jusqu’au redémarrage du service.`,
+    backup:
+      'La sauvegarde de cette nuit a échoué. Vos données sont en sécurité, mais vérifiez avant la prochaine.',
+    errors: (n) => `La même erreur s’est produite ${n} fois dans la dernière heure.`,
+    services: {
+      web: 'Le site et la connexion',
+      collab: 'La collaboration en direct',
+      worker: 'La préparation des vidéos et des aperçus',
+      database: 'La base de données',
+      queue: 'La file des tâches',
+      configuration: 'La configuration',
+    } as Record<string, string>,
+    action: 'Ouvrir Serveur',
+    footer: (instance) =>
+      `Alertes du serveur de ${instance} pour les administrateurs. Modifiables dans Réglages › Serveur.`,
+  },
   calendar: {
     deadline: (task, board) => `Échéance : ${task} · ${board}`,
     todo: (board) => `À faire · tableau « ${board} » · toute la journée`,

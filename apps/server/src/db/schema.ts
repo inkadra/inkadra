@@ -810,6 +810,7 @@ export const notification = pgTable(
         'task_assigned',
         'feedback_received',
         'review_submitted',
+        'server_alert',
         'update_available',
       ],
     }).notNull(),
@@ -825,6 +826,8 @@ export const notification = pgTable(
     accessExpiresAt: timestamp('access_expires_at', { withTimezone: true }),
     /** link_opened, review_submitted: the link of the guest; the notification shows its label. */
     shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
+    /** server_alert: what is wrong with the server (#514). */
+    serverAlert: jsonb('server_alert').$type<import('@inkadra/shared').ServerAlert>(),
     readAt: timestamp('read_at', { withTimezone: true }),
     /** Set once the notification went out by email, alone or in a digest. */
     emailedAt: timestamp('emailed_at', { withTimezone: true }),

@@ -255,6 +255,7 @@ export async function renderNotifications(
       subject: r.subjectUserId ? (subjects.get(r.subjectUserId) ?? null) : null,
       accessExpiresAt: r.accessExpiresAt ? iso(r.accessExpiresAt) : null,
       shareLinkLabel: r.shareLinkId ? labelOf(people, r.shareLinkId) : null,
+      ...(r.type === 'server_alert' ? { serverAlert: r.serverAlert ?? null } : {}),
       readAt: r.readAt ? iso(r.readAt) : null,
       createdAt: iso(r.createdAt),
     };

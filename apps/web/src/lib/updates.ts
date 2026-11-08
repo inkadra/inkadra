@@ -5,7 +5,7 @@ import { usePreferences } from './preferences.ts';
 import { useSession } from './session.tsx';
 
 /**
- * New Inkadra releases, for administrators (#515, decision 0079). The server reads GitHub and
+ * New Inkadra releases, for administrators (#515, decision 0080). The server reads GitHub and
  * caches the answer; the page, the settings navigation and the pop-up share one copy here.
  */
 type State = { data: InstanceUpdates | null; error: boolean; checking: boolean };

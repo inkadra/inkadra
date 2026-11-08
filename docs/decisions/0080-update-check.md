@@ -1,4 +1,4 @@
-# 0079 — The server checks GitHub for new releases
+# 0080 — The server checks GitHub for new releases
 
 ## Context
 

@@ -14,6 +14,7 @@ import { useLocation } from 'react-router';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { DiagnosticsContext, SaveStatus, SettingsNav } from './SettingsShell.tsx';
+import { ServerViewToggle } from './server/ServerSettings.tsx';
 import { autosaves, isSettingsHome, settingsSection } from './settings-sections.ts';
 import { useIsPhone } from './settings-ui.tsx';
 import './settings.css';
@@ -140,6 +141,7 @@ export function SettingsWindow({
                 {list ? t('settingsUi.profile') : t(page.title)}
               </h2>
               {!list && autosaves(page.id) && <SaveStatus />}
+              {!list && page.id === 'server' && user?.role === 'admin' && <ServerViewToggle />}
               <IconButton icon="close" label={t('settingsUi.close')} onClick={onClose} />
             </header>
             <div className="settings-window__body" key={list ? 'list' : page.id}>

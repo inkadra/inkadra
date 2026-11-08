@@ -16,6 +16,7 @@ export const KNOWN_TYPES = [
   'task_assigned',
   'feedback_received',
   'review_submitted',
+  'server_alert',
   'update_available',
 ] as const;
 

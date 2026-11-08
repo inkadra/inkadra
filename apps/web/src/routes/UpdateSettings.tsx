@@ -15,7 +15,7 @@ const GUIDE = 'https://github.com/inkadra/inkadra/blob/main/docs/self-hosting/up
 const day = (value: string | null, month: 'long' | 'short' = 'long') =>
   value ? formatDateTime(value, { day: 'numeric', month }) : null;
 
-/** Settings → Updates (#515, decision 0079): the running version, a new one, the history. */
+/** Settings → Updates (#515, decision 0080): the running version, a new one, the history. */
 export function UpdateSettings() {
   const { t } = useTranslation();
   const { data, error, checking } = useUpdates();
@@ -37,7 +37,7 @@ export function UpdateSettings() {
     ? formatDateTime(data.checkedAt, { dateStyle: 'medium', timeStyle: 'short' })
     : null;
   const { available } = data;
-  // Edge builds are never compared with releases (decision 0079): no "up to date" for them.
+  // Edge builds are never compared with releases (decision 0080): no "up to date" for them.
   const warn = data.checkEnabled && (data.failed || data.edge);
 
   return (

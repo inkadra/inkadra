@@ -31,6 +31,7 @@ it('identifies all settings pages and localizes headings, descriptions and group
       'providers',
       'registration',
       'backups',
+      'server',
       'updates',
       'members',
     ]) {
@@ -202,6 +203,16 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Email and password', 'Email e password'],
     ['SMTP', 'SMTP'],
     ['Outgoing email', 'Invio email'],
+  ],
+  server: [
+    ['Processor', 'Processore'],
+    ['Memory', 'Memoria'],
+    ['Space', 'Spazio'],
+    ['Services', 'Servizi'],
+    ['Problems', 'Problemi'],
+    ['Alerts', 'Avvisi'],
+    ['Diagnostics', 'Diagnostica'],
+    ['Video', 'Video'],
   ],
   backups: [
     ['Backups', 'Backup'],

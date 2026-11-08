@@ -69,6 +69,9 @@ const fields = {
   tutorialHints: z.boolean().openapi({
     description: "Offer a feature's tutorial the first time this person opens it (#502).",
   }),
+  serverView: z.enum(['simple', 'advanced']).openapi({
+    description: 'How an administrator last looked at the Server settings page (#514).',
+  }),
   updateSeen: z
     .string()
     .max(64)
@@ -111,6 +114,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   toolbar: null,
   tutorialsSeen: [],
   tutorialHints: true,
+  serverView: 'simple',
   updateSeen: null,
   updateSkipped: null,
 };

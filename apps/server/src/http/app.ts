@@ -8,6 +8,7 @@ import Fastify, {
   type FastifyServerOptions,
 } from 'fastify';
 import type { Logger } from 'pino';
+import { ZodError } from 'zod';
 import type { Auth } from '../auth.ts';
 import type { BoardReader } from '../board-content.ts';
 import type { BoardNotifier } from '../board-notices.ts';
@@ -16,6 +17,10 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import type { Jobs } from '../jobs.ts';
 import { type Mailer, noMailer } from '../mailer.ts';
+import { recordProblem, requestProblem } from '../monitor/problems.ts';
+import type { LatencyRecorder } from '../monitor/sampler.ts';
+import type { ServerDeps } from '../monitor/status.ts';
+import { type MonitorStore, memoryStore } from '../monitor/store.ts';
 import { rememberOrigin, requestIsSecure } from '../request-origin.ts';
 import { DocViews } from '../share-links.ts';
 import type { Storage } from '../storage.ts';
@@ -30,7 +35,7 @@ import { registerClipRoutes } from './clip-routes.ts';
 import { registerCommentRoutes } from './comments-routes.ts';
 import { registerCsrfCheck } from './csrf.ts';
 import { registerDiagnostics } from './diagnostics.ts';
-import { errorHandler, sendError } from './errors.ts';
+import { errorHandler, HttpError, sendError } from './errors.ts';
 import { registerExportSettingsRoutes } from './export-settings-routes.ts';
 import { registerFeedbackRoutes } from './feedback-routes.ts';
 import { registerGuestRoutes } from './guest-routes.ts';
@@ -44,6 +49,7 @@ import { registerReviewRoutes } from './reviews-routes.ts';
 import { registerScheduleRoutes } from './schedule-routes.ts';
 import { registerSearchRoutes } from './search-routes.ts';
 import { securityHeaders } from './security-headers.ts';
+import { registerServerRoutes } from './server-routes.ts';
 import { GUEST_PAGE_PATH, registerShareLinkRoutes } from './share-links-routes.ts';
 import { registerSharingRoutes } from './sharing-routes.ts';
 import { registerTransferRoutes } from './transfers-routes.ts';
@@ -74,6 +80,13 @@ export interface AppDeps {
   tmpDir?: string;
   /** Tests only: addresses link previews may fetch besides public ones. */
   allowAddresses?: string[];
+  /** The Server page (#514); in memory when omitted. */
+  monitor?: {
+    store: MonitorStore;
+    latency?: LatencyRecorder;
+    queues?: ServerDeps['queues'];
+    redis?: ServerDeps['redis'];
+  };
 }
 
 export async function createApp(deps: AppDeps) {
@@ -131,6 +144,25 @@ export async function createApp(deps: AppDeps) {
     } else reply.header('referrer-policy', 'strict-origin-when-cross-origin');
   });
 
+  const monitor = deps.monitor ?? { store: memoryStore() };
+  app.addHook('onResponse', async (req, reply) => {
+    if (!monitor.latency || !req.url.startsWith(API_PREFIX)) return;
+    // JSON answers only: a file takes as long as its size, not as the server.
+    const type = String(reply.getHeader('content-type') ?? '');
+    if (reply.statusCode >= 500 || reply.statusCode === 204 || type.startsWith('application/json'))
+      monitor.latency.record(reply.elapsedTime, reply.statusCode);
+  });
+  app.addHook('onError', async (req, _reply, err) => {
+    if (err instanceof HttpError || err instanceof ZodError) return;
+    const code = 'statusCode' in err ? err.statusCode : undefined;
+    if (typeof code === 'number' && code < 500) return;
+    recordProblem(
+      monitor.store,
+      requestProblem(req.routeOptions.url ?? 'unknown route', req.method, err),
+      req.log,
+    );
+  });
+
   // Before every route: cross-site writes stop here (decision 0013).
   registerCsrfCheck(app, config.PUBLIC_URL);
   registerAuthRoutes(app, deps.auth, config.PUBLIC_URL);
@@ -149,6 +181,7 @@ export async function createApp(deps: AppDeps) {
   registerMapPreviews(app, deps);
   registerMapTiles(app, deps);
   registerDiagnostics(app, deps);
+  registerServerRoutes(app, { ...deps, ...monitor });
   registerCommentRoutes(app, deps);
   registerReviewRoutes(app, deps);
   registerScheduleRoutes(app, deps);

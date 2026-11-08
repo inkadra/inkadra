@@ -79,7 +79,7 @@ export function registerInstanceAdminRoutes(
       return settings;
     });
   });
-  // Decision 0079: the answer of GitHub is cached; a failed check is shown, never thrown.
+  // Decision 0080: the answer of GitHub is cached; a failed check is shown, never thrown.
   app.get(`${API_PREFIX}/instance/updates`, async (req) => {
     await admin(req);
     await checkForUpdates(db).catch((err) => req.log.warn({ err }, 'update check failed'));

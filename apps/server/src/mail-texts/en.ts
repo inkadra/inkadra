@@ -143,6 +143,34 @@ export const en: MailTexts = {
     link: 'Choose which and when',
     after: '.',
   },
+  serverAlert: {
+    badge: 'Server alert',
+    subject: (title, instance) => `${title} on ${instance}`,
+    titles: {
+      disk_full: 'Almost out of space',
+      service_down: 'A service is not answering',
+      backup_failed: 'Backup failed',
+      repeated_errors: 'An error keeps happening',
+    },
+    disk: (free, total, weeks) =>
+      `${free} left of ${total}.${weeks ? ` At the current pace that lasts about ${weeks}.` : ''} Free some space or add a disk before uploads stop.`,
+    weeks: (n) => plural(n, 'a week', 'weeks'),
+    down: (service) =>
+      `${service} is not answering. The rest of Inkadra works, but this part is stopped until the service starts again.`,
+    backup: 'Last night’s backup failed. Your data is safe, but check it before the next one.',
+    errors: (n) => `The same error happened ${n} times in the last hour.`,
+    services: {
+      web: 'The site and sign-in',
+      collab: 'Live collaboration',
+      worker: 'Video and preview processing',
+      database: 'The database',
+      queue: 'The job queue',
+      configuration: 'The configuration',
+    } as Record<string, string>,
+    action: 'Open Server',
+    footer: (instance) =>
+      `Server alerts of ${instance} for administrators. Change them in Settings › Server.`,
+  },
   calendar: {
     deadline: (task, board) => `Due: ${task} · ${board}`,
     todo: (board) => `To-do · board "${board}" · all day`,
