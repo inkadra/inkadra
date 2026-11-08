@@ -551,7 +551,7 @@ function MemberSpace({ member, warnPercent }: { member: InstanceMember; warnPerc
           originals={member.storageBytes}
           limit={limit}
           tone={spaceTone(member.storageBytes, limit, warnPercent)}
-          label={t('storageSpace.of', { used: size(member.storageBytes), limit: size(limit) })}
+          label={member.name}
           small
         />
       )}

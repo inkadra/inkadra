@@ -48,7 +48,7 @@ export async function readLimits(db: Reader, config: StorageEnv): Promise<Limits
 }
 
 export async function saveLimits(
-  db: Database,
+  db: Database | Tx,
   config: StorageEnv,
   patch: UpdateStorageLimits,
 ): Promise<Limits> {

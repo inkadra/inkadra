@@ -193,7 +193,11 @@ export function LargestFilesDialog({
                 <tr key={f.id}>
                   <th scope="row">
                     <span className="space-files__name">{f.filename}</span>
-                    <Link className="space-files__project" to={`/p/${f.projectId}`}>
+                    <Link
+                      className="space-files__project"
+                      to={`/p/${f.projectId}`}
+                      onClick={onClose}
+                    >
                       {f.projectName}
                     </Link>
                   </th>

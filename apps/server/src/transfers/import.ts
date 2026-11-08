@@ -349,7 +349,9 @@ export async function importProject(
               storageKey: originalKey(file.id),
               status: 'processing' as const,
               sourceUrl: a.sourceUrl,
-              createdBy: personOrNull(a.createdBy),
+              // Always the importer, even without an author in the archive: the files count
+              // in their space (decision 0081).
+              createdBy: userId,
               importedAuthor: nameOf(a.createdBy),
               createdAt: new Date(a.createdAt),
             },

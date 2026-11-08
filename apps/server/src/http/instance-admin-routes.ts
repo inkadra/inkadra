@@ -122,10 +122,16 @@ export function registerInstanceAdminRoutes(
     return storageLimits(await readLimits(db, config));
   });
   app.patch(`${API_PREFIX}/instance/storage-limits`, async (req) => {
-    await admin(req);
+    const actor = await admin(req);
     const patch = UpdateStorageLimits.parse(req.body ?? {});
     // A limit under what is used is allowed: nothing is deleted, new files are refused.
-    return storageLimits(await saveLimits(db, config, patch));
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+      const [current] = await tx.select().from(user).where(eq(user.id, actor.id));
+      if (current?.role !== 'admin' || current.deactivatedAt)
+        throw new HttpError('forbidden', 'Administrators only.');
+      return storageLimits(await saveLimits(tx, config, patch));
+    });
   });
   app.get(`${API_PREFIX}/instance/members/:userId/files`, async (req, reply) => {
     const actor = await admin(req);
