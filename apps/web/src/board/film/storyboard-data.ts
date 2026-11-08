@@ -1,4 +1,9 @@
-import { frameLabels, type SceneElement, storyboardOf } from '@inkadra/canvas-core';
+import {
+  frameLabels,
+  type SceneElement,
+  type SceneGroup,
+  storyboardOf,
+} from '@inkadra/canvas-core';
 import { useMemo, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BoardStore } from '../store.ts';
@@ -14,10 +19,15 @@ export function useStoryboard(store: BoardStore, { omitted = true } = {}) {
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return useMemo(() => {
     const all = storyboardOf([...snap.byId.values()]);
-    const groups = omitted ? all : all.filter((g) => !g.scene?.omitted);
+    const groups = omitted ? all : inShotList(all);
     const frames = groups.flatMap((g) => g.frames);
     return { groups, frames, labels: frameLabels(all) };
   }, [snap, omitted]);
+}
+
+/** The scenes the shot list counts: without those the script left out (decision 0081). */
+export function inShotList(groups: readonly SceneGroup[]): SceneGroup[] {
+  return groups.filter((g) => !g.scene?.omitted);
 }
 
 /** What a scene is called in lists: its title, else its location, as imported scenes are. */

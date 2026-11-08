@@ -174,6 +174,12 @@ test('a revised draft updates the scenes, adds the new one and marks the omitted
     'aria-label',
     'Scena 4, omessa',
   );
+  // The list's total leaves the omitted frames out, as the shot list does.
+  await expect(page.locator('.story__sidebar .story__side-count').first()).toHaveText('9');
+  // At 1280 px the Omitted toggle keeps New scene on the bar's only row.
+  const rowOf = async (name: string) =>
+    (await page.locator('.story__bar').getByRole('button', { name }).boundingBox())?.y;
+  expect(await rowOf('Nuova scena')).toBe(await rowOf('Omesse (1)'));
   // The top, with the struck-through scene in the list, then the scene itself.
   await shoot(page, 'storyboard-omitted');
   await omitted.evaluate((el) => el.scrollIntoView({ block: 'center' }));
@@ -206,6 +212,8 @@ test('a revised draft updates the scenes, adds the new one and marks the omitted
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(url);
   await expect(page.getByRole('region', { name: 'Scena 4, omessa' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Omesse (1)' })).toBeVisible();
+  await shoot(page, 'storyboard-omitted-phone-bar');
   await page
     .getByRole('region', { name: 'Scena 4, omessa' })
     .locator('header')

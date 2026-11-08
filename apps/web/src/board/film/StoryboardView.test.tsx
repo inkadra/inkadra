@@ -227,3 +227,35 @@ it('keeps an omitted scene in place, hides it on request, restores or deletes it
     doc.destroy();
   }
 });
+
+it('leaves the frames of omitted scenes out of the sidebar total, as the shot list does', async () => {
+  const doc = new Y.Doc();
+  const store = new BoardStore(doc);
+  const opts = { userId: null };
+  const a = addScene(doc, { number: '1' }, opts);
+  const b = addScene(doc, { number: '2' }, opts);
+  addFrame(doc, a.id, null, {}, opts);
+  addFrame(doc, b.id, null, {}, opts);
+  addFrame(doc, b.id, null, {}, opts);
+  updateElement(doc, b.id, { omitted: true });
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <StoryboardView store={store} projectId="p" boardId="b" userId="u" readOnly={false} />
+        </MemoryRouter>,
+      ),
+    );
+    const counts = [...host.querySelectorAll('.story__side-count')].map((el) => el.textContent);
+    // All scenes, then each scene: the omitted one keeps its own count.
+    expect(counts).toEqual(['1', '1', '2']);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    store.destroy();
+    doc.destroy();
+  }
+});

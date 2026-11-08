@@ -389,6 +389,20 @@ html[data-view-direction]::view-transition-new(board-view) {
   color: var(--ink-text-muted);
   font-variant-numeric: tabular-nums;
 }
+/* Where the bar is short of room (1280 px with the sidebar open), its controls sit closer, as in
+   the shot list, and the Omitted toggle keeps its eye and count, so that New scene stays on the
+   same row; its name stays in the label. */
+.story {
+  container: story / inline-size;
+}
+@container story (max-width: 1120px) {
+  .story > .story__bar {
+    gap: 8px;
+  }
+  .story__omitted-word {
+    display: none;
+  }
+}
 /* The menu of an omitted scene: each action with a line saying what it does. */
 .menu:has(.story__menu-item) {
   width: 230px;

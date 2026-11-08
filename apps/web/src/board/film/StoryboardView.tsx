@@ -30,7 +30,7 @@ import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import { blurOnEnter, StatusChip, usePresetText } from './fields.tsx';
-import { sceneName, useStoryboard } from './storyboard-data.ts';
+import { inShotList, sceneName, useStoryboard } from './storyboard-data.ts';
 import {
   applyDrop,
   type DropTarget,
@@ -321,7 +321,7 @@ export function StoryboardView({
             onClick={() => setShowOmitted((v) => !v)}
           >
             <span className="film-compact-btn__label">
-              {t('film.scene.omittedToggle')}{' '}
+              <span className="story__omitted-word">{t('film.scene.omittedToggle')} </span>
               <span className="story__omitted-n">{omittedCount}</span>
             </span>
           </Button>
@@ -533,7 +533,8 @@ function SceneList({
 }) {
   const { t } = useTranslation();
   const pickerId = useId();
-  const frames = groups.reduce((n, g) => n + g.frames.length, 0);
+  // Like the shot list, the total leaves out the frames of omitted scenes.
+  const frames = inShotList(groups).reduce((n, g) => n + g.frames.length, 0);
   return (
     <>
       <label className="story__scene-picker" htmlFor={pickerId}>
