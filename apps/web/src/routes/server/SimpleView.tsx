@@ -16,6 +16,7 @@ import { HistoryChart } from './charts.tsx';
 import { type ServerActions, technicalSummary, useWhen } from './common.ts';
 import {
   bits,
+  diskCompresses,
   downServices,
   duration,
   loadVerdict,
@@ -224,10 +225,20 @@ function Meters({ status }: { status: ServerStatus }) {
             </>
           }
           bar={store.used / store.total}
-          hint={t('server.meters.storage.split', {
-            originals: formatStorage(store.originals, lang),
-            derived: formatStorage(store.copies + store.previews, lang),
-          })}
+          hint={
+            <>
+              {t('server.meters.storage.split', {
+                originals: formatStorage(store.originals, lang),
+                derived: formatStorage(store.copies + store.previews, lang),
+              })}
+              {diskCompresses(store) && (
+                <>
+                  <br />
+                  {t('server.meters.storage.compressed')}
+                </>
+              )}
+            </>
+          }
         />
       ) : (
         <Meter

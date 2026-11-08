@@ -27,6 +27,19 @@ export function storageVerdict(storage: ServerStatus['storage']): {
   return { key: 'months', months: Math.round(storage.monthsLeft) };
 }
 
+/**
+ * A local disk that compresses (ZFS, btrfs) takes less space than the files' real size, so the
+ * originals, copies and previews add up to more than "used" (#526).
+ * shortcut: `used` covers the whole filesystem under DATA_DIR (backups, other data), so on a
+ * compressing disk that holds other data too this can stay false; upgrade by measuring the data
+ * folder itself if admins still ask.
+ */
+export function diskCompresses(storage: ServerStatus['storage']): boolean {
+  return (
+    storage.total !== null && storage.used < storage.originals + storage.copies + storage.previews
+  );
+}
+
 /** Services that stop part of Inkadra; `configuration` warns only. */
 export function downServices(services: ServerService[]): ServerService[] {
   return services.filter((s) => s.status === 'down' && s.id !== 'configuration');

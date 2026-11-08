@@ -4658,7 +4658,8 @@
         "bucket": "bucket S3",
         "used": "usados",
         "s3Hint": "O fornecedor do espaço não indica o total, por isso não mostramos quanto resta.",
-        "growth": "Cresce cerca de {{size}} por mês."
+        "growth": "Cresce cerca de {{size}} por mês.",
+        "compressed": "O espaço usado é menor porque o disco compacta os arquivos."
       },
       "network": {
         "name": "Internet",
