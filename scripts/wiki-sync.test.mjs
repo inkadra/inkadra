@@ -24,5 +24,8 @@ test('links to listed pages become wiki pages, the rest point at the repository'
 });
 
 test('a link to a folder opens its README page', () => {
-  assert.equal(rewritePage('[Self-hosting](self-hosting)', 'docs/guide.md'), '[Self-hosting](Self-hosting)');
+  assert.equal(
+    rewritePage('[Self-hosting](self-hosting)', 'docs/guide.md'),
+    '[Self-hosting](Self-hosting)',
+  );
 });

@@ -43,7 +43,9 @@ const isExternal = (target) => /^([a-z][a-z0-9+.-]*:|#|\/\/)/i.test(target);
 export function rewriteTarget(target, from, image) {
   if (!target || isExternal(target)) return target;
   const [file, anchor] = target.split(/(?=#)/);
-  const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(from), file)).replace(/\/$/, '');
+  const resolved = path.posix
+    .normalize(path.posix.join(path.posix.dirname(from), file))
+    .replace(/\/$/, '');
   const page = PAGES.get(resolved) ?? PAGES.get(`${resolved}/README.md`);
   if (page) return page + (anchor ?? '');
   return `${image ? RAW : `${REPO}/blob/main`}/${resolved}${anchor ?? ''}`;
@@ -62,7 +64,8 @@ export function rewritePage(text, from) {
 
 function sidebar() {
   const sections = SECTIONS.map(
-    ([title, pages]) => `**${title}**\n\n${pages.map(([name]) => `- [${name.replaceAll('-', ' ')}](${name})`).join('\n')}`,
+    ([title, pages]) =>
+      `**${title}**\n\n${pages.map(([name]) => `- [${name.replaceAll('-', ' ')}](${name})`).join('\n')}`,
   );
   const more = `**More**\n\n- [Releases](${REPO}/releases)\n- [Discussions](${REPO}/discussions)\n- [Contributing](${REPO}/blob/main/CONTRIBUTING.md)`;
   return `${['[Home](Home)', ...sections, more].join('\n\n')}\n`;
@@ -88,7 +91,8 @@ export function writeWiki(root, out) {
   for (const file of readdirSync(out)) if (file.endsWith('.md')) rmSync(path.join(out, file));
   for (const [src, name] of PAGES) {
     const source = path.join(root, src);
-    if (!existsSync(source)) throw new Error(`${src} is listed in scripts/wiki-sync.mjs but does not exist`);
+    if (!existsSync(source))
+      throw new Error(`${src} is listed in scripts/wiki-sync.mjs but does not exist`);
     writeFileSync(path.join(out, `${name}.md`), rewritePage(readFileSync(source, 'utf8'), src));
   }
   writeFileSync(path.join(out, 'Home.md'), home());
