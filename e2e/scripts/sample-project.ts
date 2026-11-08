@@ -1,15 +1,26 @@
 import { randomUUID } from 'node:crypto';
-import { addFrame, addScene, createElement, moveIntoParent } from '@inkadra/canvas-core';
-import { initBoardDoc, type PlanIcon, roots, STROKE_GRID } from '@inkadra/doc-schema';
+import {
+  addFrame,
+  addScene,
+  createArrow,
+  createElement,
+  moveIntoParent,
+  updateElement,
+} from '@inkadra/canvas-core';
+import { initBoardDoc, type PlanIcon, readElement, roots, STROKE_GRID } from '@inkadra/doc-schema';
 import type { Browser } from '@playwright/test';
 import * as Y from 'yjs';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from '../tests/perf/seed.ts';
+import { STILL_NAMES, stillSize, stillSvg } from './sample-stills.ts';
 
 /**
- * The sample project of the screenshot scripts, built on an empty instance: "Last Train", with
- * a moodboard, a storyboard of two scenes, a casting board, a set plan and a shooting day today.
+ * The sample project of the screenshot scripts, built on an empty instance: "Last Train", a
+ * short film with a moodboard, a storyboard of three scenes, a casting board, a set plan and
+ * three shooting days from today. docs/demo-project.md is its story bible: names, scenes and
+ * dates here follow it.
  *
- * The pictures on the boards are drawn here, so the screenshots carry no third-party images.
+ * The pictures on the boards are drawn in sample-stills.ts, so the screenshots carry no
+ * third-party images.
  */
 
 export const account = {
@@ -19,110 +30,13 @@ export const account = {
 };
 const opts = { userId: null };
 
-/** Film stills as SVG: sky, sun or moon, a skyline or hills, and a few details per scene. */
-const stills: Record<string, { sky: [string, string, string]; body: string }> = {
-  platform: {
-    sky: ['#0B1A2A', '#1E3A4C', '#E07A3F'],
-    body: `<rect y="560" width="1600" height="340" fill="#0A0F14"/>
-      <rect x="0" y="600" width="1600" height="14" fill="#F2A65A" opacity=".8"/>
-      <g fill="#F2C76E" opacity=".9">${lamps(8, 90, 200, 330)}</g>
-      <path d="M0 640 L1600 760 L1600 900 L0 900Z" fill="#05080B"/>
-      <rect x="1030" y="430" width="34" height="140" rx="12" fill="#05080B"/>
-      <circle cx="1047" cy="412" r="22" fill="#05080B"/>`,
-  },
-  rain: {
-    sky: ['#06121C', '#12324A', '#2D6F86'],
-    body: `<g stroke="#9FD4E6" stroke-width="3" opacity=".35">${rain(140)}</g>
-      <rect x="180" y="300" width="300" height="600" fill="#08131B"/>
-      <rect x="560" y="200" width="380" height="700" fill="#0B1822"/>
-      <rect x="1040" y="340" width="360" height="560" fill="#08131B"/>
-      <rect x="610" y="260" width="160" height="40" fill="#FF4F7B" opacity=".85"/>
-      <rect x="1090" y="400" width="110" height="26" fill="#56E0FF" opacity=".8"/>`,
-  },
-  dawn: {
-    sky: ['#2B2A4C', '#B66E7A', '#F6C98A'],
-    body: `<circle cx="1100" cy="560" r="120" fill="#FFE2A8" opacity=".9"/>
-      <path d="M0 640 Q400 520 800 620 T1600 600 L1600 900 L0 900Z" fill="#3D2B3F"/>
-      <path d="M0 720 Q500 640 1000 720 T1600 700 L1600 900 L0 900Z" fill="#22182A"/>`,
-  },
-  diner: {
-    sky: ['#1A0F0A', '#3B2216', '#6A3A22'],
-    body: `<rect x="120" y="180" width="1360" height="420" fill="#F0B35A" opacity=".18"/>
-      <rect x="120" y="580" width="1360" height="40" fill="#C9772E"/>
-      <rect x="0" y="620" width="1600" height="280" fill="#120A06"/>
-      <g fill="#120A06"><circle cx="520" cy="430" r="46"/><rect x="470" y="470" width="100" height="150" rx="30"/>
-      <circle cx="980" cy="420" r="42"/><rect x="934" y="458" width="92" height="160" rx="30"/></g>
-      <rect x="240" y="230" width="220" height="60" fill="#FF6A3D" opacity=".75"/>`,
-  },
-  field: {
-    sky: ['#3C6E8F', '#8DB5C9', '#E9D7A6'],
-    body: `<path d="M0 600 Q800 560 1600 600 L1600 900 L0 900Z" fill="#B8A15A"/>
-      <path d="M0 700 Q800 640 1600 700 L1600 900 L0 900Z" fill="#8C7A3C"/>
-      <rect x="1180" y="420" width="12" height="200" fill="#2A2418"/>
-      <path d="M1186 300 L1110 430 L1262 430Z" fill="#2A2418"/>`,
-  },
-  tunnel: {
-    sky: ['#05060A', '#0E1420', '#1C2A40'],
-    body: `<ellipse cx="800" cy="470" rx="560" ry="420" fill="#0A0D14"/>
-      <ellipse cx="800" cy="480" rx="200" ry="150" fill="#E8F1FF" opacity=".85"/>
-      <ellipse cx="800" cy="480" rx="300" ry="230" fill="#6E8CC8" opacity=".25"/>
-      <path d="M560 900 L780 520 L820 520 L1040 900Z" fill="#1A2130"/>`,
-  },
-  window: {
-    sky: ['#101418', '#1B242C', '#2A3640'],
-    body: `<rect x="420" y="120" width="760" height="560" fill="#7FA6C4" opacity=".55"/>
-      <rect x="792" y="120" width="16" height="560" fill="#101418"/>
-      <rect x="420" y="392" width="760" height="16" fill="#101418"/>
-      <g fill="#0A0D10"><circle cx="640" cy="560" r="70"/><rect x="560" y="610" width="160" height="290" rx="50"/></g>`,
-  },
-  sea: {
-    sky: ['#1F2E45', '#4F6E8C', '#C99A7A'],
-    body: `<circle cx="420" cy="520" r="70" fill="#F3D3A8" opacity=".85"/>
-      <rect y="560" width="1600" height="340" fill="#1B2A3A"/>
-      <g stroke="#F3D3A8" stroke-width="4" opacity=".5"><path d="M330 600h180M300 640h240M340 690h160M280 740h280"/></g>
-      <path d="M1180 560 L1600 470 L1600 560Z" fill="#101A24"/>`,
-  },
-};
-
-function lamps(n: number, x0: number, step: number, y: number) {
-  return Array.from(
-    { length: n },
-    (_, i) => `<circle cx="${x0 + i * step}" cy="${y}" r="9"/>`,
-  ).join('');
-}
-
-function rain(n: number) {
-  let seed = 7;
-  const r = () => {
-    seed = (seed * 9301 + 49297) % 233280;
-    return seed / 233280;
-  };
-  return Array.from({ length: n }, () => {
-    const x = Math.round(r() * 1600);
-    const y = Math.round(r() * 900);
-    return `<path d="M${x} ${y}l-14 46"/>`;
-  }).join('');
-}
-
-function stillSvg(name: string): string {
-  const s = stills[name];
-  if (!s) throw new Error(`no still ${name}`);
-  const [a, b, c] = s.sky;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
-    <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${a}"/><stop offset=".6" stop-color="${b}"/><stop offset="1" stop-color="${c}"/>
-    </linearGradient>
-    <radialGradient id="vig" cx=".5" cy=".5" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></radialGradient></defs>
-    <rect width="1600" height="900" fill="url(#sky)"/>${s.body}
-    <rect width="1600" height="900" fill="url(#vig)"/></svg>`;
-}
-
 async function renderStills(browser: Browser): Promise<Record<string, Buffer>> {
-  const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+  const page = await browser.newPage();
   const result: Record<string, Buffer> = {};
-  for (const name of Object.keys(stills)) {
+  for (const name of STILL_NAMES) {
+    await page.setViewportSize(stillSize(name));
     await page.setContent(`<body style="margin:0">${stillSvg(name)}</body>`);
-    result[name] = await page.screenshot({ type: 'jpeg', quality: 88 });
+    result[name] = await page.screenshot({ type: 'jpeg', quality: 90 });
   }
   await page.close();
   return result;
@@ -168,27 +82,32 @@ export interface SampleProject {
   asset: Record<string, string>;
 }
 
+/** Local dates from today, like the app's: day 0 is today. */
+function localDate(offset: number) {
+  const day = new Date();
+  day.setDate(day.getDate() + offset);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+}
+
 export async function seedSampleProject(browser: Browser, base: string): Promise<SampleProject> {
   const pictures = await renderStills(browser);
   const cookie = await signIn(base, account);
+  const me = (await (
+    await fetch(`${base}/api/v1/me`, { headers: { cookie } })
+  ).json()) as { id: string };
   const project = await api<{ id: string; rootBoardId: string }>(base, cookie, '/projects', {
     name: 'Last Train',
   });
-  const storyboard = await api<{ id: string }>(base, cookie, `/projects/${project.id}/boards`, {
-    parentBoardId: project.rootBoardId,
-    kind: 'storyboard',
-    title: 'Storyboard',
-  });
-  const casting = await api<{ id: string }>(base, cookie, `/projects/${project.id}/boards`, {
-    parentBoardId: project.rootBoardId,
-    kind: 'board',
-    title: 'Casting',
-  });
-  const setPlan = await api<{ id: string }>(base, cookie, `/projects/${project.id}/boards`, {
-    parentBoardId: project.rootBoardId,
-    kind: 'board',
-    title: 'Set plan',
-  });
+  const board = (title: string, kind: 'board' | 'storyboard' = 'board') =>
+    api<{ id: string }>(base, cookie, `/projects/${project.id}/boards`, {
+      parentBoardId: project.rootBoardId,
+      kind,
+      title,
+    });
+  const storyboard = await board('Storyboard', 'storyboard');
+  const casting = await board('Casting');
+  const setPlan = await board('Set plan');
 
   const asset: Record<string, string> = {};
   for (const [name, body] of Object.entries(pictures)) {
@@ -203,7 +122,8 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
   await waitForAssets(base, cookie, Object.values(asset));
   const pic = (name: string) => asset[name] as string;
 
-  // The moodboard: the project's root board.
+  // The moodboard: the project's root board. Five columns with even gaps, so that it fits the
+  // window of the screenshots without overlapping cards.
   const mood = new Y.Doc();
   initBoardDoc(mood, project.rootBoardId);
   mood.transact(() => {
@@ -214,24 +134,39 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
         'Last Train',
         'A short film. One night, one platform, the last train out of the city.',
         'Sodium light against wet blue. Long lenses, little camera movement.',
+        "The only warm things on screen: the lamps, Rosa's diner, Anna's scarf.",
       ],
-      300,
+      320,
     );
-    createElement(mood, 'board', { x: 0, y: 250 }, { boardId: storyboard.id }, opts);
-    createElement(mood, 'board', { x: 0, y: 340 }, { boardId: casting.id }, opts);
+    createElement(mood, 'board', { x: 0, y: 210 }, { boardId: storyboard.id, w: 320 }, opts);
+    createElement(mood, 'board', { x: 0, y: 300 }, { boardId: casting.id, w: 320 }, opts);
+    createElement(mood, 'board', { x: 0, y: 390 }, { boardId: setPlan.id, w: 320 }, opts);
     createElement(
       mood,
       'todo',
-      { x: 0, y: 440 },
+      { x: 0, y: 490 },
       {
         title: 'Before the shoot',
         items: [
-          { id: 'shotstodo0001', text: 'Scout the central station', done: true },
+          { id: 'shotstodo0001', text: 'Scout platform 4 with the station manager', done: true },
           { id: 'shotstodo0002', text: 'Night permit from the city', done: true },
-          { id: 'shotstodo0003', text: 'Rent the sodium lamps', done: false },
-          { id: 'shotstodo0004', text: 'Rain machine test', done: false },
+          {
+            id: 'shotstodo0003',
+            text: 'Confirm the diner for night 2',
+            done: false,
+            assigneeId: me.id,
+            dueDate: localDate(0),
+          },
+          {
+            id: 'shotstodo0004',
+            text: 'Rent six sodium lamps',
+            done: false,
+            assigneeId: me.id,
+            dueDate: localDate(1),
+          },
+          { id: 'shotstodo0005', text: 'Rain machine test on the forecourt', done: false },
         ],
-        w: 300,
+        w: 320,
       },
       opts,
     );
@@ -244,223 +179,428 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
         { assetId: pic(name), w, ...(caption ? { caption } : {}) },
         opts,
       );
-    image('platform', 360, 0, 420, 'Platform 4, 2 a.m.');
-    image('diner', 360, 290, 420);
-    image('rain', 800, 0, 300);
-    image('window', 800, 189, 300);
-    image('tunnel', 800, 378, 300);
+    image('platform', 360, 0, 520, 'Platform 4, 1:52 a.m.');
+    image('diner', 360, 340, 520, "Rosa's, the only light still on");
+    image('train', 360, 680, 250);
+    image('cups', 630, 680, 250);
+    image('rain', 920, 0, 300);
+    image('window', 920, 193, 300);
+    image('tunnel', 920, 386, 300);
+    image('signalbox', 920, 579, 300);
+    createElement(
+      mood,
+      'link',
+      { x: 920, y: 772 },
+      {
+        url: 'https://en.wikipedia.org/wiki/Sodium-vapor_lamp',
+        title: 'Sodium-vapor lamp',
+        description: 'Why everything at night turns orange.',
+        w: 300,
+      },
+      opts,
+    );
 
     const light = createElement(
       mood,
       'column',
-      { x: 1140, y: 0 },
-      { title: 'Light', w: 240 },
+      { x: 1260, y: 0 },
+      { title: 'Light', w: 240, color: 'orange' },
       opts,
     );
     const kids = [
       createElement(mood, 'image', { x: 0, y: 0 }, { assetId: pic('dawn') }, opts).id,
       createElement(mood, 'image', { x: 0, y: 0 }, { assetId: pic('sea') }, opts).id,
-      note(mood, { x: 0, y: 0 }, ['Blue hour for the ending, the sky still holding some warmth.']),
+      createElement(mood, 'image', { x: 0, y: 0 }, { assetId: pic('field') }, opts).id,
+      note(mood, { x: 0, y: 0 }, [
+        'Blue hour for the ending, the sky still holding some warmth.',
+      ]),
+      note(mood, { x: 0, y: 0 }, [
+        'Sound',
+        'The lamps hum. That hum is the score until the diner: no music before the first train.',
+      ]),
     ];
     moveIntoParent(mood, kids, light.id, 0);
 
     const palette = createElement(
       mood,
       'column',
-      { x: 1400, y: 0 },
-      { title: 'Palette', w: 160 },
+      { x: 1540, y: 0 },
+      { title: 'Palette', w: 160, color: 'blue' },
       opts,
     );
     const swatches = [
       ['#E07A3F', 'Sodium'],
       ['#1E3A4C', 'Wet night'],
       ['#F2C76E', 'Lamp'],
+      ['#B4302A', 'Scarf'],
       ['#0A0F14', 'Shadow'],
     ].map(
       ([hex, label]) =>
         createElement(mood, 'color', { x: 0, y: 0 }, { hex: hex as string, label }, opts).id,
     );
     moveIntoParent(mood, swatches, palette.id, 0);
-
-    createElement(
-      mood,
-      'link',
-      { x: 360, y: 550 },
-      {
-        url: 'https://en.wikipedia.org/wiki/Sodium-vapor_lamp',
-        title: 'Sodium-vapor lamp',
-        description: 'Why everything at night turns orange.',
-      },
-      opts,
-    );
-    image('field', 800, 567, 300);
   });
   await pushBoardDoc(base, cookie, project.rootBoardId, mood);
 
-  // The storyboard: two scenes, frames with a picture and the data of the shot.
+  // The storyboard: three scenes, frames with a picture and the data of the shot.
   const story = new Y.Doc();
   initBoardDoc(story, storyboard.id);
+  const shot: Record<string, string> = {};
+  const scenes: Record<string, string> = {};
   story.transact(() => {
-    const one = addScene(
-      story,
+    type Frame = [label: string, picture: string, fields: Record<string, unknown>];
+    const scene = (fields: Parameters<typeof addScene>[1], frames: Frame[], first = false) => {
+      const s = addScene(story, fields, opts, first ? { x: 0, y: 0 } : undefined);
+      scenes[fields.number as string] = s.id;
+      for (const [label, p, f] of frames)
+        shot[label] = addFrame(story, s.id, null, { assetId: pic(p), ...f }, opts).id;
+    };
+    scene(
       {
         number: '1',
-        title: 'The platform',
+        title: 'The last train',
         setting: 'ext',
         time: 'night',
         location: 'Central station',
-        synopsis: 'Anna runs for the last train and misses it.',
+        synopsis:
+          'Anna runs across the forecourt in the rain, reaches platform 4 as the doors close and watches the last train go.',
       },
-      opts,
-      { x: 0, y: 0 },
+      [
+        [
+          '1A',
+          'platform',
+          {
+            action: 'Platform 4 at 1:52. The lamps hum; nobody is left.',
+            shot: 'ews',
+            angle: 'eye',
+            movement: 'static',
+            lens: '24mm',
+            status: 'shot',
+            audio: 'Sodium hum, a far announcement',
+            notes: 'Hold six seconds before she enters. Let the hum carry it.',
+          },
+        ],
+        [
+          '1B',
+          'rain',
+          {
+            action: 'Anna crosses the forecourt in the rain, running.',
+            shot: 'fs',
+            angle: 'eye',
+            movement: 'handheld',
+            lens: '50mm',
+            status: 'shot',
+            cast: ['Anna'],
+            notes: 'Second coat ready: the first one is soaked after two takes.',
+          },
+        ],
+        [
+          '1C',
+          'train',
+          {
+            action: 'The doors close in front of her.',
+            shot: 'ms',
+            angle: 'eye',
+            movement: 'static',
+            lens: '35mm',
+            status: 'ready',
+            cast: ['Anna'],
+            audio: 'Door chime, compressor hiss',
+          },
+        ],
+        [
+          '1D',
+          'window',
+          {
+            action: 'Over her shoulder: the carriages pull away.',
+            shot: 'mcu',
+            angle: 'ots',
+            movement: 'static',
+            lens: '85mm',
+            status: 'ready',
+            cast: ['Anna'],
+            notes: 'Rack focus from her scarf to the tail lights.',
+          },
+        ],
+        [
+          '1E',
+          'tunnel',
+          {
+            action: 'The tail lights shrink into the tunnel.',
+            shot: 'ws',
+            angle: 'eye',
+            movement: 'static',
+            lens: '135mm',
+            status: 'todo',
+          },
+        ],
+      ],
+      true,
     );
-    const frames1: Array<[string, Record<string, unknown>]> = [
-      [
-        'platform',
-        {
-          action: 'The empty platform, lamps humming.',
-          shot: 'ews',
-          lens: '24mm',
-          status: 'shot',
-        },
-      ],
-      [
-        'tunnel',
-        {
-          action: 'Headlights fill the tunnel.',
-          shot: 'ws',
-          movement: 'static',
-          lens: '85mm',
-          status: 'ready',
-        },
-      ],
-      [
-        'rain',
-        {
-          action: 'Anna crosses the street in the rain.',
-          shot: 'fs',
-          movement: 'pan',
-          lens: '50mm',
-          status: 'ready',
-          cast: ['Anna'],
-        },
-      ],
-      [
-        'window',
-        {
-          action: 'She watches the train leave.',
-          shot: 'mcu',
-          angle: 'ots',
-          lens: '85mm',
-          status: 'todo',
-          cast: ['Anna'],
-        },
-      ],
-    ];
-    for (const [p, f] of frames1) addFrame(story, one.id, null, { assetId: pic(p), ...f }, opts);
-    const two = addScene(
-      story,
+    scene(
       {
         number: '2',
         title: 'The diner',
         setting: 'int',
         time: 'night',
-        location: 'Station diner',
-        synopsis: 'Waiting for the morning, a stranger sits down.',
+        location: "Rosa's diner",
+        synopsis:
+          'Waiting for the morning at the counter. Leo, the signalman, sits down next to her.',
       },
-      opts,
+      [
+        [
+          '2A',
+          'diner',
+          {
+            action: 'Two strangers, one counter. Rosa pours without asking.',
+            shot: 'ws',
+            angle: 'eye',
+            movement: 'dolly',
+            lens: '32mm',
+            status: 'ready',
+            cast: ['Anna', 'Leo', 'Rosa'],
+            dialogue: 'LEO: Missed it too?\nANNA: By about a minute.\nLEO: Then you have six hours.',
+          },
+        ],
+        [
+          '2B',
+          'cups',
+          {
+            action: 'Two coffees and a ticket for a train that has gone.',
+            shot: 'insert',
+            angle: 'high',
+            movement: 'static',
+            lens: '100mm macro',
+            status: 'todo',
+          },
+        ],
+        [
+          '2C',
+          'dawn',
+          {
+            action: 'Dawn through the glass. Leo puts his cap on.',
+            shot: 'ws',
+            angle: 'eye',
+            movement: 'static',
+            lens: '35mm',
+            status: 'draft',
+            cast: ['Leo'],
+          },
+        ],
+      ],
     );
-    const frames2: Array<[string, Record<string, unknown>]> = [
+    scene(
+      {
+        number: '3',
+        title: 'The first train',
+        setting: 'int-ext',
+        time: 'dawn',
+        location: 'Signal box, coast line',
+        synopsis: 'Leo clears the line for the first train of the day. Anna is on it.',
+      },
       [
-        'diner',
-        {
-          action: 'Two strangers, one counter.',
-          shot: 'ms',
-          lens: '35mm',
-          status: 'todo',
-          cast: ['Anna', 'Leo'],
-          dialogue: 'LEO: Missed it too?',
-        },
+        [
+          '3A',
+          'signalbox',
+          {
+            action: 'Leo pulls the lever for the first train.',
+            shot: 'ms',
+            angle: 'low',
+            movement: 'static',
+            lens: '35mm',
+            status: 'draft',
+            cast: ['Leo'],
+            audio: 'The lever, the bell of the block instrument',
+          },
+        ],
+        [
+          '3B',
+          'field',
+          {
+            action: 'The home signal turns green over the field.',
+            shot: 'ws',
+            angle: 'eye',
+            movement: 'static',
+            lens: '50mm',
+            status: 'draft',
+          },
+        ],
+        [
+          '3C',
+          'sea',
+          {
+            action: 'The first train runs along the sea.',
+            shot: 'ews',
+            angle: 'high',
+            movement: 'drone',
+            lens: '24mm',
+            status: 'draft',
+            cast: ['Anna'],
+            notes: 'The train passes Capo Bianco at 5:52. One take, maybe two.',
+          },
+        ],
       ],
-      [
-        'dawn',
+    );
+
+    // What the scenes need, for the shooting days that shoot them.
+    const list = (
+      x: number,
+      title: string,
+      kind: 'wardrobe' | 'props' | 'equipment',
+      scene: string,
+      items: string[],
+    ) =>
+      createElement(
+        story,
+        'todo',
+        { x, y: 1400 },
         {
-          action: 'Dawn through the glass.',
-          shot: 'ws',
-          lens: '35mm',
-          status: 'draft',
+          title,
+          list: kind,
+          sceneId: scenes[scene],
+          items: items.map((text, i) => ({
+            id: `need${scene}${kind}`.padEnd(12, 'x') + i,
+            text,
+            done: false,
+          })),
         },
-      ],
-      [
-        'sea',
-        {
-          action: 'The first train, the sea behind it.',
-          shot: 'ews',
-          movement: 'dolly',
-          lens: '24mm',
-          status: 'draft',
-        },
-      ],
-    ];
-    for (const [p, f] of frames2) addFrame(story, two.id, null, { assetId: pic(p), ...f }, opts);
+        opts,
+      );
+    list(0, 'Rain night', 'equipment', '1', ['Rain machine', 'Six sodium lamps', 'Haze machine']);
+    list(280, 'Anna, night 1', 'wardrobe', '1', ['Grey wool coat ×2', 'Red scarf']);
+    list(560, 'At the counter', 'props', '2', ['Two cups and saucers', 'Punched train ticket']);
   });
   await pushBoardDoc(base, cookie, storyboard.id, story);
 
-  // The casting board: character sheets, so that its card on Home has a preview too.
+  // The casting board: four character sheets and the four places of the shoot.
   const cast = new Y.Doc();
   initBoardDoc(cast, casting.id);
   cast.transact(() => {
-    const leo = createElement(
-      cast,
-      'character',
-      { x: 340, y: 0 },
-      {
-        name: 'Leo',
-        role: 'Supporting',
-        age: '52',
-        assetId: pic('diner'),
-        actor: 'Paolo Verdi',
-        profession: 'Night-shift signalman',
-        w: 280,
-      },
-      opts,
-    );
-    createElement(
-      cast,
-      'character',
-      { x: 0, y: 0 },
-      {
-        name: 'Anna',
-        role: 'Lead',
-        age: '29',
-        assetId: pic('window'),
-        nickname: 'Annie',
-        profession: 'Sound editor',
-        origin: 'A town at the end of the line',
-        actor: 'Marta Neri',
-        appearance: 'Tired, quick to laugh. A coat one size too big.',
-        description: 'Comes back to the city for one night and misses the last train out.',
-        wants: 'To get home before morning.',
-        fears: 'That nobody is waiting there.',
-        arc: 'From running away to staying until dawn.',
-        costume: 'Grey wool coat, red scarf.',
-        references: [pic('rain'), pic('platform')],
-        relations: [{ characterId: leo.id, label: 'stranger at the counter' }],
-        w: 280,
-      },
-      opts,
-    );
-    createElement(
-      cast,
-      'location',
-      { x: 680, y: 0 },
-      { name: 'Central station', assetId: pic('platform'), w: 280 },
-      opts,
-    );
+    createElement(cast, 'section', { x: 0, y: 0 }, { title: 'Characters', w: 1240 }, opts);
+    const character = (x: number, fields: Record<string, unknown>) =>
+      createElement(cast, 'character', { x, y: 70 }, { w: 280, ...fields }, opts).id;
+    const leo = character(320, {
+      name: 'Leo',
+      role: 'Supporting',
+      age: '52',
+      assetId: pic('leo'),
+      actor: 'Paolo Verdi',
+      profession: 'Night-shift signalman',
+      origin: 'Born two streets from the station',
+      appearance: 'Big hands, slow voice. Navy work jacket, cap pushed back.',
+      description: 'Thirty years of nights in the signal box. Tonight is his last shift.',
+      wants: 'To see one more train through before the line goes automatic.',
+      fears: 'Mornings with nothing to do.',
+      arc: 'From closing the line to letting someone else go.',
+      costume: 'Navy jacket with the railway badge, cap, thermos.',
+      contact: 'Agenzia Lumen · lumen@example.com',
+      scenes: ['2', '3'],
+    });
+    const rosa = character(640, {
+      name: 'Rosa',
+      role: 'Supporting',
+      age: '64',
+      assetId: pic('rosa'),
+      actor: 'Lucia Amato',
+      profession: 'Owner of the station diner',
+      description: 'Keeps the diner open for the night staff. Knows every order.',
+      costume: 'Cream apron over a burgundy cardigan.',
+      scenes: ['2'],
+    });
+    const sandro = character(960, {
+      name: 'Sandro',
+      role: 'Small part',
+      age: '41',
+      assetId: pic('sandro'),
+      actor: 'Davide Russo',
+      profession: 'Station guard',
+      description: 'Closes the gates after the last train, and lets Anna stay.',
+      costume: 'Guard uniform, high-visibility vest.',
+      scenes: ['1'],
+    });
+    const anna = character(0, {
+      name: 'Anna',
+      role: 'Lead',
+      age: '29',
+      assetId: pic('anna'),
+      nickname: 'Annie',
+      profession: 'Sound editor',
+      origin: 'A town at the end of the line',
+      actor: 'Marta Neri',
+      appearance: 'Tired, quick to laugh. A coat one size too big.',
+      description: 'Comes back to the city for one night and misses the last train out.',
+      wants: 'To get home before morning.',
+      fears: 'That nobody is waiting there.',
+      arc: 'From running away to staying until dawn.',
+      costume: 'Grey wool coat, red scarf.',
+      references: [pic('rain'), pic('platform'), pic('window')],
+      relations: [
+        { characterId: leo, label: 'stranger at the counter' },
+        { characterId: sandro, label: 'lets her stay' },
+      ],
+      contact: 'Agenzia Lumen · lumen@example.com',
+      notes: 'Callback with Paolo on the 3rd: the counter scene works.',
+      scenes: ['1', '2', '3'],
+    });
+    updateElement(cast, leo, {
+      relations: [
+        { characterId: anna, label: 'stranger at the counter' },
+        { characterId: rosa, label: 'thirty years of night coffee' },
+      ],
+    });
+
+    createElement(cast, 'section', { x: 0, y: 330 }, { title: 'Locations', w: 1240 }, opts);
+    const location = (x: number, fields: Record<string, unknown>) =>
+      createElement(cast, 'location', { x, y: 400 }, { w: 280, ...fields }, opts).id;
+    const station = location(0, {
+      name: 'Central station',
+      setting: 'ext',
+      assetId: pic('platform'),
+      address: 'Piazza della Stazione 1',
+      light: 'Sodium lamps on the canopy, blue hour from 6:40',
+      availability: 'After the last train, 0:30–5:00',
+      contact: 'Station manager, night desk',
+      scenes: ['1'],
+    });
+    location(320, {
+      name: "Rosa's diner",
+      setting: 'int',
+      assetId: pic('diner'),
+      address: 'Station hall, under the clock',
+      light: 'Three pendants and the neon; the window goes blue at dawn',
+      availability: 'Closed to the public 23:00–6:00',
+      scenes: ['2'],
+    });
+    location(640, {
+      name: 'Signal box',
+      setting: 'int',
+      assetId: pic('signalbox'),
+      address: 'End of platform 4',
+      light: 'One practical over the lever frame',
+      availability: 'With a railway escort only',
+      scenes: ['3'],
+    });
+    location(960, {
+      name: 'Coast line',
+      setting: 'ext',
+      assetId: pic('sea'),
+      address: 'Sea wall at Capo Bianco',
+      light: 'Sunrise 6:58; the first train passes at 5:52',
+      availability: 'Drone permit for the morning of day 3',
+      scenes: ['3'],
+    });
+
+    const rect = (id: string) => {
+      const el = readElement(roots(cast).elements.get(id)!)!;
+      return { x: el.x, y: el.y, w: el.w, h: 200 };
+    };
+    const end = (id: string) => ({ elementId: id, ...rect(id) });
+    createArrow(cast, end(anna), end(station), rect, { label: 'waits here' }, opts);
   });
   await pushBoardDoc(base, cookie, casting.id, cast);
 
-  // The set plan of the diner: four walls, the counter, two people, lamps and a camera.
+  // The set plan of the diner: walls and window, the counter, stools and a booth, the people,
+  // the practicals, the sodium light through the window and two cameras.
   const planDoc = new Y.Doc();
   initBoardDoc(planDoc, setPlan.id);
   const planId = planDoc.transact(() => {
@@ -484,13 +624,14 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
       x: gx(x),
       y: gy(y),
     });
+    const grey = '#8E8E93';
     return createElement(
       planDoc,
       'plan',
       { x: 0, y: 0 },
       {
-        w: 640,
-        title: 'Station diner, scene 2',
+        w: 720,
+        title: "Rosa's diner, scene 2",
         shapes: [
           wall(0, 140, 90, 860, 90),
           wall(1, 860, 90, 860, 580),
@@ -498,12 +639,51 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
           wall(3, 140, 580, 140, 90),
         ],
         icons: [
-          { ...icon('Counter', 'table', '#8E8E93', 500, 250), w: 360, h: 80 },
-          { ...icon('Lamp1', 'practical', '#EDD963', 300, 170), size: 'L' as const },
-          icon('Lamp2', 'practical', '#EDD963', 700, 170),
-          { ...icon('Anna', 'actor', '#B897F0', 420, 340), label: 'Anna' },
-          { ...icon('Leo', 'actor', '#F79B54', 580, 340), label: 'Leo' },
-          { ...icon('Cam', 'camera', '#9DB8F2', 500, 520), label: 'A cam', showLens: true },
+          { ...icon('Window1', 'window', grey, 320, 90), w: 220, h: 16 },
+          { ...icon('Window2', 'window', grey, 640, 90), w: 220, h: 16 },
+          { ...icon('Door', 'door', grey, 140, 480), rotation: 90, w: 70, h: 70 },
+          { ...icon('Counter', 'table', grey, 500, 250), w: 360, h: 80 },
+          { ...icon('Stool1', 'chair', grey, 420, 310), w: 34, h: 34 },
+          { ...icon('Stool2', 'chair', grey, 580, 310), w: 34, h: 34 },
+          { ...icon('Booth', 'table', grey, 770, 470), w: 90, h: 70 },
+          { ...icon('Sofa', 'sofa', grey, 770, 540), w: 110, h: 36 },
+          { ...icon('Lamp1', 'practical', '#EDD963', 360, 220), size: 'L' as const },
+          icon('Lamp2', 'practical', '#EDD963', 500, 220),
+          icon('Lamp3', 'practical', '#EDD963', 640, 220),
+          {
+            ...icon('Sodium', 'fresnel', '#F79B54', 480, 30),
+            rotation: 90,
+            label: 'Sodium 2K',
+            power: '2K',
+            beam: 40,
+            intensity: 0.6,
+          },
+          { ...icon('Bounce', 'bounce', grey, 250, 400), rotation: 30 },
+          { ...icon('Rosa', 'actor', '#5FC2B5', 500, 190), rotation: 90, label: 'Rosa' },
+          { ...icon('Anna', 'actor', '#B897F0', 420, 340), rotation: 270, label: 'Anna' },
+          {
+            ...icon('Leo', 'actor', '#F79B54', 580, 340),
+            rotation: 270,
+            label: 'Leo',
+            steps: [{ x: gx(180), y: gy(480), note: 'Comes in' }],
+            note: 'Sits next to her',
+          },
+          {
+            ...icon('Cam', 'camera', '#9DB8F2', 500, 520),
+            rotation: 270,
+            label: 'A cam',
+            lens: 32,
+            showLens: true,
+          },
+          { ...icon('Track', 'track', grey, 500, 545), w: 300, h: 20 },
+          {
+            ...icon('CamB', 'camera', '#9DB8F2', 760, 330),
+            rotation: 180,
+            label: 'B cam',
+            lens: 85,
+            showLens: true,
+          },
+          { ...icon('Boom', 'boom', grey, 660, 400), rotation: 225 },
         ],
       },
       opts,
@@ -511,31 +691,91 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
   });
   await pushBoardDoc(base, cookie, setPlan.id, planDoc);
 
-  // A shooting day today, for the card on Home. The date is the local one, like the app's.
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  const block = (type: string, title: string, start: string | null, duration: number) => ({
+  // Three shooting nights from today: the card on Home, the schedule and the call sheets.
+  const block = (
+    type: string,
+    title: string,
+    duration: number,
+    more: { start?: string; shot?: string; cast?: string[]; departments?: string[] } = {},
+  ) => ({
     id: randomUUID(),
     type,
     title,
-    start,
+    start: more.start ?? null,
     duration,
-    shotId: null,
-    cast: [],
-    departments: [],
+    shotId: more.shot ? (shot[more.shot] as string) : null,
+    cast: more.cast ?? [],
+    departments: more.departments ?? [],
   });
-  await api(base, cookie, `/boards/${storyboard.id}/schedule`, {
-    date: today,
+  const day = (offset: number, fields: Record<string, unknown>) =>
+    api(base, cookie, `/boards/${storyboard.id}/schedule`, { date: localDate(offset), ...fields });
+  await day(0, {
     callTime: '18:30',
     wrap: '04:00',
     location: 'Central station',
-    notes: '',
+    notes:
+      'The last train leaves at 0:42; platform 4 is ours from 0:30. Crew parking in Via dei Binari.',
     blocks: [
-      block('setup', 'Lamps and rain machine', '18:30', 90),
-      block('shot', 'The empty platform', null, 60),
-      block('break', 'Dinner', null, 45),
-      block('shot', 'Anna misses the train', null, 120),
+      block('setup', 'Lamps, haze and rain machine', 90, {
+        start: '18:30',
+        departments: ['Lighting: six sodium heads on the canopy', 'SFX: rain on the forecourt'],
+      }),
+      block('shot', 'Anna crosses the forecourt in the rain', 90, {
+        shot: '1B',
+        cast: ['Anna'],
+        departments: ['Costume: second coat standing by', 'Makeup: wet look'],
+      }),
+      block('break', 'Dinner', 45),
+      block('move', 'Company moves to platform 4', 30),
+      block('shot', 'The empty platform', 45, { start: '00:30', shot: '1A' }),
+      block('shot', 'The doors close', 60, {
+        shot: '1C',
+        cast: ['Anna'],
+        departments: ['Sound: door chime wild track'],
+      }),
+      block('shot', 'She watches the train go', 45, {
+        shot: '1D',
+        cast: ['Anna'],
+        departments: ['Camera: 85mm, rack focus'],
+      }),
+      block('shot', 'Tail lights into the tunnel', 30, {
+        shot: '1E',
+        departments: ['Camera: B cam on the 135mm'],
+      }),
+    ],
+  });
+  await day(1, {
+    callTime: '19:00',
+    wrap: '05:30',
+    location: "Rosa's diner",
+    notes: 'The diner closes to the public at 23:00. Keep the counter dressing overnight.',
+    blocks: [
+      block('setup', 'Pendants, neon and window rain', 120, {
+        start: '19:00',
+        departments: ['Art: dress the counter', 'Lighting: pendants on dimmers'],
+      }),
+      block('shot', 'Missed it too?', 150, { shot: '2A', cast: ['Anna', 'Leo', 'Rosa'] }),
+      block('break', 'Dinner', 45),
+      block('shot', 'Two coffees, one ticket', 45, { shot: '2B', departments: ['Props: cups'] }),
+      block('shot', 'Dawn through the glass', 30, { start: '04:40', shot: '2C', cast: ['Leo'] }),
+    ],
+  });
+  await day(2, {
+    callTime: '03:30',
+    wrap: '09:00',
+    location: 'Signal box, coast line',
+    notes: 'Railway escort from 3:30. Drone permit for Capo Bianco from 5:00 to 7:00.',
+    blocks: [
+      block('setup', 'Signal box practicals', 60, { start: '03:30' }),
+      block('shot', 'Leo pulls the lever', 60, { shot: '3A', cast: ['Leo'] }),
+      block('move', 'Unit move to the coast', 40),
+      block('shot', 'The first train along the sea', 30, {
+        start: '05:45',
+        shot: '3C',
+        cast: ['Anna'],
+        departments: ['Drone: two batteries charged', 'Production: train passes at 5:52'],
+      }),
+      block('shot', 'The signal turns green', 45, { shot: '3B' }),
     ],
   });
 

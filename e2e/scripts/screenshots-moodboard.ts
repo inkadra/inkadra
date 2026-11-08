@@ -25,13 +25,16 @@ const origin = 'seed';
 
 /** What the pictures of the sample are about, by still. */
 const about: Record<string, { tags: string[]; caption?: string }> = {
-  platform: { tags: ['luce', 'location'], caption: 'Platform 4, 2 a.m.' },
-  diner: { tags: ['location', 'costumi'], caption: 'The diner, after closing' },
-  rain: { tags: ['luce'], caption: 'Rain on the windows' },
-  window: { tags: ['location'] },
-  tunnel: { tags: ['location', 'luce'], caption: 'Tunnel, last train' },
+  platform: { tags: ['luce', 'location'], caption: 'Platform 4, 1:52 a.m.' },
+  diner: { tags: ['location', 'costumi'], caption: "Rosa's, the only light still on" },
+  rain: { tags: ['luce'], caption: 'The forecourt in the rain' },
+  window: { tags: ['luce'] },
+  train: { tags: ['location'], caption: 'The doors close' },
+  cups: { tags: ['costumi'], caption: 'Two coffees, one ticket' },
+  tunnel: { tags: ['location', 'luce'], caption: 'Tail lights into the tunnel' },
+  signalbox: { tags: ['location'], caption: 'The signal box' },
   dawn: { tags: ['luce'], caption: 'Blue hour for the ending' },
-  sea: { tags: ['palette'] },
+  sea: { tags: ['palette'], caption: 'Capo Bianco, 5:52' },
   field: { tags: ['location'], caption: 'The field behind the station' },
 };
 

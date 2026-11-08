@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { createArrow, createElement } from '@inkadra/canvas-core';
+import { createElement } from '@inkadra/canvas-core';
 import { readElement, roots } from '@inkadra/doc-schema';
 import { type Browser, chromium, type Page } from '@playwright/test';
 import { readBoard } from '../tests/frame-grab.helpers.ts';
@@ -30,7 +30,7 @@ interface Seed extends SampleProject {
   guestUrl: string;
 }
 
-/** Characters, locations and arrows on the casting board; a video on the moodboard. */
+/** A video on the moodboard and a guest link; the ids of the cards the screens open. */
 async function seedExtras(browser: Browser, sample: SampleProject): Promise<Seed> {
   const { cookie, project, casting, asset } = sample;
   const page = await browser.newPage();
@@ -45,64 +45,22 @@ async function seedExtras(browser: Browser, sample: SampleProject): Promise<Seed
   if (!video) throw new Error('This instance does not take uploads');
   await waitForAssets(base, cookie, [video]);
 
-  const cast = await readBoard(base, cookie, casting.id);
-  let character = '';
-  let location = '';
-  let arrow = '';
-  cast.transact(() => {
-    character = createElement(
-      cast,
-      'character',
-      { x: 700, y: 0 },
-      {
-        name: 'Anna',
-        role: 'Protagonist',
-        assetId: asset.window,
-        age: '28',
-        description: 'Misses the last train, and stays.',
-        actor: 'Giulia Neri',
-        contact: 'Lumen agency · 02 0000 0000',
-        scenes: ['1', '2'],
-      },
-      opts,
-    ).id;
-    location = createElement(
-      cast,
-      'location',
-      { x: 1000, y: 0 },
-      {
-        name: 'Central station',
-        setting: 'int-ext',
-        assetId: asset.platform,
-        address: 'Piazza della Stazione 1',
-        light: 'Sodium lamps, blue hour',
-        availability: 'After the last train, 0:30–5:00',
-        scenes: ['1'],
-      },
-      opts,
-    ).id;
-    const rect = (id: string) => {
-      const el = readElement(roots(cast).elements.get(id)!)!;
-      return { x: el.x, y: el.y, w: el.w, h: 200 };
-    };
-    const end = (id: string) => ({ elementId: id, ...rect(id) });
-    arrow = createArrow(
-      cast,
-      end(character),
-      end(location),
-      rect,
-      { label: 'waits here' },
-      opts,
-    ).id;
-  });
-  await pushBoardDoc(base, cookie, casting.id, cast);
+  // The sample's casting board already holds Anna, the station and the arrow between them.
+  const cast = [...roots(await readBoard(base, cookie, casting.id)).elements.values()].map(
+    (m) => readElement(m)!,
+  );
+  const named = (type: string, name: string) =>
+    cast.find((e) => e.type === type && 'name' in e && e.name === name)!.id;
+  const character = named('character', 'Anna');
+  const location = named('location', 'Central station');
+  const arrow = cast.find((e) => e.type === 'arrow' && e.label === 'waits here')!.id;
 
   const mood = await readBoard(base, cookie, project.rootBoardId);
   const els = [...roots(mood).elements.values()].map((m) => readElement(m)!);
-  const image = els.find((e) => e.type === 'image' && e.x === 360 && e.y === 0)!.id;
+  const image = els.find((e) => e.type === 'image' && e.assetId === asset.platform)!.id;
   const noteId = els.find((e) => e.type === 'note')!.id;
   mood.transact(() => {
-    createElement(mood, 'file', { x: 1140, y: 700 }, { assetId: video }, opts);
+    createElement(mood, 'file', { x: 360, y: 900 }, { assetId: video }, opts);
   });
   await pushBoardDoc(base, cookie, project.rootBoardId, mood);
 
