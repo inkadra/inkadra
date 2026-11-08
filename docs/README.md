@@ -1,5 +1,9 @@
 # Documentation
 
+The user-facing pages (the tour, self-hosting, formats) are published to the
+[wiki](https://github.com/inkadra/inkadra/wiki) by `.github/workflows/wiki.yml` on every merge:
+write them here, and add a new page to the list in `scripts/wiki-sync.mjs`.
+
 | Where                                                           | What you find                                                          |
 | --------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | [A tour of Inkadra](guide.md)                                   | The main tools, with pictures                                          |
