@@ -204,7 +204,8 @@ test('storage limits: own space, refused uploads, limits and members', async ({
           { timeout: 120_000, intervals: [5_000] },
         )
         .toBe(true);
-      await page.goto('/inbox');
+      await page.goto('/');
+      await page.getByRole('button', { name: 'Inbox', exact: true }).click();
       await expect(page.getByText('Spazio dell’istanza:', { exact: false }).first()).toBeVisible();
       await shoot(page, 'inbox-storage');
     }
