@@ -130,6 +130,9 @@ describe('proofing export', () => {
 
   it('writes CSV cells that are never formulas', () => {
     expect(csvCell('=SUM(A1)')).toBe("'=SUM(A1)");
+    // Spreadsheets skip leading spaces; a pipe starts a DDE command.
+    expect(csvCell('  =1+1')).toBe("'  =1+1");
+    expect(csvCell('|calc')).toBe("'|calc");
     expect(csvCell('a,b')).toBe('"a,b"');
     expect(csvCell('say "hi"')).toBe('"say ""hi"""');
     expect(csvCell(-1)).toBe('-1');

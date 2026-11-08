@@ -101,7 +101,7 @@ export function pickedWithoutName(picks: ShareLinkPicks): number {
 export function csvCell(value: string | number | null): string {
   if (value === null) return '';
   let text = String(value);
-  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  if (typeof value === 'string' && /^\s*[=+\-@|]|^[\t\r]/.test(text)) text = `'${text}`;
   return /[",\n\r;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
