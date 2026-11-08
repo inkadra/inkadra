@@ -2,7 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { DemoInfo, DemoRefusalReason, DemoSandbox } from '@inkadra/shared';
+import {
+  type DemoInfo,
+  type DemoRefusalReason,
+  type DemoSandbox,
+  TURNSTILE_ACTION,
+} from '@inkadra/shared';
 import { and, count, eq, inArray, like, lt, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import type { Config } from './config.ts';
@@ -75,12 +80,14 @@ export async function demoInfo(db: Database, config: DemoConfig): Promise<DemoIn
 
 /**
  * Asks Cloudflare whether the visitor passed the Turnstile check, through the same guarded
- * fetch as link previews. Any doubt (no answer, a bad one) is a refusal.
+ * fetch as link previews. Any doubt (no answer, a bad one, a token solved on another site or
+ * for another action) is a refusal.
  */
 export async function verifyTurnstile(
   secret: string,
   token: string | undefined,
   remoteIp: string,
+  hostname: string,
   fetcher: typeof safeFetch = safeFetch,
 ): Promise<boolean> {
   if (!token) return false;
@@ -95,8 +102,10 @@ export async function verifyTurnstile(
       timeoutMs: 8000,
       maxRedirects: 0,
     });
-    const answer = JSON.parse(res.body.toString('utf8')) as { success?: unknown };
-    return answer.success === true;
+    const answer = JSON.parse(res.body.toString('utf8')) as Record<string, unknown>;
+    return (
+      answer.success === true && answer.hostname === hostname && answer.action === TURNSTILE_ACTION
+    );
   } catch {
     return false;
   }
@@ -196,6 +205,17 @@ export async function exportsOf(db: Pick<Database, 'select'>, userId: string) {
  */
 export async function endSandbox(deps: Pick<DemoDeps, 'db' | 'jobs' | 'config'>, userId: string) {
   const { db } = deps;
+  // An export under way stops at its next step, as when it is cancelled, and removes its own
+  // archive (runTransfer): it finds its row gone below, whatever process runs it.
+  await db
+    .update(projectTransfer)
+    .set({ status: 'failed', failure: 'cancelled', finishedAt: new Date() })
+    .where(
+      and(
+        eq(projectTransfer.userId, userId),
+        inArray(projectTransfer.status, ['queued', 'running']),
+      ),
+    );
   const archives = await db
     .select({ id: projectTransfer.id })
     .from(projectTransfer)

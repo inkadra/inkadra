@@ -19,24 +19,32 @@ A security audit of the demo listed the risks; this records what was done about 
   domain `demo.invalid` (so the schema needs nothing new), imports the sample project
   "Last Train" from an archive kept in `apps/server/demo/` (decision 0037) and signs the
   visitor in. A sandbox is a member with no right to make projects; `DEMO_STORAGE` is everyone's
-  storage limit (decision 0081). Cloudflare Turnstile guards the button when its keys are set,
-  checked by the server through the guarded fetch of link previews; without them the server
-  starts and logs an error at every start, so local runs and tests need no keys. One sandbox
-  per address every ten minutes, refusals free; past `DEMO_MAX_SANDBOXES`, counted under a lock,
-  the button says to come back later.
+  storage limit (decision 0081). Cloudflare Turnstile guards the button, checked by the server
+  through the guarded fetch of link previews, for the host of `PUBLIC_URL` and the widget's own
+  action only. In production a demo without its keys does not start (fail closed); in
+  development and tests it starts and logs an error, so local runs need no keys. One sandbox
+  per address (an IPv6 /64 as one) every ten minutes; a refusal does not spend that turn but
+  counts against five refusals per address in the same time, so nobody hammers Turnstile
+  through the server. Past `DEMO_MAX_SANDBOXES`, counted under a lock, the button says to come
+  back later. "Start over" asks before it deletes the sandbox; it first cancels an export under
+  way, which stops at its next step and removes its own archive.
 - **An allowlist, not a denylist.** In the demo the API answers only the routes a sandbox needs
   to work on its own project; every other route, routes added later included, answers 403.
   Sharing, members, invitations, guest and review links, calendar feeds, feedback, the clipper
-  and app tokens, imports, avatars, maps, account deletion and the whole administration stay
+  and app tokens, imports, avatars, maps, link previews (the server would fetch any address and
+  keep its picture past the upload rules), account deletion and the whole administration stay
   out. Of Better Auth only the session and sign-out pass. Isolation between sandboxes is the
   usual access control, tested for each kind of resource.
 - **Files.** JPEG, PNG, WebP, GIF, PDF and plain text only, by type and extension when the
-  upload starts and by their first bytes when it ends. Stored files keep being served as before:
-  nothing but pictures, video, audio and PDF inline, everything else (SVG included) as a
-  download, always with a sandboxing policy.
-- **Boards.** In the demo a board past 500 cards or 5 MB becomes read-only and is not saved, and
-  a live message is 2 MB at most. Elsewhere boards can grow much larger, so these caps are the
-  demo's only.
+  upload starts and by their bytes when it ends: a picture's signature, a PDF's header at the
+  very start, text whole as UTF-8 without control characters. In the demo only pictures open
+  in the page; every other file, PDF included, is a download, always with a sandboxing policy
+  and `nosniff`.
+- **Boards.** In the demo a board past 500 cards or 2 MB becomes read-only, is not saved and is
+  not copied into a version or a restore backup; its size is checked as clients change it, not
+  only when it is stored. A live message is 1 MB at most and a sandbox makes at most 30 boards,
+  so what one sandbox can put in the database is bounded. Elsewhere boards can grow much larger,
+  so these caps are the demo's only.
 - **Export once.** "Download the project" is the way from the demo to one's own Inkadra: one
   archive per sandbox.
 - **The end.** Every minute, and at start, sandboxes past `DEMO_TTL` go with their projects,
@@ -46,8 +54,9 @@ A security audit of the demo listed the risks; this records what was done about 
   start with spaces before a formula sign, or with `|`, also get the apostrophe that keeps them
   from running.
 - **Deployment.** `deploy/compose.demo.yaml` runs it behind a Cloudflare Tunnel with no open
-  port, resource limits on every container, Valkey with a password and the database on an
-  internal network.
+  port, resource limits on every container, unprivileged users without capabilities, a pinned
+  `cloudflared`, Valkey with a password kept off the command line, the database on an internal
+  network, and proxy headers trusted only from `cloudflared`'s fixed address.
 
 ## Consequences
 

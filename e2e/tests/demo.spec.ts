@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The public demo (decision 0084), against the second server playwright.config.ts starts in
 // demo mode: "Try the demo", the pill in the header, the warning five minutes before the end,
-// the one export, the toast of its limits and the end. Set E2E_SHOTS to a folder to capture
+// the one export, the toast of its limits, "Start over" with its confirmation and the end. Set E2E_SHOTS to a folder to capture
 // every state, desktop and phone, dark and light.
 import { expect, type Page, test } from '@playwright/test';
 
@@ -193,6 +193,17 @@ test('the demo: try it, work, get warned, download, see the end', async ({ page 
   await page.keyboard.press('Escape');
   await expect(exporting).toBeHidden();
 
+  // "Start over" deletes the sandbox: it asks first, and cancelling keeps everything.
+  await pill.getByRole('button', { name: 'Altro: ricomincia, regole della demo' }).click();
+  await page.getByRole('menuitem', { name: 'Ricomincia da capo' }).click();
+  const restart = page.getByRole('dialog', { name: 'Ricominciare da capo?' });
+  await expect(restart).toBeVisible();
+  await expect(restart.getByText(/nessuno la può recuperare/)).toBeVisible();
+  await shoot(page, 'restart', ['desktop', 'phone']);
+  await restart.getByRole('button', { name: 'Annulla' }).click();
+  await expect(restart).toBeHidden();
+  expect(await page.evaluate(async () => (await fetch('/api/v1/me')).status)).toBe(200);
+
   // The end: the sandbox goes, and the page says so.
   await endIn(page, 3000);
   await page.reload();
@@ -206,4 +217,14 @@ test('the demo: try it, work, get warned, download, see the end', async ({ page 
   // A new demo starts from the button again.
   await page.getByRole('button', { name: 'Nuova demo' }).click();
   await expect(start).toBeEnabled();
+
+  // Confirmed, "Start over" ends the new sandbox at once (with its real hour this time).
+  await page.unroute('**/api/v1/demo/sandbox');
+  await start.click();
+  await expect(pill).toBeVisible();
+  await pill.getByRole('button', { name: 'Altro: ricomincia, regole della demo' }).click();
+  await page.getByRole('menuitem', { name: 'Ricomincia da capo' }).click();
+  await restart.getByRole('button', { name: 'Cancella e ricomincia' }).click();
+  await expect(pill).toBeHidden();
+  expect(await page.evaluate(async () => (await fetch('/api/v1/me')).status)).toBe(401);
 });

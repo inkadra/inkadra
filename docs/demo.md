@@ -17,8 +17,10 @@ page has the rules of the demo, for visitors, and how to run one, for whoever ho
 - **No account, no email, no tracking cookies.** The demo sets the session cookie that keeps you
   signed in to your sandbox; Cloudflare Turnstile checks that you are a person.
 - Opening many sandboxes, uploading what is not yours or using the demo to host files is not
-  allowed: one sandbox per address every ten minutes, and the demo stops taking new ones past
-  50 at once.
+  allowed: one sandbox per address every ten minutes, a few refused attempts per address, and
+  the demo stops taking new ones past 50 at once. A sandbox has at most 30 boards.
+- **"Start over" deletes your sandbox at once**, after asking: download the project first if you
+  want to keep it.
 
 ## Running a demo
 
@@ -29,13 +31,19 @@ server that does not set it. On, the server:
   there is no administrator to reach from the web;
 - answers only what a sandbox needs to work on its own project; everything else of the API
   answers 403 (sharing, members, invitations, guest pages, calendar feeds, feedback, the
-  clipper and app tokens, imports, avatars, maps and the whole administration);
+  clipper and app tokens, imports, avatars, maps, link previews and the whole administration):
+  a link card keeps its address without a title or picture, and the server fetches nothing for
+  a sandbox;
 - forces what a stranger could abuse off, whatever the environment says: email, the feedback
   relay, maps and address search, playable video copies and RAW, HEIC and PDF previews; it
   enforces the Content Security Policy, caps files at 10 MB and gives each sandbox
   `DEMO_STORAGE` as its storage limit ([decision 0081](decisions/0081-storage-limits.md));
-- takes only JPEG, PNG, WebP, GIF, PDF and plain text files, and checks their first bytes;
-- caps each board at 500 cards and 5 MB, and live messages at 2 MB;
+- takes only JPEG, PNG, WebP, GIF, PDF and plain text files, and checks their bytes: pictures by
+  their signature, a PDF by its header at the very start, text as valid UTF-8 without control
+  characters; only pictures open in the page, any other file is a download;
+- caps each board at 500 cards and 2 MB, checked as it changes, and live messages at 1 MB: a
+  board past a cap turns read-only, is not saved and is not copied into a version; a sandbox
+  makes at most 30 boards;
 - deletes every sandbox past `DEMO_TTL` with its project, files and sessions, every minute and at
   start: the only data Inkadra ever deletes on its own.
 
@@ -48,8 +56,12 @@ server that does not set it. On, the server:
 | `TURNSTILE_SITE_KEY` |         | Cloudflare Turnstile on "Try the demo", checked by the server; set both keys |
 | `TURNSTILE_SECRET`   |         |                                                                              |
 
-Without the Turnstile keys the demo starts, and logs an error at every start: anyone, bots
-included, can open sandboxes up to the cap. Set them before the demo is public.
+In production (`NODE_ENV=production`, as in the image) the demo does not start without the
+Turnstile keys. In development and tests it starts and logs an error: anyone, bots included,
+could open sandboxes up to the cap. The server accepts a Turnstile answer only for the host of
+`PUBLIC_URL` and the widget's own action. Each address (an IPv6 /64 counts as one) opens one
+sandbox every ten minutes and has five refused attempts (a failed check, a full demo) in the
+same time.
 
 The sample project is `apps/server/demo/last-train.inkadra`. Rebuild it after a change to the
 archive format or to the sample, against an empty instance that is not a demo:
@@ -63,8 +75,10 @@ SHOTS_BASE_URL=http://localhost:3100 pnpm --filter @inkadra/e2e exec tsx scripts
 `deploy/compose.demo.yaml` runs the demo with no port open on the machine: `cloudflared`
 connects out to Cloudflare and brings visitors to Inkadra over the stack's network. It is sized
 for a small VM (2 ARM cores, 12 GB of RAM): every container has CPU, memory and process limits,
-runs without capabilities it does not need and with a read-only file system, Valkey has a
-password, and PostgreSQL and Valkey sit on a network that reaches nothing outside.
+runs as an unprivileged user without capabilities and with a read-only file system, Valkey has a
+password (given as configuration on standard input, never on a command line), and PostgreSQL and
+Valkey sit on a network that reaches nothing outside. `cloudflared` is pinned to a release
+(2026.10.7); move it on after reading its release notes.
 
 1. In Cloudflare Zero Trust, create a tunnel (Networks → Tunnels → Create, "Cloudflared") and
    copy its token. Add a public hostname, `demo.example.com`, to the service
@@ -90,5 +104,11 @@ password, and PostgreSQL and Valkey sit on a network that reaches nothing outsid
    rule on `/api/v1/demo/sandbox` (a few requests every ten minutes per address); a cache rule
    that bypasses the cache on `/api/` and `/collab`. WebSockets must stay on (Network).
 
-Inkadra trusts the address `cloudflared` forwards (`TRUST_PROXY=uniquelocal`, the stack's
-network) for its own limits, and passes it to Turnstile.
+Inkadra and `cloudflared` share the `edge` network, which also reaches the internet: Inkadra
+uses it for Turnstile and the update check (it fetches nothing else for a sandbox). Inkadra
+trusts proxy headers only from `cloudflared`, at a fixed address (`TRUST_PROXY=172.31.250.2`,
+on the subnet `172.31.250.0/29`; change the three together if the subnet is taken). Cloudflare
+appends the address it saw, the one it also sends as `CF-Connecting-IP`, to `X-Forwarded-For`,
+and Inkadra takes that last entry: a visitor cannot pick their address by writing the header
+themselves. Do not publish a port of the `inkadra` container or attach other containers to
+`edge`. That address is what the limits count and what goes to Turnstile.

@@ -16,6 +16,9 @@ export const DemoInfo = z
   .openapi('DemoInfo');
 export type DemoInfo = z.infer<typeof DemoInfo>;
 
+/** The Turnstile action of "Try the demo": the server refuses a token made for another. */
+export const TURNSTILE_ACTION = 'demo_sandbox';
+
 export const CreateDemoSandbox = z
   .object({ turnstileToken: z.string().min(1).max(2048).optional() })
   .openapi('CreateDemoSandbox');
@@ -34,7 +37,8 @@ export type DemoSandbox = z.infer<typeof DemoSandbox>;
 /**
  * `details.reason` of a refusal of the demo: `demo_full` (429, too many sandboxes open),
  * `demo_wait` (429, a sandbox from this address a moment ago), `turnstile` (403, the check
- * failed), `demo_off` (403, not in the demo), `demo_export` (429, the export is spent).
+ * failed), `demo_off` (403, not in the demo), `demo_export` (429, the export is spent),
+ * `demo_limit` (409, past a cap of the demo: boards of a sandbox, size of a board).
  */
 export const DemoRefusalReason = z.enum([
   'demo_full',
@@ -42,5 +46,6 @@ export const DemoRefusalReason = z.enum([
   'turnstile',
   'demo_off',
   'demo_export',
+  'demo_limit',
 ]);
 export type DemoRefusalReason = z.infer<typeof DemoRefusalReason>;

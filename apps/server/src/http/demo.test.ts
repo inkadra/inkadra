@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { stat } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
@@ -22,12 +23,16 @@ import { DEMO_DOMAIN, sweepSandboxes, verifyTurnstile } from '../demo.ts';
 import type { safeFetch } from '../safe-fetch.ts';
 import { originalKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
+import { transferFile } from '../transfers/service.ts';
+import { directVersionWriter } from '../versions.ts';
 import { createApp } from './app.ts';
-import { demoAllows } from './demo-routes.ts';
+import { DEMO_MAX_BOARDS } from './boards-routes.ts';
+import { DEMO_REFUSALS, demoAllows } from './demo-routes.ts';
 import { securityHeaders } from './security-headers.ts';
 import { demoBytesMatch, demoTypeAllowed } from './uploads.ts';
 
 const base = {
+  NODE_ENV: 'test',
   PUBLIC_URL: 'http://localhost:3000',
   DATABASE_URL: 'postgres://unused',
   AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
@@ -79,6 +84,26 @@ describe('the demo configuration (decision 0084)', () => {
     expect(loadConfig({ ...base, DEMO_MODE: 'true', UPLOAD_MAX_SIZE: '1MB' }).UPLOAD_MAX_SIZE).toBe(
       1024 ** 2,
     );
+  });
+
+  it('does not start a demo in production without Turnstile', () => {
+    expect(() => loadConfig({ ...base, NODE_ENV: 'production', DEMO_MODE: 'true' })).toThrow(
+      /TURNSTILE_SECRET: Required with DEMO_MODE in production/,
+    );
+    expect(
+      loadConfig({
+        ...base,
+        NODE_ENV: 'production',
+        DEMO_MODE: 'true',
+        TURNSTILE_SITE_KEY: 'k',
+        TURNSTILE_SECRET: 's',
+      }).DEMO_MODE,
+    ).toBe(true);
+    // Development and tests start, and main logs the missing keys.
+    expect(loadConfig({ ...base, NODE_ENV: 'development', DEMO_MODE: 'true' }).DEMO_MODE).toBe(
+      true,
+    );
+    expect(loadConfig({ ...base, NODE_ENV: 'production' }).DEMO_MODE).toBe(false);
   });
 
   it('reads durations and wants both Turnstile keys', () => {
@@ -190,12 +215,27 @@ describe('the demo upload types', () => {
     expect(demoBytesMatch('image/png', Buffer.from('<svg onload="alert(1)">'))).toBe(false);
     expect(demoBytesMatch('image/jpeg', png)).toBe(false);
     expect(demoBytesMatch('application/pdf', Buffer.from('%PDF-1.7'))).toBe(true);
+    // A polyglot: HTML first, the PDF header later, which `isPdf` alone would take.
+    expect(demoBytesMatch('application/pdf', Buffer.from('<html><script>x</script>%PDF-1.7'))).toBe(
+      false,
+    );
+    expect(demoBytesMatch('application/pdf', Buffer.from(' %PDF-1.7'))).toBe(false);
     expect(demoBytesMatch('text/plain', Buffer.from('hello'))).toBe(true);
+    expect(demoBytesMatch('text/plain', Buffer.from('\ufeffScene 1\r\n\tINT. — Città\n'))).toBe(
+      true,
+    );
     expect(demoBytesMatch('text/plain', Uint8Array.from([0x68, 0, 0x69]))).toBe(false);
+    expect(demoBytesMatch('text/plain', Buffer.from('a\u001b[31mb'))).toBe(false);
+    expect(demoBytesMatch('text/plain', Uint8Array.from([0x68, 0xc3, 0x28]))).toBe(false);
+    // Binary after a page of text: the whole text is checked, not its first bytes.
+    const tail = Buffer.concat([Buffer.alloc(8192, 'a'), Uint8Array.from([0xff, 0xfe, 0x01])]);
+    expect(demoBytesMatch('text/plain', tail)).toBe(false);
   });
 });
 
 describe('Turnstile', () => {
+  const host = 'demo.example.com';
+  const passed = { success: true, hostname: host, action: 'demo_sandbox' };
   it('posts the secret, token and address and trusts only success: true', async () => {
     const seen: Array<{ url: string; body?: string; maxRedirects?: number }> = [];
     const fake = (answer: unknown) =>
@@ -203,20 +243,39 @@ describe('Turnstile', () => {
         seen.push({ url, body: opts.body, maxRedirects: opts.maxRedirects });
         return { url, contentType: 'application/json', body: Buffer.from(JSON.stringify(answer)) };
       }) as typeof safeFetch;
-    expect(await verifyTurnstile('s3cret', 'tok', '203.0.113.9', fake({ success: true }))).toBe(
-      true,
-    );
+    expect(await verifyTurnstile('s3cret', 'tok', '203.0.113.9', host, fake(passed))).toBe(true);
     expect(seen[0]?.url).toBe('https://challenges.cloudflare.com/turnstile/v0/siteverify');
     expect(new URLSearchParams(seen[0]?.body)).toEqual(
       new URLSearchParams({ secret: 's3cret', response: 'tok', remoteip: '203.0.113.9' }),
     );
     expect(seen[0]?.maxRedirects).toBe(0);
-    expect(await verifyTurnstile('s', 'tok', 'ip', fake({ success: 'true' }))).toBe(false);
-    expect(await verifyTurnstile('s', undefined, 'ip', fake({ success: true }))).toBe(false);
+    expect(
+      await verifyTurnstile('s', 'tok', 'ip', host, fake({ ...passed, success: 'true' })),
+    ).toBe(false);
+    expect(await verifyTurnstile('s', undefined, 'ip', host, fake(passed))).toBe(false);
     const broken = (async () => {
       throw new Error('down');
     }) as unknown as typeof safeFetch;
-    expect(await verifyTurnstile('s', 'tok', 'ip', broken)).toBe(false);
+    expect(await verifyTurnstile('s', 'tok', 'ip', host, broken)).toBe(false);
+  });
+
+  it('refuses a token solved on another site or for another action', async () => {
+    const fake = (answer: unknown) =>
+      (async (url: string) => ({
+        url,
+        contentType: 'application/json',
+        body: Buffer.from(JSON.stringify(answer)),
+      })) as unknown as typeof safeFetch;
+    for (const answer of [
+      { ...passed, hostname: 'evil.example.com' },
+      { ...passed, hostname: undefined },
+      { ...passed, action: 'login' },
+      { ...passed, action: undefined },
+    ])
+      expect(
+        await verifyTurnstile('s', 'tok', 'ip', host, fake(answer)),
+        JSON.stringify(answer),
+      ).toBe(false);
   });
 });
 
@@ -235,16 +294,21 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     TURNSTILE_SITE_KEY: 'site-key',
     TURNSTILE_SECRET: 'secret-key',
   });
-  const log = pino({ level: 'silent' });
+  // Errors are kept: a sandbox ending under an export must not log a failed transfer.
+  const errors: string[] = [];
+  const log = pino({ level: 'error' }, { write: (line: string) => void errors.push(line) });
+  const limits = { maxPayload: 2 * 1024 * 1024, elements: 40, stateBytes: 256 * 1024 };
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 6);
   const deps = testDeps(db, log);
+  // Export archives where the in-process jobs write them, so endSandbox finds them.
+  config.DATA_DIR = deps.root;
   const auth = createAuth(config, db);
   const collab = createCollabServer({
     db,
     auth,
     log,
     publicUrl: config.PUBLIC_URL,
-    limits: { maxPayload: 2 * 1024 * 1024, elements: 40, stateBytes: 5 * 1024 * 1024 },
+    limits,
   });
   let app: Awaited<ReturnType<typeof createApp>>;
   let host = '';
@@ -252,7 +316,11 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     url: u,
     contentType: 'application/json',
     body: Buffer.from(
-      JSON.stringify({ success: new URLSearchParams(opts.body).get('response') === 'pass' }),
+      JSON.stringify({
+        success: new URLSearchParams(opts.body).get('response') === 'pass',
+        hostname: 'localhost',
+        action: 'demo_sandbox',
+      }),
     ),
   })) as typeof safeFetch;
 
@@ -315,7 +383,15 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
   beforeAll(async () => {
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     await db.execute(sql`truncate table "user", project, instance_setting cascade`);
-    app = await createApp({ config, db, auth, log, ...deps, turnstileFetch: turnstile });
+    app = await createApp({
+      config,
+      db,
+      auth,
+      log,
+      ...deps,
+      versions: directVersionWriter(collab, db, log, limits),
+      turnstileFetch: turnstile,
+    });
     attachCollab(app.server, collab);
     await app.listen({ host: '127.0.0.1', port: 0 });
     host = `127.0.0.1:${(app.server.address() as AddressInfo).port}`;
@@ -384,6 +460,24 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     b = await sandbox('198.51.100.2');
   });
 
+  it('limits refused attempts per address, an IPv6 /64 as one', async () => {
+    for (let i = 0; i < DEMO_REFUSALS; i++) {
+      const res = await open(`2001:db8:1:2::${i + 1}`, 'fail');
+      expect(res.status).toBe(403);
+    }
+    // A passed check from the same /64 waits too: the refusals spent its budget.
+    const next = await open('2001:db8:1:2:ffff::1');
+    expect(next.status).toBe(429);
+    expect(next.json().error.details).toEqual({ reason: 'demo_wait' });
+    expect(Number(next.headers.get('retry-after'))).toBeGreaterThan(500);
+    expect(
+      await db
+        .select()
+        .from(user)
+        .where(sql`${user.email} like ${`%@${DEMO_DOMAIN}`}`),
+    ).toHaveLength(2);
+  });
+
   it.each([
     ['POST', '/boards/:board/share-links', { allowDownload: true }],
     ['POST', '/invitations', { projectId: ':project', role: 'editor', kind: 'link' }],
@@ -401,12 +495,21 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     ['POST', '/map-search', { q: 'Roma' }],
     ['POST', '/me/storage/request', {}],
     ['DELETE', '/me', {}],
+    [
+      'POST',
+      '/link-previews',
+      { projectId: ':project', boardId: ':board', url: 'https://example.com' },
+    ],
   ] as const)('answers 403 to %s %s', async (method, path, payload) => {
-    const filled = path
-      .replace(':board', a.boardId)
-      .replace(':project', a.projectId)
-      .replace(':other', b.id);
-    const res = await call(a.cookie, method, `/api/v1${filled}`, payload);
+    const fill = (text: string) =>
+      text.replace(':board', a.boardId).replace(':project', a.projectId).replace(':other', b.id);
+    const filled = fill(path);
+    const res = await call(
+      a.cookie,
+      method,
+      `/api/v1${filled}`,
+      payload && JSON.parse(fill(JSON.stringify(payload))),
+    );
     expect(res.status).toBe(403);
     expect(res.json().error.details).toEqual({ reason: 'demo_off' });
   });
@@ -515,12 +618,68 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     const fresh = connect(b.cookie, b.boardId);
     await fresh.synced;
     await expect.poll(() => fresh.provider.authorizedScope, { timeout: 5000 }).toBe('readonly');
+    // Nor is it copied into a version.
+    const version = await call(b.cookie, 'POST', `/api/v1/boards/${b.boardId}/versions`, {
+      name: 'Flood',
+    });
+    expect(version.status).toBe(409);
+    expect(version.json().error.details).toEqual({ reason: 'demo_limit' });
     c.close();
     fresh.close();
     collab.hocuspocus.flushPendingStores();
     await new Promise((r) => setTimeout(r, 500));
     const [after] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, b.boardId));
     expect(after?.size).toBe(stored?.size);
+  });
+
+  it('makes a board read-only as soon as it grows past its size, before any store', async () => {
+    const c = connect(a.cookie, a.boardId);
+    let fresh: ReturnType<typeof connect> | undefined;
+    try {
+      await c.synced;
+      const before = await call(a.cookie, 'POST', `/api/v1/boards/${a.boardId}/versions`, {
+        name: 'Before',
+      });
+      expect(before.status).toBe(201);
+      // One update past the size, in a part of the document no schema reads.
+      c.doc.getMap('flood').set('x', 'x'.repeat(limits.stateBytes));
+      const opened = connect(a.cookie, a.boardId);
+      fresh = opened;
+      await opened.synced;
+      // Sooner than the store's debounce (2 s): the change itself froze it.
+      await expect.poll(() => opened.provider.authorizedScope, { timeout: 1500 }).toBe('readonly');
+      const back = await call(
+        a.cookie,
+        'POST',
+        `/api/v1/boards/${a.boardId}/versions/${before.json().id}/restore`,
+      );
+      expect(back.status).toBe(409);
+      expect(back.json().error.details).toEqual({ reason: 'demo_limit' });
+    } finally {
+      c.close();
+      fresh?.close();
+    }
+  });
+
+  it(`caps a sandbox at ${DEMO_MAX_BOARDS} boards`, async () => {
+    const make = (n: number) =>
+      call(a.cookie, 'POST', `/api/v1/projects/${a.projectId}/boards`, {
+        parentBoardId: a.boardId,
+        title: `Board ${n}`,
+      });
+    let made = 0;
+    for (let n = 0; n < DEMO_MAX_BOARDS; n++) {
+      const res = await make(n);
+      if (res.status !== 201) {
+        expect(res.status).toBe(409);
+        expect(res.json().error.details).toEqual({ reason: 'demo_limit' });
+        break;
+      }
+      made++;
+    }
+    expect(made).toBeGreaterThan(0);
+    expect(made).toBeLessThan(DEMO_MAX_BOARDS);
+    expect((await make(99)).status).toBe(409);
   });
 
   it('takes only pictures, PDFs and text, and checks their bytes', async () => {
@@ -552,6 +711,11 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     const fakeId = String(fake.headers.get('inkadra-asset-id'));
     expect((await send(fakeId, svg)).status).toBe(415);
     expect(await db.select().from(asset).where(eq(asset.id, fakeId))).toHaveLength(0);
+    // Binary after a page of text, named and typed as text: refused too.
+    const hidden = Buffer.concat([Buffer.alloc(5000, 'a'), Uint8Array.from([0, 1, 2, 0xff])]);
+    const smuggled = await start('notes.txt', 'text/plain', hidden.length);
+    const smuggledId = String(smuggled.headers.get('inkadra-asset-id'));
+    expect((await send(smuggledId, hidden)).status).toBe(415);
     const text = Buffer.from('Call sheet notes');
     const ok = await start('notes.txt', 'text/plain', text.length);
     expect((await send(String(ok.headers.get('inkadra-asset-id')), text)).status).toBe(204);
@@ -580,6 +744,33 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     expect(res.headers.get('content-disposition')).toMatch(/^attachment/);
     expect(res.headers.get('content-security-policy')).toMatch(/sandbox/);
     expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+  });
+
+  it('opens only pictures in the page: a PDF is a download', async () => {
+    const store = async (mime: string, filename: string, body: Buffer) => {
+      const id = randomUUID();
+      await deps.storage.write(originalKey(id), body, mime);
+      await db.insert(asset).values({
+        id,
+        projectId: a.projectId,
+        kind: mime.startsWith('image/') ? 'image' : 'file',
+        mime,
+        filename,
+        size: body.length,
+        storageKey: originalKey(id),
+        status: 'ready',
+        createdBy: a.id,
+      });
+      return (await call(a.cookie, 'GET', `/api/v1/assets/${id}/file`)).headers;
+    };
+    const pdf = await store('application/pdf', 'call-sheet.pdf', Buffer.from('%PDF-1.7\n'));
+    expect(pdf.get('content-type')).toBe('application/octet-stream');
+    expect(pdf.get('content-disposition')).toMatch(/^attachment/);
+    expect(pdf.get('x-content-type-options')).toBe('nosniff');
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect((await store('image/png', 'frame.png', png)).get('content-disposition')).toMatch(
+      /^inline/,
+    );
   });
 
   it('exports a sandbox once', async () => {
@@ -655,5 +846,17 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     expect((await call(b.cookie, 'DELETE', '/api/v1/demo/sandbox')).status).toBe(204);
     expect(await db.select().from(user).where(eq(user.id, b.id))).toHaveLength(0);
     expect((await call(b.cookie, 'GET', '/api/v1/demo/sandbox')).status).toBe(401);
+  });
+
+  it('stops an export under way when its sandbox ends, leaving no archive or error', async () => {
+    const c = await sandbox('198.51.100.5');
+    const started = await call(c.cookie, 'POST', `/api/v1/projects/${c.projectId}/exports`, {});
+    expect(started.status).toBe(202);
+    const id = started.json().id as string;
+    expect((await call(c.cookie, 'DELETE', '/api/v1/demo/sandbox')).status).toBe(204);
+    // Whether the export had finished, was running or had not started yet, it ends the same.
+    await new Promise((r) => setTimeout(r, 1500));
+    await expect(stat(transferFile(deps.root, id))).rejects.toThrow(/ENOENT/);
+    expect(errors.filter((line) => line.includes('transfer'))).toEqual([]);
   });
 });

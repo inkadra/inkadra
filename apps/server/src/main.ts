@@ -63,6 +63,8 @@ async function main() {
   }
 
   const config = loadConfig();
+  /** The demo's caps on boards and their versions (decision 0084); none elsewhere. */
+  const limits = config.DEMO_MODE ? DEMO_COLLAB_LIMITS : undefined;
   const log = pino({ level: config.LOG_LEVEL, base: { service: command } });
   log.info({ version: VERSION }, 'starting inkadra');
 
@@ -190,7 +192,7 @@ async function main() {
       log,
       publicUrl: config.PUBLIC_URL,
       trustProxy: config.TRUST_PROXY,
-      ...(config.DEMO_MODE ? { limits: DEMO_COLLAB_LIMITS } : {}),
+      ...(limits ? { limits } : {}),
     });
     const server = collab;
     closers.unshift(() => server.destroy());
@@ -204,7 +206,7 @@ async function main() {
           directBoardWriter(server, log),
           log,
           {
-            versions: directVersionWriter(server, db, log),
+            versions: directVersionWriter(server, db, log, limits),
             notices: directBoardNotifier(server),
             reader: directBoardReader(server, db),
           },
@@ -250,7 +252,7 @@ async function main() {
     if (collab) {
       boards = directBoardWriter(collab, log);
       boardReader = directBoardReader(collab, db);
-      versions = directVersionWriter(collab, db, log);
+      versions = directVersionWriter(collab, db, log, limits);
       notices = directBoardNotifier(collab);
     } else if (config.REDIS_URL) {
       const queued = queuedBoardWriter(config.REDIS_URL);
@@ -288,6 +290,7 @@ async function main() {
       // The only automatic deletion of Inkadra: sandboxes past their hour, now and every minute.
       const stopDemo = startSandboxSweep({ db, jobs, config, log });
       closers.unshift(async () => stopDemo());
+      // Production refuses to start without them (loadConfig); development and tests say so.
       if (!config.TURNSTILE_SECRET)
         log.error(
           'DEMO_MODE without TURNSTILE_SITE_KEY and TURNSTILE_SECRET: anyone, bots included, can ' +

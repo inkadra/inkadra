@@ -311,6 +311,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         path: [c.TURNSTILE_SITE_KEY ? 'TURNSTILE_SECRET' : 'TURNSTILE_SITE_KEY'],
         message: 'Set together with the other Turnstile key',
       });
+    // A public demo without its bot check would hand sandboxes to anyone: it does not start.
+    if (c.DEMO_MODE && c.NODE_ENV === 'production' && !c.TURNSTILE_SECRET)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['TURNSTILE_SECRET'],
+        message: 'Required with DEMO_MODE in production, with TURNSTILE_SITE_KEY',
+      });
   }).safeParse(env);
   if (!parsed.success) {
     const lines = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);

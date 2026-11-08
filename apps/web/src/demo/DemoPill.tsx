@@ -59,6 +59,7 @@ export function DemoBar({ demo }: { demo: DemoInfo }) {
   const now = useNow(ends);
   const [exporting, setExporting] = useState(false);
   const [warning, setWarning] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   const left = ends === null ? Infinity : ends - now;
   const warn = left <= WARN_MS;
 
@@ -82,7 +83,8 @@ export function DemoBar({ demo }: { demo: DemoInfo }) {
     await refresh();
   };
   const menu = useMenu(t('demo.more'), [
-    { label: t('demo.restart'), action: () => void restart(), danger: true },
+    // It deletes the sandbox for good: asked first.
+    { label: t('demo.restart'), action: () => setRestarting(true), danger: true },
     { label: t('demo.rules'), action: () => window.open(RULES_URL, '_blank', 'noopener') },
   ]);
 
@@ -191,6 +193,27 @@ export function DemoBar({ demo }: { demo: DemoInfo }) {
                 }}
               >
                 {t('demo.downloadArchive')}
+              </Button>
+            </DialogActions>
+          </Dialog>
+          <Dialog
+            open={restarting}
+            title={t('demo.restartTitle')}
+            onClose={() => setRestarting(false)}
+          >
+            <p className="settings-muted">{t('demo.restartText')}</p>
+            <DialogActions>
+              <Button variant="ghost" onClick={() => setRestarting(false)}>
+                {t('demo.cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  setRestarting(false);
+                  void restart();
+                }}
+              >
+                {t('demo.restartConfirm')}
               </Button>
             </DialogActions>
           </Dialog>

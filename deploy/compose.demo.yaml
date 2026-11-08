@@ -16,8 +16,9 @@ services:
       DEMO_TTL: ${DEMO_TTL:-1h}
       DEMO_STORAGE: ${DEMO_STORAGE:-100MB}
       DEMO_MAX_SANDBOXES: ${DEMO_MAX_SANDBOXES:-50}
-      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
-      TURNSTILE_SECRET: ${TURNSTILE_SECRET:-}
+      # Required: without them the demo refuses to start (decision 0084).
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:?set TURNSTILE_SITE_KEY in .env}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:?set TURNSTILE_SECRET in .env}
       REDIS_URL: redis://:${VALKEY_PASSWORD:?set VALKEY_PASSWORD in .env}@valkey:6379
       # The server forces these in demo mode too; here they say so to whoever reads the file.
       REGISTRATION: closed
@@ -32,21 +33,26 @@ services:
       SMTP_URL: ""
       FEEDBACK_RELAY_URL: ""
       FEEDBACK_GITHUB_TOKEN: ""
-      # cloudflared is the only proxy, on this stack's private network.
-      TRUST_PROXY: uniquelocal
+      # Only cloudflared, at its fixed address below, may say who the visitor is. Cloudflare
+      # appends the address it saw (the one of CF-Connecting-IP) to X-Forwarded-For, and
+      # Inkadra takes the last entry after the trusted hop: what a visitor writes in the header
+      # is ignored, and nothing else on the network can claim to be a proxy.
+      TRUST_PROXY: 172.31.250.2
     # Straight as the node user: a fresh named volume already belongs to it (from the image).
     # A host folder in INKADRA_DATA must be given to uid 1000 first: chown -R 1000:1000 <folder>
     user: "1000:1000"
     cap_add: !reset []
-    tmpfs:
+    tmpfs: !override
       - /tmp:size=256m,mode=1777
-    pids_limit: 512
     deploy:
       resources:
         limits:
+          pids: 512
           cpus: "1.25"
           memory: 4g
-    networks: [edge, backend]
+    networks:
+      edge: {}
+      backend: {}
 
   postgres:
     # As the postgres user of the image: a fresh named volume already belongs to it.
@@ -56,40 +62,47 @@ services:
       - /tmp
       - /var/run/postgresql
     cap_drop: [ALL]
-    pids_limit: 200
     deploy:
       resources:
         limits:
+          pids: 200
           cpus: "0.5"
           memory: 2g
     networks: [backend]
 
   valkey:
-    # The password comes from the environment, not the command line, so `ps` does not show it.
-    # BullMQ needs noeviction: past maxmemory Valkey refuses writes instead of dropping jobs.
+    # The password goes in as configuration on standard input ("-"), never on the command
+    # line, so no process list shows it. BullMQ needs noeviction: past maxmemory Valkey refuses
+    # writes instead of dropping jobs.
     command:
       - sh
       - -c
-      - exec valkey-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction --requirepass "$$VALKEY_PASSWORD"
+      - |
+        exec valkey-server - --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction <<EOF
+        requirepass $$VALKEY_PASSWORD
+        EOF
     environment:
       VALKEY_PASSWORD: ${VALKEY_PASSWORD:?set VALKEY_PASSWORD in .env}
       # valkey-cli reads it, for the health check.
       REDISCLI_AUTH: ${VALKEY_PASSWORD:?set VALKEY_PASSWORD in .env}
+    # Straight as the valkey user of the image (999:1000), without any capability: a fresh
+    # named volume already belongs to it. A host folder in VALKEY_DATA must be given to it.
+    user: "999:1000"
     read_only: true
     cap_drop: [ALL]
-    # The image's entrypoint gives /data to the valkey user, then drops to it.
-    cap_add: [CHOWN, SETGID, SETUID]
-    pids_limit: 64
+    cap_add: !reset []
     deploy:
       resources:
         limits:
+          pids: 64
           cpus: "0.25"
           memory: 512m
     networks: [backend]
 
   cloudflared:
-    # Pin a release you have checked (https://github.com/cloudflare/cloudflared/releases).
-    image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-latest}
+    # A pinned release (2026.10.7, 30 October 2026): move it on after reading the notes at
+    # https://github.com/cloudflare/cloudflared/releases.
+    image: cloudflare/cloudflared:2026.10.7
     restart: unless-stopped
     command: ["tunnel", "--no-autoupdate", "run"]
     environment:
@@ -99,20 +112,27 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-    pids_limit: 64
     deploy:
       resources:
         limits:
+          pids: 64
           cpus: "0.25"
           memory: 256m
     depends_on:
       inkadra:
         condition: service_healthy
-    networks: [edge]
+    networks:
+      edge:
+        # The one address TRUST_PROXY trusts.
+        ipv4_address: 172.31.250.2
 
 networks:
-  # Out to the internet: cloudflared, and Inkadra for Turnstile and the update check.
-  edge: {}
+  # Out to the internet: cloudflared, and Inkadra for Turnstile and the update check. A fixed
+  # subnet, for cloudflared's fixed address; change both, and TRUST_PROXY, if it is taken.
+  edge:
+    ipam:
+      config:
+        - subnet: 172.31.250.0/29
   # The database and Valkey reach nothing outside, and nothing outside reaches them.
   backend:
     internal: true

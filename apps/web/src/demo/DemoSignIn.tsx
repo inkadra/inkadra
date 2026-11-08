@@ -1,4 +1,4 @@
-import type { DemoInfo, DemoSandbox } from '@inkadra/shared';
+import { type DemoInfo, type DemoSandbox, TURNSTILE_ACTION } from '@inkadra/shared';
 import { Button, Icon, Logo } from '@inkadra/ui';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -33,6 +33,7 @@ function useTurnstile(siteKey: string | null, holder: RefObject<HTMLDivElement |
       if (!alive || !window.turnstile || widget.current) return;
       widget.current = window.turnstile.render(el, {
         sitekey: siteKey,
+        action: TURNSTILE_ACTION,
         appearance: 'interaction-only',
         theme: document.documentElement.dataset.theme === 'light' ? 'light' : 'dark',
         callback: (t: string) => setToken(t),

@@ -13,7 +13,6 @@ import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { designExtension } from '../media/design.ts';
 import { sniffImage } from '../media/heic.ts';
-import { isPdf } from '../media/pdf.ts';
 import { rawTypeOf } from '../media/raw.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { reserveSpace, StorageFullError } from '../storage-limits.ts';
@@ -75,20 +74,39 @@ export function demoTypeAllowed(mime: string, filename: string): boolean {
   return DEMO_TYPES[mime]?.test(filename) ?? false;
 }
 
-/** Whether the first bytes of an uploaded file match its type: no HTML or SVG named .png. */
-export function demoBytesMatch(mime: string, head: Uint8Array): boolean {
-  if (mime.startsWith('image/')) return sniffImage(head) === mime;
-  if (mime === 'application/pdf') return isPdf(head);
-  if (mime === 'text/plain') return !head.includes(0);
+/** Control characters other than tab, line feed and carriage return, C1 controls included. */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: finding control characters is the point.
+const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/;
+
+/**
+ * Whether the bytes of an uploaded file match its type: no HTML or SVG named .png. Pictures
+ * and PDFs by their first bytes, a PDF with its header right at the start (stricter than
+ * `isPdf`, which tolerates leading junk for files outside the demo); text as a whole, valid
+ * UTF-8 without control characters.
+ */
+export function demoBytesMatch(mime: string, bytes: Uint8Array): boolean {
+  if (mime.startsWith('image/')) return sniffImage(bytes) === mime;
+  if (mime === 'application/pdf')
+    return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      .subarray(0, 5)
+      .equals(Buffer.from('%PDF-'));
+  if (mime === 'text/plain') {
+    try {
+      return !CONTROL.test(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+    } catch {
+      return false;
+    }
+  }
   return false;
 }
 
 async function demoContentMatches(storage: Storage, key: string, assetId: string, db: Database) {
   const [row] = await db.select({ mime: asset.mime }).from(asset).where(eq(asset.id, assetId));
   if (!row) return false;
+  // Text is read whole (10 MB at most in the demo): binary after a page of text is refused.
+  const range = row.mime === 'text/plain' ? undefined : { start: 0, end: 4095 };
   const chunks: Buffer[] = [];
-  for await (const chunk of await storage.read(key, { start: 0, end: 4095 }))
-    chunks.push(chunk as Buffer);
+  for await (const chunk of await storage.read(key, range)) chunks.push(chunk as Buffer);
   return demoBytesMatch(row.mime, Buffer.concat(chunks));
 }
 

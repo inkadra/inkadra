@@ -20,13 +20,16 @@ import { requireActor, toHeaders } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
 
 const v1 = (path: string) => `${API_PREFIX}${path}`;
+/** Refused attempts (Turnstile, a full demo) one address may make every ten minutes. */
+export const DEMO_REFUSALS = 5;
 const UPLOADS = v1('/uploads');
 
 /**
  * What a sandbox may reach (decision 0084): working on its own project. Everything else of the
  * API answers 403 in the demo, routes added later included: sharing, invitations, members,
  * guest and review links, calendar feeds, feedback, the clipper and app tokens, imports,
- * avatars, address search and maps, and the whole administration.
+ * avatars, address search and maps, link previews (the server would fetch any address and
+ * keep its picture), and the whole administration.
  */
 const ALLOWED: Record<string, readonly string[]> = {
   GET: [
@@ -101,7 +104,6 @@ const ALLOWED: Record<string, readonly string[]> = {
     '/me/notifications/:notificationId/read',
     '/me/notifications/:notificationId/unread',
     '/me/notifications/read-all',
-    '/link-previews',
     '/uploads',
   ],
   PATCH: [
@@ -189,14 +191,22 @@ export function registerDemoRoutes(app: FastifyInstance, deps: Deps) {
     log: deps.log,
     ...(deps.demoSeed ? { seed: deps.demoSeed } : {}),
   };
-  // One sandbox per address every ten minutes; refusals (a failed check, a full demo) are free.
+  // One sandbox per address (an IPv6 /64) every ten minutes. A refusal (a failed check, a full
+  // demo) does not spend that turn, but has its own budget: nobody hammers Turnstile from here.
   const perAddress = new Failures(1, 10 * 60 * 1000);
+  const refusals = new Failures(DEMO_REFUSALS, 10 * 60 * 1000);
   const limited = config.NODE_ENV === 'production' || config.AUTH_RATE_LIMITS !== 'off';
+  const hostname = new URL(config.PUBLIC_URL).hostname;
 
   app.post(v1('/demo/sandbox'), async (req, reply) => {
     const { turnstileToken } = CreateDemoSandbox.parse(req.body ?? {});
     const key = addressBucket(req.ip);
+    if (limited && !refusals.begin(key)) {
+      reply.header('retry-after', String(Math.max(1, refusals.retryAfterSeconds(key))));
+      throw refuse('rate_limited', 'demo_wait');
+    }
     if (limited && !perAddress.begin(key)) {
+      refusals.finish(key, false);
       reply.header('retry-after', String(Math.max(1, perAddress.retryAfterSeconds(key))));
       throw refuse('rate_limited', 'demo_wait');
     }
@@ -208,6 +218,7 @@ export function registerDemoRoutes(app: FastifyInstance, deps: Deps) {
           config.TURNSTILE_SECRET,
           turnstileToken,
           req.ip,
+          hostname,
           deps.turnstileFetch,
         ))
       )
@@ -224,7 +235,10 @@ export function registerDemoRoutes(app: FastifyInstance, deps: Deps) {
       const sandbox = await readSandbox(db, config, userId);
       return reply.status(201).send(sandbox);
     } finally {
-      if (limited) perAddress.finish(key, made);
+      if (limited) {
+        perAddress.finish(key, made);
+        refusals.finish(key, !made);
+      }
     }
   });
 

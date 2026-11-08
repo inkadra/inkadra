@@ -42,6 +42,9 @@ const VersionParams = z.object({ boardId: Id, versionId: Id });
 const SAVES_PER_HOUR = 20;
 /** Full-document restore backups are limited per board across all its editors. */
 const RESTORES_PER_HOUR = 10;
+/** A board past the demo's caps is read-only and has no new versions (decision 0084). */
+const tooLarge = () =>
+  new HttpError('conflict', 'This board is past the caps of the demo.', { reason: 'demo_limit' });
 
 /** Columns of a version without its state, with its author and a microsecond cursor key. */
 const listed = (() => {
@@ -192,6 +195,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
         { reason: 'outcome_unknown' },
       );
     }
+    if (!saved.ok && saved.reason === 'too_large') throw tooLarge();
     if (!saved.ok)
       throw saved.reason === 'limit'
         ? new HttpError(
@@ -285,6 +289,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
     }
     if (!result.ok) {
       if (result.reason === 'missing') throw new HttpError('not_found', 'Version not found.');
+      if (result.reason === 'too_large') throw tooLarge();
       if (result.reason === 'too_new')
         throw new HttpError('conflict', 'This version was saved by a newer Inkadra.', {
           reason: 'newer_schema',

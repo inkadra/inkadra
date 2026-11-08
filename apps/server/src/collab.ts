@@ -65,9 +65,9 @@ export interface CollabLimits {
  * would let one sandbox fill the memory or the database of a small server.
  */
 export const DEMO_COLLAB_LIMITS: CollabLimits = {
-  maxPayload: 2 * 1024 * 1024,
+  maxPayload: 1024 * 1024,
   elements: 500,
-  stateBytes: 5 * 1024 * 1024,
+  stateBytes: 2 * 1024 * 1024,
 };
 
 export function createCollabServer(deps: {
@@ -85,6 +85,11 @@ export function createCollabServer(deps: {
   const { db, auth, log, limits } = deps;
   /** Boards past a cap: nobody writes to them and they are not saved (decision 0084). */
   const frozen = new WeakSet<Y.Doc>();
+  /**
+   * Bytes of a capped board: stored state plus what clients sent since, measured for real
+   * only past the cap, as encoding a whole board on every keystroke would cost too much.
+   */
+  const grown = new WeakMap<Y.Doc, number>();
   const freeze = (document: Document, boardId: string | undefined) => {
     if (!frozen.has(document)) log.warn({ boardId }, 'board over the demo caps: read-only');
     frozen.add(document);
@@ -325,6 +330,7 @@ export function createCollabServer(deps: {
       if (!boardId) throw new Error('Unknown document');
       const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, boardId));
       if (row) Y.applyUpdate(document, row.state);
+      if (limits) grown.set(document, row?.state.byteLength ?? 0);
       const steps = migrateBoardDoc(document, boardId);
       if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
       prepareImageDrawings(document);
@@ -339,9 +345,16 @@ export function createCollabServer(deps: {
       await validateTaskUpdate(db, context.boardId, context.actor?.id, document, payload);
     },
 
-    async onChange({ connection: from, document, context }) {
-      if (limits && from && document.getMap('elements').size > limits.elements)
-        freeze(document, context?.boardId);
+    async onChange({ connection: from, document, context, update }) {
+      // Checked on every change a client makes, so a board never grows far past the caps in
+      // memory before the next store; the store measures it again.
+      if (limits && from && !frozen.has(document)) {
+        let bytes = (grown.get(document) ?? 0) + update.byteLength;
+        if (bytes > limits.stateBytes) bytes = Y.encodeStateAsUpdate(document).byteLength;
+        grown.set(document, bytes);
+        if (bytes > limits.stateBytes || document.getMap('elements').size > limits.elements)
+          freeze(document, context?.boardId);
+      }
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
         if (
           (connection.context?.supportedSchemaVersion ?? 0) < getSchemaVersion(document) &&
