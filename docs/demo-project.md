@@ -62,10 +62,10 @@ Sandro lets Anna stay. Actors are represented by Agenzia Lumen (invented,
 
 ## Locations
 
-| Location        | Setting | Where                         | Light                                         | Available                      | Scenes |
-| --------------- | ------- | ----------------------------- | --------------------------------------------- | ------------------------------ | ------ |
+| Location        | Setting | Where                         | Light                                         | Available                       | Scenes |
+| --------------- | ------- | ----------------------------- | --------------------------------------------- | ------------------------------- | ------ |
 | Central station | EXT     | Piazza della Stazione 1       | Sodium lamps on the canopy, blue hour at 6:40 | After the last train, 0:30–5:00 | 1      |
-| Rosa's diner    | INT     | Station hall, under the clock | Three pendants and a neon cup; blue window     | Closed to the public 23:00–6:00 | 2      |
+| Rosa's diner    | INT     | Station hall, under the clock | Three pendants and a neon cup; blue window    | Closed to the public 23:00–6:00 | 2      |
 | Signal box      | INT     | End of platform 4             | One practical over the lever frame            | With a railway escort only      | 3      |
 | Coast line      | EXT     | Sea wall at Capo Bianco       | Sunrise 6:58; the first train passes at 5:52  | Drone permit, day 3 morning     | 3      |
 
@@ -79,19 +79,19 @@ The town and the addresses are invented.
 | 2     | INT. ROSA'S DINER – NIGHT               | The diner       | 2A–2C |
 | 3     | INT./EXT. SIGNAL BOX, COAST LINE – DAWN | The first train | 3A–3C |
 
-| Shot | Picture     | Action                                             | Size     | Angle | Movement  | Lens        | Status   | Cast             |
-| ---- | ----------- | -------------------------------------------------- | -------- | ----- | --------- | ----------- | -------- | ---------------- |
-| 1A   | `platform`  | Platform 4 at 1:52. The lamps hum; nobody is left. | EWS      | Eye   | Static    | 24mm        | Shot     |                  |
-| 1B   | `rain`      | Anna crosses the forecourt in the rain, running.   | Full     | Eye   | Handheld  | 50mm        | Shot     | Anna             |
-| 1C   | `train`     | The doors close in front of her.                   | Medium   | Eye   | Static    | 35mm        | Ready    | Anna             |
-| 1D   | `window`    | Over her shoulder: the carriages pull away.        | MCU      | OTS   | Static    | 85mm        | Ready    | Anna             |
-| 1E   | `tunnel`    | The tail lights shrink into the tunnel.            | Wide     | Eye   | Static    | 135mm       | To shoot |                  |
-| 2A   | `diner`     | Two strangers, one counter. Rosa pours.            | Wide     | Eye   | Dolly     | 32mm        | Ready    | Anna, Leo, Rosa  |
-| 2B   | `cups`      | Two coffees and a ticket for a train that has gone. | Insert   | High  | Static    | 100mm       | To shoot |                  |
-| 2C   | `dawn`      | Dawn through the glass. Leo puts his cap on.       | Wide     | Eye   | Static    | 35mm        | Draft    | Leo              |
-| 3A   | `signalbox` | Leo pulls the lever for the first train.           | Medium   | Low   | Static    | 35mm        | Draft    | Leo              |
-| 3B   | `field`     | The home signal turns green over the field.        | Wide     | Eye   | Static    | 50mm        | Draft    |                  |
-| 3C   | `sea`       | The first train runs along the sea.                | EWS      | High  | Drone     | 24mm        | Draft    | Anna             |
+| Shot | Picture     | Action                                              | Size   | Angle | Movement | Lens  | Status   | Cast            |
+| ---- | ----------- | --------------------------------------------------- | ------ | ----- | -------- | ----- | -------- | --------------- |
+| 1A   | `platform`  | Platform 4 at 1:52. The lamps hum; nobody is left.  | EWS    | Eye   | Static   | 24mm  | Shot     |                 |
+| 1B   | `rain`      | Anna crosses the forecourt in the rain, running.    | Full   | Eye   | Handheld | 50mm  | Shot     | Anna            |
+| 1C   | `train`     | The doors close in front of her.                    | Medium | Eye   | Static   | 35mm  | Ready    | Anna            |
+| 1D   | `window`    | Over her shoulder: the carriages pull away.         | MCU    | OTS   | Static   | 85mm  | Ready    | Anna            |
+| 1E   | `tunnel`    | The tail lights shrink into the tunnel.             | Wide   | Eye   | Static   | 135mm | To shoot |                 |
+| 2A   | `diner`     | Two strangers, one counter. Rosa pours.             | Wide   | Eye   | Dolly    | 32mm  | Ready    | Anna, Leo, Rosa |
+| 2B   | `cups`      | Two coffees and a ticket for a train that has gone. | Insert | High  | Static   | 100mm | To shoot |                 |
+| 2C   | `dawn`      | Dawn through the glass. Leo puts his cap on.        | Wide   | Eye   | Static   | 35mm  | Draft    | Leo             |
+| 3A   | `signalbox` | Leo pulls the lever for the first train.            | Medium | Low   | Static   | 35mm  | Draft    | Leo             |
+| 3B   | `field`     | The home signal turns green over the field.         | Wide   | Eye   | Static   | 50mm  | Draft    |                 |
+| 3C   | `sea`       | The first train runs along the sea.                 | EWS    | High  | Drone    | 24mm  | Draft    | Anna            |
 
 The only line of dialogue on the boards, in 2A: _LEO: Missed it too? / ANNA: By about a minute. /
 LEO: Then you have six hours._
@@ -128,11 +128,11 @@ names are invented.
 The shoot is three days: two nights back to back, a rest day, then the dawn. The sample puts
 day 1 on the day it is built, so Home always shows "shooting today"; day 3 is three days later.
 
-| Day   | Location               | Call  | Wrap  | Shoots                         |
-| ----- | ---------------------- | ----- | ----- | ------------------------------ |
-| 1     | Central station        | 18:30 | 04:00 | 1B, then 1A, 1C, 1D, 1E        |
-| 2     | Rosa's diner           | 19:00 | 05:30 | 2A, 2B, 2C at 4:40             |
-| 3     | Signal box, coast line | 03:30 | 09:00 | 3A, 3C (train at 5:52), 3B     |
+| Day | Location               | Call  | Wrap  | Shoots                     |
+| --- | ---------------------- | ----- | ----- | -------------------------- |
+| 1   | Central station        | 18:30 | 04:00 | 1B, then 1A, 1C, 1D, 1E    |
+| 2   | Rosa's diner           | 19:00 | 05:30 | 2A, 2B, 2C at 4:40         |
+| 3   | Signal box, coast line | 03:30 | 09:00 | 3A, 3C (train at 5:52), 3B |
 
 ## Pictures
 
