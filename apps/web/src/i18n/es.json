@@ -2537,6 +2537,15 @@
     "pinned": "Fijado",
     "saveError": "No se pudo guardar el cambio. Inténtalo de nuevo."
   },
+  "projectDelete": {
+    "menu": "Eliminar proyecto…",
+    "title": "¿Eliminar «{{name}}»?",
+    "body": "Todos los tableros, recursos y archivos de este proyecto se eliminan para todos los miembros. No se puede deshacer.",
+    "alternatives": "Para quitarlo de en medio, archívalo. Para conservar una copia, expórtalo antes.",
+    "confirmLabel": "Escribe el nombre del proyecto para confirmar",
+    "confirm": "Eliminar definitivamente",
+    "error": "No se pudo eliminar el proyecto. Inténtalo de nuevo."
+  },
   "groups": {
     "new": "Nuevo grupo",
     "rename": "Cambiar nombre",

@@ -2537,6 +2537,15 @@
     "pinned": "Fixado",
     "saveError": "Não foi possível salvar a alteração. Tente novamente."
   },
+  "projectDelete": {
+    "menu": "Excluir projeto…",
+    "title": "Excluir “{{name}}”?",
+    "body": "Todos os quadros, recursos e arquivos deste projeto são excluídos para todos os membros. Não é possível desfazer.",
+    "alternatives": "Para tirá-lo do caminho, arquive-o. Para guardar uma cópia, exporte-o antes.",
+    "confirmLabel": "Digite o nome do projeto para confirmar",
+    "confirm": "Excluir definitivamente",
+    "error": "Não foi possível excluir o projeto. Tente novamente."
+  },
   "groups": {
     "new": "Novo grupo",
     "rename": "Renomear",

@@ -2537,6 +2537,15 @@
     "pinned": "Angepinnt",
     "saveError": "Die Änderung konnte nicht gespeichert werden. Versuch es noch mal."
   },
+  "projectDelete": {
+    "menu": "Projekt löschen…",
+    "title": "„{{name}}“ löschen?",
+    "body": "Alle Boards, Assets und Dateien dieses Projekts werden für alle Mitglieder gelöscht. Das lässt sich nicht rückgängig machen.",
+    "alternatives": "Um es aus dem Weg zu räumen, archiviere es stattdessen. Um eine Kopie zu behalten, exportiere es vorher.",
+    "confirmLabel": "Gib zur Bestätigung den Projektnamen ein",
+    "confirm": "Endgültig löschen",
+    "error": "Das Projekt konnte nicht gelöscht werden. Versuch es noch mal."
+  },
   "groups": {
     "new": "Neue Gruppe",
     "rename": "Umbenennen",

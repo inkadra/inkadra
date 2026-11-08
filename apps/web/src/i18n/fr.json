@@ -2537,6 +2537,15 @@
     "pinned": "Épinglé",
     "saveError": "Impossible d’enregistrer la modification. Réessayez."
   },
+  "projectDelete": {
+    "menu": "Supprimer le projet…",
+    "title": "Supprimer « {{name}} » ?",
+    "body": "Tous les tableaux, ressources et fichiers de ce projet sont supprimés pour tous les membres. Cette action est irréversible.",
+    "alternatives": "Pour le mettre de côté, archivez-le plutôt. Pour en garder une copie, exportez-le d’abord.",
+    "confirmLabel": "Saisissez le nom du projet pour confirmer",
+    "confirm": "Supprimer définitivement",
+    "error": "Impossible de supprimer le projet. Réessayez."
+  },
   "groups": {
     "new": "Nouveau groupe",
     "rename": "Renommer",

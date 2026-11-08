@@ -32,6 +32,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router';
 import {
   fetchExportSettings,
   LogoTimeoutError,
@@ -40,6 +41,7 @@ import {
   saveExportSettings,
   uploadLogo,
 } from '../board/export/settings.ts';
+import { DeleteProjectDialog } from './DeleteProjectDialog.tsx';
 import { headingFamily, loadHeadingFont, paperAccent, screenAccent } from '../board/theme.ts';
 import { MoveToGroupDialog, useDropTarget, useProjectDrag } from './ProjectGroups.tsx';
 import { canExportProject, ExportProjectDialog } from './ProjectTransfer.tsx';
@@ -215,16 +217,21 @@ const PRESS_SLOP = 10;
 
 /**
  * The ⋯ menu of a project, shared by the sidebar and the Projects page: project appearance
- * for editors, then the caller's own actions, then Export project… for owners and editors. Returns the trigger, the right-click handlers
+ * for editors, then the caller's own actions, then Export project… for owners and editors, and
+ * Delete project… last for owners. Returns the trigger, the right-click handlers
  * and the layer (menu and dialog) so each place keeps its own markup.
  */
 export function useProjectMenu(
   project: Project,
   extra: ProjectMenuItem[] = [],
   onSaved?: (project: Project) => void,
+  onDeleted?: () => void,
 ) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [moving, setMoving] = useState(false);
   const groups = useProjectGroups();
@@ -242,6 +249,9 @@ export function useProjectMenu(
       ? [{ label: t('transfer.exportMenu'), action: () => setExporting(true) }]
       : []),
     ...extra.filter((item) => item.trailing),
+    ...(project.myRole === 'owner'
+      ? [{ label: t('projectDelete.menu'), danger: true, action: () => setDeleting(true) }]
+      : []),
   ];
   const enabled = items.length > 0;
   const { open, close, isOpen, opener, layer: menuLayer } = useMenu(project.name, items);
@@ -355,6 +365,22 @@ export function useProjectMenu(
           project={project}
           onClose={() => {
             setExporting(false);
+            opener.current?.focus();
+          }}
+        />
+      )}
+      {deleting && (
+        <DeleteProjectDialog
+          project={project}
+          onDeleted={() => {
+            setDeleting(false);
+            onDeleted?.();
+            // Its pages are gone: whoever is inside the project goes to the list.
+            const base = `/p/${project.id}`;
+            if (pathname === base || pathname.startsWith(`${base}/`)) navigate('/projects');
+          }}
+          onClose={() => {
+            setDeleting(false);
             opener.current?.focus();
           }}
         />

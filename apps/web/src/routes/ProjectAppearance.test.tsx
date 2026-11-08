@@ -7,6 +7,7 @@ import {
 } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { AppContextMenu } from '../menus/AppContextMenu.tsx';
@@ -39,9 +40,11 @@ afterEach(async () => {
 async function render(p = project) {
   await act(async () =>
     root.render(
-      <AppContextMenu>
-        <ProjectNavItem project={p} active onClick={(e) => e.preventDefault()} />
-      </AppContextMenu>,
+      <MemoryRouter>
+        <AppContextMenu>
+          <ProjectNavItem project={p} active onClick={(e) => e.preventDefault()} />
+        </AppContextMenu>
+      </MemoryRouter>,
     ),
   );
 }
@@ -104,6 +107,7 @@ it.each(['viewer', 'commenter'] as const)('offers no edit actions to %s', async 
   expect(document.querySelector('.app-context-menu')).not.toBeNull();
   expect(document.querySelector('.project-navigation__menu')).toBeNull();
   expect(document.body.textContent).not.toContain('appearance.title');
+  expect(document.body.textContent).not.toContain('projectDelete.menu');
 });
 it('saves emoji to the server and updates shared cached project identity', async () => {
   const icon = { shape: 'diamond', color: 'blue', emoji: '🎬' };

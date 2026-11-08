@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { projectLanding } from '../board/project-landing.ts';
 import { api } from '../lib/api.ts';
 import {
+  deleteProject,
   getCachedProjects,
   loadProjects,
   refreshProjects,
@@ -120,4 +121,21 @@ it('does not let an older project list overwrite saved appearance', async () => 
   resolve({ items: [old], nextCursor: null });
   await pending;
   expect(getCachedProjects()).toEqual([updated]);
+});
+
+it('deletes a project and drops it from the cached list', async () => {
+  const keep = { id: 'keep', name: 'Keep' } as Project;
+  setCachedProjects([{ id: 'gone', name: 'Gone' } as Project, keep]);
+  const remove = vi.spyOn(api, 'delete').mockResolvedValueOnce(undefined);
+  await deleteProject('gone');
+  expect(remove).toHaveBeenCalledWith('/projects/gone');
+  expect(getCachedProjects()).toEqual([keep]);
+});
+
+it('keeps the cached list when the delete fails', async () => {
+  const list = [{ id: 'p1', name: 'P' } as Project];
+  setCachedProjects(list);
+  vi.spyOn(api, 'delete').mockRejectedValueOnce(new Error('forbidden'));
+  await expect(deleteProject('p1')).rejects.toThrow('forbidden');
+  expect(getCachedProjects()).toEqual(list);
 });

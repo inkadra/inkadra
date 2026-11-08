@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { Projects } from './Projects.tsx';
+import { deleteProject } from './projects.ts';
 import { refreshGroups } from './project-groups.ts';
 import { projectOverviews } from './projects-overview.ts';
 
@@ -33,6 +34,7 @@ vi.mock('./BoardPreview.tsx', () => ({
 }));
 vi.mock('./projects.ts', () => ({
   getCachedProjects: () => null,
+  deleteProject: vi.fn(),
   refreshProjects: vi.fn(async () => []),
   subscribeProjects: () => () => {},
 }));
@@ -73,9 +75,9 @@ afterEach(() => {
   vi.clearAllMocks();
   creation.allowed = true;
 });
-async function render(members: ProjectMember[]) {
+async function render(members: ProjectMember[], p: Project = project) {
   vi.mocked(projectOverviews).mockResolvedValue([
-    { project, boards: [], members, activity: project.updatedAt },
+    { project: p, boards: [], members, activity: p.updatedAt },
   ]);
   await act(async () =>
     root.render(
@@ -106,6 +108,7 @@ it('shows the Home card with the actions in its menu', async () => {
     'onboarding.type',
     'transfer.exportMenu',
     'projectsPage.archive',
+    'projectDelete.menu',
   ]);
   vi.mocked(api.put).mockResolvedValue({ ...project, pinned: true });
   await act(async () =>
@@ -113,6 +116,48 @@ it('shows the Home card with the actions in its menu', async () => {
   );
   expect(api.put).toHaveBeenCalledWith('/projects/p1/pin', { pinned: true });
   expect(host.querySelector('.project-card__badge')?.textContent).toBe('projectsPage.pinned');
+});
+
+const menuItems = () =>
+  [...document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent);
+const type = (input: HTMLInputElement, value: string) => {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
+it.each(['editor', 'viewer'] as const)('offers Delete project… to owners only, not %s', async (myRole) => {
+  await render([member('me', 'Giulia')], { ...project, myRole });
+  await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
+  expect(menuItems()).not.toContain('projectDelete.menu');
+  expect(menuItems()).not.toContain('projectsPage.archive');
+});
+
+it('deletes a project only once its name is typed, and keeps the dialog on an error', async () => {
+  await render([member('me', 'Giulia')]);
+  await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
+  const item = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].at(-1);
+  expect(item?.className).toBe('is-danger');
+  await act(async () => item?.click());
+  const dialog = host.querySelector('dialog');
+  const input = dialog?.querySelector('input') as HTMLInputElement;
+  const confirm = [...(dialog?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find(
+    (b) => b.textContent === 'projectDelete.confirm',
+  );
+  expect(dialog?.textContent).toContain('projectDelete.body');
+  expect(confirm?.disabled).toBe(true);
+  await act(async () => type(input, 'Last'));
+  expect(confirm?.disabled).toBe(true);
+  await act(async () => type(input, 'Last Train'));
+  expect(confirm?.disabled).toBe(false);
+  vi.mocked(deleteProject).mockRejectedValueOnce(new Error('offline'));
+  await act(async () => dialog?.querySelector('form')?.requestSubmit());
+  expect(deleteProject).toHaveBeenCalledWith('p1');
+  expect(dialog?.querySelector('[role="alert"]')?.textContent).toBe('projectDelete.error');
+  expect(host.querySelector('dialog')).toBe(dialog);
+  expect(confirm?.disabled).toBe(false);
+  vi.mocked(deleteProject).mockResolvedValueOnce();
+  await act(async () => dialog?.querySelector('form')?.requestSubmit());
+  expect(host.querySelector('.project-card')).toBeNull();
 });
 
 it('shows New project off, with why, to people who cannot create projects', async () => {
