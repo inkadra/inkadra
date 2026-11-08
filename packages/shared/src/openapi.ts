@@ -56,6 +56,7 @@ import {
 } from './comments.ts';
 import { ApiError, Id, OutcomeUnknown, PageQuery, page, z } from './common.ts';
 import { API_PREFIX, AUTH_PREFIX } from './constants.ts';
+import { CreateDemoSandbox, DemoSandbox } from './demo.ts';
 import { ExportSettings, UpdateExportSettings } from './export-settings.ts';
 import {
   CreateFeedback,
@@ -537,6 +538,33 @@ registry.registerPath({
   tags: ['Instance'],
   summary: 'Public information the login screen and the apps need before signing in.',
   responses: { 200: { description: 'Instance', ...json(Instance) } },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: v1('/demo/sandbox'),
+  tags: ['Instance'],
+  summary:
+    'Demo only: makes a sandbox with the sample project and signs the visitor in (cookie). ' +
+    'Refusals carry `details.reason` (DemoRefusalReason).',
+  request: { body: json(CreateDemoSandbox) },
+  responses: { 201: { description: 'Sandbox', ...json(DemoSandbox) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/demo/sandbox'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Demo only: the sandbox of the signed-in visitor.',
+  responses: { 200: { description: 'Sandbox', ...json(DemoSandbox) }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/demo/sandbox'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Demo only: removes the sandbox of the signed-in visitor now, with its files.',
+  responses: { 204: { description: 'Removed' }, ...errors },
 });
 
 registry.registerPath({

@@ -12,11 +12,11 @@ import './tutorial.css';
 /** Settings → Tutorial (#502): replay every tour, see what is new, hints, start over. */
 export function TutorialSettings() {
   const { t } = useTranslation();
-  const { user } = useSession();
+  const { user, instance } = useSession();
   const admin = user?.role === 'admin';
   const prefs = usePreferences();
   const hintsId = useId();
-  const tours = toursFor(admin);
+  const tours = toursFor(admin, !!instance?.demo);
   const seen = new Set(prefs.tutorialsSeen);
   const total = tours.length + 1;
   const count = [WELCOME, ...tours].filter((tour) => seen.has(tour.id)).length;

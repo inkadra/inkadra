@@ -14,6 +14,7 @@ import { countUsers, OIDC_PROVIDER_ID } from '../auth.ts';
 import { type Config, VERSION } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { user } from '../db/schema.ts';
+import { demoInfo } from '../demo.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import type { Mailer } from '../mailer.ts';
 import { mediaTools } from '../media/video.ts';
@@ -74,13 +75,15 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
   app.get(v1('/instance'), async () => {
     const users = await countUsers(db);
     const settings = await readInstanceSettings(db, config);
+    // The demo has no first account to set up and no sign-in but "Try the demo".
+    const demo = config.DEMO_MODE ? await demoInfo(db, config) : undefined;
     const body: Instance = {
       name: settings.name,
       publicUrl: config.PUBLIC_URL,
-      setupRequired: users === 0,
-      registration: users === 0 ? 'first-user' : settings.registration,
+      setupRequired: !demo && users === 0,
+      registration: demo ? 'closed' : users === 0 ? 'first-user' : settings.registration,
       auth: {
-        emailPassword: true,
+        emailPassword: !demo,
         google: Boolean(config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET),
         oidc:
           config.OIDC_CLIENT_ID && config.OIDC_DISCOVERY_URL
@@ -111,6 +114,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
       },
       limits: { uploadMaxBytes: config.UPLOAD_MAX_SIZE },
       serverTime: new Date().toISOString(),
+      ...(demo ? { demo } : {}),
     };
     return body;
   });

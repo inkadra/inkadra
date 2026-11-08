@@ -12,6 +12,7 @@ import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { designExtension } from '../media/design.ts';
+import { sniffImage } from '../media/heic.ts';
 import { rawTypeOf } from '../media/raw.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { reserveSpace, StorageFullError } from '../storage-limits.ts';
@@ -57,6 +58,56 @@ export function cleanMime(mime: string, filename: string): string {
   if (HEIC.test(filename))
     return filename.toLowerCase().endsWith('.heif') ? 'image/heif' : 'image/heic';
   return rawTypeOf(filename) ?? 'application/octet-stream';
+}
+
+/** The files a demo sandbox may upload, by declared type, with their extensions. */
+const DEMO_TYPES: Record<string, RegExp> = {
+  'image/jpeg': /\.jpe?g$/i,
+  'image/png': /\.png$/i,
+  'image/webp': /\.webp$/i,
+  'image/gif': /\.gif$/i,
+  'application/pdf': /\.pdf$/i,
+  'text/plain': /\.txt$/i,
+};
+
+export function demoTypeAllowed(mime: string, filename: string): boolean {
+  return DEMO_TYPES[mime]?.test(filename) ?? false;
+}
+
+/** Control characters other than tab, line feed and carriage return, C1 controls included. */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: finding control characters is the point.
+const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/;
+
+/**
+ * Whether the bytes of an uploaded file match its type: no HTML or SVG named .png. Pictures
+ * and PDFs by their first bytes, a PDF with its header right at the start (stricter than
+ * `isPdf`, which tolerates leading junk for files outside the demo); text as a whole, valid
+ * UTF-8 without control characters.
+ */
+export function demoBytesMatch(mime: string, bytes: Uint8Array): boolean {
+  if (mime.startsWith('image/')) return sniffImage(bytes) === mime;
+  if (mime === 'application/pdf')
+    return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      .subarray(0, 5)
+      .equals(Buffer.from('%PDF-'));
+  if (mime === 'text/plain') {
+    try {
+      return !CONTROL.test(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+async function demoContentMatches(storage: Storage, key: string, assetId: string, db: Database) {
+  const [row] = await db.select({ mime: asset.mime }).from(asset).where(eq(asset.id, assetId));
+  if (!row) return false;
+  // Text is read whole (10 MB at most in the demo): binary after a page of text is refused.
+  const range = row.mime === 'text/plain' ? undefined : { start: 0, end: 4095 };
+  const chunks: Buffer[] = [];
+  for await (const chunk of await storage.read(key, range)) chunks.push(chunk as Buffer);
+  return demoBytesMatch(row.mime, Buffer.concat(chunks));
 }
 
 function tusError(status: number, message: string) {
@@ -126,6 +177,8 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
       }
       const { filename, filetype, projectId } = meta.data;
       const mime = cleanMime(filetype, filename);
+      if (config.DEMO_MODE && !demoTypeAllowed(mime, filename))
+        throw tusError(415, 'The demo takes JPEG, PNG, WebP, GIF, PDF and plain text files.');
       const size = upload.size;
       // The declared size holds its place from now on: see reserveSpace (decision 0081).
       await reserveSpace(db, config, ctx.actor.id, size, async (tx) => {
@@ -158,6 +211,11 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
           if (err instanceof StorageFullError) await datastore.remove(upload.id);
           throw full(err);
         }
+      // The demo checks what the file is, not only what it says (decision 0084).
+      if (config.DEMO_MODE && !(await demoContentMatches(storage, upload.id, assetId, db))) {
+        await datastore.remove(upload.id);
+        throw tusError(415, 'The file is not what its type says.');
+      }
       await jobs.processAsset(assetId);
       return {};
     },

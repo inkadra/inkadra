@@ -1273,7 +1273,7 @@ function Cell({
  */
 export function toCsv(rows: string[][]): string {
   const field = (v: string) => {
-    const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+    const safe = /^\s*[=+\-@|]|^[\t\r]/.test(v) ? `'${v}` : v;
     return `"${safe.replace(/"/g, '""')}"`;
   };
   return rows.map((r) => r.map(field).join(',')).join('\r\n');

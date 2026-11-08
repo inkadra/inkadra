@@ -19,6 +19,7 @@ import type { Auth } from '../auth.ts';
 import { readClassifications } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import { board, boardDoc, boardElementIndex, boardGrant, projectMember } from '../db/schema.ts';
+import { RateLimiter } from '../rate-limits.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -146,6 +147,9 @@ const uuids = (ids: string[]) => sql`${`{${ids.join(',')}}`}::uuid[]`;
 
 export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
   const v1 = (path: string) => `${API_PREFIX}${path}`;
+  // Each search ranks trigrams over every card a person can read: a person typing makes a few
+  // a second at most, a script would keep the database busy for everyone.
+  const searches = new RateLimiter(60, 60_000);
 
   app.get(v1('/projects/:projectId/cast-appearances'), async (req) => {
     const actor = await requireActor(auth, req, db);
@@ -199,6 +203,8 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
 
   app.get(v1('/search'), async (req) => {
     const actor = await requireActor(auth, req, db);
+    if (!searches.take(actor.id))
+      throw new HttpError('rate_limited', 'Too many searches. Try again in a minute.');
     const query = SearchQuery.parse(req.query ?? {});
     const readable = await readableBoards(db, actor, query.projectId);
     if (readable.boardIds.length === 0) return { items: [] };

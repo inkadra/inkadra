@@ -14,16 +14,19 @@ export function securityHeaders(
           })()
         : `https://${config.S3_BUCKET}.s3.${config.S3_REGION}.amazonaws.com`
       : '';
+  // Cloudflare Turnstile on the demo's "Try the demo" (decision 0084): its script and frame.
+  const turnstile =
+    config.DEMO_MODE && config.TURNSTILE_SITE_KEY ? ' https://challenges.cloudflare.com' : '';
   const policy = [
     "default-src 'self'",
-    "script-src 'self'",
+    `script-src 'self'${turnstile}`,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https://*.googleusercontent.com ${storage}`.trim(),
     `media-src 'self' blob: ${storage}`.trim(),
     "font-src 'self'",
     // The report form's screenshot fetches the images on screen to draw them.
     `connect-src 'self' ${storage} blob: https://*.googleusercontent.com`.replace('  ', ' '),
-    'frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.instagram.com',
+    `frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.instagram.com${turnstile}`,
     "worker-src 'self'",
     "manifest-src 'self'",
     "object-src 'none'",

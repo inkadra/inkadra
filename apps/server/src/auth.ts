@@ -1,9 +1,11 @@
 import { APIError, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
+import { createAuthEndpoint, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
+import { setSessionCookie } from 'better-auth/cookies';
 import { genericOAuth, magicLink } from 'better-auth/plugins';
 import { and, count, eq, lt, ne, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
+import { z } from 'zod';
 import { DEVICE_AGE, DEVICE_COOKIE, knownDevices } from './auth-device.ts';
 import { authSecurity, authSource } from './auth-security.ts';
 import { hardenedTwoFactor } from './auth-two-factor.ts';
@@ -485,6 +487,7 @@ function createAuthInstance(
         },
       },
       hardenedTwoFactor(config.INSTANCE_NAME),
+      ...(config.DEMO_MODE ? [demoSessions] : []),
       ...(oidc ? [genericOAuth({ config: [oidc] })] : []),
       ...(email
         ? [
@@ -720,6 +723,31 @@ function createAuthInstance(
     closeSecurity: () => security.close(),
   });
 }
+
+/**
+ * Signs a demo sandbox in (decision 0084): `auth.api.demoSession({ body: { userId } })`, called
+ * by POST /api/v1/demo/sandbox once the sandbox exists. Never over HTTP: the router would serve
+ * it, so a call that comes with a request is refused, and the demo lets no /api/auth path but
+ * the session's own through anyway.
+ */
+const demoSessions = {
+  id: 'demo-sessions',
+  endpoints: {
+    demoSession: createAuthEndpoint(
+      '/demo-session',
+      { method: 'POST', body: z.object({ userId: z.uuid() }), metadata: { SERVER_ONLY: true } },
+      async (ctx) => {
+        if (ctx.request) throw new APIError('NOT_FOUND');
+        const { userId } = ctx.body;
+        const found = await ctx.context.internalAdapter.findUserById(userId);
+        if (!found) throw new APIError('NOT_FOUND');
+        const session = await ctx.context.internalAdapter.createSession(userId);
+        await setSessionCookie(ctx, { session, user: found });
+        return ctx.json({ ok: true });
+      },
+    ),
+  },
+};
 
 /** Two immutable cookie policies avoid mutating shared Better Auth state across requests. */
 export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {

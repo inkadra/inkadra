@@ -13,7 +13,7 @@ import { MAX_NAMED_VERSIONS } from '@inkadra/shared';
 import { and, desc, eq, gt, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
-import type { CollabServer } from './collab.ts';
+import type { CollabLimits, CollabServer } from './collab.ts';
 import type { Database } from './db/client.ts';
 import { boardDoc, boardVersion } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
@@ -56,6 +56,10 @@ export function snapshot(doc: Y.Doc): VersionState {
     elementCount: roots(doc).elements.size,
   };
 }
+
+/** Whether a board's state passes the demo's caps (decision 0084); always without caps. */
+export const withinLimits = (limits: CollabLimits | undefined, snap: VersionState) =>
+  !limits || (snap.state.byteLength <= limits.stateBytes && snap.elementCount <= limits.elements);
 
 /** Versions of one board are written one at a time, so counts and the cadence hold. */
 async function lockBoard(tx: Tx, boardId: string) {
@@ -299,7 +303,7 @@ export interface SaveVersion {
 
 export type SaveVersionResult =
   | { ok: true; versionId: string }
-  | { ok: false; reason: 'limit' | 'expired' };
+  | { ok: false; reason: 'limit' | 'expired' | 'too_large' };
 
 export interface RestoreVersion {
   boardId: string;
@@ -311,7 +315,7 @@ export interface RestoreVersion {
 
 export type RestoreVersionResult =
   | { ok: true; backupId: string }
-  | { ok: false; reason: 'missing' | 'too_new' | 'expired' };
+  | { ok: false; reason: 'missing' | 'too_new' | 'expired' | 'too_large' };
 
 /**
  * Versions that need the live document: a named save captures what people see, and a restore
@@ -341,6 +345,8 @@ export function directVersionWriter(
   collab: CollabServer,
   db: Database,
   log?: Logger,
+  /** The demo's caps: a board past them is not copied into a version (decision 0084). */
+  limits?: CollabLimits,
 ): VersionWriter {
   return {
     async save({ boardId, name, userId, expiresAt }) {
@@ -348,6 +354,7 @@ export function directVersionWriter(
       // just to be read, which would store it again on unload.
       const live = collab.hocuspocus.documents.get(boardDocName(boardId));
       const snap = snapshot(live ?? (await storedDoc(db, boardId)));
+      if (!withinLimits(limits, snap)) return { ok: false, reason: 'too_large' };
       if (expired(expiresAt)) return { ok: false, reason: 'expired' };
       return insertNamedVersion(db, { boardId, name, userId, expiresAt }, snap);
     },
@@ -375,6 +382,7 @@ export function directVersionWriter(
         if (!doc) throw new Error('direct connection closed');
         // Saved before anything changes, so the board can always go back.
         let before = snapshot(doc);
+        if (!withinLimits(limits, before)) return { ok: false, reason: 'too_large' };
         backupId = await insertBackup(db, boardId, userId, before);
         for (
           let attempt = 0;

@@ -21,6 +21,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { requireAssetRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
+import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { type asset, assetVariant, user } from '../db/schema.ts';
 import { officeKey } from '../media/office.ts';
@@ -38,6 +39,7 @@ interface Deps {
   storage: Storage;
   /** Scratch space of frame extraction; swept at startup when it is DATA_DIR/tmp. */
   tmpDir?: string;
+  config?: Pick<Config, 'DEMO_MODE'>;
 }
 
 /** Frames one person may ask for in a minute: each can start ffmpeg and download an original. */
@@ -316,7 +318,11 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
     fileHeaders(reply, etag);
     if (req.headers['if-none-match'] === `"${etag}"`) return reply.status(304).send();
 
-    const inline = !download && INLINE.test(row.mime);
+    // The demo serves strangers' files: only pictures open in the page (decision 0084).
+    const inline =
+      !download &&
+      INLINE.test(row.mime) &&
+      (!deps.config?.DEMO_MODE || row.mime.startsWith('image/'));
     reply.header('content-type', inline ? row.mime : 'application/octet-stream');
     reply.header(
       'content-disposition',

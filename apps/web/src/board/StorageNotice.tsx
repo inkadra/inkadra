@@ -3,6 +3,7 @@ import { Button, Dialog, DialogActions } from '@inkadra/ui';
 import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
+import { INSTALL_URL } from '../demo/demo.ts';
 import { api } from '../lib/api.ts';
 import { SessionContext } from '../lib/session-context.ts';
 import { formatStorage } from '../routes/StorageCharts.tsx';
@@ -81,7 +82,9 @@ export function StorageNotice() {
 function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () => void }) {
   const { t, i18n } = useTranslation();
   // The context, not useSession: no i18n set-up comes with it into the board's tests.
-  const user = useContext(SessionContext)?.user;
+  const session = useContext(SessionContext);
+  const user = session?.user;
+  const demo = session?.instance?.demo;
   const navigate = useNavigate();
   const [details, setDetails] = useState(notice.kind === 'refused' && notice.total > 1);
   const [files, setFiles] = useState(false);
@@ -110,6 +113,25 @@ function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () =>
   const { refused, files: refusedFiles, total } = notice;
   const instance = refused.scope === 'instance';
   const single = refusedFiles[0];
+  // The demo (decision 0084): its limits, and the way to have none.
+  if (demo)
+    return (
+      <div className="storage-notice">
+        <Toast
+          warning="danger"
+          text={t('demo.limitToast', {
+            file: size(demo.fileBytes),
+            total: size(demo.storageBytes),
+          })}
+          showLabel={t('demo.install')}
+          onShow={() => {
+            close();
+            window.open(INSTALL_URL, '_blank', 'noopener');
+          }}
+          onClose={close}
+        />
+      </div>
+    );
   return (
     <>
       {!details && (

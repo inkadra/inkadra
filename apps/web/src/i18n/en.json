@@ -4556,6 +4556,23 @@
           }
         }
       },
+      "demo": {
+        "name": "The demo",
+        "steps": {
+          "0": {
+            "title": "Your demo",
+            "text": "The time left and the space you use. At the end it deletes itself."
+          },
+          "1": {
+            "title": "Keep your work",
+            "text": "Before the end, “Download the project”: import it into your own Inkadra."
+          },
+          "2": {
+            "title": "Inkadra on your server",
+            "text": "Install it: no hours or space set by us."
+          }
+        }
+      },
       "storage": {
         "name": "Space limits",
         "steps": {
@@ -5064,5 +5081,58 @@
     "warn": "Warn at",
     "warnHelp": "People see a warning, administrators get it in their Inbox.",
     "openMembers": "Open in Members"
+  },
+  "demo": {
+    "brand": "Inkadra · Demo",
+    "title": "Try Inkadra without an account",
+    "lead": "You get a sample project, “Last Train”, with a moodboard, a storyboard, a shot list and a shooting schedule. Change, upload and draw whatever you like.",
+    "hours_one": "1 hour",
+    "hours_other": "{{count}} hours",
+    "minutes_one": "1 minute",
+    "minutes_other": "{{count}} minutes",
+    "ruleTime": "<b>It lasts {{duration}}</b>, then your demo is deleted with all its files.",
+    "ruleSpace": "Up to <b>{{total}}</b> of files, {{file}} each.",
+    "rulePrivate": "Only you see it. Do not upload personal or client data.",
+    "full_one": "{{count}} demo is already open. Try again in a few minutes.",
+    "full_other": "{{count}} demos are already open. Try again in a few minutes.",
+    "problem": {
+      "wait": "You opened a demo a moment ago. Try again in a few minutes.",
+      "check": "We could not check that you are a person. Try again.",
+      "failed": "We could not open the demo. Try again."
+    },
+    "start": "Try the demo",
+    "or": "or",
+    "installServer": "Install on your server",
+    "accept": "By going on you accept the <rules>rules of the demo</rules>. No tracking cookies.",
+    "endedTitle": "Your hour of demo is over",
+    "endedText": "We deleted the demo and the files you uploaded. You can open a new one, or install Inkadra on your server: your projects stay yours.",
+    "again": "New demo",
+    "cloud": "Managed Cloud comes with 1.0",
+    "label": "Demo",
+    "left": {
+      "min_one": "{{count}} min",
+      "min_other": "{{count}} min",
+      "s_one": "{{count}} s",
+      "s_other": "{{count}} s"
+    },
+    "goesIn": "Deleted in {{time}}",
+    "space": "{{used}} / {{limit}}",
+    "pillLabel": "Demo: {{time}} left, {{space}} used",
+    "download": "Download the project",
+    "downloadShort": "Download",
+    "install": "Install Inkadra",
+    "installShort": "Install",
+    "more": "More: start over, rules of the demo",
+    "restart": "Start over",
+    "restartTitle": "Start over?",
+    "restartText": "Your sandbox is deleted now, with its project and every file in it: nobody can bring it back. Then you can open a new one. Download the project first if you want to keep your work.",
+    "restartConfirm": "Delete and start over",
+    "cancel": "Cancel",
+    "rules": "Rules of the demo",
+    "warnTitle": "5 minutes left",
+    "warnText": "At {{time}} the demo is deleted with all its files. To keep your work, download the project: you can import it into your own Inkadra.",
+    "continue": "Continue",
+    "downloadArchive": "Download the project (.inkadra)",
+    "limitToast": "In the demo files go up to {{file}} and {{total}} in all."
   }
 }

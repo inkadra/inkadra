@@ -68,6 +68,7 @@ import {
   viewIcon,
 } from '../board/views.ts';
 import { appActions } from '../commands/app-actions.ts';
+import { DemoBar } from '../demo/DemoPill.tsx';
 import { FeedbackLauncher } from '../feedback/Feedback.tsx';
 import { FeedbackEntry } from '../feedback/FeedbackEntry.tsx';
 import { canCreateProjects } from '../lib/access.ts';
@@ -864,6 +865,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             </nav>
           )}
         </div>
+        {instance?.demo && <DemoBar demo={instance.demo} />}
         <div className="ink-header__group ink-header__end">
           {headerContent ? headerContent.end : pathname === '/' && homeActions}
           <FeedbackEntry />

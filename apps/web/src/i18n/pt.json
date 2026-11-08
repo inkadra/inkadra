@@ -4556,6 +4556,23 @@
           }
         }
       },
+      "demo": {
+        "name": "A demo",
+        "steps": {
+          "0": {
+            "title": "A sua demo",
+            "text": "O tempo que falta e o espaço que você usa. No fim, apaga-se sozinha."
+          },
+          "1": {
+            "title": "Guarde o trabalho",
+            "text": "Antes do fim, «Baixar o projeto»: importe-o no seu Inkadra."
+          },
+          "2": {
+            "title": "Inkadra no seu servidor",
+            "text": "Instale-o: sem horas nem espaço decididos por nós."
+          }
+        }
+      },
       "storage": {
         "name": "Limites de espaço",
         "steps": {
@@ -5064,5 +5081,58 @@
     "warn": "Avisar aos",
     "warnHelp": "As pessoas veem um aviso; os administradores recebem-no na Inbox.",
     "openMembers": "Abrir em Membros"
+  },
+  "demo": {
+    "brand": "Inkadra · Demo",
+    "title": "Experimente o Inkadra sem conta",
+    "lead": "Você recebe um projeto de exemplo, «Last Train», com moodboard, storyboard, lista de planos e plano de filmagem. Mude, envie e desenhe o que quiser.",
+    "hours_one": "1 hora",
+    "hours_other": "{{count}} horas",
+    "minutes_one": "1 minuto",
+    "minutes_other": "{{count}} minutos",
+    "ruleTime": "<b>Dura {{duration}}</b>, depois a sua demo é apagada com todos os arquivos.",
+    "ruleSpace": "Até <b>{{total}}</b> de arquivos, {{file}} cada.",
+    "rulePrivate": "Só você a vê. Não envie dados pessoais ou de clientes.",
+    "full_one": "Já há {{count}} demo aberta. Tente de novo em alguns minutos.",
+    "full_other": "Já há {{count}} demos abertas. Tente de novo em alguns minutos.",
+    "problem": {
+      "wait": "Você abriu uma demo há pouco. Tente de novo em alguns minutos.",
+      "check": "Não conseguimos verificar que você é uma pessoa. Tente de novo.",
+      "failed": "Não conseguimos abrir a demo. Tente de novo."
+    },
+    "start": "Experimentar a demo",
+    "or": "ou",
+    "installServer": "Instalar no seu servidor",
+    "accept": "Ao continuar você aceita as <rules>regras da demo</rules>. Sem cookies de rastreamento.",
+    "endedTitle": "A sua hora de demo terminou",
+    "endedText": "Apagamos a demo e os arquivos que você enviou. Pode abrir uma nova ou instalar o Inkadra no seu servidor: os seus projetos continuam seus.",
+    "again": "Nova demo",
+    "cloud": "O Cloud gerenciado chega com a 1.0",
+    "label": "Demo",
+    "left": {
+      "min_one": "{{count}} min",
+      "min_other": "{{count}} min",
+      "s_one": "{{count}} s",
+      "s_other": "{{count}} s"
+    },
+    "goesIn": "Apagada em {{time}}",
+    "space": "{{used}} / {{limit}}",
+    "pillLabel": "Demo: faltam {{time}}, {{space}} usados",
+    "download": "Baixar o projeto",
+    "downloadShort": "Baixar",
+    "install": "Instalar o Inkadra",
+    "installShort": "Instalar",
+    "more": "Mais: recomeçar, regras da demo",
+    "restart": "Recomeçar",
+    "restartTitle": "Recomeçar?",
+    "restartText": "A sua demo é apagada agora, com o projeto e todos os arquivos: ninguém pode recuperá-la. Depois você pode abrir uma nova. Se quiser manter o trabalho, baixe o projeto antes.",
+    "restartConfirm": "Apagar e recomeçar",
+    "cancel": "Cancelar",
+    "rules": "Regras da demo",
+    "warnTitle": "Faltam 5 minutos",
+    "warnText": "Às {{time}} a demo é apagada com todos os arquivos. Se quiser manter o trabalho, baixe o projeto: poderá importá-lo no seu Inkadra.",
+    "continue": "Continuar",
+    "downloadArchive": "Baixar o projeto (.inkadra)",
+    "limitToast": "Na demo os arquivos vão até {{file}} e {{total}} no total."
   }
 }

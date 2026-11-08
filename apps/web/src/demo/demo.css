@@ -1,0 +1,249 @@
+/* The public demo (decision 0084): the sign-in card, its end, the pill and the phone row. */
+.login__card.demo-card {
+  width: min(400px, 100%);
+  gap: 12px;
+  padding: 28px 28px 22px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-xl);
+  background: var(--ink-surface-1);
+}
+.demo-card__logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.demo-card__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+.demo-card__lead {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.demo-card__rules {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.demo-card__rules li {
+  margin: 2px 0;
+}
+.demo-card__rules b {
+  color: var(--ink-text-primary);
+  font-weight: 600;
+}
+.demo-card__check:empty {
+  display: none;
+}
+.demo-card__or {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-text-muted);
+}
+.demo-card__or::before,
+.demo-card__or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ink-border-default);
+}
+.demo-card__fine {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+.demo-card__fine a {
+  color: var(--ink-accent-primary);
+  text-decoration: none;
+}
+.demo-card__fine a:hover {
+  text-decoration: underline;
+}
+.demo-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--ink-radius-sm);
+  font-size: 12px;
+}
+.demo-banner > svg {
+  flex: none;
+  margin-top: 1px;
+}
+.demo-banner--warn {
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-tag-orange);
+}
+.demo-banner--danger {
+  background: var(--ink-danger-bg);
+  border-color: var(--ink-danger-border);
+  color: var(--ink-danger-fg);
+}
+
+.demo-end {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: min(460px, 100%);
+  padding: 28px 24px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-xl);
+  background: var(--ink-surface-1);
+  text-align: center;
+}
+.demo-end__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+}
+.demo-end__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.demo-end__text {
+  max-width: 360px;
+  margin: 0;
+  color: var(--ink-text-secondary);
+}
+.demo-end__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* The pill: one of the floating header pills, before those on the right. */
+.ink-shell > .ink-header .demo-pill {
+  flex: none;
+  gap: 10px;
+  margin-left: auto;
+  padding: 0 6px 0 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ink-shell > .ink-header .demo-pill + .ink-header__end {
+  margin-left: 0;
+}
+.demo-pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid transparent;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.demo-pill--warn::after {
+  border-color: var(--ink-status-warn);
+}
+.demo-pill__label {
+  font-weight: 600;
+}
+.demo-pill__time,
+.demo-pill__space,
+.demo-row__time,
+.demo-row__space {
+  font-variant-numeric: tabular-nums;
+}
+.demo-pill--warn .demo-pill__time,
+.demo-row--warn .demo-row__time {
+  color: var(--ink-status-warn);
+  font-weight: 600;
+}
+.demo-pill__space,
+.demo-row__space {
+  color: var(--ink-text-secondary);
+}
+.demo-pill__sep {
+  width: 1px;
+  height: 18px;
+  background: var(--ink-border-default);
+}
+.demo-pill__meter {
+  width: 56px;
+}
+.demo-pill__narrow {
+  display: none;
+}
+/* Narrower screens keep the time, "Install Inkadra" and the menu, so the board's title and its
+   pills keep their room: the space is in Settings → Account and in the toasts. */
+@media (width < 1440px) {
+  .demo-pill__meter,
+  .demo-pill__sep,
+  .demo-pill__wide {
+    display: none;
+  }
+  .demo-pill__narrow {
+    display: inline;
+  }
+  .ink-shell > .ink-header .demo-pill {
+    gap: 8px;
+  }
+  .demo-pill__download.ink-btn {
+    width: 28px;
+    padding: 0;
+  }
+}
+
+.demo-row {
+  display: none;
+}
+@media (width < 768px) {
+  /* On a phone the page is the card: one column, no frame. */
+  .login__card.demo-card {
+    padding: 12px 0;
+    border: 0;
+    background: transparent;
+  }
+  .ink-shell > .ink-header .ink-header__group.demo-pill {
+    display: none;
+  }
+  /* The row goes above the title: the header's one row moves down to the second. */
+  .ink-shell > .ink-header:has(.demo-row) {
+    grid-template-rows: auto 56px;
+  }
+  .ink-header:has(.demo-row) > :not(.shell-header-content),
+  .ink-header:has(.demo-row) .shell-header-content > :not(.ink-header__group, .demo-row),
+  .ink-header:has(.demo-row) .ink-header__group > * {
+    grid-row: 2;
+  }
+  .demo-row {
+    grid-area: 1 / 1 / 2 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 12px 0;
+    padding: 6px 6px 6px 10px;
+    border: 1px solid var(--ink-border-default);
+    border-radius: var(--ink-radius-md);
+    background: var(--ink-surface-1);
+    font-size: 12px;
+  }
+  .demo-row--warn {
+    border-color: var(--ink-status-warn);
+  }
+  .demo-row__time {
+    font-weight: 600;
+  }
+  .demo-row > .space-meter {
+    flex: 1;
+    min-width: 24px;
+  }
+}

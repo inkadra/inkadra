@@ -54,6 +54,13 @@ services:
 | `IMPORT_MAX_SIZE`        | `20GB`      | Largest project archive an import accepts, compressed and in total uncompressed; `0` for no limit                                                            |
 | `HEIC_PREVIEWS`          | `true`      | `false` stops Inkadra decoding HEIC photos from iPhones: they are kept, without a preview                                                                    |
 
+## Public demo
+
+`DEMO_MODE=true` makes the server a public demo with sandboxes that go after an hour, and closes
+everything a stranger could abuse. Off by default. Its variables (`DEMO_TTL`, `DEMO_STORAGE`,
+`DEMO_MAX_SANDBOXES`, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`) and how to run it behind a
+Cloudflare Tunnel are in [The public demo](../demo.md).
+
 ## Media previews
 
 These need the `-media` image (see [The image](README.md#the-image)); the standard image has no

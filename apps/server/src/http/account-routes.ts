@@ -26,8 +26,6 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import {
   account,
-  asset,
-  assetVariant,
   board,
   boardGrant,
   notification,
@@ -41,15 +39,14 @@ import {
 } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { type Mailer, securityNotification } from '../mailer.ts';
-import { officeFiles } from '../media/office.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
-import { animatedVariantKey } from '../storage.ts';
 import { largestFiles, myStorage } from '../storage-limits.ts';
 import { issueToken, toPersonalToken } from '../tokens.ts';
 import { toUser } from './api-routes.ts';
 import { requireActor, requireSession, toHeaders } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
+import { projectFiles } from './projects-routes.ts';
 
 interface Deps {
   config: Config;
@@ -473,28 +470,8 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
         .where(and(eq(user.role, 'admin'), isNull(user.deactivatedAt)));
       if (admins.length === 1 && admins[0]?.id === userId)
         throw new HttpError('conflict', 'The instance needs at least one active administrator.');
-      let files: string[] = [];
-      if (alone.length > 0) {
-        const originals = await tx
-          .select({ key: asset.storageKey, id: asset.id, filename: asset.filename })
-          .from(asset)
-          .where(inArray(asset.projectId, alone));
-        const variants = await tx
-          .select({
-            key: assetVariant.storageKey,
-            assetId: assetVariant.assetId,
-            size: assetVariant.size,
-          })
-          .from(assetVariant)
-          .innerJoin(asset, eq(asset.id, assetVariant.assetId))
-          .where(inArray(asset.projectId, alone));
-        files = [
-          ...originals.map((r) => r.key),
-          ...officeFiles(originals),
-          ...variants.flatMap((r) => [r.key, animatedVariantKey(r.assetId, r.size)]),
-        ];
-        await tx.delete(project).where(inArray(project.id, alone));
-      }
+      const files = await projectFiles(tx, alone);
+      if (alone.length > 0) await tx.delete(project).where(inArray(project.id, alone));
       // Sessions, accounts, memberships, grants, tokens and two-factor data cascade.
       await tx.delete(user).where(eq(user.id, userId));
       return files;

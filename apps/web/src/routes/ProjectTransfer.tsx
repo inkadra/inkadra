@@ -82,9 +82,12 @@ export function TransferProgress({
 /** Export project…: what goes in the archive, then progress and the download. */
 export function ExportProjectDialog({
   project,
+  once,
   onClose,
 }: {
   project: Project;
+  /** A demo sandbox exports once (decision 0084): no "Export again". */
+  once?: boolean;
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -177,9 +180,11 @@ export function ExportProjectDialog({
         <Button onClick={onClose}>{t(pending ? 'transfer.hide' : 'transfer.close')}</Button>
         {ready && transfer ? (
           <>
-            <Button disabled={busy} onClick={() => void start()}>
-              {t('transfer.exportAgain')}
-            </Button>
+            {!once && (
+              <Button disabled={busy} onClick={() => void start()}>
+                {t('transfer.exportAgain')}
+              </Button>
+            )}
             <a className="ink-btn ink-btn--primary" href={downloadUrl(transfer.id)} download>
               {t('transfer.download')}
             </a>

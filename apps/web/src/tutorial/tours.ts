@@ -66,6 +66,8 @@ export interface Tour {
   tool?: ToolKind;
   /** Administrators only. */
   admin?: boolean;
+  /** Only in the public demo (decision 0084). */
+  demo?: boolean;
   /** The anchor whose first appearance offers the tour with a pill; null: Settings only. */
   offer: string | null;
   /** Where a replay from Settings opens it; without one it plays on the page underneath. */
@@ -166,7 +168,7 @@ export const TOURS: Tour[] = [
       { anchor: 'storyboard-scene', media: 'scenes', side: 'bottom' },
       { anchor: 'storyboard-frame', media: 'meta', side: 'right' },
       { anchor: 'storyboard-draw', media: 'draw', side: 'right' },
-      // A new draft of the script updates the scenes, never the frames (decision 0082).
+      // A new draft of the script updates the scenes, never the frames (decision 0084).
       { anchor: 'storyboard-import', media: 'scenes', side: 'bottom' },
     ],
   },
@@ -374,6 +376,18 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    id: 'demo',
+    group: 'start',
+    icon: 'clock',
+    demo: true,
+    offer: 'demo-pill',
+    steps: [
+      { anchor: 'demo-pill', media: 'home', side: 'bottom' },
+      { anchor: null, media: 'export' },
+      { anchor: null, media: 'gear' },
+    ],
+  },
+  {
     id: 'storage',
     group: 'admin',
     icon: 'archive',
@@ -410,9 +424,9 @@ export const GROUPS: TourGroup[] = [
   'admin',
 ];
 
-/** The tours a person can see: the administration ones only for administrators. */
-export function toursFor(admin: boolean): Tour[] {
-  return TOURS.filter((tour) => admin || !tour.admin);
+/** The tours a person can see: administration ones for administrators, the demo's in the demo. */
+export function toursFor(admin: boolean, demo = false): Tour[] {
+  return TOURS.filter((tour) => (admin || !tour.admin) && (demo || !tour.demo));
 }
 
 /** The translation keys of a tour's step. */

@@ -34,6 +34,7 @@ import { registerCalendarRoutes } from './calendar-routes.ts';
 import { registerClipRoutes } from './clip-routes.ts';
 import { registerCommentRoutes } from './comments-routes.ts';
 import { registerCsrfCheck } from './csrf.ts';
+import { registerDemoRoutes } from './demo-routes.ts';
 import { registerDiagnostics } from './diagnostics.ts';
 import { errorHandler, HttpError, sendError } from './errors.ts';
 import { registerExportSettingsRoutes } from './export-settings-routes.ts';
@@ -78,6 +79,9 @@ export interface AppDeps {
   notices?: BoardNotifier;
   /** Scratch space for files received in one piece (clips). */
   tmpDir?: string;
+  /** Tests only: a stand-in for Cloudflare Turnstile and another demo archive. */
+  turnstileFetch?: typeof import('../safe-fetch.ts').safeFetch;
+  demoSeed?: string;
   /** Tests only: addresses link previews may fetch besides public ones. */
   allowAddresses?: string[];
   /** The Server page (#514); in memory when omitted. */
@@ -165,6 +169,8 @@ export async function createApp(deps: AppDeps) {
 
   // Before every route: cross-site writes stop here (decision 0013).
   registerCsrfCheck(app, config.PUBLIC_URL);
+  // The demo's allowlist, before any route can answer (decision 0084).
+  registerDemoRoutes(app, deps);
   registerAuthRoutes(app, deps.auth, config.PUBLIC_URL);
   const mailer = deps.mailer ?? noMailer;
   registerApiRoutes(app, { ...deps, mailer });

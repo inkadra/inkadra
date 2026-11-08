@@ -115,8 +115,12 @@ describe('TSV', () => {
   });
 
   it('marks formula-like cells with an apostrophe in the copy, not numbers, and reads them back', () => {
-    const grid = [['=SUM(A1:A2)', '+1+1', '@cmd', '-1+2', '-5', '+3,5', '25%', 'plain', '-dash']];
-    expect(toTsv(grid)).toBe("'=SUM(A1:A2)\t'+1+1\t'@cmd\t'-1+2\t-5\t+3,5\t25%\tplain\t'-dash");
+    const grid = [
+      ['=SUM(A1:A2)', '+1+1', '@cmd', '-1+2', '-5', '+3,5', '25%', 'plain', '-dash', ' =1', '|x'],
+    ];
+    expect(toTsv(grid)).toBe(
+      "'=SUM(A1:A2)\t'+1+1\t'@cmd\t'-1+2\t-5\t+3,5\t25%\tplain\t'-dash\t' =1\t'|x",
+    );
     expect(parseTsv(toTsv(grid))).toEqual(grid);
   });
 

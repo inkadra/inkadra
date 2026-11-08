@@ -555,25 +555,9 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const { projectId } = ProjectParams.parse(req.params);
     await requireProjectRole(db, actor, projectId, 'owner');
     const keys = await db.transaction(async (tx) => {
-      const originals = await tx
-        .select({ key: asset.storageKey, id: asset.id, filename: asset.filename })
-        .from(asset)
-        .where(eq(asset.projectId, projectId));
-      const variants = await tx
-        .select({
-          key: assetVariant.storageKey,
-          assetId: assetVariant.assetId,
-          size: assetVariant.size,
-        })
-        .from(assetVariant)
-        .innerJoin(asset, eq(asset.id, assetVariant.assetId))
-        .where(eq(asset.projectId, projectId));
+      const files = await projectFiles(tx, [projectId]);
       await tx.delete(project).where(eq(project.id, projectId));
-      return [
-        ...originals.map((r) => r.key),
-        ...officeFiles(originals),
-        ...variants.flatMap((r) => [r.key, animatedVariantKey(r.assetId, r.size)]),
-      ];
+      return files;
     });
     // Files go after the rows: a failure leaves orphan files, never rows without files.
     if (keys.length > 0) await jobs.deleteFiles(keys);
@@ -667,4 +651,33 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
 function validateDates(start: string | null, end: string | null) {
   if (start && end && start > end)
     throw new HttpError('bad_request', 'Shooting end must follow start.');
+}
+
+/**
+ * The stored files of these projects (originals, copies, Office pages), to delete once their
+ * rows are gone.
+ */
+export async function projectFiles(
+  tx: Pick<Database, 'select'>,
+  projectIds: string[],
+): Promise<string[]> {
+  if (projectIds.length === 0) return [];
+  const originals = await tx
+    .select({ key: asset.storageKey, id: asset.id, filename: asset.filename })
+    .from(asset)
+    .where(inArray(asset.projectId, projectIds));
+  const variants = await tx
+    .select({
+      key: assetVariant.storageKey,
+      assetId: assetVariant.assetId,
+      size: assetVariant.size,
+    })
+    .from(assetVariant)
+    .innerJoin(asset, eq(asset.id, assetVariant.assetId))
+    .where(inArray(asset.projectId, projectIds));
+  return [
+    ...originals.map((r) => r.key),
+    ...officeFiles(originals),
+    ...variants.flatMap((r) => [r.key, animatedVariantKey(r.assetId, r.size)]),
+  ];
 }

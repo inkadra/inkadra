@@ -221,8 +221,11 @@ export function tableGrid(table: Pick<TableElement, 'columns' | 'rows'>): string
   return table.rows.map((r: TableRow) => table.columns.map((c) => r.cells[c.id] ?? ''));
 }
 
-/** Text a spreadsheet would run as a formula (`=SUM(A1)`, `@x`, `+1+1`); plain numbers like `-5` are not. */
-const FORMULA = /^[=+\-@]/;
+/**
+ * Text a spreadsheet would run as a formula (`=SUM(A1)`, `@x`, `+1+1`, ` =1+1` after spaces,
+ * `|cmd` for DDE); plain numbers like `-5` are not.
+ */
+const FORMULA = /^\s*[=+\-@|]/;
 const NUMBER = /^[+-]?(\d+([.,]\d+)?|[.,]\d+)(e[+-]?\d+)?%?$/i;
 
 /**
@@ -290,5 +293,5 @@ export function parseTsv(text: string): string[][] {
     rows.push(row);
   }
   // The apostrophe `toTsv` puts before a formula-like cell is not part of its text.
-  return rows.map((r) => r.map((c) => (/^'[=+\-@]/.test(c) ? c.slice(1) : c)));
+  return rows.map((r) => r.map((c) => (/^'\s*[=+\-@|]/.test(c) ? c.slice(1) : c)));
 }

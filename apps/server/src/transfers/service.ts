@@ -131,6 +131,9 @@ export async function runTransfer(deps: TransferDeps, id: string): Promise<void>
   } catch (err) {
     await rm(file, { force: true });
     if (err instanceof Cancelled) return;
+    // Cancelled or removed while a file was being read (a demo sandbox ending, decision 0084):
+    // its files may be gone already, which is no failure to report.
+    if (!(await stillRunning(db, id))) return;
     const failure =
       err instanceof ArchiveError
         ? err.message === 'gone'
@@ -148,6 +151,14 @@ export async function runTransfer(deps: TransferDeps, id: string): Promise<void>
   } finally {
     clearInterval(heartbeat);
   }
+}
+
+async function stillRunning(db: Database, id: string) {
+  const [row] = await db
+    .select({ status: projectTransfer.status })
+    .from(projectTransfer)
+    .where(eq(projectTransfer.id, id));
+  return row?.status === 'running';
 }
 
 async function finish(

@@ -79,6 +79,10 @@ export interface SafeFetchOptions {
   maxRedirects?: number;
   /** Accept only these content types (prefix match). */
   accept: string[];
+  /** A form or JSON to send (Turnstile's check); redirects are then never followed. */
+  method?: 'GET' | 'POST';
+  body?: string;
+  bodyType?: string;
   /** Tests only: extra addresses that may be reached, on any port. */
   allowAddresses?: string[];
 }
@@ -141,12 +145,18 @@ function once(url: URL, opts: SafeFetchOptions, deadline: number) {
     const req = lib.request(
       url,
       {
-        method: 'GET',
+        method: opts.method ?? 'GET',
         lookup: checkedLookup(opts.allowAddresses ?? []),
         headers: {
           'user-agent': 'InkadraLinkPreview/1.0 (+https://github.com/inkadra/inkadra)',
           accept: opts.accept.map((a) => `${a}*`).join(', '),
           'accept-encoding': 'identity',
+          ...(opts.body === undefined
+            ? {}
+            : {
+                'content-type': opts.bodyType ?? 'application/octet-stream',
+                'content-length': String(Buffer.byteLength(opts.body)),
+              }),
         },
         timeout: Math.max(1, deadline - Date.now()),
       },
@@ -211,7 +221,7 @@ function once(url: URL, opts: SafeFetchOptions, deadline: number) {
         err instanceof FetchRefused ? err : new FetchRefused(`Could not fetch: ${err.message}`),
       ),
     );
-    req.end();
+    req.end(opts.body);
   });
 }
 
@@ -228,7 +238,8 @@ export async function safeFetch(raw: string, opts: SafeFetchOptions): Promise<Sa
         body: res.body,
         truncated: res.truncated ?? false,
       };
-    if (hop >= maxRedirects) throw new FetchRefused('Too many redirects.');
+    if (hop >= maxRedirects || opts.body !== undefined)
+      throw new FetchRefused('Too many redirects.');
     if (!res.location) throw new FetchRefused('Redirect without a location.');
     url = checkUrl(new URL(res.location, url).toString(), opts.allowAddresses ?? []);
   }

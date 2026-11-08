@@ -17,7 +17,7 @@ import {
   UpdateBoard,
   z,
 } from '@inkadra/shared';
-import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { generateKeyBetween } from 'fractional-indexing';
 import {
@@ -33,6 +33,7 @@ import {
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedColumns } from '../board-content.ts';
 import { boardCounts, projectPreview, unsortedOf } from '../board-preview.ts';
+import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { asset, board, boardDoc, clipBoardUse, project, shareLink } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
@@ -44,7 +45,14 @@ interface Deps {
   auth: Auth;
   /** Reads the live document; without it, the stored one is read. */
   boardReader?: BoardReader;
+  config?: Pick<Config, 'DEMO_MODE'>;
 }
+
+/**
+ * Boards a demo sandbox may have, those in the trash included (decision 0084): each can grow
+ * to the demo's caps, so their number bounds what one sandbox can store.
+ */
+export const DEMO_MAX_BOARDS = 30;
 
 const ProjectParams = z.object({ projectId: Id });
 const BoardParams = z.object({ boardId: Id });
@@ -375,6 +383,20 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     if (parent.board.projectId !== projectId)
       throw new HttpError('bad_request', 'The parent board is not in this project.');
     const row = await db.transaction(async (tx) => {
+      if (deps.config?.DEMO_MODE) {
+        // Counted under a lock, so a burst of requests cannot pass the cap together.
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${`demo-boards:${projectId}`}))`,
+        );
+        const [made] = await tx
+          .select({ n: count() })
+          .from(board)
+          .where(eq(board.projectId, projectId));
+        if ((made?.n ?? 0) >= DEMO_MAX_BOARDS)
+          throw new HttpError('conflict', `A demo project has at most ${DEMO_MAX_BOARDS} boards.`, {
+            reason: 'demo_limit',
+          });
+      }
       const position = generateKeyBetween(await lastChildPosition(tx, input.parentBoardId), null);
       const [created] = await tx
         .insert(board)

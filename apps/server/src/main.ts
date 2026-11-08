@@ -12,9 +12,10 @@ import { backupsDir, restoreBackup, runBackup, startBackup } from './backup.ts';
 import { type BoardReader, directBoardReader } from './board-content.ts';
 import { type BoardNotifier, directBoardNotifier } from './board-notices.ts';
 import { type BoardWriter, directBoardWriter } from './board-writer.ts';
-import { attachCollab, createCollabServer } from './collab.ts';
+import { attachCollab, createCollabServer, DEMO_COLLAB_LIMITS } from './collab.ts';
 import { type Config, loadConfig, VERSION } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
+import { startSandboxSweep } from './demo.ts';
 import { createApp } from './http/app.ts';
 import { sweepClipTemp } from './http/clip-routes.ts';
 import type { Jobs } from './jobs.ts';
@@ -62,6 +63,8 @@ async function main() {
   }
 
   const config = loadConfig();
+  /** The demo's caps on boards and their versions (decision 0084); none elsewhere. */
+  const limits = config.DEMO_MODE ? DEMO_COLLAB_LIMITS : undefined;
   const log = pino({ level: config.LOG_LEVEL, base: { service: command } });
   log.info({ version: VERSION }, 'starting inkadra');
 
@@ -189,6 +192,7 @@ async function main() {
       log,
       publicUrl: config.PUBLIC_URL,
       trustProxy: config.TRUST_PROXY,
+      ...(limits ? { limits } : {}),
     });
     const server = collab;
     closers.unshift(() => server.destroy());
@@ -202,7 +206,7 @@ async function main() {
           directBoardWriter(server, log),
           log,
           {
-            versions: directVersionWriter(server, db, log),
+            versions: directVersionWriter(server, db, log, limits),
             notices: directBoardNotifier(server),
             reader: directBoardReader(server, db),
           },
@@ -248,7 +252,7 @@ async function main() {
     if (collab) {
       boards = directBoardWriter(collab, log);
       boardReader = directBoardReader(collab, db);
-      versions = directVersionWriter(collab, db, log);
+      versions = directVersionWriter(collab, db, log, limits);
       notices = directBoardNotifier(collab);
     } else if (config.REDIS_URL) {
       const queued = queuedBoardWriter(config.REDIS_URL);
@@ -282,6 +286,17 @@ async function main() {
         redis: monitorConnection,
       },
     });
+    if (config.DEMO_MODE) {
+      // The only automatic deletion of Inkadra: sandboxes past their hour, now and every minute.
+      const stopDemo = startSandboxSweep({ db, jobs, config, log });
+      closers.unshift(async () => stopDemo());
+      // Production refuses to start without them (loadConfig); development and tests say so.
+      if (!config.TURNSTILE_SECRET)
+        log.error(
+          'DEMO_MODE without TURNSTILE_SITE_KEY and TURNSTILE_SECRET: anyone, bots included, can ' +
+            'open sandboxes up to DEMO_MAX_SANDBOXES. Set both before the demo is public.',
+        );
+    }
     const health = setInterval(
       () =>
         void checkHealth({
