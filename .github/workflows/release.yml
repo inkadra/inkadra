@@ -39,10 +39,32 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "v$VERSION" -m "Inkadra $VERSION"
           git push origin "v$VERSION"
+      # The hand-written notes (docs/releases/<version>.<lang>.md, or those of X.Y.Z for an
+      # X.Y.Z-rc.N) are the body, in English, and the release-notes.<lang>.md assets that the
+      # Updates page of every instance reads in its reader's language (decision 0080).
       - name: GitHub release
         run: |
-          prerelease=""
-          case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
-          gh release create "v$VERSION" --title "Inkadra $VERSION" --generate-notes --verify-tag $prerelease
+          args=(--title "Inkadra $VERSION" --verify-tag)
+          case "$VERSION" in *-*) args+=(--prerelease) ;; esac
+          notes=""
+          for v in "$VERSION" "${VERSION%%-*}"; do
+            if [ -f "docs/releases/$v.en.md" ]; then notes="$v"; break; fi
+          done
+          files=()
+          if [ -n "$notes" ]; then
+            args+=(--notes-file "docs/releases/$notes.en.md")
+            mkdir -p "$RUNNER_TEMP/notes"
+            for f in "docs/releases/$notes".*.md; do
+              lang="${f#"docs/releases/$notes."}"
+              lang="${lang%.md}"
+              echo "$lang" | grep -Eq '^[a-z]{2}$' || continue
+              cp "$f" "$RUNNER_TEMP/notes/release-notes.$lang.md"
+              files+=("$RUNNER_TEMP/notes/release-notes.$lang.md")
+            done
+          else
+            echo "::warning::No docs/releases/$VERSION.en.md: the release has no notes for the Updates page"
+            args+=(--generate-notes)
+          fi
+          gh release create "v$VERSION" "${files[@]}" "${args[@]}"
       - name: Build and publish the image
         run: gh workflow run ci.yml --ref "v$VERSION"

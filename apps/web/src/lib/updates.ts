@@ -1,4 +1,4 @@
-import type { InstanceUpdates } from '@inkadra/shared';
+import type { InstanceRelease, InstanceUpdates } from '@inkadra/shared';
 import { useEffect, useSyncExternalStore } from 'react';
 import { api } from './api.ts';
 import { usePreferences } from './preferences.ts';
@@ -68,4 +68,19 @@ export function usePendingUpdate() {
   const { updateSkipped } = usePreferences();
   const available = data?.available ?? null;
   return available && available.version !== updateSkipped ? available : null;
+}
+
+/**
+ * The news of a release in the reader's language, then in English, then from the release body.
+ * Without notes both lists are empty: pull request titles are never shown.
+ */
+export function releaseNews(
+  release: InstanceRelease,
+  language: string,
+): { highlights: string[]; beforeUpdating: string[] } {
+  const notes = release.notes ?? {};
+  return (
+    notes[language.slice(0, 2)] ??
+    notes.en ?? { highlights: release.highlights, beforeUpdating: release.beforeUpdating }
+  );
 }

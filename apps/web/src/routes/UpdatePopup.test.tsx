@@ -13,6 +13,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, values?: Record<string, unknown>) =>
       values ? `${key}:${JSON.stringify(values)}` : key,
+    i18n: { language: 'it-IT' },
   }),
 }));
 vi.mock('../lib/session.tsx', () => ({ useSession: () => ({ user: { role: 'admin' } }) }));
@@ -82,6 +83,35 @@ it('tells an administrator about a new version once, and skipping it remembers t
   expect(prefs.value).toMatchObject({ updateSeen: '0.9.0-rc.1', updateSkipped: '0.9.0-rc.1' });
   await render();
   expect(host.querySelector('[role="dialog"]')).toBeNull();
+});
+
+it("shows the notes in the reader's language, and no news lines without notes", async () => {
+  vi.mocked(api.get).mockResolvedValue({
+    ...updates,
+    available: {
+      ...updates.available!,
+      notes: {
+        it: { highlights: ['Novità uno'], beforeUpdating: [] },
+        en: { highlights: ['News one'], beforeUpdating: ['Read me'] },
+      },
+    },
+  });
+  await render();
+  const dialog = host.querySelector('[role="dialog"]');
+  expect([...(dialog?.querySelectorAll('li') ?? [])].map((li) => li.textContent)).toEqual([
+    'Novità uno',
+  ]);
+  expect(dialog?.textContent).not.toContain('updates.toRead');
+  act(() => root.unmount());
+  root = createRoot(host);
+  resetUpdates();
+  vi.mocked(api.get).mockResolvedValue({
+    ...updates,
+    available: { ...updates.available!, highlights: [], beforeUpdating: [] },
+  });
+  await render();
+  expect(host.querySelector('[role="dialog"] ul')).toBeNull();
+  expect(host.querySelector('[role="dialog"]')?.textContent).toContain('updates.seeNews');
 });
 
 it('stays away from a version already seen and from the Updates page itself', async () => {

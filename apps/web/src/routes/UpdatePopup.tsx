@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 import { formatDateTime } from '../lib/datetime.ts';
 import { preferencesLoaded, updatePreferences, usePreferences } from '../lib/preferences.ts';
-import { usePendingUpdate, useUpdates } from '../lib/updates.ts';
+import { releaseNews, usePendingUpdate, useUpdates } from '../lib/updates.ts';
 import { useAboveChrome } from '../tutorial/Pill.tsx';
 import './update-popup.css';
 
@@ -39,7 +39,7 @@ function shows(): boolean {
 }
 
 function Card() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const release = usePendingUpdate();
   const { data } = useUpdates();
@@ -63,6 +63,7 @@ function Card() {
     return () => window.removeEventListener('keydown', onKey);
   }, [version]);
   if (!release || !data) return null;
+  const news = releaseNews(release, i18n.language);
   const seen = (skip = false) =>
     void updatePreferences({
       updateSeen: release.version,
@@ -108,17 +109,17 @@ function Card() {
           <Icon name="close" size={14} />
         </button>
       </header>
-      {release.highlights.length > 0 && (
+      {news.highlights.length > 0 && (
         <ul className="update-popup__news">
-          {release.highlights.slice(0, 4).map((line) => (
+          {news.highlights.slice(0, 4).map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
       )}
-      {release.beforeUpdating.length > 0 && (
+      {news.beforeUpdating.length > 0 && (
         <p className="update-popup__warn">
           <Icon name="warning" size={13} />
-          {t('updates.toRead', { count: release.beforeUpdating.length })}
+          {t('updates.toRead', { count: news.beforeUpdating.length })}
         </p>
       )}
       <footer className="update-popup__actions">
