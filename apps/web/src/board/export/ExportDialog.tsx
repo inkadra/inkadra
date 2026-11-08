@@ -599,10 +599,7 @@ export function ExportDialog(props: ExportDialogProps) {
         )}
       </BadgeLabel>
       {hasOmitted && (
-        <Check
-          checked={req.leaveOutOmitted ?? true}
-          onChange={(v) => set('leaveOutOmitted', v)}
-        >
+        <Check checked={req.leaveOutOmitted ?? true} onChange={(v) => set('leaveOutOmitted', v)}>
           {t('export.sheets.leaveOutOmitted')}
         </Check>
       )}

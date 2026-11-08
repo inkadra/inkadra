@@ -7,12 +7,7 @@ import { describe, expect, it } from 'vitest';
 import type { CardContext } from './board-render.ts';
 import { finish, type Words } from './compose.ts';
 import type { Op, Page } from './pages.ts';
-import {
-  chosenScenes,
-  type Department,
-  selectedSceneIds,
-  withoutOmitted,
-} from './scene-choice.ts';
+import { chosenScenes, type Department, selectedSceneIds, withoutOmitted } from './scene-choice.ts';
 import { type SceneSheet, type SheetWords, sceneSheetPages, sceneSheets } from './scene-sheets.ts';
 
 const base = { x: 0, y: 0, w: 240, z: 'a0', createdBy: null, createdAt: 0 };

@@ -86,12 +86,7 @@ import {
 } from './planning.ts';
 import { renderImages } from './render-canvas.ts';
 import { renderPdf } from './render-pdf.ts';
-import {
-  chosenScenes,
-  type Department,
-  type SceneChoice,
-  withoutOmitted,
-} from './scene-choice.ts';
+import { chosenScenes, type Department, type SceneChoice, withoutOmitted } from './scene-choice.ts';
 import { sceneSheetPages, sceneSheets } from './scene-sheets.ts';
 import { logoUrl, teamPdf } from './settings.ts';
 import { missingGlyphs } from './text.ts';
