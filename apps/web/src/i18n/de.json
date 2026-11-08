@@ -4366,10 +4366,14 @@
             "text": "Ein Satz sagt, ob es dem Server gut geht."
           },
           "1": {
+            "title": "Einfach oder erweitert",
+            "text": "Klare Worte oder Diagramme und Zahlen für jeden Teil."
+          },
+          "2": {
             "title": "Probleme",
             "text": "Wiederholen, als gesehen markieren oder an die Entwickler senden."
           },
-          "2": {
+          "3": {
             "title": "Warnungen",
             "text": "Sagt dir, wenn etwas nicht stimmt."
           }

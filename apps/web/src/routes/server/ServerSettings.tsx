@@ -5,13 +5,16 @@ import type {
   ServerRange,
   ServerStatus,
 } from '@inkadra/shared';
+import { Segmented } from '@inkadra/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { openFeedback } from '../../feedback/state.ts';
 import { api } from '../../lib/api.ts';
+import { updatePreferences, usePreferences } from '../../lib/preferences.ts';
 import { useSession } from '../../lib/session.tsx';
 import { probeWebSocket } from '../Diagnostics.tsx';
 import { trackSave } from '../settings-save.ts';
+import { AdvancedView } from './AdvancedView.tsx';
 import { type ServerActions, technicalSummary } from './common.ts';
 import { SimpleView } from './SimpleView.tsx';
 import './server.css';
@@ -86,11 +89,35 @@ function useBrowserChecks(): DiagnosticCheck[] {
   return checks;
 }
 
+/** Simple or advanced, in the window header; remembered on the account (#514). */
+export function ServerViewToggle() {
+  const { t } = useTranslation();
+  const { serverView } = usePreferences();
+  return (
+    <span data-tour="server-view">
+      <Segmented
+        label={t('server.view.label')}
+        value={serverView}
+        onChange={(view) => void updatePreferences({ serverView: view }).catch(() => {})}
+        options={[
+          { value: 'simple', label: t('server.view.simple') },
+          { value: 'advanced', label: t('server.view.advanced') },
+        ]}
+      />
+    </span>
+  );
+}
+
 /** Settings → Server (#514): health, resources, jobs, people, problems and alerts. */
 export function ServerSettings() {
   const { t } = useTranslation();
+  const { serverView } = usePreferences();
   const [range, setRange] = useState<ServerRange>('1h');
   const { status, setStatus, error, load } = useServerStatus(range);
+  // The simple view has no 15 minutes: back to its default, the hour, as its menu shows.
+  useEffect(() => {
+    if (serverView === 'simple' && range === '15m') setRange('1h');
+  }, [serverView, range]);
   const browserChecks = useBrowserChecks();
   const [actionError, setActionError] = useState<string | null>(null);
   const statusRef = useRef(status);
@@ -182,5 +209,9 @@ export function ServerSettings() {
       ...status.problems,
     ],
   };
-  return <SimpleView status={withBrowser} checks={checks} actions={actions} />;
+  return serverView === 'advanced' ? (
+    <AdvancedView status={withBrowser} checks={checks} actions={actions} />
+  ) : (
+    <SimpleView status={withBrowser} checks={checks} actions={actions} />
+  );
 }
