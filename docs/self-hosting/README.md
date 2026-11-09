@@ -188,10 +188,10 @@ of `index.html` (with `'unsafe-inline'` or their hashes).
 
 `ghcr.io/inkadra/inkadra`, built for `linux/amd64` and `linux/arm64`, in two variants:
 
-| Variant | Tag example | Size | Contents |
-| ------- | ----------- | ---- | -------- |
-| Standard | `0.9.0` | ~1.4 GB | ffmpeg, exiftool, poppler and hardware encoding drivers: video posters and playable copies, audio waveforms, camera RAW and PDF thumbnails |
-| Office | `0.9.0-office` | ~2 GB | Standard plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental |
+| Variant  | Tag example    | Size    | Contents                                                                                                                                   |
+| -------- | -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Standard | `0.9.0`        | ~1.4 GB | ffmpeg, exiftool, poppler and hardware encoding drivers: video posters and playable copies, audio waveforms, camera RAW and PDF thumbnails |
+| Office   | `0.9.0-office` | ~2 GB   | Standard plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental                           |
 
 Sizes are uncompressed, measured on amd64.
 
@@ -274,8 +274,8 @@ after it; they combine, in this order:
 | `deploy/compose.s3.yaml`            | Files in an S3-compatible bucket you already have             |
 | `deploy/compose.rustfs.yaml`        | Files in a bundled S3-compatible store (RustFS)               |
 | `deploy/compose.demo.yaml`          | A public demo behind a Cloudflare Tunnel ([demo](../demo.md)) |
-| `deploy/compose.vaapi.yaml`         | Hardware video encoding on Intel or AMD GPUs (standard image)       |
-| `deploy/compose.nvidia.yaml`        | Hardware video encoding on NVIDIA GPUs (standard image)             |
+| `deploy/compose.vaapi.yaml`         | Hardware video encoding on Intel or AMD GPUs (standard image) |
+| `deploy/compose.nvidia.yaml`        | Hardware video encoding on NVIDIA GPUs (standard image)       |
 | `deploy/proxy/<proxy>/compose.yaml` | A reverse proxy in the stack: `caddy`, `traefik` or `nginx`   |
 
 Split mode is for larger teams: you can restart or scale the parts on their own, and a busy
