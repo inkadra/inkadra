@@ -10,6 +10,7 @@ import type {
 import { Avatar, Button, Dialog, type DialogHandle, Icon, IconButton, Select } from '@inkadra/ui';
 import {
   type FormEvent,
+  Fragment,
   type KeyboardEvent,
   useCallback,
   useEffect,
@@ -17,14 +18,13 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
 import { EMAIL, PeoplePicker } from '../people/PeoplePicker.tsx';
 import { ExpiryLabel, ExpiryPicker } from './ExpiryPicker.tsx';
 import { GuestLinks } from './GuestLinks.tsx';
-import { PermissionsMatrix } from './PermissionsMatrix.tsx';
 import './share.css';
 import { formatDateTime } from '../lib/datetime.ts';
 import { linkRoleChoices, rank, roleChoices } from './share-roles.ts';
@@ -58,7 +58,6 @@ export function ShareDialog({
   const canShareGuests = myRole === 'owner' || myRole === 'editor';
   const [tab, setTab] = useState<ShareTab>('people');
   const tabsId = useId();
-  const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   // An invitation being typed is lost when the dialog closes.
   const [typing, setTyping] = useState(false);
   const dialog = useRef<DialogHandle>(null);
@@ -156,6 +155,7 @@ export function ShareDialog({
               : {})}
           >
             <p className="share__lead ink-muted">
+              <Trans i18nKey="share.accountLead" components={{ b: <b /> }} />{' '}
               {isRoot
                 ? t('share.wholeProject')
                 : subBoards > 0
@@ -183,10 +183,15 @@ export function ShareDialog({
               </p>
             )}
 
-            <p id={`${tabsId}-person-hint`} className="share__sr">
-              {t('share.highlightHint')}
-            </p>
-            <ul className="share__list" aria-label={t('share.people')}>
+            <RoleLegend />
+
+            <h3 className="share__section" id={`${tabsId}-people-title`}>
+              {t('share.people')}{' '}
+              {access && (
+                <span className="share__count">{access.items.length + emailInvites.length}</span>
+              )}
+            </h3>
+            <ul className="share__box share__list" aria-labelledby={`${tabsId}-people-title`}>
               {access?.items.map((e) => {
                 const me = e.user.id === user?.id;
                 const own = isRoot
@@ -199,18 +204,8 @@ export function ShareDialog({
                   rank(e.role) <= rank(myRole) &&
                   (!isRoot || myRole === 'owner');
                 return (
-                  <li
-                    key={e.user.id}
-                    className="share__row"
-                    onFocus={() => setSelectedUserId(e.user.id)}
-                  >
-                    <button
-                      type="button"
-                      className="share__person"
-                      aria-pressed={selectedUserId === e.user.id}
-                      aria-describedby={`${tabsId}-person-hint`}
-                      onClick={() => setSelectedUserId(e.user.id)}
-                    >
+                  <li key={e.user.id} className="share__row">
+                    <span className="share__person">
                       <Avatar image={e.user.image} name={e.user.name} size={30} />
                       <span className="share__who">
                         <span className="share__name">
@@ -224,16 +219,13 @@ export function ShareDialog({
                           </span>
                         )}
                       </span>
-                    </button>
+                    </span>
                     {editable ? (
                       <RoleSelect
                         value={e.role}
                         choices={choices}
                         label={t('share.roleOf', { name: e.user.name })}
-                        onChange={(role) => {
-                          setSelectedUserId(e.user.id);
-                          void run(() => setRole(e, role))();
-                        }}
+                        onChange={(role) => void run(() => setRole(e, role))()}
                       />
                     ) : (
                       <span className="share__role">{t(`roles.${e.role}`)}</span>
@@ -245,10 +237,7 @@ export function ShareDialog({
                         label={t('share.expiry.of', { name: e.user.name })}
                         // Removing or extending an end date is for owners (decision 0041).
                         canExtend={myRole === 'owner'}
-                        onChange={(at) => {
-                          setSelectedUserId(e.user.id);
-                          return run(() => setExpiry(e, at))();
-                        }}
+                        onChange={(at) => run(() => setExpiry(e, at))()}
                       />
                     ) : (
                       <span className="share__spacer" />
@@ -267,7 +256,7 @@ export function ShareDialog({
               })}
               {emailInvites.map((i) => (
                 <li key={i.id} className="share__row share__row--pending">
-                  <span className="share__pending-avatar" aria-hidden="true">
+                  <span className="share__icon-avatar" aria-hidden="true">
                     <Icon name="mail" size={14} />
                   </span>
                   <span className="share__who">
@@ -295,11 +284,6 @@ export function ShareDialog({
                 </li>
               ))}
             </ul>
-            <PermissionsMatrix
-              selectedRole={
-                access?.items.find((entry) => entry.user.id === selectedUserId)?.role ?? myRole
-              }
-            />
 
             {canManage && (
               <LinkSection
@@ -402,11 +386,13 @@ function RoleSelect({
   value,
   choices,
   label,
+  describedBy,
   onChange,
 }: {
   value: ProjectRole;
   choices: ProjectRole[];
   label: string;
+  describedBy?: string;
   onChange: (role: ProjectRole) => void;
 }) {
   const { t } = useTranslation();
@@ -414,6 +400,7 @@ function RoleSelect({
     <Select
       className="share__select"
       aria-label={label}
+      aria-describedby={describedBy}
       value={value}
       onChange={(e) => onChange(e as ProjectRole)}
     >
@@ -423,6 +410,31 @@ function RoleSelect({
         </option>
       ))}
     </Select>
+  );
+}
+
+/**
+ * What each role can do, folded away: only an explanation, nothing in it to choose. Viewer to
+ * editor follow CAPABILITY_ROLE (decision 0011); what only owners do comes from the project
+ * routes (members, archive, delete).
+ */
+function RoleLegend() {
+  const { t } = useTranslation();
+  return (
+    <details className="share__legend" data-tour="share-roles">
+      <summary>
+        <Icon name="chevronRight" size={14} />
+        {t('share.legend.title')}
+      </summary>
+      <dl>
+        {roleChoices('owner').map((role) => (
+          <Fragment key={role}>
+            <dt>{t(`roles.${role}`)}</dt>
+            <dd>{t(`share.legend.${role}`)}</dd>
+          </Fragment>
+        ))}
+      </dl>
+    </details>
   );
 }
 
@@ -453,6 +465,7 @@ function InviteForm({
   const [status, setStatus] = useState<string | null>(null);
   const [copyUrl, setCopyUrl] = useState<string | null>(null);
   const [until, setUntil] = useState<string | null>(null);
+  const ids = useId();
   // The full hint does not fit a phone: the short label says enough there.
   const phone = useIsPhone();
   const typing = query.trim() !== '';
@@ -503,8 +516,12 @@ function InviteForm({
 
   return (
     <form className="share__invite" onSubmit={submit} data-tour="share-invite">
+      <label className="share__label" htmlFor={`${ids}-who`}>
+        {t('share.invite')}
+      </label>
       <div className="share__field">
         <PeoplePicker
+          id={`${ids}-who`}
           className="share__picker"
           inputClassName="share__input"
           placeholder={
@@ -514,7 +531,7 @@ function InviteForm({
                 ? t('share.invitePlaceholder')
                 : t('share.invitePlaceholderNoEmail')
           }
-          aria-label={t('share.inviteLabel')}
+          aria-label={t('share.inviteField')}
           value={query}
           onChange={setQuery}
           onPick={(p) => setQuery(p.email ?? p.name)}
@@ -524,6 +541,7 @@ function InviteForm({
           value={role}
           choices={choices}
           label={t('share.inviteRole')}
+          describedBy={`${ids}-role`}
           onChange={setRole}
         />
         {role !== 'owner' && (
@@ -536,6 +554,9 @@ function InviteForm({
       <Button type="submit" variant="primary" disabled={busy || query.trim() === ''}>
         {t('share.invite')}
       </Button>
+      <p className="share__hint" id={`${ids}-role`}>
+        <b>{t(`roles.${role}`)}:</b> {t(`share.roleHint.${role}`)}
+      </p>
       {status && (
         <p className="share__status" role="status">
           {status}
@@ -546,12 +567,12 @@ function InviteForm({
   );
 }
 
-function CopyButton({ text, primary }: { text: string; primary?: boolean }) {
+function CopyButton({ text }: { text: string }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   return (
     <Button
-      variant={primary ? 'primary' : 'ghost'}
+      variant="secondary"
       icon="copy"
       onClick={async () => {
         try {
@@ -596,63 +617,75 @@ function LinkSection({
     api.post('/invitations', { kind: 'link', boardId, role, expiresInDays: days });
 
   return (
-    <section className="share__link" aria-labelledby={`${boardId}-link`} data-tour="share-link">
-      <div className="share__link-head">
-        <span className="share__who">
-          <b id={`${boardId}-link`}>{t('share.link.title')}</b>
-          <span className="share__sub">
-            {link
-              ? t('share.link.active', {
-                  role: link.role ? t(`roles.${link.role}`) : '',
-                  date: formatDateTime(link.expiresAt, {
-                    day: 'numeric',
-                    month: 'long',
-                  }),
-                  count: link.uses,
-                })
-              : t('share.link.body')}
-          </span>
-        </span>
-      </div>
-      {link?.url ? (
+    <section aria-labelledby={`${boardId}-link`} data-tour="share-link">
+      <h3 className="share__section" id={`${boardId}-link`}>
+        {t('share.link.title')}
+      </h3>
+      <div className="share__box share__link">
         <div className="share__link-row">
+          <span className="share__icon-avatar" aria-hidden="true">
+            <Icon name="link" size={14} />
+          </span>
+          <span className="share__who">
+            <span className="share__name">{t('share.link.name')}</span>
+            <span className="share__sub">
+              {link
+                ? t('share.link.active', {
+                    role: link.role ? t(`roles.${link.role}`) : '',
+                    date: formatDateTime(link.expiresAt, {
+                      day: 'numeric',
+                      month: 'long',
+                    }),
+                    count: link.uses,
+                  })
+                : t('share.link.body')}
+            </span>
+          </span>
+          {link?.url ? (
+            <>
+              <CopyButton text={link.url} />
+              <Button variant="ghost" onClick={act(() => api.delete(`/invitations/${link.id}`))}>
+                {t('share.link.revoke')}
+              </Button>
+            </>
+          ) : (
+            <>
+              <RoleSelect
+                value={role}
+                choices={choices}
+                label={t('share.link.role')}
+                onChange={setRole}
+              />
+              <Select
+                className="share__select"
+                aria-label={t('share.link.expires')}
+                value={days}
+                onChange={(e) => setDays(Number(e))}
+              >
+                {[1, 7, 30, 90].map((d) => (
+                  <option key={d} value={d}>
+                    {t('share.link.days', { count: d })}
+                  </option>
+                ))}
+              </Select>
+              <Button icon="link" aria-label={t('share.link.create')} onClick={act(create)}>
+                {t('share.link.createShort')}
+              </Button>
+            </>
+          )}
+        </div>
+        {/* Whole, to copy by hand where the clipboard is not allowed (plain http). */}
+        {link?.url && (
           <input
-            className="share__input share__url"
+            className="ink-input share__url"
             readOnly
             data-feedback-secret
             value={link.url}
             aria-label={t('share.link.title')}
+            onFocus={(e) => e.currentTarget.select()}
           />
-          <CopyButton text={link.url} primary />
-          <Button variant="ghost" onClick={act(() => api.delete(`/invitations/${link.id}`))}>
-            {t('share.link.revoke')}
-          </Button>
-        </div>
-      ) : (
-        <div className="share__link-row">
-          <RoleSelect
-            value={role}
-            choices={choices}
-            label={t('share.link.role')}
-            onChange={setRole}
-          />
-          <Select
-            className="share__select"
-            aria-label={t('share.link.expires')}
-            value={days}
-            onChange={(e) => setDays(Number(e))}
-          >
-            {[1, 7, 30, 90].map((d) => (
-              <option key={d} value={d}>
-                {t('share.link.days', { count: d })}
-              </option>
-            ))}
-          </Select>
-          <Button icon="link" onClick={act(create)}>
-            {t('share.link.create')}
-          </Button>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }

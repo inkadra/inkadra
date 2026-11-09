@@ -2,9 +2,12 @@ import type { ShareLink, ShareLinkPicks } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import {
   canChangeScope,
+  createOf,
   csvCell,
   draftOf,
+  linkSummary,
   namesText,
+  newDraft,
   patchOf,
   pickedFileNames,
   pickedWithoutName,
@@ -156,5 +159,75 @@ describe('proofing export', () => {
       ',1,0,,0,,picked',
       '',
     ]);
+  });
+});
+
+describe('the sentence under the link form', () => {
+  const t = (key: string, values?: Record<string, unknown>) =>
+    key === 'share.link.days'
+      ? `${values?.count} giorni`
+      : key === 'guestLinks.summary.expiresIn'
+        ? `Scade tra <b>${values?.when}</b>`
+        : key === 'guestLinks.summary.noDownload'
+          ? ', <b>niente download</b>'
+          : `[${key.replace('guestLinks.summary.', '')}]`;
+  const text = (parts: { text: string; strong?: boolean }[]) =>
+    parts.map((p) => (p.strong ? `*${p.text}*` : p.text)).join('');
+  const date = (iso: string) => iso.slice(0, 10);
+
+  it('names the label as subject and lists what the link allows', () => {
+    const draft = {
+      ...newDraft(),
+      label: ' Il cliente ',
+      role: 'guest_approve' as const,
+      proofing: true,
+      password: { mode: 'set' as const, value: 'x' },
+      expiry: 7,
+    };
+    expect(text(linkSummary(t, draft, { subBoards: 2, date }))).toBe(
+      '*Il cliente* [role.guest_approve][pick], *niente download*. [subBoards] Scade tra *7 giorni*, [withPassword].',
+    );
+  });
+
+  it('uses a neutral subject, and leaves out the boards line without sub-boards', () => {
+    const draft = { ...newDraft(), allowDownload: true };
+    expect(text(linkSummary(t, draft, { subBoards: 0, date }))).toBe(
+      '*[someone]* [role.guest_view][download]. [noExpiry].',
+    );
+    expect(
+      text(linkSummary(t, { ...draft, includeSubBoards: false }, { subBoards: 1, date })),
+    ).toContain('[onlyHere]');
+  });
+
+  it('keeps the expiry and the password of the link being changed', () => {
+    const draft = draftOf(link);
+    expect(text(linkSummary(t, draft, { subBoards: 0, link, date }))).toBe(
+      '*Cliente* [role.guest_comment][pick], *niente download*. [expiresOn], [withPassword].',
+    );
+    const removed = {
+      ...draft,
+      password: { mode: 'remove' as const, value: '' },
+      expiry: 'none' as const,
+    };
+    expect(text(linkSummary(t, removed, { subBoards: 0, link, date }))).toBe(
+      '*Cliente* [role.guest_comment][pick], *niente download*. [noExpiry].',
+    );
+  });
+
+  it('creates a link from a new draft with only the fields set', () => {
+    expect(createOf({ ...newDraft(), label: '  ' })).toEqual({
+      role: 'guest_view',
+      includeSubBoards: true,
+      allowDownload: false,
+      proofing: false,
+    });
+    expect(
+      createOf({
+        ...newDraft(),
+        label: 'Cliente',
+        password: { mode: 'set', value: 'p' },
+        expiry: 30,
+      }),
+    ).toMatchObject({ label: 'Cliente', password: 'p', expiresInDays: 30 });
   });
 });

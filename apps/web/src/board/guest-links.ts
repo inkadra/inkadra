@@ -1,4 +1,5 @@
 import type {
+  CreateShareLink,
   GuestRole,
   ProjectRole,
   ShareLink,
@@ -54,6 +55,83 @@ export function draftOf(link: ShareLink): LinkDraft {
     password: { mode: 'keep', value: '' },
     expiry: 'keep',
   };
+}
+
+/** A new link: view only, every option off, no password and no expiry. */
+export function newDraft(): LinkDraft {
+  return {
+    role: 'guest_view',
+    label: '',
+    includeSubBoards: true,
+    allowDownload: false,
+    proofing: false,
+    password: { mode: 'keep', value: '' },
+    expiry: 'none',
+  };
+}
+
+/** The request that creates a link from a new draft. */
+export function createOf(draft: LinkDraft): CreateShareLink {
+  const label = draft.label.trim();
+  return {
+    role: draft.role,
+    includeSubBoards: draft.includeSubBoards,
+    allowDownload: draft.allowDownload,
+    proofing: draft.proofing,
+    ...(label ? { label } : {}),
+    ...(draft.password.mode === 'set' ? { password: draft.password.value } : {}),
+    ...(typeof draft.expiry === 'number' ? { expiresInDays: draft.expiry } : {}),
+  };
+}
+
+/** Whether the link will ask for a password once the draft is saved. */
+export function willHavePassword(draft: LinkDraft, link?: Pick<ShareLink, 'hasPassword'>) {
+  return draft.password.mode === 'set' || (draft.password.mode === 'keep' && !!link?.hasPassword);
+}
+
+export type SummaryPart = { text: string; strong?: boolean };
+type T = (key: string, opts?: Record<string, unknown>) => string;
+
+/** Splits a text with `<b>` markup into plain and strong parts. */
+function strongParts(text: string): SummaryPart[] {
+  return text
+    .split(/<b>(.*?)<\/b>/)
+    .map((part, i) => (i % 2 ? { text: part, strong: true } : { text: part }))
+    .filter((part) => part.text !== '');
+}
+
+/**
+ * The draft in one sentence, under the form: who opens it, what they can do, the boards, the
+ * expiry and the password. The label names who opens it; the end of a kept expiry is `link`'s.
+ */
+export function linkSummary(
+  t: T,
+  draft: LinkDraft,
+  { subBoards, link, date }: { subBoards: number; link?: ShareLink; date: (iso: string) => string },
+): SummaryPart[] {
+  const expiresAt = draft.expiry === 'keep' ? (link?.expiresAt ?? null) : null;
+  const expiry =
+    typeof draft.expiry === 'number'
+      ? t('guestLinks.summary.expiresIn', { when: t('share.link.days', { count: draft.expiry }) })
+      : expiresAt
+        ? t('guestLinks.summary.expiresOn', { date: date(expiresAt) })
+        : t('guestLinks.summary.noExpiry');
+  const rest = [
+    ` ${t(`guestLinks.summary.role.${draft.role}`)}`,
+    draft.proofing ? t('guestLinks.summary.pick') : '',
+    t(draft.allowDownload ? 'guestLinks.summary.download' : 'guestLinks.summary.noDownload'),
+    '. ',
+    subBoards > 0
+      ? `${t(draft.includeSubBoards ? 'guestLinks.summary.subBoards' : 'guestLinks.summary.onlyHere')} `
+      : '',
+    expiry,
+    willHavePassword(draft, link) ? `, ${t('guestLinks.summary.withPassword')}` : '',
+    '.',
+  ].join('');
+  return [
+    { text: draft.label.trim() || t('guestLinks.summary.someone'), strong: true },
+    ...strongParts(rest),
+  ];
 }
 
 /** The changes a draft makes to a link; scope fields only when the person may change them. */

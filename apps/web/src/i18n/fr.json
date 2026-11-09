@@ -1500,7 +1500,6 @@
     "thisBoard": "Les personnes invitées ne voient que ce tableau.",
     "people": "Personnes ayant accès",
     "you": "{{name}} (vous)",
-    "highlightHint": "Met en évidence le rôle de cette personne dans la matrice des autorisations",
     "member": "Membre du projet",
     "fromProject": "Depuis le projet",
     "inherited": "Hérité de {{board}}",
@@ -1524,7 +1523,7 @@
     "readOnly": "Seuls les éditeurs et les propriétaires peuvent inviter des personnes ou changer les rôles.",
     "link": {
       "title": "Lien d’invitation",
-      "body": "Toute personne qui ouvre le lien entre avec le rôle choisi, même sans compte (elle en crée un sur place).",
+      "body": "Qui l’ouvre entre avec son compte, ou en crée un, avec le rôle choisi.",
       "active_one": "{{role}} · expire le {{date}} · utilisé {{count}} fois",
       "active_other": "{{role}} · expire le {{date}} · utilisé {{count}} fois",
       "role": "Rôle des personnes utilisant le lien",
@@ -1532,7 +1531,9 @@
       "days_one": "{{count}} jour",
       "days_other": "{{count}} jours",
       "create": "Créer le lien",
-      "revoke": "Désactiver"
+      "revoke": "Désactiver",
+      "name": "Rejoindre avec un compte",
+      "createShort": "Créer"
     },
     "errors": {
       "load": "Impossible de charger les accès. Réessayez.",
@@ -1546,17 +1547,6 @@
       "people": "Personnes",
       "guests": "Liens invités"
     },
-    "matrix": {
-      "title": "Matrice des autorisations des rôles",
-      "role": "Rôle",
-      "view": "Consulter",
-      "comment": "Commenter",
-      "edit": "Modifier",
-      "share": "Partager",
-      "download": "Télécharger les originaux",
-      "yes": "Oui",
-      "no": "Non"
-    },
     "expiry": {
       "label": "Expire le {{date}}",
       "until": "Accès jusqu’au",
@@ -1565,10 +1555,25 @@
       "clear": "Retirer l’échéance",
       "of": "Fin de l’accès de {{name}}",
       "invite": "Fin de l’accès de la personne invitée"
+    },
+    "accountLead": "Pour les personnes qui travaillent sur le projet, <b>avec un compte</b>.",
+    "inviteField": "Inviter par e-mail ou nom",
+    "roleHint": {
+      "viewer": "voit les tableaux et les fichiers. Ne commente pas et ne modifie pas.",
+      "commenter": "voit, commente et télécharge les originaux. Ne modifie pas.",
+      "editor": "voit, commente, modifie, invite et partage.",
+      "owner": "peut tout faire, y compris gérer les membres, archiver et supprimer le projet."
+    },
+    "legend": {
+      "title": "Ce que chaque rôle peut faire",
+      "viewer": "Voit les tableaux et les fichiers.",
+      "commenter": "Comme le lecteur, plus les commentaires et le téléchargement des originaux.",
+      "editor": "Comme le commentateur, plus les modifications, les invitations et le partage.",
+      "owner": "Comme l’éditeur, plus la gestion des membres du projet, l’archivage et la suppression du projet."
     }
   },
   "guestLinks": {
-    "lead": "Pour les personnes sans compte : elles voient le tableau sans pouvoir le modifier, et seulement les cartes non masquées aux invités. Le lien reste valide tant que vous êtes éditeur ici.",
+    "lead": "Pour les clients, <b>sans compte</b>. Ils ouvrent le tableau sans le modifier et ne voient que les cartes visibles par les invités.",
     "none": "Aucun lien invité.",
     "list": "Liens invités",
     "new": "Nouveau lien invité",
@@ -1577,17 +1582,12 @@
     "never": "Aucune expiration",
     "label": "Pour qui (facultatif)",
     "labelPlaceholder": "Ex. Client",
-    "includeSubBoards_one": "Aussi le sous-tableau accessible d’ici",
-    "includeSubBoards_other": "Aussi les sous-tableaux accessibles d’ici",
-    "allowDownload": "Autoriser le téléchargement des originaux",
-    "allowDownloadHint": "Sinon, les invités ne voient que les aperçus.",
     "proofing": "Sélection de photos",
-    "proofingHint": "Les invités choisissent, rejettent et notent les images de 1 à 5 étoiles.",
-    "usePassword": "Protéger par un mot de passe",
+    "proofingHint": "Choisit, rejette et donne des étoiles.",
     "password": "Mot de passe",
     "passwordShort": "Le mot de passe doit contenir au moins {{min}} caractères.",
     "cancel": "Annuler",
-    "create": "Créer le lien invité",
+    "create": "Créer le lien",
     "save": "Enregistrer",
     "edit": "Modifier",
     "editTitle": "Modifier le lien",
@@ -1600,11 +1600,7 @@
     "keepExpiry": "Ne pas changer",
     "fromNow_one": "Dans {{count}} jour",
     "fromNow_other": "Dans {{count}} jours",
-    "passwordKeep": "Conserver le mot de passe actuel",
-    "passwordNone": "Aucun mot de passe",
     "passwordChange": "Changer le mot de passe",
-    "passwordAdd": "Ajouter un mot de passe",
-    "passwordRemove": "Retirer le mot de passe",
     "newPassword": "Nouveau mot de passe",
     "passwordChangeHint": "Les personnes ayant déjà ouvert le lien devront saisir le nouveau mot de passe.",
     "roles": {
@@ -1669,6 +1665,42 @@
       "average_one": "{{value}} étoiles ({{count}} note)",
       "average_other": "{{value}} étoiles ({{count}} notes)",
       "byGuest": "{{name}} : {{choice}}"
+    },
+    "validWhile": "Un lien cesse de fonctionner si la personne qui l’a créé n’est plus éditeur ici.",
+    "active": "Liens actifs",
+    "options": "Options du lien",
+    "roleHelp": {
+      "guest_view": "Voit le tableau et les images.",
+      "guest_comment": "Voit le tableau et les images, lit et écrit des commentaires.",
+      "guest_approve": "Voit et commente, valide ou demande des modifications, compare les versions."
+    },
+    "download": "Originaux",
+    "downloadHint": "Désactivé : aperçus seulement.",
+    "subBoards": "Sous-tableaux",
+    "subBoardsHint_one": "Aussi celui accessible d’ici.",
+    "subBoardsHint_other": "Aussi ceux accessibles d’ici.",
+    "passwordHint": "Au moins {{min}} caractères.",
+    "passwordField": "Mot de passe du lien",
+    "passwordKept": "Le mot de passe actuel est conservé.",
+    "copy": "Copier",
+    "copyLabel": "Copier le lien « {{name}} »",
+    "actionsFor": "Actions pour le lien « {{name}} »",
+    "summary": {
+      "someone": "Qui ouvre le lien",
+      "role": {
+        "guest_view": "pourra consulter",
+        "guest_comment": "pourra consulter et commenter",
+        "guest_approve": "pourra consulter, commenter et valider"
+      },
+      "pick": ", choisir les photos",
+      "download": ", télécharger les originaux",
+      "noDownload": ", <b>aucun téléchargement</b>",
+      "subBoards": "Avec les sous-tableaux.",
+      "onlyHere": "Ce tableau seulement.",
+      "expiresIn": "Expire dans <b>{{when}}</b>",
+      "expiresOn": "Expire le <b>{{date}}</b>",
+      "noExpiry": "Sans expiration",
+      "withPassword": "avec mot de passe"
     }
   },
   "guest": {
@@ -4331,16 +4363,24 @@
         "name": "Partage et rôles",
         "steps": {
           "0": {
-            "title": "Personnes et liens",
-            "text": "Invitez l’équipe ou créez un lien pour les invités."
+            "title": "Personnes et invités",
+            "text": "Personnes : avec un compte. Liens pour invités : clients sans compte."
           },
           "1": {
-            "title": "Rôles",
-            "text": "Qui modifie, qui commente, qui regarde."
+            "title": "Inviter",
+            "text": "Choisissez le rôle : la ligne dessous dit ce qu’il permet."
           },
           "2": {
+            "title": "Rôles",
+            "text": "Ouvrez la légende pour voir ce que chaque rôle peut faire."
+          },
+          "3": {
+            "title": "Lien d’invitation",
+            "text": "Qui l’ouvre entre avec son compte et le rôle choisi."
+          },
+          "4": {
             "title": "Liens pour invités",
-            "text": "Avec mot de passe, expiration et validation."
+            "text": "Pour les clients : choisissez ce qu’ils peuvent faire et lisez le résumé."
           }
         }
       },

@@ -1500,7 +1500,6 @@
     "thisBoard": "Eingeladene sehen nur dieses Board.",
     "people": "Personen mit Zugriff",
     "you": "{{name}} (du)",
-    "highlightHint": "Hebt die Rolle dieser Person in der Rechtematrix hervor",
     "member": "Projektmitglied",
     "fromProject": "Aus dem Projekt",
     "inherited": "Geerbt von {{board}}",
@@ -1524,7 +1523,7 @@
     "readOnly": "Nur Bearbeiter und Inhaber können Personen einladen oder Rollen ändern.",
     "link": {
       "title": "Einladungslink",
-      "body": "Wer den Link öffnet, kommt mit der gewählten Rolle dazu, auch ohne Konto (das lässt sich dann direkt erstellen).",
+      "body": "Wer ihn öffnet, kommt mit seinem Konto dazu oder erstellt eines, mit der gewählten Rolle.",
       "active_one": "{{role}} · läuft am {{date}} ab · {{count}}-mal verwendet",
       "active_other": "{{role}} · läuft am {{date}} ab · {{count}}-mal verwendet",
       "role": "Rolle für Personen mit dem Link",
@@ -1532,7 +1531,9 @@
       "days_one": "{{count}} Tag",
       "days_other": "{{count}} Tage",
       "create": "Link erstellen",
-      "revoke": "Deaktivieren"
+      "revoke": "Deaktivieren",
+      "name": "Mit Konto beitreten",
+      "createShort": "Erstellen"
     },
     "errors": {
       "load": "Die Zugriffe konnten nicht geladen werden. Versuch es noch mal.",
@@ -1546,17 +1547,6 @@
       "people": "Personen",
       "guests": "Gastlinks"
     },
-    "matrix": {
-      "title": "Rechtematrix der Rollen",
-      "role": "Rolle",
-      "view": "Ansehen",
-      "comment": "Kommentieren",
-      "edit": "Bearbeiten",
-      "share": "Teilen",
-      "download": "Originale laden",
-      "yes": "Ja",
-      "no": "Nein"
-    },
     "expiry": {
       "label": "Läuft am {{date}} ab",
       "until": "Zugriff bis",
@@ -1565,10 +1555,25 @@
       "clear": "Ablauf entfernen",
       "of": "Ende des Zugriffs für {{name}}",
       "invite": "Ende des Zugriffs für die eingeladene Person"
+    },
+    "accountLead": "Für alle, die am Projekt arbeiten, <b>mit Konto</b>.",
+    "inviteField": "Per E-Mail oder Name einladen",
+    "roleHint": {
+      "viewer": "sieht Boards und Dateien. Kommentiert und bearbeitet nicht.",
+      "commenter": "sieht, kommentiert und lädt Originale herunter. Bearbeitet nicht.",
+      "editor": "sieht, kommentiert, bearbeitet, lädt ein und teilt.",
+      "owner": "darf alles, auch Mitglieder verwalten, das Projekt archivieren und löschen."
+    },
+    "legend": {
+      "title": "Was jede Rolle darf",
+      "viewer": "Sieht Boards und Dateien.",
+      "commenter": "Wie Betrachter, dazu Kommentare und Download der Originale.",
+      "editor": "Wie Kommentator, dazu Bearbeiten, Einladen und Teilen.",
+      "owner": "Wie Bearbeiter, dazu Verwalten der Projektmitglieder, Archivieren und Löschen des Projekts."
     }
   },
   "guestLinks": {
-    "lead": "Für Personen ohne Konto: Sie sehen das Board, können es aber nicht ändern, und nur Karten, die nicht vor Gästen verborgen sind. Der Link gilt, solange du hier Bearbeiter bist.",
+    "lead": "Für Kunden, <b>ohne Konto</b>. Sie öffnen das Board, ohne es zu ändern, und sehen nur die für Gäste sichtbaren Karten.",
     "none": "Keine Gastlinks.",
     "list": "Gastlinks",
     "new": "Neuer Gastlink",
@@ -1577,17 +1582,12 @@
     "never": "Kein Ablauf",
     "label": "Für wen (optional)",
     "labelPlaceholder": "Z. B. Kunde",
-    "includeSubBoards_one": "Auch das von hier erreichbare Unterboard",
-    "includeSubBoards_other": "Auch die von hier erreichbaren Unterboards",
-    "allowDownload": "Download der Originale erlauben",
-    "allowDownloadHint": "Sonst sehen Gäste nur Vorschauen.",
     "proofing": "Fotoauswahl",
-    "proofingHint": "Gäste wählen Bilder aus, verwerfen sie und vergeben 1 bis 5 Sterne.",
-    "usePassword": "Mit Passwort schützen",
+    "proofingHint": "Wählt aus, verwirft und vergibt Sterne.",
     "password": "Passwort",
     "passwordShort": "Das Passwort muss mindestens {{min}} Zeichen haben.",
     "cancel": "Abbrechen",
-    "create": "Gastlink erstellen",
+    "create": "Link erstellen",
     "save": "Speichern",
     "edit": "Bearbeiten",
     "editTitle": "Link bearbeiten",
@@ -1600,11 +1600,7 @@
     "keepExpiry": "So lassen",
     "fromNow_one": "In {{count}} Tag",
     "fromNow_other": "In {{count}} Tagen",
-    "passwordKeep": "Aktuelles Passwort behalten",
-    "passwordNone": "Kein Passwort",
     "passwordChange": "Passwort ändern",
-    "passwordAdd": "Passwort hinzufügen",
-    "passwordRemove": "Passwort entfernen",
     "newPassword": "Neues Passwort",
     "passwordChangeHint": "Wer den Link schon geöffnet hat, muss das neue Passwort eingeben.",
     "roles": {
@@ -1669,6 +1665,42 @@
       "average_one": "{{value}} Sterne ({{count}} Bewertung)",
       "average_other": "{{value}} Sterne ({{count}} Bewertungen)",
       "byGuest": "{{name}}: {{choice}}"
+    },
+    "validWhile": "Ein Link funktioniert nicht mehr, wenn die Person, die ihn erstellt hat, hier nicht mehr Bearbeiter ist.",
+    "active": "Aktive Links",
+    "options": "Optionen des Links",
+    "roleHelp": {
+      "guest_view": "Sieht Board und Bilder.",
+      "guest_comment": "Sieht Board und Bilder, liest und schreibt Kommentare.",
+      "guest_approve": "Sieht und kommentiert, gibt frei oder bittet um Änderungen, vergleicht Versionen."
+    },
+    "download": "Originale",
+    "downloadHint": "Aus: nur Vorschauen.",
+    "subBoards": "Unterboards",
+    "subBoardsHint_one": "Auch das von hier erreichbare.",
+    "subBoardsHint_other": "Auch die von hier erreichbaren.",
+    "passwordHint": "Mindestens {{min}} Zeichen.",
+    "passwordField": "Passwort des Links",
+    "passwordKept": "Das aktuelle Passwort bleibt.",
+    "copy": "Kopieren",
+    "copyLabel": "Link „{{name}}“ kopieren",
+    "actionsFor": "Aktionen für den Link „{{name}}“",
+    "summary": {
+      "someone": "Wer den Link öffnet",
+      "role": {
+        "guest_view": "kann ansehen",
+        "guest_comment": "kann ansehen und kommentieren",
+        "guest_approve": "kann ansehen, kommentieren und freigeben"
+      },
+      "pick": ", Fotos auswählen",
+      "download": ", Originale herunterladen",
+      "noDownload": ", <b>keine Downloads</b>",
+      "subBoards": "Mit Unterboards.",
+      "onlyHere": "Nur dieses Board.",
+      "expiresIn": "Läuft ab in <b>{{when}}</b>",
+      "expiresOn": "Läuft ab am <b>{{date}}</b>",
+      "noExpiry": "Kein Ablauf",
+      "withPassword": "mit Passwort"
     }
   },
   "guest": {
@@ -4331,16 +4363,24 @@
         "name": "Teilen und Rollen",
         "steps": {
           "0": {
-            "title": "Personen und Links",
-            "text": "Lade das Team ein oder erstelle einen Link für Gäste."
+            "title": "Personen und Gäste",
+            "text": "Personen: mit Konto. Links für Gäste: Kunden ohne Konto."
           },
           "1": {
-            "title": "Rollen",
-            "text": "Wer bearbeitet, wer kommentiert, wer schaut."
+            "title": "Einladen",
+            "text": "Wähle die Rolle: Darunter steht, was die Person darf."
           },
           "2": {
+            "title": "Rollen",
+            "text": "Öffne die Legende, um zu sehen, was jede Rolle darf."
+          },
+          "3": {
+            "title": "Einladungslink",
+            "text": "Wer ihn öffnet, kommt mit seinem Konto und der gewählten Rolle dazu."
+          },
+          "4": {
             "title": "Links für Gäste",
-            "text": "Mit Passwort, Ablaufdatum und Freigabe."
+            "text": "Für Kunden: Wähle, was sie dürfen, und lies die Zusammenfassung."
           }
         }
       },
