@@ -169,6 +169,34 @@ test('the header carries the controls and the picture takes the space', async ({
   await expect(present.locator('.present-sidebar')).toBeVisible();
 });
 
+test('the fullscreen button puts the presentation fullscreen and back', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const present = await open(page);
+  const header = present.locator('.present-header');
+  const fullscreenElement = () =>
+    page.evaluate(() => document.fullscreenElement?.className ?? null);
+  // Chrome refuses fullscreen on a <dialog>: the button used to do nothing.
+  await header.getByRole('button', { name: 'Schermo intero' }).click();
+  await expect.poll(fullscreenElement).toBe('present-body');
+  const exit = header.getByRole('button', { name: 'Esci da schermo intero' });
+  await expect(exit).toBeVisible();
+  await expect(present.locator('.present-stage__canvas')).toBeVisible();
+  if (shots) {
+    for (const scheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.mouse.move(600, 300);
+      // Keyboard focus shows the button's label: the one to leave fullscreen.
+      await present.getByRole('button', { name: 'Note del relatore' }).focus();
+      await page.keyboard.press('Tab');
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: `${shots}/fullscreen-${scheme}.png` });
+    }
+  }
+  await exit.click();
+  await expect.poll(fullscreenElement).toBeNull();
+  await expect(header.getByRole('button', { name: 'Schermo intero' })).toBeVisible();
+});
+
 test('the bars leave after 3 seconds without the mouse and come back with it', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const present = await open(page);

@@ -69,6 +69,36 @@ function twoFrames() {
   return ctx;
 }
 
+/** Fullscreen as Chrome does it: refused on a <dialog>, granted on other elements. */
+function fakeFullscreen(enabled = true) {
+  let fsEl: Element | null = null;
+  const request = vi.fn(function (this: Element) {
+    if (this instanceof HTMLDialogElement)
+      return Promise.reject(new TypeError('Dialog elements are invalid'));
+    fsEl = this;
+    document.dispatchEvent(new Event('fullscreenchange'));
+    return Promise.resolve();
+  });
+  const exit = vi.fn(() => {
+    fsEl = null;
+    document.dispatchEvent(new Event('fullscreenchange'));
+    return Promise.resolve();
+  });
+  Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, value: enabled });
+  Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fsEl });
+  Object.defineProperty(document, 'exitFullscreen', { configurable: true, value: exit });
+  Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
+    configurable: true,
+    value: request,
+  });
+  disposals.unshift(() => {
+    for (const key of ['fullscreenEnabled', 'fullscreenElement', 'exitFullscreen'])
+      Reflect.deleteProperty(document, key);
+    Reflect.deleteProperty(HTMLElement.prototype, 'requestFullscreen');
+  });
+  return { request, exit };
+}
+
 const press = (key: string, init: KeyboardEventInit = {}) =>
   act(async () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...init }));
@@ -174,30 +204,46 @@ describe('PresentationView', () => {
     expect(host.querySelector('.present-progress__bar')?.getAttribute('style')).toContain('100%');
   });
 
-  it('leaves fullscreen when it closes and follows fullscreenchange', async () => {
+  it('puts the body inside the dialog fullscreen, right in the click, and back', async () => {
     const { store } = twoFrames();
-    const exit = vi.fn(() => Promise.resolve());
-    let fsEl: Element | null = null;
-    Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fsEl });
-    Object.defineProperty(document, 'exitFullscreen', { configurable: true, value: exit });
+    const { request, exit } = fakeFullscreen();
     const host = await mount(view(store));
-    const dialog = host.querySelector('dialog') as HTMLDialogElement;
-    const toggle = () => host.querySelector(`button[aria-label="${present.fullscreen}"]`);
-    expect(toggle()).not.toBeNull();
-    fsEl = dialog;
-    await act(async () => {
-      document.dispatchEvent(new Event('fullscreenchange'));
-    });
-    expect(host.querySelector(`button[aria-label="${present.exitFullscreen}"]`)).not.toBeNull();
+    const button = (label: string) =>
+      host.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement | null;
+    // No await between the click and the request: the browser only grants it in the gesture.
+    act(() => button(present.fullscreen)?.click());
+    expect(request).toHaveBeenCalledTimes(1);
+    // Chrome refuses a <dialog> ("Dialog elements are invalid") and the button did nothing.
+    expect(request.mock.contexts[0]).toBe(host.querySelector('.present-body'));
+    expect(document.fullscreenElement).toBe(host.querySelector('.present-body'));
+    await act(async () => {});
+    act(() => button(present.exitFullscreen)?.click());
+    expect(exit).toHaveBeenCalledTimes(1);
+    await act(async () => {});
+    expect(button(present.fullscreen)).not.toBeNull();
+  });
+
+  it('leaves fullscreen when it closes', async () => {
+    const { store } = twoFrames();
+    const { exit } = fakeFullscreen();
+    const host = await mount(view(store));
+    act(() =>
+      (host.querySelector(`button[aria-label="${present.fullscreen}"]`) as HTMLElement).click(),
+    );
     disposals.pop()?.();
     expect(exit).toHaveBeenCalled();
-    fsEl = null;
-    Reflect.deleteProperty(document, 'fullscreenElement');
-    Reflect.deleteProperty(document, 'exitFullscreen');
+  });
+
+  it('has no fullscreen button where the browser cannot go fullscreen', async () => {
+    const { store } = twoFrames();
+    fakeFullscreen(false);
+    const host = await mount(view(store));
+    expect(host.querySelector(`button[aria-label="${present.fullscreen}"]`)).toBeNull();
   });
 
   it('keeps the counter, notes and fullscreen on the header and no arrow hint', async () => {
     const { store } = twoFrames();
+    fakeFullscreen();
     const host = await mount(view(store));
     const header = host.querySelector('.present-header');
     expect(header?.querySelector('.present-header__count')).not.toBeNull();

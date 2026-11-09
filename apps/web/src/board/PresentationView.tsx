@@ -62,6 +62,10 @@ export function PresentationView({
   const [fullscreen, setFullscreen] = useState(false);
   const [idle, setIdle] = useState(false);
   const rootRef = useRef<HTMLDialogElement>(null);
+  // Browsers refuse fullscreen on a <dialog>: the body inside it goes fullscreen instead.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // iPhones have no element fullscreen: no button that would do nothing there.
+  const canFullscreen = document.fullscreenEnabled === true;
   const [settings, setSettings] = useState<ExportSettings | null>(null);
   useEffect(() => {
     if (!projectId) return;
@@ -102,7 +106,7 @@ export function PresentationView({
 
   // Leaving the presentation also leaves fullscreen.
   useEffect(() => {
-    const sync = () => setFullscreen(document.fullscreenElement === rootRef.current);
+    const sync = () => setFullscreen(document.fullscreenElement === bodyRef.current);
     document.addEventListener('fullscreenchange', sync);
     return () => {
       document.removeEventListener('fullscreenchange', sync);
@@ -232,7 +236,7 @@ export function PresentationView({
     if (document.fullscreenElement) {
       document.exitFullscreen?.().catch(() => {});
     } else {
-      rootRef.current?.requestFullscreen?.().catch(() => {});
+      bodyRef.current?.requestFullscreen().catch(() => {});
     }
   };
 
@@ -261,7 +265,7 @@ export function PresentationView({
         e.currentTarget.focus();
       }}
     >
-      <div className="present-body">
+      <div ref={bodyRef} className="present-body">
         <main className="present-main">
           <header className="present-header" data-tour="present-header">
             <button type="button" className="present-header__btn" onClick={onClose}>
@@ -293,11 +297,13 @@ export function PresentationView({
                 </button>
               </>
             )}
-            <IconButton
-              icon="fit"
-              label={fullscreen ? t('present.exitFullscreen') : t('present.fullscreen')}
-              onClick={toggleFullscreen}
-            />
+            {canFullscreen && (
+              <IconButton
+                icon="fit"
+                label={fullscreen ? t('present.exitFullscreen') : t('present.fullscreen')}
+                onClick={toggleFullscreen}
+              />
+            )}
           </header>
 
           {current ? (
