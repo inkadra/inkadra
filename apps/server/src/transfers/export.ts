@@ -12,6 +12,7 @@ import {
   type ArchiveBoard,
   type ArchiveComment,
   type ArchiveExportSettings,
+  type ArchiveGuests,
   type ArchivePerson,
   type ArchiveReviews,
   type ArchiveShootingDay,
@@ -24,7 +25,7 @@ import {
   SHOT_CATALOG_KEYS,
   type TransferSummary,
 } from '@inkadra/shared';
-import { and, asc, eq, getTableColumns, inArray, isNull, ne } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, inArray, isNotNull, isNull, ne } from 'drizzle-orm';
 import * as Y from 'yjs';
 import { readClassifications } from '../classifications.ts';
 import { VERSION } from '../config.ts';
@@ -40,6 +41,8 @@ import {
   project,
   projectExportSettings,
   shareGuest,
+  shareLink,
+  sharePick,
   shootingDay,
   user,
 } from '../db/schema.ts';
@@ -177,6 +180,69 @@ export async function exportProject(
             )
             .orderBy(asc(elementReviewEvent.createdAt), asc(elementReviewEvent.id))
         : [];
+      // Guest decisions and proofing (decision 0086), with the guests and links behind them.
+      const guestReviews = boardIds.length
+        ? await tx
+            .select()
+            .from(elementReview)
+            .where(
+              and(
+                inArray(elementReview.boardId, boardIds),
+                isNotNull(elementReview.shareLinkId),
+                ne(elementReview.status, 'none'),
+              ),
+            )
+            .orderBy(asc(elementReview.changedAt), asc(elementReview.id))
+        : [];
+      const guestEvents = boardIds.length
+        ? await tx
+            .select()
+            .from(elementReviewEvent)
+            .where(
+              and(
+                inArray(elementReviewEvent.boardId, boardIds),
+                isNotNull(elementReviewEvent.shareLinkId),
+              ),
+            )
+            .orderBy(asc(elementReviewEvent.createdAt), asc(elementReviewEvent.id))
+        : [];
+      const picks = boardIds.length
+        ? await tx
+            .select()
+            .from(sharePick)
+            .where(inArray(sharePick.boardId, boardIds))
+            .orderBy(asc(sharePick.updatedAt), asc(sharePick.guestId))
+        : [];
+      const guestIds = [
+        ...new Set(
+          [
+            ...guestReviews.map((r) => r.changedByGuest),
+            ...guestEvents.map((e) => e.guestId),
+            ...picks.map((p) => p.guestId),
+          ].filter((id): id is string => id !== null),
+        ),
+      ];
+      const guests = guestIds.length
+        ? await tx
+            .select({
+              id: shareGuest.id,
+              name: shareGuest.name,
+              createdAt: shareGuest.createdAt,
+              link: {
+                id: shareLink.id,
+                boardId: shareLink.boardId,
+                label: shareLink.label,
+                role: shareLink.role,
+                proofing: shareLink.proofing,
+                includeSubBoards: shareLink.includeSubBoards,
+                createdAt: shareLink.createdAt,
+              },
+            })
+            .from(shareGuest)
+            .innerJoin(shareLink, eq(shareLink.id, shareGuest.shareLinkId))
+            .where(inArray(shareGuest.id, guestIds))
+            .orderBy(asc(shareGuest.createdAt), asc(shareGuest.id))
+        : [];
       const days = boardIds.length
         ? await tx
             .select()
@@ -198,6 +264,10 @@ export async function exportProject(
         comments,
         reviews,
         events,
+        guestReviews,
+        guestEvents,
+        picks,
+        guests,
         days,
         catalogs,
         exportSettings,
@@ -206,7 +276,7 @@ export async function exportProject(
     { isolationLevel: 'repeatable read', accessMode: 'read only' },
   );
   const { p, ordered, assets, versions, comments, reviews, events, days, catalogs } = snapshot;
-  const { exportSettings } = snapshot;
+  const { exportSettings, guestReviews, guestEvents, picks, guests } = snapshot;
   const assetIds = new Set(assets.map((a) => a.id));
   const people = new Set<string>();
   const add = (id: string | null) => {
@@ -392,6 +462,78 @@ export async function exportProject(
       }),
     };
     await zip.addJson('reviews.json', archiveReviews);
+
+    // Links and guests get ids made for this archive: nothing in it leads back to a link, and
+    // neither addresses, passwords nor sessions are exported (decision 0086).
+    const linkIds = new Map<string, string>();
+    const guestIdsOut = new Map<string, string>();
+    const root = ordered[0]?.id;
+    const exportedBoards = new Set(snapshot.boardIds);
+    const archiveGuests: ArchiveGuests = { links: [], guests: [], reviews: [], history: [], picks: [] };
+    for (const g of guests) {
+      let link = linkIds.get(g.link.id);
+      if (!link) {
+        link = randomUUID();
+        linkIds.set(g.link.id, link);
+        archiveGuests.links.push({
+          id: link,
+          // A link shared from a board in the trash keeps its guests on the project's root.
+          boardId: exportedBoards.has(g.link.boardId) ? g.link.boardId : (root as string),
+          label: g.link.label?.slice(0, 200) ?? null,
+          role: g.link.role,
+          proofing: g.link.proofing,
+          includeSubBoards: g.link.includeSubBoards,
+          createdAt: iso(g.link.createdAt),
+        });
+      }
+      const id = randomUUID();
+      guestIdsOut.set(g.id, id);
+      archiveGuests.guests.push({
+        id,
+        linkId: link,
+        name: g.name?.slice(0, 200) ?? null,
+        createdAt: iso(g.createdAt),
+      });
+    }
+    for (const r of guestReviews) {
+      const guestId = r.changedByGuest ? guestIdsOut.get(r.changedByGuest) : undefined;
+      if (!guestId || (r.status !== 'approved' && r.status !== 'changes_requested')) continue;
+      archiveGuests.reviews.push({
+        guestId,
+        boardId: r.boardId,
+        elementId: r.elementId,
+        status: r.status,
+        note: r.note,
+        changedAt: iso(r.changedAt),
+      });
+    }
+    for (const e of guestEvents) {
+      const guestId = e.guestId ? guestIdsOut.get(e.guestId) : undefined;
+      if (!guestId) continue;
+      archiveGuests.history.push({
+        guestId,
+        boardId: e.boardId,
+        elementId: e.elementId,
+        previous: e.previous,
+        status: e.status,
+        note: e.note,
+        createdAt: iso(e.createdAt),
+      });
+    }
+    for (const p of picks) {
+      const guestId = guestIdsOut.get(p.guestId);
+      if (!guestId || (p.pick === null && p.stars === null)) continue;
+      archiveGuests.picks.push({
+        guestId,
+        boardId: p.boardId,
+        elementId: p.elementId,
+        assetId: p.assetId && assetIds.has(p.assetId) ? p.assetId : null,
+        pick: p.pick,
+        stars: p.stars,
+        updatedAt: iso(p.updatedAt),
+      });
+    }
+    if (archiveGuests.guests.length) await zip.addJson('guests.json', archiveGuests);
 
     const archiveDays: ArchiveShootingDay[] = days.map((d) => ({
       id: d.id,

@@ -77,6 +77,8 @@ const ALLOWED: Record<string, readonly string[]> = {
     '/boards/:boardId/versions/:versionId',
     '/boards/:boardId/versions/:versionId/state',
     '/comments/:commentId/replies',
+    // The proofing of an imported link, which no address opens (decision 0086).
+    '/share-links/:linkId/picks',
     '/assets/:assetId',
     '/assets/:assetId/file',
     '/assets/:assetId/frame',

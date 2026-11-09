@@ -13,6 +13,7 @@ import {
   ArchiveClassifications,
   ArchiveComment,
   ArchiveExportSettings,
+  ArchiveGuests,
   ArchivePerson,
   ArchiveProject,
   ArchiveReviews,
@@ -47,11 +48,15 @@ import {
   project,
   projectExportSettings,
   projectMember,
+  shareGuest,
+  shareLink,
+  sharePick,
   shootingDay,
 } from '../db/schema.ts';
 import { readPreferences, readTheme } from '../http/export-settings-routes.ts';
 import { cleanMime, kindOf } from '../http/uploads.ts';
 import type { Jobs } from '../jobs.ts';
+import { newSecret, sha256 } from '../secrets.ts';
 import { writeBoardIndex } from '../search/index-doc.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { assertSpace, type StorageEnv, StorageFullError } from '../storage-limits.ts';
@@ -203,7 +208,20 @@ export async function importProject(
       list(ArchiveShootingDay, LIMITS.rows),
       [],
     );
+    const guestData = await optionalJson(
+      zip,
+      'guests.json',
+      z.object({
+        links: list(ArchiveGuests.shape.links.element, LIMITS.rows),
+        guests: list(ArchiveGuests.shape.guests.element, LIMITS.rows),
+        reviews: list(ArchiveGuests.shape.reviews.element, LIMITS.rows),
+        history: list(ArchiveGuests.shape.history.element, LIMITS.rows),
+        picks: list(ArchiveGuests.shape.picks.element, LIMITS.rows),
+      }),
+      { links: [], guests: [], reviews: [], history: [], picks: [] },
+    );
     const problem = checkArchiveStructure({
+      guests: guestData,
       boards: listed,
       assets,
       comments,
@@ -504,6 +522,8 @@ export async function importProject(
         })),
       );
 
+      await importGuests(tx, guestData, { projectId, userId, boardIds, stored });
+
       if (exportSettings) {
         // The logo stays only if its file was stored and is one a logo may be (decision 0039).
         const logo = exportSettings.logoAssetId
@@ -572,6 +592,112 @@ export async function importProject(
   } finally {
     zip.close();
   }
+}
+
+/**
+ * Guest decisions and proofing (decision 0086). Each link of the archive becomes a link of the
+ * new project that is already revoked and has a token nobody was given: no address opens it
+ * and a revoked link cannot be changed. Its guests have no session, so nobody can act as them;
+ * they keep their names, and the team sees their decisions and picks as on the exporting
+ * server. Like any stopped link, retention clears the names 90 days after the import.
+ */
+async function importGuests(
+  tx: Pick<Database, 'insert'>,
+  data: ArchiveGuests,
+  ids: {
+    projectId: string;
+    userId: string;
+    boardIds: Map<string, string>;
+    stored: Map<string, { id: string }>;
+  },
+) {
+  if (data.guests.length === 0) return;
+  const now = new Date();
+  const links = new Map(data.links.map((l) => [l.id, randomUUID()]));
+  const guests = new Map(data.guests.map((g) => [g.id, randomUUID()]));
+  const linkOf = new Map(data.guests.map((g) => [g.id, links.get(g.linkId) as string]));
+  const board = (id: string) => ids.boardIds.get(id) as string;
+  await insertBatches(
+    tx,
+    shareLink,
+    data.links.map((l) => ({
+      id: links.get(l.id) as string,
+      projectId: ids.projectId,
+      boardId: board(l.boardId),
+      role: l.role,
+      includeSubBoards: l.includeSubBoards,
+      label: l.label,
+      // A token made and thrown away: its hash matches no address.
+      tokenHash: sha256(newSecret('', 32)),
+      tokenSealed: '',
+      proofing: l.proofing,
+      createdBy: ids.userId,
+      revokedAt: now,
+      createdAt: new Date(l.createdAt),
+    })),
+  );
+  await insertBatches(
+    tx,
+    shareGuest,
+    data.guests.map((g) => ({
+      id: guests.get(g.id) as string,
+      shareLinkId: linkOf.get(g.id) as string,
+      name: g.name,
+      tokenHash: null,
+      sessionExpiresAt: now,
+      authenticatedAt: new Date(g.createdAt),
+      lastSeenAt: new Date(g.createdAt),
+      createdAt: new Date(g.createdAt),
+    })),
+  );
+  // One decision per link and card: the last one listed wins.
+  const current = new Map<string, (typeof data.reviews)[number]>();
+  for (const r of data.reviews) current.set(`${linkOf.get(r.guestId)}:${r.boardId}:${r.elementId}`, r);
+  await insertBatches(
+    tx,
+    elementReview,
+    [...current.values()].map((r) => ({
+      boardId: board(r.boardId),
+      projectId: ids.projectId,
+      elementId: r.elementId,
+      status: r.status,
+      note: r.note,
+      changedByGuest: guests.get(r.guestId) as string,
+      shareLinkId: linkOf.get(r.guestId) as string,
+      changedAt: new Date(r.changedAt),
+    })),
+  );
+  await insertBatches(
+    tx,
+    elementReviewEvent,
+    data.history.map((e) => ({
+      boardId: board(e.boardId),
+      elementId: e.elementId,
+      previous: e.previous,
+      status: e.status,
+      note: e.note,
+      guestId: guests.get(e.guestId) as string,
+      shareLinkId: linkOf.get(e.guestId) as string,
+      createdAt: new Date(e.createdAt),
+    })),
+  );
+  // One pick per guest and card, as stored.
+  const picks = new Map<string, (typeof data.picks)[number]>();
+  for (const p of data.picks) picks.set(`${p.guestId}:${p.boardId}:${p.elementId}`, p);
+  await insertBatches(
+    tx,
+    sharePick,
+    [...picks.values()].map((p) => ({
+      guestId: guests.get(p.guestId) as string,
+      shareLinkId: linkOf.get(p.guestId) as string,
+      boardId: board(p.boardId),
+      elementId: p.elementId,
+      assetId: p.assetId ? (ids.stored.get(p.assetId)?.id ?? null) : null,
+      pick: p.pick,
+      stars: p.stars,
+      updatedAt: new Date(p.updatedAt),
+    })),
+  );
 }
 
 /** Is `key` a fractional-index key, as board positions are? */

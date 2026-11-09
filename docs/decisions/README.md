@@ -88,6 +88,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0083](0083-scene-sheets.md)                         | Scene sheets by department, made of what the board already holds                       |
 | [0084](0084-public-demo.md)                          | A public demo, closed by default                                                       |
 | [0085](0085-two-demo-projects.md)                    | Two sample projects in the demo, the film and a photo shoot                            |
+| [0086](0086-guest-decisions-in-archives.md)          | Guest decisions and proofing travel with the archive, on revoked links                 |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

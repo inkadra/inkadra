@@ -23,6 +23,7 @@ All JSON is UTF-8; timestamps are ISO 8601 with offset; ids are UUIDs of the exp
 | `schedule.json`                  | Shooting days with their blocks                                           |
 | `classifications.json`           | Labels of the project type, tags and custom shot values used, by name     |
 | `export-settings.json`           | PDF and image export settings of the project and its logo (an asset id)   |
+| `guests.json`                    | Review decisions and photo proofing of share link guests, by guest name   |
 
 Inside documents, cards refer to files by `assetId` (image, file, frame, and the picture of a
 character or location card, from schema version 7), `references` (the reference pictures of a
@@ -39,6 +40,15 @@ share link (links are not exported). `sha256`, when present, is the checksum of 
 Boards in the trash are not in the archive, nor anything under them or on them.
 `export-settings.json` is there only when the project saved its export settings (decision
 0039); its `logoAssetId` is one of `assets.json`.
+
+`guests.json` (decision 0086, absent from older archives and from projects no guest reviewed
+or proofed) keeps what guests of share links decided: `reviews`, the current decision of each
+link on a card; `history`, every decision a guest made or withdrew; and `picks`, what each
+guest picked, rejected or starred (1 to 5), with the picture the card showed (`assetId`, one of
+`assets.json`, or null). Rows name a guest of `guests` (the name they typed, null once retention
+cleared it), and each guest one of `links`: its board, label, role and whether it had proofing.
+Links and guests get ids made for the archive. Nothing else of a link is exported: no address,
+token, password, expiry, use count or session, and no email.
 
 A file that is missing, too large or does not match its checksum is skipped. Its cards stay:
 image and file cards then show a missing file, while optional pictures (the reference of a
@@ -63,7 +73,11 @@ An Inkadra import checks the archive before writing anything: limits in
 `PROJECT_ARCHIVE_LIMITS`, no duplicate, encrypted or symbolic-link entries, the tree and
 references (`checkArchiveStructure`). A file whose checksum does not match is skipped. People
 are never matched to accounts: everything imported belongs to the importer and keeps the
-original author's name for display.
+original author's name for display. Each link of `guests.json` becomes a link of the new project
+that is already revoked, with a token nobody was given, and its guests have no session: the
+team sees their decisions in the review history and their picks in the link's results, and
+nobody can open the link or act as a guest. As for any stopped link, retention clears guest
+names 90 days later (after the import).
 
 ## Instance backups
 

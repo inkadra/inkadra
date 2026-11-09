@@ -12,7 +12,8 @@ page has the rules of the demo, for visitors, and how to run one, for whoever ho
   over the sandbox is deleted with every file in it. Nobody can bring it back.
 - **Up to 100 MB of files, 10 MB each**: pictures (JPEG, PNG, WebP, GIF), PDFs and plain text.
 - **Only you see your sandbox.** Sharing, invitations, guest and review links, calendar feeds
-  and reports are off. Do not upload personal data or your clients' material.
+  and reports are off. The clients of the sample projects reviewed and proofed through links that
+  have ended: their decisions and picks are there to read, the links no longer open. Do not upload personal data or your clients' material.
 - **Keep your work** with "Download the project" before the end: one archive per sandbox, of the
   project you have open, which you can import into your own Inkadra.
 - **No account, no email, no tracking cookies.** The demo sets the session cookie that keeps you
