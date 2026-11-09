@@ -116,8 +116,9 @@ docker compose pull
 docker compose up -d --wait
 ```
 
-Database migrations run by themselves when the new version starts. [Upgrades](upgrades.md) has the
-details and what to do for each version.
+Database migrations run by themselves when the new version starts. New settings arrive in
+`compose.yaml` and `deploy/`: compare yours with the ones attached to the release.
+[Upgrades](upgrades.md) has the details and what to do for each version.
 
 ### What this guide was tested on
 
@@ -195,7 +196,50 @@ with the standard one unless you need what the others add: you can change later 
 | Media    | `0.9.0-media`  | ~1.4 GB | ffmpeg, exiftool and poppler: video posters, playable copies of ProRes, MKV, AVI, MXF and HEVC, stills taken from the original video, audio waveforms, camera RAW and PDF thumbnails, video reports from a device. Hardware encoding drivers |
 | Office   | `0.9.0-office` | ~2 GB   | The media image plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental                                                                                                                      |
 
-Sizes are uncompressed, measured on amd64. The image's command selects the role:
+Sizes are uncompressed, measured on amd64.
+
+### Tags
+
+| Tag           | What it is                                                  |
+| ------------- | ----------------------------------------------------------- |
+| `0.9.0`       | One release. Recommended: pin it in `INKADRA_TAG`           |
+| `0.9`         | The latest patch release of 0.9                             |
+| `latest`      | The latest stable release                                   |
+| `edge`        | The latest commit of `main`: for testing, not for real work |
+| `sha-1a2b3c4` | One commit                                                  |
+
+Every tag also exists with the suffix `-media` (`0.9.0-media`, `latest-media`, `edge-media`…)
+and `-office` (`0.9.0-office`, `latest-office`…). To use a variant, add its suffix to the tag you
+pin, for example `INKADRA_TAG=0.9.0-media`.
+
+### What the media variant adds
+
+Videos get a poster thumbnail on the board, their duration and codecs, and a playable H.264 copy
+when the browser cannot play the original (ProRes, MKV, AVI, MXF, HEVC). Camera RAW files get
+thumbnails from the JPEG the camera embedded, and PDFs a thumbnail of page 1 and their page
+count. Without it these files upload and play the same, with a generic card.
+
+The server reports what it can do in `GET /api/v1/instance` (`media.videoPosters`,
+`media.videoProxies`, `media.rawPreviews`, `media.pdfPreviews`).
+[Media previews](configuration.md#media-previews) lists the settings, and
+[decision 0048](../decisions/0048-media-worker-previews.md) the limits.
+
+It adds Debian's `ffmpeg`, `libimage-exiftool-perl` and `poppler-utils` packages and the
+libraries they depend on, and the free VAAPI and Quick Sync drivers (`mesa-va-drivers`,
+`intel-media-va-driver`, `libmfx-gen1.2`, `libvpl2`, `vainfo`) for
+[hardware video encoding](configuration.md#hardware-video-encoding). Licences: Debian builds
+ffmpeg with GPL components, so that package is under the GPL (version 2 or later) and some of
+its libraries under the LGPL; poppler is under the GPL too, and exiftool under the Perl licence
+(GPL or Artistic). Their texts are in the image under `/usr/share/doc/<package>/copyright`. The
+GPL is compatible with distributing Inkadra under the AGPL-3.0, and the server only runs the
+`ffmpeg`, `ffprobe`, `exiftool`, `pdftoppm` and `pdfinfo` programs, without linking to them.
+
+The office variant is the media image plus LibreOffice, for the worker role only, when you
+enable [Office document previews](office.md).
+
+### Roles
+
+The image's command selects the role. Each role has its own health check.
 
 | Command                 | Role                                                                |
 | ----------------------- | ------------------------------------------------------------------- |
@@ -209,46 +253,18 @@ Sizes are uncompressed, measured on amd64. The image's command selects the role:
 | `backup create`         | Write a backup of the database to `/data/backups`, then exit        |
 | `backup restore <file>` | Restore a backup into an empty database, then exit                  |
 
-It needs Postgres 16 or newer and Valkey 8 or newer (or Redis 7); `compose.yaml` runs Postgres 18
-and Valkey 9 (moving an install from 16: see [Upgrades](upgrades.md#upgrading-to-postgresql-18)). Valkey is required in production by every role. With your own
-Postgres, the `pg_trgm` extension must be available (it is in the standard `contrib` package
-and in the official images); a migration creates it as the database owner. The server runs as
-user `node` (uid 1000) with a read-only root filesystem and no Linux capabilities; it writes
-only to `/data`. `compose.yaml` starts the container as root with four capabilities, only so
-that it can give `/data` to uid 1000 when a host folder belongs to someone else; it then
-switches to uid 1000, which drops them. Each role has its own health check.
+### Requirements and security
 
-| Tag           | What it is                                                  |
-| ------------- | ----------------------------------------------------------- |
-| `0.9.0`       | One release. Recommended: pin it in `INKADRA_TAG`           |
-| `0.9`         | The latest patch release of 0.9                             |
-| `latest`      | The latest stable release                                   |
-| `edge`        | The latest commit of `main`: for testing, not for real work |
-| `sha-1a2b3c4` | One commit                                                  |
-
-Every tag also exists with the suffix `-media` (`0.9.0-media`, `latest-media`, `edge-media`…):
-the same image plus ffmpeg, exiftool and poppler, about 800 MB larger. With it, videos get a
-poster thumbnail on the board, their duration and codecs, and a playable H.264 copy when the
-browser cannot play the original (ProRes, MKV, AVI, MXF, HEVC); camera RAW files get thumbnails
-from the JPEG the camera embedded; PDFs get a thumbnail of page 1 and their page count. Without
-it they upload and play the same, with a generic card. Set `INKADRA_TAG=latest-media` (or the
-version you pin, with `-media`) to use it. The server reports which of these it can do in
-`GET /api/v1/instance` (`media.videoPosters`, `media.videoProxies`, `media.rawPreviews`,
-`media.pdfPreviews`); [Media previews](configuration.md#media-previews) lists the settings, and
-[decision 0048](../decisions/0048-media-worker-previews.md) the limits.
-
-The `-media` image adds Debian's `ffmpeg`, `libimage-exiftool-perl` and `poppler-utils` packages
-and the libraries they depend on, and the free VAAPI and Quick Sync drivers (`mesa-va-drivers`,
-`intel-media-va-driver`, `libmfx-gen1.2`, `libvpl2`, `vainfo`) for
-[hardware video encoding](configuration.md#hardware-video-encoding). Debian builds ffmpeg with GPL components, so that package is
-under the GPL (version 2 or later), and some of its libraries under the LGPL; poppler is under the
-GPL as well, and exiftool under the Perl licence (GPL or Artistic). Their licence texts are in the
-image under `/usr/share/doc/<package>/copyright`. The GPL is compatible with distributing Inkadra
-under the AGPL-3.0. The server only runs the `ffmpeg`, `ffprobe`, `exiftool`, `pdftoppm` and
-`pdfinfo` programs and does not link to them.
-
-The suffix `-office` (`0.9.0-office`, `latest-office`, `edge-office`…) is the `-media` image plus LibreOffice, for
-the worker role only when you enable [Office document previews](office.md).
+- **PostgreSQL 16 or newer**, with the `pg_trgm` extension available (it is in the standard
+  `contrib` package and in the official images); a migration creates it as the database owner.
+  `compose.yaml` runs PostgreSQL 18; to move an install from 16, see
+  [Upgrades](upgrades.md#upgrading-to-postgresql-18).
+- **Valkey 8 or newer, or Redis 7**, required in production by every role. `compose.yaml` runs
+  Valkey 9.
+- The server runs as user `node` (uid 1000) with a read-only root filesystem and no Linux
+  capabilities, and writes only to `/data`. `compose.yaml` starts the container as root with
+  four capabilities, only so that it can give `/data` to uid 1000 when a host folder belongs to
+  someone else; it then switches to uid 1000, which drops them.
 
 ## Compose variants
 
