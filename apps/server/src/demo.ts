@@ -8,7 +8,7 @@ import {
   type DemoSandbox,
   TURNSTILE_ACTION,
 } from '@inkadra/shared';
-import { and, count, eq, inArray, like, lt, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, like, lt, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
@@ -23,7 +23,7 @@ import { transferFile } from './transfers/service.ts';
 
 /**
  * The public demo (decision 0084). A sandbox is an account without email or password, made by
- * "Try the demo" with a copy of the sample project, and removed with its files after DEMO_TTL:
+ * "Try the demo" with a copy of the sample projects, and removed with its files after DEMO_TTL:
  * the only data Inkadra ever deletes on its own. Sandboxes are told apart by their address, on
  * a reserved domain no mail can reach, so the schema has nothing of the demo.
  */
@@ -32,8 +32,21 @@ export const isSandbox = (email: string) => email.endsWith(`@${DEMO_DOMAIN}`);
 const sandboxes = and(like(user.email, `%@${DEMO_DOMAIN}`), eq(user.role, 'member'));
 
 const here = dirname(fileURLToPath(import.meta.url));
-/** The archive of the sample project "Last Train"; in the image next to dist/, as drizzle/. */
-export const DEMO_SEED = process.env.DEMO_SEED ?? join(here, '..', 'demo', 'last-train.inkadra');
+const sample = (name: string) => join(here, '..', 'demo', `${name}.inkadra`);
+/**
+ * The archives every sandbox imports, in order: the short film "Last Train", then the photo
+ * shoot "Low Tide"; in the image next to dist/, as drizzle/. DEMO_SEED replaces them with one
+ * archive or a comma-separated list.
+ */
+export const DEMO_SEEDS = demoSeeds(process.env.DEMO_SEED);
+
+export function demoSeeds(value: string | undefined): string[] {
+  const listed = (value ?? '')
+    .split(',')
+    .map((path) => path.trim())
+    .filter(Boolean);
+  return listed.length > 0 ? listed : [sample('last-train'), sample('low-tide')];
+}
 
 export type DemoConfig = Pick<
   Config,
@@ -55,8 +68,8 @@ export interface DemoDeps {
   jobs: Pick<Jobs, 'processAsset' | 'deleteFiles'>;
   config: DemoConfig;
   log?: Logger;
-  /** Tests: another archive than DEMO_SEED. */
-  seed?: string;
+  /** Tests: other archives than DEMO_SEEDS. */
+  seeds?: readonly string[];
 }
 
 export const refuse = (code: 'forbidden' | 'rate_limited', reason: DemoRefusalReason) =>
@@ -112,7 +125,7 @@ export async function verifyTurnstile(
 }
 
 /**
- * Makes a sandbox: the account under the instance-wide cap, then the sample project. The cap
+ * Makes a sandbox: the account under the instance-wide cap, then the sample projects. The cap
  * is counted under a lock, so a burst of visitors cannot pass it together.
  */
 export async function createSandbox(deps: DemoDeps): Promise<string> {
@@ -128,7 +141,7 @@ export async function createSandbox(deps: DemoDeps): Promise<string> {
         email: `${randomUUID()}@${DEMO_DOMAIN}`,
         emailVerified: true,
         role: 'member',
-        // The sample project is the only one: a sandbox cannot make more.
+        // The sample projects are the only ones: a sandbox cannot make more.
         canCreateProjects: false,
       })
       .returning({ id: user.id });
@@ -136,24 +149,26 @@ export async function createSandbox(deps: DemoDeps): Promise<string> {
     return row.id;
   });
   try {
-    const { projectId } = await importProject(
-      {
-        db,
-        storage: deps.storage,
-        jobs: deps.jobs,
-        uploadMaxSize: config.UPLOAD_MAX_SIZE,
-        importMaxSize: config.IMPORT_MAX_SIZE,
-        storageEnv: config,
-        ...(deps.log ? { log: deps.log } : {}),
-      },
-      deps.seed ?? DEMO_SEED,
-      id,
-    );
-    // The shooting days of the sample start today, whenever the sandbox opens.
-    await db.execute(sql`update ${shootingDay} set date = to_char(
-        ${shootingDay.date}::date + (current_date - (select min(d.date)::date from ${shootingDay} d
-          where d.project_id = ${projectId})), 'YYYY-MM-DD')
-      where ${shootingDay.projectId} = ${projectId}`);
+    for (const seed of deps.seeds ?? DEMO_SEEDS) {
+      const { projectId, exportedAt } = await importProject(
+        {
+          db,
+          storage: deps.storage,
+          jobs: deps.jobs,
+          uploadMaxSize: config.UPLOAD_MAX_SIZE,
+          importMaxSize: config.IMPORT_MAX_SIZE,
+          storageEnv: config,
+          ...(deps.log ? { log: deps.log } : {}),
+        },
+        seed,
+        id,
+      );
+      // The shooting days stay as far from today as they were from the export, whenever the
+      // sandbox opens: Last Train shoots today, Low Tide was shot two days ago.
+      await db.execute(sql`update ${shootingDay} set date = to_char(${shootingDay.date}::date
+          + (current_date - (${exportedAt}::timestamptz at time zone 'UTC')::date), 'YYYY-MM-DD')
+        where ${shootingDay.projectId} = ${projectId}`);
+    }
   } catch (err) {
     await endSandbox(deps, id);
     throw err;
@@ -172,10 +187,13 @@ export async function readSandbox(
     .from(user)
     .where(eq(user.id, userId));
   if (!row || !isSandbox(row.email)) return null;
+  // The first sample project: the one "Try the demo" opens.
   const [own] = await db
     .select({ id: projectMember.projectId })
     .from(projectMember)
+    .innerJoin(project, eq(project.id, projectMember.projectId))
     .where(eq(projectMember.userId, userId))
+    .orderBy(asc(project.createdAt), asc(project.id))
     .limit(1);
   return {
     expiresAt: new Date(row.createdAt.getTime() + config.DEMO_TTL).toISOString(),

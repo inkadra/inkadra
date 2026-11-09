@@ -6,14 +6,15 @@ page has the rules of the demo, for visitors, and how to run one, for whoever ho
 
 ## Rules of the demo
 
-- **"Try the demo" opens a sandbox for one hour**, with a copy of the sample project "Last Train"
-  (moodboard, storyboard, shot list, shooting schedule). When the hour is over the sandbox is
-  deleted with every file in it. Nobody can bring it back.
+- **"Try the demo" opens a sandbox for one hour**, with copies of two sample projects: the short
+  film "Last Train" (moodboard, storyboard, shot list, shooting schedule) and the photo shoot
+  "Low Tide" (moodboard, shot list by look, the day of the shoot, the selects). When the hour is
+  over the sandbox is deleted with every file in it. Nobody can bring it back.
 - **Up to 100 MB of files, 10 MB each**: pictures (JPEG, PNG, WebP, GIF), PDFs and plain text.
 - **Only you see your sandbox.** Sharing, invitations, guest and review links, calendar feeds
   and reports are off. Do not upload personal data or your clients' material.
-- **Keep your work** with "Download the project" before the end: one archive per sandbox, which
-  you can import into your own Inkadra.
+- **Keep your work** with "Download the project" before the end: one archive per sandbox, of the
+  project you have open, which you can import into your own Inkadra.
 - **No account, no email, no tracking cookies.** The demo sets the session cookie that keeps you
   signed in to your sandbox; Cloudflare Turnstile checks that you are a person.
 - Opening many sandboxes, uploading what is not yours or using the demo to host files is not
@@ -54,6 +55,7 @@ server that does not set it. On, the server:
 | `DEMO_TTL`           | `1h`    | How long a sandbox lives (`30m`, `2h`, or seconds)                           |
 | `DEMO_STORAGE`       | `100MB` | Space of one sandbox, in powers of 1000                                      |
 | `DEMO_MAX_SANDBOXES` | `50`    | Sandboxes open at once; past it, "Try the demo" asks to come back later      |
+| `DEMO_SEED`          |         | Archives each sandbox imports, comma-separated; the two sample projects      |
 | `TURNSTILE_SITE_KEY` |         | Cloudflare Turnstile on "Try the demo", checked by the server; set both keys |
 | `TURNSTILE_SECRET`   |         |                                                                              |
 
@@ -64,8 +66,12 @@ could open sandboxes up to the cap. The server accepts a Turnstile answer only f
 sandbox every ten minutes and has five refused attempts (a failed check, a full demo) in the
 same time.
 
-The sample project is `apps/server/demo/last-train.inkadra`. Rebuild it after a change to the
-archive format or to the sample, against an empty instance that is not a demo:
+The sample projects are `apps/server/demo/last-train.inkadra` and `low-tide.inkadra`
+([the demo projects](demo-project.md), [decision 0085](decisions/0085-two-demo-projects.md)),
+imported in that order; "Try the demo" opens the first. Their shooting days keep the distance
+from today they had when the archive was exported. Rebuild them after a change to the archive
+format or to a sample, in the daytime, against an empty instance that is not a demo; add
+`last-train` or `low-tide` to rebuild one:
 
 ```sh
 SHOTS_BASE_URL=http://localhost:3100 pnpm --filter @inkadra/e2e exec tsx scripts/demo-seed.ts
