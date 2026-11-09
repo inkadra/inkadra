@@ -224,12 +224,27 @@ export type ArchiveReviews = z.infer<typeof ArchiveReviews>;
  * keeps them on a revoked link that no address opens, so nobody can act as these guests.
  * Absent from older archives.
  */
+/**
+ * A guest's name or a link's label as the live routes keep them: trimmed, null when empty, at
+ * most 80 characters (`Author`, `ShareLinkGuest`). Archives allow up to 200 and are cut here.
+ */
+const GuestText = z
+  .string()
+  .max(200)
+  .nullable()
+  .transform((value) => {
+    const text = value?.trim() ?? '';
+    if (!text) return null;
+    const chars = [...text];
+    return chars.length > 80 ? chars.slice(0, 80).join('').trim() : text;
+  });
+
 export const ArchiveGuests = z.object({
   links: z.array(
     z.object({
       id: Id,
       boardId: Id,
-      label: z.string().max(200).nullable(),
+      label: GuestText,
       /** A role this reader does not know is kept as `guest_view`. */
       role: GuestRole.catch('guest_view'),
       proofing: z.boolean(),
@@ -242,7 +257,7 @@ export const ArchiveGuests = z.object({
       id: Id,
       linkId: Id,
       /** Null once retention cleared it (90 days after the link stopped). */
-      name: z.string().max(200).nullable(),
+      name: GuestText,
       createdAt: Timestamp,
     }),
   ),
@@ -309,7 +324,7 @@ export interface ArchiveStructure {
   schedule: Array<Pick<ArchiveShootingDay, 'id' | 'boardId'>>;
   /** `guests.json`, when the archive has one. */
   guests?: {
-    links: Array<Pick<ArchiveGuests['links'][number], 'id' | 'boardId'>>;
+    links: Array<Pick<ArchiveGuests['links'][number], 'id' | 'boardId' | 'includeSubBoards'>>;
     guests: Array<Pick<ArchiveGuests['guests'][number], 'id' | 'linkId'>>;
     reviews: Array<{ guestId: string; boardId: string }>;
     history: Array<{ guestId: string; boardId: string }>;
@@ -388,12 +403,13 @@ export function checkArchiveStructure(a: ArchiveStructure): string | null {
     onBoard('review', a.reviews.current) ??
     onBoard('review history', a.reviews.history) ??
     onBoard('shooting day', a.schedule) ??
-    (a.guests ? checkGuests(a.guests, assets, unique, onBoard) : null)
+    (a.guests ? checkGuests(a.guests, boards, assets, unique, onBoard) : null)
   );
 }
 
 function checkGuests(
   g: NonNullable<ArchiveStructure['guests']>,
+  boards: Map<string, { parentId: string | null }>,
   assets: Set<string>,
   unique: (what: string, ids: string[]) => string | null,
   onBoard: (what: string, rows: Array<{ boardId: string }>) => string | null,
@@ -413,6 +429,23 @@ function checkGuests(
   if (g.guests.some((x) => !links.has(x.linkId))) return 'guest: missing link';
   const byGuest = (what: string, rows: Array<{ guestId: string }>) =>
     rows.some((r) => !guests.has(r.guestId)) ? `${what}: missing guest` : null;
+  // A guest only saw its link's board, and its sub-boards when the link included them.
+  const linkById = new Map(g.links.map((l) => [l.id, l]));
+  const linkOfGuest = new Map(g.guests.map((x) => [x.id, linkById.get(x.linkId)]));
+  const within = (boardId: string, link: (typeof g.links)[number]) => {
+    if (!link.includeSubBoards) return boardId === link.boardId;
+    // The tree was checked for cycles above, so walking up ends at the root.
+    for (let at: string | null = boardId; at !== null; at = boards.get(at)?.parentId ?? null)
+      if (at === link.boardId) return true;
+    return false;
+  };
+  const onLink = (what: string, rows: Array<{ guestId: string; boardId: string }>) =>
+    rows.some((r) => {
+      const link = linkOfGuest.get(r.guestId);
+      return link !== undefined && !within(r.boardId, link);
+    })
+      ? `${what}: board outside its link`
+      : null;
   return (
     onBoard('guest link', g.links) ??
     onBoard('guest review', g.reviews) ??
@@ -421,6 +454,9 @@ function checkGuests(
     byGuest('guest review', g.reviews) ??
     byGuest('guest review history', g.history) ??
     byGuest('pick', g.picks) ??
+    onLink('guest review', g.reviews) ??
+    onLink('guest review history', g.history) ??
+    onLink('pick', g.picks) ??
     (g.picks.some((p) => p.assetId !== null && !assets.has(p.assetId))
       ? 'pick: missing file'
       : null)

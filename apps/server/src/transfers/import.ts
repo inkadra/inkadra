@@ -613,14 +613,18 @@ async function importGuests(
 ) {
   if (data.guests.length === 0) return;
   const now = new Date();
-  const links = new Map(data.links.map((l) => [l.id, randomUUID()]));
+  // Only links some guest belongs to, as an export writes them: a hand-made archive's empty
+  // link adds nothing.
+  const used = new Set(data.guests.map((g) => g.linkId));
+  const usedLinks = data.links.filter((l) => used.has(l.id));
+  const links = new Map(usedLinks.map((l) => [l.id, randomUUID()]));
   const guests = new Map(data.guests.map((g) => [g.id, randomUUID()]));
   const linkOf = new Map(data.guests.map((g) => [g.id, links.get(g.linkId) as string]));
   const board = (id: string) => ids.boardIds.get(id) as string;
   await insertBatches(
     tx,
     shareLink,
-    data.links.map((l) => ({
+    usedLinks.map((l) => ({
       id: links.get(l.id) as string,
       projectId: ids.projectId,
       boardId: board(l.boardId),

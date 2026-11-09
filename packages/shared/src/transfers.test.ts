@@ -5,6 +5,7 @@ import { buildOpenApiDocument } from './openapi.ts';
 import {
   ArchiveAsset,
   ArchiveComment,
+  ArchiveGuests,
   ArchivePerson,
   type ArchiveStructure,
   checkArchiveStructure,
@@ -142,7 +143,7 @@ describe('archive structure', () => {
 
   it('checks that guest decisions and picks name a listed guest, link, board and file', () => {
     const guests = () => ({
-      links: [{ id: other, boardId: root }],
+      links: [{ id: other, boardId: root, includeSubBoards: true }],
       guests: [{ id: start, linkId: other }],
       reviews: [{ guestId: start, boardId: child }],
       history: [{ guestId: start, boardId: child }],
@@ -159,11 +160,60 @@ describe('archive structure', () => {
     c.picks[0] = { guestId: start, boardId: child, assetId: other };
     expect(checkArchiveStructure({ ...ok(), guests: c })).toMatch(/pick: missing file/);
     const d = guests();
-    d.links[0] = { id: other, boardId: reply };
+    d.links[0] = { id: other, boardId: reply, includeSubBoards: true };
     expect(checkArchiveStructure({ ...ok(), guests: d })).toMatch(/guest link: missing board/);
     const e = guests();
     e.history[0] = { guestId: start, boardId: other };
     expect(checkArchiveStructure({ ...ok(), guests: e })).toMatch(/history: missing board/);
+  });
+
+  it('refuses guest data on a board the link did not show, and duplicate guest ids', () => {
+    const guests = () => ({
+      links: [{ id: other, boardId: root, includeSubBoards: false }],
+      guests: [{ id: start, linkId: other }],
+      reviews: [{ guestId: start, boardId: root }],
+      history: [{ guestId: start, boardId: root }],
+      picks: [{ guestId: start, boardId: root, assetId }],
+    });
+    expect(checkArchiveStructure({ ...ok(), guests: guests() })).toBeNull();
+    const a = guests();
+    a.picks[0] = { guestId: start, boardId: child, assetId };
+    expect(checkArchiveStructure({ ...ok(), guests: a })).toMatch(/pick: board outside its link/);
+    const b = guests();
+    b.reviews[0] = { guestId: start, boardId: child };
+    expect(checkArchiveStructure({ ...ok(), guests: b })).toMatch(
+      /guest review: board outside its link/,
+    );
+    const c = guests();
+    c.links[0] = { id: other, boardId: child, includeSubBoards: true };
+    expect(checkArchiveStructure({ ...ok(), guests: c })).toMatch(/board outside its link/);
+    const d = guests();
+    d.links.push({ id: other, boardId: root, includeSubBoards: false });
+    expect(checkArchiveStructure({ ...ok(), guests: d })).toMatch(/duplicate guest link/);
+    const e = guests();
+    e.guests.push({ id: start, linkId: other });
+    expect(checkArchiveStructure({ ...ok(), guests: e })).toMatch(/duplicate guest/);
+  });
+
+  it('keeps guest names and link labels as the live routes do', () => {
+    const guest = (name: string | null) =>
+      ArchiveGuests.shape.guests.element.parse({ id, linkId: id, name, createdAt: at }).name;
+    expect(guest('  Elena Marino  ')).toBe('Elena Marino');
+    expect(guest('   ')).toBeNull();
+    expect(guest('')).toBeNull();
+    expect(guest(null)).toBeNull();
+    expect([...(guest('é'.repeat(150)) ?? '')]).toHaveLength(80);
+    expect(ArchiveGuests.shape.guests.element.safeParse({ id, linkId: id, name: 'x'.repeat(201), createdAt: at }).success).toBe(false);
+    const label = ArchiveGuests.shape.links.element.parse({
+      id,
+      boardId: id,
+      label: '  Studio Maree ',
+      role: 'guest_view',
+      proofing: true,
+      includeSubBoards: false,
+      createdAt: at,
+    }).label;
+    expect(label).toBe('Studio Maree');
   });
 });
 

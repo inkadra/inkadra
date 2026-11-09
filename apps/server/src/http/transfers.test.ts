@@ -711,6 +711,14 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       payload: { label: 'again' },
     });
     expect(reopen.statusCode).toBe(409);
+    // Opening a session on the imported link fails whatever token is tried.
+    const session = await target.app.inject({
+      method: 'POST',
+      url: `/api/v1/guest/links/${link.id}/session`,
+      headers: { origin: 'http://localhost:3000' },
+      payload: { token: 'x'.repeat(43) },
+    });
+    expect([401, 403, 404]).toContain(session.statusCode);
     // The team sees the client's decision, by name, with its history and the proofing.
     const reviews = await call(target.app, importer, 'GET', `/boards/${rootB?.id}/reviews`);
     expect(reviews.json().items).toEqual([
