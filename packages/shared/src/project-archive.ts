@@ -2,6 +2,7 @@
 
 import { CommentPin, CommentVisibility, ElementRef, MAX_COMMENT_LENGTH } from './comments.ts';
 import { Id, Timestamp, z } from './common.ts';
+import { GuestRole, PickValue } from './guests.ts';
 import { ProjectIcon, ProjectTimeZone, ProjectType } from './projects.ts';
 import { ReviewStatus } from './reviews.ts';
 import { ShootingDayInput } from './schedule.ts';
@@ -26,6 +27,7 @@ import { ShootingDayInput } from './schedule.ts';
  *     schedule.json                    ArchiveShootingDay[]
  *     classifications.json             ArchiveClassifications: labels of the values used
  *     export-settings.json             ArchiveExportSettings: PDF/image export settings and logo
+ *     guests.json                      ArchiveGuests: guest review decisions and proofing
  *
  * Ids are the ones of the exporting server. An import gives projects, boards, files, comments
  * and versions new ids and rewrites references; element ids inside documents stay. Readers
@@ -188,7 +190,7 @@ export const ArchiveComment = z.object({
 export type ArchiveComment = z.infer<typeof ArchiveComment>;
 
 export const ArchiveReviews = z.object({
-  /** The team's current status of each card (guest decisions stay with their links). */
+  /** The team's current status of each card (guest decisions are in `guests.json`). */
   current: z.array(
     z.object({
       boardId: Id,
@@ -214,6 +216,76 @@ export const ArchiveReviews = z.object({
 });
 export type ArchiveReviews = z.infer<typeof ArchiveReviews>;
 
+/**
+ * What the guests of share links decided (decision 0086): their review decisions and photo
+ * proofing, by the name each guest typed. Links themselves are not exported: each is listed
+ * under an id made for the archive, with its board, label and what it let guests do, never its
+ * address, password, expiry or use. Guests have archive ids too and no session. An importer
+ * keeps them on a revoked link that no address opens, so nobody can act as these guests.
+ * Absent from older archives.
+ */
+export const ArchiveGuests = z.object({
+  links: z.array(
+    z.object({
+      id: Id,
+      boardId: Id,
+      label: z.string().max(200).nullable(),
+      /** A role this reader does not know is kept as `guest_view`. */
+      role: GuestRole.catch('guest_view'),
+      proofing: z.boolean(),
+      includeSubBoards: z.boolean(),
+      createdAt: Timestamp,
+    }),
+  ),
+  guests: z.array(
+    z.object({
+      id: Id,
+      linkId: Id,
+      /** Null once retention cleared it (90 days after the link stopped). */
+      name: z.string().max(200).nullable(),
+      createdAt: Timestamp,
+    }),
+  ),
+  /** The current decision of each link on a card, made by one of its guests. */
+  reviews: z.array(
+    z.object({
+      guestId: Id,
+      boardId: Id,
+      elementId: ElementRef,
+      status: z.enum(['approved', 'changes_requested']),
+      note: z.string().max(2000).nullable(),
+      changedAt: Timestamp,
+    }),
+  ),
+  /** Every decision guests made or withdrew (`none`), oldest first. */
+  history: z.array(
+    z.object({
+      guestId: Id,
+      boardId: Id,
+      elementId: ElementRef,
+      previous: ReviewStatus,
+      status: ReviewStatus,
+      note: z.string().max(2000).nullable(),
+      createdAt: Timestamp,
+    }),
+  ),
+  /** Proofing: what each guest picked, rejected or starred; `assetId` is one of `assets.json`. */
+  picks: z.array(
+    z
+      .object({
+        guestId: Id,
+        boardId: Id,
+        elementId: ElementRef,
+        assetId: Id.nullable(),
+        pick: PickValue.nullable(),
+        stars: z.int().min(1).max(5).nullable(),
+        updatedAt: Timestamp,
+      })
+      .refine((p) => p.pick !== null || p.stars !== null, 'A pick without pick or stars.'),
+  ),
+});
+export type ArchiveGuests = z.infer<typeof ArchiveGuests>;
+
 export const ArchiveShootingDay = ShootingDayInput.extend({ id: Id, boardId: Id });
 export type ArchiveShootingDay = z.infer<typeof ArchiveShootingDay>;
 
@@ -235,13 +307,23 @@ export interface ArchiveStructure {
   versions: Array<Pick<ArchiveVersion, 'id' | 'boardId'>>;
   reviews: ArchiveReviews;
   schedule: Array<Pick<ArchiveShootingDay, 'id' | 'boardId'>>;
+  /** `guests.json`, when the archive has one. */
+  guests?: {
+    links: Array<Pick<ArchiveGuests['links'][number], 'id' | 'boardId'>>;
+    guests: Array<Pick<ArchiveGuests['guests'][number], 'id' | 'linkId'>>;
+    reviews: Array<{ guestId: string; boardId: string }>;
+    history: Array<{ guestId: string; boardId: string }>;
+    picks: Array<{ guestId: string; boardId: string; assetId: string | null }>;
+  };
 }
 
 /**
  * The rules schemas cannot express, checked before an import writes anything: exactly one
  * root, every parent present and no cycle, unique ids, and every reference (cover, thread,
  * version, review, shooting day) to something in the archive. A reply's thread start is on
- * the same board and is itself a thread start. Returns the first problem, or null.
+ * the same board and is itself a thread start. Guest links are on boards of the archive, their
+ * guests on listed links, and guest rows name a listed guest, board and file. Returns the
+ * first problem, or null.
  */
 export function checkArchiveStructure(a: ArchiveStructure): string | null {
   const unique = (what: string, ids: string[]) => {
@@ -305,7 +387,43 @@ export function checkArchiveStructure(a: ArchiveStructure): string | null {
     onBoard('version', a.versions) ??
     onBoard('review', a.reviews.current) ??
     onBoard('review history', a.reviews.history) ??
-    onBoard('shooting day', a.schedule)
+    onBoard('shooting day', a.schedule) ??
+    (a.guests ? checkGuests(a.guests, assets, unique, onBoard) : null)
+  );
+}
+
+function checkGuests(
+  g: NonNullable<ArchiveStructure['guests']>,
+  assets: Set<string>,
+  unique: (what: string, ids: string[]) => string | null,
+  onBoard: (what: string, rows: Array<{ boardId: string }>) => string | null,
+): string | null {
+  const dup =
+    unique(
+      'guest link',
+      g.links.map((l) => l.id),
+    ) ??
+    unique(
+      'guest',
+      g.guests.map((x) => x.id),
+    );
+  if (dup) return dup;
+  const links = new Set(g.links.map((l) => l.id));
+  const guests = new Set(g.guests.map((x) => x.id));
+  if (g.guests.some((x) => !links.has(x.linkId))) return 'guest: missing link';
+  const byGuest = (what: string, rows: Array<{ guestId: string }>) =>
+    rows.some((r) => !guests.has(r.guestId)) ? `${what}: missing guest` : null;
+  return (
+    onBoard('guest link', g.links) ??
+    onBoard('guest review', g.reviews) ??
+    onBoard('guest review history', g.history) ??
+    onBoard('pick', g.picks) ??
+    byGuest('guest review', g.reviews) ??
+    byGuest('guest review history', g.history) ??
+    byGuest('pick', g.picks) ??
+    (g.picks.some((p) => p.assetId !== null && !assets.has(p.assetId))
+      ? 'pick: missing file'
+      : null)
   );
 }
 

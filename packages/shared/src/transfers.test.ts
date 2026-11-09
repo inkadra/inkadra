@@ -139,6 +139,32 @@ describe('archive structure', () => {
     expect(checkArchiveStructure({ ...ok(), logoAssetId: other })).toMatch(/logo/);
     expect(checkArchiveStructure({ ...ok(), logoAssetId: assetId })).toBeNull();
   });
+
+  it('checks that guest decisions and picks name a listed guest, link, board and file', () => {
+    const guests = () => ({
+      links: [{ id: other, boardId: root }],
+      guests: [{ id: start, linkId: other }],
+      reviews: [{ guestId: start, boardId: child }],
+      history: [{ guestId: start, boardId: child }],
+      picks: [{ guestId: start, boardId: child, assetId }],
+    });
+    expect(checkArchiveStructure({ ...ok(), guests: guests() })).toBeNull();
+    const a = guests();
+    a.guests[0] = { id: start, linkId: reply };
+    expect(checkArchiveStructure({ ...ok(), guests: a })).toMatch(/guest: missing link/);
+    const b = guests();
+    b.picks[0] = { guestId: reply, boardId: child, assetId };
+    expect(checkArchiveStructure({ ...ok(), guests: b })).toMatch(/pick: missing guest/);
+    const c = guests();
+    c.picks[0] = { guestId: start, boardId: child, assetId: other };
+    expect(checkArchiveStructure({ ...ok(), guests: c })).toMatch(/pick: missing file/);
+    const d = guests();
+    d.links[0] = { id: other, boardId: reply };
+    expect(checkArchiveStructure({ ...ok(), guests: d })).toMatch(/guest link: missing board/);
+    const e = guests();
+    e.history[0] = { guestId: start, boardId: other };
+    expect(checkArchiveStructure({ ...ok(), guests: e })).toMatch(/history: missing board/);
+  });
 });
 
 describe('backups', () => {
