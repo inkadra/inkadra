@@ -439,7 +439,7 @@ export async function seedLowTide(browser: Browser, base: string): Promise<LowTi
       frames[name] = createElement(
         sel,
         'image',
-        { x: (i % 6) * 300, y: 220 + Math.floor(i / 6) * 180 },
+        { x: (i % 6) * 300, y: 220 + Math.floor(i / 6) * 210 },
         { assetId: pic(name), w: 280 },
         by,
       ).id;

@@ -231,7 +231,7 @@ the dunes. Cold light, wet sand, one red coat.
 | Irene Galli | Studio Maree, the client  | none, a share link | Guest          |
 
 The project is opened by Giulia Bianchi, the first account of the instance, who invites Lia and
-Nora (registration is by invitation); nothing in it is hers. The models have no account: they are
+Nora (registration is by invitation); every card, comment and file in it is Lia's or Nora's. The models have no account: they are
 the cast of the frames, by first name. All names are invented; Ivo the model is not Ivo Santoro of
 Last Train.
 
