@@ -45,6 +45,12 @@
   overflow: hidden;
 }
 
+/* The body, not the dialog, goes fullscreen: it brings the stage colour along. */
+.present-body:fullscreen,
+.present-body::backdrop {
+  background: var(--ink-bg-canvas);
+}
+
 .present-main {
   flex: 1;
   min-width: 0;
