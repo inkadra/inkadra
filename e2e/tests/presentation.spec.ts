@@ -173,7 +173,8 @@ test('the fullscreen button puts the presentation fullscreen and back', async ({
   await page.setViewportSize({ width: 1280, height: 800 });
   const present = await open(page);
   const header = present.locator('.present-header');
-  const fullscreenElement = () => page.evaluate(() => document.fullscreenElement?.className ?? null);
+  const fullscreenElement = () =>
+    page.evaluate(() => document.fullscreenElement?.className ?? null);
   // Chrome refuses fullscreen on a <dialog>: the button used to do nothing.
   await header.getByRole('button', { name: 'Schermo intero' }).click();
   await expect.poll(fullscreenElement).toBe('present-body');
