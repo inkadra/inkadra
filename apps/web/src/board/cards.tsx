@@ -1,5 +1,6 @@
 import {
   addTodoItem,
+  growsWithText,
   isContainer,
   removeTodoItem,
   updateElement,
@@ -137,6 +138,7 @@ export const Card = memo(function Card({
   const isEditing = editing === element.id;
   const isCropping = cropping === element.id;
   const w = resize?.w ?? element.w;
+  const h = resize?.h ?? element.h;
   const style: CSSProperties = nested
     ? {}
     : {
@@ -147,9 +149,11 @@ export const Card = memo(function Card({
           element.type === 'character' ||
           element.type === 'link' ||
           isContainer(element) ||
-          isCropping
+          isCropping ||
+          growsWithText(element)
             ? undefined
-            : (resize?.h ?? element.h),
+            : h,
+        minHeight: growsWithText(element) ? h : undefined,
         transform: offset ? `translate(${offset.dx}px, ${offset.dy}px)` : undefined,
       };
   if (zoom !== undefined) (style as Record<string, unknown>)['--zoom'] = zoom;
