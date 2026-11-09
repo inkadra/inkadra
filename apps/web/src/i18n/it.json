@@ -3044,30 +3044,7 @@
     "sidebarPreview": "Così appare nella barra laterale",
     "close": "Chiudi",
     "boardTitle": "Icona e colore della board",
-    "boardPreview": "Così appare nelle card della board",
-    "presentation": "Presentazione",
-    "theme": {
-      "accent": "Accento",
-      "accentDefault": "{{color}} · colore del progetto",
-      "font": "Font dei titoli",
-      "fontNote": "Inclusi, licenza OFL",
-      "fonts": {
-        "inter": "come l’app",
-        "fraunces": "serif",
-        "space-grotesk": "grotesk",
-        "ibm-plex-mono": "mono"
-      },
-      "logo": "Logo",
-      "logoNote": "PNG o JPEG fino a 512 KB",
-      "logoUse": "Copertina e intestazioni",
-      "noLogo": "Nessun logo",
-      "logoRemove": "Rimuovi",
-      "previewSlide": "Anteprima · presentazione",
-      "previewPdf": "PDF · copertina e pagina (sempre su carta chiara)",
-      "paperNote": "Su carta l’accento usa la variante scura della stessa tinta, per il contrasto.",
-      "sampleTitle": "Scena 1",
-      "sampleMeta": "Campo lungo · 8 inquadrature"
-    }
+    "boardPreview": "Così appare nelle card della board"
   },
   "transfer": {
     "exportMenu": "Esporta progetto…",
@@ -3399,6 +3376,15 @@
       "frame": "Inq.",
       "count_one": "{{count}} foglio per scena",
       "count_other": "{{count}} fogli per scena"
+    },
+    "heading": "Stile titoli",
+    "headingHint": "Titoli del PDF e della presentazione, per tutto il progetto.",
+    "headingFailed": "Impossibile salvare lo stile dei titoli. Riprova.",
+    "headingFonts": {
+      "inter": "come l’app",
+      "fraunces": "serif",
+      "space-grotesk": "grotesk",
+      "ibm-plex-mono": "mono"
     }
   },
   "screenplay": {
@@ -4434,6 +4420,10 @@
             "text": "Una pagina per scena per un reparto: camera, luci, costumi o produzione."
           },
           "3": {
+            "title": "Stile titoli",
+            "text": "Il carattere dei titoli, per il PDF e la presentazione."
+          },
+          "4": {
             "title": "Il progetto intero",
             "text": "Esportalo in zip e importalo su un altro server."
           }

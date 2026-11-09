@@ -51,6 +51,15 @@ describe('export settings on the client', () => {
       logo: null,
       theme: { color: 'blue', headingFont: 'inter' },
     });
+    // An accent stored before decision 0088 is ignored: the project's colour, the chosen font.
+    expect(
+      initialExportState(
+        { ...fresh, theme: { accent: 'teal', headingFont: 'fraunces' } },
+        'storyboard',
+        undefined,
+        'it-IT',
+      ).theme,
+    ).toEqual({ color: 'blue', headingFont: 'fraunces' });
     // Settings that could not be read: the same defaults, without logo or theme.
     expect(initialExportState(null, 'canvas', undefined, 'it-IT')).toMatchObject({
       what: 'board',

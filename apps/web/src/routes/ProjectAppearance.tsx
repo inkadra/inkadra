@@ -1,15 +1,5 @@
 /* biome-ignore-all lint/a11y/useSemanticElements: Custom radio tiles implement roving focus and arrow selection. */
-import {
-  DEFAULT_PROJECT_THEME,
-  defaultProjectIcon,
-  type ExportSettings,
-  type Project,
-  ProjectIcon,
-  type ProjectTheme,
-  THEME_FONTS,
-  type ThemeFont,
-  type z,
-} from '@inkadra/shared';
+import { defaultProjectIcon, type Project, ProjectIcon, type z } from '@inkadra/shared';
 import {
   Button,
   Dialog,
@@ -19,7 +9,6 @@ import {
   ProjectGlyph,
   swallowOutsidePress,
 } from '@inkadra/ui';
-import { light } from '@inkadra/ui/tokens';
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -34,15 +23,7 @@ import {
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
-import {
-  fetchExportSettings,
-  LogoTimeoutError,
-  logoProblem,
-  logoUrl,
-  saveExportSettings,
-  uploadLogo,
-} from '../board/export/settings.ts';
-import { headingFamily, loadHeadingFont, paperAccent, screenAccent } from '../board/theme.ts';
+import { screenAccent } from '../board/theme.ts';
 import { menuFloor, placeMenu } from '../menus/place-menu.ts';
 import { DeleteProjectDialog } from './DeleteProjectDialog.tsx';
 import { MoveToGroupDialog, useDropTarget, useProjectDrag } from './ProjectGroups.tsx';
@@ -491,14 +472,8 @@ export const PROJECT_EMOJIS = [
   '🌸',
 ];
 
-type AppearanceTab = 'symbol' | 'emoji' | 'presentation';
-/** Font names are names: never translated. */
-const FONT_NAMES: Record<ThemeFont, string> = {
-  inter: 'Inter',
-  fraunces: 'Fraunces',
-  'space-grotesk': 'Space Grotesk',
-  'ibm-plex-mono': 'IBM Plex Mono',
-};
+type AppearanceTab = 'symbol' | 'emoji';
+const TABS: AppearanceTab[] = ['symbol', 'emoji'];
 
 export function ProjectAppearanceDialog({
   project,
@@ -506,7 +481,7 @@ export function ProjectAppearanceDialog({
   onSaved,
   board,
 }: {
-  project: Pick<Project, 'id' | 'name' | 'icon' | 'myRole'> & { rootBoardId?: string };
+  project: Pick<Project, 'id' | 'name' | 'icon' | 'myRole'>;
   onClose: () => void;
   onSaved?: (project: Project) => void;
   /**
@@ -518,26 +493,12 @@ export function ProjectAppearanceDialog({
   const { t } = useTranslation();
   const [icon, setIcon] = useState<Appearance>({ ...project.icon });
   const [tab, setTab] = useState<AppearanceTab>(project.icon.emoji ? 'emoji' : 'symbol');
-  // Symbol or emoji, whichever was shown last: the Presentation tab keeps that choice.
-  const [iconTab, setIconTab] = useState<'symbol' | 'emoji'>(tab === 'emoji' ? 'emoji' : 'symbol');
-  const tabs: AppearanceTab[] = board ? ['symbol', 'emoji'] : ['symbol', 'emoji', 'presentation'];
-  const showTab = (value: AppearanceTab) => {
-    setTab(value);
-    if (value !== 'presentation') setIconTab(value);
-  };
   // What is typed in the field: an emoji from the grid shows as a choice there, not as text.
   const [typed, setTyped] = useState(
     project.icon.emoji && !PROJECT_EMOJIS.includes(project.icon.emoji) ? project.icon.emoji : '',
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
-  // The presentation and PDF theme lives with the export settings, like the logo (decision 0057).
-  const [settings, setSettings] = useState<ExportSettings | null>(null);
-  const [theme, setTheme] = useState<ProjectTheme>(DEFAULT_PROJECT_THEME);
-  const [logoState, setLogoState] = useState<
-    'idle' | 'busy' | 'type' | 'size' | 'failed' | 'timeout'
-  >('idle');
-  const fileInput = useRef<HTMLInputElement>(null);
   const allowed = canEditProjectAppearance(project);
   const dialog = useRef<DialogHandle>(null);
   useEffect(() => {
@@ -545,39 +506,13 @@ export function ProjectAppearanceDialog({
       .querySelector<HTMLElement>('.project-appearance [role="tab"][aria-selected="true"]')
       ?.focus();
   }, []);
-  useEffect(() => {
-    if (board) return;
-    let live = true;
-    fetchExportSettings(project.id).then(
-      (loaded) => {
-        if (!live) return;
-        setSettings(loaded);
-        // A server older than the theme answers without it.
-        setTheme(loaded.theme ?? DEFAULT_PROJECT_THEME);
-      },
-      () => {},
-    );
-    return () => {
-      live = false;
-    };
-  }, [board, project.id]);
-  useEffect(() => {
-    // The font list and previews show every heading font in its own face.
-    if (tab === 'presentation') for (const font of THEME_FONTS) void loadHeadingFont(font);
-  }, [tab]);
   const disabled = busy || !allowed;
-  const themeDisabled = disabled || !settings?.canEdit;
-  const payload = { ...icon, emoji: iconTab === 'symbol' ? null : icon.emoji };
-  const valid =
-    ProjectIcon.safeParse(payload).success && (iconTab !== 'emoji' || !!icon.emoji?.trim());
-  const saved = settings?.theme ?? DEFAULT_PROJECT_THEME;
-  const themeDirty =
-    !!settings && (theme.accent !== saved.accent || theme.headingFont !== saved.headingFont);
+  const payload = { ...icon, emoji: tab === 'symbol' ? null : icon.emoji };
+  const valid = ProjectIcon.safeParse(payload).success && (tab !== 'emoji' || !!icon.emoji?.trim());
   const dirty =
     allowed &&
     !busy &&
-    (themeDirty ||
-      payload.shape !== project.icon.shape ||
+    (payload.shape !== project.icon.shape ||
       payload.color !== project.icon.color ||
       (payload.emoji ?? null) !== (project.icon.emoji ?? null));
   async function save(reset = false) {
@@ -586,11 +521,7 @@ export function ProjectAppearanceDialog({
     setError(false);
     try {
       if (board) await board.save(reset ? null : payload);
-      else {
-        if (themeDirty) await saveExportSettings(project.id, { theme });
-        const updated = await updateProjectAppearance(project.id, payload);
-        onSaved?.(updated);
-      }
+      else onSaved?.(await updateProjectAppearance(project.id, payload));
       onClose();
     } catch {
       setError(true);
@@ -598,50 +529,10 @@ export function ProjectAppearanceDialog({
       setBusy(false);
     }
   }
-  // The logo is saved at once, as in the export dialog: it is shared with every export.
-  async function pickLogo(file: File | undefined) {
-    if (!file || !project.rootBoardId) return;
-    const problem = logoProblem(file);
-    if (problem) {
-      setLogoState(problem);
-      return;
-    }
-    setLogoState('busy');
-    try {
-      const assetId = await uploadLogo(file, project.id, project.rootBoardId);
-      setSettings(await saveExportSettings(project.id, { logoAssetId: assetId }));
-      setLogoState('idle');
-    } catch (err) {
-      setLogoState(err instanceof LogoTimeoutError ? 'timeout' : 'failed');
-    }
-  }
-  async function dropLogo() {
-    setLogoState('busy');
-    try {
-      setSettings(await saveExportSettings(project.id, { logoAssetId: null }));
-      setLogoState('idle');
-    } catch {
-      setLogoState('failed');
-    }
-  }
   // Text that is not one emoji stays in the field, with its error: only a valid emoji is shown.
   const shown = valid ? payload : { ...payload, emoji: null };
-  const accent = theme.accent ?? icon.color;
-  const logo = settings?.logo ?? null;
-  const logoError = ['type', 'size', 'failed', 'timeout'].includes(logoState);
-  const themeStyle = {
-    '--theme-accent': screenAccent(accent),
-    '--theme-heading': headingFamily(theme.headingFont),
-    '--paper-accent': paperAccent(accent),
-    '--paper-bg': light['surface-1'],
-    '--paper-text': light['text-primary'],
-    '--paper-muted': light['text-secondary'],
-    '--paper-line': light['border-default'],
-  } as CSSProperties;
   return (
-    <div
-      className={`phone-sheet project-appearance${tab === 'presentation' ? ' project-appearance--theme' : ''}`}
-    >
+    <div className="phone-sheet project-appearance">
       <Dialog
         ref={dialog}
         open
@@ -654,7 +545,6 @@ export function ProjectAppearanceDialog({
       >
         <form
           className="project-appearance__form"
-          style={themeStyle}
           onSubmit={(event) => {
             event.preventDefault();
             void save();
@@ -669,8 +559,7 @@ export function ProjectAppearanceDialog({
           >
             ×
           </button>
-          {tab !== 'presentation' && (
-            <div className="project-appearance__preview">
+          <div className="project-appearance__preview">
               <div
                 className="project-appearance__tile"
                 style={
@@ -689,13 +578,12 @@ export function ProjectAppearanceDialog({
                 <small>{t(board ? 'appearance.boardPreview' : 'appearance.sidebarPreview')}</small>
               </div>
             </div>
-          )}
           <div
             className="project-appearance__tabs"
             role="tablist"
             aria-label={t('appearance.title')}
           >
-            {tabs.map((value, index) => (
+            {TABS.map((value, index) => (
               <button
                 type="button"
                 key={value}
@@ -705,24 +593,24 @@ export function ProjectAppearanceDialog({
                 aria-controls={`appearance-panel-${value}`}
                 tabIndex={tab === value ? 0 : -1}
                 disabled={disabled}
-                onClick={() => showTab(value)}
+                onClick={() => setTab(value)}
                 onKeyDown={(event) => {
                   if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
                     event.preventDefault();
                     const step = event.key === 'ArrowLeft' ? -1 : 1;
                     const next =
                       event.key === 'Home'
-                        ? tabs[0]
+                        ? TABS[0]
                         : event.key === 'End'
-                          ? tabs.at(-1)
-                          : tabs[(index + step + tabs.length) % tabs.length];
+                          ? TABS.at(-1)
+                          : TABS[(index + step + TABS.length) % TABS.length];
                     if (!next) return;
-                    showTab(next);
+                    setTab(next);
                     document.getElementById(`appearance-tab-${next}`)?.focus();
                   }
                 }}
               >
-                {t(value === 'presentation' ? 'appearance.presentation' : `appearance.${value}`)}
+                {t(`appearance.${value}`)}
               </button>
             ))}
           </div>
@@ -845,179 +733,7 @@ export function ProjectAppearanceDialog({
                 {t('appearance.invalid')}
               </p>
             )}
-            {!board && (
-              <div
-                role="tabpanel"
-                className="project-appearance__theme"
-                inert={tab !== 'presentation'}
-                id="appearance-panel-presentation"
-                aria-labelledby="appearance-tab-presentation"
-                hidden={tab !== 'presentation'}
-              >
-                <div className="project-appearance__color-label">
-                  <span>{t('appearance.theme.accent')}</span>
-                  <span>
-                    {theme.accent
-                      ? t(`appearance.colors.${accent}`)
-                      : t('appearance.theme.accentDefault', {
-                          color: t(`appearance.colors.${accent}`),
-                        })}
-                  </span>
-                </div>
-                <div
-                  className="project-appearance__swatches"
-                  role="radiogroup"
-                  aria-label={t('appearance.theme.accent')}
-                  onKeyDown={radioKeys}
-                >
-                  {COLOR_ORDER.map((color) => (
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-label={t(`appearance.colors.${color}`)}
-                      aria-checked={accent === color}
-                      tabIndex={accent === color ? 0 : -1}
-                      disabled={themeDisabled}
-                      key={color}
-                      style={{ '--swatch': screenAccent(color) } as CSSProperties}
-                      // The project's own colour is stored as "follow the project".
-                      onClick={() =>
-                        setTheme({ ...theme, accent: color === icon.color ? null : color })
-                      }
-                    />
-                  ))}
-                </div>
-                <div className="project-appearance__color-label">
-                  <span>{t('appearance.theme.font')}</span>
-                  <span>{t('appearance.theme.fontNote')}</span>
-                </div>
-                <div
-                  className="project-appearance__fonts"
-                  role="radiogroup"
-                  aria-label={t('appearance.theme.font')}
-                  onKeyDown={radioKeys}
-                >
-                  {THEME_FONTS.map((font) => (
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={theme.headingFont === font}
-                      tabIndex={theme.headingFont === font ? 0 : -1}
-                      disabled={themeDisabled}
-                      key={font}
-                      style={{ fontFamily: headingFamily(font) }}
-                      onClick={() => setTheme({ ...theme, headingFont: font })}
-                    >
-                      {FONT_NAMES[font]}
-                      <small>{t(`appearance.theme.fonts.${font}`)}</small>
-                    </button>
-                  ))}
-                </div>
-                <div className="project-appearance__color-label">
-                  <span>{t('appearance.theme.logo')}</span>
-                  <span>{t('appearance.theme.logoNote')}</span>
-                </div>
-                <div className="project-appearance__logo">
-                  <span className="project-appearance__logo-image">
-                    {logo && <img src={logoUrl(logo)} alt="" />}
-                  </span>
-                  <span className="project-appearance__logo-text">
-                    <strong>{logo ? logo.filename : t('appearance.theme.noLogo')}</strong>
-                    <small
-                      role={logoError ? 'alert' : 'status'}
-                      className={logoError ? 'is-error' : undefined}
-                    >
-                      {logoState === 'busy'
-                        ? t('export.logoUploading')
-                        : logoState === 'type' || logoState === 'size'
-                          ? t('export.logoInvalid')
-                          : logoState === 'failed'
-                            ? t('export.logoFailed')
-                            : logoState === 'timeout'
-                              ? t('export.logoTimeout')
-                              : t('appearance.theme.logoUse')}
-                    </small>
-                  </span>
-                  <input
-                    ref={fileInput}
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    className="ink-sr-only"
-                    tabIndex={-1}
-                    aria-hidden="true"
-                    onChange={(event) => {
-                      void pickLogo(event.target.files?.[0]);
-                      event.target.value = '';
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    disabled={themeDisabled || logoState === 'busy' || !project.rootBoardId}
-                    onClick={() => fileInput.current?.click()}
-                  >
-                    {logo ? t('export.logoReplace') : t('export.logoAdd')}
-                  </Button>
-                  {logo && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={themeDisabled || logoState === 'busy'}
-                      onClick={() => void dropLogo()}
-                    >
-                      {t('appearance.theme.logoRemove')}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
-          {tab === 'presentation' && (
-            <div className="project-appearance__previews" aria-hidden="true">
-              <span className="project-appearance__preview-label">
-                {t('appearance.theme.previewSlide')}
-              </span>
-              <div className="project-appearance__slide">
-                <span className="project-appearance__slide-head">
-                  {logo && <img src={logoUrl(logo)} alt="" />}
-                  {project.name}
-                </span>
-                <span className="project-appearance__slide-title">
-                  {t('appearance.theme.sampleTitle')}
-                </span>
-                <span className="project-appearance__slide-meta">
-                  {t('appearance.theme.sampleMeta')}
-                </span>
-                <span className="project-appearance__slide-picture" />
-              </div>
-              <span className="project-appearance__preview-label">
-                {t('appearance.theme.previewPdf')}
-              </span>
-              <div className="project-appearance__pages">
-                <div className="project-appearance__page">
-                  {logo && <img src={logoUrl(logo)} alt="" />}
-                  <span className="project-appearance__page-title">{project.name}</span>
-                  <span className="project-appearance__page-meta">
-                    {t('film.views.storyboard')}
-                  </span>
-                  <span className="project-appearance__page-bar" />
-                </div>
-                <div className="project-appearance__page">
-                  <span className="project-appearance__page-header">
-                    <span>{t('film.views.shotlist')}</span>
-                    {logo && <img src={logoUrl(logo)} alt="" />}
-                  </span>
-                  {[100, 80, 100, 70, 100, 85].map((width, i) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholder lines.
-                    <i key={i} style={{ width: `${width}%` }} />
-                  ))}
-                  <span className="project-appearance__page-number">
-                    {t('export.pageOf', { n: 2, total: 9 })}
-                  </span>
-                </div>
-              </div>
-              <small>{t('appearance.theme.paperNote')}</small>
-            </div>
-          )}
           {error && (
             <p className="project-appearance__message" role="alert">
               {t('appearance.error')}
@@ -1028,19 +744,15 @@ export function ProjectAppearanceDialog({
               type="button"
               variant="ghost"
               className="project-appearance__reset"
-              disabled={tab === 'presentation' ? themeDisabled : disabled}
+              disabled={disabled}
               onClick={() => {
-                if (tab === 'presentation') {
-                  setTheme(DEFAULT_PROJECT_THEME);
-                  return;
-                }
                 if (board) {
                   void save(true);
                   return;
                 }
                 setIcon(defaultProjectIcon(project.id));
                 setTyped('');
-                showTab('symbol');
+                setTab('symbol');
               }}
             >
               {t('appearance.reset')}

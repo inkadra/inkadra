@@ -10,6 +10,8 @@ import {
   type ProjectRole,
   type Schedule,
   type ShootingDay,
+  THEME_FONTS,
+  type ThemeFont,
 } from '@inkadra/shared';
 import {
   Button,
@@ -43,6 +45,7 @@ import { formatBytes } from '../file-kinds.ts';
 import { sceneIdsOf } from '../film/needed.ts';
 import { getReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
+import { headingFamily, loadHeadingFont } from '../theme.ts';
 import { ExportCache } from './cache.ts';
 import type {
   ExportEnv,
@@ -125,6 +128,14 @@ const catalogsLoaded = () => {
   return catalogsRequest;
 };
 
+/** Font names are names: never translated. */
+const FONT_NAMES: Record<ThemeFont, string> = {
+  inter: 'Inter',
+  fraunces: 'Fraunces',
+  'space-grotesk': 'Space Grotesk',
+  'ibm-plex-mono': 'IBM Plex Mono',
+};
+
 export function ExportDialog(props: ExportDialogProps) {
   const { source, store, projectId, boardId, onClose, imageEntry = false } = props;
   const { t, i18n } = useTranslation();
@@ -183,6 +194,12 @@ export function ExportDialog(props: ExportDialogProps) {
   const [logoState, setLogoState] = useState<
     'idle' | 'busy' | 'type' | 'size' | 'failed' | 'timeout'
   >('idle');
+  const [headingState, setHeadingState] = useState<'idle' | 'busy' | 'failed'>('idle');
+  const pdf = req.format === 'pdf';
+  useEffect(() => {
+    // The heading style list shows every font in its own face.
+    if (pdf) for (const font of THEME_FONTS) void loadHeadingFont(font);
+  }, [pdf]);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
@@ -378,6 +395,22 @@ export function ExportDialog(props: ExportDialogProps) {
       setLogoState('idle');
     } catch (err) {
       setLogoState(err instanceof LogoTimeoutError ? 'timeout' : 'failed');
+    }
+  }
+
+  // The heading style is the project's, for the PDF and the presentation (decision 0088): saved at
+  // once, like the logo beside it.
+  async function pickHeading(headingFont: ThemeFont) {
+    const before = req.theme;
+    if (!before || headingFont === before.headingFont) return;
+    setReq((r) => ({ ...r, theme: { ...before, headingFont } }));
+    setHeadingState('busy');
+    try {
+      setSettings(await saveExportSettings(projectId, { theme: { headingFont } }));
+      setHeadingState('idle');
+    } catch {
+      setReq((r) => ({ ...r, theme: before }));
+      setHeadingState('failed');
     }
   }
 
@@ -754,6 +787,38 @@ export function ExportDialog(props: ExportDialogProps) {
                     {framesField}
                     {pageField}
                     {audienceField}
+                    <div className="export__field" data-tour="export-heading">
+                      <Field label={t('export.heading')}>
+                        {(id) => (
+                          <Select
+                            id={id}
+                            className="ink-input"
+                            value={req.theme?.headingFont ?? 'inter'}
+                            disabled={!canEdit || !req.theme || headingState === 'busy'}
+                            onChange={(font) => void pickHeading(font as ThemeFont)}
+                            options={THEME_FONTS.map((font) => ({
+                              value: font,
+                              label: (
+                                <span style={{ fontFamily: headingFamily(font), fontWeight: 600 }}>
+                                  {FONT_NAMES[font]}
+                                </span>
+                              ),
+                              description: t(`export.headingFonts.${font}`),
+                            }))}
+                          />
+                        )}
+                      </Field>
+                      <p
+                        className={`export__hint${headingState === 'failed' ? ' export__hint--error' : ''}`}
+                        role={headingState === 'failed' ? 'alert' : 'status'}
+                      >
+                        {headingState === 'failed'
+                          ? t('export.headingFailed')
+                          : canEdit
+                            ? t('export.headingHint')
+                            : t('export.logoReadOnly')}
+                      </p>
+                    </div>
                     <fieldset className="export__options">
                       <legend className="export__label">{t('export.options')}</legend>
                       <Check checked={req.titlePage} onChange={(v) => set('titlePage', v)}>

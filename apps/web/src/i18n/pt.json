@@ -3044,30 +3044,7 @@
     "sidebarPreview": "Como aparece na barra lateral",
     "close": "Fechar",
     "boardTitle": "Ícone e cor do quadro",
-    "boardPreview": "Como aparece nos cards do quadro",
-    "presentation": "Apresentação",
-    "theme": {
-      "accent": "Destaque",
-      "accentDefault": "{{color}} · cor do projeto",
-      "font": "Fonte dos títulos",
-      "fontNote": "Incluídas, licença OFL",
-      "fonts": {
-        "inter": "como o app",
-        "fraunces": "serifada",
-        "space-grotesk": "grotesca",
-        "ibm-plex-mono": "mono"
-      },
-      "logo": "Logo",
-      "logoNote": "PNG ou JPEG de até 512 KB",
-      "logoUse": "Capa e cabeçalhos",
-      "noLogo": "Sem logo",
-      "logoRemove": "Remover",
-      "previewSlide": "Prévia · apresentação",
-      "previewPdf": "PDF · capa e página (sempre em papel claro)",
-      "paperNote": "No papel, o destaque usa o tom mais escuro da mesma cor, para dar contraste.",
-      "sampleTitle": "Cena 1",
-      "sampleMeta": "Plano geral · 8 planos"
-    }
+    "boardPreview": "Como aparece nos cards do quadro"
   },
   "transfer": {
     "exportMenu": "Exportar projeto…",
@@ -3399,6 +3376,15 @@
       "frame": "Plano",
       "count_one": "{{count}} folha por cena",
       "count_other": "{{count}} folhas por cena"
+    },
+    "heading": "Estilo dos títulos",
+    "headingHint": "Títulos do PDF e da apresentação, para todo o projeto.",
+    "headingFailed": "Não foi possível salvar o estilo dos títulos. Tente novamente.",
+    "headingFonts": {
+      "inter": "como o app",
+      "fraunces": "serifada",
+      "space-grotesk": "grotesca",
+      "ibm-plex-mono": "mono"
     }
   },
   "screenplay": {
@@ -4434,6 +4420,10 @@
             "text": "Uma página por cena para um departamento: câmera, luz, figurino ou produção."
           },
           "3": {
+            "title": "Estilo dos títulos",
+            "text": "A fonte dos títulos, para o PDF e a apresentação."
+          },
+          "4": {
             "title": "O projeto inteiro",
             "text": "Exporte-o em zip e importe-o noutro servidor."
           }
