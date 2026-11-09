@@ -379,3 +379,17 @@ it.each([1, 2])(
     }
   },
 );
+
+it.each([
+  ['MacIntel', '⌘K'],
+  ['Linux x86_64', 'Ctrl K'],
+])('shows %s search shortcut label as %s', async (platform, expected) => {
+  const spy = vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform);
+  const { host, unmount } = await mount('/projects');
+  try {
+    expect(host.querySelector('.ink-sidebar__search .ink-kc')?.textContent).toBe(expected);
+  } finally {
+    await unmount();
+    spy.mockRestore();
+  }
+});

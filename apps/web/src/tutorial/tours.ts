@@ -1,4 +1,5 @@
 import type { ContentKind, IconName, ToolKind } from '@inkadra/ui';
+import { isMac } from '../board/shortcuts.ts';
 
 /**
  * Every tutorial of Inkadra (#502, decision 0078), as data. A step points at the real interface
@@ -80,7 +81,7 @@ export const WELCOME: Omit<Tour, 'group' | 'icon'> = {
   offer: null,
   steps: [
     { anchor: 'projects', media: 'types', side: 'right' },
-    { anchor: 'search', media: 'search', side: 'right', keys: ['⌘', 'K'] },
+    { anchor: 'search', media: 'search', side: 'right', keys: [isMac() ? '⌘' : 'Ctrl', 'K'] },
     { anchor: 'dock', media: 'drag', side: 'top' },
     { anchor: 'card', media: 'toolbar', side: 'right' },
     { anchor: 'views', media: 'morph', side: 'bottom' },

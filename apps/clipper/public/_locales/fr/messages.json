@@ -274,7 +274,7 @@
     "message": "Aucune image assez grande sur cette page. Faites défiler pour en charger d’autres, puis rouvrez le clipper."
   },
   "images_untitled": {
-    "message": "Image"
+    "message": "Image sans titre"
   },
   "action_save_images_one": {
     "message": "Enregistrer $COUNT$ image",
