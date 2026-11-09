@@ -235,8 +235,8 @@
 
 .share__matrix-card {
   margin-top: 8px;
-  background: #1a1a1d;
-  border: 1px solid #26262a;
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-default);
   border-radius: var(--ink-radius-sm);
   padding: 10px 12px;
 }
@@ -250,29 +250,29 @@
 .share__matrix-table thead th {
   padding: 4px 6px;
   font-weight: 500;
-  color: #808086;
+  color: var(--ink-text-muted);
   text-align: center;
-  border-bottom: 1px solid #26262a;
+  border-bottom: 1px solid var(--ink-border-default);
 }
 
 .share__matrix-table td,
 .share__matrix-table tbody th {
   padding: 5px 6px;
-  color: #8a8a90;
+  color: var(--ink-text-secondary);
   text-align: center;
-  border-bottom: 1px solid #1f1f23;
-}
-
-.share__matrix-table tr.is-active td,
-.share__matrix-table tr.is-active th {
-  color: #ededed;
-  background: #1e2a44;
+  border-bottom: 1px solid var(--ink-border-muted);
 }
 
 .share__matrix-table th:first-child {
   text-align: left;
   font-weight: 500;
-  color: #ededed;
+  color: var(--ink-text-primary);
+}
+
+.share__matrix-table tr.is-active td,
+.share__matrix-table tr.is-active th {
+  color: var(--ink-accent-soft-fg);
+  background: var(--ink-accent-soft-bg);
 }
 
 /* End of someone's access (decision 0041): muted, in the warning colour within three days. */
