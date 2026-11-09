@@ -9,7 +9,7 @@ import {
   updateElements,
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, aspectValue, type Element, MAX_TAGS } from '@inkadra/doc-schema';
-import { Button, Checkbox, EmptyState, Icon, IconButton } from '@inkadra/ui';
+import { Button, Checkbox, EmptyState, Icon, IconButton, Segmented } from '@inkadra/ui';
 import {
   type ReactNode,
   useCallback,
@@ -837,21 +837,16 @@ export function MoodboardView({
             ))}
           </fieldset>
           <div className="moodboard__tools">
-            <fieldset className="story__modes" aria-label={t('film.playback.size')}>
-              {TILE_SIZES.map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  className="story__mode"
-                  aria-pressed={size === value}
-                  aria-label={t(`film.playback.sizes.${value}`)}
-                  data-ink-tooltip={t(`film.playback.sizes.${value}`)}
-                  onClick={() => setSize(value)}
-                >
-                  {value.toUpperCase()}
-                </button>
-              ))}
-            </fieldset>
+            <Segmented
+              label={t('film.playback.size')}
+              value={size}
+              onChange={setSize}
+              options={TILE_SIZES.map((value) => ({
+                value,
+                label: value.toUpperCase(),
+                tooltip: t(`film.playback.sizes.${value}`),
+              }))}
+            />
             <Button
               disabled={!shown.some((el) => el.type !== 'color')}
               onClick={() => setPresenting(true)}

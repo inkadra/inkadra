@@ -19,7 +19,7 @@ import {
   MAX_STROKES,
   type Stroke,
 } from '@inkadra/doc-schema';
-import { Button, Icon, IconButton, type IconName, Select } from '@inkadra/ui';
+import { Button, Icon, IconButton, type IconName, Select, Slider } from '@inkadra/ui';
 import { type PointerEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isMac } from '../shortcuts.ts';
@@ -664,14 +664,15 @@ export function DrawingEditor({
               onClick={() => setPopover(popover === 'width' ? null : 'width')}
             />
             {sized && popover === 'width' && (
+              // biome-ignore lint/a11y/noLabelWithoutControl: Slider renders a labelable range input.
               <label className="pen__width pen__popover">
                 <span>{t(sized === 'text' ? 'film.pen.textSize' : 'film.pen.width')}</span>
-                <input
-                  type="range"
+                <Slider
+                  aria-label={t(sized === 'text' ? 'film.pen.textSize' : 'film.pen.width')}
                   min={WIDTH_RANGE[sized][0]}
                   max={WIDTH_RANGE[sized][1]}
                   value={widths[sized]}
-                  onChange={(e) => setWidths((w) => ({ ...w, [sized]: Number(e.target.value) }))}
+                  onChange={(value) => setWidths((w) => ({ ...w, [sized]: value }))}
                 />
               </label>
             )}
@@ -698,23 +699,24 @@ export function DrawingEditor({
             {popover === 'more' && (
               <div className="pen__popover pen__more">
                 {frame.assetId && (
+                  // biome-ignore lint/a11y/noLabelWithoutControl: Slider renders a labelable range input.
                   <label className="pen__opacity">
                     <span className="pen__opacity-label">
                       {t('film.pen.opacity')}
                       <small>{Math.round((frame.referenceOpacity ?? 1) * 100)}%</small>
                     </span>
-                    <input
-                      type="range"
+                    <Slider
+                      aria-label={t('film.pen.opacity')}
                       min={5}
                       max={100}
                       step={5}
                       value={Math.round((frame.referenceOpacity ?? 1) * 100)}
-                      onChange={(e) =>
+                      onChange={(value) =>
                         change(() =>
                           updateElement(
                             store.doc,
                             frame.id,
-                            { referenceOpacity: Number(e.target.value) / 100 },
+                            { referenceOpacity: value / 100 },
                             LOCAL,
                           ),
                         )

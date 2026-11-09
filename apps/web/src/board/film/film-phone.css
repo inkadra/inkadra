@@ -14,17 +14,18 @@
 }
 .view-options .ink-input,
 .view-options .ink-btn,
-.view-options .story__mode {
+.view-options .ink-segmented .ink-radio-group__option {
   min-height: 44px;
 }
 .view-options .story__aspect {
   justify-content: space-between;
 }
-.view-options .story__modes {
-  display: flex;
+.view-options .ink-segmented .ink-radio-group__options {
+  width: 100%;
 }
-.view-options .story__mode {
+.view-options .ink-segmented .ink-radio-group__option {
   flex: 1;
+  justify-content: center;
 }
 
 @media (width < 768px) {

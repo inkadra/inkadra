@@ -19,7 +19,7 @@ describe('ReactionBar', () => {
     const html = renderToStaticMarkup(<ReactionBar reactions={[thumbs, heart]} />);
     expect(html).toContain('reaction-chip is-mine');
     expect(html).toContain('aria-pressed="true"');
-    expect(html).toContain('title="Maya, Leo"');
+    expect(html).toContain('data-ink-tooltip="Maya, Leo"');
     expect(html).toContain('👍</span> 2');
     // Read-only: chips cannot be pressed and there is no way to add.
     expect(html.match(/disabled=""/g)).toHaveLength(2);

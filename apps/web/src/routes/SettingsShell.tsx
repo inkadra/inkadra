@@ -22,6 +22,7 @@ const SECTION_ICONS: Record<string, IconName> = {
   preferences: 'settings',
   toolbar: 'stickyNote',
   notifications: 'bell',
+  tutorials: 'play',
   members: 'people',
   workspace: 'archive',
   classifications: 'tag',
@@ -30,7 +31,7 @@ const SECTION_ICONS: Record<string, IconName> = {
   backups: 'clock',
   server: 'tiles',
   updates: 'upload',
-  instance: 'settings',
+  instance: 'page',
 };
 
 /** Which page the instance checklist sends an admin to when a check fails. */

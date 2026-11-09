@@ -45,7 +45,7 @@ export function ReactionBar({
           className={r.mine ? 'reaction-chip is-mine' : 'reaction-chip'}
           aria-pressed={r.mine}
           disabled={!onToggle || busy}
-          title={r.names.join(', ')}
+          data-ink-tooltip={r.names.join(', ')}
           aria-label={t('comments.reactionChip', {
             emoji: r.emoji,
             count: r.count,

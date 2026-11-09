@@ -325,13 +325,6 @@
 .share__date {
   height: 32px;
   padding: 0 8px;
-  border-radius: var(--ink-radius-sm);
-  border: 1px solid var(--ink-border-default);
-  background: var(--ink-surface-1);
-  color-scheme: light dark;
-}
-.share__date:focus-visible {
-  border-color: var(--ink-accent-primary);
 }
 .share__expiry-help {
   margin: 0;

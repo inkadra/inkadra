@@ -86,6 +86,7 @@ export function ChoiceTile({
 export type RadioOption<T extends string> = {
   value: T;
   label: ReactNode;
+  tooltip?: string;
   description?: ReactNode;
   disabled?: boolean;
 };
@@ -124,10 +125,15 @@ function Choices<T extends string>({
       <legend className={hideLabel ? 'ink-sr-only' : 'ink-radio-group__legend'}>{label}</legend>
       <div className="ink-radio-group__options">
         {options.map((option) => (
-          <label key={option.value} className="ink-radio-group__option">
+          <label
+            key={option.value}
+            className="ink-radio-group__option"
+            data-ink-tooltip={option.tooltip}
+          >
             <Radio
               name={name ?? id}
               value={option.value}
+              aria-label={option.tooltip}
               checked={value === option.value}
               disabled={disabled || option.disabled}
               onChange={() => onChange(option.value)}

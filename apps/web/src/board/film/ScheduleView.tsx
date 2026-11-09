@@ -9,7 +9,7 @@ import {
   type ShootingDay,
   type ShootingDayInput,
 } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, EmptyState, Select } from '@inkadra/ui';
+import { Button, DateField, Dialog, DialogActions, EmptyState, Select } from '@inkadra/ui';
 import {
   type CSSProperties,
   type ReactNode,
@@ -1014,14 +1014,14 @@ function DayInspector({
             <fieldset disabled={disabled}>
               <legend className="ink-sr-only">{t('schedule.day', { date: draft.date })}</legend>
               <div className="schedule__fields">
-                <label>
+                <label htmlFor={`${idBase}-date`}>
                   {t('schedule.date')}
-                  <input
-                    className="ink-input"
-                    type="date"
+                  <DateField
+                    id={`${idBase}-date`}
+                    label={t('schedule.date')}
                     required
                     value={draft.date}
-                    onChange={(e) => update({ date: e.target.value })}
+                    onChange={(date) => update({ date })}
                   />
                 </label>
                 <label>

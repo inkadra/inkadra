@@ -2,6 +2,7 @@
 import {
   Checkbox,
   ChoiceTile,
+  DateField,
   IconButton,
   RadioGroup,
   Segmented,
@@ -198,4 +199,30 @@ it('draws choice tiles as one native radio group without a visible circle', asyn
   await act(async () => (host.querySelectorAll('label')[1] as HTMLLabelElement).click());
   expect(radios[1]?.checked).toBe(true);
   expect(radios[0]?.checked).toBe(false);
+});
+
+it('forwards date bounds and keyboard handlers to the underlying date input', async () => {
+  const onKeyDown = vi.fn((e: { preventDefault: () => void }) => e.preventDefault());
+  await act(async () =>
+    root.render(
+      <DateField
+        label="Access until"
+        value="2026-11-10"
+        min="2026-11-01"
+        max="2027-11-01"
+        onChange={() => {}}
+        onKeyDown={onKeyDown}
+      />,
+    ),
+  );
+  const input = host.querySelector<HTMLInputElement>('input[type="date"]');
+  expect(input?.min).toBe('2026-11-01');
+  expect(input?.max).toBe('2027-11-01');
+  expect(input?.getAttribute('aria-label')).toBe('Access until');
+  await act(async () =>
+    input?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(onKeyDown).toHaveBeenCalledOnce();
 });

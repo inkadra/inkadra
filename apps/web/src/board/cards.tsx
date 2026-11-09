@@ -197,7 +197,12 @@ export const Card = memo(function Card({
       {!isContainer(element) && <GuestVisibility store={store} element={element} />}
       {extras?.(element)}
       {element.locked && (
-        <span className="card__lock" title={t('board.locked')}>
+        <span
+          className="card__lock"
+          role="img"
+          aria-label={t('board.locked')}
+          data-ink-tooltip={t('board.locked')}
+        >
           <Icon name="lock" size={12} />
         </span>
       )}
@@ -659,7 +664,7 @@ function OpenOutButton({ element, instagram }: { element: Of<'link'>; instagram:
       className="card__expand"
       data-no-drag
       data-play-link={element.id}
-      title={label}
+      data-ink-tooltip={label}
       aria-label={label}
       onClick={(event) => {
         event.stopPropagation();
@@ -1111,7 +1116,7 @@ function ColumnCard({
           // The slugline keeps one line; the scene's own title sits under it, quieter.
           <span
             className="column__title column__title--scene"
-            title={[slugline(scene), element.title].filter(Boolean).join(' · ')}
+            data-ink-tooltip={[slugline(scene), element.title].filter(Boolean).join(' · ')}
           >
             <span className="column__slug">{slugline(scene)}</span>
             {element.title && <span className="column__name">{element.title}</span>}

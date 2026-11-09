@@ -1,4 +1,4 @@
-import { Button, IconButton, swallowOutsidePress } from '@inkadra/ui';
+import { Button, DateField, IconButton, swallowOutsidePress } from '@inkadra/ui';
 import { type CSSProperties, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { dateInputValue, endOfDay, expiresSoon, expiryBounds, expiryDate } from '../lib/access.ts';
@@ -102,18 +102,18 @@ export function ExpiryPicker({
           }}
         >
           <legend className="share__sr">{label}</legend>
-          <label className="share__expiry-field">
+          <label className="share__expiry-field" htmlFor={`${id}-date`}>
             <span>{t('share.expiry.until')}</span>
-            <input
-              className="share__input share__date"
-              type="date"
+            <DateField
+              id={`${id}-date`}
+              className="share__date"
+              label={t('share.expiry.until')}
               required
               min={bounds.min}
               max={bounds.max}
               value={day}
-              // biome-ignore lint/a11y/noAutofocus: the popover opens for this field only.
               autoFocus
-              onChange={(e) => setDay(e.target.value)}
+              onChange={setDay}
               onKeyDown={(e) => {
                 if (e.key !== 'Enter') return;
                 e.preventDefault();

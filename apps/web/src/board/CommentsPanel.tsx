@@ -655,13 +655,6 @@ function NewThread({
               icon="pin"
               aria-pressed={!!pin}
               label={t(pin ? 'comments.pinRemove' : 'comments.pinAdd')}
-              title={t(
-                !pin && !canvas
-                  ? 'comments.pinsOnCanvas'
-                  : pin
-                    ? 'comments.pinRemove'
-                    : 'comments.pinAdd',
-              )}
               onClick={() => {
                 if (pin) return openComments({ elementId });
                 // Points are placed and shown on the canvas only, where the card has one shape.
@@ -870,7 +863,10 @@ export const Thread = memo(function Thread({
             </span>
           )}
           {thread.shareLinkId && (
-            <span className="review-tag review-tag--out review-tag--truncate" title={linkTag}>
+            <span
+              className="review-tag review-tag--out review-tag--truncate"
+              data-ink-tooltip={linkTag}
+            >
               {linkTag}
             </span>
           )}
