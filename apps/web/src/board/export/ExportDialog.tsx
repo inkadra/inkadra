@@ -6,7 +6,6 @@ import {
   CAPABILITY_ROLE,
   type ExportImageAspect,
   type ExportImageFit,
-  type ExportPreset,
   type ExportSettings,
   type ProjectRole,
   type Schedule,
@@ -42,7 +41,7 @@ import { ColorPicker } from '../ColorPicker.tsx';
 import { swatchColors } from '../colors.ts';
 import { formatBytes } from '../file-kinds.ts';
 import { sceneIdsOf } from '../film/needed.ts';
-import { getReviews, useReviews } from '../review-store.ts';
+import { getReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
 import { ExportCache } from './cache.ts';
 import type {
@@ -80,18 +79,12 @@ import {
   type ExportSource,
   fetchExportSettings,
   framesOf,
-  hasApprovedFrame,
   initialExportState,
   initialImage,
   LogoTimeoutError,
   logoProblem,
   logoUrl,
-  matchesPreset,
-  PRESET_ORDER,
   preferencesPatch,
-  presetChoices,
-  presetNumber,
-  recommendedPreset,
   saveExportSettings,
   teamPdf,
   uploadLogo,
@@ -120,9 +113,6 @@ export interface ExportDialogProps {
   onClose: () => void;
 }
 
-/** How long the dialog waits for review statuses before recommending a preset without them. */
-const REVIEWS_WAIT_MS = 1500;
-
 // The engine (pdf-lib, fontkit, Inter) loads only when the dialog opens.
 const engine = () => import('./engine.ts');
 const originals = () => import('./originals.ts');
@@ -140,16 +130,11 @@ export function ExportDialog(props: ExportDialogProps) {
   const { t, i18n } = useTranslation();
   const isPhone = useIsPhone();
   const film = source !== 'canvas';
-  // Settled when the options are first chosen, so the badge and the selection agree.
-  const [recommended, setRecommended] = useState(() => recommendedPreset(source, true));
-  const [basePreset, setBasePreset] = useState<ExportPreset | null>(recommended);
-  const [customOpen, setCustomOpen] = useState(false);
   const [pageCount, setPageCount] = useState(0);
   const [sheetCount, setSheetCount] = useState(0);
-  const [req, setReq] = useState<ExportRequest>(() => ({
-    ...presetChoices(recommended, source, props.initialWhat, i18n.language),
-    logo: null,
-  }));
+  const [req, setReq] = useState<ExportRequest>(() =>
+    initialExportState(null, source, props.initialWhat, i18n.language),
+  );
   const [image, setImage] = useState<ImageOptions>(() => initialImage(null, imageEntry));
   const [imageIndex, setImageIndex] = useState(0);
   const [imageState, setImageState] = useState<ImagePreviewState>({
@@ -182,61 +167,19 @@ export function ExportDialog(props: ExportDialogProps) {
       live = false;
     };
   }, [projectId]);
-  // The Storyboard recommends the pitch only with an approved frame, and review statuses may
-  // still be on their way: wait for them briefly rather than switch the choice under the reader.
-  const reviewsStatus = useReviews((s) => s.reviewsStatus);
-  const reviews = useReviews((s) => s.reviews);
-  const [reviewsWaited, setReviewsWaited] = useState(false);
   useEffect(() => {
-    const timer = setTimeout(() => setReviewsWaited(true), REVIEWS_WAIT_MS);
-    return () => clearTimeout(timer);
-  }, []);
-  const approvalKnown = source !== 'storyboard' || reviewsStatus !== 'loading' || reviewsWaited;
-  useEffect(() => {
-    if (settingsLoaded || !fetched || !approvalKnown) return;
-    const approved = source === 'storyboard' && hasApprovedFrame(store.getSnapshot().byId, reviews);
-    const next = recommendedPreset(source, approved);
-    setRecommended(next);
-    const { format: pictureFormat, ...picture } = initialImage(
-      fetched === 'failed' ? null : fetched,
-      imageEntry,
-    );
+    if (settingsLoaded || !fetched) return;
+    const loaded = fetched === 'failed' ? null : fetched;
+    const { format: pictureFormat, ...picture } = initialImage(loaded, imageEntry);
     setImage(picture);
-    if (fetched === 'failed') {
-      setBasePreset(next);
-      setReq((r) => ({
-        ...presetChoices(next, source, initialWhat, i18n.language),
-        logo: r.logo,
-        theme: r.theme,
-      }));
-    } else {
-      const init = initialExportState(fetched, source, initialWhat, i18n.language, approved);
-      setSettings(fetched);
-      setBasePreset(init.basePreset);
-      setCustomOpen(init.customOpen);
-      setReq(init.req);
-    }
-    // After the preset: a menu entry for a picture starts on the picture format and its content.
+    setSettings(loaded);
+    setReq(initialExportState(loaded, source, initialWhat, i18n.language));
+    // A menu entry for a picture starts on the picture format and its content.
     if (imageEntry) setReq((r) => ({ ...r, format: pictureFormat, what: initialWhat ?? r.what }));
     if (props.pdfEntry) setReq((r) => ({ ...r, format: 'pdf' }));
     setSettingsLoaded(true);
-  }, [
-    settingsLoaded,
-    fetched,
-    approvalKnown,
-    source,
-    store,
-    reviews,
-    initialWhat,
-    imageEntry,
-    props.pdfEntry,
-    i18n.language,
-  ]);
+  }, [settingsLoaded, fetched, source, initialWhat, imageEntry, props.pdfEntry, i18n.language]);
   const canEdit = settings?.canEdit ?? false;
-  const active =
-    basePreset && matchesPreset(req, basePreset, source, i18n.language, settings?.paper)
-      ? basePreset
-      : null;
   const [logoState, setLogoState] = useState<
     'idle' | 'busy' | 'type' | 'size' | 'failed' | 'timeout'
   >('idle');
@@ -254,18 +197,6 @@ export function ExportDialog(props: ExportDialogProps) {
     },
     [cache],
   );
-  const choosePreset = (next: ExportPreset) => {
-    setChanged(true);
-    setBasePreset(next);
-    setReq((r) => ({
-      ...presetChoices(next, source, r.what, i18n.language),
-      logo: r.logo,
-      theme: r.theme,
-      department: r.department,
-      scenes: r.scenes,
-      leaveOutOmitted: r.leaveOutOmitted,
-    }));
-  };
   const updateReq = (updater: (prev: ExportRequest) => ExportRequest) => {
     setChanged(true);
     setReq(updater);
@@ -401,17 +332,16 @@ export function ExportDialog(props: ExportDialogProps) {
       // Editors keep their last choices for the whole project; a failure costs only that.
       if (settings?.canEdit) {
         const { what: _what, logo: _logo, theme: _theme, ...chosen } = req;
-        // A picture leaves the PDF's preset alone, and from a card's menu the dialog's first format.
+        // From a card's menu, a picture leaves the dialog's first format alone.
         const picture = asImage
           ? {
-              preset: settings.preset,
               format: imageEntry ? settings.format : req.format,
               imageFormat: req.format === 'jpeg' ? ('jpeg' as const) : ('png' as const),
               imageAspect: image.aspect,
               imageFit: image.fit,
               imageBandColor: image.band,
             }
-          : { preset: active };
+          : {};
         const patch = preferencesPatch(settings, { ...chosen, ...picture }, i18n.language);
         if (Object.keys(patch).length) await saveExportSettings(projectId, patch).catch(() => {});
       }
@@ -477,8 +407,7 @@ export function ExportDialog(props: ExportDialogProps) {
     return name ?? t('export.whatSelection', { count: props.selection.size });
   };
   const fileInput = useRef<HTMLInputElement>(null);
-  const presetGroupName = useId();
-  const customPanelId = useId();
+  const departmentName = useId();
 
   const slide = req.paper === 'slide';
   const paperLabel =
@@ -489,11 +418,6 @@ export function ExportDialog(props: ExportDialogProps) {
         : t('export.paperA4');
   const orientLabel = req.orientation === 'portrait' ? t('export.portrait') : t('export.landscape');
   const pageLabel = slide ? paperLabel : `${paperLabel} ${orientLabel.toLocaleLowerCase()}`;
-  const audienceLabel = client ? t('export.audienceClient') : t('export.audienceTeam');
-  const summaryNote =
-    basePreset && (!active || customOpen)
-      ? t('export.editingPreset', { n: presetNumber(basePreset) })
-      : `${pageLabel}, ${t('export.formatPdf')}, ${audienceLabel.toLocaleLowerCase()}`;
   const dialogTitle =
     !isPhone && props.projectName
       ? t('export.titleProject', { name: props.projectName })
@@ -541,7 +465,7 @@ export function ExportDialog(props: ExportDialogProps) {
           {DEPARTMENTS.map((d) => (
             <ChoiceTile
               key={d}
-              name={`${presetGroupName}-department`}
+              name={departmentName}
               value={d}
               checked={department === d}
               onChange={() => set('department', d)}
@@ -555,7 +479,7 @@ export function ExportDialog(props: ExportDialogProps) {
           {DEPARTMENTS.map((d) => (
             <label key={d} className="export__radio">
               <Radio
-                name={`${presetGroupName}-department`}
+                name={departmentName}
                 value={d}
                 checked={department === d}
                 onChange={() => set('department', d as Department)}
@@ -731,7 +655,6 @@ export function ExportDialog(props: ExportDialogProps) {
                 )}
                 {asImage ? (
                   <>
-                    {!fileMode && <p className="export__presets-off">{t('export.presetsOff')}</p>}
                     {whatField}
                     {departmentField}
                     {scenesField}
@@ -824,175 +747,98 @@ export function ExportDialog(props: ExportDialogProps) {
                     )}
                   </>
                 ) : (
-                  <>
-                    <fieldset className="export__presets">
-                      <legend className="ink-sr-only">{t('export.presetsLabel')}</legend>
-                      {PRESET_ORDER.map((id) => {
-                        const n = presetNumber(id);
-                        const isSelected = active === id;
-                        const titleId = `${presetGroupName}-${id}-title`;
-                        const descId = `${presetGroupName}-${id}-desc`;
-                        return (
-                          <label
-                            key={id}
-                            className={`export__preset${isSelected ? ' is-active' : ''}`}
-                          >
+                  <div className="export__pdf-options">
+                    {whatField}
+                    {departmentField}
+                    {scenesField}
+                    {framesField}
+                    {pageField}
+                    {audienceField}
+                    <fieldset className="export__options">
+                      <legend className="export__label">{t('export.options')}</legend>
+                      <Check checked={req.titlePage} onChange={(v) => set('titlePage', v)}>
+                        {t('export.titlePage')}
+                      </Check>
+                      {approvedField}
+                      {hideField}
+                      <Check
+                        checked={req.comments}
+                        onChange={(v) => set('comments', v)}
+                        hint={client ? t('export.commentsHintClient') : undefined}
+                      >
+                        {t('export.comments')}
+                      </Check>
+                      <Check
+                        checked={req.callSheet && teamPdf(req)}
+                        disabled={client}
+                        onChange={(v) => set('callSheet', v)}
+                        hint={client ? t('export.teamOnlyHint') : undefined}
+                      >
+                        {t('export.callSheet')}
+                      </Check>
+                      <div className="export__logo">
+                        <span className="export__logo-label">{t('export.logo')}</span>
+                        {req.logo && (
+                          <img className="export__logo-img" src={logoUrl(req.logo)} alt="" />
+                        )}
+                        {canEdit && (
+                          <>
                             <input
-                              type="radio"
-                              name={presetGroupName}
-                              value={id}
-                              checked={isSelected}
-                              aria-labelledby={titleId}
-                              aria-describedby={descId}
-                              className="export__preset-input"
-                              onChange={() => choosePreset(id)}
+                              ref={fileInput}
+                              type="file"
+                              accept="image/png,image/jpeg"
+                              className="ink-sr-only"
+                              tabIndex={-1}
+                              aria-hidden="true"
+                              onChange={(e) => {
+                                void pickLogo(e.target.files?.[0]);
+                                e.target.value = '';
+                              }}
                             />
-                            <span className="export__preset-num" aria-hidden="true">
-                              {n}
-                            </span>
-                            <span className="export__preset-body">
-                              <span id={titleId} className="export__preset-head">
-                                <strong className="export__preset-title">
-                                  {t(`export.presets.${id}.title`)}
-                                </strong>
-                                {recommended === id && (
-                                  <span className="export__preset-badge">
-                                    {t('export.recommended')}
-                                  </span>
-                                )}
-                              </span>
-                              <span id={descId} className="export__preset-desc">
-                                {t(`export.presets.${id}.description`)}
-                              </span>
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </fieldset>
-
-                    <div className="export__custom">
-                      <button
-                        type="button"
-                        className="export__disclosure"
-                        aria-expanded={customOpen}
-                        aria-controls={customPanelId}
-                        onClick={() => setCustomOpen((o) => !o)}
-                      >
-                        <Icon
-                          name="chevronRight"
-                          size={14}
-                          className={`export__disclosure-icon${customOpen ? ' is-open' : ''}`}
-                        />
-                        <span>{t('export.customize')}</span>
-                        <small className="export__disclosure-note">· {summaryNote}</small>
-                      </button>
-                      <div
-                        id={customPanelId}
-                        className="export__custom-body"
-                        hidden={!customOpen}
-                        inert={!customOpen}
-                      >
-                        {whatField}
-                        {departmentField}
-                        {scenesField}
-                        {framesField}
-                        {pageField}
-                        {audienceField}
-                        <fieldset className="export__options">
-                          <legend className="export__label">{t('export.options')}</legend>
-                          <Check checked={req.titlePage} onChange={(v) => set('titlePage', v)}>
-                            {t('export.titlePage')}
-                          </Check>
-                          {approvedField}
-                          {hideField}
-                          <Check
-                            checked={req.comments}
-                            onChange={(v) => set('comments', v)}
-                            hint={client ? t('export.commentsHintClient') : undefined}
-                          >
-                            {t('export.comments')}
-                          </Check>
-                          <Check
-                            checked={req.kickoffSummary && teamPdf(req)}
-                            disabled={client}
-                            onChange={(v) => set('kickoffSummary', v)}
-                            hint={client ? t('export.teamOnlyHint') : undefined}
-                          >
-                            {t('export.kickoffSummary')}
-                          </Check>
-                          <Check
-                            checked={req.callSheet && teamPdf(req)}
-                            disabled={client}
-                            onChange={(v) => set('callSheet', v)}
-                            hint={client ? t('export.teamOnlyHint') : undefined}
-                          >
-                            {t('export.callSheet')}
-                          </Check>
-                          <div className="export__logo">
-                            <span className="export__logo-label">{t('export.logo')}</span>
-                            {req.logo && (
-                              <img className="export__logo-img" src={logoUrl(req.logo)} alt="" />
-                            )}
-                            {canEdit && (
-                              <>
-                                <input
-                                  ref={fileInput}
-                                  type="file"
-                                  accept="image/png,image/jpeg"
-                                  className="ink-sr-only"
-                                  tabIndex={-1}
-                                  aria-hidden="true"
-                                  onChange={(e) => {
-                                    void pickLogo(e.target.files?.[0]);
-                                    e.target.value = '';
-                                  }}
-                                />
-                                <Button
-                                  size="md"
-                                  disabled={logoState === 'busy'}
-                                  onClick={() => fileInput.current?.click()}
-                                >
-                                  {req.logo ? t('export.logoReplace') : t('export.logoAdd')}
-                                </Button>
-                                {req.logo && (
-                                  <Button
-                                    variant="ghost"
-                                    disabled={logoState === 'busy'}
-                                    onClick={() => void dropLogo()}
-                                  >
-                                    {t('export.logoRemove')}
-                                  </Button>
-                                )}
-                              </>
-                            )}
-                            <p
-                              className={`export__hint${['type', 'size', 'failed', 'timeout'].includes(logoState) ? ' export__hint--error' : ''}`}
-                              role={
-                                ['type', 'size', 'failed', 'timeout'].includes(logoState)
-                                  ? 'alert'
-                                  : 'status'
-                              }
+                            <Button
+                              size="md"
+                              disabled={logoState === 'busy'}
+                              onClick={() => fileInput.current?.click()}
                             >
-                              {logoState === 'busy'
-                                ? t('export.logoUploading')
-                                : logoState === 'type' || logoState === 'size'
-                                  ? t('export.logoInvalid')
-                                  : logoState === 'failed'
-                                    ? t('export.logoFailed')
-                                    : logoState === 'timeout'
-                                      ? t('export.logoTimeout')
-                                      : canEdit
-                                        ? t('export.logoHint')
-                                        : req.logo
-                                          ? t('export.logoReadOnly')
-                                          : t('export.logoNone')}
-                            </p>
-                          </div>
-                          {canEdit && <p className="export__hint">{t('export.sharedHint')}</p>}
-                        </fieldset>
+                              {req.logo ? t('export.logoReplace') : t('export.logoAdd')}
+                            </Button>
+                            {req.logo && (
+                              <Button
+                                variant="ghost"
+                                disabled={logoState === 'busy'}
+                                onClick={() => void dropLogo()}
+                              >
+                                {t('export.logoRemove')}
+                              </Button>
+                            )}
+                          </>
+                        )}
+                        <p
+                          className={`export__hint${['type', 'size', 'failed', 'timeout'].includes(logoState) ? ' export__hint--error' : ''}`}
+                          role={
+                            ['type', 'size', 'failed', 'timeout'].includes(logoState)
+                              ? 'alert'
+                              : 'status'
+                          }
+                        >
+                          {logoState === 'busy'
+                            ? t('export.logoUploading')
+                            : logoState === 'type' || logoState === 'size'
+                              ? t('export.logoInvalid')
+                              : logoState === 'failed'
+                                ? t('export.logoFailed')
+                                : logoState === 'timeout'
+                                  ? t('export.logoTimeout')
+                                  : canEdit
+                                    ? t('export.logoHint')
+                                    : req.logo
+                                      ? t('export.logoReadOnly')
+                                      : t('export.logoNone')}
+                        </p>
                       </div>
-                    </div>
-                  </>
+                      {canEdit && <p className="export__hint">{t('export.sharedHint')}</p>}
+                    </fieldset>
+                  </div>
                 )}
               </>
             )}

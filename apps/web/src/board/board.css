@@ -1165,12 +1165,20 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
     width: 24px;
     height: 24px;
   }
-  .colorpicker__fields input,
+  .colorpicker__fields input {
+    height: 44px;
+    font-size: 16px;
+  }
   .colorpicker__fields .card__copy {
-    height: 36px;
+    width: 44px;
+    height: 44px;
+  }
+  .colorpicker__used {
+    flex-wrap: wrap;
   }
   .colorpicker__used button {
-    height: 32px;
+    min-width: 44px;
+    height: 44px;
   }
 }
 
@@ -3390,8 +3398,8 @@ button.crumb--editable:focus-visible {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: var(--ink-radius-full);
-  background: #1e2a44;
-  color: #9db8f2;
+  background: var(--ink-tag-blue-bg);
+  color: var(--ink-tag-blue);
 }
 .viewer__stage-btn {
   height: 32px;
@@ -3593,7 +3601,7 @@ button.crumb--editable:focus-visible {
 .viewer__copy-all-btn {
   border: 0;
   background: transparent;
-  color: #9a9a9a;
+  color: var(--ink-text-secondary);
   font:
     500 11px Inter,
     sans-serif;
@@ -3601,7 +3609,7 @@ button.crumb--editable:focus-visible {
   padding: 0;
 }
 .viewer__copy-all-btn:hover {
-  color: #ededed;
+  color: var(--ink-text-primary);
 }
 .viewer__used-in {
   display: flex;
@@ -3612,9 +3620,9 @@ button.crumb--editable:focus-visible {
   font-size: 11px;
   padding: 3px 8px;
   border-radius: var(--ink-radius-xs);
-  background: var(--ink-bg-canvas, #1c1c1f);
-  border: 1px solid var(--ink-border-default, #2a2a2e);
-  color: #ededed;
+  background: var(--ink-bg-canvas);
+  border: 1px solid var(--ink-border-default);
+  color: var(--ink-text-primary);
 }
 .viewer__count-badge {
   display: inline-block;
@@ -3623,8 +3631,8 @@ button.crumb--editable:focus-visible {
   border-radius: var(--ink-radius-full);
   font-size: 10px;
   font-weight: 600;
-  background: var(--ink-border-subtle, #232327);
-  color: #ededed;
+  background: var(--ink-border-subtle);
+  color: var(--ink-text-primary);
 }
 .viewer__open-comments-btn {
   border: 0;
@@ -3655,8 +3663,8 @@ button.crumb--editable:focus-visible {
   font-size: 12px;
   padding: 8px;
   border-radius: var(--ink-radius-sm);
-  background: var(--ink-bg-canvas, #141416);
-  border: 1px solid var(--ink-border-subtle, #232327);
+  background: var(--ink-bg-canvas);
+  border: 1px solid var(--ink-border-subtle);
 }
 .viewer__comment-content {
   flex: 1;
@@ -3665,7 +3673,7 @@ button.crumb--editable:focus-visible {
 .viewer__comment-author {
   display: block;
   font-size: 11px;
-  color: #ededed;
+  color: var(--ink-text-primary);
   margin-bottom: 2px;
 }
 .viewer__comment-text {
@@ -4720,11 +4728,12 @@ button.card__play {
 .fcard__preview--font,
 .fcard__preview--model {
   min-height: 110px;
-  background: #1d1d20;
-  color: #ececee;
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
 }
 .fcard__preview--model {
-  background: radial-gradient(circle at 50% 60%, #3a3f2a, #1d1f18);
+  background: radial-gradient(circle at 50% 60%, var(--ink-tool-color-bg), var(--ink-surface-2))
+    var(--ink-surface-2);
   color: var(--ink-tool-color);
 }
 .font-specimen {

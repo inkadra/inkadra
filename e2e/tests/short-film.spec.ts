@@ -594,9 +594,6 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await page.getByRole('tab', { name: 'Storyboard', exact: true }).click();
     await page.getByRole('button', { name: 'Esporta PDF' }).click();
     const dialog = page.getByRole('dialog', { name: 'Esporta' });
-    // No frame is approved yet, so the book is recommended: this step wants the storyboard.
-    await dialog.getByRole('radio', { name: /Pitch cliente/ }).click();
-    await dialog.getByRole('button', { name: /Personalizza/ }).click();
     await dialog.getByRole('radio', { name: 'Il team' }).click();
     // Every frame, approved or not.
     await dialog.getByRole('checkbox', { name: 'Solo inquadrature approvate' }).uncheck();
@@ -628,10 +625,9 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await page.getByRole('button', { name: 'Condividi' }).click();
     const share = page.getByRole('dialog', { name: /^Condividi/ });
     await share.getByRole('tab', { name: 'Link per ospiti' }).click();
-    await share.getByRole('button', { name: 'Nuovo link per ospiti' }).click();
-    await chooseSelect(share.getByLabel('Chi apre il link'), 'guest_approve');
+    await share.getByRole('radio', { name: 'Può approvare' }).check();
     await share.getByLabel('Per chi è (facoltativo)').fill('Cliente');
-    await share.getByRole('button', { name: 'Crea link per ospiti' }).click();
+    await share.getByRole('button', { name: 'Crea link', exact: true }).click();
     const url = share.getByRole('textbox', { name: 'Link per ospiti “Cliente”' });
     await expect(url).toHaveValue(/\/s\/[\w-]{16,}$/);
     const guestUrl = await url.inputValue();

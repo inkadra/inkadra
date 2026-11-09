@@ -40,77 +40,112 @@
   flex-direction: column;
   gap: 12px;
 }
-.guest-links__sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
 .guest-links__form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  border-radius: var(--ink-radius-md);
-  border: 1px solid var(--ink-border-default);
-  background: var(--ink-surface-1);
+  gap: 14px;
 }
-.guest-links__grid {
+.guest-link .guest-links__form {
+  padding: 12px 14px;
+  border-top: 1px solid var(--ink-border-muted);
+}
+/* Who it is for and the expiry side by side; one column on phones. */
+.guest-links__pair {
+  display: grid;
+  grid-template-columns: 1fr 170px;
+  gap: 12px;
+}
+/* The three roles share the whole width. */
+.guest-links__role.ink-segmented .ink-radio-group__options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: auto;
+}
+.guest-links__role.ink-segmented .ink-radio-group__option {
+  justify-content: center;
+}
+.guest-links__role .ink-radio-group__hint {
+  font-size: 12px;
+}
+/* The options: a 2 × 2 grid of switches in one box, the password field under it. */
+.guest-links__set {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.guest-links__options {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
 }
-.guest-links__field {
+.guest-links__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+}
+.guest-links__option:nth-child(2n) {
+  border-left: 1px solid var(--ink-border-muted);
+}
+.guest-links__option:nth-child(n + 3) {
+  border-top: 1px solid var(--ink-border-muted);
+}
+.guest-links__option > .ink-switch {
+  margin-top: 1px;
+}
+.guest-links__option-text {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
+  min-width: 0;
+}
+.guest-links__option-text label {
+  font-weight: 500;
+  cursor: pointer;
+}
+.guest-links__password {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--ink-border-muted);
+}
+.guest-links__kept {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
   font-size: 12px;
   color: var(--ink-text-secondary);
-}
-.guest-links__field--wide {
-  grid-column: 1 / -1;
-}
-.guest-links__select {
-  height: 32px;
-  padding: 0 8px;
-  border-radius: var(--ink-radius-sm);
-  border: 1px solid var(--ink-border-default);
-  background: var(--ink-surface-float);
-  color: var(--ink-text-primary);
-  font: inherit;
-  font-size: 13px;
-}
-.guest-links__select:focus-visible,
-.guest-links__input:focus-visible {
-  outline: none;
-  border-color: var(--ink-accent-primary);
-}
-.guest-links__select:disabled {
-  opacity: 0.6;
-}
-.guest-links__input {
-  min-width: 0;
-  color: var(--ink-text-primary);
-  font: inherit;
-  font-size: 13px;
-}
-.guest-links__check {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 8px;
-  align-items: center;
-  font-size: 13px;
 }
 .guest-links__hint {
   margin: 0;
   font-size: 11px;
+  line-height: 1.4;
   color: var(--ink-text-muted);
 }
-.guest-links__check .guest-links__hint {
-  grid-column: 2;
+/* A live sentence on what the link will allow, then the buttons. */
+.guest-links__footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.guest-links__summary {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-text-secondary);
+}
+.guest-links__summary b {
+  color: var(--ink-text-primary);
+  font-weight: 500;
 }
 .guest-links__actions {
   display: flex;
@@ -123,28 +158,29 @@
 }
 .guest-links__list {
   list-style: none;
-  margin: 0;
+  margin: 8px 0 0;
   padding: 0;
   max-height: 420px;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
 }
-.guest-link {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 0;
-  border-top: 1px solid var(--ink-border-subtle);
+.guest-links__valid {
+  margin-top: 6px;
 }
-.guest-link__head {
+.guest-link + .guest-link {
+  border-top: 1px solid var(--ink-border-muted);
+}
+.guest-link__row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
+  padding: 10px 10px 10px 14px;
 }
-.guest-link__facts {
-  font-size: 12px;
+.guest-link__url {
+  display: block;
+  width: calc(100% - 28px);
+  margin: 0 14px 10px;
   color: var(--ink-text-secondary);
+  font-size: 12px;
 }
 .guest-link__status {
   flex: none;
@@ -155,10 +191,6 @@
   border: 1px solid var(--ink-border-strong);
   color: var(--ink-text-secondary);
 }
-.guest-link__status--active {
-  color: var(--ink-status-ok);
-  border-color: currentColor;
-}
 .guest-link__status--suspended {
   color: var(--ink-status-warn);
   border-color: currentColor;
@@ -168,19 +200,15 @@
   color: var(--ink-text-secondary);
 }
 .guest-link__explain {
-  margin: 0;
+  margin: 0 14px 10px;
   font-size: 12px;
   color: var(--ink-text-secondary);
-}
-.guest-link__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
 }
 .guest-link__confirm {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin: 0 10px 10px;
   padding: 10px 12px;
   border-radius: var(--ink-radius-sm);
   border: 1px solid var(--ink-danger-border);
@@ -253,4 +281,40 @@
 /* The opened state must stay readable on phones: the line wraps instead of cutting it off. */
 .guest-link .share__sub {
   white-space: normal;
+}
+
+@media (width < 480px) {
+  .guest-links__pair,
+  .guest-links__options {
+    grid-template-columns: 1fr;
+  }
+  .guest-links__option:nth-child(2n) {
+    border-left: 0;
+  }
+  .guest-links__option:nth-child(n + 2) {
+    border-top: 1px solid var(--ink-border-muted);
+  }
+  .guest-links__footer {
+    flex-wrap: wrap;
+  }
+  .guest-links__summary {
+    flex-basis: 100%;
+  }
+  .guest-links__actions {
+    margin-left: auto;
+  }
+  .guest-link__row {
+    flex-wrap: wrap;
+  }
+  .guest-link__row > .share__who {
+    flex: 1 0 calc(100% - 40px);
+  }
+  .guest-link__row > .ink-btn {
+    margin-left: 40px;
+    min-height: 44px;
+  }
+  .guest-link__row .ink-iconbtn {
+    width: 44px;
+    height: 44px;
+  }
 }

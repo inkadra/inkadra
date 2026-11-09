@@ -6,6 +6,7 @@ import { initBoardDoc, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as Y from 'yjs';
+import { chooseSelect } from '../helpers/select.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists.
@@ -172,19 +173,11 @@ test.beforeAll(async ({ baseURL }) => {
     if (i === 4)
       updateElement(story, frame.id, { guestHidden: true, action: 'Hidden frame action' });
   }
-  // An open task for the kickoff summary.
-  createElement(
-    story,
-    'todo',
-    { x: 0, y: 900 },
-    { title: 'Prep', items: [{ id: 'item000002', text: 'Rent the dolly', done: false }] },
-    opts,
-  );
   await pushBoardDoc(base, cookie, storyboard.id, story);
   await send('PUT', `/boards/${storyboard.id}/elements/${frameIds[2]}/review`, {
     status: 'approved',
   });
-  // One shooting day: the production book prints its call sheet, the kickoff its schedule.
+  // One shooting day: the production book prints its call sheet.
   await post(`/boards/${storyboard.id}/schedule`, {
     date: '2026-11-10',
     callTime: '07:00',
@@ -239,7 +232,6 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
   await page.getByRole('button', { name: 'Menu della board' }).click();
   await page.getByRole('menuitem', { name: 'Esporta…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
-  await dialog.getByRole('button', { name: /Personalizza/ }).click();
   if (process.env.SELECT_SCREENSHOTS) {
     await page.screenshot({ path: '../docs/screenshots/ui-select/export-dialog.png' });
     const trigger = dialog.getByRole('combobox').first();
@@ -313,7 +305,6 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
   // For the team, with the option off, the hidden card is printed.
   await page.getByRole('button', { name: 'Menu della board' }).click();
   await page.getByRole('menuitem', { name: 'Esporta…' }).click();
-  await dialog.getByRole('button', { name: /Personalizza/ }).click();
   await dialog.getByRole('radio', { name: 'Il team' }).click();
   await dialog.getByRole('checkbox', { name: 'Escludi le card nascoste agli ospiti' }).uncheck();
   await dialog.getByRole('checkbox', { name: /Copertina/ }).uncheck();
@@ -402,11 +393,11 @@ test('a storyboard exports to PDF with frames per page, and to PNG', async ({ pa
 });
 
 /**
- * PRESET_SHOTS: the export dialog, dark and light, desktop and phone, for review. A no-op
+ * EXPORT_SHOTS: the export dialog, dark and light, desktop and phone, for review. A no-op
  * without it.
  */
 async function shootDialog(page: Page, name: string) {
-  const shots = process.env.PRESET_SHOTS;
+  const shots = process.env.EXPORT_SHOTS;
   if (!shots) return;
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
   const size = page.viewportSize() ?? { width: 1440, height: 900 };
@@ -427,11 +418,10 @@ async function shootDialog(page: Page, name: string) {
         animations: 'disabled',
       });
       // The options sit below the fold: their own picture, scrolled into view.
-      if (name.endsWith('customise'))
-        await dialog.locator('.export__options').screenshot({
-          path: `${shots}/${name}-options-${device}-${mode}.png`,
-          animations: 'disabled',
-        });
+      await dialog.locator('.export__options').screenshot({
+        path: `${shots}/${name}-options-${device}-${mode}.png`,
+        animations: 'disabled',
+      });
     }
   }
   await page.setViewportSize(size);
@@ -440,42 +430,39 @@ async function shootDialog(page: Page, name: string) {
   }, theme);
 }
 
-test('each audience preset exports a PDF and remembers the last preset for the project', async ({
+test('the PDF options make a pitch, a production book and a team storyboard, remembered for the project', async ({
   page,
 }, info) => {
   const violations = await watchCsp(page);
   await signInPage(page);
   await page.goto(`/p/${seeded.projectId}/b/${seeded.storyboardId}?view=storyboard`);
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  const shots = process.env.EXPORT_SHOTS;
 
-  // 1. Storyboard view recommends Pitch cliente: 16:9, approved frames only (by flag or by
-  // review), one per page, for clients, no comments.
+  // 1. A pitch for the client: 16:9, approved frames only (by flag or by review), one per page,
+  // no comments. The options are there at once: no presets, nothing to open.
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
-  await expect(dialog.locator('.export__preset', { hasText: 'Pitch cliente' })).toContainText(
-    'Consigliato',
-  );
-  await dialog.getByRole('radio', { name: /Pitch cliente/ }).click();
+  const check = (name: string | RegExp, on: boolean) =>
+    dialog.getByRole('checkbox', { name }).setChecked(on);
+  await expect(dialog.getByRole('radio', { name: /Pitch cliente/ })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: /Personalizza/ })).toHaveCount(0);
+  await expect(dialog.getByText(/Riepilogo kickoff/)).toHaveCount(0);
+  await dialog.getByRole('radio', { name: 'Clienti' }).click();
+  await chooseSelect(dialog.getByRole('combobox', { name: 'Formato pagina' }), 'slide');
+  await dialog.getByRole('radio', { name: '1', exact: true }).click();
+  await check(/Copertina/, true);
+  await check('Solo inquadrature approvate', true);
+  await check('Includi i commenti', false);
   await expect(dialog.getByText('4 pagine')).toBeVisible();
-  const shots = process.env.PRESET_SHOTS;
-  const shoot = (name: string) => shootDialog(page, name);
-  const customise = async (open: boolean) => {
-    const button = dialog.getByRole('button', { name: /Personalizza/ });
-    if ((await button.getAttribute('aria-expanded')) !== String(open)) await button.click();
-  };
-  if (shots) {
-    await customise(false);
-    await shoot('1-pitch');
-    await customise(true);
-    await shoot('1-pitch-customise');
-  }
+  await shootDialog(page, '1-pitch');
   const [pitchDownload] = await Promise.all([
     page.waitForEvent('download'),
     dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
   ]);
-  const pitchPath = info.outputPath('preset-client-pitch.pdf');
+  const pitchPath = info.outputPath('client-pitch.pdf');
   await pitchDownload.saveAs(pitchPath);
-  if (shots) await pitchDownload.saveAs(`${shots}/preset-client-pitch.pdf`);
+  if (shots) await pitchDownload.saveAs(`${shots}/client-pitch.pdf`);
   const pitchPdf = await readPdf(pitchPath);
   expect(pitchPdf.pages).toHaveLength(4);
   expect(pitchPdf.sizes).toEqual(Array(4).fill([960, 540]));
@@ -487,27 +474,25 @@ test('each audience preset exports a PDF and remembers the last preset for the p
   expect(pitchPdf.pages.join(' ')).not.toContain('Director only note');
   expect(pitchPdf.pages.join(' ')).not.toContain('Shared with the client');
 
-  // 2. Shot list view selects its recommended preset (Libro di produzione) instead of silently exporting the storyboard.
+  // 2. From the shot list the dialog exports the shot list: a production book for the team, A4
+  // portrait, every frame, with the call sheet.
   await page.getByRole('tab', { name: 'Shot list' }).click();
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
-  await expect(dialog.getByRole('radio', { name: /Libro di produzione/ })).toBeChecked();
-  await expect(dialog.locator('.export__preset', { hasText: 'Libro di produzione' })).toContainText(
-    'Consigliato',
-  );
+  await dialog.getByRole('radio', { name: 'Il team' }).click();
+  await chooseSelect(dialog.getByRole('combobox', { name: 'Formato pagina' }), 'a4');
+  await dialog.getByRole('radio', { name: 'Verticale' }).click();
+  await check('Solo inquadrature approvate', false);
+  await check('Escludi le card nascoste agli ospiti', false);
+  await check(/Ordine del giorno/, true);
   await expect(dialog.getByText('3 pagine')).toBeVisible();
-  if (shots) {
-    await customise(false);
-    await shoot('2-book');
-    await customise(true);
-    await shoot('2-book-customise');
-  }
+  await shootDialog(page, '2-book');
   const [bookDownload] = await Promise.all([
     page.waitForEvent('download'),
     dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
   ]);
-  const bookPath = info.outputPath('preset-production-book.pdf');
+  const bookPath = info.outputPath('production-book.pdf');
   await bookDownload.saveAs(bookPath);
-  if (shots) await bookDownload.saveAs(`${shots}/preset-production-book.pdf`);
+  if (shots) await bookDownload.saveAs(`${shots}/production-book.pdf`);
   const bookPdf = await readPdf(bookPath);
   expect(bookPdf.pages).toHaveLength(3);
   expect(bookPdf.pages[0]).toContain('SHOT LIST');
@@ -520,64 +505,56 @@ test('each audience preset exports a PDF and remembers the last preset for the p
   expect(bookPdf.pages[2]).toContain('dolly track');
   expect(bookPdf.pages.join(' ')).not.toContain('Shared with the client');
 
-  // 3. Schedule view recommends Kickoff interno (since Libro di produzione is a shot list preset).
+  // 3. From the schedule, the storyboard for the team with every comment, no call sheet.
   await page.getByRole('tab', { name: 'Piano riprese' }).click();
   await page.locator('.board-header-export').click();
-  await expect(dialog.getByRole('radio', { name: /Kickoff interno/ })).toBeChecked();
-  await expect(dialog.locator('.export__preset', { hasText: 'Kickoff interno' })).toContainText(
-    'Consigliato',
-  );
-  await expect(dialog.getByText('5 pagine')).toBeVisible();
-  if (shots) {
-    await customise(false);
-    await shoot('3-kickoff');
-    await customise(true);
-    await shoot('3-kickoff-customise');
-  }
-  const [kickoffDownload] = await Promise.all([
+  await expect(dialog.getByRole('radio', { name: 'Il team' })).toBeChecked();
+  await dialog.getByRole('radio', { name: 'Orizzontale' }).click();
+  await dialog.getByRole('radio', { name: '4', exact: true }).click();
+  await check('Includi i commenti', true);
+  await check(/Ordine del giorno/, false);
+  await expect(dialog.getByText('4 pagine')).toBeVisible();
+  await shootDialog(page, '3-team');
+  const [teamDownload] = await Promise.all([
     page.waitForEvent('download'),
     dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
   ]);
-  const kickoffPath = info.outputPath('preset-internal-kickoff.pdf');
-  await kickoffDownload.saveAs(kickoffPath);
-  if (shots) await kickoffDownload.saveAs(`${shots}/preset-internal-kickoff.pdf`);
-  const kickoffPdf = await readPdf(kickoffPath);
-  expect(kickoffPdf.pages).toHaveLength(5);
-  expect(kickoffPdf.pages[0]).toContain('STORYBOARD');
-  // The kickoff summary follows the title page: dates, people, open tasks and schedule.
-  for (const value of [
-    'Riepilogo kickoff',
-    '1 giorno di riprese',
-    'Giulia',
-    'Proprietario',
-    'Rent the dolly',
-    'Station platform 4',
-    '1 inquadratura',
-  ])
-    expect(kickoffPdf.pages[1]).toContain(value);
-  const kickoffText = kickoffPdf.pages.join(' ');
-  expect(kickoffText).toContain('Hidden frame action');
-  expect(kickoffText).toContain('Director only note');
-  expect(kickoffText).toContain('Shared with the client');
-  expect(kickoffText).toContain('Team only remark');
+  const teamPath = info.outputPath('team-storyboard.pdf');
+  await teamDownload.saveAs(teamPath);
+  const teamPdf = await readPdf(teamPath);
+  expect(teamPdf.pages).toHaveLength(4);
+  expect(teamPdf.pages[0]).toContain('STORYBOARD');
+  const teamText = teamPdf.pages.join(' ');
+  expect(teamText).not.toContain('Riepilogo kickoff');
+  expect(teamText).toContain('Hidden frame action');
+  expect(teamText).toContain('Director only note');
+  expect(teamText).toContain('Shared with the client');
+  expect(teamText).toContain('Team only remark');
 
-  // 4. Returning to Storyboard remembers Kickoff interno (both export the storyboard) while marking Pitch cliente as Consigliato.
+  // 4. Back on the Storyboard the dialog starts from the last choices of the project.
   await page.getByRole('tab', { name: 'Storyboard' }).click();
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
-  await expect(dialog.getByRole('radio', { name: /Kickoff interno/ })).toBeChecked();
-  await expect(dialog.locator('.export__preset', { hasText: 'Pitch cliente' })).toContainText(
-    'Consigliato',
-  );
+  await expect(dialog.getByRole('radio', { name: 'Il team' })).toBeChecked();
+  await expect(dialog.getByRole('checkbox', { name: 'Includi i commenti' })).toBeChecked();
+  await expect(dialog.getByRole('checkbox', { name: /Ordine del giorno/ })).not.toBeChecked();
   await dialog.getByRole('button', { name: 'Annulla' }).click();
 
   const stored = await (
     await page.request.get(`/api/v1/projects/${seeded.projectId}/export-settings`)
   ).json();
-  expect(stored.preset).toBe('internal-kickoff');
+  expect(stored).toMatchObject({
+    audience: 'team',
+    paper: 'a4',
+    orientation: 'landscape',
+    comments: true,
+    callSheet: false,
+  });
+  expect(stored).not.toHaveProperty('preset');
+  expect(stored).not.toHaveProperty('kickoffSummary');
   expect(await violations()).toEqual([]);
 });
 
-test('the Storyboard recommends the pitch only once a frame is approved', async ({
+test('a 16:9 page of approved frames shows the approved frame with its picture', async ({
   page,
   baseURL,
 }, info) => {
@@ -646,45 +623,29 @@ test('the Storyboard recommends the pitch only once a frame is approved', async 
   ].map((action) => addFrame(story, scene.id, null, { action, shot: 'ws', assetId }, opts).id);
   await pushBoardDoc(base, cookie, storyboard.id, story);
 
-  // No approved frame: the pitch would be empty, so the production book is recommended.
-  await page.goto(`/p/${project.id}/b/${storyboard.id}?view=storyboard`);
-  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
-  await page.getByRole('button', { name: 'Esporta PDF' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Esporta' });
-  await expect(dialog.getByRole('radio', { name: /Pitch cliente/ })).toBeVisible();
-  await shootDialog(page, 'rec-no-approved');
-  await expect(dialog.getByRole('radio', { name: /Libro di produzione/ })).toBeChecked();
-  await expect(dialog.locator('.export__preset', { hasText: 'Libro di produzione' })).toContainText(
-    'Consigliato',
-  );
-  await expect(dialog.locator('.export__preset', { hasText: 'Pitch cliente' })).not.toContainText(
-    'Consigliato',
-  );
-  await dialog.getByRole('button', { name: 'Annulla' }).click();
-
-  // Approved in review: the pitch is recommended and shows that frame on a 16:9 page.
+  // Approved in review: the only frame of the pitch, on a 16:9 page.
   await post(
     `/boards/${storyboard.id}/elements/${frameIds[0]}/review`,
     { status: 'approved' },
     'PUT',
   );
-  await page.reload();
+  await page.goto(`/p/${project.id}/b/${storyboard.id}?view=storyboard`);
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
-  await expect(dialog.getByRole('radio', { name: /Pitch cliente/ })).toBeVisible();
-  await shootDialog(page, 'rec-approved');
-  await expect(dialog.getByRole('radio', { name: /Pitch cliente/ })).toBeChecked();
-  await expect(dialog.locator('.export__preset', { hasText: 'Pitch cliente' })).toContainText(
-    'Consigliato',
-  );
+  const dialog = page.getByRole('dialog', { name: 'Esporta' });
+  await chooseSelect(dialog.getByRole('combobox', { name: 'Formato pagina' }), 'slide');
+  await dialog.getByRole('radio', { name: '1', exact: true }).click();
+  await dialog.getByRole('checkbox', { name: 'Solo inquadrature approvate' }).check();
+  await expect(dialog.getByText('2 pagine')).toBeVisible();
+  await shootDialog(page, '4-fresh-project');
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
   ]);
   const path = info.outputPath('pitch-with-picture.pdf');
   await download.saveAs(path);
-  if (process.env.PRESET_SHOTS)
-    await download.saveAs(`${process.env.PRESET_SHOTS}/pitch-with-picture.pdf`);
+  if (process.env.EXPORT_SHOTS)
+    await download.saveAs(`${process.env.EXPORT_SHOTS}/pitch-with-picture.pdf`);
   const pdf = await readPdf(path);
   expect(pdf.sizes).toEqual([
     [960, 540],

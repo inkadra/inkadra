@@ -1,7 +1,7 @@
 /* Share dialog on a board. */
 
 .ink-dialog:has(.share) {
-  width: min(540px, calc(100vw - 32px));
+  width: min(600px, calc(100vw - 32px));
   padding: 18px 20px 20px;
 }
 .share {
@@ -15,13 +15,99 @@
   right: 12px;
 }
 .share__lead {
-  margin: -6px 0 2px;
+  margin: -2px 0 2px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.share__lead b {
+  color: var(--ink-text-primary);
+  font-weight: 500;
+}
+/* Section titles: small, uppercase and muted; the count beside them stays plain. */
+.share__section {
+  margin: 8px 0 -4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+}
+.share__count {
+  margin-left: 4px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+/* Rows in one bordered box, with dividers. */
+.share__box {
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+}
+.share__label {
+  flex-basis: 100%;
   font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-text-secondary);
+}
+.share__hint {
+  flex-basis: 100%;
+  margin: -2px 0 0;
+  font-size: 12px;
+  color: var(--ink-text-muted);
+}
+.share__hint b {
+  color: var(--ink-text-secondary);
+  font-weight: 500;
+}
+/* What each role can do: an explanation only, on a neutral surface, nothing to pick. */
+.share__legend summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  max-width: 100%;
+  border-radius: var(--ink-radius-xs);
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+  cursor: pointer;
+  list-style: none;
+}
+.share__legend summary::-webkit-details-marker {
+  display: none;
+}
+.share__legend summary:hover {
+  color: var(--ink-text-primary);
+}
+.share__legend summary svg {
+  flex: none;
+  transition: transform var(--ink-dur-fast) var(--ink-ease-out);
+}
+.share__legend[open] summary svg {
+  transform: rotate(90deg);
+}
+.share__legend dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 7px 16px;
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.share__legend dt {
+  font-weight: 500;
+  color: var(--ink-text-primary);
+}
+.share__legend dd {
+  margin: 0;
+  color: var(--ink-text-secondary);
 }
 .share__invite {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px 8px;
 }
 .share__field {
   flex: 1;
@@ -102,31 +188,19 @@
   align-items: center;
   gap: 10px;
   min-height: 48px;
+  padding: 6px 10px 6px 14px;
 }
-/* The avatar and name are a button so every person, also who cannot be edited,
-   can highlight their role in the matrix below. */
+.share__row + .share__row {
+  border-top: 1px solid var(--ink-border-muted);
+}
 .share__person {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 4px 8px 4px 4px;
-  border: none;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  border-radius: var(--ink-radius-md);
 }
-.share__person:hover {
-  background: var(--ink-surface-2);
-}
-.share__person[aria-pressed="true"] {
-  background: var(--ink-bg-canvas);
-}
-/* Read by screen readers only: what pressing a person does. */
+/* Read by screen readers only. */
 .share__sr {
   position: absolute;
   width: 1px;
@@ -168,111 +242,34 @@
 .share__row--pending .share__name {
   color: var(--ink-text-secondary);
 }
-.share__pending-avatar {
+.share__icon-avatar {
   width: 30px;
   height: 30px;
   flex: none;
-  border-radius: 50%;
-  border: 1px dashed var(--ink-border-strong);
+  border-radius: var(--ink-radius-full);
   display: grid;
   place-items: center;
-  color: var(--ink-text-muted);
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
 }
 .share__link {
-  border-top: 1px solid var(--ink-border-subtle);
-  padding-top: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  padding: 10px 10px 10px 14px;
 }
 .share__link-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 .share__url {
-  flex: 1;
-  min-width: 200px;
-  height: 36px;
-  padding: 0 10px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-surface-1);
-  border: 1px solid var(--ink-border-subtle);
   color: var(--ink-text-secondary);
   font-size: 12px;
 }
 .share__note {
   margin: 0;
   font-size: 12px;
-}
-
-/* Permissions Matrix matching V2-Permissions.html */
-.share__matrix-wrapper {
-  border-top: 1px solid var(--ink-border-subtle);
-  padding-top: 10px;
-  margin-top: 4px;
-}
-
-.share__matrix-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  background: transparent;
-  border: 0;
-  color: var(--ink-text-secondary);
-  font:
-    500 12px Inter,
-    sans-serif;
-  cursor: pointer;
-  padding: 4px 0;
-}
-
-.share__matrix-toggle:hover {
-  color: var(--ink-text-primary);
-}
-
-.share__matrix-card {
-  margin-top: 8px;
-  background: #1a1a1d;
-  border: 1px solid #26262a;
-  border-radius: var(--ink-radius-sm);
-  padding: 10px 12px;
-}
-
-.share__matrix-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 11px;
-}
-
-.share__matrix-table thead th {
-  padding: 4px 6px;
-  font-weight: 500;
-  color: #808086;
-  text-align: center;
-  border-bottom: 1px solid #26262a;
-}
-
-.share__matrix-table td,
-.share__matrix-table tbody th {
-  padding: 5px 6px;
-  color: #8a8a90;
-  text-align: center;
-  border-bottom: 1px solid #1f1f23;
-}
-
-.share__matrix-table tr.is-active td,
-.share__matrix-table tr.is-active th {
-  color: #ededed;
-  background: #1e2a44;
-}
-
-.share__matrix-table th:first-child {
-  text-align: left;
-  font-weight: 500;
-  color: #ededed;
 }
 
 /* End of someone's access (decision 0041): muted, in the warning colour within three days. */
@@ -348,11 +345,31 @@
   .share__row {
     flex-wrap: wrap;
     gap: 0 4px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--ink-border-subtle);
+    padding: 8px 6px 4px 12px;
   }
-  .share__row:last-child {
-    border-bottom: 0;
+  /* The invitation link: what it is on top, its controls under it. */
+  .share__link-row {
+    flex-wrap: wrap;
+  }
+  .share__link-row > .share__who {
+    flex: 1 0 calc(100% - 40px);
+  }
+  .share__link-row > .share__select {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+  .share__link-row > .ink-btn {
+    min-height: 44px;
+  }
+  .share__legend dl {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .share__legend dd {
+    margin-bottom: 6px;
+  }
+  .share__legend summary {
+    min-height: 44px;
   }
   .share__person {
     flex: 1 0 100%;
@@ -398,5 +415,11 @@
   .share__invite > .ink-btn {
     flex: 1 0 100%;
     min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share__legend summary svg {
+    transition: none;
   }
 }

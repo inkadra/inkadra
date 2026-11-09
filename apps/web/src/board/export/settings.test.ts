@@ -1,4 +1,3 @@
-import type { Element } from '@inkadra/doc-schema';
 import {
   DEFAULT_EXPORT_PREFERENCES,
   DEFAULT_PROJECT_THEME,
@@ -6,17 +5,12 @@ import {
 } from '@inkadra/shared';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  hasApprovedFrame,
   initialExportState,
   initialImage,
   LogoTimeoutError,
   localePaper,
   logoProblem,
-  matchesPreset,
   preferencesPatch,
-  presetChoices,
-  presetNumber,
-  recommendedPreset,
   uploadLogo,
 } from './settings.ts';
 
@@ -31,239 +25,7 @@ describe('export settings on the client', () => {
     expect(localePaper('en-GB')).toBe('a4');
   });
 
-  it('recommends a preset for the open view', () => {
-    expect(recommendedPreset('storyboard', true)).toBe('client-pitch');
-    expect(recommendedPreset('shotlist', true)).toBe('production-book');
-    expect(recommendedPreset('schedule', true)).toBe('internal-kickoff');
-    expect(recommendedPreset('canvas', true)).toBe('client-pitch');
-    // The pitch exports approved frames only: a storyboard without any gets the production book.
-    expect(recommendedPreset('storyboard', false)).toBe('production-book');
-    expect(recommendedPreset('canvas', false)).toBe('client-pitch');
-    expect(presetNumber('client-pitch')).toBe(1);
-    expect(presetNumber('production-book')).toBe(2);
-    expect(presetNumber('internal-kickoff')).toBe(3);
-  });
-
-  it('maps each preset to existing export options and detects manual edits', () => {
-    const pitch = presetChoices('client-pitch', 'storyboard', undefined, 'it-IT');
-    expect(pitch).toEqual({
-      format: 'pdf',
-      what: 'storyboard',
-      framesPerPage: 1,
-      paper: 'slide',
-      orientation: 'landscape',
-      audience: 'client',
-      titlePage: true,
-      comments: false,
-      hideGuestHidden: true,
-      approvedOnly: true,
-      kickoffSummary: false,
-      callSheet: false,
-    });
-    expect(matchesPreset(pitch, 'client-pitch', 'storyboard', 'it-IT')).toBe(true);
-    expect(
-      matchesPreset({ ...pitch, framesPerPage: 4 }, 'client-pitch', 'storyboard', 'it-IT'),
-    ).toBe(false);
-
-    const book = presetChoices('production-book', 'storyboard', undefined, 'en-US');
-    expect(book).toEqual({
-      format: 'pdf',
-      what: 'shotlist',
-      framesPerPage: 4,
-      paper: 'a4',
-      orientation: 'portrait',
-      audience: 'team',
-      titlePage: true,
-      comments: false,
-      hideGuestHidden: false,
-      approvedOnly: false,
-      kickoffSummary: false,
-      callSheet: true,
-    });
-    expect(matchesPreset(book, 'production-book', 'storyboard', 'en-US')).toBe(true);
-
-    const kickoff = presetChoices('internal-kickoff', 'schedule', undefined, 'it-IT');
-    expect(kickoff).toEqual({
-      format: 'pdf',
-      what: 'storyboard',
-      framesPerPage: 4,
-      paper: 'a4',
-      orientation: 'landscape',
-      audience: 'team',
-      titlePage: true,
-      comments: true,
-      hideGuestHidden: false,
-      approvedOnly: false,
-      kickoffSummary: true,
-      callSheet: false,
-    });
-    expect(matchesPreset(kickoff, 'internal-kickoff', 'schedule', 'it-IT')).toBe(true);
-
-    // On a regular canvas board, presets keep the user's scope and matchesPreset ignores what.
-    const canvasSel = presetChoices('production-book', 'canvas', 'selection', 'it-IT');
-    expect(canvasSel.what).toBe('selection');
-    expect(
-      matchesPreset({ ...canvasSel, what: 'visible' }, 'production-book', 'canvas', 'it-IT'),
-    ).toBe(true);
-
-    // The pitch is 16:9: leaving it for the project's stored paper is an edit, and so is the reverse.
-    expect(
-      matchesPreset({ ...pitch, paper: 'a4' }, 'client-pitch', 'storyboard', 'en-US', 'a4'),
-    ).toBe(false);
-    expect(
-      matchesPreset({ ...book, paper: 'slide' }, 'production-book', 'shotlist', 'it-IT', 'slide'),
-    ).toBe(false);
-    // Between paper sizes the stored one still counts as the preset's, for any reader's locale.
-    expect(
-      matchesPreset({ ...book, paper: 'letter' }, 'production-book', 'shotlist', 'it-IT', 'letter'),
-    ).toBe(true);
-    expect(
-      matchesPreset({ ...book, paper: 'letter' }, 'production-book', 'shotlist', 'it-IT', 'a4'),
-    ).toBe(false);
-  });
-
-  it('counts the new options as edits only where they apply', () => {
-    const pitch = presetChoices('client-pitch', 'storyboard', undefined, 'it-IT');
-    expect(
-      matchesPreset({ ...pitch, approvedOnly: false }, 'client-pitch', 'storyboard', 'it-IT'),
-    ).toBe(false);
-    // A canvas board has no frames to approve: the pitch leaves the filter off there.
-    expect(presetChoices('client-pitch', 'canvas', 'board').approvedOnly).toBe(false);
-    // Kickoff summary and call sheet are team PDF pages; for clients they are ignored.
-    expect(
-      matchesPreset({ ...pitch, kickoffSummary: true }, 'client-pitch', 'storyboard', 'it-IT'),
-    ).toBe(true);
-    const kickoff = presetChoices('internal-kickoff', 'schedule', undefined, 'it-IT');
-    expect(
-      matchesPreset({ ...kickoff, kickoffSummary: false }, 'internal-kickoff', 'schedule', 'it-IT'),
-    ).toBe(false);
-    const book = presetChoices('production-book', 'shotlist', undefined, 'it-IT');
-    expect(
-      matchesPreset({ ...book, callSheet: false }, 'production-book', 'shotlist', 'it-IT'),
-    ).toBe(false);
-    expect(
-      preferencesPatch(
-        DEFAULT_EXPORT_PREFERENCES,
-        { ...DEFAULT_EXPORT_PREFERENCES, paper: 'slide', approvedOnly: true, callSheet: true },
-        'it-IT',
-      ),
-    ).toEqual({ paper: 'slide', approvedOnly: true, callSheet: true });
-  });
-
-  it('chooses the initial preset from remembered settings and view compatibility', () => {
-    const baseSettings: ExportSettings = {
-      ...DEFAULT_EXPORT_PREFERENCES,
-      logoAssetId: null,
-      logo: null,
-      theme: DEFAULT_PROJECT_THEME,
-      projectColor: 'blue',
-      canEdit: true,
-      updatedAt: '2026-10-01T12:00:00.000Z',
-    };
-    // A project that only uploaded a logo (preset is null, default preferences) selects recommended and keeps Personalizza closed.
-    const logoOnly = initialExportState(baseSettings, 'storyboard', undefined, 'it-IT', true);
-    expect(logoOnly.basePreset).toBe('client-pitch');
-    expect(logoOnly.customOpen).toBe(false);
-    expect(logoOnly.req.theme).toEqual({ color: 'blue', headingFont: 'inter' });
-    expect(
-      matchesPreset(logoOnly.req, logoOnly.basePreset, 'storyboard', 'it-IT', baseSettings.paper),
-    ).toBe(true);
-
-    // Remembered preset whose content does not match the open view falls back to the view's recommended preset.
-    const mismatch = initialExportState(
-      { ...baseSettings, preset: 'client-pitch', framesPerPage: 1 },
-      'shotlist',
-      undefined,
-      'it-IT',
-      true,
-    );
-    expect(mismatch.basePreset).toBe('production-book');
-    expect(mismatch.req.what).toBe('shotlist');
-    expect(mismatch.customOpen).toBe(false);
-
-    // Remembered preset whose content matches the open view is restored.
-    const remembered = initialExportState(
-      {
-        ...baseSettings,
-        preset: 'internal-kickoff',
-        framesPerPage: 4,
-        audience: 'team',
-        comments: true,
-        hideGuestHidden: false,
-      },
-      'storyboard',
-      undefined,
-      'it-IT',
-      true,
-    );
-    expect(remembered.basePreset).toBe('internal-kickoff');
-    expect(remembered.customOpen).toBe(false);
-
-    // A pitch remembered before #380 (A4, no approved filter) starts as the pitch is now.
-    const oldPitch = initialExportState(
-      { ...baseSettings, preset: 'client-pitch', framesPerPage: 1, paper: 'a4' },
-      'storyboard',
-      undefined,
-      'it-IT',
-      true,
-    );
-    expect(oldPitch.basePreset).toBe('client-pitch');
-    expect(oldPitch.customOpen).toBe(false);
-    expect(oldPitch.req.paper).toBe('slide');
-
-    // A remembered preset keeps the project's paper size, whatever the reader's locale.
-    const letterKickoff = initialExportState(
-      { ...baseSettings, preset: 'internal-kickoff', paper: 'letter' },
-      'storyboard',
-      undefined,
-      'it-IT',
-      true,
-    );
-    expect(letterKickoff.basePreset).toBe('internal-kickoff');
-    expect(letterKickoff.req.paper).toBe('letter');
-
-    // A book that was saved as 16:9 goes back to the book's own paper.
-    const slideBook = initialExportState(
-      { ...baseSettings, preset: 'production-book', paper: 'slide' },
-      'shotlist',
-      undefined,
-      'it-IT',
-      true,
-    );
-    expect(slideBook.req.paper).toBe('a4');
-    expect(oldPitch.req).toMatchObject({ paper: 'slide', approvedOnly: true });
-
-    // Custom preferences that match no preset open Personalizza automatically.
-    const custom = initialExportState(
-      { ...baseSettings, preset: null, framesPerPage: 2 },
-      'storyboard',
-      undefined,
-      'it-IT',
-      true,
-    );
-    expect(custom.customOpen).toBe(true);
-    expect(
-      matchesPreset(custom.req, custom.basePreset, 'storyboard', 'it-IT', baseSettings.paper),
-    ).toBe(false);
-  });
-
-  it('recommends the pitch from Storyboard only when it has an approved frame to show', () => {
-    const frame = (id: string, extra: Partial<Element> = {}) =>
-      [id, { id, type: 'frame', parent: null, ...extra } as Element] as const;
-    const byId = new Map([frame('a'), frame('b', { approved: true } as Partial<Element>)]);
-    const none = new Map<string, { status: string }>();
-    // Same criterion as the "approved frames only" filter: the shot list flag or the review.
-    expect(hasApprovedFrame(byId, none)).toBe(true);
-    expect(hasApprovedFrame(new Map([frame('a')]), new Map([['a', { status: 'approved' }]]))).toBe(
-      true,
-    );
-    expect(hasApprovedFrame(new Map([frame('a')]), new Map([['a', { status: 'changes' }]]))).toBe(
-      false,
-    );
-    // A frame hidden from guests never reaches the pitch.
-    const hidden = new Map([frame('a', { approved: true, guestHidden: true } as Partial<Element>)]);
-    expect(hasApprovedFrame(hidden, none)).toBe(false);
-
+  it('starts from the remembered options, or the defaults, with the content of the open view', () => {
     const fresh: ExportSettings = {
       ...DEFAULT_EXPORT_PREFERENCES,
       logoAssetId: null,
@@ -273,41 +35,52 @@ describe('export settings on the client', () => {
       canEdit: true,
       updatedAt: null,
     };
-    expect(initialExportState(fresh, 'storyboard', undefined, 'it-IT', true).basePreset).toBe(
-      'client-pitch',
-    );
-    const empty = initialExportState(fresh, 'storyboard', undefined, 'it-IT', false);
-    expect(empty.basePreset).toBe('production-book');
-    expect(empty.req).toMatchObject({ approvedOnly: false, callSheet: true });
-    // A preset the project remembered still wins.
-    const remembered = initialExportState(
-      { ...fresh, preset: 'client-pitch', updatedAt: '2026-10-01T12:00:00.000Z' },
-      'storyboard',
-      undefined,
-      'it-IT',
-      false,
-    );
-    expect(remembered.basePreset).toBe('client-pitch');
+    // Never saved: the defaults, the reader's paper and the project's theme.
+    expect(initialExportState(fresh, 'storyboard', undefined, 'en-US')).toEqual({
+      format: 'pdf',
+      what: 'storyboard',
+      framesPerPage: 4,
+      paper: 'letter',
+      orientation: 'landscape',
+      audience: 'client',
+      titlePage: true,
+      comments: false,
+      hideGuestHidden: true,
+      approvedOnly: false,
+      callSheet: false,
+      logo: null,
+      theme: { color: 'blue', headingFont: 'inter' },
+    });
+    // Settings that could not be read: the same defaults, without logo or theme.
+    expect(initialExportState(null, 'canvas', undefined, 'it-IT')).toMatchObject({
+      what: 'board',
+      paper: 'a4',
+      logo: null,
+      theme: undefined,
+    });
+    // Remembered options win, the paper the project chose too; `what` follows the view.
+    const saved = { ...fresh, paper: 'slide' as const, audience: 'team' as const, callSheet: true };
+    expect(initialExportState(saved, 'shotlist', undefined, 'en-US')).toMatchObject({
+      what: 'shotlist',
+      paper: 'slide',
+      audience: 'team',
+      callSheet: true,
+    });
+    expect(initialExportState(saved, 'shotlist', 'scenesheets', 'it-IT').what).toBe('scenesheets');
+    expect(initialExportState(saved, 'schedule', undefined, 'it-IT').what).toBe('storyboard');
   });
 
-  it('sends only what changed, including the remembered preset, and keeps a null paper when the default was kept', () => {
+  it('sends only what changed, and keeps a null paper when the default was kept', () => {
     const chosen = { ...DEFAULT_EXPORT_PREFERENCES, paper: 'a4' as const };
     expect(preferencesPatch(DEFAULT_EXPORT_PREFERENCES, chosen, 'it-IT')).toEqual({});
     expect(preferencesPatch(DEFAULT_EXPORT_PREFERENCES, chosen, 'en-US')).toEqual({ paper: 'a4' });
     expect(
       preferencesPatch(
         DEFAULT_EXPORT_PREFERENCES,
-        { ...chosen, preset: 'production-book', framesPerPage: 6, audience: 'team' },
+        { ...chosen, framesPerPage: 6, audience: 'team', callSheet: true },
         'it-IT',
       ),
-    ).toEqual({ preset: 'production-book', framesPerPage: 6, audience: 'team' });
-    expect(
-      preferencesPatch(
-        { ...DEFAULT_EXPORT_PREFERENCES, preset: 'production-book' },
-        { ...chosen, preset: null },
-        'it-IT',
-      ),
-    ).toEqual({ preset: null });
+    ).toEqual({ framesPerPage: 6, audience: 'team', callSheet: true });
   });
 
   it('starts the picture options from what the project remembers, old rows included', () => {
@@ -352,14 +125,6 @@ describe('export settings on the client', () => {
     });
     const stored = { ...DEFAULT_EXPORT_PREFERENCES, imageAspect: '4:5' as const };
     expect(preferencesPatch(stored, chosen, 'it-IT')).toEqual({});
-  });
-
-  it('a stored JPEG does not stop the presets from matching a PDF', () => {
-    const pitch = presetChoices('client-pitch', 'canvas', 'board', 'it-IT');
-    expect(matchesPreset({ ...pitch, format: 'jpeg' }, 'client-pitch', 'canvas', 'it-IT')).toBe(
-      false,
-    );
-    expect(matchesPreset(pitch, 'client-pitch', 'canvas', 'it-IT')).toBe(true);
   });
 
   it('accepts small PNG and JPEG logos only', () => {

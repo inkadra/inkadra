@@ -9,7 +9,7 @@ import {
   moveFrames,
   updateElement,
 } from '@inkadra/canvas-core';
-import { Button, Checkbox, EmptyState, Icon, Select } from '@inkadra/ui';
+import { Button, Checkbox, EmptyState, Icon, IconButton, Select } from '@inkadra/ui';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
@@ -1105,7 +1105,7 @@ export function ShotList({
               }}
             >
               <option value="" disabled>
-                {t('film.list.changeStatus')} ▾
+                {t('film.list.changeStatus')}
               </option>
               {SHOT_DISPLAY_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -1124,7 +1124,7 @@ export function ShotList({
                 }}
               >
                 <option value="" disabled>
-                  {t('film.list.moveToScene')} ▾
+                  {t('film.list.moveToScene')}
                 </option>
                 {scenes.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -1142,14 +1142,12 @@ export function ShotList({
             >
               {t('film.list.deleteSelected')}
             </button>
-            <button
-              type="button"
+            <IconButton
+              icon="close"
               className="shots__bulk-close"
-              aria-label={t('film.list.deselectAll')}
+              label={t('film.list.deselectAll')}
               onClick={() => setSelectedIds(new Set())}
-            >
-              ×
-            </button>
+            />
           </div>
         )}
 

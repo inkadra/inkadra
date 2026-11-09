@@ -132,7 +132,14 @@ it('supports row multi-selection and bulk actions (change status and delete)', a
   const statusSelect = toolbar?.querySelector<HTMLButtonElement>(
     '.ink-select[aria-label="Change status"]',
   );
-  expect(statusSelect).not.toBeNull();
+  const moveSelect = toolbar?.querySelector<HTMLButtonElement>(
+    '.ink-select[aria-label="Move to scene"]',
+  );
+  expect(statusSelect?.textContent).toBe('Change status');
+  expect(moveSelect?.textContent).toBe('Move to scene');
+  expect(
+    toolbar?.querySelector('.shots__bulk-close.ink-iconbtn[aria-label="Deselect"]'),
+  ).not.toBeNull();
 
   await act(async () => {
     if (statusSelect) {

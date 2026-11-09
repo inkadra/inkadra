@@ -1,33 +1,50 @@
-import type {
-  BoardDetail,
-  CreateShareLink,
-  GuestRole,
-  ShareLink,
-  ShareLinkPicks,
-} from '@inkadra/shared';
-import { Button, Checkbox, Icon, IconButton, Select } from '@inkadra/ui';
-import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import type { BoardDetail, ShareLink, ShareLinkPicks } from '@inkadra/shared';
+import {
+  Button,
+  Icon,
+  IconButton,
+  RadioGroup,
+  Segmented,
+  Select,
+  Switch,
+  TextField,
+} from '@inkadra/ui';
+import {
+  type FormEvent,
+  Fragment,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
+import { useIsPhone } from '../lib/phone.ts';
 import { relativeTime } from '../notifications/Notifications.tsx';
+import { useMenu } from '../routes/ProjectAppearance.tsx';
 import {
   canChangeScope,
+  createOf,
   draftOf,
   EXPIRY_DAYS,
   GUEST_ROLES,
   type LinkDraft,
+  linkSummary,
   MIN_PASSWORD,
   namesText,
+  newDraft,
   patchOf,
   pickedFileNames,
   pickedWithoutName,
   picksCsv,
   statusOf,
+  willHavePassword,
 } from './guest-links.ts';
 import { refreshBoardCounts } from './live-counts.ts';
 import './guest-links.css';
 import { formatDateTime } from '../lib/datetime.ts';
-import { PermissionsMatrix } from './PermissionsMatrix.tsx';
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -115,7 +132,9 @@ export function GuestLinks({
 
   return (
     <div className="guest-links">
-      <p className="share__lead ink-muted">{t('guestLinks.lead')}</p>
+      <p className="share__lead ink-muted">
+        <Trans i18nKey="guestLinks.lead" components={{ b: <b /> }} />
+      </p>
       <CreateForm
         boardId={board.id}
         subBoards={subBoards}
@@ -136,91 +155,262 @@ export function GuestLinks({
         <p className="share__note ink-muted">{t('guestLinks.none')}</p>
       )}
       {links && links.length > 0 && (
-        <ul className="guest-links__list" aria-label={t('guestLinks.list')}>
-          {links.map((link) => (
-            <LinkRow
-              key={link.id}
-              link={link}
-              fresh={fresh === link.id}
-              scope={canChangeScope(link, userId, board.myRole)}
-              subBoards={subBoards}
-              onChanged={async () => {
-                setError(null);
-                await load();
-                refreshBoardCounts();
-              }}
-              onError={(err) => setError(errorText(t, err))}
-              onResults={() => setResults(link)}
-            />
-          ))}
-        </ul>
+        <section aria-labelledby={`${board.id}-guest-links`}>
+          <h3 className="share__section" id={`${board.id}-guest-links`}>
+            {t('guestLinks.active')} <span className="share__count">{links.length}</span>
+          </h3>
+          <ul className="share__box guest-links__list" aria-label={t('guestLinks.list')}>
+            {links.map((link) => (
+              <LinkRow
+                key={link.id}
+                link={link}
+                fresh={fresh === link.id}
+                scope={canChangeScope(link, userId, board.myRole)}
+                subBoards={subBoards}
+                onChanged={async () => {
+                  setError(null);
+                  await load();
+                  refreshBoardCounts();
+                }}
+                onError={(err) => setError(errorText(t, err))}
+                onResults={() => setResults(link)}
+              />
+            ))}
+          </ul>
+          {/* The rule the lead used to carry: a link lives on its creator's editor role. */}
+          <p className="guest-links__hint guest-links__valid">{t('guestLinks.validWhile')}</p>
+        </section>
       )}
     </div>
   );
 }
 
-function RoleSelect({
-  value,
-  onChange,
-  disabled,
+/** One on/off option of a link: a switch, its name and one line on what it does. */
+function Option({
   label,
-}: {
-  value: GuestRole;
-  onChange: (role: GuestRole) => void;
-  disabled?: boolean;
-  label: string;
-}) {
-  const { t } = useTranslation();
-  const id = useId();
-  return (
-    <div className="guest-links__field">
-      <label htmlFor={id}>{label}</label>
-      <Select
-        id={id}
-        className="guest-links__select"
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e as GuestRole)}
-      >
-        {GUEST_ROLES.map((r) => (
-          <option key={r} value={r}>
-            {t(`guestLinks.roles.${r}`)}
-          </option>
-        ))}
-      </Select>
-    </div>
-  );
-}
-
-function Check({
-  label,
-  checked,
-  onChange,
-  disabled,
   hint,
+  checked,
+  disabled,
+  onChange,
 }: {
   label: string;
+  hint: string;
   checked: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-  hint?: string;
+  disabled: boolean;
+  onChange: (on: boolean) => void;
 }) {
   const id = useId();
   return (
-    <div className="guest-links__check">
-      <Checkbox
+    <div className="guest-links__option">
+      <Switch
         id={id}
         checked={checked}
         disabled={disabled}
-        aria-describedby={hint ? `${id}-hint` : undefined}
+        aria-describedby={`${id}-hint`}
         onChange={(e) => onChange(e.target.checked)}
       />
-      <label htmlFor={id}>{label}</label>
-      {hint && (
+      <span className="guest-links__option-text">
+        <label htmlFor={id}>{label}</label>
         <span id={`${id}-hint`} className="guest-links__hint">
           {hint}
         </span>
-      )}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The fields of a link, the same to create and to change one: who it is for, the expiry, what
+ * whoever opens it can do, and its options. `link` is the link being changed, if any.
+ */
+function LinkFields({
+  draft,
+  set,
+  link,
+  scope,
+  subBoards,
+}: {
+  draft: LinkDraft;
+  set: (patch: Partial<LinkDraft>) => void;
+  link?: ShareLink;
+  scope: boolean;
+  subBoards: number;
+}) {
+  const { t } = useTranslation();
+  const expiryId = useId();
+  const disabled = !scope;
+  const password = willHavePassword(draft, link);
+  const RoleChoice = useIsPhone() ? RadioGroup : Segmented;
+  return (
+    <>
+      <div className="guest-links__pair">
+        <TextField
+          label={t('guestLinks.label')}
+          value={draft.label}
+          maxLength={80}
+          placeholder={t('guestLinks.labelPlaceholder')}
+          onChange={(e) => set({ label: e.target.value })}
+        />
+        <div className="ink-field">
+          <label htmlFor={expiryId} className="ink-field__label">
+            {t('guestLinks.expiry')}
+          </label>
+          <Select
+            id={expiryId}
+            disabled={disabled}
+            value={String(draft.expiry)}
+            onChange={(v) => set({ expiry: v === 'keep' || v === 'none' ? v : Number(v) })}
+          >
+            {link && <option value="keep">{t('guestLinks.keepExpiry')}</option>}
+            <option value="none">{t('guestLinks.never')}</option>
+            {EXPIRY_DAYS.map((d) => (
+              <option key={d} value={d}>
+                {t(link ? 'guestLinks.fromNow' : 'share.link.days', { count: d })}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+      {/* The three segments do not fit a phone in every language (German): a list there. */}
+      <RoleChoice
+        className="guest-links__role"
+        label={t('guestLinks.role')}
+        hideLabel={false}
+        value={draft.role}
+        disabled={disabled}
+        onChange={(role) => set({ role })}
+        hint={t(`guestLinks.roleHelp.${draft.role}`)}
+        options={GUEST_ROLES.map((r) => ({ value: r, label: t(`guestLinks.roles.${r}`) }))}
+      />
+      {/* A legend would cut the box's top border: the border is on the inner grid. */}
+      <fieldset className="guest-links__set">
+        <legend className="ink-sr-only">{t('guestLinks.options')}</legend>
+        <div className="guest-links__options">
+          <Option
+            label={t('guestLinks.proofing')}
+            hint={t('guestLinks.proofingHint')}
+            checked={draft.proofing}
+            disabled={disabled}
+            onChange={(proofing) => set({ proofing })}
+          />
+          <Option
+            label={t('guestLinks.download')}
+            hint={t('guestLinks.downloadHint')}
+            checked={draft.allowDownload}
+            disabled={disabled}
+            onChange={(allowDownload) => set({ allowDownload })}
+          />
+          {subBoards > 0 && (
+            <Option
+              label={t('guestLinks.subBoards')}
+              hint={t('guestLinks.subBoardsHint', { count: subBoards })}
+              checked={draft.includeSubBoards}
+              disabled={disabled}
+              onChange={(includeSubBoards) => set({ includeSubBoards })}
+            />
+          )}
+          <Option
+            label={t('guestLinks.password')}
+            hint={t('guestLinks.passwordHint', { min: MIN_PASSWORD })}
+            checked={password}
+            disabled={disabled}
+            onChange={(on) =>
+              set({
+                password: {
+                  // A link that has one keeps it when switched back on, and loses it when off.
+                  mode: on
+                    ? link?.hasPassword
+                      ? 'keep'
+                      : 'set'
+                    : link?.hasPassword
+                      ? 'remove'
+                      : 'keep',
+                  value: '',
+                },
+              })
+            }
+          />
+          {password && (
+            <div className="guest-links__password">
+              {draft.password.mode === 'set' ? (
+                <>
+                  <TextField
+                    label={t(
+                      link?.hasPassword ? 'guestLinks.newPassword' : 'guestLinks.passwordField',
+                    )}
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={MIN_PASSWORD}
+                    maxLength={128}
+                    disabled={disabled}
+                    value={draft.password.value}
+                    onChange={(e) => set({ password: { mode: 'set', value: e.target.value } })}
+                  />
+                  {link?.hasPassword && (
+                    <p className="guest-links__hint">{t('guestLinks.passwordChangeHint')}</p>
+                  )}
+                </>
+              ) : (
+                <p className="guest-links__kept">
+                  <span>{t('guestLinks.passwordKept')}</span>
+                  <Button
+                    variant="ghost"
+                    disabled={disabled}
+                    onClick={() => set({ password: { mode: 'set', value: '' } })}
+                  >
+                    {t('guestLinks.passwordChange')}
+                  </Button>
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </fieldset>
+    </>
+  );
+}
+
+/** The summary of the draft, then cancel and the form's own button. */
+function FormFooter({
+  draft,
+  link,
+  subBoards,
+  busy,
+  submit,
+  onCancel,
+}: {
+  draft: LinkDraft;
+  link?: ShareLink;
+  subBoards: number;
+  busy: boolean;
+  submit: ReactNode;
+  onCancel: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const parts = linkSummary(t, draft, {
+    subBoards,
+    link,
+    date: (iso) => formatDate(iso, i18n.language),
+  });
+  return (
+    <div className="guest-links__footer">
+      <p className="guest-links__summary">
+        {parts.map((part, i) =>
+          part.strong ? (
+            // biome-ignore lint/suspicious/noArrayIndexKey: the parts of one sentence, in order
+            <b key={i}>{part.text}</b>
+          ) : (
+            // biome-ignore lint/suspicious/noArrayIndexKey: the parts of one sentence, in order
+            <Fragment key={i}>{part.text}</Fragment>
+          ),
+        )}
+      </p>
+      <div className="guest-links__actions">
+        <Button variant="ghost" disabled={busy} onClick={onCancel}>
+          {t('guestLinks.cancel')}
+        </Button>
+        {submit}
+      </div>
     </div>
   );
 }
@@ -235,58 +425,37 @@ function CreateForm({
   onCreated: (link: ShareLink) => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const ids = { label: useId(), password: useId(), expiry: useId() };
-  const [open, setOpen] = useState(false);
-  const [role, setRole] = useState<GuestRole>('guest_view');
-  const [label, setLabel] = useState('');
-  const [includeSubBoards, setIncludeSubBoards] = useState(true);
-  const [allowDownload, setAllowDownload] = useState(false);
-  const [proofing, setProofing] = useState(false);
-  const [usePassword, setUsePassword] = useState(false);
-  const [password, setPassword] = useState('');
-  const [days, setDays] = useState<number | 0>(0);
+  // Open at first, as the approved mockup; closed after a link is made, to show it.
+  const [open, setOpen] = useState(true);
+  const [draft, setDraft] = useState<LinkDraft>(newDraft);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const first = useRef<HTMLDivElement>(null);
+  const form = useRef<HTMLFormElement>(null);
   const opener = useRef<HTMLDivElement>(null);
+  const reopened = useRef(false);
+  const set = (patch: Partial<LinkDraft>) => setDraft((d) => ({ ...d, ...patch }));
 
   useEffect(() => {
-    if (open) first.current?.querySelector<HTMLButtonElement>('.ink-select')?.focus();
+    if (open && reopened.current) form.current?.querySelector<HTMLInputElement>('input')?.focus();
   }, [open]);
 
-  const reset = () => {
-    setRole('guest_view');
-    setLabel('');
-    setIncludeSubBoards(true);
-    setAllowDownload(false);
-    setProofing(false);
-    setUsePassword(false);
-    setPassword('');
-    setDays(0);
+  const close = () => {
+    setDraft(newDraft());
     setError(null);
+    setOpen(false);
   };
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (usePassword && password.length < MIN_PASSWORD) {
+    if (draft.password.mode === 'set' && draft.password.value.length < MIN_PASSWORD) {
       setError(t('guestLinks.passwordShort', { min: MIN_PASSWORD }));
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const body: CreateShareLink = {
-        role,
-        includeSubBoards,
-        allowDownload,
-        proofing,
-        ...(label.trim() ? { label: label.trim() } : {}),
-        ...(usePassword ? { password } : {}),
-        ...(days ? { expiresInDays: days } : {}),
-      };
-      const link = await api.post<ShareLink>(`/boards/${boardId}/share-links`, body);
-      reset();
-      setOpen(false);
+      const link = await api.post<ShareLink>(`/boards/${boardId}/share-links`, createOf(draft));
+      close();
       await onCreated(link);
     } catch (err) {
       setError(errorText(t, err));
@@ -297,8 +466,15 @@ function CreateForm({
 
   if (!open) {
     return (
-      <div ref={opener}>
-        <Button variant="primary" icon="link" onClick={() => setOpen(true)}>
+      <div ref={opener} data-tour="share-guest-form">
+        <Button
+          variant="primary"
+          icon="link"
+          onClick={() => {
+            reopened.current = true;
+            setOpen(true);
+          }}
+        >
           {t('guestLinks.new')}
         </Button>
       </div>
@@ -306,94 +482,33 @@ function CreateForm({
   }
 
   return (
-    <form className="guest-links__form" onSubmit={submit} aria-label={t('guestLinks.new')}>
-      <div className="guest-links__grid" ref={first}>
-        <RoleSelect value={role} onChange={setRole} label={t('guestLinks.role')} />
-        <div className="guest-links__field">
-          <label htmlFor={ids.expiry}>{t('guestLinks.expiry')}</label>
-          <Select
-            id={ids.expiry}
-            className="guest-links__select"
-            value={days}
-            onChange={(e) => setDays(Number(e))}
-          >
-            <option value={0}>{t('guestLinks.never')}</option>
-            {EXPIRY_DAYS.map((d) => (
-              <option key={d} value={d}>
-                {t('share.link.days', { count: d })}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="guest-links__field guest-links__field--wide">
-          <label htmlFor={ids.label}>{t('guestLinks.label')}</label>
-          <input
-            id={ids.label}
-            className="share__url guest-links__input"
-            value={label}
-            maxLength={80}
-            placeholder={t('guestLinks.labelPlaceholder')}
-            onChange={(e) => setLabel(e.target.value)}
-          />
-        </div>
-      </div>
-      {subBoards > 0 && (
-        <Check
-          label={t('guestLinks.includeSubBoards', { count: subBoards })}
-          checked={includeSubBoards}
-          onChange={setIncludeSubBoards}
-        />
-      )}
-      <Check
-        label={t('guestLinks.allowDownload')}
-        hint={t('guestLinks.allowDownloadHint')}
-        checked={allowDownload}
-        onChange={setAllowDownload}
-      />
-      <PermissionsMatrix guest={{ role, allowDownload, proofing }} />
-      <Check
-        label={t('guestLinks.proofing')}
-        hint={t('guestLinks.proofingHint')}
-        checked={proofing}
-        onChange={setProofing}
-      />
-      <Check label={t('guestLinks.usePassword')} checked={usePassword} onChange={setUsePassword} />
-      {usePassword && (
-        <div className="guest-links__field guest-links__field--wide">
-          <label htmlFor={ids.password}>{t('guestLinks.password')}</label>
-          <input
-            id={ids.password}
-            className="share__url guest-links__input"
-            type="password"
-            autoComplete="new-password"
-            minLength={MIN_PASSWORD}
-            maxLength={128}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-      )}
+    <form
+      ref={form}
+      className="guest-links__form"
+      onSubmit={submit}
+      aria-label={t('guestLinks.new')}
+      data-tour="share-guest-form"
+    >
+      <LinkFields draft={draft} set={set} scope subBoards={subBoards} />
       {error && (
         <p className="share__error" role="alert">
           {error}
         </p>
       )}
-      <div className="guest-links__actions">
-        <Button
-          variant="ghost"
-          disabled={busy}
-          onClick={() => {
-            reset();
-            setOpen(false);
-            requestAnimationFrame(() => opener.current?.querySelector('button')?.focus());
-          }}
-        >
-          {t('guestLinks.cancel')}
-        </Button>
-        <Button type="submit" variant="primary" disabled={busy}>
-          {t('guestLinks.create')}
-        </Button>
-      </div>
+      <FormFooter
+        draft={draft}
+        subBoards={subBoards}
+        busy={busy}
+        onCancel={() => {
+          close();
+          requestAnimationFrame(() => opener.current?.querySelector('button')?.focus());
+        }}
+        submit={
+          <Button type="submit" variant="primary" icon="link" disabled={busy}>
+            {t('guestLinks.create')}
+          </Button>
+        }
+      />
     </form>
   );
 }
@@ -424,6 +539,17 @@ function LinkRow({
   const name =
     link.label ??
     t(`guestLinks.roles.${GUEST_ROLES.includes(link.role) ? link.role : 'guest_view'}`);
+  const menuLabel = t('guestLinks.actionsFor', { name });
+  const items = [
+    status !== 'revoked' && { label: t('guestLinks.edit'), action: () => setMode('edit') },
+    (link.proofing || link.guestCount > 0) && { label: t('guestLinks.results'), action: onResults },
+    status !== 'revoked' && {
+      label: t('guestLinks.revoke'),
+      action: () => setMode('revoke'),
+      danger: true,
+    },
+  ].filter((item) => !!item);
+  const menu = useMenu(menuLabel, items);
 
   useEffect(() => {
     if (mode === 'revoke') row.current?.querySelector<HTMLButtonElement>('[data-confirm]')?.focus();
@@ -449,12 +575,15 @@ function LinkRow({
 
   return (
     <li ref={row} className={`guest-link guest-link--${status}`}>
-      <div className="guest-link__head">
+      <div className="guest-link__row">
+        <span className="share__icon-avatar" aria-hidden="true">
+          <Icon name="link" size={14} />
+        </span>
         <span className="share__who">
           <span className="share__name" id={titleId} tabIndex={-1}>
             {name}
           </span>
-          <span className="guest-link__facts">{facts.join(' · ')}</span>
+          <span className="share__sub">{facts.join(' · ')}</span>
           <span className="share__sub">
             {[
               link.createdBy ? t('guestLinks.createdBy', { name: link.createdBy.name }) : null,
@@ -469,10 +598,39 @@ function LinkRow({
               .join(' · ')}
           </span>
         </span>
-        <span className={`guest-link__status guest-link__status--${status}`}>
-          {t(`guestLinks.status.${status}`)}
-        </span>
+        {/* Active is the usual state: only the others are named. */}
+        {status !== 'active' && (
+          <span className={`guest-link__status guest-link__status--${status}`}>
+            {t(`guestLinks.status.${status}`)}
+          </span>
+        )}
+        {link.url && <CopyLink text={link.url} name={name} />}
+        {items.length > 0 && (
+          <>
+            <IconButton
+              icon="more"
+              label={menuLabel}
+              aria-haspopup="menu"
+              aria-expanded={menu.isOpen}
+              onClick={(e) => menu.open(e.currentTarget, e.currentTarget)}
+            />
+            {menu.layer}
+          </>
+        )}
       </div>
+      {/* A link just made is shown whole, ready to copy also where the clipboard is not allowed. */}
+      {fresh && link.url && mode === 'view' && (
+        <input
+          className="ink-input guest-link__url"
+          readOnly
+          data-feedback-secret
+          value={link.url}
+          aria-label={t('guestLinks.url', { name })}
+          // biome-ignore lint/a11y/noAutofocus: the link was just created, ready to copy
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+        />
+      )}
       {status === 'suspended' && (
         <p className="guest-link__explain">{t('guestLinks.suspendedWhy')}</p>
       )}
@@ -480,40 +638,6 @@ function LinkRow({
         <p className="guest-link__explain">
           {t('guestLinks.revokedOn', { date: formatDate(link.revokedAt, i18n.language) })}
         </p>
-      )}
-      {link.url && mode === 'view' && (
-        <div className="share__link-row">
-          <input
-            className="share__input share__url"
-            readOnly
-            data-feedback-secret
-            value={link.url}
-            aria-label={t('guestLinks.url', { name })}
-            // biome-ignore lint/a11y/noAutofocus: the link was just created, ready to copy
-            autoFocus={fresh}
-            onFocus={(e) => e.currentTarget.select()}
-          />
-          <CopyLink text={link.url} />
-        </div>
-      )}
-      {mode === 'view' && (
-        <div className="guest-link__actions">
-          {status !== 'revoked' && (
-            <Button variant="ghost" onClick={() => setMode('edit')}>
-              {t('guestLinks.edit')}
-            </Button>
-          )}
-          {(link.proofing || link.guestCount > 0) && (
-            <Button variant="ghost" onClick={onResults}>
-              {t('guestLinks.results')}
-            </Button>
-          )}
-          {status !== 'revoked' && (
-            <Button variant="ghost" onClick={() => setMode('revoke')}>
-              {t('guestLinks.revoke')}
-            </Button>
-          )}
-        </div>
       )}
       {mode === 'revoke' && (
         <section className="guest-link__confirm" aria-label={t('guestLinks.revokeTitle')}>
@@ -562,13 +686,14 @@ function LinkRow({
   );
 }
 
-function CopyLink({ text }: { text: string }) {
+function CopyLink({ text, name }: { text: string; name: string }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   return (
     <Button
       variant="secondary"
       icon="copy"
+      aria-label={copied ? undefined : t('guestLinks.copyLabel', { name })}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
@@ -577,7 +702,7 @@ function CopyLink({ text }: { text: string }) {
         } catch {}
       }}
     >
-      {copied ? t('share.copied') : t('share.copy')}
+      {copied ? t('share.copied') : t('guestLinks.copy')}
     </Button>
   );
 }
@@ -601,12 +726,11 @@ function EditForm({
   const [draft, setDraft] = useState<LinkDraft>(() => draftOf(link));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const ids = { label: useId(), password: useId(), expiry: useId(), pwMode: useId() };
   const set = (patch: Partial<LinkDraft>) => setDraft((d) => ({ ...d, ...patch }));
   const box = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    box.current?.querySelector<HTMLElement>('.ink-select:not(:disabled), input')?.focus();
+    box.current?.querySelector<HTMLElement>('input')?.focus();
   }, []);
 
   async function submit(e: FormEvent) {
@@ -641,121 +765,24 @@ function EditForm({
       aria-label={t('guestLinks.editTitle')}
     >
       {!scope && <p className="guest-links__hint">{t('guestLinks.scopeOnly')}</p>}
-      <div className="guest-links__grid">
-        <RoleSelect
-          value={draft.role}
-          onChange={(role) => set({ role })}
-          disabled={!scope}
-          label={t('guestLinks.role')}
-        />
-        <div className="guest-links__field">
-          <label htmlFor={ids.expiry}>{t('guestLinks.expiry')}</label>
-          <Select
-            id={ids.expiry}
-            className="guest-links__select"
-            disabled={!scope}
-            value={String(draft.expiry)}
-            onChange={(e) => {
-              const v = e;
-              set({ expiry: v === 'keep' || v === 'none' ? v : Number(v) });
-            }}
-          >
-            <option value="keep">{t('guestLinks.keepExpiry')}</option>
-            <option value="none">{t('guestLinks.never')}</option>
-            {EXPIRY_DAYS.map((d) => (
-              <option key={d} value={d}>
-                {t('guestLinks.fromNow', { count: d })}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="guest-links__field guest-links__field--wide">
-          <label htmlFor={ids.label}>{t('guestLinks.label')}</label>
-          <input
-            id={ids.label}
-            className="share__url guest-links__input"
-            value={draft.label}
-            maxLength={80}
-            placeholder={t('guestLinks.labelPlaceholder')}
-            onChange={(e) => set({ label: e.target.value })}
-          />
-        </div>
-      </div>
-      {subBoards > 0 && (
-        <Check
-          label={t('guestLinks.includeSubBoards', { count: subBoards })}
-          checked={draft.includeSubBoards}
-          disabled={!scope}
-          onChange={(includeSubBoards) => set({ includeSubBoards })}
-        />
-      )}
-      <Check
-        label={t('guestLinks.allowDownload')}
-        checked={draft.allowDownload}
-        disabled={!scope}
-        onChange={(allowDownload) => set({ allowDownload })}
-      />
-      <PermissionsMatrix guest={draft} />
-      <Check
-        label={t('guestLinks.proofing')}
-        checked={draft.proofing}
-        disabled={!scope}
-        onChange={(proofing) => set({ proofing })}
-      />
-      <div className="guest-links__field guest-links__field--wide">
-        <label htmlFor={ids.pwMode}>{t('guestLinks.password')}</label>
-        <Select
-          id={ids.pwMode}
-          className="guest-links__select"
-          disabled={!scope}
-          value={draft.password.mode}
-          onChange={(e) =>
-            set({ password: { mode: e as LinkDraft['password']['mode'], value: '' } })
-          }
-        >
-          <option value="keep">
-            {link.hasPassword ? t('guestLinks.passwordKeep') : t('guestLinks.passwordNone')}
-          </option>
-          <option value="set">
-            {link.hasPassword ? t('guestLinks.passwordChange') : t('guestLinks.passwordAdd')}
-          </option>
-          {link.hasPassword && <option value="remove">{t('guestLinks.passwordRemove')}</option>}
-        </Select>
-        {draft.password.mode === 'set' && (
-          <>
-            <label htmlFor={ids.password} className="guest-links__sr">
-              {t('guestLinks.newPassword')}
-            </label>
-            <input
-              id={ids.password}
-              className="share__url guest-links__input"
-              type="password"
-              autoComplete="new-password"
-              placeholder={t('guestLinks.newPassword')}
-              minLength={MIN_PASSWORD}
-              maxLength={128}
-              value={draft.password.value}
-              onChange={(e) => set({ password: { mode: 'set', value: e.target.value } })}
-            />
-            {link.hasPassword && (
-              <span className="guest-links__hint">{t('guestLinks.passwordChangeHint')}</span>
-            )}
-          </>
-        )}
-      </div>
+      <LinkFields draft={draft} set={set} link={link} scope={scope} subBoards={subBoards} />
       {error && (
         <p className="share__error" role="alert">
           {error}
         </p>
       )}
-      <div className="guest-links__actions">
-        <Button variant="ghost" disabled={busy} onClick={onCancel}>
-          {t('guestLinks.cancel')}
-        </Button>
-        <Button type="submit" variant="primary" disabled={busy}>
-          {t('guestLinks.save')}
-        </Button>
-      </div>
+      <FormFooter
+        draft={draft}
+        link={link}
+        subBoards={subBoards}
+        busy={busy}
+        onCancel={onCancel}
+        submit={
+          <Button type="submit" variant="primary" disabled={busy}>
+            {t('guestLinks.save')}
+          </Button>
+        }
+      />
     </form>
   );
 }

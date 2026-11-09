@@ -11,7 +11,10 @@ const { t } = vi.hoisted(() => ({
   t: (key: string, values?: Record<string, unknown>) =>
     values ? `${key} ${JSON.stringify(values)}` : key,
 }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t }),
+  Trans: ({ i18nKey }: { i18nKey: string }) => i18nKey,
+}));
 vi.mock('../lib/api.ts', () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));

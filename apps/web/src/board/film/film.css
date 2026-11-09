@@ -3877,6 +3877,12 @@ button.moodboard__card:focus-visible {
   .client-review__decision .story__mode {
     flex: 1 1 0;
   }
+  .client-review__threads-head .ink-input {
+    min-width: 44px;
+    height: 44px;
+    padding: 0 10px;
+    font-size: 14px;
+  }
 }
 
 /* Compact scene navigation replaces the fixed sidebar on narrow screens. */
