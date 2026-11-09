@@ -203,7 +203,14 @@ describe('archive structure', () => {
     expect(guest('')).toBeNull();
     expect(guest(null)).toBeNull();
     expect([...(guest('é'.repeat(150)) ?? '')]).toHaveLength(80);
-    expect(ArchiveGuests.shape.guests.element.safeParse({ id, linkId: id, name: 'x'.repeat(201), createdAt: at }).success).toBe(false);
+    expect(
+      ArchiveGuests.shape.guests.element.safeParse({
+        id,
+        linkId: id,
+        name: 'x'.repeat(201),
+        createdAt: at,
+      }).success,
+    ).toBe(false);
     const label = ArchiveGuests.shape.links.element.parse({
       id,
       boardId: id,
