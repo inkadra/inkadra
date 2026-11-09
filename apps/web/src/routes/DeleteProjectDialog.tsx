@@ -69,7 +69,9 @@ export function DeleteProjectDialog({
           <span className="ink-field__label delete-project__label">
             <span id={`${id}-before`}>{t('projectDelete.confirmBefore')}</span>
             <span className="delete-project__chip-wrap">
-              <Tooltip content={copied ? undefined : t('projectDelete.copy', { name: project.name })}>
+              <Tooltip
+                content={copied ? undefined : t('projectDelete.copy', { name: project.name })}
+              >
                 <button
                   id={`${id}-name`}
                   type="button"
