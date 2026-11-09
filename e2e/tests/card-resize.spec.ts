@@ -75,7 +75,7 @@ for (const theme of shots ? (['light', 'dark'] as const) : (['light'] as const))
     /** How far the outline's bottom and the card's text bottom are apart, in screen px. */
     const fit = async () => {
       const box = (await outline.boundingBox())!;
-      const text = await card.evaluate((el) => {
+      const text = await card.evaluate((el: HTMLElement) => {
         const r = el.getBoundingClientRect();
         // Everything the card draws, also what spills out under a height set too short.
         return r.top + el.scrollHeight * (r.height / el.offsetHeight);
