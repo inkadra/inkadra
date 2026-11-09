@@ -5086,7 +5086,7 @@
   "demo": {
     "brand": "Inkadra · Demo",
     "title": "Inkadra ohne Konto ausprobieren",
-    "lead": "Du bekommst ein Beispielprojekt, „Last Train“, mit Moodboard, Storyboard, Shotlist und Drehplan. Ändere, lade hoch und zeichne, was du willst.",
+    "lead": "Du bekommst zwei Beispielprojekte: „Last Train“, einen Kurzfilm mit Moodboard, Storyboard, Shotlist und Drehplan, und „Low Tide“, ein Fotoshooting mit der Auswahl des Kunden. Ändere, lade hoch und zeichne, was du willst.",
     "hours_one": "1 Stunde",
     "hours_other": "{{count}} Stunden",
     "minutes_one": "1 Minute",
