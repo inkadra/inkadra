@@ -521,7 +521,10 @@ export function ProjectAppearanceDialog({
     setError(false);
     try {
       if (board) await board.save(reset ? null : payload);
-      else onSaved?.(await updateProjectAppearance(project.id, payload));
+      else {
+        const updated = await updateProjectAppearance(project.id, payload);
+        onSaved?.(updated);
+      }
       onClose();
     } catch {
       setError(true);

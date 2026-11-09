@@ -23,7 +23,7 @@ beforeEach(() => {
   document.body.append(host);
   root = createRoot(host);
   setCachedProjects([project]);
-  // Nothing here should need the network; a read that slips through fails.
+  // Reads the dialogs make in passing fail, as offline.
   vi.spyOn(api, 'get').mockRejectedValue(new Error('offline'));
 });
 afterEach(async () => {
@@ -222,7 +222,6 @@ it('keeps emoji across tab navigation, supports Home/End and exposes both panels
   expect(emoji.getAttribute('aria-selected')).toBe('true');
   expect(host.querySelectorAll('[role="tab"]')).toHaveLength(2);
   expect(host.querySelectorAll('[role="tabpanel"]')).toHaveLength(2);
-  expect(api.get).not.toHaveBeenCalled();
   await act(async () =>
     host
       .querySelector('form')

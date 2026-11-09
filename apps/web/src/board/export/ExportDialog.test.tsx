@@ -198,6 +198,8 @@ describe('ExportDialog options', () => {
       ?.querySelector<HTMLButtonElement>('[role="combobox"]');
 
   it('saves the heading style for the whole project at once, for editors only', async () => {
+    HTMLElement.prototype.showPopover ??= () => {};
+    HTMLElement.prototype.hidePopover ??= () => {};
     getMock.mockResolvedValue(freshSettings);
     patchMock.mockResolvedValue({
       ...freshSettings,
