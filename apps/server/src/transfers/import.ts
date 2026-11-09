@@ -56,8 +56,8 @@ import {
 import { readPreferences, readTheme } from '../http/export-settings-routes.ts';
 import { cleanMime, kindOf } from '../http/uploads.ts';
 import type { Jobs } from '../jobs.ts';
-import { newSecret, sha256 } from '../secrets.ts';
 import { writeBoardIndex } from '../search/index-doc.ts';
+import { newSecret, sha256 } from '../secrets.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { assertSpace, type StorageEnv, StorageFullError } from '../storage-limits.ts';
 import { remapDoc, remapMentions } from './remap.ts';
@@ -652,7 +652,8 @@ async function importGuests(
   );
   // One decision per link and card: the last one listed wins.
   const current = new Map<string, (typeof data.reviews)[number]>();
-  for (const r of data.reviews) current.set(`${linkOf.get(r.guestId)}:${r.boardId}:${r.elementId}`, r);
+  for (const r of data.reviews)
+    current.set(`${linkOf.get(r.guestId)}:${r.boardId}:${r.elementId}`, r);
   await insertBatches(
     tx,
     elementReview,

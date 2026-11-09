@@ -678,11 +678,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     const importer = await signUp(target.app, 'proofer');
     const path = join(await mkdtemp(join(tmpdir(), 'inkadra-guests-')), 'a.zip');
     await writeFile(path, archive);
-    const { projectId: imported } = await importProject(
-      importDeps(),
-      path,
-      importer.id,
-    );
+    const { projectId: imported } = await importProject(importDeps(), path, importer.id);
     const [rootB] = await target.db
       .select()
       .from(board)
@@ -708,7 +704,12 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     const [stored] = await target.db.select().from(shareLink).where(eq(shareLink.id, link.id));
     expect(linkSecrets).not.toContain(stored?.tokenHash);
     expect(stored?.tokenSealed).toBe('');
-    const reopen = await target.app.inject({ method: 'PATCH', url: `/api/v1/share-links/${link.id}`, headers: { cookie: importer.cookie, origin: 'http://localhost:3000' }, payload: { label: 'again' } });
+    const reopen = await target.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/share-links/${link.id}`,
+      headers: { cookie: importer.cookie, origin: 'http://localhost:3000' },
+      payload: { label: 'again' },
+    });
     expect(reopen.statusCode).toBe(409);
     // The team sees the client's decision, by name, with its history and the proofing.
     const reviews = await call(target.app, importer, 'GET', `/boards/${rootB?.id}/reviews`);
@@ -764,11 +765,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       if (name !== 'guests.json') await out.addBuffer(name, await zip.buffer(name, 1e7));
     await out.close();
     zip.close();
-    const { projectId: plain } = await importProject(
-      importDeps(),
-      older,
-      importer.id,
-    );
+    const { projectId: plain } = await importProject(importDeps(), older, importer.id);
     expect(await target.db.select().from(shareLink).where(eq(shareLink.projectId, plain))).toEqual(
       [],
     );

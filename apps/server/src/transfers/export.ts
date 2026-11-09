@@ -469,7 +469,13 @@ export async function exportProject(
     const guestIdsOut = new Map<string, string>();
     const root = ordered[0]?.id;
     const exportedBoards = new Set(snapshot.boardIds);
-    const archiveGuests: ArchiveGuests = { links: [], guests: [], reviews: [], history: [], picks: [] };
+    const archiveGuests: ArchiveGuests = {
+      links: [],
+      guests: [],
+      reviews: [],
+      history: [],
+      picks: [],
+    };
     for (const g of guests) {
       let link = linkIds.get(g.link.id);
       if (!link) {
