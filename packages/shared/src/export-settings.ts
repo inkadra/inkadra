@@ -51,7 +51,9 @@ export type ThemeColor = z.infer<typeof ThemeColor>;
 export const ProjectTheme = z
   .object({
     accent: ThemeColor.nullable().openapi({
-      description: 'Null: the colour of the project icon, following it when it changes.',
+      description:
+        'Legacy field kept for compatibility, no longer set by the app and ignored by clients. ' +
+        "The accent is always the project's colour (decision 0088).",
     }),
     headingFont: ThemeFont,
   })
@@ -127,7 +129,8 @@ export const ExportSettings = ExportPreferences.extend({
   }),
   theme: ProjectTheme,
   projectColor: ThemeColor.openapi({
-    description: 'The colour of the project icon: the accent while `theme.accent` is null.',
+    description:
+      'The colour of the project icon: always the presentation and PDF accent (decision 0088).',
   }),
   canEdit: z.boolean().openapi({ description: 'The caller may change these settings.' }),
   updatedAt: Timestamp.nullable().openapi({ description: 'Null while the defaults apply.' }),
