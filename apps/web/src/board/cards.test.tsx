@@ -114,7 +114,11 @@ describe('file card captions', () => {
     Object.assign(state, { kind: 'file', status: 'ready', editing: file.id, readOnly: true });
     expect(render({ ...file, caption: 'Call sheet' })).not.toContain('<textarea');
     state.readOnly = false;
-    expect(render({ ...file, caption: 'Call sheet', locked: true })).not.toContain('<textarea');
+    const locked = render({ ...file, caption: 'Call sheet', locked: true });
+    expect(locked).not.toContain('<textarea');
+    expect(locked).toContain(
+      '<span class="card__lock" role="img" aria-label="board.locked" data-ink-tooltip="board.locked">',
+    );
     state.editing = null;
   });
 });

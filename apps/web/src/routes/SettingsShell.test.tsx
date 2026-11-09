@@ -45,6 +45,9 @@ it('groups permitted pages, marks the current one and flags incomplete setup', a
     'settingsUi.groups.instance',
   ]);
   expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(14);
+  const iconOf = (section: string) =>
+    host.querySelector(`a[href="/settings?section=${section}"] svg`)?.innerHTML;
+  expect(new Set([iconOf('preferences'), iconOf('tutorials'), iconOf('instance')]).size).toBe(3);
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('admin.members6');
   expect(host.querySelector('[data-attention]')?.getAttribute('href')).toBe(
     '/settings?section=providers',

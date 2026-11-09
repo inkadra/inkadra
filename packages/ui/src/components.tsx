@@ -154,6 +154,7 @@ export function DateField({
   onChange,
   clearLabel,
   className,
+  onKeyDown,
   ...props
 }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> & {
   label: string;
@@ -190,7 +191,8 @@ export function DateField({
         onChange={(e) => onChange(e.target.value)}
         onClick={(e) => open(e.currentTarget)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          onKeyDown?.(e);
+          if (!e.defaultPrevented && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
             open(e.currentTarget);
           }

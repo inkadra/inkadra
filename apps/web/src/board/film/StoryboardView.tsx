@@ -9,7 +9,7 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, setBoardAspect } from '@inkadra/doc-schema';
-import { Button, EmptyState, Icon, IconButton, Select } from '@inkadra/ui';
+import { Button, EmptyState, Icon, IconButton, Segmented, Select } from '@inkadra/ui';
 import { type DragEvent, memo, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
@@ -264,21 +264,16 @@ export function StoryboardView({
 
   // Size, aspect and total sit in the bar; on a phone they fold into View options.
   const sizeControl = (
-    <fieldset className="story__modes" aria-label={t('film.playback.size')}>
-      {TILE_SIZES.map((value) => (
-        <button
-          type="button"
-          key={value}
-          className="story__mode"
-          aria-pressed={size === value}
-          aria-label={t(`film.playback.sizes.${value}`)}
-          data-ink-tooltip={t(`film.playback.sizes.${value}`)}
-          onClick={() => setSize(value)}
-        >
-          {value.toUpperCase()}
-        </button>
-      ))}
-    </fieldset>
+    <Segmented
+      label={t('film.playback.size')}
+      value={size}
+      onChange={setSize}
+      options={TILE_SIZES.map((value) => ({
+        value,
+        label: value.toUpperCase(),
+        tooltip: t(`film.playback.sizes.${value}`),
+      }))}
+    />
   );
   const aspectControl = (
     // biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button.

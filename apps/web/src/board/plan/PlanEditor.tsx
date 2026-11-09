@@ -72,7 +72,16 @@ import {
   type PlanShape,
   type PlanStep,
 } from '@inkadra/doc-schema';
-import { Button, Checkbox, Icon, IconButton, type IconName, Select, Switch } from '@inkadra/ui';
+import {
+  Button,
+  Checkbox,
+  Icon,
+  IconButton,
+  type IconName,
+  Select,
+  Slider,
+  Switch,
+} from '@inkadra/ui';
 import {
   type CSSProperties,
   type MouseEvent,
@@ -1922,8 +1931,7 @@ export function PlanEditor({
   ) => (
     <div className="plan-props__row">
       <span>{label}</span>
-      <input
-        type="range"
+      <Slider
         className="plan-props__range"
         aria-label={label}
         min={min}
@@ -1931,7 +1939,7 @@ export function PlanEditor({
         value={value}
         onPointerDown={() => store.undo.stopCapturing()}
         onPointerUp={() => store.undo.stopCapturing()}
-        onChange={(e) => writeItems([set(Number(e.target.value))])}
+        onChange={(v) => writeItems([set(v)])}
       />
       <b className="plan-props__value">{shown}</b>
     </div>

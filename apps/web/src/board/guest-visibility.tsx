@@ -51,7 +51,7 @@ function GuestMark({ state }: { state: 'hidden' | 'inherited' | null }) {
       className="guest-visibility"
       role="img"
       aria-label={label}
-      title={label}
+      data-ink-tooltip={label}
       data-guest-hidden={state}
     >
       <GuestVisibilityIcon />

@@ -246,7 +246,7 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   // The view reads the saved decisions: frames, progress and filters are real.
   await expect(review.getByRole('button', { name: /1A/ })).toBeVisible();
   await expect(review.getByRole('progressbar')).toBeVisible();
-  const all = review.getByRole('button', { name: 'Tutte le inquadrature', exact: true });
+  const all = review.getByRole('radio', { name: 'Tutte le inquadrature', exact: true });
   await expect(all).toBeEnabled();
-  await expect(all).toHaveAttribute('aria-pressed', 'true');
+  await expect(all).toBeChecked();
 });

@@ -207,9 +207,7 @@ it('filters real review decisions, counts approval progress and respects viewer 
   expect(host.querySelector('progress')?.value).toBe(1);
   expect(host.querySelector('progress')?.max).toBe(2);
   expect(host.textContent).not.toContain('review.change');
-  const pending = [...host.querySelectorAll('button')].find(
-    (b) => b.textContent === 'clientReview.filters.pending',
-  );
+  const pending = host.querySelector<HTMLInputElement>('input[value="pending"]');
   await act(async () => pending?.click());
   expect(host.textContent).toContain('Pending shot');
   expect(host.textContent).not.toContain('Approved shot');

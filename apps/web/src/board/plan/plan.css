@@ -974,7 +974,6 @@ button.plan__badge:hover {
 .plan-props__range {
   flex: 1;
   min-width: 0;
-  accent-color: var(--ink-accent-button);
 }
 .plan-props__value {
   min-width: 44px;

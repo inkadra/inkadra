@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { ReviewStatus } from '@inkadra/shared';
-import { Button, EmptyState, Select } from '@inkadra/ui';
+import { Button, EmptyState, Segmented, Select } from '@inkadra/ui';
 import { type KeyboardEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
@@ -144,23 +144,20 @@ export function ClientReviewView({
       aria-label={t('film.views.review')}
     >
       <div className="story__bar" data-chrome>
-        <fieldset className="story__modes" aria-label={t('review.filter')} disabled={!ready}>
-          {filters.map((value) => (
-            <button
-              type="button"
-              key={value}
-              className="story__mode"
-              aria-pressed={filter === value}
-              onClick={() => setFilter(value)}
-            >
-              {t(
-                value === 'all' && cardMode
-                  ? 'clientReview.allCards'
-                  : `clientReview.filters.${value}`,
-              )}
-            </button>
-          ))}
-        </fieldset>
+        <Segmented
+          label={t('review.filter')}
+          value={filter}
+          disabled={!ready}
+          onChange={setFilter}
+          options={filters.map((value) => ({
+            value,
+            label: t(
+              value === 'all' && cardMode
+                ? 'clientReview.allCards'
+                : `clientReview.filters.${value}`,
+            ),
+          }))}
+        />
         <span className="ink-header__spacer" />
         {!ready && (
           <span

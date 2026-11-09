@@ -2815,7 +2815,8 @@ html[data-view-direction]::view-transition-new(board-view) {
   color: var(--ink-text-secondary);
   font-size: 11px;
 }
-.schedule__inspector .ink-input {
+.schedule__inspector .ink-input,
+.schedule__inspector .ink-date {
   height: 32px;
   font-size: 13px;
 }
@@ -4650,13 +4651,13 @@ button.moodboard__card:focus-visible {
   }
 
   /* Client review: the filters stay one row of whole labels that scrolls sideways. */
-  .client-review .story__bar .story__modes {
+  .client-review .story__bar .ink-segmented .ink-radio-group__options {
     flex-wrap: nowrap;
     max-width: 100%;
     overflow-x: auto;
     scrollbar-width: none;
   }
-  .client-review .story__bar .story__mode {
+  .client-review .story__bar .ink-segmented .ink-radio-group__option {
     flex: none;
     min-height: 40px;
     white-space: nowrap;
@@ -4787,6 +4788,9 @@ button.moodboard__card:focus-visible {
   display: grid;
   gap: 6px;
   font-size: 13px;
+}
+.pen__opacity .ink-slider {
+  width: 100%;
 }
 .pen__opacity-label {
   display: flex;
