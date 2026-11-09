@@ -44,6 +44,16 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
 };
 
 export const MIN_WIDTH = 80;
+/** Narrowest width where the text of a note or a to-do list still breaks between words. */
+export const TEXT_MIN_WIDTH = 160;
+
+/**
+ * Notes and to-do lists: the height they store is a minimum, their text takes what it needs
+ * beyond it, so a resize never leaves the text spilling out under the card.
+ */
+export function growsWithText(el: Pick<Element, 'type'>): boolean {
+  return el.type === 'note' || el.type === 'todo';
+}
 
 /** Columns and scenes hold other cards through `parent`; they cannot be nested. */
 export function isContainer(el: Pick<Element, 'type'>): boolean {

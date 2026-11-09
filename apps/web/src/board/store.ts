@@ -1,4 +1,10 @@
-import { canvasElements, childrenOf, isContainer, listElements } from '@inkadra/canvas-core';
+import {
+  canvasElements,
+  childrenOf,
+  growsWithText,
+  isContainer,
+  listElements,
+} from '@inkadra/canvas-core';
 import { type Element, PLAN_ASPECT, readElement, roots, UNSORTED } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
 import { croppedRotatedSize } from './image-crop.ts';
@@ -145,7 +151,13 @@ export class BoardStore {
       el.type === 'character'
     )
       return this.heights.get(el.id) ?? estimateHeight(el);
+    if (growsWithText(el)) return Math.max(el.h ?? 0, this.contentHeightOf(el));
     return el.h ?? this.heights.get(el.id) ?? estimateHeight(el);
+  }
+
+  /** Height of an element as last drawn, whatever height it stores. */
+  contentHeightOf(el: Element): number {
+    return this.heights.get(el.id) ?? estimateHeight(el);
   }
 
   rectOf(el: Element) {

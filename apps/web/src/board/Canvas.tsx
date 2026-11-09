@@ -28,6 +28,7 @@ import {
   type Guide,
   gestureArea,
   gridAround,
+  growsWithText,
   inflate,
   intersects,
   isContainer,
@@ -58,6 +59,7 @@ import {
   snap as snapToGrid,
   stackColumns,
   storyboardOf,
+  TEXT_MIN_WIDTH,
   TIDY_GAPS,
   type TidyGap,
   tidyMosaic,
@@ -87,7 +89,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
@@ -1940,7 +1942,9 @@ export function Canvas({
             }
           : el.type === 'character'
             ? { widthOnly: true, minWidth: CHARACTER_MIN_WIDTH }
-            : { widthOnly: resizesWidthOnly(el) };
+            : growsWithText(el)
+              ? { minWidth: TEXT_MIN_WIDTH }
+              : { widthOnly: resizesWidthOnly(el) };
       store.undo.stopCapturing();
       gesture.current = { kind: 'resize', id, corner: handle, start: p, rect, options };
       rootRef.current?.setPointerCapture(e.pointerId);
@@ -2016,7 +2020,10 @@ export function Canvas({
       // The dragged edges land on the grid with the magnet on; Alt inverts it for this drag.
       const rect =
         magnetRef.current !== e.altKey ? snapResize(free, g.corner, GRID, g.options) : free;
-      setOverlay({ resize: { id: g.id, ...rect } });
+      // Laid out now, before the card's size observer runs: left pending, this render would run
+      // inside the observer's callback, with the height it reports, and resize the card there
+      // ("ResizeObserver loop completed with undelivered notifications", inkadra-feedback#23).
+      flushSync(() => setOverlay({ resize: { id: g.id, ...rect } }));
       return;
     }
     // Move
@@ -2191,8 +2198,12 @@ export function Canvas({
           doc,
           arrowsOf(),
           [g.id],
-          (id) =>
-            id === g.id ? { x, y, w, h: widthOnly ? store.heightOf(current) : h } : cardRect(id),
+          (id) => {
+            if (id !== g.id) return cardRect(id);
+            if (widthOnly) return { x, y, w, h: store.heightOf(current) };
+            const text = growsWithText(current) ? store.contentHeightOf(current) : 0;
+            return { x, y, w, h: Math.max(h, text) };
+          },
           LOCAL,
         );
       }, LOCAL);
@@ -2892,9 +2903,10 @@ export function Canvas({
     (el: Element): Rect => {
       const r = overlay.resize;
       if (r?.id !== el.id) return liveRect(el);
+      if (growsWithText(el)) return { ...r, h: Math.max(r.h, store.contentHeightOf(el)) };
       return resizesWidthOnly(el) ? { ...r, h: liveRect(el).h } : r;
     },
-    [overlay.resize, liveRect],
+    [overlay.resize, liveRect, store],
   );
 
   const selectedEls = useMemo(
