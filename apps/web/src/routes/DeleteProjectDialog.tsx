@@ -100,7 +100,6 @@ export function DeleteProjectDialog({
             value={typed}
             autoComplete="off"
             spellCheck={false}
-            // biome-ignore lint/a11y/noAutofocus: the dialog exists to type this name.
             autoFocus
             disabled={busy}
             onChange={(e) => setTyped(e.target.value)}
