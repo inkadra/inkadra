@@ -323,9 +323,9 @@ Nora's).
 | LT_0436 |        |       |     | LT_0503 |        | 3     |     |         |        |       |
 | LT_0440 |        | 4     |     |         |        |       |     |         |        |       |
 
-Share links and picks stay on the instance that made them: a project archive does not carry them
-(decision 0037). In the demo the Selects board has the pictures, Lia's note and Irene's comment,
-under her name, but not the proofing.
+A project archive carries the proofing but not the link (decision 0086): in the demo the
+Selects board has the pictures, Lia's note, Irene's comment under her name and, in the share
+dialog, the Studio Maree link, revoked, with her picks, rejections and stars in its results.
 
 ### Pictures
 

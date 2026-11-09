@@ -6,7 +6,7 @@ import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { addElement, CURRENT_SCHEMA_VERSION, createBoardDoc, roots } from '@inkadra/doc-schema';
 import { ProjectArchiveManifest, ProjectTransfer, ProjectTransfers } from '@inkadra/shared';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -21,10 +21,14 @@ import {
   boardVersion,
   comment,
   elementReview,
+  elementReviewEvent,
   notification,
   project,
   projectExportSettings,
   projectTransfer,
+  shareGuest,
+  shareLink,
+  sharePick,
   shootingDay,
 } from '../db/schema.ts';
 import { writeBoardIndex } from '../search/index-doc.ts';
@@ -148,6 +152,8 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
   let png: Buffer;
   let videoId: string;
   let archive: Buffer;
+  /** Secrets of the client's share link, which no archive may carry. */
+  const linkSecrets: string[] = [];
 
   beforeAll(async () => {
     source = await instance(url as string);
@@ -319,6 +325,67 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       status: 'approved',
       changedBy: people.owner?.id,
     });
+    // A client reviewed and proofed through a share link (decision 0086).
+    const [link] = await source.db
+      .insert(shareLink)
+      .values({
+        projectId,
+        boardId: rootId,
+        role: 'guest_approve',
+        label: 'Fondazione Cinema Costa',
+        tokenHash: 'link-token-hash-0001',
+        tokenSealed: 'link-token-sealed-0001',
+        passwordHash: 'link-password-hash-0001',
+        proofing: true,
+        createdBy: people.owner?.id,
+      })
+      .returning();
+    const [guest] = await source.db
+      .insert(shareGuest)
+      .values({
+        shareLinkId: link?.id as string,
+        name: 'Elena Marino',
+        tokenHash: 'guest-session-hash-0001',
+        sessionExpiresAt: new Date(Date.now() + 86_400_000),
+      })
+      .returning();
+    linkSecrets.push(
+      link?.id as string,
+      guest?.id as string,
+      'link-token-hash-0001',
+      'link-token-sealed-0001',
+      'link-password-hash-0001',
+      'guest-session-hash-0001',
+    );
+    const guestSource = { shareLinkId: link?.id as string };
+    await source.db.insert(elementReview).values({
+      ...guestSource,
+      boardId: rootId,
+      projectId,
+      elementId: 'image-00001',
+      status: 'changes_requested',
+      note: 'Warmer, please',
+      changedByGuest: guest?.id,
+      changedAt: new Date(Date.now() + 60_000),
+    });
+    await source.db.insert(elementReviewEvent).values({
+      ...guestSource,
+      boardId: rootId,
+      elementId: 'image-00001',
+      previous: 'none',
+      status: 'changes_requested',
+      note: 'Warmer, please',
+      guestId: guest?.id,
+    });
+    await source.db.insert(sharePick).values({
+      ...guestSource,
+      guestId: guest?.id as string,
+      boardId: rootId,
+      elementId: 'image-00001',
+      assetId,
+      pick: 'picked',
+      stars: 4,
+    });
     const day = await call(
       source.app,
       people.owner ?? null,
@@ -443,6 +510,20 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     expect(peopleJson).not.toContain('@example.com');
     const archived = JSON.parse((await zip.buffer('comments.json', 1e6)).toString());
     expect(archived.find((c: { deletedAt: string | null }) => c.deletedAt).body).toBe('');
+    // Guest decisions and proofing by name; nothing of the link or the guest's session.
+    const guests = JSON.parse((await zip.buffer('guests.json', 1e6)).toString());
+    expect(guests).toMatchObject({
+      links: [{ boardId: rootId, label: 'Fondazione Cinema Costa', role: 'guest_approve' }],
+      guests: [{ name: 'Elena Marino' }],
+      reviews: [{ elementId: 'image-00001', status: 'changes_requested', note: 'Warmer, please' }],
+      history: [{ previous: 'none', status: 'changes_requested' }],
+      picks: [{ elementId: 'image-00001', pick: 'picked', stars: 4 }],
+    });
+    for (const name of zip.names().filter((n) => n.endsWith('.json'))) {
+      const text = (await zip.buffer(name, 1e7)).toString();
+      for (const secret of linkSecrets) expect(text, name).not.toContain(secret);
+      expect(text, name).not.toContain('@example.com');
+    }
     zip.close();
 
     const notes = await source.db
@@ -569,7 +650,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     const [review] = await target.db
       .select()
       .from(elementReview)
-      .where(eq(elementReview.boardId, rootB));
+      .where(and(eq(elementReview.boardId, rootB), isNull(elementReview.shareLinkId)));
     expect(review).toMatchObject({
       elementId: 'image-00001',
       status: 'approved',
@@ -591,6 +672,117 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       createdBy: importer.id,
       importedAuthor: 'owner',
     });
+  });
+
+  it('keeps guest decisions and proofing on a revoked link nobody can open', async () => {
+    const importer = await signUp(target.app, 'proofer');
+    const path = join(await mkdtemp(join(tmpdir(), 'inkadra-guests-')), 'a.zip');
+    await writeFile(path, archive);
+    const { projectId: imported } = await importProject(importDeps(), path, importer.id);
+    const [rootB] = await target.db
+      .select()
+      .from(board)
+      .where(and(eq(board.projectId, imported), isNull(board.parentBoardId)));
+    const links = await call(target.app, importer, 'GET', `/boards/${rootB?.id}/share-links`);
+    const [link] = links.json().items;
+    expect(link).toMatchObject({
+      label: 'Fondazione Cinema Costa',
+      role: 'guest_approve',
+      proofing: true,
+      status: 'revoked',
+      url: null,
+      hasPassword: false,
+      guestCount: 1,
+    });
+    // No session, no known token: nobody can act as the guest or open the link.
+    const [guest] = await target.db
+      .select()
+      .from(shareGuest)
+      .where(eq(shareGuest.shareLinkId, link.id));
+    expect(guest).toMatchObject({ name: 'Elena Marino', tokenHash: null });
+    expect(guest?.sessionExpiresAt.getTime()).toBeLessThanOrEqual(Date.now());
+    const [stored] = await target.db.select().from(shareLink).where(eq(shareLink.id, link.id));
+    expect(linkSecrets).not.toContain(stored?.tokenHash);
+    expect(stored?.tokenSealed).toBe('');
+    const reopen = await target.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/share-links/${link.id}`,
+      headers: { cookie: importer.cookie, origin: 'http://localhost:3000' },
+      payload: { label: 'again' },
+    });
+    expect(reopen.statusCode).toBe(409);
+    // Opening a session on the imported link fails whatever token is tried.
+    const session = await target.app.inject({
+      method: 'POST',
+      url: `/api/v1/guest/links/${link.id}/session`,
+      headers: { origin: 'http://localhost:3000' },
+      payload: { token: 'x'.repeat(43) },
+    });
+    expect([401, 403, 404]).toContain(session.statusCode);
+    // The team sees the client's decision, by name, with its history and the proofing.
+    const reviews = await call(target.app, importer, 'GET', `/boards/${rootB?.id}/reviews`);
+    expect(reviews.json().items).toEqual([
+      expect.objectContaining({
+        elementId: 'image-00001',
+        status: 'changes_requested',
+        note: 'Warmer, please',
+        changedBy: expect.objectContaining({
+          kind: 'guest',
+          name: 'Elena Marino',
+          shareLinkLabel: 'Fondazione Cinema Costa',
+        }),
+      }),
+    ]);
+    const history = await call(
+      target.app,
+      importer,
+      'GET',
+      `/boards/${rootB?.id}/elements/image-00001/review/history`,
+    );
+    expect(history.json().items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: 'changes_requested',
+          changedBy: expect.objectContaining({ kind: 'guest', name: 'Elena Marino' }),
+        }),
+      ]),
+    );
+    const picks = await call(target.app, importer, 'GET', `/share-links/${link.id}/picks`);
+    const [file] = await target.db
+      .select()
+      .from(asset)
+      .where(and(eq(asset.projectId, imported), eq(asset.filename, 'station.png')));
+    expect(picks.json()).toMatchObject({
+      guests: [{ name: 'Elena Marino' }],
+      items: [
+        {
+          elementId: 'image-00001',
+          assetId: file?.id,
+          filename: 'station.png',
+          picked: 1,
+          starsAverage: 4,
+        },
+      ],
+    });
+
+    // An archive from before guests.json imports as before, without links.
+    const zip = await readZip(path, { entries: 100, totalBytes: 1e9, compressionRatio: 1e6 });
+    const older = join(await mkdtemp(join(tmpdir(), 'inkadra-older-')), 'a.zip');
+    const out = writeZip(older);
+    for (const name of zip.names())
+      if (name !== 'guests.json') await out.addBuffer(name, await zip.buffer(name, 1e7));
+    await out.close();
+    zip.close();
+    const { projectId: plain } = await importProject(importDeps(), older, importer.id);
+    expect(await target.db.select().from(shareLink).where(eq(shareLink.projectId, plain))).toEqual(
+      [],
+    );
+    const [team] = await target.db
+      .select()
+      .from(elementReview)
+      .innerJoin(board, eq(board.id, elementReview.boardId))
+      .where(eq(board.projectId, plain));
+    expect(team?.element_review).toMatchObject({ status: 'approved', importedAuthor: 'owner' });
   });
 
   it('imports into the same instance as a second, separate project', async () => {

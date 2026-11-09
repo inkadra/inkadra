@@ -203,6 +203,8 @@ describe('the demo allowlist', () => {
       ['GET', '/projects/:projectId'],
       ['HEAD', '/assets/:assetId/file'],
       ['POST', '/boards/:boardId/comments'],
+      ['GET', '/boards/:boardId/share-links'],
+      ['GET', '/share-links/:linkId/picks'],
       ['POST', '/projects/:projectId/exports'],
       ['POST', '/uploads'],
       ['PATCH', '/uploads/:uploadId'],
