@@ -225,15 +225,12 @@
   box-shadow: 0 0 0 1.5px var(--swatch);
 }
 .project-appearance__emoji-panel {
-  position: absolute;
-  inset: 0 0 var(--appearance-validation);
   display: flex;
   flex-direction: column;
 }
 .project-appearance__emojis {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 4px;
@@ -319,6 +316,18 @@
 
 /* Phones: 44 px targets, so the shared panel grows to fit the larger tiles. */
 @media (width < 768px) {
+  /* Symbol sets the phone height; desktop keeps both panels in the shared grid cell. */
+  .project-appearance__emoji-panel {
+    position: absolute;
+    inset: 0 0 var(--appearance-validation);
+  }
+  .project-appearance__emojis {
+    overflow-y: auto;
+    /* Fit the 2px outline + 2px offset, plus 1px for fractional scroll rounding. */
+    padding: 5px;
+    margin: -5px;
+    scroll-padding: 5px;
+  }
   .project-appearance .ink-dialog {
     width: 100vw;
     border-radius: var(--ink-radius-xl) var(--ink-radius-xl) 0 0;

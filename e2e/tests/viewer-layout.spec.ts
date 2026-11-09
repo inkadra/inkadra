@@ -313,16 +313,39 @@ for (const width of [390, 1280]) {
         expect((await dialog.boundingBox())!.height).toBe(symbolHeight);
       }
     }
-    // Reserve only the validation line and footer spacing below the swatches.
-    expect(actions.y - (swatches.y + swatches.height)).toBeLessThanOrEqual(64);
+    const gap = actions.y - (swatches.y + swatches.height);
+    const emojis = page.locator('#appearance-panel-emoji').getByRole('radiogroup');
+    if (width < 768) {
+      // Phones reserve only validation and footer spacing below the swatches.
+      expect(gap).toBeLessThanOrEqual(64);
+    } else {
+      // Measured 67px: desktop reserves four emoji rows, the field and validation.
+      expect(gap).toBeLessThanOrEqual(80);
+      await expect(emojis.getByRole('radio')).toHaveCount(32);
+      expect(await emojis.evaluate((el) => el.scrollHeight - el.clientHeight)).toBe(0);
+      for (const emoji of await emojis.getByRole('radio').all()) {
+        await expect(emoji).toBeInViewport({ ratio: 1 });
+      }
+    }
     const panel = page.locator('#appearance-panel-emoji');
     expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
-    const emojis = panel.getByRole('radiogroup');
     await emojis.getByRole('radio').first().focus();
     await page.keyboard.press('End');
     const lastEmoji = emojis.getByRole('radio').last();
     await expect(lastEmoji).toBeFocused();
-    await expect(lastEmoji).toBeInViewport();
+    await expect(lastEmoji).toBeInViewport({ ratio: 1 });
+    if (width < 768) {
+      await page.screenshot({
+        path: testInfo.outputPath(`appearance-${width}-Emoji-focus-edge.png`),
+      });
+      const clearance = await lastEmoji.evaluate((el) => {
+        const tile = el.getBoundingClientRect();
+        const grid = el.parentElement!.getBoundingClientRect();
+        return { right: grid.right - tile.right, bottom: grid.bottom - tile.bottom };
+      });
+      expect(clearance.right).toBeGreaterThanOrEqual(4);
+      expect(clearance.bottom).toBeGreaterThanOrEqual(4);
+    }
     const field = page.getByLabel('Paste or type an emoji');
     await field.fill('x');
     const alert = dialog.getByRole('alert');
