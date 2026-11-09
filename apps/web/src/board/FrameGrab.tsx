@@ -372,7 +372,11 @@ export function FrameGrab({
       >
         <Icon name="image" size={18} />
         <span className="viewer__action-label">{t('frameGrab.grab')}</span>
-        {!external && <span className="viewer__kbd">G</span>}
+        {!external && (
+          <span className="viewer__kbd" aria-hidden="true">
+            G
+          </span>
+        )}
       </button>
       {shot && file && open && (
         <TabCaptureCrop

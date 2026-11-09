@@ -3502,10 +3502,6 @@ button.crumb--editable:focus-visible {
 .viewer__stage-nav--next {
   right: 20px;
 }
-.viewer__nav-icon {
-  width: 20px;
-  height: 20px;
-}
 .viewer__thumbnails {
   position: absolute;
   bottom: 48px;

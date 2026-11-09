@@ -163,6 +163,21 @@ it('says that everything works, with the open problems, in the simple view', asy
   expect(host.textContent).toContain('server.people.hidden');
   expect(host.textContent).toContain('server.videos.hidden');
   expect(api.get).toHaveBeenCalledWith('/instance/server?range=1h');
+
+  const problems = host.querySelector('#server-problems') as HTMLElement;
+  const scrollIntoView = vi.fn();
+  problems.scrollIntoView = scrollIntoView;
+  const originalMatchMedia = window.matchMedia;
+  window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as unknown as typeof matchMedia;
+  try {
+    const jump = [...host.querySelectorAll('button')].find(
+      (b) => b.textContent === 'server.health.seeProblem:1',
+    );
+    await act(async () => jump?.click());
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' });
+  } finally {
+    window.matchMedia = originalMatchMedia;
+  }
 });
 
 it('says what is wrong when a service stopped', async () => {

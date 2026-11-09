@@ -293,6 +293,55 @@ async function mountData(path = '/projects?el=pending') {
   };
 }
 
+it('replays the welcome tour from Settings without leaving the board underneath', async () => {
+  const { setCachedProjects } = await import('./projects.ts');
+  const { requestTour } = await import('../tutorial/state.ts');
+  setCachedProjects([
+    { id: 'first', name: 'First', rootBoardId: 'b1' } as never,
+    { id: 'second', name: 'Second', rootBoardId: 'b2' } as never,
+  ]);
+  const router = createMemoryRouter(
+    [
+      {
+        element: <AppLayout />,
+        children: [
+          {
+            path: 'p/:projectId',
+            element: (
+              <div
+                data-tour="dock"
+                ref={(el) => {
+                  if (el) el.getBoundingClientRect = () => new DOMRect(10, 10, 100, 40);
+                }}
+              >
+                <DataPage />
+              </div>
+            ),
+          },
+          { path: 'settings', element: <Where /> },
+        ],
+      },
+    ],
+    { initialEntries: ['/p/second'] },
+  );
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<RouterProvider router={router} />));
+    await act(async () => router.navigate('/settings?section=tutorials'));
+    await act(async () => requestTour('welcome'));
+    // Already on a board: the tour starts immediately without waiting for `settle` on missing `card`.
+    expect(host.querySelector('dialog.tour')).not.toBeNull();
+    expect(router.state.location.pathname).toBe('/p/second');
+  } finally {
+    setCachedProjects(null);
+    await act(async () => root.unmount());
+    router.dispose();
+    host.remove();
+  }
+});
+
 it('isolates captured data-router navigation while keeping the background mounted', async () => {
   const { router, host, close, unmount } = await mountData();
   try {

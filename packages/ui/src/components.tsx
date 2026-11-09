@@ -283,7 +283,7 @@ export function Avatar({
   return (
     <span
       className="ink-avatar"
-      title={name}
+      data-ink-tooltip={name}
       style={{ width: size, height: size, fontSize: Math.max(8, size * 0.36) }}
     >
       {image && failed !== image ? (

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type FrameElement, updateElement } from '@inkadra/canvas-core';
 import type { AspectRatio } from '@inkadra/doc-schema';
-import { Icon, Select } from '@inkadra/ui';
+import { Avatar, Icon, Select } from '@inkadra/ui';
 import { type DragEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardReview } from '../CardReview.tsx';
@@ -215,14 +215,7 @@ export function ShotlistKanban({
                       {f.cast && f.cast.length > 0 ? (
                         <div className="kanban__cast">
                           {f.cast.slice(0, 3).map((name) => (
-                            <span key={name} className="kanban__av" title={name}>
-                              {name
-                                .split(' ')
-                                .map((w) => w[0])
-                                .join('')
-                                .slice(0, 2)
-                                .toUpperCase()}
-                            </span>
+                            <Avatar key={name} name={name} size={20} />
                           ))}
                         </div>
                       ) : (

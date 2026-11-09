@@ -71,7 +71,6 @@ export function FramePanel({
   );
   const [pictureMenu, setPictureMenu] = useState(false);
   const [boardPictures, setBoardPictures] = useState(false);
-  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const fileInput = useRef<HTMLInputElement>(null);
   const set = (patch: Patch) => !readOnly && updateElement(store.doc, frame.id, patch, LOCAL);
   const text = (v: string) => v.trim() || undefined;
@@ -155,25 +154,16 @@ export function FramePanel({
                     {t('story.fromBoard')}
                   </Button>
                   {boardPictures && (
-                    <div className="film-panel__video-picker">
-                      {[...snapshot.byId.values()].flatMap((image) =>
-                        image.type === 'image' && image.assetId && !image.locked
-                          ? [
-                              <BoardPicture
-                                key={image.id}
-                                image={image}
-                                boardAspect={boardAspect}
-                                onPick={() => {
-                                  const moved = moveImageToFrame(store, image.id, frame.id);
-                                  setBoardPictures(false);
-                                  setPictureMenu(false);
-                                  if (moved) onInserted?.(moved);
-                                }}
-                              />,
-                            ]
-                          : [],
-                      )}
-                    </div>
+                    <BoardPictures
+                      store={store}
+                      frameId={frame.id}
+                      boardAspect={boardAspect}
+                      onDone={(moved) => {
+                        setBoardPictures(false);
+                        setPictureMenu(false);
+                        if (moved) onInserted?.(moved);
+                      }}
+                    />
                   )}
                   {frame.assetId && (
                     <Button
@@ -370,6 +360,37 @@ export function FramePanel({
         }}
       />
     </aside>
+  );
+}
+
+/** Unlocked image cards of the board, subscribed only while the picker is open. */
+function BoardPictures({
+  store,
+  frameId,
+  boardAspect,
+  onDone,
+}: {
+  store: BoardStore;
+  frameId: string;
+  boardAspect: AspectRatio;
+  onDone: (moved: 'moved' | 'kept' | null) => void;
+}) {
+  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  return (
+    <div className="film-panel__video-picker">
+      {[...snapshot.byId.values()].flatMap((image) =>
+        image.type === 'image' && image.assetId && !image.locked
+          ? [
+              <BoardPicture
+                key={image.id}
+                image={image}
+                boardAspect={boardAspect}
+                onPick={() => onDone(moveImageToFrame(store, image.id, frameId))}
+              />,
+            ]
+          : [],
+      )}
+    </div>
   );
 }
 
