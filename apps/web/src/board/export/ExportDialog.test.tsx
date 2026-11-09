@@ -116,7 +116,7 @@ describe('ExportDialog options', () => {
       'Ricordato per questo progetto',
     );
     expect(host.querySelector('input[type="radio"][value="client-pitch"]')).toBeNull();
-    expect(host.querySelector('[aria-expanded]')).toBeNull();
+    expect(host.textContent).not.toContain('Personalizza');
     expect(host.textContent).not.toContain('Consigliato');
     expect(host.textContent).not.toContain('Riepilogo kickoff');
 
