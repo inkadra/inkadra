@@ -170,8 +170,8 @@ interface Deps {
   log: Logger;
   /** Tests: a stand-in for Cloudflare. */
   turnstileFetch?: typeof safeFetch;
-  /** Tests: another archive than the sample project. */
-  demoSeed?: string;
+  /** Tests: other archives than the sample projects. */
+  demoSeeds?: readonly string[];
 }
 
 /** The demo's door (decision 0084): the allowlist above, and the sandbox routes. */
@@ -189,7 +189,7 @@ export function registerDemoRoutes(app: FastifyInstance, deps: Deps) {
     jobs: deps.jobs,
     config,
     log: deps.log,
-    ...(deps.demoSeed ? { seed: deps.demoSeed } : {}),
+    ...(deps.demoSeeds ? { seeds: deps.demoSeeds } : {}),
   };
   // One sandbox per address (an IPv6 /64) every ten minutes. A refusal (a failed check, a full
   // demo) does not spend that turn, but has its own budget: nobody hammers Turnstile from here.

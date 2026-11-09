@@ -15,7 +15,7 @@ write them here, and add a new page to the list in `scripts/wiki-sync.mjs`.
 | [Collaboration simulation](testing/collaboration-simulation.md) | Gate 0.3 ten-user integration test and 30-minute soak                  |
 | [End-to-end tests](../e2e)                                      | Running the Playwright tests and the load tests                        |
 | [Report relay](../relay)                                        | The Worker that passes in-app reports to the developers                |
-| [Last Train, the demo project](demo-project.md)                 | Story bible of the sample film in every screenshot and in the demo     |
+| [The demo projects](demo-project.md)                            | Story bible of the sample film and the photo shoot in the demo         |
 
 `assets/` holds the logo (`logo-light.svg`, `logo-dark.svg`) and the social preview image;
 `screenshots/` holds the pictures of the README (`screenshots/readme`) and of the tour and the

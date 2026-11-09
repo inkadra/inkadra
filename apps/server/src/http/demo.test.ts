@@ -9,7 +9,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   newElementId,
 } from '@inkadra/doc-schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
@@ -19,7 +19,7 @@ import { attachCollab, createCollabServer } from '../collab.ts';
 import { DEMO_FILE_MAX, demoConfig, loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, boardDoc, project, projectMember, session, user } from '../db/schema.ts';
-import { DEMO_DOMAIN, sweepSandboxes, verifyTurnstile } from '../demo.ts';
+import { DEMO_DOMAIN, demoSeeds, sweepSandboxes, verifyTurnstile } from '../demo.ts';
 import type { safeFetch } from '../safe-fetch.ts';
 import { originalKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
@@ -104,6 +104,20 @@ describe('the demo configuration (decision 0084)', () => {
       true,
     );
     expect(loadConfig({ ...base, NODE_ENV: 'production' }).DEMO_MODE).toBe(false);
+  });
+
+  it('imports Last Train then Low Tide, or the archives DEMO_SEED lists', () => {
+    const seeds = demoSeeds(undefined);
+    expect(seeds.map((p) => p.split(/[\\/]/).pop())).toEqual([
+      'last-train.inkadra',
+      'low-tide.inkadra',
+    ]);
+    expect(demoSeeds('')).toEqual(seeds);
+    expect(demoSeeds('/srv/one.inkadra')).toEqual(['/srv/one.inkadra']);
+    expect(demoSeeds(' /srv/a.inkadra, /srv/b.inkadra ,')).toEqual([
+      '/srv/a.inkadra',
+      '/srv/b.inkadra',
+    ]);
   });
 
   it('reads durations and wants both Turnstile keys', () => {
@@ -431,7 +445,7 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     expect(await db.select().from(user)).toHaveLength(0);
   });
 
-  it('makes a sandbox with the sample project, signed in, for one hour', async () => {
+  it('makes a sandbox with the sample projects, signed in, for one hour', async () => {
     const before = Date.now();
     a = await sandbox('198.51.100.1');
     const [row] = await db.select().from(user).where(eq(user.id, a.id));
@@ -442,14 +456,31 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     expect(Date.parse(mine.expiresAt) - before).toBeLessThan(3_610_000);
     expect(mine).toMatchObject({ projectId: a.projectId, exportUsed: false });
     const projects = (await call(a.cookie, 'GET', '/api/v1/projects')).json();
-    expect(projects.items.map((p: { name: string }) => p.name)).toEqual(['Last Train']);
+    const byName = new Map<string, string>(
+      projects.items.map((p: { id: string; name: string }) => [p.name, p.id]),
+    );
+    expect([...byName.keys()].sort()).toEqual(['Last Train', 'Low Tide']);
+    // "Try the demo" opens the first one, the film.
+    expect(byName.get('Last Train')).toBe(a.projectId);
     const boards = (await call(a.cookie, 'GET', `/api/v1/projects/${a.projectId}/boards`)).json();
     expect(boards.items.length).toBeGreaterThanOrEqual(3);
-    // The sample's shooting day moved to today.
-    const days = await db.execute<{ date: string }>(
-      sql`select date from shooting_day where project_id = ${a.projectId} order by date`,
+    const photo = byName.get('Low Tide') as string;
+    const photoBoards = (await call(a.cookie, 'GET', `/api/v1/projects/${photo}/boards`)).json();
+    expect(photoBoards.items.map((b: { title: string }) => b.title)).toEqual(
+      expect.arrayContaining(['Shot list', 'Selects']),
     );
-    expect([...days][0]?.date).toBe(new Date().toISOString().slice(0, 10));
+    // The shooting days keep their distance from today: the film shoots today, the photo shoot
+    // was two days ago.
+    const firstDay = async (projectId: string) => {
+      const days = await db.execute<{ date: string }>(
+        sql`select date from shooting_day where project_id = ${projectId} order by date`,
+      );
+      return [...days][0]?.date;
+    };
+    const day = (offset: number) =>
+      new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+    expect(await firstDay(a.projectId)).toBe(day(0));
+    expect(await firstDay(photo)).toBe(day(-2));
   });
 
   it('lets one address open one sandbox every ten minutes', async () => {
@@ -553,7 +584,15 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
       expect([400, 403, 404], `${method} ${path}`).toContain(res.status);
     }
     const seen = (await call(b.cookie, 'GET', '/api/v1/projects')).json();
-    expect(seen.items.map((p: { id: string }) => p.id)).toEqual([b.projectId]);
+    const own = await db
+      .select({ id: projectMember.projectId })
+      .from(projectMember)
+      .where(eq(projectMember.userId, b.id));
+    expect(seen.items.map((p: { id: string }) => p.id).sort()).toEqual(
+      own.map((p) => p.id).sort(),
+    );
+    expect(own).toHaveLength(2);
+    expect(own.map((p) => p.id)).not.toContain(a.projectId);
     const [mine] = await db.select().from(project).where(eq(project.id, a.projectId));
     expect(mine?.name).toBe('Last Train');
   });
@@ -814,11 +853,18 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     expect((await open('198.51.100.4')).status).toBe(201);
   });
 
-  it('removes a sandbox with its project, files and sessions after its hour', async () => {
+  it('removes a sandbox with its projects, files and sessions after its hour', async () => {
+    const own = (
+      await db
+        .select({ id: projectMember.projectId })
+        .from(projectMember)
+        .where(eq(projectMember.userId, a.id))
+    ).map((p) => p.id);
+    expect(own).toHaveLength(2);
     const keys = await db
       .select({ key: asset.storageKey })
       .from(asset)
-      .where(eq(asset.projectId, a.projectId));
+      .where(inArray(asset.projectId, own));
     expect(keys.length).toBeGreaterThan(0);
     await db
       .update(user)
@@ -826,7 +872,7 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
       .where(eq(user.id, a.id));
     expect(await sweepSandboxes({ db, jobs: deps.jobs, config, log })).toBe(1);
     expect(await db.select().from(user).where(eq(user.id, a.id))).toHaveLength(0);
-    expect(await db.select().from(project).where(eq(project.id, a.projectId))).toHaveLength(0);
+    expect(await db.select().from(project).where(inArray(project.id, own))).toHaveLength(0);
     expect(await db.select().from(session).where(eq(session.userId, a.id))).toHaveLength(0);
     expect(
       await db.select().from(projectMember).where(eq(projectMember.userId, a.id)),

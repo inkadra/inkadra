@@ -1,6 +1,7 @@
 /**
- * The pictures of the sample project "Last Train" (docs/demo-project.md), drawn as SVG and
- * rendered to JPEG in the browser, so the screenshots carry no third-party images or fonts.
+ * The pictures of the sample projects "Last Train" and "Low Tide" (docs/demo-project.md), drawn
+ * as SVG and rendered to JPEG in the browser, so the screenshots carry no third-party images or
+ * fonts.
  *
  * Every still is built from the same layers: a graded sky, far, middle and near planes, glows
  * and haze blended with `screen`, wet reflections, then vignette, grade and grain. All of it is
@@ -1079,6 +1080,372 @@ function townMap(place: 'station' | 'coast'): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${MAP_W}" height="${MAP_H}" viewBox="0 0 ${MAP_W} ${MAP_H}">${parts.join('')}</svg>`;
 }
 
+// Low Tide, the photo shoot (docs/demo-project.md): the coast in cold morning light. Models are
+// drawn like the people of Last Train, with the outfit in its own colour and hair in the wind.
+const WIND_HAIR = 'M-3.4 3.6Q-11 1.6-19.6 5.4Q-12 6.2-4.6 9.6Z';
+const COAT_WIND =
+  'M-10.5 21Q-10.5 17.2-6 16.6L6 16.6Q10.5 17.2 10.5 21L11.8 44L12.8 72L-5 72Q-13 68-21 62Q-14.6 46-12 30Z';
+const DRESS =
+  'M-9.6 21Q-9.6 17.2-5.4 16.6L5.4 16.6Q9.6 17.2 9.6 21L10.4 40L13 76L-6 76Q-14 72-22 66Q-13 52-11 34Z';
+const SHIRT = 'M-11.5 21Q-11.5 17-6 16.4L6 16.4Q11.5 17 11.5 21L11.4 54L-11.4 54Z';
+const TROUSERS = 'M-11 52L-9 98L-1 98L0 62L1 98L9 98L11 52Z';
+
+interface Model {
+  x: number;
+  /** Where the feet are. */
+  y: number;
+  h: number;
+  outfit: 'coat' | 'dress' | 'knit' | 'shirt';
+  color: string;
+  walk?: boolean;
+  /** Mara's hair in the wind; Ivo's is short. */
+  hair?: boolean;
+  flip?: boolean;
+}
+
+function model(m: Model, dark = '#15171B') {
+  const s = m.h / 100;
+  const legs =
+    m.outfit === 'knit' || m.outfit === 'shirt'
+      ? []
+      : m.walk
+        ? [WALK_L, WALK_R]
+        : [LEG_L, LEG_R, SHOE_L, SHOE_R];
+  const arms = m.walk ? [SWING_L, SWING_R] : [ARM_L, ARM_R];
+  const body = {
+    coat: [COAT_WIND],
+    dress: [DRESS],
+    knit: [SHIRT, TROUSERS],
+    shirt: [SHIRT, TROUSERS],
+  }[m.outfit];
+  const paths = (list: string[]) => list.map((d) => `<path d="${d}"/>`).join('');
+  return `<g transform="translate(${f(m.x)} ${f(m.y - m.h)}) scale(${f(m.flip ? -s : s)} ${f(s)})">
+    <g fill="${dark}">${paths([HEAD, NECK, ...legs, ...(m.hair ? [WIND_HAIR] : [])])}</g>
+    <g fill="${m.color}">${paths([...body, ...arms])}</g>
+  </g>`;
+}
+
+/** A model reflected in wet sand or a pool: upside down, rippled, faint. */
+function mirrored(m: Model, opacity = 0.3) {
+  return `<g filter="url(#ripple)" opacity="${opacity}" transform="translate(0 ${f(2 * m.y)}) scale(1 -1)">${model({ ...m, color: '#000' }, '#000')}</g>`;
+}
+
+/** The looks of the bible: Mara's red coat, cream knit and pale dress, Ivo's slate shirt. */
+const LOOK = {
+  coat: { outfit: 'coat', color: '#8E2F2A', hair: true },
+  knit: { outfit: 'knit', color: '#E3D7C3', hair: true },
+  dress: { outfit: 'dress', color: '#ECE6DA', hair: true },
+  ivo: { outfit: 'shirt', color: '#3E4E5E' },
+} as const;
+
+/** Flat lines on the water, thinner and closer together towards the horizon. */
+function swell(c: Canvas, top: number, bottom: number, seed: number, color = '#C9D2D8') {
+  const r = random(seed);
+  let out = '';
+  for (let i = 0; i < 26; i++) {
+    const t = (i / 26) ** 1.7;
+    const y = lerp(top + 4, bottom, t);
+    const x = r() * W * 0.6;
+    out += `<path d="M${f(x - 200)} ${f(y)}H${f(x + 600 + r() * 900)}" stroke="${color}" stroke-width="${f(0.8 + t * 2.4)}" opacity="${f(0.1 + t * 0.18)}"/>`;
+  }
+  return `<g>${out}</g>${c.glow(W / 2, top, 900, '#E8EDEE', 0.06)}`;
+}
+
+/** Look 1: the sea wall under a low grey sky, Mara in the red coat. */
+function tideSeawall(v = 0) {
+  const c = new Canvas(W, H);
+  const horizon = 470;
+  const wall = (x: number) => lerp(730, 630, x / W);
+  const poses: Array<Omit<Model, 'y' | 'outfit' | 'color'>> = [
+    { x: 1060, h: 170 },
+    { x: 700, h: 360, walk: true },
+    { x: 960, h: 230, flip: true },
+    { x: 1250, h: 190 },
+    { x: 470, h: 84, walk: true },
+  ];
+  const pose = poses[v % poses.length] as (typeof poses)[number];
+  const mara: Model = { ...LOOK.coat, ...pose, y: wall(pose.x) + 4 };
+  const r = random(70 + v);
+  let glitter = '';
+  for (let i = 0; i < 40; i++) {
+    const y = horizon + 10 + r() ** 1.4 * 200;
+    glitter += `<rect x="${f(1120 + (r() - 0.5) * (y - horizon) * 0.8)}" y="${f(y)}" width="${f(10 + r() * 30)}" height="2" fill="#EEF2F2" opacity="${f(0.2 + r() * 0.5)}"/>`;
+  }
+  const seams = [140, 420, 700, 980, 1260, 1540]
+    .map((x) => `<path d="M${x} ${f(wall(x) + 6)}L${x - 14} 900" stroke="#0C0F12" stroke-width="2" opacity=".6"/>`)
+    .join('');
+  const body = `
+  <rect width="${W}" height="${horizon + 2}" fill="${c.linear([
+    [0, '#1C2532'],
+    [0.5, '#4E6078'],
+    [0.86, '#AEB3B0'],
+    [1, '#D8D3C4'],
+  ])}"/>
+  ${c.glow(1150, horizon - 20, 620, '#EDE6D2', 0.55)}
+  <g filter="url(#b30)" opacity=".35" fill="#8C9AAA"><ellipse cx="500" cy="180" rx="520" ry="40"/><ellipse cx="1200" cy="120" rx="420" ry="30"/></g>
+  <path d="M0 ${horizon - 6}Q160 ${horizon - 30} 360 ${horizon - 22}T720 ${horizon - 2}L720 ${horizon + 2}L0 ${horizon + 2}Z" fill="#4A5462" filter="url(#b3)"/>
+  <rect y="${horizon}" width="${W}" height="${H - horizon}" fill="${c.linear([
+    [0, '#6F8196'],
+    [0.5, '#3F5168'],
+    [1, '#1E2A38'],
+  ])}"/>
+  ${swell(c, horizon, 760, 71 + v)}
+  <g filter="url(#b3)" style="mix-blend-mode:screen">${glitter}</g>
+  <path d="M0 ${wall(0)}L${W} ${wall(W)}L${W} ${H}L0 ${H}Z" fill="${c.linear([
+    [0, '#323A44'],
+    [1, '#101419'],
+  ])}"/>
+  <path d="M0 ${wall(0)}L${W} ${wall(W)}" stroke="#A7B0B8" stroke-width="3" opacity=".7"/>
+  ${seams}
+  ${model(mara)}
+  <rect width="${W}" height="${H}" fill="#DCE3E6" opacity=".05" style="mix-blend-mode:screen"/>`;
+  return wrap(c, body, { grade: '#3E5E7E', gradeOpacity: 0.25, vignette: 0.55 });
+}
+
+/** Look 2: first sun on the wet sand at low water, the sky in the sand. */
+function tideDawn(v = 0) {
+  const c = new Canvas(W, H);
+  const horizon = 440;
+  const shore = 476;
+  const casts: Model[][] = [
+    [
+      { ...LOOK.knit, x: 700, y: 640, h: 74 },
+      { ...LOOK.ivo, x: 790, y: 648, h: 82 },
+    ],
+    [{ ...LOOK.knit, x: 820, y: 860, h: 300, walk: true }],
+    [{ ...LOOK.ivo, x: 1010, y: 720, h: 170, flip: true }],
+    [
+      { ...LOOK.knit, x: 540, y: 720, h: 130, walk: true },
+      { ...LOOK.ivo, x: 640, y: 730, h: 140 },
+    ],
+  ];
+  const people = casts[v % casts.length] as Model[];
+  const r = random(80 + v);
+  let ripples = '';
+  for (let i = 0; i < 30; i++) {
+    const y = shore + 20 + r() ** 1.5 * 400;
+    ripples += `<path d="M${f(r() * W)} ${f(y)}h${f(60 + r() * 260)}" stroke="#F4E2CC" stroke-width="${f(1 + (y - shore) / 120)}" opacity="${f(0.12 + r() * 0.2)}"/>`;
+  }
+  const body = `
+  <rect width="${W}" height="${shore}" fill="${c.linear([
+    [0, '#3A4658'],
+    [0.5, '#8F8B9A'],
+    [0.85, '#E3BFA2'],
+    [1, '#F2D6B8'],
+  ])}"/>
+  ${c.glow(1150, horizon - 10, 520, '#FFE4BE', 0.75)}
+  <circle cx="1150" cy="${horizon - 12}" r="30" fill="#FFF3DC"/>
+  <rect y="${horizon}" width="${W}" height="${shore - horizon}" fill="#7C8794"/>
+  ${swell(c, horizon, shore, 81 + v, '#F2E0CA')}
+  <rect y="${shore}" width="${W}" height="${H - shore}" fill="${c.linear([
+    [0, '#D6B9A0'],
+    [0.3, '#A8968E'],
+    [1, '#5E5658'],
+  ])}"/>
+  <g filter="url(#streak)" style="mix-blend-mode:screen" opacity=".55"><rect x="1110" y="${shore}" width="80" height="380" fill="#FFE4BE"/></g>
+  ${ripples}
+  ${people.map((m) => mirrored(m, 0.28)).join('')}
+  ${people.map((m) => model(m)).join('')}`;
+  return wrap(c, body, { grade: '#C9A08A', gradeOpacity: 0.2, vignette: 0.5 });
+}
+
+/** Look 3: the dunes and their tall grass, the fog coming in, the pale dress. */
+function tideDunes(v = 0) {
+  const c = new Canvas(W, H);
+  const casts: Array<{ people: Model[]; fog: number }> = [
+    {
+      people: [
+        { ...LOOK.dress, x: 690, y: 560, h: 190 },
+        { ...LOOK.ivo, x: 860, y: 572, h: 206 },
+      ],
+      fog: 0.3,
+    },
+    { people: [{ ...LOOK.dress, x: 900, y: 540, h: 170, walk: true }], fog: 0.3 },
+    { people: [{ ...LOOK.dress, x: 780, y: 1120, h: 700 }], fog: 0.25 },
+    {
+      people: [
+        { ...LOOK.dress, x: 500, y: 500, h: 90 },
+        { ...LOOK.ivo, x: 570, y: 506, h: 98 },
+      ],
+      fog: 0.35,
+    },
+    { people: [{ ...LOOK.dress, x: 600, y: 640, h: 260, flip: true }], fog: 0.3 },
+    {
+      people: [
+        { ...LOOK.dress, x: 980, y: 470, h: 54 },
+        { ...LOOK.ivo, x: 1020, y: 474, h: 58 },
+      ],
+      fog: 0.7,
+    },
+  ];
+  const { people, fog } = casts[v % casts.length] as (typeof casts)[number];
+  const r = random(90 + v);
+  let grass = '';
+  for (let i = 0; i < 300; i++) {
+    const x = r() * W;
+    const y = 520 + r() ** 0.8 * 400;
+    const h = 30 + (y - 500) * 0.35;
+    grass += `<path d="M${f(x)} ${f(y)}q${f(r() * 10 - 6)} ${f(-h / 2)} ${f(r() * 20 - 14)} ${f(-h)}" stroke-width="${f(1 + (y - 500) / 140)}"/>`;
+  }
+  const body = `
+  <rect width="${W}" height="${H}" fill="${c.linear([
+    [0, '#4F5B68'],
+    [0.45, '#AEB8BE'],
+    [0.62, '#D3D5CE'],
+    [1, '#D3D5CE'],
+  ])}"/>
+  ${c.glow(1100, 420, 640, '#F2F0E6', 0.45)}
+  <path d="M0 470Q300 440 620 462T1600 446L1600 900L0 900Z" fill="#C9B590" opacity=".75"/>
+  <path d="M0 540Q420 470 820 520T1600 500L1600 900L0 900Z" fill="${c.linear([
+    [0, '#C2A878'],
+    [1, '#9C8256'],
+  ])}"/>
+  <path d="M0 690Q520 620 1000 660T1600 650L1600 900L0 900Z" fill="#A68B5E"/>
+  ${people.map((m) => model(m)).join('')}
+  <g stroke="#5F5630" opacity=".75" fill="none">${grass}</g>
+  <g filter="url(#b70)" opacity="${fog}"><rect x="-200" y="320" width="2000" height="260" fill="#E6E8E2"/></g>`;
+  return wrap(c, body, { grade: '#8A8A70', gradeOpacity: 0.2, vignette: 0.5 });
+}
+
+/** Rock pools at low tide holding the sky, and Mara in one shot among them. */
+function tidePools(v = 0) {
+  const c = new Canvas(W, H);
+  const horizon = 360;
+  const r = random(100 + v);
+  const sky = c.linear([
+    [0, '#5C6C7E'],
+    [1, '#D5D8D2'],
+  ]);
+  const pool = c.linear([
+    [0, '#E2E5DE'],
+    [1, '#7F92A2'],
+  ]);
+  let rocks = '';
+  let pools = '';
+  for (let i = 0; i < 16; i++) {
+    const x = r() * W;
+    const y = horizon + 60 + r() ** 0.8 * 480;
+    const s = 0.4 + (y - horizon) / 400;
+    rocks += `<ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(160 * s + r() * 80)}" ry="${f(40 * s + r() * 20)}" fill="#262C32"/>`;
+    pools += `<ellipse cx="${f(x + (r() - 0.5) * 60)}" cy="${f(y - 4 * s)}" rx="${f(90 * s + r() * 40)}" ry="${f(16 * s + r() * 8)}" fill="${pool}"/>`;
+  }
+  const mara: Model = { ...LOOK.knit, x: 1120, y: 620, h: 130 };
+  const body = `
+  <rect width="${W}" height="${horizon + 2}" fill="${sky}"/>
+  ${c.glow(600, horizon - 20, 600, '#F4F2EA', 0.45)}
+  <rect y="${horizon}" width="${W}" height="40" fill="#76889A"/>
+  ${swell(c, horizon, horizon + 40, 101 + v)}
+  <rect y="${horizon + 40}" width="${W}" height="${H - horizon - 40}" fill="${c.linear([
+    [0, '#5A5650'],
+    [1, '#2A2724'],
+  ])}"/>
+  ${rocks}
+  ${pools}
+  ${v % 2 === 1 ? `${mirrored(mara, 0.35)}${model(mara)}` : ''}
+  <rect width="${W}" height="${H}" fill="#E6EAE6" opacity=".05" style="mix-blend-mode:screen"/>`;
+  return wrap(c, body, { grade: '#6E8A8A', gradeOpacity: 0.2, vignette: 0.55 });
+}
+
+/** Mara in profile against the sea, hair blown back, the red scarf. */
+function tidePortrait(v = 0) {
+  const c = new Canvas(W, H);
+  const horizon = 520;
+  const frames = [
+    { x: 380, y: 240, s: 0.66 },
+    { x: 560, y: 140, s: 0.8 },
+    { x: 520, y: 30, s: 0.94 },
+    { x: 760, y: 260, s: 0.64 },
+  ];
+  const fr = frames[v % frames.length] as (typeof frames)[number];
+  const strands = [
+    'M440 300L150 250L420 336Z',
+    'M420 350L170 400L436 392Z',
+    'M440 396L260 500L458 430Z',
+  ];
+  const inner = `
+    <path d="M150 760C300 720 420 700 460 690L600 690C700 720 800 762 880 830L940 1000L150 1000Z" fill="#17181C"/>
+    <path d="M420 660Q520 720 640 670L660 760Q530 810 400 750Z" fill="#8E2F2A"/>`;
+  const body = `
+  <rect width="${W}" height="${horizon + 2}" fill="${c.linear([
+    [0, '#46525E'],
+    [0.7, '#B9C0C0'],
+    [1, '#DCDCD2'],
+  ])}"/>
+  ${c.glow(1000, horizon - 40, 760, '#F2F0E8', 0.4)}
+  <rect y="${horizon}" width="${W}" height="${H - horizon}" fill="${c.linear([
+    [0, '#6C7C8C'],
+    [1, '#2A3644'],
+  ])}"/>
+  ${swell(c, horizon, H, 111 + v)}
+  ${c.rimmed([PROFILE, ...strands], '#121317', '#E8E6DE', 9, `translate(${fr.x} ${fr.y}) scale(${fr.s})`, inner)}`;
+  return wrap(c, body, { grade: '#4E6A7E', gradeOpacity: 0.2, vignette: 0.6 });
+}
+
+/** The old pier: a line of wooden posts running into the fog, Ivo at the water in one shot. */
+function tidePier(v = 0) {
+  const c = new Canvas(W, H);
+  const horizon = 500;
+  const fog = [0.5, 0.45, 0.75][v % 3] as number;
+  const posts = depths(16, 1, 0.45)
+    .map(({ t, s }) => {
+      const x = lerp(1240, 560, t);
+      const y = lerp(820, horizon + 6, t);
+      const h = 300 * s;
+      const w = 30 * s + 2;
+      return `<rect x="${f(x - w / 2)}" y="${f(y - h)}" width="${f(w)}" height="${f(h)}" fill="#2B2724" opacity="${f(lerp(1, 0.18, t) * (1.2 - fog))}"/><rect x="${f(x - w / 2)}" y="${f(y - 3 * s)}" width="${f(w)}" height="${f(14 * s)}" fill="#C6CCCB" opacity="${f(0.25 * (1 - t))}"/>`;
+    })
+    .join('');
+  const ivo: Model = { ...LOOK.ivo, x: 980, y: 760, h: 210, flip: true };
+  const body = `
+  <rect width="${W}" height="${horizon + 2}" fill="${c.linear([
+    [0, '#8F9A9E'],
+    [1, '#D4D8D4'],
+  ])}"/>
+  <rect y="${horizon}" width="${W}" height="${H - horizon}" fill="${c.linear([
+    [0, '#B8C0C0'],
+    [0.4, '#7E8A8E'],
+    [1, '#4A5458'],
+  ])}"/>
+  ${swell(c, horizon, H, 121 + v, '#E6EAE8')}
+  ${posts}
+  ${v % 3 === 1 ? `${mirrored(ivo, 0.3)}${model(ivo)}` : ''}
+  <g filter="url(#b70)" opacity="${fog}"><rect x="-200" y="300" width="2000" height="320" fill="#E4E7E4"/></g>`;
+  return wrap(c, body, { grade: '#7A8A8A', gradeOpacity: 0.2, vignette: 0.45 });
+}
+
+/**
+ * The pictures of Low Tide, named as the photographer's files: the six of the website keep their
+ * numbers (LT_0412 is the sea wall), the others are frames around them from the same set-ups.
+ */
+const tideStills: Record<string, () => string> = {
+  LT_0405: () => tideSeawall(1),
+  LT_0409: () => tideSeawall(2),
+  LT_0412: () => tideSeawall(0),
+  LT_0418: () => tideSeawall(3),
+  LT_0421: () => tideSeawall(4),
+  LT_0427: () => tideDawn(1),
+  LT_0431: () => tideDawn(0),
+  LT_0436: () => tideDawn(2),
+  LT_0440: () => tideDawn(3),
+  LT_0446: () => tideDunes(1),
+  LT_0451: () => tideDunes(2),
+  LT_0457: () => tideDunes(0),
+  LT_0462: () => tideDunes(3),
+  LT_0468: () => tideDunes(4),
+  LT_0472: () => tideDunes(5),
+  LT_0497: () => tidePools(1),
+  LT_0503: () => tidePools(0),
+  LT_0507: () => tidePortrait(1),
+  LT_0511: () => tidePortrait(2),
+  LT_0515: () => tidePortrait(3),
+  LT_0518: () => tidePortrait(0),
+  LT_0522: () => tidePier(1),
+  LT_0526: () => tidePier(0),
+  LT_0530: () => tidePier(2),
+};
+
+export const TIDE_NAMES = Object.keys(tideStills);
+
 const stills: Record<string, () => string> = {
   platform,
   tunnel,
@@ -1137,7 +1504,7 @@ const stills: Record<string, () => string> = {
 export const STILL_NAMES = Object.keys(stills);
 
 export function stillSvg(name: string): string {
-  const draw = stills[name];
+  const draw = stills[name] ?? tideStills[name];
   if (!draw) throw new Error(`no still ${name}`);
   return draw();
 }

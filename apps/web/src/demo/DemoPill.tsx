@@ -3,6 +3,7 @@ import { Button, Dialog, DialogActions, Icon, IconButton } from '@inkadra/ui';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { useMatch } from 'react-router';
 import { api } from '../lib/api.ts';
 import { formatDateTime } from '../lib/datetime.ts';
 import { useSession } from '../lib/session.tsx';
@@ -88,7 +89,12 @@ export function DemoBar({ demo }: { demo: DemoInfo }) {
     { label: t('demo.rules'), action: () => window.open(RULES_URL, '_blank', 'noopener') },
   ]);
 
-  const project = projects?.find((p) => p.id === sandbox?.projectId) ?? null;
+  // A sandbox has two sample projects and one export: the one open, else the first.
+  const open = useMatch('/p/:projectId/*')?.params.projectId;
+  const project =
+    projects?.find((p) => p.id === open) ??
+    projects?.find((p) => p.id === sandbox?.projectId) ??
+    null;
   const used = space ? space.originalBytes + space.derivedBytes : 0;
   const limit = space?.limit ?? demo.storageBytes;
   const size = (bytes: number) => formatStorage(bytes, i18n.language);

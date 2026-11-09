@@ -131,7 +131,13 @@ export async function importProject(
   path: string,
   userId: string,
   progress: (done: number) => Promise<void> | void = () => {},
-): Promise<{ projectId: string; projectName: string; summary: TransferSummary }> {
+): Promise<{
+  projectId: string;
+  projectName: string;
+  /** When the archive was made, from its manifest. */
+  exportedAt: string;
+  summary: TransferSummary;
+}> {
   const { db, storage } = deps;
   const zip = await readZip(path, {
     entries: LIMITS.entries,
@@ -550,6 +556,7 @@ export async function importProject(
     return {
       projectId,
       projectName: meta.name,
+      exportedAt: manifest.exportedAt,
       summary: {
         boards: boards.length,
         elements,

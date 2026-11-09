@@ -58,13 +58,17 @@ const client = { link: 'Fondazione Cinema Costa', name: 'Elena Marino' };
 /** Who made a card: Giulia unless said otherwise (set once she has signed in). */
 let opts: { userId: string | null } = { userId: null };
 
-async function renderStills(browser: Browser): Promise<Record<string, Buffer>> {
+export async function renderStills(
+  browser: Browser,
+  names: readonly string[] = STILL_NAMES,
+  quality = 90,
+): Promise<Record<string, Buffer>> {
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   const result: Record<string, Buffer> = {};
-  for (const name of STILL_NAMES) {
+  for (const name of names) {
     await page.setViewportSize(stillSize(name));
     await page.setContent(`<body style="margin:0">${stillSvg(name)}</body>`);
-    result[name] = await page.screenshot({ type: 'jpeg', quality: 90 });
+    result[name] = await page.screenshot({ type: 'jpeg', quality });
   }
   await page.close();
   return result;
@@ -104,8 +108,12 @@ const cookieOf = (res: Response) =>
  * Signs a crew member in, or up through an invitation link to the project (registration is
  * by invitation), and gives them their role. Runs again on an instance that has them already.
  */
-async function joinTeam(base: string, admin: string, projectId: string, who: Member) {
-  const { name, email, role } = team[who];
+export async function joinTeam(
+  base: string,
+  admin: string,
+  projectId: string,
+  { name, email, role }: { name: string; email: string; role: string },
+) {
   const json = { 'content-type': 'application/json', origin: base };
   const credentials = JSON.stringify({ name, email, password: account.password });
   let res = await fetch(`${base}/api/auth/sign-in/email`, {
@@ -311,7 +319,7 @@ export interface SampleProject {
 }
 
 /** Local dates from today, like the app's: day 0 is today. */
-function localDate(offset: number) {
+export function localDate(offset: number) {
   const day = new Date();
   day.setDate(day.getDate() + offset);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -352,7 +360,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
   });
   const people = {} as Record<Member, { id: string; cookie: string }>;
   for (const who of Object.keys(team) as Member[])
-    people[who] = await joinTeam(base, cookie, project.id, who);
+    people[who] = await joinTeam(base, cookie, project.id, team[who]);
   const by = (who: Member) => ({ userId: people[who].id });
 
   const board = (title: string, kind: 'board' | 'storyboard' = 'board') =>

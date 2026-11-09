@@ -80,9 +80,9 @@ export interface AppDeps {
   notices?: BoardNotifier;
   /** Scratch space for files received in one piece (clips). */
   tmpDir?: string;
-  /** Tests only: a stand-in for Cloudflare Turnstile and another demo archive. */
+  /** Tests only: a stand-in for Cloudflare Turnstile and other demo archives. */
   turnstileFetch?: typeof import('../safe-fetch.ts').safeFetch;
-  demoSeed?: string;
+  demoSeeds?: readonly string[];
   /** Tests only: addresses link previews may fetch besides public ones. */
   allowAddresses?: string[];
   /** The Server page (#514); in memory when omitted. */
