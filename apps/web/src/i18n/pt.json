@@ -2587,9 +2587,14 @@
   "projectDelete": {
     "menu": "Excluir projeto…",
     "title": "Excluir “{{name}}”?",
-    "body": "Todos os quadros, recursos e arquivos deste projeto são excluídos para todos os membros. Não é possível desfazer.",
+    "body": "Todos os quadros, recursos e arquivos deste projeto são excluídos para todos os membros.",
+    "irreversible": "Não é possível desfazer.",
     "alternatives": "Para tirá-lo do caminho, arquive-o. Para guardar uma cópia, exporte-o antes.",
-    "confirmLabel": "Digite o nome do projeto para confirmar",
+    "confirmBefore": "Digite",
+    "confirmAfter": "para confirmar",
+    "placeholder": "Nome do projeto",
+    "copy": "Copiar “{{name}}”",
+    "copied": "Copiado",
     "confirm": "Excluir definitivamente",
     "error": "Não foi possível excluir o projeto. Tente novamente."
   },

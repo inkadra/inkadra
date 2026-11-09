@@ -2587,9 +2587,14 @@
   "projectDelete": {
     "menu": "Delete project…",
     "title": "Delete “{{name}}”?",
-    "body": "All boards, assets and files of this project are deleted for every member. This cannot be undone.",
+    "body": "All boards, assets and files of this project are deleted for every member.",
+    "irreversible": "This cannot be undone.",
     "alternatives": "To put it out of the way, archive it instead. To keep a copy, export it first.",
-    "confirmLabel": "Type the project name to confirm",
+    "confirmBefore": "Type",
+    "confirmAfter": "to confirm",
+    "placeholder": "Project name",
+    "copy": "Copy “{{name}}”",
+    "copied": "Copied",
     "confirm": "Delete for good",
     "error": "The project could not be deleted. Try again."
   },
