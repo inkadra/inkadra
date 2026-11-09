@@ -1199,7 +1199,7 @@ function tideSeawall(v = 0) {
   ${seams}
   ${model(mara)}
   <rect width="${W}" height="${H}" fill="#DCE3E6" opacity=".05" style="mix-blend-mode:screen"/>`;
-  return wrap(c, body, { grade: '#3E5E7E', gradeOpacity: 0.25, vignette: 0.55 });
+  return wrap(c, body, { grade: '#3E5E7E', gradeOpacity: 0.25, vignette: 0.3 });
 }
 
 /** Look 2: first sun on the wet sand at low water, the sky in the sand. */
@@ -1242,11 +1242,11 @@ function tideDawn(v = 0) {
     [0.3, '#A8968E'],
     [1, '#5E5658'],
   ])}"/>
-  <g filter="url(#streak)" style="mix-blend-mode:screen" opacity=".55"><rect x="1110" y="${shore}" width="80" height="380" fill="#FFE4BE"/></g>
+  <g filter="url(#streak)" style="mix-blend-mode:screen" opacity=".3"><rect x="1110" y="${shore}" width="80" height="380" fill="#FFE4BE"/></g>
   ${ripples}
   ${people.map((m) => mirrored(m, 0.28)).join('')}
   ${people.map((m) => model(m)).join('')}`;
-  return wrap(c, body, { grade: '#C9A08A', gradeOpacity: 0.2, vignette: 0.5 });
+  return wrap(c, body, { grade: '#C9A08A', gradeOpacity: 0.2, vignette: 0.3 });
 }
 
 /** Look 3: the dunes and their tall grass, the fog coming in, the pale dress. */
@@ -1304,7 +1304,7 @@ function tideDunes(v = 0) {
   ${people.map((m) => model(m)).join('')}
   <g stroke="#5F5630" opacity=".75" fill="none">${grass}</g>
   <g filter="url(#b70)" opacity="${fog}"><rect x="-200" y="320" width="2000" height="260" fill="#E6E8E2"/></g>`;
-  return wrap(c, body, { grade: '#8A8A70', gradeOpacity: 0.2, vignette: 0.5 });
+  return wrap(c, body, { grade: '#8A8A70', gradeOpacity: 0.2, vignette: 0.3 });
 }
 
 /** Rock pools at low tide holding the sky, and Mara in one shot among them. */
@@ -1317,17 +1317,26 @@ function tidePools(v = 0) {
     [1, '#D5D8D2'],
   ]);
   const pool = c.linear([
-    [0, '#E2E5DE'],
-    [1, '#7F92A2'],
+    [0, '#C4CCCC'],
+    [1, '#73848F'],
   ]);
+  /** A low rock: an irregular outline around its middle, flattened by the distance. */
+  const outline = (x: number, y: number, rx: number, ry: number, n = 9) =>
+    Array.from({ length: n }, (_, k) => {
+      const a = (k / n) * Math.PI * 2;
+      const j = 0.75 + r() * 0.4;
+      return `${k ? 'L' : 'M'}${f(x + Math.cos(a) * rx * j)} ${f(y + Math.sin(a) * ry * j)}`;
+    }).join('') + 'Z';
   let rocks = '';
   let pools = '';
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 14; i++) {
     const x = r() * W;
-    const y = horizon + 60 + r() ** 0.8 * 480;
+    const y = horizon + 70 + r() ** 0.8 * 470;
     const s = 0.4 + (y - horizon) / 400;
-    rocks += `<ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(160 * s + r() * 80)}" ry="${f(40 * s + r() * 20)}" fill="#262C32"/>`;
-    pools += `<ellipse cx="${f(x + (r() - 0.5) * 60)}" cy="${f(y - 4 * s)}" rx="${f(90 * s + r() * 40)}" ry="${f(16 * s + r() * 8)}" fill="${pool}"/>`;
+    const rx = 150 * s + r() * 70;
+    const ry = 36 * s + r() * 16;
+    rocks += `<path d="${outline(x, y, rx, ry)}" fill="#2E302E"/><path d="${outline(x, y - ry * 0.4, rx * 0.8, ry * 0.5)}" fill="#4A4840" opacity=".6"/>`;
+    pools += `<path d="${outline(x + (r() - 0.5) * 40, y + ry * 0.9, rx * 0.7, ry * 0.45, 12)}" fill="${pool}" opacity=".85"/>`;
   }
   const mara: Model = { ...LOOK.knit, x: 1120, y: 620, h: 130 };
   const body = `
@@ -1339,11 +1348,11 @@ function tidePools(v = 0) {
     [0, '#5A5650'],
     [1, '#2A2724'],
   ])}"/>
-  ${rocks}
   ${pools}
+  ${rocks}
   ${v % 2 === 1 ? `${mirrored(mara, 0.35)}${model(mara)}` : ''}
   <rect width="${W}" height="${H}" fill="#E6EAE6" opacity=".05" style="mix-blend-mode:screen"/>`;
-  return wrap(c, body, { grade: '#6E8A8A', gradeOpacity: 0.2, vignette: 0.55 });
+  return wrap(c, body, { grade: '#6E8A8A', gradeOpacity: 0.2, vignette: 0.3 });
 }
 
 /** Mara in profile against the sea, hair blown back, the red scarf. */
@@ -1378,7 +1387,7 @@ function tidePortrait(v = 0) {
   ])}"/>
   ${swell(c, horizon, H, 111 + v)}
   ${c.rimmed([PROFILE, ...strands], '#121317', '#E8E6DE', 9, `translate(${fr.x} ${fr.y}) scale(${fr.s})`, inner)}`;
-  return wrap(c, body, { grade: '#4E6A7E', gradeOpacity: 0.2, vignette: 0.6 });
+  return wrap(c, body, { grade: '#4E6A7E', gradeOpacity: 0.2, vignette: 0.3 });
 }
 
 /** The old pier: a line of wooden posts running into the fog, Ivo at the water in one shot. */
@@ -1410,7 +1419,7 @@ function tidePier(v = 0) {
   ${posts}
   ${v % 3 === 1 ? `${mirrored(ivo, 0.3)}${model(ivo)}` : ''}
   <g filter="url(#b70)" opacity="${fog}"><rect x="-200" y="300" width="2000" height="320" fill="#E4E7E4"/></g>`;
-  return wrap(c, body, { grade: '#7A8A8A', gradeOpacity: 0.2, vignette: 0.45 });
+  return wrap(c, body, { grade: '#7A8A8A', gradeOpacity: 0.2, vignette: 0.3 });
 }
 
 /**
