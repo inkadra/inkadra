@@ -3231,51 +3231,17 @@
     "progressPages": "Drawing pages… {{done}} of {{total}}",
     "missingGlyphs": "Some characters ({{chars}}) are not in the export font and will print as empty boxes.",
     "logoTimeout": "The logo upload is taking too long. Try again.",
-    "presetsLabel": "Export presets",
-    "recommended": "Recommended",
-    "customize": "Customise",
-    "editingPreset": "editing preset {{n}}",
     "remembered": "Remembered for this project",
     "submitPages_one": "Export {{count}} page",
     "submitPages_other": "Export {{count}} pages",
-    "presets": {
-      "client-pitch": {
-        "title": "Client pitch",
-        "description": "16:9 · approved frames only · one per page · no internal notes"
-      },
-      "production-book": {
-        "title": "Production book",
-        "description": "A4 · every field · shot list and call sheet · page numbers"
-      },
-      "internal-kickoff": {
-        "title": "Internal kickoff",
-        "description": "Dates, people, tasks and the schedule summary"
-      }
-    },
     "approvedOnly": "Approved frames only",
-    "kickoffSummary": "Kickoff summary: dates, people, tasks and schedule",
     "callSheet": "Call sheet of every shooting day",
     "teamOnlyHint": "Only in PDFs for the team.",
     "callSheetTitle": "Call sheet",
-    "kickoff": {
-      "title": "Kickoff summary",
-      "dates": "Dates",
-      "period_one": "{{count}} shooting day: {{from}}",
-      "period_other": "{{count}} shooting days, from {{from}} to {{to}}",
-      "noDays": "No shooting days in the schedule.",
-      "people": "People",
-      "noPeople": "No people to show.",
-      "tasks": "Open tasks",
-      "noTasks": "No open tasks.",
-      "schedule": "Schedule",
-      "shots_one": "{{count}} shot",
-      "shots_other": "{{count}} shots"
-    },
     "formatJpeg": "JPEG",
     "jpegHint": "Smaller file, no transparency.",
     "pngHint": "Full quality, larger file.",
     "openImage": "Export image…",
-    "presetsOff": "Presets 1–3 are PDF documents: they come back when you choose PDF.",
     "whatCard": "Card “{{name}}”",
     "whatFrame": "Frame {{label}}",
     "aspect": "Aspect ratio",

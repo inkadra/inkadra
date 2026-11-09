@@ -3231,51 +3231,17 @@
     "progressPages": "Seiten werden gezeichnet… {{done}} von {{total}}",
     "missingGlyphs": "Einige Zeichen ({{chars}}) fehlen in der Export-Schrift und werden als leere Kästchen gedruckt.",
     "logoTimeout": "Der Logo-Upload dauert zu lange. Versuch es noch mal.",
-    "presetsLabel": "Export-Vorlagen",
-    "recommended": "Empfohlen",
-    "customize": "Anpassen",
-    "editingPreset": "du bearbeitest Vorlage {{n}}",
     "remembered": "Für dieses Projekt gemerkt",
     "submitPages_one": "{{count}} Seite exportieren",
     "submitPages_other": "{{count}} Seiten exportieren",
-    "presets": {
-      "client-pitch": {
-        "title": "Kunden-Pitch",
-        "description": "16:9 · nur freigegebene Frames · einer pro Seite · keine internen Notizen"
-      },
-      "production-book": {
-        "title": "Produktionsbuch",
-        "description": "A4 · alle Felder · Shotlist und Tagesdispo · Seitenzahlen"
-      },
-      "internal-kickoff": {
-        "title": "Internes Kickoff",
-        "description": "Termine, Personen, Aufgaben und Drehplan-Übersicht"
-      }
-    },
     "approvedOnly": "Nur freigegebene Frames",
-    "kickoffSummary": "Kickoff-Übersicht: Termine, Personen, Aufgaben und Drehplan",
     "callSheet": "Tagesdispo für jeden Drehtag",
     "teamOnlyHint": "Nur in PDFs für das Team.",
     "callSheetTitle": "Tagesdispo",
-    "kickoff": {
-      "title": "Kickoff-Übersicht",
-      "dates": "Termine",
-      "period_one": "{{count}} Drehtag: {{from}}",
-      "period_other": "{{count}} Drehtage, vom {{from}} bis {{to}}",
-      "noDays": "Keine Drehtage im Plan.",
-      "people": "Personen",
-      "noPeople": "Keine Personen anzuzeigen.",
-      "tasks": "Offene Aufgaben",
-      "noTasks": "Keine offenen Aufgaben.",
-      "schedule": "Drehplan",
-      "shots_one": "{{count}} Shot",
-      "shots_other": "{{count}} Shots"
-    },
     "formatJpeg": "JPEG",
     "jpegHint": "Kleinere Datei, keine Transparenz.",
     "pngHint": "Volle Qualität, größere Datei.",
     "openImage": "Bild exportieren…",
-    "presetsOff": "Die Vorlagen 1–3 sind PDF-Dokumente: Sie kommen zurück, wenn du PDF wählst.",
     "whatCard": "Karte „{{name}}“",
     "whatFrame": "Frame {{label}}",
     "aspect": "Seitenverhältnis",

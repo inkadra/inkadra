@@ -403,12 +403,13 @@ async function open(page: Page, base: string, theme: 'dark' | 'light', phone: bo
   await page.goto(url);
 }
 
-/** Opens the export on the scene sheets of one department and the third shooting day. */
-async function sheets(page: Page, department: string, audience?: 'Clients') {
+/**
+ * Opens the export on the scene sheets of one department and the third shooting day, A4
+ * portrait, for the team unless `audience` says otherwise.
+ */
+async function sheets(page: Page, department: string, audience: 'Clients' | 'The team' = 'The team') {
   await page.getByRole('button', { name: 'Export PDF' }).first().click();
   const dialog = page.getByRole('dialog', { name: /Export/ });
-  const customise = dialog.getByRole('button', { name: /Customise/ });
-  if ((await customise.getAttribute('aria-expanded')) === 'false') await customise.click();
   await dialog.getByRole('combobox', { name: 'Content' }).click();
   await page.getByRole('option', { name: 'Scene sheets' }).click();
   await dialog
@@ -417,7 +418,8 @@ async function sheets(page: Page, department: string, audience?: 'Clients') {
     .check();
   await dialog.getByRole('combobox', { name: /^Scenes/ }).click();
   await page.getByRole('option', { name: /^Day 3/ }).click();
-  if (audience) await dialog.getByRole('radio', { name: audience }).check();
+  await dialog.getByRole('radio', { name: audience }).check();
+  await dialog.getByRole('radio', { name: 'Portrait' }).check();
   return dialog;
 }
 
@@ -438,13 +440,11 @@ for (const theme of ['dark', 'light'] as const)
     mkdirSync(out, { recursive: true });
     await open(page, baseURL as string, theme, false);
     const dialog = await sheets(page, 'Camera');
-    // The production book prints the scene sheets: still the selected preset.
-    await expect(dialog.getByRole('radio', { name: /Production book/ })).toBeChecked();
     await expect(dialog.locator('.export__preview figcaption')).toHaveText(/^Page 1 of \d+$/);
     await expect(dialog.locator('.export__summary')).toHaveText(/^\d+ scene sheets · A4 portrait$/);
     await expect(dialog.locator('.export__paper')).toHaveAttribute('data-status', 'ready');
     await dialog
-      .locator('.export__custom-body')
+      .locator('.export__pdf-options')
       .evaluate((el) =>
         el.scrollTo(0, (el.querySelector('.export__field') as HTMLElement).offsetTop),
       );
@@ -476,7 +476,7 @@ test('every department prints its own sheet, and clients get no schedule', async
     texts[name] = await readPdf(path);
   }
   const sheet = (name: string) => texts[name]?.join('\n') ?? '';
-  // Production book: a title page, then the sheets of scenes 12 and 14A, then the call sheets.
+  // For the team: the sheets of scenes 12 and 14A.
   expect(sheet('camera')).toContain('12 · INT. KITCHEN – NIGHT');
   expect(sheet('camera')).toContain('Door opens, dark room');
   expect(sheet('camera')).toContain('SET PLAN · KITCHEN A');
@@ -517,8 +517,6 @@ for (const theme of ['dark', 'light'] as const)
     await open(page, baseURL as string, theme, true);
     await page.getByRole('button', { name: 'Export PDF' }).first().click();
     const dialog = page.getByRole('dialog', { name: /Export/ });
-    const customise = dialog.getByRole('button', { name: /Customise/ });
-    if ((await customise.getAttribute('aria-expanded')) === 'false') await customise.click();
     await dialog.getByRole('combobox', { name: 'Content' }).click();
     await page.getByRole('option', { name: 'Scene sheets' }).click();
     await dialog.locator('.export__departments').getByRole('radio', { name: 'Camera' }).check();
@@ -547,8 +545,6 @@ for (const [theme, phone] of [
     await open(page, baseURL as string, theme, phone);
     await page.getByRole('button', { name: 'Export PDF' }).first().click();
     const dialog = page.getByRole('dialog', { name: /Export/ });
-    const customise = dialog.getByRole('button', { name: /Customise/ });
-    if ((await customise.getAttribute('aria-expanded')) === 'false') await customise.click();
     await dialog.getByRole('combobox', { name: 'Content' }).click();
     await page.getByRole('option', { name: 'Scene sheets' }).click();
     const leaveOut = dialog.getByRole('checkbox', { name: 'Leave out omitted scenes' });

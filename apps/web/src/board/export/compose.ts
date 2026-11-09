@@ -667,7 +667,7 @@ export function commentPages(
   });
 }
 
-/** A titled table of text, for the kickoff summary and the call sheet. */
+/** A titled table of text, for the call sheet. */
 export interface Section {
   title: string;
   /** Relative widths of the columns; rows with one cell span them all. */

@@ -17,7 +17,6 @@ describe('readPreferences', () => {
     expect(readPreferences(null)).toEqual(DEFAULT_EXPORT_PREFERENCES);
     expect(
       readPreferences({
-        preset: 'production-book',
         framesPerPage: 6,
         paper: 'letter',
         audience: 'everyone',
@@ -25,15 +24,19 @@ describe('readPreferences', () => {
       }),
     ).toEqual({
       ...DEFAULT_EXPORT_PREFERENCES,
-      preset: 'production-book',
       framesPerPage: 6,
       paper: 'letter',
     });
-    expect(readPreferences({ preset: 'obsolete-preset' })).toEqual(DEFAULT_EXPORT_PREFERENCES);
+  });
+
+  it('reads rows saved with the removed preset and kickoff summary, without them', () => {
+    // Decision 0087: rows keep the keys, reading drops them.
+    const old = { preset: 'internal-kickoff', kickoffSummary: true, comments: true };
+    expect(readPreferences(old)).toEqual({ ...DEFAULT_EXPORT_PREFERENCES, comments: true });
   });
 
   it('reads rows saved before the 16:9 page and the new options', () => {
-    const old = { preset: 'client-pitch', paper: 'a4', comments: true };
+    const old = { paper: 'a4', comments: true };
     expect(readPreferences(old)).toEqual({ ...DEFAULT_EXPORT_PREFERENCES, ...old });
     expect(readPreferences({ paper: 'slide', approvedOnly: true, callSheet: 'yes' })).toEqual({
       ...DEFAULT_EXPORT_PREFERENCES,
@@ -203,12 +206,8 @@ describe.skipIf(!url)('project export settings', () => {
       paper: 'letter',
     });
     expect(res.statusCode).toBe(200);
-    res = await request('owner', 'PATCH', settingsPath(), {
-      preset: 'production-book',
-      audience: 'team',
-    });
+    res = await request('owner', 'PATCH', settingsPath(), { audience: 'team' });
     expect(res.json()).toMatchObject({
-      preset: 'production-book',
       framesPerPage: 6,
       paper: 'letter',
       audience: 'team',
@@ -217,7 +216,6 @@ describe.skipIf(!url)('project export settings', () => {
     expect(res.json().updatedAt).not.toBeNull();
     const read = (await request('viewer', 'GET', settingsPath())).json();
     expect(read).toMatchObject({
-      preset: 'production-book',
       framesPerPage: 6,
       paper: 'letter',
       audience: 'team',
@@ -227,6 +225,7 @@ describe.skipIf(!url)('project export settings', () => {
       400,
     );
     expect((await request('owner', 'PATCH', settingsPath(), { unknown: 1 })).statusCode).toBe(400);
+    expect((await request('owner', 'PATCH', settingsPath(), { preset: null })).statusCode).toBe(400);
   });
 
   it('keeps the picture options when an older client saves only the fields it knows', async () => {
