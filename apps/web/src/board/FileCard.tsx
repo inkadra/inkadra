@@ -203,8 +203,15 @@ export function FileCard({ element, width }: { element: FileElement; width: numb
 }
 
 function UploadBar({ progress }: { progress: number }) {
+  const { t } = useTranslation();
+  const percent = Math.round(progress * 100);
   return (
-    <span className="card__progress" role="progressbar" aria-valuenow={Math.round(progress * 100)}>
+    <span
+      className="card__progress"
+      role="progressbar"
+      aria-label={t('board.file.uploading', { percent })}
+      aria-valuenow={percent}
+    >
       <span style={{ width: `${progress * 100}%` }} />
     </span>
   );

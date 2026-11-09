@@ -49,6 +49,7 @@ import {
   useSharedBoards,
 } from '../board/boards.ts';
 import { useBoardCounts } from '../board/live-counts.ts';
+import { isMac } from '../board/shortcuts.ts';
 import { beginViewSwitch, type ViewSwitchMotion } from '../board/view-switch.ts';
 import {
   ALL_FILM_LINKS,
@@ -340,9 +341,8 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   // ⌘K / Ctrl+K opens the search from anywhere, even inside a text field.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const mac = /Mac|iPhone|iPad/.test(navigator.platform);
       if (
-        (mac ? e.metaKey : e.ctrlKey) &&
+        (isMac() ? e.metaKey : e.ctrlKey) &&
         !e.shiftKey &&
         !e.altKey &&
         e.key.toLowerCase() === 'k'
@@ -373,8 +373,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   // ⌘\ / Ctrl+\ folds the navigation column to its icons and back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const mac = /Mac|iPhone|iPad/.test(navigator.platform);
-      if ((mac ? e.metaKey : e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === '\\') {
+      if ((isMac() ? e.metaKey : e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === '\\') {
         e.preventDefault();
         setCollapsed((c) => {
           writeCollapsed(userId, !c);
@@ -640,7 +639,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         <Icon name="search" size={14} />
         <span className="ink-sidebar__search-text">
           {t('nav.search')}
-          <KeyCap>⌘K</KeyCap>
+          <KeyCap>{isMac() ? '⌘K' : 'Ctrl K'}</KeyCap>
         </span>
       </button>
       <NavItem

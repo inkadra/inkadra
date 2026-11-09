@@ -28,7 +28,8 @@ vi.mock('./tags.tsx', () => ({
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, opts?: { title?: string }) => {
+      if (key === 'board.menu.videoPlayer' && opts?.title) return `Video: ${opts.title}`;
       const messages: Record<string, string> = {
         'viewer.title': 'Media',
         'viewer.unplayable': 'Formato non riproducibile nel browser',
@@ -274,6 +275,18 @@ describe('MediaViewer video playback', () => {
     expect(html).toContain('Never Gonna Give You Up');
     expect(html).toContain('Official music video');
     expect(html).toContain('href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"');
+
+    const untitledHtml = renderToStaticMarkup(
+      <MediaViewer
+        store={fakeStore}
+        element={{ ...youtubeElement, title: undefined }}
+        projectId="proj-01"
+        userId="user-01"
+        readOnly={false}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(untitledHtml).toContain('title="Video: YouTube"');
 
     vi.unstubAllGlobals();
   });

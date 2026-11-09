@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isMac } from '../board/shortcuts.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { returnFocus } from './focus.ts';
 import { TourMedia } from './media.tsx';
@@ -280,7 +281,11 @@ export function TourPlayer({
       >
         <button type="button" className="tour__skip" onClick={() => end(false)}>
           {t('tutorial.coach.skip')}
-          {!phone && <span className="tour__skip-key">Esc</span>}
+          {!phone && (
+            <span className="tour__skip-key" aria-hidden="true">
+              Esc
+            </span>
+          )}
         </button>
         <TourMedia id={current.step.media} />
         <div key={at} className="tour__body">
@@ -289,9 +294,10 @@ export function TourPlayer({
           {current.step.keys && !phone && (
             <p className="tour__keys">
               {t('tutorial.coach.shortcut')}
-              {current.step.keys.map((k) => (
-                <KeyCap key={k}>{k}</KeyCap>
-              ))}
+              {current.step.keys.map((k) => {
+                const label = k === '⌘' && !isMac() ? 'Ctrl' : k;
+                return <KeyCap key={label}>{label}</KeyCap>;
+              })}
             </p>
           )}
         </div>

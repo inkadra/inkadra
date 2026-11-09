@@ -5,6 +5,7 @@ import { Card } from './cards.tsx';
 
 const state = vi.hoisted(() => ({
   preview: null as string | null,
+  progress: null as number | null,
   editing: null as string | null,
   readOnly: false,
   kind: 'file',
@@ -22,8 +23,12 @@ vi.mock('./context.ts', async (original) => ({
 }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, opts?: { count?: number }) =>
-      opts?.count === undefined ? key : `${key}:${opts.count}`,
+    t: (key: string, opts?: { count?: number; percent?: number }) =>
+      opts?.count !== undefined
+        ? `${key}:${opts.count}`
+        : opts?.percent !== undefined
+          ? `${key}:${opts.percent}`
+          : key,
     i18n: { language: 'en' },
   }),
 }));
@@ -58,7 +63,7 @@ vi.mock('./assets.ts', async (original) => ({
   pickVariant: (asset: { variants: Array<{ url: string }> }) => asset.variants.at(-1)?.url ?? '',
 }));
 vi.mock('./uploads.ts', () => ({
-  useUploadProgress: () => null,
+  useUploadProgress: () => state.progress,
   useUploads: () => [],
   localPreview: () => state.preview,
 }));
@@ -404,6 +409,11 @@ describe('file card family', () => {
     Object.assign(state, { status: 'missing' });
     expect(render(file)).toContain('fcard fcard--failed');
     expect(render(file)).toContain('board.file.missing');
+    Object.assign(state, { status: 'loading', progress: 0.65 });
+    expect(render(file)).toContain(
+      'role="progressbar" aria-label="board.file.uploading:65" aria-valuenow="65"',
+    );
+    state.progress = null;
   });
 
   it('replaces a local image with the ready server thumbnail for file and image cards', () => {

@@ -646,7 +646,7 @@ export function MediaViewer({
                   }
                   title={
                     (element.type === 'link' && element.title) ||
-                    (isYoutube ? 'YouTube video' : 'Vimeo video')
+                    t('board.menu.videoPlayer', { title: isYoutube ? 'YouTube' : 'Vimeo' })
                   }
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen

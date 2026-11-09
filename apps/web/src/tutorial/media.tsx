@@ -8,6 +8,7 @@ import {
 } from '@inkadra/ui';
 import type { CSSProperties, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isMac } from '../board/shortcuts.ts';
 import type { MediaId } from './tours.ts';
 
 /**
@@ -64,7 +65,7 @@ function Scene({ id }: { id: MediaId }): ReactNode {
           <div className="tm-search tm-loop-pop">
             <Icon name="search" size={14} />
             <span className="tm-typed">{t('tutorial.media.searchWord')}</span>
-            <span className="tm-kbd">⌘K</span>
+            <span className="tm-kbd">{isMac() ? '⌘K' : 'Ctrl K'}</span>
           </div>
           <div className="tm-results tm-loop-late">
             <span className="is-on">
