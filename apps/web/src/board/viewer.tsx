@@ -569,7 +569,9 @@ export function MediaViewer({
               <Icon name="close" size={18} />
             </span>
             <span className="viewer__action-label">{t('viewer.close')}</span>{' '}
-            <span className="viewer__kbd">{t('viewer.keys.esc')}</span>
+            <span className="viewer__kbd" aria-hidden="true">
+              {t('viewer.keys.esc')}
+            </span>
           </button>
         </header>
 
@@ -591,16 +593,7 @@ export function MediaViewer({
                 }}
                 aria-label={t('moodboard.previous')}
               >
-                <svg className="viewer__nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M15 5l-7 7 7 7"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <Icon name="chevronLeft" size={20} />
               </button>
               <button
                 type="button"
@@ -612,16 +605,7 @@ export function MediaViewer({
                 }}
                 aria-label={t('moodboard.next')}
               >
-                <svg className="viewer__nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M9 5l7 7-7 7"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <Icon name="chevronRight" size={20} />
               </button>
             </>
           )}

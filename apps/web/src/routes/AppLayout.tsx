@@ -1119,6 +1119,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             user.role !== 'admin' ||
             (!setup.error && !!setup.checks && setup.checks.every((c) => c.ok))
           }
+          pathname={pathname}
           firstProject={projects?.[0]?.id}
           settingsOpen={overlay.open}
           closeSettings={closeSettings}

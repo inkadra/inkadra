@@ -72,7 +72,13 @@ function board() {
 
 it('gives each kanban card an aria label translated in the current language', async () => {
   const { doc, store } = board();
-  const frame = createElement(doc, 'frame', { x: 0, y: 0 }, { label: '1A' }, { userId: null });
+  const frame = createElement(
+    doc,
+    'frame',
+    { x: 0, y: 0 },
+    { label: '1A', cast: ['Giulia Rossi'] },
+    { userId: null },
+  );
   const host = await mount(
     <ShotlistKanban
       store={store}
@@ -86,6 +92,9 @@ it('gives each kanban card an aria label translated in the current language', as
     />,
   );
   expect(host.querySelector('.kanban__card-body')?.getAttribute('aria-label')).toBe('Frame 1A');
+  const avatar = host.querySelector('.kanban__cast .ink-avatar');
+  expect(avatar?.textContent).toBe('GR');
+  expect(avatar?.getAttribute('data-ink-tooltip')).toBe('Giulia Rossi');
   for (const el of host.querySelectorAll('[aria-label]')) {
     expect(el.getAttribute('aria-label')).not.toContain('Inquadratura');
   }

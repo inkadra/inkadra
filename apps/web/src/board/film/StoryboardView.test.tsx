@@ -13,6 +13,7 @@ import { expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { chooseSelect } from '../../test/select.ts';
 import { BoardStore } from '../store.ts';
+import { FramePanel } from './FramePanel.tsx';
 import { StoryboardView } from './StoryboardView.tsx';
 
 const started = vi.hoisted(() => [] as Array<{ file: File; onAsset: (id: string) => void }>);
@@ -252,6 +253,53 @@ it('leaves the frames of omitted scenes out of the sidebar total, as the shot li
     const counts = [...host.querySelectorAll('.story__side-count')].map((el) => el.textContent);
     // All scenes, then each scene: the omitted one keeps its own count.
     expect(counts).toEqual(['1', '1', '2']);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    store.destroy();
+    doc.destroy();
+  }
+});
+
+it('subscribes the frame panel picture picker to the board store only while open', async () => {
+  const doc = new Y.Doc();
+  const store = new BoardStore(doc);
+  const scene = addScene(doc, { number: '1' }, { userId: null });
+  const frame = addFrame(doc, scene.id, null, {}, { userId: null });
+  const spy = vi.spyOn(store, 'subscribe');
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <FramePanel
+            store={store}
+            frame={frame}
+            label="1A"
+            boardAspect="16:9"
+            projectId="p"
+            boardId="b"
+            readOnly={false}
+            onClose={() => {}}
+            onDraw={() => {}}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    // Only CastLinks subscribes while the "From board" picture picker is closed.
+    expect(spy).toHaveBeenCalledTimes(1);
+    const imageBtn = [...host.querySelectorAll('button')].find(
+      (b) => b.textContent === 'board.types.image',
+    );
+    await act(async () => imageBtn?.click());
+    expect(spy).toHaveBeenCalledTimes(1);
+    const fromBoardBtn = [...host.querySelectorAll('button')].find(
+      (b) => b.textContent === 'story.fromBoard',
+    );
+    await act(async () => fromBoardBtn?.click());
+    expect(spy).toHaveBeenCalledTimes(2);
   } finally {
     await act(async () => root.unmount());
     host.remove();

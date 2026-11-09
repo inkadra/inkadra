@@ -284,8 +284,8 @@ select {
   place-items: center;
   font-size: 10px;
   font-weight: 600;
-  color: #141414;
-  background: #8a8a90;
+  color: var(--ink-text-primary);
+  background: var(--ink-surface-3);
   flex: none;
 }
 

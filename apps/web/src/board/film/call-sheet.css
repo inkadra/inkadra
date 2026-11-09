@@ -248,9 +248,6 @@
   color: var(--ink-text-muted);
 }
 
-@media (prefers-reduced-motion: reduce) {
-}
-
 /* Who answered and which account a cast name belongs to: for organisers, outside the printed
    sheet. On a computer it sits under the switches, in a column that scrolls by itself. */
 .call-sheet__controls:has(.call-sheet__presence, .call-sheet__state) {

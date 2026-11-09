@@ -146,6 +146,20 @@ test('Settings → Tutorial replays a tour and counts what was seen', async ({ b
   await expect(tour).toHaveCount(0);
   await expect(page.locator('body')).not.toBeFocused();
   await expect(page.locator('.tour-toast')).toContainText('Giro saltato.');
+
+  // Replaying Welcome from Settings over a board stays on that board without extra navigation.
+  await page.goto(`/p/${project.id}`);
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  const idxBefore = await page.evaluate(() => window.history.state?.idx);
+  await page.getByRole('button', { name: 'Impostazioni' }).click();
+  await page.locator('dialog.settings-window').getByRole('link', { name: 'Tutorial' }).click();
+  await page.getByRole('button', { name: 'Riproduci', exact: true }).click();
+  await expect(page.locator('dialog.settings-window')).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`/p/${project.id}$`));
+  await expect(tour).toBeVisible();
+  expect(await page.evaluate(() => window.history.state?.idx)).toBe(idxBefore);
+  await page.keyboard.press('Escape');
+  await expect(tour).toHaveCount(0);
   await context.close();
 });
 

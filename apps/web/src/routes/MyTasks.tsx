@@ -51,7 +51,9 @@ export function MyTasks({ onNavigate }: { onNavigate?: () => void }) {
       {error ? (
         <p role="alert">{t('home.loadError')}</p>
       ) : !items ? (
-        <p className="ink-muted">{t('tasks.loading')}</p>
+        <p role="status" className="ink-muted">
+          {t('tasks.loading')}
+        </p>
       ) : !items.length ? (
         <p className="ink-muted">{t('tasks.empty')}</p>
       ) : (

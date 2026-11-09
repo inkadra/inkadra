@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { preferencesLoaded, usePreferences } from '../lib/preferences.ts';
 import { SessionContext } from '../lib/session-context.ts';
 import { type ToastMessage, TourPill, TourToast } from './Pill.tsx';
@@ -20,6 +20,7 @@ const OFFER_EVERY_MS = 1200;
 export function TutorialHost({
   admin,
   ready,
+  pathname,
   firstProject,
   settingsOpen,
   closeSettings,
@@ -27,6 +28,8 @@ export function TutorialHost({
   admin: boolean;
   /** False until the instance is set up, for its administrator: the welcome waits. */
   ready: boolean;
+  /** Path of the page under the settings window, so replays know whether a board is open. */
+  pathname: string;
   /** Where the guided tour goes to find a board, from a page without one. */
   firstProject: string | undefined;
   settingsOpen: boolean;
@@ -34,7 +37,6 @@ export function TutorialHost({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
   const prefs = usePreferences();
   const demo = !!useContext(SessionContext)?.instance?.demo;
   const requested = useRequestedTour();
@@ -65,9 +67,10 @@ export function TutorialHost({
     // The tour shows a board: from a page without one, open the first project.
     const opens = !pathname.startsWith('/p/') && !!firstProject;
     if (opens) navigate(`/p/${firstProject}`);
+    else if (settingsOpen) closeSettings();
     setSettle(opens ? ['dock', 'card'] : undefined);
     setPlaying(WELCOME);
-  }, [pathname, firstProject, navigate]);
+  }, [pathname, firstProject, settingsOpen, closeSettings, navigate]);
 
   // First sign-in, once the account's preferences are known (another device may have seen it).
   useEffect(() => {
@@ -82,13 +85,14 @@ export function TutorialHost({
     const tour = findTour(requested);
     if (!tour) return;
     setPill(null);
+    if (tour.id === WELCOME.id) {
+      startWelcomeTour();
+      return;
+    }
     if (tour.href) navigate(tour.href);
     else if (settingsOpen) closeSettings();
-    if (tour.id === WELCOME.id) startWelcomeTour();
-    else {
-      setSettle(undefined);
-      setPlaying(tour);
-    }
+    setSettle(undefined);
+    setPlaying(tour);
   }, [requested, settingsOpen, closeSettings, navigate, startWelcomeTour]);
 
   // The pill: the first unseen tour whose place is on screen; it leaves with that place.

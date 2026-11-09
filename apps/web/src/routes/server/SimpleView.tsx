@@ -33,7 +33,10 @@ type Props = { status: ServerStatus; checks: DiagnosticCheck[]; actions: ServerA
 export const PROBLEMS_ID = 'server-problems';
 
 const scrollToProblems = () =>
-  document.getElementById(PROBLEMS_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById(PROBLEMS_ID)?.scrollIntoView({
+    behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    block: 'start',
+  });
 
 /** Configuration from the checks of the server and of this browser. */
 export function configStatus(checks: DiagnosticCheck[]): ServerService['status'] {
