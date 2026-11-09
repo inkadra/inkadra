@@ -1,6 +1,7 @@
 # 0057 — Project theme for presentations and PDF exports
 
-Status: accepted.
+Status: accepted. Partly superseded by [0088](0088-theme-in-export-dialog.md): the Presentation
+tab and the accent choice are gone, the heading font is chosen in the export dialog.
 
 ## Context
 

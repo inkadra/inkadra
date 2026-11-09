@@ -1,10 +1,5 @@
 // @vitest-environment happy-dom
-import {
-  DEFAULT_EXPORT_PREFERENCES,
-  DEFAULT_PROJECT_THEME,
-  defaultProjectIcon,
-  type Project,
-} from '@inkadra/shared';
+import { defaultProjectIcon, type Project } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
@@ -28,7 +23,7 @@ beforeEach(() => {
   document.body.append(host);
   root = createRoot(host);
   setCachedProjects([project]);
-  // The Presentation tab reads the export settings; most tests never open it.
+  // Reads the dialogs make in passing fail, as offline.
   vi.spyOn(api, 'get').mockRejectedValue(new Error('offline'));
 });
 afterEach(async () => {
@@ -223,11 +218,10 @@ it('keeps emoji across tab navigation, supports Home/End and exposes both panels
   await act(async () =>
     emoji.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })),
   );
-  // The Presentation tab keeps the emoji chosen before it.
-  expect(host.querySelector('#appearance-tab-presentation')?.getAttribute('aria-selected')).toBe(
-    'true',
-  );
-  expect(host.querySelectorAll('[role="tabpanel"]')).toHaveLength(3);
+  // Emoji is the last tab: the theme moved to the export dialog (decision 0088).
+  expect(emoji.getAttribute('aria-selected')).toBe('true');
+  expect(host.querySelectorAll('[role="tab"]')).toHaveLength(2);
+  expect(host.querySelectorAll('[role="tabpanel"]')).toHaveLength(2);
   await act(async () =>
     host
       .querySelector('form')
@@ -292,44 +286,4 @@ it('saves from Symbol with an invalid emoji by clearing it', async () => {
   expect(patch).toHaveBeenCalledWith(`/projects/${project.id}`, {
     icon: { ...project.icon, emoji: null },
   });
-});
-
-it('saves the presentation theme with the export settings, following the project colour', async () => {
-  const settings = {
-    ...DEFAULT_EXPORT_PREFERENCES,
-    logoAssetId: null,
-    logo: null,
-    theme: DEFAULT_PROJECT_THEME,
-    projectColor: 'blue',
-    canEdit: true,
-    updatedAt: null,
-  };
-  vi.spyOn(api, 'get').mockResolvedValue(settings);
-  const patch = vi.spyOn(api, 'patch').mockResolvedValue(project);
-  await render();
-  await openDialog();
-  await act(async () =>
-    host.querySelector<HTMLButtonElement>('#appearance-tab-presentation')?.click(),
-  );
-  const panel = host.querySelector('#appearance-panel-presentation')!;
-  // Blue is the project's colour: chosen by default, stored as "follow the project".
-  expect(
-    panel.querySelector('[aria-label="appearance.colors.blue"]')?.getAttribute('aria-checked'),
-  ).toBe('true');
-  await act(async () =>
-    panel.querySelector<HTMLButtonElement>('[aria-label="appearance.colors.teal"]')?.click(),
-  );
-  const fraunces = [...panel.querySelectorAll<HTMLButtonElement>('[role="radio"]')].find((b) =>
-    b.textContent?.startsWith('Fraunces'),
-  );
-  await act(async () => fraunces?.click());
-  await act(async () =>
-    host
-      .querySelector('form')
-      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
-  );
-  expect(patch).toHaveBeenCalledWith(`/projects/${project.id}/export-settings`, {
-    theme: { accent: 'teal', headingFont: 'fraunces' },
-  });
-  expect(patch).toHaveBeenCalledWith(`/projects/${project.id}`, { icon: project.icon });
 });

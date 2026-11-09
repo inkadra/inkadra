@@ -120,29 +120,36 @@ test('the project theme dresses the presentation and the PDF', async ({ page }, 
     .click();
   await page.getByRole('menuitem', { name: 'Aspetto del progetto' }).click();
   const dialog = page.getByRole('dialog', { name: 'Aspetto del progetto' });
-  await dialog.getByRole('tab', { name: 'Presentazione' }).click();
-  await expect(dialog.getByText('colore del progetto')).toBeVisible();
+  // Only the icon: the accent is the project's colour (decision 0088).
+  await expect(dialog.getByRole('tab')).toHaveCount(2);
   await dialog.getByRole('radio', { name: 'Petrolio' }).click();
-  await dialog.getByRole('radio', { name: /^Fraunces/ }).click();
-  // The logo is the export logo, saved at once.
-  await dialog.locator('input[type="file"]').setInputFiles({
+  await dialog.getByRole('button', { name: 'Salva' }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.goto(`/p/${seeded.projectId}/b/${seeded.storyboardId}?view=storyboard`);
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await page.getByRole('button', { name: 'Esporta PDF' }).click();
+  const setup = page.getByRole('dialog', { name: /Esporta/ });
+  // The heading style and the logo are saved at once, for the whole project.
+  await setup.getByRole('combobox', { name: 'Stile titoli' }).click();
+  await page.getByRole('option', { name: /^Fraunces/ }).click();
+  await setup.locator('input[type="file"]').setInputFiles({
     name: 'logo-valbregaglia.png',
     mimeType: 'image/png',
     buffer: pngLogo(120, 120),
   });
-  await expect(dialog.getByText('logo-valbregaglia.png')).toBeVisible({ timeout: 30_000 });
+  await expect(setup.locator('.export__logo-img')).toBeVisible({ timeout: 30_000 });
   if (process.env.THEME_SCREENSHOTS)
-    await page.screenshot({ path: `${process.env.THEME_SCREENSHOTS}/dialog-desktop-dark.png` });
-  await dialog.getByRole('button', { name: 'Salva' }).click();
-  await expect(dialog).toBeHidden();
+    await page.screenshot({ path: `${process.env.THEME_SCREENSHOTS}/export-desktop-dark.png` });
   const stored = await (
     await page.request.get(`/api/v1/projects/${seeded.projectId}/export-settings`)
   ).json();
-  expect(stored.theme).toEqual({ accent: 'teal', headingFont: 'fraunces' });
+  expect(stored.theme).toEqual({ accent: null, headingFont: 'fraunces' });
+  expect(stored.projectColor).toBe('teal');
   expect(stored.logo).toMatchObject({ filename: 'logo-valbregaglia.png' });
+  await setup.getByRole('button', { name: 'Annulla' }).click();
+  await expect(setup).toBeHidden();
 
-  await page.goto(`/p/${seeded.projectId}/b/${seeded.storyboardId}?view=storyboard`);
-  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await page.getByRole('button', { name: 'Presenta', exact: true }).click();
   const present = page.getByRole('dialog', { name: 'Presenta' });
   await expect(present.locator('.present-header__logo')).toBeVisible();

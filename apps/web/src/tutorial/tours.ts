@@ -301,6 +301,7 @@ export const TOURS: Tour[] = [
       { anchor: 'export-controls', media: 'export', side: 'right' },
       { anchor: 'export-preview', media: 'export', side: 'left' },
       { anchor: 'export-departments', media: 'export', side: 'right' },
+      { anchor: 'export-heading', media: 'slides', side: 'right' },
       { anchor: null, media: 'clip' },
     ],
   },

@@ -62,14 +62,16 @@ export interface Theme {
   headingFont: ThemeFont;
 }
 
-/** The theme to draw with: the chosen accent, else the project's colour. */
+/**
+ * The theme to draw with: always the project's colour (decision 0088). An accent stored by an
+ * older version is ignored, never deleted.
+ */
 export function resolveTheme(
   settings: Pick<ExportSettings, 'theme' | 'projectColor'> | null | undefined,
 ): Theme {
-  const theme = settings?.theme ?? DEFAULT_PROJECT_THEME;
   return {
-    color: theme.accent ?? settings?.projectColor ?? 'neutral',
-    headingFont: theme.headingFont,
+    color: settings?.projectColor ?? 'neutral',
+    headingFont: settings?.theme?.headingFont ?? DEFAULT_PROJECT_THEME.headingFont,
   };
 }
 

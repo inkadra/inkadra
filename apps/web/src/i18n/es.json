@@ -3044,30 +3044,7 @@
     "sidebarPreview": "Así se ve en la barra lateral",
     "close": "Cerrar",
     "boardTitle": "Icono y color del tablero",
-    "boardPreview": "Así se ve en las tarjetas del tablero",
-    "presentation": "Presentación",
-    "theme": {
-      "accent": "Acento",
-      "accentDefault": "{{color}} · color del proyecto",
-      "font": "Fuente de los títulos",
-      "fontNote": "Incluidas, licencia OFL",
-      "fonts": {
-        "inter": "como la app",
-        "fraunces": "serif",
-        "space-grotesk": "grotesk",
-        "ibm-plex-mono": "mono"
-      },
-      "logo": "Logotipo",
-      "logoNote": "PNG o JPEG de hasta 512 KB",
-      "logoUse": "Portada y encabezados",
-      "noLogo": "Sin logotipo",
-      "logoRemove": "Quitar",
-      "previewSlide": "Vista previa · presentación",
-      "previewPdf": "PDF · portada y página (siempre sobre papel claro)",
-      "paperNote": "En papel, el acento usa la variante oscura del mismo tono, por contraste.",
-      "sampleTitle": "Escena 1",
-      "sampleMeta": "Plano general · 8 planos"
-    }
+    "boardPreview": "Así se ve en las tarjetas del tablero"
   },
   "transfer": {
     "exportMenu": "Exportar proyecto…",
@@ -3399,6 +3376,15 @@
       "frame": "Plano",
       "count_one": "{{count}} hoja por escena",
       "count_other": "{{count}} hojas por escena"
+    },
+    "heading": "Estilo de títulos",
+    "headingHint": "Títulos del PDF y de la presentación, para todo el proyecto.",
+    "headingFailed": "No se pudo guardar el estilo de títulos. Inténtalo de nuevo.",
+    "headingFonts": {
+      "inter": "como la app",
+      "fraunces": "serif",
+      "space-grotesk": "grotesk",
+      "ibm-plex-mono": "mono"
     }
   },
   "screenplay": {
@@ -4434,6 +4420,10 @@
             "text": "Una página por escena para un departamento: cámara, iluminación, vestuario o producción."
           },
           "3": {
+            "title": "Estilo de títulos",
+            "text": "La fuente de los títulos, para el PDF y la presentación."
+          },
+          "4": {
             "title": "El proyecto entero",
             "text": "Expórtalo en zip e impórtalo en otro servidor."
           }

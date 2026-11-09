@@ -60,7 +60,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0054](0054-design-previews.md)                      | Design source files: bounded embedded previews and shared cards                        |
 | [0055](0055-personal-preferences.md)                 | Personal preferences that follow the person: one JSON record per account               |
 | [0056](0056-personal-project-groups.md)              | Personal project groups: organisation only, per person, never access                   |
-| [0057](0057-project-theme.md)                        | Project theme: accent, bundled heading fonts and logo for presentations and PDFs       |
+| [0057](0057-project-theme.md)                        | Project theme: accent, bundled heading fonts and logo (partly superseded by 0088)      |
 | [0058](0058-needed-items-by-shooting-day.md)         | Needed items: typed to-do lists linked to scenes, rolled up by shooting day            |
 | [0059](0059-model-font-previews.md)                  | Bounded model and font metadata, scoped browser font specimens                         |
 | [0060](0060-release-news.md)                         | Opt-in release news and SMTP delivery claims                                           |
@@ -90,6 +90,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0085](0085-two-demo-projects.md)                    | Two sample projects in the demo, the film and a photo shoot                            |
 | [0086](0086-guest-decisions-in-archives.md)          | Guest decisions and proofing travel with the archive, on revoked links                 |
 | [0087](0087-no-export-presets.md)                    | No audience presets and no kickoff summary in the PDF export                           |
+| [0088](0088-theme-in-export-dialog.md)               | Heading style in the export dialog; the accent is always the project's colour          |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

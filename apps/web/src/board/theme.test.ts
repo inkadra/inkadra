@@ -5,16 +5,19 @@ import { describe, expect, it } from 'vitest';
 import { contrast, headingFamily, paperAccent, resolveTheme } from './theme.ts';
 
 describe('project theme', () => {
-  it('follows the project colour and Inter until something else is chosen', () => {
+  it('follows the project colour and Inter until another heading font is chosen', () => {
     expect(resolveTheme(null)).toEqual({ color: 'neutral', headingFont: 'inter' });
     expect(resolveTheme({ theme: DEFAULT_PROJECT_THEME, projectColor: 'green' })).toEqual({
       color: 'green',
       headingFont: 'inter',
     });
+    expect(headingFamily('fraunces')).toMatch(/Fraunces.*Inter/);
+  });
+
+  it("ignores an accent stored by an older version: the colour is always the project's", () => {
     expect(
       resolveTheme({ theme: { accent: 'teal', headingFont: 'fraunces' }, projectColor: 'green' }),
-    ).toEqual({ color: 'teal', headingFont: 'fraunces' });
-    expect(headingFamily('fraunces')).toMatch(/Fraunces.*Inter/);
+    ).toEqual({ color: 'green', headingFont: 'fraunces' });
   });
 
   it('measures contrast like WCAG', () => {

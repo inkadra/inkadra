@@ -192,6 +192,38 @@ describe('ExportDialog options', () => {
     expect(host.querySelector('.export__pdf-options')?.textContent).toContain('whatSelection');
   });
 
+  const headingTrigger = () =>
+    [...host.querySelectorAll('.export__field')]
+      .find((el) => el.querySelector('.export__label')?.textContent === 'Stile titoli')
+      ?.querySelector<HTMLButtonElement>('[role="combobox"]');
+
+  it('saves the heading style for the whole project at once, for editors only', async () => {
+    HTMLElement.prototype.showPopover ??= () => {};
+    HTMLElement.prototype.hidePopover ??= () => {};
+    getMock.mockResolvedValue(freshSettings);
+    patchMock.mockResolvedValue({
+      ...freshSettings,
+      theme: { accent: null, headingFont: 'fraunces' },
+    });
+    await renderStoryboard();
+    expect(headingTrigger()?.getAttribute('data-value')).toBe('inter');
+    await act(async () => headingTrigger()?.click());
+    const fraunces = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((o) =>
+      o.textContent?.startsWith('Fraunces'),
+    );
+    await act(async () => fraunces?.click());
+    expect(patchMock).toHaveBeenCalledWith('/projects/p1/export-settings', {
+      theme: { headingFont: 'fraunces' },
+    });
+    expect(headingTrigger()?.getAttribute('data-value')).toBe('fraunces');
+
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    getMock.mockResolvedValue({ ...freshSettings, canEdit: false });
+    await renderStoryboard();
+    expect(headingTrigger()?.disabled).toBe(true);
+  });
+
   const renderImage = (
     selection: Set<string>,
     loaded: ExportSettings = freshSettings,
