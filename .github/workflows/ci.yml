@@ -452,17 +452,7 @@ jobs:
     name: Publish image (${{ matrix.variant }}, ${{ matrix.arch }})
     if: github.event_name != 'pull_request'
     needs:
-      [
-        checks,
-        server-postgres16,
-        e2e,
-        secrets,
-        workflows,
-        proxy,
-        data-dir,
-        postgres-upgrade,
-        scan,
-      ]
+      [checks, server-postgres16, e2e, secrets, workflows, proxy, data-dir, postgres-upgrade, scan]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     # The organisation default for GITHUB_TOKEN is read-only: publishing needs this grant.
