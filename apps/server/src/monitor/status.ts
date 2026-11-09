@@ -507,7 +507,6 @@ function roleService(
   };
 }
 
-/** The Server page (#514) for administrator `adminId`. */
 /** Docker sets OFFICE for both images; development runs have no image flavour. */
 export function imageFlavour(): 'standard' | 'office' | null {
   return process.env.INKADRA_OFFICE === 'true'
@@ -517,6 +516,7 @@ export function imageFlavour(): 'standard' | 'office' | null {
       : null;
 }
 
+/** The Server page (#514) for administrator `adminId`. */
 export async function serverStatus(
   deps: ServerDeps,
   adminId: string,
