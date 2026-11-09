@@ -588,9 +588,7 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
       .select({ id: projectMember.projectId })
       .from(projectMember)
       .where(eq(projectMember.userId, b.id));
-    expect(seen.items.map((p: { id: string }) => p.id).sort()).toEqual(
-      own.map((p) => p.id).sort(),
-    );
+    expect(seen.items.map((p: { id: string }) => p.id).sort()).toEqual(own.map((p) => p.id).sort());
     expect(own).toHaveLength(2);
     expect(own.map((p) => p.id)).not.toContain(a.projectId);
     const [mine] = await db.select().from(project).where(eq(project.id, a.projectId));

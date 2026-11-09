@@ -1172,7 +1172,10 @@ function tideSeawall(v = 0) {
     glitter += `<rect x="${f(1120 + (r() - 0.5) * (y - horizon) * 0.8)}" y="${f(y)}" width="${f(10 + r() * 30)}" height="2" fill="#EEF2F2" opacity="${f(0.2 + r() * 0.5)}"/>`;
   }
   const seams = [140, 420, 700, 980, 1260, 1540]
-    .map((x) => `<path d="M${x} ${f(wall(x) + 6)}L${x - 14} 900" stroke="#0C0F12" stroke-width="2" opacity=".6"/>`)
+    .map(
+      (x) =>
+        `<path d="M${x} ${f(wall(x) + 6)}L${x - 14} 900" stroke="#0C0F12" stroke-width="2" opacity=".6"/>`,
+    )
     .join('');
   const body = `
   <rect width="${W}" height="${horizon + 2}" fill="${c.linear([
