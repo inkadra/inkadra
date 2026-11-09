@@ -225,7 +225,9 @@ describe.skipIf(!url)('project export settings', () => {
       400,
     );
     expect((await request('owner', 'PATCH', settingsPath(), { unknown: 1 })).statusCode).toBe(400);
-    expect((await request('owner', 'PATCH', settingsPath(), { preset: null })).statusCode).toBe(400);
+    expect((await request('owner', 'PATCH', settingsPath(), { preset: null })).statusCode).toBe(
+      400,
+    );
   });
 
   it('keeps the picture options when an older client saves only the fields it knows', async () => {

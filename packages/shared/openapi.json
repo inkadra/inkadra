@@ -5053,19 +5053,6 @@
       "ExportPreferences": {
         "type": "object",
         "properties": {
-          "preset": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "client-pitch",
-              "production-book",
-              "internal-kickoff",
-              null
-            ],
-            "description": "The last audience preset chosen for this project, or null for custom options."
-          },
           "format": {
             "type": "string",
             "enum": [
@@ -5143,10 +5130,6 @@
           "approvedOnly": {
             "type": "boolean",
             "description": "Storyboard and shot list: only frames approved in review."
-          },
-          "kickoffSummary": {
-            "type": "boolean",
-            "description": "PDF for the team: a summary page with shooting dates, people and their roles, open tasks and the schedule."
           },
           "callSheet": {
             "type": "boolean",
@@ -5186,7 +5169,6 @@
           }
         },
         "required": [
-          "preset",
           "format",
           "framesPerPage",
           "paper",
@@ -5196,26 +5178,12 @@
           "comments",
           "hideGuestHidden",
           "approvedOnly",
-          "kickoffSummary",
           "callSheet"
         ]
       },
       "UpdateExportSettings": {
         "type": "object",
         "properties": {
-          "preset": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "client-pitch",
-              "production-book",
-              "internal-kickoff",
-              null
-            ],
-            "description": "The last audience preset chosen for this project, or null for custom options."
-          },
           "format": {
             "type": "string",
             "enum": [
@@ -5293,10 +5261,6 @@
           "approvedOnly": {
             "type": "boolean",
             "description": "Storyboard and shot list: only frames approved in review."
-          },
-          "kickoffSummary": {
-            "type": "boolean",
-            "description": "PDF for the team: a summary page with shooting dates, people and their roles, open tasks and the schedule."
           },
           "callSheet": {
             "type": "boolean",

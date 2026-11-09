@@ -407,7 +407,11 @@ async function open(page: Page, base: string, theme: 'dark' | 'light', phone: bo
  * Opens the export on the scene sheets of one department and the third shooting day, A4
  * portrait, for the team unless `audience` says otherwise.
  */
-async function sheets(page: Page, department: string, audience: 'Clients' | 'The team' = 'The team') {
+async function sheets(
+  page: Page,
+  department: string,
+  audience: 'Clients' | 'The team' = 'The team',
+) {
   await page.getByRole('button', { name: 'Export PDF' }).first().click();
   const dialog = page.getByRole('dialog', { name: /Export/ });
   await dialog.getByRole('combobox', { name: 'Content' }).click();

@@ -748,96 +748,96 @@ export function ExportDialog(props: ExportDialogProps) {
                   </>
                 ) : (
                   <div className="export__pdf-options">
-                        {whatField}
-                        {departmentField}
-                        {scenesField}
-                        {framesField}
-                        {pageField}
-                        {audienceField}
-                        <fieldset className="export__options">
-                          <legend className="export__label">{t('export.options')}</legend>
-                          <Check checked={req.titlePage} onChange={(v) => set('titlePage', v)}>
-                            {t('export.titlePage')}
-                          </Check>
-                          {approvedField}
-                          {hideField}
-                          <Check
-                            checked={req.comments}
-                            onChange={(v) => set('comments', v)}
-                            hint={client ? t('export.commentsHintClient') : undefined}
-                          >
-                            {t('export.comments')}
-                          </Check>
-                          <Check
-                            checked={req.callSheet && teamPdf(req)}
-                            disabled={client}
-                            onChange={(v) => set('callSheet', v)}
-                            hint={client ? t('export.teamOnlyHint') : undefined}
-                          >
-                            {t('export.callSheet')}
-                          </Check>
-                          <div className="export__logo">
-                            <span className="export__logo-label">{t('export.logo')}</span>
-                            {req.logo && (
-                              <img className="export__logo-img" src={logoUrl(req.logo)} alt="" />
-                            )}
-                            {canEdit && (
-                              <>
-                                <input
-                                  ref={fileInput}
-                                  type="file"
-                                  accept="image/png,image/jpeg"
-                                  className="ink-sr-only"
-                                  tabIndex={-1}
-                                  aria-hidden="true"
-                                  onChange={(e) => {
-                                    void pickLogo(e.target.files?.[0]);
-                                    e.target.value = '';
-                                  }}
-                                />
-                                <Button
-                                  size="md"
-                                  disabled={logoState === 'busy'}
-                                  onClick={() => fileInput.current?.click()}
-                                >
-                                  {req.logo ? t('export.logoReplace') : t('export.logoAdd')}
-                                </Button>
-                                {req.logo && (
-                                  <Button
-                                    variant="ghost"
-                                    disabled={logoState === 'busy'}
-                                    onClick={() => void dropLogo()}
-                                  >
-                                    {t('export.logoRemove')}
-                                  </Button>
-                                )}
-                              </>
-                            )}
-                            <p
-                              className={`export__hint${['type', 'size', 'failed', 'timeout'].includes(logoState) ? ' export__hint--error' : ''}`}
-                              role={
-                                ['type', 'size', 'failed', 'timeout'].includes(logoState)
-                                  ? 'alert'
-                                  : 'status'
-                              }
+                    {whatField}
+                    {departmentField}
+                    {scenesField}
+                    {framesField}
+                    {pageField}
+                    {audienceField}
+                    <fieldset className="export__options">
+                      <legend className="export__label">{t('export.options')}</legend>
+                      <Check checked={req.titlePage} onChange={(v) => set('titlePage', v)}>
+                        {t('export.titlePage')}
+                      </Check>
+                      {approvedField}
+                      {hideField}
+                      <Check
+                        checked={req.comments}
+                        onChange={(v) => set('comments', v)}
+                        hint={client ? t('export.commentsHintClient') : undefined}
+                      >
+                        {t('export.comments')}
+                      </Check>
+                      <Check
+                        checked={req.callSheet && teamPdf(req)}
+                        disabled={client}
+                        onChange={(v) => set('callSheet', v)}
+                        hint={client ? t('export.teamOnlyHint') : undefined}
+                      >
+                        {t('export.callSheet')}
+                      </Check>
+                      <div className="export__logo">
+                        <span className="export__logo-label">{t('export.logo')}</span>
+                        {req.logo && (
+                          <img className="export__logo-img" src={logoUrl(req.logo)} alt="" />
+                        )}
+                        {canEdit && (
+                          <>
+                            <input
+                              ref={fileInput}
+                              type="file"
+                              accept="image/png,image/jpeg"
+                              className="ink-sr-only"
+                              tabIndex={-1}
+                              aria-hidden="true"
+                              onChange={(e) => {
+                                void pickLogo(e.target.files?.[0]);
+                                e.target.value = '';
+                              }}
+                            />
+                            <Button
+                              size="md"
+                              disabled={logoState === 'busy'}
+                              onClick={() => fileInput.current?.click()}
                             >
-                              {logoState === 'busy'
-                                ? t('export.logoUploading')
-                                : logoState === 'type' || logoState === 'size'
-                                  ? t('export.logoInvalid')
-                                  : logoState === 'failed'
-                                    ? t('export.logoFailed')
-                                    : logoState === 'timeout'
-                                      ? t('export.logoTimeout')
-                                      : canEdit
-                                        ? t('export.logoHint')
-                                        : req.logo
-                                          ? t('export.logoReadOnly')
-                                          : t('export.logoNone')}
-                            </p>
-                          </div>
-                          {canEdit && <p className="export__hint">{t('export.sharedHint')}</p>}
-                        </fieldset>
+                              {req.logo ? t('export.logoReplace') : t('export.logoAdd')}
+                            </Button>
+                            {req.logo && (
+                              <Button
+                                variant="ghost"
+                                disabled={logoState === 'busy'}
+                                onClick={() => void dropLogo()}
+                              >
+                                {t('export.logoRemove')}
+                              </Button>
+                            )}
+                          </>
+                        )}
+                        <p
+                          className={`export__hint${['type', 'size', 'failed', 'timeout'].includes(logoState) ? ' export__hint--error' : ''}`}
+                          role={
+                            ['type', 'size', 'failed', 'timeout'].includes(logoState)
+                              ? 'alert'
+                              : 'status'
+                          }
+                        >
+                          {logoState === 'busy'
+                            ? t('export.logoUploading')
+                            : logoState === 'type' || logoState === 'size'
+                              ? t('export.logoInvalid')
+                              : logoState === 'failed'
+                                ? t('export.logoFailed')
+                                : logoState === 'timeout'
+                                  ? t('export.logoTimeout')
+                                  : canEdit
+                                    ? t('export.logoHint')
+                                    : req.logo
+                                      ? t('export.logoReadOnly')
+                                      : t('export.logoNone')}
+                        </p>
+                      </div>
+                      {canEdit && <p className="export__hint">{t('export.sharedHint')}</p>}
+                    </fieldset>
                   </div>
                 )}
               </>
