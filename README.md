@@ -17,6 +17,8 @@
 </p>
 
 <p align="center">
+  <a href="https://inkadra.com">Website</a> ·
+  <a href="https://demo.inkadra.com">Try the demo</a> ·
   <a href="#run-it">Run it</a> ·
   <a href="https://github.com/inkadra/inkadra/wiki">Documentation</a> ·
   <a href="docs/self-hosting">Self-hosting guide</a> ·
@@ -37,6 +39,10 @@
 Inkadra is a free, open source visual workspace for people who make films and photographs:
 moodboards, storyboards, shot lists and client review on an infinite canvas, running on your
 own server.
+
+**[Try the demo](https://demo.inkadra.com)** in your browser, with no account: a private sandbox
+for one hour with two sample projects, a short film and a photo shoot. More on
+[inkadra.com](https://inkadra.com).
 
 > [!NOTE]
 > **Early development.** Inkadra is moving fast towards 1.0 and is good for trying out, but
@@ -66,7 +72,9 @@ own server.
   some cards for the team only. Every comment shows who reads it: the team, or also the guests.
   Named versions let you go back to any earlier state, or bring back a single deleted element.
 - **Capture from the web.** The [Inkadra Clipper](apps/clipper) extension saves images, quotes
-  and links from Chrome, Edge, Brave and Arc straight onto a board.
+  and links from Chrome, Edge, Brave and Arc straight onto a board. Install it from the
+  [Chrome Web Store](https://chromewebstore.google.com/detail/inkadra-clipper/hdajoikapihpjfbgioeagenmoalckjkh);
+  it needs a server on 0.9 or later.
 - **Your server, your files.** Docker images for amd64 and arm64. Files on a volume, a host folder,
   a disk of their own or any S3 storage. Email, Google or your own OIDC provider for sign-in, with
   two-factor authentication on every method and sign-in limits that survive restarts. Administrators
