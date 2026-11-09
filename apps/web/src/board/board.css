@@ -1165,12 +1165,20 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
     width: 24px;
     height: 24px;
   }
-  .colorpicker__fields input,
+  .colorpicker__fields input {
+    height: 44px;
+    font-size: 16px;
+  }
   .colorpicker__fields .card__copy {
-    height: 36px;
+    width: 44px;
+    height: 44px;
+  }
+  .colorpicker__used {
+    flex-wrap: wrap;
   }
   .colorpicker__used button {
-    height: 32px;
+    min-width: 44px;
+    height: 44px;
   }
 }
 

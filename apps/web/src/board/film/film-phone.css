@@ -280,4 +280,20 @@
     transform: none;
     flex-wrap: wrap;
   }
+  .shots .shots__bulk-toolbar .ink-select {
+    height: 44px;
+    padding: 0 10px;
+    font-size: 14px;
+  }
+  .shots .shots__bulk-btn {
+    min-width: 44px;
+    height: 44px;
+    padding: 0 14px;
+    font-size: 14px;
+  }
+  .shots .kanban__add {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
 }
