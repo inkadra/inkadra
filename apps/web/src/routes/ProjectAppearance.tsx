@@ -563,24 +563,24 @@ export function ProjectAppearanceDialog({
             ×
           </button>
           <div className="project-appearance__preview">
-              <div
-                className="project-appearance__tile"
-                style={
-                  {
-                    '--project-bg':
-                      shown.emoji || icon.color === 'neutral'
-                        ? 'var(--ink-surface-3)'
-                        : `var(--ink-tag-${icon.color}-bg)`,
-                  } as CSSProperties
-                }
-              >
-                <ProjectGlyph {...shown} />
-              </div>
-              <div className="project-appearance__name">
-                <strong>{project.name}</strong>
-                <small>{t(board ? 'appearance.boardPreview' : 'appearance.sidebarPreview')}</small>
-              </div>
+            <div
+              className="project-appearance__tile"
+              style={
+                {
+                  '--project-bg':
+                    shown.emoji || icon.color === 'neutral'
+                      ? 'var(--ink-surface-3)'
+                      : `var(--ink-tag-${icon.color}-bg)`,
+                } as CSSProperties
+              }
+            >
+              <ProjectGlyph {...shown} />
             </div>
+            <div className="project-appearance__name">
+              <strong>{project.name}</strong>
+              <small>{t(board ? 'appearance.boardPreview' : 'appearance.sidebarPreview')}</small>
+            </div>
+          </div>
           <div
             className="project-appearance__tabs"
             role="tablist"
