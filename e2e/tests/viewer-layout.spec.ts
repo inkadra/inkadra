@@ -35,6 +35,9 @@ const element = sc === 'yt' ? yt : sc === 'portrait' ? img('i2', 'port') : sc ==
 const items = Array.from({ length: 5 }, (_, i) => ({ id: String(i), type: 'image', assetId: 'land', filename: 'Reference ' + (i + 1) }));
 if (sc === 'appearance') {
   nav.remove();
+  const { default: i18n, i18nReady } = await import('/src/i18n/index.ts');
+  await i18nReady;
+  await i18n.changeLanguage('en');
   const { ProjectAppearanceDialog } = await import('/src/routes/ProjectAppearance.tsx');
   ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ProjectAppearanceDialog, { project: { id: 'p', name: 'Last Train', myRole: 'owner', icon: { shape: 'circle', color: 'blue', emoji: null } }, onClose: () => {} }));
 } else if (sc === 'shell') {
@@ -294,6 +297,7 @@ for (const width of [390, 1280]) {
     await page.goto('http://127.0.0.1:5179/__shot');
     const dialog = page.locator('.project-appearance .ink-dialog');
     await expect(dialog).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
     const symbolHeight = (await dialog.boundingBox())!.height;
     const swatches = (await dialog.locator('.project-appearance__swatches').boundingBox())!;
     const actions = (await dialog.locator('.ink-dialog__actions').boundingBox())!;
