@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { useProjects } from './AppLayout.tsx';
-import { Home } from './Home.tsx';
+import { greetingKey, Home } from './Home.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -314,4 +314,17 @@ it('links to all projects only for people who have projects', async () => {
   context();
   await render();
   expect(host.querySelector('a[href="/projects"]')?.textContent).toBe('home.allProjects');
+});
+
+it('greets by the time of day, keeping the evening greeting after midnight', () => {
+  expect([0, 4, 5, 12, 13, 17, 18, 23].map(greetingKey)).toEqual([
+    'home.greeting.evening',
+    'home.greeting.evening',
+    'home.greeting.morning',
+    'home.greeting.morning',
+    'home.greeting.afternoon',
+    'home.greeting.afternoon',
+    'home.greeting.evening',
+    'home.greeting.evening',
+  ]);
 });

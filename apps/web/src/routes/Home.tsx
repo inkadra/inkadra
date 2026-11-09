@@ -36,7 +36,9 @@ import {
 import { MyTasks } from './MyTasks.tsx';
 import './home.css';
 
-function greetingKey(hour: number) {
+export function greetingKey(hour: number) {
+  // After midnight it is still "evening" until the early morning.
+  if (hour < 5) return 'home.greeting.evening';
   if (hour < 13) return 'home.greeting.morning';
   if (hour < 18) return 'home.greeting.afternoon';
   return 'home.greeting.evening';
