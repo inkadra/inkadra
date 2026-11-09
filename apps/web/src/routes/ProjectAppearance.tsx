@@ -8,6 +8,7 @@ import {
   NavItem,
   ProjectGlyph,
   swallowOutsidePress,
+  tokens,
 } from '@inkadra/ui';
 import {
   type CSSProperties,
@@ -548,6 +549,7 @@ export function ProjectAppearanceDialog({
       >
         <form
           className="project-appearance__form"
+          style={{ '--appearance-validation': `${tokens.space[6]}px` } as CSSProperties}
           onSubmit={(event) => {
             event.preventDefault();
             void save();
@@ -617,7 +619,7 @@ export function ProjectAppearanceDialog({
               </button>
             ))}
           </div>
-          {/* Symbol and Emoji share one fixed height: switching between them never resizes. */}
+          {/* Symbol sizes the shared panel; Emoji scrolls inside it without resizing the dialog. */}
           <div className="project-appearance__panels">
             <div
               role="tabpanel"

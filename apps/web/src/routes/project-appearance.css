@@ -63,7 +63,7 @@
 .ink-shell--collapsed .project-navigation__options {
   display: none;
 }
-/* Project appearance: a preview, Symbol/Emoji tabs over one fixed-height panel, the footer. */
+/* Project appearance: a preview, Symbol/Emoji tabs over one shared panel, the footer. */
 .project-appearance .ink-dialog {
   width: min(400px, calc(100vw - 32px));
   border-radius: var(--ink-radius-lg);
@@ -76,7 +76,6 @@
   padding-right: 32px;
 }
 .project-appearance__form {
-  --appearance-panel: 196px;
   --appearance-tile: 40px;
   --appearance-emoji: 30px;
   --appearance-swatch: 22px;
@@ -143,7 +142,7 @@
 .project-appearance__panels {
   position: relative;
   display: grid;
-  height: var(--appearance-panel);
+  padding-bottom: var(--appearance-validation);
 }
 .project-appearance__panels [role="tabpanel"] {
   grid-area: 1 / 1;
@@ -226,16 +225,22 @@
   box-shadow: 0 0 0 1.5px var(--swatch);
 }
 .project-appearance__emoji-panel {
+  position: absolute;
+  inset: 0 0 var(--appearance-validation);
   display: flex;
   flex-direction: column;
 }
 .project-appearance__emojis {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 4px;
   align-content: start;
 }
 .project-appearance__custom {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -280,7 +285,7 @@
   margin: 10px 0 0;
   font-size: 12px;
 }
-/* The last line of the fixed panel, under the emoji field. */
+/* Reserved space below both panels keeps validation from moving the footer. */
 .project-appearance__invalid {
   position: absolute;
   left: 0;
@@ -319,7 +324,6 @@
     border-radius: var(--ink-radius-xl) var(--ink-radius-xl) 0 0;
   }
   .project-appearance__form {
-    --appearance-panel: 248px;
     --appearance-tile: 44px;
     --appearance-emoji: 40px;
     --appearance-swatch: 26px;

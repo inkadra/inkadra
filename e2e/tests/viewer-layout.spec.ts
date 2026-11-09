@@ -33,7 +33,11 @@ const img = (id, assetId) => ({ ...base, id, type: 'image', assetId, caption: 'I
 const sc = ${JSON.stringify(scenario)};
 const element = sc === 'yt' ? yt : sc === 'portrait' ? img('i2', 'port') : sc === 'video' ? { ...img('v1', 'vid'), type: 'video' } : img('i1', 'land');
 const items = Array.from({ length: 5 }, (_, i) => ({ id: String(i), type: 'image', assetId: 'land', filename: 'Reference ' + (i + 1) }));
-if (sc === 'shell') {
+if (sc === 'appearance') {
+  nav.remove();
+  const { ProjectAppearanceDialog } = await import('/src/routes/ProjectAppearance.tsx');
+  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ProjectAppearanceDialog, { project: { id: 'p', name: 'Last Train', myRole: 'owner', icon: { shape: 'circle', color: 'blue', emoji: null } }, onClose: () => {} }));
+} else if (sc === 'shell') {
   nav.remove();
   // Inline HTML bypasses Vite's import rewriting: reuse the app's exact optimized URL.
   const source = await (await fetch('/src/routes/AppLayout.tsx')).text();
@@ -279,42 +283,56 @@ test('Inbox restores canvas geometry, opener focus and total shot count', async 
   await expect(shots.locator('.ink-nav__count')).toHaveText('7');
 });
 
-test('appearance tabs fit their content and keep validation outside the panel', async ({
-  page,
-}, testInfo) => {
-  await openShell(page);
-  await page.locator('.project-navigation__options').first().click();
-  await page.getByRole('menuitem', { name: 'Project appearance' }).click();
-  const dialog = page.locator('.project-appearance .ink-dialog');
-  const symbolHeight = (await dialog.boundingBox())!.height;
-  // The Symbol tab sets the height: no empty area under the swatches (236px in 0.4.1).
-  const swatches = (await dialog
-    .locator('#appearance-panel-symbol .project-appearance__swatches')
-    .boundingBox())!;
-  const actions = (await dialog.locator('.ink-dialog__actions').boundingBox())!;
-  expect(actions.y - (swatches.y + swatches.height)).toBeLessThan(100);
-  await page.getByRole('tab', { name: 'Emoji', exact: true }).click();
-  expect((await dialog.boundingBox())!.height).toBe(symbolHeight);
-  const panel = page.locator('#appearance-panel-emoji');
-  expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
-  await page.getByLabel('Paste or type an emoji').fill('x');
-  const alert = dialog.getByRole('alert');
-  await expect(alert).toBeVisible();
-  expect(await alert.evaluate((el) => !el.closest('[role="tabpanel"]'))).toBe(true);
-  expect((await dialog.boundingBox())!.height).toBe(symbolHeight);
-  console.log(
-    JSON.stringify({
-      scenario: 'appearance',
-      symbolHeight,
-      emojiHeight: (await dialog.boundingBox())!.height,
-      panel: await panel.evaluate((el) => ({ client: el.clientHeight, scroll: el.scrollHeight })),
-    }),
-  );
-  for (const theme of ['light', 'dark']) {
-    await page.evaluate((theme) => (document.documentElement.dataset.theme = theme), theme);
-    await page.screenshot({ path: testInfo.outputPath(`appearance-${theme}.png`) });
-  }
-});
+for (const width of [390, 1280]) {
+  test(`appearance tabs fit their content and keep validation outside the panel at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.route('**/__shot', (route) =>
+      route.fulfill({ body: fixture('appearance'), contentType: 'text/html' }),
+    );
+    await page.goto('http://127.0.0.1:5179/__shot');
+    const dialog = page.locator('.project-appearance .ink-dialog');
+    await expect(dialog).toBeVisible();
+    const symbolHeight = (await dialog.boundingBox())!.height;
+    const swatches = (await dialog.locator('.project-appearance__swatches').boundingBox())!;
+    const actions = (await dialog.locator('.ink-dialog__actions').boundingBox())!;
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((theme) => (document.documentElement.dataset.theme = theme), theme);
+      for (const tab of ['Symbol', 'Emoji']) {
+        await page.getByRole('tab', { name: tab, exact: true }).click();
+        await page.mouse.move(0, 0);
+        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+        await page.screenshot({
+          path: testInfo.outputPath(`appearance-${width}-${tab}-${theme}.png`),
+        });
+        expect((await dialog.boundingBox())!.height).toBe(symbolHeight);
+      }
+    }
+    // Reserve only the validation line and footer spacing below the swatches.
+    expect(actions.y - (swatches.y + swatches.height)).toBeLessThanOrEqual(64);
+    const panel = page.locator('#appearance-panel-emoji');
+    expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
+    const emojis = panel.getByRole('radiogroup');
+    await emojis.getByRole('radio').first().focus();
+    await page.keyboard.press('End');
+    const lastEmoji = emojis.getByRole('radio').last();
+    await expect(lastEmoji).toBeFocused();
+    await expect(lastEmoji).toBeInViewport();
+    const field = page.getByLabel('Paste or type an emoji');
+    await field.fill('x');
+    const alert = dialog.getByRole('alert');
+    await expect(alert).toBeVisible();
+    expect(await alert.evaluate((el) => !el.closest('[role="tabpanel"]'))).toBe(true);
+    const inputBox = (await field.boundingBox())!;
+    expect((await alert.boundingBox())!.y).toBeGreaterThanOrEqual(inputBox.y + inputBox.height);
+    expect((await dialog.boundingBox())!.height).toBe(symbolHeight);
+    await field.fill('🌸');
+    await expect(alert).toHaveCount(0);
+    await page.getByRole('tab', { name: 'Symbol', exact: true }).click();
+    expect((await dialog.boundingBox())!.height).toBe(symbolHeight);
+  });
+}
 
 for (const [width, height] of [
   [1280, 800],
