@@ -19,7 +19,7 @@ back up (see [Backups](README.md#backups): `docker compose exec -u node inkadra 
 
 ```sh
 docker compose pull
-docker compose up -d
+docker compose up -d --wait
 ```
 
 Database migrations run when the new version starts, before it accepts requests. Compare your
@@ -30,6 +30,9 @@ Going back to an older version after its migrations ran is not supported: restor
 taken before the upgrade instead, with that older version
 (see [Restoring](README.md#restoring)). A backup restores on the same or any newer version, so it
 also carries data across an upgrade.
+
+The sections below list what to do for each version, newest first. Read every one between
+your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
 
 ## Upgrading to 0.9
 
@@ -46,8 +49,8 @@ also carries data across an upgrade.
 
 ## Upgrading to PostgreSQL 18
 
-`compose.yaml` now runs PostgreSQL 18 instead of 16. A PostgreSQL server cannot read the data
-folder of another major version, and the official image of 18 keeps its data in a different
+Since 0.7, `compose.yaml` runs PostgreSQL 18 instead of 16. A PostgreSQL server cannot read
+the data folder of another major version, and the official image of 18 keeps its data in a different
 place (`/var/lib/postgresql/18/docker`, the volume being `/var/lib/postgresql`). So an existing
 install has to move its database once. Nothing else changes: Inkadra runs on PostgreSQL 16 and
 newer, and **16 stays supported for one more release** (see
@@ -258,6 +261,25 @@ made: stop everything, empty the volume and unpack `postgres-data-16.tgz` into i
   `IMPORT_MAX_SIZE` (default 20GB): raise the body limit of your reverse proxy if it has one
   (see [Reverse proxy](reverse-proxy.md)).
 
+## Upgrading to 0.4.2
+
+- **The health check no longer says the version.** Public `GET /api/v1/health` and
+  `GET /api/v1/instance` responses drop the `version` field, for security. Monitoring that reads
+  it must cope without it; signed-in clients can read `GET /api/v1/instance/version`, and
+  administrator diagnostics still show it. Reload open web clients after the upgrade.
+- **"Require two-factor for administrators"** is a new setting, off on existing installations.
+  Only an administrator with verified two-factor can turn it on. Before you do, keep the recovery
+  codes and the emergency command that turns it off from the server
+  ([details](sign-in.md#two-factor-authentication)):
+
+  ```sh
+  docker compose exec inkadra node /app/dist/main.js admin-2fa off
+  ```
+
+  In split mode, upgrade every role together before turning it on.
+- The [0.4.2 upgrade notes](../releases/0.4.2.md) cover the rest: the one-time HTTPS sign-in and
+  extra two-factor prompt, old entries in the session list, and updating split roles together.
+
 ## Upgrading to 0.4
 
 0.4 hardens sign-in. Before you change `INKADRA_TAG`:
@@ -309,8 +331,8 @@ only when HTTPS works for good: browsers remember it for a year.
 
 ## Upgrading to Valkey 9
 
-`compose.yaml` now runs Valkey 9 instead of 8. Valkey 9 reads the data written by 8, but 8
-cannot read data written by 9, so the step is one-way: back up the `valkey-data` volume (or
+Since 0.3, `compose.yaml` runs Valkey 9 instead of 8. Valkey 9 reads the data written by 8,
+but 8 cannot read data written by 9, so the step is one-way: back up the `valkey-data` volume (or
 your `VALKEY_DATA` folder) before upgrading, and there is no downgrade. If the volume is lost,
 the queues are rebuilt when the server starts; only jobs that were waiting to run are lost.
 
@@ -357,17 +379,3 @@ tag. CI runs in full (tests, end-to-end, the reverse proxy examples, a vulnerabi
 the image), builds amd64 and arm64 on native runners without build cache, publishes `X.Y.Z`,
 `X.Y` and `latest`, and attaches the deployment files to the release. Versions with a suffix
 (`0.3.0-rc.1`) are pre-releases: they never move `latest` or `X.Y`.
-
-## Upgrading to 0.4.2
-
-Public `GET /api/v1/health` and `GET /api/v1/instance` responses no longer include `version`.
-This deliberate security change removes a v1 response field: monitoring and discovery
-clients must tolerate its absence. Signed-in clients can read `GET /api/v1/instance/version`;
-administrator diagnostics retain their version. Refresh cached web clients after the upgrade.
-See the [0.4.2 upgrade notes](../releases/0.4.2.md), including the one-time HTTPS sign-in and
-extra 2FA prompt, legacy session-list entries, and coordinated updates of split roles.
-
-The administrator two-step requirement defaults off for existing installations. Only an
-administrator with verified 2FA can enable it. Keep recovery codes and access to the host-only
-`inkadra admin-2fa off` emergency command before activation. Deploy the auth enforcement
-and setting contract together for 0.4.2; do not activate the setting on an older auth server.

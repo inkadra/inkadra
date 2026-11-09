@@ -199,7 +199,7 @@ policy allow your deployment, and set the credit it requires.
 With a geocoder configured, typing at least three characters requests up to five address
 suggestions after a short pause. Queries go through Inkadra to that provider; no picture is
 created until a result is chosen. Leave the setting empty to keep address queries private and
-use map links instead. Choose a provider that permits autocomplete: the public
+use map links instead. Choose a provider that permits autocomplete: the
 [public Nominatim service](https://operations.osmfoundation.org/policies/nominatim/) prohibits
 autocomplete (Inkadra rejects suggestion requests to that host), so use a self-hosted
 Nominatim instance or a compatible provider whose policy permits it.
