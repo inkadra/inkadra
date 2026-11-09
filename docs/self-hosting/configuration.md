@@ -63,8 +63,7 @@ Cloudflare Tunnel are in [The public demo](../demo.md).
 
 ## Media previews
 
-These need the `-media` image (see [The image](README.md#the-image)); the standard image has no
-media tools and ignores them. The policy is in [decision 0048](../decisions/0048-media-worker-previews.md).
+Media tools are included in the standard image (see [The image](README.md#the-image)). The policy is in [decision 0048](../decisions/0048-media-worker-previews.md).
 
 | Variable                      | Default               | Meaning                                                                                                                                                                                                               |
 | ----------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -82,7 +81,7 @@ media tools and ignores them. The policy is in [decision 0048](../decisions/0048
 
 ### Hardware video encoding
 
-With the `-media` image, the worker can make playable copies on a GPU instead of the CPU:
+With the standard image, the worker can make playable copies on a GPU instead of the CPU:
 NVIDIA cards with **NVENC**, Intel GPUs (integrated ones too, such as the N100) with **Quick
 Sync** (`qsv`) or **VAAPI**, and AMD GPUs with **VAAPI**. When the worker starts, `auto` tries
 NVENC, then Quick Sync, then VAAPI: each needs its encoder in ffmpeg, the device, and a
@@ -460,7 +459,7 @@ networks are stored by the relay only as HMACs.
 **Metadata.** Attachments stay in a repository's history, so nothing leaves with its GPS position.
 PNG, JPEG, WebP, GIF, TIFF, AVIF and HEIC are rewritten without metadata (the last three as WebP).
 Videos from the device need ffmpeg to lose theirs, so they are refused on an image without it (the
-`-media` image has it); recordings made in the dialog always go. PDFs leave whole, with their
+standard image has it); recordings made in the dialog always go. PDFs leave whole, with their
 metadata, and the dialog says so. What people write and what is visible in a file can still be
 personal: the preview is there to check it.
 

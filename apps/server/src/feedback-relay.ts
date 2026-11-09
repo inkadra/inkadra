@@ -68,7 +68,7 @@ export async function relayImage(path: string, mime: string, maxPixels: number) 
 /**
  * A video from the device, its pictures and sound copied as they are, nothing else: no metadata,
  * chapters or data tracks, where phones and action cameras keep the GPS position. Null: no ffmpeg
- * here (only the `-media` image has it), or a format that can't be copied into its own container.
+ * here (the standard image includes it), or a format that can't be copied into its own container.
  */
 export async function relayVideo(path: string, mime: string) {
   const { ffmpeg } = await mediaTools();

@@ -61,7 +61,9 @@ export const Instance = z
             '(`Asset.proxy`): ffmpeg is there and VIDEO_PROXIES is not `false`.',
         }),
       })
-      .openapi({ description: 'Media tools available on this server (image tag `-media`).' }),
+      .openapi({
+        description: 'Media tools available on this server (included in the standard image).',
+      }),
     maps: z
       .object({
         enabled: z.boolean().openapi({

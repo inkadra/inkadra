@@ -70,7 +70,7 @@ Documents are migrated when the collaboration server loads them. The schema free
 - Fill in the template. For screens, attach before/after screenshots in dark and light theme.
   The screenshots of the README and the docs come from a sample project: rebuild them with
   `SHOTS_BASE_URL=… pnpm --filter @inkadra/e2e screenshots` against an empty instance on the
-  `-media` image, with ffmpeg on your PATH, and look at each one before committing it.
+  standard image, with ffmpeg on your PATH, and look at each one before committing it.
 - Every pull request needs green CI (lint, types, tests, end-to-end, secret scan, licences,
   image build) and an approving review from someone who did not write it.
 - Sign off every commit (`git commit -s`) to certify the
@@ -92,7 +92,7 @@ Number them in order and never rewrite an accepted one; supersede it with a new 
 Versions follow semver. A maintainer runs the **Release** workflow on `main` with the version:
 it tags `vX.Y.Z`, publishes the GitHub release with generated notes and starts CI on the tag.
 CI runs in full, publishes `ghcr.io/inkadra/inkadra:X.Y.Z`, `X.Y` and `latest`, each also with the
-suffixes `-media` and `-office`, for amd64 and arm64 with build provenance and an SBOM, and attaches the deployment files to the release.
+suffix `-office`, for amd64 and arm64 with build provenance and an SBOM, and attaches the deployment files to the release.
 `X.Y.Z-rc.N` makes a pre-release, which moves neither `latest` nor `X.Y`. Every push to `main`
 publishes the `edge` tag. See [decision 0010](docs/decisions/0010-images-and-releases.md).
 

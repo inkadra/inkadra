@@ -186,15 +186,12 @@ of `index.html` (with `'unsafe-inline'` or their hashes).
 
 ## The image
 
-`ghcr.io/inkadra/inkadra`, built for `linux/amd64` and `linux/arm64`, in three variants. Start
-with the standard one unless you need what the others add: you can change later by changing
-`INKADRA_TAG` and running `docker compose up -d`. Files you uploaded before get no new previews.
+`ghcr.io/inkadra/inkadra`, built for `linux/amd64` and `linux/arm64`, in two variants:
 
-| Variant  | Tag example    | Size    | What it adds                                                                                                                                                                                                                                 |
-| -------- | -------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Standard | `0.9.0`        | ~0.6 GB | Everything in Inkadra. Videos play in their card when the browser can play the original; other files get a generic card                                                                                                                      |
-| Media    | `0.9.0-media`  | ~1.4 GB | ffmpeg, exiftool and poppler: video posters, playable copies of ProRes, MKV, AVI, MXF and HEVC, stills taken from the original video, audio waveforms, camera RAW and PDF thumbnails, video reports from a device. Hardware encoding drivers |
-| Office   | `0.9.0-office` | ~2 GB   | The media image plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental                                                                                                                      |
+| Variant  | Tag example    | Size    | Contents                                                                                                                                   |
+| -------- | -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Standard | `0.9.0`        | ~1.4 GB | ffmpeg, exiftool, poppler and hardware encoding drivers: video posters and playable copies, audio waveforms, camera RAW and PDF thumbnails |
+| Office   | `0.9.0-office` | ~2 GB   | Standard plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental                           |
 
 Sizes are uncompressed, measured on amd64.
 
@@ -208,23 +205,23 @@ Sizes are uncompressed, measured on amd64.
 | `edge`        | The latest commit of `main`: for testing, not for real work |
 | `sha-1a2b3c4` | One commit                                                  |
 
-Every tag also exists with the suffix `-media` (`0.9.0-media`, `latest-media`, `edge-media`…)
-and `-office` (`0.9.0-office`, `latest-office`…). To use a variant, add its suffix to the tag you
-pin, for example `INKADRA_TAG=0.9.0-media`.
+Every tag also exists with the suffix `-office` (`0.9.0-office`, `latest-office`, `edge-office`…).
+Use `INKADRA_TAG=0.9.0` for standard, or `INKADRA_TAG=0.9.0-office` for Office workers.
+The former `-media` variant is no longer published; remove that suffix from your pinned tag.
 
-### What the media variant adds
+### Media tools included in standard
 
 Videos get a poster thumbnail on the board, their duration and codecs, and a playable H.264 copy
 when the browser cannot play the original (ProRes, MKV, AVI, MXF, HEVC). Camera RAW files get
 thumbnails from the JPEG the camera embedded, and PDFs a thumbnail of page 1 and their page
-count. Without it these files upload and play the same, with a generic card.
+count.
 
 The server reports what it can do in `GET /api/v1/instance` (`media.videoPosters`,
 `media.videoProxies`, `media.rawPreviews`, `media.pdfPreviews`).
 [Media previews](configuration.md#media-previews) lists the settings, and
 [decision 0048](../decisions/0048-media-worker-previews.md) the limits.
 
-It adds Debian's `ffmpeg`, `libimage-exiftool-perl` and `poppler-utils` packages and the
+The standard image includes Debian's `ffmpeg`, `libimage-exiftool-perl` and `poppler-utils` packages and the
 libraries they depend on, and the free VAAPI and Quick Sync drivers (`mesa-va-drivers`,
 `intel-media-va-driver`, `libmfx-gen1.2`, `libvpl2`, `vainfo`) for
 [hardware video encoding](configuration.md#hardware-video-encoding). Licences: Debian builds
@@ -234,7 +231,7 @@ its libraries under the LGPL; poppler is under the GPL too, and exiftool under t
 GPL is compatible with distributing Inkadra under the AGPL-3.0, and the server only runs the
 `ffmpeg`, `ffprobe`, `exiftool`, `pdftoppm` and `pdfinfo` programs, without linking to them.
 
-The office variant is the media image plus LibreOffice, for the worker role only, when you
+The office variant is the standard image plus LibreOffice, for the worker role only, when you
 enable [Office document previews](office.md).
 
 ### Roles
@@ -277,8 +274,8 @@ after it; they combine, in this order:
 | `deploy/compose.s3.yaml`            | Files in an S3-compatible bucket you already have             |
 | `deploy/compose.rustfs.yaml`        | Files in a bundled S3-compatible store (RustFS)               |
 | `deploy/compose.demo.yaml`          | A public demo behind a Cloudflare Tunnel ([demo](../demo.md)) |
-| `deploy/compose.vaapi.yaml`         | Hardware video encoding on Intel or AMD GPUs (`-media`)       |
-| `deploy/compose.nvidia.yaml`        | Hardware video encoding on NVIDIA GPUs (`-media`)             |
+| `deploy/compose.vaapi.yaml`         | Hardware video encoding on Intel or AMD GPUs (standard image) |
+| `deploy/compose.nvidia.yaml`        | Hardware video encoding on NVIDIA GPUs (standard image)       |
 | `deploy/proxy/<proxy>/compose.yaml` | A reverse proxy in the stack: `caddy`, `traefik` or `nginx`   |
 
 Split mode is for larger teams: you can restart or scale the parts on their own, and a busy

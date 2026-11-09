@@ -1,5 +1,5 @@
 import IORedis from 'ioredis';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { beatStatus, repeating } from './health.ts';
 import { jobProblem, technicalText } from './problems.ts';
 import {
@@ -10,7 +10,7 @@ import {
   parseNetDev,
 } from './resources.ts';
 import { average, LatencyRecorder, pointFrom } from './sampler.ts';
-import { capacity, combine } from './status.ts';
+import { capacity, combine, imageFlavour } from './status.ts';
 import {
   lastHour,
   memoryStore,
@@ -331,5 +331,20 @@ describe('problems', () => {
     expect(beatStatus(0, 20_000)).toBe('ok');
     expect(beatStatus(0, 40_000)).toBe('late');
     expect(beatStatus(0, 100_000)).toBe('down');
+  });
+});
+
+describe('image flavour', () => {
+  it('reports standard with media tools, office, or a development run', () => {
+    try {
+      vi.stubEnv('INKADRA_OFFICE', 'false');
+      expect(imageFlavour()).toBe('standard');
+      vi.stubEnv('INKADRA_OFFICE', 'true');
+      expect(imageFlavour()).toBe('office');
+      vi.stubEnv('INKADRA_OFFICE', undefined);
+      expect(imageFlavour()).toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

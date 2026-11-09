@@ -64,7 +64,7 @@ jobs:
       - name: Types
         run: pnpm turbo run typecheck
       # The media worker tests skip what needs a tool the runner does not have.
-      - name: Media tools of the -media image
+      - name: Media tools of the standard image
         run: |
           # A mirror can hang for many minutes, past the job's timeout: try again instead.
           for attempt in 1 2 3; do
@@ -169,7 +169,7 @@ jobs:
           restore-keys: apt-e2e-ubuntu-24.04-
       - run: pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium
       # media-cards.spec.ts checks page counts, codecs and playable copies made by these.
-      - name: Media tools of the -media image
+      - name: Media tools of the standard image
         run: |
           # A mirror can hang for many minutes, past the job's timeout: try again instead.
           for attempt in 1 2 3; do
@@ -325,75 +325,37 @@ jobs:
             VERSION=0.0.0-ci
             REVISION=${{ github.sha }}
           outputs: type=docker,dest=${{ runner.temp }}/image.tar
+      - run: docker load --input "$RUNNER_TEMP/image.tar"
+      - name: Media tools run as the image user
+        run: |
+          docker run --rm --entrypoint ffmpeg "$IMAGE:ci" -hide_banner -version
+          docker run --rm --entrypoint ffprobe "$IMAGE:ci" -hide_banner -version
+          docker run --rm --entrypoint exiftool "$IMAGE:ci" -ver
+          docker run --rm --entrypoint pdftoppm "$IMAGE:ci" -v
+          docker run --rm --entrypoint prlimit "$IMAGE:ci" --version
+          # Hardware encoding (#358): the encoders, the free VAAPI drivers and the Quick Sync runtime.
+          docker run --rm --entrypoint sh "$IMAGE:ci" -c \
+            'ffmpeg -hide_banner -encoders | grep -cE " h264_(nvenc|qsv|vaapi) " | grep -qx 3 &&
+             ls /usr/lib/x86_64-linux-gnu/dri/iHD_drv_video.so /usr/lib/x86_64-linux-gnu/dri/radeonsi_drv_video.so &&
+             ls /usr/lib/x86_64-linux-gnu/libmfx-gen.so.1.2* && command -v vainfo'
+      # Media packages must not add setuid/setgid programs beyond the runtime base (#357).
+      - name: No new setuid or setgid files
+        run: |
+          base="$(sed -n 's/^FROM \(node:.*\) AS runtime$/\1/p' Dockerfile)"
+          node_version="$(sed -n 's/^ARG NODE_VERSION=//p' Dockerfile)"
+          base="${base//\$\{NODE_VERSION\}/$node_version}"
+          docker pull "$base"
+          privileged() {
+            docker run --rm --user 0 --entrypoint find "$1" / -xdev -perm /6000 -type f | sort
+          }
+          privileged "$base" > base.txt
+          privileged "$IMAGE:ci" > standard.txt
+          diff -u base.txt standard.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: image-amd64
           path: ${{ runner.temp }}/image.tar
           retention-days: 1
-
-  # The `-media` variant: same image plus ffmpeg, exiftool and poppler. Checked here so a broken apt step or a
-  # missing binary fails before main publishes it.
-  image-media:
-    name: Docker image (media)
-    needs: image
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          platforms: linux/amd64
-          tags: ${{ env.IMAGE }}:ci-media
-          build-args: |
-            VERSION=0.0.0-ci
-            REVISION=${{ github.sha }}
-            MEDIA=true
-          load: true
-      - name: Media tools run as the image user
-        run: |
-          docker run --rm --entrypoint ffmpeg "$IMAGE:ci-media" -hide_banner -version
-          docker run --rm --entrypoint ffprobe "$IMAGE:ci-media" -hide_banner -version
-          docker run --rm --entrypoint exiftool "$IMAGE:ci-media" -ver
-          docker run --rm --entrypoint pdftoppm "$IMAGE:ci-media" -v
-          docker run --rm --entrypoint prlimit "$IMAGE:ci-media" --version
-          # Hardware encoding (#358): the encoders, the free VAAPI drivers and the Quick Sync runtime.
-          docker run --rm --entrypoint sh "$IMAGE:ci-media" -c \
-            'ffmpeg -hide_banner -encoders | grep -cE " h264_(nvenc|qsv|vaapi) " | grep -qx 3 &&
-             ls /usr/lib/x86_64-linux-gnu/dri/iHD_drv_video.so /usr/lib/x86_64-linux-gnu/dri/radeonsi_drv_video.so &&
-             ls /usr/lib/x86_64-linux-gnu/libmfx-gen.so.1.2* && command -v vainfo'
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: image-amd64
-          path: ${{ runner.temp }}
-      - run: docker load --input "$RUNNER_TEMP/image.tar"
-      - name: Size against the standard image
-        run: docker image ls "$IMAGE"
-      # The media packages must not bring a program that changes user or group when it runs:
-      # the setuid and setgid files are the same as in the standard image (#357).
-      - name: No setuid or setgid files beyond the standard image
-        run: |
-          privileged() {
-            docker run --rm --user 0 --entrypoint find "$1" / -xdev -perm /6000 -type f | sort
-          }
-          privileged "$IMAGE:ci" > standard.txt
-          privileged "$IMAGE:ci-media" > media.txt
-          cat media.txt
-          diff -u standard.txt media.txt
-      # ffmpeg brings its own libraries (codecs, X11, Mesa, VAAPI drivers…) and handles untrusted
-      # files: stricter than the standard image, a fixable high finding fails too (#357).
-      - name: Fail on high or critical vulnerabilities that have a fix
-        env:
-          GRYPE_VERSION: 0.121.0
-          GRYPE_SHA256: 64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519
-        run: |
-          curl -sSfL --retry 6 --retry-all-errors --retry-delay 10 -o grype.tar.gz "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_linux_amd64.tar.gz"
-          echo "${GRYPE_SHA256}  grype.tar.gz" | sha256sum -c -
-          tar xzf grype.tar.gz grype
-          ./grype "docker:$IMAGE:ci-media" --only-fixed --fail-on high
 
   proxy:
     name: Reverse proxy (${{ matrix.proxy }}, ${{ matrix.mode }})
@@ -474,7 +436,7 @@ jobs:
         with:
           name: image-amd64
           path: ${{ runner.temp }}
-      - name: Fail on critical vulnerabilities that have a fix
+      - name: Fail on high or critical vulnerabilities that have a fix
         env:
           GRYPE_VERSION: 0.121.0
           GRYPE_SHA256: 64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519
@@ -482,7 +444,7 @@ jobs:
           curl -sSfL --retry 6 --retry-all-errors --retry-delay 10 -o grype.tar.gz "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_linux_amd64.tar.gz"
           echo "${GRYPE_SHA256}  grype.tar.gz" | sha256sum -c -
           tar xzf grype.tar.gz grype
-          ./grype "docker-archive:$RUNNER_TEMP/image.tar" --only-fixed --fail-on critical
+          ./grype "docker-archive:$RUNNER_TEMP/image.tar" --only-fixed --fail-on high
 
   # main and tags only: build each architecture on its own runner (no emulation), push by
   # digest, then join them under the version tags.
@@ -490,18 +452,7 @@ jobs:
     name: Publish image (${{ matrix.variant }}, ${{ matrix.arch }})
     if: github.event_name != 'pull_request'
     needs:
-      [
-        checks,
-        server-postgres16,
-        e2e,
-        secrets,
-        workflows,
-        proxy,
-        data-dir,
-        postgres-upgrade,
-        scan,
-        image-media,
-      ]
+      [checks, server-postgres16, e2e, secrets, workflows, proxy, data-dir, postgres-upgrade, scan]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     # The organisation default for GITHUB_TOKEN is read-only: publishing needs this grant.
@@ -511,10 +462,9 @@ jobs:
     strategy:
       matrix:
         arch: [amd64, arm64]
-        # `media` adds ffmpeg and is published with the `-media` tag suffix; `office` is the media
-        # image plus LibreOffice for the Office preview worker (decision 0065), suffix `-office`.
+        # Both images include media tools; `office` adds LibreOffice for the Office preview worker (decision 0065), suffix `-office`.
         # The office variant has no PR build: LibreOffice makes it slow, and this job builds it.
-        variant: [standard, media, office]
+        variant: [standard, office]
         include:
           - arch: amd64
             runner: ubuntu-24.04
@@ -548,7 +498,6 @@ jobs:
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
             REVISION=${{ github.sha }}
-            MEDIA=${{ matrix.variant != 'standard' }}
             OFFICE=${{ matrix.variant == 'office' }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           provenance: mode=max
@@ -574,7 +523,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        variant: [standard, media, office]
+        variant: [standard, office]
     permissions:
       contents: read
       packages: write
@@ -658,7 +607,7 @@ jobs:
         run: |
           VERSION="${TAG#v}"
           cat > image.md <<EOF
-          Image: \`ghcr.io/${GITHUB_REPOSITORY}:${VERSION}\` (linux/amd64, linux/arm64), \`:${VERSION}-media\` with ffmpeg for video posters, or \`:${VERSION}-office\` for the Office preview worker.
+          Image: \`ghcr.io/${GITHUB_REPOSITORY}:${VERSION}\` (linux/amd64, linux/arm64) with media tools, or \`:${VERSION}-office\` for the Office preview worker.
           Verify it with \`gh attestation verify oci://ghcr.io/${GITHUB_REPOSITORY}:${VERSION} --repo ${GITHUB_REPOSITORY}\`.
           Install and upgrade: [docs/self-hosting](https://github.com/${GITHUB_REPOSITORY}/tree/${TAG}/docs/self-hosting).
           EOF

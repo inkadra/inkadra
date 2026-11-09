@@ -6,7 +6,7 @@
 #   CLOUDFLARE_TUNNEL_TOKEN   the token of the tunnel (Zero Trust → Networks → Tunnels)
 #   VALKEY_PASSWORD           any long random string: `openssl rand -hex 32`
 #   TURNSTILE_SITE_KEY, TURNSTILE_SECRET   the Turnstile widget of "Try the demo"
-# Use the plain image: the -media and -office ones bring tools the demo turns off anyway.
+# Use the standard image: the demo disables media previews and does not need LibreOffice.
 
 services:
   inkadra:

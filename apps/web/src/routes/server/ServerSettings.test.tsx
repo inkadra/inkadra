@@ -41,7 +41,7 @@ const now = new Date().toISOString();
 const status = (patch: Partial<ServerStatus> = {}): ServerStatus => ({
   checkedAt: now,
   version: '0.9.0',
-  image: 'media',
+  image: 'standard',
   startedAt: new Date(Date.now() - 6 * 86_400_000).toISOString(),
   range: '1h',
   step: 20,

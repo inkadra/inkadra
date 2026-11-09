@@ -265,7 +265,10 @@ export const ServerStatus = z
   .object({
     checkedAt: Timestamp,
     version: z.string(),
-    image: z.string().nullable().openapi({ description: 'Image flavour, as `media`.' }),
+    image: z
+      .string()
+      .nullable()
+      .openapi({ description: 'Image flavour: `standard` or `office`; null outside Docker.' }),
     startedAt: Timestamp.nullable().openapi({ description: 'Oldest running process.' }),
     range: ServerRange,
     step: z.number().int().openapi({ description: 'Seconds between history points.' }),

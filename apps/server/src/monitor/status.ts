@@ -507,6 +507,15 @@ function roleService(
   };
 }
 
+/** Docker sets OFFICE for both images; development runs have no image flavour. */
+export function imageFlavour(): 'standard' | 'office' | null {
+  return process.env.INKADRA_OFFICE === 'true'
+    ? 'office'
+    : process.env.INKADRA_OFFICE === 'false'
+      ? 'standard'
+      : null;
+}
+
 /** The Server page (#514) for administrator `adminId`. */
 export async function serverStatus(
   deps: ServerDeps,
@@ -621,20 +630,11 @@ export async function serverStatus(
     { id: 'configuration', status: configStatus, since: null, detail: null },
   ];
 
-  // Set by the Dockerfile: which image this is (-media, -office or the plain one).
-  const flavour =
-    process.env.INKADRA_OFFICE === 'true'
-      ? 'office'
-      : process.env.INKADRA_MEDIA === 'true'
-        ? 'media'
-        : process.env.INKADRA_MEDIA === 'false'
-          ? 'standard'
-          : null;
   const peaks = history.map((s) => s.people).filter((v): v is number => v !== null);
   return {
     checkedAt: iso(now),
     version: VERSION,
-    image: flavour,
+    image: imageFlavour(),
     startedAt: running.length ? iso(Math.min(...running.map((b) => b.startedAt))) : null,
     range,
     step,
