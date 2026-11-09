@@ -1,5 +1,7 @@
 # Frame editing and clean stills
 
+**Update (2026-11).** Media tools now ship in standard; `-media` is no longer published. See [0010](0010-images-and-releases.md).
+
 ## Context
 
 QA recording 18 and the approved November 4 frames mockup ask for clean stills, moving a

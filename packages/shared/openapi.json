@@ -1210,7 +1210,7 @@
               "pdfPreviews",
               "videoProxies"
             ],
-            "description": "Media tools available on this server (image tag `-media`)."
+            "description": "Media tools available on this server (included in the standard image)."
           },
           "maps": {
             "type": "object",

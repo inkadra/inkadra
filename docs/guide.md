@@ -39,7 +39,7 @@ Draw on a picture. **Done**, `Esc` or a click elsewhere closes it.
 
 An uploaded video plays inside its card: press play and it runs there, with its controls, without
 opening anything. One plays at a time. Video links from YouTube and Vimeo play in their card as well.
-With the [`-media` image](self-hosting/README.md#the-image), formats that browsers cannot play get a
+With the [standard image](self-hosting/README.md#the-image), formats that browsers cannot play get a
 playable copy, and a video gets a poster and its details.
 
 <picture>
@@ -57,7 +57,7 @@ something else.
 Drag a picture from the board onto a frame and it becomes the frame's picture and leaves the board,
 with an Undo. A card that holds strokes, a crop, a rotation or a caption stays, because a frame has
 no place for those. A still from a video comes from the original file on the server when the
-`-media` image is there, at full quality.
+standard image is there, at full quality.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="screenshots/guide/frame-panel-dark.png">

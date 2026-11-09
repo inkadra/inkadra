@@ -4,8 +4,8 @@ import { promisify } from 'node:util';
 const exec = promisify(execFile);
 
 /**
- * External programs the worker runs on untrusted uploads. None is in the default image: the
- * `-media` variant adds them (decisions 0010 and 0048). Each is looked up once, on the PATH or
+ * External programs the worker runs on untrusted uploads. Included in the standard image
+ * (decisions 0010 and 0048). Each is looked up once, on the PATH or
  * in its `*_PATH` variable; a missing one only turns its previews off.
  */
 export interface MediaTools {
@@ -61,7 +61,7 @@ export function resetMediaTools() {
   tools = undefined;
 }
 
-/** Caps a tool runs under, where prlimit and nice exist (Linux, the `-media` image). */
+/** Caps a tool runs under, where prlimit and nice exist (Linux, the standard image). */
 export interface ProcessLimits {
   /** Address space of the process: a decoder bomb fails instead of eating the RAM. */
   memoryBytes?: number;

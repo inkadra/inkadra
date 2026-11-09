@@ -30,24 +30,20 @@ LABEL org.opencontainers.image.title="Inkadra" \
 # Security updates published since the base image was built; tini reaps child processes (the
 # worker will run ffmpeg) and forwards signals. npm, corepack and yarn are not needed at
 # runtime: removing them shrinks the image and the list of packages a scanner reports.
-# MEDIA=true builds the `-media` variant (decisions 0010 and 0048): ffmpeg gives videos a poster,
+# Both images include media tools (decisions 0010 and 0048): ffmpeg gives videos a poster,
 # a duration and a playable copy; exiftool reads the previews embedded in camera RAW files;
-# poppler renders page 1 of PDFs. It adds a few hundred MB, so the default image goes without
-# (see docs/self-hosting). For hardware encoding of the copies (#358) it also has the free VAAPI
+# poppler renders page 1 of PDFs. For hardware encoding of the copies (#358) both have free VAAPI
 # drivers (Mesa for AMD, Intel's media driver) and the oneVPL runtime of Quick Sync, all from
 # Debian main; NVENC uses the driver the NVIDIA Container Toolkit mounts from the host.
-# Optional Office worker image; the default and -media image do not include LibreOffice.
+# Optional Office worker image; the standard image does not include LibreOffice.
 ARG OFFICE=false
-ARG MEDIA=false
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends tini \
- && if [ "$MEDIA" = "true" ]; then \
-      apt-get install -y --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils \
+ && apt-get install -y --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils \
         mesa-va-drivers vainfo \
-      && if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
-           apt-get install -y --no-install-recommends intel-media-va-driver libmfx-gen1.2 libvpl2; \
-         fi; \
+ && if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+      apt-get install -y --no-install-recommends intel-media-va-driver libmfx-gen1.2 libvpl2; \
     fi \
  && if [ "$OFFICE" = "true" ]; then \
       apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress \
@@ -58,7 +54,6 @@ RUN apt-get update \
  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 ENV NODE_ENV=production \
     INKADRA_VERSION=${VERSION} \
-    INKADRA_MEDIA=${MEDIA} \
     INKADRA_OFFICE=${OFFICE} \
     DATA_DIR=/data \
     TMPDIR=/data/tmp \

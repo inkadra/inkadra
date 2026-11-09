@@ -1,5 +1,7 @@
 # 0065 — Optional, isolated Office previews
 
+**Update (2026-11).** Media tools now ship in standard; `-media` is no longer published. See [0010](0010-images-and-releases.md).
+
 Status: accepted for #329.
 
 ## Context

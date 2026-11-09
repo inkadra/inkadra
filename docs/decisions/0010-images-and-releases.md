@@ -52,3 +52,9 @@ the same way, and is attested in the same release.
 **Update (Office previews).** A third variant, `OFFICE=true` on top of `MEDIA=true`, is published
 under every tag with the suffix `-office` for the Office preview worker
 ([decision 0065](0065-office-previews.md)), and attested in the same release.
+
+**Update (2026-11).** The standard image now includes ffmpeg, exiftool, poppler and the VAAPI
+and Quick Sync drivers. Video, PDF and RAW previews are core to a film and photography product;
+this outweighs the earlier size and GPL-free arguments. Only standard and `-office` (standard
+plus LibreOffice) are published. The `MEDIA` build argument and `-media` tags are removed
+immediately, without an alias: only two installations used them.

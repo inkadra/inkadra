@@ -1,5 +1,7 @@
 # 0048 · Media worker previews: playable video copies, camera RAW, PDF pages
 
+**Update (2026-11).** Media tools now ship in standard; `-media` is no longer published. See [0010](0010-images-and-releases.md).
+
 Proposed, 2026-10. Extends files and media (decision 0009) and the `-media` image (decision
 0010). Part of the file card family (#325); the cards themselves come later, after a mockup.
 

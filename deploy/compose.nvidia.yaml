@@ -1,5 +1,4 @@
-# Hardware encoding of playable video copies on an NVIDIA GPU (NVENC). Needs the -media image
-# (INKADRA_TAG=…-media), the NVIDIA driver on the host and the NVIDIA Container Toolkit
+# Hardware encoding of playable video copies on an NVIDIA GPU (NVENC). Needs the NVIDIA driver on the host and the NVIDIA Container Toolkit
 # (https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/). The driver libraries
 # come from the host: the image ships none.
 # Use together with compose.yaml:

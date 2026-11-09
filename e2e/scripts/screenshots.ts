@@ -7,7 +7,7 @@ import { type SampleProject, seedSampleProject } from './sample-project.ts';
 /**
  * Builds a sample project on an empty instance and takes the screenshots of the README
  * (docs/screenshots/readme) and of the guide (docs/screenshots/guide), in the dark and the light
- * theme. The instance needs the -media image, and ffmpeg must be on the PATH of this machine:
+ * theme. The instance needs the standard image, and ffmpeg must be on the PATH of this machine:
  *
  *   SHOTS_BASE_URL=http://localhost:3200 pnpm --filter @inkadra/e2e screenshots
  *

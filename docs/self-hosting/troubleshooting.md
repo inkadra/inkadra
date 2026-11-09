@@ -38,8 +38,9 @@ an older one, or a container started as uid 1000 directly, run the `chown` the e
 **`postgres` refuses to start: "The volume holds a PostgreSQL 16 database".** It is an install from
 before PostgreSQL 18: see [Upgrades](upgrades.md#upgrading-to-postgresql-18).
 
-**Videos and PDFs show a generic card.** The standard image has no media tools: use the `-media`
-[variant](README.md#the-image). Files uploaded before the change keep their generic card.
+**Videos and PDFs show a generic card.** The [standard image](README.md#the-image) includes media tools. Check that
+[media previews](configuration.md#media-previews) are enabled and inspect worker logs for conversion
+errors. Files uploaded with an older image without media tools keep their generic card.
 
 **The report icon is missing, or a report waits.** Without a destination, reports are off and the
 icon is hidden: see [What leaves your server](README.md#what-leaves-your-server). **Settings → About →

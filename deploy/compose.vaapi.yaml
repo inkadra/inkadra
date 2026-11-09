@@ -1,5 +1,5 @@
 # Hardware encoding of playable video copies on an Intel GPU (Quick Sync or VAAPI, iGPUs such
-# as the N100 included) or an AMD GPU (VAAPI). Needs the -media image (INKADRA_TAG=…-media).
+# as the N100 included) or an AMD GPU (VAAPI). Media tools are included in the standard image.
 # Use together with compose.yaml:
 #   docker compose -f compose.yaml -f deploy/compose.vaapi.yaml up -d
 # In split mode the copies are made by the `worker` service: put these lines under `worker`

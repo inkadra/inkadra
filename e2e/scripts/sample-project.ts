@@ -34,7 +34,7 @@ import { STILL_NAMES, stillSize, stillSvg } from './sample-stills.ts';
  *
  * The pictures on the boards are drawn in sample-stills.ts and the video, the voice note and
  * the script are made here, so the screenshots carry no third-party media. The video needs
- * ffmpeg on the PATH of this machine, and the instance the -media image.
+ * ffmpeg on the PATH of this machine, and the instance the standard image.
  */
 
 export const account = {
