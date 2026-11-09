@@ -6,11 +6,14 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 
+// One `t` for every render, as the real one: effects that depend on it run once.
+const { t } = vi.hoisted(() => ({
+  t: (key: string, values?: Record<string, unknown>) =>
+    values ? `${key} ${JSON.stringify(values)}` : key,
+}));
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, values?: Record<string, unknown>) =>
-      values ? `${key} ${JSON.stringify(values)}` : key,
-  }),
+  Trans: ({ i18nKey }: { i18nKey: string }) => i18nKey,
+  useTranslation: () => ({ t }),
 }));
 vi.mock('../lib/api.ts', () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
@@ -68,33 +71,58 @@ afterEach(() => {
   host.remove();
 });
 
-it('names each person row by its visible text and describes the action with a hint', () => {
-  const rows = [...host.querySelectorAll<HTMLButtonElement>('.share__person')];
+it('shows people as plain rows, with nothing to press beside the controls', () => {
+  const rows = [...host.querySelectorAll<HTMLLIElement>('.share__row')];
   expect(rows).toHaveLength(2);
-  for (const row of rows) {
-    // No aria-label: the accessible name is the visible text (name, "(you)" and source).
-    expect(row.hasAttribute('aria-label')).toBe(false);
-    const hint = document.getElementById(row.getAttribute('aria-describedby') ?? '');
-    expect(hint?.textContent).toBe('share.highlightHint');
-  }
   expect(rows[0]?.textContent).toContain('Ada Owner');
-  expect(rows[1]?.textContent).toContain('Mia Rossi');
   expect(rows[1]?.textContent).toContain('share.you');
+  // The old matrix highlight is gone: no pressed state, no hidden hint.
+  expect(host.querySelector('[aria-pressed]')).toBeNull();
+  expect(host.querySelector('.share__person')?.tagName).toBe('SPAN');
 });
 
-it('highlights the owner role from the owner row, which cannot be edited', async () => {
-  // The matrix starts on the role of the current user.
-  await act(async () => host.querySelector<HTMLButtonElement>('.share__matrix-toggle')?.click());
-  expect(host.querySelector('.is-active th')?.textContent).toBe('roles.editor');
+it('explains the roles in a closed legend that only holds text', () => {
+  const legend = host.querySelector<HTMLDetailsElement>('details.share__legend');
+  expect(legend?.open).toBe(false);
+  expect(legend?.querySelector('summary')?.textContent).toBe('share.legend.title');
+  expect([...(legend?.querySelectorAll('dt') ?? [])].map((dt) => dt.textContent)).toEqual([
+    'roles.viewer',
+    'roles.commenter',
+    'roles.editor',
+    'roles.owner',
+  ]);
+  expect([...(legend?.querySelectorAll('dd') ?? [])].map((dd) => dd.textContent)).toEqual([
+    'share.legend.viewer',
+    'share.legend.commenter',
+    'share.legend.editor',
+    'share.legend.owner',
+  ]);
+  expect(legend?.querySelector('button, input, a, [tabindex]')).toBeNull();
+});
 
-  const ownerRow = [...host.querySelectorAll<HTMLButtonElement>('.share__person')].find((b) =>
-    b.textContent?.includes('Ada Owner'),
+it('describes the role chosen for an invitation under the invite field', async () => {
+  // happy-dom has no popover: the list opens in place.
+  HTMLElement.prototype.showPopover ??= () => {};
+  HTMLElement.prototype.hidePopover ??= () => {};
+  vi.mocked(api.get).mockImplementation(((url: string) =>
+    Promise.resolve(
+      url.startsWith('/invitations') ? { items: [] } : { ...access, canManage: true },
+    )) as never);
+  await act(async () =>
+    root.render(
+      <ShareDialog open board={{ ...board, id: 'b2' }} subBoards={0} onClose={() => {}} />,
+    ),
   );
-  expect(ownerRow?.textContent).toContain('Ada Owner');
-  expect(ownerRow?.getAttribute('aria-pressed')).toBe('false');
-  await act(async () => ownerRow?.click());
-  expect(ownerRow?.getAttribute('aria-pressed')).toBe('true');
-  const active = host.querySelector('.is-active');
-  expect(active?.getAttribute('aria-current')).toBe('true');
-  expect(host.querySelector('.is-active th')?.textContent).toBe('roles.owner');
+  const hint = host.querySelector('.share__hint');
+  expect(hint?.textContent).toBe('roles.commenter: share.roleHint.commenter');
+  const role = host.querySelector<HTMLButtonElement>(
+    '.share__invite [aria-label="share.inviteRole"]',
+  );
+  expect(role?.getAttribute('aria-describedby')).toBe(hint?.id);
+  await act(async () => role?.click());
+  const viewer = document.querySelector<HTMLElement>('[role="option"][data-value="viewer"]');
+  await act(async () => viewer?.click());
+  expect(host.querySelector('.share__hint')?.textContent).toBe(
+    'roles.viewer: share.roleHint.viewer',
+  );
 });

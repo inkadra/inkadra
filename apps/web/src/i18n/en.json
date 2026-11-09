@@ -1500,7 +1500,6 @@
     "thisBoard": "People you invite see this board only.",
     "people": "People with access",
     "you": "{{name}} (you)",
-    "highlightHint": "Highlights this person’s role in the permissions matrix",
     "member": "Project member",
     "fromProject": "From the project",
     "inherited": "Inherited from {{board}}",
@@ -1524,7 +1523,7 @@
     "readOnly": "Only editors and owners can invite people or change roles.",
     "link": {
       "title": "Invitation link",
-      "body": "Whoever opens the link joins with the chosen role, even without an account (they make one then).",
+      "body": "Whoever opens it joins with their account, or makes one, with the chosen role.",
       "active_one": "{{role}} · expires on {{date}} · used {{count}} time",
       "active_other": "{{role}} · expires on {{date}} · used {{count}} times",
       "role": "Role for people using the link",
@@ -1532,7 +1531,9 @@
       "days_one": "{{count}} day",
       "days_other": "{{count}} days",
       "create": "Create link",
-      "revoke": "Turn off"
+      "revoke": "Turn off",
+      "name": "Join with an account",
+      "createShort": "Create"
     },
     "errors": {
       "load": "Could not load who has access. Try again.",
@@ -1546,17 +1547,6 @@
       "people": "People",
       "guests": "Guest links"
     },
-    "matrix": {
-      "title": "Role permissions matrix",
-      "role": "Role",
-      "view": "View",
-      "comment": "Comment",
-      "edit": "Edit",
-      "share": "Share",
-      "download": "Download originals",
-      "yes": "Yes",
-      "no": "No"
-    },
     "expiry": {
       "label": "Expires {{date}}",
       "until": "Access until",
@@ -1565,10 +1555,25 @@
       "clear": "Remove end date",
       "of": "End of access for {{name}}",
       "invite": "End of access for the person you invite"
+    },
+    "accountLead": "For people working on the project, <b>with an account</b>.",
+    "inviteField": "Invite by email or name",
+    "roleHint": {
+      "viewer": "sees boards and files. Cannot comment or edit.",
+      "commenter": "sees, comments and downloads originals. Cannot edit.",
+      "editor": "sees, comments, edits, invites and shares.",
+      "owner": "can do everything, also manage members, archive and delete the project."
+    },
+    "legend": {
+      "title": "What each role can do",
+      "viewer": "Sees boards and files.",
+      "commenter": "As a viewer, plus comments and downloading originals.",
+      "editor": "As a commenter, plus editing, inviting and sharing.",
+      "owner": "As an editor, plus managing project members, archiving and deleting the project."
     }
   },
   "guestLinks": {
-    "lead": "For people without an account: they see the board without changing it, and only the cards not hidden from guests. The link works while you are an editor here.",
+    "lead": "For clients, <b>without an account</b>. They open the board without changing it and see only the cards visible to guests.",
     "none": "No guest links.",
     "list": "Guest links",
     "new": "New guest link",
@@ -1577,17 +1582,12 @@
     "never": "No expiry",
     "label": "Who it is for (optional)",
     "labelPlaceholder": "E.g. Client",
-    "includeSubBoards_one": "Also the sub-board reached from here",
-    "includeSubBoards_other": "Also the sub-boards reached from here",
-    "allowDownload": "Allow downloading originals",
-    "allowDownloadHint": "Otherwise guests see previews only.",
     "proofing": "Photo proofing",
-    "proofingHint": "Guests pick, reject and give pictures 1 to 5 stars.",
-    "usePassword": "Protect with a password",
+    "proofingHint": "Picks, rejects and gives stars.",
     "password": "Password",
     "passwordShort": "The password needs at least {{min}} characters.",
     "cancel": "Cancel",
-    "create": "Create guest link",
+    "create": "Create link",
     "save": "Save",
     "edit": "Edit",
     "editTitle": "Edit the link",
@@ -1600,11 +1600,7 @@
     "keepExpiry": "Leave as it is",
     "fromNow_one": "In {{count}} day",
     "fromNow_other": "In {{count}} days",
-    "passwordKeep": "Keep the current password",
-    "passwordNone": "No password",
     "passwordChange": "Change the password",
-    "passwordAdd": "Add a password",
-    "passwordRemove": "Remove the password",
     "newPassword": "New password",
     "passwordChangeHint": "Whoever opened the link before must enter the new password.",
     "roles": {
@@ -1669,6 +1665,42 @@
       "average_one": "{{value}} stars ({{count}} rating)",
       "average_other": "{{value}} stars ({{count}} ratings)",
       "byGuest": "{{name}}: {{choice}}"
+    },
+    "validWhile": "A link stops working if whoever made it is no longer an editor here.",
+    "active": "Active links",
+    "options": "Link options",
+    "roleHelp": {
+      "guest_view": "Sees the board and pictures.",
+      "guest_comment": "Sees the board and pictures, reads and writes comments.",
+      "guest_approve": "Sees and comments, approves or asks for changes, compares versions."
+    },
+    "download": "Originals",
+    "downloadHint": "Off: previews only.",
+    "subBoards": "Sub-boards",
+    "subBoardsHint_one": "Also the one reached from here.",
+    "subBoardsHint_other": "Also those reached from here.",
+    "passwordHint": "At least {{min}} characters.",
+    "passwordField": "Link password",
+    "passwordKept": "The current password stays.",
+    "copy": "Copy",
+    "copyLabel": "Copy the link “{{name}}”",
+    "actionsFor": "Actions for the link “{{name}}”",
+    "summary": {
+      "someone": "Whoever opens the link",
+      "role": {
+        "guest_view": "can view",
+        "guest_comment": "can view and comment",
+        "guest_approve": "can view, comment and approve"
+      },
+      "pick": ", pick photos",
+      "download": ", download originals",
+      "noDownload": ", <b>no downloads</b>",
+      "subBoards": "Sub-boards included.",
+      "onlyHere": "This board only.",
+      "expiresIn": "Expires in <b>{{when}}</b>",
+      "expiresOn": "Expires on <b>{{date}}</b>",
+      "noExpiry": "No expiry",
+      "withPassword": "with a password"
     }
   },
   "guest": {
@@ -4331,16 +4363,24 @@
         "name": "Sharing and roles",
         "steps": {
           "0": {
-            "title": "People and links",
-            "text": "Invite the team or make a link for guests."
+            "title": "People and guests",
+            "text": "People: who has an account. Guest links: clients without one."
           },
           "1": {
-            "title": "Roles",
-            "text": "Who edits, who comments, who looks."
+            "title": "Invite",
+            "text": "Pick a role: the line below says what they can do."
           },
           "2": {
+            "title": "Roles",
+            "text": "Open the legend to see what each role can do."
+          },
+          "3": {
+            "title": "Invitation link",
+            "text": "Whoever opens it joins with their account and the chosen role."
+          },
+          "4": {
             "title": "Guest links",
-            "text": "With a password, an expiry and approvals."
+            "text": "For clients: choose what they can do and read the summary."
           }
         }
       },

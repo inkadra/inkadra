@@ -1500,7 +1500,6 @@
     "thisBoard": "Quem você convidar vê só este quadro.",
     "people": "Pessoas com acesso",
     "you": "{{name}} (você)",
-    "highlightHint": "Destaca a função desta pessoa na matriz de permissões",
     "member": "Membro do projeto",
     "fromProject": "Do projeto",
     "inherited": "Herdado de {{board}}",
@@ -1524,7 +1523,7 @@
     "readOnly": "Somente editores e proprietários podem convidar pessoas ou alterar funções.",
     "link": {
       "title": "Link de convite",
-      "body": "Quem abrir o link entra com a função escolhida, mesmo sem conta (cria uma na hora).",
+      "body": "Quem abrir entra com a própria conta, ou cria uma, com a função escolhida.",
       "active_one": "{{role}} · expira em {{date}} · usado {{count}} vez",
       "active_other": "{{role}} · expira em {{date}} · usado {{count}} vezes",
       "role": "Função de quem usa o link",
@@ -1532,7 +1531,9 @@
       "days_one": "{{count}} dia",
       "days_other": "{{count}} dias",
       "create": "Criar link",
-      "revoke": "Desativar"
+      "revoke": "Desativar",
+      "name": "Entrar com uma conta",
+      "createShort": "Criar"
     },
     "errors": {
       "load": "Não foi possível carregar quem tem acesso. Tente novamente.",
@@ -1546,17 +1547,6 @@
       "people": "Pessoas",
       "guests": "Links para convidados"
     },
-    "matrix": {
-      "title": "Matriz de permissões das funções",
-      "role": "Função",
-      "view": "Visualizar",
-      "comment": "Comentar",
-      "edit": "Editar",
-      "share": "Compartilhar",
-      "download": "Baixar originais",
-      "yes": "Sim",
-      "no": "Não"
-    },
     "expiry": {
       "label": "Expira em {{date}}",
       "until": "Acesso até",
@@ -1565,10 +1555,25 @@
       "clear": "Remover a data final",
       "of": "Fim do acesso de {{name}}",
       "invite": "Fim do acesso de quem você convidar"
+    },
+    "accountLead": "Para quem trabalha no projeto, <b>com conta</b>.",
+    "inviteField": "Convidar por e-mail ou nome",
+    "roleHint": {
+      "viewer": "vê quadros e arquivos. Não comenta nem edita.",
+      "commenter": "vê, comenta e baixa os originais. Não edita.",
+      "editor": "vê, comenta, edita, convida e compartilha.",
+      "owner": "pode tudo, inclusive gerenciar os membros, arquivar e excluir o projeto."
+    },
+    "legend": {
+      "title": "O que cada função pode fazer",
+      "viewer": "Vê quadros e arquivos.",
+      "commenter": "Como o visualizador, mais comentários e download dos originais.",
+      "editor": "Como o comentarista, mais edição, convites e compartilhamento.",
+      "owner": "Como o editor, mais a gestão dos membros do projeto, arquivar e excluir o projeto."
     }
   },
   "guestLinks": {
-    "lead": "Para quem não tem conta: vê o quadro sem poder alterá-lo, e só os cards não ocultos para convidados. O link funciona enquanto você for editor aqui.",
+    "lead": "Para clientes, <b>sem conta</b>. Abrem o quadro sem alterá-lo e veem só os cards visíveis para convidados.",
     "none": "Nenhum link para convidados.",
     "list": "Links para convidados",
     "new": "Novo link para convidados",
@@ -1577,17 +1582,12 @@
     "never": "Sem validade",
     "label": "Para quem é (opcional)",
     "labelPlaceholder": "Ex.: Cliente",
-    "includeSubBoards_one": "Também o subquadro acessível a partir daqui",
-    "includeSubBoards_other": "Também os subquadros acessíveis a partir daqui",
-    "allowDownload": "Permitir baixar os originais",
-    "allowDownloadHint": "Caso contrário, os convidados veem só as prévias.",
     "proofing": "Seleção de fotos",
-    "proofingHint": "Os convidados escolhem, descartam e dão de 1 a 5 estrelas às imagens.",
-    "usePassword": "Proteger com senha",
+    "proofingHint": "Escolhe, descarta e dá estrelas.",
     "password": "Senha",
     "passwordShort": "A senha precisa ter pelo menos {{min}} caracteres.",
     "cancel": "Cancelar",
-    "create": "Criar link para convidados",
+    "create": "Criar link",
     "save": "Salvar",
     "edit": "Editar",
     "editTitle": "Editar o link",
@@ -1600,11 +1600,7 @@
     "keepExpiry": "Deixar como está",
     "fromNow_one": "Em {{count}} dia",
     "fromNow_other": "Em {{count}} dias",
-    "passwordKeep": "Manter a senha atual",
-    "passwordNone": "Sem senha",
     "passwordChange": "Alterar a senha",
-    "passwordAdd": "Adicionar uma senha",
-    "passwordRemove": "Remover a senha",
     "newPassword": "Nova senha",
     "passwordChangeHint": "Quem já abriu o link terá que digitar a nova senha.",
     "roles": {
@@ -1669,6 +1665,42 @@
       "average_one": "{{value}} estrelas ({{count}} avaliação)",
       "average_other": "{{value}} estrelas ({{count}} avaliações)",
       "byGuest": "{{name}}: {{choice}}"
+    },
+    "validWhile": "Um link para de funcionar se quem o criou não for mais editor aqui.",
+    "active": "Links ativos",
+    "options": "Opções do link",
+    "roleHelp": {
+      "guest_view": "Vê o quadro e as imagens.",
+      "guest_comment": "Vê o quadro e as imagens, lê e escreve comentários.",
+      "guest_approve": "Vê e comenta, aprova ou pede alterações, compara versões."
+    },
+    "download": "Originais",
+    "downloadHint": "Desligado: só prévias.",
+    "subBoards": "Subquadros",
+    "subBoardsHint_one": "Também o acessível a partir daqui.",
+    "subBoardsHint_other": "Também os acessíveis a partir daqui.",
+    "passwordHint": "Pelo menos {{min}} caracteres.",
+    "passwordField": "Senha do link",
+    "passwordKept": "A senha atual continua.",
+    "copy": "Copiar",
+    "copyLabel": "Copiar o link “{{name}}”",
+    "actionsFor": "Ações do link “{{name}}”",
+    "summary": {
+      "someone": "Quem abrir o link",
+      "role": {
+        "guest_view": "poderá ver",
+        "guest_comment": "poderá ver e comentar",
+        "guest_approve": "poderá ver, comentar e aprovar"
+      },
+      "pick": ", escolher as fotos",
+      "download": ", baixar os originais",
+      "noDownload": ", <b>sem downloads</b>",
+      "subBoards": "Com os subquadros.",
+      "onlyHere": "Só este quadro.",
+      "expiresIn": "Expira em <b>{{when}}</b>",
+      "expiresOn": "Expira em <b>{{date}}</b>",
+      "noExpiry": "Sem validade",
+      "withPassword": "com senha"
     }
   },
   "guest": {
@@ -4331,16 +4363,24 @@
         "name": "Partilha e funções",
         "steps": {
           "0": {
-            "title": "Pessoas e ligações",
-            "text": "Convide a equipa ou crie uma ligação para convidados."
+            "title": "Pessoas e convidados",
+            "text": "Pessoas: quem tem conta. Ligações para convidados: clientes sem conta."
           },
           "1": {
-            "title": "Funções",
-            "text": "Quem edita, quem comenta, quem vê."
+            "title": "Convidar",
+            "text": "Escolha a função: por baixo lê o que poderá fazer."
           },
           "2": {
+            "title": "Funções",
+            "text": "Abra a legenda para ver o que cada função pode fazer."
+          },
+          "3": {
+            "title": "Ligação de convite",
+            "text": "Quem a abre entra com a sua conta e a função escolhida."
+          },
+          "4": {
             "title": "Ligações para convidados",
-            "text": "Com palavra-passe, validade e aprovação."
+            "text": "Para clientes: escolha o que podem fazer e leia o resumo."
           }
         }
       },

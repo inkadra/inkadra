@@ -1,5 +1,4 @@
 import { expect, type Page, test } from '@playwright/test';
-import { chooseSelect } from '../helpers/select.ts';
 
 // Uses the account created by first-run.spec.ts, and creates it when run on its own.
 const admin = {
@@ -104,12 +103,11 @@ test('the sidebar of a project without boards or storyboard, and Add storyboard 
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-type="note"]')).toHaveText('Palette del cliente');
   const dialog2 = await guestLinks(page);
-  await dialog2.getByRole('button', { name: 'Nuovo link per ospiti' }).click();
-  await chooseSelect(dialog2.getByLabel('Chi apre il link'), 'guest_approve');
+  await dialog2.getByRole('radio', { name: 'Può approvare' }).check();
   await dialog2.getByLabel('Per chi è (facoltativo)').fill('Cliente');
-  await dialog2.getByRole('button', { name: 'Crea link per ospiti' }).click();
+  await dialog2.getByRole('button', { name: 'Crea link', exact: true }).click();
   const row = dialog2.getByRole('listitem').filter({ hasText: 'Cliente' });
-  await expect(row.getByText('Attivo', { exact: true })).toBeVisible();
+  await expect(row.getByText(/Può approvare/)).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog2).toBeHidden();
   await expect(review).toBeVisible();
@@ -135,7 +133,8 @@ test('the sidebar of a project without boards or storyboard, and Add storyboard 
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   const dialog3 = await guestLinks(page);
   const live = dialog3.getByRole('listitem').filter({ hasText: 'Cliente' });
-  await live.getByRole('button', { name: 'Revoca' }).click();
+  await live.getByRole('button', { name: 'Azioni per il link “Cliente”' }).click();
+  await page.getByRole('menuitem', { name: 'Revoca' }).click();
   await live.getByRole('button', { name: 'Revoca il link' }).click();
   await expect(live.getByText('Revocato', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');

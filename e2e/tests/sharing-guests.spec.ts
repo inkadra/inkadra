@@ -253,18 +253,19 @@ test('an editor creates a password link with comments and proofing', async ({ pa
   expect(teamComment.ok()).toBe(true);
   const dialog = await openGuestLinks(page);
   await expect(dialog.getByText('Nessun link per ospiti.')).toBeVisible();
-  await dialog.getByRole('button', { name: 'Nuovo link per ospiti' }).click();
-  await chooseSelect(dialog.getByLabel('Chi apre il link'), 'guest_comment');
+  // The form is open from the start (approved mockup of the share dialog).
+  await dialog.getByRole('radio', { name: 'Può commentare' }).check();
+  await expect(dialog.getByText('Vede board e immagini, legge e scrive commenti.')).toBeVisible();
   await dialog.getByLabel('Per chi è (facoltativo)').fill('Cliente');
-  await dialog.getByLabel('Selezione foto').check();
-  await dialog.getByLabel('Proteggi con una password').check();
-  await dialog.getByLabel('Password', { exact: true }).fill(linkPassword);
-  await dialog.getByRole('button', { name: 'Crea link per ospiti' }).click();
+  await dialog.getByRole('switch', { name: 'Selezione foto' }).check();
+  await dialog.getByRole('switch', { name: 'Password' }).check();
+  await dialog.getByLabel('Password del link').fill(linkPassword);
+  await expect(dialog.getByText(/potrà guardare e commentare, scegliere le foto/)).toBeVisible();
+  await dialog.getByRole('button', { name: 'Crea link', exact: true }).click();
   const url = dialog.getByRole('textbox', { name: 'Link per ospiti “Cliente”' });
   await expect(url).toHaveValue(/\/s\/[\w-]{16,}$/);
   guestUrl = await url.inputValue();
   const row = dialog.getByRole('listitem').filter({ hasText: 'Cliente' });
-  await expect(row.getByText('Attivo', { exact: true })).toBeVisible();
   await expect(row.getByText(/Può commentare · con password · selezione foto/)).toBeVisible();
 });
 
@@ -375,7 +376,8 @@ test('the team sees the comment and the picks', async ({ page, baseURL }) => {
   const dialog = await openGuestLinks(page);
   const row = dialog.getByRole('listitem').filter({ hasText: 'Cliente' });
   await expect(row.getByText(/Aperto · .+ · \d+ visit[ae] · ospiti: 1/)).toBeVisible();
-  await row.getByRole('button', { name: 'Risultati' }).click();
+  await row.getByRole('button', { name: 'Azioni per il link “Cliente”' }).click();
+  await page.getByRole('menuitem', { name: 'Risultati' }).click();
   await expect(dialog.getByRole('heading', { name: 'Selezione · Cliente' })).toBeVisible();
   const item = dialog.getByRole('listitem').filter({ hasText: 'scatto-alba.png' });
   await expect(item.getByText('Scelta da 1 · scartata da 0 · 4 stelle (1 voto)')).toBeVisible();
@@ -388,7 +390,7 @@ test('the team sees the comment and the picks', async ({ page, baseURL }) => {
   for await (const chunk of stream) text += chunk.toString();
   expect(text.trim()).toBe('scatto-alba.png');
   await dialog.getByRole('button', { name: 'Torna ai link' }).click();
-  await expect(dialog.getByRole('button', { name: 'Nuovo link per ospiti' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Crea link', exact: true })).toBeVisible();
 
   // The comment is in the comments panel too, marked as a guest of the named link, next to the
   // team's thread.
@@ -419,7 +421,8 @@ test('revoking the link shows the guest that it was turned off', async ({
   await login(page, baseURL as string);
   const dialog = await openGuestLinks(page);
   const row = dialog.getByRole('listitem').filter({ hasText: 'Cliente' });
-  await row.getByRole('button', { name: 'Revoca' }).click();
+  await row.getByRole('button', { name: 'Azioni per il link “Cliente”' }).click();
+  await page.getByRole('menuitem', { name: 'Revoca' }).click();
   await row.getByRole('button', { name: 'Revoca il link' }).click();
   await expect(row.getByText('Revocato', { exact: true })).toBeVisible();
   await expect(row.getByRole('textbox')).toHaveCount(0);

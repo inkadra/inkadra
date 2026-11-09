@@ -2,12 +2,14 @@ import {
   atLeast,
   CAPABILITIES,
   CAPABILITY_ROLE,
+  guestCan,
   guestCapabilities,
   roleCapabilities,
 } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 
-describe('permissions matrix derivation', () => {
+/** The share dialog's texts on roles (share.legend.*, guestLinks.roleHelp.*) say what these do. */
+describe('what the role texts are based on', () => {
   it.each(['owner', 'editor', 'commenter', 'viewer'] as const)(
     'uses server role thresholds for %s',
     (role) => {
@@ -35,4 +37,13 @@ describe('permissions matrix derivation', () => {
       }
     },
   );
+  it('gives guests what the role descriptions under the choice say', () => {
+    const can = (role: 'guest_view' | 'guest_comment' | 'guest_approve') =>
+      (['view', 'read_comments', 'write_comments', 'review'] as const).filter((action) =>
+        guestCan({ role, proofing: false }, action),
+      );
+    expect(can('guest_view')).toEqual(['view']);
+    expect(can('guest_comment')).toEqual(['view', 'read_comments', 'write_comments']);
+    expect(can('guest_approve')).toEqual(['view', 'read_comments', 'write_comments', 'review']);
+  });
 });

@@ -263,7 +263,10 @@ export const TOURS: Tour[] = [
     steps: [
       { anchor: 'share-tabs', media: 'users', side: 'bottom' },
       { anchor: 'share-invite', media: 'users', side: 'bottom' },
+      { anchor: 'share-roles', media: 'users', side: 'bottom' },
       { anchor: 'share-link', media: 'team', side: 'top' },
+      // On the guest tab: skipped while the people tab is open.
+      { anchor: 'share-guest-form', media: 'team', side: 'top' },
     ],
   },
   {
