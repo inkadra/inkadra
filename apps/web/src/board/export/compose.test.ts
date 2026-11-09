@@ -279,23 +279,23 @@ describe('story bible cards in exports', () => {
 describe('section pages', () => {
   it('heads the first page and continues long sections on the next ones', () => {
     const setup = { paper: 'slide', orientation: 'landscape' } as const;
-    const rows = Array.from({ length: 80 }, (_, i) => [`Task ${i}`, 'Anna', '10 nov']);
+    const rows = Array.from({ length: 80 }, (_, i) => [`09:${i}`, `Shot ${i}`, 'Anna']);
     const pages = sectionPages(
       setup,
-      'Kickoff summary',
+      'Call sheet',
       [
-        { title: 'Open tasks', columns: [4, 2, 1], rows, empty: 'No open tasks' },
-        { title: 'People', columns: [1, 1], rows: [], empty: 'No people' },
+        { title: 'Schedule', columns: [1.3, 4, 2], rows, empty: 'No blocks' },
+        { title: 'Cast', columns: [2, 3], rows: [], empty: 'Nothing yet' },
       ],
       ctx,
     );
     expect(pages.length).toBeGreaterThan(1);
     for (const page of pages) expect([page.width, page.height]).toEqual([960, 540]);
     const texts = (page: Page) => page.ops.flatMap((op) => (op.kind === 'text' ? [op.text] : []));
-    expect(texts(pages[0] as Page)[0]).toBe('Kickoff summary');
-    expect(texts(pages[1] as Page)).not.toContain('Kickoff summary');
+    expect(texts(pages[0] as Page)[0]).toBe('Call sheet');
+    expect(texts(pages[1] as Page)).not.toContain('Call sheet');
     const all = pages.flatMap(texts);
-    expect(all).toContain('Task 79');
-    expect(all).toContain('No people');
+    expect(all).toContain('Shot 79');
+    expect(all).toContain('Nothing yet');
   });
 });

@@ -49,15 +49,14 @@ test('the export options fill the column, with nothing cut and no gap', async ({
     await page.goto(`/p/${project.id}/b/${board.id}`);
     await page.getByRole('button', { name: 'Esporta PDF' }).click();
     const dialog = page.getByRole('dialog', { name: /Esporta/ });
-    await dialog.getByText('Personalizza').first().click();
-    const options = dialog.locator('.export__custom-body');
+    const options = dialog.locator('.export__pdf-options');
     await expect(options).toBeVisible();
     await expect(dialog.locator('.export__canvas')).toBeVisible();
     await page.waitForTimeout(500);
     const fit = await dialog.evaluate((el) => {
       const bottom = (s: string) => (el.querySelector(s) as Element).getBoundingClientRect().bottom;
       return {
-        gap: bottom('.export') - bottom('.export__custom-body'),
+        gap: bottom('.export') - bottom('.export__pdf-options'),
         overflow: el.scrollHeight - el.clientHeight,
       };
     });

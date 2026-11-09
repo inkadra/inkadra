@@ -3231,51 +3231,17 @@
     "progressPages": "Dessin des pages… {{done}} sur {{total}}",
     "missingGlyphs": "Certains caractères ({{chars}}) ne sont pas dans la police de l’export et s’imprimeront comme des cases vides.",
     "logoTimeout": "L’envoi du logo prend trop de temps. Réessayez.",
-    "presetsLabel": "Préréglages d’export",
-    "recommended": "Recommandé",
-    "customize": "Personnaliser",
-    "editingPreset": "modification du préréglage {{n}}",
     "remembered": "Mémorisé pour ce projet",
     "submitPages_one": "Exporter {{count}} page",
     "submitPages_other": "Exporter {{count}} pages",
-    "presets": {
-      "client-pitch": {
-        "title": "Présentation client",
-        "description": "16:9 · plans approuvés uniquement · un par page · sans notes internes"
-      },
-      "production-book": {
-        "title": "Dossier de production",
-        "description": "A4 · tous les champs · liste de plans et feuille de service · numéros de page"
-      },
-      "internal-kickoff": {
-        "title": "Lancement interne",
-        "description": "Dates, personnes, tâches et récapitulatif du plan de travail"
-      }
-    },
     "approvedOnly": "Plans approuvés uniquement",
-    "kickoffSummary": "Récapitulatif de lancement : dates, personnes, tâches et plan de travail",
     "callSheet": "Feuille de service de chaque journée de tournage",
     "teamOnlyHint": "Uniquement dans les PDF pour l’équipe.",
     "callSheetTitle": "Feuille de service",
-    "kickoff": {
-      "title": "Récapitulatif de lancement",
-      "dates": "Dates",
-      "period_one": "{{count}} journée de tournage : {{from}}",
-      "period_other": "{{count}} journées de tournage, du {{from}} au {{to}}",
-      "noDays": "Aucune journée de tournage au plan de travail.",
-      "people": "Personnes",
-      "noPeople": "Aucune personne à afficher.",
-      "tasks": "Tâches ouvertes",
-      "noTasks": "Aucune tâche ouverte.",
-      "schedule": "Plan de travail",
-      "shots_one": "{{count}} plan",
-      "shots_other": "{{count}} plans"
-    },
     "formatJpeg": "JPEG",
     "jpegHint": "Fichier plus léger, sans transparence.",
     "pngHint": "Qualité maximale, fichier plus lourd.",
     "openImage": "Exporter l’image…",
-    "presetsOff": "Les préréglages 1–3 sont des documents PDF : ils reviennent quand vous choisissez PDF.",
     "whatCard": "Carte « {{name}} »",
     "whatFrame": "Plan {{label}}",
     "aspect": "Proportions",

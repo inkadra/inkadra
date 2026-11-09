@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { type Element, hiddenFromGuests } from '@inkadra/doc-schema';
 import {
   type Asset,
   DEFAULT_EXPORT_PREFERENCES,
   EXPORT_LOGO_MAX_BYTES,
   EXPORT_LOGO_TYPES,
   type ExportPreferences,
-  type ExportPreset,
   type ExportSettings,
   type UpdateExportSettings,
 } from '@inkadra/shared';
 import { api } from '../../lib/api.ts';
-import { isApproved } from '../film/film-status.ts';
 import { resolveTheme } from '../theme.ts';
 import { startUpload } from '../uploads.ts';
 import type { ExportRequest, ExportWhat } from './engine.ts';
@@ -22,281 +19,45 @@ import type { PaperSize } from './layout.ts';
 /** Where the dialog was opened from: the canvas offers board scopes, film views their own. */
 export type ExportSource = 'canvas' | 'storyboard' | 'shotlist' | 'schedule';
 
-export const PRESET_ORDER: readonly ExportPreset[] = [
-  'client-pitch',
-  'production-book',
-  'internal-kickoff',
-];
-
-/** 1-based number shown on the preset badge and in the "editing preset N" summary. */
-export function presetNumber(preset: ExportPreset): 1 | 2 | 3 {
-  return (PRESET_ORDER.indexOf(preset) + 1) as 1 | 2 | 3;
-}
-
-/**
- * The preset marked "Recommended" for the open view: Storyboard → Client pitch, Shot list →
- * Production book, Schedule → Internal kickoff. The pitch exports approved frames only, so a
- * storyboard without any (`approvedFrames` false) gets the production book instead of an empty
- * PDF.
- */
-export function recommendedPreset(source: ExportSource, approvedFrames: boolean): ExportPreset {
-  if (source === 'shotlist') return 'production-book';
-  if (source === 'schedule') return 'internal-kickoff';
-  if (source === 'storyboard' && !approvedFrames) return 'production-book';
-  return 'client-pitch';
-}
-
-/**
- * Whether the client pitch has a frame to show: approved as its "approved frames only" filter
- * counts it, and not hidden from guests.
- */
-export function hasApprovedFrame(
-  byId: ReadonlyMap<string, Element>,
-  reviews: ReadonlyMap<string, { status: string }>,
-): boolean {
-  const lookup = (id: string) => byId.get(id);
-  for (const el of byId.values()) {
-    if (el.type === 'frame' && isApproved(el, reviews) && !hiddenFromGuests(el.id, lookup)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-export type PresetChoices = Omit<ExportRequest, 'logo' | 'theme' | 'image'>;
-
-/**
- * The existing export options (decision 0038/0039) a preset fills in. On an ordinary canvas
- * board `what` stays on the current board scope (`currentWhat` or `'board'`), because storyboard
- * and shot list scopes exist only on film boards.
- */
-export function presetChoices(
-  preset: ExportPreset,
-  source: ExportSource,
-  currentWhat: ExportWhat = 'board',
-  language?: string,
-): PresetChoices {
-  const film = source !== 'canvas';
-  switch (preset) {
-    case 'client-pitch':
-      return {
-        format: 'pdf',
-        what: film ? 'storyboard' : currentWhat,
-        framesPerPage: 1,
-        paper: 'slide',
-        orientation: 'landscape',
-        audience: 'client',
-        titlePage: true,
-        comments: false,
-        hideGuestHidden: true,
-        approvedOnly: film,
-        kickoffSummary: false,
-        callSheet: false,
-      };
-    case 'production-book':
-      return {
-        format: 'pdf',
-        // The production book prints the shot list, or the scene sheets when they are chosen.
-        what: film ? (currentWhat === 'scenesheets' ? currentWhat : 'shotlist') : currentWhat,
-        framesPerPage: 4,
-        paper: 'a4',
-        orientation: 'portrait',
-        audience: 'team',
-        titlePage: true,
-        comments: false,
-        hideGuestHidden: false,
-        approvedOnly: false,
-        kickoffSummary: false,
-        callSheet: true,
-      };
-    case 'internal-kickoff':
-      return {
-        format: 'pdf',
-        what: film ? 'storyboard' : currentWhat,
-        framesPerPage: 4,
-        paper: localePaper(language),
-        orientation: 'landscape',
-        audience: 'team',
-        titlePage: true,
-        comments: true,
-        hideGuestHidden: false,
-        approvedOnly: false,
-        kickoffSummary: true,
-        callSheet: false,
-      };
-  }
-}
-
-/**
- * Whether the current options still match `preset`, or have been edited by hand. Canvas boards
- * ignore `what` so changing the board scope (whole board / selection / visible) does not deselect
- * the preset; paper matches either the preset's locale default or the stored paper size.
- */
-export function matchesPreset(
-  req: PresetChoices,
-  preset: ExportPreset,
-  source: ExportSource,
-  language?: string,
-  storedPaper?: PaperSize | null,
-): boolean {
-  const expected = presetChoices(preset, source, req.what, language);
-  // Only paper sizes are interchangeable: 16:9 is part of what the preset is, not a local habit.
-  const paperMatches =
-    req.paper === expected.paper ||
-    (expected.paper !== 'slide' &&
-      req.paper !== 'slide' &&
-      storedPaper != null &&
-      req.paper === storedPaper);
-  return (
-    req.format === expected.format &&
-    (source === 'canvas' || req.what === expected.what) &&
-    (req.what !== 'storyboard' || req.framesPerPage === expected.framesPerPage) &&
-    paperMatches &&
-    req.orientation === expected.orientation &&
-    req.audience === expected.audience &&
-    (req.format !== 'pdf' || req.titlePage === expected.titlePage) &&
-    (req.format !== 'pdf' || req.comments === expected.comments) &&
-    (req.audience === 'client' || req.hideGuestHidden === expected.hideGuestHidden) &&
-    (!framesOf(req.what) || req.approvedOnly === expected.approvedOnly) &&
-    (!teamPdf(req) || req.kickoffSummary === expected.kickoffSummary) &&
-    (!teamPdf(req) || req.callSheet === expected.callSheet)
-  );
-}
-
 /** Content made of frames, where "approved frames only" applies. */
 export function framesOf(what: ExportWhat): boolean {
   return what === 'storyboard' || what === 'shotlist';
 }
 
-/** The kickoff summary and the call sheet are PDF pages for the team only. */
-export function teamPdf(req: Pick<PresetChoices, 'format' | 'audience'>): boolean {
+/** The call sheet is a PDF page for the team only. */
+export function teamPdf(req: Pick<ExportRequest, 'format' | 'audience'>): boolean {
   return req.format === 'pdf' && req.audience === 'team';
 }
 
-/** Whether `preset` exports the content kind of the view the dialog was opened from. */
-export function presetMatchesView(
-  preset: ExportPreset,
-  source: ExportSource,
-  initialWhat?: ExportWhat,
-): boolean {
-  if (source === 'canvas') return true;
-  const viewWhat: ExportWhat = initialWhat ?? (source === 'shotlist' ? 'shotlist' : 'storyboard');
-  return presetChoices(preset, source).what === viewWhat;
-}
-
-function isDefaultPreferences(prefs: ExportPreferences): boolean {
-  return (
-    prefs.preset === DEFAULT_EXPORT_PREFERENCES.preset &&
-    prefs.format === DEFAULT_EXPORT_PREFERENCES.format &&
-    prefs.framesPerPage === DEFAULT_EXPORT_PREFERENCES.framesPerPage &&
-    prefs.paper === DEFAULT_EXPORT_PREFERENCES.paper &&
-    prefs.orientation === DEFAULT_EXPORT_PREFERENCES.orientation &&
-    prefs.audience === DEFAULT_EXPORT_PREFERENCES.audience &&
-    prefs.titlePage === DEFAULT_EXPORT_PREFERENCES.titlePage &&
-    prefs.comments === DEFAULT_EXPORT_PREFERENCES.comments &&
-    prefs.hideGuestHidden === DEFAULT_EXPORT_PREFERENCES.hideGuestHidden &&
-    prefs.approvedOnly === DEFAULT_EXPORT_PREFERENCES.approvedOnly &&
-    prefs.kickoffSummary === DEFAULT_EXPORT_PREFERENCES.kickoffSummary &&
-    prefs.callSheet === DEFAULT_EXPORT_PREFERENCES.callSheet
-  );
-}
-
 /**
- * Starting state of the dialog once the project's export settings load:
- * - A project that never saved preferences (or only uploaded a logo or theme) starts on the
- *   view's recommended preset with Personalizza closed.
- * - A remembered preset is used, with its current options, only if its content matches the open
- *   view; otherwise the view's recommended preset is selected so opening from Shot list never
- *   silently exports the storyboard.
- * - Personalizza opens automatically only when stored preferences do not match any preset.
+ * Starting state of the dialog once the project's export settings load: the stored preferences
+ * (the defaults for a project that never saved any, or when they could not be read), with the
+ * content of the open view and the reader's paper size while the project has none.
  */
 export function initialExportState(
-  loaded: ExportSettings,
+  loaded: ExportSettings | null,
   source: ExportSource,
   initialWhat: ExportWhat | undefined,
   language: string | undefined,
-  approvedFrames: boolean,
-): {
-  basePreset: ExportPreset;
-  customOpen: boolean;
-  req: ExportRequest;
-} {
-  const recommended = recommendedPreset(source, approvedFrames);
-  const {
-    logo,
-    logoAssetId: _id,
-    canEdit: _edit,
-    updatedAt,
-    preset: savedPreset,
-    theme: _theme,
-    projectColor: _color,
-    ...prefs
-  } = loaded;
-  const theme = resolveTheme(loaded);
-  if (!updatedAt || (savedPreset === null && isDefaultPreferences(loaded))) {
-    return {
-      basePreset: recommended,
-      customOpen: false,
-      req: {
-        ...presetChoices(recommended, source, initialWhat, language),
-        logo,
-        theme,
-      },
-    };
-  }
-  if (savedPreset !== null) {
-    if (!presetMatchesView(savedPreset, source, initialWhat)) {
-      return {
-        basePreset: recommended,
-        customOpen: false,
-        req: {
-          ...presetChoices(recommended, source, initialWhat, language),
-          logo,
-          theme,
-        },
-      };
-    }
-    // The preset is what was remembered: it starts from the preset's options as they are now,
-    // so a preset that gained options (#380: 16:9, approved only, kickoff, call sheet) gets them.
-    // The paper size the project chose stays, unless the preset is 16:9 or was saved as 16:9.
-    const choices = presetChoices(savedPreset, source, initialWhat, language);
-    const paper =
-      choices.paper !== 'slide' && prefs.paper && prefs.paper !== 'slide'
-        ? prefs.paper
-        : choices.paper;
-    return {
-      basePreset: savedPreset,
-      customOpen: false,
-      req: { ...choices, paper, logo, theme },
-    };
-  }
+): ExportRequest {
+  const prefs: ExportPreferences = loaded ?? DEFAULT_EXPORT_PREFERENCES;
   const what: ExportWhat =
     initialWhat ??
     (source === 'canvas' ? 'board' : source === 'shotlist' ? 'shotlist' : 'storyboard');
-  const req: ExportRequest = {
-    ...prefs,
-    what,
-    paper: prefs.paper ?? localePaper(language),
-    logo,
-    theme,
-  };
-  const matched =
-    [recommended, ...PRESET_ORDER].find(
-      (p) =>
-        presetMatchesView(p, source, initialWhat) &&
-        matchesPreset(req, p, source, language, prefs.paper),
-    ) ?? null;
-  if (matched) {
-    return {
-      basePreset: matched,
-      customOpen: false,
-      req,
-    };
-  }
   return {
-    basePreset: recommended,
-    customOpen: true,
-    req,
+    format: prefs.format,
+    what,
+    framesPerPage: prefs.framesPerPage,
+    paper: prefs.paper ?? localePaper(language),
+    orientation: prefs.orientation,
+    audience: prefs.audience,
+    titlePage: prefs.titlePage,
+    comments: prefs.comments,
+    hideGuestHidden: prefs.hideGuestHidden,
+    approvedOnly: prefs.approvedOnly,
+    callSheet: prefs.callSheet,
+    logo: loaded?.logo ?? null,
+    theme: loaded ? resolveTheme(loaded) : undefined,
   };
 }
 
@@ -351,7 +112,6 @@ export function preferencesPatch(
 ): Partial<ExportPreferences> {
   const out: Partial<ExportPreferences> = {};
   const keys = [
-    'preset',
     'format',
     'framesPerPage',
     'orientation',
@@ -360,7 +120,6 @@ export function preferencesPatch(
     'comments',
     'hideGuestHidden',
     'approvedOnly',
-    'kickoffSummary',
     'callSheet',
     'imageFormat',
     'imageAspect',

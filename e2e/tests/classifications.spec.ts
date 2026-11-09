@@ -183,9 +183,7 @@ test('frames keep their values while admins change the storyboard lists', async 
     await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=storyboard`);
     await page.getByRole('button', { name: 'Esporta PDF' }).click();
     const exporter = page.getByRole('dialog', { name: /Esporta/ });
-    // No frame is approved here, so the book is recommended and the pitch would print none.
-    await exporter.getByRole('radio', { name: /Pitch cliente/ }).click();
-    await exporter.getByRole('button', { name: /Personalizza/ }).click();
+    // No frame is approved here: every frame goes on paper.
     await exporter.getByRole('checkbox', { name: 'Solo inquadrature approvate' }).uncheck();
     const [download] = await Promise.all([
       page.waitForEvent('download'),

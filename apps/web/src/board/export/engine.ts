@@ -46,7 +46,6 @@ import {
   type DocInfo,
   type ExportKind,
   finish,
-  type Section,
   SHOT_COLUMNS,
   type Shot,
   sectionPages,
@@ -77,13 +76,7 @@ import {
 import type { FramesPerPage, Orientation, PaperSize } from './layout.ts';
 import { noteBlocks } from './note-text.ts';
 import type { Op, Page } from './pages.ts';
-import {
-  calendarDate,
-  callSheetSections,
-  kickoffSections,
-  loadPlanning,
-  type Planning,
-} from './planning.ts';
+import { calendarDate, callSheetSections, loadPlanning, type Planning } from './planning.ts';
 import { renderImages } from './render-canvas.ts';
 import { renderPdf } from './render-pdf.ts';
 import { chosenScenes, type Department, type SceneChoice, withoutOmitted } from './scene-choice.ts';
@@ -117,8 +110,6 @@ export interface ExportRequest {
   hideGuestHidden: boolean;
   /** Storyboard and shot list: only frames approved in review. */
   approvedOnly: boolean;
-  /** PDF for the team: the kickoff summary after the title page. */
-  kickoffSummary: boolean;
   /** PDF for the team: the call sheet of every shooting day, at the end. */
   callSheet: boolean;
   /** PNG and JPEG: the shape of the picture; left out, "Original". */
@@ -366,11 +357,9 @@ export async function buildPages(
   let summary = '';
   let sheetCount = 0;
   const shownIds = new Set<string>();
-  // Shooting days and people come from the server, once per preview.
+  // Shooting days come from the server, once per preview.
   const fetchPlanning = (): Promise<Planning> =>
-    env.scope
-      ? loadPlanning(env.scope.projectId, env.scope.boardId)
-      : Promise.resolve({ days: [], members: [] });
+    env.scope ? loadPlanning(env.scope.boardId) : Promise.resolve({ days: [] });
   const planningOnce = async () => {
     const planning = preview
       ? await env.cache.once('planning', fetchPlanning)
@@ -583,36 +572,24 @@ export async function buildPages(
     if (entries.length) content.push(...commentPages(setup, entries, ctx, words));
   }
 
-  // Kickoff summary first, call sheets last: shooting days and people come from the server.
-  const withSummary = req.kickoffSummary && teamPdf(req);
-  const withSheets = req.callSheet && teamPdf(req);
-  if (withSummary || withSheets) {
+  // Call sheets last: shooting days come from the server.
+  if (req.callSheet && teamPdf(req)) {
     const planning = await planningOnce();
-    if (withSummary) {
-      const todos = all.flatMap((raw) => {
-        const el = exportable(raw, lookup, filter);
-        return el?.type === 'todo' ? [el] : [];
-      });
-      const sections: Section[] = kickoffSections(planning, todos, t, env.language);
-      content.unshift(...sectionPages(setup, t('export.kickoff.title'), sections, ctx));
-    }
-    if (withSheets) {
-      planning.days.forEach((day, i) => {
-        const heading = [
-          t('export.callSheetTitle'),
-          calendarDate(day.date, env.language, 'long'),
-          t('callSheet.dayOf', { n: i + 1, total: planning.days.length }),
-        ].join(' · ');
-        content.push(
-          ...sectionPages(
-            setup,
-            heading,
-            callSheetSections(day, (id) => labels.get(id), t),
-            ctx,
-          ),
-        );
-      });
-    }
+    planning.days.forEach((day, i) => {
+      const heading = [
+        t('export.callSheetTitle'),
+        calendarDate(day.date, env.language, 'long'),
+        t('callSheet.dayOf', { n: i + 1, total: planning.days.length }),
+      ].join(' · ');
+      content.push(
+        ...sectionPages(
+          setup,
+          heading,
+          callSheetSections(day, (id) => labels.get(id), t),
+          ctx,
+        ),
+      );
+    });
   }
 
   const info: DocInfo = {

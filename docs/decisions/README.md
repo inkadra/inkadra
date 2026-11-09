@@ -89,6 +89,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0084](0084-public-demo.md)                          | A public demo, closed by default                                                       |
 | [0085](0085-two-demo-projects.md)                    | Two sample projects in the demo, the film and a photo shoot                            |
 | [0086](0086-guest-decisions-in-archives.md)          | Guest decisions and proofing travel with the archive, on revoked links                 |
+| [0087](0087-no-export-presets.md)                    | No audience presets and no kickoff summary in the PDF export                           |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

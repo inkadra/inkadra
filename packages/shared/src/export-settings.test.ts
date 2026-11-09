@@ -22,33 +22,28 @@ describe('export settings contract', () => {
       expect(UpdateExportSettings.safeParse({ framesPerPage: n }).success).toBe(false);
   });
 
-  it('takes partial updates, a preset, a logo or its removal, and nothing unknown', () => {
+  it('takes partial updates, a logo or its removal, and nothing unknown', () => {
     expect(UpdateExportSettings.parse({})).toEqual({});
-    expect(
-      UpdateExportSettings.parse({ preset: 'client-pitch', paper: null, logoAssetId: null }),
-    ).toEqual({
-      preset: 'client-pitch',
+    expect(UpdateExportSettings.parse({ paper: null, logoAssetId: null })).toEqual({
       paper: null,
       logoAssetId: null,
     });
-    expect(UpdateExportSettings.parse({ preset: null })).toEqual({ preset: null });
-    expect(UpdateExportSettings.safeParse({ preset: 'unknown' }).success).toBe(false);
+    // The audience presets and the kickoff summary are gone (decision 0087).
+    expect(UpdateExportSettings.safeParse({ preset: 'client-pitch' }).success).toBe(false);
+    expect(UpdateExportSettings.safeParse({ kickoffSummary: true }).success).toBe(false);
     expect(UpdateExportSettings.safeParse({ logoAssetId: 'not-an-id' }).success).toBe(false);
     expect(UpdateExportSettings.safeParse({ logo: {} }).success).toBe(false);
     expect(UpdateExportSettings.safeParse({ audience: 'everyone' }).success).toBe(false);
   });
 
-  it('adds the 16:9 page and the approved, kickoff and call sheet options, off by default', () => {
+  it('adds the 16:9 page and the approved and call sheet options, off by default', () => {
     expect(UpdateExportSettings.parse({ paper: 'slide' })).toEqual({ paper: 'slide' });
-    expect(
-      UpdateExportSettings.parse({ approvedOnly: true, kickoffSummary: true, callSheet: true }),
-    ).toEqual({ approvedOnly: true, kickoffSummary: true, callSheet: true });
-    expect(UpdateExportSettings.safeParse({ approvedOnly: 'yes' }).success).toBe(false);
-    expect(DEFAULT_EXPORT_PREFERENCES).toMatchObject({
-      approvedOnly: false,
-      kickoffSummary: false,
-      callSheet: false,
+    expect(UpdateExportSettings.parse({ approvedOnly: true, callSheet: true })).toEqual({
+      approvedOnly: true,
+      callSheet: true,
     });
+    expect(UpdateExportSettings.safeParse({ approvedOnly: 'yes' }).success).toBe(false);
+    expect(DEFAULT_EXPORT_PREFERENCES).toMatchObject({ approvedOnly: false, callSheet: false });
   });
 
   it('takes JPEG and the remembered picture options, all optional', () => {

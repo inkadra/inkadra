@@ -10,7 +10,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import itLocale from '../../i18n/it.json';
-import { type ReviewsState, setReviews } from '../review-store.ts';
+import { setReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
 import { ExportDialog } from './ExportDialog.tsx';
 
@@ -45,7 +45,7 @@ vi.mock('../../lib/api.ts', () => ({
   },
 }));
 
-/** A board whose frames are `frames`: only what the dialog reads to recommend a preset. */
+/** A board whose frames are `frames`: only what the dialog reads from it here. */
 function storeWith(...frames: { id: string; approved?: boolean }[]): BoardStore {
   const byId = new Map(frames.map((f) => [f.id, { type: 'frame', parent: null, ...f }]));
   return { getSnapshot: () => ({ byId }) } as unknown as BoardStore;
@@ -63,7 +63,7 @@ const freshSettings: ExportSettings = {
   updatedAt: null,
 };
 
-describe('ExportDialog preset state and customization', () => {
+describe('ExportDialog options', () => {
   let host: HTMLDivElement;
   let root: Root;
 
@@ -82,18 +82,8 @@ describe('ExportDialog preset state and customization', () => {
     host.remove();
   });
 
-  it('deselects the preset and shows "modifichi il preset N" when an option is edited, and restores the preset when reverted', async () => {
-    getMock.mockResolvedValue({
-      ...DEFAULT_EXPORT_PREFERENCES,
-      logoAssetId: null,
-      logo: null,
-      theme: DEFAULT_PROJECT_THEME,
-      projectColor: 'blue',
-      canEdit: true,
-      updatedAt: null,
-    });
-
-    await act(async () => {
+  const renderStoryboard = () =>
+    act(async () => {
       root.render(
         <ExportDialog
           source="storyboard"
@@ -109,250 +99,76 @@ describe('ExportDialog preset state and customization', () => {
         />,
       );
     });
+  const checkOf = (label: string) =>
+    [...host.querySelectorAll<HTMLLabelElement>('.export__options .export__check')]
+      .find((el) => el.textContent?.startsWith(label))
+      ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+  const paper = () =>
+    host.querySelector('.export__row [role="combobox"]')?.getAttribute('data-value');
+
+  it('shows the PDF options straight away, with no presets and no kickoff summary', async () => {
+    getMock.mockResolvedValue(freshSettings);
+    await renderStoryboard();
 
     const dialog = host.querySelector('dialog');
     expect(dialog?.querySelector('.ink-dialog__title')?.textContent).toBe('Esporta «Spot Lagunc»');
     expect(host.querySelector('.export__remembered')?.textContent).toBe(
       'Ricordato per questo progetto',
     );
+    expect(host.querySelector('input[type="radio"][value="client-pitch"]')).toBeNull();
+    expect(host.textContent).not.toContain('Personalizza');
+    expect(host.textContent).not.toContain('Consigliato');
+    expect(host.textContent).not.toContain('Riepilogo kickoff');
 
-    const pitchRadio = host.querySelector<HTMLInputElement>(
-      'input.export__preset-input[value="client-pitch"]',
-    );
-    expect(pitchRadio?.checked).toBe(true);
-    expect(host.querySelector('.export__disclosure-note')?.textContent).toBe(
-      '· 16:9 · Orizzontale, PDF, clienti',
-    );
-
-    // Open Personalizza and edit an option (enable comments).
-    const disclosure = host.querySelector<HTMLButtonElement>('.export__disclosure');
-    await act(async () => disclosure?.click());
-
-    const checkOf = (label: string) =>
-      [...host.querySelectorAll<HTMLLabelElement>('.export__options .export__check')]
-        .find((el) => el.textContent?.startsWith(label))
-        ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
-    const commentsCheckbox = checkOf('Includi i commenti');
-    expect(commentsCheckbox?.checked).toBe(false);
-
-    await act(async () => commentsCheckbox?.click());
-    expect(commentsCheckbox?.checked).toBe(true);
-    expect(pitchRadio?.checked).toBe(false);
-    expect(host.querySelector('.export__disclosure-note')?.textContent).toBe(
-      '· modifichi il preset 1',
-    );
-
-    // Close Personalizza while modified: still shows "modifichi il preset 1".
-    await act(async () => disclosure?.click());
-    expect(host.querySelector('.export__disclosure-note')?.textContent).toBe(
-      '· modifichi il preset 1',
-    );
-
-    // Reopen and revert the edited option: preset comes back.
-    await act(async () => disclosure?.click());
-    await act(async () => commentsCheckbox?.click());
-    expect(commentsCheckbox?.checked).toBe(false);
-    expect(pitchRadio?.checked).toBe(true);
-
-    await act(async () => disclosure?.click());
-    expect(host.querySelector('.export__disclosure-note')?.textContent).toBe(
-      '· 16:9 · Orizzontale, PDF, clienti',
-    );
-  });
-
-  it('offers 16:9, approved frames only, kickoff summary and call sheet through the presets', async () => {
-    getMock.mockResolvedValue({
-      ...DEFAULT_EXPORT_PREFERENCES,
-      logoAssetId: null,
-      logo: null,
-      theme: DEFAULT_PROJECT_THEME,
-      projectColor: 'blue',
-      canEdit: true,
-      updatedAt: null,
-    });
-    await act(async () => {
-      root.render(
-        <ExportDialog
-          source="storyboard"
-          store={approvedStore}
-          projectId="p1"
-          boardId="b1"
-          projectName="Spot Lagunc"
-          boardTitle="Storyboard"
-          boards={null}
-          selection={new Set()}
-          visible={null}
-          onClose={() => {}}
-        />,
-      );
-    });
-    const checkOf = (label: string) =>
-      [...host.querySelectorAll<HTMLLabelElement>('.export__options .export__check')]
-        .find((el) => el.textContent?.startsWith(label))
-        ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
-    const radio = (id: string) =>
-      host.querySelector<HTMLInputElement>(`input.export__preset-input[value="${id}"]`);
-    const orientation = () => host.querySelector('.export__row fieldset');
-
-    // Client pitch: a 16:9 slide (no orientation to pick), approved frames only, and no
-    // kickoff or call sheet, which are for the team.
-    expect(host.querySelector('.export__row [role="combobox"]')?.getAttribute('data-value')).toBe(
-      'slide',
-    );
-    expect(orientation()).toBeNull();
-    expect(checkOf('Solo inquadrature approvate')?.checked).toBe(true);
-    expect(checkOf('Riepilogo kickoff')?.disabled).toBe(true);
+    // The defaults of a project that never saved any: A4 landscape for the client.
+    const options = host.querySelector<HTMLElement>('.export__pdf-options');
+    expect(options?.hidden).toBe(false);
+    expect(paper()).toBe('a4');
+    expect(checkOf('Copertina')?.checked).toBe(true);
+    expect(checkOf('Solo inquadrature approvate')?.checked).toBe(false);
     expect(checkOf('Ordine del giorno')?.disabled).toBe(true);
-    await act(async () => checkOf('Solo inquadrature approvate')?.click());
-    expect(radio('client-pitch')?.checked).toBe(false);
-    await act(async () => checkOf('Solo inquadrature approvate')?.click());
-    expect(radio('client-pitch')?.checked).toBe(true);
 
-    // Production book: A4 portrait with the call sheet.
-    await act(async () => radio('production-book')?.click());
-    expect(host.querySelector('.export__row [role="combobox"]')?.getAttribute('data-value')).toBe(
-      'a4',
-    );
-    expect(orientation()).not.toBeNull();
+    // Every option is a direct choice.
+    await act(async () => checkOf('Solo inquadrature approvate')?.click());
+    expect(checkOf('Solo inquadrature approvate')?.checked).toBe(true);
+    const team = [...host.querySelectorAll<HTMLLabelElement>('.ink-radio-group__option')]
+      .find((el) => el.textContent?.trim() === 'Il team')
+      ?.querySelector<HTMLInputElement>('input');
+    await act(async () => team?.click());
+    expect(checkOf('Ordine del giorno')?.disabled).toBe(false);
+    await act(async () => checkOf('Ordine del giorno')?.click());
     expect(checkOf('Ordine del giorno')?.checked).toBe(true);
-    expect(checkOf('Riepilogo kickoff')?.checked).toBe(false);
-
-    // Internal kickoff: the kickoff summary.
-    await act(async () => radio('internal-kickoff')?.click());
-    expect(checkOf('Riepilogo kickoff')?.checked).toBe(true);
-    expect(checkOf('Ordine del giorno')?.checked).toBe(false);
-    await act(async () => checkOf('Riepilogo kickoff')?.click());
-    expect(radio('internal-kickoff')?.checked).toBe(false);
   });
 
-  it('waits for settings before offering presets and restores the remembered value without early clicks', async () => {
+  it('waits for settings and starts from the options the project remembers', async () => {
     let resolveSettings!: (settings: ExportSettings) => void;
     getMock.mockReturnValue(
       new Promise((resolve) => {
         resolveSettings = resolve;
       }),
     );
-    await act(async () => {
-      root.render(
-        <ExportDialog
-          source="storyboard"
-          store={approvedStore}
-          projectId="p1"
-          boardId="b1"
-          projectName="Spot Lagunc"
-          boardTitle="Storyboard"
-          boards={null}
-          selection={new Set()}
-          visible={null}
-          onClose={() => {}}
-        />,
-      );
-    });
-    expect(host.querySelector('.export__preset-input')).toBeNull();
+    await renderStoryboard();
+    expect(host.querySelector('.export__pdf-options')).toBeNull();
     expect(host.querySelector<HTMLButtonElement>('.export__submit')?.disabled).toBe(true);
     await act(async () =>
       resolveSettings({
-        ...DEFAULT_EXPORT_PREFERENCES,
-        preset: 'internal-kickoff',
+        ...freshSettings,
+        paper: 'slide',
         audience: 'team',
-        comments: true,
+        approvedOnly: true,
+        callSheet: true,
         hideGuestHidden: false,
-        logoAssetId: null,
-        logo: null,
-        theme: DEFAULT_PROJECT_THEME,
-        projectColor: 'blue',
-        canEdit: true,
         updatedAt: '2026-10-01T12:00:00.000Z',
       }),
     );
-    expect(host.querySelector<HTMLInputElement>('input[value="internal-kickoff"]')?.checked).toBe(
-      true,
-    );
-    expect(host.querySelector<HTMLInputElement>('input[value="client-pitch"]')?.checked).toBe(
-      false,
-    );
-    expect(host.querySelector('.export__disclosure')?.getAttribute('aria-expanded')).toBe('false');
+    expect(paper()).toBe('slide');
+    expect(checkOf('Solo inquadrature approvate')?.checked).toBe(true);
+    expect(checkOf('Ordine del giorno')?.checked).toBe(true);
     expect(host.querySelector<HTMLButtonElement>('.export__submit')?.disabled).toBe(false);
   });
 
-  const renderStoryboard = (store: BoardStore) =>
-    act(async () => {
-      root.render(
-        <ExportDialog
-          source="storyboard"
-          store={store}
-          projectId="p1"
-          boardId="b1"
-          projectName="Spot Lagunc"
-          boardTitle="Storyboard"
-          boards={null}
-          selection={new Set()}
-          visible={null}
-          onClose={() => {}}
-        />,
-      );
-    });
-  const checked = () =>
-    host.querySelector<HTMLInputElement>('input.export__preset-input:checked')?.value;
-  const badged = () =>
-    host
-      .querySelector('.export__preset-badge')
-      ?.closest('.export__preset')
-      ?.querySelector<HTMLInputElement>('input')?.value;
-
-  it('recommends the production book from a Storyboard without approved frames, and still allows the pitch', async () => {
-    getMock.mockResolvedValue(freshSettings);
-    await renderStoryboard(storeWith({ id: 'f1' }, { id: 'f2' }));
-    expect(checked()).toBe('production-book');
-    expect(badged()).toBe('production-book');
-    // Picked by hand, the pitch stays available: its PDF says no frame is approved yet.
-    await act(async () =>
-      host.querySelector<HTMLInputElement>('input[value="client-pitch"]')?.click(),
-    );
-    expect(checked()).toBe('client-pitch');
-    expect(host.querySelector<HTMLButtonElement>('.export__submit')?.disabled).toBe(false);
-  });
-
-  it('recommends the pitch for a frame approved in review, waiting for review statuses to load', async () => {
-    getMock.mockResolvedValue(freshSettings);
-    setReviews({ reviews: new Map(), reviewsStatus: 'loading' });
-    await renderStoryboard(storeWith({ id: 'f1' }));
-    // No guess while the statuses are on their way: the presets appear once they are known.
-    expect(host.querySelector('.export__preset-input')).toBeNull();
-    await act(async () =>
-      setReviews({
-        reviews: new Map([['f1', { status: 'approved' }]]) as unknown as ReviewsState['reviews'],
-        reviewsStatus: 'ready',
-      }),
-    );
-    expect(checked()).toBe('client-pitch');
-    expect(badged()).toBe('client-pitch');
-  });
-
-  it('recommends without review statuses that never arrive', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    try {
-      getMock.mockResolvedValue(freshSettings);
-      setReviews({ reviews: new Map(), reviewsStatus: 'loading' });
-      await renderStoryboard(storeWith({ id: 'f1' }));
-      expect(host.querySelector('.export__preset-input')).toBeNull();
-      await act(async () => vi.advanceTimersByTime(1500));
-      expect(checked()).toBe('production-book');
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('hides "Ricordato per questo progetto" when the user cannot edit project settings and preserves canvas scope across presets', async () => {
-    getMock.mockResolvedValue({
-      ...DEFAULT_EXPORT_PREFERENCES,
-      logoAssetId: null,
-      logo: null,
-      theme: DEFAULT_PROJECT_THEME,
-      projectColor: 'blue',
-      canEdit: false,
-      updatedAt: null,
-    });
+  it('hides "Ricordato per questo progetto" from readers who cannot edit, and keeps the canvas scope', async () => {
+    getMock.mockResolvedValue({ ...freshSettings, canEdit: false });
 
     await act(async () => {
       root.render(
@@ -373,14 +189,7 @@ describe('ExportDialog preset state and customization', () => {
     });
 
     expect(host.querySelector('.export__remembered')).toBeNull();
-
-    // Pick preset 2 (Libro di produzione) on a canvas board: scope stays "selection".
-    const bookRadio = host.querySelector<HTMLInputElement>(
-      'input.export__preset-input[value="production-book"]',
-    );
-    await act(async () => bookRadio?.click());
-    expect(bookRadio?.checked).toBe(true);
-    expect(host.querySelector('.export__custom-body')?.textContent).toContain('whatSelection');
+    expect(host.querySelector('.export__pdf-options')?.textContent).toContain('whatSelection');
   });
 
   const renderImage = (
@@ -414,18 +223,16 @@ describe('ExportDialog preset state and customization', () => {
       .find((el) => el.textContent?.trim() === name)
       ?.querySelector<HTMLInputElement>('input');
 
-  it('opens a picture from a menu on the image options, with no presets', async () => {
+  it('opens a picture from a menu on the image options', async () => {
     await renderImage(new Set(['a']));
     expect(radio('PNG')?.checked).toBe(true);
     expect(radio('4:5')?.checked).toBe(true);
     expect(radio('Riempi')?.checked).toBe(true);
-    expect(host.querySelector('.export__preset-input')).toBeNull();
-    expect(host.textContent).toContain('I preset 1–3 sono documenti PDF');
+    expect(host.querySelector('.export__pdf-options')).toBeNull();
     // One card: no choice of how many images.
     expect(radio('Una per card')).toBeUndefined();
     await act(async () => radio('PDF')?.click());
-    expect(host.querySelector('.export__preset-input')).not.toBeNull();
-    expect(host.textContent).not.toContain('I preset 1–3 sono documenti PDF');
+    expect(host.querySelector('.export__pdf-options')).not.toBeNull();
   });
 
   it('defaults to one image per card with a social format, and to one picture with Original', async () => {
@@ -545,7 +352,7 @@ describe('ExportDialog scene sheets', () => {
     host.remove();
   });
 
-  it('offers the department and the scenes, keeping the production book preset', async () => {
+  it('offers the department and the scenes', async () => {
     // happy-dom has no popover: the list opens in place.
     HTMLElement.prototype.showPopover ??= () => {};
     HTMLElement.prototype.hidePopover ??= () => {};
@@ -579,11 +386,6 @@ describe('ExportDialog scene sheets', () => {
         />,
       );
     });
-    // The production book prints the scene sheets: the preset stays selected.
-    expect(
-      host.querySelector<HTMLInputElement>('input.export__preset-input[value="production-book"]')
-        ?.checked,
-    ).toBe(true);
     const radios = [...host.querySelectorAll<HTMLInputElement>('.export__radio input')];
     expect(radios.map((r) => r.value)).toEqual([
       'everything',
@@ -596,10 +398,6 @@ describe('ExportDialog scene sheets', () => {
     expect(host.querySelector('.export__departments legend')?.textContent).toBe('RepartoNuovo');
     await act(async () => radios[1]?.click());
     expect(radios[1]?.checked).toBe(true);
-    expect(
-      host.querySelector<HTMLInputElement>('input.export__preset-input[value="production-book"]')
-        ?.checked,
-    ).toBe(true);
 
     const scenes = [...host.querySelectorAll('.export__departments + .export__field')].at(0);
     const trigger = scenes?.querySelector<HTMLButtonElement>('[role="combobox"]');

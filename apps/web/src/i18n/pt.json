@@ -3231,51 +3231,17 @@
     "progressPages": "Desenhando páginas… {{done}} de {{total}}",
     "missingGlyphs": "Alguns caracteres ({{chars}}) não estão na fonte da exportação e serão impressos como quadrados vazios.",
     "logoTimeout": "O envio do logo está demorando demais. Tente novamente.",
-    "presetsLabel": "Predefinições de exportação",
-    "recommended": "Recomendado",
-    "customize": "Personalizar",
-    "editingPreset": "editando a predefinição {{n}}",
     "remembered": "Lembrado para este projeto",
     "submitPages_one": "Exportar {{count}} página",
     "submitPages_other": "Exportar {{count}} páginas",
-    "presets": {
-      "client-pitch": {
-        "title": "Pitch para cliente",
-        "description": "16:9 · só frames aprovados · um por página · sem notas internas"
-      },
-      "production-book": {
-        "title": "Livro de produção",
-        "description": "A4 · todos os campos · decupagem e ordem do dia · números de página"
-      },
-      "internal-kickoff": {
-        "title": "Kickoff interno",
-        "description": "Datas, pessoas, tarefas e resumo do cronograma"
-      }
-    },
     "approvedOnly": "Só frames aprovados",
-    "kickoffSummary": "Resumo do kickoff: datas, pessoas, tarefas e cronograma",
     "callSheet": "Ordem do dia de cada diária",
     "teamOnlyHint": "Só nos PDFs para a equipe.",
     "callSheetTitle": "Ordem do dia",
-    "kickoff": {
-      "title": "Resumo do kickoff",
-      "dates": "Datas",
-      "period_one": "{{count}} diária: {{from}}",
-      "period_other": "{{count}} diárias, de {{from}} a {{to}}",
-      "noDays": "Nenhuma diária no cronograma.",
-      "people": "Pessoas",
-      "noPeople": "Nenhuma pessoa para mostrar.",
-      "tasks": "Tarefas abertas",
-      "noTasks": "Nenhuma tarefa aberta.",
-      "schedule": "Cronograma",
-      "shots_one": "{{count}} plano",
-      "shots_other": "{{count}} planos"
-    },
     "formatJpeg": "JPEG",
     "jpegHint": "Arquivo mais leve, sem transparência.",
     "pngHint": "Qualidade total, arquivo mais pesado.",
     "openImage": "Exportar imagem…",
-    "presetsOff": "As predefinições 1–3 são documentos PDF: elas voltam quando você escolhe PDF.",
     "whatCard": "Card “{{name}}”",
     "whatFrame": "Frame {{label}}",
     "aspect": "Proporção",

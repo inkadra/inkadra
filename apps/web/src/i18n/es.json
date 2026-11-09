@@ -3231,51 +3231,17 @@
     "progressPages": "Dibujando páginas… {{done}} de {{total}}",
     "missingGlyphs": "Algunos caracteres ({{chars}}) no están en la fuente de exportación y se imprimirán como recuadros vacíos.",
     "logoTimeout": "La subida del logotipo está tardando demasiado. Inténtalo de nuevo.",
-    "presetsLabel": "Ajustes predefinidos de exportación",
-    "recommended": "Recomendado",
-    "customize": "Personalizar",
-    "editingPreset": "editando el ajuste predefinido {{n}}",
     "remembered": "Recordado para este proyecto",
     "submitPages_one": "Exportar {{count}} página",
     "submitPages_other": "Exportar {{count}} páginas",
-    "presets": {
-      "client-pitch": {
-        "title": "Pitch al cliente",
-        "description": "16:9 · solo planos aprobados · uno por página · sin notas internas"
-      },
-      "production-book": {
-        "title": "Libro de producción",
-        "description": "A4 · todos los campos · lista de planos y orden de rodaje · números de página"
-      },
-      "internal-kickoff": {
-        "title": "Kickoff interno",
-        "description": "Fechas, personas, tareas y resumen del plan de rodaje"
-      }
-    },
     "approvedOnly": "Solo planos aprobados",
-    "kickoffSummary": "Resumen de kickoff: fechas, personas, tareas y plan de rodaje",
     "callSheet": "Orden de rodaje de cada jornada",
     "teamOnlyHint": "Solo en los PDF para el equipo.",
     "callSheetTitle": "Orden de rodaje",
-    "kickoff": {
-      "title": "Resumen de kickoff",
-      "dates": "Fechas",
-      "period_one": "{{count}} jornada de rodaje: {{from}}",
-      "period_other": "{{count}} jornadas de rodaje, del {{from}} al {{to}}",
-      "noDays": "No hay jornadas de rodaje en el plan.",
-      "people": "Personas",
-      "noPeople": "No hay personas que mostrar.",
-      "tasks": "Tareas abiertas",
-      "noTasks": "Sin tareas abiertas.",
-      "schedule": "Plan de rodaje",
-      "shots_one": "{{count}} plano",
-      "shots_other": "{{count}} planos"
-    },
     "formatJpeg": "JPEG",
     "jpegHint": "Archivo más ligero, sin transparencia.",
     "pngHint": "Calidad completa, archivo más pesado.",
     "openImage": "Exportar imagen…",
-    "presetsOff": "Los ajustes 1–3 son documentos PDF: vuelven cuando eliges PDF.",
     "whatCard": "Tarjeta «{{name}}»",
     "whatFrame": "Plano {{label}}",
     "aspect": "Proporción",
