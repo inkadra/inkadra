@@ -2587,9 +2587,14 @@
   "projectDelete": {
     "menu": "Eliminar proyecto…",
     "title": "¿Eliminar «{{name}}»?",
-    "body": "Todos los tableros, recursos y archivos de este proyecto se eliminan para todos los miembros. No se puede deshacer.",
+    "body": "Todos los tableros, recursos y archivos de este proyecto se eliminan para todos los miembros.",
+    "irreversible": "No se puede deshacer.",
     "alternatives": "Para quitarlo de en medio, archívalo. Para conservar una copia, expórtalo antes.",
-    "confirmLabel": "Escribe el nombre del proyecto para confirmar",
+    "confirmBefore": "Escribe",
+    "confirmAfter": "para confirmar",
+    "placeholder": "Nombre del proyecto",
+    "copy": "Copiar «{{name}}»",
+    "copied": "Copiado",
     "confirm": "Eliminar definitivamente",
     "error": "No se pudo eliminar el proyecto. Inténtalo de nuevo."
   },

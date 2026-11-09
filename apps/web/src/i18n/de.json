@@ -2587,9 +2587,14 @@
   "projectDelete": {
     "menu": "Projekt löschen…",
     "title": "„{{name}}“ löschen?",
-    "body": "Alle Boards, Assets und Dateien dieses Projekts werden für alle Mitglieder gelöscht. Das lässt sich nicht rückgängig machen.",
+    "body": "Alle Boards, Assets und Dateien dieses Projekts werden für alle Mitglieder gelöscht.",
+    "irreversible": "Das lässt sich nicht rückgängig machen.",
     "alternatives": "Um es aus dem Weg zu räumen, archiviere es stattdessen. Um eine Kopie zu behalten, exportiere es vorher.",
-    "confirmLabel": "Gib zur Bestätigung den Projektnamen ein",
+    "confirmBefore": "Gib",
+    "confirmAfter": "zur Bestätigung ein",
+    "placeholder": "Projektname",
+    "copy": "„{{name}}“ kopieren",
+    "copied": "Kopiert",
     "confirm": "Endgültig löschen",
     "error": "Das Projekt konnte nicht gelöscht werden. Versuch es noch mal."
   },

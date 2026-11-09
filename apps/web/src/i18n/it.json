@@ -2587,9 +2587,14 @@
   "projectDelete": {
     "menu": "Elimina progetto…",
     "title": "Eliminare «{{name}}»?",
-    "body": "Tutte le board, gli asset e i file di questo progetto vengono eliminati per tutti i membri. Non si può annullare.",
+    "body": "Tutte le board, gli asset e i file di questo progetto vengono eliminati per tutti i membri.",
+    "irreversible": "Non si può annullare.",
     "alternatives": "Per toglierlo di mezzo, archivialo. Per tenerne una copia, esportalo prima.",
-    "confirmLabel": "Scrivi il nome del progetto per confermare",
+    "confirmBefore": "Scrivi",
+    "confirmAfter": "per confermare",
+    "placeholder": "Nome del progetto",
+    "copy": "Copia «{{name}}»",
+    "copied": "Copiato",
     "confirm": "Elimina definitivamente",
     "error": "Non è stato possibile eliminare il progetto. Riprova."
   },
