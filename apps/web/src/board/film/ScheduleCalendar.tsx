@@ -839,9 +839,9 @@ function DayHead({
               <Icon name="sun" size={12} />
               <span className="schedule__sun-text">
                 {[
-                sun.sunrise !== null && t('schedule.sunrise', { time: clockLabel(sun.sunrise) }),
-                sun.sunset !== null && t('schedule.sunset', { time: clockLabel(sun.sunset) }),
-              ]
+                  sun.sunrise !== null && t('schedule.sunrise', { time: clockLabel(sun.sunrise) }),
+                  sun.sunset !== null && t('schedule.sunset', { time: clockLabel(sun.sunset) }),
+                ]
                   .filter(Boolean)
                   .join(' · ')}
               </span>
