@@ -151,7 +151,9 @@ export function paginateRows(
   heights.forEach((h, i) => {
     let chain = h;
     for (let j = i; keepWithNext[j] && j + 1 < heights.length; j++) chain += heights[j + 1] ?? 0;
-    if (current.length > 0 && used + chain > available) {
+    // A chain taller than a page cannot stay together: it breaks where its rows stop fitting.
+    const together = chain > available ? h : chain;
+    if (current.length > 0 && used + together > available) {
       pages.push(current);
       current = [];
       used = 0;

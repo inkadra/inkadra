@@ -98,6 +98,11 @@ describe('pagination', () => {
   it('moves a row kept with the next one onto the next page with it', () => {
     expect(paginateRows([40, 35, 30], 100, [false, true])).toEqual([[0], [1, 2]]);
     expect(paginateRows([40, 20, 20, 30], 100, [false, true, true])).toEqual([[0], [1, 2, 3]]);
+    // Kept rows taller than a page together: the title is not left alone on a page.
+    expect(paginateRows([20, 50, 50, 50], 100, [true, true, true])).toEqual([
+      [0, 1],
+      [2, 3],
+    ]);
     expect(paginateRows([40, 30, 20], 100, [false, true])).toEqual([[0, 1, 2]]);
   });
 
