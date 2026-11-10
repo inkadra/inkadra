@@ -23,7 +23,7 @@ export const dark = {
   'canvas-dot': '#2E2E2E',
   'text-primary': '#EDEDED',
   'text-secondary': '#9A9A9A',
-  'text-muted': '#808086',
+  'text-muted': '#929298',
   'text-icon': '#C8C8CC',
   'text-nav': '#A8A8AE',
   'accent-primary': '#3B7CF6',

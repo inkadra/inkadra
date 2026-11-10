@@ -1539,7 +1539,7 @@ html[data-view-direction]::view-transition-new(board-view) {
 }
 
 .shots__group-pill--shot {
-  background: var(--ink-status-ok);
+  background: var(--ink-positive-button);
   color: var(--ink-on-accent);
 }
 
