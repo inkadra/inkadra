@@ -194,6 +194,8 @@ export function registerCrewRoutes(
     const { revision, from, fromRevision } = MergeCrewMember.parse(req.body);
     if (from === memberId) throw new HttpError('bad_request', 'A row cannot merge with itself.');
     const row = await db.transaction(async (tx) => {
+      // Both rows are locked before the days are read: a day save holding them `for share`
+      // commits first and its call is moved below, or waits and then drops the removed row.
       const rows = await tx
         .select()
         .from(crewMember)

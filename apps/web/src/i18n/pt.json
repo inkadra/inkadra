@@ -4411,7 +4411,7 @@
           },
           "6": {
             "title": "Ordem do dia",
-            "text": "Horários com nascer e pôr do sol, locais, equipa com telefones, plano com notas e o que levar. Escolhe as secções e imprime para a equipa."
+            "text": "Horários com nascer e pôr do sol, locais, equipa com telefones, plano com notas e o que levar. Escolhe as secções e imprime para a equipa. O nascer e o pôr do sol seguem o fuso do projeto: muda-o em Projetos, menu ⋯ do cartão, «Tipo e fuso horário». «Automático» usa o fuso do dispositivo."
           }
         }
       },

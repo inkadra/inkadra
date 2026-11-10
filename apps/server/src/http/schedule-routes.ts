@@ -93,24 +93,40 @@ export function firstCalls(
   return first;
 }
 
+type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
 export function registerScheduleRoutes(
   app: FastifyInstance,
   { db, auth, boardReader }: { db: Database; auth: Auth; boardReader?: BoardReader },
 ) {
-  const cleanInput = async (
-    input: ShootingDayInput,
+  /**
+   * Drops calls to rows that are not in the project. Runs in the transaction that writes the
+   * days: the referenced rows stay locked `for share` until it commits, so a merge or a delete of
+   * a row (which locks it `for update` first) either waits and then finds the call, or runs first
+   * and the call is dropped here. One sorted lock per request keeps a batch from deadlocking.
+   */
+  const cleanInputs = async <T extends ShootingDayInput>(
+    tx: Transaction,
+    inputs: T[],
     team: boolean,
     projectId: string,
-    source: Database | Transaction = db,
   ) => {
-    const clean = ownInput(input, team);
-    if (!clean.calls) return clean;
-    const members = await source
+    const clean = inputs.map((input) => ownInput(input, team));
+    const calls = clean.flatMap((input) => input.calls ?? []);
+    const wanted = [...new Set(calls.map((call) => call.crewMemberId))];
+    if (!wanted.length) return clean;
+    const members = await tx
       .select({ id: crewMember.id })
       .from(crewMember)
-      .where(eq(crewMember.projectId, projectId));
+      .where(and(eq(crewMember.projectId, projectId), inArray(crewMember.id, wanted)))
+      .orderBy(asc(crewMember.id))
+      .for('share');
     const ids = new Set(members.map((member) => member.id));
-    return { ...clean, calls: clean.calls.filter((call) => ids.has(call.crewMemberId)) };
+    return clean.map((input) =>
+      input.calls
+        ? { ...input, calls: input.calls.filter((call) => ids.has(call.crewMemberId)) }
+        : input,
+    );
   };
   // Decision 0022: a cross-board overview checks every day's board like the board's own list.
   // Every role permits reading, so a board opens with a project role or a grant on it or on
@@ -179,16 +195,15 @@ export function registerScheduleRoutes(
     const { boardId } = BoardParams.parse(req.params);
     const access = await requireBoardRole(db, actor, boardId, 'editor');
     const team = await isTeam(db, actor, access.board.projectId);
-    const input = await cleanInput(ShootingDayInput.parse(req.body), team, access.board.projectId);
-    const [row] = await db
-      .insert(shootingDay)
-      .values({
-        ...input,
-        boardId,
-        projectId: access.board.projectId,
-        updatedBy: await savedBy(actor.id),
-      })
-      .returning();
+    const parsed = ShootingDayInput.parse(req.body);
+    const updatedBy = await savedBy(actor.id);
+    const [row] = await db.transaction(async (tx) => {
+      const [input] = await cleanInputs(tx, [parsed], team, access.board.projectId);
+      return tx
+        .insert(shootingDay)
+        .values({ ...(input ?? parsed), boardId, projectId: access.board.projectId, updatedBy })
+        .returning();
+    });
     if (!row) throw new Error('Shooting day missing');
     return reply.code(201).send(publicDay(row, team));
   });
@@ -270,7 +285,6 @@ export function registerScheduleRoutes(
       });
     return { dayId, userId: actor.id, status };
   });
-  type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
   const updateDay = async (
     tx: Transaction,
     projectId: string,
@@ -333,11 +347,12 @@ export function registerScheduleRoutes(
     const access = await requireBoardRole(db, actor, boardId, 'editor');
     const team = await isTeam(db, actor, access.board.projectId);
     const { revision, ...input } = UpdateShootingDay.parse(req.body);
-    const clean = await cleanInput(input, team, access.board.projectId);
     const updatedBy = await savedBy(actor.id);
-    const row = await db.transaction((tx) =>
-      updateDay(tx, access.board.projectId, boardId, dayId, revision, clean, updatedBy),
-    );
+    const row = await db.transaction(async (tx) => {
+      const [clean] = await cleanInputs(tx, [input], team, access.board.projectId);
+      const projectId = access.board.projectId;
+      return updateDay(tx, projectId, boardId, dayId, revision, clean ?? input, updatedBy);
+    });
     return publicDay(row, team);
   });
   app.post(`${base}/edit`, async (req) => {
@@ -351,7 +366,15 @@ export function registerScheduleRoutes(
       const items = [];
       const deleted = [];
       // Lock in a stable order so simultaneous cross-day moves cannot deadlock.
-      for (const change of [...changes].sort((a, b) => a.id.localeCompare(b.id))) {
+      const sorted = [...changes].sort((a, b) => a.id.localeCompare(b.id));
+      const inputs = sorted.flatMap((change) => (change.input ? [change.input] : []));
+      const cleaned = new Map(
+        (await cleanInputs(tx, inputs, team, access.board.projectId)).map((clean, i) => [
+          inputs[i],
+          clean,
+        ]),
+      );
+      for (const change of sorted) {
         if (change.revision === 0) {
           if (!change.input) {
             deleted.push(change.id);
@@ -360,7 +383,7 @@ export function registerScheduleRoutes(
           const [row] = await tx
             .insert(shootingDay)
             .values({
-              ...(await cleanInput(change.input, team, access.board.projectId, tx)),
+              ...(cleaned.get(change.input) ?? change.input),
               id: change.id,
               boardId,
               projectId: access.board.projectId,
@@ -379,7 +402,7 @@ export function registerScheduleRoutes(
                 boardId,
                 change.id,
                 change.revision,
-                await cleanInput(change.input, team, access.board.projectId, tx),
+                cleaned.get(change.input) ?? change.input,
                 updatedBy,
               ),
               team,

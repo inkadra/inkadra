@@ -4411,7 +4411,7 @@
           },
           "6": {
             "title": "Call sheet",
-            "text": "Times with sunrise and sunset, locations, crew with phone numbers, the schedule with notes and what to bring. Pick the sections and print for the crew."
+            "text": "Times with sunrise and sunset, locations, crew with phone numbers, the schedule with notes and what to bring. Pick the sections and print for the crew. Sunrise and sunset follow the project time zone: change it in Projects, the card’s ⋯ menu, “Type and time zone”. “Automatic” uses the device’s zone."
           }
         }
       },

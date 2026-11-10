@@ -4411,7 +4411,7 @@
           },
           "6": {
             "title": "Feuille de service",
-            "text": "Horaires avec lever et coucher du soleil, décors, équipe avec téléphones, plan avec notes et À apporter. Choisissez les sections et imprimez pour l’équipe."
+            "text": "Horaires avec lever et coucher du soleil, décors, équipe avec téléphones, plan avec notes et À apporter. Choisissez les sections et imprimez pour l’équipe. Le lever et le coucher du soleil suivent le fuseau du projet : changez-le dans Projets, menu ⋯ de la carte, « Type et fuseau horaire ». « Automatique » utilise le fuseau de l’appareil."
           }
         }
       },

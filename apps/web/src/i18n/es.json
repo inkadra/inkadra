@@ -4411,7 +4411,7 @@
           },
           "6": {
             "title": "Orden de rodaje",
-            "text": "Horarios con amanecer y atardecer, localizaciones, equipo con teléfonos, plan con notas y lo que hay que llevar. Elige las secciones e imprime para el equipo."
+            "text": "Horarios con amanecer y atardecer, localizaciones, equipo con teléfonos, plan con notas y lo que hay que llevar. Elige las secciones e imprime para el equipo. El amanecer y el atardecer siguen la zona horaria del proyecto: cámbiala en Proyectos, menú ⋯ de la tarjeta, «Tipo y zona horaria». «Automática» usa la zona del dispositivo."
           }
         }
       },

@@ -351,4 +351,45 @@ describe.skipIf(!url)('private project crew', () => {
     });
     expect((await merge('editor', { ...body, revision: 2 })).statusCode).toBe(404);
   });
+
+  it('never leaves a call to a row a merge removes while a day is saved', async () => {
+    const add = async (name: string) =>
+      CrewMember.parse((await request('editor', 'POST', base(), { ...input, name })).json());
+    const gone = await add('Ugo');
+    const fields = { date: '2030-02-01', callTime: '08:00', wrap: null, location: '', notes: '' };
+    // The day has no call to the row yet, so the merge's own day scan cannot see it.
+    const [day] = await db
+      .insert(shootingDay)
+      .values({ ...fields, projectId, boardId, blocks: [], calls: [] })
+      .returning();
+    const merge = await client.reserve();
+    try {
+      // Another session is merging: it holds the row it will delete.
+      await merge`begin`;
+      await merge`select id from crew_member where id = ${gone.id} for update`;
+      let done = false;
+      const save = request('editor', 'PUT', `/boards/${boardId}/schedule/${day?.id}`, {
+        ...fields,
+        blocks: [],
+        calls: [{ crewMemberId: gone.id, call: '07:00', pickup: null }],
+        revision: 1,
+      }).finally(() => {
+        done = true;
+      });
+      // The save waits on the row (before the fix it validated without waiting and finished).
+      for (let i = 0; i < 100 && !done; i++) {
+        const [waiting] = await client`
+          select count(*)::int as n from pg_locks where not granted and locktype = 'transactionid'`;
+        if (waiting?.n) break;
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      await merge`delete from crew_member where id = ${gone.id}`;
+      await merge`commit`;
+      expect((await save).statusCode).toBe(200);
+      const [after] = await db.select().from(shootingDay).where(eq(shootingDay.id, day?.id ?? ''));
+      expect(after?.calls).toEqual([]);
+    } finally {
+      merge.release();
+    }
+  });
 });

@@ -4411,7 +4411,7 @@
           },
           "6": {
             "title": "Foglio di lavorazione",
-            "text": "Orari con alba e tramonto, location, troupe con telefoni, programma con note e Da portare. Scegli le sezioni e stampa per la troupe."
+            "text": "Orari con alba e tramonto, location, troupe con telefoni, programma con note e Da portare. Scegli le sezioni e stampa per la troupe. Alba e tramonto seguono il fuso del progetto: si cambia in Progetti, menu ⋯ della card, «Tipo e fuso orario». «Automatico» usa il fuso del dispositivo."
           }
         }
       },

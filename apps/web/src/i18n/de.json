@@ -4411,7 +4411,7 @@
           },
           "6": {
             "title": "Tagesdispo",
-            "text": "Zeiten mit Sonnenauf- und -untergang, Drehorte, Team mit Telefonnummern, Ablauf mit Notizen und Mitzubringendem. Wähle die Abschnitte und drucke für das Team."
+            "text": "Zeiten mit Sonnenauf- und -untergang, Drehorte, Team mit Telefonnummern, Ablauf mit Notizen und Mitzubringendem. Wähle die Abschnitte und drucke für das Team. Sonnenauf- und -untergang folgen der Zeitzone des Projekts: Ändere sie unter Projekte, ⋯-Menü der Karte, „Typ und Zeitzone“. „Automatisch“ nutzt die Zeitzone des Geräts."
           }
         }
       },

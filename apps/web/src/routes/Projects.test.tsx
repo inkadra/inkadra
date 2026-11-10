@@ -231,6 +231,22 @@ it('keeps the Project type dialog open with an error when saving fails', async (
   expect(dialog?.querySelector('[role="alert"]')?.textContent).toBe('projectsPage.saveError');
 });
 
+it('offers UTC once among the time zones, which the platform does not list', async () => {
+  await render([member('me', 'Giulia')]);
+  await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
+  await act(async () =>
+    [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+      .find((item) => item.textContent === 'projectsPage.details')
+      ?.click(),
+  );
+  const zone = host.querySelectorAll<HTMLButtonElement>('dialog [role="combobox"]')[1];
+  await act(async () => zone?.click());
+  const utc = [...document.querySelectorAll('[role="option"]')].filter(
+    (option) => option.textContent === 'UTC',
+  );
+  expect(utc).toHaveLength(1);
+});
+
 it('formats admin storage in decimal units', async () => {
   session.role = 'admin';
   vi.mocked(api.get).mockResolvedValue({ originalBytes: 11_193_874_222, items: [] });

@@ -558,7 +558,8 @@ function ProjectTypeDialog({
   const [zone, setZone] = useState(project.timeZone ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
-  const zones = Intl.supportedValuesOf('timeZone');
+  // The platform lists only geographic zones: UTC is added once, so a project can be set to it.
+  const zones = ['UTC', ...Intl.supportedValuesOf('timeZone').filter((z) => z !== 'UTC')];
   const hintId = useId();
   async function submit(e: FormEvent) {
     e.preventDefault();

@@ -53,3 +53,5 @@ playing two characters keeps one row per character. `POST …/crew/{id}/merge` (
 both revisions checked, 409 when either changed) keeps that row, fills its empty fields and links
 from the other, keeps "on-set contact" if either had it, moves the other row's day calls to it
 (on a day both have one, the kept row's wins) and deletes the other row, in one transaction.
+A day save locks the rows its calls name (`for share`) in the transaction that writes the day, and
+the merge and the delete lock their rows first, so a call to a removed row is never written.
