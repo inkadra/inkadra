@@ -173,6 +173,7 @@ it('fits a fifteen minute block before the next one and keeps week instructions 
   vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
   const host = await mount(<ScheduleView store={store} boardId="board" />);
   expect(host.textContent).not.toContain('schedule.freeDrop');
+  expect(host.textContent).not.toContain('schedule.noShoot');
   await openDayView(host);
   const blocks = [...host.querySelectorAll<HTMLElement>('.schedule__block')];
   expect(blocks).toHaveLength(2);

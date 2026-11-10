@@ -1045,15 +1045,13 @@ export function ScheduleCalendar({
                     );
                   }}
                 >
-                  <p className="schedule__free" style={{ top: (firstCall + 240) * MINUTE_PX }}>
-                    <b>{t('schedule.noShoot')}</b>
-                    {view === 'day' && (
-                      <>
-                        <br />
-                        {t('schedule.freeDrop')}
-                      </>
-                    )}
-                  </p>
+                  {view === 'day' && (
+                    <p className="schedule__free" style={{ top: (firstCall + 240) * MINUTE_PX }}>
+                      <b>{t('schedule.noShoot')}</b>
+                      <br />
+                      {t('schedule.freeDrop')}
+                    </p>
+                  )}
                   {drag?.active &&
                     drag.kind === 'move' &&
                     drag.target === date &&
