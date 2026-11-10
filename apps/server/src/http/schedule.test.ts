@@ -455,25 +455,36 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
       notes: current.notes,
       blocks,
     });
+    const memberInput = {
+      role: '',
+      department: '',
+      phone: '',
+      email: '',
+      pickup: '',
+      notes: '',
+      userId: null,
+      character: null,
+      onSetContact: false,
+      position: 0,
+    };
     const members = await Promise.all(
       ['One', 'Two'].map(async (name) => {
         const response = await request('owner', 'POST', `/projects/${projectId}/crew`, {
+          ...memberInput,
           name,
-          role: '',
-          department: '',
-          phone: '',
-          email: '',
-          pickup: '',
-          notes: '',
-          userId: null,
-          character: null,
-          onSetContact: false,
-          position: 0,
         });
         expect(response.statusCode).toBe(201);
         return response.json();
       }),
     );
+    const foreignProject = (
+      await request('owner', 'POST', '/projects', { name: 'Foreign crew' })
+    ).json();
+    const foreign = await request('owner', 'POST', `/projects/${foreignProject.id}/crew`, {
+      ...memberInput,
+      name: 'Foreign',
+    });
+    expect(foreign.statusCode).toBe(201);
     const calls = [
       { crewMemberId: members[0].id, call: '07:00', pickup: 'Hotel 06:45' },
       { crewMemberId: members[1].id, call: null, pickup: null, absent: true },
@@ -481,7 +492,7 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
     const noted = current.blocks.map((b, i) => (i === 0 ? { ...b, notes: 'LIGHTS ON' } : b));
     const saved = await request('owner', 'PUT', `${base()}/${day.id}`, {
       ...plain(noted),
-      calls: [...calls, { crewMemberId: crypto.randomUUID(), call: null, pickup: null }],
+      calls: [...calls, { crewMemberId: foreign.json().id, call: null, pickup: null }],
       revision: current.revision,
     });
     expect(saved.statusCode).toBe(200);
