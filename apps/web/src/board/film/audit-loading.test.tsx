@@ -29,31 +29,39 @@ const crew = {
   updatedAt: '',
   character: { boardId: 'other', elementId: 'c' },
 } as CrewMember;
-it('refreshes linked characters at fixed board IDs and retries a transient failure', async () => {
-  let name = 'Before';
-  let fail = false;
-  vi.spyOn(api, 'get').mockImplementation(async (path) => {
-    if (path.endsWith('/characters')) {
-      if (fail) throw new Error('offline');
-      return { items: [{ ...crew.character, name, actor: '', contact: '' }] };
+it.each([false, true])(
+  'refreshes linked characters and recovers (first fetch fails: %s)',
+  async (initialFailure) => {
+    let name = 'Before';
+    let fail = initialFailure;
+    vi.spyOn(api, 'get').mockImplementation(async (path) => {
+      if (path.endsWith('/characters')) {
+        if (fail) throw new Error('offline');
+        return { items: [{ ...crew.character, name, actor: '', contact: '' }] };
+      }
+      return { items: [crew] };
+    });
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    cleanup.push(() => act(() => root.unmount()));
+    await act(async () => root.render(<Probe />));
+    if (initialFailure) {
+      expect(state!.failed).toBe(true);
+      fail = false;
+      await act(async () => document.dispatchEvent(new Event('visibilitychange')));
     }
-    return { items: [crew] };
-  });
-  const host = document.createElement('div');
-  const root = createRoot(host);
-  cleanup.push(() => act(() => root.unmount()));
-  await act(async () => root.render(<Probe />));
-  expect(state!.characters[0]?.name).toBe('Before');
-  name = 'After';
-  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
-  expect(state!.characters[0]?.name).toBe('After');
-  fail = true;
-  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
-  fail = false;
-  name = 'Recovered';
-  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
-  expect(state!.characters[0]?.name).toBe('Recovered');
-});
+    expect(state!.characters[0]?.name).toBe('Before');
+    name = 'After';
+    await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+    expect(state!.characters[0]?.name).toBe('After');
+    fail = true;
+    await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+    fail = false;
+    name = 'Recovered';
+    await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+    expect(state!.characters[0]?.name).toBe('Recovered');
+  },
+);
 it.each(['crew', 'characters', 'schedule'])(
   'rejects an incomplete print after a %s service failure',
   async (failure) => {

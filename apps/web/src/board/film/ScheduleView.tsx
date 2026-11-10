@@ -212,6 +212,12 @@ export function ScheduleView({
     null,
   );
   const [sheet, setSheet] = useState<'queue' | 'day' | 'block' | null>(null);
+  useEffect(() => {
+    if (active) return;
+    setSheet(null);
+    setPopover(null);
+    setCallSheetOpen(false);
+  }, [active]);
   // A day dragged by its heading: the date it would land on, also marked in the month.
   const [dayTarget, setDayTarget] = useState<string | null>(null);
   const [movingDay, setMovingDay] = useState<string | null>(null);
