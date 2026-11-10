@@ -145,6 +145,7 @@ function withDraft(
 }
 
 export function ScheduleView({
+  active = true,
   store,
   projectName,
   projectId,
@@ -156,6 +157,7 @@ export function ScheduleView({
   onOpenScene,
   onOpenTroupe,
 }: {
+  active?: boolean;
   store: BoardStore;
   boardTitle?: string;
   projectName?: string;
@@ -457,6 +459,7 @@ export function ScheduleView({
   travelRef.current = travel;
   // Ctrl+Z and Ctrl+Shift+Z (or Ctrl+Y) outside text fields, which keep their own undo.
   useEffect(() => {
+    if (!active) return;
     const onKey = (event: KeyboardEvent) => {
       const mod = isMac() ? event.metaKey : event.ctrlKey;
       if (!mod || event.altKey || isTyping(event.target)) return;
@@ -468,7 +471,7 @@ export function ScheduleView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [active]);
 
   // --- Saving on its own ----------------------------------------------------------------------
 

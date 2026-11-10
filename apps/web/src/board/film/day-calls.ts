@@ -11,7 +11,7 @@ import {
   type ShootingDayInput,
 } from '@inkadra/shared';
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api.ts';
+import { api, RequestError } from '../../lib/api.ts';
 import { castCalls, castCharacter, type DayLocation } from './call-sheet.ts';
 import { clockMinutes, scheduleTimes, whileVisible } from './schedule.ts';
 import { locationCoords, sunTimes } from './sun.ts';
@@ -274,7 +274,10 @@ async function fetchCharacters(
   if (!boards.size) return [];
   return api.get<{ items: CrewCharacter[] }>(`/projects/${projectId}/crew/characters`, signal).then(
     (r) => r.items.filter((c) => boards.has(c.boardId)),
-    () => [],
+    (error) => {
+      if (error instanceof RequestError && [403, 404].includes(error.status)) return [];
+      throw error;
+    },
   );
 }
 
@@ -293,27 +296,20 @@ export function useCrew(projectId: string | undefined, boardId?: string): CrewSt
       return;
     }
     const controller = new AbortController();
-    // Characters are fetched again only when the boards they come from change.
-    let boards = '';
-    let characters: CrewCharacter[] = [];
     const load = () =>
-      api.get<Crew>(`/projects/${projectId}/crew`, controller.signal).then(
-        async (r) => {
-          const next = otherBoards(r.items, boardId).join();
-          if (next !== boards) {
-            characters = await fetchCharacters(projectId, r.items, boardId, controller.signal);
-            boards = next;
-          }
+      api
+        .get<Crew>(`/projects/${projectId}/crew`, controller.signal)
+        .then(async (r) => {
+          const characters = await fetchCharacters(projectId, r.items, boardId, controller.signal);
           if (!controller.signal.aborted) setState({ items: r.items, characters, failed: false });
-        },
-        () => {
+        })
+        .catch(() => {
           // A failed refresh keeps the roster on screen.
           if (!controller.signal.aborted)
             setState((current) =>
               current.items ? current : { items: null, characters: [], failed: true },
             );
-        },
-      );
+        });
     void load();
     const stop = whileVisible(() => void load());
     return () => {
@@ -332,7 +328,10 @@ export async function loadCrew(
   if (!projectId) return { crew: [], characters: [] };
   const crew = await api.get<Crew>(`/projects/${projectId}/crew`).then(
     (r) => r.items,
-    () => [],
+    (error) => {
+      if (error instanceof RequestError && [403, 404].includes(error.status)) return [];
+      throw error;
+    },
   );
   return { crew, characters: await fetchCharacters(projectId, crew, boardId) };
 }

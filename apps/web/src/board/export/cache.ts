@@ -17,7 +17,10 @@ export class ExportCache {
   once<T>(key: string, load: () => Promise<T>): Promise<T> {
     let p = this.data.get(key) as Promise<T> | undefined;
     if (!p) {
-      p = load();
+      p = load().catch((error) => {
+        this.data.delete(key);
+        throw error;
+      });
       this.data.set(key, p);
     }
     return p;

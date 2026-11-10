@@ -837,29 +837,7 @@ function BoardScreen({
         readOnly={!!preview || !editable}
         onExport={exportShotList}
       />
-    ) : view === 'schedule' ? (
-      <ScheduleView
-        key={preview?.version.id ?? 'live'}
-        store={preview?.store ?? conn.store}
-        boardTitle={crumbs.at(-1)?.title ?? ''}
-        projectName={projectName}
-        projectId={projectId}
-        timeZone={shootingZone(projectTimeZone)}
-        canEditCrew={!!projectRole && atLeast(projectRole, 'editor')}
-        boardId={boardId}
-        userId={user.id}
-        readOnly={!!preview || !editable}
-        onOpenScene={(sceneId) => navigate(`?view=storyboard&scene=${encodeURIComponent(sceneId)}`)}
-        onOpenTroupe={() => navigate('?view=troupe')}
-      />
-    ) : view === 'troupe' ? (
-      <TroupeView
-        store={conn.store}
-        projectId={projectId}
-        boardId={boardId}
-        readOnly={!!preview || !editable}
-      />
-    ) : view === 'review' ? (
+    ) : view === 'schedule' || view === 'troupe' ? null : view === 'review' ? (
       <ClientReviewView
         key={preview?.version.id ?? 'live'}
         store={preview?.store ?? conn.store}
@@ -925,6 +903,38 @@ function BoardScreen({
         </div>
       )}
       {versions}
+      {/* Keep drafts and their saves alive while another view is selected. */}
+      <div
+        style={{ display: view === 'schedule' ? 'contents' : 'none' }}
+        inert={view !== 'schedule'}
+      >
+        <ScheduleView
+          active={view === 'schedule'}
+          key={`${boardId}-${preview?.version.id ?? 'live'}`}
+          store={preview?.store ?? conn.store}
+          boardTitle={crumbs.at(-1)?.title ?? ''}
+          projectName={projectName}
+          projectId={projectId}
+          timeZone={shootingZone(projectTimeZone)}
+          canEditCrew={!!projectRole && atLeast(projectRole, 'editor')}
+          boardId={boardId}
+          userId={user.id}
+          readOnly={!!preview || !editable}
+          onOpenScene={(sceneId) =>
+            navigate(`?view=storyboard&scene=${encodeURIComponent(sceneId)}`)
+          }
+          onOpenTroupe={() => navigate('?view=troupe')}
+        />
+      </div>
+      <div style={{ display: view === 'troupe' ? 'contents' : 'none' }} inert={view !== 'troupe'}>
+        <TroupeView
+          key={projectId}
+          store={conn.store}
+          projectId={projectId}
+          boardId={boardId}
+          readOnly={!!preview || !editable}
+        />
+      </div>
       {content}
       {shareDialog}
       {iconBoard && (

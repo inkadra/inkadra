@@ -366,9 +366,17 @@ export function PresencePanel({
   if (!calls.length) return null;
   const statusOf = (userId?: string) =>
     data.responses.find((r) => r.dayId === day.id && r.userId === userId)?.status;
-  const rows = calls.map((call) => {
-    const userId = data.links.find((l) => l.castKey === castNameKey(call.name))?.userId;
-    return { ...call, userId, status: statusOf(userId) };
+  const rows = calls.flatMap((call) => {
+    const users = [
+      ...new Set(
+        data.links.filter((l) => l.castKey === castNameKey(call.name)).map((l) => l.userId),
+      ),
+    ];
+    return (users.length ? users : [undefined]).map((userId) => ({
+      ...call,
+      userId,
+      status: statusOf(userId),
+    }));
   });
   // One person can play two names: the count is of people, not of rows.
   const linked = [...new Set(rows.flatMap((row) => row.userId ?? []))];
@@ -388,7 +396,7 @@ export function PresencePanel({
         </p>
       )}
       {rows.map((row) => (
-        <div key={row.name} className="call-sheet__row">
+        <div key={`${row.name}-${row.userId ?? 'unlinked'}`} className="call-sheet__row">
           <div className="call-sheet__row-text">
             <span className="call-sheet__row-label">{row.name}</span>
             <span className={`call-sheet__row-help is-${row.status ?? 'none'}`}>

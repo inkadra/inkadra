@@ -17,7 +17,7 @@ import {
   EmptyState,
   RadioGroup,
 } from '@inkadra/ui';
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { Activity, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { useIsPhone } from '../../lib/phone.ts';
@@ -130,7 +130,6 @@ export function TroupeView({
       });
     return () => controller.abort();
   }, [base, refresh]);
-  const active = rows.find((r) => r.id === selected);
   const departments = [...new Set(rows.map((r) => r.department))];
   const visible = rows.filter((r) =>
     [r.name, r.role, r.department, r.phone, r.pickup].some((s) =>
@@ -149,6 +148,7 @@ export function TroupeView({
     try {
       const row = await api.post<CrewMember>(base, emptyCrewMember(name.trim(), rows.length));
       setRows((old) => [...old, row]);
+      setOpened((ids) => new Set([...ids, row.id]));
       setSelected(row.id);
       setAdding(false);
       setName('');
@@ -158,23 +158,44 @@ export function TroupeView({
       setBusy(false);
     }
   };
-  const panel = active && (
-    <CrewPanel
-      key={`${active.id}-${merges}`}
-      row={active}
-      requestRemove={removeSelected}
-      onRemoveHandled={() => setRemoveSelected(false)}
-      departments={departments}
-      readOnly={readOnly}
-      base={base}
-      characters={characters}
-      onUpdate={(row) => setRows((old) => old.map((r) => (r.id === row.id ? row : r)))}
-      onRemove={() => {
-        setRows((old) => old.filter((r) => r.id !== active.id));
-        setSelected(null);
-      }}
-    />
-  );
+  const [opened, setOpened] = useState<Set<string>>(new Set());
+  const panels = rows
+    .filter((row) => opened.has(row.id))
+    .map((row) => {
+      const panel = (
+        <CrewPanel
+          key={`${row.id}-${merges}`}
+          row={row}
+          requestRemove={row.id === selected && removeSelected}
+          onRemoveHandled={() => setRemoveSelected(false)}
+          departments={departments}
+          readOnly={readOnly}
+          base={base}
+          characters={characters}
+          onUpdate={(row) => setRows((old) => old.map((r) => (r.id === row.id ? row : r)))}
+          onRemove={() => {
+            setRows((old) => old.filter((r) => r.id !== row.id));
+            setSelected(null);
+          }}
+        />
+      );
+      return (
+        <Activity key={`${row.id}-${merges}`} mode={row.id === selected ? 'visible' : 'hidden'}>
+          {phone ? (
+            <div className="phone-sheet">
+              <Dialog open title={row.name} onClose={() => setSelected(null)}>
+                {panel}
+                <DialogActions>
+                  <Button onClick={() => setSelected(null)}>{t('troupe.close')}</Button>
+                </DialogActions>
+              </Dialog>
+            </div>
+          ) : (
+            panel
+          )}
+        </Activity>
+      );
+    });
   return (
     <section className="story troupe" data-tour="troupe">
       <header className="story__bar troupe__bar">
@@ -255,6 +276,7 @@ export function TroupeView({
                           }
                           onOpen={(remove = false) => {
                             setRemoveSelected(remove);
+                            setOpened((ids) => new Set([...ids, row.id]));
                             setSelected(row.id);
                           }}
                         />
@@ -265,19 +287,7 @@ export function TroupeView({
               );
             })}
           </div>
-          {panel &&
-            (phone ? (
-              <div className="phone-sheet">
-                <Dialog open title={active?.name ?? ''} onClose={() => setSelected(null)}>
-                  {panel}
-                  <DialogActions>
-                    <Button onClick={() => setSelected(null)}>{t('troupe.close')}</Button>
-                  </DialogActions>
-                </Dialog>
-              </div>
-            ) : (
-              panel
-            ))}
+          {panels}
         </div>
       )}
       {adding && (
