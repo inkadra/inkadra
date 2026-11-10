@@ -93,11 +93,13 @@
 }
 .schedule__main {
   min-width: 0;
+  min-height: 0;
 }
 .schedule__body {
   position: relative;
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -992,7 +994,7 @@ fieldset.schedule__field > legend {
 
 .schedule__inspector {
   flex: none;
-  width: 320px;
+  width: 340px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1027,7 +1029,7 @@ fieldset.schedule__field > legend {
 }
 .schedule__fields {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 .schedule__inspector label {

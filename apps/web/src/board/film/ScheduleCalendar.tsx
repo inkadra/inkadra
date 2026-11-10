@@ -176,7 +176,10 @@ export function ScheduleCalendar({
     }),
   );
   const rangeEnd = Math.ceil(lastEnd / 60) * 60;
-  const firstCall = Math.min(...entries.map((e) => clockMinutes(e.draft.callTime)), 8 * 60);
+  // A week without shooting opens on the morning.
+  const firstCall = entries.length
+    ? Math.min(...entries.map((e) => clockMinutes(e.draft.callTime)))
+    : 8 * 60;
   // Open on the earliest call of what is on screen, once per week or day shown.
   const shownKey = columns.map((c) => c.date).join();
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when the dates change.
