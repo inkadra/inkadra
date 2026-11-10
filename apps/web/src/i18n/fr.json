@@ -123,7 +123,8 @@
     "toShoot_one": "{{left}} plan sur {{count}} encore à tourner",
     "toShoot_other": "{{left}} plans sur {{count}} encore à tourner",
     "items_one": "{{count}} élément sur le tableau",
-    "items_other": "{{count}} éléments sur le tableau"
+    "items_other": "{{count}} éléments sur le tableau",
+    "troupe": "Équipe"
   },
   "home": {
     "greeting": {
@@ -1211,7 +1212,8 @@
       "canvas": "Canevas",
       "schedule": "Plan de travail",
       "review": "Révision",
-      "moodboard": "Moodboard"
+      "moodboard": "Moodboard",
+      "troupe": "Équipe"
     },
     "aspect": {
       "label": "Format",
@@ -4681,6 +4683,23 @@
             "text": "Dans Membres, depuis le menu ⋯, une limite différente pour qui en a besoin."
           }
         }
+      },
+      "troupe": {
+        "name": "Équipe",
+        "steps": {
+          "0": {
+            "title": "Project crew",
+            "text": "Group people by department. Contacts stay private to the project team."
+          },
+          "1": {
+            "title": "Edit a person",
+            "text": "Open a row: fields save automatically. Optionally link an account or character card."
+          },
+          "2": {
+            "title": "Paste from a sheet",
+            "text": "Review the preview before adding people. Headers and duplicates are skipped."
+          }
+        }
       }
     }
   },
@@ -5227,5 +5246,57 @@
     "continue": "Continuer",
     "downloadArchive": "Télécharger le projet (.inkadra)",
     "limitToast": "Dans la démo, les fichiers vont jusqu’à {{file}} et {{total}} au total."
+  },
+  "troupe": {
+    "people_one": "{{count}} person",
+    "people_other": "{{count}} people",
+    "departments_one": "{{count}} department",
+    "departments_other": "{{count}} departments",
+    "search": "Search crew",
+    "paste": "Paste from sheet",
+    "add": "Add person",
+    "loading": "Loading crew…",
+    "error": "Could not save or load crew.",
+    "retry": "Retry",
+    "empty": "No crew yet.",
+    "emptyHint": "Paste a list from an old call sheet…",
+    "noResults": "No people found.",
+    "noDepartment": "No department",
+    "name": "Name",
+    "role": "Role",
+    "phone": "Phone or agent",
+    "pickup": "Default pick-up",
+    "department": "Department",
+    "email": "Email",
+    "notes": "Notes",
+    "close": "Close",
+    "person": "Person",
+    "invalid": "Check name, email and field lengths.",
+    "character": "Character card · optional",
+    "optional": "None · Link",
+    "actor": "Actor",
+    "contact": "Contact",
+    "account": "Inkadra account",
+    "unlink": "Unlink account",
+    "onSetContact": "On-set contact",
+    "onSetHint": "Printed at the top of the call sheet",
+    "conflict": "Changed by another person. Choose which version to keep.",
+    "reload": "Reload",
+    "keepMine": "Keep mine",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "unsaved": "Not saved",
+    "remove": "Remove from crew",
+    "removeConfirm": "Remove {{name}} from the crew?",
+    "cancel": "Cancel",
+    "pasteHint": "One person per line: name, role, phone. Separate columns with tabs, semicolons, · or two or more spaces. A CAPITALS line becomes the department.",
+    "pastedText": "Pasted text",
+    "preview_one": "{{count}} new person",
+    "preview_other": "{{count}} new people",
+    "duplicate": "Already in crew",
+    "header": "Header skipped",
+    "agent": "Agent line skipped",
+    "addPeople_one": "Add {{count}} person",
+    "addPeople_other": "Add {{count}} people"
   }
 }

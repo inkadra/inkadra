@@ -1,0 +1,207 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+.troupe {
+  min-width: 0;
+}
+.troupe__bar {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.troupe__bar > span {
+  margin-right: auto;
+  color: var(--ink-text-muted);
+}
+.troupe__bar > input {
+  width: 190px;
+}
+.troupe__main {
+  overflow: hidden;
+}
+.troupe__list {
+  min-width: 0;
+}
+.troupe__columns,
+.troupe__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 0.9fr) 20px;
+  gap: 12px;
+  align-items: center;
+}
+.troupe__columns {
+  padding: 0 10px;
+  color: var(--ink-text-muted);
+  font-size: 11px;
+}
+.troupe__group {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 16px 8px 6px;
+  color: var(--ink-text-muted);
+}
+.troupe__group small {
+  margin-left: 8px;
+}
+.troupe__rows {
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  overflow: hidden;
+}
+.troupe__row {
+  width: 100%;
+  text-align: left;
+  padding: 10px;
+  border: 0;
+  border-top: 1px solid var(--ink-border-default);
+  color: var(--ink-text-primary);
+  background: var(--ink-surface-1);
+  font: inherit;
+  cursor: pointer;
+}
+.troupe__row:first-child {
+  border-top: 0;
+}
+.troupe__row > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.troupe__row:hover {
+  background: var(--ink-surface-2);
+}
+.troupe__row:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
+}
+.troupe__row.is-selected {
+  background: var(--ink-accent-soft-bg);
+  box-shadow: inset 2px 0 var(--ink-accent-primary);
+}
+.troupe__panel {
+  width: 340px;
+  flex: none;
+  padding: 16px;
+  overflow: auto;
+  border-left: 1px solid var(--ink-border-default);
+}
+.troupe__panel h2 {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+.troupe__panel fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+.troupe__panel label,
+.troupe__paste label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-text-muted);
+  min-width: 0;
+}
+.troupe__panel .ink-input {
+  width: 100%;
+}
+.troupe__two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.troupe__panel .troupe__check {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+}
+.troupe__check small {
+  display: block;
+  margin-top: 4px;
+}
+.troupe__panel footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 16px;
+}
+.troupe__paste {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.troupe__paste textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: monospace;
+}
+.troupe__preview {
+  min-width: 0;
+  max-height: 420px;
+  overflow: auto;
+}
+.troupe__preview-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--ink-border-default);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.ink-dialog:has(.troupe__paste) {
+  width: min(960px, calc(100vw - 32px));
+}
+@media (max-width: 700px) {
+  .troupe__bar > input {
+    width: 100%;
+  }
+  .troupe__columns {
+    display: none;
+  }
+  .troupe__row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 20px;
+  }
+  .troupe__row > :nth-child(3),
+  .troupe__row > :nth-child(4) {
+    display: none;
+  }
+  .troupe__panel {
+    width: 100%;
+    border-left: 0;
+    padding: 0;
+  }
+  .troupe__paste {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.troupe__row strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.troupe__row .ink-avatar {
+  flex: none;
+}
+
+.troupe .ink-input {
+  color: var(--ink-text-primary);
+}
+.troupe__paste label {
+  align-content: start;
+  grid-template-rows: auto 1fr;
+}
+.troupe__paste textarea {
+  min-height: 360px;
+  height: 100%;
+}
+@media (max-width: 700px) {
+  .troupe__paste textarea {
+    min-height: 160px;
+  }
+}

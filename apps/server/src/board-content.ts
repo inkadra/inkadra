@@ -1,5 +1,5 @@
 import { boardDocName, hiddenFromGuests, readElement, roots } from '@inkadra/doc-schema';
-import { type BoardColumn, Id } from '@inkadra/shared';
+import { type BoardColumn, type CrewCharacter, Id } from '@inkadra/shared';
 import { eq } from 'drizzle-orm';
 import * as Y from 'yjs';
 import type { CollabServer } from './collab.ts';
@@ -102,15 +102,52 @@ export async function storedColumns(db: Database, boardId: string): Promise<Boar
   }
 }
 
+/** Private character contact previews; callers authorize the board before reading. */
+export function docCharacters(doc: Y.Doc, boardId: string): CrewCharacter[] {
+  return [...roots(doc).elements.values()].flatMap((map) => {
+    const el = readElement(map);
+    return el?.type === 'character'
+      ? [
+          {
+            boardId,
+            elementId: el.id,
+            name: el.name,
+            actor: el.actor ?? '',
+            contact: el.contact ?? '',
+          },
+        ]
+      : [];
+  });
+}
+export async function storedCharacters(db: Database, boardId: string): Promise<CrewCharacter[]> {
+  const [row] = await db
+    .select({ state: boardDoc.state })
+    .from(boardDoc)
+    .where(eq(boardDoc.boardId, boardId));
+  if (!row) return [];
+  const doc = new Y.Doc();
+  try {
+    Y.applyUpdate(doc, row.state);
+    return docCharacters(doc, boardId);
+  } finally {
+    doc.destroy();
+  }
+}
+
 /** Internal reader; callers must authorize the board before looking up its cards. */
 export interface BoardReader {
   element(boardId: string, elementId: string): Promise<StoredElement | null>;
   columns(boardId: string): Promise<BoardColumn[]>;
+  characters?(boardId: string): Promise<CrewCharacter[]>;
 }
 
 /** Read the authoritative live document, including deletions, before using stored state. */
 export function directBoardReader(collab: CollabServer, db: Database): BoardReader {
   return {
+    async characters(boardId) {
+      const doc = collab.hocuspocus.documents.get(boardDocName(boardId));
+      return doc ? docCharacters(doc, boardId) : storedCharacters(db, boardId);
+    },
     async element(boardId, elementId) {
       const doc = collab.hocuspocus.documents.get(boardDocName(boardId));
       if (!doc) return storedElement(db, boardId, elementId);

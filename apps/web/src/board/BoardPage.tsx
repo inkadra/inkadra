@@ -61,6 +61,7 @@ import {
   type RevisionChoice,
   ScreenplayImportDialog,
 } from './film/screenplay/ScreenplayImportDialog.tsx';
+import { TroupeView } from './film/TroupeView.tsx';
 import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
 import { useLiveBoardCounts } from './live-counts.ts';
 import { RestoredToast } from './RestoredToast.tsx';
@@ -273,7 +274,7 @@ function ViewTabs({
             onChoose(v);
           }}
         >
-          <Icon name={viewIcon(v)} contentKind={v} size={14} />
+          <Icon name={viewIcon(v)} contentKind={v === 'troupe' ? 'review' : v} size={14} />
           <span className="view-tabs__label">{t(`film.views.${v}`)}</span>
         </button>
       ))}
@@ -841,6 +842,13 @@ function BoardScreen({
         userId={user.id}
         readOnly={!!preview || !editable}
         onOpenScene={(sceneId) => navigate(`?view=storyboard&scene=${encodeURIComponent(sceneId)}`)}
+      />
+    ) : view === 'troupe' ? (
+      <TroupeView
+        store={conn.store}
+        projectId={projectId}
+        boardId={boardId}
+        readOnly={!!preview || !editable}
       />
     ) : view === 'review' ? (
       <ClientReviewView
