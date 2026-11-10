@@ -7164,7 +7164,7 @@
               "string",
               "null"
             ],
-            "description": "Element type from @inkadra/doc-schema. Clients show types they do not know as plain results."
+            "description": "Element type from @inkadra/doc-schema. Clients show types they do not know as plain results. Two are not cards: `crew`, a person of the crew (`elementId` is the crew row, the board the root board), and `shootingDay`, a shooting day found by its location (`elementId` is the day, `snippet` its date)."
           },
           "title": {
             "type": "string",
@@ -21445,10 +21445,10 @@
             "schema": {
               "type": "string",
               "maxLength": 200,
-              "description": "Words to find in titles, notes, captions, shot data and file names."
+              "description": "Words to find in titles, notes, captions, shot data and file names; also the crew (name, role, department; project members only) and the locations of shooting days."
             },
             "required": false,
-            "description": "Words to find in titles, notes, captions, shot data and file names.",
+            "description": "Words to find in titles, notes, captions, shot data and file names; also the crew (name, role, department; project members only) and the locations of shooting days.",
             "name": "q",
             "in": "query"
           },
