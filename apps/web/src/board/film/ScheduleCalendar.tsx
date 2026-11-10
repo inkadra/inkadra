@@ -1097,7 +1097,7 @@ export function ScheduleCalendar({
                   if (el) columnRefs.current.set(entry.day.id, el);
                   else columnRefs.current.delete(entry.day.id);
                 }}
-                className={`schedule__column schedule__day${entry.stale ? ' is-stale' : ''}${isTarget || dropAt?.day === entry.day.id || dayTarget === date ? ' is-drop' : ''}`}
+                className={`schedule__column schedule__day${entry.stale ? ' is-stale' : ''}${isTarget || dropAt?.day === entry.day.id || dayTarget === date ? ' is-drop' : ''}${dayTarget === date ? ' is-day-drop' : ''}`}
                 aria-label={t('schedule.day', { date: draft.date })}
                 data-day-drop={date}
                 onPointerDown={(event) => beginDraw(event, column)}
