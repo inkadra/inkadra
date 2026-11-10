@@ -330,7 +330,8 @@
 
 .schedule__calendar {
   --schedule-gutter: 76px;
-  --schedule-column: minmax(170px, 1fr);
+  /* Five days fit at 1280 px with the navigation open; seven may scroll sideways. */
+  --schedule-column: minmax(128px, 1fr);
   flex: 1;
   min-height: 0;
   display: flex;

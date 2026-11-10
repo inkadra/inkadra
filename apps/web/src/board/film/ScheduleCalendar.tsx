@@ -696,6 +696,23 @@ export function ScheduleCalendar({
         )
       : short(movingEntry.draft.date));
 
+  /**
+   * Where the label of a dragged day goes, clear of the headings' text: at the top of the target
+   * column, just under its heading; under the month when the target is a date there; beside the
+   * pointer while it is over nothing.
+   */
+  const dayLabelAt = (() => {
+    if (!dayDrag?.active) return null;
+    const column = dayTarget ? columns.find((item) => item.date === dayTarget) : undefined;
+    const target = column && columnRefs.current.get(columnKey(column))?.getBoundingClientRect();
+    const top = grid.current?.getBoundingClientRect().top;
+    if (target && top !== undefined)
+      return { left: target.left + 4, top: top + 4, maxWidth: target.width - 8 };
+    const month = document.querySelector('.schedule__month-grid')?.getBoundingClientRect();
+    if (dayTarget && month) return { left: month.left, top: month.bottom + 6 };
+    return { left: Math.min(dayDrag.px + 14, window.innerWidth - 200), top: dayDrag.py + 14 };
+  })();
+
   // --- Keyboard ---------------------------------------------------------------------------------
 
   const focusBlock = (id: string) =>
@@ -1268,7 +1285,7 @@ export function ScheduleCalendar({
                 })}
                 {extras}
                 {nowAt !== null && <NowLine minute={nowAt} />}
-                {above.length > 0 && !phone && !drag?.active && (
+                {above.length > 0 && !phone && !drag?.active && !dayDrag?.active && (
                   <button
                     type="button"
                     className="schedule__more"
@@ -1283,7 +1300,7 @@ export function ScheduleCalendar({
                     {t('schedule.moreAbove', { count: above.length })}
                   </button>
                 )}
-                {below.length > 0 && !phone && !drag?.active && (
+                {below.length > 0 && !phone && !drag?.active && !dayDrag?.active && (
                   <button
                     type="button"
                     className="schedule__more"
@@ -1341,14 +1358,8 @@ export function ScheduleCalendar({
             </span>
           ),
       )}
-      {dayMoveLabel && dayDrag && (
-        <span
-          className="schedule__floating-note is-primary"
-          style={{
-            left: Math.min(dayDrag.px + 14, window.innerWidth - 200),
-            top: dayDrag.py + 14,
-          }}
-        >
+      {dayMoveLabel && dayLabelAt && (
+        <span className="schedule__floating-note is-primary" style={dayLabelAt}>
           {dayMoveLabel}
         </span>
       )}

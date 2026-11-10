@@ -68,6 +68,19 @@ test('draws a block on empty time and moves or swaps whole days', async ({ page 
   const heads = schedule.locator('[data-day-head]');
   await expect(heads).toHaveCount(2);
 
+  // A working week fits at 1280 px with the navigation open: no sideways scroll, every heading whole.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(page.locator('.ink-sidebar')).toBeVisible();
+  const calendar = schedule.locator('.schedule__calendar');
+  await expect(schedule.locator('.schedule__head')).toHaveCount(5);
+  expect(await calendar.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+  const area = await calendar.boundingBox();
+  const friday = await schedule.locator('.schedule__head').last().boundingBox();
+  if (!area || !friday) throw new Error('no calendar');
+  expect(friday.x + friday.width).toBeLessThanOrEqual(area.x + area.width + 0.5);
+  await expect(schedule.locator('.schedule__head-number').last()).toBeInViewport({ ratio: 1 });
+  await page.setViewportSize({ width: 1440, height: 900 });
+
   // Phase 2: drawn from 16:55 to 17:25 after the end of Monday, then a type from the menu.
   const column = schedule.locator('.schedule__day').first();
   await schedule.locator('.schedule__grid').evaluate((el) => {
@@ -119,6 +132,11 @@ test('draws a block on empty time and moves or swaps whole days', async ({ page 
   await page.mouse.move(to.x + 20, to.y + 30, { steps: 8 });
   await expect(schedule.locator('.schedule__floating-note')).toHaveText('Lun 1 ⇄ Mer 3 · scambio');
   await expect(target).toHaveClass(/is-drop/);
+  // The label sits under the target heading, not over its text.
+  const note = await schedule.locator('.schedule__floating-note').boundingBox();
+  if (!note) throw new Error('no label');
+  expect(note.y).toBeGreaterThanOrEqual(to.y + to.height);
+  expect(note.x).toBeGreaterThanOrEqual(to.x);
   const swap = edited(page);
   await page.mouse.up();
   expect((await swap).status()).toBe(200);
@@ -135,15 +153,15 @@ test('draws a block on empty time and moves or swaps whole days', async ({ page 
   expect(await dates()).toEqual({ [monday]: '2027-03-01', [wednesday]: '2027-03-03' });
 
   // Onto a free date of the month in the queue: the day moves with its blocks.
-  const friday = schedule.locator('.schedule__month-day[data-day-drop="2027-03-05"]');
+  const fifth = schedule.locator('.schedule__month-day[data-day-drop="2027-03-05"]');
   const head = await mondayHead.boundingBox();
-  const cell = await friday.boundingBox();
+  const cell = await fifth.boundingBox();
   if (!head || !cell) throw new Error('no month');
   await page.mouse.move(head.x + 20, head.y + 20);
   await page.mouse.down();
   await page.mouse.move(cell.x + cell.width / 2, cell.y + cell.height / 2, { steps: 8 });
   await expect(schedule.locator('.schedule__floating-note')).toHaveText('Lun 1 → Ven 5');
-  await expect(friday).toHaveClass(/is-drop/);
+  await expect(fifth).toHaveClass(/is-drop/);
   const moved = saved(page);
   await page.mouse.up();
   expect((await moved).status()).toBe(200);
