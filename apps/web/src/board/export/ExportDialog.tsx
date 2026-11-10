@@ -107,6 +107,8 @@ export interface ExportDialogProps {
   /** The open board: a new logo is uploaded through it, like any file. */
   boardId: string;
   projectName: string;
+  /** The project's clock for sunrise and sunset on the call sheet (`shootingZone`). */
+  timeZone?: string | undefined;
   boardTitle: string;
   boards: readonly Board[] | null;
   selection: ReadonlySet<string>;
@@ -267,6 +269,7 @@ export function ExportDialog(props: ExportDialogProps) {
     boardTitle: props.boardTitle,
     boards: props.boards,
     scope: { projectId, boardId },
+    timeZone: props.timeZone,
     threads: getReviews().threads,
     reviews: getReviews().reviews,
     t,

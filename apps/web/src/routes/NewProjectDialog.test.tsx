@@ -101,6 +101,7 @@ it('creates metadata and opens the real project', async () => {
     type: 'short_film',
     shootingStart: '2026-11-02',
     shootingEnd: null,
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
   expect(created).toHaveBeenCalledWith({ id: 'p', rootBoardId: 'root' });
 });

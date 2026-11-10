@@ -70,7 +70,7 @@ export function DayCallsPanel({
         {t('dayCalls.emptyBody')}
       </EmptyState>
     );
-  const entries = dayCrew(draft, crew.items, elements);
+  const entries = dayCrew(draft, crew.items, elements, crew.characters);
   const change = (person: DayCrewEntry, patch: Parameters<typeof withDayCall>[2], key?: string) =>
     onChange(
       {
@@ -89,7 +89,7 @@ export function DayCallsPanel({
   const row = (person: DayCrewEntry) => {
     const { member } = person;
     const rowId = `${id}-${member.id}`;
-    const detail = characterName(member, elements) || member.role.trim();
+    const detail = characterName(member, elements, crew.characters) || member.role.trim();
     return (
       <div key={member.id} className="day-calls__row" data-called={person.called}>
         <Checkbox

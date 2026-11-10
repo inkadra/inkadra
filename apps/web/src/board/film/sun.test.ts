@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { locationCoords, sunTimes, sunTimesUtc } from './sun.ts';
+import { locationCoords, shootingZone, sunTimes, sunTimesUtc } from './sun.ts';
 
 const london = { lat: 51.5072, lng: -0.1276 };
 
@@ -33,6 +33,30 @@ describe('sunrise and sunset', () => {
     const offset = new Date(2026, 10, 9).getTimezoneOffset();
     expect(local.sunrise).toBe((utc.sunrise ?? 0) - offset);
     expect(local.sunset).toBe((utc.sunset ?? 0) - offset);
+  });
+
+  it('uses the project time zone, whatever the device says, summer time included', () => {
+    const turin = sunTimesUtc('2026-11-09', 45.0703, 7.521);
+    expect(sunTimes('2026-11-09', 45.0703, 7.521, 'Europe/Rome')).toEqual({
+      sunrise: (turin.sunrise ?? 0) + 60,
+      sunset: (turin.sunset ?? 0) + 60,
+    });
+    const summer = sunTimesUtc('2026-07-01', 45.0703, 7.521);
+    expect(sunTimes('2026-07-01', 45.0703, 7.521, 'Europe/Rome').sunrise).toBe(
+      (summer.sunrise ?? 0) + 120,
+    );
+    // New York in November: five hours behind UTC, about 06:35 and 16:40.
+    const nyc = sunTimes('2026-11-09', 40.71, -74.0, 'America/New_York');
+    expect(nyc.sunrise).toBe((sunTimesUtc('2026-11-09', 40.71, -74.0).sunrise ?? 0) - 300);
+    expect(Math.floor((nyc.sunrise ?? 0) / 60)).toBe(6);
+    expect(Math.floor((nyc.sunset ?? 0) / 60)).toBe(16);
+  });
+
+  it('keeps an explicit UTC and falls back to the device only without a zone', () => {
+    expect(shootingZone('UTC')).toBe('UTC');
+    expect(sunTimes('2026-11-09', 51.5, 0, 'UTC')).toEqual(sunTimesUtc('2026-11-09', 51.5, 0));
+    expect(shootingZone(undefined)).toBeUndefined();
+    expect(shootingZone('Europe/Rome')).toBe('Europe/Rome');
   });
 });
 

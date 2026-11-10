@@ -4,6 +4,7 @@ import type { FrameElement } from '@inkadra/canvas-core';
 import { type AspectRatio, type Element, getBoardAspect } from '@inkadra/doc-schema';
 import {
   type Asset,
+  type CrewCharacter,
   type CrewMember,
   castNameKey,
   type Person,
@@ -18,7 +19,6 @@ import { fetchExportSettings, logoUrl } from '../export/settings.ts';
 import { kitList } from '../plan/kit.ts';
 import { PlanDrawing, type PlanLike } from '../plan/PlanDrawing.tsx';
 import {
-  castCharacter,
   departmentNotes,
   keyTimes,
   locationsOfDay,
@@ -28,6 +28,7 @@ import {
 } from './call-sheet.ts';
 import {
   byDepartment,
+  castCard,
   castRows,
   dayCrew,
   onSetContacts,
@@ -96,6 +97,14 @@ export interface CallSheetModalProps {
    * and the client export has no call sheet.
    */
   crew?: CrewMember[] | undefined;
+  /** Character cards of other boards that crew rows are linked to. */
+  characters?: readonly CrewCharacter[] | undefined;
+  /** The project's clock for sunrise and sunset; the device's when none. */
+  timeZone?: string | undefined;
+  /** A project editor: the presence panel links cast names to accounts through the crew. */
+  canLinkCast?: boolean | undefined;
+  /** A cast name was linked: the crew changed. */
+  onCastLinked?: (() => void) | undefined;
   onClose: () => void;
 }
 const sections = [
@@ -142,6 +151,10 @@ export function CallSheetModal({
   scenes: scenesOf,
   people = [],
   crew = [],
+  characters = [],
+  timeZone,
+  canLinkCast,
+  onCastLinked,
   onClose,
 }: CallSheetModalProps) {
   const { t } = useTranslation();
@@ -190,7 +203,7 @@ export function CallSheetModal({
   );
   const day = ordered[index];
   const slots = day ? scheduleTimes(day) : [];
-  const entries = day ? dayCrew(day, crew, elements) : [];
+  const entries = day ? dayCrew(day, crew, elements, characters) : [];
   const calls = day ? castRows(day, entries) : [];
   const troupe = day ? troupeRows(day, entries) : [];
   const contacts = onSetContacts(entries);
@@ -198,11 +211,12 @@ export function CallSheetModal({
   const departments = day ? departmentNotes(day) : [];
   const times = day ? keyTimes(day) : [];
   const locations = day ? locationsOfDay(day, elements) : [];
-  const sun = day ? sunOfDay(day, locations) : null;
+  const sun = day ? sunOfDay(day, locations, timeZone) : null;
   const sunCell = sun && (sun.sunrise !== null || sun.sunset !== null);
   const sunClock = (time: number | null) => (time === null ? '—' : clockLabel(time));
   // Film days name a character per row; a spot names the people themselves.
-  const characters = calls.some((call) => castCharacter(call.name, elements));
+  const cards = calls.map((call) => castCard(call.name, call.entry, elements, characters));
+  const named = cards.some(Boolean);
   const serve = day ? serveLines(day, elements) : new Map<string, string>();
   const numbered = slots.some(
     ({ block }) =>
@@ -231,9 +245,9 @@ export function CallSheetModal({
   };
   const show = (section: Section) => included[section] && filled[section];
   const shotOf = (shotId: string | null) => (shotId ? shots.get(shotId) : undefined);
-  // The crew row linked to the account first; the board's cast links stay as the fallback.
+  // Both come from the crew row linked to the account (decision 0091): the roster when it can be
+  // read, else the attendance links, which the server derives from the same rows.
   const personal = day ? personalDayCall(day, entries, attendance.data?.links, userId) : null;
-  // Answering presence still goes through the cast links (decision 0091).
   const linked = day && attendance.data ? personalCall(day, attendance.data.links, userId) : null;
   const myAnswer = attendance.data?.responses.find(
     (r) => r.dayId === day?.id && r.userId === userId,
@@ -324,7 +338,10 @@ export function CallSheetModal({
                 day={day}
                 data={attendance.data}
                 people={people}
-                onLink={attendance.link}
+                canLink={!!canLinkCast}
+                onLink={(name, linkTo) =>
+                  attendance.link(name, linkTo).then(() => onCastLinked?.())
+                }
               />
             )}
             {isPhone && (
@@ -599,9 +616,7 @@ export function CallSheetModal({
                     <table className="sheet__table sheet__table--stack">
                       <thead>
                         <tr>
-                          <th scope="col">
-                            {t(characters ? 'callSheet.character' : 'callSheet.name')}
-                          </th>
+                          <th scope="col">{t(named ? 'callSheet.character' : 'callSheet.name')}</th>
                           <th scope="col">{t('story.character.actor')}</th>
                           <th scope="col">{t('callSheet.pickup')}</th>
                           <th scope="col">{t('callSheet.callShort')}</th>
@@ -610,8 +625,8 @@ export function CallSheetModal({
                         </tr>
                       </thead>
                       <tbody>
-                        {calls.map(({ name, start, entry }) => {
-                          const card = castCharacter(name, elements);
+                        {calls.map(({ name, start, entry }, i) => {
+                          const card = cards[i];
                           const actor =
                             card?.actor ||
                             (entry && castNameKey(entry.member.name) !== castNameKey(name)

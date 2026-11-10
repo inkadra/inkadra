@@ -206,7 +206,7 @@ export function registerCalendarRoutes(
         date: d.date,
         time: d.callTime,
         wrap: d.wrap,
-        timeZone: row.timeZone,
+        timeZone: row.timeZone ?? undefined,
         location: d.location,
         modified: d.updatedAt,
       });

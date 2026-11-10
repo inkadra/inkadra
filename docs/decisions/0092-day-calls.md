@@ -40,8 +40,9 @@ appear as a key time for the first location with coordinates (a location card's 
 map link in the day's location), labelled with its number; without coordinates there is no cell.
 On a phone the crew is a list with a 44 px call button (`tel:`) per person with a number; the
 viewer's own row says "(you)" without a button. "Your call" comes from the crew row linked to the
-viewer's account, with its own call and pick-up; the board's cast links remain the fallback, and
-answering presence still uses them.
+viewer's account, with its own call and pick-up; a viewer who cannot read the roster (a grant on
+one board) gets the cast names of their own row from the attendance links instead, and answers
+presence through the same row (0091).
 
 ## Privacy
 
@@ -58,8 +59,15 @@ no days. Project archives keep block notes but not calls, as they do not keep th
   previous version cannot erase either.
 - The server returns `calls: []` to the team for a day saved without them; the calendar reads a
   missing list as empty when it compares drafts, so undo and autosave see no change.
-- Character cards on another board of the project are not resolved when matching cast: those
-  rows match by the person's name only.
-- Attendance answers still follow the board's cast links; moving them to crew rows needs the
-  link migration deferred in 0091.
-- Sunrise and sunset keep the limits of 0089: the device's time zone stands for the location's.
+- Character cards on another board of the project are resolved through the project's characters
+  (`/crew/characters`), read only when a crew row links a card on another board; the live card of
+  the open board wins. The server resolves them the same way for presence.
+- Attendance answers follow the crew rows (0091, cast links merged).
+- Sunrise and sunset are shown on the project's clock: its IANA time zone (0061), which the web
+  app now sets to the creator's device zone when a project is made, "UTC" included. Nothing set
+  the zone before, so migration 0036 makes the column nullable and turns the stored default "UTC"
+  into "not set": the API leaves the field out (it was already optional), the calendar feed keeps
+  reading UTC, and the call sheet uses the device's zone. This is a deliberate trade-off: the old
+  default cannot be told from a "UTC" set through the API or an import before 0036, so such a
+  project becomes unset too; set it again through the API. There is no per-day or per-location
+  zone and no setting to change the project's yet.

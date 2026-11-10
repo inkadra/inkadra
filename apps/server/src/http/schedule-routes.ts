@@ -23,10 +23,11 @@ import {
   requireBoardRole,
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
+import type { BoardReader } from '../board-content.ts';
+import { castLinksOf, linkCastName } from '../cast-crew.ts';
 import type { Database } from '../db/client.ts';
 import {
   board,
-  castLink,
   crewMember,
   project,
   shootingDay,
@@ -74,17 +75,19 @@ export function keepBlockNotes(
 }
 
 /** When each linked person is first called on a day, in minutes from the shooting date. */
-function firstCalls(
+export function firstCalls(
   day: Pick<ShootingDayInput, 'callTime' | 'blocks'>,
   links: ReadonlyArray<{ castKey: string; userId: string }>,
 ) {
-  const owners = new Map(links.map((link) => [link.castKey, link.userId]));
+  // One name can belong to several people (two rows called "Bruno"): each gets its own time.
+  const owners = new Map<string, string[]>();
+  for (const link of links)
+    owners.set(link.castKey, [...(owners.get(link.castKey) ?? []), link.userId]);
   const first = new Map<string, number>();
   for (const { block, start } of scheduleTimes(day)) {
     for (const name of block.cast) {
-      const userId = owners.get(castNameKey(name));
-      if (userId && start < (first.get(userId) ?? Number.POSITIVE_INFINITY))
-        first.set(userId, start);
+      for (const userId of owners.get(castNameKey(name)) ?? [])
+        if (start < (first.get(userId) ?? Number.POSITIVE_INFINITY)) first.set(userId, start);
     }
   }
   return first;
@@ -92,7 +95,7 @@ function firstCalls(
 
 export function registerScheduleRoutes(
   app: FastifyInstance,
-  { db, auth }: { db: Database; auth: Auth },
+  { db, auth, boardReader }: { db: Database; auth: Auth; boardReader?: BoardReader },
 ) {
   const cleanInput = async (
     input: ShootingDayInput,
@@ -190,19 +193,19 @@ export function registerScheduleRoutes(
     return reply.code(201).send(publicDay(row, team));
   });
   // People who cannot edit the schedule only learn about themselves. A person whose access
-  // ended keeps their rows, in case it comes back, but drops out of the answer.
+  // ended keeps their rows, in case it comes back, but drops out of the answer. The links come
+  // from the crew (decision 0091): a grant on one board shows the caller's own only, as it does
+  // not disclose the project roster.
   app.get(`${base}/attendance`, async (req) => {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
     const access = await requireBoardRole(db, actor, boardId, 'viewer');
     const canManage = atLeast(access.role, 'editor');
-    const mine = (column: typeof castLink.userId | typeof shootingDayAttendance.userId) =>
+    const mine = (column: typeof shootingDayAttendance.userId) =>
       canManage ? undefined : eq(column, actor.id);
+    const roster = canManage && (await isTeam(db, actor, access.board.projectId));
     const [links, responses] = await Promise.all([
-      db
-        .select({ castKey: castLink.castKey, userId: castLink.userId })
-        .from(castLink)
-        .where(and(eq(castLink.boardId, boardId), mine(castLink.userId))),
+      castLinksOf(db, boardReader, access.board.projectId, roster ? undefined : actor.id, actor),
       db
         .select({
           dayId: shootingDayAttendance.dayId,
@@ -223,45 +226,38 @@ export function registerScheduleRoutes(
       responses: responses.filter((response) => roles.has(response.userId)),
     };
   });
+  // Linking a cast name writes the crew (decision 0091), so it takes a project editor; the
+  // route stays for older clients and for the presence panel.
   app.put(`${base}/cast-links`, async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
-    await requireBoardRole(db, actor, boardId, 'editor');
+    const access = await requireBoardRole(db, actor, boardId, 'editor');
+    const role = await projectRole(db, actor, access.board.projectId);
+    if (!role || !atLeast(role, 'editor'))
+      throw new HttpError('forbidden', 'Linking the cast edits the project crew.');
     const { name, userId } = SetCastLink.parse(req.body);
-    const castKey = castNameKey(name);
-    if (!userId) {
-      await db
-        .delete(castLink)
-        .where(and(eq(castLink.boardId, boardId), eq(castLink.castKey, castKey)));
-      return reply.code(204).send();
+    if (userId) {
+      const roles = await boardRolesForPeople(db, boardId, [userId]);
+      if (!roles.has(userId))
+        throw new HttpError('bad_request', 'That person has no access to this board.');
     }
-    const roles = await boardRolesForPeople(db, boardId, [userId]);
-    if (!roles.has(userId))
-      throw new HttpError('bad_request', 'That person has no access to this board.');
-    await db
-      .insert(castLink)
-      .values({ boardId, castKey, userId })
-      .onConflictDoUpdate({
-        target: [castLink.boardId, castLink.castKey],
-        set: { userId, updatedAt: sql`now()` },
-      });
+    await db.transaction((tx) =>
+      linkCastName(tx, boardReader, { projectId: access.board.projectId, boardId, name, userId }),
+    );
     return reply.code(204).send();
   });
   // The person answering is always the signed-in one: the request cannot name anybody else.
   app.put(`${base}/:dayId/attendance`, async (req) => {
     const actor = await requireActor(auth, req, db);
     const { boardId, dayId } = DayParams.parse(req.params);
-    await requireBoardRole(db, actor, boardId, 'viewer');
+    const access = await requireBoardRole(db, actor, boardId, 'viewer');
     const { status } = SetDayAttendance.parse(req.body);
     const [day] = await db
       .select({ blocks: shootingDay.blocks })
       .from(shootingDay)
       .where(and(eq(shootingDay.id, dayId), eq(shootingDay.boardId, boardId)));
     if (!day) throw new HttpError('not_found', 'Shooting day not found.');
-    const links = await db
-      .select({ castKey: castLink.castKey })
-      .from(castLink)
-      .where(and(eq(castLink.boardId, boardId), eq(castLink.userId, actor.id)));
+    const links = await castLinksOf(db, boardReader, access.board.projectId, actor.id, actor);
     const cast = new Set(day.blocks.flatMap((block) => block.cast.map(castNameKey)));
     if (!links.some((link) => cast.has(link.castKey)))
       throw new HttpError('forbidden', 'Only people called on this day can answer.');
@@ -277,6 +273,7 @@ export function registerScheduleRoutes(
   type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
   const updateDay = async (
     tx: Transaction,
+    projectId: string,
     boardId: string,
     dayId: string,
     revision: number,
@@ -318,10 +315,7 @@ export function registerScheduleRoutes(
       await tx.delete(shootingDayAttendance).where(ofDay);
       return updated;
     }
-    const links = await tx
-      .select({ castKey: castLink.castKey, userId: castLink.userId })
-      .from(castLink)
-      .where(eq(castLink.boardId, boardId));
+    const links = await castLinksOf(tx, boardReader, projectId);
     const was = firstCalls(before, links);
     const now = firstCalls(input, links);
     const moved = [...new Set([...was.keys(), ...now.keys()])].filter(
@@ -342,7 +336,7 @@ export function registerScheduleRoutes(
     const clean = await cleanInput(input, team, access.board.projectId);
     const updatedBy = await savedBy(actor.id);
     const row = await db.transaction((tx) =>
-      updateDay(tx, boardId, dayId, revision, clean, updatedBy),
+      updateDay(tx, access.board.projectId, boardId, dayId, revision, clean, updatedBy),
     );
     return publicDay(row, team);
   });
@@ -381,6 +375,7 @@ export function registerScheduleRoutes(
             publicDay(
               await updateDay(
                 tx,
+                access.board.projectId,
                 boardId,
                 change.id,
                 change.revision,

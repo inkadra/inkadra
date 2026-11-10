@@ -599,7 +599,7 @@ export async function exportProject(
         ...(p.iconEmoji ? { emoji: p.iconEmoji } : {}),
       },
       type: p.type,
-      timeZone: p.timeZone,
+      ...(p.timeZone ? { timeZone: p.timeZone } : {}),
       shootingStart: p.shootingStart,
       shootingEnd: p.shootingEnd,
       archived: p.archivedAt !== null,

@@ -43,22 +43,59 @@ export function sunTimesUtc(
 }
 
 /**
- * Sunrise and sunset in local minutes from midnight of `date`, on the device's clock; null for
- * polar day or night.
- * shortcut: the device's time zone stands for the location's, since days carry none (decision
- * 0022); a location in another time zone needs one stored on the day.
+ * The time zone the shooting times are written in: the project's (decision 0061), "UTC" included.
+ * A project made before the web app sent its zone has none, and the device's zone stands in.
+ * shortcut: a location in another zone than the project needs a zone per day or per location,
+ * and a setting to change the project's zone.
+ */
+export function shootingZone(projectZone: string | null | undefined): string | undefined {
+  return projectZone || undefined;
+}
+
+/** Minutes the wall clock of `timeZone` (the device's when none) is ahead of UTC at `at`. */
+function zoneOffset(at: number, timeZone: string | undefined): number {
+  if (!timeZone) return -new Date(at).getTimezoneOffset();
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+    }).formatToParts(at);
+    const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+    const wall = Date.UTC(
+      part('year'),
+      part('month') - 1,
+      part('day'),
+      part('hour'),
+      part('minute'),
+    );
+    return Math.round((wall - Math.floor(at / 60_000) * 60_000) / 60_000);
+  } catch {
+    // A zone this browser does not know: the device's clock, as before.
+    return -new Date(at).getTimezoneOffset();
+  }
+}
+
+/**
+ * Sunrise and sunset in minutes from midnight of `date` on the clock of `timeZone` (the project's,
+ * see `shootingZone`), else on the device's; null for polar day or night.
  */
 export function sunTimes(
   date: string,
   lat: number,
   lng: number,
+  timeZone?: string | undefined,
 ): { sunrise: number | null; sunset: number | null } {
   const utc = sunTimesUtc(date, lat, lng);
   const [y = 0, mo = 1, d = 1] = date.split('-').map(Number);
   const local = (minutes: number | null) => {
     if (minutes === null) return null;
     const at = Date.UTC(y, mo - 1, d) + minutes * 60_000;
-    return Math.round((at - new Date(y, mo - 1, d).getTime()) / 60_000);
+    return minutes + zoneOffset(at, timeZone);
   };
   return { sunrise: local(utc.sunrise), sunset: local(utc.sunset) };
 }

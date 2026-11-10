@@ -152,6 +152,33 @@ describe('the crew on the call sheet (decision 0092)', () => {
     expect(cast?.rows.at(-1)).toEqual(['Marta', '', 'Hotel 06:30', '06:45', '07:00', '']);
   });
 
+  it('reads a character card of another board and the project clock', () => {
+    const lead = person(5, {
+      name: 'Giulia',
+      department: 'Cast',
+      character: { boardId: '00000000-0000-4000-8000-000000000998', elementId: 'char0001' },
+    });
+    const filmDay = { ...shooting, blocks: [{ ...shooting.blocks[0]!, cast: ['Luca'] }] };
+    const characters = [
+      {
+        boardId: '00000000-0000-4000-8000-000000000998',
+        elementId: 'char0001',
+        name: 'Luca',
+        actor: 'Giulia B.',
+        contact: 'Agency',
+      },
+    ];
+    const sections = callSheetSections(filmDay, () => undefined, t, new Map(), [lead], {
+      characters,
+      timeZone: 'Europe/Rome',
+    });
+    const cast = sections.find((s) => s.title === 'callSheet.cast');
+    expect(cast?.rows[0]?.[0]).toBe('callSheet.character');
+    expect(cast?.rows.at(-1)).toEqual(['Luca', 'Giulia B.', '—', '07:00', '07:00', 'Agency']);
+    // Turin, 19 November, on the Rome clock: sunrise after 07:00, sunset before 17:00.
+    expect(sections[0]?.rows[1]?.at(-1)).toMatch(/^07:\d\d · 16:\d\d$/);
+  });
+
   it('draws a block note in the warning colour under its description', () => {
     const sections = callSheetSections(shooting, () => undefined, t, new Map(), crew);
     const ctx = {

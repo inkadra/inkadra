@@ -341,7 +341,8 @@ function PersonSelect({
 
 /**
  * For organisers, on a phone and on a computer: who of the day's cast answered, and which account
- * each name belongs to.
+ * each name belongs to. The account is the one of the name's crew row (decision 0091): choosing
+ * one links that row, or adds the person to Cast, so only project editors choose.
  * shortcut: the choice lists project members, not people with a grant on this board only;
  * extend it if those turn out to be cast too.
  */
@@ -349,11 +350,13 @@ export function PresencePanel({
   day,
   data,
   people,
+  canLink,
   onLink,
 }: {
   day: ShootingDayInput & { id: string };
   data: ScheduleAttendance;
   people: Person[];
+  canLink: boolean;
   onLink: (name: string, userId: string | null) => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -393,15 +396,24 @@ export function PresencePanel({
               {row.userId && ` · ${t(`callSheet.status.${row.status ?? 'waiting'}`)}`}
             </span>
           </div>
-          <PersonSelect
-            name={row.name}
-            userId={row.userId}
-            people={people}
-            onLink={(name, userId) => {
-              setFailed(false);
-              return onLink(name, userId).catch(() => setFailed(true));
-            }}
-          />
+          {canLink ? (
+            <PersonSelect
+              name={row.name}
+              userId={row.userId}
+              people={people}
+              onLink={(name, userId) => {
+                setFailed(false);
+                return onLink(name, userId).catch(() => setFailed(true));
+              }}
+            />
+          ) : (
+            <span className="call-sheet__row-help">
+              {row.userId
+                ? (people.find((person) => person.id === row.userId)?.name ??
+                  t('callSheet.otherAccount'))
+                : t('callSheet.noAccount')}
+            </span>
+          )}
         </div>
       ))}
     </section>

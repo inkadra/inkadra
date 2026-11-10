@@ -1,0 +1,1 @@
+ALTER TABLE "cast_link" ADD COLUMN "merged_at" timestamp with time zone;

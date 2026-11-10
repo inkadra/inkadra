@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Element } from '@inkadra/doc-schema';
-import { type CrewMember, castNameKey, type Schedule, type ShootingDay } from '@inkadra/shared';
+import {
+  type CrewCharacter,
+  type CrewMember,
+  castNameKey,
+  type Schedule,
+  type ShootingDay,
+} from '@inkadra/shared';
 import type { TFunction } from 'i18next';
 import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
 import { api } from '../../lib/api.ts';
 import {
-  castCharacter,
   departmentNotes,
   hasSceneNumbers,
   keyTimes,
@@ -15,6 +20,7 @@ import {
 } from '../film/call-sheet.ts';
 import {
   byDepartment,
+  castCard,
   castRows,
   dayCrew,
   onSetContacts,
@@ -67,11 +73,13 @@ export function callSheetSections(
   t: TFunction,
   elements: ReadonlyMap<string, Element> = new Map(),
   crew: readonly CrewMember[] = [],
+  /** Character cards of other boards that crew rows link, and the project's clock for the sun. */
+  more: { characters?: readonly CrewCharacter[]; timeZone?: string | undefined } = {},
 ): CallSheetSection[] {
   const times = keyTimes(day);
   const locations = locationsOfDay(day, elements);
-  const entries = dayCrew(day, crew, elements);
-  const sun = sunOfDay(day, locations);
+  const entries = dayCrew(day, crew, elements, more.characters);
+  const sun = sunOfDay(day, locations, more.timeZone);
   const sunCell = sun && (sun.sunrise !== null || sun.sunset !== null);
   const sunClock = (time: number | null) => (time === null ? '—' : clockLabel(time));
   const serve = serveLines(day, elements);
@@ -214,6 +222,7 @@ export function callSheetSections(
     schedule.tones?.push('surface-2');
   }
   const calls = castRows(day, entries);
+  const cards = calls.map((c) => castCard(c.name, c.entry, elements, more.characters));
   const dayCall = clockMinutes(day.callTime);
   const cast: CallSheetSection = {
     title: t('callSheet.cast'),
@@ -221,19 +230,15 @@ export function callSheetSections(
     columns: [2, 2, 1.6, 1, 1, 2.4],
     rows: [
       [
-        t(
-          calls.some((c) => castCharacter(c.name, elements))
-            ? 'callSheet.character'
-            : 'callSheet.name',
-        ),
+        t(cards.some(Boolean) ? 'callSheet.character' : 'callSheet.name'),
         t('story.character.actor'),
         t('callSheet.pickup'),
         t('callSheet.callShort'),
         t('callSheet.inScene'),
         t('callSheet.contact'),
       ],
-      ...calls.map(({ name, start, entry }) => {
-        const card = castCharacter(name, elements);
+      ...calls.map(({ name, start, entry }, i) => {
+        const card = cards[i];
         const actor =
           card?.actor ||
           (entry && castNameKey(entry.member.name) !== castNameKey(name) ? entry.member.name : '');

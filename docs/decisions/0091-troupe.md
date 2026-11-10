@@ -23,8 +23,24 @@ board document, never copied into the roster.
 
 ## Consequences
 
-The contract and database additions are additive. Existing cast-link and attendance contracts
-remain unchanged. Unifying those links requires coordinating board-scoped legacy links with
-project-scoped crew (including conflicting links across boards). This is deliberately deferred
-as a complete follow-up: no cast-link backfill or attendance source switch is performed here.
-Per-day crew calls, call-sheet crew output and phone buttons belong to the next feature.
+The contract and database additions are additive. Per-day crew calls, call-sheet crew output and
+phone buttons belong to the next feature ([0092](0092-day-calls.md)).
+
+**Cast links merged into the crew** (follow-up). A crew row is the single link from a person to an
+account: the board-scoped `cast_link` table is no longer read. Each old link is merged once, when
+the database migrations run, under an advisory lock: into the project's row with that name or
+character (the stored key is lower case, so a new row takes the name as the day's blocks write
+it, or the card's actor), else into a new row in Cast. A row already linked to somebody else
+keeps its link and the old link gets a row of its own, so no link is lost; conflicting links of
+one name on several boards become several rows to tidy in Troupe. Merged links are marked
+(`merged_at`), not deleted. Personal calls, presence answers, the reset of answers when a call
+moves and the presence panel all read the cast names of crew rows: the row's name and its
+character card's, on any board of the project. `PUT …/schedule/cast-links` stays for older
+clients and the presence panel; it now links (or adds) the crew row and needs a project editor.
+`GET …/schedule/attendance` returns the links derived from the crew: every link to project
+members who edit the schedule, only the caller's own to anyone else, since a grant on one board
+does not disclose the roster. Character cards are read only on boards of the project that are not
+in the trash and, for the caller's links and answers, that the caller can open. An actor playing
+two characters gets one row per character, so each name keeps its link. The merge marks only the
+links it read; one an older server changes later (its `updated_at` passes `merged_at`) is merged
+again at the next start, through the crew and without taking a link away.
