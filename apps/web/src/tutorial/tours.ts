@@ -214,6 +214,7 @@ export const TOURS: Tour[] = [
         side: 'bottom',
         keys: [isMac() ? '⌘' : 'Ctrl', 'Z'],
       },
+      // The sheet derives key times, locations and row pictures from the board (0090).
       { anchor: 'schedule-callsheet', media: 'export', side: 'bottom' },
     ],
   },

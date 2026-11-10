@@ -48,7 +48,6 @@ import {
   finish,
   SHOT_COLUMNS,
   type Shot,
-  sectionPages,
   shotListPages,
   storyboardPages,
   titlePage,
@@ -76,7 +75,14 @@ import {
 import type { FramesPerPage, Orientation, PaperSize } from './layout.ts';
 import { noteBlocks } from './note-text.ts';
 import type { Op, Page } from './pages.ts';
-import { calendarDate, callSheetSections, loadPlanning, type Planning } from './planning.ts';
+import {
+  calendarDate,
+  callSheetPages,
+  callSheetSections,
+  linkCallSheetPdf,
+  loadPlanning,
+  type Planning,
+} from './planning.ts';
 import { renderImages } from './render-canvas.ts';
 import { renderPdf } from './render-pdf.ts';
 import { chosenScenes, type Department, type SceneChoice, withoutOmitted } from './scene-choice.ts';
@@ -582,10 +588,10 @@ export async function buildPages(
         t('callSheet.dayOf', { n: i + 1, total: planning.days.length }),
       ].join(' · ');
       content.push(
-        ...sectionPages(
+        ...callSheetPages(
           setup,
           heading,
-          callSheetSections(day, (id) => labels.get(id), t),
+          callSheetSections(day, (id) => labels.get(id), t, snapshot.byId),
           ctx,
         ),
       );
@@ -793,7 +799,9 @@ export async function exportFile(
       { ...(signal ? { signal } : {}), onPage: pageProgress },
     );
     return {
-      blob: new Blob([bytes as BlobPart], { type: 'application/pdf' }),
+      blob: new Blob([(await linkCallSheetPdf(bytes, pages)) as BlobPart], {
+        type: 'application/pdf',
+      }),
       name: `${base}.pdf`,
     };
   } finally {

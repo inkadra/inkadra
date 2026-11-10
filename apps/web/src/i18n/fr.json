@@ -2544,7 +2544,6 @@
     "dayOf": "Jour {{n}} sur {{total}}",
     "date": "Date",
     "call": "Convocation",
-    "wrap": "Fin prévue",
     "revision": "Révision {{revision}}",
     "time": "Horaire",
     "scene": "Scène",
@@ -2569,7 +2568,6 @@
     "moves": "Mouvements numérotés",
     "fullPage": "Plans en pleine page",
     "new": "Nouveau",
-    "general": "Général",
     "yourCall": "Ta convocation",
     "confirm": "Je confirme ma présence",
     "decline": "Je ne peux pas",
@@ -2590,7 +2588,17 @@
       "confirmed": "Confirmé",
       "declined": "Ne peut pas",
       "waiting": "En attente"
-    }
+    },
+    "ready": "Ready to shoot",
+    "pause": "Break",
+    "cameraWrap": "Camera wrap",
+    "crewWrap": "Crew wrap",
+    "times": "Key times",
+    "place": "Place",
+    "locationNumber": "Loc. {{n}}",
+    "serve": "Needed: {{items}}",
+    "inScene": "On set",
+    "contact": "Contact"
   },
   "needed": {
     "title": "À apporter",
@@ -4360,8 +4368,8 @@
             "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
           },
           "4": {
-            "title": "Call sheet",
-            "text": "Ready to send to the crew."
+            "title": "Feuille de service",
+            "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
           }
         }
       },

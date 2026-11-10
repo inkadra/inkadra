@@ -190,6 +190,7 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   if (!pillRect || !gridRect) throw new Error('overflow notice missing');
   expect(pillRect.y + pillRect.height).toBeLessThanOrEqual(gridRect.y + gridRect.height);
   await page.setViewportSize({ width: 390, height: 844 });
+  await schedule.getByRole('button', { name: /^giovedì 5 novembre/ }).click();
   const notice = schedule.locator('.schedule__edge-notices');
   await expect(notice).toBeVisible();
   const noticeRect = await notice.boundingBox();

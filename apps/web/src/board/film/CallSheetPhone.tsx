@@ -13,7 +13,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api.ts';
 import { openInMapsUrl } from '../maps.ts';
-import { castCalls, type SheetRow } from './call-sheet.ts';
+import { castCalls } from './call-sheet.ts';
 import { clockLabel, whileVisible } from './schedule.ts';
 
 /** Cast links and presence of a board's schedule; nothing is asked of the server when off. */
@@ -114,18 +114,17 @@ export function PhoneBar({
   );
 }
 
-/** Top of the paper: project and date, the general call and, for a linked person, their own. */
+/**
+ * Top of the paper: project and date and, for a linked person, their own call. The day's times
+ * follow in the key-times row.
+ */
 export function PhoneSheetHead({
   project,
   date,
-  call,
-  wrap,
   personal,
 }: {
   project?: string | undefined;
   date: string;
-  call: string;
-  wrap: string;
   personal: { name: string; start: number } | null;
 }) {
   const { t } = useTranslation();
@@ -135,23 +134,14 @@ export function PhoneSheetHead({
         <span className="sheet__label">{project}</span>
         <b className="sheet__phone-date">{date}</b>
       </div>
-      <div className="sheet__phone-line">
-        <div>
-          <div className="sheet__label">{t('callSheet.general')}</div>
-          <b className="sheet__phone-call">{call}</b>
-          <div className="sheet__muted">
-            {t('callSheet.wrap')} {wrap}
-          </div>
+      {personal && (
+        <div className="sheet__phone-own">
+          <div className="sheet__label">{t('callSheet.yourCall')}</div>
+          <b>
+            {personal.name} · {clockLabel(personal.start)}
+          </b>
         </div>
-        {personal && (
-          <div className="sheet__phone-own">
-            <div className="sheet__label">{t('callSheet.yourCall')}</div>
-            <b>
-              {personal.name} · {clockLabel(personal.start)}
-            </b>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
@@ -178,52 +168,6 @@ export function MapsLink({ location }: { location: string }) {
       <Icon name="pin" size={14} />
       {t('board.map.open')}
     </a>
-  );
-}
-
-/** The day's schedule at a glance: time, scene and shots, who is in them. */
-export function PhoneSchedule({ rows }: { rows: SheetRow[] }) {
-  const { t } = useTranslation();
-  const text = ({ block, scene, first, last }: SheetRow) => {
-    if (!first) {
-      if (block.shotId) return t('schedule.missingShot');
-      return block.title || t(`schedule.types.${block.type}`);
-    }
-    const shots = last ? `${first}–${last}` : first;
-    return scene ? `${t('needed.sceneNumber', { number: scene })} · ${shots}` : shots;
-  };
-  return (
-    <table className="sheet__rows">
-      <thead className="ink-sr-only">
-        <tr>
-          <th scope="col">{t('callSheet.time')}</th>
-          <th scope="col">{t('callSheet.shot')}</th>
-          <th scope="col">{t('callSheet.cast')}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) =>
-          row.block.type !== 'shot' && !row.block.shotId ? (
-            <tr key={row.id} className="sheet__muted">
-              <td>{clockLabel(row.start)}</td>
-              <td colSpan={2}>
-                {[t(`schedule.types.${row.block.type}`), row.block.title]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </td>
-            </tr>
-          ) : (
-            <tr key={row.id}>
-              <td>
-                <b>{clockLabel(row.start)}</b>
-              </td>
-              <td className={row.first ? 'sheet__rows-shots' : undefined}>{text(row)}</td>
-              <td>{row.block.cast.join(', ')}</td>
-            </tr>
-          ),
-        )}
-      </tbody>
-    </table>
   );
 }
 

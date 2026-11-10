@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import {
-  type CastLink,
-  castNameKey,
-  type ScheduleBlock,
-  type ShootingDayInput,
-} from '@inkadra/shared';
+
+import type { Element } from '@inkadra/doc-schema';
+import { type CastLink, castNameKey, type ShootingDayInput } from '@inkadra/shared';
+import { neededForDay } from './needed.ts';
 import { clockMinutes, scheduleTimes } from './schedule.ts';
 
 /** First scheduled appearance, in local minutes from the shooting date (including overnight). */
@@ -30,45 +28,6 @@ export function personalCall(
 ) {
   const mine = new Set(links.filter((link) => link.userId === userId).map((l) => l.castKey));
   return castCalls(day).find((call) => mine.has(castNameKey(call.name))) ?? null;
-}
-
-export interface SheetRow {
-  id: string;
-  start: number;
-  block: ScheduleBlock;
-  scene?: string | undefined;
-  /** Label of the shot, or of the first of several. */
-  first?: string | undefined;
-  /** Label of the last of several shots in a row. */
-  last?: string | undefined;
-}
-
-/**
- * The schedule for a narrow screen: shots in a row of one scene with the same cast read as one
- * line, "Sc. 4 · 4A–4C", at the time of the first.
- */
-export function sheetRows(
-  day: ShootingDayInput,
-  shotOf: (id: string | null) => { label: string; scene?: string | undefined } | undefined,
-): SheetRow[] {
-  const castOf = (block: ScheduleBlock) => block.cast.map(castNameKey).join('\n');
-  const rows: SheetRow[] = [];
-  for (const { block, start } of scheduleTimes(day)) {
-    const shot = shotOf(block.shotId);
-    const previous = rows.at(-1);
-    // Without a scene number the labels say nothing about belonging together.
-    if (
-      shot?.scene &&
-      previous?.first &&
-      previous.scene === shot.scene &&
-      castOf(previous.block) === castOf(block)
-    ) {
-      previous.last = shot.label;
-    } else {
-      rows.push({ id: block.id, start, block, scene: shot?.scene, first: shot?.label });
-    }
-  }
-  return rows;
 }
 
 /**
@@ -110,5 +69,102 @@ export function departmentNotes(day: ShootingDayInput): DepartmentNote[] {
     (a, b) =>
       a.department.localeCompare(b.department, undefined, { sensitivity: 'base' }) ||
       a.start - b.start,
+  );
+}
+
+/** Times use the same overnight offsets as the schedule, never new saved fields. */
+export function keyTimes(day: ShootingDayInput) {
+  const slots = scheduleTimes(day);
+  const shots = slots.filter(({ block }) => block.type === 'shot' || !!block.shotId);
+  // shortcut: solar times are omitted until the calendar's sun.ts is wired in.
+  return [
+    { key: 'call', time: clockMinutes(day.callTime) },
+    { key: 'ready', time: shots[0]?.start },
+    { key: 'pause', time: slots.find(({ block }) => block.type === 'break')?.start },
+    { key: 'cameraWrap', time: shots.at(-1)?.end },
+    { key: 'crewWrap', time: plannedWrap(day) ?? undefined },
+  ].filter((entry): entry is { key: string; time: number } => entry.time !== undefined);
+}
+
+export interface DayLocation {
+  name: string;
+  address?: string | undefined;
+  mapUrl?: string | undefined;
+}
+
+/** Resolve by element identity, including scenes without numbers and loose frames. */
+export function sheetShot(shotId: string | null, elements: ReadonlyMap<string, Element>) {
+  const frame = shotId ? elements.get(shotId) : undefined;
+  const parent = frame?.type === 'frame' && frame.parent ? elements.get(frame.parent) : undefined;
+  return {
+    frame: frame?.type === 'frame' ? frame : undefined,
+    scene: parent?.type === 'scene' ? parent : undefined,
+  };
+}
+
+export function hasSceneNumbers(day: ShootingDayInput, elements: ReadonlyMap<string, Element>) {
+  return day.blocks.some((block) => !!sheetShot(block.shotId, elements).scene?.number?.trim());
+}
+
+/** Locations in shooting order; matching story cards provide the private address and map. */
+export function locationsOfDay(
+  day: ShootingDayInput,
+  elements: ReadonlyMap<string, Element>,
+): DayLocation[] {
+  const names: string[] = [];
+  for (const { block } of scheduleTimes(day)) {
+    const name = sheetShot(block.shotId, elements).scene?.location?.trim();
+    if (name && !names.some((value) => castNameKey(value) === castNameKey(name))) names.push(name);
+  }
+  if (!names.length && day.location.trim()) {
+    const [name = '', ...address] = day.location.trim().split('\n');
+    const card = [...elements.values()].find(
+      (el) => el.type === 'location' && castNameKey(el.name) === castNameKey(name),
+    );
+    return [
+      {
+        name,
+        address: card?.type === 'location' ? card.address : address.join('\n'),
+        mapUrl: card?.type === 'location' ? card.mapUrl : undefined,
+      },
+    ];
+  }
+  return names.map((name) => {
+    const card = [...elements.values()].find(
+      (el) => el.type === 'location' && castNameKey(el.name) === castNameKey(name),
+    );
+    return {
+      name,
+      address: card?.type === 'location' ? card.address : undefined,
+      mapUrl: card?.type === 'location' ? card.mapUrl : undefined,
+    };
+  });
+}
+
+/** Only the first scheduled row of a scene carries its own needed items, not the day's totals. */
+export function serveLines(
+  day: ShootingDayInput,
+  elements: ReadonlyMap<string, Element>,
+): Map<string, string> {
+  const seen = new Set<string>();
+  const lines = new Map<string, string>();
+  for (const { block } of scheduleTimes(day)) {
+    const scene = sheetShot(block.shotId, elements).scene;
+    if (!scene || seen.has(scene.id)) continue;
+    seen.add(scene.id);
+    const needed = neededForDay({ ...day, blocks: [block] }, elements.values());
+    if (needed.length)
+      lines.set(
+        block.id,
+        needed.map((row) => `${row.text}${row.count > 1 ? ` ×${row.count}` : ''}`).join(', '),
+      );
+  }
+  return lines;
+}
+
+export function castCharacter(name: string, elements: ReadonlyMap<string, Element>) {
+  return [...elements.values()].find(
+    (el): el is Extract<Element, { type: 'character' }> =>
+      el.type === 'character' && castNameKey(el.name) === castNameKey(name),
   );
 }

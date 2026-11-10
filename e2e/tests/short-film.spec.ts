@@ -583,10 +583,11 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await page.keyboard.press('Escape');
     const preview = sheet.getByRole('article', { name: 'Anteprima foglio di lavorazione' });
     // It opens on the day last edited; the other day is one choice away.
-    await expect(preview).toContainText('Vagone storico, deposito');
+    await expect(preview).toContainText('VAGONE ULTIMO TRENO');
     await gap(page, 'call-sheet');
     await chooseSelect(sheet.getByRole('combobox', { name: 'Data', exact: true }), { index: 0 });
-    await expect(preview).toContainText('Stazione di Ponte Rotto');
+    await expect(preview).toContainText('BINARIO 4');
+    await expect(preview).not.toContainText('VAGONE ULTIMO TRENO');
     await expect(preview).toContainText('1A');
     await expect(sheet.getByRole('button', { name: 'Stampa / esporta' })).toBeEnabled();
     await sheet.getByRole('button', { name: 'Chiudi', exact: true }).click();

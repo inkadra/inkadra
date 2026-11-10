@@ -2532,7 +2532,7 @@
   "callSheet": {
     "day": "Giorno",
     "sections": "Sezioni",
-    "schedule": "Scaletta",
+    "schedule": "Programma",
     "cast": "Cast",
     "castHelp": "Orario del primo blocco di ciascuno",
     "location": "Location",
@@ -2544,7 +2544,6 @@
     "dayOf": "Giorno {{n}} di {{total}}",
     "date": "Data",
     "call": "Convocazione",
-    "wrap": "Fine prevista",
     "revision": "Revisione {{revision}}",
     "time": "Orario",
     "scene": "Scena",
@@ -2563,13 +2562,12 @@
     "scenes": "Scene del giorno",
     "bringer": "Chi porta",
     "frames": "Fotogrammi della scena",
-    "plans": "Pianta del set",
+    "plans": "Piante del set",
     "kit": "Elenco del materiale",
     "kitHelp": "Conta le icone per tipo ed etichetta.",
     "moves": "Movimenti numerati",
     "fullPage": "Piante a tutta pagina",
     "new": "Nuovo",
-    "general": "Generale",
     "yourCall": "La tua convocazione",
     "confirm": "Confermo la presenza",
     "decline": "Non posso",
@@ -2590,7 +2588,17 @@
       "confirmed": "Confermato",
       "declined": "Non può",
       "waiting": "In attesa"
-    }
+    },
+    "ready": "Pronti a girare",
+    "pause": "Pausa",
+    "cameraWrap": "Camera wrap",
+    "crewWrap": "Fine troupe",
+    "times": "Orari",
+    "place": "Luogo",
+    "locationNumber": "Loc. {{n}}",
+    "serve": "Serve: {{items}}",
+    "inScene": "In scena",
+    "contact": "Contatto"
   },
   "needed": {
     "title": "Da portare",
@@ -2808,7 +2816,7 @@
       "dateTime": "Data e ora",
       "canvas": "Canvas",
       "dateFormat": "Formato data",
-      "dateFormatHelp": "Piano riprese, ordine del giorno, PDF, commenti e attività",
+      "dateFormatHelp": "Piano riprese, foglio di lavorazione, PDF, commenti e attività",
       "fromBrowser": "Dal browser · {{example}}",
       "timeFormat": "Formato ora",
       "timeFormatHelp": "Per orari di convocazione e piano riprese",
@@ -3324,9 +3332,9 @@
     "submitPages_one": "Esporta {{count}} pagina",
     "submitPages_other": "Esporta {{count}} pagine",
     "approvedOnly": "Solo inquadrature approvate",
-    "callSheet": "Ordine del giorno di ogni giorno di riprese",
+    "callSheet": "Foglio di lavorazione di ogni giorno di riprese",
     "teamOnlyHint": "Solo nei PDF per il team.",
-    "callSheetTitle": "Ordine del giorno",
+    "callSheetTitle": "Foglio di lavorazione",
     "formatJpeg": "JPEG",
     "jpegHint": "File più leggero, senza trasparenza.",
     "pngHint": "Qualità piena, file più pesante.",
@@ -4361,7 +4369,7 @@
           },
           "4": {
             "title": "Foglio di lavorazione",
-            "text": "Pronto da mandare alla troupe."
+            "text": "Orari principali, location e programma con miniature e Da portare. Scegli le sezioni e stampa per la troupe."
           }
         }
       },

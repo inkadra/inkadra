@@ -2544,7 +2544,6 @@
     "dayOf": "Diária {{n}} de {{total}}",
     "date": "Data",
     "call": "Chamada",
-    "wrap": "Término previsto",
     "revision": "Revisão {{revision}}",
     "time": "Horário",
     "scene": "Cena",
@@ -2569,7 +2568,6 @@
     "moves": "Movimentos numerados",
     "fullPage": "Plantas em página inteira",
     "new": "Novo",
-    "general": "Geral",
     "yourCall": "A tua convocatória",
     "confirm": "Confirmo a presença",
     "decline": "Não posso",
@@ -2590,7 +2588,17 @@
       "confirmed": "Confirmado",
       "declined": "Não pode",
       "waiting": "Em espera"
-    }
+    },
+    "ready": "Ready to shoot",
+    "pause": "Break",
+    "cameraWrap": "Camera wrap",
+    "crewWrap": "Crew wrap",
+    "times": "Key times",
+    "place": "Place",
+    "locationNumber": "Loc. {{n}}",
+    "serve": "Needed: {{items}}",
+    "inScene": "On set",
+    "contact": "Contact"
   },
   "needed": {
     "title": "A levar",
@@ -4360,8 +4368,8 @@
             "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
           },
           "4": {
-            "title": "Call sheet",
-            "text": "Ready to send to the crew."
+            "title": "Ordem do dia",
+            "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
           }
         }
       },

@@ -1,10 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import type { Element } from '@inkadra/doc-schema';
 import type { Schedule, ShootingDay } from '@inkadra/shared';
 import type { TFunction } from 'i18next';
+import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
 import { api } from '../../lib/api.ts';
-import { castCalls, departmentNotes, plannedWrap } from '../film/call-sheet.ts';
-import { clockLabel, clockMinutes, scheduleTimes } from '../film/schedule.ts';
-import type { Section } from './compose.ts';
+import {
+  castCalls,
+  castCharacter,
+  departmentNotes,
+  hasSceneNumbers,
+  keyTimes,
+  locationsOfDay,
+  serveLines,
+  sheetShot,
+} from '../film/call-sheet.ts';
+import { neededForDay } from '../film/needed.ts';
+import { clockLabel, scheduleTimes } from '../film/schedule.ts';
+import { type CardContext, framePicture } from './board-render.ts';
+import type { Section, sectionPages } from './compose.ts';
+import { contentBox, pageSize, paginateRows } from './layout.ts';
+import type { Op, Page } from './pages.ts';
+import { textBlock, wrapText } from './text.ts';
 
 /** What the call sheets and the scene sheets print: the board's shooting days. */
 export interface Planning {
@@ -33,54 +49,317 @@ export function calendarDate(date: string, language: string, style: 'short' | 'l
   }).format(time);
 }
 
-/** The call sheet of one shooting day, as on the sheet of the schedule (without pictures). */
+/** Team-only call sheet sections, derived from the same elements as the print dialog. */
 export function callSheetSections(
   day: ShootingDay,
   shotLabel: (id: string) => string | undefined,
   t: TFunction,
-): Section[] {
-  const wrap = plannedWrap(day);
-  const info: Section = {
-    title: t('callSheet.day'),
-    columns: [1, 3],
+  elements: ReadonlyMap<string, Element> = new Map(),
+): CallSheetSection[] {
+  const times = keyTimes(day);
+  const locations = locationsOfDay(day, elements);
+  const serve = serveLines(day, elements);
+  const numbered = hasSceneNumbers(day, elements);
+  const slots = scheduleTimes(day);
+  const info: CallSheetSection = {
+    title: t('callSheet.times'),
+    header: true,
+    columns: times.map(() => 1),
     rows: [
-      [t('callSheet.call'), clockLabel(clockMinutes(day.callTime))],
-      [t('callSheet.wrap'), wrap === null ? '' : clockLabel(wrap)],
-      ...(day.location.trim() ? [[t('callSheet.location'), day.location.trim()]] : []),
+      times.map(({ key }) => t(`callSheet.${key}`)),
+      times.map(({ time }) => clockLabel(time)),
     ],
     empty: '',
   };
-  const schedule: Section = {
+  const location: CallSheetSection = {
+    title: t('callSheet.location'),
+    columns: [1, 4],
+    empty: '',
+    rows: locations.map((loc, n) => [
+      t('callSheet.locationNumber', { n: n + 1 }),
+      [loc.name, loc.address, loc.mapUrl ? t('story.location.openMap') : '']
+        .filter(Boolean)
+        .join('\n'),
+    ]),
+  };
+  location.links = locations.map((loc) => loc.mapUrl);
+  // Breaks, moves, set-ups and the closing times read across the table after their time.
+  const aside = (block: { type: string; shotId: string | null }) =>
+    block.type !== 'shot' && !block.shotId;
+  const schedule: CallSheetSection = {
     title: t('callSheet.schedule'),
-    columns: [1.3, 4, 2],
-    rows: scheduleTimes(day).map(({ block, start, end }) => {
-      const label = block.shotId ? shotLabel(block.shotId) : undefined;
-      const title = block.title.trim() || t(`schedule.types.${block.type}`);
-      return [
-        `${clockLabel(start)} – ${clockLabel(end)}`,
-        label ? `${label} · ${title}` : title,
-        block.cast.join(', '),
-      ];
-    }),
+    header: true,
+    columns: [1.5, ...(numbered ? [1] : []), 1.3, 3, 1.5, ...(locations.length > 1 ? [1] : [])],
+    rows: [
+      [
+        t('callSheet.time'),
+        ...(numbered ? [t('callSheet.scene')] : []),
+        t('callSheet.shot'),
+        t('callSheet.description'),
+        t('callSheet.cast'),
+        ...(locations.length > 1 ? [t('callSheet.place')] : []),
+      ],
+      ...slots.map(({ block, start, end }) => {
+        const time = `${clockLabel(start)} – ${clockLabel(end)}`;
+        if (aside(block))
+          return [
+            time,
+            [t(`schedule.types.${block.type}`), block.title.trim()].filter(Boolean).join(' · '),
+          ];
+        const { frame, scene } = sheetShot(block.shotId, elements);
+        const loc = locations.findIndex(
+          (loc) =>
+            loc.name.trim().toLocaleLowerCase() === scene?.location?.trim().toLocaleLowerCase(),
+        );
+        return [
+          time,
+          ...(numbered ? [scene?.number ?? ''] : []),
+          block.shotId ? (shotLabel(block.shotId) ?? t('schedule.missingShot')) : '',
+          [
+            frame?.action || block.title.trim() || t(`schedule.types.${block.type}`),
+            serve.has(block.id) ? t('callSheet.serve', { items: serve.get(block.id) }) : '',
+          ]
+            .filter(Boolean)
+            .join('\n'),
+          block.cast.join(', '),
+          ...(locations.length > 1
+            ? [loc >= 0 ? t('callSheet.locationNumber', { n: loc + 1 }) : '']
+            : []),
+        ];
+      }),
+    ],
+    pictures: [undefined, ...slots.map(({ block }) => sheetShot(block.shotId, elements).frame)],
+    pictureColumn: numbered ? 2 : 1,
+    descriptionColumn: numbered ? 3 : 2,
+    tones: [
+      undefined,
+      ...slots.map(({ block }) =>
+        block.type === 'break'
+          ? 'tag-green-bg'
+          : block.type === 'move'
+            ? 'tag-orange-bg'
+            : aside(block)
+              ? 'surface-2'
+              : undefined,
+      ),
+    ],
     empty: t('callSheet.noBlocks'),
   };
-  const cast: Section = {
+  for (const { key, time } of times.filter(
+    ({ key }) => key === 'cameraWrap' || key === 'crewWrap',
+  )) {
+    schedule.rows.push([clockLabel(time), t(`callSheet.${key}`)]);
+    schedule.tones?.push('surface-2');
+  }
+  const cast: CallSheetSection = {
     title: t('callSheet.cast'),
-    columns: [2, 3],
-    rows: castCalls(day).map((call) => [call.name, clockLabel(call.start)]),
-    empty: t('callSheet.emptyHelp'),
+    header: true,
+    columns: [2, 2, 3, 1.5],
+    rows: [
+      [
+        t('callSheet.name'),
+        t('story.character.actor'),
+        t('callSheet.contact'),
+        t('callSheet.inScene'),
+      ],
+      ...castCalls(day).map((call) => {
+        const card = castCharacter(call.name, elements);
+        return [call.name, card?.actor ?? '', card?.contact ?? '', clockLabel(call.start)];
+      }),
+    ],
+    empty: '',
   };
-  const departments: Section = {
+  const departments: CallSheetSection = {
     title: t('callSheet.departments'),
     columns: [2, 5],
     rows: departmentNotes(day).map((d) => [d.department, d.note]),
-    empty: t('callSheet.emptyHelp'),
+    empty: '',
   };
-  const notes: Section = {
+  const notes: CallSheetSection = {
     title: t('callSheet.notes'),
     columns: [1],
     rows: day.notes.trim() ? [[day.notes.trim()]] : [],
-    empty: t('callSheet.emptyHelp'),
+    empty: '',
   };
-  return [info, schedule, cast, departments, notes];
+  const needed: CallSheetSection = {
+    title: t('callSheet.needed'),
+    columns: [3, 1],
+    empty: '',
+    rows: neededForDay(day, elements.values()).map((row) => [
+      `${row.text}${row.count > 1 ? ` ×${row.count}` : ''}`,
+      row.scenes.join(', '),
+    ]),
+  };
+  return [
+    info,
+    location,
+    schedule,
+    ...(castCalls(day).length ? [cast] : []),
+    departments,
+    needed,
+    notes,
+  ].filter((section) => section.rows.length || section === schedule);
+}
+
+interface CallSheetSection extends Section {
+  /** The first row names the columns: it stays on the page of the row after it. */
+  header?: boolean;
+  links?: Array<string | undefined>;
+  pictures?: Array<Extract<Element, { type: 'frame' }> | undefined>;
+  pictureColumn?: number;
+  descriptionColumn?: number;
+  tones?: Array<'tag-green-bg' | 'tag-orange-bg' | 'surface-2' | undefined>;
+}
+
+/** The call sheet needs pictures and semantic row colours; the generic text tables stay unchanged. */
+export function callSheetPages(
+  setup: Parameters<typeof sectionPages>[0],
+  heading: string,
+  sections: CallSheetSection[],
+  ctx: CardContext,
+): Page[] {
+  const { width, height } = pageSize(setup.paper, setup.orientation);
+  const box = contentBox(width, height);
+  const blocks: Array<{
+    h: number;
+    keep?: boolean;
+    link?: string | undefined;
+    draw: (top: number) => Op[];
+  }> = [];
+  for (const section of sections) {
+    blocks.push({
+      h: 28,
+      keep: true,
+      draw: (top) => [
+        {
+          kind: 'text',
+          x: box.x,
+          y: top + 18,
+          text: section.title,
+          size: 11,
+          weight: 600,
+          color: ctx.colors['text-primary'],
+        },
+      ],
+    });
+    const total = section.columns.reduce((a, b) => a + b, 0);
+    for (const [index, row] of (section.rows.length ? section.rows : [[section.empty]]).entries()) {
+      const frame = section.pictures?.[index];
+      const tone = section.tones?.[index];
+      let left = 0;
+      const cells = row.map((value, col) => {
+        // A row shorter than the table, such as a break, gives its last cell the rest of the width.
+        const w =
+          col === row.length - 1 && row.length < section.columns.length
+            ? box.w - left
+            : (box.w * (section.columns[col] ?? total)) / total;
+        const x = left;
+        left += w;
+        return {
+          x,
+          w,
+          lines: wrapText(value, w - 8, 8.5, 400, ctx.measure),
+          picture: frame && col === section.pictureColumn,
+          mutedFrom:
+            col === section.descriptionColumn && value.includes('\n')
+              ? wrapText(value.split('\n')[0] ?? '', w - 8, 8.5, 400, ctx.measure).length
+              : Infinity,
+        };
+      });
+      const h = Math.max(1, ...cells.map((cell) => cell.lines.length)) * 12 + 10 + (frame ? 36 : 0);
+      blocks.push({
+        h,
+        keep: index === 0 && !!section.header && section.rows.length > 1,
+        link: section.links?.[index],
+        draw: (top) => [
+          ...(tone
+            ? [{ kind: 'rect' as const, x: box.x, y: top, w: box.w, h, fill: ctx.colors[tone] }]
+            : []),
+          ...cells.flatMap((cell) => [
+            ...(cell.picture && frame
+              ? framePicture(frame, { x: box.x + cell.x, y: top + 4, w: cell.w - 8, h: 32 }, ctx)
+              : []),
+            ...cell.lines.flatMap(
+              (line, n) =>
+                textBlock([line], box.x + cell.x, top + 5 + (cell.picture ? 36 : 0) + n * 12, {
+                  size: 8.5,
+                  weight: 400,
+                  leading: 12,
+                  color: ctx.colors[n >= cell.mutedFrom ? 'text-secondary' : 'text-primary'],
+                }).ops,
+            ),
+          ]),
+        ],
+      });
+    }
+  }
+  return paginateRows(
+    blocks.map((block) => block.h),
+    box.h - 35,
+    blocks.map((block) => !!block.keep),
+  ).map((indexes) => {
+    const ops: Op[] = [
+      {
+        kind: 'text',
+        x: box.x,
+        y: box.y + 16,
+        text: heading,
+        size: 12,
+        weight: 600,
+        color: ctx.colors['text-primary'],
+      },
+    ];
+    const callSheetLinks: MapLink[] = [];
+    let top = box.y + 35;
+    for (const index of indexes) {
+      const block = blocks[index];
+      if (block) {
+        ops.push(...block.draw(top));
+        if (block.link && /^https?:\/\//i.test(block.link))
+          callSheetLinks.push({ url: block.link, x: box.x, y: top, w: box.w, h: block.h });
+        top += block.h;
+      }
+    }
+    return { width, height, ops, callSheetLinks };
+  });
+}
+
+interface MapLink {
+  url: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Preserve clickable team map links without changing the shared drawing-operation format. */
+export async function linkCallSheetPdf(
+  bytes: Uint8Array,
+  pages: readonly Page[],
+): Promise<Uint8Array> {
+  const links = pages.map(
+    (page) => (page as Page & { callSheetLinks?: MapLink[] }).callSheetLinks ?? [],
+  );
+  if (!links.some((page) => page.length)) return bytes;
+  const pdf = await PDFDocument.load(bytes);
+  for (const [index, entries] of links.entries()) {
+    const page = pdf.getPage(index);
+    for (const link of entries) {
+      if (!/^https?:\/\//i.test(link.url)) continue;
+      const annotation = pdf.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [
+          link.x,
+          page.getHeight() - link.y - link.h,
+          link.x + link.w,
+          page.getHeight() - link.y,
+        ],
+        Border: [0, 0, 0],
+        A: { Type: 'Action', S: PDFName.of('URI'), URI: PDFString.of(link.url) },
+      });
+      page.node.addAnnot(pdf.context.register(annotation));
+    }
+  }
+  return pdf.save();
 }
