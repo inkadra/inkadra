@@ -55,6 +55,7 @@ describe('header views', () => {
       'storyboard',
       'shotlist',
       'schedule',
+      'troupe',
       'review',
     ]);
     expect(headerViews('storyboard', 'moodboard', all)).toContain('moodboard');
@@ -62,13 +63,13 @@ describe('header views', () => {
 
   it('leaves the moodboard out of the phone picker on a storyboard only', () => {
     expect(pickerViews('storyboard', 'storyboard', all)).not.toContain('moodboard');
-    expect(pickerViews('board', 'canvas', all)).toHaveLength(6);
-    expect(pickerViews(undefined, null, all)).toHaveLength(6);
+    expect(pickerViews('board', 'canvas', all)).toHaveLength(7);
+    expect(pickerViews(undefined, null, all)).toHaveLength(7);
   });
 
   it('keeps the film views reachable while one of them is open', () => {
     expect(headerViews('board', 'shotlist', none)).toContain('shotlist');
-    expect(headerViews('board', 'shotlist', filmLinks(false, null, 'shotlist'))).toHaveLength(6);
+    expect(headerViews('board', 'shotlist', filmLinks(false, null, 'shotlist'))).toHaveLength(7);
   });
 
   it('keeps the icon of every view', () => {
@@ -76,6 +77,7 @@ describe('header views', () => {
       'storyboard',
       'shotlist',
       'schedule',
+      'troupe',
       'review',
       'moodboard',
       'canvas',
@@ -146,7 +148,15 @@ describe('view destination', () => {
 
 describe('reading the address', () => {
   it('knows the views it can show', () => {
-    for (const view of ['canvas', 'storyboard', 'shotlist', 'schedule', 'review', 'moodboard']) {
+    for (const view of [
+      'canvas',
+      'storyboard',
+      'shotlist',
+      'schedule',
+      'troupe',
+      'review',
+      'moodboard',
+    ]) {
       expect(isBoardView(view)).toBe(true);
     }
     expect(isBoardView('timeline')).toBe(false);
@@ -213,6 +223,7 @@ describe('film links: one rule for the sidebar, the header and the phone', () =>
       'storyboard',
       'shotlist',
       'schedule',
+      'troupe',
       'review',
       'moodboard',
     ]);

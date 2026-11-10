@@ -131,11 +131,12 @@ describe('search, tags and viewer', () => {
 });
 
 it('includes schedule, review and moodboard views in board views', async () => {
-  const { VIEWS } = await import('../BoardPage.tsx');
+  const { VIEWS } = await import('../views.ts');
   expect(VIEWS.map((v) => v.view)).toEqual([
     'storyboard',
     'shotlist',
     'schedule',
+    'troupe',
     'review',
     'moodboard',
     'canvas',

@@ -123,7 +123,8 @@
     "toShoot_one": "{{left}} of {{count}} shot still to shoot",
     "toShoot_other": "{{left}} of {{count}} shots still to shoot",
     "items_one": "{{count}} item on the board",
-    "items_other": "{{count}} items on the board"
+    "items_other": "{{count}} items on the board",
+    "troupe": "Crew"
   },
   "home": {
     "greeting": {
@@ -1211,7 +1212,8 @@
       "canvas": "Canvas",
       "schedule": "Schedule",
       "review": "Review",
-      "moodboard": "Moodboard"
+      "moodboard": "Moodboard",
+      "troupe": "Crew"
     },
     "aspect": {
       "label": "Aspect ratio",
@@ -4681,6 +4683,23 @@
             "text": "In Members, from the ⋯ menu, a different limit for whoever needs it."
           }
         }
+      },
+      "troupe": {
+        "name": "Crew",
+        "steps": {
+          "0": {
+            "title": "Project crew",
+            "text": "Group people by department. Contacts stay private to the project team."
+          },
+          "1": {
+            "title": "Edit a person",
+            "text": "Open a row: fields save automatically. Optionally link an account or character card."
+          },
+          "2": {
+            "title": "Paste from a sheet",
+            "text": "Review the preview before adding people. Headers and duplicates are skipped."
+          }
+        }
       }
     }
   },
@@ -5227,5 +5246,77 @@
     "continue": "Continue",
     "downloadArchive": "Download the project (.inkadra)",
     "limitToast": "In the demo files go up to {{file}} and {{total}} in all."
+  },
+  "troupe": {
+    "people_one": "{{count}} person",
+    "people_other": "{{count}} people",
+    "departments_one": "{{count}} department",
+    "departments_other": "{{count}} departments",
+    "search": "Search crew",
+    "paste": "Paste from sheet",
+    "add": "Add person",
+    "loading": "Loading crew…",
+    "error": "Could not save or load crew.",
+    "retry": "Retry",
+    "empty": "No crew yet.",
+    "emptyHint": "Paste a list from an old call sheet…",
+    "noResults": "No people found.",
+    "noDepartment": "No department",
+    "name": "Name",
+    "role": "Role",
+    "phone": "Phone or agent",
+    "pickup": "Default pick-up",
+    "department": "Department",
+    "email": "Email",
+    "notes": "Notes",
+    "close": "Close",
+    "person": "Person",
+    "invalid": "Check name, email and field lengths.",
+    "actor": "Actor",
+    "contact": "Contact",
+    "account": "Inkadra account",
+    "unlink": "Unlink account",
+    "onSetContact": "On-set contact",
+    "onSetHint": "Printed at the top of the call sheet",
+    "conflict": "Changed by another person. Choose which version to keep.",
+    "reload": "Reload",
+    "keepMine": "Keep mine",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "unsaved": "Not saved",
+    "remove": "Remove from crew",
+    "removeConfirm": "Remove {{name}} from the crew?",
+    "cancel": "Cancel",
+    "pasteHint": "One person per line: name, role, phone. Separate columns with tabs, semicolons, · or two or more spaces. A CAPITALS line becomes the department.",
+    "pastedText": "Pasted text",
+    "preview_one": "{{count}} new person",
+    "preview_other": "{{count}} new people",
+    "duplicate": "Already in crew",
+    "header": "Header skipped",
+    "agent": "Agent line skipped",
+    "addPeople_one": "Add {{count}} person",
+    "addPeople_other": "Add {{count}} people",
+    "menu": "Actions for {{name}}",
+    "details": "Open details",
+    "phoneColumn": "Phone",
+    "characterUnavailable": "Card unavailable · Unlink or choose another card",
+    "wholeProject": "for the whole project",
+    "characterTag": "Character",
+    "emailPlaceholder": "optional",
+    "pickupPlaceholder": "Same as the day's call",
+    "notesPlaceholder": "Only the project team sees these",
+    "characterLabel": "Character card",
+    "optionalTag": "optional",
+    "characterHint": "None. The name in the schedule is enough for the call; link a card only if it has costume and references.",
+    "link": "Link",
+    "unlinkShort": "Unlink",
+    "accountHint": "Link an account to send the call to their phone and ask for confirmation.",
+    "pasteWhat": "What gets added",
+    "duplicates_one": "{{count}} already in crew",
+    "duplicates_other": "{{count}} already in crew",
+    "columnsRead": "Columns read: Name · Role · Phone",
+    "pasteFoot": "Anyone already in the crew with the same name is not added twice.",
+    "tooMany": "At most 500 people at a time.",
+    "noName": "Line without a name"
   }
 }

@@ -33,6 +33,7 @@ import { registerBoardRoutes } from './boards-routes.ts';
 import { registerCalendarRoutes } from './calendar-routes.ts';
 import { registerClipRoutes } from './clip-routes.ts';
 import { registerCommentRoutes } from './comments-routes.ts';
+import { registerCrewRoutes } from './crew-routes.ts';
 import { registerCsrfCheck } from './csrf.ts';
 import { registerDemoRoutes } from './demo-routes.ts';
 import { registerDiagnostics } from './diagnostics.ts';
@@ -198,6 +199,7 @@ export async function createApp(deps: AppDeps) {
   registerCommentRoutes(app, deps);
   registerReviewRoutes(app, deps);
   registerScheduleRoutes(app, deps);
+  registerCrewRoutes(app, deps);
   registerNotificationRoutes(app, deps);
   registerCalendarRoutes(app, deps);
   registerFeedbackRoutes(app, deps);

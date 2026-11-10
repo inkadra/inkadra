@@ -123,7 +123,8 @@
     "toShoot_one": "{{left}} de {{count}} plano aún por rodar",
     "toShoot_other": "{{left}} de {{count}} planos aún por rodar",
     "items_one": "{{count}} elemento en el tablero",
-    "items_other": "{{count}} elementos en el tablero"
+    "items_other": "{{count}} elementos en el tablero",
+    "troupe": "Equipo"
   },
   "home": {
     "greeting": {
@@ -1211,7 +1212,8 @@
       "canvas": "Lienzo",
       "schedule": "Plan de rodaje",
       "review": "Revisión",
-      "moodboard": "Moodboard"
+      "moodboard": "Moodboard",
+      "troupe": "Equipo"
     },
     "aspect": {
       "label": "Formato",
@@ -4681,6 +4683,23 @@
             "text": "En Miembros, desde el menú ⋯, un límite distinto para quien lo necesite."
           }
         }
+      },
+      "troupe": {
+        "name": "Equipo",
+        "steps": {
+          "0": {
+            "title": "Equipo del proyecto",
+            "text": "Agrupa a las personas por departamento. Los contactos solo los ve el equipo del proyecto."
+          },
+          "1": {
+            "title": "Editar una persona",
+            "text": "Abre una fila: los campos se guardan solos. Si quieres, vincula una cuenta o una ficha de personaje."
+          },
+          "2": {
+            "title": "Pegar desde una lista",
+            "text": "Revisa la vista previa antes de añadir personas. Se omiten encabezados y duplicados."
+          }
+        }
       }
     }
   },
@@ -5227,5 +5246,77 @@
     "continue": "Continuar",
     "downloadArchive": "Descargar el proyecto (.inkadra)",
     "limitToast": "En la demo los archivos llegan a {{file}} y {{total}} en total."
+  },
+  "troupe": {
+    "people_one": "{{count}} persona",
+    "people_other": "{{count}} personas",
+    "departments_one": "{{count}} departamento",
+    "departments_other": "{{count}} departamentos",
+    "search": "Buscar en el equipo",
+    "paste": "Pegar desde lista",
+    "add": "Añadir persona",
+    "loading": "Cargando equipo…",
+    "error": "No se pudo cargar ni guardar el equipo.",
+    "retry": "Reintentar",
+    "empty": "Aún no hay nadie en el equipo.",
+    "emptyHint": "Pega una lista de una orden de rodaje antigua…",
+    "noResults": "No se encontraron personas.",
+    "noDepartment": "Sin departamento",
+    "name": "Nombre",
+    "role": "Cargo",
+    "phone": "Teléfono o representante",
+    "pickup": "Recogida habitual",
+    "department": "Departamento",
+    "email": "Correo",
+    "notes": "Notas",
+    "close": "Cerrar",
+    "person": "Persona",
+    "invalid": "Revisa el nombre, el correo y la longitud de los campos.",
+    "actor": "Intérprete",
+    "contact": "Contacto",
+    "account": "Cuenta de Inkadra",
+    "unlink": "Desvincular cuenta",
+    "onSetContact": "Contacto en el set",
+    "onSetHint": "Aparece arriba en la orden de rodaje",
+    "conflict": "Otra persona lo ha cambiado. Elige qué versión conservar.",
+    "reload": "Recargar",
+    "keepMine": "Conservar la mía",
+    "saving": "Guardando…",
+    "saved": "Guardado",
+    "unsaved": "Sin guardar",
+    "remove": "Quitar del equipo",
+    "removeConfirm": "¿Quitar a {{name}} del equipo?",
+    "cancel": "Cancelar",
+    "pasteHint": "Una persona por línea: nombre, cargo, teléfono. Separa las columnas con tabuladores, punto y coma, · o dos espacios o más. Una línea en MAYÚSCULAS pasa a ser el departamento.",
+    "pastedText": "Texto pegado",
+    "preview_one": "{{count}} persona nueva",
+    "preview_other": "{{count}} personas nuevas",
+    "duplicate": "Ya está en el equipo",
+    "header": "Encabezado omitido",
+    "agent": "Línea de representante omitida",
+    "addPeople_one": "Añadir {{count}} persona",
+    "addPeople_other": "Añadir {{count}} personas",
+    "menu": "Acciones para {{name}}",
+    "details": "Abrir detalles",
+    "phoneColumn": "Teléfono",
+    "characterUnavailable": "Ficha no disponible · Desvincula o elige otra ficha",
+    "wholeProject": "para todo el proyecto",
+    "characterTag": "Personaje",
+    "emailPlaceholder": "opcional",
+    "pickupPlaceholder": "Igual que la citación del día",
+    "notesPlaceholder": "Solo las ve el equipo del proyecto",
+    "characterLabel": "Ficha de personaje",
+    "optionalTag": "opcional",
+    "characterHint": "Ninguna. El nombre en el programa basta para la citación; vincula una ficha solo si tiene vestuario y referencias.",
+    "link": "Vincular",
+    "unlinkShort": "Desvincular",
+    "accountHint": "Vincula una cuenta para enviar la citación al móvil y pedir que confirme su asistencia.",
+    "pasteWhat": "Qué se añade",
+    "duplicates_one": "{{count}} ya en el equipo",
+    "duplicates_other": "{{count}} ya en el equipo",
+    "columnsRead": "Columnas leídas: Nombre · Cargo · Teléfono",
+    "pasteFoot": "Quien ya está en el equipo con el mismo nombre no se duplica.",
+    "tooMany": "Como máximo 500 personas a la vez.",
+    "noName": "Línea sin nombre"
   }
 }

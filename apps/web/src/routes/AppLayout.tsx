@@ -568,6 +568,16 @@ export function AppLayout({ home }: { home?: ReactNode }) {
                   showView('schedule');
                 }}
               />
+              <NavItem
+                icon="people"
+                label={t('nav.troupe')}
+                active={filmRowActive('troupe')}
+                href={hrefFor('troupe')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  showView('troupe');
+                }}
+              />
             </>
           )}
           {showReview && (
@@ -883,7 +893,9 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         <div className="mobile-view-picker">
           <Icon
             name={viewIcon(currentView ?? defaultView(openKind))}
-            contentKind={currentView ?? defaultView(openKind)}
+            contentKind={
+              currentView === 'troupe' ? 'review' : (currentView ?? defaultView(openKind))
+            }
             size={18}
           />
           <Select

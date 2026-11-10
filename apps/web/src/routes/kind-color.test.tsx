@@ -12,6 +12,7 @@ it('uses the same tag tokens for strokes and tiles', () => {
     production: 'green',
     moodboard: 'orange',
     schedule: 'teal',
+    troupe: null,
     review: 'pink',
     pitch: null,
     board: null,

@@ -4,19 +4,27 @@ import type { IconName } from '@inkadra/ui';
 import { boardPath } from './boards.ts';
 
 /** The ways of looking at a board; `?view=` holds every one but the default. */
-export type BoardView = 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard' | 'canvas';
+export type BoardView =
+  | 'storyboard'
+  | 'shotlist'
+  | 'schedule'
+  | 'troupe'
+  | 'review'
+  | 'moodboard'
+  | 'canvas';
 
 export const VIEWS: Array<{ view: BoardView; icon: IconName }> = [
   { view: 'storyboard', icon: 'storyboard' },
   { view: 'shotlist', icon: 'shotlist' },
   { view: 'schedule', icon: 'calendar' },
+  { view: 'troupe', icon: 'people' },
   { view: 'review', icon: 'people' },
   { view: 'moodboard', icon: 'image' },
   { view: 'canvas', icon: 'board' },
 ];
 
 /** The views that only a storyboard board holds: shots, scenes, shooting days and review. */
-const FILM_VIEWS: readonly BoardView[] = ['storyboard', 'shotlist', 'schedule', 'review'];
+const FILM_VIEWS: readonly BoardView[] = ['storyboard', 'shotlist', 'schedule', 'troupe', 'review'];
 
 /** Reading order of the switcher: the board first, then the film views. */
 export const ALL_VIEWS: readonly BoardView[] = [
@@ -24,6 +32,7 @@ export const ALL_VIEWS: readonly BoardView[] = [
   'storyboard',
   'shotlist',
   'schedule',
+  'troupe',
   'review',
   'moodboard',
 ];
@@ -42,7 +51,7 @@ export function viewIcon(view: BoardView): IconName {
 }
 
 /** The view a board opens on when the address has no `?view=`. */
-export function defaultView(kind: BoardKind | undefined): BoardView {
+export function defaultView(kind: BoardKind | undefined): 'storyboard' | 'canvas' {
   return kind === 'storyboard' ? 'storyboard' : 'canvas';
 }
 

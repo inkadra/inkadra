@@ -94,5 +94,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0089](0089-schedule-calendar.md)                    | Schedule as a calendar: blocks queue up, saved on its own, sun worked out on device    |
 | [0090](0090-call-sheet-at-a-glance.md)               | Call sheet at a glance: step 1 of Troupe, using existing board data                    |
 
+| [0091](0091-troupe.md) | Private project crew, grouped departments and sheet paste |
+
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

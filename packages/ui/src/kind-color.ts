@@ -11,6 +11,7 @@ export const kindColor = {
   production: 'green',
   moodboard: 'orange',
   schedule: 'teal',
+  troupe: null,
   review: 'pink',
   pitch: null,
   board: null,

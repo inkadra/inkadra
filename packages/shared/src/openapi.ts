@@ -56,6 +56,14 @@ import {
 } from './comments.ts';
 import { ApiError, Id, OutcomeUnknown, PageQuery, page, z } from './common.ts';
 import { API_PREFIX, AUTH_PREFIX } from './constants.ts';
+import {
+  BulkCreateCrew,
+  Crew,
+  CrewCharacters,
+  CrewMember,
+  CrewMemberInput,
+  UpdateCrewMember,
+} from './crew.ts';
 import { CreateDemoSandbox, DemoSandbox } from './demo.ts';
 import { ExportSettings, UpdateExportSettings } from './export-settings.ts';
 import {
@@ -362,6 +370,77 @@ registry.registerPath({
 });
 
 // Schedule ------------------------------------------------------------------
+const crewPath = v1('/projects/{projectId}/crew');
+registry.registerPath({
+  security: secured,
+  tags: ['Crew'],
+  method: 'get',
+  path: crewPath,
+  summary: 'List private project crew',
+  request: { params: idParam('projectId') },
+  responses: { 200: { description: 'Crew', ...json(Crew) }, ...errors },
+});
+registry.registerPath({
+  security: secured,
+  tags: ['Crew'],
+  method: 'post',
+  path: crewPath,
+  summary: 'Add a crew member',
+  request: { params: idParam('projectId'), body: json(CrewMemberInput) },
+  responses: { 201: { description: 'Created', ...json(CrewMember) }, ...errors },
+});
+registry.registerPath({
+  security: secured,
+  tags: ['Crew'],
+  method: 'post',
+  path: `${crewPath}/bulk`,
+  summary: 'Add crew from a sheet atomically',
+  request: { params: idParam('projectId'), body: json(BulkCreateCrew) },
+  responses: { 201: { description: 'Created', ...json(Crew) }, ...errors },
+});
+registry.registerPath({
+  security: secured,
+  tags: ['Crew'],
+  method: 'put',
+  path: `${crewPath}/{memberId}`,
+  summary: 'Update a crew member with revision checking',
+  request: { params: z.object({ projectId: Id, memberId: Id }), body: json(UpdateCrewMember) },
+  responses: {
+    200: { description: 'Updated', ...json(CrewMember) },
+    409: {
+      description: 'Stale revision; details.current contains the latest member.',
+      ...json(ApiError),
+    },
+    ...errors,
+  },
+});
+registry.registerPath({
+  security: secured,
+  tags: ['Crew'],
+  method: 'delete',
+  path: `${crewPath}/{memberId}`,
+  summary: 'Remove a crew member with revision checking',
+  request: {
+    params: z.object({ projectId: Id, memberId: Id }),
+    body: json(z.object({ revision: z.number().int().min(1) }).strict()),
+  },
+  responses: {
+    204: { description: 'Removed' },
+    409: { description: 'Stale revision.', ...json(ApiError) },
+    ...errors,
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: `${crewPath}/characters`,
+  security: secured,
+  tags: ['Crew'],
+  summary: 'List character cards available to link',
+  request: { params: idParam('projectId') },
+  responses: { 200: { description: 'Characters', ...json(CrewCharacters) }, ...errors },
+});
+
 const schedulePath = v1('/boards/{boardId}/schedule');
 for (const method of ['get', 'post'] as const) {
   registry.registerPath({

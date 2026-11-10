@@ -123,7 +123,8 @@
     "toShoot_one": "{{left}} plan sur {{count}} encore à tourner",
     "toShoot_other": "{{left}} plans sur {{count}} encore à tourner",
     "items_one": "{{count}} élément sur le tableau",
-    "items_other": "{{count}} éléments sur le tableau"
+    "items_other": "{{count}} éléments sur le tableau",
+    "troupe": "Équipe"
   },
   "home": {
     "greeting": {
@@ -1211,7 +1212,8 @@
       "canvas": "Canevas",
       "schedule": "Plan de travail",
       "review": "Révision",
-      "moodboard": "Moodboard"
+      "moodboard": "Moodboard",
+      "troupe": "Équipe"
     },
     "aspect": {
       "label": "Format",
@@ -4681,6 +4683,23 @@
             "text": "Dans Membres, depuis le menu ⋯, une limite différente pour qui en a besoin."
           }
         }
+      },
+      "troupe": {
+        "name": "Équipe",
+        "steps": {
+          "0": {
+            "title": "Équipe du projet",
+            "text": "Regroupez les personnes par département. Les contacts restent privés à l’équipe du projet."
+          },
+          "1": {
+            "title": "Modifier une personne",
+            "text": "Ouvrez une ligne : les champs s’enregistrent seuls. Liez si besoin un compte ou une fiche personnage."
+          },
+          "2": {
+            "title": "Coller depuis une liste",
+            "text": "Vérifiez l’aperçu avant d’ajouter des personnes. Les en-têtes et les doublons sont ignorés."
+          }
+        }
       }
     }
   },
@@ -5227,5 +5246,77 @@
     "continue": "Continuer",
     "downloadArchive": "Télécharger le projet (.inkadra)",
     "limitToast": "Dans la démo, les fichiers vont jusqu’à {{file}} et {{total}} au total."
+  },
+  "troupe": {
+    "people_one": "{{count}} personne",
+    "people_other": "{{count}} personnes",
+    "departments_one": "{{count}} département",
+    "departments_other": "{{count}} départements",
+    "search": "Chercher dans l’équipe",
+    "paste": "Coller depuis une liste",
+    "add": "Ajouter une personne",
+    "loading": "Chargement de l’équipe…",
+    "error": "Impossible de charger ou d’enregistrer l’équipe.",
+    "retry": "Réessayer",
+    "empty": "Personne dans l’équipe pour l’instant.",
+    "emptyHint": "Collez une liste depuis une ancienne feuille de service…",
+    "noResults": "Aucune personne trouvée.",
+    "noDepartment": "Sans département",
+    "name": "Nom",
+    "role": "Poste",
+    "phone": "Téléphone ou agent",
+    "pickup": "Prise en charge habituelle",
+    "department": "Département",
+    "email": "E-mail",
+    "notes": "Notes",
+    "close": "Fermer",
+    "person": "Personne",
+    "invalid": "Vérifiez le nom, l’e-mail et la longueur des champs.",
+    "actor": "Interprète",
+    "contact": "Contact",
+    "account": "Compte Inkadra",
+    "unlink": "Délier le compte",
+    "onSetContact": "Contact sur le plateau",
+    "onSetHint": "Imprimé en haut de la feuille de service",
+    "conflict": "Modifié par quelqu’un d’autre. Choisissez la version à garder.",
+    "reload": "Recharger",
+    "keepMine": "Garder la mienne",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré",
+    "unsaved": "Non enregistré",
+    "remove": "Retirer de l’équipe",
+    "removeConfirm": "Retirer {{name}} de l’équipe ?",
+    "cancel": "Annuler",
+    "pasteHint": "Une personne par ligne : nom, poste, téléphone. Séparez les colonnes par des tabulations, des points-virgules, des · ou au moins deux espaces. Une ligne en MAJUSCULES devient le département.",
+    "pastedText": "Texte collé",
+    "preview_one": "{{count}} nouvelle personne",
+    "preview_other": "{{count}} nouvelles personnes",
+    "duplicate": "Déjà dans l’équipe",
+    "header": "En-tête ignoré",
+    "agent": "Ligne d’agent ignorée",
+    "addPeople_one": "Ajouter {{count}} personne",
+    "addPeople_other": "Ajouter {{count}} personnes",
+    "menu": "Actions pour {{name}}",
+    "details": "Ouvrir les détails",
+    "phoneColumn": "Téléphone",
+    "characterUnavailable": "Fiche indisponible · Déliez-la ou choisissez-en une autre",
+    "wholeProject": "pour tout le projet",
+    "characterTag": "Personnage",
+    "emailPlaceholder": "facultatif",
+    "pickupPlaceholder": "Comme la convocation du jour",
+    "notesPlaceholder": "Visibles seulement par l’équipe du projet",
+    "characterLabel": "Fiche personnage",
+    "optionalTag": "facultative",
+    "characterHint": "Aucune. Le nom dans le déroulé suffit pour la convocation ; liez une fiche seulement si elle a costume et références.",
+    "link": "Lier",
+    "unlinkShort": "Délier",
+    "accountHint": "Liez un compte pour envoyer la convocation sur son téléphone et demander une confirmation.",
+    "pasteWhat": "Ce qui sera ajouté",
+    "duplicates_one": "{{count}} déjà dans l’équipe",
+    "duplicates_other": "{{count}} déjà dans l’équipe",
+    "columnsRead": "Colonnes lues : Nom · Poste · Téléphone",
+    "pasteFoot": "Une personne déjà dans l’équipe sous le même nom n’est pas ajoutée deux fois.",
+    "tooMany": "500 personnes au maximum à la fois.",
+    "noName": "Ligne sans nom"
   }
 }

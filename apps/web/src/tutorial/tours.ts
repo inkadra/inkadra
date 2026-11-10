@@ -219,6 +219,17 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    id: 'troupe',
+    group: 'production',
+    icon: 'people',
+    offer: 'troupe',
+    steps: [
+      { anchor: 'troupe', media: 'users', side: 'bottom' },
+      { anchor: 'troupe-person', media: 'team', side: 'left' },
+      { anchor: 'troupe-paste', media: 'rows', side: 'left' },
+    ],
+  },
+  {
     id: 'setplan',
     group: 'production',
     icon: 'planCamera',

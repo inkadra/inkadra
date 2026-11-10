@@ -123,7 +123,8 @@
     "toShoot_one": "{{left}} di {{count}} inquadratura ancora da girare",
     "toShoot_other": "{{left}} di {{count}} inquadrature ancora da girare",
     "items_one": "{{count}} elemento nella board",
-    "items_other": "{{count}} elementi nella board"
+    "items_other": "{{count}} elementi nella board",
+    "troupe": "Troupe"
   },
   "home": {
     "greeting": {
@@ -1211,7 +1212,8 @@
       "canvas": "Lavagna",
       "schedule": "Piano riprese",
       "review": "Revisione",
-      "moodboard": "Moodboard"
+      "moodboard": "Moodboard",
+      "troupe": "Troupe"
     },
     "aspect": {
       "label": "Formato",
@@ -4681,6 +4683,23 @@
             "text": "In Membri, dal menu ⋯, un limite diverso per chi serve."
           }
         }
+      },
+      "troupe": {
+        "name": "Troupe",
+        "steps": {
+          "0": {
+            "title": "La troupe del progetto",
+            "text": "Raggruppa le persone per reparto. I contatti restano privati al team."
+          },
+          "1": {
+            "title": "Modifica una persona",
+            "text": "Apri una riga: ogni campo si salva automaticamente. Collega un account o una scheda personaggio facoltativa."
+          },
+          "2": {
+            "title": "Incolla da foglio",
+            "text": "Controlla l’anteprima prima di aggiungere le persone. Intestazioni e duplicati vengono saltati."
+          }
+        }
       }
     }
   },
@@ -5227,5 +5246,77 @@
     "continue": "Continua",
     "downloadArchive": "Scarica il progetto (.inkadra)",
     "limitToast": "Nella demo i file arrivano a {{file}} e {{total}} in tutto."
+  },
+  "troupe": {
+    "people_one": "{{count}} persona",
+    "people_other": "{{count}} persone",
+    "departments_one": "{{count}} reparto",
+    "departments_other": "{{count}} reparti",
+    "search": "Cerca nella troupe",
+    "paste": "Incolla da foglio",
+    "add": "Aggiungi persona",
+    "loading": "Caricamento troupe…",
+    "error": "Impossibile salvare o caricare la troupe.",
+    "retry": "Riprova",
+    "empty": "Nessuno in troupe.",
+    "emptyHint": "Incolla un elenco da un vecchio foglio di lavorazione…",
+    "noResults": "Nessuna persona trovata.",
+    "noDepartment": "Senza reparto",
+    "name": "Nome",
+    "role": "Ruolo",
+    "phone": "Telefono o agente",
+    "pickup": "Pick-up abituale",
+    "department": "Reparto",
+    "email": "Email",
+    "notes": "Note",
+    "close": "Chiudi",
+    "person": "Persona",
+    "invalid": "Controlla nome, email e lunghezza dei campi.",
+    "actor": "Interprete",
+    "contact": "Contatto",
+    "account": "Account Inkadra",
+    "unlink": "Scollega account",
+    "onSetContact": "Contatto sul set",
+    "onSetHint": "Stampato in testa al foglio di lavorazione",
+    "conflict": "Modificato da un’altra persona. Scegli quale versione mantenere.",
+    "reload": "Ricarica",
+    "keepMine": "Mantieni la mia",
+    "saving": "Salvataggio…",
+    "saved": "Salvato",
+    "unsaved": "Non salvato",
+    "remove": "Rimuovi dalla troupe",
+    "removeConfirm": "Rimuovere {{name}} dalla troupe?",
+    "cancel": "Annulla",
+    "pasteHint": "Una persona per riga: nome, ruolo, telefono. Separa le colonne con tabulazioni, punto e virgola, · o almeno due spazi. Una riga in MAIUSCOLO diventa il reparto.",
+    "pastedText": "Testo incollato",
+    "preview_one": "{{count}} nuova persona",
+    "preview_other": "{{count}} nuove persone",
+    "duplicate": "Già in troupe",
+    "header": "Intestazione saltata",
+    "agent": "Riga agente saltata",
+    "addPeople_one": "Aggiungi {{count}} persona",
+    "addPeople_other": "Aggiungi {{count}} persone",
+    "menu": "Azioni per {{name}}",
+    "details": "Apri dettagli",
+    "phoneColumn": "Telefono",
+    "characterUnavailable": "Scheda non disponibile · Scollega o scegli un’altra scheda",
+    "wholeProject": "per tutto il progetto",
+    "characterTag": "Personaggio",
+    "emailPlaceholder": "facoltativa",
+    "pickupPlaceholder": "Come la convocazione del giorno",
+    "notesPlaceholder": "Visibili solo al team del progetto",
+    "characterLabel": "Scheda personaggio",
+    "optionalTag": "facoltativa",
+    "characterHint": "Nessuna. Il nome nella scaletta basta per la convocazione; collega una scheda solo se ha costume e riferimenti.",
+    "link": "Collega",
+    "unlinkShort": "Scollega",
+    "accountHint": "Collega un account per mandare la convocazione sul telefono e chiedere la conferma della presenza.",
+    "pasteWhat": "Cosa aggiungo",
+    "duplicates_one": "{{count}} già in troupe",
+    "duplicates_other": "{{count}} già in troupe",
+    "columnsRead": "Colonne lette: Nome · Ruolo · Telefono",
+    "pasteFoot": "Chi è già in troupe con lo stesso nome non viene duplicato.",
+    "tooMany": "Massimo 500 persone per volta.",
+    "noName": "Riga senza nome"
   }
 }

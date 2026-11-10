@@ -123,7 +123,8 @@
     "toShoot_one": "{{left}} von {{count}} Shot noch zu drehen",
     "toShoot_other": "{{left}} von {{count}} Shots noch zu drehen",
     "items_one": "{{count}} Element im Board",
-    "items_other": "{{count}} Elemente im Board"
+    "items_other": "{{count}} Elemente im Board",
+    "troupe": "Team"
   },
   "home": {
     "greeting": {
@@ -1211,7 +1212,8 @@
       "canvas": "Canvas",
       "schedule": "Drehplan",
       "review": "Review",
-      "moodboard": "Moodboard"
+      "moodboard": "Moodboard",
+      "troupe": "Team"
     },
     "aspect": {
       "label": "Seitenverhältnis",
@@ -4681,6 +4683,23 @@
             "text": "Unter Mitglieder, im ⋯-Menü, ein anderes Limit für wen es braucht."
           }
         }
+      },
+      "troupe": {
+        "name": "Team",
+        "steps": {
+          "0": {
+            "title": "Team des Projekts",
+            "text": "Ordne die Leute nach Abteilung. Kontakte bleiben im Projektteam."
+          },
+          "1": {
+            "title": "Eine Person bearbeiten",
+            "text": "Öffne eine Zeile: Die Felder speichern sich selbst. Optional mit einem Konto oder einer Figurenkarte verknüpfen."
+          },
+          "2": {
+            "title": "Aus einer Liste einfügen",
+            "text": "Prüf die Vorschau, bevor du Leute hinzufügst. Kopfzeilen und Doppelte werden übersprungen."
+          }
+        }
       }
     }
   },
@@ -5227,5 +5246,77 @@
     "continue": "Weiter",
     "downloadArchive": "Projekt herunterladen (.inkadra)",
     "limitToast": "In der Demo sind Dateien bis {{file}} und insgesamt {{total}} möglich."
+  },
+  "troupe": {
+    "people_one": "{{count}} Person",
+    "people_other": "{{count}} Personen",
+    "departments_one": "{{count}} Abteilung",
+    "departments_other": "{{count}} Abteilungen",
+    "search": "Team durchsuchen",
+    "paste": "Aus Liste einfügen",
+    "add": "Person hinzufügen",
+    "loading": "Team wird geladen…",
+    "error": "Das Team konnte nicht geladen oder gespeichert werden.",
+    "retry": "Noch mal versuchen",
+    "empty": "Noch niemand im Team.",
+    "emptyHint": "Füg eine Liste aus einer alten Dispo ein…",
+    "noResults": "Keine Personen gefunden.",
+    "noDepartment": "Ohne Abteilung",
+    "name": "Name",
+    "role": "Funktion",
+    "phone": "Telefon oder Agentur",
+    "pickup": "Übliche Abholung",
+    "department": "Abteilung",
+    "email": "E-Mail",
+    "notes": "Notizen",
+    "close": "Schließen",
+    "person": "Person",
+    "invalid": "Prüf Name, E-Mail und Feldlängen.",
+    "actor": "Darsteller:in",
+    "contact": "Kontakt",
+    "account": "Inkadra-Konto",
+    "unlink": "Konto trennen",
+    "onSetContact": "Ansprechperson am Set",
+    "onSetHint": "Steht oben auf der Tagesdispo",
+    "conflict": "Jemand anderes hat das geändert. Wähle, welche Version bleibt.",
+    "reload": "Neu laden",
+    "keepMine": "Meine behalten",
+    "saving": "Wird gespeichert…",
+    "saved": "Gespeichert",
+    "unsaved": "Nicht gespeichert",
+    "remove": "Aus dem Team entfernen",
+    "removeConfirm": "{{name}} aus dem Team entfernen?",
+    "cancel": "Abbrechen",
+    "pasteHint": "Eine Person pro Zeile: Name, Funktion, Telefon. Trenn die Spalten mit Tabs, Semikolons, · oder mindestens zwei Leerzeichen. Eine Zeile in GROSSBUCHSTABEN wird zur Abteilung.",
+    "pastedText": "Eingefügter Text",
+    "preview_one": "{{count}} neue Person",
+    "preview_other": "{{count}} neue Personen",
+    "duplicate": "Schon im Team",
+    "header": "Kopfzeile übersprungen",
+    "agent": "Agenturzeile übersprungen",
+    "addPeople_one": "{{count}} Person hinzufügen",
+    "addPeople_other": "{{count}} Personen hinzufügen",
+    "menu": "Aktionen für {{name}}",
+    "details": "Details öffnen",
+    "phoneColumn": "Telefon",
+    "characterUnavailable": "Karte nicht verfügbar · Trennen oder eine andere Karte wählen",
+    "wholeProject": "für das ganze Projekt",
+    "characterTag": "Figur",
+    "emailPlaceholder": "optional",
+    "pickupPlaceholder": "Wie der Call des Tages",
+    "notesPlaceholder": "Nur für das Projektteam sichtbar",
+    "characterLabel": "Figurenkarte",
+    "optionalTag": "optional",
+    "characterHint": "Keine. Der Name im Ablauf reicht für die Dispo; verknüpf nur eine Karte mit Kostüm und Referenzen.",
+    "link": "Verknüpfen",
+    "unlinkShort": "Trennen",
+    "accountHint": "Verknüpf ein Konto, um den Call aufs Handy zu schicken und die Anwesenheit abzufragen.",
+    "pasteWhat": "Was hinzukommt",
+    "duplicates_one": "{{count}} schon im Team",
+    "duplicates_other": "{{count}} schon im Team",
+    "columnsRead": "Gelesene Spalten: Name · Funktion · Telefon",
+    "pasteFoot": "Wer mit gleichem Namen schon im Team ist, wird nicht doppelt angelegt.",
+    "tooMany": "Höchstens 500 Personen auf einmal.",
+    "noName": "Zeile ohne Namen"
   }
 }

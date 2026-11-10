@@ -232,6 +232,13 @@
       "when": 1794295010820,
       "tag": "0032_schedule_author",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794302276903,
+      "tag": "0033_crew_members",
+      "breakpoints": true
     }
   ]
 }

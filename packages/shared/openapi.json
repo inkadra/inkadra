@@ -577,6 +577,279 @@
           }
         ]
       },
+      "Crew": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrewMember"
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CrewMember": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CrewMemberInput"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+              },
+              "projectId": {
+                "type": "string",
+                "format": "uuid",
+                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+              },
+              "account": {
+                "$ref": "#/components/schemas/UserSummary"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "projectId",
+              "revision",
+              "createdAt",
+              "updatedAt"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "UserSummary": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "image"
+        ]
+      },
+      "CrewMemberInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "department": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "string",
+                "enum": [
+                  ""
+                ]
+              }
+            ]
+          },
+          "pickup": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "userId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "character": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "boardId": {
+                "type": "string",
+                "format": "uuid",
+                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+              },
+              "elementId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{8,64}$",
+                "description": "Element id in the board document.",
+                "example": "V1StGXR8_Z5jdHi6B-myT"
+              }
+            },
+            "required": [
+              "boardId",
+              "elementId"
+            ],
+            "additionalProperties": false
+          },
+          "onSetContact": {
+            "type": "boolean"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "role",
+          "department",
+          "phone",
+          "email",
+          "pickup",
+          "notes",
+          "userId",
+          "character",
+          "onSetContact",
+          "position"
+        ],
+        "additionalProperties": false
+      },
+      "BulkCreateCrew": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrewMemberInput"
+            },
+            "minItems": 1,
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateCrewMember": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CrewMemberInput"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "revision"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "CrewCharacters": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrewCharacter"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CrewCharacter": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "elementId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "description": "Element id in the board document.",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "name": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "contact": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "boardId",
+          "elementId",
+          "name",
+          "actor",
+          "contact"
+        ]
+      },
       "CalendarFeed": {
         "type": "object",
         "properties": {
@@ -2698,33 +2971,6 @@
               "email"
             ]
           }
-        ]
-      },
-      "UserSummary": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 120
-          },
-          "image": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "uri"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "image"
         ]
       },
       "StorageUsage": {
@@ -6197,17 +6443,7 @@
             "description": "For `link` invitations at most `editor`, also for links made with `owner` before API 0.6.0: accepting them gives `editor`."
           },
           "invitedBy": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/UserSummary"
-              },
-              {
-                "type": [
-                  "object",
-                  "null"
-                ]
-              }
-            ]
+            "$ref": "#/components/schemas/UserSummary"
           },
           "uses": {
             "type": "integer",
@@ -8233,17 +8469,7 @@
             "description": "`suspended`: the person who created the link no longer has editor on its board, or their account was deleted; it works again if they get the role back. Open: clients treat a status they do not know as not working."
           },
           "createdBy": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/UserSummary"
-              },
-              {
-                "type": [
-                  "object",
-                  "null"
-                ]
-              }
-            ]
+            "$ref": "#/components/schemas/UserSummary"
           },
           "createdAt": {
             "type": "string",
@@ -9806,10 +10032,6 @@
                 "$ref": "#/components/schemas/UserSummary"
               },
               {
-                "type": [
-                  "object",
-                  "null"
-                ],
                 "description": "Null for automatic versions."
               }
             ]
@@ -11065,6 +11287,561 @@
         "responses": {
           "200": {
             "description": "Attachment; nosniff, no-store, sandboxed, no referrer"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/crew": {
+      "get": {
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Crew"
+        ],
+        "summary": "List private project crew",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Crew",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Crew"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Crew"
+        ],
+        "summary": "Add a crew member",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrewMemberInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrewMember"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/crew/bulk": {
+      "post": {
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Crew"
+        ],
+        "summary": "Add crew from a sheet atomically",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkCreateCrew"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Crew"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/crew/{memberId}": {
+      "put": {
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Crew"
+        ],
+        "summary": "Update a crew member with revision checking",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCrewMember"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrewMember"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision; details.current contains the latest member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Crew"
+        ],
+        "summary": "Remove a crew member with revision checking",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "revision"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/crew/characters": {
+      "get": {
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Crew"
+        ],
+        "summary": "List character cards available to link",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Characters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrewCharacters"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not found",

@@ -123,7 +123,8 @@
     "toShoot_one": "{{left}} de {{count}} plano ainda por filmar",
     "toShoot_other": "{{left}} de {{count}} planos ainda por filmar",
     "items_one": "{{count}} item no quadro",
-    "items_other": "{{count}} itens no quadro"
+    "items_other": "{{count}} itens no quadro",
+    "troupe": "Equipa"
   },
   "home": {
     "greeting": {
@@ -1211,7 +1212,8 @@
       "canvas": "Canvas",
       "schedule": "Cronograma",
       "review": "Revisão",
-      "moodboard": "Moodboard"
+      "moodboard": "Moodboard",
+      "troupe": "Equipa"
     },
     "aspect": {
       "label": "Proporção",
@@ -4681,6 +4683,23 @@
             "text": "Em Membros, no menu ⋯, um limite diferente para quem precisar."
           }
         }
+      },
+      "troupe": {
+        "name": "Equipa",
+        "steps": {
+          "0": {
+            "title": "Equipa do projeto",
+            "text": "Agrupe as pessoas por departamento. Os contactos ficam privados para a equipa do projeto."
+          },
+          "1": {
+            "title": "Edite uma pessoa",
+            "text": "Abra uma linha: os campos guardam-se sozinhos. Se quiser, ligue uma conta ou uma ficha de personagem."
+          },
+          "2": {
+            "title": "Cole de uma lista",
+            "text": "Reveja a pré-visualização antes de adicionar pessoas. Cabeçalhos e duplicados são ignorados."
+          }
+        }
       }
     }
   },
@@ -5227,5 +5246,77 @@
     "continue": "Continuar",
     "downloadArchive": "Baixar o projeto (.inkadra)",
     "limitToast": "Na demo os arquivos vão até {{file}} e {{total}} no total."
+  },
+  "troupe": {
+    "people_one": "{{count}} pessoa",
+    "people_other": "{{count}} pessoas",
+    "departments_one": "{{count}} departamento",
+    "departments_other": "{{count}} departamentos",
+    "search": "Pesquisar na equipa",
+    "paste": "Colar de uma lista",
+    "add": "Adicionar pessoa",
+    "loading": "A carregar a equipa…",
+    "error": "Não foi possível carregar ou guardar a equipa.",
+    "retry": "Tentar novamente",
+    "empty": "Ainda não há ninguém na equipa.",
+    "emptyHint": "Cole uma lista de uma ordem do dia antiga…",
+    "noResults": "Nenhuma pessoa encontrada.",
+    "noDepartment": "Sem departamento",
+    "name": "Nome",
+    "role": "Função",
+    "phone": "Telefone ou agente",
+    "pickup": "Recolha habitual",
+    "department": "Departamento",
+    "email": "E-mail",
+    "notes": "Notas",
+    "close": "Fechar",
+    "person": "Pessoa",
+    "invalid": "Verifique o nome, o e-mail e o comprimento dos campos.",
+    "actor": "Intérprete",
+    "contact": "Contacto",
+    "account": "Conta Inkadra",
+    "unlink": "Desligar conta",
+    "onSetContact": "Contacto no set",
+    "onSetHint": "Impresso no topo da ordem do dia",
+    "conflict": "Alterado por outra pessoa. Escolha que versão manter.",
+    "reload": "Recarregar",
+    "keepMine": "Manter a minha",
+    "saving": "A guardar…",
+    "saved": "Guardado",
+    "unsaved": "Não guardado",
+    "remove": "Remover da equipa",
+    "removeConfirm": "Remover {{name}} da equipa?",
+    "cancel": "Cancelar",
+    "pasteHint": "Uma pessoa por linha: nome, função, telefone. Separe as colunas com tabulações, ponto e vírgula, · ou dois ou mais espaços. Uma linha em MAIÚSCULAS passa a ser o departamento.",
+    "pastedText": "Texto colado",
+    "preview_one": "{{count}} pessoa nova",
+    "preview_other": "{{count}} pessoas novas",
+    "duplicate": "Já está na equipa",
+    "header": "Cabeçalho ignorado",
+    "agent": "Linha de agente ignorada",
+    "addPeople_one": "Adicionar {{count}} pessoa",
+    "addPeople_other": "Adicionar {{count}} pessoas",
+    "menu": "Ações para {{name}}",
+    "details": "Abrir detalhes",
+    "phoneColumn": "Telefone",
+    "characterUnavailable": "Ficha indisponível · Desligue-a ou escolha outra ficha",
+    "wholeProject": "para todo o projeto",
+    "characterTag": "Personagem",
+    "emailPlaceholder": "opcional",
+    "pickupPlaceholder": "Igual à convocatória do dia",
+    "notesPlaceholder": "Só a equipa do projeto as vê",
+    "characterLabel": "Ficha de personagem",
+    "optionalTag": "opcional",
+    "characterHint": "Nenhuma. O nome na programação basta para a convocatória; ligue uma ficha só se tiver figurino e referências.",
+    "link": "Ligar",
+    "unlinkShort": "Desligar",
+    "accountHint": "Ligue uma conta para enviar a convocatória para o telemóvel e pedir confirmação.",
+    "pasteWhat": "O que será adicionado",
+    "duplicates_one": "{{count}} já na equipa",
+    "duplicates_other": "{{count}} já na equipa",
+    "columnsRead": "Colunas lidas: Nome · Função · Telefone",
+    "pasteFoot": "Quem já está na equipa com o mesmo nome não é duplicado.",
+    "tooMany": "No máximo 500 pessoas de cada vez.",
+    "noName": "Linha sem nome"
   }
 }
