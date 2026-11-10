@@ -111,6 +111,7 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
       (await schedule.locator('.schedule__block.is-dragging').boundingBox())!.width - initial.width,
     ),
   ).toBeLessThan(1);
+  expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toBe('');
   await page.mouse.move(empty.x + empty.width / 2, initial.y + 20, { steps: 6 });
   const moved = page.waitForResponse(
     (response) =>

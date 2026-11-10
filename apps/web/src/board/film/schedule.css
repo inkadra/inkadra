@@ -1331,3 +1331,9 @@ fieldset.schedule__field > legend {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
 }
+
+@media (768px <= width < 1400px) {
+  .schedule__queue {
+    width: 220px;
+  }
+}

@@ -238,6 +238,7 @@ export function ScheduleCalendar({
     const column = columnRefs.current.get(entry.day.id)?.getBoundingClientRect();
     if (!column) return;
     const touch = event.pointerType === 'touch';
+    if (!touch) event.preventDefault();
     const pointerMinute = (event.clientY - column.top) / MINUTE_PX;
     const next: Drag = {
       kind,
