@@ -20,10 +20,35 @@ export const ScheduleBlock = z
     shotId: ElementRef.nullable(),
     cast: TextList,
     departments: TextList,
+    notes: z
+      .string()
+      .max(2000)
+      .optional()
+      .describe('A highlighted note on the call sheet. Missing reads as empty.'),
   })
   .strict()
   .openapi('ScheduleBlock');
 export type ScheduleBlock = z.infer<typeof ScheduleBlock>;
+/** One crew member's call on a shooting day; only the exceptions to the day's call are stored. */
+export const DayCall = z
+  .object({
+    crewMemberId: Id,
+    call: ScheduleTime.nullable().describe("Null follows the day's call."),
+    pickup: z
+      .string()
+      .max(1000)
+      .nullable()
+      .describe("Null follows the crew member's usual pick-up."),
+    absent: z
+      .boolean()
+      .optional()
+      .describe(
+        'True: not called this day. False: called even when the default says otherwise. Missing: crew are called, cast only when named in the blocks.',
+      ),
+  })
+  .strict()
+  .openapi('DayCall');
+export type DayCall = z.infer<typeof DayCall>;
 export const ShootingDayInput = z
   .object({
     date: z.iso.date(),
@@ -37,6 +62,17 @@ export const ShootingDayInput = z
       .refine(
         (blocks) => new Set(blocks.map((b) => b.id)).size === blocks.length,
         'Block ids must be unique.',
+      ),
+    calls: z
+      .array(DayCall)
+      .max(500)
+      .refine(
+        (calls) => new Set(calls.map((c) => c.crewMemberId)).size === calls.length,
+        'One call per crew member.',
+      )
+      .optional()
+      .describe(
+        'Per-person calls, for project members only. Missing on input keeps the stored calls; missing on output reads as none.',
       ),
   })
   .strict()

@@ -520,6 +520,7 @@
   body:has(.call-sheet) *:has(.call-sheet) > :not(:has(.call-sheet), .call-sheet),
   .call-sheet__controls,
   .sheet__phone-head,
+  .sheet__phone-troupe,
   .sheet__maps {
     display: none !important;
   }
@@ -816,4 +817,84 @@
 .sheet__table th,
 .sheet__section h4 {
   color: var(--ink-text-secondary);
+}
+
+/* Troupe and on-set contact (decision 0092). */
+.sheet__facts--contact {
+  grid-template-columns: 1fr 2fr 2fr;
+}
+.sheet__contact {
+  display: block;
+}
+.sheet__nowrap {
+  white-space: nowrap;
+}
+.sheet__fact--wide {
+  grid-column: span 2;
+}
+.sheet__group th {
+  padding: 3px 8px;
+  border-bottom: 0;
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+}
+/* A block's own note: "LIGHTS AND WINDOWS ON". */
+.sheet__note {
+  margin-top: 2px;
+  color: var(--ink-tag-orange);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.sheet__phone-troupe ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sheet__phone-group {
+  margin: 10px 0 2px;
+}
+.sheet__phone-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 0;
+  border-top: 1px solid var(--ink-border-default);
+}
+.sheet__phone-person > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sheet__phone-person b {
+  font-weight: 600;
+}
+.sheet__dial {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-tag-green-bg);
+  color: var(--ink-tag-green);
+}
+.sheet__dial:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.sheet__phone-own-time {
+  display: block;
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+@media screen and (width < 768px) {
+  /* The list with call buttons stands for the printed table. */
+  .sheet__table--troupe {
+    display: none;
+  }
 }

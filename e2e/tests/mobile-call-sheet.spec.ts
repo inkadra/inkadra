@@ -230,8 +230,11 @@ test('the linked person sees their call, confirms and changes their mind', async
   const confirm = sheet.getByRole('button', { name: 'Confermo la presenza' });
   const decline = sheet.getByRole('button', { name: 'Non posso' });
   await expect(confirm).toBeVisible();
-  await expect(sheet.locator('.sheet__phone-own')).toContainText('La tua convocazione');
-  await expect(sheet.locator('.sheet__phone-own')).toContainText(/anna · 20:30/i);
+  // Through the board's cast link: no crew row is linked to this account (decision 0092).
+  await expect(sheet.locator('.sheet__phone-own .sheet__label')).toHaveText(
+    /^La tua convocazione · anna$/i,
+  );
+  await expect(sheet.locator('.sheet__phone-own-time')).toHaveText('20:30');
   await shots(page, 'actor-unanswered');
   for (const button of [confirm, decline]) {
     const box = await button.boundingBox();

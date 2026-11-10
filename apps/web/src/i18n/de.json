@@ -2495,7 +2495,9 @@
     "swapDays": "Tauschen",
     "moveDayConfirm": "Verschieben",
     "dayMoved": "Tag von {{from}} auf {{to}} verschoben.",
-    "daysSwapped": "{{from}} und {{to}} getauscht."
+    "daysSwapped": "{{from}} und {{to}} getauscht.",
+    "blockNotes": "Hervorgehobene Notiz",
+    "blockNotesPlaceholder": "Wird auf die Dispo gedruckt, z. B. LICHTERKETTEN UND SCHAUFENSTER AN"
   },
   "moodboard": {
     "count_one": "{{count}} Referenz",
@@ -2614,7 +2616,19 @@
     "locationNumber": "Loc. {{n}}",
     "serve": "Needed: {{items}}",
     "inScene": "On set",
-    "contact": "Contact"
+    "contact": "Contact",
+    "troupe": "Team und Kontakte",
+    "onSetContact": "Ansprechpartner am Set",
+    "onSetContactShort": "Ansprechpartner am Set",
+    "pickup": "Abholung",
+    "callShort": "Treff",
+    "character": "Rolle",
+    "sun": "Sonnenaufgang · -untergang (Loc. {{n}})",
+    "sunrise": "Sonnenaufgang",
+    "sunset": "Sonnenuntergang",
+    "you": "(du)",
+    "callPerson": "{{name}} anrufen",
+    "pickupAt": "Abholung {{pickup}}"
   },
   "needed": {
     "title": "Mitbringen",
@@ -4369,31 +4383,31 @@
         "steps": {
           "0": {
             "title": "The shooting calendar",
-            "text": "Day or week, like a calendar: blocks queue up by themselves."
+            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end."
           },
           "1": {
-            "title": "From the queue to a day",
-            "text": "Drag a shot to the right time, or click it to add it at the end."
-          },
-          "2": {
             "title": "Move and stretch",
             "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
           },
-          "3": {
+          "2": {
             "title": "Einen Block zeichnen",
             "text": "Zieh über freie Zeit, um einen Block in 5-Minuten-Schritten zu zeichnen, und wähle dann die Art (Tasten 1–5). Mit der Tastatur fügt N einen Block nach dem gewählten ein."
           },
-          "4": {
+          "3": {
             "title": "Einen ganzen Tag verschieben",
             "text": "Zieh die Kopfzeile auf eine andere Spalte oder ein Datum im Monat: Die Blöcke folgen, und an einem belegten Datum tauschen die beiden Tage. Alt+←/→ oder „Auf ein anderes Datum verschieben…“ im Tag."
           },
-          "5": {
+          "4": {
             "title": "Saves by itself",
             "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
           },
+          "5": {
+            "title": "Treffzeiten",
+            "text": "Im Reiter Treffzeiten des Tages wählst du, wer bestellt ist, und trägst nur Ausnahmen ein: eine andere Zeit oder eine Abholung."
+          },
           "6": {
             "title": "Tagesdispo",
-            "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
+            "text": "Zeiten mit Sonnenauf- und -untergang, Drehorte, Team mit Telefonnummern, Ablauf mit Notizen und Mitzubringendem. Wähle die Abschnitte und drucke für das Team."
           }
         }
       },
@@ -4720,6 +4734,10 @@
           "2": {
             "title": "Aus einer Liste einfügen",
             "text": "Prüf die Vorschau, bevor du Leute hinzufügst. Kopfzeilen und Doppelte werden übersprungen."
+          },
+          "3": {
+            "title": "Treffzeiten und Dispo",
+            "text": "Im Drehplan, Reiter Treffzeiten, wählst du, wer an jedem Tag bestellt ist. Die Dispo druckt Team, Telefonnummern und Ansprechpartner am Set, nie für Gäste oder Kunden."
           }
         }
       }
@@ -5340,5 +5358,23 @@
     "pasteFoot": "Wer mit gleichem Namen schon im Team ist, wird nicht doppelt angelegt.",
     "tooMany": "Höchstens 500 Personen auf einmal.",
     "noName": "Zeile ohne Namen"
+  },
+  "dayCalls": {
+    "title": "Treffzeiten",
+    "times": "Zeiten des Tages, aus dem Ablauf berechnet",
+    "hint": "Leer = Treffzeit des Tages. Trag nur ein, wer zu einer anderen Zeit kommt oder abgeholt wird.",
+    "unavailable": "Treffzeiten nutzen das Team des Projekts, das nur Projektmitglieder sehen.",
+    "emptyTitle": "Niemand im Team",
+    "emptyBody": "Füge die Personen unter Team hinzu: Hier wählst du, wer an jedem Tag bestellt ist.",
+    "openTroupe": "Team öffnen",
+    "calledToday": "{{name}} heute bestellt",
+    "callOf": "Treffzeit von {{name}}",
+    "pickupOf": "Abholung von {{name}}",
+    "pickup": "Abholung",
+    "inScene": "Am Set um {{time}} ({{block}}), laut Ablauf",
+    "inSceneAt": "Am Set um {{time}}, laut Ablauf",
+    "castOnlyScheduled": "nur wer im Ablauf steht",
+    "notCalled_one": "Heute nicht bestellt · {{names}}",
+    "notCalled_other": "Heute nicht bestellt · {{names}}"
   }
 }

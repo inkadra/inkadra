@@ -204,7 +204,6 @@ export const TOURS: Tour[] = [
     kind: 'schedule',
     offer: 'schedule',
     steps: [
-      { anchor: 'schedule', media: 'calendar', side: 'bottom' },
       { anchor: 'schedule-queue', media: 'drag', side: 'right' },
       // Includes drag-created dates: the whole gesture is one undo step.
       { anchor: 'schedule-days', media: 'calendar', side: 'left', keys: ['Alt'] },
@@ -218,7 +217,10 @@ export const TOURS: Tour[] = [
         side: 'bottom',
         keys: [isMac() ? '⌘' : 'Ctrl', 'Z'],
       },
-      // The sheet derives key times, locations and row pictures from the board (0090).
+      // Per-person calls of the day (0092): only the exceptions to the day's call.
+      { anchor: 'schedule-calls', media: 'users', side: 'left' },
+      // The sheet derives key times, locations and row pictures from the board (0090), and
+      // prints the called crew with phones (0092).
       { anchor: 'schedule-callsheet', media: 'export', side: 'bottom' },
     ],
   },
@@ -231,6 +233,8 @@ export const TOURS: Tour[] = [
       { anchor: 'troupe', media: 'users', side: 'bottom' },
       { anchor: 'troupe-person', media: 'team', side: 'left' },
       { anchor: 'troupe-paste', media: 'rows', side: 'left' },
+      // Where the roster is used: the day's calls and the call sheet (0092).
+      { anchor: null, media: 'calendar' },
     ],
   },
   {

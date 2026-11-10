@@ -1,0 +1,1 @@
+ALTER TABLE "shooting_day" ADD COLUMN "calls" jsonb DEFAULT '[]'::jsonb NOT NULL;

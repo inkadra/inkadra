@@ -2495,7 +2495,9 @@
     "swapDays": "Échanger",
     "moveDayConfirm": "Déplacer",
     "dayMoved": "Journée déplacée du {{from}} au {{to}}.",
-    "daysSwapped": "{{from}} et {{to}} échangés."
+    "daysSwapped": "{{from}} et {{to}} échangés.",
+    "blockNotes": "Note en évidence",
+    "blockNotesPlaceholder": "Imprimée sur la feuille, p. ex. GUIRLANDES ET VITRINES ALLUMÉES"
   },
   "moodboard": {
     "count_one": "{{count}} référence",
@@ -2614,7 +2616,19 @@
     "locationNumber": "Loc. {{n}}",
     "serve": "Needed: {{items}}",
     "inScene": "On set",
-    "contact": "Contact"
+    "contact": "Contact",
+    "troupe": "Équipe et contacts",
+    "onSetContact": "Contact sur le plateau",
+    "onSetContactShort": "contact sur le plateau",
+    "pickup": "Navette",
+    "callShort": "Conv.",
+    "character": "Personnage",
+    "sun": "Lever · Coucher du soleil (Loc. {{n}})",
+    "sunrise": "Lever du soleil",
+    "sunset": "Coucher du soleil",
+    "you": "(vous)",
+    "callPerson": "Appeler {{name}}",
+    "pickupAt": "navette {{pickup}}"
   },
   "needed": {
     "title": "À apporter",
@@ -4369,31 +4383,31 @@
         "steps": {
           "0": {
             "title": "The shooting calendar",
-            "text": "Day or week, like a calendar: blocks queue up by themselves."
+            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end."
           },
           "1": {
-            "title": "From the queue to a day",
-            "text": "Drag a shot to the right time, or click it to add it at the end."
-          },
-          "2": {
             "title": "Move and stretch",
             "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
           },
-          "3": {
+          "2": {
             "title": "Dessiner un bloc",
             "text": "Glissez sur un temps libre pour dessiner un bloc par pas de 5 minutes, puis choisissez son type (touches 1–5). Au clavier, N ajoute un bloc après celui sélectionné."
           },
-          "4": {
+          "3": {
             "title": "Déplacer une journée entière",
             "text": "Glissez son en-tête sur une autre colonne ou sur une date du mois : les blocs suivent, et sur une date prise les deux journées s’échangent. Alt+←/→ ou « Déplacer à une autre date… » dans la journée."
           },
-          "5": {
+          "4": {
             "title": "Saves by itself",
             "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
           },
+          "5": {
+            "title": "Convocations",
+            "text": "Dans l’onglet Convocations du jour, choisissez qui est convoqué et n’indiquez que les exceptions : une autre heure ou une navette."
+          },
           "6": {
             "title": "Feuille de service",
-            "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
+            "text": "Horaires avec lever et coucher du soleil, décors, équipe avec téléphones, plan avec notes et À apporter. Choisissez les sections et imprimez pour l’équipe."
           }
         }
       },
@@ -4720,6 +4734,10 @@
           "2": {
             "title": "Coller depuis une liste",
             "text": "Vérifiez l’aperçu avant d’ajouter des personnes. Les en-têtes et les doublons sont ignorés."
+          },
+          "3": {
+            "title": "Convocations et feuille de service",
+            "text": "Dans le Plan de tournage, onglet Convocations, choisissez qui est convoqué chaque jour. La feuille de service imprime l’équipe, les téléphones et le contact sur le plateau, jamais pour les invités ni les clients."
           }
         }
       }
@@ -5340,5 +5358,23 @@
     "pasteFoot": "Une personne déjà dans l’équipe sous le même nom n’est pas ajoutée deux fois.",
     "tooMany": "500 personnes au maximum à la fois.",
     "noName": "Ligne sans nom"
+  },
+  "dayCalls": {
+    "title": "Convocations",
+    "times": "Horaires du jour, calculés à partir du plan",
+    "hint": "Vide = convocation du jour. N'indiquez que les personnes qui arrivent à une autre heure ou ont besoin d'une navette.",
+    "unavailable": "Les convocations utilisent l'équipe du projet, visible seulement par ses membres.",
+    "emptyTitle": "Personne dans l'équipe",
+    "emptyBody": "Ajoutez les personnes dans Équipe : ici, vous choisissez qui est convoqué chaque jour.",
+    "openTroupe": "Ouvrir l'Équipe",
+    "calledToday": "{{name}} convoqué aujourd'hui",
+    "callOf": "Convocation de {{name}}",
+    "pickupOf": "Navette de {{name}}",
+    "pickup": "Navette",
+    "inScene": "En scène à {{time}} ({{block}}), selon le plan",
+    "inSceneAt": "En scène à {{time}}, selon le plan",
+    "castOnlyScheduled": "seulement les personnes du plan",
+    "notCalled_one": "Non convoqué aujourd'hui · {{names}}",
+    "notCalled_other": "Non convoqués aujourd'hui · {{names}}"
   }
 }

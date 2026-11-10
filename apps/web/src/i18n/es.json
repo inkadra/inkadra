@@ -2495,7 +2495,9 @@
     "swapDays": "Intercambiar",
     "moveDayConfirm": "Mover",
     "dayMoved": "Día movido de {{from}} a {{to}}.",
-    "daysSwapped": "{{from}} y {{to}} intercambiados."
+    "daysSwapped": "{{from}} y {{to}} intercambiados.",
+    "blockNotes": "Nota destacada",
+    "blockNotesPlaceholder": "Se imprime en la hoja, p. ej. LUCES Y ESCAPARATES ENCENDIDOS"
   },
   "moodboard": {
     "count_one": "{{count}} referencia",
@@ -2614,7 +2616,19 @@
     "locationNumber": "Loc. {{n}}",
     "serve": "Needed: {{items}}",
     "inScene": "On set",
-    "contact": "Contact"
+    "contact": "Contact",
+    "troupe": "Equipo y contactos",
+    "onSetContact": "Contacto en el set",
+    "onSetContactShort": "contacto en el set",
+    "pickup": "Recogida",
+    "callShort": "Cit.",
+    "character": "Personaje",
+    "sun": "Amanecer · Atardecer (Loc. {{n}})",
+    "sunrise": "Amanecer",
+    "sunset": "Atardecer",
+    "you": "(tú)",
+    "callPerson": "Llamar a {{name}}",
+    "pickupAt": "recogida {{pickup}}"
   },
   "needed": {
     "title": "Para llevar",
@@ -4369,31 +4383,31 @@
         "steps": {
           "0": {
             "title": "The shooting calendar",
-            "text": "Day or week, like a calendar: blocks queue up by themselves."
+            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end."
           },
           "1": {
-            "title": "From the queue to a day",
-            "text": "Drag a shot to the right time, or click it to add it at the end."
-          },
-          "2": {
             "title": "Move and stretch",
             "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
           },
-          "3": {
+          "2": {
             "title": "Dibuja un bloque",
             "text": "Arrastra sobre tiempo libre para dibujar un bloque en pasos de 5 minutos y elige su tipo (teclas 1–5). Con el teclado, N añade un bloque tras el seleccionado."
           },
-          "4": {
+          "3": {
             "title": "Mueve un día entero",
             "text": "Arrastra su cabecera a otra columna o a una fecha del mes: los bloques la siguen, y en una fecha ocupada los dos días se intercambian. Alt+←/→ o «Mover a otra fecha…» en el día."
           },
-          "5": {
+          "4": {
             "title": "Saves by itself",
             "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
           },
+          "5": {
+            "title": "Citaciones",
+            "text": "En la pestaña Citaciones del día eliges a quién se cita y escribes solo las excepciones: otra hora o una recogida."
+          },
           "6": {
             "title": "Orden de rodaje",
-            "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
+            "text": "Horarios con amanecer y atardecer, localizaciones, equipo con teléfonos, plan con notas y lo que hay que llevar. Elige las secciones e imprime para el equipo."
           }
         }
       },
@@ -4720,6 +4734,10 @@
           "2": {
             "title": "Pegar desde una lista",
             "text": "Revisa la vista previa antes de añadir personas. Se omiten encabezados y duplicados."
+          },
+          "3": {
+            "title": "Citaciones y hoja",
+            "text": "En el Plan de rodaje, pestaña Citaciones, eliges a quién se cita cada día. La hoja de rodaje imprime equipo, teléfonos y contacto en el set, nunca para invitados ni clientes."
           }
         }
       }
@@ -5340,5 +5358,23 @@
     "pasteFoot": "Quien ya está en el equipo con el mismo nombre no se duplica.",
     "tooMany": "Como máximo 500 personas a la vez.",
     "noName": "Línea sin nombre"
+  },
+  "dayCalls": {
+    "title": "Citaciones",
+    "times": "Horarios del día, calculados a partir del plan",
+    "hint": "Vacío = citación del día. Escribe solo quien llega a otra hora o necesita recogida.",
+    "unavailable": "Las citaciones usan el equipo del proyecto, visible solo para sus miembros.",
+    "emptyTitle": "Nadie en el equipo",
+    "emptyBody": "Añade a las personas en Equipo: aquí eliges a quién se cita cada día.",
+    "openTroupe": "Abrir Equipo",
+    "calledToday": "{{name}} citado hoy",
+    "callOf": "Citación de {{name}}",
+    "pickupOf": "Recogida de {{name}}",
+    "pickup": "Recogida",
+    "inScene": "En escena a las {{time}} ({{block}}), según el plan",
+    "inSceneAt": "En escena a las {{time}}, según el plan",
+    "castOnlyScheduled": "solo quien está en el plan",
+    "notCalled_one": "No citado hoy · {{names}}",
+    "notCalled_other": "No citados hoy · {{names}}"
   }
 }

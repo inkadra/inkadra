@@ -2495,7 +2495,9 @@
     "swapDays": "Swap",
     "moveDayConfirm": "Move",
     "dayMoved": "Day moved from {{from}} to {{to}}.",
-    "daysSwapped": "{{from}} and {{to}} swapped."
+    "daysSwapped": "{{from}} and {{to}} swapped.",
+    "blockNotes": "Highlighted note",
+    "blockNotesPlaceholder": "Printed on the call sheet, e.g. LIGHTS AND WINDOWS ON"
   },
   "moodboard": {
     "count_one": "{{count}} reference",
@@ -2614,7 +2616,19 @@
     "locationNumber": "Loc. {{n}}",
     "serve": "Needed: {{items}}",
     "inScene": "On set",
-    "contact": "Contact"
+    "contact": "Contact",
+    "troupe": "Crew and contacts",
+    "onSetContact": "On-set contact",
+    "onSetContactShort": "on-set contact",
+    "pickup": "Pick-up",
+    "callShort": "Call",
+    "character": "Character",
+    "sun": "Sunrise · Sunset (Loc. {{n}})",
+    "sunrise": "Sunrise",
+    "sunset": "Sunset",
+    "you": "(you)",
+    "callPerson": "Call {{name}}",
+    "pickupAt": "pick-up {{pickup}}"
   },
   "needed": {
     "title": "To bring",
@@ -4369,31 +4383,31 @@
         "steps": {
           "0": {
             "title": "The shooting calendar",
-            "text": "Day or week, like a calendar: blocks queue up by themselves."
+            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end."
           },
           "1": {
-            "title": "From the queue to a day",
-            "text": "Drag a shot to the right time, or click it to add it at the end."
-          },
-          "2": {
             "title": "Move and stretch",
             "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
           },
-          "3": {
+          "2": {
             "title": "Draw a block",
             "text": "Drag on empty time to draw a block in 5-minute steps, then pick its type (keys 1–5). With the keyboard, N adds a block after the selected one."
           },
-          "4": {
+          "3": {
             "title": "Move a whole day",
             "text": "Drag its heading to another column or to a date of the month: the blocks follow, and on a taken date the two days swap. Alt+←/→ or “Move to another date…” in the day."
           },
-          "5": {
+          "4": {
             "title": "Saves by itself",
             "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
           },
+          "5": {
+            "title": "Calls",
+            "text": "In the day’s Calls tab, choose who is called and write only the exceptions: another time or a pick-up."
+          },
           "6": {
             "title": "Call sheet",
-            "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
+            "text": "Times with sunrise and sunset, locations, crew with phone numbers, the schedule with notes and what to bring. Pick the sections and print for the crew."
           }
         }
       },
@@ -4720,6 +4734,10 @@
           "2": {
             "title": "Paste from a sheet",
             "text": "Review the preview before adding people. Headers and duplicates are skipped."
+          },
+          "3": {
+            "title": "Calls and call sheet",
+            "text": "In the Schedule, Calls tab, choose who is called each day. The call sheet prints the crew, phone numbers and on-set contact, never for guests or clients."
           }
         }
       }
@@ -5340,5 +5358,23 @@
     "pasteFoot": "Anyone already in the crew with the same name is not added twice.",
     "tooMany": "At most 500 people at a time.",
     "noName": "Line without a name"
+  },
+  "dayCalls": {
+    "title": "Calls",
+    "times": "The day's times, worked out from the schedule",
+    "hint": "Empty = the day's call. Only fill in people who arrive at another time or need a pick-up.",
+    "unavailable": "Calls use the project's crew, which only project members can see.",
+    "emptyTitle": "Nobody in the crew",
+    "emptyBody": "Add people in Crew: here you choose who is called each day.",
+    "openTroupe": "Open Crew",
+    "calledToday": "{{name}} called today",
+    "callOf": "Call time of {{name}}",
+    "pickupOf": "Pick-up of {{name}}",
+    "pickup": "Pick-up",
+    "inScene": "On set at {{time}} ({{block}}), from the schedule",
+    "inSceneAt": "On set at {{time}}, from the schedule",
+    "castOnlyScheduled": "only people in the schedule",
+    "notCalled_one": "Not called today · {{names}}",
+    "notCalled_other": "Not called today · {{names}}"
   }
 }

@@ -2495,7 +2495,9 @@
     "swapDays": "Trocar",
     "moveDayConfirm": "Mover",
     "dayMoved": "Dia movido de {{from}} para {{to}}.",
-    "daysSwapped": "{{from}} e {{to}} trocados."
+    "daysSwapped": "{{from}} e {{to}} trocados.",
+    "blockNotes": "Nota em destaque",
+    "blockNotesPlaceholder": "Impressa na folha, p. ex. LUZES E MONTRAS ACESAS"
   },
   "moodboard": {
     "count_one": "{{count}} referência",
@@ -2614,7 +2616,19 @@
     "locationNumber": "Loc. {{n}}",
     "serve": "Needed: {{items}}",
     "inScene": "On set",
-    "contact": "Contact"
+    "contact": "Contact",
+    "troupe": "Equipa e contactos",
+    "onSetContact": "Contacto no set",
+    "onSetContactShort": "contacto no set",
+    "pickup": "Recolha",
+    "callShort": "Conv.",
+    "character": "Personagem",
+    "sun": "Nascer · Pôr do sol (Loc. {{n}})",
+    "sunrise": "Nascer do sol",
+    "sunset": "Pôr do sol",
+    "you": "(tu)",
+    "callPerson": "Ligar a {{name}}",
+    "pickupAt": "recolha {{pickup}}"
   },
   "needed": {
     "title": "A levar",
@@ -4369,31 +4383,31 @@
         "steps": {
           "0": {
             "title": "The shooting calendar",
-            "text": "Day or week, like a calendar: blocks queue up by themselves."
+            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end."
           },
           "1": {
-            "title": "From the queue to a day",
-            "text": "Drag a shot to the right time, or click it to add it at the end."
-          },
-          "2": {
             "title": "Move and stretch",
             "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
           },
-          "3": {
+          "2": {
             "title": "Desenhe um bloco",
             "text": "Arraste sobre tempo livre para desenhar um bloco em passos de 5 minutos e escolha o tipo (teclas 1–5). Com o teclado, N adiciona um bloco depois do selecionado."
           },
-          "4": {
+          "3": {
             "title": "Mova um dia inteiro",
             "text": "Arraste o cabeçalho para outra coluna ou para uma data do mês: os blocos acompanham, e numa data ocupada os dois dias trocam. Alt+←/→ ou «Mover para outra data…» no dia."
           },
-          "5": {
+          "4": {
             "title": "Saves by itself",
             "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
           },
+          "5": {
+            "title": "Convocatórias",
+            "text": "No separador Convocatórias do dia escolhes quem é convocado e escreves só as exceções: outra hora ou uma recolha."
+          },
           "6": {
             "title": "Ordem do dia",
-            "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
+            "text": "Horários com nascer e pôr do sol, locais, equipa com telefones, plano com notas e o que levar. Escolhe as secções e imprime para a equipa."
           }
         }
       },
@@ -4720,6 +4734,10 @@
           "2": {
             "title": "Cole de uma lista",
             "text": "Reveja a pré-visualização antes de adicionar pessoas. Cabeçalhos e duplicados são ignorados."
+          },
+          "3": {
+            "title": "Convocatórias e folha",
+            "text": "No Plano de rodagem, separador Convocatórias, escolhes quem é convocado em cada dia. A folha de serviço imprime equipa, telefones e contacto no set, nunca para convidados nem clientes."
           }
         }
       }
@@ -5340,5 +5358,23 @@
     "pasteFoot": "Quem já está na equipa com o mesmo nome não é duplicado.",
     "tooMany": "No máximo 500 pessoas de cada vez.",
     "noName": "Linha sem nome"
+  },
+  "dayCalls": {
+    "title": "Convocatórias",
+    "times": "Horários do dia, calculados a partir do plano",
+    "hint": "Vazio = convocatória do dia. Escreve só quem chega a outra hora ou precisa de recolha.",
+    "unavailable": "As convocatórias usam a equipa do projeto, visível só para os membros do projeto.",
+    "emptyTitle": "Ninguém na equipa",
+    "emptyBody": "Adiciona as pessoas em Equipa: aqui escolhes quem é convocado em cada dia.",
+    "openTroupe": "Abrir Equipa",
+    "calledToday": "{{name}} convocado hoje",
+    "callOf": "Convocatória de {{name}}",
+    "pickupOf": "Recolha de {{name}}",
+    "pickup": "Recolha",
+    "inScene": "Em cena às {{time}} ({{block}}), segundo o plano",
+    "inSceneAt": "Em cena às {{time}}, segundo o plano",
+    "castOnlyScheduled": "só quem está no plano",
+    "notCalled_one": "Não convocado hoje · {{names}}",
+    "notCalled_other": "Não convocados hoje · {{names}}"
   }
 }

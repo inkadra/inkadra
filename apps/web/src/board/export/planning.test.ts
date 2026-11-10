@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Element } from '@inkadra/doc-schema';
-import type { ShootingDay } from '@inkadra/shared';
+import type { CrewMember, ShootingDay } from '@inkadra/shared';
 import { light } from '@inkadra/ui/tokens';
 import type { TFunction } from 'i18next';
 import { PDFDocument } from 'pdf-lib';
@@ -69,9 +69,120 @@ describe('call sheet pages', () => {
       ['08:30', 'callSheet.cameraWrap'],
       ['19:00', 'callSheet.crewWrap'],
     ]);
-    expect(cast?.rows.at(-1)).toEqual(['Marta', '', '', '07:30']);
+    expect(cast?.rows.at(-1)).toEqual(['Marta', '', '—', '07:00', '07:30', '']);
     expect(departments?.rows).toEqual([['Camera', 'dolly']]);
     expect(notes?.rows).toEqual([['Pranzo al sacco']]);
+  });
+});
+
+describe('the crew on the call sheet (decision 0092)', () => {
+  const person = (n: number, extra: Partial<CrewMember>): CrewMember => ({
+    id: `00000000-0000-4000-8000-00000000000${n}`,
+    projectId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
+    name: `Person ${n}`,
+    role: '',
+    department: '',
+    phone: '',
+    email: '',
+    pickup: '',
+    notes: '',
+    userId: null,
+    character: null,
+    onSetContact: false,
+    position: n,
+    revision: 1,
+    createdAt: '2026-11-01T00:00:00.000Z',
+    updatedAt: '2026-11-01T00:00:00.000Z',
+    ...extra,
+  });
+  const crew = [
+    person(1, { name: 'Ada', role: 'DOP', department: 'Camera', phone: '+39 333 1' }),
+    person(2, {
+      name: 'Bea',
+      role: 'AD',
+      department: 'Regia',
+      phone: '+39 333 2',
+      onSetContact: true,
+    }),
+    person(3, { name: 'Marta', department: 'Cast', pickup: 'Hotel 06:30' }),
+    person(4, { name: 'Nino', department: 'Cast' }),
+  ];
+  const shooting = day('2026-11-19', {
+    location: 'Piazza https://www.openstreetmap.org/#map=17/45.0703/7.5210',
+    blocks: [
+      {
+        id: 'b1',
+        type: 'shot',
+        title: 'Vetrina',
+        start: null,
+        duration: 60,
+        shotId: null,
+        cast: ['Marta'],
+        departments: [],
+        notes: 'LUMINARIE ACCESE',
+      },
+    ],
+    calls: [
+      { crewMemberId: crew[0]?.id ?? '', call: '06:30', pickup: null },
+      { crewMemberId: crew[2]?.id ?? '', call: '06:45', pickup: null },
+    ],
+  });
+
+  it('prints the contact, the called crew, the cast calls and the sunrise cell', () => {
+    const sections = callSheetSections(shooting, () => undefined, t, new Map(), crew);
+    const titles = sections.map((s) => s.title);
+    expect(titles.slice(0, 4)).toEqual([
+      'callSheet.times',
+      'callSheet.onSetContact',
+      'callSheet.location',
+      'callSheet.troupe',
+    ]);
+    const [info, contact, , troupe] = sections;
+    expect(info?.rows[0]?.at(-1)).toBe('callSheet.sun{"n":1}');
+    expect(info?.rows[1]?.at(-1)).toMatch(/^\d\d:\d\d · \d\d:\d\d$/);
+    expect(contact?.rows).toEqual([['Bea', 'AD', '+39 333 2']]);
+    // Cast rows live in the cast table; Nino is not in the blocks and not called.
+    expect(troupe?.rows.slice(1)).toEqual([
+      ['Camera'],
+      ['Ada', 'DOP', '—', '06:30', '+39 333 1'],
+      ['Regia'],
+      ['Bea', 'AD', '—', '07:00', '+39 333 2'],
+    ]);
+    const cast = sections.find((s) => s.title === 'callSheet.cast');
+    expect(cast?.rows.at(-1)).toEqual(['Marta', '', 'Hotel 06:30', '06:45', '07:00', '']);
+  });
+
+  it('draws a block note in the warning colour under its description', () => {
+    const sections = callSheetSections(shooting, () => undefined, t, new Map(), crew);
+    const ctx = {
+      colors: light,
+      measure: (text: string, size: number) => text.length * size * 0.5,
+      image: () => undefined,
+    } as unknown as CardContext;
+    const pages = callSheetPages(
+      { paper: 'a4', orientation: 'portrait' },
+      'Call sheet',
+      sections,
+      ctx,
+    );
+    const ops = pages.flatMap((page) => page.ops);
+    expect(ops).toContainEqual(
+      expect.objectContaining({
+        kind: 'text',
+        text: 'LUMINARIE ACCESE',
+        weight: 700,
+        color: light['tag-orange'],
+      }),
+    );
+  });
+
+  it('prints no crew, phone, call or pick-up without the team’s roster', () => {
+    const sections = callSheetSections(shooting, () => undefined, t);
+    const text = JSON.stringify(sections.map((s) => s.rows));
+    expect(sections.map((s) => s.title)).not.toContain('callSheet.troupe');
+    expect(sections.map((s) => s.title)).not.toContain('callSheet.onSetContact');
+    for (const secret of ['+39 333', 'Hotel 06:30', '06:30', '06:45', 'Bea'])
+      expect(text).not.toContain(secret);
   });
 });
 

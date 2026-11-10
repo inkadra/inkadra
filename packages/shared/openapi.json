@@ -977,6 +977,14 @@
             },
             "maxItems": 500
           },
+          "calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DayCall"
+            },
+            "maxItems": 500,
+            "description": "Per-person calls, for project members only. Missing on input keeps the stored calls; missing on output reads as none."
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -1092,6 +1100,11 @@
               "maxLength": 120
             },
             "maxItems": 100
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "A highlighted note on the call sheet. Missing reads as empty."
           }
         },
         "required": [
@@ -1103,6 +1116,42 @@
           "shotId",
           "cast",
           "departments"
+        ],
+        "additionalProperties": false
+      },
+      "DayCall": {
+        "type": "object",
+        "properties": {
+          "crewMemberId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "call": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Null follows the day's call."
+          },
+          "pickup": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000,
+            "description": "Null follows the crew member's usual pick-up."
+          },
+          "absent": {
+            "type": "boolean",
+            "description": "True: not called this day. False: called even when the default says otherwise. Missing: crew are called, cast only when named in the blocks."
+          }
+        },
+        "required": [
+          "crewMemberId",
+          "call",
+          "pickup"
         ],
         "additionalProperties": false
       },
@@ -1138,6 +1187,14 @@
               "$ref": "#/components/schemas/ScheduleBlock"
             },
             "maxItems": 500
+          },
+          "calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DayCall"
+            },
+            "maxItems": 500,
+            "description": "Per-person calls, for project members only. Missing on input keeps the stored calls; missing on output reads as none."
           }
         },
         "required": [
@@ -1341,6 +1398,14 @@
               "$ref": "#/components/schemas/ScheduleBlock"
             },
             "maxItems": 500
+          },
+          "calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DayCall"
+            },
+            "maxItems": 500,
+            "description": "Per-person calls, for project members only. Missing on input keeps the stored calls; missing on output reads as none."
           },
           "revision": {
             "type": "integer",

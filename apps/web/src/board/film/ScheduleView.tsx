@@ -44,6 +44,8 @@ import {
   weekStart,
 } from './calendar.ts';
 import { plannedWrap } from './call-sheet.ts';
+import { DayCallsPanel } from './DayCallsPanel.tsx';
+import { dayCrew, useCrew } from './day-calls.ts';
 import { NeededItems } from './NeededItems.tsx';
 import { neededForDay, updateNeededRow } from './needed.ts';
 import {
@@ -97,8 +99,9 @@ const byDate = (a: ShootingDay, b: ShootingDay) =>
   a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
 
 function inputOf(day: ShootingDay): ShootingDayInput {
-  const { date, callTime, wrap, location, notes, blocks } = day;
-  return { date, callTime, wrap, location, notes, blocks };
+  const { date, callTime, wrap, location, notes, blocks, calls } = day;
+  // Calls come only to project members: without them the save leaves the stored ones alone.
+  return { date, callTime, wrap, location, notes, blocks, ...(calls ? { calls } : {}) };
 }
 
 /** The day after the last shooting day, or today for the first one. */
@@ -149,6 +152,7 @@ export function ScheduleView({
   userId,
   readOnly = false,
   onOpenScene,
+  onOpenTroupe,
 }: {
   store: BoardStore;
   boardTitle?: string;
@@ -159,6 +163,8 @@ export function ScheduleView({
   readOnly?: boolean;
   /** "Open in the storyboard" on a shot's block: the storyboard, scrolled to its scene. */
   onOpenScene?: (sceneId: string) => void;
+  /** The empty "Convocazioni" tab links to the Troupe view. */
+  onOpenTroupe?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const slugline = useSlugline();
@@ -190,6 +196,7 @@ export function ScheduleView({
     future: [],
   });
   const phone = useIsPhone();
+  const crew = useCrew(projectId);
   const [chosenView, setView] = useState<'week' | 'day'>('week');
   const view = phone ? 'day' : chosenView;
   const [focus, setFocus] = useState<string | null>(null);
@@ -987,6 +994,25 @@ export function ScheduleView({
       busy={busy}
       sun={sunOf(selectedEntry.draft)}
       neededCount={neededRows.length}
+      callsCount={
+        crew.items
+          ? dayCrew(selectedEntry.draft, crew.items, snap.byId).filter((e) => e.called).length
+          : undefined
+      }
+      calls={
+        <DayCallsPanel
+          entry={selectedEntry}
+          crew={crew}
+          elements={snap.byId}
+          readOnly={readOnly}
+          blockLabel={(blockId) => {
+            const block = selectedEntry.draft.blocks.find((b) => b.id === blockId);
+            return (block?.shotId && labels.get(block.shotId)) || block?.title || '';
+          }}
+          onChange={(next, key) => commit([{ day: selectedEntry.day, next }], key)}
+          onOpenTroupe={onOpenTroupe}
+        />
+      }
       needed={
         <NeededItems
           rows={neededRows}
@@ -1428,6 +1454,7 @@ export function ScheduleView({
           boardId={boardId}
           userId={userId}
           canManage={!readOnly}
+          crew={crew.items ?? undefined}
           initialDayId={selectedEntry?.day.id}
           unsaved={unsaved}
           onClose={() => setCallSheetOpen(false)}

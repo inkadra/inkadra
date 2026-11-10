@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { Element } from '@inkadra/doc-schema';
-import { type CastLink, castNameKey, type ShootingDayInput } from '@inkadra/shared';
+import { type CastLink, castNameKey, isMapLink, type ShootingDayInput } from '@inkadra/shared';
 import { neededForDay } from './needed.ts';
 import { clockMinutes, scheduleTimes } from './schedule.ts';
 
@@ -76,7 +76,7 @@ export function departmentNotes(day: ShootingDayInput): DepartmentNote[] {
 export function keyTimes(day: ShootingDayInput) {
   const slots = scheduleTimes(day);
   const shots = slots.filter(({ block }) => block.type === 'shot' || !!block.shotId);
-  // shortcut: solar times are omitted until the calendar's sun.ts is wired in.
+  // Sunrise and sunset need a location's coordinates: see sunOfDay in day-calls.ts.
   return [
     { key: 'call', time: clockMinutes(day.callTime) },
     { key: 'ready', time: shots[0]?.start },
@@ -117,7 +117,19 @@ export function locationsOfDay(
     if (name && !names.some((value) => castNameKey(value) === castNameKey(name))) names.push(name);
   }
   if (!names.length && day.location.trim()) {
-    const [name = '', ...address] = day.location.trim().split('\n');
+    let mapUrl: string | undefined;
+    const text = day.location.replace(/\S+/g, (word) => {
+      const token = word.replace(/^[<(]+|[>),.;]+$/g, '');
+      const url = /^https?:/i.test(token) ? token : `https://${token}`;
+      if (!isMapLink(url)) return word;
+      mapUrl ??= url;
+      return '';
+    });
+    const [name = '', ...address] = text
+      .trim()
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
     const card = [...elements.values()].find(
       (el) => el.type === 'location' && castNameKey(el.name) === castNameKey(name),
     );
@@ -125,7 +137,7 @@ export function locationsOfDay(
       {
         name,
         address: card?.type === 'location' ? card.address : address.join('\n'),
-        mapUrl: card?.type === 'location' ? card.mapUrl : undefined,
+        mapUrl: card?.type === 'location' ? card.mapUrl || mapUrl : mapUrl,
       },
     ];
   }

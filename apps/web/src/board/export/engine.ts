@@ -17,6 +17,7 @@ import {
   characterSubtitle,
   loadCastAppearances,
 } from '../film/cast-appearances.ts';
+import { loadCrew } from '../film/day-calls.ts';
 import { getFrameStatus, isApproved } from '../film/film-status.ts';
 import { croppedRotatedSize } from '../image-crop.ts';
 import type { BoardStore } from '../store.ts';
@@ -581,6 +582,11 @@ export async function buildPages(
   // Call sheets last: shooting days come from the server.
   if (req.callSheet && teamPdf(req)) {
     const planning = await planningOnce();
+    // The roster is private team data (decision 0092): asked for the team call sheet only.
+    const crew = preview
+      ? await env.cache.once('crew', () => loadCrew(env.scope?.projectId))
+      : await loadCrew(env.scope?.projectId);
+    signal?.throwIfAborted();
     planning.days.forEach((day, i) => {
       const heading = [
         t('export.callSheetTitle'),
@@ -591,7 +597,7 @@ export async function buildPages(
         ...callSheetPages(
           setup,
           heading,
-          callSheetSections(day, (id) => labels.get(id), t, snapshot.byId),
+          callSheetSections(day, (id) => labels.get(id), t, snapshot.byId, crew),
           ctx,
         ),
       );

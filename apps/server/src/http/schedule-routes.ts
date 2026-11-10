@@ -14,12 +14,20 @@ import {
 } from '@inkadra/shared';
 import { and, asc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { atLeast, boardRolesForPeople, live, requireBoardRole } from '../access.ts';
+import {
+  type Actor,
+  atLeast,
+  boardRolesForPeople,
+  live,
+  projectRole,
+  requireBoardRole,
+} from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import {
   board,
   castLink,
+  crewMember,
   project,
   shootingDay,
   shootingDayAttendance,
@@ -31,11 +39,39 @@ import { HttpError } from './errors.ts';
 const BoardParams = z.object({ boardId: Id });
 const DayParams = BoardParams.extend({ dayId: Id });
 const Revision = z.object({ revision: z.number().int().min(1) }).strict();
-const publicDay = ({
-  createdAt: _created,
-  updatedAt: _updated,
-  ...row
-}: typeof shootingDay.$inferSelect) => row;
+/**
+ * Per-person calls and block notes are crew data (decisions 0091, 0092): only project members see them. A grant
+ * on one board shows the plan without them, as it does not disclose the project roster.
+ */
+const publicDay = (
+  { createdAt: _created, updatedAt: _updated, calls, ...row }: typeof shootingDay.$inferSelect,
+  team: boolean,
+) =>
+  team
+    ? { ...row, calls }
+    : { ...row, blocks: row.blocks.map(({ notes: _notes, ...block }) => block) };
+/** Project members only; for everyone else, calls and block notes on input are ignored. */
+const ownInput = <T extends ShootingDayInput>(input: T, team: boolean): T => {
+  if (team) return input;
+  const { calls: _calls, ...rest } = input;
+  return { ...rest, blocks: rest.blocks.map(({ notes: _notes, ...block }) => block) } as T;
+};
+const isTeam = async (db: Database, actor: Actor, projectId: string) =>
+  (await projectRole(db, actor, projectId)) !== null;
+
+/**
+ * A client from before block notes sends blocks without them: a block it kept keeps its note.
+ * A newer client sends `notes` (empty to clear it), so only a missing key is filled in.
+ */
+export function keepBlockNotes(
+  before: ShootingDayInput['blocks'],
+  after: ShootingDayInput['blocks'],
+): ShootingDayInput['blocks'] {
+  const notes = new Map(before.flatMap((b) => (b.notes === undefined ? [] : [[b.id, b.notes]])));
+  return after.map((block) =>
+    'notes' in block || !notes.has(block.id) ? block : { ...block, notes: notes.get(block.id) },
+  );
+}
 
 /** When each linked person is first called on a day, in minutes from the shooting date. */
 function firstCalls(
@@ -58,6 +94,21 @@ export function registerScheduleRoutes(
   app: FastifyInstance,
   { db, auth }: { db: Database; auth: Auth },
 ) {
+  const cleanInput = async (
+    input: ShootingDayInput,
+    team: boolean,
+    projectId: string,
+    source: Database | Transaction = db,
+  ) => {
+    const clean = ownInput(input, team);
+    if (!clean.calls) return clean;
+    const members = await source
+      .select({ id: crewMember.id })
+      .from(crewMember)
+      .where(eq(crewMember.projectId, projectId));
+    const ids = new Set(members.map((member) => member.id));
+    return { ...clean, calls: clean.calls.filter((call) => ids.has(call.crewMemberId)) };
+  };
   // Decision 0022: a cross-board overview checks every day's board like the board's own list.
   // Every role permits reading, so a board opens with a project role or a grant on it or on
   // one of its ancestors (trashed ones included, as in boardAccess); filtering here keeps the
@@ -91,8 +142,9 @@ export function registerScheduleRoutes(
         ),
       )
       .orderBy(asc(shootingDay.date), asc(shootingDay.callTime), asc(shootingDay.id));
+    // Home shows no per-person calls, so nobody gets them from here.
     const items: PlannedShootingDay[] = rows.map((r) => ({
-      ...publicDay(r.day),
+      ...publicDay(r.day, false),
       boardTitle: r.boardTitle,
       projectName: r.projectName,
     }));
@@ -110,19 +162,21 @@ export function registerScheduleRoutes(
   app.get(base, async (req) => {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
-    await requireBoardRole(db, actor, boardId, 'viewer');
+    const access = await requireBoardRole(db, actor, boardId, 'viewer');
+    const team = await isTeam(db, actor, access.board.projectId);
     const rows = await db
       .select()
       .from(shootingDay)
       .where(eq(shootingDay.boardId, boardId))
       .orderBy(asc(shootingDay.date), asc(shootingDay.id));
-    return { items: rows.map(publicDay), nextCursor: null };
+    return { items: rows.map((row) => publicDay(row, team)), nextCursor: null };
   });
   app.post(base, async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
     const access = await requireBoardRole(db, actor, boardId, 'editor');
-    const input = ShootingDayInput.parse(req.body);
+    const team = await isTeam(db, actor, access.board.projectId);
+    const input = await cleanInput(ShootingDayInput.parse(req.body), team, access.board.projectId);
     const [row] = await db
       .insert(shootingDay)
       .values({
@@ -133,7 +187,7 @@ export function registerScheduleRoutes(
       })
       .returning();
     if (!row) throw new Error('Shooting day missing');
-    return reply.code(201).send(publicDay(row));
+    return reply.code(201).send(publicDay(row, team));
   });
   // People who cannot edit the schedule only learn about themselves. A person whose access
   // ended keeps their rows, in case it comes back, but drops out of the answer.
@@ -245,9 +299,15 @@ export function registerScheduleRoutes(
       .for('update');
     if (!before)
       throw new HttpError('conflict', 'The day changed or was removed. Reload the schedule.');
+    // Calls missing from the input are left as stored (older clients, people outside the project).
     const [updated] = await tx
       .update(shootingDay)
-      .set({ ...input, updatedBy, revision: sql`${shootingDay.revision} + 1` })
+      .set({
+        ...input,
+        blocks: keepBlockNotes(before.blocks, input.blocks),
+        updatedBy,
+        revision: sql`${shootingDay.revision} + 1`,
+      })
       .where(where)
       .returning();
     if (!updated)
@@ -276,18 +336,21 @@ export function registerScheduleRoutes(
   app.put(`${base}/:dayId`, async (req) => {
     const actor = await requireActor(auth, req, db);
     const { boardId, dayId } = DayParams.parse(req.params);
-    await requireBoardRole(db, actor, boardId, 'editor');
+    const access = await requireBoardRole(db, actor, boardId, 'editor');
+    const team = await isTeam(db, actor, access.board.projectId);
     const { revision, ...input } = UpdateShootingDay.parse(req.body);
+    const clean = await cleanInput(input, team, access.board.projectId);
     const updatedBy = await savedBy(actor.id);
     const row = await db.transaction((tx) =>
-      updateDay(tx, boardId, dayId, revision, input, updatedBy),
+      updateDay(tx, boardId, dayId, revision, clean, updatedBy),
     );
-    return publicDay(row);
+    return publicDay(row, team);
   });
   app.post(`${base}/edit`, async (req) => {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
     const access = await requireBoardRole(db, actor, boardId, 'editor');
+    const team = await isTeam(db, actor, access.board.projectId);
     const { changes } = EditSchedule.parse(req.body);
     const updatedBy = await savedBy(actor.id);
     return db.transaction(async (tx) => {
@@ -303,7 +366,7 @@ export function registerScheduleRoutes(
           const [row] = await tx
             .insert(shootingDay)
             .values({
-              ...change.input,
+              ...(await cleanInput(change.input, team, access.board.projectId, tx)),
               id: change.id,
               boardId,
               projectId: access.board.projectId,
@@ -312,11 +375,19 @@ export function registerScheduleRoutes(
             .onConflictDoNothing()
             .returning();
           if (!row) throw new HttpError('conflict', 'The day already exists. Reload the schedule.');
-          items.push(publicDay(row));
+          items.push(publicDay(row, team));
         } else if (change.input) {
           items.push(
             publicDay(
-              await updateDay(tx, boardId, change.id, change.revision, change.input, updatedBy),
+              await updateDay(
+                tx,
+                boardId,
+                change.id,
+                change.revision,
+                await cleanInput(change.input, team, access.board.projectId, tx),
+                updatedBy,
+              ),
+              team,
             ),
           );
         } else {

@@ -31,7 +31,7 @@ import { clockLabel, scheduleTimes } from './schedule.ts';
  * The tabs of the day panel. A list, so a new tab is one entry here and one in DayPanel's
  * `tabs` (decision 0089).
  */
-export type DayTab = 'day' | 'block' | 'needed';
+export type DayTab = 'day' | 'block' | 'calls' | 'needed';
 
 const TYPES = ['shot', 'setup', 'break', 'move', 'note'] as const;
 const QUICK = [15, 30, 45, 60, 90];
@@ -595,6 +595,19 @@ export function BlockEditor({
             onChange={(cast) => update({ cast })}
           />
         </label>
+        {/* Printed under the description as a highlighted line: "LIGHTS AND WINDOWS ON". */}
+        <div className="schedule__field">
+          <label htmlFor={`${id}-notes`}>{t('schedule.blockNotes')}</label>
+          <textarea
+            id={`${id}-notes`}
+            className="ink-input"
+            rows={2}
+            maxLength={2000}
+            placeholder={t('schedule.blockNotesPlaceholder')}
+            value={block.notes ?? ''}
+            onChange={(e) => update({ notes: e.target.value }, `notes:${block.id}`)}
+          />
+        </div>
         {full && (
           <label className="schedule__field" htmlFor={`${id}-departments`}>
             {t('schedule.departments')}
@@ -663,6 +676,8 @@ export function DayPanel({
   sun,
   neededCount,
   needed,
+  callsCount,
+  calls,
   block,
   onChange,
   onAddBlock,
@@ -681,6 +696,9 @@ export function DayPanel({
   sun: { sunrise: number | null; sunset: number | null } | null;
   neededCount: number;
   needed: ReactNode;
+  /** People called on the day; none while the roster is unknown. */
+  callsCount?: number | undefined;
+  calls: ReactNode;
   block: (id: string) => ReactNode;
   onChange: (next: ShootingDayInput, key?: string) => void;
   onAddBlock: () => void;
@@ -720,7 +738,12 @@ export function DayPanel({
       .join(' · ');
   })();
   // One entry per tab: label, count and what it shows.
-  const tabs: Array<{ id: DayTab; label: string; count?: number; panel: () => ReactNode }> = [
+  const tabs: Array<{
+    id: DayTab;
+    label: string;
+    count?: number | undefined;
+    panel: () => ReactNode;
+  }> = [
     { id: 'day', label: t('schedule.tabDay'), panel: () => dayFields },
     {
       id: 'block',
@@ -743,6 +766,7 @@ export function DayPanel({
           </>
         ),
     },
+    { id: 'calls', label: t('dayCalls.title'), count: callsCount, panel: () => calls },
     { id: 'needed', label: t('needed.title'), count: neededCount, panel: () => needed },
   ];
   const current = tabs.find((item) => item.id === tab) ?? tabs[0];
@@ -862,7 +886,7 @@ export function DayPanel({
   );
   return (
     <aside
-      className={`schedule__inspector${tab === 'needed' ? ' schedule__inspector--wide' : ''}`}
+      className={`schedule__inspector${tab === 'needed' || tab === 'calls' ? ' schedule__inspector--wide' : ''}`}
       aria-label={t('schedule.inspector')}
       data-scroll
     >
@@ -891,7 +915,12 @@ export function DayPanel({
             tabIndex={current?.id === item.id ? 0 : -1}
             onClick={() => onTab(item.id)}
           >
-            {item.label}
+            {/* The tour points at the calls tab (decision 0092). */}
+            {item.id === 'calls' ? (
+              <span data-tour="schedule-calls">{item.label}</span>
+            ) : (
+              item.label
+            )}
             {!!item.count && <span className="schedule__tab-count">{item.count}</span>}
           </button>
         ))}
