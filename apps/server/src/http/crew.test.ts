@@ -386,7 +386,10 @@ describe.skipIf(!url)('private project crew', () => {
       await merge`delete from crew_member where id = ${gone.id}`;
       await merge`commit`;
       expect((await save).statusCode).toBe(200);
-      const [after] = await db.select().from(shootingDay).where(eq(shootingDay.id, day?.id ?? ''));
+      const [after] = await db
+        .select()
+        .from(shootingDay)
+        .where(eq(shootingDay.id, day?.id ?? ''));
       expect(after?.calls).toEqual([]);
     } finally {
       merge.release();

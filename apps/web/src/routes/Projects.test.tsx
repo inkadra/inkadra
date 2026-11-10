@@ -232,6 +232,8 @@ it('keeps the Project type dialog open with an error when saving fails', async (
 });
 
 it('offers UTC once among the time zones, which the platform does not list', async () => {
+  HTMLElement.prototype.showPopover ??= () => {};
+  HTMLElement.prototype.hidePopover ??= () => {};
   await render([member('me', 'Giulia')]);
   await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
   await act(async () =>
