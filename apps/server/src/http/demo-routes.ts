@@ -97,6 +97,7 @@ const ALLOWED: Record<string, readonly string[]> = {
     '/project-groups',
     '/boards/:boardId/comments',
     '/boards/:boardId/schedule',
+    '/boards/:boardId/schedule/edit',
     '/boards/:boardId/versions',
     '/boards/:boardId/versions/:versionId/restore',
     '/comments/:commentId/read',
