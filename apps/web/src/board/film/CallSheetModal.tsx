@@ -569,7 +569,9 @@ export function CallSheetModal({
                               {row.scenes.filter((scene) => scene !== '—').join(', ')}
                             </td>
                             <td
-                              className={row.assigneeId ? undefined : 'sheet__muted sheet__cell--none'}
+                              className={
+                                row.assigneeId ? undefined : 'sheet__muted sheet__cell--none'
+                              }
                               data-label={t('callSheet.bringer')}
                             >
                               {bringer(row) || '—'}
