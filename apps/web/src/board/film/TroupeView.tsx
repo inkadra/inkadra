@@ -6,7 +6,7 @@ import {
   type CrewMemberInput,
   CrewMemberInput as Input,
 } from '@inkadra/shared';
-import { Avatar, Button, Dialog, DialogActions, EmptyState } from '@inkadra/ui';
+import { Avatar, Button, Checkbox, Dialog, DialogActions, EmptyState } from '@inkadra/ui';
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
@@ -158,7 +158,8 @@ export function TroupeView({
       <header className="story__bar troupe__bar">
         <span>
           {t('troupe.people', { count: rows.length })} ·{' '}
-          {t('troupe.departments', { count: departments.filter(Boolean).length })}
+          {t('troupe.departments', { count: departments.filter(Boolean).length })} ·{' '}
+          {t('troupe.wholeProject')}
         </span>
         <input
           className="ink-input"
@@ -173,24 +174,36 @@ export function TroupeView({
             <Button disabled={loading} onClick={() => setPaste(true)}>
               {t('troupe.paste')}
             </Button>
-            <Button variant="primary" disabled={loading} onClick={() => setAdding(true)}>
+            <Button
+              variant="primary"
+              icon="plus"
+              disabled={loading}
+              onClick={() => setAdding(true)}
+            >
               {t('troupe.add')}
             </Button>
           </>
         )}
       </header>
       {loading ? (
-        <p role="status">{t('troupe.loading')}</p>
+        <p className="troupe__state" role="status">
+          {t('troupe.loading')}
+        </p>
       ) : error ? (
-        <div role="alert">
-          {t('troupe.error')}{' '}
-          <Button onClick={() => setRefresh((r) => r + 1)}>{t('troupe.retry')}</Button>
+        <div className="troupe__state" role="alert">
+          <EmptyState
+            icon="warning"
+            title={t('troupe.error')}
+            actions={<Button onClick={() => setRefresh((r) => r + 1)}>{t('troupe.retry')}</Button>}
+          />
         </div>
       ) : (
         <div className="story__main troupe__main">
           <div className="story__scroll troupe__list">
             {!rows.length && (
-              <EmptyState title={t('troupe.empty')}>{t('troupe.emptyHint')}</EmptyState>
+              <EmptyState icon="people" title={t('troupe.empty')}>
+                {t('troupe.emptyHint')}
+              </EmptyState>
             )}
             {!!rows.length && !visible.length && <p>{t('troupe.noResults')}</p>}
             {!!visible.length && (
@@ -308,14 +321,23 @@ function CrewRow({
       >
         <strong>
           <Avatar name={row.name} image={row.account?.image} size={22} />
-          {row.name}
+          <span>{row.name}</span>
         </strong>
-        <span>
-          {row.role}
-          {row.onSetContact && <small> · {t('troupe.onSetContact')}</small>}
+        <span className="troupe__role">
+          <span>{row.role}</span>
+          {row.character && (
+            <span className="film-chip troupe__chip troupe__chip--character">
+              {t('troupe.characterTag')}
+            </span>
+          )}
+          {row.onSetContact && (
+            <span className="film-chip troupe__chip troupe__chip--contact">
+              {t('troupe.onSetContact')}
+            </span>
+          )}
         </span>
-        <span>{row.phone || '—'}</span>
-        <span>{row.pickup || '—'}</span>
+        <span className={row.phone ? 'troupe__tel' : 'troupe__none'}>{row.phone || '—'}</span>
+        <span className={row.pickup ? undefined : 'troupe__none'}>{row.pickup || '—'}</span>
       </button>
       <button
         ref={anchor}
@@ -391,7 +413,10 @@ function CrewPanel({
       onRemoveHandled();
     }
   }, [requestRemove, onRemoveHandled]);
-  const [accountQuery, setAccountQuery] = useState(row.account?.name ?? '');
+  const [accountQuery, setAccountQuery] = useState('');
+  const [pickAccount, setPickAccount] = useState(false);
+  const [pickCharacter, setPickCharacter] = useState<{ right: number; top: number } | null>(null);
+  const characterButton = useRef<HTMLButtonElement>(null);
   const save = async (input: CrewMemberInput, rev = revision) => {
     setDraft(input);
     if (!Input.safeParse(input).success) {
@@ -415,6 +440,11 @@ function CrewPanel({
       setBusy(false);
     }
   };
+  const placeholders: Partial<Record<keyof CrewMemberInput, string>> = {
+    email: t('troupe.emailPlaceholder'),
+    pickup: t('troupe.pickupPlaceholder'),
+    notes: t('troupe.notesPlaceholder'),
+  };
   const field = (key: 'name' | 'role' | 'phone' | 'email' | 'pickup' | 'notes' | 'department') => (
     <label key={key} htmlFor={`${id}-${key}`}>
       {t(`troupe.${key}`)}
@@ -423,6 +453,7 @@ function CrewPanel({
           id={`${id}-${key}`}
           className="ink-input"
           value={draft[key]}
+          placeholder={placeholders[key]}
           maxLength={10000}
           onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
           onBlur={() => {
@@ -436,6 +467,7 @@ function CrewPanel({
           type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
           list={key === 'department' ? `${id}-departments` : undefined}
           value={draft[key]}
+          placeholder={placeholders[key]}
           maxLength={key === 'name' || key === 'department' ? 120 : key === 'pickup' ? 1000 : 500}
           onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
           onBlur={() => {
@@ -462,6 +494,7 @@ function CrewPanel({
   };
   return (
     <aside className="troupe__panel" data-tour="troupe-person">
+      <p className="troupe__eyebrow">{draft.department || t('troupe.noDepartment')}</p>
       <h2>{draft.name}</h2>
       <fieldset disabled={readOnly || busy || !!conflict}>
         <legend className="ink-sr-only">{t('troupe.person')}</legend>
@@ -475,78 +508,142 @@ function CrewPanel({
           ))}
         </datalist>
         {field('role')}
-        <label>
-          {t('troupe.character')}
-          <select
-            className="ink-input"
-            value={draft.character ? `${draft.character.boardId}/${draft.character.elementId}` : ''}
-            onChange={(e) =>
-              void save({
-                ...draft,
-                character: characters.find((c) => `${c.boardId}/${c.elementId}` === e.target.value)
-                  ? {
-                      boardId: e.target.value.split('/')[0] ?? '',
-                      elementId: e.target.value.split('/')[1] ?? '',
-                    }
-                  : null,
-              })
-            }
-          >
-            <option value="">{t('troupe.optional')}</option>
-            {draft.character && !linked && (
-              <option value={`${draft.character.boardId}/${draft.character.elementId}`} disabled>
-                {t('troupe.characterUnavailable')}
-              </option>
+        <div className="troupe__field">
+          <span id={`${id}-character`}>
+            {t('troupe.characterLabel')} <small>· {t('troupe.optionalTag')}</small>
+          </span>
+          <div className="troupe__linkcard">
+            <div>
+              {linked ? (
+                <>
+                  <strong>{linked.name}</strong>
+                  <small>
+                    {t('troupe.actor')}: {linked.actor || '—'} · {t('troupe.contact')}:{' '}
+                    {linked.contact || '—'}
+                  </small>
+                </>
+              ) : (
+                <small>
+                  {draft.character ? t('troupe.characterUnavailable') : t('troupe.characterHint')}
+                </small>
+              )}
+            </div>
+            {readOnly ? null : draft.character ? (
+              <Button
+                aria-describedby={`${id}-character`}
+                onClick={() => void save({ ...draft, character: null })}
+              >
+                {t('troupe.unlinkShort')}
+              </Button>
+            ) : (
+              <button
+                ref={characterButton}
+                type="button"
+                className="ink-btn ink-btn--secondary"
+                aria-haspopup="menu"
+                aria-expanded={!!pickCharacter}
+                aria-describedby={`${id}-character`}
+                disabled={!characters.length}
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setPickCharacter(
+                    pickCharacter
+                      ? null
+                      : {
+                          right: Math.max(8, window.innerWidth - rect.right),
+                          top: Math.min(rect.bottom + 4, window.innerHeight - 160),
+                        },
+                  );
+                }}
+              >
+                {t('troupe.link')}
+              </button>
             )}
-            {characters.map((el) => (
-              <option key={`${el.boardId}/${el.elementId}`} value={`${el.boardId}/${el.elementId}`}>
-                {el.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {linked && (
-          <div className="troupe__linked">
-            <p>
-              {t('troupe.actor')}: {linked.actor || '—'}
-            </p>
-            <p>
-              {t('troupe.contact')}: {linked.contact || '—'}
-            </p>
+            {pickCharacter && (
+              <ContextMenu
+                anchor={characterButton}
+                style={{ position: 'fixed', ...pickCharacter }}
+                label={t('troupe.characterLabel')}
+                onClose={(reason) => {
+                  setPickCharacter(null);
+                  if (reason === 'escape') characterButton.current?.focus();
+                }}
+                items={characters.map((c) => ({
+                  label: c.name,
+                  action: () =>
+                    void save({
+                      ...draft,
+                      character: { boardId: c.boardId, elementId: c.elementId },
+                    }),
+                }))}
+              />
+            )}
           </div>
-        )}
+        </div>
         <div className="troupe__two">
           {field('phone')}
           {field('email')}
         </div>
         {field('pickup')}
-        <label htmlFor={`${id}-account`}>
-          {t('troupe.account')}
-          <PeoplePicker
-            inputClassName="ink-input"
-            id={`${id}-account`}
-            aria-label={t('troupe.account')}
-            value={accountQuery}
-            onChange={setAccountQuery}
-            onPick={(person) => {
-              setAccountQuery(person.name);
-              void save({ ...draft, userId: person.id });
-            }}
-          />
-        </label>
-        {draft.userId && (
-          <Button
-            onClick={() => {
-              setAccountQuery('');
-              void save({ ...draft, userId: null });
-            }}
-          >
-            {t('troupe.unlink')}
-          </Button>
-        )}
+        <div className="troupe__field">
+          <span id={`${id}-account-label`}>{t('troupe.account')}</span>
+          {draft.userId ? (
+            <div className="troupe__linkcard">
+              <Avatar
+                name={row.account?.name ?? accountQuery}
+                image={row.account?.image}
+                size={22}
+              />
+              <div>
+                <strong>{row.account?.name ?? accountQuery}</strong>
+              </div>
+              {!readOnly && (
+                <Button
+                  aria-label={t('troupe.unlink')}
+                  onClick={() => {
+                    setAccountQuery('');
+                    void save({ ...draft, userId: null });
+                  }}
+                >
+                  {t('troupe.unlinkShort')}
+                </Button>
+              )}
+            </div>
+          ) : pickAccount ? (
+            <PeoplePicker
+              autoFocus
+              inputClassName="ink-input"
+              id={`${id}-account`}
+              aria-label={t('troupe.account')}
+              value={accountQuery}
+              onChange={setAccountQuery}
+              onBlur={() => {
+                if (!accountQuery.trim()) setPickAccount(false);
+              }}
+              onPick={(person) => {
+                setAccountQuery(person.name);
+                setPickAccount(false);
+                void save({ ...draft, userId: person.id });
+              }}
+            />
+          ) : (
+            <div className="troupe__linkcard">
+              <div>
+                <small>{t('troupe.accountHint')}</small>
+              </div>
+              {!readOnly && (
+                <Button
+                  aria-describedby={`${id}-account-label`}
+                  onClick={() => setPickAccount(true)}
+                >
+                  {t('troupe.link')}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
         <label className="troupe__check">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={draft.onSetContact}
             onChange={(e) => void save({ ...draft, onSetContact: e.target.checked })}
           />
@@ -584,6 +681,16 @@ function CrewPanel({
         </div>
       )}
       <footer>
+        {!readOnly && (
+          <Button
+            variant="ghost"
+            className="troupe__remove"
+            disabled={busy}
+            onClick={() => setRemove(true)}
+          >
+            {t('troupe.remove')}
+          </Button>
+        )}
         <span role="status">
           {t(
             busy
@@ -593,18 +700,13 @@ function CrewPanel({
                 : 'troupe.saved',
           )}
         </span>
-        {!readOnly && (
-          <Button disabled={busy} onClick={() => setRemove(true)}>
-            {t('troupe.remove')}
-          </Button>
-        )}
       </footer>
       {remove && (
         <Dialog open title={t('troupe.remove')} onClose={() => setRemove(false)}>
           <p>{t('troupe.removeConfirm', { name: row.name })}</p>
           <DialogActions>
             <Button onClick={() => setRemove(false)}>{t('troupe.cancel')}</Button>
-            <Button disabled={busy} onClick={() => void deleteRow()}>
+            <Button variant="danger" disabled={busy} onClick={() => void deleteRow()}>
               {t('troupe.remove')}
             </Button>
           </DialogActions>
@@ -629,11 +731,14 @@ function PasteDialog({
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const known = rows.map((r) => r.department).filter(Boolean);
   const parsed = parseCrewPaste(
     text,
     rows.map((r) => r.name),
+    known,
   );
   const fresh = parsed.filter((r) => r.status === 'new');
+  const duplicates = parsed.filter((r) => r.status === 'duplicate').length;
   const submit = async () => {
     setBusy(true);
     setError(false);
@@ -666,18 +771,65 @@ function PasteDialog({
             onChange={(e) => setText(e.target.value)}
           />
         </label>
-        <div className="troupe__preview" aria-live="polite">
-          <p>{t('troupe.preview', { count: fresh.length })}</p>
-          {parsed.map((r) => (
-            <div className="troupe__preview-row" key={`${r.source}-${r.department}-${r.status}`}>
-              <span>{r.department}</span>
-              <span>{r.name || r.source}</span>
-              <span>{r.role}</span>
-              <span>{r.status === 'new' ? r.phone : t(`troupe.${r.status}`)}</span>
+        <div className="troupe__preview">
+          <p className="troupe__preview-head" aria-live="polite">
+            <span>
+              {t('troupe.pasteWhat')} · {t('troupe.preview', { count: fresh.length })}
+              {!!duplicates && <>, {t('troupe.duplicates', { count: duplicates })}</>}
+            </span>
+            <small>{t('troupe.columnsRead')}</small>
+          </p>
+          {!!parsed.length && (
+            <div className="troupe__preview-table">
+              <div className="troupe__preview-row troupe__preview-row--head">
+                {['department', 'name', 'role', 'phoneColumn'].map((key) => (
+                  <span key={key}>{t(`troupe.${key}`)}</span>
+                ))}
+              </div>
+              {parsed.map((r) =>
+                r.status === 'header' || r.status === 'agent' ? (
+                  <div
+                    className="troupe__preview-row is-skipped"
+                    key={`${r.source}-${r.department}-${r.status}`}
+                  >
+                    <span>—</span>
+                    <s>{r.name || r.source.trim()}</s>
+                    <span>{t(`troupe.${r.status}`)}</span>
+                    <span />
+                  </div>
+                ) : (
+                  <div
+                    className="troupe__preview-row"
+                    key={`${r.source}-${r.department}-${r.status}`}
+                  >
+                    <span>
+                      {r.department && !known.includes(r.department) ? (
+                        <span className="film-chip troupe__chip troupe__chip--new">
+                          {r.department}
+                        </span>
+                      ) : (
+                        r.department || '—'
+                      )}
+                    </span>
+                    <span>{r.name}</span>
+                    <span>{r.role || '—'}</span>
+                    <span>
+                      {r.status === 'duplicate' ? (
+                        <span className="film-chip troupe__chip troupe__chip--contact">
+                          {t('troupe.duplicate')}
+                        </span>
+                      ) : (
+                        r.phone || '—'
+                      )}
+                    </span>
+                  </div>
+                ),
+              )}
             </div>
-          ))}
+          )}
         </div>
       </div>
+      <p className="troupe__paste-foot">{t('troupe.pasteFoot')}</p>
       {error && <p role="alert">{t('troupe.error')}</p>}
       <DialogActions>
         <Button onClick={onClose}>{t('troupe.cancel')}</Button>

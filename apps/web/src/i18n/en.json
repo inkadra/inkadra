@@ -5272,8 +5272,6 @@
     "close": "Close",
     "person": "Person",
     "invalid": "Check name, email and field lengths.",
-    "character": "Character card · optional",
-    "optional": "None · Link",
     "actor": "Actor",
     "contact": "Contact",
     "account": "Inkadra account",
@@ -5301,6 +5299,22 @@
     "menu": "Actions for {{name}}",
     "details": "Open details",
     "phoneColumn": "Phone",
-    "characterUnavailable": "Card unavailable · Unlink or choose another card"
+    "characterUnavailable": "Card unavailable · Unlink or choose another card",
+    "wholeProject": "for the whole project",
+    "characterTag": "Character",
+    "emailPlaceholder": "optional",
+    "pickupPlaceholder": "Same as the day's call",
+    "notesPlaceholder": "Only the project team sees these",
+    "characterLabel": "Character card",
+    "optionalTag": "optional",
+    "characterHint": "None. The name in the schedule is enough for the call; link a card only if it has costume and references.",
+    "link": "Link",
+    "unlinkShort": "Unlink",
+    "accountHint": "Link an account to send the call to their phone and ask for confirmation.",
+    "pasteWhat": "What gets added",
+    "duplicates_one": "{{count}} already in crew",
+    "duplicates_other": "{{count}} already in crew",
+    "columnsRead": "Columns read: Name · Role · Phone",
+    "pasteFoot": "Anyone already in the crew with the same name is not added twice."
   }
 }

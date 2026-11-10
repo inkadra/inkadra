@@ -5272,8 +5272,6 @@
     "close": "Chiudi",
     "person": "Persona",
     "invalid": "Controlla nome, email e lunghezza dei campi.",
-    "character": "Scheda personaggio · facoltativa",
-    "optional": "Nessuna · Collega",
     "actor": "Interprete",
     "contact": "Contatto",
     "account": "Account Inkadra",
@@ -5301,6 +5299,22 @@
     "menu": "Azioni per {{name}}",
     "details": "Apri dettagli",
     "phoneColumn": "Telefono",
-    "characterUnavailable": "Scheda non disponibile · Scollega o scegli un’altra scheda"
+    "characterUnavailable": "Scheda non disponibile · Scollega o scegli un’altra scheda",
+    "wholeProject": "per tutto il progetto",
+    "characterTag": "Personaggio",
+    "emailPlaceholder": "facoltativa",
+    "pickupPlaceholder": "Come la convocazione del giorno",
+    "notesPlaceholder": "Visibili solo al team del progetto",
+    "characterLabel": "Scheda personaggio",
+    "optionalTag": "facoltativa",
+    "characterHint": "Nessuna. Il nome nella scaletta basta per la convocazione; collega una scheda solo se ha costume e riferimenti.",
+    "link": "Collega",
+    "unlinkShort": "Scollega",
+    "accountHint": "Collega un account per mandare la convocazione sul telefono e chiedere la conferma della presenza.",
+    "pasteWhat": "Cosa aggiungo",
+    "duplicates_one": "{{count}} già in troupe",
+    "duplicates_other": "{{count}} già in troupe",
+    "columnsRead": "Colonne lette: Nome · Ruolo · Telefono",
+    "pasteFoot": "Chi è già in troupe con lo stesso nome non viene duplicato."
   }
 }

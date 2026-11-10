@@ -26,7 +26,7 @@ test('crew add, autosave and sheet paste persist across reload', async ({ page }
   await paste
     .getByLabel('Testo incollato')
     .fill('CAMERA\nAnna Rossi\t1° AC\t+39 3401234567\nLuca Verdi\tDIT\t+39 3407654321');
-  await expect(paste.getByText('Già in troupe')).toBeVisible();
+  await expect(paste.getByText('Già in troupe', { exact: true })).toBeVisible();
   await paste.getByRole('button', { name: 'Aggiungi 1 persona', exact: true }).click();
   await expect(page.locator('.troupe__row')).toHaveCount(2);
   await page.reload();

@@ -135,14 +135,30 @@ it('lets a removed character card be unlinked', async () => {
   const save = vi.spyOn(api, 'put').mockResolvedValue({ ...member, revision: 2 });
   const host = await mount();
   await act(async () => (host.querySelector('.troupe__person') as HTMLButtonElement).click());
-  const select = host.querySelector('select')!;
-  expect(select.value).toBe('board/removed-card');
-  await act(async () => {
-    select.value = '';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+  expect(host.textContent).toContain('troupe.characterUnavailable');
+  await act(async () => button(host, 'troupe.unlinkShort').click());
   expect(save).toHaveBeenCalledWith(
     expect.any(String),
     expect.objectContaining({ character: null }),
   );
+});
+
+it('links a character card from the menu and tags the row', async () => {
+  const ref = { boardId: crypto.randomUUID(), elementId: crypto.randomUUID() };
+  const card = { ...ref, name: 'Mara', actor: 'Giulia', contact: '' };
+  vi.spyOn(api, 'get').mockImplementation(async (path) => ({
+    items: path.endsWith('/characters') ? [card] : [member],
+    nextCursor: null,
+  }));
+  const save = vi.spyOn(api, 'put').mockResolvedValue({ ...member, character: ref, revision: 2 });
+  const host = await mount();
+  await act(async () => (host.querySelector('.troupe__person') as HTMLButtonElement).click());
+  await act(async () => button(host, 'troupe.link').click());
+  await act(async () => button(host, 'Mara').click());
+  expect(save).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({ character: ref }),
+  );
+  expect(host.querySelector('.troupe__chip--character')).not.toBeNull();
+  expect(host.textContent).toContain('Giulia');
 });

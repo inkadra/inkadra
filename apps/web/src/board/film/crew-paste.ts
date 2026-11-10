@@ -12,7 +12,11 @@ const header =
 const phone = /(?:\+?\d[\d ()./-]*){7,}/;
 
 /** Old call sheets have no stable columns: preserve the original text for skipped rows. */
-export function parseCrewPaste(text: string, existing: readonly string[] = []): PastedCrew[] {
+export function parseCrewPaste(
+  text: string,
+  existing: readonly string[] = [],
+  departments: readonly string[] = [],
+): PastedCrew[] {
   let department = '';
   const names = new Set(existing.map((name) => name.trim().toLowerCase()));
   return text.split(/\r?\n/).flatMap((source) => {
@@ -29,7 +33,10 @@ export function parseCrewPaste(text: string, existing: readonly string[] = []): 
       line === line.toUpperCase() &&
       !/\d/.test(line)
     ) {
-      department = line;
+      // Old sheets shout their departments: reuse the project's spelling, else write it as a name.
+      department =
+        departments.find((d) => d.toLocaleLowerCase() === line.toLocaleLowerCase()) ??
+        line.charAt(0) + line.slice(1).toLocaleLowerCase();
       return [];
     }
     const parts = columns

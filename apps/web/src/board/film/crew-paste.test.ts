@@ -9,7 +9,7 @@ describe('crew paste', () => {
       name: 'Anna Rossi',
       role: '1° AC',
       phone: '+39 340 123 4567',
-      department: 'CAMERA',
+      department: 'Camera',
       status: 'new',
     });
   });
@@ -38,6 +38,11 @@ describe('crew paste', () => {
       parseCrewPaste('LUCI\r\nAnna\t\t+39 123456789\r\n\r\nCAMERA\r\nLuca;DIT').map(
         (r) => r.department,
       ),
-    ).toEqual(['LUCI', 'CAMERA']);
+    ).toEqual(['Luci', 'Camera']);
+  });
+  it('writes a shouted department as the project already spells it', () => {
+    expect(
+      parseCrewPaste('REGIA\nAnna;Aiuto regia', [], ['Regia & produzione', 'regia'])[0]?.department,
+    ).toBe('regia');
   });
 });
