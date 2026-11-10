@@ -40,14 +40,17 @@ const BoardParams = z.object({ boardId: Id });
 const DayParams = BoardParams.extend({ dayId: Id });
 const Revision = z.object({ revision: z.number().int().min(1) }).strict();
 /**
- * Per-person calls are crew data (decisions 0091, 0092): only project members see them. A grant
+ * Per-person calls and block notes are crew data (decisions 0091, 0092): only project members see them. A grant
  * on one board shows the plan without them, as it does not disclose the project roster.
  */
 const publicDay = (
   { createdAt: _created, updatedAt: _updated, calls, ...row }: typeof shootingDay.$inferSelect,
   team: boolean,
-) => (team ? { ...row, calls } : { ...row, blocks: row.blocks.map(({ notes: _notes, ...block }) => block) });
-/** Project members only; for everyone else, a call list on input is ignored. */
+) =>
+  team
+    ? { ...row, calls }
+    : { ...row, blocks: row.blocks.map(({ notes: _notes, ...block }) => block) };
+/** Project members only; for everyone else, calls and block notes on input are ignored. */
 const ownInput = <T extends ShootingDayInput>(input: T, team: boolean): T => {
   if (team) return input;
   const { calls: _calls, ...rest } = input;
@@ -94,7 +97,9 @@ export function registerScheduleRoutes(
   const cleanInput = async (input: ShootingDayInput, team: boolean, projectId: string) => {
     const clean = ownInput(input, team);
     if (!clean.calls) return clean;
-    const members = await db.select({ id: crewMember.id }).from(crewMember)
+    const members = await db
+      .select({ id: crewMember.id })
+      .from(crewMember)
       .where(eq(crewMember.projectId, projectId));
     const ids = new Set(members.map((member) => member.id));
     return { ...clean, calls: clean.calls.filter((call) => ids.has(call.crewMemberId)) };

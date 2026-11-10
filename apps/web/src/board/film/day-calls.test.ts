@@ -101,12 +101,23 @@ describe('who is called on a day (decision 0092)', () => {
     const [ada, , annaEntry] = dayCrew(day(), [dop, mara, anna]);
     if (!ada || !annaEntry) throw new Error('missing');
     const late = withDayCall(undefined, ada, { call: '08:00' }, [dop, mara, anna]);
-    expect(withDayCall([{ crewMemberId: id(99), call: null, pickup: null }], ada, { call: '08:00' }, [dop])).toEqual(late);
+    expect(
+      withDayCall([{ crewMemberId: id(99), call: null, pickup: null }], ada, { call: '08:00' }, [
+        dop,
+      ]),
+    ).toEqual(late);
+    expect(withDayCall(late, ada, { call: '08:00' }, [])).toEqual([]);
     expect(late).toEqual([{ crewMemberId: dop.id, call: '08:00', pickup: null }]);
-    const off = withDayCall(late, { ...ada, ownCall: '08:00' }, { called: false }, [dop, mara, anna]);
+    const off = withDayCall(late, { ...ada, ownCall: '08:00' }, { called: false }, [
+      dop,
+      mara,
+      anna,
+    ]);
     expect(off).toEqual([{ crewMemberId: dop.id, call: '08:00', pickup: null, absent: true }]);
     // Back to the default: the entry goes, and the person follows the day again.
-    expect(withDayCall(late, { ...ada, ownCall: '08:00' }, { call: null }, [dop, mara, anna])).toEqual([]);
+    expect(
+      withDayCall(late, { ...ada, ownCall: '08:00' }, { call: null }, [dop, mara, anna]),
+    ).toEqual([]);
     expect(withDayCall([], annaEntry, { called: true }, [dop, mara, anna])).toEqual([
       { crewMemberId: anna.id, call: null, pickup: null, absent: false },
     ]);

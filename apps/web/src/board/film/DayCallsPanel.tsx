@@ -72,7 +72,18 @@ export function DayCallsPanel({
     );
   const entries = dayCrew(draft, crew.items, elements);
   const change = (person: DayCrewEntry, patch: Parameters<typeof withDayCall>[2], key?: string) =>
-    onChange({ ...draft, calls: withDayCall(draft.calls, person, patch, entries.map((entry) => entry.member)) }, key);
+    onChange(
+      {
+        ...draft,
+        calls: withDayCall(
+          draft.calls,
+          person,
+          patch,
+          entries.map((entry) => entry.member),
+        ),
+      },
+      key,
+    );
   const dayCall = clockLabel(clockMinutes(draft.callTime));
   const absent = entries.filter((e) => !e.called);
   const row = (person: DayCrewEntry) => {

@@ -92,7 +92,11 @@ export function withDayCall(
   patch: { call?: string | null; pickup?: string | null; called?: boolean },
   crew: readonly CrewMember[],
 ): DayCall[] {
-  const rest = (calls ?? []).filter((c) => c.crewMemberId !== entry.member.id && crew.some((member) => member.id === c.crewMemberId));
+  const rest = (calls ?? []).filter(
+    (c) =>
+      c.crewMemberId !== entry.member.id && crew.some((member) => member.id === c.crewMemberId),
+  );
+  if (!crew.some((member) => member.id === entry.member.id)) return rest;
   const called = patch.called ?? entry.called;
   const call = patch.call !== undefined ? patch.call : entry.ownCall;
   const pickup = patch.pickup !== undefined ? patch.pickup || null : entry.ownPickup;

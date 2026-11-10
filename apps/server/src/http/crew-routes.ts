@@ -182,27 +182,35 @@ export function registerCrewRoutes(
     await requireProjectRole(db, actor, projectId, 'editor');
     const { revision } = Revision.parse(req.body);
     await db.transaction(async (tx) => {
-    const [row] = await tx
-      .delete(crewMember)
-      .where(
-        and(
-          eq(crewMember.projectId, projectId),
-          eq(crewMember.id, memberId),
-          eq(crewMember.revision, revision),
-        ),
-      )
-      .returning();
-    if (!row) {
-      const [current] = await db
-        .select({ id: crewMember.id })
-        .from(crewMember)
-        .where(and(eq(crewMember.projectId, projectId), eq(crewMember.id, memberId)));
-      throw new HttpError(current ? 'conflict' : 'not_found', 'Crew member changed or removed.');
-    }
-    await tx.update(shootingDay).set({
-      calls: sql`coalesce((select jsonb_agg(call) from jsonb_array_elements(${shootingDay.calls}) as call where call->>'crewMemberId' <> ${memberId}), '[]'::jsonb)`,
-      revision: sql`${shootingDay.revision} + 1`,
-    }).where(and(eq(shootingDay.projectId, projectId), sql`${shootingDay.calls} @> ${JSON.stringify([{ crewMemberId: memberId }])}::jsonb`));
+      const [row] = await tx
+        .delete(crewMember)
+        .where(
+          and(
+            eq(crewMember.projectId, projectId),
+            eq(crewMember.id, memberId),
+            eq(crewMember.revision, revision),
+          ),
+        )
+        .returning();
+      if (!row) {
+        const [current] = await tx
+          .select({ id: crewMember.id })
+          .from(crewMember)
+          .where(and(eq(crewMember.projectId, projectId), eq(crewMember.id, memberId)));
+        throw new HttpError(current ? 'conflict' : 'not_found', 'Crew member changed or removed.');
+      }
+      await tx
+        .update(shootingDay)
+        .set({
+          calls: sql`coalesce((select jsonb_agg(call) from jsonb_array_elements(${shootingDay.calls}) as call where call->>'crewMemberId' <> ${memberId}), '[]'::jsonb)`,
+          revision: sql`${shootingDay.revision} + 1`,
+        })
+        .where(
+          and(
+            eq(shootingDay.projectId, projectId),
+            sql`${shootingDay.calls} @> ${JSON.stringify([{ crewMemberId: memberId }])}::jsonb`,
+          ),
+        );
     });
     return reply.code(204).send();
   });

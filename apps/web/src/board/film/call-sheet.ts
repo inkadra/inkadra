@@ -125,7 +125,11 @@ export function locationsOfDay(
       mapUrl ??= url;
       return '';
     });
-    const [name = '', ...address] = text.trim().split('\n').map((line) => line.trim()).filter(Boolean);
+    const [name = '', ...address] = text
+      .trim()
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
     const card = [...elements.values()].find(
       (el) => el.type === 'location' && castNameKey(el.name) === castNameKey(name),
     );
