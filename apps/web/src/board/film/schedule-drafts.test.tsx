@@ -261,3 +261,42 @@ it('does not undo over a colleague edit fetched after the local edit was saved',
   await settle();
   expect(put).toHaveBeenCalledOnce();
 });
+
+it('shows how far the other blocks shift inside them, and only the dragged block beside it', async () => {
+  const block = (id: string, title: string) => ({
+    id,
+    type: 'setup' as const,
+    title,
+    duration: 60,
+    start: null,
+    shotId: null,
+    cast: [],
+    departments: [],
+  });
+  vi.spyOn(api, 'get').mockResolvedValue({
+    items: [{ ...day, blocks: [block('a', 'First'), block('b', 'Second')] }],
+    nextCursor: null,
+  });
+  // Without a layout engine every box is the same column: the dragged block's label goes to the band.
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(0, 0, 200, 1440),
+  );
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  const first = host.querySelector<HTMLElement>('[data-block="a"]');
+  if (!first) throw new Error('block not drawn');
+  const pointer = (type: string, clientY: number) =>
+    new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1, clientX: 10, clientY });
+  // Dragged below the second block, the first goes after it: the second starts an hour earlier.
+  await act(async () => first.dispatchEvent(pointer('pointerdown', 10)));
+  await act(async () => first.dispatchEvent(pointer('pointermove', 100)));
+  const second = host.querySelector('[data-block="b"]')?.closest('.schedule__block');
+  expect(host.querySelector('.schedule__block.is-dragging')).not.toBeNull();
+  expect(second?.querySelector('.schedule__block-delta')?.textContent).toBe('−1h');
+  expect(host.querySelectorAll('.schedule__block-delta')).toHaveLength(1);
+  const outside = [
+    ...host.querySelectorAll('.schedule__floating-note, .schedule__annotation-cell > span'),
+  ];
+  expect(outside).toHaveLength(1);
+  expect(outside[0]?.classList.contains('is-primary')).toBe(true);
+  expect(outside[0]?.textContent).not.toContain('−1h');
+});

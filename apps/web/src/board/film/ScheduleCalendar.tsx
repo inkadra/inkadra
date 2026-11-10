@@ -489,8 +489,6 @@ export function ScheduleCalendar({
         const lane = primary
           ? { lane: 0, lanes: 1 }
           : (lanes.get(slot.block.id) ?? { lane: 0, lanes: 1 });
-        const original = scheduleTimes(entry.draft).find((item) => item.block.id === slot.block.id);
-        const delta = original ? slot.start - original.start : 0;
         const previous = slots[index - 1];
         const after = previous
           ? t('schedule.after', {
@@ -499,19 +497,17 @@ export function ScheduleCalendar({
               )[0],
             })
           : t('schedule.afterCall');
-        const text = primary
-          ? drag.kind === 'resize'
+        // Only the moved block gets a label beside it; the blocks that shift show it inside.
+        const text = !primary
+          ? ''
+          : drag.kind === 'resize'
             ? t('schedule.resizeLabel', {
                 duration: minutesLabel(slot.block.duration),
                 end: clockLabel(slot.end),
               })
-            : `${dateLabel(date, { weekday: 'short', day: 'numeric' })} · ${clockLabel(slot.start)} – ${clockLabel(slot.end)} · ${after}`
-          : delta
-            ? `${delta > 0 ? '+' : '−'}${minutesLabel(Math.abs(delta))}`
-            : '';
+            : `${dateLabel(date, { weekday: 'short', day: 'numeric' })} · ${clockLabel(slot.start)} – ${clockLabel(slot.end)} · ${after}`;
         return {
           id: slot.block.id,
-          name: blockName(slot.block, shotTitle, typeName(slot.block.type)),
           column: entry.day.id,
           text,
           primary,
@@ -536,7 +532,6 @@ export function ScheduleCalendar({
         const start = Math.max(0, drag.minute);
         cards.push({
           id: block.id,
-          name: blockName(block, shotTitle, typeName(block.type)),
           column: drag.target,
           primary: true,
           text: `${dateLabel(drag.target, { weekday: 'short', day: 'numeric' })} · ${clockLabel(start)} – ${clockLabel(start + block.duration)}`,
@@ -561,7 +556,7 @@ export function ScheduleCalendar({
           card.rect.top + card.rect.height > bounds.top,
       )
       .map((card) => {
-        const width = card.primary ? 240 : 72;
+        const width = 240;
         const size = {
           width,
           height: Math.max(24, Math.ceil((card.text.length * 10) / (width - 14)) * 16 + 8),
@@ -705,6 +700,9 @@ export function ScheduleCalendar({
             const above = slots.filter((s) => s.end <= viewport.top / MINUTE_PX);
             const below = slots.filter((s) => s.start * MINUTE_PX >= bottom * MINUTE_PX - 4);
             const isTarget = drag?.active && drag.kind === 'move' && drag.target === entry.day.id;
+            const before = drag?.active
+              ? new Map(scheduleTimes(entry.draft).map((s) => [s.block.id, s.start]))
+              : null;
             return (
               <section
                 key={entry.day.id}
@@ -800,6 +798,7 @@ export function ScheduleCalendar({
                   const tall = height >= TWO_LINES;
                   const roomy = view === 'day' && height >= 56;
                   const conflict = conflicts.has(block.id);
+                  const delta = before && !dragging ? start - (before.get(block.id) ?? start) : 0;
                   return (
                     <div
                       key={block.id}
@@ -877,6 +876,14 @@ export function ScheduleCalendar({
                           </span>
                         )}
                       </button>
+                      {delta !== 0 && (
+                        <span
+                          className={`schedule__block-delta${conflict ? ' has-conflict' : ''}`}
+                          aria-hidden="true"
+                        >
+                          {`${delta > 0 ? '+' : '−'}${minutesLabel(Math.abs(delta))}`}
+                        </span>
+                      )}
                       {!readOnly && !entry.stale && (
                         <span
                           className="schedule__resize"
@@ -937,8 +944,8 @@ export function ScheduleCalendar({
               {annotations
                 .filter((note) => !note.position && note.column === (entry?.day.id ?? date))
                 .map((note) => (
-                  <span key={note.id} className={note.primary ? 'is-primary' : ''}>
-                    {note.primary ? note.text : `${note.name} · ${note.text}`}
+                  <span key={note.id} className="is-primary">
+                    {note.text}
                   </span>
                 ))}
             </div>
@@ -954,8 +961,7 @@ export function ScheduleCalendar({
               style={{
                 left: note.position.left,
                 top: note.position.top,
-                width: note.size.width,
-                minHeight: note.size.height,
+                maxWidth: note.size.width,
               }}
             >
               {note.text}

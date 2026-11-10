@@ -722,6 +722,25 @@
   right: 4px;
   color: var(--ink-status-danger);
 }
+/* How far a block shifts while another one is dragged: inside it, on the right. */
+.schedule__block-delta {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  padding: 0 6px;
+  border: 1px solid var(--ink-accent-primary);
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-float);
+  color: var(--ink-accent-soft-fg);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.schedule__block-delta.has-conflict {
+  right: 22px;
+}
 .schedule__resize {
   position: absolute;
   left: 25%;
@@ -767,6 +786,8 @@
   position: fixed;
   z-index: 6;
   box-sizing: border-box;
+  /* Placed for its largest size, drawn as wide as its text. */
+  width: max-content;
 }
 .schedule__floating-note.is-primary,
 .schedule__annotation-cell > .is-primary {
