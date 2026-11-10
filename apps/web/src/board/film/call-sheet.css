@@ -756,3 +756,9 @@
     background: var(--ink-tag-orange-bg);
   }
 }
+
+.sheet__times dt,
+.sheet__table th,
+.sheet__section h4 {
+  color: var(--ink-text-secondary);
+}

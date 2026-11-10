@@ -139,7 +139,7 @@ export interface DayLocation {
 /** Resolve by element identity, including scenes without numbers and loose frames. */
 export function sheetShot(shotId: string | null, elements: ReadonlyMap<string, Element>) {
   const frame = shotId ? elements.get(shotId) : undefined;
-  const parent = frame?.parent ? elements.get(frame.parent) : undefined;
+  const parent = frame?.type === 'frame' && frame.parent ? elements.get(frame.parent) : undefined;
   return {
     frame: frame?.type === 'frame' ? frame : undefined,
     scene: parent?.type === 'scene' ? parent : undefined,
