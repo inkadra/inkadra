@@ -38,15 +38,16 @@ test('a call set in the Convocazioni tab is printed on the call sheet', async ({
     },
   });
   expect(crew.status()).toBe(201);
-  // The calendar opens on today.
+  // Tomorrow: a day today would show on everybody's Home (home.spec.ts).
   const now = new Date();
-  const today = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+  now.setDate(now.getDate() + 1);
+  const tomorrow = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
     .map((n) => String(n).padStart(2, '0'))
     .join('-');
   const day = await page.request.post(`/api/v1/boards/${board.id}/schedule`, {
     headers,
     data: {
-      date: today,
+      date: tomorrow,
       callTime: '07:00',
       wrap: null,
       location: '',
@@ -60,6 +61,8 @@ test('a call set in the Convocazioni tab is printed on the call sheet', async ({
   await page.getByRole('tab', { name: 'Piano riprese', exact: true }).click();
   const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
   await schedule.getByRole('radio', { name: 'Giorno', exact: true }).check();
+  // Without a day today, the calendar opens on the next shooting day.
+  await expect(schedule.getByText('1 giorno di riprese')).toBeVisible();
   const inspector = schedule.getByRole('complementary', { name: 'Dettagli del giorno di riprese' });
   await inspector.getByRole('tab', { name: /^Convocazioni/ }).click();
   // Crew are called by default; cast only when the blocks name them.
