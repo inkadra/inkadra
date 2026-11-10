@@ -564,9 +564,12 @@ export function CallSheetModal({
                               {row.count > 1 && ` ×${row.count}`}
                             </td>
                             <td>{t(`board.todo.lists.${row.list}`)}</td>
-                            <td data-label={t('callSheet.scenes')}>{row.scenes.join(', ')}</td>
+                            <td data-label={t('callSheet.scenes')}>
+                              {/* An unnumbered scene reads "—" in the schedule; here it is left out. */}
+                              {row.scenes.filter((scene) => scene !== '—').join(', ')}
+                            </td>
                             <td
-                              className={row.assigneeId ? undefined : 'sheet__muted'}
+                              className={row.assigneeId ? undefined : 'sheet__muted sheet__cell--none'}
                               data-label={t('callSheet.bringer')}
                             >
                               {bringer(row) || '—'}

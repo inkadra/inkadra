@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { Element } from '@inkadra/doc-schema';
-import {
-  type CastLink,
-  castNameKey,
-  type ScheduleBlock,
-  type ShootingDayInput,
-} from '@inkadra/shared';
+import { type CastLink, castNameKey, type ShootingDayInput } from '@inkadra/shared';
 import { neededForDay } from './needed.ts';
 import { clockMinutes, scheduleTimes } from './schedule.ts';
 
@@ -33,45 +28,6 @@ export function personalCall(
 ) {
   const mine = new Set(links.filter((link) => link.userId === userId).map((l) => l.castKey));
   return castCalls(day).find((call) => mine.has(castNameKey(call.name))) ?? null;
-}
-
-export interface SheetRow {
-  id: string;
-  start: number;
-  block: ScheduleBlock;
-  scene?: string | undefined;
-  /** Label of the shot, or of the first of several. */
-  first?: string | undefined;
-  /** Label of the last of several shots in a row. */
-  last?: string | undefined;
-}
-
-/**
- * The schedule for a narrow screen: shots in a row of one scene with the same cast read as one
- * line, "Sc. 4 · 4A–4C", at the time of the first.
- */
-export function sheetRows(
-  day: ShootingDayInput,
-  shotOf: (id: string | null) => { label: string; scene?: string | undefined } | undefined,
-): SheetRow[] {
-  const castOf = (block: ScheduleBlock) => block.cast.map(castNameKey).join('\n');
-  const rows: SheetRow[] = [];
-  for (const { block, start } of scheduleTimes(day)) {
-    const shot = shotOf(block.shotId);
-    const previous = rows.at(-1);
-    // Without a scene number the labels say nothing about belonging together.
-    if (
-      shot?.scene &&
-      previous?.first &&
-      previous.scene === shot.scene &&
-      castOf(previous.block) === castOf(block)
-    ) {
-      previous.last = shot.label;
-    } else {
-      rows.push({ id: block.id, start, block, scene: shot?.scene, first: shot?.label });
-    }
-  }
-  return rows;
 }
 
 /**

@@ -18,7 +18,6 @@ import {
   personalCall,
   plannedWrap,
   serveLines,
-  sheetRows,
 } from './call-sheet.ts';
 
 vi.mock('react-i18next', () => ({
@@ -220,50 +219,6 @@ it("finds a linked person's earliest call, matching the name whatever its case",
   expect(personalCall(day, links, 'me')).toEqual({ name: 'anna', start: 1200 });
   expect(personalCall(day, links, 'other')).toBeNull();
   expect(personalCall(day, [], 'me')).toBeNull();
-});
-it('joins shots in a row of one scene and cast, and nothing else', () => {
-  const shot = (id: string, cast: string[], shotId: string | null = id) => ({
-    ...(day.blocks[0] as ShootingDay['blocks'][number]),
-    id,
-    start: null,
-    shotId,
-    cast,
-  });
-  const labels = new Map([
-    ['4a', { label: '4A', scene: '4' }],
-    ['4b', { label: '4B', scene: '4' }],
-    ['4c', { label: '4C', scene: '4' }],
-    ['4d', { label: '4D', scene: '4' }],
-    ['3a', { label: '3A', scene: '3' }],
-    ['loose1', { label: '1' }],
-    ['loose2', { label: '2' }],
-  ]);
-  const rows = sheetRows(
-    {
-      ...day,
-      blocks: [
-        shot('4a', ['Anna']),
-        shot('4b', [' anna ']),
-        shot('4c', ['Anna']),
-        shot('4d', ['Bob']),
-        shot('3a', ['Bob']),
-        shot('gone', ['Bob'], 'gone'),
-        { ...shot('lunch', [], null), type: 'break' },
-        shot('loose1', ['Bob']),
-        shot('loose2', ['Bob']),
-      ],
-    },
-    (id) => (id ? labels.get(id) : undefined),
-  );
-  expect(rows.map((r) => [r.id, r.first, r.last])).toEqual([
-    ['4a', '4A', '4C'],
-    ['4d', '4D', undefined],
-    ['3a', '3A', undefined],
-    ['gone', undefined, undefined],
-    ['lunch', undefined, undefined],
-    ['loose1', '1', undefined],
-    ['loose2', '2', undefined],
-  ]);
 });
 describe('on a phone', () => {
   const answerPath = '/api/v1/boards/board/schedule/day-1/attendance';
