@@ -96,6 +96,8 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 
 | [0091](0091-troupe.md) | Private project crew, grouped departments and sheet paste |
 | [0092](0092-day-calls.md) | Per-person calls of a shooting day, block notes and the crew on the call sheet |
+| [0093](0093-reference-board.md) | A reference board grown through a real Yjs history, for performance work |
+| [0094](0094-lighter-core-reads.md) | Strokes and table rows validated once per item; helpers read the BoardStore snapshot |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

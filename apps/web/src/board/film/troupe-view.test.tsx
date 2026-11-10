@@ -12,11 +12,13 @@ vi.mock('react-i18next', () => {
   const t = (key: string) => key;
   return { useTranslation: () => ({ t }) };
 });
-vi.mock('../../lib/phone.ts', () => ({ useIsPhone: () => false }));
+const device = vi.hoisted(() => ({ phone: false }));
+vi.mock('../../lib/phone.ts', () => ({ useIsPhone: () => device.phone }));
 const dispose: Array<() => void> = [];
 afterEach(() => {
   for (const fn of dispose.splice(0).reverse()) fn();
   vi.restoreAllMocks();
+  device.phone = false;
 });
 const member: CrewMember = {
   ...emptyCrewMember('Anna', 0),
@@ -247,3 +249,50 @@ it('explains why a paste of more than 500 people cannot be added', async () => {
   expect(dialog.querySelectorAll('.troupe__preview-row').length).toBeLessThanOrEqual(501);
   expect(button(dialog, 'troupe.addPeople')?.disabled).toBe(true);
 });
+
+it('keeps a conflicting draft when another person is selected', async () => {
+  const other = { ...member, id: crypto.randomUUID(), name: 'Bruno' };
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [member, other] });
+  vi.spyOn(api, 'put').mockRejectedValue(
+    new RequestError(409, 'conflict', 'changed', { current: { ...member, revision: 2 } }),
+  );
+  const host = await mount();
+  const select = (n: number) =>
+    act(async () => host.querySelectorAll<HTMLButtonElement>('.troupe__person')[n]?.click());
+  await select(0);
+  await type(host.querySelector('input[id$="-role"]')!, 'DIT');
+  await blur(host.querySelector('input[id$="-role"]')!);
+  await select(1);
+  await select(0);
+  expect(host.querySelector<HTMLInputElement>('input[id$="-role"]')?.value).toBe('DIT');
+  expect(host.textContent).toContain('troupe.conflict');
+});
+
+it.each(['unsaved', 'offline', 'conflict'])(
+  'keeps a phone draft when closed and reopened (%s)',
+  async (mode) => {
+    device.phone = true;
+    vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
+      this: HTMLDialogElement,
+    ) {
+      this.open = true;
+    });
+    vi.spyOn(api, 'get').mockResolvedValue({ items: [member] });
+    vi.spyOn(api, 'put').mockRejectedValue(
+      mode === 'conflict'
+        ? new RequestError(409, 'conflict', 'changed', { current: { ...member, revision: 2 } })
+        : new Error('offline'),
+    );
+    const host = await mount();
+    const open = () =>
+      act(async () => (host.querySelector('.troupe__person') as HTMLButtonElement).click());
+    await open();
+    const role = host.querySelector<HTMLInputElement>('input[id$="-role"]')!;
+    await type(role, 'DIT');
+    if (mode !== 'unsaved') await blur(role);
+    await act(async () => button(host, 'troupe.close').click());
+    await open();
+    expect(host.querySelector<HTMLInputElement>('input[id$="-role"]')?.value).toBe('DIT');
+    if (mode === 'conflict') expect(host.textContent).toContain('troupe.conflict');
+  },
+);
