@@ -481,7 +481,7 @@ function ProjectCard({
       year: 'numeric',
     });
   const dates =
-    [p.shootingStart, p.shootingEnd]
+    [...new Set([p.shootingStart, p.shootingEnd])]
       .filter((d): d is string => !!d)
       .map(date)
       .join(' – ') || t('projectsPage.noDates');

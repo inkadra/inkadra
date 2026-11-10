@@ -76,10 +76,18 @@
   .ink-header:has(.mobile-back) .ink-header__crumbs {
     padding-left: 4px;
   }
+  /* Two separate touch targets: renaming the board must not overlap the view picker. */
+  .ink-shell > .ink-header:has(.mobile-view-picker) {
+    grid-template-rows: 88px;
+  }
+  .ink-header:has(.mobile-view-picker) button.crumb {
+    min-height: 44px;
+    min-width: 44px;
+  }
   .ink-header:has(.mobile-view-picker) .ink-header__crumbs {
     grid-column: 2;
     align-self: start;
-    padding: 6px 8px 0 4px;
+    padding: 0 8px 0 4px;
     font-size: 12px;
     line-height: 16px;
     color: var(--ink-text-secondary);

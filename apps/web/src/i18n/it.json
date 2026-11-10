@@ -4737,7 +4737,7 @@
           },
           "2": {
             "title": "Incolla da foglio",
-            "text": "Controlla l’anteprima prima di aggiungere le persone. Intestazioni e duplicati vengono saltati."
+            "text": "Apri «Incolla da foglio» nella barra della Troupe. Controlla l’anteprima prima di aggiungere le persone. Intestazioni e duplicati vengono saltati."
           },
           "3": {
             "title": "Convocazioni e foglio",
@@ -5303,7 +5303,7 @@
     "error": "Impossibile salvare o caricare la troupe.",
     "retry": "Riprova",
     "empty": "Nessuno in troupe.",
-    "emptyHint": "Incolla un elenco da un vecchio foglio di lavorazione…",
+    "emptyHint": "Usa «Incolla da foglio» per importare persone da un vecchio foglio di lavorazione.",
     "noResults": "Nessuna persona trovata.",
     "noDepartment": "Senza reparto",
     "name": "Nome",

@@ -68,6 +68,9 @@ it.each(['/projects', '/'])(
           </MemoryRouter>,
         ),
       );
+      expect(document.title).toBe(
+        `${path === '/projects' ? 'nav.projects' : 'nav.home'} · Inkadra`,
+      );
       const wrapper = host.querySelector('[data-testid="outlet"]')?.parentElement;
       expect(wrapper?.style.visibility).toBe('visible');
       expect(wrapper?.style.position).toBe('relative');

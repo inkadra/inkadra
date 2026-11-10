@@ -33,6 +33,7 @@ import { registerBoardRoutes } from './boards-routes.ts';
 import { registerCalendarRoutes } from './calendar-routes.ts';
 import { registerClipRoutes } from './clip-routes.ts';
 import { registerCommentRoutes } from './comments-routes.ts';
+import { registerCompression } from './compression.ts';
 import { registerCrewRoutes } from './crew-routes.ts';
 import { registerCsrfCheck } from './csrf.ts';
 import { registerDemoRoutes } from './demo-routes.ts';
@@ -123,6 +124,7 @@ export async function createApp(deps: AppDeps) {
   };
   const app = Fastify(options);
 
+  registerCompression(app);
   app.setErrorHandler(errorHandler);
   app.addHook('onRequest', async (req, reply) => {
     try {

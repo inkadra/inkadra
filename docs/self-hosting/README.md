@@ -417,3 +417,12 @@ here. Guests cannot report unless you allow them.
 
 Limits, the direct GitHub route and how delivery retries work are in
 [Configuration](configuration.md#in-app-reports).
+
+### HTTP compression
+
+The server negotiates gzip for JSON API responses of at least 1 KiB and for JavaScript and CSS
+under `/assets/`, using Node's built-in zlib. No proxy compression setting is required. The static
+plugin can serve precompressed files, but the web build does not produce those files.
+Already encoded responses, media, ranged requests, downloadable files and API streams keep their
+original encoding. Collaboration and WebSocket connections are unaffected. A proxy may compress
+other text responses; it should preserve `Vary: Accept-Encoding` and existing `Content-Encoding`.

@@ -57,8 +57,8 @@ export interface DayChange {
 }
 type Sun = { sunrise: number | null; sunset: number | null } | null;
 
-/** Shortest drawn block: a 5-minute block still has room for one line. */
-const MIN_HEIGHT = 20;
+/** Keep short blocks inside their time slot; the accessible name retains all details. */
+const MIN_HEIGHT = 1;
 /** Below this a block is one line: time and title side by side. */
 const TWO_LINES = 40;
 /** A long press that picks a block up on a touch screen. */
@@ -1047,8 +1047,12 @@ export function ScheduleCalendar({
                 >
                   <p className="schedule__free" style={{ top: (firstCall + 240) * MINUTE_PX }}>
                     <b>{t('schedule.noShoot')}</b>
-                    <br />
-                    {t('schedule.freeDrop')}
+                    {view === 'day' && (
+                      <>
+                        <br />
+                        {t('schedule.freeDrop')}
+                      </>
+                    )}
                   </p>
                   {drag?.active &&
                     drag.kind === 'move' &&

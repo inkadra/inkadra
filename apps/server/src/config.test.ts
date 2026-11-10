@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { loadConfig } from './config.ts';
 
 const base = {
@@ -33,4 +33,19 @@ describe('CSP_REPORT_URI', () => {
     ).toBe('https://r.example.com/csp');
     expect(() => loadConfig({ ...base, CSP_REPORT_URI: '/csp' })).toThrow(/CSP_REPORT_URI/);
   });
+});
+
+it('identifies edge revisions without changing release versions', async () => {
+  try {
+    vi.stubEnv('INKADRA_VERSION', 'edge');
+    vi.stubEnv('INKADRA_REVISION', 'abcdef123456789');
+    vi.resetModules();
+    expect((await import('./config.ts')).VERSION).toBe('edge-abcdef1');
+    vi.stubEnv('INKADRA_VERSION', '0.9.0');
+    vi.resetModules();
+    expect((await import('./config.ts')).VERSION).toBe('0.9.0');
+  } finally {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  }
 });

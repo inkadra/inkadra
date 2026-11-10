@@ -389,6 +389,16 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const { items: projectBoards } = useProjectBoards(pathProject);
   const counts = useBoardCounts(pathProject, projectBoards);
 
+  const pageTitle = overlay.open
+    ? t('nav.settings')
+    : pathProject
+      ? (projectBoards?.find((b) => b.id === pathname.split('/')[4])?.title ??
+        projects?.find((p) => p.id === pathProject)?.name)
+      : t(pathname === '/projects' ? 'nav.projects' : 'nav.home');
+  useEffect(() => {
+    document.title = [pageTitle, instance?.name ?? 'Inkadra'].filter(Boolean).join(' · ');
+  }, [pageTitle, instance?.name]);
+
   if (!user)
     return (
       <Navigate
@@ -443,6 +453,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   // Until the project's boards are known the kind is too: no tab is active before that.
   const openBoard = projectBoards?.find((b) => b.id === openBoardId);
   const openKind: BoardKind | undefined = openBoard?.kind;
+
   const asked = new URLSearchParams(search).get('view');
   // While the boards load a board with no ?view= has no known default: nothing is active yet.
   const currentView: BoardView | null =

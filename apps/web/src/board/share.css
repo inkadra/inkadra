@@ -423,3 +423,8 @@
     transition: none;
   }
 }
+
+.share__link .share__sub {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

@@ -166,3 +166,15 @@ it('asks before removing a block with content but drops empty blocks directly', 
   );
   expect(articles()).toHaveLength(0);
 });
+
+it('fits a fifteen minute block before the next one and keeps week instructions out of free days', async () => {
+  const { store } = board();
+  const day = shootingDay([block({ title: 'Walk', duration: 15 }), block({ title: 'Next' })]);
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  const host = await mount(<ScheduleView store={store} boardId="board" />);
+  expect(host.textContent).not.toContain('schedule.freeDrop');
+  await openDayView(host);
+  const blocks = [...host.querySelectorAll<HTMLElement>('.schedule__block')];
+  expect(blocks).toHaveLength(2);
+  expect(Number.parseFloat(blocks[0]!.style.height)).toBeLessThanOrEqual(15);
+});

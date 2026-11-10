@@ -82,7 +82,7 @@ import {
 } from './views.ts';
 import './film/film.css';
 import { type Peer, usePeers } from './presence.ts';
-import { projectLanding } from './project-landing.ts';
+import { missingOwnedBoard, projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 import { useBoardReviews } from './use-board-reviews.ts';
 import './board.css';
@@ -308,7 +308,7 @@ function BoardScreen({
   const { user } = useSession();
   // The sidebar's rule for the film links, so the header tabs never disagree with it.
   const { filmLinks } = useProjects();
-  const { items: boards } = useProjectBoards(projectId);
+  const { items: boards, error: boardsError } = useProjectBoards(projectId);
   const conn = useBoardConnection(boardId);
   useEffect(() => {
     if (!conn) return;
@@ -584,6 +584,8 @@ function BoardScreen({
   const canPresent = tabs.includes('storyboard');
   const importable = kind === 'storyboard' && !preview;
 
+  const missing =
+    conn?.status === 'denied' && missingOwnedBoard(projectRole, boards, boardsError, boardId);
   const header = useMemo(
     () => ({
       start: (
@@ -709,7 +711,7 @@ function BoardScreen({
       ),
       end: (
         <>
-          {conn && <BoardPresence conn={conn} selfId={selfId} />}
+          {conn && !missing && <BoardPresence conn={conn} selfId={selfId} />}
           {editable && (
             <>
               <IconButton
@@ -755,6 +757,7 @@ function BoardScreen({
     }),
     [
       crumbs,
+      missing,
       t,
       projectId,
       rootBoardId,
@@ -796,7 +799,9 @@ function BoardScreen({
     />
   );
   if (conn.status === 'denied') {
-    return <DeniedState />;
+    // Only owners have a complete list, including restricted boards. Outsiders keep the
+    // same denial for missing and inaccessible boards; no existence probe is added.
+    return missing ? <NotFound /> : <DeniedState />;
   }
   const versions = editable && (
     <VersionsDialog
