@@ -16,6 +16,7 @@ import * as Y from 'yjs';
 import {
   childrenOf,
   createElement,
+  currentElements,
   DEFAULT_WIDTH,
   keyAtEnd,
   keysAt,
@@ -126,7 +127,7 @@ export function addScene(
   opts: Opts,
   at?: Point,
 ): SceneElement {
-  const all = listElements(doc);
+  const all = currentElements(doc);
   const scenes = all.filter((e): e is SceneElement => e.type === 'scene');
   const right = scenes.reduce((m, s) => Math.max(m, s.x + s.w), -Infinity);
   const last = scenes.sort(byZ).at(-1);
@@ -155,7 +156,7 @@ export type NewScene = Partial<Omit<SceneElement, 'id' | 'type' | 'x' | 'y' | 'p
  * does. The document is read once, so a long script does not slow down with every card.
  */
 export function addScenes(doc: Y.Doc, scenes: readonly NewScene[], opts: Opts): SceneElement[] {
-  const all = listElements(doc);
+  const all = currentElements(doc);
   const existing = all.filter((e): e is SceneElement => e.type === 'scene');
   let right = existing.reduce((m, s) => Math.max(m, s.x + s.w), -Infinity);
   let last = Number.parseInt(existing.sort(byZ).at(-1)?.number ?? '0', 10);
