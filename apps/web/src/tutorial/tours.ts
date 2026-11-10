@@ -205,7 +205,15 @@ export const TOURS: Tour[] = [
     offer: 'schedule',
     steps: [
       { anchor: 'schedule', media: 'calendar', side: 'bottom' },
-      { anchor: 'schedule-days', media: 'calendar', side: 'top' },
+      { anchor: 'schedule-queue', media: 'drag', side: 'right' },
+      // Includes drag-created dates: the whole gesture is one undo step.
+      { anchor: 'schedule-days', media: 'calendar', side: 'left', keys: ['Alt'] },
+      {
+        anchor: 'schedule-save',
+        media: 'versions',
+        side: 'bottom',
+        keys: [isMac() ? '⌘' : 'Ctrl', 'Z'],
+      },
       // The sheet derives key times, locations and row pictures from the board (0090).
       { anchor: 'schedule-callsheet', media: 'export', side: 'bottom' },
     ],

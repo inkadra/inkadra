@@ -48,6 +48,7 @@ export const ShootingDay = z
     id: Id,
     projectId: Id,
     boardId: Id,
+    updatedBy: z.object({ id: Id, name: z.string() }).nullable().optional(),
     revision: z.number().int().min(1),
   })
   .openapi('ShootingDay');
@@ -58,6 +59,29 @@ export const UpdateShootingDay = z
     revision: z.number().int().min(1),
   })
   .openapi('UpdateShootingDay');
+/** One atomic edit, including creating or removing a date during drag/undo. */
+export const EditSchedule = z
+  .object({
+    changes: z
+      .array(
+        z
+          .object({
+            id: Id,
+            revision: z.number().int().min(0),
+            input: ShootingDayInput.nullable(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(200)
+      .refine(
+        (items) => new Set(items.map((item) => item.id)).size === items.length,
+        'Day ids must be unique.',
+      ),
+  })
+  .strict()
+  .openapi('EditSchedule');
+export type EditSchedule = z.infer<typeof EditSchedule>;
 export const Schedule = z
   .object({ items: z.array(ShootingDay), nextCursor: z.null() })
   .openapi('Schedule');

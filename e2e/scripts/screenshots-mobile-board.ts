@@ -144,7 +144,7 @@ const shots: Shot[] = [
     '15-schedule-day',
     async (page, seed) => {
       await board(page, seed, seed.storyboard.id, 'schedule');
-      await page.locator('.schedule__day').first().click();
+      await page.locator('.schedule__summary-card').click();
     },
   ],
   [

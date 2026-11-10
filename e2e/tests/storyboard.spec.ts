@@ -202,6 +202,7 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   // The call sheet is generated from the saved shooting days.
   await schedule.getByRole('button', { name: 'Aggiungi giorno di riprese', exact: true }).click();
   await expect(schedule.locator('.schedule__day').first()).toBeVisible();
+  await schedule.getByRole('radio', { name: 'Giorno', exact: true }).check();
   const inspector = schedule.getByRole('complementary', { name: 'Dettagli del giorno di riprese' });
   await expect(inspector.getByLabel('Data', { exact: true })).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
   const openSheet = schedule.getByRole('button', { name: 'Foglio di lavorazione' });

@@ -877,11 +877,15 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     expect(
       await db.select().from(projectMember).where(eq(projectMember.userId, a.id)),
     ).toHaveLength(0);
+    // The files go in a queued job: on a busy runner that takes longer than the default second.
     await expect
-      .poll(async () => {
-        const sizes = await Promise.all(keys.map((k) => deps.storage.size(k.key)));
-        return sizes.every((s) => s === null);
-      })
+      .poll(
+        async () => {
+          const sizes = await Promise.all(keys.map((k) => deps.storage.size(k.key)));
+          return sizes.every((s) => s === null);
+        },
+        { timeout: 15_000 },
+      )
       .toBe(true);
     expect((await call(a.cookie, 'GET', '/api/v1/me')).status).toBe(401);
     // Accounts outside the demo are never touched, however old.

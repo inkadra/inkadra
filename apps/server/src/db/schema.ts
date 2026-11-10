@@ -1079,6 +1079,7 @@ export const shootingDay = pgTable(
     location: text('location').notNull(),
     notes: text('notes').notNull(),
     blocks: jsonb('blocks').$type<import('@inkadra/shared').ScheduleBlock[]>().notNull(),
+    updatedBy: jsonb('updated_by').$type<{ id: string; name: string }>(),
     revision: integer('revision').notNull().default(1),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

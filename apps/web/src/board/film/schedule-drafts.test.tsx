@@ -54,45 +54,121 @@ const day: ShootingDay = {
   notes: '',
   blocks: [],
 };
+const notesOf = (host: HTMLElement) =>
+  host.querySelector<HTMLTextAreaElement>('.schedule__inspector textarea[maxlength="10000"]');
+async function type(field: HTMLTextAreaElement | null, value: string) {
+  await act(async () => {
+    if (!field) return;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(
+      field,
+      value,
+    );
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+/** The day view, with the day panel beside the calendar. */
+async function openDayView(host: HTMLElement) {
+  const day = host.querySelector<HTMLInputElement>('input[type="radio"][value="day"]');
+  await act(async () => day?.click());
+}
+/** Waits past the autosave delay. */
+const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 700)));
+
 /** Types into the notes, then a colleague saves the same day and the tab comes back. */
 async function editThenChangeElsewhere() {
   const get = vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
   const host = await mount(<ScheduleView store={store()} boardId="board" />);
-  const notes = () =>
-    host.querySelector<HTMLTextAreaElement>('.schedule__inspector textarea[maxlength="10000"]');
-  await act(async () => {
-    const field = notes();
-    if (!field) return;
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(
-      field,
-      'Mine',
-    );
-    field.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  expect(notes()?.value).toBe('Mine');
+  await openDayView(host);
+  await type(notesOf(host), 'Mine');
+  expect(notesOf(host)?.value).toBe('Mine');
   get.mockResolvedValue({ items: [{ ...day, revision: 2, notes: 'Theirs' }], nextCursor: null });
   await act(async () => document.dispatchEvent(new Event('visibilitychange')));
-  return { host, notes };
+  return { host, notes: () => notesOf(host) };
 }
+
+it('saves an edit on its own, a moment after the last change', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  const put = vi
+    .spyOn(api, 'put')
+    .mockImplementation(async (_path, body) => ({ ...day, ...(body as object), revision: 2 }));
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  await openDayView(host);
+  await type(notesOf(host), 'Bring coats');
+  expect(put).not.toHaveBeenCalled();
+  expect(host.textContent).toContain('schedule.statusSaving');
+  await settle();
+  expect(put).toHaveBeenCalledOnce();
+  expect(put.mock.calls[0]?.[1]).toMatchObject({ notes: 'Bring coats', revision: 1 });
+  expect(host.textContent).toContain('schedule.statusSaved');
+});
+
+it('undoes with Ctrl+Z, and saves the undone day too', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  let revision = 1;
+  const put = vi.spyOn(api, 'put').mockImplementation(async (_path, body) => {
+    revision += 1;
+    return { ...day, ...(body as object), revision };
+  });
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  await openDayView(host);
+  await type(notesOf(host), 'Bring coats');
+  await settle();
+  await act(async () =>
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true })),
+  );
+  expect(notesOf(host)?.value).toBe('');
+  await settle();
+  expect(put).toHaveBeenCalledTimes(2);
+  expect(put.mock.calls[1]?.[1]).toMatchObject({ notes: '', revision: 2 });
+  // Redo puts it back.
+  await act(async () =>
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true, shiftKey: true }),
+    ),
+  );
+  expect(notesOf(host)?.value).toBe('Bring coats');
+});
+
+it('keeps an edit that could not be saved, says so and tries again', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  const put = vi.spyOn(api, 'put').mockRejectedValueOnce(new Error('offline'));
+  put.mockImplementation(async (_path, body) => ({ ...day, ...(body as object), revision: 2 }));
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  await openDayView(host);
+  await type(notesOf(host), 'Bring coats');
+  await settle();
+  expect(put).toHaveBeenCalledOnce();
+  expect(notesOf(host)?.value).toBe('Bring coats');
+  expect(host.textContent).toContain('schedule.statusUnsaved');
+  await act(async () => button(host, 'schedule.retryNow')?.click());
+  await settle();
+  expect(put).toHaveBeenCalledTimes(2);
+  expect(host.textContent).not.toContain('schedule.statusUnsaved');
+});
 
 it('keeps a draft when the day changes elsewhere and lets the user save it over', async () => {
   const put = vi
     .spyOn(api, 'put')
     .mockImplementation(async (_path, body) => ({ ...day, ...(body as object), revision: 3 }));
   const { host, notes } = await editThenChangeElsewhere();
+  await settle();
+  // Nothing is saved over the other version until the user chooses.
+  expect(put).not.toHaveBeenCalled();
   expect(notes()?.value).toBe('Mine');
   expect(host.textContent).toContain('schedule.staleBody');
-  expect(button(host, 'schedule.save')?.disabled).toBe(true);
+  expect(host.textContent).toContain('schedule.statusConflict');
 
   await act(async () => button(host, 'schedule.staleKeep')?.click());
   expect(host.textContent).not.toContain('schedule.staleBody');
-  await act(async () => button(host, 'schedule.save')?.click());
+  await settle();
   expect(put).toHaveBeenCalledOnce();
   expect(put.mock.calls[0]?.[1]).toMatchObject({ notes: 'Mine', revision: 2 });
-  expect(host.textContent).not.toContain('schedule.unsaved');
 });
 
 it('reloads the saved version only when the user asks', async () => {
+  vi.spyOn(api, 'put').mockImplementation(async () => {
+    throw new Error('not expected');
+  });
   const { host, notes } = await editThenChangeElsewhere();
   await act(async () => button(host, 'schedule.staleReload')?.click());
   expect(notes()?.value).toBe('Theirs');
@@ -102,8 +178,125 @@ it('reloads the saved version only when the user asks', async () => {
 it('walks the day tabs by keyboard, Home and End at the ends, and switches only on a choice', async () => {
   vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
   const host = await mount(<ScheduleView store={store()} boardId="board" />);
-  await walkTabs(host.querySelector('.schedule__tabs'));
+  await openDayView(host);
+  const list = host.querySelector('.schedule__tabs');
+  await walkTabs(list);
   expect(host.querySelector('.schedule__inspector--wide')).toBeNull();
-  await act(async () => (document.activeElement as HTMLElement).click());
+  const needed = [...(list?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [])].at(-1);
+  await act(async () => needed?.click());
   expect(host.querySelector('.schedule__inspector--wide')).not.toBeNull();
+});
+
+it('keeps undo while the original save is still in flight', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  let complete: (value: unknown) => void = () => {};
+  const put = vi.spyOn(api, 'put');
+  put.mockImplementation(async (_path, body) => ({ ...day, ...(body as object), revision: 3 }));
+  // Install the pending response after the default implementation.
+  put.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+  );
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  await openDayView(host);
+  await type(notesOf(host), 'Pending');
+  await settle();
+  await act(async () =>
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true })),
+  );
+  expect(notesOf(host)?.value).toBe('');
+  await act(async () => complete({ ...day, notes: 'Pending', revision: 2 }));
+  await settle();
+  expect(put).toHaveBeenCalledTimes(2);
+  expect(put.mock.calls[1]?.[1]).toMatchObject({ notes: '', revision: 2 });
+});
+
+it('does not let undo silently overwrite an unresolved revision conflict', async () => {
+  const put = vi.spyOn(api, 'put');
+  const { host, notes } = await editThenChangeElsewhere();
+  await act(async () =>
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true })),
+  );
+  expect(notes()?.value).toBe('Mine');
+  await settle();
+  expect(put).not.toHaveBeenCalled();
+  expect(host.textContent).toContain('schedule.statusConflict');
+});
+it('keeps a draft of a remotely removed day until the user chooses to recreate it', async () => {
+  const get = vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  const post = vi
+    .spyOn(api, 'post')
+    .mockResolvedValue({ items: [{ ...day, notes: 'Mine' }], deleted: [] });
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  await openDayView(host);
+  await type(notesOf(host), 'Mine');
+  get.mockResolvedValue({ items: [], nextCursor: null });
+  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+  expect(notesOf(host)?.value).toBe('Mine');
+  expect(host.textContent).toContain('schedule.statusConflict');
+  await act(async () => button(host, 'schedule.staleKeep')?.click());
+  await settle();
+  expect(post).toHaveBeenCalledWith('/boards/board/schedule/edit', {
+    changes: [{ id: day.id, revision: 0, input: expect.objectContaining({ notes: 'Mine' }) }],
+  });
+});
+
+it('does not undo over a colleague edit fetched after the local edit was saved', async () => {
+  const get = vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  const put = vi
+    .spyOn(api, 'put')
+    .mockImplementation(async (_path, body) => ({ ...day, ...(body as object), revision: 2 }));
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  await openDayView(host);
+  await type(notesOf(host), 'Mine');
+  await settle();
+  get.mockResolvedValue({ items: [{ ...day, notes: 'Theirs', revision: 3 }], nextCursor: null });
+  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+  await act(async () =>
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true })),
+  );
+  expect(notesOf(host)?.value).toBe('Theirs');
+  await settle();
+  expect(put).toHaveBeenCalledOnce();
+});
+
+it('shows how far the other blocks shift inside them, and only the dragged block beside it', async () => {
+  const block = (id: string, title: string) => ({
+    id,
+    type: 'setup' as const,
+    title,
+    duration: 60,
+    start: null,
+    shotId: null,
+    cast: [],
+    departments: [],
+  });
+  vi.spyOn(api, 'get').mockResolvedValue({
+    items: [{ ...day, blocks: [block('a', 'First'), block('b', 'Second')] }],
+    nextCursor: null,
+  });
+  // Without a layout engine every box is the same column: the dragged block's label goes to the band.
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(0, 0, 200, 1440),
+  );
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  const first = host.querySelector<HTMLElement>('[data-block="a"]');
+  if (!first) throw new Error('block not drawn');
+  const pointer = (type: string, clientY: number) =>
+    new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1, clientX: 10, clientY });
+  // Dragged below the second block, the first goes after it: the second starts an hour earlier.
+  await act(async () => first.dispatchEvent(pointer('pointerdown', 10)));
+  await act(async () => first.dispatchEvent(pointer('pointermove', 100)));
+  const second = host.querySelector('[data-block="b"]')?.closest('.schedule__block');
+  expect(host.querySelector('.schedule__block.is-dragging')).not.toBeNull();
+  expect(second?.querySelector('.schedule__block-delta')?.textContent).toBe('−1h');
+  expect(host.querySelectorAll('.schedule__block-delta')).toHaveLength(1);
+  const outside = [
+    ...host.querySelectorAll('.schedule__floating-note, .schedule__annotation-cell > span'),
+  ];
+  expect(outside).toHaveLength(1);
+  expect(outside[0]?.classList.contains('is-primary')).toBe(true);
+  expect(outside[0]?.textContent).not.toContain('−1h');
 });

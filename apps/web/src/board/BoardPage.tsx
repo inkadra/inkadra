@@ -840,6 +840,7 @@ function BoardScreen({
         boardId={boardId}
         userId={user.id}
         readOnly={!!preview || !editable}
+        onOpenScene={(sceneId) => navigate(`?view=storyboard&scene=${encodeURIComponent(sceneId)}`)}
       />
     ) : view === 'review' ? (
       <ClientReviewView

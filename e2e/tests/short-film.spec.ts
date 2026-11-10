@@ -547,30 +547,33 @@ test('a short film is prepared from the moodboard to the shot list', async ({
       { date: '2026-11-10', location: 'Vagone storico, deposito', shots: 6 },
     ];
     for (const [n, day] of plan.entries()) {
+      // The first day from the empty calendar, the next from the bar.
       await schedule
-        .getByRole('button', { name: 'Aggiungi giorno di riprese', exact: true })
-        .first()
+        .getByRole('button', {
+          name: n === 0 ? 'Aggiungi giorno di riprese' : 'Giorno di riprese',
+          exact: true,
+        })
         .click();
-      await expect(days).toHaveCount(n + 1);
+      // The day view: one day, with its panel.
+      await schedule.getByRole('radio', { name: 'Giorno', exact: true }).check();
+      await expect(inspector).toContainText(`Giorno ${n + 1} di ${n + 1}`);
       await inspector.getByLabel('Data', { exact: true }).fill(day.date);
       await inspector.getByLabel('Convocazione', { exact: true }).fill('07:30');
       await inspector.getByLabel('Location', { exact: true }).fill(day.location);
-      await inspector.getByRole('button', { name: 'Salva giorno', exact: true }).click();
-      await expect(
-        inspector.getByRole('button', { name: 'Salva giorno', exact: true }),
-      ).toBeEnabled();
-      const target = days.filter({ hasText: `Giorno ${n + 1}` });
-      // The first shot is dragged onto the day, the others added with a click.
-      await queue.first().dragTo(target);
+      // It saves on its own.
+      await expect(schedule.locator('.schedule__status')).toHaveText(/Salvato alle/);
+      const target = days.first();
+      await expect(days).toHaveCount(1);
+      // The first shot is dragged to a time of the day, the others added at its end with a click.
+      await queue.first().dragTo(target, { targetPosition: { x: 60, y: 7 * 60 + 50 } });
       await expect(target.locator('.schedule__block')).toHaveCount(1);
       for (let i = 1; i < day.shots; i++) {
         await queue.first().click();
         await expect(target.locator('.schedule__block')).toHaveCount(i + 1);
       }
+      await expect(schedule.locator('.schedule__status')).toHaveText(/Salvato alle/);
     }
-    await expect(schedule.locator('.story__bar .story__total')).toContainText(
-      '2 giorni di riprese · 14 di 30 inquadrature pianificate',
-    );
+    await expect(queue).toHaveCount(16);
     await gap(page, 'schedule');
 
     await schedule.getByRole('button', { name: 'Foglio di lavorazione' }).click();

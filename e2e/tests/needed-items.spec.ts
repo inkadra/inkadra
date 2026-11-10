@@ -174,13 +174,14 @@ for (const theme of ['dark', 'light'] as const)
 
       // The day that shoots scenes 3, 5 and 8 lists what they need, duplicates merged.
       await page.goto(`/p/${project.id}/b/${board.id}?view=schedule`);
-      // A phone shows one day at a time: pick the second from the row of days first.
+      // A phone shows one day at a time: pick the second from the row of days, then its details.
+      // A wider screen opens the day from its heading in the week.
       const openSecondDay = async () => {
         if (phone) {
           await page.locator('.schedule__picker-day').nth(1).click();
-          await page.locator('.schedule__day-head').first().click();
+          await page.locator('.schedule__summary-card').click();
         } else {
-          await page.locator('.schedule__day-head').nth(1).click();
+          await page.locator('.schedule__head').nth(1).click();
         }
       };
       await openSecondDay();
@@ -194,14 +195,14 @@ for (const theme of ['dark', 'light'] as const)
       await shot(`${prefix}-day.png`);
       if (!phone) {
         // The mockup's 470 px panel: names stay on one line; at 1280 px it narrows and the
-        // day columns keep their width.
+        // day keeps a readable width.
         const panel = page.locator('.schedule__inspector');
         expect((await panel.boundingBox())?.width).toBe(470);
         const led = inspector.locator('.needed__row').filter({ hasText: 'Pannello LED' });
         expect((await led.boundingBox())?.height).toBeLessThanOrEqual(34);
         await page.setViewportSize({ width: 1280, height: 800 });
         expect((await panel.boundingBox())?.width).toBeLessThan(470);
-        expect((await page.locator('.schedule__day').nth(1).boundingBox())?.width).toBe(260);
+        expect((await page.locator('.schedule__day').boundingBox())?.width).toBeGreaterThan(240);
         await shot(`${prefix}-day-1280.png`);
         await page.setViewportSize({ width: 1440, height: 900 });
       }

@@ -137,6 +137,7 @@ import {
 } from './reviews.ts';
 import {
   DayAttendance,
+  EditSchedule,
   MySchedule,
   MyScheduleQuery,
   Schedule,
@@ -425,6 +426,21 @@ registry.registerPath({
   summary: 'Create a project shooting day anchored to this board; requires editor access.',
   request: { params: idParam('boardId'), body: json(ShootingDayInput) },
   responses: { 201: { description: 'Created', ...json(ShootingDay) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: `${schedulePath}/edit`,
+  tags: ['Schedule'],
+  security: secured,
+  summary: 'Atomically edit shooting days, including cross-day moves and drag-created dates.',
+  request: { params: idParam('boardId'), body: json(EditSchedule) },
+  responses: {
+    200: {
+      description: 'Saved days and removed ids.',
+      ...json(z.object({ items: z.array(ShootingDay), deleted: z.array(Id) })),
+    },
+    ...errors,
+  },
 });
 registry.registerPath({
   method: 'get',

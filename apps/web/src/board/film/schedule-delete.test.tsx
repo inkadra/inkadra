@@ -48,6 +48,11 @@ function nativeModal() {
     this.open = true;
   });
 }
+/** The day view, with the day panel beside the calendar. */
+async function openDayView(host: HTMLElement) {
+  const day = host.querySelector<HTMLInputElement>('input[type="radio"][value="day"]');
+  await act(async () => day?.click());
+}
 function button(scope: ParentNode, label: string) {
   return [...scope.querySelectorAll('button')].find((item) => item.textContent === label);
 }
@@ -86,6 +91,7 @@ it('deletes a shooting day only after the confirmation dialog is accepted', asyn
   vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
   const remove = vi.spyOn(api, 'delete').mockResolvedValue(null);
   const host = await mount(<ScheduleView store={store} boardId="board" />);
+  await openDayView(host);
   const trigger = button(host, 'schedule.deleteDay');
   expect(trigger).toBeDefined();
 
@@ -124,8 +130,9 @@ it('asks before removing a block with content but drops empty blocks directly', 
   const day = shootingDay([titled, empty]);
   vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
   const host = await mount(<ScheduleView store={store} boardId="board" />);
+  await openDayView(host);
   const articles = () => [...host.querySelectorAll('.schedule__block')];
-  // A block is edited in the inspector once it is selected in its day.
+  // In the day view a block opens in the panel's Blocco tab.
   const removeIn = async (article: Element | undefined) => {
     await act(async () =>
       article?.querySelector<HTMLButtonElement>('.schedule__block-select')?.click(),
