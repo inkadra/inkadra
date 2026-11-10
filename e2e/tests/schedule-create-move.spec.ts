@@ -152,6 +152,20 @@ test('draws a block on empty time and moves or swaps whole days', async ({ page 
   expect((await back).status()).toBe(200);
   expect(await dates()).toEqual({ [monday]: '2027-03-01', [wednesday]: '2027-03-03' });
 
+  // Escape drops the drag; releasing on the heading then neither moves nor opens the day.
+  const start = await mondayHead.boundingBox();
+  if (!start) throw new Error('no heading');
+  await page.mouse.move(start.x + 20, start.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(start.x + 60, start.y + 30, { steps: 4 });
+  await expect(schedule.locator('.schedule__floating-note')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(schedule.locator('.schedule__floating-note')).toHaveCount(0);
+  await page.mouse.move(start.x + 20, start.y + 20);
+  await page.mouse.up();
+  await expect(schedule.getByRole('radio', { name: 'Settimana', exact: true })).toBeChecked();
+  await expect(mondayHead).toHaveAttribute('data-day-drop', '2027-03-01');
+
   // Onto a free date of the month in the queue: the day moves with its blocks.
   const fifth = schedule.locator('.schedule__month-day[data-day-drop="2027-03-05"]');
   const head = await mondayHead.boundingBox();

@@ -208,6 +208,8 @@ export function ScheduleCalendar({
   const dragRef = useRef<Drag | null>(null);
   const pressTimer = useRef<number | undefined>(undefined);
   const suppressClick = useRef(false);
+  /** A drag dropped with Escape: its release must not click what is under it. */
+  const cancelled = useRef<number | null>(null);
   const [viewport, setViewport] = useState({ top: 0, height: 0 });
   const [dropAt, setDropAt] = useState<{ day: string; minute: number } | null>(null);
   const [draw, setDraw] = useState<Draw | null>(null);
@@ -419,6 +421,13 @@ export function ScheduleCalendar({
     });
   };
   const finish = (event: PointerEvent<HTMLElement>) => {
+    if (cancelled.current === event.pointerId) {
+      cancelled.current = null;
+      suppressClick.current = true;
+      window.setTimeout(() => {
+        suppressClick.current = false;
+      });
+    }
     const drawing = drawRef.current;
     if (drawing && event.pointerId === drawing.pointerId) {
       updateDraw(null);
@@ -505,6 +514,8 @@ export function ScheduleCalendar({
   }, []);
   const cancel = useCallback(() => {
     window.clearTimeout(pressTimer.current);
+    const active = [dragRef.current, drawRef.current, dayDragRef.current].find((d) => d?.active);
+    cancelled.current = active ? active.pointerId : null;
     update(null);
     updateDraw(null);
     if (dayDragRef.current) onDayTarget(null);
@@ -705,9 +716,13 @@ export function ScheduleCalendar({
     if (!dayDrag?.active) return null;
     const column = dayTarget ? columns.find((item) => item.date === dayTarget) : undefined;
     const target = column && columnRefs.current.get(columnKey(column))?.getBoundingClientRect();
-    const top = grid.current?.getBoundingClientRect().top;
-    if (target && top !== undefined)
-      return { left: target.left + 4, top: top + 4, maxWidth: target.width - 8 };
+    const bounds = grid.current?.getBoundingClientRect();
+    if (target && bounds) {
+      // One line, as wide as its text, kept inside the calendar near the right edge.
+      const width = (dayMoveLabel?.length ?? 0) * 7 + 16;
+      const left = Math.min(target.left + 4, bounds.right - width - 4);
+      return { left, top: bounds.top + 4, whiteSpace: 'nowrap' as const };
+    }
     const month = document.querySelector('.schedule__month-grid')?.getBoundingClientRect();
     if (dayTarget && month) return { left: month.left, top: month.bottom + 6 };
     return { left: Math.min(dayDrag.px + 14, window.innerWidth - 200), top: dayDrag.py + 14 };
