@@ -76,7 +76,7 @@ export function departmentNotes(day: ShootingDayInput): DepartmentNote[] {
 export function keyTimes(day: ShootingDayInput) {
   const slots = scheduleTimes(day);
   const shots = slots.filter(({ block }) => block.type === 'shot' || !!block.shotId);
-  // shortcut: solar times are omitted until the calendar's sun.ts is wired in.
+  // Sunrise and sunset need a location's coordinates: see sunOfDay in day-calls.ts.
   return [
     { key: 'call', time: clockMinutes(day.callTime) },
     { key: 'ready', time: shots[0]?.start },

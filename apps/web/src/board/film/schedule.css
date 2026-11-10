@@ -1409,3 +1409,135 @@ fieldset.schedule__field > legend {
   flex-direction: column;
   gap: 4px;
 }
+
+/* The day's calls (decision 0092): key times, then the crew by department. */
+.schedule__field textarea.ink-input {
+  height: auto;
+}
+.day-calls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.day-calls__times {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+.day-calls__time {
+  padding: 5px 8px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-1);
+}
+.day-calls__time dt {
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+}
+.day-calls__time dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.day-calls__list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.day-calls__group {
+  margin: 0;
+  padding: 10px 2px 4px;
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.day-calls__group small {
+  color: var(--ink-text-muted);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.day-calls__row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 84px minmax(0, 120px);
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 40px;
+  padding: 4px 2px;
+  border-top: 1px solid var(--ink-border-muted);
+  font-size: 13px;
+}
+.day-calls__row[data-called="false"] {
+  grid-template-columns: 18px minmax(0, 1fr);
+  color: var(--ink-text-secondary);
+}
+.day-calls__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.day-calls__name small {
+  color: var(--ink-text-muted);
+  font-size: 12px;
+}
+.schedule__inspector .day-calls__row .ink-input {
+  height: 28px;
+  min-width: 0;
+  padding: 0 8px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.day-calls__row .auto-time__tag {
+  display: none;
+}
+.day-calls__hint {
+  grid-column: 2 / -1;
+  color: var(--ink-accent-soft-fg);
+  font-size: 11px;
+}
+.day-calls__more {
+  margin-top: 10px;
+  border: 1px dashed var(--ink-border-default);
+  border-radius: var(--ink-radius-sm);
+}
+.day-calls__more > summary {
+  padding: 8px 10px;
+  overflow: hidden;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.day-calls__more > summary:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.day-calls__more > .day-calls__row {
+  margin: 0 8px;
+}
+/* A phone sheet: the inputs go under the name. */
+@media (width < 768px) {
+  .day-calls__row {
+    grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .day-calls__name {
+    grid-column: 2 / -1;
+  }
+  .day-calls__row > :nth-child(4) {
+    grid-column: 2;
+  }
+  .schedule__inspector .day-calls__row .ink-input {
+    height: 44px;
+  }
+}

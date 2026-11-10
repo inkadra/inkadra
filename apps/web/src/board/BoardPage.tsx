@@ -842,6 +842,7 @@ function BoardScreen({
         userId={user.id}
         readOnly={!!preview || !editable}
         onOpenScene={(sceneId) => navigate(`?view=storyboard&scene=${encodeURIComponent(sceneId)}`)}
+        onOpenTroupe={() => navigate('?view=troupe')}
       />
     ) : view === 'troupe' ? (
       <TroupeView

@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Element } from '@inkadra/doc-schema';
-import type { Schedule, ShootingDay } from '@inkadra/shared';
+import { type CrewMember, castNameKey, type Schedule, type ShootingDay } from '@inkadra/shared';
 import type { TFunction } from 'i18next';
 import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
 import { api } from '../../lib/api.ts';
 import {
-  castCalls,
   castCharacter,
   departmentNotes,
   hasSceneNumbers,
@@ -14,8 +13,16 @@ import {
   serveLines,
   sheetShot,
 } from '../film/call-sheet.ts';
+import {
+  byDepartment,
+  castRows,
+  dayCrew,
+  onSetContacts,
+  sunOfDay,
+  troupeRows,
+} from '../film/day-calls.ts';
 import { neededForDay } from '../film/needed.ts';
-import { clockLabel, scheduleTimes } from '../film/schedule.ts';
+import { clockLabel, clockMinutes, scheduleTimes } from '../film/schedule.ts';
 import { type CardContext, framePicture } from './board-render.ts';
 import type { Section, sectionPages } from './compose.ts';
 import { contentBox, pageSize, paginateRows } from './layout.ts';
@@ -49,25 +56,79 @@ export function calendarDate(date: string, language: string, style: 'short' | 'l
   }).format(time);
 }
 
-/** Team-only call sheet sections, derived from the same elements as the print dialog. */
+/**
+ * Team-only call sheet sections, derived from the same elements as the print dialog. The crew,
+ * its phones, calls and pick-ups come only from the team's roster (decision 0092): the client
+ * export never builds these sections.
+ */
 export function callSheetSections(
   day: ShootingDay,
   shotLabel: (id: string) => string | undefined,
   t: TFunction,
   elements: ReadonlyMap<string, Element> = new Map(),
+  crew: readonly CrewMember[] = [],
 ): CallSheetSection[] {
   const times = keyTimes(day);
   const locations = locationsOfDay(day, elements);
+  const entries = dayCrew(day, crew, elements);
+  const sun = sunOfDay(day, locations);
+  const sunCell = sun && (sun.sunrise !== null || sun.sunset !== null);
+  const sunClock = (time: number | null) => (time === null ? '—' : clockLabel(time));
   const serve = serveLines(day, elements);
   const numbered = hasSceneNumbers(day, elements);
   const slots = scheduleTimes(day);
   const info: CallSheetSection = {
     title: t('callSheet.times'),
     header: true,
-    columns: times.map(() => 1),
+    columns: [...times.map(() => 1), ...(sunCell ? [1.6] : [])],
     rows: [
-      times.map(({ key }) => t(`callSheet.${key}`)),
-      times.map(({ time }) => clockLabel(time)),
+      [
+        ...times.map(({ key }) => t(`callSheet.${key}`)),
+        ...(sun && sunCell ? [t('callSheet.sun', { n: sun.location })] : []),
+      ],
+      [
+        ...times.map(({ time }) => clockLabel(time)),
+        ...(sun && sunCell ? [`${sunClock(sun.sunrise)} · ${sunClock(sun.sunset)}`] : []),
+      ],
+    ],
+    empty: '',
+  };
+  const contact: CallSheetSection = {
+    title: t('callSheet.onSetContact'),
+    columns: [2, 2, 3],
+    rows: onSetContacts(entries).map(({ member }) => [member.name, member.role, member.phone]),
+    empty: '',
+  };
+  const troupeGroups = byDepartment(troupeRows(day, entries));
+  const troupe: CallSheetSection = {
+    title: t('callSheet.troupe'),
+    header: true,
+    columns: [2, 2, 1.6, 1, 2],
+    rows: [
+      [
+        t('callSheet.name'),
+        t('troupe.role'),
+        t('callSheet.pickup'),
+        t('callSheet.callShort'),
+        t('troupe.phoneColumn'),
+      ],
+      ...troupeGroups.flatMap(({ department, people }) => [
+        [department || t('troupe.noDepartment')],
+        ...people.map((e) => [
+          e.member.name,
+          e.member.role,
+          e.pickup.trim() || '—',
+          clockLabel(e.call),
+          e.member.phone.trim() || '—',
+        ]),
+      ]),
+    ],
+    tones: [
+      undefined,
+      ...troupeGroups.flatMap(({ people }) => [
+        'surface-2' as const,
+        ...people.map(() => undefined),
+      ]),
     ],
     empty: '',
   };
@@ -129,6 +190,7 @@ export function callSheetSections(
       }),
     ],
     pictures: [undefined, ...slots.map(({ block }) => sheetShot(block.shotId, elements).frame)],
+    notes: [undefined, ...slots.map(({ block }) => block.notes?.trim() || undefined)],
     pictureColumn: numbered ? 2 : 1,
     descriptionColumn: numbered ? 3 : 2,
     tones: [
@@ -151,20 +213,38 @@ export function callSheetSections(
     schedule.rows.push([clockLabel(time), t(`callSheet.${key}`)]);
     schedule.tones?.push('surface-2');
   }
+  const calls = castRows(day, entries);
+  const dayCall = clockMinutes(day.callTime);
   const cast: CallSheetSection = {
     title: t('callSheet.cast'),
     header: true,
-    columns: [2, 2, 3, 1.5],
+    columns: [2, 2, 1.6, 1, 1, 2.4],
     rows: [
       [
-        t('callSheet.name'),
+        t(
+          calls.some((c) => castCharacter(c.name, elements))
+            ? 'callSheet.character'
+            : 'callSheet.name',
+        ),
         t('story.character.actor'),
-        t('callSheet.contact'),
+        t('callSheet.pickup'),
+        t('callSheet.callShort'),
         t('callSheet.inScene'),
+        t('callSheet.contact'),
       ],
-      ...castCalls(day).map((call) => {
-        const card = castCharacter(call.name, elements);
-        return [call.name, card?.actor ?? '', card?.contact ?? '', clockLabel(call.start)];
+      ...calls.map(({ name, start, entry }) => {
+        const card = castCharacter(name, elements);
+        const actor =
+          card?.actor ||
+          (entry && castNameKey(entry.member.name) !== castNameKey(name) ? entry.member.name : '');
+        return [
+          name,
+          actor,
+          entry?.pickup.trim() || '—',
+          clockLabel(entry?.call ?? dayCall),
+          clockLabel(start),
+          card?.contact || entry?.member.phone || '',
+        ];
       }),
     ],
     empty: '',
@@ -192,9 +272,11 @@ export function callSheetSections(
   };
   return [
     info,
+    contact,
     location,
+    ...(troupeGroups.length ? [troupe] : []),
     schedule,
-    ...(castCalls(day).length ? [cast] : []),
+    ...(calls.length ? [cast] : []),
     departments,
     needed,
     notes,
@@ -206,6 +288,8 @@ interface CallSheetSection extends Section {
   header?: boolean;
   links?: Array<string | undefined>;
   pictures?: Array<Extract<Element, { type: 'frame' }> | undefined>;
+  /** A block's own note, drawn bold in the warning colour under the description. */
+  notes?: Array<string | undefined>;
   pictureColumn?: number;
   descriptionColumn?: number;
   tones?: Array<'tag-green-bg' | 'tag-orange-bg' | 'surface-2' | undefined>;
@@ -247,23 +331,31 @@ export function callSheetPages(
       const frame = section.pictures?.[index];
       const tone = section.tones?.[index];
       let left = 0;
+      const short = row.length < section.columns.length;
+      const note = section.notes?.[index];
       const cells = row.map((value, col) => {
         // A row shorter than the table, such as a break, gives its last cell the rest of the width.
         const w =
-          col === row.length - 1 && row.length < section.columns.length
+          col === row.length - 1 && short
             ? box.w - left
             : (box.w * (section.columns[col] ?? total)) / total;
         const x = left;
         left += w;
+        const described = col === (short ? row.length - 1 : section.descriptionColumn);
+        const wrap = (text: string, weight: 400 | 700) =>
+          wrapText(text, w - 8, 8.5, weight, ctx.measure);
+        const [first = '', ...rest] = value.split('\n');
+        // Description: its first paragraph, the block's note, then the muted lines.
+        const head = described && (note || rest.length) ? wrap(first, 400) : wrap(value, 400);
+        const noted = described && note ? wrap(note, 700) : [];
+        const tail = described && rest.length ? wrap(rest.join('\n'), 400) : [];
         return {
           x,
           w,
-          lines: wrapText(value, w - 8, 8.5, 400, ctx.measure),
+          lines: [...head, ...noted, ...tail],
           picture: frame && col === section.pictureColumn,
-          mutedFrom:
-            col === section.descriptionColumn && value.includes('\n')
-              ? wrapText(value.split('\n')[0] ?? '', w - 8, 8.5, 400, ctx.measure).length
-              : Infinity,
+          noteFrom: head.length,
+          mutedFrom: described && rest.length ? head.length + noted.length : Infinity,
         };
       });
       const h = Math.max(1, ...cells.map((cell) => cell.lines.length)) * 12 + 10 + (frame ? 36 : 0);
@@ -283,9 +375,16 @@ export function callSheetPages(
               (line, n) =>
                 textBlock([line], box.x + cell.x, top + 5 + (cell.picture ? 36 : 0) + n * 12, {
                   size: 8.5,
-                  weight: 400,
+                  weight: n >= cell.noteFrom && n < cell.mutedFrom && note ? 700 : 400,
                   leading: 12,
-                  color: ctx.colors[n >= cell.mutedFrom ? 'text-secondary' : 'text-primary'],
+                  color:
+                    ctx.colors[
+                      n >= cell.mutedFrom
+                        ? 'text-secondary'
+                        : n >= cell.noteFrom && note
+                          ? 'tag-orange'
+                          : 'text-primary'
+                    ],
                 }).ops,
             ),
           ]),

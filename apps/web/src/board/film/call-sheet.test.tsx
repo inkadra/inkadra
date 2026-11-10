@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { createElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import type { ShootingDay } from '@inkadra/shared';
+import type { CrewMember, ShootingDay } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -78,7 +78,13 @@ afterEach(() => {
 });
 async function mount(
   days: ShootingDay[],
-  props: { boardId?: string; userId?: string; canManage?: boolean; store?: BoardStore } = {},
+  props: {
+    boardId?: string;
+    userId?: string;
+    canManage?: boolean;
+    store?: BoardStore;
+    crew?: CrewMember[];
+  } = {},
 ) {
   vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
     this: HTMLDialogElement,
@@ -160,7 +166,12 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
   expect(paper()?.textContent).toContain('schedule.missingShot');
   expect(paper()?.textContent).toContain('bring lights');
   expect(paper()?.textContent).toContain('05:00 (+1)');
-  const schedule = host.querySelector<HTMLInputElement>('input[role=switch]');
+  // The first toggle is the crew's, off without a roster: Programma is found by its label.
+  const schedule = [...host.querySelectorAll('.call-sheet__row')]
+    .find(
+      (row) => row.querySelector('.call-sheet__row-label')?.textContent === 'callSheet.schedule',
+    )
+    ?.querySelector<HTMLInputElement>('input[role=switch]');
   await act(async () => schedule?.click());
   expect(host.querySelector('.sheet__table--schedule')).toBeNull();
   expect(paper()?.textContent).not.toContain('Anna steps off the train');
@@ -177,7 +188,7 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
   );
   expect(print).toHaveBeenCalledOnce();
   // Day 2 has no blocks, cast, departments, notes, frames or plans: they say so and stay out.
-  expect(host.querySelectorAll('input[role=switch]')).toHaveLength(7);
+  expect(host.querySelectorAll('input[role=switch]')).toHaveLength(8);
   expect(host.textContent).toContain('callSheet.emptyHelp');
   expect(paper()?.textContent).not.toContain('bring lights');
 });
@@ -264,13 +275,70 @@ describe('on a phone', () => {
       { dayId: 'day-1', userId: 'me', status: 'confirmed' },
     );
     const host = await mountPhone();
-    expect(host.querySelector('.sheet__phone-own')?.textContent).toMatch(/Bob · \d+:\d\d/);
+    expect(host.querySelector('.sheet__phone-own')?.textContent).toMatch(
+      /callSheet\.yourCall · Bob\d+:\d\d/,
+    );
     await act(async () => button(host, 'callSheet.confirm')?.click());
     const put = fetch.mock.calls.find(([, init]) => init?.method === 'PUT');
     expect(put?.[0]).toContain(answerPath);
     expect(JSON.parse(String(put?.[1]?.body))).toEqual({ status: 'confirmed' });
     expect(button(host, 'callSheet.confirm')?.getAttribute('aria-pressed')).toBe('true');
     expect(host.querySelector('[role=status]')?.textContent).toBe('callSheet.answer.confirmed');
+  });
+  it('lists the troupe with a call button each, and takes your call from your crew row', async () => {
+    stubs(empty);
+    const person = (n: number, extra: Partial<CrewMember>): CrewMember => ({
+      id: `00000000-0000-4000-8000-00000000000${n}`,
+      projectId: 'project',
+      name: `Person ${n}`,
+      role: '',
+      department: 'Elettricisti',
+      phone: '',
+      email: '',
+      pickup: '',
+      notes: '',
+      userId: null,
+      character: null,
+      onSetContact: false,
+      position: n,
+      revision: 1,
+      createdAt: '2026-11-01T00:00:00.000Z',
+      updatedAt: '2026-11-01T00:00:00.000Z',
+      ...extra,
+    });
+    const me = person(1, { name: 'Ugo', role: 'Gaffer', userId: 'me', phone: '+39 1111111' });
+    const boss = person(2, {
+      name: 'Bea',
+      role: 'AD',
+      phone: '+39 333 123 4567',
+      onSetContact: true,
+    });
+    const host = await mount(
+      [{ ...day, calls: [{ crewMemberId: me.id, call: '17:15', pickup: 'Hotel' }] }],
+      { boardId: 'board', userId: 'me', crew: [me, boss] },
+    );
+    await act(async () => new Promise((resolve) => setTimeout(resolve)));
+    expect(host.querySelector('.sheet__phone-own')?.textContent).toContain(
+      'callSheet.yourCall · Gaffer17:15',
+    );
+    expect(host.querySelector('.sheet__phone-own')?.textContent).toContain('callSheet.pickupAt');
+    const rows = [...host.querySelectorAll('.sheet__phone-person')];
+    expect(rows.map((row) => row.querySelector('b')?.textContent)).toEqual([
+      'Ugo callSheet.you',
+      'Bea',
+    ]);
+    // Your own row has no button; the others dial only the digits.
+    expect(rows[0]?.querySelector('a')).toBeNull();
+    const dial = rows[1]?.querySelector('a');
+    expect(dial?.getAttribute('href')).toBe('tel:+393331234567');
+    expect(dial?.getAttribute('aria-label')).toBe('callSheet.callPerson');
+    expect(host.textContent).toContain('callSheet.onSetContact');
+  });
+  it('shows no troupe, phones or pick-ups without the roster', async () => {
+    stubs(empty);
+    const host = await mountPhone();
+    expect(host.querySelector('.sheet__table--troupe, .sheet__phone-troupe')).toBeNull();
+    expect(host.textContent).not.toContain('callSheet.onSetContact');
   });
   it('shows organisers who answered, and calls no other site for the map link', async () => {
     const fetch = stubs({

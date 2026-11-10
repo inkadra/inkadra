@@ -2,16 +2,22 @@
 
 import type { FrameElement } from '@inkadra/canvas-core';
 import { type AspectRatio, type Element, getBoardAspect } from '@inkadra/doc-schema';
-import type { Asset, Person, ShootingDay, ShootingDayInput } from '@inkadra/shared';
+import {
+  type Asset,
+  type CrewMember,
+  castNameKey,
+  type Person,
+  type ShootingDay,
+  type ShootingDayInput,
+} from '@inkadra/shared';
 import { Button, Dialog, DialogActions, Select, Switch } from '@inkadra/ui';
-import { type ReactNode, useEffect, useId, useState, useSyncExternalStore } from 'react';
+import { Fragment, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '../export/fields.tsx';
 import { fetchExportSettings, logoUrl } from '../export/settings.ts';
 import { kitList } from '../plan/kit.ts';
 import { PlanDrawing, type PlanLike } from '../plan/PlanDrawing.tsx';
 import {
-  castCalls,
   castCharacter,
   departmentNotes,
   keyTimes,
@@ -20,9 +26,18 @@ import {
   serveLines,
   sheetShot,
 } from './call-sheet.ts';
+import {
+  byDepartment,
+  castRows,
+  dayCrew,
+  onSetContacts,
+  personalDayCall,
+  sunOfDay,
+  troupeRows,
+} from './day-calls.ts';
 import { FramePicture } from './FramePicture.tsx';
 import type { NeededRow } from './needed.ts';
-import { clockLabel, scheduleTimes } from './schedule.ts';
+import { clockLabel, clockMinutes, scheduleTimes } from './schedule.ts';
 import './call-sheet.css';
 import { useIsPhone } from '../../lib/phone.ts';
 import type { BoardStore, Snapshot } from '../store.ts';
@@ -30,6 +45,7 @@ import {
   MapsLink,
   PhoneBar,
   PhoneSheetHead,
+  PhoneTroupe,
   PresenceActions,
   PresencePanel,
   useAttendance,
@@ -75,9 +91,15 @@ export interface CallSheetModalProps {
   /** What the scenes of a day need (decision 0058), and the people who bring it. */
   needed?: (day: ShootingDayInput) => NeededRow[];
   people?: Person[];
+  /**
+   * The project's crew (decision 0092), for project members only: guests never open this sheet
+   * and the client export has no call sheet.
+   */
+  crew?: CrewMember[] | undefined;
   onClose: () => void;
 }
 const sections = [
+  'troupe',
   'schedule',
   'plans',
   'cast',
@@ -119,6 +141,7 @@ export function CallSheetModal({
   needed: neededOf,
   scenes: scenesOf,
   people = [],
+  crew = [],
   onClose,
 }: CallSheetModalProps) {
   const { t } = useTranslation();
@@ -135,6 +158,7 @@ export function CallSheetModal({
   const attendance = useAttendance(boardId, isPhone || !!canManage);
   const [dayId, setDayId] = useState(initialDayId ?? days[0]?.id ?? '');
   const [included, setIncluded] = useState<Record<Section, boolean>>({
+    troupe: true,
     schedule: true,
     cast: true,
     location: true,
@@ -166,10 +190,19 @@ export function CallSheetModal({
   );
   const day = ordered[index];
   const slots = day ? scheduleTimes(day) : [];
-  const calls = day ? castCalls(day) : [];
+  const entries = day ? dayCrew(day, crew, elements) : [];
+  const calls = day ? castRows(day, entries) : [];
+  const troupe = day ? troupeRows(day, entries) : [];
+  const contacts = onSetContacts(entries);
+  const dayCall = day ? clockMinutes(day.callTime) : 0;
   const departments = day ? departmentNotes(day) : [];
   const times = day ? keyTimes(day) : [];
   const locations = day ? locationsOfDay(day, elements) : [];
+  const sun = day ? sunOfDay(day, locations) : null;
+  const sunCell = sun && (sun.sunrise !== null || sun.sunset !== null);
+  const sunClock = (time: number | null) => (time === null ? '—' : clockLabel(time));
+  // Film days name a character per row; a spot names the people themselves.
+  const characters = calls.some((call) => castCharacter(call.name, elements));
   const serve = day ? serveLines(day, elements) : new Map<string, string>();
   const numbered = slots.some(
     ({ block }) =>
@@ -187,6 +220,7 @@ export function CallSheetModal({
   };
   // A section with nothing to print is left out of the sheet and says so in its row.
   const filled: Record<Section, boolean> = {
+    troupe: troupe.length > 0,
     schedule: true,
     cast: calls.length > 0,
     location: locations.length > 0,
@@ -197,7 +231,10 @@ export function CallSheetModal({
   };
   const show = (section: Section) => included[section] && filled[section];
   const shotOf = (shotId: string | null) => (shotId ? shots.get(shotId) : undefined);
-  const personal = day && attendance.data ? personalCall(day, attendance.data.links, userId) : null;
+  // The crew row linked to the account first; the board's cast links stay as the fallback.
+  const personal = day ? personalDayCall(day, entries, attendance.data?.links, userId) : null;
+  // Answering presence still goes through the cast links (decision 0091).
+  const linked = day && attendance.data ? personalCall(day, attendance.data.links, userId) : null;
   const myAnswer = attendance.data?.responses.find(
     (r) => r.dayId === day?.id && r.userId === userId,
   );
@@ -319,11 +356,24 @@ export function CallSheetModal({
                   </div>
                   {logo && <img className="sheet__logo" src={logoUrl(logo)} alt="" />}
                 </header>
-                <dl className="sheet__facts">
+                <dl className={`sheet__facts${contacts.length ? ' sheet__facts--contact' : ''}`}>
                   <Fact label={t('callSheet.day')}>
                     {t('callSheet.dayOf', { n: index + 1, total: ordered.length })}
                   </Fact>
                   <Fact label={t('callSheet.date')}>{longDate(day.date)}</Fact>
+                  {contacts.length > 0 && (
+                    <Fact label={t('callSheet.onSetContact')}>
+                      {contacts.map(({ member }) => (
+                        <span key={member.id} className="sheet__contact">
+                          <strong>{member.name}</strong>
+                          {[member.role.trim(), member.phone.trim()]
+                            .filter(Boolean)
+                            .map((part) => ` · ${part}`)
+                            .join('')}
+                        </span>
+                      ))}
+                    </Fact>
+                  )}
                 </dl>
                 <dl className="sheet__times" aria-label={t('callSheet.times')}>
                   {times.map(({ key, time }) => (
@@ -331,6 +381,22 @@ export function CallSheetModal({
                       {clockLabel(time)}
                     </Fact>
                   ))}
+                  {sun &&
+                    sunCell &&
+                    (isPhone ? (
+                      <>
+                        <Fact label={t('callSheet.sunrise')} strong>
+                          {sunClock(sun.sunrise)}
+                        </Fact>
+                        <Fact label={t('callSheet.sunset')} strong>
+                          {sunClock(sun.sunset)}
+                        </Fact>
+                      </>
+                    ) : (
+                      <Fact label={t('callSheet.sun', { n: sun.location })} strong>
+                        {sunClock(sun.sunrise)} · {sunClock(sun.sunset)}
+                      </Fact>
+                    ))}
                 </dl>
                 {show('location') && (
                   <SheetSection title={t('callSheet.location')}>
@@ -357,6 +423,44 @@ export function CallSheetModal({
                         )}
                       </div>
                     ))}
+                  </SheetSection>
+                )}
+                {show('troupe') && (
+                  <SheetSection title={t('callSheet.troupe')}>
+                    <table className="sheet__table sheet__table--troupe">
+                      <thead>
+                        <tr>
+                          <th scope="col">{t('callSheet.name')}</th>
+                          <th scope="col">{t('troupe.role')}</th>
+                          <th scope="col">{t('callSheet.pickup')}</th>
+                          <th scope="col">{t('callSheet.callShort')}</th>
+                          <th scope="col">{t('troupe.phoneColumn')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {byDepartment(troupe).map(({ department, people: members }) => (
+                          <Fragment key={department}>
+                            <tr className="sheet__group">
+                              <th scope="colgroup" colSpan={5}>
+                                {department || t('troupe.noDepartment')}
+                              </th>
+                            </tr>
+                            {members.map((person) => (
+                              <tr key={person.member.id}>
+                                <td>
+                                  <strong>{person.member.name}</strong>
+                                </td>
+                                <td>{person.member.role}</td>
+                                <td>{person.pickup.trim() || '—'}</td>
+                                <td className="sheet__time">{clockLabel(person.call)}</td>
+                                <td>{person.member.phone.trim() || '—'}</td>
+                              </tr>
+                            ))}
+                          </Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                    {isPhone && <PhoneTroupe entries={troupe} userId={userId} />}
                   </SheetSection>
                 )}
                 {included.schedule && (
@@ -401,6 +505,7 @@ export function CallSheetModal({
                                     {[t(`schedule.types.${block.type}`), block.title]
                                       .filter(Boolean)
                                       .join(' · ')}
+                                    <BlockNote text={block.notes} />
                                   </td>
                                 </tr>
                               );
@@ -438,6 +543,7 @@ export function CallSheetModal({
                                 </td>
                                 <td className="sheet__pre">
                                   {shot?.action || block.title || t(`schedule.types.${block.type}`)}
+                                  <BlockNote text={block.notes} />
                                   {serve.get(block.id) && (
                                     <div className="sheet__muted">
                                       {t('callSheet.serve', { items: serve.get(block.id) })}
@@ -491,25 +597,47 @@ export function CallSheetModal({
                     <table className="sheet__table sheet__table--stack">
                       <thead>
                         <tr>
-                          <th scope="col">{t('callSheet.name')}</th>
+                          <th scope="col">
+                            {t(characters ? 'callSheet.character' : 'callSheet.name')}
+                          </th>
                           <th scope="col">{t('story.character.actor')}</th>
-                          <th scope="col">{t('callSheet.contact')}</th>
+                          <th scope="col">{t('callSheet.pickup')}</th>
+                          <th scope="col">{t('callSheet.callShort')}</th>
                           <th scope="col">{t('callSheet.inScene')}</th>
+                          <th scope="col">{t('callSheet.contact')}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {calls.map((call) => (
-                          <tr key={call.name}>
-                            <td>
-                              <strong>{call.name}</strong>
-                            </td>
-                            <td>{castCharacter(call.name, elements)?.actor}</td>
-                            <td>{castCharacter(call.name, elements)?.contact}</td>
-                            <td className="sheet__time" data-label={t('callSheet.inScene')}>
-                              {clockLabel(call.start)}
-                            </td>
-                          </tr>
-                        ))}
+                        {calls.map(({ name, start, entry }) => {
+                          const card = castCharacter(name, elements);
+                          const actor =
+                            card?.actor ||
+                            (entry && castNameKey(entry.member.name) !== castNameKey(name)
+                              ? entry.member.name
+                              : '');
+                          const pickup = entry?.pickup.trim() ?? '';
+                          return (
+                            <tr key={name}>
+                              <td>
+                                <strong>{name}</strong>
+                              </td>
+                              <td>{actor}</td>
+                              <td
+                                className={pickup ? undefined : 'sheet__cell--none'}
+                                data-label={t('callSheet.pickup')}
+                              >
+                                {pickup || '—'}
+                              </td>
+                              <td className="sheet__time" data-label={t('callSheet.callShort')}>
+                                {clockLabel(entry?.call ?? dayCall)}
+                              </td>
+                              <td className="sheet__time" data-label={t('callSheet.inScene')}>
+                                {clockLabel(start)}
+                              </td>
+                              <td>{card?.contact || entry?.member.phone}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </SheetSection>
@@ -607,7 +735,7 @@ export function CallSheetModal({
             </Button>
           </DialogActions>
         )}
-        {isPhone && day && personal && (
+        {isPhone && day && linked && (
           <PresenceActions
             key={day.id}
             status={myAnswer?.status ?? null}
@@ -673,6 +801,12 @@ function Fact({
       <dd className={strong ? 'sheet__fact-strong' : undefined}>{children}</dd>
     </div>
   );
+}
+
+/** A block's own note, printed as a highlighted line under its description. */
+function BlockNote({ text }: { text?: string | undefined }) {
+  const note = text?.trim();
+  return note ? <div className="sheet__note sheet__pre">{note}</div> : null;
 }
 
 function SheetSection({ title, children }: { title: string; children: ReactNode }) {

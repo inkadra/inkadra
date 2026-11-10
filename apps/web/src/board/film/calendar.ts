@@ -243,10 +243,14 @@ export function placeAnnotation(
   return null;
 }
 
-/** PostgreSQL JSONB may reorder object keys; array order and every contract field still matter. */
+/**
+ * PostgreSQL JSONB may reorder object keys; array order and every contract field still matter.
+ * Missing calls read as none (decision 0092): the server returns `calls: []` to the team for a
+ * day the client created without them.
+ */
 export function sameScheduleInput(a: ShootingDayInput | null, b: ShootingDayInput | null): boolean {
   const canonical = (input: ShootingDayInput | null) =>
-    JSON.stringify(input, (_key, value: unknown) =>
+    JSON.stringify(input && { ...input, calls: input.calls ?? [] }, (_key, value: unknown) =>
       value && typeof value === 'object' && !Array.isArray(value)
         ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
         : value,

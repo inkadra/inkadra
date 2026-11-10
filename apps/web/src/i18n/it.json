@@ -2495,7 +2495,9 @@
     "swapDays": "Scambia",
     "moveDayConfirm": "Sposta",
     "dayMoved": "Giorno spostato da {{from}} a {{to}}.",
-    "daysSwapped": "{{from}} e {{to}} scambiati."
+    "daysSwapped": "{{from}} e {{to}} scambiati.",
+    "blockNotes": "Nota in evidenza",
+    "blockNotesPlaceholder": "Stampata sul foglio, es. LUMINARIE E VETRINE ACCESE"
   },
   "moodboard": {
     "count_one": "{{count}} riferimento",
@@ -2614,7 +2616,19 @@
     "locationNumber": "Loc. {{n}}",
     "serve": "Serve: {{items}}",
     "inScene": "In scena",
-    "contact": "Contatto"
+    "contact": "Contatto",
+    "troupe": "Troupe e contatti",
+    "onSetContact": "Contatto sul set",
+    "onSetContactShort": "contatto sul set",
+    "pickup": "Pick-up",
+    "callShort": "Conv.",
+    "character": "Personaggio",
+    "sun": "Alba · Tramonto (Loc. {{n}})",
+    "sunrise": "Alba",
+    "sunset": "Tramonto",
+    "you": "(tu)",
+    "callPerson": "Chiama {{name}}",
+    "pickupAt": "pick-up {{pickup}}"
   },
   "needed": {
     "title": "Da portare",
@@ -4369,31 +4383,31 @@
         "steps": {
           "0": {
             "title": "Il calendario delle riprese",
-            "text": "Giorno o settimana, come un calendario: i blocchi si accodano da soli."
+            "text": "Giorno o settimana, come un calendario: i blocchi si accodano da soli. Trascina un’inquadratura all’orario giusto, o fai clic per metterla in fondo."
           },
           "1": {
-            "title": "Dalla coda al giorno",
-            "text": "Trascina un’inquadratura all’orario giusto, o fai clic per metterla in fondo."
-          },
-          "2": {
             "title": "Sposta e allunga",
             "text": "Trascina per riordinare, Alt per fissare l’orario, il bordo inferiore per la durata. Su un giorno libero crei il giorno di riprese; Ctrl+Z annulla tutto il gesto."
           },
-          "3": {
+          "2": {
             "title": "Disegna un blocco",
             "text": "Trascina sul vuoto per disegnare un blocco a scatti di 5 minuti, poi scegline il tipo (tasti 1–5). Da tastiera: N aggiunge un blocco dopo quello selezionato."
           },
-          "4": {
+          "3": {
             "title": "Sposta un giorno intero",
             "text": "Trascina l’intestazione su un’altra colonna o su una data del mese: i blocchi la seguono, e se la data è occupata i due giorni si scambiano. Alt+←/→ o «Sposta a un’altra data…» nel giorno."
           },
-          "5": {
+          "4": {
             "title": "Si salva da solo",
             "text": "Ogni modifica si salva; Ctrl+Z annulla, anche tra due giorni."
           },
+          "5": {
+            "title": "Convocazioni",
+            "text": "Nella scheda Convocazioni del giorno scegli chi è convocato e scrivi solo le eccezioni: un altro orario o un pick-up."
+          },
           "6": {
             "title": "Foglio di lavorazione",
-            "text": "Orari principali, location e programma con miniature e Da portare. Scegli le sezioni e stampa per la troupe."
+            "text": "Orari con alba e tramonto, location, troupe con telefoni, programma con note e Da portare. Scegli le sezioni e stampa per la troupe."
           }
         }
       },
@@ -4720,6 +4734,10 @@
           "2": {
             "title": "Incolla da foglio",
             "text": "Controlla l’anteprima prima di aggiungere le persone. Intestazioni e duplicati vengono saltati."
+          },
+          "3": {
+            "title": "Convocazioni e foglio",
+            "text": "Nel Piano riprese, scheda Convocazioni, scegli chi è convocato ogni giorno. Il foglio di lavorazione stampa troupe, telefoni e contatto sul set, mai per ospiti e clienti."
           }
         }
       }
@@ -5340,5 +5358,23 @@
     "pasteFoot": "Chi è già in troupe con lo stesso nome non viene duplicato.",
     "tooMany": "Massimo 500 persone per volta.",
     "noName": "Riga senza nome"
+  },
+  "dayCalls": {
+    "title": "Convocazioni",
+    "times": "Orari del giorno, calcolati dalla scaletta",
+    "hint": "Vuoto = convocazione del giorno. Scrivi solo chi arriva a un'altra ora o con un pick-up.",
+    "unavailable": "Le convocazioni usano la troupe del progetto, visibile solo ai membri del progetto.",
+    "emptyTitle": "Nessuno in troupe",
+    "emptyBody": "Aggiungi le persone nella Troupe: qui scegli chi è convocato ogni giorno.",
+    "openTroupe": "Apri la Troupe",
+    "calledToday": "{{name}} convocato oggi",
+    "callOf": "Convocazione di {{name}}",
+    "pickupOf": "Pick-up di {{name}}",
+    "pickup": "Pick-up",
+    "inScene": "In scena alle {{time}} ({{block}}), dalla scaletta",
+    "inSceneAt": "In scena alle {{time}}, dalla scaletta",
+    "castOnlyScheduled": "solo chi è nella scaletta",
+    "notCalled_one": "Non convocato oggi · {{names}}",
+    "notCalled_other": "Non convocati oggi · {{names}}"
   }
 }

@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api.ts';
 import { openInMapsUrl } from '../maps.ts';
 import { castCalls } from './call-sheet.ts';
+import { byDepartment, type DayCrewEntry, dialNumber } from './day-calls.ts';
 import { clockLabel, whileVisible } from './schedule.ts';
 
 /** Cast links and presence of a board's schedule; nothing is asked of the server when off. */
@@ -125,7 +126,7 @@ export function PhoneSheetHead({
 }: {
   project?: string | undefined;
   date: string;
-  personal: { name: string; start: number } | null;
+  personal: { label: string; start: number; pickup?: string | undefined } | null;
 }) {
   const { t } = useTranslation();
   return (
@@ -136,12 +137,77 @@ export function PhoneSheetHead({
       </div>
       {personal && (
         <div className="sheet__phone-own">
-          <div className="sheet__label">{t('callSheet.yourCall')}</div>
-          <b>
-            {personal.name} · {clockLabel(personal.start)}
-          </b>
+          <div className="sheet__label">
+            {t('callSheet.yourCall')} · {personal.label}
+          </div>
+          <b className="sheet__phone-own-time">{clockLabel(personal.start)}</b>
+          {personal.pickup && (
+            <div className="sheet__muted">
+              {t('callSheet.pickupAt', { pickup: personal.pickup })}
+            </div>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The day's troupe on a phone: one tap calls a person. The viewer's own row says so and has no
+ * button; a phone field without a number has none either.
+ */
+export function PhoneTroupe({
+  entries,
+  userId,
+}: {
+  entries: readonly DayCrewEntry[];
+  userId: string | undefined;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="sheet__phone-troupe">
+      {byDepartment(entries).map(({ department, people }) => (
+        <section key={department} aria-label={department || t('troupe.noDepartment')}>
+          <p className="sheet__label sheet__phone-group" aria-hidden="true">
+            {department || t('troupe.noDepartment')}
+          </p>
+          <ul>
+            {people.map(({ member, call, pickup }) => {
+              const me = !!userId && member.userId === userId;
+              const number = me ? null : dialNumber(member.phone);
+              return (
+                <li key={member.id} className="sheet__phone-person">
+                  <div>
+                    <b>
+                      {member.name}
+                      {me && <span className="sheet__muted"> {t('callSheet.you')}</span>}
+                    </b>
+                    <span className="sheet__muted">
+                      {[
+                        member.role.trim(),
+                        member.onSetContact && t('callSheet.onSetContactShort'),
+                        clockLabel(call),
+                        pickup.trim() && t('callSheet.pickupAt', { pickup: pickup.trim() }),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </div>
+                  {number && (
+                    <a
+                      className="sheet__dial"
+                      href={`tel:${number}`}
+                      aria-label={t('callSheet.callPerson', { name: member.name })}
+                    >
+                      <Icon name="phone" size={18} />
+                    </a>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }

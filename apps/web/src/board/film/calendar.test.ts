@@ -278,4 +278,8 @@ it('compares JSONB drafts independently of object key order, preserving array or
   expect(sameScheduleInput(input, reversed)).toBe(true);
   expect(sameScheduleInput(input, { ...input, blocks: [...input.blocks].reverse() })).toBe(false);
   expect(sameScheduleInput(input, null)).toBe(false);
+  // A day saved by the team comes back with an empty call list (decision 0092).
+  expect(sameScheduleInput(input, { ...input, calls: [] })).toBe(true);
+  const call = { crewMemberId: '00000000-0000-4000-8000-000000000001', call: null, pickup: 'Bar' };
+  expect(sameScheduleInput(input, { ...input, calls: [call] })).toBe(false);
 });
