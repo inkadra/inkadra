@@ -5297,6 +5297,9 @@
     "header": "Header skipped",
     "agent": "Agent line skipped",
     "addPeople_one": "Add {{count}} person",
-    "addPeople_other": "Add {{count}} people"
+    "addPeople_other": "Add {{count}} people",
+    "menu": "Actions for {{name}}",
+    "details": "Open details",
+    "phoneColumn": "Phone"
   }
 }

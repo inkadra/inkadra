@@ -7,11 +7,12 @@ import {
   CrewMemberInput as Input,
 } from '@inkadra/shared';
 import { Avatar, Button, Dialog, DialogActions, EmptyState } from '@inkadra/ui';
-import { useEffect, useId, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import { PeoplePicker } from '../../people/PeoplePicker.tsx';
+import { ContextMenu } from '../chrome.tsx';
 import type { BoardStore } from '../store.ts';
 import { parseCrewPaste } from './crew-paste.ts';
 import { whileVisible } from './schedule.ts';
@@ -59,6 +60,7 @@ export function TroupeView({
   const [error, setError] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
+  const [removeSelected, setRemoveSelected] = useState(false);
   const [query, setQuery] = useState('');
   const [paste, setPaste] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -138,6 +140,8 @@ export function TroupeView({
     <CrewPanel
       key={active.id}
       row={active}
+      requestRemove={removeSelected}
+      onRemoveHandled={() => setRemoveSelected(false)}
       departments={departments}
       readOnly={readOnly}
       base={base}
@@ -191,7 +195,7 @@ export function TroupeView({
             {!!rows.length && !visible.length && <p>{t('troupe.noResults')}</p>}
             {!!visible.length && (
               <div className="troupe__columns" aria-hidden="true">
-                {['name', 'role', 'phone', 'pickup'].map((key) => (
+                {['name', 'role', 'phoneColumn', 'pickup'].map((key) => (
                   <span key={key}>{t(`troupe.${key}`)}</span>
                 ))}
               </div>
@@ -206,25 +210,16 @@ export function TroupeView({
                     </h2>
                     <div className="troupe__rows">
                       {members.map((row) => (
-                        <button
-                          type="button"
+                        <CrewRow
                           key={row.id}
-                          className={`troupe__row${row.id === selected ? ' is-selected' : ''}`}
-                          aria-pressed={row.id === selected}
-                          onClick={() => setSelected(row.id)}
-                        >
-                          <strong>
-                            <Avatar name={row.name} image={row.account?.image} size={22} />
-                            {row.name}
-                          </strong>
-                          <span>
-                            {row.role}
-                            {row.onSetContact && <small> · {t('troupe.onSetContact')}</small>}
-                          </span>
-                          <span>{row.phone || '—'}</span>
-                          <span>{row.pickup || '—'}</span>
-                          <span aria-hidden="true">⋯</span>
-                        </button>
+                          row={row}
+                          selected={row.id === selected}
+                          readOnly={readOnly}
+                          onOpen={(remove = false) => {
+                            setRemoveSelected(remove);
+                            setSelected(row.id);
+                          }}
+                        />
                       ))}
                     </div>
                   </section>
@@ -289,8 +284,82 @@ export function TroupeView({
   );
 }
 
+function CrewRow({
+  row,
+  selected,
+  readOnly,
+  onOpen,
+}: {
+  row: CrewMember;
+  selected: boolean;
+  readOnly: boolean;
+  onOpen: (remove?: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const anchor = useRef<HTMLButtonElement>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  return (
+    <div className={`troupe__row${selected ? ' is-selected' : ''}`}>
+      <button
+        type="button"
+        className="troupe__person"
+        aria-pressed={selected}
+        onClick={() => onOpen()}
+      >
+        <strong>
+          <Avatar name={row.name} image={row.account?.image} size={22} />
+          {row.name}
+        </strong>
+        <span>
+          {row.role}
+          {row.onSetContact && <small> · {t('troupe.onSetContact')}</small>}
+        </span>
+        <span>{row.phone || '—'}</span>
+        <span>{row.pickup || '—'}</span>
+      </button>
+      <button
+        ref={anchor}
+        type="button"
+        className="ink-iconbtn"
+        aria-label={t('troupe.menu', { name: row.name })}
+        aria-haspopup="menu"
+        aria-expanded={!!menu}
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setMenu(menu ? null : { x: rect.left, y: rect.bottom });
+        }}
+      >
+        ⋯
+      </button>
+      {menu && (
+        <ContextMenu
+          anchor={anchor}
+          style={{
+            position: 'fixed',
+            right: Math.max(8, window.innerWidth - menu.x),
+            top: Math.max(8, Math.min(menu.y, window.innerHeight - 120)),
+          }}
+          label={t('troupe.menu', { name: row.name })}
+          onClose={(reason) => {
+            setMenu(null);
+            if (reason === 'escape') anchor.current?.focus();
+          }}
+          items={[
+            { label: t('troupe.details'), action: () => onOpen() },
+            ...(!readOnly
+              ? [{ label: t('troupe.remove'), danger: true, action: () => onOpen(true) }]
+              : []),
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
 function CrewPanel({
   row,
+  requestRemove,
+  onRemoveHandled,
   departments,
   readOnly,
   base,
@@ -299,6 +368,8 @@ function CrewPanel({
   onRemove,
 }: {
   row: CrewMember;
+  requestRemove: boolean;
+  onRemoveHandled: () => void;
   departments: string[];
   readOnly: boolean;
   base: string;
@@ -313,7 +384,13 @@ function CrewPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [conflict, setConflict] = useState<CrewMember | null>(null);
-  const [remove, setRemove] = useState(false);
+  const [remove, setRemove] = useState(requestRemove);
+  useEffect(() => {
+    if (requestRemove) {
+      setRemove(true);
+      onRemoveHandled();
+    }
+  }, [requestRemove, onRemoveHandled]);
   const [accountQuery, setAccountQuery] = useState(row.account?.name ?? '');
   const save = async (input: CrewMemberInput, rev = revision) => {
     setDraft(input);

@@ -159,7 +159,7 @@ describe.skipIf(!url)('private project crew', () => {
     ).toHaveLength(0);
   });
   it('links character cards without copying their actor or contact', async () => {
-    const doc = createBoardDoc();
+    const doc = createBoardDoc(boardId);
     const card = createElement(
       doc,
       'character',

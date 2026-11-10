@@ -51,7 +51,7 @@ it('groups loaded people and saves a field on blur with its revision', async () 
   vi.spyOn(api, 'get').mockResolvedValue({ items: [member], nextCursor: null });
   const save = vi.spyOn(api, 'put').mockResolvedValue({ ...member, role: 'DIT', revision: 2 });
   const host = await mount();
-  await act(async () => (host.querySelector('.troupe__row') as HTMLButtonElement).click());
+  await act(async () => (host.querySelector('.troupe__person') as HTMLButtonElement).click());
   const input = host.querySelector('input[id$="-role"]') as HTMLInputElement;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, 'DIT');
@@ -68,7 +68,7 @@ it('viewers see contacts with disabled fields and no paste or add actions', asyn
   const host = await mount(true);
   expect(button(host, 'troupe.paste')).toBeUndefined();
   expect(button(host, 'troupe.add')).toBeUndefined();
-  await act(async () => (host.querySelector('.troupe__row') as HTMLButtonElement).click());
+  await act(async () => (host.querySelector('.troupe__person') as HTMLButtonElement).click());
   expect(host.querySelector('fieldset')?.disabled).toBe(true);
 });
 it('offers retry after a loading error', async () => {
@@ -95,7 +95,7 @@ it('retains a conflicting draft until the user reloads or explicitly keeps it', 
     .mockRejectedValueOnce(new RequestError(409, 'conflict', 'changed', { current }))
     .mockResolvedValue({ ...member, onSetContact: true, revision: 3 });
   const host = await mount();
-  await act(async () => (host.querySelector('.troupe__row') as HTMLButtonElement).click());
+  await act(async () => (host.querySelector('.troupe__person') as HTMLButtonElement).click());
   await act(async () => (host.querySelector('input[type="checkbox"]') as HTMLInputElement).click());
   expect(host.textContent).toContain('troupe.conflict');
   expect((host.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(true);
@@ -104,4 +104,24 @@ it('retains a conflicting draft until the user reloads or explicitly keeps it', 
     expect.any(String),
     expect.objectContaining({ revision: 2, onSetContact: true }),
   );
+});
+
+it('opens the row menu and confirms removal before deleting', async () => {
+  vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
+    this: HTMLDialogElement,
+  ) {
+    this.open = true;
+  });
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [member], nextCursor: null });
+  const remove = vi.spyOn(api, 'delete').mockResolvedValue(null);
+  const host = await mount();
+  await act(async () =>
+    (host.querySelector('[aria-haspopup="menu"]') as HTMLButtonElement).click(),
+  );
+  await act(async () => button(host, 'troupe.remove').click());
+  expect(remove).not.toHaveBeenCalled();
+  const dialog = host.querySelector('dialog');
+  expect(dialog?.open).toBe(true);
+  await act(async () => button(dialog!, 'troupe.remove').click());
+  expect(remove).toHaveBeenCalledWith(expect.stringContaining(member.id), { revision: 1 });
 });

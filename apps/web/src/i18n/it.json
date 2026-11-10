@@ -5297,6 +5297,9 @@
     "header": "Intestazione saltata",
     "agent": "Riga agente saltata",
     "addPeople_one": "Aggiungi {{count}} persona",
-    "addPeople_other": "Aggiungi {{count}} persone"
+    "addPeople_other": "Aggiungi {{count}} persone",
+    "menu": "Azioni per {{name}}",
+    "details": "Apri dettagli",
+    "phoneColumn": "Telefono"
   }
 }
