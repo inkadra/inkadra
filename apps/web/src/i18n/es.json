@@ -4737,7 +4737,7 @@
           },
           "2": {
             "title": "Pegar desde una lista",
-            "text": "Revisa la vista previa antes de añadir personas. Se omiten encabezados y duplicados."
+            "text": "Abre «Pegar desde lista» en la barra de Equipo. Revisa la vista previa antes de añadir personas. Se omiten encabezados y duplicados."
           },
           "3": {
             "title": "Citaciones y hoja",
@@ -5303,7 +5303,7 @@
     "error": "No se pudo cargar ni guardar el equipo.",
     "retry": "Reintentar",
     "empty": "Aún no hay nadie en el equipo.",
-    "emptyHint": "Pega una lista de una orden de rodaje antigua…",
+    "emptyHint": "Usa «Pegar desde lista» para importar personas de una hoja de rodaje anterior.",
     "noResults": "No se encontraron personas.",
     "noDepartment": "Sin departamento",
     "name": "Nombre",

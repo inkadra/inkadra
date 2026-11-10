@@ -41,7 +41,14 @@ describe('tokens', () => {
         expect(ratio(theme[name], theme[`${name}-bg`])).toBeGreaterThanOrEqual(3);
       }
     }
-    expect(ratio(dark['on-accent'], dark['accent-button'])).toBeGreaterThan(4.5);
+    for (const theme of [light, dark]) {
+      expect(ratio(theme['on-accent'], theme['accent-button'])).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(theme['on-accent'], theme['accent-button-hover'])).toBeGreaterThanOrEqual(4.5);
+    }
+    for (const background of ['bg-app', 'bg-panel', 'surface-1'] as const) {
+      expect(ratio(light['text-muted'], light[background])).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(light['accent-primary'], light[background])).toBeGreaterThanOrEqual(4.5);
+    }
     expect(ratio(dark['on-accent'], dark['positive-button'])).toBeGreaterThan(4.5);
     expect(ratio(light['on-accent'], light['positive-button'])).toBeGreaterThan(4.5);
     expect(ratio(dark['text-muted'], dark['bg-app'])).toBeGreaterThan(4.5);

@@ -4737,7 +4737,7 @@
           },
           "2": {
             "title": "Cole de uma lista",
-            "text": "Reveja a pré-visualização antes de adicionar pessoas. Cabeçalhos e duplicados são ignorados."
+            "text": "Abre «Colar de uma lista» na barra da Equipa. Reveja a pré-visualização antes de adicionar pessoas. Cabeçalhos e duplicados são ignorados."
           },
           "3": {
             "title": "Convocatórias e folha",
@@ -5303,7 +5303,7 @@
     "error": "Não foi possível carregar ou guardar a equipa.",
     "retry": "Tentar novamente",
     "empty": "Ainda não há ninguém na equipa.",
-    "emptyHint": "Cole uma lista de uma ordem do dia antiga…",
+    "emptyHint": "Usa «Colar de uma lista» para importar pessoas de uma folha de serviço anterior.",
     "noResults": "Nenhuma pessoa encontrada.",
     "noDepartment": "Sem departamento",
     "name": "Nome",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { projectLanding } from './project-landing.ts';
+import { missingOwnedBoard, projectLanding } from './project-landing.ts';
 
 const projects = [{ id: 'p1', rootBoardId: 'root1' }];
 const shared = [
@@ -25,4 +25,14 @@ describe('projectLanding', () => {
   it('waits for the projects first', () => {
     expect(projectLanding('p1', null, shared)).toEqual({ kind: 'loading' });
   });
+});
+
+it('only reports missing boards from a successfully loaded owner list', () => {
+  expect(missingOwnedBoard('owner', [{ id: 'b1' }], false, 'missing')).toBe(true);
+  expect(missingOwnedBoard('owner', [{ id: 'b1' }], false, 'b1')).toBe(false);
+  for (const role of [null, 'viewer', 'editor', 'commenter']) {
+    expect(missingOwnedBoard(role, [], false, 'missing')).toBe(false);
+  }
+  expect(missingOwnedBoard('owner', null, false, 'missing')).toBe(false);
+  expect(missingOwnedBoard('owner', [], true, 'missing')).toBe(false);
 });

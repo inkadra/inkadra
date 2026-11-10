@@ -76,10 +76,16 @@
   .ink-header:has(.mobile-back) .ink-header__crumbs {
     padding-left: 4px;
   }
+  .ink-header:has(.mobile-view-picker) button.crumb {
+    min-height: 24px;
+    min-width: 44px;
+    box-sizing: border-box;
+    padding: 4px 0 0;
+  }
   .ink-header:has(.mobile-view-picker) .ink-header__crumbs {
     grid-column: 2;
     align-self: start;
-    padding: 6px 8px 0 4px;
+    padding: 0 8px 0 4px;
     font-size: 12px;
     line-height: 16px;
     color: var(--ink-text-secondary);
@@ -137,15 +143,14 @@
   .mobile-view-picker > svg {
     flex: none;
   }
-  /* Quiet, like a title: the 44 px target reaches up under the board name. */
+  /* Keep the visible title in place; its target starts below the 24 px board name. */
   .mobile-view-picker .mobile-view-switcher {
     flex: 0 1 auto;
     width: auto;
     min-width: 0;
     max-width: 100%;
     height: 32px;
-    margin-top: -12px;
-    padding: 12px 4px 0;
+    padding: 0 4px;
     box-sizing: content-box;
     border: 0;
     border-radius: var(--ink-radius-sm);

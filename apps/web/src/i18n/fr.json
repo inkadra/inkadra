@@ -4737,7 +4737,7 @@
           },
           "2": {
             "title": "Coller depuis une liste",
-            "text": "Vérifiez l’aperçu avant d’ajouter des personnes. Les en-têtes et les doublons sont ignorés."
+            "text": "Ouvrez « Coller depuis une liste » dans la barre Équipe. Vérifiez l’aperçu avant d’ajouter des personnes. Les en-têtes et les doublons sont ignorés."
           },
           "3": {
             "title": "Convocations et feuille de service",
@@ -5303,7 +5303,7 @@
     "error": "Impossible de charger ou d’enregistrer l’équipe.",
     "retry": "Réessayer",
     "empty": "Personne dans l’équipe pour l’instant.",
-    "emptyHint": "Collez une liste depuis une ancienne feuille de service…",
+    "emptyHint": "Utilisez « Coller depuis une liste » pour importer des personnes depuis une ancienne feuille de service.",
     "noResults": "Aucune personne trouvée.",
     "noDepartment": "Sans département",
     "name": "Nom",

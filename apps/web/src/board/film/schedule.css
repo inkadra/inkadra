@@ -704,7 +704,7 @@
   white-space: nowrap;
 }
 .schedule--day .schedule__block-title {
-  white-space: normal;
+  white-space: nowrap;
 }
 .schedule__block.is-short .schedule__block-title {
   white-space: nowrap;

@@ -4737,7 +4737,7 @@
           },
           "2": {
             "title": "Aus einer Liste einfügen",
-            "text": "Prüf die Vorschau, bevor du Leute hinzufügst. Kopfzeilen und Doppelte werden übersprungen."
+            "text": "Öffne „Aus Liste einfügen“ in der Team-Leiste. Prüf die Vorschau, bevor du Leute hinzufügst. Kopfzeilen und Doppelte werden übersprungen."
           },
           "3": {
             "title": "Treffzeiten und Dispo",
@@ -5303,7 +5303,7 @@
     "error": "Das Team konnte nicht geladen oder gespeichert werden.",
     "retry": "Noch mal versuchen",
     "empty": "Noch niemand im Team.",
-    "emptyHint": "Füg eine Liste aus einer alten Dispo ein…",
+    "emptyHint": "Mit „Aus Liste einfügen“ importierst du Personen aus einer alten Tagesdisposition.",
     "noResults": "Keine Personen gefunden.",
     "noDepartment": "Ohne Abteilung",
     "name": "Name",
