@@ -259,9 +259,13 @@ test('keys typed while the new note is not focused still land in it', async ({ p
   await page.getByTestId('canvas').dblclick({ position: { x: 900, y: 120 } });
   const editor = page.locator('[data-type="note"] [contenteditable="true"]');
   await expect(editor).toBeFocused();
-  // The gap between creating the note and its editor taking focus, made deterministic.
+  // The gap between creating the note and its editor taking focus, made deterministic: the
+  // letters and then the space each arrive while the editor does not have focus.
   await editor.evaluate((el) => (el as HTMLElement).blur());
-  await page.keyboard.type('Casting comparse');
+  await page.keyboard.type('Casting');
+  await expect(editor).toBeFocused();
+  await editor.evaluate((el) => (el as HTMLElement).blur());
+  await page.keyboard.type(' comparse');
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-type="note"]', { hasText: 'Casting comparse' })).toHaveText(
     'Casting comparse',
