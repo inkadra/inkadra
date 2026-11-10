@@ -500,8 +500,10 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   expect(bookPdf.pages[1]).toContain('Bozza');
   // The call sheet of the shooting day closes the book.
   expect(bookPdf.pages[2]).toContain('Ordine del giorno');
-  expect(bookPdf.pages[2]).toContain('Station platform 4');
-  expect(bookPdf.pages[2]).toContain('1A · Train arrives');
+  expect(bookPdf.pages[2]).toContain('Station');
+  expect(bookPdf.pages[2]).not.toContain('Station platform 4');
+  expect(bookPdf.pages[2]).toContain('1A');
+  expect(bookPdf.pages[2]).toContain('Frame action 1');
   expect(bookPdf.pages[2]).toContain('dolly track');
   expect(bookPdf.pages.join(' ')).not.toContain('Shared with the client');
 
