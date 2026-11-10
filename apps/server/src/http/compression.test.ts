@@ -15,6 +15,9 @@ it('negotiates gzip for JSON and static text, preserving downloads and streams',
   app.get('/api/v1/download', (_, reply) =>
     reply.type('application/json').send(Readable.from(body)),
   );
+  app.get('/api/v1/varied', (_, reply) =>
+    reply.header('vary', 'Origin, Accept-Encoding').send({ body }),
+  );
   app.get('/assets/image.png', (_, reply) => reply.type('image/png').send(body));
   try {
     for (const path of ['/api/v1/test', '/assets/app.js']) {
@@ -31,6 +34,13 @@ it('negotiates gzip for JSON and static text, preserving downloads and streams',
         ).toBeUndefined();
       }
     }
+    // A coding in capitals is still gzip, and a route that already varies on it is not doubled.
+    const loud = await app.inject({
+      url: '/api/v1/varied',
+      headers: { 'accept-encoding': 'GZIP' },
+    });
+    expect(loud.headers['content-encoding']).toBe('gzip');
+    expect(loud.headers.vary).toBe('Origin, Accept-Encoding');
     for (const url of ['/api/v1/download', '/assets/image.png']) {
       expect(
         (await app.inject({ url, headers: { 'accept-encoding': 'gzip' } })).headers[

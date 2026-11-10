@@ -30,11 +30,13 @@ export function registerCompression(app: FastifyInstance) {
     )
       return payload;
     const vary = String(reply.getHeader('vary') ?? '');
-    reply.header('vary', vary ? `${vary}, Accept-Encoding` : 'Accept-Encoding');
+    if (!/\baccept-encoding\b/i.test(vary))
+      reply.header('vary', vary ? `${vary}, Accept-Encoding` : 'Accept-Encoding');
     const encodings = (req.headers['accept-encoding'] ?? '').split(',').map((entry) => {
       const [name, ...parameters] = entry.trim().split(';');
       const quality = parameters.find((p) => p.trim().startsWith('q='));
-      return { name: name?.trim(), q: quality ? Number(quality.trim().slice(2)) : 1 };
+      // Content codings are case-insensitive.
+      return { name: name?.trim().toLowerCase(), q: quality ? Number(quality.trim().slice(2)) : 1 };
     });
     const accepted =
       encodings.find((e) => e.name === 'gzip') ?? encodings.find((e) => e.name === '*');

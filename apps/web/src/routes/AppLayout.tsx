@@ -397,6 +397,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       : t(pathname === '/projects' ? 'nav.projects' : 'nav.home');
   useEffect(() => {
     document.title = [pageTitle, instance?.name ?? 'Inkadra'].filter(Boolean).join(' · ');
+    // Signed out, the tab must not keep the name of a project or a board.
+    return () => {
+      document.title = instance?.name ?? 'Inkadra';
+    };
   }, [pageTitle, instance?.name]);
 
   if (!user)
