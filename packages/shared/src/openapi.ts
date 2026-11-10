@@ -62,6 +62,7 @@ import {
   CrewCharacters,
   CrewMember,
   CrewMemberInput,
+  MergeCrewMember,
   UpdateCrewMember,
 } from './crew.ts';
 import { CreateDemoSandbox, DemoSandbox } from './demo.ts';
@@ -427,6 +428,21 @@ registry.registerPath({
   responses: {
     204: { description: 'Removed' },
     409: { description: 'Stale revision.', ...json(ApiError) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  security: secured,
+  tags: ['Crew'],
+  method: 'post',
+  path: `${crewPath}/{memberId}/merge`,
+  summary: 'Merge another crew member into this one',
+  description:
+    'Fills the blanks of this row from the other, keeps either link, moves the other row’s day calls here and removes it, in one transaction. Rows linked to different accounts or characters cannot be merged (400).',
+  request: { params: z.object({ projectId: Id, memberId: Id }), body: json(MergeCrewMember) },
+  responses: {
+    200: { description: 'Merged', ...json(CrewMember) },
+    409: { description: 'Stale revision of either row.', ...json(ApiError) },
     ...errors,
   },
 });

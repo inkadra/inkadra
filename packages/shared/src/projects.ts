@@ -109,7 +109,9 @@ export const UpdateProject = z
     position: FractionalIndex,
     archived: z.boolean(),
     type: ProjectType.nullable(),
-    timeZone: ProjectTimeZone.optional(),
+    timeZone: ProjectTimeZone.nullable().openapi({
+      description: 'IANA time zone; null clears it (clients then use the device zone).',
+    }),
     shootingStart: ShootingDate.nullable(),
     shootingEnd: ShootingDate.nullable(),
   })
