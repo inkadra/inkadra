@@ -366,10 +366,12 @@ export function CallSheetModal({
                       {contacts.map(({ member }) => (
                         <span key={member.id} className="sheet__contact">
                           <strong>{member.name}</strong>
-                          {[member.role.trim(), member.phone.trim()]
-                            .filter(Boolean)
-                            .map((part) => ` · ${part}`)
-                            .join('')}
+                          {[member.role.trim(), member.phone.trim()].filter(Boolean).map((part) => (
+                            <Fragment key={part}>
+                              {' · '}
+                              <span className="sheet__nowrap">{part}</span>
+                            </Fragment>
+                          ))}
                         </span>
                       ))}
                     </Fact>
@@ -393,7 +395,7 @@ export function CallSheetModal({
                         </Fact>
                       </>
                     ) : (
-                      <Fact label={t('callSheet.sun', { n: sun.location })} strong>
+                      <Fact label={t('callSheet.sun', { n: sun.location })} strong wide>
                         {sunClock(sun.sunrise)} · {sunClock(sun.sunset)}
                       </Fact>
                     ))}
@@ -789,14 +791,17 @@ function ToggleRow({
 function Fact({
   label,
   strong,
+  wide,
   children,
 }: {
   label: string;
   strong?: boolean;
+  /** Two columns of the key times, so "07:21 · 16:44" stays on one line. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="sheet__fact">
+    <div className={`sheet__fact${wide ? ' sheet__fact--wide' : ''}`}>
       <dt>{label}</dt>
       <dd className={strong ? 'sheet__fact-strong' : undefined}>{children}</dd>
     </div>

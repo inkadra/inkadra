@@ -826,6 +826,12 @@
 .sheet__contact {
   display: block;
 }
+.sheet__nowrap {
+  white-space: nowrap;
+}
+.sheet__fact--wide {
+  grid-column: span 2;
+}
 .sheet__group th {
   padding: 3px 8px;
   border-bottom: 0;
