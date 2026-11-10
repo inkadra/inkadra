@@ -298,7 +298,9 @@ describe('on a phone', () => {
     expect(button(host, 'callSheet.confirm')).toBeUndefined();
     expect(button(host, 'callSheet.decline')).toBeUndefined();
     expect(host.textContent).not.toContain('callSheet.yourCall');
-    expect(host.textContent).toContain('callSheet.general');
+    // The day's times are said once, in the key-times row, not again above it.
+    expect(host.querySelector('.sheet__phone-head')?.textContent).not.toMatch(/\d:\d\d/);
+    expect(host.querySelector('.sheet__times dt')?.textContent).toBe('callSheet.call');
     expect(host.querySelector('.call-sheet__presence')).toBeNull();
   });
   it('lets a linked person answer, and sends only the status', async () => {
@@ -307,7 +309,7 @@ describe('on a phone', () => {
       { dayId: 'day-1', userId: 'me', status: 'confirmed' },
     );
     const host = await mountPhone();
-    expect(host.querySelector('.sheet__phone-own')?.textContent).toContain('Bob');
+    expect(host.querySelector('.sheet__phone-own')?.textContent).toMatch(/Bob · \d+:\d\d/);
     await act(async () => button(host, 'callSheet.confirm')?.click());
     const put = fetch.mock.calls.find(([, init]) => init?.method === 'PUT');
     expect(put?.[0]).toContain(answerPath);

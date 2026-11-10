@@ -126,7 +126,7 @@ describe('ExportDialog options', () => {
     expect(paper()).toBe('a4');
     expect(checkOf('Copertina')?.checked).toBe(true);
     expect(checkOf('Solo inquadrature approvate')?.checked).toBe(false);
-    expect(checkOf('Ordine del giorno')?.disabled).toBe(true);
+    expect(checkOf('Foglio di lavorazione')?.disabled).toBe(true);
 
     // Every option is a direct choice.
     await act(async () => checkOf('Solo inquadrature approvate')?.click());
@@ -135,9 +135,9 @@ describe('ExportDialog options', () => {
       .find((el) => el.textContent?.trim() === 'Il team')
       ?.querySelector<HTMLInputElement>('input');
     await act(async () => team?.click());
-    expect(checkOf('Ordine del giorno')?.disabled).toBe(false);
-    await act(async () => checkOf('Ordine del giorno')?.click());
-    expect(checkOf('Ordine del giorno')?.checked).toBe(true);
+    expect(checkOf('Foglio di lavorazione')?.disabled).toBe(false);
+    await act(async () => checkOf('Foglio di lavorazione')?.click());
+    expect(checkOf('Foglio di lavorazione')?.checked).toBe(true);
   });
 
   it('waits for settings and starts from the options the project remembers', async () => {
@@ -163,7 +163,7 @@ describe('ExportDialog options', () => {
     );
     expect(paper()).toBe('slide');
     expect(checkOf('Solo inquadrature approvate')?.checked).toBe(true);
-    expect(checkOf('Ordine del giorno')?.checked).toBe(true);
+    expect(checkOf('Foglio di lavorazione')?.checked).toBe(true);
     expect(host.querySelector<HTMLButtonElement>('.export__submit')?.disabled).toBe(false);
   });
 

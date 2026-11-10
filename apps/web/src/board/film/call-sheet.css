@@ -428,11 +428,6 @@
     min-width: 0;
     overflow-wrap: anywhere;
   }
-  .sheet__phone-line > :first-child:has(.sheet__phone-call) {
-    flex: 1 1 auto;
-    min-width: 40%;
-    overflow-wrap: normal;
-  }
   .sheet__phone-date {
     flex: none;
     font-size: 12px;
@@ -441,19 +436,14 @@
   .sheet__phone-date::first-letter {
     text-transform: uppercase;
   }
-  .sheet__phone-call {
-    display: block;
-    font-size: 28px;
-    font-weight: 600;
-    line-height: 1.1;
-    font-variant-numeric: tabular-nums;
-  }
-  .sheet__phone-line .sheet__muted {
-    font-size: 12px;
+  .sheet__phone-head {
+    margin-bottom: 4px;
   }
   .sheet__phone-own {
-    flex: 0 1 auto;
-    max-width: 60%;
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 6px;
+    overflow-wrap: anywhere;
     padding: 6px 10px;
     border: 1.5px solid var(--ink-text-primary);
     border-radius: var(--ink-radius-sm);
@@ -666,8 +656,19 @@
   .sheet__thumbnail {
     width: 44px;
   }
+  /* Two even columns, every cell on the same left edge: the labels never break mid-word. */
   .sheet__times {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sheet__times .sheet__fact {
+    padding: 8px 0;
+    border-left: 0;
+  }
+  .sheet__times .sheet__fact:nth-child(even) {
+    padding-left: 12px;
+  }
+  .sheet__times .sheet__fact:nth-child(n + 3) {
+    border-top: 1px solid var(--ink-border-default);
   }
 }
 
@@ -708,7 +709,7 @@
   }
   .sheet__table--schedule tr {
     display: grid;
-    grid-template-columns: 60px 44px minmax(0, 1fr);
+    grid-template-columns: 60px 56px minmax(0, 1fr);
     padding-block: 6px;
     border-bottom: 1px solid var(--ink-border-default);
     font-size: 12px;
@@ -717,6 +718,58 @@
     display: block;
     border: 0;
     min-width: 0;
+  }
+  /* Cast and "Da portare" as stacked items, as the schedule: the name first, the rest muted. */
+  .sheet__table--stack,
+  .sheet__table--stack tbody {
+    display: block;
+  }
+  .sheet__table--stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .sheet__table--stack tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+    padding-block: 8px;
+    border-bottom: 1px solid var(--ink-border-default);
+  }
+  .sheet__table--needed tr {
+    grid-template-columns: 20px minmax(0, 1fr);
+  }
+  .sheet__table--stack td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    font-size: 12px;
+    color: var(--ink-text-secondary);
+  }
+  .sheet__table--stack td:empty {
+    display: none;
+  }
+  .sheet__table--stack td[data-label]::before {
+    content: attr(data-label) " ";
+  }
+  .sheet__table--stack td:first-child,
+  .sheet__table--needed td:nth-child(2) {
+    font-size: 13px;
+    color: var(--ink-text-primary);
+  }
+  .sheet__table--needed td:first-child {
+    grid-row: 1 / span 4;
+  }
+  .sheet__table--needed td:not(:first-child) {
+    grid-column: 2;
+  }
+  /* Words wrap whole on the phone; only a word longer than the line is cut. */
+  .sheet__table--schedule td,
+  .sheet__table--stack td {
+    overflow-wrap: break-word;
   }
   .sheet__table--schedule .sheet__time {
     grid-column: 1;

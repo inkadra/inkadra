@@ -64,10 +64,10 @@ describe('call sheet pages', () => {
     ]);
     expect(location?.rows).toEqual([['callSheet.locationNumber{"n":1}', 'Rifugio']]);
     expect(schedule?.rows.slice(1)).toEqual([
-      ['07:00 – 07:30', '', 'schedule.types.setup', ''],
+      ['07:00 – 07:30', 'schedule.types.setup'],
       ['07:30 – 08:30', '1A', 'Arrivo', 'Marta'],
-      ['08:30', 'callSheet.cameraWrap', '', ''],
-      ['19:00', 'callSheet.crewWrap', '', ''],
+      ['08:30', 'callSheet.cameraWrap'],
+      ['19:00', 'callSheet.crewWrap'],
     ]);
     expect(cast?.rows.at(-1)).toEqual(['Marta', '', '', '07:30']);
     expect(departments?.rows).toEqual([['Camera', 'dolly']]);
@@ -135,4 +135,65 @@ it('adds a clickable map annotation to its PDF page and skips pages without maps
   );
   const result = await PDFDocument.load(await linkCallSheetPdf(bytes, pages));
   expect(result.getPage(0).node.Annots()?.size()).toBe(1);
+});
+
+describe('call sheet layout', () => {
+  const ctx = {
+    colors: light,
+    measure: (text: string, size: number) => text.length * size * 0.5,
+    image: () => undefined,
+  } as unknown as CardContext;
+  const setup = { paper: 'a4', orientation: 'portrait' } as const;
+  const shot = (i: number) => ({
+    id: `block-${i}`,
+    type: 'shot' as const,
+    title: `Shot ${i}`,
+    duration: 10,
+    start: null,
+    cast: [],
+    departments: [],
+    shotId: null,
+  });
+
+  it('prints the closing times across the table on the neutral band of the sheet', () => {
+    const wrapLabel = 'Camera wrap, the last shot of the day';
+    const long = ((key: string, vars?: Record<string, unknown>) =>
+      key === 'callSheet.cameraWrap' ? wrapLabel : t(key, vars)) as unknown as TFunction;
+    const sections = callSheetSections(day('2026-11-19', { blocks: [shot(0)] }), () => 'A', long);
+    const [page] = callSheetPages(setup, 'Call sheet', sections, ctx);
+    const texts = (page?.ops ?? []).flatMap((op) => (op.kind === 'text' ? [op] : []));
+    // One line right after the time: the narrow shot column no longer wraps it.
+    const label = texts.find((op) => op.text === wrapLabel);
+    expect(label?.x).toBe(texts.find((op) => op.text === 'callSheet.shot')?.x);
+    const bands = (page?.ops ?? []).filter(
+      (op) => op.kind === 'rect' && op.fill === light['surface-2'],
+    );
+    expect(bands).toHaveLength(2);
+    expect(bands.every((op) => op.kind === 'rect' && op.w > 400)).toBe(true);
+  });
+
+  it('never leaves a section title alone at the bottom of a page', () => {
+    for (let count = 30; count < 60; count++) {
+      const sections = callSheetSections(
+        day('2026-11-19', {
+          notes: 'Accesso dal lato est.',
+          blocks: Array.from({ length: count }, (_, i) => shot(i)),
+        }),
+        () => 'A',
+        t,
+      );
+      const pages = callSheetPages(setup, 'Call sheet', sections, ctx);
+      for (const page of pages) {
+        const texts = page.ops.filter((op) => op.kind === 'text');
+        const last = texts.at(-1);
+        expect(last && 'text' in last && sections.some((s) => s.title === last.text)).toBe(false);
+      }
+      const notesPage = pages.find((page) =>
+        page.ops.some((op) => op.kind === 'text' && op.text === 'callSheet.notes'),
+      );
+      expect(
+        notesPage?.ops.some((op) => op.kind === 'text' && op.text === 'Accesso dal lato est.'),
+      ).toBe(true);
+    }
+  });
 });

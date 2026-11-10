@@ -691,11 +691,12 @@ export function sectionPages(
   const box = contentBox(width, height);
   const c = ctx.colors;
   const m = ctx.measure;
-  type Block = { h: number; draw: (top: number) => Op[] };
+  type Block = { h: number; keep?: boolean; draw: (top: number) => Op[] };
   const blocks: Block[] = [];
   for (const section of sections) {
     blocks.push({
       h: 28,
+      keep: true,
       draw: (top) => [
         {
           kind: 'line',
@@ -755,6 +756,7 @@ export function sectionPages(
   const pages = paginateRows(
     blocks.map((b) => b.h),
     box.h - head,
+    blocks.map((b) => !!b.keep),
   );
   return pages.map((indexes, n) => {
     const page: Page = { width, height, ops: [] };

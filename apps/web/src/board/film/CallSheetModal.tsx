@@ -17,7 +17,6 @@ import {
   keyTimes,
   locationsOfDay,
   personalCall,
-  plannedWrap,
   serveLines,
   sheetShot,
 } from './call-sheet.ts';
@@ -25,7 +24,6 @@ import { FramePicture } from './FramePicture.tsx';
 import type { NeededRow } from './needed.ts';
 import { clockLabel, scheduleTimes } from './schedule.ts';
 import './call-sheet.css';
-import { formatClock } from '../../lib/datetime.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import type { BoardStore, Snapshot } from '../store.ts';
 import {
@@ -170,7 +168,6 @@ export function CallSheetModal({
   const slots = day ? scheduleTimes(day) : [];
   const calls = day ? castCalls(day) : [];
   const departments = day ? departmentNotes(day) : [];
-  const wrap = day ? plannedWrap(day) : null;
   const times = day ? keyTimes(day) : [];
   const locations = day ? locationsOfDay(day, elements) : [];
   const serve = day ? serveLines(day, elements) : new Map<string, string>();
@@ -312,8 +309,6 @@ export function CallSheetModal({
                   <PhoneSheetHead
                     project={projectName}
                     date={phoneDate(day.date)}
-                    call={formatClock(day.callTime)}
-                    wrap={wrap === null ? '—' : clockLabel(wrap)}
                     personal={personal}
                   />
                 )}
@@ -493,7 +488,7 @@ export function CallSheetModal({
                 )}
                 {show('cast') && (
                   <SheetSection title={t('callSheet.cast')}>
-                    <table className="sheet__table">
+                    <table className="sheet__table sheet__table--stack">
                       <thead>
                         <tr>
                           <th scope="col">{t('callSheet.name')}</th>
@@ -510,7 +505,9 @@ export function CallSheetModal({
                             </td>
                             <td>{castCharacter(call.name, elements)?.actor}</td>
                             <td>{castCharacter(call.name, elements)?.contact}</td>
-                            <td className="sheet__time">{clockLabel(call.start)}</td>
+                            <td className="sheet__time" data-label={t('callSheet.inScene')}>
+                              {clockLabel(call.start)}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -543,7 +540,7 @@ export function CallSheetModal({
                 )}
                 {show('needed') && (
                   <SheetSection title={t('callSheet.needed')}>
-                    <table className="sheet__table">
+                    <table className="sheet__table sheet__table--stack sheet__table--needed">
                       <thead>
                         <tr>
                           <th scope="col">
@@ -567,8 +564,11 @@ export function CallSheetModal({
                               {row.count > 1 && ` ×${row.count}`}
                             </td>
                             <td>{t(`board.todo.lists.${row.list}`)}</td>
-                            <td>{row.scenes.join(', ')}</td>
-                            <td className={row.assigneeId ? undefined : 'sheet__muted'}>
+                            <td data-label={t('callSheet.scenes')}>{row.scenes.join(', ')}</td>
+                            <td
+                              className={row.assigneeId ? undefined : 'sheet__muted'}
+                              data-label={t('callSheet.bringer')}
+                            >
                               {bringer(row) || '—'}
                             </td>
                           </tr>

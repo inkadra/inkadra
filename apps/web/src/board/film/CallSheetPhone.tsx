@@ -114,18 +114,17 @@ export function PhoneBar({
   );
 }
 
-/** Top of the paper: project and date, the general call and, for a linked person, their own. */
+/**
+ * Top of the paper: project and date and, for a linked person, their own call. The day's times
+ * follow in the key-times row.
+ */
 export function PhoneSheetHead({
   project,
   date,
-  call,
-  wrap,
   personal,
 }: {
   project?: string | undefined;
   date: string;
-  call: string;
-  wrap: string;
   personal: { name: string; start: number } | null;
 }) {
   const { t } = useTranslation();
@@ -135,23 +134,14 @@ export function PhoneSheetHead({
         <span className="sheet__label">{project}</span>
         <b className="sheet__phone-date">{date}</b>
       </div>
-      <div className="sheet__phone-line">
-        <div>
-          <div className="sheet__label">{t('callSheet.general')}</div>
-          <b className="sheet__phone-call">{call}</b>
-          <div className="sheet__muted">
-            {t('callSheet.wrap')} {wrap}
-          </div>
+      {personal && (
+        <div className="sheet__phone-own">
+          <div className="sheet__label">{t('callSheet.yourCall')}</div>
+          <b>
+            {personal.name} · {clockLabel(personal.start)}
+          </b>
         </div>
-        {personal && (
-          <div className="sheet__phone-own">
-            <div className="sheet__label">{t('callSheet.yourCall')}</div>
-            <b>
-              {personal.name} · {clockLabel(personal.start)}
-            </b>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

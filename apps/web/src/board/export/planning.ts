@@ -63,6 +63,7 @@ export function callSheetSections(
   const slots = scheduleTimes(day);
   const info: CallSheetSection = {
     title: t('callSheet.times'),
+    header: true,
     columns: times.map(() => 1),
     rows: [
       times.map(({ key }) => t(`callSheet.${key}`)),
@@ -82,8 +83,12 @@ export function callSheetSections(
     ]),
   };
   location.links = locations.map((loc) => loc.mapUrl);
+  // Breaks, moves, set-ups and the closing times read across the table after their time.
+  const aside = (block: { type: string; shotId: string | null }) =>
+    block.type !== 'shot' && !block.shotId;
   const schedule: CallSheetSection = {
     title: t('callSheet.schedule'),
+    header: true,
     columns: [1.5, ...(numbered ? [1] : []), 1.3, 3, 1.5, ...(locations.length > 1 ? [1] : [])],
     rows: [
       [
@@ -95,19 +100,23 @@ export function callSheetSections(
         ...(locations.length > 1 ? [t('callSheet.place')] : []),
       ],
       ...slots.map(({ block, start, end }) => {
+        const time = `${clockLabel(start)} – ${clockLabel(end)}`;
+        if (aside(block))
+          return [
+            time,
+            [t(`schedule.types.${block.type}`), block.title.trim()].filter(Boolean).join(' · '),
+          ];
         const { frame, scene } = sheetShot(block.shotId, elements);
         const loc = locations.findIndex(
           (loc) =>
             loc.name.trim().toLocaleLowerCase() === scene?.location?.trim().toLocaleLowerCase(),
         );
         return [
-          `${clockLabel(start)} – ${clockLabel(end)}`,
+          time,
           ...(numbered ? [scene?.number ?? ''] : []),
           block.shotId ? (shotLabel(block.shotId) ?? t('schedule.missingShot')) : '',
           [
-            block.type !== 'shot' && !block.shotId
-              ? [t(`schedule.types.${block.type}`), block.title.trim()].filter(Boolean).join(' · ')
-              : frame?.action || block.title.trim() || t(`schedule.types.${block.type}`),
+            frame?.action || block.title.trim() || t(`schedule.types.${block.type}`),
             serve.has(block.id) ? t('callSheet.serve', { items: serve.get(block.id) }) : '',
           ]
             .filter(Boolean)
@@ -129,7 +138,9 @@ export function callSheetSections(
           ? 'tag-green-bg'
           : block.type === 'move'
             ? 'tag-orange-bg'
-            : undefined,
+            : aside(block)
+              ? 'surface-2'
+              : undefined,
       ),
     ],
     empty: t('callSheet.noBlocks'),
@@ -137,15 +148,12 @@ export function callSheetSections(
   for (const { key, time } of times.filter(
     ({ key }) => key === 'cameraWrap' || key === 'crewWrap',
   )) {
-    schedule.rows.push([
-      clockLabel(time),
-      ...Array.from({ length: schedule.columns.length - 1 }, (_, n) =>
-        n === 0 ? t(`callSheet.${key}`) : '',
-      ),
-    ]);
+    schedule.rows.push([clockLabel(time), t(`callSheet.${key}`)]);
+    schedule.tones?.push('surface-2');
   }
   const cast: CallSheetSection = {
     title: t('callSheet.cast'),
+    header: true,
     columns: [2, 2, 3, 1.5],
     rows: [
       [
@@ -194,11 +202,13 @@ export function callSheetSections(
 }
 
 interface CallSheetSection extends Section {
+  /** The first row names the columns: it stays on the page of the row after it. */
+  header?: boolean;
   links?: Array<string | undefined>;
   pictures?: Array<Extract<Element, { type: 'frame' }> | undefined>;
   pictureColumn?: number;
   descriptionColumn?: number;
-  tones?: Array<'tag-green-bg' | 'tag-orange-bg' | undefined>;
+  tones?: Array<'tag-green-bg' | 'tag-orange-bg' | 'surface-2' | undefined>;
 }
 
 /** The call sheet needs pictures and semantic row colours; the generic text tables stay unchanged. */
@@ -210,10 +220,16 @@ export function callSheetPages(
 ): Page[] {
   const { width, height } = pageSize(setup.paper, setup.orientation);
   const box = contentBox(width, height);
-  const blocks: Array<{ h: number; link?: string | undefined; draw: (top: number) => Op[] }> = [];
+  const blocks: Array<{
+    h: number;
+    keep?: boolean;
+    link?: string | undefined;
+    draw: (top: number) => Op[];
+  }> = [];
   for (const section of sections) {
     blocks.push({
       h: 28,
+      keep: true,
       draw: (top) => [
         {
           kind: 'text',
@@ -232,7 +248,11 @@ export function callSheetPages(
       const tone = section.tones?.[index];
       let left = 0;
       const cells = row.map((value, col) => {
-        const w = (box.w * (section.columns[col] ?? total)) / total;
+        // A row shorter than the table, such as a break, gives its last cell the rest of the width.
+        const w =
+          col === row.length - 1 && row.length < section.columns.length
+            ? box.w - left
+            : (box.w * (section.columns[col] ?? total)) / total;
         const x = left;
         left += w;
         return {
@@ -249,6 +269,7 @@ export function callSheetPages(
       const h = Math.max(1, ...cells.map((cell) => cell.lines.length)) * 12 + 10 + (frame ? 36 : 0);
       blocks.push({
         h,
+        keep: index === 0 && !!section.header && section.rows.length > 1,
         link: section.links?.[index],
         draw: (top) => [
           ...(tone
@@ -275,6 +296,7 @@ export function callSheetPages(
   return paginateRows(
     blocks.map((block) => block.h),
     box.h - 35,
+    blocks.map((block) => !!block.keep),
   ).map((indexes) => {
     const ops: Op[] = [
       {

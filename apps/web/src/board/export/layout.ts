@@ -137,14 +137,21 @@ export function chunk<T>(items: readonly T[], perPage: number): T[][] {
 
 /**
  * Splits rows of known heights into pages of at most `available` points. A row taller than a
- * page gets a page of its own (the caller clips it).
+ * page gets a page of its own (the caller clips it). A row marked in `keepWithNext`, such as a
+ * section title, moves to the next page when the row after it would not fit under it.
  */
-export function paginateRows(heights: readonly number[], available: number): number[][] {
+export function paginateRows(
+  heights: readonly number[],
+  available: number,
+  keepWithNext: readonly boolean[] = [],
+): number[][] {
   const pages: number[][] = [];
   let current: number[] = [];
   let used = 0;
   heights.forEach((h, i) => {
-    if (current.length > 0 && used + h > available) {
+    let chain = h;
+    for (let j = i; keepWithNext[j] && j + 1 < heights.length; j++) chain += heights[j + 1] ?? 0;
+    if (current.length > 0 && used + chain > available) {
       pages.push(current);
       current = [];
       used = 0;
