@@ -276,6 +276,8 @@ export function Avatar({
   const [failed, setFailed] = useState<string | null>(null);
   const initials = name
     .split(/\s+/)
+    // "Carla (cliente)" is CC, not C(.
+    .map((word) => word.replace(/^[^\p{L}\p{N}]+/u, ''))
     .filter(Boolean)
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase())

@@ -2624,6 +2624,8 @@
     "callShort": "Cit.",
     "character": "Personaje",
     "sun": "Amanecer · Atardecer (Loc. {{n}})",
+    "sunAddress": "Amanecer · Atardecer (dirección)",
+    "address": "Dirección",
     "sunrise": "Amanecer",
     "sunset": "Atardecer",
     "you": "(tú)",
@@ -2733,7 +2735,7 @@
     "count_other": "{{count}} proyectos"
   },
   "onboarding": {
-    "guidedSetup": "Configuración guiada",
+    "guidedSetup": "Primeros pasos",
     "title": "Nuevo proyecto",
     "firstTitle": "Tu primer proyecto",
     "subtitle": "Elige las fechas e invita a tu equipo. Podrás cambiarlo todo después.",
@@ -4395,7 +4397,7 @@
           },
           "2": {
             "title": "Dibuja un bloque",
-            "text": "Arrastra sobre tiempo libre para dibujar un bloque en pasos de 5 minutos y elige su tipo (teclas 1–5). Con el teclado, N añade un bloque tras el seleccionado."
+            "text": "Arrastra sobre tiempo libre para dibujar un bloque en pasos de 5 minutos y elige su tipo (teclas 1–5). La vista Day también tiene «Block» en la barra. Con el teclado, N añade un bloque tras el seleccionado, o al final del día."
           },
           "3": {
             "title": "Mueve un día entero",
@@ -5352,6 +5354,7 @@
     "characterLabel": "Ficha de personaje",
     "optionalTag": "opcional",
     "characterHint": "Ninguna. El nombre en el programa basta para la citación; vincula una ficha solo si tiene vestuario y referencias.",
+    "characterNone": "Aún no hay fichas de personaje en el proyecto. No hace falta: un rol igual al nombre del programa basta para la citación.",
     "link": "Vincular",
     "unlinkShort": "Desvincular",
     "accountHint": "Vincula una cuenta para enviar la citación al móvil y pedir que confirme su asistencia.",

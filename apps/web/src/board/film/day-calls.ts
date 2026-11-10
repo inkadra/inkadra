@@ -32,7 +32,7 @@ export interface DayCrewEntry {
   ownPickup: string | null;
   /** First block with them in its cast. */
   scene: { start: number; blockId: string } | null;
-  /** The cast names of the blocks that are theirs: their name or their character's. */
+  /** The cast names of the blocks that are theirs: their name, their character's or their role. */
   names: string[];
 }
 
@@ -89,8 +89,15 @@ export function dayCrew(
   const dayCall = clockMinutes(day.callTime);
   const slots = scheduleTimes(day);
   return crew.map((member) => {
+    // A row in Cast plays the character its role names ("Anna Greco · Elena"), as a card would.
     const keys = new Set(
-      [member.name, characterName(member, elements, characters)].filter(Boolean).map(castNameKey),
+      [
+        member.name,
+        characterName(member, elements, characters),
+        castNameKey(member.department) === 'cast' ? member.role : '',
+      ]
+        .filter((name) => name.trim())
+        .map(castNameKey),
     );
     const names = [
       ...new Set(day.blocks.flatMap((b) => b.cast.filter((name) => keys.has(castNameKey(name))))),
@@ -221,22 +228,24 @@ export function personalDayCall(
 /**
  * Sunrise and sunset at the first location with coordinates: a location card's map link, else a
  * map link in the day's own location text, on the clock of the project (see `sunTimes`). None
- * without coordinates.
+ * without coordinates. `location` is its number on the sheet, 0 for the day's `address`.
  */
 export function sunOfDay(
   day: ShootingDayInput,
   locations: readonly DayLocation[],
   timeZone?: string | undefined,
+  address?: DayLocation | null,
 ) {
   for (const [index, location] of locations.entries()) {
     const coords = location.mapUrl ? locationCoords(location.mapUrl) : null;
     if (coords)
       return { ...sunTimes(day.date, coords.lat, coords.lng, timeZone), location: index + 1 };
   }
-  const coords = locationCoords(day.location);
+  const coords =
+    locationCoords(day.location) ?? (address?.mapUrl ? locationCoords(address.mapUrl) : null);
   if (!coords) return null;
-  // The day's own location is Loc. 1 when the scenes name none.
-  return { ...sunTimes(day.date, coords.lat, coords.lng, timeZone), location: 1 };
+  // The day's own location is Loc. 1 when the scenes name none, else its own Address line.
+  return { ...sunTimes(day.date, coords.lat, coords.lng, timeZone), location: address ? 0 : 1 };
 }
 
 export interface CrewState {

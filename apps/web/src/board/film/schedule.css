@@ -15,10 +15,18 @@
   transform: scaleX(-1);
 }
 .schedule__range {
+  /* The first to give way, so the bar's buttons stay on one row at 1280 px: a zero basis keeps
+     the bar from wrapping for it, and it grows back to its full text, before the spacer, when
+     there is room. */
+  flex: 1000 1 0;
+  min-width: 0;
+  max-width: max-content;
   margin: 0 6px 0 2px;
+  overflow: hidden;
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.01em;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .schedule__range::first-letter {

@@ -22,6 +22,12 @@
 .people-picker__list[hidden] {
   display: none;
 }
+.people-picker__empty {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--ink-text-muted);
+}
 .people-picker__option {
   display: flex;
   align-items: center;

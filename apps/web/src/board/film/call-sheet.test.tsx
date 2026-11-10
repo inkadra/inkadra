@@ -11,6 +11,7 @@ import { BoardStore } from '../store.ts';
 import { CallSheetModal } from './CallSheetModal.tsx';
 import {
   castCalls,
+  dayAddress,
   departmentNotes,
   hasSceneNumbers,
   keyTimes,
@@ -19,6 +20,7 @@ import {
   plannedWrap,
   serveLines,
 } from './call-sheet.ts';
+import { sunOfDay } from './day-calls.ts';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -571,6 +573,76 @@ it('prints each row frame, cast contact and location; omits the scene column on 
     'callSheet.frames',
   );
   store.destroy();
+});
+
+describe("the day's Location when the scenes name their own", () => {
+  const osm = 'https://www.openstreetmap.org/#map=17/40.1060/18.5180';
+  const scenes = () => {
+    const doc = new Y.Doc();
+    const scene = createElement(
+      doc,
+      'scene',
+      { x: 0, y: 0 },
+      { title: 'Scogliera', number: '1', location: 'Scogliera' },
+      { userId: null },
+    );
+    const frame = createElement(
+      doc,
+      'frame',
+      { x: 0, y: 0 },
+      { parent: scene.id },
+      { userId: null },
+    );
+    return { doc, frame: frame.id };
+  };
+  const at = (frame: string, location: string): ShootingDay => ({
+    ...day,
+    location,
+    blocks: [{ ...day.blocks[0]!, shotId: frame }],
+  });
+
+  it('keeps the numbered scene locations and adds the address with its map', () => {
+    const { doc, frame } = scenes();
+    const store = new BoardStore(doc);
+    const elements = store.getSnapshot().byId;
+    const d = at(frame, `Faro di Punta Palascìa\nVia del Faro, Otranto\n${osm}`);
+    expect(locationsOfDay(d, elements)).toEqual([
+      { name: 'Scogliera', address: undefined, mapUrl: undefined },
+    ]);
+    const address = dayAddress(d, elements);
+    expect(address).toEqual({
+      name: 'Faro di Punta Palascìa',
+      address: 'Via del Faro, Otranto',
+      mapUrl: osm,
+    });
+    // Sunrise and sunset come from that address and say so, not "Loc. 1".
+    expect(sunOfDay(d, locationsOfDay(d, elements), undefined, address)).toMatchObject({
+      location: 0,
+    });
+    // The Location naming a scene's own place gives that line its address instead.
+    const same = at(frame, 'scogliera\nVia del Faro');
+    expect(dayAddress(same, elements)).toBeNull();
+    expect(locationsOfDay(same, elements)).toEqual([
+      { name: 'Scogliera', address: 'Via del Faro', mapUrl: undefined },
+    ]);
+    store.destroy();
+  });
+
+  it('prints the address and the map link on the sheet', async () => {
+    const { doc, frame } = scenes();
+    const store = new BoardStore(doc);
+    const host = await mount([at(frame, `Faro di Punta Palascìa\nVia del Faro, Otranto ${osm}`)], {
+      store,
+    });
+    const place = host.querySelector('article')?.textContent ?? '';
+    expect(place).toContain('callSheet.address');
+    expect(place).toContain('Faro di Punta Palascìa');
+    expect(place).toContain('Via del Faro, Otranto');
+    expect(place).toContain('callSheet.locationNumber');
+    expect(place).toContain('callSheet.sunAddress');
+    expect(host.querySelector<HTMLAnchorElement>(`article a[href="${osm}"]`)).not.toBeNull();
+    store.destroy();
+  });
 });
 
 it('keeps the semantic break colour when a break also references a frame', async () => {

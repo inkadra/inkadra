@@ -307,7 +307,7 @@ function BoardScreen({
   const navigate = useNavigate();
   const { user } = useSession();
   // The sidebar's rule for the film links, so the header tabs never disagree with it.
-  const { filmLinks } = useProjects();
+  const { filmLinks, projects } = useProjects();
   const { items: boards, error: boardsError } = useProjectBoards(projectId);
   const conn = useBoardConnection(boardId);
   useEffect(() => {
@@ -927,6 +927,7 @@ function BoardScreen({
             projectName={projectName}
             projectId={projectId}
             timeZone={shootingZone(projectTimeZone)}
+            shootingStart={projects?.find((p) => p.id === projectId)?.shootingStart}
             canEditCrew={!!projectRole && atLeast(projectRole, 'editor')}
             boardId={boardId}
             userId={user.id}

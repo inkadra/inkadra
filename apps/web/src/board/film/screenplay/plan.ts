@@ -126,8 +126,8 @@ function sceneTitle(scene: ScriptScene, prelude: string): string {
     .split(/\s+[-–—]\s+|\s*[–—]\s*/)
     .map((e) => e.trim())
     .filter((e) => e && !CONTINUITY.test(e));
-  const name = scene.location ? castName(scene.location.toLocaleUpperCase()) : '';
-  const tail = extras.map((e) => castName(e.toLocaleUpperCase())).join(', ');
+  const name = scene.location ? placeName(scene.location.toLocaleUpperCase()) : '';
+  const tail = extras.map((e) => placeName(e.toLocaleUpperCase())).join(', ');
   return name && tail ? `${name} (${tail})` : name || tail;
 }
 
@@ -272,6 +272,29 @@ export function castName(name: string): string {
       /(^|[\s\-'’.])(\p{L})/gu,
       (_, sep: string, ch: string) => sep + ch.toLocaleUpperCase(),
     );
+}
+
+/** Articles, prepositions and conjunctions of the interface languages, lower case in a name. */
+const PARTICLES = new Set(
+  (
+    'a an and at by for in of on or the to with ' +
+    'ai al agli alla alle allo col coi con da dai dal dalla dalle dallo de degli dei del della ' +
+    'delle dello di e fra gli i il la le lo nei nel nella nelle nello per su sui sul sulla sulle ' +
+    'sullo tra un una uno ' +
+    'el las los y ' +
+    'au aux des du en et les sur ' +
+    'am das der die im und von zum zur ' +
+    'as da das do dos em na no nos o os'
+  ).split(' '),
+);
+
+/** FARO, SCALA A CHIOCCIOLA → Faro, Scala a Chiocciola: a scene name, no title-case "A". */
+export function placeName(name: string): string {
+  if (name !== name.toLocaleUpperCase()) return name;
+  // Not the first word of the name or of a part after a comma, nor the last.
+  return castName(name).replace(/(?<=[\p{L}\p{N}]\s+)\p{L}+(?=\s)/gu, (word) =>
+    PARTICLES.has(word.toLocaleLowerCase()) ? word.toLocaleLowerCase() : word,
+  );
 }
 
 function cut(text: string, max: number): string {

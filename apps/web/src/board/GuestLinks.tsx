@@ -24,6 +24,7 @@ import { api, RequestError } from '../lib/api.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import { useMenu } from '../routes/ProjectAppearance.tsx';
+import { whileVisible } from './film/schedule.ts';
 import {
   canChangeScope,
   createOf,
@@ -111,6 +112,8 @@ export function GuestLinks({
   useEffect(() => {
     load().catch((err) => setError(errorText(t, err)));
   }, [load, t]);
+  // A link opened while the dialog is open stops saying "Not opened yet".
+  useEffect(() => whileVisible(() => void load().catch(() => {})), [load]);
 
   useEffect(() => {
     if (results || !backFrom.current) return;
@@ -157,7 +160,10 @@ export function GuestLinks({
       {links && links.length > 0 && (
         <section aria-labelledby={`${board.id}-guest-links`}>
           <h3 className="share__section" id={`${board.id}-guest-links`}>
-            {t('guestLinks.active')} <span className="share__count">{links.length}</span>
+            {t('guestLinks.active')}{' '}
+            <span className="share__count">
+              {links.filter((link) => statusOf(link) === 'active').length}
+            </span>
           </h3>
           <ul className="share__box guest-links__list" aria-label={t('guestLinks.list')}>
             {links.map((link) => (

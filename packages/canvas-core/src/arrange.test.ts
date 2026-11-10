@@ -2,6 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   type ArrangeItem,
+  freeSpot,
+  freeSpots,
   gridAround,
   heightAtWidth,
   mosaicColumns,
@@ -163,3 +165,45 @@ describe('gridAround', () => {
     expect(gridAround([], { x: 0, y: 0 }, 10)).toEqual([]);
   });
 });
+
+describe('freeSpot', () => {
+  const size = { w: 240, h: 240 };
+  it('keeps the start when nothing is there', () => {
+    expect(freeSpot({ x: 0, y: 0 }, size, [{ x: 600, y: 600, w: 100, h: 100 }])).toEqual({
+      x: 0,
+      y: 0,
+    });
+  });
+
+  it('measures the new card by its own height, not a fixed one', () => {
+    // A card 200 below the start: a 240-tall card there would cover it.
+    const taken = [{ x: 0, y: 200, w: 240, h: 300 }];
+    const at = freeSpot({ x: 0, y: 0 }, size, taken);
+    expect(taken.some((r) => intersectsRect(r, { ...at, ...size }))).toBe(false);
+  });
+
+  it('prefers a free spot on screen to a nearer one off it', () => {
+    // The spot below the start is free but off screen; the one to its right is on screen.
+    const taken = [{ x: 0, y: 0, w: 240, h: 240 }];
+    const area = { x: -20, y: -20, w: 600, h: 300 };
+    const at = freeSpot({ x: 0, y: 0 }, size, taken, area);
+    expect(at.x + size.w).toBeLessThanOrEqual(area.x + area.w);
+    expect(at.y + size.h).toBeLessThanOrEqual(area.y + area.h);
+    expect(intersectsRect(taken[0]!, { ...at, ...size })).toBe(false);
+  });
+
+  it('places several cards clear of the board and of each other', () => {
+    const taken = [{ x: 0, y: 0, w: 260, h: 400 }];
+    const spots = freeSpots({ x: 0, y: 0 }, [size, size, size], taken);
+    const rects = spots.map((p) => ({ ...p, ...size }));
+    for (const [i, r] of rects.entries()) {
+      expect(taken.some((t) => intersectsRect(t, r))).toBe(false);
+      expect(rects.some((o, j) => j !== i && intersectsRect(o, r))).toBe(false);
+    }
+  });
+});
+
+const intersectsRect = (
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;

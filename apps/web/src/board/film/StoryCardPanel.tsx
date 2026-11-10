@@ -235,6 +235,7 @@ export function StoryPicture({
 function initials(name: string): string {
   return name
     .split(/\s+/)
+    .map((word) => word.replace(/^[^\p{L}\p{N}]+/u, ''))
     .filter(Boolean)
     .slice(0, 2)
     .map((w) => w[0]?.toLocaleUpperCase())

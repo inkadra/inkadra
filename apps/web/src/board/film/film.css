@@ -782,19 +782,10 @@ html[data-view-direction]::view-transition-new(board-view) {
 
 /* Shot list --------------------------------------------------------------------------- */
 
-/* The toolbar wraps by default. It stays on one row, with the filters shrinking first, only
-   when the shot list itself (not the viewport: the sidebar and side panels take their share)
-   is wide enough for every control at its minimum width. */
-.shots {
-  container: shots / inline-size;
-}
+/* The toolbar wraps onto a second row when its controls do not fit: the filters keep their
+   labels and the export buttons stay on screen whatever the sidebar and side panels take. */
 .shots > .story__bar {
   gap: 8px;
-}
-@container shots (min-width: 1200px) {
-  .shots > .story__bar {
-    flex-wrap: nowrap;
-  }
 }
 .shots > .story__bar > .view-tabs,
 .shots > .story__bar > .ink-btn,

@@ -11,6 +11,7 @@ import type { TFunction } from 'i18next';
 import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
 import { api, RequestError } from '../../lib/api.ts';
 import {
+  dayAddress,
   departmentNotes,
   hasSceneNumbers,
   keyTimes,
@@ -81,8 +82,9 @@ export function callSheetSections(
 ): CallSheetSection[] {
   const times = keyTimes(day);
   const locations = locationsOfDay(day, elements);
+  const address = dayAddress(day, elements);
   const entries = dayCrew(day, crew, elements, more.characters);
-  const sun = sunOfDay(day, locations, more.timeZone);
+  const sun = sunOfDay(day, locations, more.timeZone, address);
   const sunCell = sun && (sun.sunrise !== null || sun.sunset !== null);
   const sunClock = (time: number | null) => (time === null ? '—' : clockLabel(time));
   const serve = serveLines(day, elements);
@@ -95,7 +97,9 @@ export function callSheetSections(
     rows: [
       [
         ...times.map(({ key }) => t(`callSheet.${key}`)),
-        ...(sun && sunCell ? [t('callSheet.sun', { n: sun.location })] : []),
+        ...(sun && sunCell
+          ? [sun.location ? t('callSheet.sun', { n: sun.location }) : t('callSheet.sunAddress')]
+          : []),
       ],
       [
         ...times.map(({ time }) => clockLabel(time)),
@@ -147,14 +151,18 @@ export function callSheetSections(
     title: t('callSheet.location'),
     columns: [1, 4],
     empty: '',
-    rows: locations.map((loc, n) => [
-      t('callSheet.locationNumber', { n: n + 1 }),
+    // The day's own address first, where the crew goes, then the numbered scene locations.
+    rows: [
+      ...(address ? [{ loc: address, label: t('callSheet.address') }] : []),
+      ...locations.map((loc, n) => ({ loc, label: t('callSheet.locationNumber', { n: n + 1 }) })),
+    ].map(({ loc, label }) => [
+      label,
       [loc.name, loc.address, loc.mapUrl ? t('story.location.openMap') : '']
         .filter(Boolean)
         .join('\n'),
     ]),
   };
-  location.links = locations.map((loc) => loc.mapUrl);
+  location.links = [...(address ? [address] : []), ...locations].map((loc) => loc.mapUrl);
   // Breaks, moves, set-ups and the closing times read across the table after their time.
   const aside = (block: { type: string; shotId: string | null }) =>
     block.type !== 'shot' && !block.shotId;
@@ -233,7 +241,12 @@ export function callSheetSections(
     columns: [2, 2, 1.6, 1, 1, 2.4],
     rows: [
       [
-        t(cards.some(Boolean) ? 'callSheet.character' : 'callSheet.name'),
+        t(
+          cards.some(Boolean) ||
+            calls.some((c) => c.entry && castNameKey(c.entry.member.name) !== castNameKey(c.name))
+            ? 'callSheet.character'
+            : 'callSheet.name',
+        ),
         t('story.character.actor'),
         t('callSheet.pickup'),
         t('callSheet.callShort'),

@@ -402,4 +402,29 @@ describe.skipIf(!url)('cast links through the crew (needs DATABASE_URL)', () => 
     const read = await request('owner', 'GET', `/projects/${unset.json().id}`);
     expect(read.json()).not.toHaveProperty('timeZone');
   });
+
+  it('reads the role of a row in Cast as its character', async () => {
+    const double = people.double?.id ?? null;
+    await db.insert(crewMember).values({
+      ...blank,
+      projectId,
+      name: 'Renato De Santis',
+      role: 'Pietro',
+      userId: double,
+      position: 90,
+    });
+    const owner = (
+      await request('owner', 'GET', `/boards/${planBoard}/schedule/attendance`)
+    ).json();
+    expect(owner.links).toContainEqual({ castKey: 'pietro', userId: double });
+    // Linking the character from the presence panel finds that row instead of adding one.
+    const linked = await request('owner', 'PUT', `/boards/${planBoard}/schedule/cast-links`, {
+      name: 'Pietro',
+      userId: double,
+    });
+    expect(linked.statusCode).toBe(204);
+    expect(
+      (await crew()).filter((row) => ['Renato De Santis', 'Pietro'].includes(row.name)),
+    ).toEqual([{ name: 'Renato De Santis', department: 'Cast', userId: double, character: null }]);
+  });
 });

@@ -3,7 +3,7 @@
  * Tidying a selection (#320): packing cards into rows or a mosaic of columns with an even gap.
  * Pure geometry; the canvas decides which cards take part and writes the result.
  */
-import { boundsOf, type Point, type Rect } from './geometry.ts';
+import { boundsOf, containsRect, inflate, intersects, type Point, type Rect } from './geometry.ts';
 
 export interface ArrangeItem extends Rect {
   /**
@@ -215,4 +215,66 @@ export function stackColumns(
     }
   }
   return out;
+}
+
+/**
+ * Where a new card of `size` goes so that it lands on none of the `taken` rects, kept 12 apart:
+ * `start` when it is free, else down and to the right as cards cascade, else the nearest free spot
+ * in growing rings of 32. With an `area` (the part of the board on screen), a spot inside it wins
+ * over a nearer one outside. `start` when nothing within 40 rings is free.
+ */
+export function freeSpot(
+  start: Point,
+  size: { w: number; h: number },
+  taken: readonly Rect[],
+  area?: Rect,
+): Point {
+  const gap = 12;
+  const step = 32;
+  const free = (p: Point) => !taken.some((r) => intersects(inflate(r, gap), { ...p, ...size }));
+  const search = (inside: (p: Point) => boolean): Point | undefined => {
+    for (let i = 0; i < 12; i++) {
+      const at = { x: start.x + i * step, y: start.y + i * step };
+      if (inside(at) && free(at)) return at;
+    }
+    for (let ring = 1; ring <= 40; ring++) {
+      let best: Point | undefined;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      for (let i = -ring; i <= ring; i++) {
+        for (const [dx, dy] of [
+          [i, -ring],
+          [i, ring],
+          [-ring, i],
+          [ring, i],
+        ] as const) {
+          const at = { x: start.x + dx * step, y: start.y + dy * step };
+          const distance = dx * dx + dy * dy;
+          if (distance < bestDistance && inside(at) && free(at)) {
+            best = at;
+            bestDistance = distance;
+          }
+        }
+      }
+      if (best) return best;
+    }
+    return undefined;
+  };
+  return (
+    (area && search((p) => containsRect(area, { ...p, ...size }))) ?? search(() => true) ?? start
+  );
+}
+
+/** `freeSpot` for several new cards at once: each also stays clear of the ones before it. */
+export function freeSpots(
+  start: Point,
+  sizes: ReadonlyArray<{ w: number; h: number }>,
+  taken: readonly Rect[],
+  area?: Rect,
+): Point[] {
+  const used = [...taken];
+  return sizes.map((size) => {
+    const at = freeSpot(start, size, used, area);
+    used.push({ ...at, ...size });
+    return at;
+  });
 }

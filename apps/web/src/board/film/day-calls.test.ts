@@ -252,3 +252,56 @@ describe('sunrise and sunset', () => {
     );
   });
 });
+
+describe('a row in Cast whose role is the character', () => {
+  const elena = member(5, {
+    name: 'Anna Greco',
+    role: 'Elena',
+    department: 'Cast',
+    phone: '+39 333 000 0005',
+    userId: 'u5',
+  });
+  const shoot = day({ blocks: [block(1, ['Elena']), block(2, ['Pietro'])] });
+
+  it('is called with the character, fills actor and contact and gets the personal call', () => {
+    const entries = dayCrew(shoot, [elena]);
+    expect(entries[0]).toMatchObject({ called: true, names: ['Elena'] });
+    const [row] = castRows(shoot, entries);
+    expect(row?.entry?.member.name).toBe('Anna Greco');
+    expect(castCard('Elena', row?.entry, new Map())).toBeUndefined();
+    expect(personalDayCall(shoot, entries, undefined, 'u5')).toMatchObject({
+      label: 'Elena',
+      start: 7 * 60,
+      crew: true,
+    });
+  });
+
+  it('stays home when the character is not in the day', () => {
+    expect(dayCrew(day(), [elena])[0]).toMatchObject({ called: false, names: [] });
+  });
+
+  it('only counts in Cast: a crew role is a job, not a character', () => {
+    const grip = member(6, { name: 'Bruno', role: 'Elena', department: 'Macchinisti' });
+    expect(dayCrew(shoot, [grip])[0]).toMatchObject({ cast: false, names: [] });
+  });
+
+  it('leaves the actor and contact to a character card when there is one', () => {
+    const cards = new Map<string, Element>([
+      [
+        'char0002',
+        {
+          id: 'char0002',
+          type: 'character',
+          name: 'Elena',
+          actor: 'Anna G.',
+          contact: '+39 1',
+        } as unknown as Element,
+      ],
+    ]);
+    const [row] = castRows(shoot, dayCrew(shoot, [elena], cards));
+    expect(castCard('Elena', row?.entry, cards)).toMatchObject({
+      actor: 'Anna G.',
+      contact: '+39 1',
+    });
+  });
+});

@@ -14,7 +14,7 @@ import {
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import * as Y from 'yjs';
-import { type Actor, activeGrant, activeMember, effectiveRoles } from '../access.ts';
+import { type Actor, activeGrant, activeMember, effectiveRoles, live } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { readClassifications } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
@@ -276,6 +276,71 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
           assetId: (r.cover_asset_id as string | null) ?? null,
           tags: [],
           myRole: readable.roles.get(r.id as string),
+        });
+      }
+      // People of the crew by name, role or department. The roster is the project members'
+      // (decision 0091): a grant on one board never finds it. They open the Troupe view.
+      const crew = await db.execute<Row>(sql`
+        select c.id, c.name, c.role, c.department, p.id as project_id, p.name as project_name,
+               r.id as root_id, r.title as root_title
+        from crew_member c
+        join project p on p.id = c.project_id
+        join project_member m on m.project_id = c.project_id and m.user_id = ${actor.id}
+          and ${live('m')}
+        join board r on r.project_id = c.project_id and r.parent_board_id is null
+        where r.id = any(${boardIn})
+          and (c.name ilike ${like} or c.role ilike ${like} or c.department ilike ${like})
+        order by word_similarity(${q}, c.name) desc, c.name
+        limit ${query.limit}`);
+      for (const r of crew) {
+        hits.push({
+          kind: 'element',
+          projectId: r.project_id as string,
+          projectName: r.project_name as string,
+          boardId: r.root_id as string,
+          boardTitle: r.root_title as string,
+          boardKind: 'board',
+          elementId: r.id as string,
+          elementType: 'crew',
+          title: r.name as string,
+          snippet: [r.role, r.department].filter(Boolean).join(' · ') || null,
+          assetId: null,
+          tags: [],
+          myRole: readable.roles.get(r.root_id as string),
+        });
+      }
+      // The location of a shooting day, on the boards whose schedule the person can open.
+      const days = await db.execute<Row>(sql`
+        select d.id, d.date, d.location, b.id as board_id, b.title as board_title,
+               b.kind as board_kind, p.id as project_id, p.name
+        from shooting_day d
+        join board b on b.id = d.board_id
+        join project p on p.id = d.project_id
+        where d.board_id = any(${boardIn}) and d.location ilike ${like}
+        order by d.date, d.id
+        limit ${query.limit}`);
+      for (const r of days) {
+        const location = r.location as string;
+        hits.push({
+          kind: 'element',
+          projectId: r.project_id as string,
+          projectName: r.name as string,
+          boardId: r.board_id as string,
+          boardTitle: r.board_title as string,
+          boardKind: r.board_kind as 'board' | 'storyboard',
+          elementId: r.id as string,
+          elementType: 'shootingDay',
+          // Its first line names the place; a map link is no title.
+          title:
+            location
+              .split('\n')
+              .map((line) => line.trim())
+              .find((line) => line && !/^https?:\/\//i.test(line)) ?? (r.date as string),
+          // The date of the day (YYYY-MM-DD): a search finds a place, then when it is shot.
+          snippet: r.date as string,
+          assetId: null,
+          tags: [],
+          myRole: readable.roles.get(r.board_id as string),
         });
       }
     }

@@ -106,51 +106,81 @@ export function hasSceneNumbers(day: ShootingDayInput, elements: ReadonlyMap<str
   return day.blocks.some((block) => !!sheetShot(block.shotId, elements).scene?.number?.trim());
 }
 
-/** Locations in shooting order; matching story cards provide the private address and map. */
-export function locationsOfDay(
-  day: ShootingDayInput,
-  elements: ReadonlyMap<string, Element>,
-): DayLocation[] {
+/** The scene locations of the day, in shooting order, each once. */
+function sceneLocations(day: ShootingDayInput, elements: ReadonlyMap<string, Element>): string[] {
   const names: string[] = [];
   for (const { block } of scheduleTimes(day)) {
     const name = sheetShot(block.shotId, elements).scene?.location?.trim();
     if (name && !names.some((value) => castNameKey(value) === castNameKey(name))) names.push(name);
   }
-  if (!names.length && day.location.trim()) {
-    let mapUrl: string | undefined;
-    const text = day.location.replace(/\S+/g, (word) => {
-      const token = word.replace(/^[<(]+|[>),.;]+$/g, '');
-      const url = /^https?:/i.test(token) ? token : `https://${token}`;
-      if (!isMapLink(url)) return word;
-      mapUrl ??= url;
-      return '';
-    });
-    const [name = '', ...address] = text
-      .trim()
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean);
-    const card = [...elements.values()].find(
-      (el) => el.type === 'location' && castNameKey(el.name) === castNameKey(name),
-    );
-    return [
-      {
-        name,
-        address: card?.type === 'location' ? card.address : address.join('\n'),
-        mapUrl: card?.type === 'location' ? card.mapUrl || mapUrl : mapUrl,
-      },
-    ];
-  }
+  return names;
+}
+
+/**
+ * The day's own Location field: its first line names the place, the next ones are the address,
+ * a map link anywhere is the map. A location card of that name provides address and map.
+ */
+function dayPlace(day: ShootingDayInput, elements: ReadonlyMap<string, Element>) {
+  if (!day.location.trim()) return null;
+  let mapUrl: string | undefined;
+  const text = day.location.replace(/\S+/g, (word) => {
+    const token = word.replace(/^[<(]+|[>),.;]+$/g, '');
+    const url = /^https?:/i.test(token) ? token : `https://${token}`;
+    if (!isMapLink(url)) return word;
+    mapUrl ??= url;
+    return '';
+  });
+  const [name = '', ...address] = text
+    .trim()
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const card = [...elements.values()].find(
+    (el) => el.type === 'location' && castNameKey(el.name) === castNameKey(name),
+  );
+  return {
+    name,
+    address: card?.type === 'location' ? card.address : address.join('\n'),
+    mapUrl: card?.type === 'location' ? card.mapUrl || mapUrl : mapUrl,
+  };
+}
+
+/** Locations in shooting order; matching story cards provide the private address and map. */
+export function locationsOfDay(
+  day: ShootingDayInput,
+  elements: ReadonlyMap<string, Element>,
+): DayLocation[] {
+  const names = sceneLocations(day, elements);
+  const own = dayPlace(day, elements);
+  if (!names.length) return own ? [own] : [];
   return names.map((name) => {
     const card = [...elements.values()].find(
       (el) => el.type === 'location' && castNameKey(el.name) === castNameKey(name),
     );
+    // The day's Location naming this very place gives it its address and map.
+    const same = own && castNameKey(own.name) === castNameKey(name) ? own : undefined;
+    if (card?.type !== 'location') return { name, address: same?.address, mapUrl: same?.mapUrl };
     return {
       name,
-      address: card?.type === 'location' ? card.address : undefined,
-      mapUrl: card?.type === 'location' ? card.mapUrl : undefined,
+      address: card.address || (same?.address ?? card.address),
+      mapUrl: card.mapUrl || (same?.mapUrl ?? card.mapUrl),
     };
   });
+}
+
+/**
+ * The day's own Location (address and map link) when the scenes name theirs, printed beside the
+ * numbered ones: it is where the crew goes. Null when it is Loc. 1 already, or empty.
+ */
+export function dayAddress(
+  day: ShootingDayInput,
+  elements: ReadonlyMap<string, Element>,
+): DayLocation | null {
+  const names = sceneLocations(day, elements);
+  const own = names.length ? dayPlace(day, elements) : null;
+  // The same place as a scene's adds nothing to its numbered line.
+  if (!own || names.some((name) => castNameKey(name) === castNameKey(own.name))) return null;
+  return own;
 }
 
 /** Only the first scheduled row of a scene carries its own needed items, not the day's totals. */

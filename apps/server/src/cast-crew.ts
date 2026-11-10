@@ -13,7 +13,7 @@ import { board, castLink, crewMember, shootingDay } from './db/schema.ts';
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 type Source = Database | Transaction;
 type CharacterReader = Pick<BoardReader, 'characters'> | undefined;
-type CastRow = Pick<typeof crewMember.$inferSelect, 'name' | 'character'>;
+type CastRow = Pick<typeof crewMember.$inferSelect, 'name' | 'character' | 'department' | 'role'>;
 
 /**
  * The boards whose character cards may be read: in the project and not in the trash, and, for a
@@ -58,19 +58,21 @@ export function characterCards(db: Source, reader: CharacterReader, allowed: Rea
 }
 
 /**
- * The cast names of each row: its own and its character card's, on any board of the project
- * (crew rows are project data, so a card on another board counts as one on this board).
+ * The cast names of each row: its own, its character card's, on any board of the project (crew
+ * rows are project data, so a card on another board counts as one on this board), and for a row
+ * in Cast its role, which names the character it plays ("Anna Greco · Elena").
  */
 export async function crewCastKeys(
   rows: readonly CastRow[],
   cards: ReturnType<typeof characterCards>,
 ): Promise<Set<string>[]> {
   return Promise.all(
-    rows.map(async ({ name, character }) => {
+    rows.map(async ({ name, character, department, role }) => {
       const card = character
         ? (await cards(character.boardId)).find((c) => c.elementId === character.elementId)
         : undefined;
-      return new Set([name, card?.name ?? ''].filter((n) => n.trim()).map(castNameKey));
+      const played = castNameKey(department) === 'cast' ? role : '';
+      return new Set([name, card?.name ?? '', played].filter((n) => n.trim()).map(castNameKey));
     }),
   );
 }
@@ -87,7 +89,13 @@ export async function castLinksOf(
   viewer?: Pick<Actor, 'id'>,
 ): Promise<CastLink[]> {
   const rows = await db
-    .select({ name: crewMember.name, character: crewMember.character, userId: crewMember.userId })
+    .select({
+      name: crewMember.name,
+      character: crewMember.character,
+      department: crewMember.department,
+      role: crewMember.role,
+      userId: crewMember.userId,
+    })
     .from(crewMember)
     .where(
       and(
