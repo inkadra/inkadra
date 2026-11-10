@@ -1203,7 +1203,7 @@ test('beside the report button the view tabs stay whole and every click lands', 
   await ready(page);
   const strip = page.getByRole('tablist', { name: 'Vista' });
   const tabs = strip.getByRole('tab');
-  await expect(tabs).toHaveCount(5);
+  await expect(tabs).toHaveCount(6);
   // At 1440 nothing is cut off.
   const box = await strip.boundingBox();
   const last = await tabs.last().boundingBox();

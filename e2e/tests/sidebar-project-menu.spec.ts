@@ -224,6 +224,7 @@ test.describe('on a phone', () => {
       'Storyboard',
       'Shot list',
       'Piano riprese',
+      'Troupe',
       'Revisione',
     ]);
   });
