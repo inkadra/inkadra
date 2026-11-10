@@ -205,7 +205,14 @@ export const TOURS: Tour[] = [
     offer: 'schedule',
     steps: [
       { anchor: 'schedule', media: 'calendar', side: 'bottom' },
-      { anchor: 'schedule-days', media: 'calendar', side: 'top' },
+      { anchor: 'schedule-queue', media: 'drag', side: 'right' },
+      { anchor: 'schedule-days', media: 'calendar', side: 'left', keys: ['Alt'] },
+      {
+        anchor: 'schedule-save',
+        media: 'versions',
+        side: 'bottom',
+        keys: [isMac() ? '⌘' : 'Ctrl', 'Z'],
+      },
       { anchor: 'schedule-callsheet', media: 'export', side: 'bottom' },
     ],
   },

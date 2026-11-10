@@ -1,0 +1,147 @@
+import type { ScheduleBlock, ShootingDayInput } from '@inkadra/shared';
+import { describe, expect, it } from 'vitest';
+import {
+  addDays,
+  clockString,
+  duplicateBlock,
+  gapsBeforeFixed,
+  layoutLanes,
+  monthGrid,
+  moveBlock,
+  moveBlockToDay,
+  resizeBlock,
+  shiftBlock,
+  weekDates,
+} from './calendar.ts';
+import { clockLabel, scheduleTimes } from './schedule.ts';
+
+const block = (id: string, duration: number, start: string | null = null): ScheduleBlock => ({
+  id,
+  type: 'shot',
+  title: id,
+  start,
+  duration,
+  shotId: null,
+  cast: [],
+  departments: [],
+});
+const day = (blocks: ScheduleBlock[], callTime = '07:00'): ShootingDayInput => ({
+  date: '2026-11-09',
+  callTime,
+  wrap: null,
+  location: '',
+  notes: '',
+  blocks,
+});
+/** "id start–end" for every block, in order. */
+const times = (value: ShootingDayInput) =>
+  scheduleTimes(value).map(
+    ({ block: b, start, end }) => `${b.id} ${clockLabel(start)}–${clockLabel(end)}`,
+  );
+
+describe('calendar dates', () => {
+  it('shows Monday to Friday, and a weekend day only when something is shot on it', () => {
+    expect(weekDates('2026-11-11', new Set())).toEqual([
+      '2026-11-09',
+      '2026-11-10',
+      '2026-11-11',
+      '2026-11-12',
+      '2026-11-13',
+    ]);
+    expect(weekDates('2026-11-15', new Set(['2026-11-15'])).at(-1)).toBe('2026-11-15');
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
+    const grid = monthGrid('2026-11-20');
+    expect(grid).toHaveLength(42);
+    expect(grid[0]).toBe('2026-10-26');
+    expect(grid[6]).toBe('2026-11-01');
+    expect(clockString(1460)).toBe('00:20');
+  });
+});
+
+describe('blocks that overlap', () => {
+  it('sit side by side, and only as wide as their cluster needs', () => {
+    const lanes = layoutLanes([
+      { id: 'a', start: 0, end: 60 },
+      { id: 'b', start: 30, end: 90 },
+      { id: 'c', start: 60, end: 120 },
+      { id: 'd', start: 200, end: 230 },
+    ]);
+    expect(lanes.get('a')).toEqual({ lane: 0, lanes: 2 });
+    expect(lanes.get('b')).toEqual({ lane: 1, lanes: 2 });
+    // c starts when a ends: it takes a's lane back.
+    expect(lanes.get('c')).toEqual({ lane: 0, lanes: 2 });
+    expect(lanes.get('d')).toEqual({ lane: 0, lanes: 1 });
+  });
+
+  it('marks the free time a fixed start leaves before its block', () => {
+    const value = day([block('a', 60), block('b', 30, '09:30'), block('c', 30)]);
+    expect(gapsBeforeFixed(value)).toEqual([{ before: 'b', start: 8 * 60, end: 9 * 60 + 30 }]);
+    // A fixed block that starts before the previous one ends leaves no gap: they overlap.
+    expect(gapsBeforeFixed(day([block('a', 120), block('b', 30, '08:00')]))).toEqual([]);
+  });
+});
+
+describe('moving blocks', () => {
+  const plan = () => day([block('a', 60), block('b', 45), block('c', 30), block('d', 30)]);
+
+  it('queues a dragged block between two others: the ones after it move down, no gaps', () => {
+    // d dropped with its top at 07:50, before the middle of b (08:22).
+    expect(times(moveBlock(plan(), 'd', 7 * 60 + 50, false))).toEqual([
+      'a 07:00–08:00',
+      'd 08:00–08:30',
+      'b 08:30–09:15',
+      'c 09:15–09:45',
+    ]);
+    // Dragging a fixed block without Alt queues it again.
+    const pinned = day([block('a', 60), block('b', 30, '10:00')]);
+    expect(moveBlock(pinned, 'b', 0, false).blocks[0]).toMatchObject({ id: 'b', start: null });
+  });
+
+  it('fixes the clock time with Alt: the block stays put and the others queue around it', () => {
+    const moved = moveBlock(plan(), 'a', 10 * 60, true);
+    expect(times(moved)).toEqual([
+      'b 07:00–07:45',
+      'c 07:45–08:15',
+      'd 08:15–08:45',
+      'a 10:00–11:00',
+    ]);
+    expect(moved.blocks.at(-1)?.start).toBe('10:00');
+    // Before the call is not the next morning: it clamps to the call.
+    expect(moveBlock(plan(), 'd', 5 * 60, true).blocks[0]).toMatchObject({
+      id: 'd',
+      start: '07:00',
+    });
+    // On a night shoot, past midnight is the next morning.
+    const night = day([block('a', 60), block('b', 60)], '22:00');
+    expect(times(moveBlock(night, 'a', 1440 + 60, true))).toEqual([
+      'b 22:00–23:00',
+      'a 01:00 (+1)–02:00 (+1)',
+    ]);
+  });
+
+  it('moves up and down one place with the keys, and resizes within the schema', () => {
+    expect(shiftBlock(plan(), 'b', -1).blocks.map((b) => b.id)).toEqual(['b', 'a', 'c', 'd']);
+    expect(shiftBlock(plan(), 'a', -1)).toEqual(plan());
+    expect(times(resizeBlock(plan(), 'a', 35)).slice(0, 2)).toEqual([
+      'a 07:00–07:35',
+      'b 07:35–08:20',
+    ]);
+    expect(resizeBlock(plan(), 'a', 0).blocks[0]?.duration).toBe(1);
+    expect(resizeBlock(plan(), 'a', 5000).blocks[0]?.duration).toBe(1440);
+  });
+
+  it('moves to another day: the day it leaves closes the gap, the other makes room', () => {
+    const other = { ...day([block('x', 60)], '08:00'), date: '2026-11-10' };
+    const { from, to } = moveBlockToDay(plan(), other, 'b', 8 * 60, false);
+    expect(times(from)).toEqual(['a 07:00–08:00', 'c 08:00–08:30', 'd 08:30–09:00']);
+    expect(times(to)).toEqual(['b 08:00–08:45', 'x 08:45–09:45']);
+    expect(moveBlockToDay(plan(), other, 'nope', 0, false).to).toBe(other);
+  });
+
+  it('duplicates right after the original, with a new id', () => {
+    const { day: copy, id } = duplicateBlock(plan(), 'a');
+    expect(copy.blocks).toHaveLength(5);
+    expect(copy.blocks[1]).toMatchObject({ id, title: 'a', start: null });
+    expect(id).not.toBe('a');
+  });
+});

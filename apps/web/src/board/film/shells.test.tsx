@@ -112,7 +112,8 @@ it('renders the dropped shot identity and rejects foreign, malformed and read-on
     drop?.dispatchEvent(event);
   });
   expect(drop?.textContent).toContain('5D');
-  expect(put).toHaveBeenCalledOnce();
+  // Saved on its own, a moment later.
+  await vi.waitFor(() => expect(put).toHaveBeenCalledOnce());
   expect(host.querySelector('.film-shell__badge')).toBeNull();
   expect(drop?.querySelector('.schedule__block')?.textContent).not.toContain('7A');
   expect(resolveDroppedShot(payload, 'board', [frame.id], true)).toBeNull();
@@ -126,7 +127,9 @@ it('renders the dropped shot identity and rejects foreign, malformed and read-on
     viewer.querySelector('.schedule__day')?.dispatchEvent(event);
   });
   expect(viewer.querySelector('.schedule__day')?.textContent).not.toContain('5D');
-  expect(viewer.querySelector('fieldset')?.disabled).toBe(true);
+  // Read only: no handles, no adding.
+  expect(viewer.querySelector('.schedule__resize')).toBeNull();
+  expect(viewer.textContent).not.toContain('schedule.addDayShort');
   expect(put).toHaveBeenCalledOnce();
 });
 
@@ -347,8 +350,8 @@ it('stays on the day it opened on, on a phone, as the hours pass', async () => {
       nextCursor: null,
     });
     const host = await mount(<ScheduleView store={store} boardId="board" />);
-    // A phone shows one day at a time.
-    const shown = () => host.querySelector('.schedule__day-sub')?.textContent;
+    // A phone shows one day at a time, summed up above its hours.
+    const shown = () => host.querySelector('.schedule__summary-card')?.textContent;
     expect(shown()).toContain('Location b');
     // A day later the day being shot is the other one: the view stays.
     await act(async () => {
