@@ -442,6 +442,90 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
     expect(grant.statusCode).toBe(200);
     expect((await request('editor', 'POST', base(), input)).statusCode).toBe(403);
   });
+  it('keeps per-person calls for the project only, and block notes for older clients', async () => {
+    const current = Schedule.parse((await request('owner', 'GET', base())).json()).items.find(
+      (item) => item.id === day.id,
+    );
+    if (!current) throw new Error('day missing');
+    const plain = (blocks: ShootingDayInput['blocks']) => ({
+      date: current.date,
+      callTime: current.callTime,
+      wrap: current.wrap,
+      location: current.location,
+      notes: current.notes,
+      blocks,
+    });
+    const calls = [
+      { crewMemberId: crypto.randomUUID(), call: '07:00', pickup: 'Hotel 06:45' },
+      { crewMemberId: crypto.randomUUID(), call: null, pickup: null, absent: true },
+    ];
+    const noted = current.blocks.map((b, i) => (i === 0 ? { ...b, notes: 'LIGHTS ON' } : b));
+    const saved = await request('owner', 'PUT', `${base()}/${day.id}`, {
+      ...plain(noted),
+      calls,
+      revision: current.revision,
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({ calls, blocks: noted });
+    // A client from before calls and notes sends neither: both stay.
+    const bare = current.blocks.map(({ notes: _notes, ...b }) => b);
+    const old = await request('owner', 'PUT', `${base()}/${day.id}`, {
+      ...plain(bare),
+      revision: saved.json().revision,
+    });
+    expect(old.statusCode).toBe(200);
+    expect(old.json().calls).toEqual(calls);
+    expect(old.json().blocks[0].notes).toBe('LIGHTS ON');
+    expect(
+      (
+        await request('owner', 'PUT', `${base()}/${day.id}`, {
+          ...plain(bare),
+          calls: [calls[0], calls[0]],
+          revision: old.json().revision,
+        })
+      ).statusCode,
+    ).toBe(400);
+    // A grant on this board alone shows the plan, never the calls, and cannot write them.
+    const grant = `/boards/${boardId}/grants/${people.stranger?.id}`;
+    expect((await request('owner', 'PUT', grant, { role: 'editor' })).statusCode).toBe(200);
+    try {
+      const seen = Schedule.parse((await request('stranger', 'GET', base())).json()).items;
+      expect(seen.find((item) => item.id === day.id)).not.toHaveProperty('calls');
+      const theirs = await request('stranger', 'PUT', `${base()}/${day.id}`, {
+        ...plain(noted),
+        calls: [],
+        revision: old.json().revision,
+      });
+      expect(theirs.statusCode).toBe(200);
+      expect(theirs.json()).not.toHaveProperty('calls');
+      const edit = await request('stranger', 'POST', `${base()}/edit`, {
+        changes: [
+          {
+            id: day.id,
+            revision: theirs.json().revision,
+            input: { ...plain(noted), calls: [] },
+          },
+        ],
+      });
+      expect(edit.statusCode).toBe(200);
+      expect(edit.json().items[0]).not.toHaveProperty('calls');
+    } finally {
+      expect((await request('owner', 'DELETE', grant)).statusCode).toBe(204);
+    }
+    const after = Schedule.parse((await request('viewer', 'GET', base())).json()).items.find(
+      (item) => item.id === day.id,
+    );
+    expect(after?.calls).toEqual(calls);
+    // Home lists days without anybody's calls.
+    const mine = await request(
+      'owner',
+      'GET',
+      `/me/shooting-days?from=${current.date}&to=${current.date}`,
+    );
+    expect(mine.statusCode).toBe(200);
+    for (const item of mine.json().items) expect(item).not.toHaveProperty('calls');
+    day = ShootingDay.parse(after);
+  });
   it('deletes with the current revision', async () => {
     expect(
       (await request('owner', 'DELETE', `${base()}/${day.id}`, { revision: day.revision }))
