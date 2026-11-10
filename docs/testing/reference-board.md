@@ -39,3 +39,18 @@ mentions, pictures and the ink mark. A last session brings every count to its ta
 The medium board has about 42,000 operations, of which about 10,800 create, move or delete
 cards, by about 400 client ids. `reference-board.test.ts` checks that the small board validates
 with `validateBoardDoc` and has the counts of its size.
+
+## Benchmark of the reads
+
+`apps/web/scripts/bench-reads.ts` loads the medium and large boards from the default folder and
+times, with the web app's `BoardStore` attached: opening (`Y.applyUpdate`, then the first full
+read), adding a stroke to the frame with 800 strokes, editing a table cell and `createElement`
+(medians; decision [0094](../decisions/0094-lighter-core-reads.md)).
+
+```sh
+pnpm --filter @inkadra/doc-schema reference-board --size medium
+pnpm --filter @inkadra/doc-schema reference-board --size large
+pnpm --filter @inkadra/web bench:reads
+# Without a JIT, as Hermes on iOS; --zod-jitless also turns off Zod's compiled fast path
+cd apps/web && node --jitless --import tsx scripts/bench-reads.ts --runs 15 --zod-jitless
+```

@@ -3,7 +3,7 @@ import {
   childrenOf,
   growsWithText,
   isContainer,
-  listElements,
+  setElementView,
 } from '@inkadra/canvas-core';
 import { type Element, PLAN_ASPECT, readElement, roots, UNSORTED } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
@@ -37,6 +37,11 @@ export class BoardStore {
   private sizeVersion = 0;
   /** Elements that just appeared, with the time: their cards pop in once (takeAdded). */
   private added = new Map<string, number>();
+  /** Transactions begun and not yet observed: while any is open the snapshot may be behind. */
+  private open = 0;
+  /** False once an element's key and id differ: the snapshot then keeps one of the two. */
+  private exact = true;
+  private removeView: () => void;
 
   constructor(readonly doc: Y.Doc) {
     const { elements } = roots(doc);
@@ -46,12 +51,30 @@ export class BoardStore {
     });
     this.rebuild();
     elements.observeDeep(this.onChange);
+    // Yjs calls the observers, this one included, before afterTransaction.
+    doc.on('beforeTransaction', this.begin);
+    doc.on('afterTransaction', this.end);
+    this.open = doc._transaction ? 1 : 0;
+    this.removeView = setElementView(doc, () =>
+      this.open === 0 && this.exact ? [...this.snapshot.byId.values()] : null,
+    );
   }
 
   destroy() {
     roots(this.doc).elements.unobserveDeep(this.onChange);
+    this.doc.off('beforeTransaction', this.begin);
+    this.doc.off('afterTransaction', this.end);
+    this.removeView();
     this.undo.destroy();
   }
+
+  private begin = () => {
+    this.open += 1;
+  };
+
+  private end = () => {
+    this.open = Math.max(0, this.open - 1);
+  };
 
   private onChange = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>) => {
     const { elements } = roots(this.doc);
@@ -73,6 +96,7 @@ export class BoardStore {
       const map = elements.get(id);
       const next = map ? readElement(map) : null;
       const old = byId.get(id);
+      if (next && next.id !== id) this.exact = false;
       if (!next) {
         changed = byId.delete(id) || changed;
       } else if (!old || !sameElement(old, next)) {
@@ -95,7 +119,12 @@ export class BoardStore {
 
   private rebuild() {
     const byId = new Map<string, Element>();
-    for (const el of listElements(this.doc)) byId.set(el.id, el);
+    for (const [key, map] of roots(this.doc).elements.entries()) {
+      const el = readElement(map);
+      if (!el) continue;
+      if (el.id !== key) this.exact = false;
+      byId.set(el.id, el);
+    }
     this.index(byId);
   }
 
@@ -207,8 +236,16 @@ function sameElement(a: Element, b: Element): boolean {
     const va = (a as Record<string, unknown>)[k];
     const vb = (b as Record<string, unknown>)[k];
     if (va === vb) continue;
+    // Strokes and rows keep their objects while they do not change (readElement).
+    if (Array.isArray(va) && Array.isArray(vb) && sameItems(va, vb)) continue;
     if (typeof va === 'object' && JSON.stringify(va) === JSON.stringify(vb)) continue;
     return false;
   }
+  return true;
+}
+
+function sameItems(a: readonly unknown[], b: readonly unknown[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
   return true;
 }
