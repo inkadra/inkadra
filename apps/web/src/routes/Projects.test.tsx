@@ -105,7 +105,7 @@ it('shows the Home card with the actions in its menu', async () => {
     'appearance.title',
     'projectsPage.pin',
     'nav.addStoryboard',
-    'onboarding.type',
+    'projectsPage.details',
     'transfer.exportMenu',
     'projectsPage.archive',
     'projectDelete.menu',
@@ -213,7 +213,7 @@ it('keeps the Project type dialog open with an error when saving fails', async (
   await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
   await act(async () =>
     [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
-      .find((item) => item.textContent === 'onboarding.type')
+      .find((item) => item.textContent === 'projectsPage.details')
       ?.click(),
   );
   const dialog = host.querySelector('dialog');
@@ -229,6 +229,24 @@ it('keeps the Project type dialog open with an error when saving fails', async (
   expect(api.patch).toHaveBeenCalledWith('/projects/p1', { type: 'short_film' });
   expect(host.querySelector('dialog')).not.toBeNull();
   expect(dialog?.querySelector('[role="alert"]')?.textContent).toBe('projectsPage.saveError');
+});
+
+it('offers UTC once among the time zones, which the platform does not list', async () => {
+  HTMLElement.prototype.showPopover ??= () => {};
+  HTMLElement.prototype.hidePopover ??= () => {};
+  await render([member('me', 'Giulia')]);
+  await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
+  await act(async () =>
+    [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+      .find((item) => item.textContent === 'projectsPage.details')
+      ?.click(),
+  );
+  const zone = host.querySelectorAll<HTMLButtonElement>('dialog [role="combobox"]')[1];
+  await act(async () => zone?.click());
+  const utc = [...document.querySelectorAll('[role="option"]')].filter(
+    (option) => option.textContent === 'UTC',
+  );
+  expect(utc).toHaveLength(1);
 });
 
 it('formats admin storage in decimal units', async () => {

@@ -25,7 +25,8 @@
 .troupe__columns,
 .troupe__row {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 0.9fr) 20px;
+  /* The last column holds the row's ⋯ .ink-iconbtn: 30px, 44px on a phone (packages/ui). */
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 0.9fr) 30px;
   gap: 12px;
   align-items: center;
 }
@@ -166,7 +167,7 @@
     display: none;
   }
   .troupe__row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 20px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
   }
 
   .troupe__panel {

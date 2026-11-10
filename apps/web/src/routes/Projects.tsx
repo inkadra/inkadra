@@ -1,6 +1,14 @@
 import type { Project, ProjectGroup } from '@inkadra/shared';
 import { Avatar, Button, Dialog, DialogActions, Select } from '@inkadra/ui';
-import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { api } from '../lib/api.ts';
@@ -337,7 +345,7 @@ export function Projects() {
   );
 }
 
-type Change = 'pin' | 'archive' | { type: string | null };
+type Change = 'pin' | 'archive' | { type: string | null; timeZone?: string | null };
 
 /** The projects outside any group; one dropped here leaves its group. */
 function LooseProjects({
@@ -450,7 +458,7 @@ function ProjectCard({
       },
       ...(user ? addStoryboardItem(p, t, navigate, onError) : []),
       ...(editor
-        ? [{ label: t('onboarding.type'), disabled: busy, action: () => setTyping(true) }]
+        ? [{ label: t('projectsPage.details'), disabled: busy, action: () => setTyping(true) }]
         : []),
       ...(p.myRole === 'owner'
         ? [
@@ -523,12 +531,16 @@ function ProjectCard({
         <ProjectTypeDialog
           project={p}
           onClose={() => setTyping(false)}
-          onSave={(type) => mutate(p, { type })}
+          onSave={(change) => mutate(p, change)}
         />
       )}
     </article>
   );
 }
+
+/** The device's own zone: what the call sheet uses while the project has none. */
+const deviceZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+const zoneLabel = (zone: string) => zone.replaceAll('_', ' ');
 
 function ProjectTypeDialog({
   project,
@@ -537,20 +549,27 @@ function ProjectTypeDialog({
 }: {
   project: Project;
   onClose: () => void;
-  /** Resolves to whether the type was saved; on failure the dialog stays open. */
-  onSave: (type: string | null) => Promise<boolean>;
+  /** Resolves to whether the change was saved; on failure the dialog stays open. */
+  onSave: (change: { type: string | null; timeZone?: string | null }) => Promise<boolean>;
 }) {
   const { catalogs, typeLabel } = useClassifications();
   const { t } = useTranslation();
   const [type, setType] = useState(project.type ?? '');
+  const [zone, setZone] = useState(project.timeZone ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  // The platform lists only geographic zones: UTC is added once, so a project can be set to it.
+  const zones = ['UTC', ...Intl.supportedValuesOf('timeZone').filter((z) => z !== 'UTC')];
+  const hintId = useId();
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
     setError(false);
-    const saved = await onSave(type || null);
+    const saved = await onSave({
+      type: type || null,
+      ...(zone !== (project.timeZone ?? '') ? { timeZone: zone || null } : {}),
+    });
     setBusy(false);
     if (saved) onClose();
     else setError(true);
@@ -558,7 +577,7 @@ function ProjectTypeDialog({
   return (
     <Dialog
       open
-      title={`${t('onboarding.type')} · ${project.name}`}
+      title={`${t('projectsPage.details')} · ${project.name}`}
       onClose={onClose}
       onCancel={(e) => {
         if (busy) e.preventDefault();
@@ -582,6 +601,32 @@ function ProjectTypeDialog({
               ))}
           </Select>
         </label>
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
+        <label className="project-type-field">
+          {t('projectsPage.timeZone')}
+          <Select
+            className="ink-input"
+            value={zone}
+            disabled={busy}
+            aria-describedby={hintId}
+            onChange={(e) => setZone(e)}
+          >
+            <option value="">
+              {t('projectsPage.timeZoneAuto', { zone: zoneLabel(deviceZone()) })}
+            </option>
+            {project.timeZone && !zones.includes(project.timeZone) && (
+              <option value={project.timeZone}>{zoneLabel(project.timeZone)}</option>
+            )}
+            {zones.map((z) => (
+              <option key={z} value={z}>
+                {zoneLabel(z)}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <small id={hintId} className="ink-muted">
+          {t('projectsPage.timeZoneHint')}
+        </small>
         {error && <p role="alert">{t('projectsPage.saveError')}</p>}
         <DialogActions>
           <Button disabled={busy} onClick={onClose}>

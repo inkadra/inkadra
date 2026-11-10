@@ -126,6 +126,37 @@ it('opens the row menu and confirms removal before deleting', async () => {
   expect(remove).toHaveBeenCalledWith(expect.stringContaining(member.id), { revision: 1 });
 });
 
+it('merges a duplicate row of the same person from the row menu', async () => {
+  vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
+    this: HTMLDialogElement,
+  ) {
+    this.open = true;
+  });
+  const account = (id: string) => ({ id, name: id, image: null });
+  const kept = { ...member, userId: 'u1', account: account('u1') };
+  const twin = { ...member, id: crypto.randomUUID(), name: ' anna', phone: '333' };
+  // Linked to another account: merging would lose a link, so it is not offered.
+  const other = { ...member, id: crypto.randomUUID(), userId: 'u2', account: account('u2') };
+  const luca = { ...member, id: crypto.randomUUID(), name: 'Luca' };
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [kept, twin, other, luca], nextCursor: null });
+  const merge = vi.spyOn(api, 'post').mockResolvedValue({ ...kept, phone: '333', revision: 2 });
+  const host = await mount();
+  const menus = [...host.querySelectorAll<HTMLButtonElement>('[aria-haspopup="menu"]')];
+  await act(async () => menus[3]?.click());
+  expect(button(host, 'troupe.merge')).toBeUndefined();
+  await act(async () => menus[0]?.click());
+  await act(async () => button(host, 'troupe.merge').click());
+  const dialog = host.querySelector('dialog');
+  expect([...(dialog?.querySelectorAll('input[type="radio"]') ?? [])]).toHaveLength(1);
+  await act(async () => button(dialog!, 'troupe.mergeAction').click());
+  expect(merge).toHaveBeenCalledWith(`/projects/${member.projectId}/crew/${kept.id}/merge`, {
+    revision: 1,
+    from: twin.id,
+    fromRevision: 1,
+  });
+  expect(host.querySelectorAll('.troupe__row')).toHaveLength(3);
+});
+
 it('lets a removed character card be unlinked', async () => {
   const linkedMember = { ...member, character: { boardId: 'board', elementId: 'removed-card' } };
   vi.spyOn(api, 'get').mockImplementation(async (path) => ({

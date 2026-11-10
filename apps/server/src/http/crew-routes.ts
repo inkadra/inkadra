@@ -3,7 +3,10 @@ import {
   BulkCreateCrew,
   type CrewCharacter,
   CrewMemberInput,
+  canMergeCrew,
   Id,
+  MergeCrewMember,
+  mergeCrewInputs,
   UpdateCrewMember,
   z,
 } from '@inkadra/shared';
@@ -20,6 +23,14 @@ import { HttpError } from './errors.ts';
 const Params = z.object({ projectId: Id });
 const MemberParams = Params.extend({ memberId: Id });
 const Revision = z.object({ revision: z.number().int().min(1) }).strict();
+const inputOf = ({
+  id: _id,
+  projectId: _project,
+  revision: _revision,
+  createdAt: _created,
+  updatedAt: _updated,
+  ...input
+}: typeof crewMember.$inferSelect) => input;
 const present = (row: typeof crewMember.$inferSelect) => ({
   ...row,
   createdAt: row.createdAt.toISOString(),
@@ -175,6 +186,64 @@ export function registerCrewRoutes(
     );
     if (!current) throw new HttpError('not_found', 'Crew member not found.');
     throw new HttpError('conflict', 'Crew member changed by another person.', { current });
+  });
+  app.post(`${base}/:memberId/merge`, async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { projectId, memberId } = MemberParams.parse(req.params);
+    await requireProjectRole(db, actor, projectId, 'editor');
+    const { revision, from, fromRevision } = MergeCrewMember.parse(req.body);
+    if (from === memberId) throw new HttpError('bad_request', 'A row cannot merge with itself.');
+    const row = await db.transaction(async (tx) => {
+      // Both rows are locked before the days are read: a day save holding them `for share`
+      // commits first and its call is moved below, or waits and then drops the removed row.
+      const rows = await tx
+        .select()
+        .from(crewMember)
+        .where(and(eq(crewMember.projectId, projectId), inArray(crewMember.id, [memberId, from])))
+        .orderBy(asc(crewMember.id))
+        .for('update');
+      const kept = rows.find((r) => r.id === memberId);
+      const other = rows.find((r) => r.id === from);
+      if (!kept || !other) throw new HttpError('not_found', 'Crew member not found.');
+      if (kept.revision !== revision || other.revision !== fromRevision)
+        throw new HttpError('conflict', 'Crew member changed by another person.');
+      if (!canMergeCrew(kept, other))
+        throw new HttpError('bad_request', 'The rows link different accounts or characters.');
+      const [merged] = await tx
+        .update(crewMember)
+        .set({
+          ...mergeCrewInputs(inputOf(kept), inputOf(other)),
+          revision: revision + 1,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(crewMember.id, memberId))
+        .returning();
+      // The other row's day calls move here; on a day both rows have one, the kept row's wins.
+      const days = await tx
+        .select({ id: shootingDay.id, calls: shootingDay.calls })
+        .from(shootingDay)
+        .where(
+          and(
+            eq(shootingDay.projectId, projectId),
+            sql`${shootingDay.calls} @> ${JSON.stringify([{ crewMemberId: from }])}::jsonb`,
+          ),
+        )
+        .for('update');
+      for (const day of days) {
+        const keptHasCall = day.calls.some((c) => c.crewMemberId === memberId);
+        const calls = day.calls.flatMap((c) =>
+          c.crewMemberId !== from ? [c] : keptHasCall ? [] : [{ ...c, crewMemberId: memberId }],
+        );
+        await tx
+          .update(shootingDay)
+          .set({ calls, revision: sql`${shootingDay.revision} + 1` })
+          .where(eq(shootingDay.id, day.id));
+      }
+      await tx.delete(crewMember).where(eq(crewMember.id, from));
+      if (!merged) throw new Error('Crew member missing');
+      return merged;
+    });
+    return (await readRows([row]))[0];
   });
   app.delete(`${base}/:memberId`, async (req, reply) => {
     const actor = await requireActor(auth, req, db);

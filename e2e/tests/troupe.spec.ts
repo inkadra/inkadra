@@ -33,4 +33,18 @@ test('crew add, autosave and sheet paste persist across reload', async ({ page }
   await expect(page.locator('.troupe__row')).toHaveCount(2);
   await page.locator('.troupe__row').filter({ hasText: 'Anna Rossi' }).click();
   await expect(panel.getByLabel('Ruolo', { exact: true })).toHaveValue('1° AC');
+  // On a phone the row's ⋯ button (44px) fits its column: opening its menu shifts no row.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  const more = page.getByRole('button', { name: 'Azioni per Luca Verdi', exact: true });
+  await more.click();
+  await expect(page.getByRole('menu')).toBeVisible();
+  const fit = await more.evaluate((button) => {
+    const rows = button.closest('.troupe__rows') as HTMLElement;
+    return {
+      scrolled: rows.scrollLeft,
+      inside: button.getBoundingClientRect().right <= rows.getBoundingClientRect().right,
+    };
+  });
+  expect(fit).toEqual({ scrolled: 0, inside: true });
 });

@@ -2695,7 +2695,11 @@
     "boards_one": "{{count}} tableau",
     "boards_other": "{{count}} tableaux",
     "pinned": "Épinglé",
-    "saveError": "Impossible d’enregistrer la modification. Réessayez."
+    "saveError": "Impossible d’enregistrer la modification. Réessayez.",
+    "details": "Type et fuseau horaire",
+    "timeZone": "Fuseau horaire",
+    "timeZoneAuto": "Automatique (fuseau de l’appareil : {{zone}})",
+    "timeZoneHint": "Le lever et le coucher du soleil de la feuille de service utilisent ce fuseau."
   },
   "projectDelete": {
     "menu": "Supprimer le projet…",
@@ -4407,7 +4411,7 @@
           },
           "6": {
             "title": "Feuille de service",
-            "text": "Horaires avec lever et coucher du soleil, décors, équipe avec téléphones, plan avec notes et À apporter. Choisissez les sections et imprimez pour l’équipe."
+            "text": "Horaires avec lever et coucher du soleil, décors, équipe avec téléphones, plan avec notes et À apporter. Choisissez les sections et imprimez pour l’équipe. Le lever et le coucher du soleil suivent le fuseau du projet : changez-le dans Projets, menu ⋯ de la carte, « Type et fuseau horaire ». « Automatique » utilise le fuseau de l’appareil."
           }
         }
       },
@@ -4725,7 +4729,7 @@
         "steps": {
           "0": {
             "title": "Équipe du projet",
-            "text": "Regroupez les personnes par département. Les contacts restent privés à l’équipe du projet."
+            "text": "Regroupez les personnes par département. Les contacts restent privés à l’équipe du projet. La même personne sur deux lignes ? Menu ⋯ de la ligne, « Fusionner avec… »."
           },
           "1": {
             "title": "Modifier une personne",
@@ -5357,7 +5361,12 @@
     "columnsRead": "Colonnes lues : Nom · Poste · Téléphone",
     "pasteFoot": "Une personne déjà dans l’équipe sous le même nom n’est pas ajoutée deux fois.",
     "tooMany": "500 personnes au maximum à la fois.",
-    "noName": "Ligne sans nom"
+    "noName": "Ligne sans nom",
+    "merge": "Fusionner avec…",
+    "mergeTitle": "Fusionner {{name}}",
+    "mergeWith": "Ligne à fusionner",
+    "mergeHint": "La ligne de {{name}} ({{kept}}) reste : ses informations priment, les champs vides sont complétés par l’autre ligne, qui lui transmet ses convocations et est supprimée.",
+    "mergeAction": "Fusionner"
   },
   "dayCalls": {
     "title": "Convocations",

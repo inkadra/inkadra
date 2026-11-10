@@ -32,6 +32,44 @@ export type CrewMember = z.infer<typeof CrewMember>;
 export const UpdateCrewMember = CrewMemberInput.extend({
   revision: z.number().int().min(1),
 }).openapi('UpdateCrewMember');
+/** Merges the row `from` into the row of the path, which is kept; both revisions are checked. */
+export const MergeCrewMember = z
+  .object({
+    revision: z.number().int().min(1),
+    from: Id,
+    fromRevision: z.number().int().min(1),
+  })
+  .strict()
+  .openapi('MergeCrewMember');
+export type MergeCrewMember = z.infer<typeof MergeCrewMember>;
+
+type CrewLinks = Pick<CrewMemberInput, 'userId' | 'character'>;
+const sameCharacter = (a: CrewLinks['character'], b: CrewLinks['character']) =>
+  a?.boardId === b?.boardId && a?.elementId === b?.elementId;
+/**
+ * Two rows can become one when no link is lost: a row holds one account and one character, so
+ * rows linked to two different accounts or characters stay separate (one row per character, 0091).
+ */
+export const canMergeCrew = (a: CrewLinks, b: CrewLinks) =>
+  (!a.userId || !b.userId || a.userId === b.userId) &&
+  (!a.character || !b.character || sameCharacter(a.character, b.character));
+/** The kept row's values win; its blanks are filled from the other row. */
+export const mergeCrewInputs = (kept: CrewMemberInput, other: CrewMemberInput): CrewMemberInput => {
+  const text = (key: 'role' | 'department' | 'phone' | 'email' | 'pickup' | 'notes') =>
+    kept[key].trim() ? kept[key] : other[key];
+  return {
+    ...kept,
+    role: text('role'),
+    department: text('department'),
+    phone: text('phone'),
+    email: text('email'),
+    pickup: text('pickup'),
+    notes: text('notes'),
+    userId: kept.userId ?? other.userId,
+    character: kept.character ?? other.character,
+    onSetContact: kept.onSetContact || other.onSetContact,
+  };
+};
 export const BulkCreateCrew = z
   .object({ items: z.array(CrewMemberInput).min(1).max(500) })
   .strict()

@@ -2695,7 +2695,11 @@
     "boards_one": "{{count}} board",
     "boards_other": "{{count}} board",
     "pinned": "Fissato",
-    "saveError": "Non è stato possibile salvare la modifica. Riprova."
+    "saveError": "Non è stato possibile salvare la modifica. Riprova.",
+    "details": "Tipo e fuso orario",
+    "timeZone": "Fuso orario",
+    "timeZoneAuto": "Automatico (fuso del dispositivo: {{zone}})",
+    "timeZoneHint": "Alba e tramonto del foglio di convocazione usano questo fuso."
   },
   "projectDelete": {
     "menu": "Elimina progetto…",
@@ -4407,7 +4411,7 @@
           },
           "6": {
             "title": "Foglio di lavorazione",
-            "text": "Orari con alba e tramonto, location, troupe con telefoni, programma con note e Da portare. Scegli le sezioni e stampa per la troupe."
+            "text": "Orari con alba e tramonto, location, troupe con telefoni, programma con note e Da portare. Scegli le sezioni e stampa per la troupe. Alba e tramonto seguono il fuso del progetto: si cambia in Progetti, menu ⋯ della card, «Tipo e fuso orario». «Automatico» usa il fuso del dispositivo."
           }
         }
       },
@@ -4725,7 +4729,7 @@
         "steps": {
           "0": {
             "title": "La troupe del progetto",
-            "text": "Raggruppa le persone per reparto. I contatti restano privati al team."
+            "text": "Raggruppa le persone per reparto. I contatti restano privati al team. Una persona finita su due righe? Menu ⋯ della riga, «Unisci con…»."
           },
           "1": {
             "title": "Modifica una persona",
@@ -5357,7 +5361,12 @@
     "columnsRead": "Colonne lette: Nome · Ruolo · Telefono",
     "pasteFoot": "Chi è già in troupe con lo stesso nome non viene duplicato.",
     "tooMany": "Massimo 500 persone per volta.",
-    "noName": "Riga senza nome"
+    "noName": "Riga senza nome",
+    "merge": "Unisci con…",
+    "mergeTitle": "Unisci {{name}}",
+    "mergeWith": "Riga da unire",
+    "mergeHint": "Resta la riga di {{name}} ({{kept}}): i suoi dati vincono, i campi vuoti si riempiono dall’altra, che passa le sue convocazioni e viene eliminata.",
+    "mergeAction": "Unisci"
   },
   "dayCalls": {
     "title": "Convocazioni",

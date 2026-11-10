@@ -804,6 +804,30 @@
           }
         ]
       },
+      "MergeCrewMember": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "from": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "fromRevision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "revision",
+          "from",
+          "fromRevision"
+        ],
+        "additionalProperties": false
+      },
       "CrewCharacters": {
         "type": "object",
         "properties": {
@@ -5796,8 +5820,12 @@
             "maxLength": 40
           },
           "timeZone": {
-            "type": "string",
-            "maxLength": 100
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100,
+            "description": "IANA time zone; null clears it (clients then use the device zone)."
           },
           "shootingStart": {
             "type": [
@@ -11832,6 +11860,116 @@
           },
           "409": {
             "description": "Stale revision.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/crew/{memberId}/merge": {
+      "post": {
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Crew"
+        ],
+        "summary": "Merge another crew member into this one",
+        "description": "Fills the blanks of this row from the other, keeps either link, moves the other row’s day calls here and removes it, in one transaction. Rows linked to different accounts or characters cannot be merged (400).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeCrewMember"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Merged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrewMember"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision of either row.",
             "content": {
               "application/json": {
                 "schema": {

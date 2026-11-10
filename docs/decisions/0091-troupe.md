@@ -44,3 +44,14 @@ in the trash and, for the caller's links and answers, that the caller can open. 
 two characters gets one row per character, so each name keeps its link. The merge marks only the
 links it read; one an older server changes later (its `updated_at` passes `merged_at`) is merged
 again at the next start, through the crew and without taking a link away.
+
+**Merging duplicate rows** (follow-up). The same person can end up on two rows (a paste, a merged
+cast link, one row per board). The row's ⋯ menu offers "Merge with…" only when another row has
+the same name (`castNameKey`) and merging loses no link: a row holds one account and one
+character, so rows linked to two different accounts or characters stay separate, as an actor
+playing two characters keeps one row per character. `POST …/crew/{id}/merge` (project editor,
+both revisions checked, 409 when either changed) keeps that row, fills its empty fields and links
+from the other, keeps "on-set contact" if either had it, moves the other row's day calls to it
+(on a day both have one, the kept row's wins) and deletes the other row, in one transaction.
+A day save locks the rows its calls name (`for share`) in the transaction that writes the day, and
+the merge and the delete lock their rows first, so a call to a removed row is never written.

@@ -2695,7 +2695,11 @@
     "boards_one": "{{count}} tablero",
     "boards_other": "{{count}} tableros",
     "pinned": "Fijado",
-    "saveError": "No se pudo guardar el cambio. Inténtalo de nuevo."
+    "saveError": "No se pudo guardar el cambio. Inténtalo de nuevo.",
+    "details": "Tipo y zona horaria",
+    "timeZone": "Zona horaria",
+    "timeZoneAuto": "Automática (zona del dispositivo: {{zone}})",
+    "timeZoneHint": "El amanecer y el atardecer de la hoja de citación usan esta zona horaria."
   },
   "projectDelete": {
     "menu": "Eliminar proyecto…",
@@ -4407,7 +4411,7 @@
           },
           "6": {
             "title": "Orden de rodaje",
-            "text": "Horarios con amanecer y atardecer, localizaciones, equipo con teléfonos, plan con notas y lo que hay que llevar. Elige las secciones e imprime para el equipo."
+            "text": "Horarios con amanecer y atardecer, localizaciones, equipo con teléfonos, plan con notas y lo que hay que llevar. Elige las secciones e imprime para el equipo. El amanecer y el atardecer siguen la zona horaria del proyecto: cámbiala en Proyectos, menú ⋯ de la tarjeta, «Tipo y zona horaria». «Automática» usa la zona del dispositivo."
           }
         }
       },
@@ -4725,7 +4729,7 @@
         "steps": {
           "0": {
             "title": "Equipo del proyecto",
-            "text": "Agrupa a las personas por departamento. Los contactos solo los ve el equipo del proyecto."
+            "text": "Agrupa a las personas por departamento. Los contactos solo los ve el equipo del proyecto. ¿La misma persona en dos filas? Menú ⋯ de la fila, «Combinar con…»."
           },
           "1": {
             "title": "Editar una persona",
@@ -5357,7 +5361,12 @@
     "columnsRead": "Columnas leídas: Nombre · Cargo · Teléfono",
     "pasteFoot": "Quien ya está en el equipo con el mismo nombre no se duplica.",
     "tooMany": "Como máximo 500 personas a la vez.",
-    "noName": "Línea sin nombre"
+    "noName": "Línea sin nombre",
+    "merge": "Combinar con…",
+    "mergeTitle": "Combinar {{name}}",
+    "mergeWith": "Fila que combinar",
+    "mergeHint": "Se queda la fila de {{name}} ({{kept}}): sus datos mandan, los campos vacíos se rellenan con la otra fila, que le pasa sus citaciones y se elimina.",
+    "mergeAction": "Combinar"
   },
   "dayCalls": {
     "title": "Citaciones",

@@ -2695,7 +2695,11 @@
     "boards_one": "{{count}} quadro",
     "boards_other": "{{count}} quadros",
     "pinned": "Fixado",
-    "saveError": "Não foi possível salvar a alteração. Tente novamente."
+    "saveError": "Não foi possível salvar a alteração. Tente novamente.",
+    "details": "Tipo e fuso horário",
+    "timeZone": "Fuso horário",
+    "timeZoneAuto": "Automático (fuso do dispositivo: {{zone}})",
+    "timeZoneHint": "O nascer e o pôr do sol da folha de chamada usam este fuso."
   },
   "projectDelete": {
     "menu": "Excluir projeto…",
@@ -4407,7 +4411,7 @@
           },
           "6": {
             "title": "Ordem do dia",
-            "text": "Horários com nascer e pôr do sol, locais, equipa com telefones, plano com notas e o que levar. Escolhe as secções e imprime para a equipa."
+            "text": "Horários com nascer e pôr do sol, locais, equipa com telefones, plano com notas e o que levar. Escolhe as secções e imprime para a equipa. O nascer e o pôr do sol seguem o fuso do projeto: muda-o em Projetos, menu ⋯ do cartão, «Tipo e fuso horário». «Automático» usa o fuso do dispositivo."
           }
         }
       },
@@ -4725,7 +4729,7 @@
         "steps": {
           "0": {
             "title": "Equipa do projeto",
-            "text": "Agrupe as pessoas por departamento. Os contactos ficam privados para a equipa do projeto."
+            "text": "Agrupe as pessoas por departamento. Os contactos ficam privados para a equipa do projeto. A mesma pessoa em duas linhas? Menu ⋯ da linha, «Juntar com…»."
           },
           "1": {
             "title": "Edite uma pessoa",
@@ -5357,7 +5361,12 @@
     "columnsRead": "Colunas lidas: Nome · Função · Telefone",
     "pasteFoot": "Quem já está na equipa com o mesmo nome não é duplicado.",
     "tooMany": "No máximo 500 pessoas de cada vez.",
-    "noName": "Linha sem nome"
+    "noName": "Linha sem nome",
+    "merge": "Juntar com…",
+    "mergeTitle": "Juntar {{name}}",
+    "mergeWith": "Linha a juntar",
+    "mergeHint": "Fica a linha de {{name}} ({{kept}}): os seus dados prevalecem, os campos vazios são preenchidos com a outra linha, que lhe passa as convocatórias e é removida.",
+    "mergeAction": "Juntar"
   },
   "dayCalls": {
     "title": "Convocatórias",

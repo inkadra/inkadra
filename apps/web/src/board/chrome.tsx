@@ -933,7 +933,8 @@ export function ContextMenu({
   useEffect(() => {
     ref.current
       ?.querySelector<HTMLButtonElement>('[role^="menuitem"]:not([aria-disabled="true"])')
-      ?.focus();
+      // The menu is already placed in view; scrolling to it would shift a clipped list beside it.
+      ?.focus({ preventScroll: true });
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
       if (ref.current?.contains(target) || anchor?.current?.contains(target)) return;
