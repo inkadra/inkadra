@@ -1089,7 +1089,10 @@ export const shootingDay = pgTable(
   (t) => [index('shooting_day_board_date_idx').on(t.boardId, t.date)],
 );
 
-/** An optional link from a free-text cast name of a board's schedule to an account. */
+/**
+ * A former link from a free-text cast name of a board's schedule to an account. Crew rows hold
+ * these links now (decision 0091): each one is merged into the crew once and marked, not read.
+ */
 export const castLink = pgTable(
   'cast_link',
   {
@@ -1100,6 +1103,7 @@ export const castLink = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
+    mergedAt: timestamp('merged_at', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

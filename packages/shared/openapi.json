@@ -1266,7 +1266,7 @@
             "items": {
               "$ref": "#/components/schemas/CastLink"
             },
-            "description": "Every link for people who can edit the schedule, else the caller's own."
+            "description": "From the project's crew rows: every link for project members who can edit the schedule, else the caller's own."
           },
           "responses": {
             "type": "array",
@@ -1298,7 +1298,8 @@
         "required": [
           "castKey",
           "userId"
-        ]
+        ],
+        "description": "A cast name of a crew row linked to an account: its own name or its character card’s, on any board of the project."
       },
       "DayAttendance": {
         "type": "object",
@@ -1352,7 +1353,8 @@
           "name",
           "userId"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Links the crew row with this name or character (a new row in Cast when there is none); needs a project editor."
       },
       "SetDayAttendance": {
         "type": "object",

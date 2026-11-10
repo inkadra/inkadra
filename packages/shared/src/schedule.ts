@@ -173,7 +173,10 @@ export const CastLink = z
     castKey: z.string().openapi({ description: 'The cast name after castNameKey.' }),
     userId: Id,
   })
-  .openapi('CastLink');
+  .openapi('CastLink', {
+    description:
+      'A cast name of a crew row linked to an account: its own name or its character card’s, on any board of the project.',
+  });
 export type CastLink = z.infer<typeof CastLink>;
 export const SetCastLink = z
   .object({
@@ -181,7 +184,10 @@ export const SetCastLink = z
     userId: Id.nullable().openapi({ description: 'The account to link; null removes the link.' }),
   })
   .strict()
-  .openapi('SetCastLink');
+  .openapi('SetCastLink', {
+    description:
+      'Links the crew row with this name or character (a new row in Cast when there is none); needs a project editor.',
+  });
 export type SetCastLink = z.infer<typeof SetCastLink>;
 
 export const AttendanceStatus = z.enum(['confirmed', 'declined']).openapi('AttendanceStatus');
@@ -199,7 +205,8 @@ export const ScheduleAttendance = z
   .object({
     canManage: z.boolean().openapi({ description: 'The caller can edit the schedule.' }),
     links: z.array(CastLink).openapi({
-      description: "Every link for people who can edit the schedule, else the caller's own.",
+      description:
+        "From the project's crew rows: every link for project members who can edit the schedule, else the caller's own.",
     }),
     responses: z.array(DayAttendance).openapi({
       description: "Every response for people who can edit the schedule, else the caller's own.",
