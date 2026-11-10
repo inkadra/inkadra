@@ -5315,6 +5315,8 @@
     "duplicates_one": "{{count}} già in troupe",
     "duplicates_other": "{{count}} già in troupe",
     "columnsRead": "Colonne lette: Nome · Ruolo · Telefono",
-    "pasteFoot": "Chi è già in troupe con lo stesso nome non viene duplicato."
+    "pasteFoot": "Chi è già in troupe con lo stesso nome non viene duplicato.",
+    "tooMany": "Massimo 500 persone per volta.",
+    "noName": "Riga senza nome"
   }
 }

@@ -162,3 +162,57 @@ it('links a character card from the menu and tags the row', async () => {
   expect(host.querySelector('.troupe__chip--character')).not.toBeNull();
   expect(host.textContent).toContain('Giulia');
 });
+
+const type = async (input: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+  const proto = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(proto.prototype, 'value')?.set?.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+};
+const blur = (input: HTMLElement) =>
+  act(async () => input.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
+
+it('keeps the fields usable while saving and sends quick edits in order', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [member], nextCursor: null });
+  let finish: (row: CrewMember) => void = () => {};
+  const save = vi
+    .spyOn(api, 'put')
+    .mockImplementationOnce(() => new Promise((resolve) => (finish = resolve as typeof finish)))
+    .mockResolvedValue({ ...member, role: 'DIT', pickup: 'Hotel', revision: 3 });
+  const host = await mount();
+  await act(async () => (host.querySelector('.troupe__person') as HTMLButtonElement).click());
+  const role = host.querySelector('input[id$="-role"]') as HTMLInputElement;
+  const pickup = host.querySelector('input[id$="-pickup"]') as HTMLInputElement;
+  await type(role, 'DIT');
+  await blur(role);
+  // Tab moved on while the first save runs: the fieldset stays enabled.
+  expect(host.querySelector('fieldset')?.disabled).toBe(false);
+  expect(host.textContent).toContain('troupe.saving');
+  await type(pickup, 'Hotel');
+  await blur(pickup);
+  expect(save).toHaveBeenCalledTimes(1);
+  await act(async () => finish({ ...member, role: 'DIT', revision: 2 }));
+  expect(save).toHaveBeenCalledTimes(2);
+  expect(save).toHaveBeenLastCalledWith(
+    expect.any(String),
+    expect.objectContaining({ role: 'DIT', pickup: 'Hotel', revision: 2 }),
+  );
+});
+
+it('explains why a paste of more than 500 people cannot be added', async () => {
+  vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
+    this: HTMLDialogElement,
+  ) {
+    this.open = true;
+  });
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [], nextCursor: null });
+  const host = await mount();
+  await act(async () => button(host, 'troupe.paste').click());
+  const dialog = host.querySelector('dialog')!;
+  const text = Array.from({ length: 501 }, (_, i) => `Person ${i}\tGrip`).join('\n');
+  await type(dialog.querySelector('textarea')!, text);
+  expect(dialog.textContent).toContain('troupe.tooMany');
+  expect(dialog.querySelectorAll('.troupe__preview-row').length).toBeLessThanOrEqual(501);
+  expect(button(dialog, 'troupe.addPeople')?.disabled).toBe(true);
+});

@@ -5315,6 +5315,8 @@
     "duplicates_one": "{{count}} already in crew",
     "duplicates_other": "{{count}} already in crew",
     "columnsRead": "Columns read: Name · Role · Phone",
-    "pasteFoot": "Anyone already in the crew with the same name is not added twice."
+    "pasteFoot": "Anyone already in the crew with the same name is not added twice.",
+    "tooMany": "At most 500 people at a time.",
+    "noName": "Line without a name"
   }
 }

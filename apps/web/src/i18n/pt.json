@@ -5315,6 +5315,8 @@
     "duplicates_one": "{{count}} já na equipa",
     "duplicates_other": "{{count}} já na equipa",
     "columnsRead": "Colunas lidas: Nome · Função · Telefone",
-    "pasteFoot": "Quem já está na equipa com o mesmo nome não é duplicado."
+    "pasteFoot": "Quem já está na equipa com o mesmo nome não é duplicado.",
+    "tooMany": "No máximo 500 pessoas de cada vez.",
+    "noName": "Linha sem nome"
   }
 }

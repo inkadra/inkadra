@@ -19,6 +19,9 @@ import { whileVisible } from './schedule.ts';
 import './film.css';
 import './troupe.css';
 
+/** The most rows one paste sends; the bulk endpoint takes no more. */
+const MAX_PASTE = 500;
+
 export const emptyCrewMember = (name: string, position: number): CrewMemberInput => ({
   name,
   position,
@@ -402,7 +405,11 @@ function CrewPanel({
   const { t } = useTranslation();
   const id = useId();
   const [draft, setDraft] = useState(inputOf(row));
-  const [revision, setRevision] = useState(row.revision);
+  // Saves run one after another, each with the revision the previous one returned, so a quick
+  // second edit is neither lost nor turned into a conflict with itself.
+  const revision = useRef(row.revision);
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const pending = useRef(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [conflict, setConflict] = useState<CrewMember | null>(null);
@@ -417,28 +424,37 @@ function CrewPanel({
   const [pickAccount, setPickAccount] = useState(false);
   const [pickCharacter, setPickCharacter] = useState<{ right: number; top: number } | null>(null);
   const characterButton = useRef<HTMLButtonElement>(null);
-  const save = async (input: CrewMemberInput, rev = revision) => {
+  const save = (input: CrewMemberInput, rev?: number) => {
     setDraft(input);
     if (!Input.safeParse(input).success) {
       setError(t('troupe.invalid'));
-      return;
+      return queue.current;
     }
+    pending.current += 1;
     setBusy(true);
     setError('');
-    try {
-      const saved = await api.put<CrewMember>(`${base}/${row.id}`, { ...input, revision: rev });
-      setRevision(saved.revision);
-      setConflict(null);
-      onUpdate(saved);
-    } catch (e) {
-      if (e instanceof RequestError && e.status === 409) {
-        const current = (e.details as { current?: CrewMember } | undefined)?.current;
-        if (current) setConflict(current);
-        else setError(t('troupe.error'));
-      } else setError(t('troupe.error'));
-    } finally {
-      setBusy(false);
-    }
+    const run = async () => {
+      try {
+        const saved = await api.put<CrewMember>(`${base}/${row.id}`, {
+          ...input,
+          revision: rev ?? revision.current,
+        });
+        revision.current = saved.revision;
+        setConflict(null);
+        onUpdate(saved);
+      } catch (e) {
+        if (e instanceof RequestError && e.status === 409) {
+          const current = (e.details as { current?: CrewMember } | undefined)?.current;
+          if (current) setConflict(current);
+          else setError(t('troupe.error'));
+        } else setError(t('troupe.error'));
+      } finally {
+        pending.current -= 1;
+        if (!pending.current) setBusy(false);
+      }
+    };
+    queue.current = queue.current.then(run);
+    return queue.current;
   };
   const placeholders: Partial<Record<keyof CrewMemberInput, string>> = {
     email: t('troupe.emailPlaceholder'),
@@ -483,7 +499,8 @@ function CrewPanel({
   const deleteRow = async () => {
     setBusy(true);
     try {
-      await api.delete(`${base}/${row.id}`, { revision });
+      await queue.current;
+      await api.delete(`${base}/${row.id}`, { revision: revision.current });
       onRemove();
     } catch {
       setError(t('troupe.error'));
@@ -496,7 +513,8 @@ function CrewPanel({
     <aside className="troupe__panel" data-tour="troupe-person">
       <p className="troupe__eyebrow">{draft.department || t('troupe.noDepartment')}</p>
       <h2>{draft.name}</h2>
-      <fieldset disabled={readOnly || busy || !!conflict}>
+      {/* Not disabled while saving: Tab moves on and the next keys land in the next field. */}
+      <fieldset disabled={readOnly || !!conflict}>
         <legend className="ink-sr-only">{t('troupe.person')}</legend>
         <div className="troupe__two">
           {field('name')}
@@ -660,7 +678,7 @@ function CrewPanel({
           <Button
             onClick={() => {
               setDraft(inputOf(conflict));
-              setRevision(conflict.revision);
+              revision.current = conflict.revision;
               onUpdate(conflict);
               setConflict(null);
             }}
@@ -786,8 +804,8 @@ function PasteDialog({
                   <span key={key}>{t(`troupe.${key}`)}</span>
                 ))}
               </div>
-              {parsed.map((r) =>
-                r.status === 'header' || r.status === 'agent' ? (
+              {parsed.slice(0, MAX_PASTE).map((r) =>
+                r.status !== 'new' && r.status !== 'duplicate' ? (
                   <div
                     className="troupe__preview-row is-skipped"
                     key={`${r.source}-${r.department}-${r.status}`}
@@ -830,12 +848,13 @@ function PasteDialog({
         </div>
       </div>
       <p className="troupe__paste-foot">{t('troupe.pasteFoot')}</p>
+      {fresh.length > MAX_PASTE && <p role="alert">{t('troupe.tooMany')}</p>}
       {error && <p role="alert">{t('troupe.error')}</p>}
       <DialogActions>
         <Button onClick={onClose}>{t('troupe.cancel')}</Button>
         <Button
           variant="primary"
-          disabled={busy || !fresh.length || fresh.length > 500}
+          disabled={busy || !fresh.length || fresh.length > MAX_PASTE}
           onClick={() => void submit()}
         >
           {t('troupe.addPeople', { count: fresh.length })}

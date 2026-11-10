@@ -5315,6 +5315,8 @@
     "duplicates_one": "{{count}} schon im Team",
     "duplicates_other": "{{count}} schon im Team",
     "columnsRead": "Gelesene Spalten: Name · Funktion · Telefon",
-    "pasteFoot": "Wer mit gleichem Namen schon im Team ist, wird nicht doppelt angelegt."
+    "pasteFoot": "Wer mit gleichem Namen schon im Team ist, wird nicht doppelt angelegt.",
+    "tooMany": "Höchstens 500 Personen auf einmal.",
+    "noName": "Zeile ohne Namen"
   }
 }
