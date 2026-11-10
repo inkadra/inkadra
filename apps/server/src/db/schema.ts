@@ -1079,6 +1079,8 @@ export const shootingDay = pgTable(
     location: text('location').notNull(),
     notes: text('notes').notNull(),
     blocks: jsonb('blocks').$type<import('@inkadra/shared').ScheduleBlock[]>().notNull(),
+    // Per-person calls (decision 0092): private team data, never in guest or client output.
+    calls: jsonb('calls').$type<import('@inkadra/shared').DayCall[]>().notNull().default([]),
     updatedBy: jsonb('updated_by').$type<{ id: string; name: string }>(),
     revision: integer('revision').notNull().default(1),
     createdAt: createdAt(),
