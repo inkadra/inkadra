@@ -18,7 +18,7 @@ import { originalKey, type Storage } from '../storage.ts';
 import { reserveSpace, StorageFullError } from '../storage-limits.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
-import { containsNul } from './nul.ts';
+import { containsNul } from './nul-char.ts';
 
 interface Deps {
   config: Config;
