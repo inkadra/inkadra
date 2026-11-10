@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { Element } from '@inkadra/doc-schema';
-import { type CastLink, castNameKey, parseMapLink, type ShootingDayInput } from '@inkadra/shared';
+import { type CastLink, castNameKey, isMapLink, type ShootingDayInput } from '@inkadra/shared';
 import { neededForDay } from './needed.ts';
 import { clockMinutes, scheduleTimes } from './schedule.ts';
 
@@ -121,7 +121,7 @@ export function locationsOfDay(
     const text = day.location.replace(/\S+/g, (word) => {
       const token = word.replace(/^[<(]+|[>),.;]+$/g, '');
       const url = /^https?:/i.test(token) ? token : `https://${token}`;
-      if (!parseMapLink(url)) return word;
+      if (!isMapLink(url)) return word;
       mapUrl ??= url;
       return '';
     });

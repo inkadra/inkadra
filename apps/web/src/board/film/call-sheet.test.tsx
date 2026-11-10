@@ -576,3 +576,10 @@ it.each([' ', '\n'])('extracts a free-text map URL separated by %j', (separator)
     ),
   ).toEqual([{ name: 'Via Garibaldi 18, Torino', address: '', mapUrl }]);
 });
+
+it('extracts short map links without requiring coordinates', () => {
+  const mapUrl = 'https://maps.app.goo.gl/AbCdEf';
+  expect(locationsOfDay({ ...day, blocks: [], location: `Studio ${mapUrl}` }, new Map())).toEqual([
+    { name: 'Studio', address: '', mapUrl },
+  ]);
+});
