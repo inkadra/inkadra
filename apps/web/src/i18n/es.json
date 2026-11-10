@@ -2469,7 +2469,6 @@
     "dayOf": "Jornada {{n}} de {{total}}",
     "date": "Fecha",
     "call": "Citación",
-    "wrap": "Fin previsto",
     "revision": "Revisión {{revision}}",
     "time": "Hora",
     "scene": "Escena",
@@ -2494,7 +2493,6 @@
     "moves": "Movimientos numerados",
     "fullPage": "Plantas a página completa",
     "new": "Nuevo",
-    "general": "General",
     "yourCall": "Tu citación",
     "confirm": "Confirmo mi asistencia",
     "decline": "No puedo",
@@ -2515,7 +2513,17 @@
       "confirmed": "Confirmado",
       "declined": "No puede",
       "waiting": "Pendiente"
-    }
+    },
+    "ready": "Ready to shoot",
+    "pause": "Break",
+    "cameraWrap": "Camera wrap",
+    "crewWrap": "Crew wrap",
+    "times": "Key times",
+    "place": "Place",
+    "locationNumber": "Loc. {{n}}",
+    "serve": "Needed: {{items}}",
+    "inScene": "On set",
+    "contact": "Contact"
   },
   "needed": {
     "title": "Para llevar",
@@ -4278,7 +4286,7 @@
           },
           "2": {
             "title": "Orden de rodaje",
-            "text": "Lista para enviar al equipo."
+            "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
           }
         }
       },

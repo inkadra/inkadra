@@ -91,6 +91,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0086](0086-guest-decisions-in-archives.md)          | Guest decisions and proofing travel with the archive, on revoked links                 |
 | [0087](0087-no-export-presets.md)                    | No audience presets and no kickoff summary in the PDF export                           |
 | [0088](0088-theme-in-export-dialog.md)               | Heading style in the export dialog; the accent is always the project's colour          |
+| [0090](0090-call-sheet-at-a-glance.md)               | Call sheet at a glance: step 1 of Troupe, using existing board data                    |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

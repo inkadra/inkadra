@@ -206,6 +206,7 @@ export const TOURS: Tour[] = [
     steps: [
       { anchor: 'schedule', media: 'calendar', side: 'bottom' },
       { anchor: 'schedule-days', media: 'calendar', side: 'top' },
+      // The sheet derives key times, locations and row pictures from the board (0090).
       { anchor: 'schedule-callsheet', media: 'export', side: 'bottom' },
     ],
   },

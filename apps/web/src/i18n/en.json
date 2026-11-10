@@ -2469,7 +2469,6 @@
     "dayOf": "Day {{n}} of {{total}}",
     "date": "Date",
     "call": "Call",
-    "wrap": "Planned wrap",
     "revision": "Revision {{revision}}",
     "time": "Time",
     "scene": "Scene",
@@ -2494,7 +2493,6 @@
     "moves": "Numbered moves",
     "fullPage": "Plans on a full page",
     "new": "New",
-    "general": "General",
     "yourCall": "Your call",
     "confirm": "Confirm I'll be there",
     "decline": "I can't",
@@ -2515,7 +2513,17 @@
       "confirmed": "Confirmed",
       "declined": "Can't come",
       "waiting": "Waiting"
-    }
+    },
+    "ready": "Ready to shoot",
+    "pause": "Break",
+    "cameraWrap": "Camera wrap",
+    "crewWrap": "Crew wrap",
+    "times": "Key times",
+    "place": "Place",
+    "locationNumber": "Loc. {{n}}",
+    "serve": "Needed: {{items}}",
+    "inScene": "On set",
+    "contact": "Contact"
   },
   "needed": {
     "title": "To bring",
@@ -4278,7 +4286,7 @@
           },
           "2": {
             "title": "Call sheet",
-            "text": "Ready to send to the crew."
+            "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
           }
         }
       },

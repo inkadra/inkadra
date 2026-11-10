@@ -95,6 +95,12 @@ describe('pagination', () => {
     expect(paginateRows([60, 30, 10, 50], 100)).toEqual([[0, 1, 2], [3]]);
   });
 
+  it('moves a row kept with the next one onto the next page with it', () => {
+    expect(paginateRows([40, 35, 30], 100, [false, true])).toEqual([[0], [1, 2]]);
+    expect(paginateRows([40, 20, 20, 30], 100, [false, true, true])).toEqual([[0], [1, 2, 3]]);
+    expect(paginateRows([40, 30, 20], 100, [false, true])).toEqual([[0, 1, 2]]);
+  });
+
   it('gives a row taller than a page a page of its own', () => {
     expect(paginateRows([20, 300, 20], 100)).toEqual([[0], [1], [2]]);
     expect(paginateRows([], 100)).toEqual([[]]);

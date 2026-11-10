@@ -1,11 +1,24 @@
 // @vitest-environment happy-dom
+import { createElement } from '@inkadra/canvas-core';
+import type { Element } from '@inkadra/doc-schema';
 import type { ShootingDay } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as Y from 'yjs';
 import { chooseSelect } from '../../test/select.ts';
+import { BoardStore } from '../store.ts';
 import { CallSheetModal } from './CallSheetModal.tsx';
-import { castCalls, departmentNotes, personalCall, plannedWrap, sheetRows } from './call-sheet.ts';
+import {
+  castCalls,
+  departmentNotes,
+  hasSceneNumbers,
+  keyTimes,
+  locationsOfDay,
+  personalCall,
+  plannedWrap,
+  serveLines,
+} from './call-sheet.ts';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -65,7 +78,7 @@ afterEach(() => {
 });
 async function mount(
   days: ShootingDay[],
-  props: { boardId?: string; userId?: string; canManage?: boolean } = {},
+  props: { boardId?: string; userId?: string; canManage?: boolean; store?: BoardStore } = {},
 ) {
   vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
     this: HTMLDialogElement,
@@ -164,7 +177,7 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
   );
   expect(print).toHaveBeenCalledOnce();
   // Day 2 has no blocks, cast, departments, notes, frames or plans: they say so and stay out.
-  expect(host.querySelectorAll('input[role=switch]')).toHaveLength(8);
+  expect(host.querySelectorAll('input[role=switch]')).toHaveLength(7);
   expect(host.textContent).toContain('callSheet.emptyHelp');
   expect(paper()?.textContent).not.toContain('bring lights');
 });
@@ -207,50 +220,6 @@ it("finds a linked person's earliest call, matching the name whatever its case",
   expect(personalCall(day, links, 'other')).toBeNull();
   expect(personalCall(day, [], 'me')).toBeNull();
 });
-it('joins shots in a row of one scene and cast, and nothing else', () => {
-  const shot = (id: string, cast: string[], shotId: string | null = id) => ({
-    ...(day.blocks[0] as ShootingDay['blocks'][number]),
-    id,
-    start: null,
-    shotId,
-    cast,
-  });
-  const labels = new Map([
-    ['4a', { label: '4A', scene: '4' }],
-    ['4b', { label: '4B', scene: '4' }],
-    ['4c', { label: '4C', scene: '4' }],
-    ['4d', { label: '4D', scene: '4' }],
-    ['3a', { label: '3A', scene: '3' }],
-    ['loose1', { label: '1' }],
-    ['loose2', { label: '2' }],
-  ]);
-  const rows = sheetRows(
-    {
-      ...day,
-      blocks: [
-        shot('4a', ['Anna']),
-        shot('4b', [' anna ']),
-        shot('4c', ['Anna']),
-        shot('4d', ['Bob']),
-        shot('3a', ['Bob']),
-        shot('gone', ['Bob'], 'gone'),
-        { ...shot('lunch', [], null), type: 'break' },
-        shot('loose1', ['Bob']),
-        shot('loose2', ['Bob']),
-      ],
-    },
-    (id) => (id ? labels.get(id) : undefined),
-  );
-  expect(rows.map((r) => [r.id, r.first, r.last])).toEqual([
-    ['4a', '4A', '4C'],
-    ['4d', '4D', undefined],
-    ['3a', '3A', undefined],
-    ['gone', undefined, undefined],
-    ['lunch', undefined, undefined],
-    ['loose1', '1', undefined],
-    ['loose2', '2', undefined],
-  ]);
-});
 describe('on a phone', () => {
   const answerPath = '/api/v1/boards/board/schedule/day-1/attendance';
   function stubs(attendance: unknown, answered: unknown = {}, phone = true) {
@@ -284,7 +253,9 @@ describe('on a phone', () => {
     expect(button(host, 'callSheet.confirm')).toBeUndefined();
     expect(button(host, 'callSheet.decline')).toBeUndefined();
     expect(host.textContent).not.toContain('callSheet.yourCall');
-    expect(host.textContent).toContain('callSheet.general');
+    // The day's times are said once, in the key-times row, not again above it.
+    expect(host.querySelector('.sheet__phone-head')?.textContent).not.toMatch(/\d:\d\d/);
+    expect(host.querySelector('.sheet__times dt')?.textContent).toBe('callSheet.call');
     expect(host.querySelector('.call-sheet__presence')).toBeNull();
   });
   it('lets a linked person answer, and sends only the status', async () => {
@@ -293,7 +264,7 @@ describe('on a phone', () => {
       { dayId: 'day-1', userId: 'me', status: 'confirmed' },
     );
     const host = await mountPhone();
-    expect(host.querySelector('.sheet__phone-own')?.textContent).toContain('Bob');
+    expect(host.querySelector('.sheet__phone-own')?.textContent).toMatch(/Bob · \d+:\d\d/);
     await act(async () => button(host, 'callSheet.confirm')?.click());
     const put = fetch.mock.calls.find(([, init]) => init?.method === 'PUT');
     expect(put?.[0]).toContain(answerPath);
@@ -415,4 +386,115 @@ describe('the presence panel on a computer', () => {
     });
     expect(alert()).toBeNull();
   });
+});
+
+it('computes key times with overnight offsets, omitting unavailable slots', () => {
+  expect(keyTimes(day)).toEqual([
+    { key: 'call', time: 1080 },
+    { key: 'ready', time: 1500 },
+    { key: 'cameraWrap', time: 1260 },
+    { key: 'crewWrap', time: 1740 },
+  ]);
+  expect(keyTimes({ ...day, wrap: null, blocks: [] })).toEqual([{ key: 'call', time: 1080 }]);
+  const blocks = [
+    { ...day.blocks[0]!, start: null },
+    { ...day.blocks[0]!, id: 'break', type: 'break' as const, shotId: null, start: null },
+  ];
+  expect(keyTimes({ ...day, blocks })).toContainEqual({ key: 'pause', time: 1110 });
+});
+
+it('resolves ordered locations, numbers and Serve lines by scene identity', () => {
+  // Minimal fixtures: the helper only reads these document fields.
+  const elements = new Map<string, Element>([
+    ['frame', { id: 'frame', type: 'frame', parent: 'scene' } as Element],
+    ['other', { id: 'other', type: 'frame', parent: 'scene' } as Element],
+    ['scene', { id: 'scene', type: 'scene', number: '4', location: ' Station ' } as Element],
+    [
+      'location',
+      {
+        id: 'location',
+        type: 'location',
+        name: 'station',
+        address: 'Platform 12',
+        mapUrl: 'https://example.com/map',
+      } as Element,
+    ],
+    [
+      'todo',
+      {
+        id: 'todo',
+        type: 'todo',
+        sceneId: 'scene',
+        list: 'props',
+        items: [{ id: 'item', text: 'Ticket', done: false }],
+      } as Element,
+    ],
+  ]);
+  const planned = {
+    ...day,
+    blocks: [
+      { ...day.blocks[0]!, start: null },
+      { ...day.blocks[0]!, id: 'second', shotId: 'other', start: null },
+    ],
+  };
+  expect(locationsOfDay(planned, elements)).toEqual([
+    { name: 'Station', address: 'Platform 12', mapUrl: 'https://example.com/map' },
+  ]);
+  expect(hasSceneNumbers(planned, elements)).toBe(true);
+  expect([...serveLines(planned, elements)]).toEqual([['a', 'Ticket']]);
+  elements.set('scene', { ...elements.get('scene')!, number: '', location: 'Bar' } as Element);
+  expect(hasSceneNumbers(planned, elements)).toBe(false);
+  expect([...serveLines(planned, elements)]).toEqual([['a', 'Ticket']]);
+  expect(locationsOfDay({ ...day, location: 'Studio\nMain street', blocks: [] }, elements)).toEqual(
+    [{ name: 'Studio', address: 'Main street', mapUrl: undefined }],
+  );
+});
+
+it('prints each row frame, cast contact and location; omits the scene column on unnumbered days', async () => {
+  const doc = new Y.Doc();
+  const scene = createElement(
+    doc,
+    'scene',
+    { x: 0, y: 0 },
+    { title: 'Studio', number: '', location: 'Studio' },
+    { userId: null },
+  );
+  const frame = createElement(doc, 'frame', { x: 0, y: 0 }, { parent: scene.id }, { userId: null });
+  createElement(
+    doc,
+    'character',
+    { x: 0, y: 0 },
+    { name: 'Bob', actor: 'John', contact: 'Agency phone' },
+    { userId: null },
+  );
+  createElement(
+    doc,
+    'location',
+    { x: 0, y: 0 },
+    { name: 'studio', address: 'Main street', mapUrl: 'https://example.com/map' },
+    { userId: null },
+  );
+  const store = new BoardStore(doc);
+  const host = await mount([{ ...day, blocks: [{ ...day.blocks[0]!, shotId: frame.id }] }], {
+    store,
+  });
+  expect(host.querySelector('.sheet__thumbnail .frame-pic')).not.toBeNull();
+  expect(host.querySelector('.sheet__table--schedule thead')?.textContent).not.toContain(
+    'callSheet.scene',
+  );
+  expect(host.querySelector('article')?.textContent).toContain('Agency phone');
+  expect(host.querySelector('article')?.textContent).toContain('John');
+  expect(host.querySelector('article')?.textContent).toContain('Main street');
+  expect(host.querySelector<HTMLAnchorElement>('article a')?.href).toBe('https://example.com/map');
+  expect(host.querySelector('.call-sheet__controls')?.textContent).not.toContain(
+    'callSheet.frames',
+  );
+  store.destroy();
+});
+
+it('keeps the semantic break colour when a break also references a frame', async () => {
+  const host = await mount([{ ...day, blocks: [{ ...day.blocks[0]!, type: 'break' }] }]);
+  expect(host.querySelector('.sheet__table--schedule .sheet__row--break')?.textContent).toContain(
+    '4A',
+  );
 });

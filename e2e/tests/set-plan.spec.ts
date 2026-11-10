@@ -571,7 +571,7 @@ for (const theme of ['dark', 'light'] as const) {
       await page.goto(`/p/${project.id}?view=schedule`);
       await page.getByRole('button', { name: 'Foglio di lavorazione', exact: true }).click();
       const sheet = page.getByRole('article', { name: 'Anteprima foglio di lavorazione' });
-      const scenes = sheet.locator('.sheet__section').filter({ hasText: 'Scene del giorno' });
+      const scenes = sheet.locator('.sheet__section').filter({ hasText: 'Piante del set' });
       await expect(scenes.locator('.plan__svg')).toBeVisible();
       await expect(scenes.locator('.sheet__kit')).toContainText('Fresnel 1,2K');
       await expect(scenes.locator('.sheet__kit')).toContainText(/Binario \d/);
