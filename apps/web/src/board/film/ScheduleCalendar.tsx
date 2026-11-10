@@ -25,6 +25,7 @@ import {
   minutesLabel,
   moveBlock,
   moveBlockToDay,
+  placeAnnotation,
   resizeBlock,
   SHOT_DRAG_TYPE,
   SNAP,
@@ -106,6 +107,7 @@ export function ScheduleCalendar({
   onDuplicate,
   onAnnounce,
   onDropShot,
+  onDropFree,
 }: {
   view: 'week' | 'day';
   phone: boolean;
@@ -129,6 +131,14 @@ export function ScheduleCalendar({
   onRemove: (dayId: string, blockId: string) => void;
   onDuplicate: (dayId: string, blockId: string) => void;
   onAnnounce: (text: string) => void;
+  onDropFree: (
+    date: string,
+    minute: number,
+    fixed: boolean,
+    fromId: string | null,
+    blockId: string | null,
+    payload?: string,
+  ) => void;
   onDropShot: (entry: CalendarDay, payload: string, minute: number) => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -291,7 +301,7 @@ export function ScheduleCalendar({
     autoScroll(event.clientY);
     if (current.kind === 'resize') {
       const step = event.shiftKey ? 1 : SNAP;
-      const duration = Math.max(step, snap(current.base + dy / MINUTE_PX, step));
+      const duration = Math.min(1440, Math.max(1, snap(current.base + dy / MINUTE_PX, step)));
       update({ ...current, active: true, duration });
       return;
     }
@@ -329,7 +339,13 @@ export function ScheduleCalendar({
       return;
     }
     const to = days.find((d) => d.day.id === current.target);
-    if (!to || to.stale) return;
+    if (!to) {
+      const column = columns.find((item) => item.date === current.target && !item.entry);
+      if (column)
+        onDropFree(column.date, current.minute, current.fixed, from.day.id, current.blockId);
+      return;
+    }
+    if (to.stale) return;
     if (to === from) {
       const next = moveBlock(from.draft, current.blockId, current.minute, current.fixed);
       onChange([{ day: from.day, next }]);
@@ -428,7 +444,7 @@ export function ScheduleCalendar({
     } else if (event.shiftKey && (key === 'ArrowUp' || key === 'ArrowDown')) {
       const step = key === 'ArrowUp' ? -SNAP : SNAP;
       edit(
-        resizeBlock(entry.draft, block.id, Math.max(SNAP, block.duration + step)),
+        resizeBlock(entry.draft, block.id, Math.max(1, block.duration + step)),
         entry,
         `resize:${block.id}`,
       );
@@ -455,10 +471,110 @@ export function ScheduleCalendar({
   const nowMinute = now.getHours() * 60 + now.getMinutes();
   const yesterday = addDays(today, -1);
   const bottom = (viewport.top + viewport.height) / MINUTE_PX;
+  const annotations = (() => {
+    const bounds = grid.current?.getBoundingClientRect();
+    if (!drag?.active || !bounds) return [];
+    const cards = columns.flatMap(({ date, entry }) => {
+      const column = columnRefs.current.get(entry?.day.id ?? date)?.getBoundingClientRect();
+      if (!column || !entry) return [];
+      const slots = scheduleTimes(shown(entry));
+      const lanes = layoutLanes(
+        slots
+          .filter((slot) => slot.block.id !== drag.blockId)
+          .map((slot) => ({ id: slot.block.id, start: slot.start, end: slot.end })),
+      );
+      return slots.map((slot, index) => {
+        const primary = slot.block.id === drag.blockId;
+        const lane = primary
+          ? { lane: 0, lanes: 1 }
+          : (lanes.get(slot.block.id) ?? { lane: 0, lanes: 1 });
+        const original = scheduleTimes(entry.draft).find((item) => item.block.id === slot.block.id);
+        const delta = original ? slot.start - original.start : 0;
+        const previous = slots[index - 1];
+        const after = previous
+          ? t('schedule.after', {
+              block: blockName(previous.block, shotTitle, typeName(previous.block.type)).split(
+                ' · ',
+              )[0],
+            })
+          : t('schedule.afterCall');
+        const text = primary
+          ? drag.kind === 'resize'
+            ? t('schedule.resizeLabel', {
+                duration: minutesLabel(slot.block.duration),
+                end: clockLabel(slot.end),
+              })
+            : `${dateLabel(date, { weekday: 'short', day: 'numeric' })} · ${clockLabel(slot.start)} – ${clockLabel(slot.end)} · ${after}`
+          : delta
+            ? `${delta > 0 ? '+' : '−'}${minutesLabel(Math.abs(delta))}`
+            : '';
+        return {
+          id: slot.block.id,
+          name: blockName(slot.block, shotTitle, typeName(slot.block.type)),
+          column: entry.day.id,
+          text,
+          primary,
+          rect: {
+            left: column.left + (column.width * lane.lane) / lane.lanes + 4,
+            top: column.top + slot.start,
+            width: column.width / lane.lanes - 8,
+            height: Math.max(MIN_HEIGHT, slot.end - slot.start),
+          },
+        };
+      });
+    });
+    if (
+      drag.kind === 'move' &&
+      columns.some((column) => !column.entry && column.date === drag.target)
+    ) {
+      const column = columnRefs.current.get(drag.target)?.getBoundingClientRect();
+      const block = days
+        .find((day) => day.day.id === drag.dayId)
+        ?.draft.blocks.find((item) => item.id === drag.blockId);
+      if (column && block) {
+        const start = Math.max(0, drag.minute);
+        cards.push({
+          id: block.id,
+          name: blockName(block, shotTitle, typeName(block.type)),
+          column: drag.target,
+          primary: true,
+          text: `${dateLabel(drag.target, { weekday: 'short', day: 'numeric' })} · ${clockLabel(start)} – ${clockLabel(start + block.duration)}`,
+          rect: {
+            left: column.left + 4,
+            top: column.top + start,
+            width: column.width - 8,
+            height: Math.max(40, block.duration),
+          },
+        });
+      }
+    }
+    const occupied = cards.map((card) => card.rect);
+    return cards
+      .filter(
+        (card) =>
+          card.text &&
+          card.rect.top < bounds.bottom &&
+          card.rect.top + card.rect.height > bounds.top,
+      )
+      .map((card) => {
+        const width = card.primary ? 240 : 72;
+        const size = {
+          width,
+          height: Math.max(24, Math.ceil((card.text.length * 10) / (width - 14)) * 16 + 8),
+        };
+        const position = placeAnnotation(card.rect, size, bounds, occupied);
+        if (position) occupied.push({ ...position, ...size });
+        return { ...card, position, size };
+      });
+  })();
 
   return (
-    <div
+    <section
+      aria-label={t('schedule.calendarLabel')}
       className="schedule__calendar"
+      onPointerMove={move}
+      onPointerUp={finish}
+      onPointerCancel={cancel}
       data-tour="schedule-days"
       style={{ '--schedule-columns': columns.length } as CSSProperties}
     >
@@ -494,24 +610,86 @@ export function ScheduleCalendar({
           <div className="schedule__gutter" aria-hidden="true">
             {hours.map((minute) => (
               <span key={minute} className="schedule__hour" style={{ top: minute * MINUTE_PX }}>
-                {minute > 0 && minute < rangeEnd ? clockLabel(minute) : ''}
+                {minute > 0 && minute < rangeEnd
+                  ? `${clockLabel(minute % 1440)}${minute === 1440 ? ' (+1)' : ''}`
+                  : ''}
               </span>
             ))}
           </div>
           {columns.map(({ date, entry }) => {
             if (!entry)
               return (
-                <div key={date} className="schedule__column is-free">
+                <section
+                  key={date}
+                  aria-label={t('schedule.day', { date })}
+                  className="schedule__column is-free"
+                  ref={(el) => {
+                    if (el) columnRefs.current.set(date, el);
+                    else columnRefs.current.delete(date);
+                  }}
+                  onDragOver={(event) => {
+                    if (!readOnly && event.dataTransfer.types.includes(SHOT_DRAG_TYPE))
+                      event.preventDefault();
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (readOnly) return;
+                    const top = event.currentTarget.getBoundingClientRect().top;
+                    onDropFree(
+                      date,
+                      snap((event.clientY - top) / MINUTE_PX),
+                      event.altKey,
+                      null,
+                      null,
+                      event.dataTransfer.getData(SHOT_DRAG_TYPE),
+                    );
+                  }}
+                >
                   <p className="schedule__free" style={{ top: (firstCall + 240) * MINUTE_PX }}>
                     <b>{t('schedule.noShoot')}</b>
+                    <br />
+                    {t('schedule.freeDrop')}
                   </p>
+                  {drag?.active &&
+                    drag.kind === 'move' &&
+                    drag.target === date &&
+                    (() => {
+                      const from = days.find((item) => item.day.id === drag.dayId);
+                      const block = from?.draft.blocks.find((item) => item.id === drag.blockId);
+                      if (!block) return null;
+                      const start = Math.max(0, drag.minute);
+                      return (
+                        <div
+                          className={`schedule__block schedule__block--${block.type} is-dragging`}
+                          style={{
+                            top: start,
+                            height: Math.max(40, block.duration),
+                            left: 4,
+                            right: 4,
+                          }}
+                        >
+                          <div className="schedule__block-select">
+                            <span className="schedule__block-text">
+                              <span className="schedule__block-time">
+                                {clockLabel(start)} – {clockLabel(start + block.duration)}
+                              </span>
+                              <span className="schedule__block-title">
+                                {blockName(block, shotTitle, typeName(block.type))}
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   {date === today && <NowLine minute={nowMinute} />}
-                </div>
+                </section>
               );
             const draft = shown(entry);
             const slots = scheduleTimes(draft);
             const lanes = layoutLanes(
-              slots.map((s) => ({ id: s.block.id, start: s.start, end: s.end })),
+              slots
+                .filter((s) => !(drag?.active && drag.blockId === s.block.id))
+                .map((s) => ({ id: s.block.id, start: s.start, end: s.end })),
             );
             const call = clockMinutes(draft.callTime);
             const wrap = plannedWrap(draft);
@@ -520,6 +698,7 @@ export function ScheduleCalendar({
               date === today || date === yesterday
                 ? (nowIn(entry) ?? (date === today ? nowMinute : null))
                 : null;
+            const above = slots.filter((s) => s.end <= viewport.top / MINUTE_PX);
             const below = slots.filter((s) => s.start * MINUTE_PX >= bottom * MINUTE_PX - 4);
             const isTarget = drag?.active && drag.kind === 'move' && drag.target === entry.day.id;
             return (
@@ -605,7 +784,10 @@ export function ScheduleCalendar({
                   />
                 )}
                 {slots.map(({ block, start, end }) => {
-                  const lane = lanes.get(block.id) ?? { lane: 0, lanes: 1 };
+                  const lane =
+                    drag?.active && drag.blockId === block.id
+                      ? { lane: 0, lanes: 1 }
+                      : (lanes.get(block.id) ?? { lane: 0, lanes: 1 });
                   const height = Math.max(MIN_HEIGHT, (end - start) * MINUTE_PX);
                   const dragging = drag?.active && drag.blockId === block.id;
                   const frame = frameOf(block.shotId);
@@ -641,9 +823,6 @@ export function ScheduleCalendar({
                           .join(', ')}
                         aria-keyshortcuts="Enter Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Shift+ArrowUp Shift+ArrowDown Delete"
                         onPointerDown={(event) => begin(event, 'move', entry, block, start)}
-                        onPointerMove={move}
-                        onPointerUp={finish}
-                        onPointerCancel={cancel}
                         onContextMenu={(event) => {
                           if (dragRef.current?.touch) event.preventDefault();
                         }}
@@ -699,30 +878,28 @@ export function ScheduleCalendar({
                           className="schedule__resize"
                           aria-hidden="true"
                           onPointerDown={(event) => begin(event, 'resize', entry, block, start)}
-                          onPointerMove={move}
-                          onPointerUp={finish}
-                          onPointerCancel={cancel}
                         />
-                      )}
-                      {dragging && (
-                        <span
-                          className={`schedule__drag-label${drag.kind === 'move' ? ' is-top' : ''}`}
-                        >
-                          {drag.kind === 'resize'
-                            ? t('schedule.resizeLabel', {
-                                duration: minutesLabel(drag.duration),
-                                end: clockLabel(end),
-                              })
-                            : drag.fixed
-                              ? t('schedule.fixedLabel', { time: clockLabel(start) })
-                              : time}
-                        </span>
                       )}
                     </div>
                   );
                 })}
                 {nowAt !== null && <NowLine minute={nowAt} />}
-                {below.length > 0 && !drag?.active && (
+                {above.length > 0 && !phone && !drag?.active && (
+                  <button
+                    type="button"
+                    className="schedule__more"
+                    style={{ top: viewport.top + 4 }}
+                    onClick={() => {
+                      const last = above.at(-1);
+                      if (last && grid.current)
+                        grid.current.scrollTop = Math.max(0, last.start - 30);
+                    }}
+                  >
+                    <Icon name="chevronDown" className="schedule__up" size={12} />
+                    {t('schedule.moreAbove', { count: above.length })}
+                  </button>
+                )}
+                {below.length > 0 && !phone && !drag?.active && (
                   <button
                     type="button"
                     className="schedule__more"
@@ -745,7 +922,85 @@ export function ScheduleCalendar({
           })}
         </div>
       </div>
-    </div>
+      {annotations.some((note) => !note.position) && (
+        <div
+          className="schedule__annotation-band"
+          style={{ '--schedule-columns': columns.length } as CSSProperties}
+        >
+          <span />
+          {columns.map(({ date, entry }) => (
+            <div key={date} className="schedule__annotation-cell">
+              {annotations
+                .filter((note) => !note.position && note.column === (entry?.day.id ?? date))
+                .map((note) => (
+                  <span key={note.id} className={note.primary ? 'is-primary' : ''}>
+                    {note.primary ? note.text : `${note.name} · ${note.text}`}
+                  </span>
+                ))}
+            </div>
+          ))}
+        </div>
+      )}
+      {annotations.map(
+        (note) =>
+          note.position && (
+            <span
+              key={note.id}
+              className={`schedule__floating-note${note.primary ? ' is-primary' : ''}`}
+              style={{
+                left: note.position.left,
+                top: note.position.top,
+                width: note.size.width,
+                minHeight: note.size.height,
+              }}
+            >
+              {note.text}
+            </span>
+          ),
+      )}
+      {phone &&
+        !drag?.active &&
+        entries.map((entry) => {
+          const slots = scheduleTimes(shown(entry));
+          const above = slots.filter((slot) => slot.end <= viewport.top / MINUTE_PX);
+          const below = slots.filter((slot) => slot.start >= bottom - 4);
+          if (!above.length && !below.length) return null;
+          return (
+            <div key={entry.day.id} className="schedule__edge-notices">
+              {above.length > 0 && (
+                <button
+                  type="button"
+                  className="schedule__edge-button"
+                  onClick={() => {
+                    const last = above.at(-1);
+                    if (last && grid.current) grid.current.scrollTop = Math.max(0, last.start - 30);
+                  }}
+                >
+                  <Icon name="chevronDown" className="schedule__up" size={12} />
+                  {t('schedule.moreAbove', { count: above.length })}
+                </button>
+              )}
+              {below.length > 0 && (
+                <button
+                  type="button"
+                  className="schedule__edge-button"
+                  onClick={() => {
+                    const first = below[0];
+                    if (first && grid.current)
+                      grid.current.scrollTop = Math.max(0, first.start - 30);
+                  }}
+                >
+                  <Icon name="chevronDown" size={12} />
+                  {t('schedule.moreBelow', {
+                    count: below.length,
+                    time: clockLabel(Math.max(...slots.map((slot) => slot.end))),
+                  })}
+                </button>
+              )}
+            </div>
+          );
+        })}
+    </section>
   );
 }
 

@@ -186,3 +186,78 @@ it('walks the day tabs by keyboard, Home and End at the ends, and switches only 
   await act(async () => needed?.click());
   expect(host.querySelector('.schedule__inspector--wide')).not.toBeNull();
 });
+
+it('keeps undo while the original save is still in flight', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  let complete: (value: unknown) => void = () => {};
+  const put = vi.spyOn(api, 'put');
+  put.mockImplementation(async (_path, body) => ({ ...day, ...(body as object), revision: 3 }));
+  // Install the pending response after the default implementation.
+  put.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+  );
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  await openDayView(host);
+  await type(notesOf(host), 'Pending');
+  await settle();
+  await act(async () =>
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true })),
+  );
+  expect(notesOf(host)?.value).toBe('');
+  await act(async () => complete({ ...day, notes: 'Pending', revision: 2 }));
+  await settle();
+  expect(put).toHaveBeenCalledTimes(2);
+  expect(put.mock.calls[1]?.[1]).toMatchObject({ notes: '', revision: 2 });
+});
+
+it('does not let undo silently overwrite an unresolved revision conflict', async () => {
+  const put = vi.spyOn(api, 'put');
+  const { host, notes } = await editThenChangeElsewhere();
+  await act(async () =>
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true })),
+  );
+  expect(notes()?.value).toBe('Mine');
+  await settle();
+  expect(put).not.toHaveBeenCalled();
+  expect(host.textContent).toContain('schedule.statusConflict');
+});
+it('keeps a draft of a remotely removed day until the user chooses to recreate it', async () => {
+  const get = vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  const post = vi
+    .spyOn(api, 'post')
+    .mockResolvedValue({ items: [{ ...day, notes: 'Mine' }], deleted: [] });
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  await openDayView(host);
+  await type(notesOf(host), 'Mine');
+  get.mockResolvedValue({ items: [], nextCursor: null });
+  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+  expect(notesOf(host)?.value).toBe('Mine');
+  expect(host.textContent).toContain('schedule.statusConflict');
+  await act(async () => button(host, 'schedule.staleKeep')?.click());
+  await settle();
+  expect(post).toHaveBeenCalledWith('/boards/board/schedule/edit', {
+    changes: [{ id: day.id, revision: 0, input: expect.objectContaining({ notes: 'Mine' }) }],
+  });
+});
+
+it('does not undo over a colleague edit fetched after the local edit was saved', async () => {
+  const get = vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  const put = vi
+    .spyOn(api, 'put')
+    .mockImplementation(async (_path, body) => ({ ...day, ...(body as object), revision: 2 }));
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  await openDayView(host);
+  await type(notesOf(host), 'Mine');
+  await settle();
+  get.mockResolvedValue({ items: [{ ...day, notes: 'Theirs', revision: 3 }], nextCursor: null });
+  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+  await act(async () =>
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true })),
+  );
+  expect(notesOf(host)?.value).toBe('Theirs');
+  await settle();
+  expect(put).toHaveBeenCalledOnce();
+});

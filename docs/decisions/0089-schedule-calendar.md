@@ -1,6 +1,6 @@
 # 0089 — The shooting schedule as a calendar, saved on its own
 
-Status: accepted. Builds on [0022](0022-shooting-schedule.md); the data and the API do not change.
+Status: accepted. Builds on [0022](0022-shooting-schedule.md); the calendar uses additive schedule metadata and atomic edits.
 
 ## Context
 
@@ -54,8 +54,12 @@ works after saving. The 409 handling of 0022 stays: a stale draft is never saved
 version; the day is marked and the person chooses "See their version" or "Keep mine". A failed
 save keeps the draft, retries every five seconds and when the browser is back online, offers
 "Retry now" and "Discard changes", and the tab asks before closing while anything is unsaved. A
-move between two days saves the two days separately: if one of them fails, its draft stays and is
-retried, so the block can be on both days on the server for a while but is never lost.
+move between dates saves all changed dates in one transaction through `POST /schedule/edit`.
+Every revision is checked inside the transaction: a conflict rolls back the whole gesture.
+Dropping a block or queued shot on a free date creates a shooting day at that date. Creation and
+the source edit share one history step; undo removes the created day and restores the source in
+one transaction, and redo recreates it. Local unsaved creations use revision 0; persisted days
+start at revision 1.
 
 **Sunrise and sunset on the device.** When the location text of a day contains a map link
 (Google, Apple Maps or OpenStreetMap, read by `parseMapLink` of 0053 without the network), the
@@ -65,13 +69,26 @@ note that they are worked out on the device, and in the phone's summary of the d
 link there is nothing but a hint in the panel. The device's time zone stands for the location's,
 since days carry none; a location in another time zone would need one stored on the day.
 
+**Interaction labels** sit beside the affected card where they fit inside the visible grid
+without covering cards or other labels. When space is insufficient, a separate annotation band
+below the grid carries them, aligned to their date (approved during the phase-1 review).
+The dragged card stays full width until release; overlap lanes are committed afterwards.
+
 **The day panel** has tabs, built from a list so another can be added in one place: Day (date,
 call, planned wrap, location, notes, delete), Block (the full editor) and To bring (0058).
 
 ## Consequences
 
-- No contract, database or document change. Explicit starts, durations and order were already in
-  the day aggregate.
+- Additive contract: optional nullable `updatedBy: { id, name }` on `ShootingDay`; a nullable
+  `shooting_day.updated_by` JSONB column stores the authenticated author's id and name on every
+  creation/update. Existing rows return null. Clients cannot submit author metadata in inputs.
+  Conflict notices can name the last author; older servers keep the generic message.
+- Additive `EditSchedule` contract and `POST /boards/{boardId}/schedule/edit` atomically apply
+  up to 200 date changes (create/update/delete), with editor access and revision checks.
+  Attendance invalidation is shared with the single-day PUT.
+- The separate “Crew + call sheet” thread will add `calls` to this same schedule contract later.
+  This change must remain additive and must not alter the call-sheet components or exports.
+- No board document change. Explicit starts, durations and order remain in the day aggregate.
 - More PUT requests than with a Save button: one per day every pause in editing. Each is the same
   bounded aggregate as before.
 - The undo history lives in the open tab only; reloading starts a new one.

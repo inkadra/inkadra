@@ -2343,7 +2343,7 @@
     "type": "Block type",
     "title": "Title",
     "start": "Start",
-    "duration": "Length (minutes)",
+    "duration": "Duration",
     "cast": "Cast",
     "departments": "Departments",
     "castConflict": "Cast overlaps another block.",
@@ -2471,7 +2471,13 @@
     "nextWeek": "Next week",
     "undone": "Change undone.",
     "redone": "Change redone.",
-    "wrapAt": "Wrap {{time}}"
+    "wrapAt": "Wrap {{time}}",
+    "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
+    "staleBy": "{{name}} changed {{day}} while you were editing it",
+    "freeDrop": "Drag a block here to create a shooting day",
+    "moreAbove_one": "{{count}} block",
+    "moreAbove_other": "{{count}} blocks",
+    "calendarLabel": "Shooting calendar"
   },
   "moodboard": {
     "count_one": "{{count}} reference",
@@ -4345,7 +4351,7 @@
           },
           "2": {
             "title": "Move and stretch",
-            "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length."
+            "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
           },
           "3": {
             "title": "Saves by itself",

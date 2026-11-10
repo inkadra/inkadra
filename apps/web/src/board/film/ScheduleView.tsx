@@ -30,11 +30,13 @@ import type { SheetScene } from './CallSheetModal.tsx';
 import { CallSheetModal } from './CallSheetModal.tsx';
 import {
   addDays,
+  clockString,
   duplicateBlock,
   localDate,
   minutesLabel,
   placeBlock,
   SHOT_DRAG_TYPE,
+  sameScheduleInput as sameInput,
   weekDates,
   weekStart,
 } from './calendar.ts';
@@ -89,21 +91,23 @@ function inputOf(day: ShootingDay): ShootingDayInput {
   return { date, callTime, wrap, location, notes, blocks };
 }
 
-const sameInput = (a: ShootingDayInput, b: ShootingDayInput) =>
-  JSON.stringify(a) === JSON.stringify(b);
-
 /** The day after the last shooting day, or today for the first one. */
 function nextDate(days: readonly ShootingDay[]): string {
   const last = days.at(-1)?.date;
   return last ? addDays(last, 1) : localDate(new Date());
 }
 
-type Drafts = Record<string, { revision: number; draft: ShootingDayInput }>;
+type Drafts = Record<string, { revision: number; draft: ShootingDayInput | null }>;
 /** One step of undo: the days it changed, before and after. */
 interface Step {
   key: string | undefined;
   at: number;
-  days: Array<{ id: string; before: ShootingDayInput; after: ShootingDayInput }>;
+  days: Array<{
+    id: string;
+    day: ShootingDay;
+    before: ShootingDayInput | null;
+    after: ShootingDayInput | null;
+  }>;
 }
 /** Typing in one field within this long is one step of undo. */
 const COALESCE_MS = 1500;
@@ -112,9 +116,14 @@ const SAVE_DELAY = 600;
 const RETRY_DELAY = 5000;
 
 /** A draft for `day`, or none when it is back to the saved version. */
-function withDraft(current: Drafts, day: ShootingDay, next: ShootingDayInput): Drafts {
+function withDraft(
+  current: Drafts,
+  day: ShootingDay,
+  next: ShootingDayInput | null,
+  pending = false,
+): Drafts {
   const revision = current[day.id]?.revision ?? day.revision;
-  if (revision === day.revision && sameInput(next, inputOf(day))) {
+  if (!pending && revision === day.revision && next !== null && sameInput(next, inputOf(day))) {
     if (!current[day.id]) return current;
     const { [day.id]: _, ...rest } = current;
     return rest;
@@ -207,16 +216,39 @@ export function ScheduleView({
     let active = true;
     const fetchDays = (initial: boolean) => {
       if (initial) setLoading(true);
+      const started = new Map(daysRef.current.map((day) => [day.id, day.revision]));
       api
         .get<Schedule>(path)
         .then((data) => {
           if (!active) return;
           // A GET that started before a save can answer after it: keep the newer revision.
           setDays((current) =>
-            data.items
+            [
+              ...data.items,
+              ...current
+                .filter(
+                  (day) =>
+                    !data.items.some((item) => item.id === day.id) &&
+                    (day.revision === 0 ||
+                      !started.has(day.id) ||
+                      day.revision > (started.get(day.id) ?? 0) ||
+                      draftsRef.current[day.id]),
+                )
+                .map((day) =>
+                  draftsRef.current[day.id] &&
+                  started.has(day.id) &&
+                  day.revision === started.get(day.id)
+                    ? { ...day, revision: 0, updatedBy: null }
+                    : day,
+                ),
+            ]
               .map((item) => {
                 const mine = current.find((day) => day.id === item.id);
-                return mine && mine.revision > item.revision ? mine : item;
+                return mine &&
+                  data.items.some((day) => day.id === item.id) &&
+                  mine.revision > item.revision
+                  ? mine
+                  : item;
               })
               .sort(byDate),
           );
@@ -229,6 +261,7 @@ export function ScheduleView({
               if (
                 saved &&
                 saved.revision !== item.revision &&
+                saved.draft !== null &&
                 sameInput(saved.draft, inputOf(item))
               ) {
                 delete next[item.id];
@@ -256,16 +289,20 @@ export function ScheduleView({
 
   const drafted: CalendarDay[] = useMemo(
     () =>
-      days.map((day, index) => {
-        const saved = drafts[day.id];
-        return {
-          day,
-          index,
-          dirty: !!saved,
-          stale: !!saved && saved.revision !== day.revision,
-          draft: saved ? saved.draft : inputOf(day),
-        };
-      }),
+      days
+        .filter(
+          (day) => drafts[day.id]?.draft !== null || drafts[day.id]?.revision !== day.revision,
+        )
+        .map((day, index) => {
+          const saved = drafts[day.id];
+          return {
+            day,
+            index,
+            dirty: !!saved,
+            stale: !!saved && saved.revision !== day.revision,
+            draft: saved?.draft ?? inputOf(day),
+          };
+        }),
     [days, drafts],
   );
   const conflicts = useMemo(() => castConflicts(drafted.map((d) => d.draft)), [drafted]);
@@ -319,12 +356,14 @@ export function ScheduleView({
       at: Date.now(),
       days: changes.map(({ day, next }) => ({
         id: day.id,
-        before: current[day.id]?.draft ?? inputOf(day),
+        day,
+        before: day.revision === 0 ? null : (current[day.id]?.draft ?? inputOf(day)),
         after: next,
       })),
     };
     let next = current;
-    for (const change of changes) next = withDraft(next, change.day, change.next);
+    for (const change of changes)
+      next = withDraft(next, change.day, change.next, !!saving[change.day.id]);
     draftsRef.current = next;
     setDrafts(next);
     setHistory(({ past }) => {
@@ -351,10 +390,33 @@ export function ScheduleView({
     const from = direction === 'undo' ? history.past : history.future;
     const step = from.at(-1);
     if (!step) return;
+    const blocked = step.days.some((change) => {
+      const day = daysRef.current.find((item) => item.id === change.id);
+      const draft = draftsRef.current[change.id];
+      if (day && draft && draft.revision !== day.revision) return true;
+      const current = draft ? draft.draft : day ? inputOf(day) : null;
+      return !sameInput(current, direction === 'undo' ? change.after : change.before);
+    });
+    if (blocked) {
+      setError(t('schedule.conflict'));
+      return;
+    }
     let next = draftsRef.current;
     for (const change of step.days) {
-      const day = daysRef.current.find((item) => item.id === change.id);
-      if (day) next = withDraft(next, day, direction === 'undo' ? change.before : change.after);
+      let day = daysRef.current.find((item) => item.id === change.id);
+      if (!day) {
+        day = { ...change.day, revision: 0 };
+        const restored = day;
+        setDays((current) => [...current, restored].sort(byDate));
+      }
+      // Undo must never silently rebase an unresolved conflict.
+      if (next[day.id] && next[day.id]?.revision !== day.revision) return;
+      next = withDraft(
+        next,
+        day,
+        direction === 'undo' ? change.before : change.after,
+        !!saving[day.id],
+      );
     }
     draftsRef.current = next;
     setDrafts(next);
@@ -384,58 +446,95 @@ export function ScheduleView({
 
   // --- Saving on its own ----------------------------------------------------------------------
 
-  const saveDay = async (day: ShootingDay, draft: ShootingDayInput) => {
-    setSaving((current) => ({ ...current, [day.id]: true }));
+  const savingRef = useRef(false);
+  const saveDays = async (ready: ShootingDay[]) => {
+    if (savingRef.current) return;
+    const changes = ready.flatMap((day) => {
+      const entry = draftsRef.current[day.id];
+      return entry ? [{ id: day.id, revision: entry.revision, input: entry.draft }] : [];
+    });
+    if (!changes.length) return;
+    savingRef.current = true;
+    setSaving(Object.fromEntries(changes.map((change) => [change.id, true])));
     try {
-      const saved = await api.put<ShootingDay>(`${path}/${day.id}`, {
-        ...draft,
-        revision: day.revision,
+      const first = changes[0];
+      const result =
+        changes.length === 1 && first && first.revision > 0 && first.input
+          ? {
+              items: [
+                await api.put<ShootingDay>(`${path}/${first.id}`, {
+                  ...first.input,
+                  revision: first.revision,
+                }),
+              ],
+              deleted: [] as string[],
+            }
+          : await api.post<{ items: ShootingDay[]; deleted: string[] }>(`${path}/edit`, {
+              changes,
+            });
+      setDays((current) => {
+        const items = new Map(result.items.map((day) => [day.id, day]));
+        return current
+          .flatMap((day) => {
+            if (result.deleted.includes(day.id)) {
+              // Undo during an in-flight deletion recreates the day on the next save.
+              const pending = draftsRef.current[day.id]?.draft;
+              return pending ? [{ ...day, revision: 0 }] : [];
+            }
+            const saved = items.get(day.id);
+            return [saved && saved.revision >= day.revision ? saved : day];
+          })
+          .sort(byDate);
       });
-      setDays((current) => current.map((item) => (item.id === day.id ? saved : item)).sort(byDate));
-      // Edits made while the request was running stay, on top of the saved revision.
       setDrafts((current) => {
-        const { [day.id]: entry, ...rest } = current;
-        if (!entry) return current;
-        if (sameInput(entry.draft, draft)) return rest;
-        return { ...rest, [day.id]: { ...entry, revision: saved.revision } };
+        const next = { ...current };
+        for (const change of changes) {
+          const entry = next[change.id];
+          if (!entry) continue;
+          if (sameInput(entry.draft, change.input)) delete next[change.id];
+          else
+            next[change.id] = {
+              ...entry,
+              revision: result.items.find((day) => day.id === change.id)?.revision ?? 0,
+            };
+        }
+        draftsRef.current = next;
+        return next;
       });
-      setFailed(({ [day.id]: _, ...rest }) => rest);
+      setFailed({});
       setSavedAt(new Date());
     } catch (err) {
       if (err instanceof RequestError && err.status === 409) {
-        // Changed or removed elsewhere: fetch it again; the draft is kept and marked.
-        setFailed(({ [day.id]: _, ...rest }) => rest);
+        setFailed({});
         setRefresh((n) => n + 1);
-      } else {
-        setFailed((current) => ({ ...current, [day.id]: true }));
-      }
+      } else setFailed(Object.fromEntries(changes.map((change) => [change.id, true])));
     } finally {
-      setSaving(({ [day.id]: _, ...rest }) => rest);
+      savingRef.current = false;
+      setSaving({});
     }
   };
-  const saveRef = useRef(saveDay);
-  saveRef.current = saveDay;
+  const saveRef = useRef(saveDays);
+  saveRef.current = saveDays;
   const failedAny = Object.keys(failed).length > 0;
   // biome-ignore lint/correctness/useExhaustiveDependencies: `retry` asks for an attempt now.
   useEffect(() => {
-    if (readOnly) return;
-    const ready = days.filter((day) => {
-      const entry = drafts[day.id];
-      return (
-        entry &&
-        entry.revision === day.revision &&
-        !saving[day.id] &&
-        DaySchema.safeParse(entry.draft).success
-      );
-    });
-    if (!ready.length) return;
+    if (readOnly || savingRef.current) return;
+    const ready = days.filter((day) => drafts[day.id]);
+    // One gesture may touch several dates: commit all drafts or none, including conflicts.
+    if (
+      !ready.length ||
+      ready.some((day) => {
+        const entry = drafts[day.id];
+        return (
+          !entry ||
+          entry.revision !== day.revision ||
+          (entry.draft !== null && !DaySchema.safeParse(entry.draft).success)
+        );
+      })
+    )
+      return;
     const delay = ready.some((day) => failed[day.id]) ? RETRY_DELAY : SAVE_DELAY;
-    const timer = window.setTimeout(() => {
-      for (const day of ready) {
-        const entry = draftsRef.current[day.id];
-        if (entry) void saveRef.current(day, entry.draft);
-      }
-    }, delay);
+    const timer = window.setTimeout(() => void saveRef.current(ready), delay);
     return () => window.clearTimeout(timer);
   }, [days, drafts, saving, failed, readOnly, retry]);
   // Back online: try again at once.
@@ -469,7 +568,10 @@ export function ScheduleView({
       setBusy(false);
     }
   }
-  const dropDraft = (day: ShootingDay) => setDrafts(({ [day.id]: _, ...rest }) => rest);
+  const dropDraft = (day: ShootingDay) => {
+    setDrafts(({ [day.id]: _, ...rest }) => rest);
+    if (day.revision === 0) setDays((current) => current.filter((item) => item.id !== day.id));
+  };
   // "Keep mine": the draft is rebased on the server revision, so it is saved over it.
   const keepDraft = (day: ShootingDay) =>
     setDrafts((current) => {
@@ -512,6 +614,69 @@ export function ScheduleView({
     setSelection({ day: day.id, block: block.id });
     // The day may be off-screen: say where the shot went.
     setNotice(t('schedule.addedTo', { shot: labels.get(shotId) ?? '', day: dayName(target) }));
+  };
+  const dropOnFreeDay = (
+    date: string,
+    minute: number,
+    fixed: boolean,
+    fromId: string | null,
+    blockId: string | null,
+    payload?: string,
+  ) => {
+    if (disabled || shootingDates.has(date)) return;
+    const from = fromId ? findEntry(fromId) : null;
+    const shotId = payload
+      ? resolveDroppedShot(
+          payload,
+          boardId,
+          frames.map((frame) => frame.id),
+          disabled,
+        )
+      : null;
+    const block = from
+      ? from.draft.blocks.find((item) => item.id === blockId)
+      : shotId && !scheduled.has(shotId)
+        ? {
+            ...newScheduleBlock('shot', shotId),
+            cast: frames.find((frame) => frame.id === shotId)?.cast ?? [],
+          }
+        : null;
+    if (!block || from?.stale) return;
+    const input: ShootingDayInput = {
+      date,
+      callTime: clockString(Math.max(0, Math.min(1439, minute))),
+      wrap: null,
+      location: '',
+      notes: '',
+      blocks: [],
+    };
+    const day: ShootingDay = {
+      ...input,
+      id: crypto.randomUUID(),
+      projectId: projectId ?? '',
+      boardId,
+      revision: 0,
+    };
+    const next = placeBlock(input, block, Math.max(0, minute), fixed);
+    setDays((current) => [...current, day].sort(byDate));
+    commit([
+      ...(from
+        ? [
+            {
+              day: from.day,
+              next: {
+                ...from.draft,
+                blocks: from.draft.blocks.filter((item) => item.id !== block.id),
+              },
+            },
+          ]
+        : []),
+      { day, next },
+    ]);
+    setSelection({ day: day.id, block: block.id });
+    setNotice(
+      t('schedule.addedTo', { shot: block.title || shotTitle(block.shotId ?? ''), day: date }),
+    );
   };
   const addBlock = (target: CalendarDay | null) => {
     if (!target || disabled) return;
@@ -1054,6 +1219,7 @@ export function ScheduleView({
               onRemove={(dayId, blockId) => removeBlock(dayId, blockId)}
               onDuplicate={duplicate}
               onAnnounce={setNotice}
+              onDropFree={dropOnFreeDay}
               onDropShot={(entry, payload, minute) => {
                 const id = resolveDroppedShot(
                   payload,

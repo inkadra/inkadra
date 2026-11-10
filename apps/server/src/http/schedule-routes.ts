@@ -1,6 +1,7 @@
 import {
   API_PREFIX,
   castNameKey,
+  EditSchedule,
   Id,
   MyScheduleQuery,
   type PlannedShootingDay,
@@ -16,7 +17,14 @@ import type { FastifyInstance } from 'fastify';
 import { atLeast, boardRolesForPeople, live, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
-import { board, castLink, project, shootingDay, shootingDayAttendance } from '../db/schema.ts';
+import {
+  board,
+  castLink,
+  project,
+  shootingDay,
+  shootingDayAttendance,
+  user,
+} from '../db/schema.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -90,6 +98,14 @@ export function registerScheduleRoutes(
     }));
     return { items, nextCursor: null };
   });
+  const savedBy = async (id: string) => {
+    const [person] = await db
+      .select({ id: user.id, name: user.name })
+      .from(user)
+      .where(eq(user.id, id));
+    if (!person) throw new Error('Schedule author missing');
+    return person;
+  };
   const base = `${API_PREFIX}/boards/:boardId/schedule`;
   app.get(base, async (req) => {
     const actor = await requireActor(auth, req, db);
@@ -109,7 +125,12 @@ export function registerScheduleRoutes(
     const input = ShootingDayInput.parse(req.body);
     const [row] = await db
       .insert(shootingDay)
-      .values({ ...input, boardId, projectId: access.board.projectId })
+      .values({
+        ...input,
+        boardId,
+        projectId: access.board.projectId,
+        updatedBy: await savedBy(actor.id),
+      })
       .returning();
     if (!row) throw new Error('Shooting day missing');
     return reply.code(201).send(publicDay(row));
@@ -199,57 +220,123 @@ export function registerScheduleRoutes(
       });
     return { dayId, userId: actor.id, status };
   });
+  type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+  const updateDay = async (
+    tx: Transaction,
+    boardId: string,
+    dayId: string,
+    revision: number,
+    input: ShootingDayInput,
+    updatedBy: { id: string; name: string },
+  ) => {
+    const where = and(
+      eq(shootingDay.id, dayId),
+      eq(shootingDay.boardId, boardId),
+      eq(shootingDay.revision, revision),
+    );
+    const [before] = await tx
+      .select({
+        date: shootingDay.date,
+        callTime: shootingDay.callTime,
+        blocks: shootingDay.blocks,
+      })
+      .from(shootingDay)
+      .where(where)
+      .for('update');
+    if (!before)
+      throw new HttpError('conflict', 'The day changed or was removed. Reload the schedule.');
+    const [updated] = await tx
+      .update(shootingDay)
+      .set({ ...input, updatedBy, revision: sql`${shootingDay.revision} + 1` })
+      .where(where)
+      .returning();
+    if (!updated)
+      throw new HttpError('conflict', 'The day changed or was removed. Reload the schedule.');
+    // An answer was given for a time: when that time moves, the question is open again.
+    const ofDay = eq(shootingDayAttendance.dayId, dayId);
+    if (before.date !== input.date || before.callTime !== input.callTime) {
+      await tx.delete(shootingDayAttendance).where(ofDay);
+      return updated;
+    }
+    const links = await tx
+      .select({ castKey: castLink.castKey, userId: castLink.userId })
+      .from(castLink)
+      .where(eq(castLink.boardId, boardId));
+    const was = firstCalls(before, links);
+    const now = firstCalls(input, links);
+    const moved = [...new Set([...was.keys(), ...now.keys()])].filter(
+      (userId) => was.get(userId) !== now.get(userId),
+    );
+    if (moved.length)
+      await tx
+        .delete(shootingDayAttendance)
+        .where(and(ofDay, inArray(shootingDayAttendance.userId, moved)));
+    return updated;
+  };
   app.put(`${base}/:dayId`, async (req) => {
     const actor = await requireActor(auth, req, db);
     const { boardId, dayId } = DayParams.parse(req.params);
     await requireBoardRole(db, actor, boardId, 'editor');
     const { revision, ...input } = UpdateShootingDay.parse(req.body);
-    const row = await db.transaction(async (tx) => {
-      const where = and(
-        eq(shootingDay.id, dayId),
-        eq(shootingDay.boardId, boardId),
-        eq(shootingDay.revision, revision),
-      );
-      const [before] = await tx
-        .select({
-          date: shootingDay.date,
-          callTime: shootingDay.callTime,
-          blocks: shootingDay.blocks,
-        })
-        .from(shootingDay)
-        .where(where)
-        .for('update');
-      if (!before) return null;
-      const [updated] = await tx
-        .update(shootingDay)
-        .set({ ...input, revision: sql`${shootingDay.revision} + 1` })
-        .where(where)
-        .returning();
-      if (!updated) return null;
-      // An answer was given for a time: when that time moves, the question is open again.
-      const ofDay = eq(shootingDayAttendance.dayId, dayId);
-      if (before.date !== input.date || before.callTime !== input.callTime) {
-        await tx.delete(shootingDayAttendance).where(ofDay);
-        return updated;
-      }
-      const links = await tx
-        .select({ castKey: castLink.castKey, userId: castLink.userId })
-        .from(castLink)
-        .where(eq(castLink.boardId, boardId));
-      const was = firstCalls(before, links);
-      const now = firstCalls(input, links);
-      const moved = [...new Set([...was.keys(), ...now.keys()])].filter(
-        (userId) => was.get(userId) !== now.get(userId),
-      );
-      if (moved.length)
-        await tx
-          .delete(shootingDayAttendance)
-          .where(and(ofDay, inArray(shootingDayAttendance.userId, moved)));
-      return updated;
-    });
-    if (!row)
-      throw new HttpError('conflict', 'The day changed or was removed. Reload the schedule.');
+    const updatedBy = await savedBy(actor.id);
+    const row = await db.transaction((tx) =>
+      updateDay(tx, boardId, dayId, revision, input, updatedBy),
+    );
     return publicDay(row);
+  });
+  app.post(`${base}/edit`, async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { boardId } = BoardParams.parse(req.params);
+    const access = await requireBoardRole(db, actor, boardId, 'editor');
+    const { changes } = EditSchedule.parse(req.body);
+    const updatedBy = await savedBy(actor.id);
+    return db.transaction(async (tx) => {
+      const items = [];
+      const deleted = [];
+      // Lock in a stable order so simultaneous cross-day moves cannot deadlock.
+      for (const change of [...changes].sort((a, b) => a.id.localeCompare(b.id))) {
+        if (change.revision === 0) {
+          if (!change.input) {
+            deleted.push(change.id);
+            continue;
+          }
+          const [row] = await tx
+            .insert(shootingDay)
+            .values({
+              ...change.input,
+              id: change.id,
+              boardId,
+              projectId: access.board.projectId,
+              updatedBy,
+            })
+            .onConflictDoNothing()
+            .returning();
+          if (!row) throw new HttpError('conflict', 'The day already exists. Reload the schedule.');
+          items.push(publicDay(row));
+        } else if (change.input) {
+          items.push(
+            publicDay(
+              await updateDay(tx, boardId, change.id, change.revision, change.input, updatedBy),
+            ),
+          );
+        } else {
+          const removed = await tx
+            .delete(shootingDay)
+            .where(
+              and(
+                eq(shootingDay.id, change.id),
+                eq(shootingDay.boardId, boardId),
+                eq(shootingDay.revision, change.revision),
+              ),
+            )
+            .returning({ id: shootingDay.id });
+          if (!removed.length)
+            throw new HttpError('conflict', 'The day changed or was removed. Reload the schedule.');
+          deleted.push(change.id);
+        }
+      }
+      return { items, deleted };
+    });
   });
   app.delete(`${base}/:dayId`, async (req, reply) => {
     const actor = await requireActor(auth, req, db);

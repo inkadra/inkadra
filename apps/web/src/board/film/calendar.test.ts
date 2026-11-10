@@ -9,7 +9,10 @@ import {
   monthGrid,
   moveBlock,
   moveBlockToDay,
+  parseDuration,
+  placeAnnotation,
   resizeBlock,
+  sameScheduleInput,
   shiftBlock,
   weekDates,
 } from './calendar.ts';
@@ -144,4 +147,61 @@ describe('moving blocks', () => {
     expect(copy.blocks[1]).toMatchObject({ id, title: 'a', start: null });
     expect(id).not.toBe('a');
   });
+});
+
+describe('duration text', () => {
+  it.each([
+    ['1h', 60],
+    ['1h 30', 90],
+    ['45', 45],
+    ['45 min', 45],
+    ['90', 90],
+    ['24h', 1440],
+    ['1', 1],
+  ])('parses %s', (text, minutes) => {
+    expect(parseDuration(String(text))).toBe(minutes);
+  });
+  it.each(['', '0', '-1', '1441', '24h 1', '1.5h', '45 minutes', '1h junk', 'Infinity'])(
+    'rejects %s',
+    (text) => {
+      expect(parseDuration(text)).toBeNull();
+    },
+  );
+});
+
+it('clamps fixed drags to the clock cycle represented by the day contract', () => {
+  const original = day([block('a', 30)]);
+  const moved = moveBlock(original, 'a', 3000, true);
+  expect(scheduleTimes(moved)[0]?.start).toBe(7 * 60 + 1439);
+});
+
+it('keeps drag notes beside cards only when they fit without covering another card', () => {
+  const card = { left: 100, top: 80, width: 100, height: 40 };
+  const bounds = { left: 0, top: 0, width: 400, height: 200 };
+  const size = { width: 80, height: 24 };
+  expect(placeAnnotation(card, size, bounds, [card])).toEqual({ left: 206, top: 80 });
+  const right = { left: 200, top: 80, width: 200, height: 40 };
+  expect(placeAnnotation(card, size, bounds, [card, right])).toEqual({ left: 14, top: 80 });
+  expect(
+    placeAnnotation(card, size, bounds, [
+      card,
+      right,
+      { left: 0, top: 0, width: 100, height: 200 },
+    ]),
+  ).toBeNull();
+  expect(placeAnnotation(card, { width: 500, height: 24 }, bounds, [])).toBeNull();
+});
+
+it('compares JSONB drafts independently of object key order, preserving array order', () => {
+  const input = day([block('a', 30), block('b', 45)]);
+  const reversed = JSON.parse(
+    JSON.stringify(input, (_key, value: unknown) =>
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.entries(value).reverse())
+        : value,
+    ),
+  );
+  expect(sameScheduleInput(input, reversed)).toBe(true);
+  expect(sameScheduleInput(input, { ...input, blocks: [...input.blocks].reverse() })).toBe(false);
+  expect(sameScheduleInput(input, null)).toBe(false);
 });

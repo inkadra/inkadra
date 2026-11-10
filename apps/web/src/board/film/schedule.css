@@ -247,6 +247,9 @@
   gap: 6px;
 }
 .schedule__filters .ink-select {
+  flex: 1;
+  min-width: 0;
+  width: auto;
   max-width: 100%;
   height: 28px;
   font-size: 12px;
@@ -326,7 +329,7 @@
 /* The calendar ---------------------------------------------------------------------------- */
 
 .schedule__calendar {
-  --schedule-gutter: 52px;
+  --schedule-gutter: 76px;
   --schedule-column: minmax(170px, 1fr);
   flex: 1;
   min-height: 0;
@@ -371,10 +374,10 @@
 .schedule__hour {
   position: absolute;
   right: 8px;
-  translate: 0 -50%;
   color: var(--ink-text-muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .schedule__head {
   display: flex;
@@ -426,8 +429,11 @@
   background: var(--ink-accent-button);
   color: var(--ink-on-accent);
 }
-.schedule__head-title,
 .schedule__head-meta {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.schedule__head-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -461,8 +467,8 @@
 }
 .schedule__sun-text {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .schedule__column {
   position: relative;
@@ -577,20 +583,23 @@
 }
 .schedule__more {
   position: absolute;
-  left: 50%;
+  left: 4px;
+  right: 4px;
+  max-width: calc(100% - 8px);
+  justify-content: center;
+  flex-wrap: wrap;
   z-index: 4;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  translate: -50% 0;
-  padding: 2px 10px;
+  padding: 2px 6px;
   border: 1px solid var(--ink-accent-primary);
   border-radius: var(--ink-radius-full);
   background: var(--ink-surface-float);
   color: var(--ink-accent-soft-fg);
   font: inherit;
   font-size: 11px;
-  white-space: nowrap;
+  white-space: normal;
   cursor: pointer;
 }
 
@@ -696,6 +705,9 @@
 .schedule--day .schedule__block-title {
   white-space: normal;
 }
+.schedule__block.is-short .schedule__block-title {
+  white-space: nowrap;
+}
 .schedule__block-meta {
   color: var(--ink-text-secondary);
   font-size: 11px;
@@ -737,23 +749,50 @@
 .schedule__block.is-dragging .schedule__resize::after {
   opacity: 1;
 }
-.schedule__drag-label {
-  position: absolute;
-  left: 4px;
-  bottom: -22px;
-  z-index: 6;
-  padding: 2px 8px;
-  border-radius: var(--ink-radius-full);
-  background: var(--ink-accent-button);
-  color: var(--ink-on-accent);
+.schedule__floating-note,
+.schedule__annotation-cell > span {
+  padding: 3px 6px;
+  border: 1px solid var(--ink-accent-primary);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-float);
+  color: var(--ink-accent-soft-fg);
   font-size: 11px;
+  line-height: 16px;
   font-weight: 600;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   pointer-events: none;
 }
-.schedule__drag-label.is-top {
-  top: -22px;
-  bottom: auto;
+.schedule__floating-note {
+  position: fixed;
+  z-index: 6;
+  box-sizing: border-box;
+}
+.schedule__floating-note.is-primary,
+.schedule__annotation-cell > .is-primary {
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+}
+.schedule__annotation-band {
+  display: grid;
+  grid-template-columns: var(--schedule-gutter) repeat(
+      var(--schedule-columns),
+      var(--schedule-column)
+    );
+  flex: none;
+  max-height: 96px;
+  overflow: auto;
+  border-top: 1px solid var(--ink-border-subtle);
+  background: var(--ink-bg-panel);
+}
+.schedule__annotation-cell {
+  display: flex;
+  justify-content: flex-end;
+  align-content: start;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  min-width: 0;
 }
 
 /* Loading: still shapes, so there is nothing to reduce for reduced motion. */
@@ -1035,8 +1074,11 @@ fieldset.schedule__field > legend {
 }
 .schedule__fields {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+.schedule__fields > label:first-child {
+  grid-column: 1 / -1;
 }
 .schedule__inspector label {
   display: flex;
@@ -1121,9 +1163,13 @@ fieldset.schedule__field > legend {
     display: none;
   }
   .schedule__calendar {
-    --schedule-gutter: 48px;
+    --schedule-gutter: 76px;
     --schedule-column: minmax(0, 1fr);
     overflow-x: hidden;
+  }
+  .schedule__more {
+    min-height: 28px;
+    box-shadow: 0 0 0 6px var(--ink-bg-panel);
   }
   .schedule__block-select {
     font-size: 14px;
@@ -1253,4 +1299,35 @@ fieldset.schedule__field > legend {
   .schedule__resize::after {
     transition: none;
   }
+}
+
+.schedule__up {
+  transform: rotate(180deg);
+}
+
+.schedule__edge-notices {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--ink-border-subtle);
+  background: var(--ink-bg-panel);
+}
+.schedule__edge-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--ink-accent-primary);
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-float);
+  color: var(--ink-accent-soft-fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.schedule__edge-button:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
 }

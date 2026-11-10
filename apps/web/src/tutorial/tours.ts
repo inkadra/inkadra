@@ -206,6 +206,7 @@ export const TOURS: Tour[] = [
     steps: [
       { anchor: 'schedule', media: 'calendar', side: 'bottom' },
       { anchor: 'schedule-queue', media: 'drag', side: 'right' },
+      // Includes drag-created dates: the whole gesture is one undo step.
       { anchor: 'schedule-days', media: 'calendar', side: 'left', keys: ['Alt'] },
       {
         anchor: 'schedule-save',

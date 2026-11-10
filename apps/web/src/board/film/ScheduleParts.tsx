@@ -7,11 +7,11 @@ import {
   type ShootingDayInput,
 } from '@inkadra/shared';
 import { Button, Checkbox, DateField, Icon, IconButton, Select } from '@inkadra/ui';
-import { type ReactNode, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { moveTabFocus } from '../../lib/tabs.ts';
 import { ScenePlanButton } from '../plan/scenes.tsx';
-import { clockString, minutesLabel, monthGrid, SHOT_DRAG_TYPE } from './calendar.ts';
+import { clockString, minutesLabel, monthGrid, parseDuration, SHOT_DRAG_TYPE } from './calendar.ts';
 import { plannedWrap } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { AutoTime, TokenField } from './fields.tsx';
@@ -531,17 +531,13 @@ export function BlockEditor({
               </span>
             </fieldset>
           ) : (
-            <label className="schedule__field">
+            <label className="schedule__field" htmlFor={`${id}-duration`}>
               {t('schedule.duration')}
-              <input
-                className="ink-input"
-                type="number"
-                min={1}
-                max={1440}
-                value={block.duration}
-                onChange={(e) =>
-                  update({ duration: Number(e.target.value) }, `duration:${block.id}`)
-                }
+              <DurationField
+                id={`${id}-duration`}
+                key={block.id}
+                minutes={block.duration}
+                onChange={(duration) => update({ duration }, `duration:${block.id}`)}
               />
             </label>
           )}
@@ -734,7 +730,18 @@ export function DayPanel({
     <>
       {stale && !readOnly && (
         <div role="alert" className="schedule__stale">
-          <p>{t('schedule.staleBody')}</p>
+          <p>
+            {entry.day.updatedBy
+              ? t('schedule.staleBy', {
+                  name: entry.day.updatedBy.name,
+                  day: new Intl.DateTimeFormat(i18n.language, {
+                    weekday: 'short',
+                    day: 'numeric',
+                    timeZone: 'UTC',
+                  }).format(Date.parse(`${entry.day.date}T00:00:00Z`)),
+                })
+              : t('schedule.staleBody')}
+          </p>
           <div className="schedule__actions">
             <Button disabled={busy} onClick={onReload}>
               {t('schedule.staleReload')}
@@ -871,5 +878,55 @@ export function DayPanel({
         {current?.panel()}
       </div>
     </aside>
+  );
+}
+
+function DurationField({
+  id,
+  minutes,
+  onChange,
+}: {
+  id: string;
+  minutes: number;
+  onChange: (minutes: number) => void;
+}) {
+  const { t } = useTranslation();
+  const [text, setText] = useState<string | null>(null);
+  const emitted = useRef(minutes);
+  useEffect(() => {
+    if (emitted.current !== minutes) setText(null);
+    emitted.current = minutes;
+  }, [minutes]);
+  const value = text ?? minutesLabel(minutes);
+  const valid = parseDuration(value) !== null;
+  return (
+    <>
+      <input
+        id={id}
+        className="ink-input"
+        type="text"
+        value={value}
+        aria-label={t('schedule.duration')}
+        aria-describedby={!valid ? `${id}-error` : undefined}
+        aria-invalid={!valid}
+        onChange={(event) => {
+          const next = event.target.value;
+          setText(next);
+          const duration = parseDuration(next);
+          if (duration !== null) {
+            emitted.current = duration;
+            onChange(duration);
+          }
+        }}
+        onBlur={() => {
+          if (valid) setText(null);
+        }}
+      />
+      {!valid && (
+        <span id={`${id}-error`} role="alert">
+          {t('schedule.invalidDuration')}
+        </span>
+      )}
+    </>
   );
 }

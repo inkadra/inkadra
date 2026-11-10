@@ -2343,7 +2343,7 @@
     "type": "Tipo di blocco",
     "title": "Titolo",
     "start": "Inizio",
-    "duration": "Durata (minuti)",
+    "duration": "Durata",
     "cast": "Cast",
     "departments": "Reparti",
     "castConflict": "Il cast è impegnato in un altro blocco sovrapposto.",
@@ -2471,7 +2471,13 @@
     "nextWeek": "Settimana successiva",
     "undone": "Modifica annullata.",
     "redone": "Modifica ripristinata.",
-    "wrapAt": "Fine riprese {{time}}"
+    "wrapAt": "Fine riprese {{time}}",
+    "invalidDuration": "Inserisci una durata da 1 a 1440 minuti (es. 1h 30).",
+    "staleBy": "{{name}} ha cambiato {{day}} mentre lo modificavi",
+    "freeDrop": "Trascina qui un blocco per creare un giorno di riprese",
+    "moreAbove_one": "{{count}} blocco",
+    "moreAbove_other": "{{count}} blocchi",
+    "calendarLabel": "Calendario delle riprese"
   },
   "moodboard": {
     "count_one": "{{count}} riferimento",
@@ -4345,7 +4351,7 @@
           },
           "2": {
             "title": "Sposta e allunga",
-            "text": "Trascina per riordinare, Alt per un orario fisso, il bordo in basso per la durata."
+            "text": "Trascina per riordinare, Alt per fissare l’orario, il bordo inferiore per la durata. Su un giorno libero crei il giorno di riprese; Ctrl+Z annulla tutto il gesto."
           },
           "3": {
             "title": "Si salva da solo",

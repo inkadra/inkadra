@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 // Uses the account created by first-run.spec.ts, with its own project and storyboard.
 test('a shooting day saves itself, takes a dropped shot at a time and undoes', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/login');
   await page.getByLabel('Email').fill('giulia@example.com');
   await page.getByLabel('Password').fill('correct-horse-battery');
@@ -81,4 +82,69 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
     /^1A.*09:00 – 09:30/,
   );
   await expect(page.locator('.schedule .film-shell__badge')).toHaveCount(0);
+  // Free text durations validate locally and normalize on blur.
+  await schedule.getByRole('radio', { name: 'Settimana', exact: true }).check();
+  await schedule.locator('.schedule__block-select').click();
+  const duration = page.getByLabel('Durata', { exact: true });
+  await duration.fill('1h 30');
+  await duration.blur();
+  await expect(duration).toHaveValue('1h 30');
+  await duration.fill('0');
+  await expect(duration).toHaveAttribute('aria-invalid', 'true');
+  await duration.fill('1h');
+  await duration.blur();
+  await expect(duration).toHaveValue('1h');
+  await page.keyboard.press('Escape');
+  await expect(saved).toHaveText(/Salvato alle/);
+  // Alt-drag stays full width until release; a free date is created atomically.
+  const moving = schedule.locator('.schedule__block-select');
+  const initial = await moving.boundingBox();
+  const free = schedule.locator('.schedule__column.is-free').first();
+  const empty = await free.boundingBox();
+  if (!initial || !empty) throw new Error('calendar columns missing');
+  await page.mouse.move(initial.x + 30, initial.y + 10);
+  await page.mouse.down();
+  await page.keyboard.down('Alt');
+  await page.mouse.move(initial.x + 30, initial.y + 20, { steps: 4 });
+  expect(
+    Math.abs(
+      (await schedule.locator('.schedule__block.is-dragging').boundingBox())!.width - initial.width,
+    ),
+  ).toBeLessThan(1);
+  await page.mouse.move(empty.x + empty.width / 2, initial.y + 20, { steps: 6 });
+  const moved = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/schedule/edit') && response.request().method() === 'POST',
+  );
+  await page.mouse.up();
+  await page.keyboard.up('Alt');
+  expect((await moved).status()).toBe(200);
+  await expect(schedule.locator('.schedule__day')).toHaveCount(2);
+  await expect(schedule.locator('.schedule__block')).toHaveCount(1);
+  const undone = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/schedule/edit') && response.request().method() === 'POST',
+  );
+  await page.keyboard.press('Control+z');
+  expect((await undone).status()).toBe(200);
+  await expect(schedule.locator('.schedule__day')).toHaveCount(1);
+  await expect(schedule.locator('.schedule__block')).toHaveCount(1);
+  await page.keyboard.press('Control+Shift+z');
+  await expect(schedule.locator('.schedule__day')).toHaveCount(2);
+  await expect(saved).toHaveText(/Salvato alle/);
+  // Returning the shot to the queue also exercises dropping a queued shot on a free date.
+  await schedule.locator('.schedule__block-select').focus();
+  await page.keyboard.press('Delete');
+  await page.getByRole('dialog').getByRole('button', { name: 'Elimina', exact: true }).click();
+  await expect(schedule.locator('.schedule__queue .schedule__shot')).toHaveCount(1);
+  await expect(saved).toHaveText(/Salvato alle/);
+  const queued = schedule.locator('.schedule__queue .schedule__shot');
+  const freeDate = schedule.locator('.schedule__column.is-free').first();
+  await queued.dragTo(freeDate, { targetPosition: { x: 60, y: 9 * 60 + 40 } });
+  await expect(schedule.locator('.schedule__day')).toHaveCount(3);
+  await expect(schedule.locator('.schedule__block')).toHaveCount(1);
+  await expect(saved).toHaveText(/Salvato alle/);
+  await page.keyboard.press('Control+z');
+  await expect(schedule.locator('.schedule__day')).toHaveCount(2);
+  await expect(schedule.locator('.schedule__queue .schedule__shot')).toHaveCount(1);
 });

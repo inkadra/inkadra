@@ -130,7 +130,9 @@ export function placeBlock(
     blocks.splice(index, 0, { ...block, start: null });
     return { ...rest, blocks };
   }
-  const at = Math.max(snap(minute, 1), clockMinutes(day.callTime));
+  const call = clockMinutes(day.callTime);
+  // A fixed clock before the call means the next morning; later cycles are not representable.
+  const at = Math.min(call + 1439, Math.max(snap(minute, 1), call));
   const index = scheduleTimes(rest).findIndex(({ start }) => start >= at);
   const blocks = [...rest.blocks];
   blocks.splice(index === -1 ? blocks.length : index, 0, { ...block, start: clockString(at) });
@@ -195,4 +197,59 @@ export function minutesLabel(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
   const rest = minutes % 60;
   return `${Math.floor(minutes / 60)}h${rest ? ` ${String(rest).padStart(2, '0')}` : ''}`;
+}
+
+/** Human duration input, in whole minutes; invalid text never reaches the schedule. */
+export function parseDuration(text: string): number | null {
+  const match = /^(?:(\d+)\s*h(?:\s*(\d+)(?:\s*min)?)?|(\d+)(?:\s*min)?)$/i.exec(text.trim());
+  if (!match) return null;
+  const minutes =
+    match[1] === undefined ? Number(match[3]) : Number(match[1]) * 60 + Number(match[2] ?? 0);
+  return Number.isInteger(minutes) && minutes >= 1 && minutes <= 1440 ? minutes : null;
+}
+
+interface CalendarRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+/** Beside the card when there is room; otherwise use the calendar's separate annotation band. */
+export function placeAnnotation(
+  card: CalendarRect,
+  size: { width: number; height: number },
+  viewport: CalendarRect,
+  obstacles: readonly CalendarRect[],
+): { left: number; top: number } | null {
+  const top = Math.max(
+    viewport.top + 4,
+    Math.min(card.top, viewport.top + viewport.height - size.height - 4),
+  );
+  for (const left of [card.left + card.width + 6, card.left - size.width - 6]) {
+    if (left < viewport.left || left + size.width > viewport.left + viewport.width) continue;
+    if (top + size.height > viewport.top + viewport.height) continue;
+    if (
+      obstacles.some(
+        (rect) =>
+          left < rect.left + rect.width &&
+          left + size.width > rect.left &&
+          top < rect.top + rect.height &&
+          top + size.height > rect.top,
+      )
+    )
+      continue;
+    return { left, top };
+  }
+  return null;
+}
+
+/** PostgreSQL JSONB may reorder object keys; array order and every contract field still matter. */
+export function sameScheduleInput(a: ShootingDayInput | null, b: ShootingDayInput | null): boolean {
+  const canonical = (input: ShootingDayInput | null) =>
+    JSON.stringify(input, (_key, value: unknown) =>
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
+        : value,
+    );
+  return canonical(a) === canonical(b);
 }

@@ -123,7 +123,13 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
     const response = await request('editor', 'POST', base(), input);
     expect(response.statusCode).toBe(201);
     day = ShootingDay.parse(response.json());
-    expect(day).toMatchObject({ ...input, projectId, boardId, revision: 1 });
+    expect(day).toMatchObject({
+      ...input,
+      projectId,
+      boardId,
+      revision: 1,
+      updatedBy: { id: people.editor?.id, name: 'editor' },
+    });
     const read = await request('viewer', 'GET', base());
     expect(read.statusCode).toBe(200);
     expect(Schedule.parse(read.json()).items).toEqual([day]);
@@ -318,12 +324,71 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
     expect(responses.map((r) => r.statusCode).sort()).toEqual([200, 409]);
     day = ShootingDay.parse(responses.find((r) => r.statusCode === 200)?.json());
     expect(day.revision).toBe(2);
+    const writer = responses[0]?.statusCode === 200 ? 'editor' : 'owner';
+    expect(day.updatedBy).toEqual({ id: people[writer]?.id, name: writer });
     const read = Schedule.parse((await request('viewer', 'GET', base())).json());
     expect(read.items).toEqual([day]);
     expect(
       (await request('editor', 'DELETE', `${base()}/${day.id}`, { revision: 1 })).statusCode,
     ).toBe(409);
   });
+  it('atomically creates a destination, moves a block and undoes both days', async () => {
+    const source = (await request('editor', 'POST', base(), input)).json();
+    const destination = crypto.randomUUID();
+    const moved = await request('owner', 'POST', `${base()}/edit`, {
+      changes: [
+        { id: source.id, revision: 1, input: { ...input, blocks: [] } },
+        { id: destination, revision: 0, input: { ...input, date: '2026-11-03' } },
+      ],
+    });
+    expect(moved.statusCode).toBe(200);
+    expect(moved.json().items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: source.id, blocks: [], revision: 2 }),
+        expect.objectContaining({
+          id: destination,
+          blocks: input.blocks,
+          updatedBy: { id: people.owner?.id, name: 'owner' },
+        }),
+      ]),
+    );
+    const undone = await request('editor', 'POST', `${base()}/edit`, {
+      changes: [
+        { id: source.id, revision: 2, input },
+        { id: destination, revision: 1, input: null },
+      ],
+    });
+    expect(undone.statusCode).toBe(200);
+    expect(undone.json()).toMatchObject({
+      deleted: [destination],
+      items: [{ id: source.id, blocks: input.blocks }],
+    });
+    expect(
+      (await request('owner', 'DELETE', `${base()}/${source.id}`, { revision: 3 })).statusCode,
+    ).toBe(204);
+  });
+  it('rolls back every date when one revision conflicts and checks board permissions', async () => {
+    const id = crypto.randomUUID();
+    const payload = {
+      changes: [
+        { id, revision: 0, input },
+        { id: crypto.randomUUID(), revision: 1, input },
+      ],
+    };
+    expect((await request('owner', 'POST', `${base()}/edit`, payload)).statusCode).toBe(409);
+    const listed = (await request('owner', 'GET', base())).json().items;
+    expect(listed.some((item: ShootingDay) => item.id === id)).toBe(false);
+    expect((await request('viewer', 'POST', `${base()}/edit`, payload)).statusCode).toBe(403);
+    expect((await request('stranger', 'POST', `${base()}/edit`, payload)).statusCode).toBe(404);
+    expect(
+      (
+        await request('owner', 'POST', `${base()}/edit`, {
+          changes: [payload.changes[0], payload.changes[0]],
+        })
+      ).statusCode,
+    ).toBe(400);
+  });
+
   it('scopes ids to the authorised board and respects board grants', async () => {
     expect(
       (
