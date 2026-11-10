@@ -332,6 +332,68 @@ describe.skipIf(!url)('cast links through the crew (needs DATABASE_URL)', () => 
     expect(await links('owner')).not.toContainEqual(card);
   });
 
+  it('gives an actor already in the crew both characters, by migration and by the panel', async () => {
+    const other = (await request('owner', 'POST', '/projects', { name: 'Two parts' })).json();
+    const root = other.rootBoardId;
+    const doc = createBoardDoc(root);
+    const card = (name: string, actor: string, x: number) =>
+      createElement(doc, 'character', { x, y: 0 }, { name, actor, contact: '' }, { userId: null })
+        .id;
+    const ada = card('Ada', 'Zoe Neri', 0);
+    const bea = card('Bea', 'Zoe Neri', 300);
+    const cleo = card('Cleo', 'Ugo Riva', 600);
+    const dora = card('Dora', 'Ugo Riva', 900);
+    const state = Buffer.from(Y.encodeStateAsUpdate(doc));
+    await db
+      .insert(boardDoc)
+      .values({ boardId: root, schemaVersion: CURRENT_SCHEMA_VERSION, size: state.length, state });
+    doc.destroy();
+    // Each actor is already in the crew with the account, and no card.
+    for (const [name, userId] of [
+      ['Zoe Neri', people.actor?.id],
+      ['Ugo Riva', people.owner?.id],
+    ] as const)
+      await request('owner', 'POST', `/projects/${other.id}/crew`, { ...blank, name, userId });
+    const rows = async () =>
+      (
+        await db
+          .select({
+            name: crewMember.name,
+            userId: crewMember.userId,
+            character: crewMember.character,
+          })
+          .from(crewMember)
+          .where(eq(crewMember.projectId, other.id))
+      )
+        .map(
+          (r) =>
+            `${r.name}:${r.userId === people.owner?.id ? 'owner' : 'actor'}:${r.character?.elementId ?? '-'}`,
+        )
+        .sort();
+    await db.insert(castLink).values([
+      { boardId: root, castKey: 'ada', userId: people.actor?.id ?? '' },
+      { boardId: root, castKey: 'bea', userId: people.actor?.id ?? '' },
+    ]);
+    expect(await mergeCastLinks(db)).toBe(2);
+    for (const name of ['Cleo', 'Dora'])
+      expect(
+        (
+          await request('owner', 'PUT', `/boards/${root}/schedule/cast-links`, {
+            name,
+            userId: people.owner?.id,
+          })
+        ).statusCode,
+      ).toBe(204);
+    expect(await rows()).toEqual(
+      [
+        `Zoe Neri:actor:${ada}`,
+        `Zoe Neri:actor:${bea}`,
+        `Ugo Riva:owner:${cleo}`,
+        `Ugo Riva:owner:${dora}`,
+      ].sort(),
+    );
+  });
+
   it('keeps an explicit UTC project zone and leaves an unset one out', async () => {
     const utc = await request('owner', 'POST', '/projects', { name: 'Greenwich', timeZone: 'UTC' });
     expect(utc.json().timeZone).toBe('UTC');

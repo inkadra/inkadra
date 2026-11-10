@@ -67,5 +67,7 @@ no days. Project archives keep block notes but not calls, as they do not keep th
   app now sets to the creator's device zone when a project is made, "UTC" included. Nothing set
   the zone before, so migration 0036 makes the column nullable and turns the stored default "UTC"
   into "not set": the API leaves the field out (it was already optional), the calendar feed keeps
-  reading UTC, and the call sheet uses the device's zone. There is no per-day or per-location
+  reading UTC, and the call sheet uses the device's zone. This is a deliberate trade-off: the old
+  default cannot be told from a "UTC" set through the API or an import before 0036, so such a
+  project becomes unset too; set it again through the API. There is no per-day or per-location
   zone and no setting to change the project's yet.

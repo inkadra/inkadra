@@ -153,13 +153,13 @@ export async function linkCastName(
   const keys = await crewCastKeys(rows, cards);
   const card = (await cards(boardId)).find((c) => castNameKey(c.name) === key);
   const actor = card?.actor.trim() ?? '';
-  // Only a row that holds the name counts as linked; one found by its actor must take the card.
-  let matches = rows.filter((_, i) => keys[i]?.has(key));
-  if (!matches.length && actor)
-    matches = rows.filter((r) => !r.character && castNameKey(r.name) === castNameKey(actor));
+  // Only a row that holds the name counts as linked. A row found by its actor holds no card yet
+  // and takes this one, even when it already has the account; the next card of that actor then
+  // finds no free row and gets its own.
+  const keyed = rows.filter((_, i) => keys[i]?.has(key));
   const bump = { revision: sql`${crewMember.revision} + 1`, updatedAt: sql`now()` };
   if (!userId) {
-    const linked = matches.filter((r) => r.userId).map((r) => r.id);
+    const linked = keyed.filter((r) => r.userId).map((r) => r.id);
     if (linked.length)
       await tx
         .update(crewMember)
@@ -167,9 +167,15 @@ export async function linkCastName(
         .where(inArray(crewMember.id, linked));
     return;
   }
-  if (matches.some((r) => r.userId === userId)) return;
-  const free = matches.filter((r) => !r.userId || !link.keep);
-  const target = free.find(isCastRow) ?? free[0];
+  if (keyed.some((r) => r.userId === userId)) return;
+  const byActor =
+    !keyed.length && actor
+      ? rows.filter((r) => !r.character && castNameKey(r.name) === castNameKey(actor))
+      : [];
+  const free = (keyed.length ? keyed : byActor).filter(
+    (r) => r.userId === userId || !r.userId || !link.keep,
+  );
+  const target = free.find((r) => r.userId === userId) ?? free.find(isCastRow) ?? free[0];
   const character = card ? { boardId, elementId: card.elementId } : null;
   if (target) {
     await tx
