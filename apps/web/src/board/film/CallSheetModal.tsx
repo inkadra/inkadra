@@ -211,6 +211,10 @@ export function CallSheetModal({
   const departments = day ? departmentNotes(day) : [];
   const times = day ? keyTimes(day) : [];
   const locations = day ? locationsOfDay(day, elements) : [];
+  // The day's own place, with the map link of its Location field, for the phone's map button.
+  const dayPlace = day?.location.trim()
+    ? locationsOfDay({ ...day, blocks: [] }, elements)[0]
+    : undefined;
   const sun = day ? sunOfDay(day, locations, timeZone) : null;
   const sunCell = sun && (sun.sunrise !== null || sun.sunset !== null);
   const sunClock = (time: number | null) => (time === null ? '—' : clockLabel(time));
@@ -430,9 +434,10 @@ export function CallSheetModal({
                         {location.address && (
                           <p className="sheet__muted sheet__pre">{location.address}</p>
                         )}
-                        {isPhone && !location.mapUrl && day.location.trim() && (
+                        {isPhone && !location.mapUrl && dayPlace && (
                           <MapsLink
-                            location={[location.name, location.address].filter(Boolean).join('\n')}
+                            url={dayPlace.mapUrl}
+                            location={[dayPlace.name, dayPlace.address].filter(Boolean).join('\n')}
                           />
                         )}
                         {location.mapUrl && /^https?:\/\//i.test(location.mapUrl) && (

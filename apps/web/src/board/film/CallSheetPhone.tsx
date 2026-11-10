@@ -213,9 +213,10 @@ export function PhoneTroupe({
 }
 
 /** Nothing leaves the phone until the link is tapped: the address goes in its URL only. */
-export function MapsLink({ location }: { location: string }) {
+export function MapsLink({ location, url }: { location: string; url?: string | undefined }) {
   const { t } = useTranslation();
   const href = openInMapsUrl({
+    url,
     name: '',
     address: location
       .split('\n')
