@@ -2476,12 +2476,26 @@
     "wrapAt": "Wrap {{time}}",
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
-    "freeDrop": "Drag a block here to create a shooting day",
+    "freeDrop": "Zieh einen Block hierher oder zeichne einen, um einen Drehtag anzulegen",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",
     "calendarLabel": "Shooting calendar",
     "sceneFilterLabel": "Szene",
-    "castFilterLabel": "Cast"
+    "castFilterLabel": "Cast",
+    "newBlockMenu": "Art des neuen Blocks",
+    "newBlock": "Neuer Block · {{time}}",
+    "created": "Neuer Block: {{type}}, {{start}}–{{end}}.",
+    "moveDayLabel": "{{from}} → {{to}}",
+    "swapDayLabel": "{{from}} ⇄ {{to}} · Tausch",
+    "moveDay": "Auf ein anderes Datum verschieben…",
+    "moveDayTitle": "{{day}} verschieben",
+    "moveDayPick": "Wähle ein anderes als das jetzige Datum.",
+    "moveDaySwap": "An diesem Datum ist schon {{day}}: Die beiden Tage tauschen.",
+    "moveDayFree": "Der Tag zieht mit allen Blöcken auf dieses Datum.",
+    "swapDays": "Tauschen",
+    "moveDayConfirm": "Verschieben",
+    "dayMoved": "Tag von {{from}} auf {{to}} verschoben.",
+    "daysSwapped": "{{from}} und {{to}} getauscht."
   },
   "moodboard": {
     "count_one": "{{count}} Referenz",
@@ -4366,10 +4380,18 @@
             "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
           },
           "3": {
+            "title": "Einen Block zeichnen",
+            "text": "Zieh über freie Zeit, um einen Block in 5-Minuten-Schritten zu zeichnen, und wähle dann die Art (Tasten 1–5). Mit der Tastatur fügt N einen Block nach dem gewählten ein."
+          },
+          "4": {
+            "title": "Einen ganzen Tag verschieben",
+            "text": "Zieh die Kopfzeile auf eine andere Spalte oder ein Datum im Monat: Die Blöcke folgen, und an einem belegten Datum tauschen die beiden Tage. Alt+←/→ oder „Auf ein anderes Datum verschieben…“ im Tag."
+          },
+          "5": {
             "title": "Saves by itself",
             "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
           },
-          "4": {
+          "6": {
             "title": "Tagesdispo",
             "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
           }

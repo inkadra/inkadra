@@ -53,6 +53,17 @@ describe('the tours (#502), kept up to date with the interface', () => {
   });
 });
 
+describe('the schedule tour', () => {
+  it('shows drawing a block and moving a whole day by its heading (0089, phases 2 and 3)', () => {
+    const schedule = TOURS.find((tour) => tour.id === 'schedule');
+    const anchors = schedule?.steps.map((step) => step.anchor);
+    expect(anchors).toContain('schedule-day-head');
+    expect(anchors?.indexOf('schedule-day-head')).toBeLessThan(
+      anchors?.indexOf('schedule-save') ?? -1,
+    );
+  });
+});
+
 describe('the steps a tour plays', () => {
   const steps = [
     { anchor: 'a', media: 'types' as const },

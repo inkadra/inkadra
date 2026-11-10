@@ -16,9 +16,11 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatClock } from '../../lib/datetime.ts';
+import { ContextMenu } from '../chrome.tsx';
 import { isMac } from '../shortcuts.ts';
 import {
   addDays,
+  drawnRange,
   gapsBeforeFixed,
   layoutLanes,
   MINUTE_PX,
@@ -81,6 +83,48 @@ interface Drag {
   bounds: { top: number; left: number } | null;
 }
 
+/** A new block drawn on empty time, while the pointer is down (phase 2). */
+interface Draw {
+  pointerId: number;
+  /** The column: a day's id, or the date of a column without shooting. */
+  column: string;
+  from: number;
+  to: number;
+  x: number;
+  y: number;
+  active: boolean;
+}
+/** The type menu of a new block, after the drag or the N key. */
+interface Creating {
+  column: string;
+  start: number;
+  end: number;
+  left: number;
+  top: number;
+  /** Where Escape puts the focus back. */
+  origin: HTMLElement | null;
+}
+/** A whole day dragged by its heading (phase 3). */
+interface DayDrag {
+  pointerId: number;
+  id: string;
+  date: string;
+  x: number;
+  y: number;
+  active: boolean;
+  /** The date under the pointer: a column, a heading or a day of the month. */
+  target: string | null;
+  /** Where the pointer is now, for the label beside it. */
+  px: number;
+  py: number;
+  /** The heading, which keeps the pointer once the drag starts. */
+  el: HTMLElement;
+}
+/** The order of the type menu; keys 1 to 5 pick them. */
+const NEW_TYPES = ['shot', 'setup', 'break', 'move', 'note'] as const;
+/** About the height of the type menu, to open it above the block near the bottom. */
+const MENU_HEIGHT = 200;
+
 const blockName = (block: ScheduleBlock, shotTitle: (id: string) => string, fallback: string) =>
   block.shotId ? shotTitle(block.shotId) : block.title || fallback;
 
@@ -108,6 +152,9 @@ export function ScheduleCalendar({
   onAnnounce,
   onDropShot,
   onDropFree,
+  onCreate,
+  onMoveDay,
+  onDayTarget,
 }: {
   view: 'week' | 'day';
   phone: boolean;
@@ -140,16 +187,36 @@ export function ScheduleCalendar({
     payload?: string,
   ) => void;
   onDropShot: (entry: CalendarDay, payload: string, minute: number) => void;
+  /** A block drawn on empty time; returns its id. A date without shooting gets a day first. */
+  onCreate: (
+    entry: CalendarDay | null,
+    date: string,
+    start: number,
+    end: number,
+    type: ScheduleBlock['type'],
+  ) => string | null;
+  /** A whole day to another date; a day already there takes its date. */
+  onMoveDay: (dayId: string, date: string) => void;
+  /** The date a dragged day would land on, for the month in the queue. */
+  onDayTarget: (date: string | null) => void;
 }) {
   const { t, i18n } = useTranslation();
   const grid = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLElement>(null);
   const columnRefs = useRef(new Map<string, HTMLElement>());
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const pressTimer = useRef<number | undefined>(undefined);
   const suppressClick = useRef(false);
+  /** A drag dropped with Escape: its release must not click what is under it. */
+  const cancelled = useRef<number | null>(null);
   const [viewport, setViewport] = useState({ top: 0, height: 0 });
   const [dropAt, setDropAt] = useState<{ day: string; minute: number } | null>(null);
+  const [draw, setDraw] = useState<Draw | null>(null);
+  const drawRef = useRef<Draw | null>(null);
+  const [creating, setCreating] = useState<Creating | null>(null);
+  const [dayDrag, setDayDrag] = useState<DayDrag | null>(null);
+  const dayDragRef = useRef<DayDrag | null>(null);
 
   const entries = columns.flatMap((c) => (c.entry ? [c.entry] : []));
   const typeName = (type: ScheduleBlock['type']) => t(`schedule.types.${type}`);
@@ -283,6 +350,39 @@ export function ScheduleCalendar({
     else if (y > r.bottom - 32) el.scrollTop += 12;
   };
   const move = (event: PointerEvent<HTMLElement>) => {
+    const drawing = drawRef.current;
+    if (drawing && event.pointerId === drawing.pointerId) {
+      const column = columnRefs.current.get(drawing.column);
+      if (!column) return;
+      if (!drawing.active) {
+        if (Math.hypot(event.clientX - drawing.x, event.clientY - drawing.y) < 4) return;
+        column.setPointerCapture?.(event.pointerId);
+      }
+      autoScroll(event.clientY);
+      const top = column.getBoundingClientRect().top;
+      updateDraw({ ...drawing, active: true, to: (event.clientY - top) / MINUTE_PX });
+      return;
+    }
+    const moving = dayDragRef.current;
+    if (moving && event.pointerId === moving.pointerId) {
+      if (!moving.active) {
+        if (Math.hypot(event.clientX - moving.x, event.clientY - moving.y) < 4) return;
+        moving.el.setPointerCapture?.(event.pointerId);
+      }
+      const target =
+        document
+          .elementFromPoint(event.clientX, event.clientY)
+          ?.closest<HTMLElement>('[data-day-drop]')?.dataset.dayDrop ?? null;
+      if (target !== moving.target) onDayTarget(target);
+      updateDayDrag({
+        ...moving,
+        active: true,
+        target,
+        px: event.clientX,
+        py: event.clientY,
+      });
+      return;
+    }
     const current = dragRef.current;
     if (!current || event.pointerId !== current.pointerId) return;
     const dx = event.clientX - current.x;
@@ -321,6 +421,44 @@ export function ScheduleCalendar({
     });
   };
   const finish = (event: PointerEvent<HTMLElement>) => {
+    if (cancelled.current === event.pointerId) {
+      cancelled.current = null;
+      suppressClick.current = true;
+      window.setTimeout(() => {
+        suppressClick.current = false;
+      });
+    }
+    const drawing = drawRef.current;
+    if (drawing && event.pointerId === drawing.pointerId) {
+      updateDraw(null);
+      const column = columnRefs.current.get(drawing.column)?.getBoundingClientRect();
+      if (!drawing.active || !column) return;
+      const { start, end } = drawnRange(drawing.from, drawing.to);
+      openCreating(
+        drawing.column,
+        start,
+        end,
+        {
+          left: column.left + 12,
+          top: column.top + start * MINUTE_PX,
+          bottom: column.top + end * MINUTE_PX,
+        },
+        null,
+      );
+      return;
+    }
+    const moving = dayDragRef.current;
+    if (moving && event.pointerId === moving.pointerId) {
+      updateDayDrag(null);
+      onDayTarget(null);
+      if (!moving.active) return;
+      suppressClick.current = true;
+      window.setTimeout(() => {
+        suppressClick.current = false;
+      });
+      if (moving.target && moving.target !== moving.date) onMoveDay(moving.id, moving.target);
+      return;
+    }
     const current = dragRef.current;
     window.clearTimeout(pressTimer.current);
     if (!current || event.pointerId !== current.pointerId) return;
@@ -366,10 +504,23 @@ export function ScheduleCalendar({
       announce(to, moved.to, current.blockId);
     }
   };
+  const updateDraw = useCallback((next: Draw | null) => {
+    drawRef.current = next;
+    setDraw(next);
+  }, []);
+  const updateDayDrag = useCallback((next: DayDrag | null) => {
+    dayDragRef.current = next;
+    setDayDrag(next);
+  }, []);
   const cancel = useCallback(() => {
     window.clearTimeout(pressTimer.current);
+    const active = [dragRef.current, drawRef.current, dayDragRef.current].find((d) => d?.active);
+    cancelled.current = active ? active.pointerId : null;
     update(null);
-  }, [update]);
+    updateDraw(null);
+    if (dayDragRef.current) onDayTarget(null);
+    updateDayDrag(null);
+  }, [update, updateDraw, updateDayDrag, onDayTarget]);
   useEffect(() => () => window.clearTimeout(pressTimer.current), []);
   // Escape drops a drag where it started.
   useEffect(() => {
@@ -389,6 +540,15 @@ export function ScheduleCalendar({
       window.removeEventListener('keyup', onKey);
     };
   }, [drag?.active, cancel, update]);
+  // Escape also drops a new block being drawn and a day being moved.
+  useEffect(() => {
+    if (!draw?.active && !dayDrag?.active) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') cancel();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [draw?.active, dayDrag?.active, cancel]);
   // A finger that picked a block up must not also scroll the plan.
   useEffect(() => {
     const el = grid.current;
@@ -397,6 +557,176 @@ export function ScheduleCalendar({
     el.addEventListener('touchmove', stop, { passive: false });
     return () => el.removeEventListener('touchmove', stop);
   }, [drag?.active, drag?.touch]);
+
+  // --- A new block drawn on empty time, then its type (phase 2) ----------------------------------
+
+  const columnKey = (column: CalendarColumn) => column.entry?.day.id ?? column.date;
+  const beginDraw = (event: PointerEvent<HTMLElement>, column: CalendarColumn) => {
+    // Phones have the "+ Block" button; a finger on the grid scrolls it.
+    if (readOnly || phone || column.entry?.stale || event.button !== 0) return;
+    if (event.pointerType === 'touch') return;
+    if ((event.target as Element).closest('.schedule__block, button')) return;
+    const top = event.currentTarget.getBoundingClientRect().top;
+    const minute = (event.clientY - top) / MINUTE_PX;
+    event.preventDefault();
+    setCreating(null);
+    updateDraw({
+      pointerId: event.pointerId,
+      column: columnKey(column),
+      from: minute,
+      to: minute,
+      x: event.clientX,
+      y: event.clientY,
+      active: false,
+    });
+  };
+  /** The type menu under the new block, or above it near the bottom of the window. */
+  const openCreating = (
+    column: string,
+    start: number,
+    end: number,
+    rect: { left: number; top: number; bottom: number },
+    origin: HTMLElement | null,
+  ) => {
+    const below = rect.bottom + 6;
+    const top =
+      below + MENU_HEIGHT > window.innerHeight - 8
+        ? Math.max(8, rect.top - 6 - MENU_HEIGHT)
+        : below;
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - 218));
+    setCreating({ column, start, end, left, top, origin });
+  };
+  const create = (type: ScheduleBlock['type']) => {
+    const current = creating;
+    setCreating(null);
+    const column = current && columns.find((item) => columnKey(item) === current.column);
+    if (!current || !column) return;
+    const id = onCreate(column.entry, column.date, current.start, current.end, type);
+    if (id) focusBlock(id);
+  };
+  const createRef = useRef(create);
+  createRef.current = create;
+  // Keys 1 to 5 pick the type while the menu is open.
+  useEffect(() => {
+    if (!creating) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      const type = NEW_TYPES[Number(event.key) - 1];
+      if (!type || event.ctrlKey || event.metaKey || event.altKey) return;
+      event.preventDefault();
+      createRef.current(type);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [creating]);
+  /** The new block being drawn, or waiting for its type, in `column`. */
+  const pending = (column: string) => {
+    if (draw?.active && draw.column === column) return drawnRange(draw.from, draw.to);
+    return creating?.column === column ? creating : null;
+  };
+  /** Scrolls the grid so that `minute` is in view, for a block added with the keys. */
+  const reveal = (minute: number) => {
+    const el = grid.current;
+    if (!el) return;
+    const y = minute * MINUTE_PX;
+    if (y < el.scrollTop || y > el.scrollTop + el.clientHeight - 60)
+      el.scrollTop = Math.max(0, y - 60);
+  };
+
+  // --- A whole day moved by its heading (phase 3) -------------------------------------------------
+
+  const beginDayDrag = (event: PointerEvent<HTMLElement>, entry: CalendarDay | null) => {
+    if (!entry || readOnly || phone || entry.stale || event.button !== 0) return;
+    if (event.pointerType === 'touch') return;
+    updateDayDrag({
+      pointerId: event.pointerId,
+      id: entry.day.id,
+      date: entry.draft.date,
+      x: event.clientX,
+      y: event.clientY,
+      px: event.clientX,
+      py: event.clientY,
+      active: false,
+      target: null,
+      el: event.currentTarget,
+    });
+  };
+  const focusHead = (id: string) =>
+    requestAnimationFrame(() =>
+      root.current?.querySelector<HTMLElement>(`[data-day-head="${CSS.escape(id)}"]`)?.focus(),
+    );
+  const onHeadKey = (event: KeyboardEvent<HTMLElement>, column: CalendarColumn) => {
+    const { entry } = column;
+    if (readOnly || event.ctrlKey || event.metaKey) return;
+    if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      event.preventDefault();
+      if (!entry || entry.stale) return;
+      onMoveDay(entry.day.id, addDays(entry.draft.date, event.key === 'ArrowLeft' ? -1 : 1));
+      focusHead(entry.day.id);
+    } else if (event.key.toLowerCase() === 'n' && !event.altKey) {
+      event.preventDefault();
+      if (entry?.stale) return;
+      const start = entry
+        ? Math.max(
+            clockMinutes(entry.draft.callTime),
+            ...scheduleTimes(entry.draft).map((slot) => slot.end),
+          )
+        : firstCall;
+      reveal(start);
+      openCreating(
+        columnKey(column),
+        start,
+        start + 30,
+        event.currentTarget.getBoundingClientRect(),
+        event.currentTarget,
+      );
+    }
+  };
+  const movingEntry = dayDrag?.active ? days.find((d) => d.day.id === dayDrag.id) : undefined;
+  const dayTarget =
+    movingEntry && dayDrag?.target !== movingEntry.draft.date ? (dayDrag?.target ?? null) : null;
+  /** Where the blocks of the moved day, or of the day it swaps with, would land. */
+  const ghosts = (column: CalendarColumn) => {
+    if (!movingEntry || !dayTarget) return [];
+    if (column.date === dayTarget) return scheduleTimes(movingEntry.draft);
+    if (column.entry?.day.id === movingEntry.day.id)
+      return days.filter((d) => d.draft.date === dayTarget).flatMap((d) => scheduleTimes(d.draft));
+    return [];
+  };
+  const short = (date: string) => {
+    const text = dateLabel(date, { weekday: 'short', day: 'numeric' });
+    return text.charAt(0).toLocaleUpperCase() + text.slice(1);
+  };
+  const dayMoveLabel =
+    movingEntry &&
+    (dayTarget
+      ? t(
+          days.some((d) => d.draft.date === dayTarget)
+            ? 'schedule.swapDayLabel'
+            : 'schedule.moveDayLabel',
+          { from: short(movingEntry.draft.date), to: short(dayTarget) },
+        )
+      : short(movingEntry.draft.date));
+
+  /**
+   * Where the label of a dragged day goes, clear of the headings' text: at the top of the target
+   * column, just under its heading; under the month when the target is a date there; beside the
+   * pointer while it is over nothing.
+   */
+  const dayLabelAt = (() => {
+    if (!dayDrag?.active) return null;
+    const column = dayTarget ? columns.find((item) => item.date === dayTarget) : undefined;
+    const target = column && columnRefs.current.get(columnKey(column))?.getBoundingClientRect();
+    const bounds = grid.current?.getBoundingClientRect();
+    if (target && bounds) {
+      // One line, as wide as its text, kept inside the calendar near the right edge.
+      const width = (dayMoveLabel?.length ?? 0) * 7 + 16;
+      const left = Math.min(target.left + 4, bounds.right - width - 4);
+      return { left, top: bounds.top + 4, whiteSpace: 'nowrap' as const };
+    }
+    const month = document.querySelector('.schedule__month-grid')?.getBoundingClientRect();
+    if (dayTarget && month) return { left: month.left, top: month.bottom + 6 };
+    return { left: Math.min(dayDrag.px + 14, window.innerWidth - 200), top: dayDrag.py + 14 };
+  })();
 
   // --- Keyboard ---------------------------------------------------------------------------------
 
@@ -418,7 +748,19 @@ export function ScheduleCalendar({
       announce(change, next, block.id);
       focusBlock(block.id);
     };
-    if (key === 'Enter' || key === ' ') {
+    if (key.toLowerCase() === 'n' && !mod && !event.altKey && !event.shiftKey) {
+      // A new block right after this one, through the same type menu as a drag.
+      event.preventDefault();
+      const slot = order[at];
+      if (readOnly || entry.stale || !slot) return;
+      openCreating(
+        entry.day.id,
+        slot.end,
+        slot.end + 30,
+        event.currentTarget.getBoundingClientRect(),
+        event.currentTarget as HTMLElement,
+      );
+    } else if (key === 'Enter' || key === ' ') {
       event.preventDefault();
       onOpenBlock(entry.day.id, block.id, event.currentTarget.getBoundingClientRect());
     } else if (mod && key.toLowerCase() === 'd') {
@@ -474,18 +816,20 @@ export function ScheduleCalendar({
   const bottom = (viewport.top + viewport.height) / MINUTE_PX;
   const annotations = (() => {
     const bounds = grid.current?.getBoundingClientRect();
-    if (!drag?.active || !bounds) return [];
+    const moving = drag?.active ? drag : null;
+    const drawing = draw?.active ? draw : null;
+    if ((!moving && !drawing) || !bounds) return [];
     const cards = columns.flatMap(({ date, entry }) => {
       const column = columnRefs.current.get(entry?.day.id ?? date)?.getBoundingClientRect();
       if (!column || !entry) return [];
       const slots = scheduleTimes(shown(entry));
       const lanes = layoutLanes(
         slots
-          .filter((slot) => slot.block.id !== drag.blockId)
+          .filter((slot) => slot.block.id !== moving?.blockId)
           .map((slot) => ({ id: slot.block.id, start: slot.start, end: slot.end })),
       );
       return slots.map((slot, index) => {
-        const primary = slot.block.id === drag.blockId;
+        const primary = slot.block.id === moving?.blockId;
         const lane = primary
           ? { lane: 0, lanes: 1 }
           : (lanes.get(slot.block.id) ?? { lane: 0, lanes: 1 });
@@ -500,7 +844,7 @@ export function ScheduleCalendar({
         // Only the moved block gets a label beside it; the blocks that shift show it inside.
         const text = !primary
           ? ''
-          : drag.kind === 'resize'
+          : moving?.kind === 'resize'
             ? t('schedule.resizeLabel', {
                 duration: minutesLabel(slot.block.duration),
                 end: clockLabel(slot.end),
@@ -521,20 +865,20 @@ export function ScheduleCalendar({
       });
     });
     if (
-      drag.kind === 'move' &&
-      columns.some((column) => !column.entry && column.date === drag.target)
+      moving?.kind === 'move' &&
+      columns.some((column) => !column.entry && column.date === moving.target)
     ) {
-      const column = columnRefs.current.get(drag.target)?.getBoundingClientRect();
+      const column = columnRefs.current.get(moving.target)?.getBoundingClientRect();
       const block = days
-        .find((day) => day.day.id === drag.dayId)
-        ?.draft.blocks.find((item) => item.id === drag.blockId);
+        .find((day) => day.day.id === moving.dayId)
+        ?.draft.blocks.find((item) => item.id === moving.blockId);
       if (column && block) {
-        const start = Math.max(0, drag.minute);
+        const start = Math.max(0, moving.minute);
         cards.push({
           id: block.id,
-          column: drag.target,
+          column: moving.target,
           primary: true,
-          text: `${dateLabel(drag.target, { weekday: 'short', day: 'numeric' })} · ${clockLabel(start)} – ${clockLabel(start + block.duration)}`,
+          text: `${dateLabel(moving.target, { weekday: 'short', day: 'numeric' })} · ${clockLabel(start)} – ${clockLabel(start + block.duration)}`,
           rect: {
             left: column.left + 4,
             top: column.top + start,
@@ -543,6 +887,24 @@ export function ScheduleCalendar({
           },
         });
       }
+    }
+    if (drawing) {
+      // The new block: its time beside it, the other blocks are what it must not cover.
+      const column = columnRefs.current.get(drawing.column)?.getBoundingClientRect();
+      const { start, end } = drawnRange(drawing.from, drawing.to);
+      if (column)
+        cards.push({
+          id: 'new-block',
+          column: drawing.column,
+          primary: true,
+          text: `${clockLabel(start)} – ${clockLabel(end)}`,
+          rect: {
+            left: column.left + 4,
+            top: column.top + start * MINUTE_PX,
+            width: column.width - 8,
+            height: Math.max(MIN_HEIGHT, (end - start) * MINUTE_PX),
+          },
+        });
     }
     const gutter = grid.current?.querySelector('.schedule__gutter')?.getBoundingClientRect();
     const left = gutter?.right ?? bounds.left;
@@ -569,6 +931,7 @@ export function ScheduleCalendar({
 
   return (
     <section
+      ref={root}
       aria-label={t('schedule.calendarLabel')}
       className="schedule__calendar"
       onPointerMove={move}
@@ -579,20 +942,30 @@ export function ScheduleCalendar({
     >
       <div className="schedule__heads">
         <span className="schedule__gutter" aria-hidden="true" />
-        {columns.map(({ date, entry }) => (
-          <DayHead
-            key={entry?.day.id ?? date}
-            date={date}
-            entry={entry}
-            today={today}
-            view={view}
-            phone={phone}
-            selected={!!entry && entry.day.id === selectedDay}
-            conflicts={entry ? entry.draft.blocks.filter((b) => conflicts.has(b.id)).length : 0}
-            sun={entry ? sunOf(entry.draft) : null}
-            onOpen={() => onOpenDay(entry, date)}
-          />
-        ))}
+        {columns.map((column) => {
+          const { date, entry } = column;
+          return (
+            <DayHead
+              key={entry?.day.id ?? date}
+              date={date}
+              entry={entry}
+              today={today}
+              view={view}
+              phone={phone}
+              readOnly={readOnly}
+              selected={!!entry && entry.day.id === selectedDay}
+              moving={!!movingEntry && movingEntry.day.id === entry?.day.id}
+              dropTarget={dayTarget === date}
+              conflicts={entry ? entry.draft.blocks.filter((b) => conflicts.has(b.id)).length : 0}
+              sun={entry ? sunOf(entry.draft) : null}
+              onOpen={() => {
+                if (!suppressClick.current) onOpenDay(entry, date);
+              }}
+              onPointerDown={(event) => beginDayDrag(event, entry)}
+              onKeyDown={(event) => onHeadKey(event, column)}
+            />
+          );
+        })}
       </div>
       <div
         ref={grid}
@@ -615,13 +988,41 @@ export function ScheduleCalendar({
               </span>
             ))}
           </div>
-          {columns.map(({ date, entry }) => {
+          {columns.map((column) => {
+            const { date, entry } = column;
+            const fresh = pending(columnKey(column));
+            const ghostSlots = ghosts(column);
+            const extras = (
+              <>
+                {fresh && (
+                  <span
+                    className="schedule__placeholder is-new"
+                    style={{
+                      top: fresh.start * MINUTE_PX,
+                      height: (fresh.end - fresh.start) * MINUTE_PX,
+                    }}
+                  />
+                )}
+                {ghostSlots.map((slot) => (
+                  <span
+                    key={`ghost-${slot.block.id}`}
+                    className="schedule__placeholder"
+                    style={{
+                      top: slot.start * MINUTE_PX,
+                      height: Math.max(MIN_HEIGHT, (slot.end - slot.start) * MINUTE_PX),
+                    }}
+                  />
+                ))}
+              </>
+            );
             if (!entry)
               return (
                 <section
                   key={date}
                   aria-label={t('schedule.day', { date })}
-                  className="schedule__column is-free"
+                  className={`schedule__column is-free${dayTarget === date ? ' is-drop' : ''}`}
+                  data-day-drop={date}
+                  onPointerDown={(event) => beginDraw(event, column)}
                   ref={(el) => {
                     if (el) columnRefs.current.set(date, el);
                     else columnRefs.current.delete(date);
@@ -680,6 +1081,7 @@ export function ScheduleCalendar({
                         </div>
                       );
                     })()}
+                  {extras}
                   {date === today && <NowLine minute={nowMinute} />}
                 </section>
               );
@@ -710,8 +1112,10 @@ export function ScheduleCalendar({
                   if (el) columnRefs.current.set(entry.day.id, el);
                   else columnRefs.current.delete(entry.day.id);
                 }}
-                className={`schedule__column schedule__day${entry.stale ? ' is-stale' : ''}${isTarget || dropAt?.day === entry.day.id ? ' is-drop' : ''}`}
+                className={`schedule__column schedule__day${entry.stale ? ' is-stale' : ''}${isTarget || dropAt?.day === entry.day.id || dayTarget === date ? ' is-drop' : ''}${dayTarget === date ? ' is-day-drop' : ''}`}
                 aria-label={t('schedule.day', { date: draft.date })}
+                data-day-drop={date}
+                onPointerDown={(event) => beginDraw(event, column)}
                 onDragOver={(event) => {
                   if (readOnly) return;
                   event.preventDefault();
@@ -824,7 +1228,7 @@ export function ScheduleCalendar({
                         ]
                           .filter(Boolean)
                           .join(', ')}
-                        aria-keyshortcuts="Enter Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Shift+ArrowUp Shift+ArrowDown Delete"
+                        aria-keyshortcuts="Enter Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Shift+ArrowUp Shift+ArrowDown Delete N"
                         onPointerDown={(event) => begin(event, 'move', entry, block, start)}
                         onContextMenu={(event) => {
                           if (dragRef.current?.touch) event.preventDefault();
@@ -894,8 +1298,9 @@ export function ScheduleCalendar({
                     </div>
                   );
                 })}
+                {extras}
                 {nowAt !== null && <NowLine minute={nowAt} />}
-                {above.length > 0 && !phone && !drag?.active && (
+                {above.length > 0 && !phone && !drag?.active && !dayDrag?.active && (
                   <button
                     type="button"
                     className="schedule__more"
@@ -910,7 +1315,7 @@ export function ScheduleCalendar({
                     {t('schedule.moreAbove', { count: above.length })}
                   </button>
                 )}
-                {below.length > 0 && !phone && !drag?.active && (
+                {below.length > 0 && !phone && !drag?.active && !dayDrag?.active && (
                   <button
                     type="button"
                     className="schedule__more"
@@ -967,6 +1372,44 @@ export function ScheduleCalendar({
               {note.text}
             </span>
           ),
+      )}
+      {dayMoveLabel && dayLabelAt && (
+        <span className="schedule__floating-note is-primary" style={dayLabelAt}>
+          {dayMoveLabel}
+        </span>
+      )}
+      {creating && (
+        <ContextMenu
+          className="schedule__create-menu"
+          style={{ left: creating.left, top: creating.top }}
+          label={t('schedule.newBlockMenu')}
+          items={[
+            {
+              heading: t('schedule.newBlock', {
+                time: `${clockLabel(creating.start)} – ${clockLabel(creating.end)}`,
+              }),
+            },
+            ...NEW_TYPES.map((type, index) => ({
+              label: typeName(type),
+              shortcut: String(index + 1),
+              content: (
+                <>
+                  <span
+                    className={`schedule__type-dot schedule__block--${type}`}
+                    aria-hidden="true"
+                  />
+                  {typeName(type)}
+                </>
+              ),
+              action: () => createRef.current(type),
+            })),
+          ]}
+          onClose={(reason) => {
+            if (reason === 'item') return;
+            setCreating(null);
+            if (reason === 'escape') creating.origin?.focus();
+          }}
+        />
       )}
       {phone &&
         !drag?.active &&
@@ -1029,20 +1472,32 @@ function DayHead({
   today,
   view,
   phone,
+  readOnly,
   selected,
+  moving,
+  dropTarget,
   conflicts,
   sun,
   onOpen,
+  onPointerDown,
+  onKeyDown,
 }: {
   date: string;
   entry: CalendarDay | null;
   today: string;
   view: 'week' | 'day';
   phone: boolean;
+  readOnly: boolean;
   selected: boolean;
+  /** Its day is being dragged to another date. */
+  moving: boolean;
+  /** A dragged day would land here. */
+  dropTarget: boolean;
   conflicts: number;
   sun: Sun;
   onOpen: () => void;
+  onPointerDown: (event: PointerEvent<HTMLElement>) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
 }) {
   const { t, i18n } = useTranslation();
   const part = (options: Intl.DateTimeFormatOptions) =>
@@ -1059,7 +1514,7 @@ function DayHead({
   return (
     <button
       type="button"
-      className={`schedule__head${selected ? ' is-selected' : ''}${entry?.stale ? ' is-stale' : ''}`}
+      className={`schedule__head${selected ? ' is-selected' : ''}${entry?.stale ? ' is-stale' : ''}${moving ? ' is-moving' : ''}${dropTarget ? ' is-drop' : ''}`}
       aria-label={[
         part({ weekday: 'long', day: 'numeric', month: 'long' }),
         entry ? t('schedule.dayNumber', { n: entry.index + 1 }) : t('schedule.noShoot'),
@@ -1068,7 +1523,13 @@ function DayHead({
         .filter(Boolean)
         .join(' · ')}
       aria-pressed={view === 'day' ? undefined : selected}
+      aria-keyshortcuts={readOnly ? undefined : entry ? 'Alt+ArrowLeft Alt+ArrowRight N' : 'N'}
+      data-day-drop={date}
+      data-day-head={entry?.day.id}
+      data-tour="schedule-day-head"
       onClick={onOpen}
+      onPointerDown={onPointerDown}
+      onKeyDown={onKeyDown}
     >
       <span className="schedule__head-top">
         <span className="schedule__head-weekday">{part({ weekday: 'short' })}</span>

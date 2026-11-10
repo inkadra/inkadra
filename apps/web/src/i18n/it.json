@@ -2476,12 +2476,26 @@
     "wrapAt": "Fine riprese {{time}}",
     "invalidDuration": "Inserisci una durata da 1 a 1440 minuti (es. 1h 30).",
     "staleBy": "{{name}} ha cambiato {{day}} mentre lo modificavi",
-    "freeDrop": "Trascina qui un blocco per creare un giorno di riprese",
+    "freeDrop": "Trascina qui un blocco, o disegnane uno, per creare un giorno di riprese",
     "moreAbove_one": "{{count}} blocco",
     "moreAbove_other": "{{count}} blocchi",
     "calendarLabel": "Calendario delle riprese",
     "sceneFilterLabel": "Scena",
-    "castFilterLabel": "Cast"
+    "castFilterLabel": "Cast",
+    "newBlockMenu": "Tipo del nuovo blocco",
+    "newBlock": "Nuovo blocco · {{time}}",
+    "created": "Nuovo blocco: {{type}}, {{start}}–{{end}}.",
+    "moveDayLabel": "{{from}} → {{to}}",
+    "swapDayLabel": "{{from}} ⇄ {{to}} · scambio",
+    "moveDay": "Sposta a un’altra data…",
+    "moveDayTitle": "Sposta {{day}}",
+    "moveDayPick": "Scegli una data diversa da quella di adesso.",
+    "moveDaySwap": "Quella data ha già {{day}}: i due giorni si scambiano.",
+    "moveDayFree": "Il giorno passa a quella data con tutti i suoi blocchi.",
+    "swapDays": "Scambia",
+    "moveDayConfirm": "Sposta",
+    "dayMoved": "Giorno spostato da {{from}} a {{to}}.",
+    "daysSwapped": "{{from}} e {{to}} scambiati."
   },
   "moodboard": {
     "count_one": "{{count}} riferimento",
@@ -4366,10 +4380,18 @@
             "text": "Trascina per riordinare, Alt per fissare l’orario, il bordo inferiore per la durata. Su un giorno libero crei il giorno di riprese; Ctrl+Z annulla tutto il gesto."
           },
           "3": {
+            "title": "Disegna un blocco",
+            "text": "Trascina sul vuoto per disegnare un blocco a scatti di 5 minuti, poi scegline il tipo (tasti 1–5). Da tastiera: N aggiunge un blocco dopo quello selezionato."
+          },
+          "4": {
+            "title": "Sposta un giorno intero",
+            "text": "Trascina l’intestazione su un’altra colonna o su una data del mese: i blocchi la seguono, e se la data è occupata i due giorni si scambiano. Alt+←/→ o «Sposta a un’altra data…» nel giorno."
+          },
+          "5": {
             "title": "Si salva da solo",
             "text": "Ogni modifica si salva; Ctrl+Z annulla, anche tra due giorni."
           },
-          "4": {
+          "6": {
             "title": "Foglio di lavorazione",
             "text": "Orari principali, location e programma con miniature e Da portare. Scegli le sezioni e stampa per la troupe."
           }

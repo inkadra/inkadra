@@ -2476,12 +2476,26 @@
     "wrapAt": "Wrap {{time}}",
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
-    "freeDrop": "Drag a block here to create a shooting day",
+    "freeDrop": "Glissez un bloc ici, ou dessinez-en un, pour créer une journée de tournage",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",
     "calendarLabel": "Shooting calendar",
     "sceneFilterLabel": "Scène",
-    "castFilterLabel": "Cast"
+    "castFilterLabel": "Cast",
+    "newBlockMenu": "Type du nouveau bloc",
+    "newBlock": "Nouveau bloc · {{time}}",
+    "created": "Nouveau bloc : {{type}}, {{start}}–{{end}}.",
+    "moveDayLabel": "{{from}} → {{to}}",
+    "swapDayLabel": "{{from}} ⇄ {{to}} · échange",
+    "moveDay": "Déplacer à une autre date…",
+    "moveDayTitle": "Déplacer {{day}}",
+    "moveDayPick": "Choisissez une autre date que l’actuelle.",
+    "moveDaySwap": "Cette date a déjà {{day}} : les deux journées s’échangent.",
+    "moveDayFree": "La journée passe à cette date avec tous ses blocs.",
+    "swapDays": "Échanger",
+    "moveDayConfirm": "Déplacer",
+    "dayMoved": "Journée déplacée du {{from}} au {{to}}.",
+    "daysSwapped": "{{from}} et {{to}} échangés."
   },
   "moodboard": {
     "count_one": "{{count}} référence",
@@ -4366,10 +4380,18 @@
             "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
           },
           "3": {
+            "title": "Dessiner un bloc",
+            "text": "Glissez sur un temps libre pour dessiner un bloc par pas de 5 minutes, puis choisissez son type (touches 1–5). Au clavier, N ajoute un bloc après celui sélectionné."
+          },
+          "4": {
+            "title": "Déplacer une journée entière",
+            "text": "Glissez son en-tête sur une autre colonne ou sur une date du mois : les blocs suivent, et sur une date prise les deux journées s’échangent. Alt+←/→ ou « Déplacer à une autre date… » dans la journée."
+          },
+          "5": {
             "title": "Saves by itself",
             "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
           },
-          "4": {
+          "6": {
             "title": "Feuille de service",
             "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
           }

@@ -5,6 +5,7 @@ import {
   type Person,
   type ProjectMember,
   type Schedule,
+  type ScheduleBlock,
   type ShootingDay,
   type ShootingDayInput,
 } from '@inkadra/shared';
@@ -32,8 +33,10 @@ import {
   addDays,
   clockString,
   duplicateBlock,
+  insertDrawnBlock,
   localDate,
   minutesLabel,
+  moveDay,
   placeBlock,
   SHOT_DRAG_TYPE,
   sameScheduleInput as sameInput,
@@ -49,8 +52,15 @@ import {
   type DayChange,
   ScheduleCalendar,
 } from './ScheduleCalendar.tsx';
-import { BlockEditor, DayPanel, type DayTab, ScheduleQueue, SunLine } from './ScheduleParts.tsx';
-import { castConflicts, newScheduleBlock, nowOnDay, whileVisible } from './schedule.ts';
+import {
+  BlockEditor,
+  DayPanel,
+  type DayTab,
+  MoveDayDialog,
+  ScheduleQueue,
+  SunLine,
+} from './ScheduleParts.tsx';
+import { castConflicts, clockLabel, newScheduleBlock, nowOnDay, whileVisible } from './schedule.ts';
 import { useSlugline, useStoryboard } from './storyboard-data.ts';
 import { locationCoords, sunTimes } from './sun.ts';
 import './film.css';
@@ -187,6 +197,9 @@ export function ScheduleView({
     null,
   );
   const [sheet, setSheet] = useState<'queue' | 'day' | 'block' | null>(null);
+  // A day dragged by its heading: the date it would land on, also marked in the month.
+  const [dayTarget, setDayTarget] = useState<string | null>(null);
+  const [movingDay, setMovingDay] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<
     { kind: 'day'; id: string } | { kind: 'block'; day: string; id: string } | null
   >(null);
@@ -642,6 +655,22 @@ export function ScheduleView({
           }
         : null;
     if (!block || from?.stale) return;
+    createDay(date, minute, fixed, block, from ?? null);
+    setNotice(
+      t('schedule.addedTo', { shot: block.title || shotTitle(block.shotId ?? ''), day: date }),
+    );
+  };
+  /**
+   * A shooting day created by a drop or a drawn block on a free date, called when the block
+   * starts. Creation and the source edit share one undo step (0089).
+   */
+  const createDay = (
+    date: string,
+    minute: number,
+    fixed: boolean,
+    block: ScheduleBlock,
+    from: CalendarDay | null,
+  ) => {
     const input: ShootingDayInput = {
       date,
       callTime: clockString(Math.max(0, Math.min(1439, minute))),
@@ -674,9 +703,51 @@ export function ScheduleView({
       { day, next },
     ]);
     setSelection({ day: day.id, block: block.id });
+  };
+  /** A block drawn on empty time (phase 2), of the type picked in the menu. */
+  const createBlock = (
+    entry: CalendarDay | null,
+    date: string,
+    start: number,
+    end: number,
+    type: ScheduleBlock['type'],
+  ): string | null => {
+    if (disabled) return null;
+    if (entry?.stale) {
+      setError(t('schedule.staleBlocked', { day: dayName(entry) }));
+      return null;
+    }
+    const block = { ...newScheduleBlock(type), duration: end - start };
+    if (entry) {
+      commit([{ day: entry.day, next: insertDrawnBlock(entry.draft, block, start) }]);
+      setSelection({ day: entry.day.id, block: block.id });
+    } else createDay(date, start, false, block, null);
     setNotice(
-      t('schedule.addedTo', { shot: block.title || shotTitle(block.shotId ?? ''), day: date }),
+      t('schedule.created', {
+        type: t(`schedule.types.${type}`),
+        start: clockLabel(start),
+        end: clockLabel(end),
+      }),
     );
+    return block.id;
+  };
+  /** A whole day to another date with its blocks (phase 3); a day already there swaps. */
+  const moveDayTo = (id: string, date: string) => {
+    if (disabled || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    const changes = moveDay(drafted, id, date);
+    const stale = changes.find((change) => change.entry.stale);
+    if (stale) {
+      setError(t('schedule.staleBlocked', { day: dayName(stale.entry) }));
+      return;
+    }
+    const moved = changes[0];
+    if (!moved) return;
+    commit(changes.map((change) => ({ day: change.entry.day, next: change.next })));
+    setSelection({ day: id, block: null });
+    setFocus(date);
+    const from = dayLong(moved.entry.draft.date, { weekday: 'short', day: 'numeric' });
+    const to = dayLong(date, { weekday: 'short', day: 'numeric' });
+    setNotice(t(changes.length > 1 ? 'schedule.daysSwapped' : 'schedule.dayMoved', { from, to }));
   };
   const addBlock = (target: CalendarDay | null) => {
     if (!target || disabled) return;
@@ -862,6 +933,7 @@ export function ScheduleView({
   const popoverEntry = popover ? findEntry(popover.day) : undefined;
   const popoverBlock = popoverEntry?.draft.blocks.find((b) => b.id === popover?.block);
   const sheetBlock = selectedEntry?.draft.blocks.find((b) => b.id === selection.block);
+  const movingEntry = movingDay ? findEntry(movingDay) : undefined;
 
   const editorFor = (
     entry: CalendarDay,
@@ -936,6 +1008,7 @@ export function ScheduleView({
       onReload={() => dropDraft(selectedEntry.day)}
       onKeep={() => keepDraft(selectedEntry.day)}
       onDelete={() => setPendingDelete({ kind: 'day', id: selectedEntry.day.id })}
+      onMoveDate={() => setMovingDay(selectedEntry.day.id)}
     />
   );
   const queue = (
@@ -956,6 +1029,7 @@ export function ScheduleView({
       today={today}
       shootingDates={shootingDates}
       visibleDates={new Set(dates)}
+      dropDate={dayTarget}
       onPickDate={(date) => {
         setFocus(date);
         setPopover(null);
@@ -1220,6 +1294,9 @@ export function ScheduleView({
               onDuplicate={duplicate}
               onAnnounce={setNotice}
               onDropFree={dropOnFreeDay}
+              onCreate={createBlock}
+              onMoveDay={moveDayTo}
+              onDayTarget={setDayTarget}
               onDropShot={(entry, payload, minute) => {
                 const id = resolveDroppedShot(
                   payload,
@@ -1282,6 +1359,19 @@ export function ScheduleView({
             {editorFor(selectedEntry, sheetBlock.id, 'sheet')}
           </Dialog>
         </div>
+      )}
+      {movingEntry && (
+        <MoveDayDialog
+          entry={movingEntry}
+          days={drafted}
+          dayName={dayName}
+          onClose={() => setMovingDay(null)}
+          onMove={(date) => {
+            setMovingDay(null);
+            if (phone) setSheet(null);
+            moveDayTo(movingEntry.day.id, date);
+          }}
+        />
       )}
       <Dialog
         open={pendingDelete !== null}

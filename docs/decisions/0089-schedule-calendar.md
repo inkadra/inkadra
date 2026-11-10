@@ -43,7 +43,7 @@ Every gesture has keys: arrows move between blocks, Alt+↑/↓ reorder, Alt+←
 previous or next shooting day, Shift+↑/↓ change the length, Enter opens the editor, Ctrl+D
 duplicates and Delete removes (asking first when the block has a title or a shot, as before).
 Each change is announced to screen readers. Touch picks a block up after a long press. Creating a
-block by dragging on empty time and moving a whole day by its heading are left for later.
+block by dragging on empty time and moving a whole day by its heading came in phases 2 and 3 (below).
 
 **Saved on its own, with undo.** Every edit becomes a draft of its day, as before, and is saved
 600 ms after the last change with the revision it started from. The bar says "Saving…",
@@ -94,3 +94,34 @@ call, planned wrap, location, notes, delete), Block (the full editor) and To bri
 - The undo history lives in the open tab only; reloading starts a new one.
 - Sunrise and sunset are about a minute off at mid latitudes and wrong when the location is in
   another time zone than the device; they are a planning aid, not an almanac.
+
+## Phase 2 and 3
+
+**Drawing a block on empty time.** A press and drag on an empty part of a column, in Week or Day,
+draws a dashed block in 5-minute steps, with its time beside it ("16:55 – 17:25") placed by the
+same rule as the other drag labels. On release a small menu asks for the type: Shot, Setup,
+Break, Move, Note, with keys 1–5 and the colour of the type; Escape or a press elsewhere drops it.
+The block keeps the drawn length, and its start follows the rule of this decision that only a
+fixed start leaves room before a block:
+
+- drawn on free time (a gap before a fixed block, or after the last block), it gets that time as a
+  fixed start, since queuing would move it away from where it was drawn;
+- drawn over other blocks, before the call, or exactly where the queue would put it, it queues
+  up, placed in the order as a dropped block is.
+
+On a date without shooting the day is created with the call at the drawn time, as drops do, and
+creation and block are one undo step. **N** on a block (or on a day heading) opens the same menu
+for a block right after it (or at the end of the day): the keyboard way. Phones keep
+"+ Block"; a finger on the grid scrolls it.
+
+**Moving a whole day.** Dragging a day heading onto another column or onto a date of the month in
+the queue moves the day to that date with all its blocks. While dragging, the heading is dashed,
+the target is highlighted with the blocks that would land there, and a label says
+"Mon 9 → Wed 11" (or "⇄ … swap"). If the date already has shooting days, they take the date the
+day leaves: the days swap. One commit holds every changed day, so one undo restores all of them,
+and the save goes through `POST /schedule/edit` in one transaction: a stale revision on either day
+refuses the whole swap. **Alt+←/→** on a heading moves the day by one date, and **Move to
+another date…** in the day panel (the phone's day sheet too) opens a dialog that names the day it
+would swap with. Read-only schedules and days with an unresolved conflict do not move.
+
+No contract or migration change: phases 2 and 3 reuse `EditSchedule` and the day aggregate.

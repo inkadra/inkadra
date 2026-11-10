@@ -330,7 +330,8 @@
 
 .schedule__calendar {
   --schedule-gutter: 76px;
-  --schedule-column: minmax(170px, 1fr);
+  /* Five days fit at 1280 px with the navigation open; seven may scroll sideways. */
+  --schedule-column: minmax(128px, 1fr);
   flex: 1;
   min-height: 0;
   display: flex;
@@ -1357,4 +1358,54 @@ fieldset.schedule__field > legend {
   .schedule__queue {
     width: 220px;
   }
+}
+
+/* Phase 2: a new block drawn on empty time, then its type from a small menu. */
+.schedule__placeholder.is-new {
+  background: var(--ink-accent-soft-bg);
+}
+.menu.schedule__create-menu {
+  position: fixed;
+  z-index: 30;
+}
+/* As in the mockup: taller rows, and the focused type (Enter picks it) is marked. */
+.schedule__create-menu .menu__item {
+  height: 32px;
+  color: var(--ink-text-primary);
+}
+.schedule__create-menu .menu__item:focus {
+  background: var(--ink-accent-soft-bg);
+}
+.schedule__type-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-right: 10px;
+  border-radius: var(--ink-radius-full);
+  background: var(--block-fg);
+}
+/* Phase 3: a day dragged by its heading, and where it would land. */
+.schedule__head.is-moving {
+  outline: 1px dashed var(--ink-border-strong);
+  outline-offset: -4px;
+  opacity: 0.6;
+}
+.schedule__head.is-drop,
+.schedule__month-day.is-drop {
+  background: var(--ink-accent-soft-bg);
+  box-shadow: inset 0 0 0 2px var(--ink-accent-primary);
+}
+/* The label of the dragged day sits where the call of the day it replaces is written. */
+.schedule__column.is-day-drop .schedule__mark > span {
+  visibility: hidden;
+}
+.schedule__move-day {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.schedule__move-day > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
