@@ -2477,7 +2477,9 @@
     "freeDrop": "Trascina qui un blocco per creare un giorno di riprese",
     "moreAbove_one": "{{count}} blocco",
     "moreAbove_other": "{{count}} blocchi",
-    "calendarLabel": "Calendario delle riprese"
+    "calendarLabel": "Calendario delle riprese",
+    "sceneFilterLabel": "Scena",
+    "castFilterLabel": "Cast"
   },
   "moodboard": {
     "count_one": "{{count}} riferimento",

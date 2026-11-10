@@ -147,4 +147,53 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   await page.keyboard.press('Control+z');
   await expect(schedule.locator('.schedule__day')).toHaveCount(2);
   await expect(schedule.locator('.schedule__queue .schedule__shot')).toHaveCount(1);
+  await expect(saved).toHaveText(/Salvato alle/);
+  // A wrapped overnight notice fits entirely in its column; phone notices have their own row.
+  const night = await page.request.post(`/api/v1/boards/${board.id}/schedule`, {
+    headers: { origin: new URL(page.url()).origin },
+    data: {
+      date: '2026-11-05',
+      callTime: '18:30',
+      wrap: '04:00',
+      location: 'Night',
+      notes: '',
+      blocks: [
+        {
+          id: crypto.randomUUID(),
+          type: 'setup',
+          title: 'Night setup',
+          start: null,
+          duration: 360,
+          shotId: null,
+          cast: [],
+          departments: [],
+        },
+        {
+          id: crypto.randomUUID(),
+          type: 'note',
+          title: 'After midnight',
+          start: null,
+          duration: 210,
+          shotId: null,
+          cast: [],
+          departments: [],
+        },
+      ],
+    },
+  });
+  expect(night.status()).toBe(201);
+  await page.reload();
+  const pill = schedule.locator('.schedule__more').first();
+  await expect(pill).toBeVisible();
+  const pillRect = await pill.boundingBox();
+  const gridRect = await schedule.locator('.schedule__grid').boundingBox();
+  if (!pillRect || !gridRect) throw new Error('overflow notice missing');
+  expect(pillRect.y + pillRect.height).toBeLessThanOrEqual(gridRect.y + gridRect.height);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const notice = schedule.locator('.schedule__edge-notices');
+  await expect(notice).toBeVisible();
+  const noticeRect = await notice.boundingBox();
+  const footerRect = await schedule.locator('.schedule__phone-foot').boundingBox();
+  if (!noticeRect || !footerRect) throw new Error('phone overflow notice missing');
+  expect(noticeRect.y + noticeRect.height).toBeLessThanOrEqual(footerRect.y);
 });

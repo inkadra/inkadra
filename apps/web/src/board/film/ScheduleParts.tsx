@@ -186,7 +186,7 @@ export function ScheduleQueue({
               value={scene}
               onChange={setScene}
               options={[
-                { value: '', label: t('schedule.allScenes') },
+                { value: '', label: t('schedule.sceneFilterLabel') },
                 ...waiting.map((g) => ({ value: g.scene?.id ?? 'loose', label: sceneName(g) })),
               ]}
             />
@@ -197,7 +197,7 @@ export function ScheduleQueue({
                 value={cast}
                 onChange={setCast}
                 options={[
-                  { value: '', label: t('schedule.allCast') },
+                  { value: '', label: t('schedule.castFilterLabel') },
                   ...castNames.map((name) => ({ value: name.toLocaleLowerCase(), label: name })),
                 ]}
               />

@@ -2477,7 +2477,9 @@
     "freeDrop": "Drag a block here to create a shooting day",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",
-    "calendarLabel": "Shooting calendar"
+    "calendarLabel": "Shooting calendar",
+    "sceneFilterLabel": "Szene",
+    "castFilterLabel": "Cast"
   },
   "moodboard": {
     "count_one": "{{count}} Referenz",

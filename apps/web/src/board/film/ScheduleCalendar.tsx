@@ -903,7 +903,7 @@ export function ScheduleCalendar({
                   <button
                     type="button"
                     className="schedule__more"
-                    style={{ top: (bottom - 30) * MINUTE_PX }}
+                    style={{ top: (bottom - 4) * MINUTE_PX, transform: 'translateY(-100%)' }}
                     onClick={() => {
                       const first = below[0];
                       if (first && grid.current)
