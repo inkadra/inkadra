@@ -372,8 +372,11 @@ export function PresencePanel({
         data.links.filter((l) => l.castKey === castNameKey(call.name)).map((l) => l.userId),
       ),
     ];
-    return (users.length ? users : [undefined]).map((userId) => ({
+    // The key is the place among the people of that name: linking an account keeps the row, and
+    // with it the focus on its control.
+    return (users.length ? users : [undefined]).map((userId, n) => ({
       ...call,
+      key: `${call.name}-${n}`,
       userId,
       status: statusOf(userId),
     }));
@@ -396,7 +399,7 @@ export function PresencePanel({
         </p>
       )}
       {rows.map((row) => (
-        <div key={`${row.name}-${row.userId ?? 'unlinked'}`} className="call-sheet__row">
+        <div key={row.key} className="call-sheet__row">
           <div className="call-sheet__row-text">
             <span className="call-sheet__row-label">{row.name}</span>
             <span className={`call-sheet__row-help is-${row.status ?? 'none'}`}>
