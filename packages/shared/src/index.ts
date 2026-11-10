@@ -8,6 +8,7 @@ export * from './clip.ts';
 export * from './comments.ts';
 export * from './common.ts';
 export * from './constants.ts';
+export * from './crew.ts';
 export * from './demo.ts';
 export * from './export-settings.ts';
 export * from './feedback.ts';

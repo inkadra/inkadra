@@ -1291,3 +1291,29 @@ export const feedbackAttachment = pgTable('feedback_attachment', {
   bytes: integer('bytes').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 });
+
+/** Private project team data; never part of a board document or guest export. */
+export const crewMember = pgTable(
+  'crew_member',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    role: text('role').notNull(),
+    department: text('department').notNull(),
+    phone: text('phone').notNull(),
+    email: text('email').notNull(),
+    pickup: text('pickup').notNull(),
+    notes: text('notes').notNull(),
+    userId: uuid('user_id').references(() => user.id, { onDelete: 'set null' }),
+    character: jsonb('character').$type<{ boardId: string; elementId: string }>(),
+    onSetContact: boolean('on_set_contact').notNull().default(false),
+    position: integer('position').notNull().default(0),
+    revision: integer('revision').notNull().default(1),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index('crew_member_project_position_idx').on(t.projectId, t.position, t.id)],
+);
