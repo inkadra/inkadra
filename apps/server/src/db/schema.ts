@@ -203,7 +203,8 @@ export const project = pgTable('project', {
   position: text('position').notNull(),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   type: text('type'),
-  timeZone: text('time_zone').notNull().default('UTC'),
+  /** IANA zone of the shooting times; null when never set (read as UTC by the calendar feed). */
+  timeZone: text('time_zone'),
   shootingStart: date('shooting_start'),
   shootingEnd: date('shooting_end'),
   createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
