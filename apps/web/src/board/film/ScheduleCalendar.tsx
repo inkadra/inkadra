@@ -549,6 +549,9 @@ export function ScheduleCalendar({
         });
       }
     }
+    const gutter = grid.current?.querySelector('.schedule__gutter')?.getBoundingClientRect();
+    const left = gutter?.right ?? bounds.left;
+    const noteBounds = { left, top: bounds.top, width: bounds.right - left, height: bounds.height };
     const occupied = cards.map((card) => card.rect);
     return cards
       .filter(
@@ -563,7 +566,7 @@ export function ScheduleCalendar({
           width,
           height: Math.max(24, Math.ceil((card.text.length * 10) / (width - 14)) * 16 + 8),
         };
-        const position = placeAnnotation(card.rect, size, bounds, occupied);
+        const position = placeAnnotation(card.rect, size, noteBounds, occupied);
         if (position) occupied.push({ ...position, ...size });
         return { ...card, position, size };
       });

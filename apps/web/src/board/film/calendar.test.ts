@@ -183,6 +183,9 @@ it('keeps drag notes beside cards only when they fit without covering another ca
   const right = { left: 200, top: 80, width: 200, height: 40 };
   expect(placeAnnotation(card, size, bounds, [card, right])).toEqual({ left: 14, top: 80 });
   expect(
+    placeAnnotation(card, size, { ...bounds, left: 100, width: 300 }, [card, right]),
+  ).toBeNull();
+  expect(
     placeAnnotation(card, size, bounds, [
       card,
       right,
