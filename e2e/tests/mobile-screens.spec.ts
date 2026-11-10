@@ -107,14 +107,16 @@ test('phone screens fit 360 px with finger-sized targets', async ({ page, baseUR
   await create.click();
   await expect(page).toHaveURL(/\/p\//);
 
-  // A board: separate 44 px targets for its name and view picker.
+  // A board: the original 56 px row, with separate AA targets for name and view.
   await expect(page.locator('.mobile-view-switcher')).toBeVisible();
   const headerBox = (await header.boundingBox())!;
-  expect(headerBox.height).toBeLessThanOrEqual(89);
+  expect(headerBox.height).toBeLessThanOrEqual(57);
   const crumb = header.locator('button.crumb--editable');
-  await touchSized(crumb);
   const crumbBox = (await crumb.boundingBox())!;
   const pickerBox = (await page.locator('.mobile-view-switcher').boundingBox())!;
+  expect(crumbBox.height).toBeGreaterThanOrEqual(24);
+  expect(crumbBox.width).toBeGreaterThanOrEqual(44);
+  expect(pickerBox.height).toBeGreaterThanOrEqual(32);
   expect(crumbBox.y + crumbBox.height).toBeLessThanOrEqual(pickerBox.y);
   for (const control of [
     header.getByRole('button', { name: 'Indietro', exact: true }),

@@ -517,16 +517,6 @@ export function ContextBar({
     const above = anchor.y - el.offsetHeight - 10;
     const top = above < 8 ? anchor.y + anchor.h + 8 : above;
     el.style.top = `${Math.max(8, Math.min(top, (el.offsetParent as HTMLElement).clientHeight - el.offsetHeight - 8))}px`;
-    // On phones the zoom and inbox share the top row. Let them clear a selection there.
-    const canvas = el.offsetParent as HTMLElement;
-    const barTop = el.offsetTop;
-    canvas.style.setProperty(
-      '--selection-zoom-top',
-      barTop < 68 ? `${barTop + el.offsetHeight + 12}px` : '12px',
-    );
-    return () => {
-      canvas.style.removeProperty('--selection-zoom-top');
-    };
   });
   if (elements.length === 0 || (readOnly && !onComments)) return null;
   if (readOnly && onComments)
