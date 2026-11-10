@@ -2439,11 +2439,6 @@ export function Canvas({
       return;
     // A menu or the version banner already handled this Escape; a preview has nothing to clear.
     if (e.key === 'Escape' && (e.defaultPrevented || preview)) return;
-    if (e.key === ' ' && canSpacePan(e.target)) {
-      spaceDown.current = e.type === 'keydown';
-      if (e.type === 'keydown') e.preventDefault();
-      return;
-    }
     if (
       e.type === 'keydown' &&
       pendingText.current !== null &&
@@ -2469,6 +2464,12 @@ export function Canvas({
       // A key typed while the note being edited is not focused (yet): it belongs to the note.
       editor.chain().focus('end').insertContent(e.key).run();
       e.preventDefault();
+      return;
+    }
+    // After the note branches: a space typed before the new note has focus is text, not a pan.
+    if (e.key === ' ' && canSpacePan(e.target)) {
+      spaceDown.current = e.type === 'keydown';
+      if (e.type === 'keydown') e.preventDefault();
       return;
     }
     if (e.type === 'keydown' && e.key === 'Escape' && editing && isTyping(e.target)) {
