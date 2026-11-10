@@ -493,6 +493,11 @@ function CrewPanel({
             }
           >
             <option value="">{t('troupe.optional')}</option>
+            {draft.character && !linked && (
+              <option value={`${draft.character.boardId}/${draft.character.elementId}`} disabled>
+                {t('troupe.characterUnavailable')}
+              </option>
+            )}
             {characters.map((el) => (
               <option key={`${el.boardId}/${el.elementId}`} value={`${el.boardId}/${el.elementId}`}>
                 {el.name}

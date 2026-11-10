@@ -5300,6 +5300,7 @@
     "addPeople_other": "Aggiungi {{count}} persone",
     "menu": "Azioni per {{name}}",
     "details": "Apri dettagli",
-    "phoneColumn": "Telefono"
+    "phoneColumn": "Telefono",
+    "characterUnavailable": "Scheda non disponibile · Scollega o scegli un’altra scheda"
   }
 }

@@ -125,3 +125,24 @@ it('opens the row menu and confirms removal before deleting', async () => {
   await act(async () => button(dialog!, 'troupe.remove').click());
   expect(remove).toHaveBeenCalledWith(expect.stringContaining(member.id), { revision: 1 });
 });
+
+it('lets a removed character card be unlinked', async () => {
+  const linkedMember = { ...member, character: { boardId: 'board', elementId: 'removed-card' } };
+  vi.spyOn(api, 'get').mockImplementation(async (path) => ({
+    items: path.endsWith('/characters') ? [] : [linkedMember],
+    nextCursor: null,
+  }));
+  const save = vi.spyOn(api, 'put').mockResolvedValue({ ...member, revision: 2 });
+  const host = await mount();
+  await act(async () => (host.querySelector('.troupe__person') as HTMLButtonElement).click());
+  const select = host.querySelector('select')!;
+  expect(select.value).toBe('board/removed-card');
+  await act(async () => {
+    select.value = '';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect(save).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({ character: null }),
+  );
+});
