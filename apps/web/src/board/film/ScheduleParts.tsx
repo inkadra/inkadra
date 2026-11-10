@@ -6,7 +6,16 @@ import {
   type ScheduleBlock,
   type ShootingDayInput,
 } from '@inkadra/shared';
-import { Button, Checkbox, DateField, Icon, IconButton, Select } from '@inkadra/ui';
+import {
+  Button,
+  Checkbox,
+  DateField,
+  Dialog,
+  DialogActions,
+  Icon,
+  IconButton,
+  Select,
+} from '@inkadra/ui';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { moveTabFocus } from '../../lib/tabs.ts';
@@ -67,6 +76,7 @@ export function ScheduleQueue({
   today,
   shootingDates,
   visibleDates,
+  dropDate,
   onPickDate,
   onAdd,
 }: {
@@ -87,6 +97,8 @@ export function ScheduleQueue({
   today: string;
   shootingDates: ReadonlySet<string>;
   visibleDates: ReadonlySet<string>;
+  /** Where a day dragged by its heading would land. */
+  dropDate: string | null;
   onPickDate: (date: string) => void;
   onAdd: (shotId: string) => void;
 }) {
@@ -149,6 +161,7 @@ export function ScheduleQueue({
         today={today}
         shootingDates={shootingDates}
         visibleDates={visibleDates}
+        dropDate={dropDate}
         onPick={onPickDate}
       />
       <h2 className="story__sidebar-title">
@@ -296,12 +309,14 @@ function MiniMonth({
   today,
   shootingDates,
   visibleDates,
+  dropDate,
   onPick,
 }: {
   focusDate: string;
   today: string;
   shootingDates: ReadonlySet<string>;
   visibleDates: ReadonlySet<string>;
+  dropDate: string | null;
   onPick: (date: string) => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -340,7 +355,9 @@ function MiniMonth({
                   {date.startsWith(month) && (
                     <button
                       type="button"
-                      className={`schedule__month-day${shootingDates.has(date) ? ' has-shoot' : ''}${visibleDates.has(date) ? ' is-visible' : ''}${date === today ? ' is-today' : ''}`}
+                      className={`schedule__month-day${shootingDates.has(date) ? ' has-shoot' : ''}${visibleDates.has(date) ? ' is-visible' : ''}${date === today ? ' is-today' : ''}${date === dropDate ? ' is-drop' : ''}`}
+                      // A day dragged by its heading can land here (phase 3).
+                      data-day-drop={date}
                       aria-pressed={date === focusDate}
                       aria-label={`${format(date, { weekday: 'long', day: 'numeric', month: 'long' })}${shootingDates.has(date) ? ` · ${t('schedule.shootDay')}` : ''}`}
                       onClick={() => onPick(date)}
@@ -652,6 +669,7 @@ export function DayPanel({
   onReload,
   onKeep,
   onDelete,
+  onMoveDate,
 }: {
   entry: CalendarDay;
   total: number;
@@ -669,6 +687,8 @@ export function DayPanel({
   onReload: () => void;
   onKeep: () => void;
   onDelete: () => void;
+  /** "Move to another date…": the dialog that moves or swaps the whole day. */
+  onMoveDate: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const idBase = useId();
@@ -787,6 +807,13 @@ export function DayPanel({
           </label>
         </div>
         {!valid && <p className="schedule__error">{t('schedule.invalid')}</p>}
+        {!readOnly && (
+          <div>
+            <Button icon="calendar" disabled={stale} onClick={onMoveDate}>
+              {t('schedule.moveDay')}
+            </Button>
+          </div>
+        )}
         {/* The first line names the place; the next lines the address and how to get in. */}
         <div className="schedule__wide">
           <label htmlFor={`${idBase}-location`}>{t('schedule.location')}</label>
@@ -928,5 +955,66 @@ function DurationField({
         </span>
       )}
     </>
+  );
+}
+
+/**
+ * "Move to another date…": the keyboard and phone way of dragging a day by its heading. A date
+ * that already has a shooting day swaps with it, as a drop does.
+ */
+export function MoveDayDialog({
+  entry,
+  days,
+  dayName,
+  onMove,
+  onClose,
+}: {
+  entry: CalendarDay;
+  days: readonly CalendarDay[];
+  dayName: (entry: CalendarDay) => string;
+  onMove: (date: string) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  const [date, setDate] = useState(entry.draft.date);
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(date) && date !== entry.draft.date;
+  const taken = days.filter((d) => d !== entry && d.draft.date === date);
+  return (
+    <Dialog open title={t('schedule.moveDayTitle', { day: dayName(entry) })} onClose={onClose}>
+      <form
+        className="schedule__move-day"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (valid) onMove(date);
+        }}
+      >
+        <label htmlFor={`${id}-date`}>
+          {t('schedule.date')}
+          <DateField
+            id={`${id}-date`}
+            label={t('schedule.date')}
+            required
+            value={date}
+            onChange={setDate}
+          />
+        </label>
+        <p className="schedule__hint" aria-live="polite">
+          {!valid
+            ? t('schedule.moveDayPick')
+            : taken.length
+              ? t('schedule.moveDaySwap', { day: taken.map(dayName).join(', ') })
+              : t('schedule.moveDayFree')}
+        </p>
+        <DialogActions>
+          <Button type="button" onClick={onClose}>
+            {t('schedule.cancel')}
+          </Button>
+          <Button type="submit" variant="primary" disabled={!valid}>
+            {t(taken.length ? 'schedule.swapDays' : 'schedule.moveDayConfirm')}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 }

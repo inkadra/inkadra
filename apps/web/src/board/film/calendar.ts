@@ -253,3 +253,52 @@ export function sameScheduleInput(a: ShootingDayInput | null, b: ShootingDayInpu
     );
   return canonical(a) === canonical(b);
 }
+
+/**
+ * The time a drag on empty grid draws (phase 2): from where it started to where it is, in
+ * 5-minute steps, at least one step long and at most the schema's 1440 minutes.
+ */
+export function drawnRange(from: number, to: number): { start: number; end: number } {
+  const a = snap(Math.max(0, Math.min(from, to)));
+  const b = snap(Math.max(from, to));
+  return { start: a, end: Math.min(a + 1440, Math.max(b, a + SNAP)) };
+}
+
+/**
+ * A block drawn on empty time. Where nothing is planned (a gap before a fixed start, or after
+ * the last block) it keeps the drawn time as a fixed start, otherwise there would be no way to
+ * leave that room (0089). Drawn over other blocks, at the call or right where the queue would
+ * put it anyway, it queues up like a dropped block.
+ */
+export function insertDrawnBlock(
+  day: ShootingDayInput,
+  block: ScheduleBlock,
+  start: number,
+): ShootingDayInput {
+  const slots = scheduleTimes(day);
+  const queued = placeBlock(day, block, start, false);
+  const queuedAt = scheduleTimes(queued).find((slot) => slot.block.id === block.id)?.start;
+  const busy = slots.some((slot) => start >= slot.start && start < slot.end);
+  if (busy || start <= clockMinutes(day.callTime) || queuedAt === start) return queued;
+  return placeBlock(day, block, start, true);
+}
+
+/**
+ * A whole shooting day moved to `to` with its blocks (phase 3). The days already on `to` take
+ * the date it leaves, so the two swap; every change is returned so one undo puts all back.
+ */
+export function moveDay<T extends { day: { id: string }; draft: ShootingDayInput }>(
+  days: readonly T[],
+  id: string,
+  to: string,
+): Array<{ entry: T; next: ShootingDayInput }> {
+  const moved = days.find((entry) => entry.day.id === id);
+  if (!moved || moved.draft.date === to) return [];
+  const from = moved.draft.date;
+  return [
+    { entry: moved, next: { ...moved.draft, date: to } },
+    ...days
+      .filter((entry) => entry !== moved && entry.draft.date === to)
+      .map((entry) => ({ entry, next: { ...entry.draft, date: from } })),
+  ];
+}

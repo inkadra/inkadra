@@ -3,12 +3,15 @@ import { describe, expect, it } from 'vitest';
 import {
   addDays,
   clockString,
+  drawnRange,
   duplicateBlock,
   gapsBeforeFixed,
+  insertDrawnBlock,
   layoutLanes,
   monthGrid,
   moveBlock,
   moveBlockToDay,
+  moveDay,
   parseDuration,
   placeAnnotation,
   resizeBlock,
@@ -146,6 +149,74 @@ describe('moving blocks', () => {
     expect(copy.blocks).toHaveLength(5);
     expect(copy.blocks[1]).toMatchObject({ id, title: 'a', start: null });
     expect(id).not.toBe('a');
+  });
+});
+
+describe('drawing a new block on empty time (phase 2)', () => {
+  const plan = () => day([block('a', 60), block('b', 30, '10:00'), block('c', 30)]);
+  const drawn = (start: number, duration = 30) =>
+    insertDrawnBlock(plan(), block('n', duration), start);
+
+  it('snaps the drawn time to 5 minutes, in either direction, at least one step long', () => {
+    expect(drawnRange(16 * 60 + 53, 17 * 60 + 27)).toEqual({
+      start: 16 * 60 + 55,
+      end: 17 * 60 + 25,
+    });
+    expect(drawnRange(17 * 60 + 27, 16 * 60 + 53)).toEqual({
+      start: 16 * 60 + 55,
+      end: 17 * 60 + 25,
+    });
+    expect(drawnRange(600, 601)).toEqual({ start: 600, end: 605 });
+    expect(drawnRange(-30, 20)).toEqual({ start: 0, end: 20 });
+    expect(drawnRange(0, 5000)).toEqual({ start: 0, end: 1440 });
+  });
+
+  it('keeps the drawn time in a gap before a fixed block and after the end of the day', () => {
+    // a ends at 08:00, b is fixed at 10:00: 08:30 is free time.
+    expect(times(drawn(8 * 60 + 30))).toEqual([
+      'a 07:00–08:00',
+      'n 08:30–09:00',
+      'b 10:00–10:30',
+      'c 10:30–11:00',
+    ]);
+    expect(drawn(8 * 60 + 30).blocks[1]).toMatchObject({ id: 'n', start: '08:30' });
+    expect(times(drawn(16 * 60 + 55)).at(-1)).toBe('n 16:55–17:25');
+  });
+
+  it('queues up when drawn over other blocks, at the call or where the queue puts it anyway', () => {
+    // Over the top half of a: before it, and a moves down.
+    expect(times(drawn(7 * 60 + 10)).slice(0, 2)).toEqual(['n 07:00–07:30', 'a 07:30–08:30']);
+    expect(drawn(7 * 60 + 10).blocks[0]?.start).toBeNull();
+    // Right after the last block: queued, so it follows c if c changes.
+    expect(drawn(11 * 60).blocks.at(-1)).toMatchObject({ id: 'n', start: null });
+    // Before the call: queued first, as a drop before the call is.
+    expect(drawn(5 * 60).blocks[0]).toMatchObject({ id: 'n', start: null });
+    // An empty day starts with it at the call.
+    expect(insertDrawnBlock(day([]), block('n', 30), 7 * 60).blocks).toEqual([block('n', 30)]);
+  });
+});
+
+describe('moving a whole day (phase 3)', () => {
+  const entry = (id: string, date: string) => ({
+    day: { id },
+    draft: { ...day([block(id, 30)]), date },
+  });
+  const week = [entry('mon', '2026-11-09'), entry('wed', '2026-11-11'), entry('thu', '2026-11-12')];
+
+  it('moves a day with its blocks to a free date', () => {
+    const changes = moveDay(week, 'mon', '2026-11-10');
+    expect(changes.map((c) => [c.entry.day.id, c.next.date])).toEqual([['mon', '2026-11-10']]);
+    expect(changes[0]?.next.blocks).toEqual(week[0]?.draft.blocks);
+  });
+
+  it('swaps two days when the date is taken, and does nothing on its own date', () => {
+    const changes = moveDay(week, 'mon', '2026-11-11');
+    expect(changes.map((c) => [c.entry.day.id, c.next.date])).toEqual([
+      ['mon', '2026-11-11'],
+      ['wed', '2026-11-09'],
+    ]);
+    expect(moveDay(week, 'mon', '2026-11-09')).toEqual([]);
+    expect(moveDay(week, 'nope', '2026-11-10')).toEqual([]);
   });
 });
 

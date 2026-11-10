@@ -2474,12 +2474,26 @@
     "wrapAt": "Wrap {{time}}",
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
-    "freeDrop": "Drag a block here to create a shooting day",
+    "freeDrop": "Arrastra aquí un bloque, o dibuja uno, para crear un día de rodaje",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",
     "calendarLabel": "Shooting calendar",
     "sceneFilterLabel": "Escena",
-    "castFilterLabel": "Cast"
+    "castFilterLabel": "Cast",
+    "newBlockMenu": "Tipo del nuevo bloque",
+    "newBlock": "Nuevo bloque · {{time}}",
+    "created": "Nuevo bloque: {{type}}, {{start}}–{{end}}.",
+    "moveDayLabel": "{{from}} → {{to}}",
+    "swapDayLabel": "{{from}} ⇄ {{to}} · intercambio",
+    "moveDay": "Mover a otra fecha…",
+    "moveDayTitle": "Mover {{day}}",
+    "moveDayPick": "Elige una fecha distinta de la actual.",
+    "moveDaySwap": "Esa fecha ya tiene {{day}}: los dos días se intercambian.",
+    "moveDayFree": "El día pasa a esa fecha con todos sus bloques.",
+    "swapDays": "Intercambiar",
+    "moveDayConfirm": "Mover",
+    "dayMoved": "Día movido de {{from}} a {{to}}.",
+    "daysSwapped": "{{from}} y {{to}} intercambiados."
   },
   "moodboard": {
     "count_one": "{{count}} referencia",
@@ -4364,10 +4378,18 @@
             "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
           },
           "3": {
+            "title": "Dibuja un bloque",
+            "text": "Arrastra sobre tiempo libre para dibujar un bloque en pasos de 5 minutos y elige su tipo (teclas 1–5). Con el teclado, N añade un bloque tras el seleccionado."
+          },
+          "4": {
+            "title": "Mueve un día entero",
+            "text": "Arrastra su cabecera a otra columna o a una fecha del mes: los bloques la siguen, y en una fecha ocupada los dos días se intercambian. Alt+←/→ o «Mover a otra fecha…» en el día."
+          },
+          "5": {
             "title": "Saves by itself",
             "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
           },
-          "4": {
+          "6": {
             "title": "Orden de rodaje",
             "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
           }

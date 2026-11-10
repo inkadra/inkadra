@@ -367,6 +367,39 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
       (await request('owner', 'DELETE', `${base()}/${source.id}`, { revision: 3 })).statusCode,
     ).toBe(204);
   });
+  it('swaps the dates of two days in one transaction, and neither on a conflict', async () => {
+    // A day dragged by its heading onto a taken date (0089, phase 3): both change or none.
+    const monday = { ...input, date: '2026-12-07' };
+    const wednesday = { ...input, date: '2026-12-09', blocks: [] };
+    const a = (await request('editor', 'POST', base(), monday)).json();
+    const b = (await request('editor', 'POST', base(), wednesday)).json();
+    const swap = (revisions: [number, number], dates: [string, string]) =>
+      request('owner', 'POST', `${base()}/edit`, {
+        changes: [
+          { id: a.id, revision: revisions[0], input: { ...monday, date: dates[0] } },
+          { id: b.id, revision: revisions[1], input: { ...wednesday, date: dates[1] } },
+        ],
+      });
+    const dateOf = async (id: string) =>
+      (await request('owner', 'GET', base()))
+        .json()
+        .items.find((item: ShootingDay) => item.id === id);
+    const swapped = await swap([1, 1], ['2026-12-09', '2026-12-07']);
+    expect(swapped.statusCode).toBe(200);
+    expect(await dateOf(a.id)).toMatchObject({ date: '2026-12-09', blocks: input.blocks });
+    expect(await dateOf(b.id)).toMatchObject({ date: '2026-12-07', blocks: [] });
+    // One stale revision refuses the whole swap back: the other day keeps its new date.
+    expect((await swap([2, 1], ['2026-12-07', '2026-12-09'])).statusCode).toBe(409);
+    expect(await dateOf(a.id)).toMatchObject({ date: '2026-12-09', revision: 2 });
+    expect(await dateOf(b.id)).toMatchObject({ date: '2026-12-07', revision: 2 });
+    // Undo is the same swap with the current revisions.
+    expect((await swap([2, 2], ['2026-12-07', '2026-12-09'])).statusCode).toBe(200);
+    expect(await dateOf(a.id)).toMatchObject({ date: '2026-12-07', revision: 3 });
+    for (const id of [a.id, b.id])
+      expect(
+        (await request('owner', 'DELETE', `${base()}/${id}`, { revision: 3 })).statusCode,
+      ).toBe(204);
+  });
   it('rolls back every date when one revision conflicts and checks board permissions', async () => {
     // Batch locks sort ids: insert first so the stale update must roll it back.
     const id = '00000000-0000-4000-8000-000000000001';

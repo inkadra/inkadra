@@ -2474,12 +2474,26 @@
     "wrapAt": "Wrap {{time}}",
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
-    "freeDrop": "Drag a block here to create a shooting day",
+    "freeDrop": "Drag a block here, or draw one, to create a shooting day",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",
     "calendarLabel": "Shooting calendar",
     "sceneFilterLabel": "Scene",
-    "castFilterLabel": "Cast"
+    "castFilterLabel": "Cast",
+    "newBlockMenu": "Type of the new block",
+    "newBlock": "New block · {{time}}",
+    "created": "New block: {{type}}, {{start}}–{{end}}.",
+    "moveDayLabel": "{{from}} → {{to}}",
+    "swapDayLabel": "{{from}} ⇄ {{to}} · swap",
+    "moveDay": "Move to another date…",
+    "moveDayTitle": "Move {{day}}",
+    "moveDayPick": "Pick a date other than the current one.",
+    "moveDaySwap": "That date already has {{day}}: the two days swap.",
+    "moveDayFree": "The day moves to that date with all its blocks.",
+    "swapDays": "Swap",
+    "moveDayConfirm": "Move",
+    "dayMoved": "Day moved from {{from}} to {{to}}.",
+    "daysSwapped": "{{from}} and {{to}} swapped."
   },
   "moodboard": {
     "count_one": "{{count}} reference",
@@ -4364,10 +4378,18 @@
             "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
           },
           "3": {
+            "title": "Draw a block",
+            "text": "Drag on empty time to draw a block in 5-minute steps, then pick its type (keys 1–5). With the keyboard, N adds a block after the selected one."
+          },
+          "4": {
+            "title": "Move a whole day",
+            "text": "Drag its heading to another column or to a date of the month: the blocks follow, and on a taken date the two days swap. Alt+←/→ or “Move to another date…” in the day."
+          },
+          "5": {
             "title": "Saves by itself",
             "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
           },
-          "4": {
+          "6": {
             "title": "Call sheet",
             "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
           }
