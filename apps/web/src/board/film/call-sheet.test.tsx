@@ -566,3 +566,10 @@ it('keeps the semantic break colour when a break also references a frame', async
     '4A',
   );
 });
+
+ it.each([' ', '\n'])('extracts a free-text map URL separated by %j', (separator) => {
+  const mapUrl = 'https://www.openstreetmap.org/#map=17/45.0624/7.6787';
+  expect(locationsOfDay({ ...day, blocks: [], location: `Via Garibaldi 18, Torino${separator}${mapUrl}` }, new Map())).toEqual([
+    { name: 'Via Garibaldi 18, Torino', address: '', mapUrl },
+  ]);
+});

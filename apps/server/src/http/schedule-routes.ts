@@ -27,6 +27,7 @@ import type { Database } from '../db/client.ts';
 import {
   board,
   castLink,
+  crewMember,
   project,
   shootingDay,
   shootingDayAttendance,
@@ -45,12 +46,12 @@ const Revision = z.object({ revision: z.number().int().min(1) }).strict();
 const publicDay = (
   { createdAt: _created, updatedAt: _updated, calls, ...row }: typeof shootingDay.$inferSelect,
   team: boolean,
-) => (team ? { ...row, calls } : row);
+) => (team ? { ...row, calls } : { ...row, blocks: row.blocks.map(({ notes: _notes, ...block }) => block) });
 /** Project members only; for everyone else, a call list on input is ignored. */
 const ownInput = <T extends ShootingDayInput>(input: T, team: boolean): T => {
   if (team) return input;
   const { calls: _calls, ...rest } = input;
-  return rest as T;
+  return { ...rest, blocks: rest.blocks.map(({ notes: _notes, ...block }) => block) } as T;
 };
 const isTeam = async (db: Database, actor: Actor, projectId: string) =>
   (await projectRole(db, actor, projectId)) !== null;
@@ -90,6 +91,14 @@ export function registerScheduleRoutes(
   app: FastifyInstance,
   { db, auth }: { db: Database; auth: Auth },
 ) {
+  const cleanInput = async (input: ShootingDayInput, team: boolean, projectId: string) => {
+    const clean = ownInput(input, team);
+    if (!clean.calls) return clean;
+    const members = await db.select({ id: crewMember.id }).from(crewMember)
+      .where(eq(crewMember.projectId, projectId));
+    const ids = new Set(members.map((member) => member.id));
+    return { ...clean, calls: clean.calls.filter((call) => ids.has(call.crewMemberId)) };
+  };
   // Decision 0022: a cross-board overview checks every day's board like the board's own list.
   // Every role permits reading, so a board opens with a project role or a grant on it or on
   // one of its ancestors (trashed ones included, as in boardAccess); filtering here keeps the
@@ -157,7 +166,7 @@ export function registerScheduleRoutes(
     const { boardId } = BoardParams.parse(req.params);
     const access = await requireBoardRole(db, actor, boardId, 'editor');
     const team = await isTeam(db, actor, access.board.projectId);
-    const input = ownInput(ShootingDayInput.parse(req.body), team);
+    const input = await cleanInput(ShootingDayInput.parse(req.body), team, access.board.projectId);
     const [row] = await db
       .insert(shootingDay)
       .values({
@@ -320,9 +329,10 @@ export function registerScheduleRoutes(
     const access = await requireBoardRole(db, actor, boardId, 'editor');
     const team = await isTeam(db, actor, access.board.projectId);
     const { revision, ...input } = UpdateShootingDay.parse(req.body);
+    const clean = await cleanInput(input, team, access.board.projectId);
     const updatedBy = await savedBy(actor.id);
     const row = await db.transaction((tx) =>
-      updateDay(tx, boardId, dayId, revision, ownInput(input, team), updatedBy),
+      updateDay(tx, boardId, dayId, revision, clean, updatedBy),
     );
     return publicDay(row, team);
   });
@@ -346,7 +356,7 @@ export function registerScheduleRoutes(
           const [row] = await tx
             .insert(shootingDay)
             .values({
-              ...ownInput(change.input, team),
+              ...(await cleanInput(change.input, team, access.board.projectId)),
               id: change.id,
               boardId,
               projectId: access.board.projectId,
@@ -364,7 +374,7 @@ export function registerScheduleRoutes(
                 boardId,
                 change.id,
                 change.revision,
-                ownInput(change.input, team),
+                await cleanInput(change.input, team, access.board.projectId),
                 updatedBy,
               ),
               team,

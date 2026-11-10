@@ -13,7 +13,7 @@ import { boardRoles, requireBoardRole, requireProjectRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedCharacters } from '../board-content.ts';
 import type { Database } from '../db/client.ts';
-import { board, crewMember, user } from '../db/schema.ts';
+import { board, crewMember, shootingDay, user } from '../db/schema.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -181,7 +181,8 @@ export function registerCrewRoutes(
     const { projectId, memberId } = MemberParams.parse(req.params);
     await requireProjectRole(db, actor, projectId, 'editor');
     const { revision } = Revision.parse(req.body);
-    const [row] = await db
+    await db.transaction(async (tx) => {
+    const [row] = await tx
       .delete(crewMember)
       .where(
         and(
@@ -198,6 +199,11 @@ export function registerCrewRoutes(
         .where(and(eq(crewMember.projectId, projectId), eq(crewMember.id, memberId)));
       throw new HttpError(current ? 'conflict' : 'not_found', 'Crew member changed or removed.');
     }
+    await tx.update(shootingDay).set({
+      calls: sql`coalesce((select jsonb_agg(call) from jsonb_array_elements(${shootingDay.calls}) as call where call->>'crewMemberId' <> ${memberId}), '[]'::jsonb)`,
+      revision: sql`${shootingDay.revision} + 1`,
+    }).where(and(eq(shootingDay.projectId, projectId), sql`${shootingDay.calls} @> ${JSON.stringify([{ crewMemberId: memberId }])}::jsonb`));
+    });
     return reply.code(204).send();
   });
 }

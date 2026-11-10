@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { Element } from '@inkadra/doc-schema';
-import { type CastLink, castNameKey, type ShootingDayInput } from '@inkadra/shared';
+import { type CastLink, castNameKey, parseMapLink, type ShootingDayInput } from '@inkadra/shared';
 import { neededForDay } from './needed.ts';
 import { clockMinutes, scheduleTimes } from './schedule.ts';
 
@@ -117,7 +117,15 @@ export function locationsOfDay(
     if (name && !names.some((value) => castNameKey(value) === castNameKey(name))) names.push(name);
   }
   if (!names.length && day.location.trim()) {
-    const [name = '', ...address] = day.location.trim().split('\n');
+    let mapUrl: string | undefined;
+    const text = day.location.replace(/\S+/g, (word) => {
+      const token = word.replace(/^[<(]+|[>),.;]+$/g, '');
+      const url = /^https?:/i.test(token) ? token : `https://${token}`;
+      if (!parseMapLink(url)) return word;
+      mapUrl ??= url;
+      return '';
+    });
+    const [name = '', ...address] = text.trim().split('\n').map((line) => line.trim()).filter(Boolean);
     const card = [...elements.values()].find(
       (el) => el.type === 'location' && castNameKey(el.name) === castNameKey(name),
     );
@@ -125,7 +133,7 @@ export function locationsOfDay(
       {
         name,
         address: card?.type === 'location' ? card.address : address.join('\n'),
-        mapUrl: card?.type === 'location' ? card.mapUrl : undefined,
+        mapUrl: card?.type === 'location' ? card.mapUrl || mapUrl : mapUrl,
       },
     ];
   }

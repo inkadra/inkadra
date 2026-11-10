@@ -455,14 +455,19 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
       notes: current.notes,
       blocks,
     });
+    const members = await Promise.all(['One', 'Two'].map(async (name) => {
+      const response = await request('owner', 'POST', `/projects/${projectId}/crew`, { name, role: '', department: '', phone: '', email: '', pickup: '', notes: '', userId: null, character: null, onSetContact: false, position: 0 });
+      expect(response.statusCode).toBe(201);
+      return response.json();
+    }));
     const calls = [
-      { crewMemberId: crypto.randomUUID(), call: '07:00', pickup: 'Hotel 06:45' },
-      { crewMemberId: crypto.randomUUID(), call: null, pickup: null, absent: true },
+      { crewMemberId: members[0].id, call: '07:00', pickup: 'Hotel 06:45' },
+      { crewMemberId: members[1].id, call: null, pickup: null, absent: true },
     ];
     const noted = current.blocks.map((b, i) => (i === 0 ? { ...b, notes: 'LIGHTS ON' } : b));
     const saved = await request('owner', 'PUT', `${base()}/${day.id}`, {
       ...plain(noted),
-      calls,
+      calls: [...calls, { crewMemberId: crypto.randomUUID(), call: null, pickup: null }],
       revision: current.revision,
     });
     expect(saved.statusCode).toBe(200);
@@ -489,7 +494,9 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
     const grant = `/boards/${boardId}/grants/${people.stranger?.id}`;
     expect((await request('owner', 'PUT', grant, { role: 'editor' })).statusCode).toBe(200);
     try {
-      const seen = Schedule.parse((await request('stranger', 'GET', base())).json()).items;
+      const response = await request('stranger', 'GET', base());
+      expect(response.body).not.toContain('LIGHTS ON');
+      const seen = Schedule.parse(response.json()).items;
       expect(seen.find((item) => item.id === day.id)).not.toHaveProperty('calls');
       const theirs = await request('stranger', 'PUT', `${base()}/${day.id}`, {
         ...plain(noted),
@@ -498,6 +505,7 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
       });
       expect(theirs.statusCode).toBe(200);
       expect(theirs.json()).not.toHaveProperty('calls');
+      expect(theirs.body).not.toContain('LIGHTS ON');
       const edit = await request('stranger', 'POST', `${base()}/edit`, {
         changes: [
           {
@@ -509,6 +517,7 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
       });
       expect(edit.statusCode).toBe(200);
       expect(edit.json().items[0]).not.toHaveProperty('calls');
+      expect(edit.body).not.toContain('LIGHTS ON');
     } finally {
       expect((await request('owner', 'DELETE', grant)).statusCode).toBe(204);
     }
@@ -516,6 +525,7 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
       (item) => item.id === day.id,
     );
     expect(after?.calls).toEqual(calls);
+    expect(after?.blocks[0]?.notes).toBe('LIGHTS ON');
     // Home lists days without anybody's calls.
     const mine = await request(
       'owner',
@@ -523,8 +533,13 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
       `/me/shooting-days?from=${current.date}&to=${current.date}`,
     );
     expect(mine.statusCode).toBe(200);
+    expect(mine.body).not.toContain('LIGHTS ON');
     for (const item of mine.json().items) expect(item).not.toHaveProperty('calls');
-    day = ShootingDay.parse(after);
+    const removed = await request('owner', 'DELETE', `/projects/${projectId}/crew/${members[0].id}`, { revision: members[0].revision });
+    expect(removed.statusCode).toBe(204);
+    const remaining = Schedule.parse((await request('owner', 'GET', base())).json()).items.find((item) => item.id === day.id);
+    expect(remaining?.calls).toEqual([calls[1]]);
+    day = ShootingDay.parse(remaining);
   });
   it('deletes with the current revision', async () => {
     expect(

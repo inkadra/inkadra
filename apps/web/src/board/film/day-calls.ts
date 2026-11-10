@@ -90,8 +90,9 @@ export function withDayCall(
   calls: readonly DayCall[] | undefined,
   entry: DayCrewEntry,
   patch: { call?: string | null; pickup?: string | null; called?: boolean },
+  crew: readonly CrewMember[],
 ): DayCall[] {
-  const rest = (calls ?? []).filter((c) => c.crewMemberId !== entry.member.id);
+  const rest = (calls ?? []).filter((c) => c.crewMemberId !== entry.member.id && crew.some((member) => member.id === c.crewMemberId));
   const called = patch.called ?? entry.called;
   const call = patch.call !== undefined ? patch.call : entry.ownCall;
   const pickup = patch.pickup !== undefined ? patch.pickup || null : entry.ownPickup;
@@ -161,7 +162,8 @@ export function personalDayCall(
   links: readonly CastLink[] | undefined,
   userId: string | undefined,
 ): { label: string; start: number; pickup?: string | undefined; crew: boolean } | null {
-  const mine = userId ? entries.find((e) => e.member.userId === userId && e.called) : undefined;
+  const mine = userId ? entries.find((e) => e.member.userId === userId) : undefined;
+  if (mine && !mine.called) return null;
   if (mine)
     return {
       label: mine.member.role.trim() || mine.member.name,
