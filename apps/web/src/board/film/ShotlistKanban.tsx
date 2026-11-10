@@ -5,6 +5,7 @@ import { Avatar, Icon, Select } from '@inkadra/ui';
 import { type DragEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardReview } from '../CardReview.tsx';
+import { useReviews } from '../review-store.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { usePresetText } from './fields.tsx';
@@ -67,9 +68,14 @@ export function ShotlistKanban({
   const presetText = usePresetText();
   const [dropTarget, setDropTarget] = useState<KanbanColumnKey | null>(null);
   const [expandedCols, setExpandedCols] = useState<Set<string>>(new Set());
+  const reviews = useReviews((s) => s.reviews);
+  // A card approved in review stays in "Approved" whatever its production status, so moving it
+  // out would bounce back: it can't be moved here, and the column hint says why. The review
+  // (decision 0013) is changed from its chip, the production status from the table.
+  const approvedInReview = (id: string) => reviews.get(id)?.status === 'approved';
 
   const onDragStart = (e: DragEvent, id: string) => {
-    if (readOnly) return;
+    if (readOnly || approvedInReview(id)) return;
     e.dataTransfer.setData(FRAME_MIME, id);
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -82,7 +88,7 @@ export function ShotlistKanban({
   };
 
   const moveCard = (id: string, targetCol: KanbanColumnKey) => {
-    if (readOnly) return;
+    if (readOnly || approvedInReview(id)) return;
     store.undo.stopCapturing();
     if (targetCol === 'approved') {
       updateElement(store.doc, id, { approved: true }, LOCAL);
@@ -117,7 +123,7 @@ export function ShotlistKanban({
   return (
     <div className="kanban">
       {KANBAN_COLUMNS.map((col) => {
-        const colFrames = frames.filter((f) => getFrameKanbanColumn(f) === col.key);
+        const colFrames = frames.filter((f) => getFrameKanbanColumn(f, reviews) === col.key);
 
         const isExpanded = expandedCols.has(col.key);
         const cardLimit = 10;
@@ -149,6 +155,9 @@ export function ShotlistKanban({
                 </button>
               )}
             </div>
+            {col.key === 'approved' && (
+              <p className="kanban__hint">{t('film.list.approvedHint')}</p>
+            )}
             <div className="kanban__cards">
               {col.key === 'approved' && colFrames.length === 0 ? (
                 <div className="kanban__empty-col">
@@ -160,14 +169,15 @@ export function ShotlistKanban({
                 const label = labels.get(f.id) ?? '';
                 const lensOrShot = f.lens || presetText('shotSizes', f.shot);
                 const isSelected = selected === f.id;
+                const movable = !readOnly && !approvedInReview(f.id);
                 return (
                   <article
                     key={f.id}
                     className={`kanban__card${isSelected ? ' is-selected' : ''}`}
-                    draggable={!readOnly}
+                    draggable={movable}
                     onDragStart={(e) => onDragStart(e, f.id)}
                     onKeyDown={(e) => {
-                      if (readOnly) return;
+                      if (!movable) return;
                       if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
                         e.preventDefault();
                         const currentIndex = KANBAN_COLUMNS.findIndex((c) => c.key === col.key);
@@ -222,7 +232,7 @@ export function ShotlistKanban({
                         <span />
                       )}
                       <div className="kanban__card-actions">
-                        {!readOnly && (
+                        {movable && (
                           <Select
                             className="kanban__move-select"
                             aria-label={t('film.list.moveToColumn')}

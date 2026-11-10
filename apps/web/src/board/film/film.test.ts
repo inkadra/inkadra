@@ -58,14 +58,22 @@ describe('film helpers', () => {
 
 it('maps kanban columns and derives frame statuses', () => {
   expect(KANBAN_COLUMNS.map((c) => c.key)).toEqual(['todo', 'ready', 'shot', 'retake', 'approved']);
-  expect(getFrameKanbanColumn({ status: 'draft' })).toBe('todo');
-  expect(getFrameKanbanColumn({ status: 'todo' })).toBe('todo');
-  expect(getFrameKanbanColumn({})).toBe('todo');
-  expect(getFrameKanbanColumn({ status: 'ready' })).toBe('ready');
-  expect(getFrameKanbanColumn({ status: 'shot' })).toBe('shot');
-  expect(getFrameKanbanColumn({ status: 'retake' })).toBe('retake');
-  expect(getFrameKanbanColumn({ approved: true })).toBe('approved');
-  expect(getFrameKanbanColumn({ status: 'todo', approved: true })).toBe('approved');
+  const none = new Map<string, { status: string }>();
+  expect(getFrameKanbanColumn({ id: 'f', status: 'draft' }, none)).toBe('todo');
+  expect(getFrameKanbanColumn({ id: 'f', status: 'todo' }, none)).toBe('todo');
+  expect(getFrameKanbanColumn({ id: 'f' }, none)).toBe('todo');
+  expect(getFrameKanbanColumn({ id: 'f', status: 'ready' }, none)).toBe('ready');
+  expect(getFrameKanbanColumn({ id: 'f', status: 'shot' }, none)).toBe('shot');
+  expect(getFrameKanbanColumn({ id: 'f', status: 'retake' }, none)).toBe('retake');
+  expect(getFrameKanbanColumn({ id: 'f', approved: true }, none)).toBe('approved');
+  expect(getFrameKanbanColumn({ id: 'f', status: 'todo', approved: true }, none)).toBe('approved');
+
+  // An approval in review fills "Approved" too, like the export (isApproved); other review
+  // states leave the production column.
+  const approvedInReview = new Map([['f', { status: 'approved' }]]);
+  expect(getFrameKanbanColumn({ id: 'f', status: 'shot' }, approvedInReview)).toBe('approved');
+  const changes = new Map([['f', { status: 'changes_requested' }]]);
+  expect(getFrameKanbanColumn({ id: 'f', status: 'shot' }, changes)).toBe('shot');
 
   expect(getFrameStatus({ approved: true })).toBe('approved');
   expect(getFrameStatus({ status: 'shot', approved: true })).toBe('approved');
