@@ -4,9 +4,19 @@ import {
   type CrewCharacter,
   type CrewMember,
   type CrewMemberInput,
+  canMergeCrew,
+  castNameKey,
   CrewMemberInput as Input,
 } from '@inkadra/shared';
-import { Avatar, Button, Checkbox, Dialog, DialogActions, EmptyState } from '@inkadra/ui';
+import {
+  Avatar,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  EmptyState,
+  RadioGroup,
+} from '@inkadra/ui';
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
@@ -69,6 +79,9 @@ export function TroupeView({
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [merging, setMerging] = useState<CrewMember | null>(null);
+  // A merge changes the open row's revision: the panel starts again from the merged row.
+  const [merges, setMerges] = useState(0);
   const base = `/projects/${projectId}/crew`;
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [otherCharacters, setOtherCharacters] = useState<CrewCharacter[]>([]);
@@ -124,6 +137,12 @@ export function TroupeView({
       s.toLowerCase().includes(query.toLowerCase()),
     ),
   );
+  /** Rows of the same person that can become this one without losing a link. */
+  const duplicates = (row: CrewMember) =>
+    rows.filter(
+      (r) =>
+        r.id !== row.id && castNameKey(r.name) === castNameKey(row.name) && canMergeCrew(row, r),
+    );
   const create = async () => {
     setBusy(true);
     setError(false);
@@ -141,7 +160,7 @@ export function TroupeView({
   };
   const panel = active && (
     <CrewPanel
-      key={active.id}
+      key={`${active.id}-${merges}`}
       row={active}
       requestRemove={removeSelected}
       onRemoveHandled={() => setRemoveSelected(false)}
@@ -231,6 +250,9 @@ export function TroupeView({
                           row={row}
                           selected={row.id === selected}
                           readOnly={readOnly}
+                          onMerge={
+                            !readOnly && duplicates(row).length ? () => setMerging(row) : undefined
+                          }
                           onOpen={(remove = false) => {
                             setRemoveSelected(remove);
                             setSelected(row.id);
@@ -285,6 +307,27 @@ export function TroupeView({
           </form>
         </Dialog>
       )}
+      {merging && (
+        <MergeDialog
+          base={base}
+          row={merging}
+          candidates={duplicates(merging)}
+          characters={characters}
+          onClose={() => setMerging(null)}
+          onMerged={(kept, removed) => {
+            setRows((old) =>
+              old.filter((r) => r.id !== removed).map((r) => (r.id === kept.id ? kept : r)),
+            );
+            setSelected((old) => (old === removed || old === kept.id ? kept.id : old));
+            setMerges((n) => n + 1);
+            setMerging(null);
+          }}
+          onStale={() => {
+            setMerging(null);
+            setRefresh((n) => n + 1);
+          }}
+        />
+      )}
       {paste && (
         <PasteDialog
           base={base}
@@ -304,11 +347,14 @@ function CrewRow({
   row,
   selected,
   readOnly,
+  onMerge,
   onOpen,
 }: {
   row: CrewMember;
   selected: boolean;
   readOnly: boolean;
+  /** Set when another row of the same person can be merged into this one. */
+  onMerge?: (() => void) | undefined;
   onOpen: (remove?: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -371,6 +417,7 @@ function CrewRow({
           }}
           items={[
             { label: t('troupe.details'), action: () => onOpen() },
+            ...(onMerge ? [{ label: t('troupe.merge'), action: onMerge }] : []),
             ...(!readOnly
               ? [{ label: t('troupe.remove'), danger: true, action: () => onOpen(true) }]
               : []),
@@ -731,6 +778,81 @@ function CrewPanel({
         </Dialog>
       )}
     </aside>
+  );
+}
+
+/** Merges a duplicate row of the same person into `row`, which is kept. */
+function MergeDialog({
+  base,
+  row,
+  candidates,
+  characters,
+  onClose,
+  onMerged,
+  onStale,
+}: {
+  base: string;
+  row: CrewMember;
+  candidates: CrewMember[];
+  characters: CrewCharacter[];
+  onClose: () => void;
+  onMerged: (kept: CrewMember, removed: string) => void;
+  onStale: () => void;
+}) {
+  const { t } = useTranslation();
+  const [from, setFrom] = useState(candidates[0]?.id ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  const other = candidates.find((c) => c.id === from);
+  const describe = (r: CrewMember) =>
+    [
+      r.department || t('troupe.noDepartment'),
+      r.role,
+      r.phone,
+      characters.find(
+        (c) => c.boardId === r.character?.boardId && c.elementId === r.character?.elementId,
+      )?.name,
+      r.account?.name,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  const merge = async () => {
+    if (!other) return;
+    setBusy(true);
+    setError(false);
+    try {
+      const kept = await api.post<CrewMember>(`${base}/${row.id}/merge`, {
+        revision: row.revision,
+        from: other.id,
+        fromRevision: other.revision,
+      });
+      onMerged(kept, other.id);
+    } catch (e) {
+      // A row changed or removed meanwhile: the list reloads and the person can try again.
+      if (e instanceof RequestError && (e.status === 409 || e.status === 404)) onStale();
+      else setError(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog open title={t('troupe.mergeTitle', { name: row.name })} onClose={onClose}>
+      <RadioGroup
+        label={t('troupe.mergeWith')}
+        value={from}
+        onChange={setFrom}
+        disabled={busy}
+        options={candidates.map((c) => ({ value: c.id, label: c.name, description: describe(c) }))}
+      />
+      <p className="ink-muted">{t('troupe.mergeHint', { name: row.name, kept: describe(row) })}</p>
+      {error && <p role="alert">{t('troupe.error')}</p>}
+      <DialogActions>
+        <Button onClick={onClose}>{t('troupe.cancel')}</Button>
+        <Button variant="primary" disabled={busy || !other} onClick={() => void merge()}>
+          {t('troupe.mergeAction')}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 

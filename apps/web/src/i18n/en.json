@@ -2695,7 +2695,11 @@
     "boards_one": "{{count}} board",
     "boards_other": "{{count}} boards",
     "pinned": "Pinned",
-    "saveError": "The change could not be saved. Try again."
+    "saveError": "The change could not be saved. Try again.",
+    "details": "Type and time zone",
+    "timeZone": "Time zone",
+    "timeZoneAuto": "Automatic (device time zone: {{zone}})",
+    "timeZoneHint": "Sunrise and sunset on the call sheet use this time zone."
   },
   "projectDelete": {
     "menu": "Delete project…",
@@ -4725,7 +4729,7 @@
         "steps": {
           "0": {
             "title": "Project crew",
-            "text": "Group people by department. Contacts stay private to the project team."
+            "text": "Group people by department. Contacts stay private to the project team. Same person on two rows? Use “Merge with…” in the row’s ⋯ menu."
           },
           "1": {
             "title": "Edit a person",
@@ -5357,7 +5361,12 @@
     "columnsRead": "Columns read: Name · Role · Phone",
     "pasteFoot": "Anyone already in the crew with the same name is not added twice.",
     "tooMany": "At most 500 people at a time.",
-    "noName": "Line without a name"
+    "noName": "Line without a name",
+    "merge": "Merge with…",
+    "mergeTitle": "Merge {{name}}",
+    "mergeWith": "Row to merge",
+    "mergeHint": "The row of {{name}} ({{kept}}) stays: its details win, empty fields are filled from the other row, which hands over its day calls and is removed.",
+    "mergeAction": "Merge"
   },
   "dayCalls": {
     "title": "Calls",

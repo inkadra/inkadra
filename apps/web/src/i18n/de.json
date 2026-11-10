@@ -2695,7 +2695,11 @@
     "boards_one": "{{count}} Board",
     "boards_other": "{{count}} Boards",
     "pinned": "Angepinnt",
-    "saveError": "Die Änderung konnte nicht gespeichert werden. Versuch es noch mal."
+    "saveError": "Die Änderung konnte nicht gespeichert werden. Versuch es noch mal.",
+    "details": "Typ und Zeitzone",
+    "timeZone": "Zeitzone",
+    "timeZoneAuto": "Automatisch (Zeitzone des Geräts: {{zone}})",
+    "timeZoneHint": "Sonnenauf- und -untergang auf der Dispo nutzen diese Zeitzone."
   },
   "projectDelete": {
     "menu": "Projekt löschen…",
@@ -4725,7 +4729,7 @@
         "steps": {
           "0": {
             "title": "Team des Projekts",
-            "text": "Ordne die Leute nach Abteilung. Kontakte bleiben im Projektteam."
+            "text": "Ordne die Leute nach Abteilung. Kontakte bleiben im Projektteam. Dieselbe Person in zwei Zeilen? Im ⋯-Menü der Zeile „Zusammenführen mit…“."
           },
           "1": {
             "title": "Eine Person bearbeiten",
@@ -5357,7 +5361,12 @@
     "columnsRead": "Gelesene Spalten: Name · Funktion · Telefon",
     "pasteFoot": "Wer mit gleichem Namen schon im Team ist, wird nicht doppelt angelegt.",
     "tooMany": "Höchstens 500 Personen auf einmal.",
-    "noName": "Zeile ohne Namen"
+    "noName": "Zeile ohne Namen",
+    "merge": "Zusammenführen mit…",
+    "mergeTitle": "{{name}} zusammenführen",
+    "mergeWith": "Zeile zum Zusammenführen",
+    "mergeHint": "Die Zeile von {{name}} ({{kept}}) bleibt: ihre Angaben gelten, leere Felder werden aus der anderen Zeile ergänzt, die ihre Tagesrufe übergibt und entfernt wird.",
+    "mergeAction": "Zusammenführen"
   },
   "dayCalls": {
     "title": "Treffzeiten",

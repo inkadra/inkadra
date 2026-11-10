@@ -105,7 +105,7 @@ it('shows the Home card with the actions in its menu', async () => {
     'appearance.title',
     'projectsPage.pin',
     'nav.addStoryboard',
-    'onboarding.type',
+    'projectsPage.details',
     'transfer.exportMenu',
     'projectsPage.archive',
     'projectDelete.menu',
@@ -213,7 +213,7 @@ it('keeps the Project type dialog open with an error when saving fails', async (
   await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
   await act(async () =>
     [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
-      .find((item) => item.textContent === 'onboarding.type')
+      .find((item) => item.textContent === 'projectsPage.details')
       ?.click(),
   );
   const dialog = host.querySelector('dialog');
