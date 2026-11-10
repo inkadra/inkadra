@@ -148,6 +148,8 @@ export function ScheduleView({
   store,
   projectName,
   projectId,
+  timeZone,
+  canEditCrew = false,
   boardId = '',
   userId,
   readOnly = false,
@@ -158,6 +160,10 @@ export function ScheduleView({
   boardTitle?: string;
   projectName?: string;
   projectId?: string;
+  /** The project's clock for sunrise and sunset (`shootingZone`); the device's when none. */
+  timeZone?: string | undefined;
+  /** A project editor: linking a cast name to an account writes the crew (decision 0091). */
+  canEditCrew?: boolean;
   boardId?: string;
   userId?: string;
   readOnly?: boolean;
@@ -196,7 +202,7 @@ export function ScheduleView({
     future: [],
   });
   const phone = useIsPhone();
-  const crew = useCrew(projectId);
+  const crew = useCrew(projectId, boardId);
   const [chosenView, setView] = useState<'week' | 'day'>('week');
   const view = phone ? 'day' : chosenView;
   const [focus, setFocus] = useState<string | null>(null);
@@ -885,7 +891,7 @@ export function ScheduleView({
   };
   const sunOf = (draft: ShootingDayInput) => {
     const coords = locationCoords(draft.location);
-    return coords ? sunTimes(draft.date, coords.lat, coords.lng) : null;
+    return coords ? sunTimes(draft.date, coords.lat, coords.lng, timeZone) : null;
   };
 
   // --- Navigation -----------------------------------------------------------------------------
@@ -996,7 +1002,9 @@ export function ScheduleView({
       neededCount={neededRows.length}
       callsCount={
         crew.items
-          ? dayCrew(selectedEntry.draft, crew.items, snap.byId).filter((e) => e.called).length
+          ? dayCrew(selectedEntry.draft, crew.items, snap.byId, crew.characters).filter(
+              (e) => e.called,
+            ).length
           : undefined
       }
       calls={
@@ -1454,7 +1462,11 @@ export function ScheduleView({
           boardId={boardId}
           userId={userId}
           canManage={!readOnly}
+          canLinkCast={!readOnly && canEditCrew}
           crew={crew.items ?? undefined}
+          characters={crew.characters}
+          timeZone={timeZone}
+          onCastLinked={crew.reload}
           initialDayId={selectedEntry?.day.id}
           unsaved={unsaved}
           onClose={() => setCallSheetOpen(false)}

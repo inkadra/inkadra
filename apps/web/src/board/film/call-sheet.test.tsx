@@ -82,6 +82,7 @@ async function mount(
     boardId?: string;
     userId?: string;
     canManage?: boolean;
+    canLinkCast?: boolean;
     store?: BoardStore;
     crew?: CrewMember[];
   } = {},
@@ -384,8 +385,13 @@ describe('the presence panel on a computer', () => {
     ],
     responses: [{ dayId: 'day-1', userId: 'u1', status: 'confirmed' }],
   };
-  const open = async (days = [day]) => {
-    const host = await mount(days, { boardId: 'board', userId: 'u1', canManage: true });
+  const open = async (days = [day], canLinkCast = true) => {
+    const host = await mount(days, {
+      boardId: 'board',
+      userId: 'u1',
+      canManage: true,
+      canLinkCast,
+    });
     await act(async () => new Promise((resolve) => setTimeout(resolve)));
     return host;
   };
@@ -414,6 +420,13 @@ describe('the presence panel on a computer', () => {
     const host = await open();
     expect(accounts(host)[0]?.textContent).toContain('callSheet.otherAccount');
     expect(accounts(host)[1]?.textContent).toContain('callSheet.noAccount');
+  });
+  it('shows the accounts without a choice to schedule editors who cannot edit the crew', async () => {
+    stub(() => Response.json(organiser));
+    const host = await open([day], false);
+    expect(accounts(host)).toHaveLength(0);
+    const rows = host.querySelectorAll('.call-sheet__presence .call-sheet__row');
+    expect(rows[0]?.textContent).toContain('Giulia Rossi');
   });
   it('disables a choice until its request returns', async () => {
     let finish = () => {};

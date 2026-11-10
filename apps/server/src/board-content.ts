@@ -119,7 +119,10 @@ export function docCharacters(doc: Y.Doc, boardId: string): CrewCharacter[] {
       : [];
   });
 }
-export async function storedCharacters(db: Database, boardId: string): Promise<CrewCharacter[]> {
+export async function storedCharacters(
+  db: Pick<Database, 'select'>,
+  boardId: string,
+): Promise<CrewCharacter[]> {
   const [row] = await db
     .select({ state: boardDoc.state })
     .from(boardDoc)

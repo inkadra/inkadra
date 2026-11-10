@@ -3,6 +3,7 @@ import {
   type Person,
   type Project,
   type ProjectRole,
+  ProjectTimeZone,
   type ProjectType,
   z,
 } from '@inkadra/shared';
@@ -25,6 +26,15 @@ import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { PeoplePicker } from '../people/PeoplePicker.tsx';
 import './projects.css';
+
+/**
+ * The device's time zone for a new project: its shooting times are written on this clock
+ * (calendar feed, sunrise and sunset on the call sheet). None when the server would refuse it.
+ */
+function deviceZone(): string | undefined {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return ProjectTimeZone.safeParse(zone).success ? zone : undefined;
+}
 
 interface Invite {
   email: string;
@@ -192,6 +202,7 @@ export function ProjectSetupForm({
         type: type || null,
         shootingStart: start || null,
         shootingEnd: end || null,
+        timeZone: deviceZone(),
       });
       await inviteTeam();
     } catch {

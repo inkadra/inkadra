@@ -3,6 +3,7 @@ import type { Element } from '@inkadra/doc-schema';
 import type { CrewMember, ShootingDayInput } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  castCard,
   castRows,
   dayCrew,
   dialNumber,
@@ -65,6 +66,30 @@ const giulia = member(4, {
 const elements = new Map<string, Element>([
   ['char0001', { id: 'char0001', type: 'character', name: 'Luca' } as unknown as Element],
 ]);
+
+describe('character cards on another board of the project', () => {
+  const characters = [
+    { boardId: id(998), elementId: 'char0001', name: 'Luca', actor: 'Giulia B.', contact: '+39 1' },
+  ];
+  it('matches the row through the card wherever it is, not only by its own name', () => {
+    expect(dayCrew(day(), [giulia]).map((e) => e.called)).toEqual([false]);
+    const [entry] = dayCrew(day(), [giulia], new Map(), characters);
+    expect(entry).toMatchObject({ called: true, names: ['luca '] });
+    expect(castCard('luca ', entry, new Map(), characters)).toMatchObject({
+      actor: 'Giulia B.',
+      contact: '+39 1',
+    });
+  });
+  it('prefers the live card of this board and never lends a card to another name', () => {
+    const [entry] = dayCrew(day(), [giulia], elements, characters);
+    expect(castCard('Luca', entry, elements, characters)).toEqual({
+      name: 'Luca',
+      actor: '',
+      contact: '',
+    });
+    expect(castCard('Giulia', entry, new Map(), characters)).toBeUndefined();
+  });
+});
 
 describe('who is called on a day (decision 0092)', () => {
   it('calls the crew, and the cast only when they are in the day’s blocks', () => {
@@ -192,6 +217,14 @@ describe('sunrise and sunset', () => {
     });
     // The day's own location, when its text holds a map link.
     expect(sunOfDay({ ...d, location: `Station ${at}` }, [{ name: 'Bar' }])).toMatchObject({
+      location: 1,
+    });
+  });
+
+  it('reads the times on the project clock', () => {
+    const d = day({ location: 'openstreetmap.org/#map=17/40.71/-74.0' });
+    expect(sunOfDay(d, [], 'America/New_York')).toEqual({
+      ...sunTimes(d.date, 40.71, -74.0, 'America/New_York'),
       location: 1,
     });
   });

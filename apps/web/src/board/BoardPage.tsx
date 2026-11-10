@@ -1,5 +1,6 @@
 import { listElements, type Rect, storyboardOf as sceneGroups } from '@inkadra/canvas-core';
 import {
+  atLeast,
   type Board,
   type BoardDetail,
   defaultProjectIcon,
@@ -61,6 +62,7 @@ import {
   type RevisionChoice,
   ScreenplayImportDialog,
 } from './film/screenplay/ScreenplayImportDialog.tsx';
+import { shootingZone } from './film/sun.ts';
 import { TroupeView } from './film/TroupeView.tsx';
 import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
 import { useLiveBoardCounts } from './live-counts.ts';
@@ -142,6 +144,7 @@ export function BoardPage() {
       projectIcon={project?.icon}
       rootBoardId={project?.rootBoardId}
       projectRole={project?.myRole ?? null}
+      projectTimeZone={project?.timeZone}
       boardId={boardId}
     />
   );
@@ -288,6 +291,7 @@ function BoardScreen({
   projectIcon,
   rootBoardId,
   projectRole,
+  projectTimeZone,
   boardId,
 }: {
   projectId: string;
@@ -295,6 +299,8 @@ function BoardScreen({
   projectIcon?: Project['icon'] | undefined;
   rootBoardId: string | undefined;
   projectRole: ProjectRole | null;
+  /** The clock of the shooting times (decision 0061), for sunrise and sunset. */
+  projectTimeZone?: string | undefined;
   boardId: string;
 }) {
   const { t } = useTranslation();
@@ -838,6 +844,8 @@ function BoardScreen({
         boardTitle={crumbs.at(-1)?.title ?? ''}
         projectName={projectName}
         projectId={projectId}
+        timeZone={shootingZone(projectTimeZone)}
+        canEditCrew={!!projectRole && atLeast(projectRole, 'editor')}
         boardId={boardId}
         userId={user.id}
         readOnly={!!preview || !editable}
@@ -962,6 +970,7 @@ function BoardScreen({
           projectId={projectId}
           boardId={boardId}
           projectName={projectName}
+          timeZone={shootingZone(projectTimeZone)}
           boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
           boards={boards}
           selection={exporting.selection}

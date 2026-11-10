@@ -139,6 +139,8 @@ export interface ExportEnv {
   boards: readonly Board[] | null;
   /** Where the board is, to count the scenes of characters on its other boards too. */
   scope?: { projectId: string; boardId: string } | undefined;
+  /** The project's clock for sunrise and sunset on the call sheet; the device's when none. */
+  timeZone?: string | undefined;
   threads: readonly CommentThread[];
   /** Review status of the cards (decision 0013), for "approved frames only". */
   reviews?: ReadonlyMap<string, { status: string }> | undefined;
@@ -583,9 +585,9 @@ export async function buildPages(
   if (req.callSheet && teamPdf(req)) {
     const planning = await planningOnce();
     // The roster is private team data (decision 0092): asked for the team call sheet only.
-    const crew = preview
-      ? await env.cache.once('crew', () => loadCrew(env.scope?.projectId))
-      : await loadCrew(env.scope?.projectId);
+    const { crew, characters } = preview
+      ? await env.cache.once('crew', () => loadCrew(env.scope?.projectId, env.scope?.boardId))
+      : await loadCrew(env.scope?.projectId, env.scope?.boardId);
     signal?.throwIfAborted();
     planning.days.forEach((day, i) => {
       const heading = [
@@ -597,7 +599,10 @@ export async function buildPages(
         ...callSheetPages(
           setup,
           heading,
-          callSheetSections(day, (id) => labels.get(id), t, snapshot.byId, crew),
+          callSheetSections(day, (id) => labels.get(id), t, snapshot.byId, crew, {
+            characters,
+            timeZone: env.timeZone,
+          }),
           ctx,
         ),
       );

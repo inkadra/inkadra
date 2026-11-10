@@ -97,7 +97,12 @@ const check = (host: ParentNode, name: string) =>
   );
 
 it('groups the called crew, hints when the cast is on set and folds the others', () => {
-  const { host } = mount({ items: [ada, mara, nino], failed: false });
+  const { host } = mount({
+    items: [ada, mara, nino],
+    characters: [],
+    failed: false,
+    reload: () => {},
+  });
   const groups = [...host.querySelectorAll('.day-calls__group')].map((el) => el.textContent);
   expect(groups).toEqual(['Camera', 'Cast · dayCalls.castOnlyScheduled']);
   expect(host.textContent).toContain('dayCalls.inScene{"time":"09:00","block":"12A"}');
@@ -115,7 +120,12 @@ it('groups the called crew, hints when the cast is on set and folds the others',
 });
 
 it('stores a change as an exception of the day', () => {
-  const { host, onChange } = mount({ items: [ada, mara, nino], failed: false });
+  const { host, onChange } = mount({
+    items: [ada, mara, nino],
+    characters: [],
+    failed: false,
+    reload: () => {},
+  });
   act(() => check(host, 'Nino')?.click());
   expect(onChange).toHaveBeenLastCalledWith(
     { ...draft, calls: [{ crewMemberId: nino.id, call: null, pickup: null, absent: false }] },
@@ -136,19 +146,19 @@ it('stores a change as an exception of the day', () => {
 });
 
 it('is read-only for viewers', () => {
-  const { host } = mount({ items: [ada], failed: false }, true);
+  const { host } = mount({ items: [ada], characters: [], failed: false, reload: () => {} }, true);
   expect(host.querySelector('fieldset')?.disabled).toBe(true);
   expect(host.querySelector<HTMLButtonElement>('.auto-time')?.disabled).toBe(true);
 });
 
 it('links an empty crew to the Troupe view, and says why the roster cannot be read', () => {
-  const empty = mount({ items: [], failed: false });
+  const empty = mount({ items: [], characters: [], failed: false, reload: () => {} });
   const open = [...empty.host.querySelectorAll('button')].find(
     (b) => b.textContent === 'dayCalls.openTroupe',
   );
   act(() => open?.click());
   expect(empty.onOpenTroupe).toHaveBeenCalled();
-  const grant = mount({ items: null, failed: true });
+  const grant = mount({ items: null, characters: [], failed: true, reload: () => {} });
   expect(grant.host.textContent).toBe('dayCalls.unavailable');
   expect(grant.host.querySelector('input')).toBeNull();
 });
