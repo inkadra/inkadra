@@ -9,7 +9,7 @@ import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { boardDoc } from '../db/schema.ts';
+import { boardDoc, crewMember } from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -217,5 +217,65 @@ describe.skipIf(!url)('private project crew', () => {
         })
       ).statusCode,
     ).toBe(400);
+  });
+  it('answers every write with the linked account, as the list does', async () => {
+    const account = { id: people.actor?.id, name: 'actor', image: null };
+    const created = await request('editor', 'POST', base(), {
+      ...input,
+      name: 'With account',
+      userId: people.actor?.id,
+    });
+    expect(created.statusCode).toBe(201);
+    expect(CrewMember.parse(created.json()).account).toEqual(account);
+    const id = created.json().id;
+    const updated = await request('editor', 'PUT', `${base()}/${id}`, {
+      ...input,
+      name: 'With account',
+      userId: people.actor?.id,
+      role: 'Gaffer',
+      revision: 1,
+    });
+    expect(updated.statusCode).toBe(200);
+    expect(CrewMember.parse(updated.json()).account).toEqual(account);
+    const stale = await request('editor', 'PUT', `${base()}/${id}`, {
+      ...input,
+      name: 'With account',
+      userId: people.actor?.id,
+      revision: 1,
+    });
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json().error.details.current.account).toEqual(account);
+    const bulk = await request('editor', 'POST', `${base()}/bulk`, {
+      items: [{ ...input, name: 'Bulk with account', userId: people.actor?.id }],
+    });
+    expect(Crew.parse(bulk.json()).items[0]?.account).toEqual(account);
+  });
+  it('saves a person whose unchanged character link points to a removed card', async () => {
+    const [row] = await db
+      .insert(crewMember)
+      .values({
+        ...input,
+        name: 'Removed card',
+        projectId,
+        character: { boardId, elementId: 'removedCard01' },
+      })
+      .returning();
+    const update = await request('editor', 'PUT', `${base()}/${row?.id}`, {
+      ...input,
+      name: 'Removed card',
+      role: 'Stand-in',
+      character: { boardId, elementId: 'removedCard01' },
+      revision: 1,
+    });
+    expect(update.statusCode).toBe(200);
+    expect(update.json()).toMatchObject({ role: 'Stand-in', revision: 2 });
+    // A new link is still checked.
+    const changed = await request('editor', 'PUT', `${base()}/${row?.id}`, {
+      ...input,
+      name: 'Removed card',
+      character: { boardId, elementId: 'removedCard02' },
+      revision: 2,
+    });
+    expect(changed.statusCode).toBe(400);
   });
 });

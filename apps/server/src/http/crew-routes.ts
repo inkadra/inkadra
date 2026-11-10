@@ -7,7 +7,7 @@ import {
   UpdateCrewMember,
   z,
 } from '@inkadra/shared';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { boardRoles, requireBoardRole, requireProjectRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
@@ -31,6 +31,28 @@ export function registerCrewRoutes(
   { db, auth, boardReader }: { db: Database; auth: Auth; boardReader?: BoardReader },
 ) {
   const base = `${API_PREFIX}/projects/:projectId/crew`;
+  /** Every response carries the same shape as the list: the row and its linked account. */
+  const readCrew = async (where: SQL | undefined) =>
+    (
+      await db
+        .select({
+          member: crewMember,
+          account: { id: user.id, name: user.name, image: user.image },
+        })
+        .from(crewMember)
+        .leftJoin(user, eq(user.id, crewMember.userId))
+        .where(where)
+        .orderBy(asc(crewMember.position), asc(crewMember.id))
+    ).map((r) => ({ ...present(r.member), account: r.account }));
+  const readRows = (rows: Array<{ id: string }>) =>
+    rows.length
+      ? readCrew(
+          inArray(
+            crewMember.id,
+            rows.map((r) => r.id),
+          ),
+        )
+      : Promise.resolve([]);
   const characters = (boardId: string) =>
     boardReader?.characters ? boardReader.characters(boardId) : storedCharacters(db, boardId);
   // Project membership is intentional: a grant on one board must not disclose project contacts.
@@ -38,6 +60,7 @@ export function registerCrewRoutes(
     actor: Awaited<ReturnType<typeof requireActor>>,
     projectId: string,
     input: z.infer<typeof CrewMemberInput>,
+    stored?: typeof crewMember.$inferSelect,
   ) => {
     if (input.userId) {
       const [account] = await db
@@ -46,7 +69,11 @@ export function registerCrewRoutes(
         .where(eq(user.id, input.userId));
       if (!account) throw new HttpError('bad_request', 'Account not found.');
     }
-    if (input.character) {
+    // An unchanged link to a card deleted since stays savable: the inspector offers Unlink.
+    const unchanged =
+      stored?.character?.boardId === input.character?.boardId &&
+      stored?.character?.elementId === input.character?.elementId;
+    if (input.character && !unchanged) {
       const access = await requireBoardRole(db, actor, input.character.boardId, 'viewer');
       if (access.board.projectId !== projectId)
         throw new HttpError('bad_request', 'Character board belongs to another project.');
@@ -79,16 +106,7 @@ export function registerCrewRoutes(
     const actor = await requireActor(auth, req, db);
     const { projectId } = Params.parse(req.params);
     await requireProjectRole(db, actor, projectId, 'viewer');
-    const rows = await db
-      .select({ member: crewMember, account: { id: user.id, name: user.name, image: user.image } })
-      .from(crewMember)
-      .leftJoin(user, eq(user.id, crewMember.userId))
-      .where(eq(crewMember.projectId, projectId))
-      .orderBy(asc(crewMember.position), asc(crewMember.id));
-    return {
-      items: rows.map((r) => ({ ...present(r.member), account: r.account })),
-      nextCursor: null,
-    };
+    return { items: await readCrew(eq(crewMember.projectId, projectId)), nextCursor: null };
   });
   app.post(base, async (req, reply) => {
     const actor = await requireActor(auth, req, db);
@@ -101,7 +119,7 @@ export function registerCrewRoutes(
       .values({ ...input, projectId })
       .returning();
     if (!row) throw new Error('Crew member missing');
-    return reply.code(201).send(present(row));
+    return reply.code(201).send((await readRows([row]))[0]);
   });
   app.post(`${base}/bulk`, async (req, reply) => {
     const actor = await requireActor(auth, req, db);
@@ -127,14 +145,19 @@ export function registerCrewRoutes(
         .map((input) => ({ ...input, projectId }));
       return values.length ? tx.insert(crewMember).values(values).returning() : [];
     });
-    return reply.code(201).send({ items: rows.map(present), nextCursor: null });
+    return reply.code(201).send({ items: await readRows(rows), nextCursor: null });
   });
   app.put(`${base}/:memberId`, async (req) => {
     const actor = await requireActor(auth, req, db);
     const { projectId, memberId } = MemberParams.parse(req.params);
     await requireProjectRole(db, actor, projectId, 'editor');
     const { revision, ...input } = UpdateCrewMember.parse(req.body);
-    await validateLinks(actor, projectId, input);
+    const [stored] = await db
+      .select()
+      .from(crewMember)
+      .where(and(eq(crewMember.projectId, projectId), eq(crewMember.id, memberId)));
+    if (!stored) throw new HttpError('not_found', 'Crew member not found.');
+    await validateLinks(actor, projectId, input, stored);
     const [row] = await db
       .update(crewMember)
       .set({ ...input, revision: revision + 1, updatedAt: sql`now()` })
@@ -146,15 +169,12 @@ export function registerCrewRoutes(
         ),
       )
       .returning();
-    if (row) return present(row);
-    const [current] = await db
-      .select()
-      .from(crewMember)
-      .where(and(eq(crewMember.projectId, projectId), eq(crewMember.id, memberId)));
+    if (row) return (await readRows([row]))[0];
+    const [current] = await readCrew(
+      and(eq(crewMember.projectId, projectId), eq(crewMember.id, memberId)),
+    );
     if (!current) throw new HttpError('not_found', 'Crew member not found.');
-    throw new HttpError('conflict', 'Crew member changed by another person.', {
-      current: present(current),
-    });
+    throw new HttpError('conflict', 'Crew member changed by another person.', { current });
   });
   app.delete(`${base}/:memberId`, async (req, reply) => {
     const actor = await requireActor(auth, req, db);
