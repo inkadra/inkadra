@@ -36,7 +36,10 @@ export function registerCompression(app: FastifyInstance) {
       const [name, ...parameters] = entry.trim().split(';');
       const quality = parameters.find((p) => p.trim().startsWith('q='));
       // Content codings are case-insensitive.
-      return { name: name?.trim().toLowerCase(), q: quality ? Number(quality.trim().slice(2)) : 1 };
+      return {
+        name: name?.trim().toLowerCase(),
+        q: quality ? Number(quality.trim().slice(2)) : 1,
+      };
     });
     const accepted =
       encodings.find((e) => e.name === 'gzip') ?? encodings.find((e) => e.name === '*');
