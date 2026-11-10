@@ -368,11 +368,12 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
     ).toBe(204);
   });
   it('rolls back every date when one revision conflicts and checks board permissions', async () => {
-    const id = crypto.randomUUID();
+    // Batch locks sort ids: insert first so the stale update must roll it back.
+    const id = '00000000-0000-4000-8000-000000000001';
     const payload = {
       changes: [
         { id, revision: 0, input },
-        { id: crypto.randomUUID(), revision: 1, input },
+        { id: 'ffffffff-ffff-4fff-8fff-ffffffffffff', revision: 1, input },
       ],
     };
     expect((await request('owner', 'POST', `${base()}/edit`, payload)).statusCode).toBe(409);
