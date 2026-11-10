@@ -94,10 +94,15 @@ export function registerScheduleRoutes(
   app: FastifyInstance,
   { db, auth }: { db: Database; auth: Auth },
 ) {
-  const cleanInput = async (input: ShootingDayInput, team: boolean, projectId: string) => {
+  const cleanInput = async (
+    input: ShootingDayInput,
+    team: boolean,
+    projectId: string,
+    source: Database | Transaction = db,
+  ) => {
     const clean = ownInput(input, team);
     if (!clean.calls) return clean;
-    const members = await db
+    const members = await source
       .select({ id: crewMember.id })
       .from(crewMember)
       .where(eq(crewMember.projectId, projectId));
@@ -361,7 +366,7 @@ export function registerScheduleRoutes(
           const [row] = await tx
             .insert(shootingDay)
             .values({
-              ...(await cleanInput(change.input, team, access.board.projectId)),
+              ...(await cleanInput(change.input, team, access.board.projectId, tx)),
               id: change.id,
               boardId,
               projectId: access.board.projectId,
@@ -379,7 +384,7 @@ export function registerScheduleRoutes(
                 boardId,
                 change.id,
                 change.revision,
-                await cleanInput(change.input, team, access.board.projectId),
+                await cleanInput(change.input, team, access.board.projectId, tx),
                 updatedBy,
               ),
               team,
