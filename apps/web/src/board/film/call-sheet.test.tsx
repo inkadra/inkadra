@@ -534,3 +534,10 @@ it('prints each row frame, cast contact and location; omits the scene column on 
   );
   store.destroy();
 });
+
+it('keeps the semantic break colour when a break also references a frame', async () => {
+  const host = await mount([{ ...day, blocks: [{ ...day.blocks[0]!, type: 'break' }] }]);
+  expect(host.querySelector('.sheet__table--schedule .sheet__row--break')?.textContent).toContain(
+    '4A',
+  );
+});

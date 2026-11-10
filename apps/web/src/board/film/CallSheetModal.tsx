@@ -411,7 +411,7 @@ export function CallSheetModal({
                               );
                             }
                             return (
-                              <tr key={block.id}>
+                              <tr key={block.id} className={`sheet__row--${block.type}`}>
                                 {time}
                                 {numbered && (
                                   <td className="sheet__scene-number">
