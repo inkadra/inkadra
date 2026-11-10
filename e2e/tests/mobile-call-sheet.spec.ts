@@ -186,8 +186,9 @@ test('an organiser links a cast name on a phone and the text alone still works',
   const page = await session(browser, baseURL as string, admin.email, admin.password);
   const sheet = await openSheet(page);
   await expect(sheet.getByRole('button', { name: 'Chiudi' })).toBeVisible();
-  await expect(sheet.locator('.sheet__rows')).toContainText('Sc. 4 · 4A–4C');
-  await expect(sheet.locator('.sheet__rows')).toContainText('Pausa · Pasto');
+  await expect(sheet.locator('.sheet__table--schedule')).toContainText('4A');
+  await expect(sheet.locator('.sheet__table--schedule')).toContainText('4C');
+  await expect(sheet.locator('.sheet__table--schedule')).toContainText('Pausa · Pasto');
   // Not in the cast: nothing to answer, and nothing about their own call.
   await expect(sheet.getByRole('button', { name: 'Confermo la presenza' })).toHaveCount(0);
   await expect(sheet.getByText('La tua convocazione')).toHaveCount(0);
@@ -266,7 +267,7 @@ test('someone who is not linked gets no buttons, and the server refuses them', a
   const sheet = await openSheet(page);
   await expect(sheet.getByRole('button', { name: 'Confermo la presenza' })).toHaveCount(0);
   await expect(sheet.locator('.call-sheet__presence')).toHaveCount(0);
-  await expect(sheet.locator('.sheet__rows')).toContainText('Sc. 4');
+  await expect(sheet.locator('.sheet__scene-number').first()).toHaveText('4');
   await shots(page, 'unlinked');
   const { items } = await (
     await page.request.get(`/api/v1/boards/${seed.boardId}/schedule`)

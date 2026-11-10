@@ -350,7 +350,7 @@ export function CallSheetModal({
                         {location.address && (
                           <p className="sheet__muted sheet__pre">{location.address}</p>
                         )}
-                        {isPhone && !location.mapUrl && !store && (
+                        {isPhone && !location.mapUrl && day.location.trim() && (
                           <MapsLink
                             location={[location.name, location.address].filter(Boolean).join('\n')}
                           />

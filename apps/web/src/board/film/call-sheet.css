@@ -186,6 +186,7 @@
 }
 .sheet__table th,
 .sheet__table td {
+  overflow-wrap: anywhere;
   padding: 6px 8px;
   text-align: left;
   vertical-align: top;
