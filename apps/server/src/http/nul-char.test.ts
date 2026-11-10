@@ -1,6 +1,6 @@
 import { PassThrough } from 'node:stream';
 import { describe, expect, it } from 'vitest';
-import { containsNul } from './nul.ts';
+import { containsNul } from './nul-char.ts';
 
 describe('containsNul', () => {
   it('finds U+0000 in strings, arrays and keys of parsed JSON and queries', () => {

@@ -46,7 +46,7 @@ import { registerLinkPreviews } from './link-previews.ts';
 import { registerMapPreviews } from './map-previews.ts';
 import { registerMapTiles } from './map-tiles.ts';
 import { registerNotificationRoutes } from './notifications-routes.ts';
-import { containsNul } from './nul.ts';
+import { containsNul } from './nul-char.ts';
 import { registerProjectRoutes } from './projects-routes.ts';
 import { registerReviewRoutes } from './reviews-routes.ts';
 import { registerScheduleRoutes } from './schedule-routes.ts';
