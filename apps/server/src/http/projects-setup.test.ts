@@ -191,6 +191,20 @@ describe.skipIf(!url)('project setup metadata and personal pins', () => {
       ).json(),
     ).toMatchObject({ type: null, shootingStart: null, shootingEnd: null });
   });
+  it('sets, validates and clears the project time zone for editors only', async () => {
+    const path = `/projects/${projectId}`;
+    expect((await request('viewer', 'PATCH', path, { timeZone: 'Europe/Rome' })).statusCode).toBe(
+      403,
+    );
+    for (const timeZone of ['Mars/Olympus_Mons', 'not a zone', ''])
+      expect((await request('owner', 'PATCH', path, { timeZone })).statusCode).toBe(400);
+    expect(
+      (await request('owner', 'PATCH', path, { timeZone: 'Europe/Rome' })).json(),
+    ).toMatchObject({ timeZone: 'Europe/Rome' });
+    expect((await request('owner', 'PATCH', path, { timeZone: null })).json()).not.toHaveProperty(
+      'timeZone',
+    );
+  });
   it('archives for the owner and restores without losing personal pins', async () => {
     await request('viewer', 'PUT', `/projects/${projectId}/pin`, { pinned: true });
     expect(
