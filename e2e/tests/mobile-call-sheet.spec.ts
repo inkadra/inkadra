@@ -267,7 +267,7 @@ test('someone who is not linked gets no buttons, and the server refuses them', a
   const sheet = await openSheet(page);
   await expect(sheet.getByRole('button', { name: 'Confermo la presenza' })).toHaveCount(0);
   await expect(sheet.locator('.call-sheet__presence')).toHaveCount(0);
-  await expect(sheet.locator('.sheet__scene-number').first()).toHaveText('4');
+  await expect(sheet.locator('.sheet__scene-number strong').first()).toHaveText('4');
   await shots(page, 'unlinked');
   const { items } = await (
     await page.request.get(`/api/v1/boards/${seed.boardId}/schedule`)
