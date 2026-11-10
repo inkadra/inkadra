@@ -23,3 +23,13 @@ export function projectLanding(
   const entry = shared.find((b) => b.projectId === projectId);
   return entry ? { kind: 'shared', boardId: entry.id } : { kind: 'notFound' };
 }
+
+/** Owners see the complete board list; a partial list must never reveal existence. */
+export function missingOwnedBoard(
+  role: string | null,
+  boards: Pick<Board, 'id'>[] | null,
+  failed: boolean,
+  boardId: string,
+): boolean {
+  return role === 'owner' && boards !== null && !failed && !boards.some((b) => b.id === boardId);
+}

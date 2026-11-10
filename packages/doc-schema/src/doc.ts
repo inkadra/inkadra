@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: MPL-2.0
 import * as Y from 'yjs';
 import { z } from 'zod';
-import { AspectRatio, Element, type ElementType, type TableRow } from './elements.ts';
+import {
+  AspectRatio,
+  Element,
+  type ElementType,
+  MAX_STROKES,
+  MAX_TABLE_ROWS,
+  PlanStroke,
+  Stroke,
+  TableRow,
+} from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
 export const CURRENT_SCHEMA_VERSION = 22;
@@ -285,15 +294,98 @@ function toYValue(key: string, value: unknown): unknown {
   return value;
 }
 
+/**
+ * The lists that grow large, read item by item (decision 0094): strict lists fail the whole
+ * element on one bad item or past `max`, as `z.array(item).max(max)` does; lenient ones leave
+ * bad items out and cut at `max`, as the plan's lists do (elements.ts).
+ */
+const ITEM_LISTS = new Map<string, { key: string; item: z.ZodType; max: number; lenient: boolean }>(
+  [
+    ['frame', { key: 'strokes', item: Stroke, max: MAX_STROKES, lenient: false }],
+    ['image', { key: 'strokes', item: Stroke, max: MAX_STROKES, lenient: false }],
+    ['plan', { key: 'strokes', item: PlanStroke, max: MAX_STROKES, lenient: true }],
+    ['table', { key: 'rows', item: TableRow, max: MAX_TABLE_ROWS, lenient: false }],
+  ],
+);
+const INVALID = Symbol('invalid');
+/**
+ * Parsed plain items (strokes) by identity. Yjs hands out the stored object for as long as the
+ * item lives, and an edit stores a new one, so an object is checked once: when it was written
+ * or arrived. Callers must not mutate what they read, as with every other read.
+ */
+const parsedItems = new WeakMap<z.ZodType, WeakMap<object, unknown>>();
+/** Parsed Y.Map items (table rows) with the content they had, compared on the next read. */
+const parsedMaps = new WeakMap<
+  Y.Map<unknown>,
+  { item: z.ZodType; plain: Record<string, unknown>; data: unknown }
+>();
+
+function parseItem(item: z.ZodType, value: unknown): unknown {
+  const result = item.safeParse(value);
+  return result.success ? result.data : INVALID;
+}
+
+/** Whether a Y.Map still holds what its toJSON() gave: same keys, same values. */
+function sameContent(map: Y.Map<unknown>, plain: Record<string, unknown>): boolean {
+  let size = 0;
+  for (const [key, value] of map.entries()) {
+    size += 1;
+    if (!Object.hasOwn(plain, key)) return false;
+    const was = plain[key];
+    if (value instanceof Y.Map) {
+      if (typeof was !== 'object' || was === null || !sameContent(value, was as never))
+        return false;
+    } else if (value instanceof Y.AbstractType || value !== was) return false;
+  }
+  return size === Object.keys(plain).length;
+}
+
+function readItem(item: z.ZodType, value: unknown): unknown {
+  if (value instanceof Y.Map) {
+    const cached = parsedMaps.get(value);
+    if (cached?.item === item && sameContent(value, cached.plain)) return cached.data;
+    const plain = value.toJSON();
+    const data = parseItem(item, plain);
+    parsedMaps.set(value, { item, plain, data });
+    return data;
+  }
+  if (value instanceof Y.AbstractType) return parseItem(item, value.toJSON());
+  if (typeof value !== 'object' || value === null) return parseItem(item, value);
+  let parsed = parsedItems.get(item);
+  if (!parsed) {
+    parsed = new WeakMap();
+    parsedItems.set(item, parsed);
+  }
+  if (parsed.has(value)) return parsed.get(value);
+  const data = parseItem(item, value);
+  parsed.set(value, data);
+  return data;
+}
+
 /** Plain JSON view of an element (without rich text), or null if it does not validate. */
 export function readElement(map: Y.Map<unknown>): Element | null {
+  const list = ITEM_LISTS.get(map.get('type') as string);
+  let items: unknown[] | undefined;
   const plain: Record<string, unknown> = {};
   for (const [key, value] of map.entries()) {
     if (value instanceof Y.XmlFragment) continue;
-    plain[key] = value instanceof Y.AbstractType ? value.toJSON() : value;
+    if (list?.key === key && value instanceof Y.Array) {
+      if (!list.lenient && value.length > list.max) return null;
+      items = [];
+      for (const item of value.toArray()) {
+        const data = readItem(list.item, item);
+        if (data !== INVALID) items.push(data);
+        else if (!list.lenient) return null;
+      }
+      if (list.lenient) items = items.slice(0, list.max);
+      // The rest of the element is checked with an empty list, then gets the items back.
+      plain[key] = [];
+    } else plain[key] = value instanceof Y.AbstractType ? value.toJSON() : value;
   }
   const result = Element.safeParse(plain);
-  return result.success ? result.data : null;
+  if (!result.success) return null;
+  if (list && items) (result.data as Record<string, unknown>)[list.key] = items;
+  return result.data;
 }
 
 export interface ValidationIssue {

@@ -44,7 +44,7 @@ const loadGuest = async () => ({ Component: (await import('./guest/GuestPage.tsx
 const router = createBrowserRouter([
   // The guest page of a share link (decision 0013): outside the account session, which it
   // never loads. The path is the one the server puts in ShareLink.url.
-  { path: '/s/:token', lazy: loadGuest, errorElement: <ErrorPage /> },
+  { path: '/s/:token', hydrateFallbackElement: null, lazy: loadGuest, errorElement: <ErrorPage /> },
   {
     element: (
       <SessionProvider>
@@ -52,6 +52,7 @@ const router = createBrowserRouter([
       </SessionProvider>
     ),
     errorElement: <ErrorPage />,
+    hydrateFallbackElement: null,
     children: [
       { path: '/login', element: <Login /> },
       { path: '/diagnostics', element: <Diagnostics /> },

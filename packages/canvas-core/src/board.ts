@@ -104,6 +104,28 @@ export function listElements(doc: Y.Doc): Element[] {
   return out;
 }
 
+const views = new WeakMap<Y.Doc, () => Element[] | null>();
+
+/**
+ * Lets the helpers below take the elements from a view that follows the document (the web
+ * app's BoardStore) instead of reading and validating every element again (decision 0094).
+ * `view` returns null while it may be behind the document. Returns the function that removes it.
+ */
+export function setElementView(doc: Y.Doc, view: () => Element[] | null): () => void {
+  views.set(doc, view);
+  return () => {
+    if (views.get(doc) === view) views.delete(doc);
+  };
+}
+
+/**
+ * The valid elements of the document, from its view when it is current. Their order is not
+ * the document's: helpers that depend on it call listElements.
+ */
+export function currentElements(doc: Y.Doc): Element[] {
+  return views.get(doc)?.() ?? listElements(doc);
+}
+
 const byZ = (a: Element, b: Element) => (a.z < b.z ? -1 : a.z > b.z ? 1 : a.id < b.id ? -1 : 1);
 
 /** Elements placed directly on the canvas, in drawing order. */
@@ -162,7 +184,7 @@ export function createElement<T extends ElementType>(
   fields: NewElement<T>,
   opts: { userId: string | null; origin?: unknown },
 ): Element {
-  const all = listElements(doc);
+  const all = currentElements(doc);
   const parent = fields.parent ?? null;
   const element = {
     ...fields,
@@ -239,7 +261,7 @@ export function moveToCanvas(
   moves: Array<{ id: string; x: number; y: number }>,
   origin?: unknown,
 ): void {
-  const all = listElements(doc);
+  const all = currentElements(doc);
   const onCanvas = canvasElements(all);
   const keys = keysAt(onCanvas, onCanvas.length, moves.length);
   doc.transact(() => {
@@ -267,7 +289,7 @@ export function moveIntoParent(
   index: number,
   origin?: unknown,
 ): void {
-  const all = listElements(doc);
+  const all = currentElements(doc);
   const moving = new Set(
     ids.filter((id) => {
       const el = all.find((e) => e.id === id);
@@ -299,7 +321,7 @@ export function moveIntoParent(
 }
 
 export function moveToUnsorted(doc: Y.Doc, ids: string[], origin?: unknown): void {
-  const all = listElements(doc);
+  const all = currentElements(doc);
   moveIntoParent(doc, ids, UNSORTED, childrenOf(all, UNSORTED).length, origin);
 }
 
@@ -312,7 +334,7 @@ export function sendToBack(doc: Y.Doc, ids: string[], origin?: unknown): void {
 }
 
 function restack(doc: Y.Doc, ids: string[], where: 'front' | 'back', origin?: unknown) {
-  const all = listElements(doc);
+  const all = currentElements(doc);
   const onCanvas = canvasElements(all);
   const moving = onCanvas.filter((e) => ids.includes(e.id));
   if (moving.length === 0) return;

@@ -919,3 +919,9 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     expect(errors.filter((line) => line.includes('transfer'))).toEqual([]);
   });
 });
+
+it('allows atomic schedule edits in the demo', () => {
+  expect(
+    demoAllows('POST', '/api/v1/boards/:boardId/schedule/edit', '/api/v1/boards/b/schedule/edit'),
+  ).toBe(true);
+});

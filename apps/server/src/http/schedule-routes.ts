@@ -1,6 +1,7 @@
 import {
   API_PREFIX,
   castNameKey,
+  clockMinutes,
   EditSchedule,
   Id,
   MyScheduleQuery,
@@ -24,7 +25,13 @@ import {
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { BoardReader } from '../board-content.ts';
-import { castLinksOf, linkCastName } from '../cast-crew.ts';
+import {
+  cardBoards,
+  castLinksOf,
+  characterCards,
+  crewCastKeys,
+  linkCastName,
+} from '../cast-crew.ts';
 import type { Database } from '../db/client.ts';
 import {
   board,
@@ -304,6 +311,7 @@ export function registerScheduleRoutes(
         date: shootingDay.date,
         callTime: shootingDay.callTime,
         blocks: shootingDay.blocks,
+        calls: shootingDay.calls,
       })
       .from(shootingDay)
       .where(where)
@@ -330,10 +338,41 @@ export function registerScheduleRoutes(
       return updated;
     }
     const links = await castLinksOf(tx, boardReader, projectId);
-    const was = firstCalls(before, links);
-    const now = firstCalls(input, links);
+    const roster = await tx.select().from(crewMember).where(eq(crewMember.projectId, projectId));
+    const allowed = await cardBoards(
+      tx,
+      projectId,
+      roster.flatMap((row) => (row.character ? [row.character.boardId] : [])),
+    );
+    const keys = await crewCastKeys(roster, characterCards(tx, boardReader, allowed));
+    const effective = (day: Pick<ShootingDayInput, 'callTime' | 'blocks' | 'calls'>) => {
+      const result = firstCalls(day, links);
+      // Match the crew's "Your call": the earliest called row for an account wins.
+      for (const row of roster) if (row.userId) result.delete(row.userId);
+      roster.forEach((row, i) => {
+        if (!row.userId) return;
+        const own = day.calls?.find((call) => call.crewMemberId === row.id);
+        const cast =
+          castNameKey(row.department) === 'cast' ||
+          castNameKey(row.role) === 'cast' ||
+          !!row.character;
+        const usual =
+          !cast ||
+          day.blocks.some((block) => block.cast.some((name) => keys[i]?.has(castNameKey(name))));
+        if (!(own?.absent === undefined ? usual : !own.absent)) return;
+        const time = clockMinutes(own?.call ?? day.callTime);
+        result.set(row.userId, Math.min(time, result.get(row.userId) ?? Infinity));
+      });
+      return result;
+    };
+    // Keep scene-time invalidation too: an answer also follows the first scheduled appearance.
+    const wasScene = firstCalls(before, links);
+    const nowScene = firstCalls(input, links);
+    const was = effective(before);
+    const now = effective(updated);
     const moved = [...new Set([...was.keys(), ...now.keys()])].filter(
-      (userId) => was.get(userId) !== now.get(userId),
+      (userId) =>
+        was.get(userId) !== now.get(userId) || wasScene.get(userId) !== nowScene.get(userId),
     );
     if (moved.length)
       await tx
@@ -374,6 +413,24 @@ export function registerScheduleRoutes(
           clean,
         ]),
       );
+      const locked = await tx
+        .select()
+        .from(shootingDay)
+        .where(
+          and(
+            eq(shootingDay.boardId, boardId),
+            inArray(
+              shootingDay.id,
+              sorted.map((change) => change.id),
+            ),
+          ),
+        )
+        .orderBy(asc(shootingDay.id))
+        .for('update');
+      const notes = locked.flatMap((day) => day.blocks);
+      for (const [original, clean] of cleaned) {
+        cleaned.set(original, { ...clean, blocks: keepBlockNotes(notes, clean.blocks) });
+      }
       for (const change of sorted) {
         if (change.revision === 0) {
           if (!change.input) {

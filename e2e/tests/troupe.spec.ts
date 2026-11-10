@@ -50,4 +50,14 @@ test('crew add, autosave and sheet paste persist across reload', async ({ page }
     };
   });
   expect(fit).toEqual({ scrolled: 0, inside: true });
+  // Closing a person's sheet leaves the list usable: the next person opens with a real tap.
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toBeHidden();
+  await page.locator('.troupe__row').filter({ hasText: 'Anna Rossi' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Anna Rossi' });
+  await expect(sheet).toBeVisible();
+  await sheet.locator('.ink-dialog__actions').getByRole('button', { name: 'Chiudi' }).click();
+  await expect(sheet).toBeHidden();
+  await page.locator('.troupe__row').filter({ hasText: 'Luca Verdi' }).click();
+  await expect(page.getByRole('dialog', { name: 'Luca Verdi' })).toBeVisible();
 });

@@ -300,3 +300,42 @@ it('shows how far the other blocks shift inside them, and only the dragged block
   expect(outside[0]?.classList.contains('is-primary')).toBe(true);
   expect(outside[0]?.textContent).not.toContain('−1h');
 });
+
+it.each(['debounce', 'offline', 'conflict'])(
+  'keeps a schedule draft while inactive (%s)',
+  async (mode) => {
+    const get = vi.spyOn(api, 'get').mockResolvedValue({ items: [day] });
+    const put = vi.spyOn(api, 'put').mockRejectedValue(new Error('offline'));
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    document.body.append(host);
+    const board = store();
+    disposals.push(() => {
+      act(() => root.unmount());
+      host.remove();
+    });
+    const render = (active: boolean) =>
+      act(async () => root.render(<ScheduleView store={board} boardId="board" active={active} />));
+    await render(true);
+    await openDayView(host);
+    await type(notesOf(host), 'Keep me');
+    if (mode === 'offline') await settle();
+    if (mode === 'conflict') {
+      get.mockResolvedValue({ items: [{ ...day, revision: 2, notes: 'Theirs' }] });
+      await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+    }
+    await render(false);
+    const unload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+    await act(async () =>
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true }),
+      ),
+    );
+    await render(true);
+    expect(notesOf(host)?.value).toBe('Keep me');
+    if (mode === 'conflict') expect(host.textContent).toContain('schedule.statusConflict');
+    if (mode === 'debounce') expect(put).not.toHaveBeenCalled();
+  },
+);

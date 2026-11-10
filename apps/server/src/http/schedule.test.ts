@@ -808,4 +808,88 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
     expect(limited.statusCode).toBe(429);
     expect(limited.headers['retry-after']).toBe('60');
   });
+  it.each([false, true])(
+    'keeps private notes on a cross-day move (existing destination: %s)',
+    async (existing) => {
+      const source = (
+        await request('owner', 'POST', base(), {
+          ...input,
+          blocks: input.blocks.map((b) => ({ ...b, id: crypto.randomUUID(), notes: 'PRIVATE' })),
+        })
+      ).json();
+      const destination = existing
+        ? (await request('owner', 'POST', base(), { ...input, blocks: [] })).json()
+        : { id: crypto.randomUUID(), revision: 0 };
+      const grant = `/boards/${boardId}/grants/${people.stranger?.id}`;
+      await request('owner', 'PUT', grant, { role: 'editor' });
+      try {
+        const moved = await request('stranger', 'POST', `${base()}/edit`, {
+          changes: [
+            { id: source.id, revision: source.revision, input: { ...input, blocks: [] } },
+            {
+              id: destination.id,
+              revision: destination.revision,
+              input: {
+                ...input,
+                blocks: source.blocks.map(
+                  ({ notes: _notes, ...b }: ShootingDayInput['blocks'][number]) => b,
+                ),
+              },
+            },
+          ],
+        });
+        expect(moved.statusCode).toBe(200);
+        expect(moved.body).not.toContain('PRIVATE');
+        const saved = (await request('owner', 'GET', base()))
+          .json()
+          .items.find((d: ShootingDay) => d.id === destination.id);
+        expect(saved.blocks[0].notes).toBe('PRIVATE');
+      } finally {
+        await request('owner', 'DELETE', grant);
+      }
+    },
+  );
+  it('invalidates an answer when only the personal call changes', async () => {
+    const person = (
+      await request('owner', 'POST', `/projects/${projectId}/crew`, {
+        name: 'Personal actor',
+        department: 'Cast',
+        role: '',
+        phone: '',
+        email: '',
+        pickup: '',
+        notes: '',
+        character: null,
+        onSetContact: false,
+        position: 99,
+        userId: people.actor?.id,
+      })
+    ).json();
+    expect(person.id).toBeTruthy();
+    const plan = {
+      ...input,
+      blocks: input.blocks.map((b) => ({
+        ...b,
+        id: crypto.randomUUID(),
+        cast: ['Personal actor'],
+      })),
+      calls: [{ crewMemberId: person.id, call: '08:00', pickup: null }],
+    };
+    const saved = (await request('owner', 'POST', base(), plan)).json();
+    expect(
+      (await request('actor', 'PUT', `${base()}/${saved.id}/attendance`, { status: 'confirmed' }))
+        .statusCode,
+    ).toBe(200);
+    expect(
+      (
+        await request('owner', 'PUT', `${base()}/${saved.id}`, {
+          ...plan,
+          revision: saved.revision,
+          calls: [{ ...plan.calls[0], call: '06:00' }],
+        })
+      ).statusCode,
+    ).toBe(200);
+    const responses = (await request('owner', 'GET', `${base()}/attendance`)).json().responses;
+    expect(responses.filter((r: { dayId: string }) => r.dayId === saved.id)).toEqual([]);
+  });
 });
