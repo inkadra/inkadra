@@ -220,15 +220,6 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.sheet__table--schedule td:nth-child(2) {
-  width: 26%;
-}
-.sheet__table--schedule td:nth-child(3) {
-  white-space: nowrap;
-}
-.sheet__table--schedule td:nth-child(5) {
-  width: 18%;
-}
 /* Breaks, moves and set-ups: a quiet band, not another shot. */
 .sheet__row--aside td {
   background: var(--ink-surface-2);
@@ -402,8 +393,7 @@
     font-size: 13px;
   }
   .sheet__head,
-  .sheet__facts,
-  .sheet__table--schedule {
+  .sheet__facts {
     display: none;
   }
   .sheet__label,
@@ -477,27 +467,6 @@
     margin: 8px 0 0 auto;
     text-decoration: none;
   }
-  .sheet__rows {
-    width: 100%;
-    margin-top: 4px;
-    border-collapse: collapse;
-  }
-  .sheet__rows td {
-    padding: 3px 8px 3px 0;
-    vertical-align: top;
-    overflow-wrap: anywhere;
-  }
-  .sheet__rows td:last-child {
-    padding-right: 0;
-  }
-  .sheet__rows td:first-child,
-  .sheet__rows .sheet__rows-shots {
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-  .sheet__rows b {
-    font-weight: 600;
-  }
   /* The actions stay under the sheet, level with the screen's edge. */
   .phone-sheet .ink-dialog:has(.call-sheet) .ink-dialog__actions {
     position: static;
@@ -560,8 +529,7 @@
   body:has(.call-sheet) *:has(.call-sheet) > :not(:has(.call-sheet), .call-sheet),
   .call-sheet__controls,
   .sheet__phone-head,
-  .sheet__maps,
-  .sheet__rows {
+  .sheet__maps {
     display: none !important;
   }
   .ink-dialog:has(.call-sheet)::backdrop {
@@ -630,25 +598,6 @@
   margin: 0 0 6px;
   font-size: 10px;
 }
-.sheet__scene-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-  gap: 10px;
-}
-.sheet__scene--page .sheet__scene-body {
-  grid-template-columns: 1fr;
-}
-.sheet__scene-frames {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.sheet__scene-frames figure {
-  margin: 0;
-}
-.sheet__scene-frames figcaption {
-  font-size: 9px;
-}
 .sheet__scene-plan .plan {
   border: 1px solid var(--ink-border-default);
   border-radius: var(--ink-radius-xs);
@@ -661,4 +610,149 @@
   padding: 0;
   list-style: none;
   font-size: 9px;
+}
+
+/* The same rows on paper and phone: each picture belongs to its own shot. */
+.sheet__times {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  margin: 0;
+  border-bottom: 1px solid var(--ink-border-default);
+}
+.sheet__facts {
+  grid-template-columns: 1fr 2fr;
+}
+.sheet__thumbnail {
+  width: 64px;
+  max-width: 100%;
+}
+.sheet__location {
+  margin-block: 8px;
+}
+.sheet__location-badge {
+  padding: 2px 4px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-xs);
+  font-size: 9px;
+  white-space: nowrap;
+}
+.sheet__row--break td {
+  background: var(--ink-tag-green-bg);
+}
+.sheet__row--move td {
+  background: var(--ink-tag-orange-bg);
+}
+.sheet__table--schedule {
+  table-layout: auto;
+}
+.sheet__table--schedule td {
+  overflow-wrap: anywhere;
+}
+@media screen and (max-width: 600px) {
+  .sheet__table--schedule {
+    font-size: 10px;
+    width: 100%;
+    min-width: 0;
+  }
+  .sheet__table--schedule th,
+  .sheet__table--schedule td {
+    padding: 4px 2px;
+    width: auto;
+  }
+  .sheet__table--schedule td:first-child {
+    white-space: normal;
+  }
+  .sheet__thumbnail {
+    width: 44px;
+  }
+  .sheet__times {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Tables inherit the paper's ink explicitly, including under a dark application shell. */
+.sheet__table {
+  font: inherit;
+  color: var(--ink-text-primary);
+}
+.sheet__table th {
+  white-space: normal;
+}
+.sheet__reference {
+  width: 64px;
+}
+.sheet__scene-number {
+  width: 18%;
+}
+@media screen and (max-width: 600px) {
+  .sheet__table {
+    table-layout: fixed;
+    font-size: 11px;
+  }
+  .sheet__table th,
+  .sheet__table td {
+    overflow-wrap: anywhere;
+    padding: 4px 3px;
+  }
+  .sheet__table--schedule,
+  .sheet__table--schedule tbody {
+    display: block;
+  }
+  .sheet__table--schedule thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .sheet__table--schedule tr {
+    display: grid;
+    grid-template-columns: 60px 44px minmax(0, 1fr);
+    padding-block: 6px;
+    border-bottom: 1px solid var(--ink-border-default);
+    font-size: 12px;
+  }
+  .sheet__table--schedule td {
+    display: block;
+    border: 0;
+    min-width: 0;
+  }
+  .sheet__table--schedule .sheet__time {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+  }
+  .sheet__table--schedule .sheet__scene-number {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .sheet__table--schedule .sheet__reference {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+  }
+  .sheet__table--numbered .sheet__reference {
+    grid-row: 2 / span 3;
+  }
+  .sheet__table--schedule .sheet__pre {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .sheet__table--schedule .sheet__row-cast {
+    grid-column: 3;
+    grid-row: 2;
+    color: var(--ink-text-secondary);
+  }
+  .sheet__table--schedule .sheet__row-location {
+    grid-column: 3;
+    grid-row: 3;
+  }
+  .sheet__table--schedule .sheet__row--aside td:last-child {
+    grid-column: 2 / span 2;
+    grid-row: 1 / span 4;
+  }
+  .sheet__row--break {
+    background: var(--ink-tag-green-bg);
+  }
+  .sheet__row--move {
+    background: var(--ink-tag-orange-bg);
+  }
 }

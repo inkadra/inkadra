@@ -2457,7 +2457,7 @@
   "callSheet": {
     "day": "Giorno",
     "sections": "Sezioni",
-    "schedule": "Scaletta",
+    "schedule": "Programma",
     "cast": "Cast",
     "castHelp": "Orario del primo blocco di ciascuno",
     "location": "Location",
@@ -2515,7 +2515,17 @@
       "confirmed": "Confermato",
       "declined": "Non può",
       "waiting": "In attesa"
-    }
+    },
+    "ready": "Pronti a girare",
+    "pause": "Pausa",
+    "cameraWrap": "Camera wrap",
+    "crewWrap": "Fine troupe",
+    "times": "Orari",
+    "place": "Luogo",
+    "locationNumber": "Loc. {{n}}",
+    "serve": "Serve: {{items}}",
+    "inScene": "In scena",
+    "contact": "Contatto"
   },
   "needed": {
     "title": "Da portare",
@@ -4273,7 +4283,7 @@
           },
           "2": {
             "title": "Foglio di lavorazione",
-            "text": "Pronto da mandare alla troupe."
+            "text": "Orari principali, location e programma con miniature e Da portare. Scegli le sezioni e stampa per la troupe."
           }
         }
       },

@@ -13,7 +13,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api.ts';
 import { openInMapsUrl } from '../maps.ts';
-import { castCalls, type SheetRow } from './call-sheet.ts';
+import { castCalls } from './call-sheet.ts';
 import { clockLabel, whileVisible } from './schedule.ts';
 
 /** Cast links and presence of a board's schedule; nothing is asked of the server when off. */
@@ -178,52 +178,6 @@ export function MapsLink({ location }: { location: string }) {
       <Icon name="pin" size={14} />
       {t('board.map.open')}
     </a>
-  );
-}
-
-/** The day's schedule at a glance: time, scene and shots, who is in them. */
-export function PhoneSchedule({ rows }: { rows: SheetRow[] }) {
-  const { t } = useTranslation();
-  const text = ({ block, scene, first, last }: SheetRow) => {
-    if (!first) {
-      if (block.shotId) return t('schedule.missingShot');
-      return block.title || t(`schedule.types.${block.type}`);
-    }
-    const shots = last ? `${first}–${last}` : first;
-    return scene ? `${t('needed.sceneNumber', { number: scene })} · ${shots}` : shots;
-  };
-  return (
-    <table className="sheet__rows">
-      <thead className="ink-sr-only">
-        <tr>
-          <th scope="col">{t('callSheet.time')}</th>
-          <th scope="col">{t('callSheet.shot')}</th>
-          <th scope="col">{t('callSheet.cast')}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) =>
-          row.block.type !== 'shot' && !row.block.shotId ? (
-            <tr key={row.id} className="sheet__muted">
-              <td>{clockLabel(row.start)}</td>
-              <td colSpan={2}>
-                {[t(`schedule.types.${row.block.type}`), row.block.title]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </td>
-            </tr>
-          ) : (
-            <tr key={row.id}>
-              <td>
-                <b>{clockLabel(row.start)}</b>
-              </td>
-              <td className={row.first ? 'sheet__rows-shots' : undefined}>{text(row)}</td>
-              <td>{row.block.cast.join(', ')}</td>
-            </tr>
-          ),
-        )}
-      </tbody>
-    </table>
   );
 }
 

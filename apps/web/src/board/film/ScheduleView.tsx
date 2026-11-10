@@ -641,6 +641,7 @@ export function ScheduleView({
       )}
       {callSheetOpen && (
         <CallSheetModal
+          store={store}
           days={days}
           shots={callSheetShots}
           needed={neededOf}

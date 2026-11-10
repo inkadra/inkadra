@@ -2515,7 +2515,17 @@
       "confirmed": "Bestätigt",
       "declined": "Kann nicht",
       "waiting": "Ausstehend"
-    }
+    },
+    "ready": "Ready to shoot",
+    "pause": "Break",
+    "cameraWrap": "Camera wrap",
+    "crewWrap": "Crew wrap",
+    "times": "Key times",
+    "place": "Place",
+    "locationNumber": "Loc. {{n}}",
+    "serve": "Needed: {{items}}",
+    "inScene": "On set",
+    "contact": "Contact"
   },
   "needed": {
     "title": "Mitbringen",
@@ -4273,7 +4283,7 @@
           },
           "2": {
             "title": "Tagesdispo",
-            "text": "Fertig zum Verschicken an die Crew."
+            "text": "Key times, locations and schedule with pictures and needed items. Choose sections and print for the crew."
           }
         }
       },
