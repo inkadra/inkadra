@@ -75,17 +75,19 @@ export function keepBlockNotes(
 }
 
 /** When each linked person is first called on a day, in minutes from the shooting date. */
-function firstCalls(
+export function firstCalls(
   day: Pick<ShootingDayInput, 'callTime' | 'blocks'>,
   links: ReadonlyArray<{ castKey: string; userId: string }>,
 ) {
-  const owners = new Map(links.map((link) => [link.castKey, link.userId]));
+  // One name can belong to several people (two rows called "Bruno"): each gets its own time.
+  const owners = new Map<string, string[]>();
+  for (const link of links)
+    owners.set(link.castKey, [...(owners.get(link.castKey) ?? []), link.userId]);
   const first = new Map<string, number>();
   for (const { block, start } of scheduleTimes(day)) {
     for (const name of block.cast) {
-      const userId = owners.get(castNameKey(name));
-      if (userId && start < (first.get(userId) ?? Number.POSITIVE_INFINITY))
-        first.set(userId, start);
+      for (const userId of owners.get(castNameKey(name)) ?? [])
+        if (start < (first.get(userId) ?? Number.POSITIVE_INFINITY)) first.set(userId, start);
     }
   }
   return first;
@@ -203,7 +205,7 @@ export function registerScheduleRoutes(
       canManage ? undefined : eq(column, actor.id);
     const roster = canManage && (await isTeam(db, actor, access.board.projectId));
     const [links, responses] = await Promise.all([
-      castLinksOf(db, boardReader, access.board.projectId, roster ? undefined : actor.id),
+      castLinksOf(db, boardReader, access.board.projectId, roster ? undefined : actor.id, actor),
       db
         .select({
           dayId: shootingDayAttendance.dayId,
@@ -255,7 +257,7 @@ export function registerScheduleRoutes(
       .from(shootingDay)
       .where(and(eq(shootingDay.id, dayId), eq(shootingDay.boardId, boardId)));
     if (!day) throw new HttpError('not_found', 'Shooting day not found.');
-    const links = await castLinksOf(db, boardReader, access.board.projectId, actor.id);
+    const links = await castLinksOf(db, boardReader, access.board.projectId, actor.id, actor);
     const cast = new Set(day.blocks.flatMap((block) => block.cast.map(castNameKey)));
     if (!links.some((link) => cast.has(link.castKey)))
       throw new HttpError('forbidden', 'Only people called on this day can answer.');

@@ -32,6 +32,8 @@ describe.skipIf(!url)('cast links through the crew (needs DATABASE_URL)', () => 
   let planBoard = '';
   let storyBoard = '';
   let cardId = '';
+  let lucaId = '';
+  let cardsBoard = '';
   const request = (
     as: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
@@ -127,6 +129,14 @@ describe.skipIf(!url)('cast links through the crew (needs DATABASE_URL)', () => 
       { name: 'Mara', actor: 'Anna Bianchi', contact: 'Agency' },
       { userId: null },
     ).id;
+    // The same actor plays a second character.
+    lucaId = createElement(
+      doc,
+      'character',
+      { x: 400, y: 0 },
+      { name: 'Luca', actor: 'Anna Bianchi', contact: '' },
+      { userId: null },
+    ).id;
     const state = Buffer.from(Y.encodeStateAsUpdate(doc));
     await db.insert(boardDoc).values({
       boardId: storyBoard,
@@ -166,11 +176,13 @@ describe.skipIf(!url)('cast links through the crew (needs DATABASE_URL)', () => 
       { boardId: planBoard, castKey: 'bruno', userId: people.actor?.id ?? '' },
       // A character's name becomes its actor, linked to the card.
       { boardId: storyBoard, castKey: 'mara', userId: people.actor?.id ?? '' },
+      // A second character of the same actor gets a row of its own: both names stay linked.
+      { boardId: storyBoard, castKey: 'luca', userId: people.actor?.id ?? '' },
     ]);
-    expect(await mergeCastLinks(db)).toBe(4);
+    expect(await mergeCastLinks(db)).toBe(5);
     // Links are merged in board order, which depends on random ids: compare as a set.
     const rows = await crew();
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(6);
     expect(rows).toEqual(
       expect.arrayContaining([
         { name: 'Paolo', department: 'Cast', userId: people.double?.id, character: null },
@@ -183,13 +195,31 @@ describe.skipIf(!url)('cast links through the crew (needs DATABASE_URL)', () => 
           userId: people.actor?.id,
           character: { boardId: storyBoard, elementId: cardId },
         },
+        {
+          name: 'Anna Bianchi',
+          department: 'Cast',
+          userId: people.actor?.id,
+          character: { boardId: storyBoard, elementId: lucaId },
+        },
       ]),
     );
     const marked = await db.select({ mergedAt: castLink.mergedAt }).from(castLink);
     expect(marked.every((row) => row.mergedAt !== null)).toBe(true);
     // Run again (every start runs it): nothing left to merge.
     expect(await mergeCastLinks(db)).toBe(0);
-    expect(await crew()).toHaveLength(5);
+    expect(await crew()).toHaveLength(6);
+    // An older server changes a merged link afterwards: only that link is merged again, through
+    // the crew, and the row keeps the other person's link.
+    await db
+      .update(castLink)
+      .set({ userId: people.owner?.id ?? '', updatedAt: sql`now() + interval '1 second'` })
+      .where(eq(castLink.castKey, 'paolo'));
+    expect(await mergeCastLinks(db)).toBe(1);
+    expect((await crew()).filter((row) => row.name === 'Paolo')).toEqual([
+      { name: 'Paolo', department: 'Cast', userId: people.double?.id, character: null },
+      { name: 'Paolo', department: 'Cast', userId: people.owner?.id, character: null },
+    ]);
+    expect(await mergeCastLinks(db)).toBe(0);
   });
 
   it('lets a crew row answer for its character on another board of the project', async () => {
@@ -260,5 +290,54 @@ describe.skipIf(!url)('cast links through the crew (needs DATABASE_URL)', () => 
     ).json();
     expect(editor).toMatchObject({ canManage: true, links: [] });
     expect((await request('guest', 'GET', `/projects/${projectId}/crew`)).statusCode).toBe(404);
+  });
+
+  it('reads cards only on boards the person can open and never in the trash', async () => {
+    cardsBoard = (
+      await request('owner', 'POST', `/projects/${projectId}/boards`, {
+        parentBoardId: storyBoard,
+        title: 'Cards',
+      })
+    ).json().id;
+    const doc = createBoardDoc(cardsBoard);
+    const nina = createElement(
+      doc,
+      'character',
+      { x: 0, y: 0 },
+      { name: 'Nina', actor: 'Nina Rota', contact: '' },
+      { userId: null },
+    ).id;
+    const state = Buffer.from(Y.encodeStateAsUpdate(doc));
+    await db.insert(boardDoc).values({
+      boardId: cardsBoard,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      size: state.length,
+      state,
+    });
+    doc.destroy();
+    await request('owner', 'POST', `/projects/${projectId}/crew`, {
+      ...blank,
+      name: 'Nina Rota',
+      userId: people.guest?.id,
+      character: { boardId: cardsBoard, elementId: nina },
+    });
+    const links = async (as: string) =>
+      (await request(as, 'GET', `/boards/${planBoard}/schedule/attendance`)).json().links;
+    const card = { castKey: 'nina', userId: people.guest?.id };
+    // The guest's grant is on the plan board only: the card's name stays hidden.
+    expect(await links('guest')).not.toContainEqual(card);
+    expect(await links('guest')).toContainEqual({ castKey: 'nina rota', userId: people.guest?.id });
+    expect(await links('owner')).toContainEqual(card);
+    expect((await request('owner', 'DELETE', `/boards/${cardsBoard}`)).statusCode).toBe(204);
+    expect(await links('owner')).not.toContainEqual(card);
+  });
+
+  it('keeps an explicit UTC project zone and leaves an unset one out', async () => {
+    const utc = await request('owner', 'POST', '/projects', { name: 'Greenwich', timeZone: 'UTC' });
+    expect(utc.json().timeZone).toBe('UTC');
+    const unset = await request('owner', 'POST', '/projects', { name: 'Anywhere' });
+    expect(unset.json()).not.toHaveProperty('timeZone');
+    const read = await request('owner', 'GET', `/projects/${unset.json().id}`);
+    expect(read.json()).not.toHaveProperty('timeZone');
   });
 });

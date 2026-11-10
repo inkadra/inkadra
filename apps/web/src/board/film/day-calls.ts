@@ -201,8 +201,10 @@ export function personalDayCall(
   links: readonly CastLink[] | undefined,
   userId: string | undefined,
 ): { label: string; start: number; pickup?: string | undefined; crew: boolean } | null {
-  const mine = userId ? entries.find((e) => e.member.userId === userId) : undefined;
-  if (mine && !mine.called) return null;
+  // One account can have several rows (two characters): the earliest row called today wins.
+  const rows = userId ? entries.filter((e) => e.member.userId === userId) : [];
+  const mine = rows.filter((e) => e.called).sort((a, b) => a.call - b.call)[0];
+  if (rows.length && !mine) return null;
   if (mine)
     return {
       label: mine.member.role.trim() || mine.member.name,

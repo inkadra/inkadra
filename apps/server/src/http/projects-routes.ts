@@ -90,7 +90,8 @@ export function toProject(
     updatedAt: iso(row.updatedAt),
     myRole,
     type: row.type,
-    timeZone: row.timeZone,
+    // Never set: left out, as older servers had it optional (decision 0092).
+    ...(row.timeZone ? { timeZone: row.timeZone } : {}),
     shootingStart: row.shootingStart,
     shootingEnd: row.shootingEnd,
     pinned,

@@ -52,8 +52,9 @@ describe('sunrise and sunset', () => {
     expect(Math.floor((nyc.sunset ?? 0) / 60)).toBe(16);
   });
 
-  it('reads the default UTC of a project as no zone', () => {
-    expect(shootingZone('UTC')).toBeUndefined();
+  it('keeps an explicit UTC and falls back to the device only without a zone', () => {
+    expect(shootingZone('UTC')).toBe('UTC');
+    expect(sunTimes('2026-11-09', 51.5, 0, 'UTC')).toEqual(sunTimesUtc('2026-11-09', 51.5, 0));
     expect(shootingZone(undefined)).toBeUndefined();
     expect(shootingZone('Europe/Rome')).toBe('Europe/Rome');
   });

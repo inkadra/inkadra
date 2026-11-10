@@ -43,13 +43,13 @@ export function sunTimesUtc(
 }
 
 /**
- * The time zone the shooting times are written in: the project's (decision 0061).
- * shortcut: "UTC" is also the default of every project made before the web app sent its zone, so
- * it reads as "not set" and the device's zone stands in; a location in another zone than the
- * project needs a zone per day or per location, and a way to change the project's zone.
+ * The time zone the shooting times are written in: the project's (decision 0061), "UTC" included.
+ * A project made before the web app sent its zone has none, and the device's zone stands in.
+ * shortcut: a location in another zone than the project needs a zone per day or per location,
+ * and a setting to change the project's zone.
  */
-export function shootingZone(projectZone: string | undefined): string | undefined {
-  return projectZone && projectZone !== 'UTC' ? projectZone : undefined;
+export function shootingZone(projectZone: string | null | undefined): string | undefined {
+  return projectZone || undefined;
 }
 
 /** Minutes the wall clock of `timeZone` (the device's when none) is ahead of UTC at `at`. */

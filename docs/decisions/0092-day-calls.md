@@ -64,6 +64,8 @@ no days. Project archives keep block notes but not calls, as they do not keep th
   the open board wins. The server resolves them the same way for presence.
 - Attendance answers follow the crew rows (0091, cast links merged).
 - Sunrise and sunset are shown on the project's clock: its IANA time zone (0061), which the web
-  app now sets to the creator's device zone when a project is made. "UTC", the default of older
-  projects, reads as not set and the device's zone stands in; there is no per-day or per-location
+  app now sets to the creator's device zone when a project is made, "UTC" included. Nothing set
+  the zone before, so migration 0036 makes the column nullable and turns the stored default "UTC"
+  into "not set": the API leaves the field out (it was already optional), the calendar feed keeps
+  reading UTC, and the call sheet uses the device's zone. There is no per-day or per-location
   zone and no setting to change the project's yet.

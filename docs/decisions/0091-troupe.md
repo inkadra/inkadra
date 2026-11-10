@@ -39,4 +39,8 @@ character card's, on any board of the project. `PUT …/schedule/cast-links` sta
 clients and the presence panel; it now links (or adds) the crew row and needs a project editor.
 `GET …/schedule/attendance` returns the links derived from the crew: every link to project
 members who edit the schedule, only the caller's own to anyone else, since a grant on one board
-does not disclose the roster.
+does not disclose the roster. Character cards are read only on boards of the project that are not
+in the trash and, for the caller's links and answers, that the caller can open. An actor playing
+two characters gets one row per character, so each name keeps its link. The merge marks only the
+links it read; one an older server changes later (its `updated_at` passes `merged_at`) is merged
+again at the next start, through the crew and without taking a link away.

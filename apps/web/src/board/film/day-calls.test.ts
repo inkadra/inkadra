@@ -192,6 +192,23 @@ describe('your call', () => {
     });
   });
 
+  it('looks at every row of the account and takes the earliest one called', () => {
+    // Mara is not in the day's blocks (not called); Luca is, and a later Leo row too.
+    const mara = member(9, { name: 'Mara', department: 'Cast', userId: me, position: 1 });
+    const absent = member(10, { name: 'Luca', department: 'Cast', userId: me, position: 2 });
+    const late = member(11, { name: 'Ugo', role: 'Gaffer', userId: me, position: 3 });
+    const d = day({
+      blocks: [block(1, ['Nina']), block(2, ['luca'])],
+      calls: [{ crewMemberId: late.id, call: '09:00', pickup: null }],
+    });
+    expect(personalDayCall(d, dayCrew(d, [mara, absent, late]), undefined, me)).toMatchObject({
+      label: 'Luca',
+      start: 420,
+    });
+    const none = day({ blocks: [block(1, ['Nina'])] });
+    expect(personalDayCall(none, dayCrew(none, [mara]), undefined, me)).toBeNull();
+  });
+
   it('falls back to the board’s cast links, and is nothing when not called', () => {
     const mine = member(8, { name: 'Mara', department: 'Cast', userId: me });
     const d = day({ calls: [{ crewMemberId: mine.id, call: null, pickup: null, absent: true }] });
