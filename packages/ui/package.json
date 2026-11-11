@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./oklab": "./src/oklab.ts",
     "./styles.css": "./src/styles.css",
     "./tokens": "./src/tokens.ts"
   },

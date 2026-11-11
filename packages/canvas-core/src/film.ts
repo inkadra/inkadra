@@ -39,6 +39,10 @@ export interface SceneGroup {
   frames: FrameElement[];
 }
 
+/** A frame counts as drawn once it has a picture or a pen drawing (strokes or shapes). */
+export const isDrawn = (f: Pick<FrameElement, 'assetId' | 'strokes' | 'shapes'>) =>
+  !!f.assetId || (f.strokes?.length ?? 0) > 0 || (f.shapes?.length ?? 0) > 0;
+
 const byZ = (a: Element, b: Element) => (a.z < b.z ? -1 : a.z > b.z ? 1 : a.id < b.id ? -1 : 1);
 
 /** Scenes in order, each with its frames in shooting order; loose frames come last. */

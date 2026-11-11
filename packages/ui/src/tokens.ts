@@ -177,6 +177,26 @@ export const layout = {
 } as const;
 
 /**
+ * Measures of a board card, in board units (px at 100 % zoom), for every client that draws
+ * cards: padding, text sizes, the accent of a column, arrows and the blocks of a note. The web
+ * stylesheet (board.css) writes the same numbers and a web test fails when one differs. The body
+ * of a column or scene uses canvas-core's COLUMN_PADDING and COLUMN_GAP.
+ */
+export const card = {
+  padX: 12,
+  padY: 10,
+  border: 1,
+  fontSize: 13,
+  lineHeight: 1.5,
+  smallFontSize: 11,
+  /** A coloured column: a bar on top, the colour at 8 % fading out over 64 under the head. */
+  accent: { bar: 3, tint: 0.08, fade: 64 },
+  arrow: { width: 2, dash: [8, 6] },
+  /** Rich text of a note card: heading sizes, gap between blocks, list indent, code size. */
+  note: { h1: 20, h2: 17, h3: 15, h4: 13, blockGap: 6, listIndent: 18, codeFontSize: 12 },
+} as const;
+
+/**
  * Corner radii (decision of #332): xs badges and small chips, sm buttons, fields and menu items,
  * md cards, menus and popovers, lg dialogs and floating panels, xl phone sheets, full pills and
  * avatars. A radius inside a padded box stays concentric: outer radius minus the padding.

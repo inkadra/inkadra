@@ -1,12 +1,7 @@
-import {
-  clockMinutes,
-  type ScheduleBlock,
-  type ShootingDayInput,
-  scheduleTimes,
-} from '@inkadra/shared';
+import { clockMinutes, type ScheduleBlock, type ShootingDayInput } from '@inkadra/shared';
 import { formatClock } from '../../lib/datetime.ts';
 
-export { clockMinutes, scheduleTimes } from '@inkadra/shared';
+export { castConflicts, clockMinutes, scheduleTimes } from '@inkadra/shared';
 
 export function clockLabel(minutes: number): string {
   const day = Math.floor(minutes / 1440);
@@ -14,35 +9,6 @@ export function clockLabel(minutes: number): string {
   const clock = `${String(Math.floor(local / 60)).padStart(2, '0')}:${String(local % 60).padStart(2, '0')}`;
   // In the person's time format (#302): 24 h unless they chose 12 h.
   return `${formatClock(clock)}${day ? ` (+${day})` : ''}`;
-}
-
-/** Case-insensitive cast matches, including blocks on neighbouring calendar dates. */
-export function castConflicts(days: ShootingDayInput[]): Set<string> {
-  const blocks = days.flatMap((day) => {
-    const date = Date.parse(`${day.date}T00:00:00Z`) / 60000;
-    return scheduleTimes(day).map((slot) => ({
-      ...slot,
-      start: date + slot.start,
-      end: date + slot.end,
-    }));
-  });
-  const conflicts = new Set<string>();
-  for (let i = 0; i < blocks.length; i++) {
-    const a = blocks[i];
-    if (!a) continue;
-    const cast = new Set(a.block.cast.map((name) => name.trim().toLocaleLowerCase()));
-    for (const b of blocks.slice(i + 1)) {
-      if (
-        a.start < b.end &&
-        b.start < a.end &&
-        b.block.cast.some((name) => cast.has(name.trim().toLocaleLowerCase()))
-      ) {
-        conflicts.add(a.block.id);
-        conflicts.add(b.block.id);
-      }
-    }
-  }
-  return conflicts;
 }
 
 export function newScheduleBlock(
