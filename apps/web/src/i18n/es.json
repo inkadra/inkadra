@@ -5250,6 +5250,27 @@
             "text": "En el Plan de rodaje, pestaña Citaciones, eliges a quién se cita cada día. La hoja de rodaje imprime equipo, teléfonos y contacto en el set, nunca para invitados ni clientes."
           }
         }
+      },
+      "setplanLinks": {
+        "name": "Vínculos del plano",
+        "steps": {
+          "0": {
+            "title": "Escenas del storyboard",
+            "text": "La etiqueta lee de la ficha de la escena el número, INT o EXT y el momento del día. Haz clic para abrir la escena."
+          },
+          "1": {
+            "title": "Vinculados, nunca copiados",
+            "text": "Vincula un actor a un personaje y una cámara a un plano del storyboard: nombres, colores y ópticas siguen las fichas. Sin selección, vincula el plano de set a su localización."
+          },
+          "2": {
+            "title": "El sol, para exteriores",
+            "text": "Fija la hora y la fecha: los iconos del sol giran con ellas. El norte se fija a mano."
+          },
+          "3": {
+            "title": "Setups en la lista de planos",
+            "text": "La lista de planos y el plan de rodaje muestran el setup de cada plano, y la lista puede agruparlos por setup."
+          }
+        }
       }
     }
   },

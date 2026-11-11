@@ -5250,6 +5250,27 @@
             "text": "Im Drehplan, Reiter Treffzeiten, wählst du, wer an jedem Tag bestellt ist. Die Dispo druckt Team, Telefonnummern und Ansprechpartner am Set, nie für Gäste oder Kunden."
           }
         }
+      },
+      "setplanLinks": {
+        "name": "Verknüpfungen des Setplans",
+        "steps": {
+          "0": {
+            "title": "Szenen aus dem Storyboard",
+            "text": "Der Chip liest Nummer, INT oder EXT und Tageszeit von der Szenenkarte. Klicke ihn, um die Szene zu öffnen."
+          },
+          "1": {
+            "title": "Verknüpft, nie kopiert",
+            "text": "Verknüpfe einen Darsteller mit einer Figur und eine Kamera mit einer Einstellung des Storyboards: Namen, Farben und Objektive folgen den Karten. Ohne Auswahl verknüpfst du den Plan mit seinem Drehort."
+          },
+          "2": {
+            "title": "Die Sonne, für Außenaufnahmen",
+            "text": "Stelle Uhrzeit und Datum ein: die Sonnensymbole drehen sich mit. Norden stellst du von Hand ein."
+          },
+          "3": {
+            "title": "Setups in der Shotliste",
+            "text": "Shotliste und Drehplan zeigen das Setup jeder Einstellung, und die Shotliste kann nach Setup gruppieren."
+          }
+        }
       }
     }
   },

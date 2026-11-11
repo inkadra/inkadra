@@ -5250,6 +5250,27 @@
             "text": "In the Schedule, Calls tab, choose who is called each day. The call sheet prints the crew, phone numbers and on-set contact, never for guests or clients."
           }
         }
+      },
+      "setplanLinks": {
+        "name": "Plan links",
+        "steps": {
+          "0": {
+            "title": "Scenes from the storyboard",
+            "text": "The chip reads the scene's number, INT or EXT and time of day from its card. Click it to open the scene."
+          },
+          "1": {
+            "title": "Linked, never copied",
+            "text": "Link an actor to a character and a camera to a storyboard frame: names, colours and lenses follow the cards. With nothing selected, link the plan to its location."
+          },
+          "2": {
+            "title": "The sun, for exteriors",
+            "text": "Set the time and the date: the sun icons turn with them. North is set by hand."
+          },
+          "3": {
+            "title": "Setups in the shot list",
+            "text": "The shot list and the schedule show the setup of each shot, and the shot list can group shots by setup."
+          }
+        }
       }
     }
   },

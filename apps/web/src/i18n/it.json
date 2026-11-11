@@ -5250,6 +5250,27 @@
             "text": "Nel Piano riprese, scheda Convocazioni, scegli chi è convocato ogni giorno. Il foglio di lavorazione stampa troupe, telefoni e contatto sul set, mai per ospiti e clienti."
           }
         }
+      },
+      "setplanLinks": {
+        "name": "Collegamenti della pianta",
+        "steps": {
+          "0": {
+            "title": "Scene dallo storyboard",
+            "text": "Il chip legge dalla scheda della scena numero, INT o EST e momento del giorno. Cliccalo per aprire la scena."
+          },
+          "1": {
+            "title": "Collegati, mai copiati",
+            "text": "Collega un attore a un personaggio e una camera a un'inquadratura dello storyboard: nomi, colori e ottiche seguono le schede. Senza selezione, collega la pianta alla sua location."
+          },
+          "2": {
+            "title": "Il sole, per gli esterni",
+            "text": "Imposta ora e data: le icone del sole girano con loro. Il nord si imposta a mano."
+          },
+          "3": {
+            "title": "I setup nella shot list",
+            "text": "La shot list e il piano di lavorazione mostrano il setup di ogni inquadratura, e la shot list può raggrupparle per setup."
+          }
+        }
       }
     }
   },
