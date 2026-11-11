@@ -130,7 +130,14 @@ export type BoardRestore = z.infer<typeof BoardRestore>;
 
 export const BoardRestoreQuery = z
   .object({
-    after: z.coerce.number().int().min(0).max(2147483647).default(0).openapi({
+    // Not z.coerce: it turns null into 0, and the OpenAPI document would then allow null.
+    after: z
+      .preprocess(
+        (v) => (v === undefined || v === null ? v : Number(v)),
+        z.int().min(0).max(2147483647),
+      )
+      .default(0)
+      .openapi({
       description: 'The restore count the client last confirmed: only later restores are listed.',
     }),
   })
