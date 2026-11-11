@@ -114,8 +114,13 @@ async function seed(page: Page, baseURL: string, extra = 0) {
   const spare = Array.from(
     { length: extra },
     (_, i) =>
-      createElement(doc, 'plan', { x: 1300 + i * 460, y: 80 }, { w: 420, title: `Vuota ${i}` }, opts)
-        .id,
+      createElement(
+        doc,
+        'plan',
+        { x: 1300 + i * 460, y: 80 },
+        { w: 420, title: `Vuota ${i}` },
+        opts,
+      ).id,
   );
   await pushBoardDoc(baseURL, cookie, root, doc);
   await page.goto(`/p/${project.id}?view=canvas`);
