@@ -3,10 +3,15 @@ import {
   iconCone,
   itemsInRect,
   layerOf,
+  PLAN_VIEW_H,
+  PLAN_VIEW_W,
+  type Point,
   planItem,
   planPower,
+  snapTarget,
   toggleGroup,
 } from '@inkadra/canvas-core';
+import type { PlanIconKind } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
@@ -85,7 +90,13 @@ export function PlanEditor(props: PlanEditorProps) {
     if (isNoteTool(next)) ed.setTool(NOTE_TOOL[next]);
     else ed.setTool('icons');
   };
-  const place = (what: Dragged, at: { clientX: number; clientY: number } | null) => {
+  /** The base an icon would attach to at `p` (0 to 1), unless Alt or Snap off (decision 0104). */
+  const baseAt = (kind: PlanIconKind, p: Point, alt = false) =>
+    ed.attach && !alt
+      ? (snapTarget({ kind }, { x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H }, ed.icons)?.id ?? null)
+      : null;
+  const place = (what: Dragged, at: { clientX: number; clientY: number } | null, alt = false) => {
+    ed.setDropTarget(null);
     const p = at ? canvas.current?.pointOf(at) : ed.middle.current();
     if (!p) return;
     if ('item' in what) {
@@ -93,7 +104,7 @@ export function PlanEditor(props: PlanEditorProps) {
         arm(what.item);
         return;
       }
-      ed.placeIcon(what.item, p);
+      ed.placeIcon(what.item, p, { on: at ? baseAt(what.item, p, alt) : null });
     } else {
       const { kind, ...fields } = what.kit.icon;
       const lens = what.kit.lenses[0];
@@ -349,6 +360,12 @@ export function PlanEditor(props: PlanEditorProps) {
           action: () => ed.setSnap((v) => !v),
         },
         {
+          label: t('board.plan.snapIcons'),
+          shortcut: 'Alt',
+          checked: ed.attach,
+          action: () => ed.setAttach((v) => !v),
+        },
+        {
           label: t('board.plan.inPresentation'),
           checked: plan.presentation !== false,
           action: () =>
@@ -429,6 +446,12 @@ export function PlanEditor(props: PlanEditorProps) {
       sensor={sensorName}
       onArm={arm}
       onPlace={place}
+      onDrag={(what, at) => {
+        const p = what && at ? canvas.current?.pointOf(at) : null;
+        const kind = what ? ('item' in what ? what.item : what.kit.icon.kind) : null;
+        const alt = !!at && 'altKey' in at && !!(at as { altKey?: boolean }).altKey;
+        ed.setDropTarget(p && kind && !isNoteTool(kind) ? baseAt(kind, p, alt) : null);
+      }}
       onClose={() => ed.setSheet(null)}
     />
   );
@@ -467,6 +490,12 @@ export function PlanEditor(props: PlanEditorProps) {
             <Icon name="chevronDown" size={14} />
           </button>
           <span className="plan-top__spacer" />
+          <IconButton
+            icon="magnet"
+            label={t('board.plan.snapIcons')}
+            aria-pressed={ed.attach}
+            onClick={() => ed.setAttach((v) => !v)}
+          />
           <IconButton
             icon="layers"
             label={t('board.plan.tabs2.elements')}

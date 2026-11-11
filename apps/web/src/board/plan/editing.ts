@@ -13,6 +13,7 @@ import {
   layerOf,
   measureEnds,
   moveItem,
+  moveWithAttached,
   type PlanElement,
   type PlanItem,
   type PlanItemRef,
@@ -21,11 +22,13 @@ import {
   planItems,
   removePlanItems,
   rotateItem,
+  rotateWithAttached,
   type SceneElement,
   toGrid,
   updateElement,
   updatePlanItems,
   variantView,
+  withAttached,
   withGroups,
 } from '@inkadra/canvas-core';
 import {
@@ -106,6 +109,8 @@ export function usePlanEditing(props: PlanEditorProps) {
   /** The base setup drawn faintly behind a setup. */
   const [ghostBase, setGhostBase] = useState(false);
   const [moving, setMoving] = useState<string | null>(null);
+  /** The base an icon dragged from the library would attach to, lit on the plan. */
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [penColor, setPenColor] = useState<string | null>(null);
   const [lockedItem, setLockedItem] = useState<PlanItem | null>(null);
   const [tab, setTab] = useState<PanelTab>('properties');
@@ -234,11 +239,16 @@ export function usePlanEditing(props: PlanEditorProps) {
       const b = itemsBox(many);
       const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
       write(many.map((i) => rotateItem(i, degrees, c)));
-    } else if (item) write(rotateItem(item, degrees));
+    } else if (isIcon(item) && withAttached(icons, [item.id]).size > 1)
+      // A base turns what is on it as one piece (decision 0104).
+      write(rotateWithAttached(icons, item.id, degrees));
+    else if (item) write(rotateItem(item, degrees));
   };
   const nudge = (d: Point) => {
     const items = chosen();
-    if (items.length) write(items.map((i) => moveItem(i, d)));
+    if (!items.length) return;
+    const carried = moveWithAttached(icons, items.filter(isIcon).map((i) => i.id), d);
+    write([...items.filter((i) => !isIcon(i)).map((i) => moveItem(i, d)), ...carried]);
   };
   /** The colours paint what is selected; with nothing selected, the next strokes and icons. */
   const pickColor = (hex: string) => {
@@ -358,6 +368,8 @@ export function usePlanEditing(props: PlanEditorProps) {
     setGhostBase,
     moving,
     movingIcon,
+    dropTarget,
+    setDropTarget,
     penColor,
     lockedItem,
     setLockedItem,

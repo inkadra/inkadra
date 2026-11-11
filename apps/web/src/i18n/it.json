@@ -1498,7 +1498,8 @@
         "fill": "Riempimento",
         "back": "Controluce",
         "practical": "In scena"
-      }
+      },
+      "snapIcons": "Aggancia le icone"
     },
     "contextual": {
       "done": "Fatto",

@@ -1498,7 +1498,8 @@
         "fill": "Enchimento",
         "back": "Contraluz",
         "practical": "Prática"
-      }
+      },
+      "snapIcons": "Encaixar os ícones"
     },
     "contextual": {
       "done": "Concluir",

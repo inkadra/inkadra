@@ -94,21 +94,42 @@ frame. Move around with space and drag, the wheel or two fingers.
 
 ## Set plans
 
-A set plan is a card with a drawing of the location. Double-click it to open the editor, which has
-two bars and nothing else until you ask: the tools at the bottom, and a bar on what you selected.
-**Icons** opens the library of cameras, actors, lights and furniture, and a placed icon returns you
-to Select (hold `Shift` to keep placing). **Scale** and **Layers** are at the top.
+A set plan is a card with a drawing of the location. Double-click it to open the editor, which
+takes the whole screen: the library on the left, the drawing in the middle with its tools at the
+bottom, and a panel on the right with **Properties**, **Elements** and **Kit**. Nothing floats over
+the drawing.
 
-- A camera has a size in percent, an angle and a lens, and shows its field of view.
-- **Path** draws a movement through numbered points, from the bar of an icon.
-- A number written on a line is a label. On a plan without a scale, Inkadra offers to use that line
-  as the scale.
+- **Library**: 163 types in six categories on the rail (lights; modifiers and grip; camera and
+  movement; people; set and props; sound and video), plus annotations. Search finds names, the
+  other names crews use and categories; `Enter` places the first result in the middle. Click a
+  type and then the plan, or drag it there; hold `Shift` to keep placing. The star keeps a type
+  among your favourites, next to the recent ones and the **project kit**: the lights and cameras
+  already set up in the plans of the board, with their make, power, modifiers and stand.
+- **Snapping**: drop a person on a chair, sofa or bed, a modifier on the front of a light, a
+  light or a camera on a stand or support, a dolly on a track: the target lights up and the icon
+  attaches. Moving or turning the base takes what is on it along; pull an icon away to detach it.
+  Hold `Alt` while dropping to place it free (on a phone, turn off **Snap** in the header).
+- **Properties** shows what is selected: a light's role, fixture, watts, make, modifiers, gel,
+  stand, colour temperature, intensity, beam, height, tilt and circuit; a camera's lens, sensor,
+  support, height, angle, view length and positions; a person's pose, seat and movement; a prop's
+  width and depth. With several items selected: align, layer, colour and group. **Bring forward**
+  and **Send back** are in the selection's menu (right click, or `]` and `[`).
+- **Elements** lists the plan by layer, filtered by layer or colour, where layers are shown,
+  hidden and locked. **Kit** counts the kit of the setup and its power per circuit at 120 or 230 V:
+  a circuit turns orange above 80 % of its breaker and red above it. **Copy list** copies it;
+  the call sheet prints the kit of the plans of its scenes.
+- **Setups** are the tabs at the top; **+** copies the current one. On a setup, a note says what
+  changed from the base, which can be shown faintly behind it.
+- **Scale** sets the metres from a line of known length; a number written on a measure is a
+  label, and on a plan without a scale Inkadra offers to use that line as the scale.
 
-People who cannot edit a plan, guests first, can open it to look and zoom.
+On a phone the plan is on top, the selection in a sheet under it and the tools at the bottom; the
+library, Elements and Kit open as sheets. People who cannot edit a plan, guests first, can open it
+to look and zoom.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="screenshots/guide/set-plan-dark.png">
-  <img src="screenshots/guide/set-plan-light.png" alt="The set plan editor: a room with a counter, two lamps, two actors and a camera. The camera is selected, with a bar above it for its name, size, angle, lens and path, and the tools run along the bottom">
+  <img src="screenshots/guide/set-plan-light.png" alt="The set plan editor: the library of icons on the left, a room with a counter, lamps, actors and a camera in the middle with the tools along the bottom, and on the right the properties of the selected camera: name, lens, sensor, support, height, angle and view length">
 </picture>
 
 ## Character sheets

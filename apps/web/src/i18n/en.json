@@ -1498,7 +1498,8 @@
         "fill": "Fill",
         "back": "Back",
         "practical": "Practical"
-      }
+      },
+      "snapIcons": "Snap icons together"
     },
     "contextual": {
       "done": "Done",
