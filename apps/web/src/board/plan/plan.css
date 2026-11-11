@@ -1892,3 +1892,12 @@ span.plan-pill {
   padding: 4px;
   border: 1px solid var(--ink-border-default);
 }
+.plan-main--phone .plan-canvas__movebar {
+  bottom: 76px;
+}
+.plan-main--phone .plan-canvas__toast,
+.plan-main--phone .plan-canvas__tip {
+  bottom: 128px;
+  max-width: calc(100% - 32px);
+  white-space: normal;
+}

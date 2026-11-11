@@ -493,7 +493,8 @@ export function PlanEditor(props: PlanEditorProps) {
           </button>
           {base && !selectedSomething && !ed.sheet && setupNote}
         </div>
-        {selectedSomething && !ed.sheet && (
+        {/* While a path is drawn the plan takes the room: the sheet comes back after Done. */}
+        {selectedSomething && !ed.sheet && !ed.moving && (
           <section
             className={`plan-sheet plan-sheet--selection${fullProps ? ' is-tall' : ''}`}
             aria-label={t('board.plan.selection')}
