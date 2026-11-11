@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, assetVariant } from '../db/schema.ts';
+import { asset, assetVariant, creationRequest } from '../db/schema.ts';
 import { originalKey, proxyKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
@@ -288,6 +288,11 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     );
     expect(comments.map((r) => r.statusCode)).toEqual([201, 201]);
     expect(comments[0]!.json()).toEqual(comments[1]!.json());
+    await db.update(creationRequest).set({ expiresAt: new Date(Date.now() - 1000) });
+    const afterExpiry = await call('owner', 'POST', path, input, headers);
+    expect(afterExpiry.statusCode).toBe(201);
+    expect(afterExpiry.json().id).not.toBe(boards[0]!.json().id);
+
     expect((await call('owner', 'POST', path, input, { 'idempotency-key': ' ' })).statusCode).toBe(
       400,
     );

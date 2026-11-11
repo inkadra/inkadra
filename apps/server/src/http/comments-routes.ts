@@ -342,6 +342,14 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     const viewer: Viewer = { actorId: actor.id, role: access.role };
     requireWriter(viewer);
 
+    let onCreated: (() => Promise<void>) | undefined;
+    const result = await idempotentCreation(
+      db,
+      req,
+      actor.id,
+      `comments:${boardId}`,
+      input,
+      async (tx) => {
     let thread: Row | undefined;
     if (input.parentId) {
       [thread] = await db
@@ -367,14 +375,6 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       await checkAudience(db, access, shareLinkId);
     }
     const mentions = await readableMentions(db, boardId, input.body);
-    let createdRow: typeof comment.$inferSelect | undefined;
-    const result = await idempotentCreation(
-      db,
-      req,
-      actor.id,
-      `comments:${boardId}`,
-      input,
-      async (tx) => {
         limiter.require(actor.id, 'Too many comments: wait a minute.');
         // Serialize with deletion of the thread start. A successful reply must never be
         // cascaded away by a concurrent delete that saw no replies yet.
@@ -402,14 +402,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
           })
           .returning();
         if (!created) throw new Error('Comment insert returned nothing');
-        createdRow = created;
-        return toComment(created, await peopleOf(db, [created], viewer), viewer);
-      },
-    );
-
-    if (result.replayed) return reply.status(201).send(result.value);
-    if (!createdRow) throw new Error('Comment insert returned nothing');
-    const row = createdRow;
+        onCreated = async () => {
     await afterCommit(req.log, async () => {
       const recipients = new Recipients(actor.id);
       for (const id of mentions) recipients.add(id, 'mention');
@@ -435,12 +428,18 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
           projectId: access.board.projectId,
           boardId,
           elementId,
-          commentId: row.id,
+          commentId: created.id,
         },
         recipients,
       );
     });
-    await afterCommit(req.log, () => tell(row));
+    await afterCommit(req.log, () => tell(created));
+        };
+        return toComment(created, await peopleOf(db, [created], viewer), viewer);
+      },
+    );
+
+    if (onCreated) await onCreated();
     return reply.status(201).send(result.value);
   });
 
