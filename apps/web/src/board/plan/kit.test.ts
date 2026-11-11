@@ -136,3 +136,26 @@ it('prints the power per circuit, computed from the lights', () => {
   });
   expect(powerLines({ icons: [icon('chair')] }, t2, 'en')).toBeNull();
 });
+
+it('leaves the sun and the other sources that are no kit out of the kit and the power', () => {
+  const plan = {
+    icons: [
+      icon('sun', { watts: 5000 }),
+      icon('moon'),
+      icon('fire'),
+      icon('candle'),
+      icon('screen'),
+      icon('neon'),
+      icon('headlights'),
+      icon('streetlight'),
+      // Practicals are kit: a table, a ceiling and a floor lamp.
+      icon('practical', { watts: 60 }),
+      icon('pendant'),
+      icon('floorlamp'),
+    ],
+  };
+  expect(lines(kitList(plan, t)).map((l) => l.name)).toEqual(['practical 60 W', 'pendant', 'floorlamp']);
+  const power = powerLines(plan, t, 'en');
+  expect(power?.rows.map((r) => r.text)).toEqual(['noCircuit: practical, pendant, floorlamp']);
+  expect(powerLines({ icons: [icon('sun', { watts: 5000 })] }, t, 'en')).toBeNull();
+});

@@ -4,6 +4,7 @@ import {
   categoryOf,
   iconSize,
   iconWatts,
+  isKitLight,
   isLight,
   isSized,
   layerOf,
@@ -45,7 +46,8 @@ export interface KitLine {
  * its icons of kit categories (lights, modifiers and grip, stands, power, camera and movement,
  * video and sound) counted by type and power or length, then the gels written on lights and the
  * stands and supports named on lights and cameras that stand on no icon, in the order they first
- * appear. People, furniture and hidden layers are left out.
+ * appear. People, furniture, hidden layers and the sources that are no kit (the sun, a fire…,
+ * `isKitLight`) are left out.
  */
 export function kitList(
   plan: {
@@ -66,6 +68,8 @@ export function kitList(
   const ids = new Set(icons.map((i) => i.id));
   for (const icon of icons) {
     if (!KIT.has(categoryOf(icon.kind).id) || NOT_KIT.has(icon.kind)) continue;
+    // The sun, the moon, a fire… are in the legend, not kit to bring.
+    if (isLight(icon.kind) && !isKitLight(icon.kind)) continue;
     // Type and spec, as the mockup: the power of a light, the length of a track or a frame.
     const power = icon.power || (icon.watts ? `${icon.watts} W` : '');
     const size =
