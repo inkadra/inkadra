@@ -2059,15 +2059,6 @@ span.plan-pill {
 .plan-range__slider {
   width: 100%;
 }
-.plan-range__slider--meaning {
-  --ink-slider-height: 8px;
-}
-.plan-range__slider--meaning::-webkit-slider-runnable-track {
-  height: 8px;
-}
-.plan-range__slider--meaning::-moz-range-track {
-  height: 8px;
-}
 .plan-props__actions {
   display: flex;
   gap: 4px;

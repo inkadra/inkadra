@@ -59,6 +59,15 @@ const KELVIN_RANGE = [2000, 10000] as const;
 const KELVIN_TRACK =
   'linear-gradient(90deg, var(--ink-tag-orange), color-mix(in srgb, var(--ink-tag-orange) 30%, white) 35%, white 50%, var(--ink-tag-blue))';
 /** Gels most crews ask for; anything else is typed. */
+/** The colour of the track at `kelvin`: warm below daylight, cool above. */
+function kelvinColour(kelvin: number): string {
+  if (kelvin <= 5600) {
+    const warm = Math.round(Math.max(0, Math.min(1, (5600 - kelvin) / 3600)) * 100);
+    return `color-mix(in srgb, var(--ink-tag-orange) ${warm}%, white)`;
+  }
+  const cool = Math.round(Math.max(0, Math.min(1, (kelvin - 5600) / 4400)) * 100);
+  return `color-mix(in srgb, var(--ink-tag-blue) ${cool}%, white)`;
+}
 const GELS = [
   'CTO ¼',
   'CTO ½',
@@ -299,7 +308,12 @@ export function PlanProperties({
     max: number,
     unit: string,
     set: (v: number) => void,
-    opts: { step?: number; track?: string; chipMin?: number; chipMax?: number } = {},
+    opts: {
+      step?: number;
+      meaning?: { gradient: string; thumbColor: string };
+      chipMin?: number;
+      chipMax?: number;
+    } = {},
   ) => (
     <div className="plan-range">
       <div className="plan-range__head">
@@ -308,21 +322,24 @@ export function PlanProperties({
           value={value}
           min={opts.chipMin ?? min}
           max={opts.chipMax ?? max}
+          step={opts.step ?? 1}
           unit={unit}
-          label={label}
-          onCommit={set}
+          label={t('board.typedValue', { label })}
+          onCommit={(v) => {
+            stopCapturing();
+            set(v);
+            stopCapturing();
+          }}
         />
       </div>
       <Slider
-        className={`plan-range__slider${opts.track ? ' plan-range__slider--meaning' : ''}`}
+        className="plan-range__slider"
         aria-label={label}
         min={min}
         max={max}
         step={opts.step ?? 1}
         value={Math.max(min, Math.min(max, value))}
-        // shortcut: the gradient track goes through the CSS variable of today's Slider; use
-        // its `meaning` prop once the redesigned slider (#599) is merged.
-        style={opts.track ? ({ '--ink-slider-track': opts.track } as CSSProperties) : undefined}
+        {...(opts.meaning ? { meaning: opts.meaning } : {})}
         onPointerDown={stopCapturing}
         onPointerUp={stopCapturing}
         onChange={set}
@@ -482,7 +499,7 @@ export function PlanProperties({
             (v) => ed.edit(icon, { kelvin: Math.round(v) }),
             {
               step: 100,
-              track: KELVIN_TRACK,
+              meaning: { gradient: KELVIN_TRACK, thumbColor: kelvinColour(kelvin) },
               chipMin: 1000,
               chipMax: 20000,
             },
@@ -807,7 +824,7 @@ export function PlanProperties({
       cone &&
       range(
         t('board.plan.viewLength'),
-        Math.round((cone.reach / reachUnit) * 10) / 10,
+        Math.round((cone.reach / reachUnit) * 100) / 100,
         scale ? 1 : 1,
         scale ? 10 : 20,
         scale ? 'm' : t('board.plan.squares'),
