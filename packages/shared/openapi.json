@@ -7384,6 +7384,104 @@
           "items"
         ]
       },
+      "PlanKit": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "description": "Same key, same light or camera."
+                },
+                "icon": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "description": "Icon kind of the set plan."
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "make": {
+                      "type": "string"
+                    },
+                    "watts": {
+                      "type": "number"
+                    },
+                    "power": {
+                      "type": "string"
+                    },
+                    "gel": {
+                      "type": "string"
+                    },
+                    "stand": {
+                      "type": "string"
+                    },
+                    "kelvin": {
+                      "type": "number"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "beam": {
+                      "type": "number"
+                    },
+                    "intensity": {
+                      "type": "number"
+                    },
+                    "lens": {
+                      "type": "number"
+                    },
+                    "support": {
+                      "type": "string"
+                    },
+                    "color": {
+                      "type": "string"
+                    },
+                    "percent": {
+                      "type": "number"
+                    },
+                    "size": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "description": "What a copy placed from the kit starts with."
+                },
+                "modifiers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Kinds attached to the light."
+                },
+                "lenses": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "description": "Focal lengths of a camera, in mm."
+                }
+              },
+              "required": [
+                "key",
+                "icon",
+                "modifiers",
+                "lenses"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "TagCount": {
         "type": "object",
         "properties": {
@@ -21977,6 +22075,99 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CastAppearances"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/plan-kit": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The configured lights and cameras of the set plans of a project.",
+        "description": "Derived on each request from the plans of the boards the caller can read: each light with a make, power, gel, stand, colour temperature or modifiers, and each named camera, once.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+              "description": "Leave out this board, whose plans the caller already has live."
+            },
+            "required": false,
+            "description": "Leave out this board, whose plans the caller already has live.",
+            "name": "excludeBoardId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lights and cameras",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanKit"
                 }
               }
             }

@@ -1259,7 +1259,8 @@
         "lights": "Lumières masquées",
         "camera": "Caméra masquée",
         "actors": "Acteurs masqués",
-        "notes": "Notes masquées"
+        "notes": "Notes masquées",
+        "grip": "Machinerie et équipe masquées"
       },
       "lockedAs": {
         "set": "Décor verrouillé",
@@ -1376,7 +1377,7 @@
       "lensInFrame": "{{mm}} mm dans le plan",
       "lib": {
         "alsoCalled": "Aussi appelé : {{names}}",
-        "kitHint": "Une lumière ou une caméra réglée une fois apparaît ici avec sa marque, sa puissance, ses modificateurs et son pied, pour chaque plan.",
+        "kitHint": "Une lumière ou une caméra réglée une fois apparaît ici avec sa marque, sa puissance, ses modificateurs et son pied, pour chaque plan du projet.",
         "kitResults_one": "{{count}} dans le matériel du projet",
         "kitResults_other": "{{count}} dans le matériel du projet",
         "mine": "Favoris et récents",
@@ -1393,7 +1394,11 @@
         "short": "Bibliothèque",
         "tapHint": "Touchez pour la placer au centre, ou faites-la glisser sur le plan.",
         "types_one": "{{count}} type",
-        "types_other": "{{count}} types"
+        "types_other": "{{count}} types",
+        "kitScope": {
+          "loading": "Chargement du matériel des autres tableaux : pour l’instant, seulement celui-ci.",
+          "local": "Hors ligne ou injoignable : seulement le matériel de ce tableau."
+        }
       },
       "lock": "Verrouiller",
       "unlock": "Déverrouiller",
@@ -1500,6 +1505,13 @@
         "practical": "Practical"
       },
       "snapIcons": "Accrocher les icônes",
+      "gripGroup": "Machinerie et équipe",
+      "lockItemHint": "Verrouiller cet élément : il ne se déplace, ne se modifie et ne se supprime plus",
+      "unlockItemHint": "Déverrouiller cet élément",
+      "itemLocked": "Verrouillé : déverrouille-le pour le déplacer, le modifier ou le supprimer.",
+      "lockedItem": "Verrouillé",
+      "lockGroup": "Verrouiller chaque élément de {{layer}}",
+      "unlockGroup": "Déverrouiller chaque élément de {{layer}}",
       "links": {
         "proposed": "Proposés",
         "others": "Tout le reste",
@@ -4986,11 +4998,11 @@
           },
           "1": {
             "title": "La bibliothèque",
-            "text": "Choisissez une catégorie ou cherchez. Cliquez un type puis le plan, ou faites-le glisser. Alt le pose libre."
+            "text": "Choisissez une catégorie ou cherchez. Cliquez un type puis le plan, ou faites-le glisser. Alt le pose libre. Le matériel du projet réunit les lumières et caméras de tous les plans."
           },
           "2": {
             "title": "Propriétés, éléments, matériel",
-            "text": "Ce que vous sélectionnez se règle dans le panneau de droite ; Éléments liste le plan par calques, Matériel compte le matériel et la puissance par circuit."
+            "text": "Ce que vous sélectionnez se règle dans le panneau de droite, et Verrouiller le garde en place ; Éléments liste le plan par groupes, Matériel compte le matériel et la puissance par circuit."
           },
           "3": {
             "title": "Setups",

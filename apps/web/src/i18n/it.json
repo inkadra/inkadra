@@ -1259,7 +1259,8 @@
         "lights": "Luci nascoste",
         "camera": "Camera nascosta",
         "actors": "Attori nascosti",
-        "notes": "Note nascoste"
+        "notes": "Note nascoste",
+        "grip": "Grip e troupe nascosti"
       },
       "lockedAs": {
         "set": "Set bloccato",
@@ -1376,7 +1377,7 @@
       "lensInFrame": "{{mm}} mm nell’inquadratura",
       "lib": {
         "alsoCalled": "Detto anche: {{names}}",
-        "kitHint": "Una luce o una camera configurata una volta compare qui con marca, potenza, modificatori e stativo, per ogni pianta.",
+        "kitHint": "Una luce o una camera configurata una volta compare qui con marca, potenza, modificatori e stativo, per ogni pianta del progetto.",
         "kitResults_one": "{{count}} nel materiale del progetto",
         "kitResults_other": "{{count}} nel materiale del progetto",
         "mine": "Preferiti e recenti",
@@ -1393,7 +1394,11 @@
         "short": "Libreria",
         "tapHint": "Tocca per metterla al centro, o trascinala sulla pianta.",
         "types_one": "{{count}} tipo",
-        "types_other": "{{count}} tipi"
+        "types_other": "{{count}} tipi",
+        "kitScope": {
+          "loading": "Carico il materiale delle altre board: per ora solo quello di questa.",
+          "local": "Offline o non raggiungibile: solo il materiale di questa board."
+        }
       },
       "lock": "Blocca",
       "unlock": "Sblocca",
@@ -1500,6 +1505,13 @@
         "practical": "In scena"
       },
       "snapIcons": "Aggancia le icone",
+      "gripGroup": "Grip e troupe",
+      "lockItemHint": "Blocca questo elemento: non si sposta, non si modifica e non si elimina",
+      "unlockItemHint": "Sblocca questo elemento",
+      "itemLocked": "Bloccato: sbloccalo per spostarlo, modificarlo o eliminarlo.",
+      "lockedItem": "Bloccato",
+      "lockGroup": "Blocca ogni elemento di {{layer}}",
+      "unlockGroup": "Sblocca ogni elemento di {{layer}}",
       "links": {
         "proposed": "Proposti",
         "others": "Tutti gli altri",
@@ -4986,11 +4998,11 @@
           },
           "1": {
             "title": "La libreria",
-            "text": "Scegli una categoria o cerca. Clicca un tipo e poi la pianta, o trascinalo lì. Alt lo posa libero."
+            "text": "Scegli una categoria o cerca. Clicca un tipo e poi la pianta, o trascinalo lì. Alt lo posa libero. Il materiale del progetto raccoglie le luci e le camere di tutte le piante."
           },
           "2": {
             "title": "Proprietà, elementi, materiale",
-            "text": "Ciò che selezioni si imposta nel pannello a destra; Elementi elenca la pianta per livelli, Materiale conta il materiale e la potenza per circuito."
+            "text": "Ciò che selezioni si imposta nel pannello a destra, e Blocca lo ferma dov’è; Elementi elenca la pianta per gruppi, Materiale conta il materiale e la potenza per circuito."
           },
           "3": {
             "title": "Setup",

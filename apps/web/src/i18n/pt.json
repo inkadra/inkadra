@@ -1259,7 +1259,8 @@
         "lights": "Luzes ocultas",
         "camera": "Câmera oculta",
         "actors": "Atores ocultos",
-        "notes": "Notas ocultas"
+        "notes": "Notas ocultas",
+        "grip": "Maquinaria e equipe ocultas"
       },
       "lockedAs": {
         "set": "Set bloqueado",
@@ -1376,7 +1377,7 @@
       "lensInFrame": "{{mm}} mm no quadro",
       "lib": {
         "alsoCalled": "Também chamado: {{names}}",
-        "kitHint": "Uma luz ou câmera configurada uma vez aparece aqui com marca, potência, modificadores e tripé, para cada planta.",
+        "kitHint": "Uma luz ou câmera configurada uma vez aparece aqui com marca, potência, modificadores e tripé, para cada planta do projeto.",
         "kitResults_one": "{{count}} no material do projeto",
         "kitResults_other": "{{count}} no material do projeto",
         "mine": "Favoritos e recentes",
@@ -1393,7 +1394,11 @@
         "short": "Biblioteca",
         "tapHint": "Toque para o colocar ao centro, ou arraste-o para a planta.",
         "types_one": "{{count}} tipo",
-        "types_other": "{{count}} tipos"
+        "types_other": "{{count}} tipos",
+        "kitScope": {
+          "loading": "Carregando o material dos outros quadros: por enquanto, só o deste.",
+          "local": "Offline ou inacessível: só o material deste quadro."
+        }
       },
       "lock": "Bloquear",
       "unlock": "Desbloquear",
@@ -1500,6 +1505,13 @@
         "practical": "Prática"
       },
       "snapIcons": "Encaixar os ícones",
+      "gripGroup": "Maquinaria e equipe",
+      "lockItemHint": "Bloquear este elemento: não é movido, editado nem excluído",
+      "unlockItemHint": "Desbloquear este elemento",
+      "itemLocked": "Bloqueado: desbloqueie para mover, editar ou excluir.",
+      "lockedItem": "Bloqueado",
+      "lockGroup": "Bloquear todos os elementos de {{layer}}",
+      "unlockGroup": "Desbloquear todos os elementos de {{layer}}",
       "links": {
         "proposed": "Propostos",
         "others": "Todo o resto",
@@ -4986,11 +4998,11 @@
           },
           "1": {
             "title": "A biblioteca",
-            "text": "Escolha uma categoria ou pesquise. Clique num tipo e depois na planta, ou arraste-o. Alt pousa-o livre."
+            "text": "Escolha uma categoria ou pesquise. Clique num tipo e depois na planta, ou arraste-o. Alt pousa-o livre. O material do projeto reúne as luzes e câmeras de todas as plantas."
           },
           "2": {
             "title": "Propriedades, elementos, material",
-            "text": "O que seleciona configura-se no painel à direita; Elementos lista a planta por camadas, Material conta o material e a potência por circuito."
+            "text": "O que seleciona configura-se no painel à direita, e Bloquear mantém-no no lugar; Elementos lista a planta por grupos, Material conta o material e a potência por circuito."
           },
           "3": {
             "title": "Setups",

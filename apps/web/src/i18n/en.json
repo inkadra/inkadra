@@ -1259,7 +1259,8 @@
         "lights": "Lights hidden",
         "camera": "Camera hidden",
         "actors": "Actors hidden",
-        "notes": "Notes hidden"
+        "notes": "Notes hidden",
+        "grip": "Grip and crew hidden"
       },
       "lockedAs": {
         "set": "Set locked",
@@ -1376,7 +1377,7 @@
       "lensInFrame": "{{mm}} mm in the frame",
       "lib": {
         "alsoCalled": "Also called: {{names}}",
-        "kitHint": "A light or camera you set up once shows here with its make, power, modifiers and stand, for every plan.",
+        "kitHint": "A light or camera you set up once shows here with its make, power, modifiers and stand, for every plan of the project.",
         "kitResults_one": "{{count}} in the project kit",
         "kitResults_other": "{{count}} in the project kit",
         "mine": "Favourites and recent",
@@ -1393,7 +1394,11 @@
         "short": "Library",
         "tapHint": "Tap to place it in the middle, or drag it onto the plan.",
         "types_one": "{{count}} type",
-        "types_other": "{{count}} types"
+        "types_other": "{{count}} types",
+        "kitScope": {
+          "loading": "Loading the kit of the other boards: this board's only for now.",
+          "local": "Offline or out of reach: this board's kit only."
+        }
       },
       "lock": "Lock",
       "unlock": "Unlock",
@@ -1500,6 +1505,13 @@
         "practical": "Practical"
       },
       "snapIcons": "Snap icons together",
+      "gripGroup": "Grip and crew",
+      "lockItemHint": "Lock this item: it can't be moved, edited or deleted",
+      "unlockItemHint": "Unlock this item",
+      "itemLocked": "Locked: unlock it to move, edit or delete it.",
+      "lockedItem": "Locked",
+      "lockGroup": "Lock every item of {{layer}}",
+      "unlockGroup": "Unlock every item of {{layer}}",
       "links": {
         "proposed": "Proposed",
         "others": "Everything else",
@@ -4986,11 +4998,11 @@
           },
           "1": {
             "title": "The library",
-            "text": "Pick a category or search. Click a type and then the plan, or drag it there. Alt drops it free."
+            "text": "Pick a category or search. Click a type and then the plan, or drag it there. Alt drops it free. The project kit gathers the lights and cameras of every plan."
           },
           "2": {
             "title": "Properties, elements, kit",
-            "text": "What you select is set up in the right panel; Elements lists the plan by layer, Kit counts the kit and the power per circuit."
+            "text": "What you select is set up in the right panel, and Lock keeps it where it is; Elements lists the plan by group, Kit counts the kit and the power per circuit."
           },
           "3": {
             "title": "Setups",

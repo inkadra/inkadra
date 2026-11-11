@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { PLAN_CATEGORIES, PLAN_NOTE_TOOLS } from '@inkadra/canvas-core';
+import { PLAN_CATEGORIES, PLAN_NOTE_TOOLS, type ProjectKitEntry } from '@inkadra/canvas-core';
 import { PLAN_ICON_KINDS, type PlanIconKind } from '@inkadra/doc-schema';
 import { Icon, IconButton } from '@inkadra/ui';
 import { type PointerEvent, type ReactNode, useMemo, useRef, useState } from 'react';
@@ -11,12 +11,12 @@ import {
   fold,
   LIBRARY_CATEGORIES,
   type LibraryItem,
-  type ProjectKitEntry,
   projectKitDetail,
   searchLibrary,
   tileName,
 } from './library.ts';
 import { PlanGlyph } from './PlanDrawing.tsx';
+import type { KitScope } from './project-kit.ts';
 
 export type { LibraryItem } from './library.ts';
 
@@ -85,6 +85,7 @@ export function PlanLibrary({
   armed,
   phone,
   kit,
+  kitScope = 'all',
   sensor,
   onArm,
   onPlace,
@@ -94,6 +95,8 @@ export function PlanLibrary({
   armed: LibraryItem | null;
   phone: boolean;
   kit: readonly ProjectKitEntry[];
+  /** Whether the kit has the other boards' plans yet, or this board's only (decision 0114). */
+  kitScope?: KitScope;
   /** The name of the plan's sensor, for the cameras of the kit. */
   sensor: string;
   onArm: (item: LibraryItem) => void;
@@ -240,6 +243,11 @@ export function PlanLibrary({
         <span className="plan-lib__cap">{t('board.plan.lib.projectKit')}</span>
         <span className="plan-lib__count">{t('board.plan.lib.saved', { count: kit.length })}</span>
       </div>
+      {kitScope !== 'all' && (
+        <p className="plan-lib__hint" role="status" data-testid="plan-kit-scope">
+          {t(`board.plan.lib.kitScope.${kitScope}`)}
+        </p>
+      )}
       <div className="plan-lib__list">{kit.map((k) => kitRow(k))}</div>
       <p className="plan-lib__hint">{t('board.plan.lib.kitHint')}</p>
     </>

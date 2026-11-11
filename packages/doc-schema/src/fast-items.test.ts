@@ -100,10 +100,22 @@ function validStroke(plan: boolean): Record<string, unknown> {
   s.points = Array.from({ length: n * 2 }, () => pick([0, 4096, int(0, 4096)]));
   if (plan && random() < 0.5) s.layer = pick([...PLAN_LAYERS, undefined]);
   if (plan && random() < 0.3) s.group = pick([str(ID_CHARS, 21), undefined]);
+  if (plan && random() < 0.3) s.locked = pick([true, false, undefined]);
   return s;
 }
 
-const KEYS = ['id', 'tool', 'color', 'width', 'opacity', 'points', 'layer', 'group', 'extra'];
+const KEYS = [
+  'id',
+  'tool',
+  'color',
+  'width',
+  'opacity',
+  'points',
+  'layer',
+  'group',
+  'locked',
+  'extra',
+];
 
 /** A valid stroke with one to five changes: a field set to an odd value, removed, reordered… */
 function mutated(plan: boolean): unknown {
@@ -157,7 +169,7 @@ function compare(schema: z.ZodType, value: unknown) {
 }
 
 /** Pin of Stroke and PlanStroke as fast-items.ts checks them (see the test). */
-const STROKE_SCHEMAS_PIN = 'ea65a468bdf0e1eb 7c4c02a7354a2917';
+const STROKE_SCHEMAS_PIN = 'ea65a468bdf0e1eb 88b4fb2182df906f';
 
 /** A description of a Zod schema's definition, functions by their source, then a hash of it. */
 function pin(schema: z.ZodType): string {
@@ -226,7 +238,12 @@ describe('fast stroke checks', () => {
       'opacity',
       'points',
     ]);
-    expect(Object.keys(PlanStroke.shape)).toEqual([...Object.keys(Stroke.shape), 'layer', 'group']);
+    expect(Object.keys(PlanStroke.shape)).toEqual([
+      ...Object.keys(Stroke.shape),
+      'layer',
+      'group',
+      'locked',
+    ]);
   });
 
   it('matches the stroke schemas it was written for', () => {
