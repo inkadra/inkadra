@@ -1307,7 +1307,7 @@
       "marquee_other": "Trascina per selezionare · {{count}} elementi",
       "marqueeHold_one": "Tieni premuto e trascina · {{count}} elemento",
       "marqueeHold_other": "Tieni premuto e trascina · {{count}} elementi",
-      "emptyHint": "Disegna le pareti con Linea o Rettangolo, poi aggiungi camere e luci da Icone.",
+      "emptyHint": "Disegna le pareti con Linea o Rettangolo, poi aggiungi camere e luci dalla libreria a sinistra.",
       "measureMetres": "Misura in metri",
       "measureHint": "Il disegno resta com’è: cambia solo il numero mostrato.",
       "measureWrong": "Scrivi un numero maggiore di 0.",

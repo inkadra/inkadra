@@ -991,7 +991,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       type="button"
       className="plan-tool"
       aria-pressed={on}
-      aria-label={label}
+      aria-label={opts.shortcut ? `${label} (${opts.shortcut})` : label}
       data-ink-tooltip={opts.shortcut ? `${label} (${opts.shortcut})` : label}
       disabled={opts.disabled}
       onClick={act}

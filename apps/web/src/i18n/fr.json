@@ -1307,7 +1307,7 @@
       "marquee_other": "Faites glisser pour sélectionner · {{count}} éléments",
       "marqueeHold_one": "Maintenez et faites glisser · {{count}} élément",
       "marqueeHold_other": "Maintenez et faites glisser · {{count}} éléments",
-      "emptyHint": "Dessinez les murs avec Ligne ou Rectangle, puis ajoutez caméras et lumières depuis Icônes.",
+      "emptyHint": "Dessinez les murs avec Ligne ou Rectangle, puis ajoutez caméras et lumières depuis la bibliothèque à gauche.",
       "measureMetres": "Mesure en mètres",
       "measureHint": "Le dessin ne change pas : seul le nombre affiché change.",
       "measureWrong": "Saisissez un nombre supérieur à 0.",

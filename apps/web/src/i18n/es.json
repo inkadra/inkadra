@@ -1307,7 +1307,7 @@
       "marquee_other": "Arrastra para seleccionar · {{count}} elementos",
       "marqueeHold_one": "Mantén pulsado y arrastra · {{count}} elemento",
       "marqueeHold_other": "Mantén pulsado y arrastra · {{count}} elementos",
-      "emptyHint": "Dibuja las paredes con Línea o Rectángulo y añade cámaras y luces desde Iconos.",
+      "emptyHint": "Dibuja las paredes con Línea o Rectángulo y luego añade cámaras y luces desde la biblioteca de la izquierda.",
       "measureMetres": "Medida en metros",
       "measureHint": "El dibujo queda igual: solo cambia el número mostrado.",
       "measureWrong": "Escribe un número mayor que 0.",

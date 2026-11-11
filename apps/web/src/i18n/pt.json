@@ -1307,7 +1307,7 @@
       "marquee_other": "Arraste para selecionar · {{count}} itens",
       "marqueeHold_one": "Toque, segure e arraste · {{count}} item",
       "marqueeHold_other": "Toque, segure e arraste · {{count}} itens",
-      "emptyHint": "Desenhe as paredes com Linha ou Retângulo e depois adicione câmeras e luzes em Ícones.",
+      "emptyHint": "Desenhe as paredes com Linha ou Retângulo e depois adicione câmeras e luzes a partir da biblioteca à esquerda.",
       "measureMetres": "Medida em metros",
       "measureHint": "O desenho não muda: só muda o número exibido.",
       "measureWrong": "Digite um número maior que 0.",

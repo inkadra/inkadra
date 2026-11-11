@@ -1307,7 +1307,7 @@
       "marquee_other": "Drag to select · {{count}} items",
       "marqueeHold_one": "Press and hold, then drag · {{count}} item",
       "marqueeHold_other": "Press and hold, then drag · {{count}} items",
-      "emptyHint": "Draw the walls with Line or Rectangle, then add cameras and lights from Icons.",
+      "emptyHint": "Draw the walls with Line or Rectangle, then add cameras and lights from the library on the left.",
       "measureMetres": "Measure in metres",
       "measureHint": "The drawing stays as it is: only the number shown changes.",
       "measureWrong": "Enter a number greater than 0.",

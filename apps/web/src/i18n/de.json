@@ -1307,7 +1307,7 @@
       "marquee_other": "Zum Auswählen ziehen · {{count}} Elemente",
       "marqueeHold_one": "Gedrückt halten und ziehen · {{count}} Element",
       "marqueeHold_other": "Gedrückt halten und ziehen · {{count}} Elemente",
-      "emptyHint": "Zeichne die Wände mit Linie oder Rechteck und füge dann über Symbole Kameras und Lichter hinzu.",
+      "emptyHint": "Zeichne die Wände mit Linie oder Rechteck und füge dann Kameras und Lichter aus der Bibliothek links hinzu.",
       "measureMetres": "Maß in Metern",
       "measureHint": "Die Zeichnung bleibt, wie sie ist: Nur die angezeigte Zahl ändert sich.",
       "measureWrong": "Gib eine Zahl größer als 0 ein.",
