@@ -237,7 +237,8 @@ export function attachedPlacement(
 /**
  * The base `item` snaps to when dropped at `at` (view units): the icon whose body is nearest,
  * within SNAP_RADIUS of it, that it may attach to; on a tie the one drawn on top (later in the
- * plan). Itself and what is attached to it are never targets. Null: it lands free.
+ * plan). Itself, what is attached to it and icons locked on their own (decision 0110) are never
+ * targets. Null: it lands free.
  */
 export function snapTarget(
   item: Pick<PlanIcon, 'kind'> & Partial<Pick<PlanIcon, 'id'>>,
@@ -249,7 +250,7 @@ export function snapTarget(
   let best: PlanIcon | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (const icon of icons) {
-    if (own.has(icon.id) || !canAttach(item.kind, icon.kind)) continue;
+    if (own.has(icon.id) || icon.locked || !canAttach(item.kind, icon.kind)) continue;
     const local = glyphLocalOf(icon, at);
     const box = glyphBox(iconGlyph(icon));
     const t = iconTransform(icon);

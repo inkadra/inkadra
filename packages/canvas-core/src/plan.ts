@@ -24,6 +24,7 @@ import type { Point } from './geometry.ts';
 import {
   BEAM_KINDS,
   categoryOf,
+  groupOf,
   DEFAULT_METRES,
   GLOW_KINDS,
   GLYPH_FACING,
@@ -625,15 +626,62 @@ export function planShapeHit(shape: PlanShape, p: Point, radius = 0.012): boolea
   return shapeHit({ ...shape, kind } as FrameShape, q, radius, PLAN_ASPECT);
 }
 
+/**
+ * The groups of the Elements tab (decision 0110): the layers, and Grip and crew, which lists the
+ * grip (cut, diffuse, stands, power, a modifier on no light) and the video, sound and crew
+ * icons that are on their kind's layer. It is not a layer of the document: its items keep their
+ * layer, and hiding it (`hidden` holding 'grip') is only of the person editing.
+ */
+export type PlanGroupName = PlanLayer | 'grip';
+export const PLAN_GRIP = 'grip';
+
+export function planGroupOf(item: PlanItem): PlanGroupName {
+  // A modifier on a light is part of the light.
+  if (!('x' in item) || item.layer || (item.on && groupOf(item.kind).id === 'modifiers'))
+    return layerOf(item);
+  const category = categoryOf(item.kind).id;
+  return category === 'grip' || category === 'av' ? PLAN_GRIP : layerOf(item);
+}
+
+const isHidden = (item: PlanItem, hidden?: { has: (name: string) => boolean }) =>
+  !!hidden && (hidden.has(layerOf(item)) || hidden.has(planGroupOf(item)));
+
 export interface PlanView {
-  /** Layers left out: not drawn, not hit. */
-  hidden?: ReadonlySet<PlanLayer>;
+  /** Layers, and the Grip and crew group, left out: not drawn, not hit. */
+  hidden?: ReadonlySet<string>;
   /** Layers drawn but not hit. */
   locked?: ReadonlySet<PlanLayer>;
 }
 
 const reachable = (item: PlanItem, view?: PlanView) =>
-  !view?.hidden?.has(layerOf(item)) && !view?.locked?.has(layerOf(item));
+  !isHidden(item, view?.hidden) && !view?.locked?.has(layerOf(item));
+
+/**
+ * An item locked on its own (decision 0110): still picked by a click, so it can be unlocked,
+ * but not moved, turned, resized, edited or deleted, and no base to attach to.
+ */
+export function itemLocked(item: { locked?: boolean | undefined } | null | undefined): boolean {
+  return item?.locked === true;
+}
+
+/**
+ * Whether a write may change these fields of a stored item (decision 0110): anything on a free
+ * item; on a locked one only its lock, or where it stands when its base, written with it, takes
+ * it along (an attached item always sits where its base says).
+ */
+export function lockAllows(
+  stored: Record<string, unknown>,
+  changed: readonly string[],
+  written: { has: (id: string) => boolean },
+): boolean {
+  if (stored.locked !== true) return true;
+  if (changed.every((k) => k === 'locked')) return true;
+  return (
+    typeof stored.on === 'string' &&
+    written.has(stored.on) &&
+    changed.every((k) => k === 'x' || k === 'y' || k === 'rotation')
+  );
+}
 
 /**
  * The item drawn on top under `p` (relative to the drawing, 0 to 1), in the stacking order the
@@ -760,7 +808,8 @@ export interface PlanStackEntry {
 /**
  * The items of a plan in drawing order (decision 0104): by tier (background and walls, furniture,
  * supports, lights and camera and grip, people, notes), an attached icon over its base, strokes
- * under shapes under icons, then their order in the plan. Items on `hidden` layers are left out.
+ * under shapes under icons, then their order in the plan. Items on `hidden` layers, or of the
+ * hidden Grip and crew group, are left out.
  * Renderers draw beams and blocking moves between tier 1 and tier 2, labels last.
  */
 export function planStack(
@@ -769,6 +818,7 @@ export function planStack(
 ): PlanStackEntry[] {
   const byId = new Map((plan.icons ?? []).map((i) => [i.id, i]));
   const rank = { strokes: 0, shapes: 1, icons: 2 } as const;
+  const off = hidden && new Set(hidden);
   return planItems(plan)
     .map((e, index) => ({
       ...e,
@@ -776,7 +826,7 @@ export function planStack(
       depth: e.ref.kind === 'icons' ? attachDepth(e.item as PlanIcon, byId) : 0,
       index,
     }))
-    .filter((e) => !hidden?.includes(layerOf(e.item)))
+    .filter((e) => !isHidden(e.item, off))
     .sort(
       (a, b) =>
         a.tier - b.tier ||
@@ -844,7 +894,10 @@ export function withGroups(
     .map((e) => e.ref);
 }
 
-/** Items whose box touches `rect` (view units), the hidden and locked layers left out. */
+/**
+ * Items whose box touches `rect` (view units), the hidden and locked layers left out, and the
+ * items locked on their own: a box or Select all never takes one along (decision 0110).
+ */
 export function itemsInRect(
   plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
   rect: { x: number; y: number; w: number; h: number },
@@ -852,7 +905,7 @@ export function itemsInRect(
 ): PlanItemRef[] {
   return planItems(plan)
     .filter(({ item }) => {
-      if (!reachable(item, view)) return false;
+      if (!reachable(item, view) || itemLocked(item)) return false;
       const b = itemBox(item);
       return (
         b.x <= rect.x + rect.w &&
@@ -1108,6 +1161,7 @@ const same = (a: unknown, b: unknown) =>
  * Writes new versions of items, matched by id, field by field: only the fields that differ from
  * `before` (the items as they were when the gesture started; omitted, as they are stored) are
  * written, so an edit of one field never undoes someone else's edit of another made meanwhile.
+ * An item locked on its own is left as stored, but for its lock and its base's moves (lockAllows).
  * Icons are Y.Maps and change in place; strokes and shapes are replaced where they are, their
  * stored version taking the changed fields.
  */
@@ -1131,7 +1185,7 @@ export function updatePlanItems(
         const old = (baseline.get(next.id as string) ?? stored) as Record<string, unknown>;
         const keys = new Set([...Object.keys(old), ...Object.keys(next)]);
         const changed = [...keys].filter((k) => !same(old[k], next[k]));
-        if (changed.length === 0) return;
+        if (changed.length === 0 || !lockAllows(stored, changed, byId)) return;
         if (value instanceof Y.Map) {
           for (const k of changed)
             if (next[k] === undefined) value.delete(k);
@@ -1151,7 +1205,8 @@ export function updatePlanItems(
 
 /**
  * Removes items, and the icons attached to removed icons. Measures attached to a removed icon
- * keep that end where the icon stood and stop following it.
+ * keep that end where the icon stood and stop following it. Items locked on their own stay
+ * (decision 0110), with what is on them; one attached to a removed base stays where it is.
  */
 export function removePlanItems(
   doc: Y.Doc,
@@ -1161,13 +1216,22 @@ export function removePlanItems(
 ): void {
   doc.transact(() => {
     const icons = listOf(doc, planId, 'icons');
-    // What is attached to a removed icon goes with it (decision 0104).
+    const locked = new Set(
+      (['strokes', 'shapes', 'icons'] as const).flatMap((kind) =>
+        (listOf(doc, planId, kind)?.toArray() ?? []).flatMap((m) => {
+          const item = (m instanceof Y.Map ? m.toJSON() : m) as PlanItem;
+          return itemLocked(item) ? [item.id] : [];
+        }),
+      ),
+    );
+    // What is attached to a removed icon goes with it (decision 0104), but for locked items.
     const doomed = withAttached(
       (icons?.toArray() ?? []).map((m) =>
         m instanceof Y.Map ? (m.toJSON() as PlanIcon) : (m as PlanIcon),
       ),
-      ids,
+      [...ids].filter((id) => !locked.has(id)),
     );
+    for (const id of locked) doomed.delete(id);
     const shapes = listOf(doc, planId, 'shapes');
     const gone = (icons?.toArray() ?? [])
       .map((m) => (m instanceof Y.Map ? (m.toJSON() as PlanIcon) : (m as PlanIcon)))

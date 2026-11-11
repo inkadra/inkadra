@@ -11,7 +11,7 @@ import {
 } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
 import type { Point } from './geometry.ts';
-import { PLAN_VIEW_H, PLAN_VIEW_W, type PlanElement } from './plan.ts';
+import { lockAllows, PLAN_VIEW_H, PLAN_VIEW_W, type PlanElement } from './plan.ts';
 import { NOMINAL_SCALE } from './plan-icons.ts';
 
 /**
@@ -463,7 +463,8 @@ const same = (a: unknown, b: unknown) =>
 /**
  * Writes new versions of walls or openings, matched by id, field by field: only the fields that
  * differ from what is stored are written, so one person moving an opening and another flipping
- * its side both keep their change. A field set to undefined is removed.
+ * its side both keep their change. A field set to undefined is removed. A wall or an opening
+ * locked on its own changes only its lock (decision 0110).
  */
 export function updatePlanWalls(
   doc: Y.Doc,
@@ -481,7 +482,7 @@ export function updatePlanWalls(
       if (!next) return;
       const stored = (value instanceof Y.Map ? value.toJSON() : value) as Record<string, unknown>;
       const changed = Object.keys(next).filter((k) => !same(stored[k], next[k]));
-      if (changed.length === 0) return;
+      if (changed.length === 0 || !lockAllows(stored, changed, byId)) return;
       if (value instanceof Y.Map) {
         for (const k of changed)
           if (next[k] === undefined) value.delete(k);
@@ -499,7 +500,10 @@ export function updatePlanWalls(
   }, origin);
 }
 
-/** Removes walls and openings by id; the openings of a removed wall go with it. */
+/**
+ * Removes walls and openings by id; the openings of a removed wall go with it. Those locked on
+ * their own stay (decision 0110): a locked opening of a removed wall is kept, and not drawn.
+ */
 export function removePlanWalls(
   doc: Y.Doc,
   planId: string,
@@ -514,8 +518,9 @@ export function removePlanWalls(
       if (!(list instanceof Y.Array)) continue;
       for (let i = list.length - 1; i >= 0; i--) {
         const item = list.get(i);
-        const wall = item instanceof Y.Map ? item.get('wall') : (item as { wall?: unknown })?.wall;
-        if (doomed.has(idOf(item) as string) || (key === 'openings' && doomed.has(wall as string)))
+        const plain = (item instanceof Y.Map ? item.toJSON() : item) as Record<string, unknown>;
+        if (plain?.locked === true) continue;
+        if (doomed.has(idOf(item) as string) || (key === 'openings' && doomed.has(plain?.wall as string)))
           list.delete(i, 1);
       }
     }

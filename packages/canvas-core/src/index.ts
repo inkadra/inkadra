@@ -9,6 +9,7 @@ export * from './geometry.ts';
 export * from './plan.ts';
 export * from './plan-attach.ts';
 export * from './plan-icons.ts';
+export * from './plan-kit.ts';
 export * from './plan-links.ts';
 export * from './plan-power.ts';
 export * from './plan-variants.ts';
