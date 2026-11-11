@@ -113,6 +113,8 @@ async function seed(page: Page, baseURL: string) {
 async function shoot(page: Page, name: string) {
   for (const theme of ['light', 'dark'] as const) {
     await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme);
+    // Colours ease into the new theme.
+    await page.waitForTimeout(600);
     await page.screenshot({ path: join(out, `${name}-${theme}.png`) });
   }
 }
