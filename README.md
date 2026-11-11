@@ -166,10 +166,10 @@ pnpm dev     # API on :3000, web app on http://localhost:5173
 | `apps/clipper`         | Browser extension for Chrome, Edge, Brave and Arc                       |
 | `apps/mobile`          | Android and iOS app (planned)                                           |
 | `relay`                | Worker that passes in-app reports to the developers' private repository |
-| `packages/shared`      | API contract: Zod schemas and the generated OpenAPI document            |
+| `packages/shared`      | API contract (Zod schemas, OpenAPI) and domain rules shared by clients  |
 | `packages/doc-schema`  | Versioned schema of the collaborative board documents (Yjs)             |
-| `packages/canvas-core` | Canvas math shared by web and mobile                                    |
-| `packages/ui`          | Design tokens and interface components                                  |
+| `packages/canvas-core` | Canvas math and board rules shared by web and mobile                    |
+| `packages/ui`          | Design tokens, card measures and interface components                   |
 | `e2e`                  | End-to-end tests (Playwright)                                           |
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and
