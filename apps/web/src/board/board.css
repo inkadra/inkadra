@@ -2023,40 +2023,11 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   background: var(--ink-tag-green);
 }
 
+/* The look of .menu and .menu__item is packages/ui's .ink-menu and .ink-menu__item. */
 .menu {
   position: absolute;
   z-index: 6;
   width: 210px;
-  padding: 4px;
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface-float);
-  border: 1px solid var(--ink-border-default);
-  box-shadow: var(--shadow-float);
-  transform-origin: var(--ink-origin, top left);
-  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
-}
-.menu__item {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  height: 28px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: calc(var(--ink-radius-md) - 4px);
-  background: transparent;
-  color: var(--ink-text-icon);
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-.menu__item:hover,
-.menu__item:focus-visible {
-  background: var(--ink-surface-3);
-  color: var(--ink-text-primary);
-  box-shadow: none;
-}
-.menu__item.is-danger {
-  color: var(--ink-danger-fg);
 }
 /* Available later: readable and hoverable, but it neither acts nor takes the focus ring. */
 .menu__item.is-disabled,
@@ -3869,15 +3840,10 @@ button.crumb--editable:focus-visible {
       4px 0 0 var(--ink-surface-2),
       -10px 0 8px -4px var(--ink-surface-2);
   }
-  /* Menus: finger-sized rows, no keyboard shortcuts to read. */
+  /* Menus: no keyboard shortcuts to read. */
   .menu {
     overflow-y: auto;
     overscroll-behavior: contain;
-  }
-  .menu__item {
-    height: auto;
-    min-height: 44px;
-    font-size: 14px;
   }
   .menu__key {
     display: none;
