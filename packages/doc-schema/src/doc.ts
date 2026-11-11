@@ -6,6 +6,8 @@ import {
   Element,
   type ElementType,
   MAX_PLAN_ICONS,
+  MAX_PLAN_OPENINGS,
+  MAX_PLAN_WALLS,
   MAX_SHAPES,
   MAX_STROKES,
   MAX_TABLE_COLUMNS,
@@ -16,7 +18,7 @@ import {
 } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 22;
+export const CURRENT_SCHEMA_VERSION = 23;
 
 /**
  * For each document schema since decision 0102, the oldest client schema proven safe to write a
@@ -26,6 +28,7 @@ export const CURRENT_SCHEMA_VERSION = 22;
  */
 export const WRITER_SCHEMAS: Readonly<Record<number, { min: number; proof?: string }>> = {
   22: { min: 22 },
+  23: { min: 23 },
 };
 
 /**
@@ -186,6 +189,11 @@ const migrations: Record<number, Migration> = {
   // 22: optional `omitted` on scenes, a scene the latest draft of the script left out (decision
   // 0082). Existing scenes stay in; older clients stay read-only and cannot drop the mark.
   21: () => {},
+  // 23: set plan v2 (decision 0104): the catalogue of 163 icon kinds, attachments, stacking
+  // tiers, light, camera and actor fields, walls and openings, circuits, voltage, a background
+  // picture, north and the location link. All additive and optional, and every kind of version
+  // 22 stays valid; older clients stay read-only and cannot drop what they do not know.
+  22: () => {},
 };
 
 /**
@@ -282,6 +290,8 @@ export function addElement(doc: Y.Doc, element: Element): Y.Map<unknown> {
       if (!parsed.strokes) map.set('strokes', new Y.Array());
       if (!parsed.shapes) map.set('shapes', new Y.Array());
       if (!parsed.icons) map.set('icons', new Y.Array());
+      if (!parsed.walls) map.set('walls', new Y.Array());
+      if (!parsed.openings) map.set('openings', new Y.Array());
     }
     roots(doc).elements.set(parsed.id, map);
   });
@@ -310,7 +320,8 @@ function toYValue(key: string, value: unknown): unknown {
   if (key === 'items' || key === 'columns' || key === 'icons')
     return Y.Array.from((value as object[]).map(toYMap));
   if (key === 'rows') return Y.Array.from((value as TableRow[]).map(tableRowMap));
-  if (key === 'strokes' || key === 'shapes') return Y.Array.from(value as object[]);
+  if (key === 'strokes' || key === 'shapes' || key === 'walls' || key === 'openings')
+    return Y.Array.from(value as object[]);
   return value;
 }
 
@@ -322,6 +333,8 @@ const STORED_LISTS: Record<string, { maps: boolean; max: number }> = {
   rows: { maps: true, max: MAX_TABLE_ROWS },
   strokes: { maps: false, max: MAX_STROKES },
   shapes: { maps: false, max: MAX_SHAPES },
+  walls: { maps: false, max: MAX_PLAN_WALLS },
+  openings: { maps: false, max: MAX_PLAN_OPENINGS },
 };
 const ELEMENT_KEYS = new Map<unknown, Set<string>>(
   Element.options.map((option) => [option.shape.type.value, new Set(Object.keys(option.shape))]),

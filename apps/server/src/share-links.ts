@@ -330,6 +330,8 @@ export function elementAssetIds(el: Element): string[] {
     case 'link':
     case 'map':
       return el.imageAssetId ? [el.imageAssetId] : [];
+    case 'plan':
+      return el.background ? [el.background.assetId] : [];
     default:
       return [];
   }
