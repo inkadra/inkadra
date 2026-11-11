@@ -1652,27 +1652,44 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
       expect((await restoresOf('editor')).map((r) => r.count)).toEqual([before + 2]);
     });
 
-    it('replaces records at or above a new count, and keeps the last 50', async () => {
-      const row = (count: number) => ({
-        boardId: hist,
-        count,
-        restoredBy: people.editor?.id ?? null,
-        versionId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
-        versionKind: 'auto' as const,
-        versionName: null,
-        versionCreatedAt: new Date(),
-      });
+    const row = (count: number, versionName: string | null = null) => ({
+      boardId: hist,
+      count,
+      restoredBy: people.editor?.id ?? null,
+      versionId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
+      versionKind: 'auto' as const,
+      versionName,
+      versionCreatedAt: new Date(),
+    });
+    const listed = async () =>
+      (await restoresOf('editor')).map((r) => [r.count, r.version?.name ?? null]);
+
+    it('keeps the newer record when two restores save theirs out of order', async () => {
+      // Restore A set 5, restore B set 6, and B's record was saved first.
+      await recordRestore(db, row(6, 'B'));
+      await recordRestore(db, row(5, 'A'));
+      expect(await listed()).toEqual([
+        [6, 'B'],
+        [5, 'A'],
+      ]);
+      // The same count again (a restore whose document was never stored, then the next one).
+      await recordRestore(db, row(6, 'C'));
+      expect(await listed()).toEqual([
+        [6, 'C'],
+        [5, 'A'],
+      ]);
+      // A writer set the count back (decision 0109): the history stays.
+      await recordRestore(db, row(1, 'D'));
+      expect((await listed()).map(([count]) => count)).toEqual([6, 5, 1]);
+    });
+
+    it('keeps the last 50', async () => {
       for (let count = 1; count <= MAX_RESTORE_RECORDS + 5; count += 1)
         await recordRestore(db, row(count));
-      let counts = (await restoresOf('editor')).map((r) => r.count);
+      const counts = (await restoresOf('editor')).map((r) => r.count);
       expect(counts).toHaveLength(MAX_RESTORE_RECORDS);
       expect(counts[0]).toBe(MAX_RESTORE_RECORDS + 5);
       expect(counts.at(-1)).toBe(6);
-      // A record of a restore never stored (or a count set back): the document's count wins.
-      await recordRestore(db, { ...row(40), versionName: 'Later' });
-      counts = (await restoresOf('editor')).map((r) => r.count);
-      expect(counts[0]).toBe(40);
-      expect(counts).toHaveLength(35);
     });
 
     it('goes with the board when it is deleted', async () => {
