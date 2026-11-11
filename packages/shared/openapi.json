@@ -155,6 +155,12 @@
       "UploadMetadata": {
         "type": "object",
         "properties": {
+          "clientAssetId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "A UUID the client chose for this file. The asset id is then `clientAssetUploadId(userId, clientAssetId)` (UUIDv5, decision 0097), known offline; repeating the creation with the same metadata and Upload-Length returns the same upload instead of a new one."
+          },
           "projectId": {
             "type": "string",
             "format": "uuid",

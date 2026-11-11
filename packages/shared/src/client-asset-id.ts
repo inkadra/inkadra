@@ -42,7 +42,8 @@ function sha1(message: Uint8Array): Uint8Array {
   for (let block = 0; block < padded.length; block += 64) {
     for (let i = 0; i < 16; i++) w[i] = view.getUint32(block + i * 4);
     for (let i = 16; i < 80; i++) {
-      const x = (w[i - 3] as number) ^ (w[i - 8] as number) ^ (w[i - 14] as number) ^ (w[i - 16] as number);
+      const x =
+        (w[i - 3] as number) ^ (w[i - 8] as number) ^ (w[i - 14] as number) ^ (w[i - 16] as number);
       w[i] = (x << 1) | (x >>> 31);
     }
     let [a, b, c, d, e] = h as [number, number, number, number, number];

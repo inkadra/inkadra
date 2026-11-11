@@ -226,7 +226,10 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
         );
       throw err;
     }
-    if (config.DEMO_MODE && !demoTypeAllowed(cleanMime(meta.data.filetype, meta.data.filename), meta.data.filename))
+    if (
+      config.DEMO_MODE &&
+      !demoTypeAllowed(cleanMime(meta.data.filetype, meta.data.filename), meta.data.filename)
+    )
       throw tusError(415, 'The demo takes JPEG, PNG, WebP, GIF, PDF and plain text files.');
     return meta.data;
   }
@@ -294,7 +297,10 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
     }
     if (metadata.clientAssetId === undefined) return undefined;
     const answer = (status: number, body: string, headers: Record<string, string> = {}) => {
-      reply.status(status).headers({ 'Tus-Resumable': '1.0.0', ...headers }).send(body);
+      reply
+        .status(status)
+        .headers({ 'Tus-Resumable': '1.0.0', ...headers })
+        .send(body);
       return 'answered' as const;
     };
     const clientAssetId = Id.safeParse(metadata.clientAssetId);
@@ -308,7 +314,8 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
       for (let attempt = 0; attempt < 2; attempt++) {
         const [existing] = await db.select().from(asset).where(eq(asset.id, assetId));
         if (!existing) {
-          if (await insertPending(actor, assetId, size as number, meta)) return { assetId, made: true };
+          if (await insertPending(actor, assetId, size as number, meta))
+            return { assetId, made: true };
           continue;
         }
         if (

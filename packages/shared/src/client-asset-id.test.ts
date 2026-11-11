@@ -25,7 +25,9 @@ it('matches RFC 9562 UUIDv5 for names of any length', () => {
   const ns = Buffer.from(userId.replace(/-/g, ''), 'hex');
   for (let n = 0; n < 200; n += 7) {
     const name = 'é'.repeat(n);
-    const hash = createHash('sha1').update(Buffer.concat([ns, Buffer.from(name)])).digest();
+    const hash = createHash('sha1')
+      .update(Buffer.concat([ns, Buffer.from(name)]))
+      .digest();
     hash[6] = (hash[6]! & 0x0f) | 0x50;
     hash[8] = (hash[8]! & 0x3f) | 0x80;
     const hex = hash.subarray(0, 16).toString('hex');
