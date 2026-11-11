@@ -634,7 +634,10 @@ export interface PlanView {
 const reachable = (item: PlanItem, view?: PlanView) =>
   !view?.hidden?.has(layerOf(item)) && !view?.locked?.has(layerOf(item));
 
-/** The item drawn on top under `p` (relative to the drawing, 0 to 1): icons, shapes, strokes. */
+/**
+ * The item drawn on top under `p` (relative to the drawing, 0 to 1), in the stacking order the
+ * renderers draw (planStack): what is seen on top is picked first.
+ */
 export function planItemAt(
   plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
   p: Point,
@@ -642,22 +645,17 @@ export function planItemAt(
   radius = 0.012,
 ): PlanItemRef | null {
   const v = { x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H };
-  const icons = plan.icons ?? [];
-  for (let i = icons.length - 1; i >= 0; i--) {
-    const icon = icons[i] as PlanIcon;
-    if (reachable(icon, view) && iconHit(icon, v)) return { kind: 'icons', id: icon.id };
-  }
-  const shapes = plan.shapes ?? [];
-  for (let i = shapes.length - 1; i >= 0; i--) {
-    const shape = shapes[i] as PlanShape;
-    if (reachable(shape, view) && planShapeHit(shape, p, radius))
-      return { kind: 'shapes', id: shape.id };
-  }
-  const strokes = plan.strokes ?? [];
-  for (let i = strokes.length - 1; i >= 0; i--) {
-    const stroke = strokes[i] as PlanStroke;
-    if (reachable(stroke, view) && strokeHit(stroke, p, radius))
-      return { kind: 'strokes', id: stroke.id };
+  const stack = planStack(plan);
+  for (let i = stack.length - 1; i >= 0; i--) {
+    const { ref, item } = stack[i] as PlanStackEntry;
+    if (!reachable(item, view)) continue;
+    const hit =
+      ref.kind === 'icons'
+        ? iconHit(item as PlanIcon, v)
+        : ref.kind === 'shapes'
+          ? planShapeHit(item as PlanShape, p, radius)
+          : strokeHit(item as PlanStroke, p, radius);
+    if (hit) return ref;
   }
   return null;
 }

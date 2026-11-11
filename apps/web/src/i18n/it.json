@@ -1158,9 +1158,8 @@
         "grip": "Grip",
         "camera": "Camera",
         "people": "Persone",
+        "set": "Set",
         "av": "Audio",
-        "furniture": "Arredi",
-        "exterior": "Esterni",
         "notes": "Note"
       },
       "layers": {

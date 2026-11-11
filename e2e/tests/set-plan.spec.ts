@@ -227,7 +227,7 @@ for (const theme of ['dark', 'light'] as const) {
     await page.screenshot({ path: join(out, `desktop-${theme}-board.png`) });
 
     // Editing: a window in front of the dimmed board, the tools in one bar at the bottom. The
-    // library opens when asked: 42 icons in 7 categories, and the annotations.
+    // library opens when asked: 163 icons in 6 categories, and the annotations (decision 0104).
     await card.dblclick();
     const editor = page.getByRole('dialog', { name: 'Pianta del set · Cucina, giorno 2' });
     await expect(editor.getByRole('toolbar', { name: 'Strumenti della pianta' })).toBeVisible();
@@ -241,20 +241,11 @@ for (const theme of ['dark', 'light'] as const) {
     await editor.getByRole('button', { name: 'Icone', exact: true }).click();
     const chips = editor.locator('.plan-lib__tabs');
     let tiles = 0;
-    for (const name of [
-      'Grip',
-      'Camera',
-      'Persone',
-      'Audio',
-      'Arredi',
-      'Esterni',
-      'Note',
-      'Luci',
-    ]) {
+    for (const name of ['Grip', 'Camera', 'Persone', 'Set', 'Audio', 'Note', 'Luci']) {
       await chips.getByRole('tab', { name, exact: true }).click();
       tiles += await editor.locator('.plan-lib__tile').count();
     }
-    expect(tiles).toBe(46);
+    expect(tiles).toBe(167);
     const tile = (name: string) => editor.getByRole('button', { name, exact: true }).last();
     // The tools stay inside the window: nothing covers the cards next to the plan.
     const win = (await editor.boundingBox())!;
@@ -263,7 +254,7 @@ for (const theme of ['dark', 'light'] as const) {
       .boundingBox())!;
     expect(tools.x).toBeGreaterThanOrEqual(win.x);
 
-    // Search knows synonyms: "kino" finds the tube; Enter would place it.
+    // Search knows synonyms: "kino" finds the tube bank; Enter would place it.
     // Keyboard: Tab to a tile, Enter arms it.
     await tile('Tubo').focus();
     await page.keyboard.press('Enter');
@@ -272,7 +263,7 @@ for (const theme of ['dark', 'light'] as const) {
     const search = editor.getByRole('searchbox', { name: 'Cerca un’icona' });
     await search.fill('kino');
     await expect(editor.locator('.plan-lib__tile')).toHaveCount(1);
-    await expect(tile('Tubo')).toBeVisible();
+    await expect(tile('Banco di tubi')).toBeVisible();
     if (theme === 'dark') await page.screenshot({ path: join(out, 'desktop-dark-search.png') });
     await search.fill('');
     // A star keeps an icon among the Favourites.
@@ -647,7 +638,7 @@ for (const theme of ['dark', 'light'] as const) {
       await mobile.keyboard.press('Escape');
       await full.getByRole('button', { name: 'Icone', exact: true }).tap();
       await expect(full.getByRole('button', { name: 'Fresnel', exact: true })).toBeVisible();
-      await full.getByRole('tab', { name: 'Arredi' }).tap();
+      await full.getByRole('tab', { name: 'Set' }).tap();
       await expect(full.getByRole('button', { name: 'Divano', exact: true })).toBeVisible();
       await full.getByRole('tab', { name: 'Luci' }).tap();
       await mobile.screenshot({ path: join(out, `phone-${theme}-library.png`) });
