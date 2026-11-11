@@ -27,10 +27,16 @@ The strict card check and `readElement` know the field through the schema, as ev
   it shows a dashed outline without handles, and a lock in Elements. A box selection and Select
   all leave it out.
 - is not moved, turned, resized or edited (its fields in Properties are shown disabled) and not
-  deleted. `updatePlanItems` and `updatePlanWalls` leave a locked item as stored, whatever the
-  caller sends, except for `locked` itself (`lockAllows`); `removePlanItems` and
-  `removePlanWalls` keep locked items. So every write path of the editor respects it, and a
-  multi-selection, a group or a nudge moves the free items and leaves the locked ones.
+  deleted. `allowedWrites` decides which writes happen before anything else is derived from
+  them: a locked item takes only its lock, and what sits on a base whose write is refused keeps
+  its place too, so a nudge, a turn or a drag that computed a locked base and its attachments
+  moving moves neither. `updatePlanItems` applies it, and the editor applies it before
+  attachments settle; `updatePlanWalls` lets a locked wall or opening change only its lock;
+  `removePlanItems`, `removePlanWalls` and `transferPlanItems` (moving a setup's item to the
+  base's Set) leave locked items where they are. Move to layer, Bring forward and Send back,
+  group, align and distribute go through these, and the editor disables them, with Rotate and
+  Delete, when every selected item is locked; a multi-selection moves the free items only. Its
+  disabled fields are dimmed as `packages/ui`'s disabled controls are.
 - **is no snap target**: nothing new attaches to it by drag or drop (`snapTarget`). What already
   sits on it stays attached and in place, and may still be moved, pulled off or edited: locking a
   base does not lock what is on it.
@@ -53,8 +59,11 @@ boards never), the board index (decision 0100) picks the boards that hold a plan
 `projectKit` of canvas-core (moved there from the web) derives each board's entries, merged with
 `mergeProjectKits`. A guest of one board learns nothing of the plans of boards they cannot open.
 No index column or table: like the cast, the kit is not in the index; the most recently edited 40
-such boards are read on each request, and the web keeps the answer a minute (both `shortcut:` in
-the code). While it loads, offline, or when the server refuses, the panel lists the open board's
+such boards are read on each request, at most 20 requests a minute per person (as search, a
+rate limit; `cast-appearances`, which reads the same documents, has none yet), and the web keeps
+the answer a minute per signed-in person, forgotten when another person signs in, and shows no
+kit of another board, project or person while the new one loads (both limits `shortcut:` in
+the code). Two lights with the same modifiers in another order are one entry of the kit. While it loads, offline, or when the server refuses, the panel lists the open board's
 kit and says so; back online it asks again. A share link's guest page asks nothing.
 
 **Grip and crew** is a group of the Elements tab, not a layer of the document: the grip of the

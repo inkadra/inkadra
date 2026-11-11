@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
   addPlanIcon,
+  allowedWrites,
   attachIcon,
   type CardsById,
   defaultIconSize,
@@ -215,8 +216,13 @@ export function usePlanEditing(props: PlanEditorProps) {
   ) => {
     // Whatever wrote them, the attachment rules hold (decision 0104): an `on` whose base is gone
     // is dropped, and what sits on a written base is placed again.
-    const items = settleWrite([...icons, ...placed.icons], written);
     const all = planItems(drawn);
+    // The locks first (decision 0114): what settles below follows only the writes that happen.
+    const allowed = allowedWrites(
+      all.map((e) => e.item),
+      written,
+    );
+    const items = settleWrite([...icons, ...placed.icons], allowed);
     const before =
       baseline ?? items.flatMap((i) => all.find((e) => e.item.id === i.id)?.item ?? []);
     const owner = (id: string) => placed.owners.get(id) ?? ownerOf(id);

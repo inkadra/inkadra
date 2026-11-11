@@ -6,19 +6,27 @@ import { createElement, listElements } from './board.ts';
 import { addShape } from './film.ts';
 import {
   addPlanIcon,
+  allowedWrites,
   duplicatePlanItems,
   itemsInRect,
   lockAllows,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
+  type PlanItem,
   planGroupOf,
   planItemAt,
   planStack,
   removePlanItems,
+  transferPlanItems,
   updatePlanItems,
 } from './plan.ts';
-import { moveWithAttached, rotateWithAttached, snapTarget } from './plan-attach.ts';
+import {
+  moveWithAttached,
+  rotateManyWithAttached,
+  rotateWithAttached,
+  snapTarget,
+} from './plan-attach.ts';
 import { mergeProjectKits, projectKit } from './plan-kit.ts';
 import { addPlanOpening, addPlanWall, removePlanWalls, updatePlanWalls } from './plan-walls.ts';
 
@@ -77,6 +85,48 @@ describe('items locked on their own (decision 0114)', () => {
     const now = byId(box);
     updatePlanItems(doc, el.id, [{ ...now, x: now.x + 50 }]);
     expect(byId(box)).toEqual(now);
+  });
+
+  it('moves nothing of a locked base nudged or turned, not even what sits on it', () => {
+    const { doc, el, chair, byId, plan } = setUp();
+    const person = addPlanIcon(doc, el.id, {
+      kind: 'actor',
+      color: '#B897F0',
+      x: byId(chair).x,
+      y: byId(chair).y,
+      on: chair,
+    }) as string;
+    const sits = byId(person);
+    // A nudge computes the base and the person moving; the base is locked, so neither moves.
+    updatePlanItems(doc, el.id, moveWithAttached(plan().icons ?? [], [chair], { x: 50, y: 0 }));
+    expect(byId(person)).toEqual(sits);
+    updatePlanItems(doc, el.id, rotateWithAttached(plan().icons ?? [], chair, 90));
+    expect(byId(person)).toEqual(sits);
+    const turned = rotateManyWithAttached(plan().icons ?? [], [byId(chair)], 90, { x: 0, y: 0 });
+    updatePlanItems(doc, el.id, turned);
+    expect(byId(person)).toEqual(sits);
+    // Written on its own, the person may still be moved or pulled off.
+    updatePlanItems(doc, el.id, [{ ...sits, x: sits.x + 10 }]);
+    expect(byId(person).x).toBe(sits.x + 10);
+  });
+
+  it('refuses a locked item and what moves on it, whatever writes them', () => {
+    const { chair, light, box, plan } = setUp();
+    const all = [...(plan().icons ?? [])] as PlanItem[];
+    const moved = (all as PlanIcon[]).map((i) => ({ ...i, x: i.x + 1 }));
+    // The chair is locked; the softbox is locked but rides its free light, which moves.
+    expect(allowedWrites(all, moved).map((i) => i.id)).not.toContain(chair);
+    expect(allowedWrites(all, moved).map((i) => i.id)).toEqual(expect.arrayContaining([light, box]));
+  });
+
+  it('leaves a locked item on a setup when it is moved to the base Set layer', () => {
+    const { doc, el, chair, plan } = setUp();
+    const base = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+    const free = addPlanIcon(doc, el.id, { kind: 'table', color: '#1C1C1E', x: 1, y: 1 }) as string;
+    const moved = transferPlanItems(doc, el.id, base.id, [chair, free], () => ({ layer: 'set' }));
+    expect(moved).toEqual([free]);
+    expect(plan().icons?.find((i) => i.id === chair)?.layer).toBeUndefined();
+    expect(planOf(doc, base.id).icons?.map((i) => i.id)).toEqual([free]);
   });
 
   it('keeps locked items when deleting, and what sits on a locked base', () => {
@@ -232,6 +282,17 @@ describe('the project kit across boards (decision 0114)', () => {
       2000,
     ]);
     expect(kit[1]?.lenses).toEqual([32, 50]);
+  });
+
+  it('takes the same modifiers in any order for the same light', () => {
+    const light = (id: string, first: PlanIcon['kind'], second: PlanIcon['kind']) => [
+      icon(id, 'cob', { make: 'Aputure 600d' }),
+      icon(`${id}1`, first, { on: id.padEnd(13, 'A') }),
+      icon(`${id}2`, second, { on: id.padEnd(13, 'A') }),
+    ];
+    // Scrim and gobo share a rank: the plan's order decides how they are drawn, not the kit.
+    const kit = projectKit([{ icons: light('a', 'scrim', 'gobo') }, { icons: light('b', 'gobo', 'scrim') }]);
+    expect(kit).toHaveLength(1);
     // The inputs are left as they were.
     expect(here[1]?.lenses).toEqual([50]);
   });

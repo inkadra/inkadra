@@ -97,7 +97,8 @@ async function seed(page: Page, baseURL: string) {
             await page.request.get(`/api/v1/projects/${project.id}/plan-kit?excludeBoardId=${root}`)
           ).json(),
         ),
-      { timeout: 20_000 },
+      // A few tries only: the project kit is read at most 20 times a minute per person.
+      { timeout: 20_000, intervals: [1_000, 2_000] },
     )
     .toContain('Aputure 600d');
   const saved = async () => {

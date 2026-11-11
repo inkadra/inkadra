@@ -1178,11 +1178,55 @@ const same = (a: unknown, b: unknown) =>
   a === b ||
   (typeof a === 'object' && typeof b === 'object' && JSON.stringify(a) === JSON.stringify(b));
 
+const MOVES = new Set(['x', 'y', 'rotation']);
+
+/**
+ * The writes of `written` the locks allow (decision 0114), against the items as `stored`: a
+ * locked item takes only its lock, or the moves of a base written and moving with it; and what
+ * sits on a base whose write is refused stays with it, its moves refused too, so nothing walks
+ * away from a locked base that a nudge, a turn or a drag computed as moving. Writers filter
+ * with it before deriving anything else from the writes (where attachments settle).
+ */
+export function allowedWrites<T extends PlanItem>(
+  stored: readonly PlanItem[],
+  written: readonly T[],
+): T[] {
+  const byId = new Map(stored.map((i) => [i.id, i as unknown as Record<string, unknown>]));
+  const changed = new Map(
+    written.map((n) => {
+      const s = byId.get(n.id);
+      const next = n as unknown as Record<string, unknown>;
+      const keys = s ? new Set([...Object.keys(s), ...Object.keys(next)]) : new Set<string>();
+      return [n.id, [...keys].filter((k) => s && !same(s[k], next[k]))];
+    }),
+  );
+  const ids = new Set(written.map((n) => n.id));
+  const refused = new Set(
+    written.flatMap((n) => {
+      const s = byId.get(n.id);
+      return s && !lockAllows(s, changed.get(n.id) ?? [], ids) ? [n.id] : [];
+    }),
+  );
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const n of written) {
+      const on = byId.get(n.id)?.on;
+      const moves = changed.get(n.id) ?? [];
+      if (refused.has(n.id) || typeof on !== 'string' || !refused.has(on)) continue;
+      if (moves.length && moves.every((k) => MOVES.has(k))) {
+        refused.add(n.id);
+        grew = true;
+      }
+    }
+  }
+  return written.filter((n) => !refused.has(n.id));
+}
+
 /**
  * Writes new versions of items, matched by id, field by field: only the fields that differ from
  * `before` (the items as they were when the gesture started; omitted, as they are stored) are
  * written, so an edit of one field never undoes someone else's edit of another made meanwhile.
- * An item locked on its own is left as stored, but for its lock and its base's moves (lockAllows).
+ * Items locked on their own, and what sits on them, change only as allowedWrites says.
  * Icons are Y.Maps and change in place; strokes and shapes are replaced where they are, their
  * stored version taking the changed fields.
  */
@@ -1193,9 +1237,14 @@ export function updatePlanItems(
   origin?: unknown,
   before?: readonly PlanItem[],
 ): void {
-  const byId = new Map(items.map((item) => [item.id, item]));
   const baseline = new Map((before ?? []).map((item) => [item.id, item]));
   doc.transact(() => {
+    const stored = (['strokes', 'shapes', 'icons'] as const).flatMap((kind) =>
+      (listOf(doc, planId, kind)?.toArray() ?? []).map(
+        (v) => (v instanceof Y.Map ? v.toJSON() : v) as PlanItem,
+      ),
+    );
+    const byId = new Map(allowedWrites(stored, items).map((item) => [item.id, item]));
     for (const kind of ['strokes', 'shapes', 'icons'] as const) {
       const list = listOf(doc, planId, kind);
       if (!list) return;
@@ -1206,7 +1255,7 @@ export function updatePlanItems(
         const old = (baseline.get(next.id as string) ?? stored) as Record<string, unknown>;
         const keys = new Set([...Object.keys(old), ...Object.keys(next)]);
         const changed = [...keys].filter((k) => !same(old[k], next[k]));
-        if (changed.length === 0 || !lockAllows(stored, changed, byId)) return;
+        if (changed.length === 0) return;
         if (value instanceof Y.Map) {
           for (const k of changed)
             if (next[k] === undefined) value.delete(k);
@@ -1229,8 +1278,8 @@ export function updatePlanItems(
  * setup into its base when they go to the Set layer, which all the setups share (decision
  * 0104). Each item is moved as it is stored, with `patch(item)` written over it (a field set to
  * undefined is removed), and keeps its id, so measures and attachments that point at it still
- * find it in the setup's view. An item the target has no room for stays where it was. Returns
- * the ids moved.
+ * find it in the setup's view. An item the target has no room for, or locked on its own
+ * (decision 0114), stays where it was. Returns the ids moved.
  */
 export function transferPlanItems(
   doc: Y.Doc,
@@ -1252,12 +1301,14 @@ export function transferPlanItems(
         .toArray()
         .map((value, index) => ({ index, value }))
         .filter(({ value }) => wanted.has(idOf(value) as string))
-        .slice(0, Math.max(0, LIMITS[kind] - to.length))
         // Read before the delete: a removed Y.Map no longer reads.
         .map(({ index, value }) => ({
           index,
           stored: (value instanceof Y.Map ? value.toJSON() : value) as PlanItem,
-        }));
+        }))
+        // An item locked on its own stays where it is (decision 0114).
+        .filter(({ stored }) => !itemLocked(stored))
+        .slice(0, Math.max(0, LIMITS[kind] - to.length));
       for (const { index } of [...going].reverse()) from.delete(index, 1);
       for (const { stored } of going) {
         const next: Record<string, unknown> = { ...stored, ...patch(stored) };

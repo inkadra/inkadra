@@ -204,6 +204,9 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
   // Each search ranks trigrams over every card a person can read: a person typing makes a few
   // a second at most, a script would keep the database busy for everyone.
   const searches = new RateLimiter(60, 60_000);
+  // Each project kit reads and decodes up to MAX_CAST_BOARDS documents; the editor asks once a
+  // minute per board, so a person never needs more than a few (decision 0114).
+  const kits = new RateLimiter(20, 60_000);
 
   app.get(v1('/projects/:projectId/cast-appearances'), async (req) => {
     const actor = await requireActor(auth, req, db);
@@ -228,6 +231,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
   // the plans of the other boards the caller can read, derived on each request, never stored.
   app.get(v1('/projects/:projectId/plan-kit'), async (req) => {
     const actor = await requireActor(auth, req, db);
+    kits.require(actor.id, 'Too many reads of the project kit. Try again in a minute.');
     const { projectId } = ProjectParams.parse(req.params);
     const { excludeBoardId } = PlanKitQuery.parse(req.query ?? {});
     const { boardIds } = await readableBoards(db, actor, projectId);

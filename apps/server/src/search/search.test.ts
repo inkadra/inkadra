@@ -558,6 +558,19 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     for (const id of [shared, closed]) await db.delete(board).where(eq(board.id, id));
   });
 
+  it('limits how often one person reads the project kit', async () => {
+    // Each answer decodes board documents: a script must not keep the server busy for everyone.
+    const path = `/api/v1/projects/${projectId}/plan-kit`;
+    const statuses: number[] = [];
+    for (let i = 0; i < 21; i++) statuses.push((await get('stranger', path)).status);
+    // 20 a minute; the stranger read it once in the test above.
+    const first = statuses.indexOf(429);
+    expect(first).toBe(19);
+    expect(statuses.slice(0, first).every((s) => s === 200)).toBe(true);
+    // Another person is not held back by it.
+    expect((await get('guest', path)).status).toBe(200);
+  });
+
   it('lists the named cards of one type only to people who can read them', async () => {
     const path = `/api/v1/search?type=character&projectId=${projectId}`;
     const names = async (who: keyof typeof cookies) => {

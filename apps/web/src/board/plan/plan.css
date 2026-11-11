@@ -743,13 +743,20 @@ button.plan__badge:hover {
 .plan-editor__selection.is-locked rect {
   stroke-dasharray: 4 3;
 }
-/* The properties of a locked item: shown, not edited. */
+/* The properties of a locked item: shown, not edited, and seen to be so, as packages/ui's
+   own disabled controls (.ink-btn, .ink-select) are. */
 .plan-props__fields {
   display: contents;
   border: 0;
   margin: 0;
   padding: 0;
   min-width: 0;
+}
+.plan-props__fields :disabled {
+  cursor: not-allowed;
+}
+.plan-props__fields :is(input, textarea, .plan-pill, .plan-swatch, .ink-iconbtn):disabled {
+  opacity: 0.5;
 }
 
 /* Scale and measures (round 6, g). */

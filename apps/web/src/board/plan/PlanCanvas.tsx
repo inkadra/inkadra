@@ -166,7 +166,9 @@ export function selectionMenu(ed: Ed, t: TFunction): MenuItem[] {
   const icons = items.some(isIcon);
   const ownLayer = items.every((i) => ed.ownerOf(i.id) === ed.plan.id);
   const layerOfAll = items.every((i) => (i.layer ?? null) === (items[0]?.layer ?? null));
+  // Items locked on their own take only Duplicate and Unlock (decision 0114).
   const allLocked = items.every(itemLocked);
+  const freeIcons = items.some((i) => isIcon(i) && !itemLocked(i));
   return [
     { label: t('board.plan.duplicate'), icon: 'copy', shortcut: 'Ctrl+D', action: ed.duplicate },
     {
@@ -178,20 +180,21 @@ export function selectionMenu(ed: Ed, t: TFunction): MenuItem[] {
       label: t('board.plan.forward'),
       icon: 'front',
       shortcut: ']',
-      disabled: !icons,
+      disabled: !freeIcons,
       action: () => ed.restack(1),
     },
     {
       label: t('board.plan.backward'),
       icon: 'arrange',
       shortcut: '[',
-      disabled: !icons,
+      disabled: !freeIcons,
       action: () => ed.restack(-1),
     },
     {
       label: t('board.plan.rotateBy', { degrees: QUARTER_TURN }),
       icon: 'rotateRight',
       shortcut: 'R',
+      disabled: allLocked,
       action: () => ed.rotate(QUARTER_TURN),
     },
     ...(ownLayer
@@ -200,6 +203,7 @@ export function selectionMenu(ed: Ed, t: TFunction): MenuItem[] {
           ...PLAN_LAYERS.filter((l) => !(ed.base && l === 'set')).map((l) => ({
             label: t(`board.plan.layers.${l}`),
             checked: layerOfAll && items.every((i) => (i.layer ?? null) === l),
+            disabled: allLocked,
             action: () => ed.moveToLayer(l),
           })),
         ] as MenuItem[])

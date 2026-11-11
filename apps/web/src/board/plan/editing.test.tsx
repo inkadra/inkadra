@@ -19,6 +19,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type * as Y from 'yjs';
 import { BoardStore } from '../store.ts';
 import { type Ed, usePlanEditing } from './editing.ts';
+import { selectionMenu } from './PlanCanvas.tsx';
 import { PlanKit } from './PlanKit.tsx';
 
 vi.mock('react-i18next', () => ({
@@ -251,4 +252,91 @@ it("drops an on whose base is gone at the item's next write", async () => {
   await act(async () => m.ed.write({ ...icon, label: 'Box' }));
   expect(planOf(doc, plan.id).icons?.find((i) => i.id === box)).toMatchObject({ label: 'Box' });
   expect(planOf(doc, plan.id).icons?.find((i) => i.id === box)?.on).toBeUndefined();
+});
+
+it('leaves an item locked on its own in its setup when it is moved to Set (decision 0114)', async () => {
+  const doc = createBoardDoc(boardId);
+  const base = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+  const setup = addVariant(doc, planOf(doc, base.id), 'Sera', { userId: null });
+  const table = addPlanIcon(doc, setup, {
+    ...at,
+    kind: 'table',
+    layer: 'actors',
+    locked: true,
+  }) as string;
+  const m = await mount(doc, setup, base.id);
+  await act(async () => m.ed.setSelection([{ kind: 'icons', id: table }]));
+  await m.render();
+  await act(async () => m.ed.moveToLayer('set'));
+  expect(planOf(doc, base.id).icons ?? []).toEqual([]);
+  expect(planOf(doc, setup).icons).toMatchObject([{ id: table, layer: 'actors', locked: true }]);
+});
+
+it('moves nothing of a locked base nudged or turned, what sits on it included (decision 0114)', async () => {
+  const doc = createBoardDoc(boardId);
+  const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+  const g = (v: number, w: number) => Math.round((v / w) * STROKE_GRID);
+  const chair = addPlanIcon(doc, plan.id, {
+    ...at,
+    kind: 'chair',
+    x: g(400, PLAN_VIEW_W),
+    y: g(300, PLAN_VIEW_H),
+    locked: true,
+  }) as string;
+  const sofa = addPlanIcon(doc, plan.id, {
+    ...at,
+    kind: 'sofa',
+    x: g(700, PLAN_VIEW_W),
+    y: g(300, PLAN_VIEW_H),
+  }) as string;
+  // A person seated on the locked chair.
+  addPlanIcon(doc, plan.id, {
+    kind: 'actor',
+    color: '#B897F0',
+    x: g(400, PLAN_VIEW_W),
+    y: g(300, PLAN_VIEW_H),
+    on: chair,
+  });
+  const m = await mount(doc, plan.id);
+  const person = () => planOf(doc, plan.id).icons?.find((i) => i.kind === 'actor') as PlanIcon;
+  const sits = person();
+  expect(sits.on).toBe(chair);
+  await act(async () => m.ed.setSelection([{ kind: 'icons', id: chair }]));
+  await m.render();
+  await act(async () => m.ed.nudge({ x: 40, y: 0 }));
+  await m.render();
+  await act(async () => m.ed.rotate(90));
+  await m.render();
+  expect(person()).toEqual(sits);
+  // Turned together with a free item: the free one turns, the chair and its person stay.
+  await act(async () =>
+    m.ed.setSelection([
+      { kind: 'icons', id: chair },
+      { kind: 'icons', id: sofa },
+    ]),
+  );
+  await m.render();
+  await act(async () => m.ed.rotate(90));
+  expect(person()).toEqual(sits);
+  expect(planOf(doc, plan.id).icons?.find((i) => i.id === sofa)?.rotation).toBe(90);
+});
+
+it('offers only Duplicate and Unlock in the menu of items locked on their own (decision 0114)', async () => {
+  const doc = createBoardDoc(boardId);
+  const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+  const a = addPlanIcon(doc, plan.id, { ...at, kind: 'chair', locked: true }) as string;
+  const b = addPlanIcon(doc, plan.id, { ...at, kind: 'cob', locked: true }) as string;
+  const m = await mount(doc, plan.id);
+  await act(async () =>
+    m.ed.setSelection([
+      { kind: 'icons', id: a },
+      { kind: 'icons', id: b },
+    ]),
+  );
+  await m.render();
+  const t = ((key: string) => key) as never;
+  const enabled = selectionMenu(m.ed, t)
+    .filter((e) => 'action' in e && !!e.action && !(e as { disabled?: boolean }).disabled)
+    .map((e) => (e as { label: string }).label);
+  expect(enabled).toEqual(['board.plan.duplicate', 'board.plan.unlock']);
 });

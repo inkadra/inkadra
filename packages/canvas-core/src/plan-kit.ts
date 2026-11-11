@@ -62,7 +62,8 @@ export function projectKit(plans: ReadonlyArray<Pick<PlanElement, 'icons'>>): Pr
       for (const field of KEPT) if (icon[field] !== undefined) kept[field] = icon[field];
       const key = camera
         ? JSON.stringify(['camera', icon.label ?? '', icon.make ?? ''])
-        : JSON.stringify([kept, modifiers]);
+        : // The same modifiers in any order are the same light (two of one rank keep the plan's).
+          JSON.stringify([kept, [...modifiers].sort()]);
       const known = out.get(key);
       const lens = camera ? (icon.lens ?? null) : null;
       if (known) {

@@ -1176,6 +1176,7 @@ export function PlanProperties({
                 key={how}
                 icon={icon}
                 label={t(`board.plan.align.${how}`)}
+                disabled={allLocked}
                 onClick={() => align(how)}
               />
             ))}
@@ -1185,6 +1186,7 @@ export function PlanProperties({
           <Field label={t('board.plan.layer')}>
             <Select
               aria-label={t('board.plan.layer')}
+              disabled={allLocked}
               value={layers.size === 1 ? ([...layers][0] as string) : 'mixed'}
               onChange={(v) => v !== 'mixed' && ed.moveToLayer(v as never)}
               options={[
@@ -1201,6 +1203,7 @@ export function PlanProperties({
           <Field label={t('board.plan.tag')}>
             <Select
               aria-label={t('board.plan.tag')}
+              disabled={allLocked}
               value={colour}
               onChange={(v) => v !== 'mixed' && ed.pickColor(v)}
               options={[
@@ -1216,7 +1219,7 @@ export function PlanProperties({
           </Field>
         </div>
         <div className="plan-props__actions">
-          <Button onClick={() => ed.write(toggleGroup(many))}>
+          <Button disabled={allLocked} onClick={() => ed.write(toggleGroup(many))}>
             {t(grouped ? 'board.plan.ungroup' : 'board.plan.group')}
           </Button>
           <Button onClick={ed.duplicate}>{t('board.plan.duplicate')}</Button>
