@@ -130,7 +130,7 @@ export function useMenu(label: string, items: ProjectMenuItem[]) {
         key={item.label}
         type="button"
         role="menuitem"
-        className={item.danger ? 'is-danger' : undefined}
+        className={item.danger ? 'ink-menu__item is-danger' : 'ink-menu__item'}
         disabled={item.disabled}
         onClick={choose(item)}
       >
@@ -168,7 +168,7 @@ export function useMenu(label: string, items: ProjectMenuItem[]) {
         ref={menuRef}
         role="menu"
         aria-label={label}
-        className="project-context-menu"
+        className="ink-menu project-context-menu"
         style={{ left: menu.x, top: menu.y }}
         onKeyDown={(event) => {
           if (event.key === 'Escape' || event.key === 'Tab') {

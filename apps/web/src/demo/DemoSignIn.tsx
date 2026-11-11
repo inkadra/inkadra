@@ -155,8 +155,8 @@ export function DemoStart({ demo }: { demo: DemoInfo }) {
         size="lg"
         block
         icon="play"
-        disabled={busy || waiting || problem === 'full'}
-        aria-busy={busy || undefined}
+        disabled={waiting || problem === 'full'}
+        busy={busy}
         onClick={() => void start()}
       >
         {t('demo.start')}

@@ -317,7 +317,7 @@ const BlockingNumbers = memo(function BlockingNumbers({
           transform={route ? `translate(${p.x} ${p.y})` : `translate(${p.x - 24} ${p.y - 24})`}
         >
           <circle r={STEP_DOT} style={{ fill: 'currentColor' }} />
-          <text textAnchor="middle" y={4.5} fontSize={13} fontWeight={700}>
+          <text textAnchor="middle" y={4.5} fontSize={13} fontWeight={600}>
             {i + 1}
           </text>
         </g>

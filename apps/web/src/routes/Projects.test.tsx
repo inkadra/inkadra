@@ -139,7 +139,7 @@ it('deletes a project only once its name is typed, and keeps the dialog on an er
   await render([member('me', 'Giulia')]);
   await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
   const item = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].at(-1);
-  expect(item?.className).toBe('is-danger');
+  expect(item?.className).toBe('ink-menu__item is-danger');
   await act(async () => item?.click());
   const dialog = host.querySelector('dialog');
   const input = dialog?.querySelector('input') as HTMLInputElement;
