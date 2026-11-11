@@ -231,13 +231,42 @@ export function freeSpot(
 ): Point {
   const gap = 12;
   const step = 32;
-  const free = (p: Point) => !taken.some((r) => intersects(inflate(r, gap), { ...p, ...size }));
+  const rings = 40;
+  // Only the cards the search can reach, in cells of the board: each spot is checked against the
+  // few cards around it, not all of a board of thousands (20 files took seconds before).
+  const reach = (rings + 1) * step + gap;
+  const window = {
+    x: start.x - reach,
+    y: start.y - reach,
+    w: size.w + 2 * reach,
+    h: size.h + 2 * reach,
+  };
+  const CELL = 256;
+  const cells = new Map<string, Rect[]>();
+  for (const r of taken) {
+    const box = inflate(r, gap);
+    if (!intersects(box, window)) continue;
+    for (let cx = Math.floor(box.x / CELL); cx <= Math.floor((box.x + box.w) / CELL); cx++)
+      for (let cy = Math.floor(box.y / CELL); cy <= Math.floor((box.y + box.h) / CELL); cy++) {
+        const key = `${cx},${cy}`;
+        const list = cells.get(key);
+        if (list) list.push(box);
+        else cells.set(key, [box]);
+      }
+  }
+  const free = (p: Point) => {
+    const box = { ...p, ...size };
+    for (let cx = Math.floor(box.x / CELL); cx <= Math.floor((box.x + box.w) / CELL); cx++)
+      for (let cy = Math.floor(box.y / CELL); cy <= Math.floor((box.y + box.h) / CELL); cy++)
+        if (cells.get(`${cx},${cy}`)?.some((r) => intersects(r, box))) return false;
+    return true;
+  };
   const search = (inside: (p: Point) => boolean): Point | undefined => {
     for (let i = 0; i < 12; i++) {
       const at = { x: start.x + i * step, y: start.y + i * step };
       if (inside(at) && free(at)) return at;
     }
-    for (let ring = 1; ring <= 40; ring++) {
+    for (let ring = 1; ring <= rings; ring++) {
       let best: Point | undefined;
       let bestDistance = Number.POSITIVE_INFINITY;
       for (let i = -ring; i <= ring; i++) {
