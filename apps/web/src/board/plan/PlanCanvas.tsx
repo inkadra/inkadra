@@ -328,7 +328,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   useImperativeHandle(handle, () => ({
     escape: () => {
       if (walls.escape()) return true;
-      if (placing.active) ed.setPlacingBackground(false);
+      // Placing the background ends before anything else, even with its picture gone.
+      if (ed.placingBackground) ed.setPlacingBackground(false);
       else if (menu) setMenu(null);
       else if (scaleDraft) setScaleDraft(null);
       else if (measureDraft) setMeasureDraft(null);

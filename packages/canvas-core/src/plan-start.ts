@@ -179,7 +179,12 @@ export function copySetLayer(
 ): PlanItemRef[] {
   copyPlanWalls(doc, source, targetId, origin);
   const refs = planItems(source).flatMap(({ ref, item }) => (layerOf(item) === 'set' ? [ref] : []));
-  return duplicatePlanItems(doc, source, refs, { x: 0, y: 0 }, origin, targetId);
+  // Only the Set: a person seated on a Set sofa, a light on a Set support stay behind, and a copy
+  // whose base is not copied stands free.
+  return duplicatePlanItems(doc, source, refs, { x: 0, y: 0 }, origin, {
+    target: targetId,
+    attached: false,
+  });
 }
 
 // The background picture ----------------------------------------------------------------------

@@ -1277,8 +1277,8 @@ export function removePlanItems(
  * Copies items next to the originals, `offset` view units away. Returns the copies. Groups
  * among them become new groups of the copies; an attached measure is copied where it is drawn,
  * detached, so it does not land on the original. Icons attached to a copied icon are copied
- * with it and attached to its copy; a copy whose base was not copied stands free. The copies go
- * on plan `targetId`, the plan itself unless another reuses its set (decision 0110).
+ * with it and attached to its copy, unless `attached` is false; a copy whose base was not
+ * copied stands free.
  */
 export function duplicatePlanItems(
   doc: Y.Doc,
@@ -1286,8 +1286,14 @@ export function duplicatePlanItems(
   refs: readonly PlanItemRef[],
   offset: Point,
   origin?: unknown,
-  targetId: string = plan.id,
+  opts: {
+    /** The plan the copies go on: the plan itself unless another reuses its set. */
+    target?: string;
+    /** False copies only `refs`: what is attached to them from elsewhere stays behind. */
+    attached?: boolean;
+  } = {},
 ): PlanItemRef[] {
+  const targetId = opts.target ?? plan.id;
   const out: PlanItemRef[] = [];
   const groups = new Map<string, string>();
   const regroup = (g: string | undefined) => {
@@ -1296,10 +1302,8 @@ export function duplicatePlanItems(
     return groups.get(g);
   };
   const icons = plan.icons ?? [];
-  const iconIds = withAttached(
-    icons,
-    refs.filter((r) => r.kind === 'icons').map((r) => r.id),
-  );
+  const picked = refs.filter((r) => r.kind === 'icons').map((r) => r.id);
+  const iconIds = opts.attached === false ? new Set(picked) : withAttached(icons, picked);
   const all = [
     ...refs.filter((r) => r.kind !== 'icons'),
     // In the plan's order, so a base is copied before what is attached to it.

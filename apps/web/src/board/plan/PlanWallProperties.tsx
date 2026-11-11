@@ -2,6 +2,7 @@
 import {
   metresToView,
   openingCorners,
+  openingSide,
   openingSpan,
   updatePlanWalls,
   WALL_THICKNESSES,
@@ -68,12 +69,9 @@ export function PlanWallProperties({ ed }: { ed: Ed }) {
     const span = openingSpan(wall, opening);
     const corners = openingCorners(wall, opening);
     const isDoor = opening.kind === 'door' || opening.kind === 'doubledoor';
-    const write = (patch: Partial<PlanOpening>) => {
-      const next = { ...opening, ...patch };
-      for (const [k, v] of Object.entries(patch))
-        if (v === undefined) delete (next as Record<string, unknown>)[k];
-      ed.writeWalls('openings', [next]);
-    };
+    // A field set back to its default goes as undefined: updatePlanWalls deletes it.
+    const write = (patch: Partial<PlanOpening>) =>
+      ed.writeWalls('openings', [{ ...opening, ...patch }]);
     return (
       <>
         <div className="plan-props__head">
@@ -110,7 +108,7 @@ export function PlanWallProperties({ ed }: { ed: Ed }) {
             <NumberField
               value={Math.round(((span.to - span.from) / scale) * 100) / 100}
               min={0.1}
-              max={Math.max(0.1, Math.floor((wallLength(wall) / scale) * 100) / 100)}
+              max={Math.max(0.1, Math.floor((openingSide(wall, opening) / scale) * 100) / 100)}
               step={0.01}
               nudge={0.05}
               unit="m"

@@ -575,9 +575,11 @@ export function PlanEditor(props: PlanEditorProps) {
             aria-pressed={ed.attach}
             onClick={() => ed.setAttach((v) => !v)}
           />
+          {/* The background is reached from Elements on a phone: the tour points here. */}
           <IconButton
             icon="layers"
             label={t('board.plan.tabs2.elements')}
+            data-tour="plan-background"
             onClick={() => ed.setSheet('elements')}
           />
           <Button variant="primary" onClick={props.onClose}>

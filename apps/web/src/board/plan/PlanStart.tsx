@@ -16,7 +16,7 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import { Button, ChoiceTile, Select } from '@inkadra/ui';
-import { type ReactNode, useId, useState } from 'react';
+import { type ReactNode, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
@@ -111,7 +111,13 @@ export function PlanStart({
     return parts.join(', ') || t('board.plan.name');
   };
 
+  /** One click, one write: a second click (or a double click) before the dialog goes does nothing. */
+  const went = useRef(false);
+  const [busy, setBusy] = useState(false);
   const go = () => {
+    if (went.current) return;
+    went.current = true;
+    setBusy(true);
     if (choice === 'reuse' && source) {
       ed.change(() => {
         copySetLayer(ed.doc, source, ed.setOwner, LOCAL);
@@ -292,7 +298,7 @@ export function PlanStart({
         <Button variant="ghost" onClick={onClose}>
           {t('board.plan.start.empty')}
         </Button>
-        <Button variant="primary" disabled={tooBig || choice === 'scan'} onClick={go}>
+        <Button variant="primary" disabled={busy || tooBig || choice === 'scan'} onClick={go}>
           {primary}
         </Button>
       </div>

@@ -124,15 +124,31 @@ function subPath(pts: readonly Point[], from: number, to: number): Point[] {
   return distinct(out);
 }
 
-/** Where an opening's gap runs along its wall, in view units from the wall's first point. */
+/**
+ * Where an opening's gap runs along its wall, in view units from the wall's first point: whole on
+ * the side `at` falls on, never round a corner (decision 0110). An opening wider than its side
+ * fills the side; one written anywhere with a middle too near a corner is drawn moved off it.
+ */
 export function openingSpan(
   wall: Pick<PlanWall, 'points' | 'closed'>,
   opening: Pick<PlanOpening, 'at' | 'width'>,
 ): { from: number; to: number } {
   const length = wallLength(wall);
-  const width = Math.min(opening.width, length);
-  const middle = Math.max(width / 2, Math.min(length - width / 2, opening.at));
+  const { index, list } = sideAt(wall, Math.max(0, Math.min(length, opening.at)));
+  const side = list[index] ?? { from: 0, to: length };
+  const width = Math.min(opening.width, side.to - side.from);
+  const middle = Math.max(side.from + width / 2, Math.min(side.to - width / 2, opening.at));
   return { from: middle - width / 2, to: middle + width / 2 };
+}
+
+/** The length of the side of its wall an opening sits on, in view units: its widest. */
+export function openingSide(
+  wall: Pick<PlanWall, 'points' | 'closed'>,
+  opening: Pick<PlanOpening, 'at'>,
+): number {
+  const { index, list } = sideAt(wall, Math.max(0, Math.min(wallLength(wall), opening.at)));
+  const side = list[index];
+  return side ? side.to - side.from : 0;
 }
 
 /**

@@ -59,7 +59,7 @@ const view = (p: Point): Point => ({ x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H 
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
 type WallGesture =
-  | { kind: 'corner'; wall: PlanWall; index: number }
+  | { kind: 'corner'; wall: PlanWall; index: number; openings: PlanOpening[] }
   | { kind: 'opening'; wall: PlanWall; opening: PlanOpening };
 
 /** "3.00 m": a length in view units read in metres through the plan's scale. */
@@ -301,10 +301,17 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
     const handle = target.closest<SVGElement>('[data-corner]');
     const picked = ed.wallSel;
     if (handle && picked?.kind === 'walls') {
-      const wall = walls.find((w) => w.id === picked.id);
+      // As stored when the drag starts: each move is computed from them, never from the last
+      // move's preview, so the openings do not creep along the wall.
+      const wall = ed.drawn.walls?.find((w) => w.id === picked.id);
       if (wall) {
         ed.store.undo.stopCapturing();
-        gesture.current = { kind: 'corner', wall, index: Number(handle.dataset.corner) };
+        gesture.current = {
+          kind: 'corner',
+          wall,
+          index: Number(handle.dataset.corner),
+          openings: (ed.drawn.openings ?? []).filter((o) => o.wall === wall.id),
+        };
         return true;
       }
     }
@@ -329,7 +336,7 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
     const g = gesture.current;
     if (g?.kind === 'corner') {
       const to = view(opts.snapped(p01));
-      const next = moveWallCorner(g.wall, g.index, to, shown.openings ?? []);
+      const next = moveWallCorner(g.wall, g.index, to, g.openings);
       ed.setWallPreview({ walls: [next.wall], openings: next.openings });
       return true;
     }

@@ -27,6 +27,8 @@ import {
   moveWallCorner,
   openingCorners,
   openingPlace,
+  openingSide,
+  openingSpan,
   sideAngle,
   snapWallEnd,
   toWallPoints,
@@ -95,6 +97,17 @@ describe('placing openings', () => {
       closed: false,
     };
     expect(openingPlace(short, { x: 5, y: 0 }, 80)).toBeCloseTo(20, 0);
+  });
+
+  it('keeps a gap on its side: wider than the side it fills it, never round a corner', () => {
+    // Side 0 is 400 long: 600 wide at 200 would cross the corner into side 1.
+    const span = openingSpan(room, { at: 200, width: 600 });
+    expect(span.from).toBeCloseTo(0, 0);
+    expect(span.to).toBeCloseTo(400, 0);
+    // A middle written near a corner is drawn moved off it, on its own side.
+    const near = openingSpan(room, { at: 390, width: 80 });
+    expect(near.to).toBeLessThanOrEqual(400.5);
+    expect(openingSide(room, { at: 550 })).toBeCloseTo(300, 0);
   });
 
   it('measures the gap from the two corners of its side', () => {
@@ -209,6 +222,10 @@ describe('reusing the set of another plan', () => {
     addPlanIcon(doc, source, { kind: 'fresnel', color: '#EDD963', x: 200, y: 200 });
     addPlanIcon(doc, source, { kind: 'camera', color: '#9DB8F2', x: 300, y: 300 });
     addPlanIcon(doc, source, { kind: 'actor', color: '#B897F0', x: 400, y: 400 });
+    // An actor seated on the Set's table and a practical standing on it: theirs, not the Set's.
+    const table = plan(source).icons?.find((i) => i.kind === 'table')?.id as string;
+    addPlanIcon(doc, source, { kind: 'actor', color: '#B897F0', x: 100, y: 100, on: table });
+    addPlanIcon(doc, source, { kind: 'practical', color: '#EDD963', x: 100, y: 100, on: table });
     const target = add('plan', {});
     const copied = copySetLayer(doc, plan(source), target.id);
     const after = plan(target.id);
@@ -217,8 +234,10 @@ describe('reusing the set of another plan', () => {
     expect(after.openings?.[0]?.wall).toBe(after.walls?.[0]?.id);
     expect(after.icons?.map((i) => i.kind)).toEqual(['table']);
     expect(copied).toHaveLength(1);
+    // Nothing attached from another layer comes along, and no copy points at what was not copied.
+    expect(after.icons?.every((i) => !i.on)).toBe(true);
     // The source keeps everything.
-    expect(plan(source).icons).toHaveLength(4);
+    expect(plan(source).icons).toHaveLength(6);
     addPlanWall(doc, target.id, wall);
     expect(plan(target.id).walls).toHaveLength(2);
   });
