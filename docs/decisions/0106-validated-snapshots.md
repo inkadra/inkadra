@@ -102,8 +102,9 @@ is not detected: a checksum of the text would cost most of the gain.
 
 ## Consequences
 
-- Without a JIT a read from a matching snapshot is about three times faster than validating with
-  0104's check on the medium board (numbers in the pull request); with a JIT it gains nothing, so
+- Without a JIT a read from a matching snapshot is about 2.8 times faster than validating with
+  0104's check on the medium board and 2.5 on the large one (numbers in the pull request; hashing
+  every bit of the ids cost a little of the first version's 3.1); with a JIT it gains nothing, so
   the web app does not use it. A snapshot is about 10 MB for the medium board (the validated
   strokes are the bulk), and exporting it is one block of about 0.18 s without a JIT.
 - The first edit of a drawn card after an open from a snapshot checks that card's strokes once.

@@ -90,6 +90,6 @@ nothing else needs the thread, not at every edit. There is no size limit on the 
 stores snapshots where something else could make them huge must not use them.
 
 Without a JIT, opening the medium reference board from a matching snapshot reads the cards about
-three times faster than validating them; the first edit of each drawn card afterwards checks that
+2.8 times faster than validating them; the first edit of each drawn card afterwards checks that
 card's strokes once. With a JIT validating is as fast as the snapshot, so a browser does not need
 one.
