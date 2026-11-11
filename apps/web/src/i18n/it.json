@@ -2625,6 +2625,8 @@
     "callShort": "Conv.",
     "character": "Personaggio",
     "sun": "Alba · Tramonto (Loc. {{n}})",
+    "sunAddress": "Alba · Tramonto (indirizzo)",
+    "address": "Indirizzo",
     "sunrise": "Alba",
     "sunset": "Tramonto",
     "you": "(tu)",
@@ -2734,7 +2736,7 @@
     "count_other": "{{count}} progetti"
   },
   "onboarding": {
-    "guidedSetup": "Configurazione guidata",
+    "guidedSetup": "Primi passi",
     "title": "Nuovo progetto",
     "firstTitle": "Il tuo primo progetto",
     "subtitle": "Scegli le date e invita il team. Potrai cambiare tutto dopo.",
@@ -4396,7 +4398,7 @@
           },
           "2": {
             "title": "Disegna un blocco",
-            "text": "Trascina sul vuoto per disegnare un blocco a scatti di 5 minuti, poi scegline il tipo (tasti 1–5). Da tastiera: N aggiunge un blocco dopo quello selezionato."
+            "text": "Trascina sul vuoto per disegnare un blocco a scatti di 5 minuti, poi scegline il tipo (tasti 1–5). Da tastiera: Nella vista Giorno c’è anche «Blocco» nella barra. Da tastiera: N aggiunge un blocco dopo quello selezionato, o in fondo al giorno."
           },
           "3": {
             "title": "Sposta un giorno intero",
@@ -5353,6 +5355,7 @@
     "characterLabel": "Scheda personaggio",
     "optionalTag": "facoltativa",
     "characterHint": "Nessuna. Il nome nella scaletta basta per la convocazione; collega una scheda solo se ha costume e riferimenti.",
+    "characterNone": "Ancora nessuna scheda personaggio nel progetto. Non serve: un ruolo uguale al nome nella scaletta basta per la convocazione.",
     "link": "Collega",
     "unlinkShort": "Scollega",
     "accountHint": "Collega un account per mandare la convocazione sul telefono e chiedere la conferma della presenza.",

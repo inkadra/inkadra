@@ -19,6 +19,7 @@ import { fetchExportSettings, logoUrl } from '../export/settings.ts';
 import { kitList } from '../plan/kit.ts';
 import { PlanDrawing, type PlanLike } from '../plan/PlanDrawing.tsx';
 import {
+  dayAddress,
   departmentNotes,
   keyTimes,
   locationsOfDay,
@@ -211,16 +212,20 @@ export function CallSheetModal({
   const departments = day ? departmentNotes(day) : [];
   const times = day ? keyTimes(day) : [];
   const locations = day ? locationsOfDay(day, elements) : [];
+  const address = day ? dayAddress(day, elements) : null;
   // The day's own place, with the map link of its Location field, for the phone's map button.
   const dayPlace = day?.location.trim()
     ? locationsOfDay({ ...day, blocks: [] }, elements)[0]
     : undefined;
-  const sun = day ? sunOfDay(day, locations, timeZone) : null;
+  const sun = day ? sunOfDay(day, locations, timeZone, address) : null;
   const sunCell = sun && (sun.sunrise !== null || sun.sunset !== null);
   const sunClock = (time: number | null) => (time === null ? '—' : clockLabel(time));
   // Film days name a character per row; a spot names the people themselves.
   const cards = calls.map((call) => castCard(call.name, call.entry, elements, characters));
-  const named = cards.some(Boolean);
+  // A crew row matched by its role (decision 0092) also makes the row a character.
+  const named =
+    cards.some(Boolean) ||
+    calls.some((c) => c.entry && castNameKey(c.entry.member.name) !== castNameKey(c.name));
   const serve = day ? serveLines(day, elements) : new Map<string, string>();
   const numbered = slots.some(
     ({ block }) =>
@@ -241,7 +246,7 @@ export function CallSheetModal({
     troupe: troupe.length > 0,
     schedule: true,
     cast: calls.length > 0,
-    location: locations.length > 0,
+    location: locations.length > 0 || !!address,
     departments: departments.length > 0,
     needed: needed.length > 0,
     notes: !!day?.notes.trim(),
@@ -416,13 +421,45 @@ export function CallSheetModal({
                         </Fact>
                       </>
                     ) : (
-                      <Fact label={t('callSheet.sun', { n: sun.location })} strong wide>
+                      <Fact
+                        label={
+                          sun.location
+                            ? t('callSheet.sun', { n: sun.location })
+                            : t('callSheet.sunAddress')
+                        }
+                        strong
+                        wide
+                      >
                         {sunClock(sun.sunrise)} · {sunClock(sun.sunset)}
                       </Fact>
                     ))}
                 </dl>
                 {show('location') && (
                   <SheetSection title={t('callSheet.location')}>
+                    {/* Where the crew goes, when the scenes name their own places (P1). */}
+                    {address && (
+                      <div className="sheet__location">
+                        <p className="sheet__place">
+                          <span className="sheet__location-badge">{t('callSheet.address')}</span>{' '}
+                          {address.name}
+                        </p>
+                        {address.address && (
+                          <p className="sheet__muted sheet__pre">{address.address}</p>
+                        )}
+                        {/* On a phone, the same Maps button as the day's place (#577). */}
+                        {isPhone && (
+                          <MapsLink
+                            url={address.mapUrl}
+                            location={[address.name, address.address].filter(Boolean).join('\n')}
+                          />
+                        )}
+                        {!isPhone && address.mapUrl && /^https?:\/\//i.test(address.mapUrl) && (
+                          <a href={address.mapUrl} target="_blank" rel="noopener noreferrer">
+                            {t('story.location.openMap')}
+                          </a>
+                        )}
+                      </div>
+                    )}
                     {locations.map((location, n) => (
                       <div key={location.name} className="sheet__location">
                         <p className="sheet__place">
@@ -434,7 +471,8 @@ export function CallSheetModal({
                         {location.address && (
                           <p className="sheet__muted sheet__pre">{location.address}</p>
                         )}
-                        {isPhone && !location.mapUrl && dayPlace && (
+                        {/* The day's place, unless its own Address line above already opens it. */}
+                        {isPhone && !location.mapUrl && dayPlace && !address && (
                           <MapsLink
                             url={dayPlace.mapUrl}
                             location={[dayPlace.name, dayPlace.address].filter(Boolean).join('\n')}

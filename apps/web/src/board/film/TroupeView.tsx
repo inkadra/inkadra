@@ -17,10 +17,19 @@ import {
   EmptyState,
   RadioGroup,
 } from '@inkadra/ui';
-import { Activity, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  Activity,
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { useIsPhone } from '../../lib/phone.ts';
+import { SessionContext } from '../../lib/session-context.ts';
 import { PeoplePicker } from '../../people/PeoplePicker.tsx';
 import { ContextMenu } from '../chrome.tsx';
 import type { BoardStore } from '../store.ts';
@@ -460,6 +469,7 @@ function CrewPanel({
   onRemove: () => void;
 }) {
   const { t } = useTranslation();
+  const user = useContext(SessionContext)?.user;
   const id = useId();
   const [draft, setDraft] = useState(inputOf(row));
   // Saves run one after another, each with the revision the previous one returned, so a quick
@@ -598,8 +608,14 @@ function CrewPanel({
                   </small>
                 </>
               ) : (
-                <small>
-                  {draft.character ? t('troupe.characterUnavailable') : t('troupe.characterHint')}
+                <small id={`${id}-character-hint`}>
+                  {t(
+                    draft.character
+                      ? 'troupe.characterUnavailable'
+                      : characters.length
+                        ? 'troupe.characterHint'
+                        : 'troupe.characterNone',
+                  )}
                 </small>
               )}
             </div>
@@ -617,7 +633,7 @@ function CrewPanel({
                 className="ink-btn ink-btn--secondary"
                 aria-haspopup="menu"
                 aria-expanded={!!pickCharacter}
-                aria-describedby={`${id}-character`}
+                aria-describedby={`${id}-character ${id}-character-hint`}
                 disabled={!characters.length}
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -690,6 +706,11 @@ function CrewPanel({
               inputClassName="ink-input"
               id={`${id}-account`}
               aria-label={t('troupe.account')}
+              // The search leaves out whoever searches; a director on the crew links themselves.
+              include={
+                user ? [{ id: user.id, name: user.name, image: user.image, email: user.email }] : []
+              }
+              empty={t('troupe.noResults')}
               value={accountQuery}
               onChange={setAccountQuery}
               onBlur={() => {

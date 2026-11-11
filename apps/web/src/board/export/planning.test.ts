@@ -75,6 +75,61 @@ describe('call sheet pages', () => {
   });
 });
 
+describe("the day's Location beside the scene locations", () => {
+  it('prints the address the crew needs before the numbered scene locations', () => {
+    const elements = new Map<string, Element>([
+      [
+        'scene0001',
+        {
+          id: 'scene0001',
+          type: 'scene',
+          number: '1',
+          location: 'Scogliera',
+        } as unknown as Element,
+      ],
+      ['frame0001', { id: 'frame0001', type: 'frame', parent: 'scene0001' } as unknown as Element],
+    ]);
+    const shotBlocks: ShootingDay['blocks'] = [
+      {
+        id: 'b1',
+        type: 'shot',
+        title: '',
+        start: null,
+        duration: 30,
+        shotId: 'frame0001',
+        cast: [],
+        departments: [],
+      },
+    ];
+    const sections = callSheetSections(
+      day('2026-11-21', { location: 'Faro\nVia del Faro', blocks: shotBlocks }),
+      () => '1A',
+      t,
+      elements,
+    );
+    expect(sections.find((s) => s.title === 'callSheet.location')?.rows).toEqual([
+      ['callSheet.address', 'Faro\nVia del Faro'],
+      ['callSheet.locationNumber{"n":1}', 'Scogliera'],
+    ]);
+    // A location card named like the day's place, but empty, keeps the day's address.
+    elements.set('loc00001', {
+      id: 'loc00001',
+      type: 'location',
+      name: 'Faro',
+    } as unknown as Element);
+    const again = callSheetSections(
+      day('2026-11-21', { location: 'Faro\nVia del Faro', blocks: shotBlocks }),
+      () => '1A',
+      t,
+      elements,
+    );
+    expect(again.find((s) => s.title === 'callSheet.location')?.rows[0]).toEqual([
+      'callSheet.address',
+      'Faro\nVia del Faro',
+    ]);
+  });
+});
+
 describe('the crew on the call sheet (decision 0092)', () => {
   const person = (n: number, extra: Partial<CrewMember>): CrewMember => ({
     id: `00000000-0000-4000-8000-00000000000${n}`,

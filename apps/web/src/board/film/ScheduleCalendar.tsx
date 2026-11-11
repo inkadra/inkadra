@@ -17,7 +17,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { formatClock } from '../../lib/datetime.ts';
 import { ContextMenu } from '../chrome.tsx';
-import { isMac } from '../shortcuts.ts';
+import { insideDialog, isMac, isTyping } from '../shortcuts.ts';
 import {
   addDays,
   drawnRange,
@@ -654,6 +654,19 @@ export function ScheduleCalendar({
     requestAnimationFrame(() =>
       root.current?.querySelector<HTMLElement>(`[data-day-head="${CSS.escape(id)}"]`)?.focus(),
     );
+  /** N: a new block after the last one of `column`, through the same type menu as a drag. */
+  const newBlockIn = (column: CalendarColumn, anchor: HTMLElement) => {
+    const { entry } = column;
+    if (entry?.stale) return;
+    const start = entry
+      ? Math.max(
+          clockMinutes(entry.draft.callTime),
+          ...scheduleTimes(entry.draft).map((slot) => slot.end),
+        )
+      : firstCall;
+    reveal(start);
+    openCreating(columnKey(column), start, start + 30, anchor.getBoundingClientRect(), anchor);
+  };
   const onHeadKey = (event: KeyboardEvent<HTMLElement>, column: CalendarColumn) => {
     const { entry } = column;
     if (readOnly || event.ctrlKey || event.metaKey) return;
@@ -664,23 +677,43 @@ export function ScheduleCalendar({
       focusHead(entry.day.id);
     } else if (event.key.toLowerCase() === 'n' && !event.altKey) {
       event.preventDefault();
-      if (entry?.stale) return;
-      const start = entry
-        ? Math.max(
-            clockMinutes(entry.draft.callTime),
-            ...scheduleTimes(entry.draft).map((slot) => slot.end),
-          )
-        : firstCall;
-      reveal(start);
-      openCreating(
-        columnKey(column),
-        start,
-        start + 30,
-        event.currentTarget.getBoundingClientRect(),
-        event.currentTarget,
-      );
+      newBlockIn(column, event.currentTarget);
     }
   };
+  // N anywhere in the schedule, not only on a block or a heading: after the selected day's last
+  // block, else the first day on screen. Blocks and headings handle it first (defaultPrevented).
+  const keyN = useRef<(event: globalThis.KeyboardEvent) => void>(() => {});
+  keyN.current = (event) => {
+    if (readOnly || creating || event.defaultPrevented || event.key.toLowerCase() !== 'n') return;
+    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+    if (isTyping(event.target) || insideDialog(event.target)) return;
+    const view = root.current?.closest<HTMLElement>('.schedule');
+    // A view kept mounted behind another one is inert.
+    if (!view || view.closest('[inert]')) return;
+    const target = event.target;
+    if (target !== document.body && !(target instanceof Node && view.contains(target))) return;
+    // A block or a day's heading opens its own menu.
+    if (target instanceof Element && target.closest('[data-block], [data-day-head]')) return;
+    const column =
+      columns.find((c) => c.entry && c.entry.day.id === selectedDay) ??
+      columns.find((c) => c.entry) ??
+      columns[0];
+    if (!column) return;
+    const anchor =
+      (column.entry &&
+        root.current?.querySelector<HTMLElement>(
+          `[data-day-head="${CSS.escape(column.entry.day.id)}"]`,
+        )) ||
+      columnRefs.current.get(columnKey(column));
+    if (!anchor) return;
+    event.preventDefault();
+    newBlockIn(column, anchor);
+  };
+  useEffect(() => {
+    const onKey = (event: globalThis.KeyboardEvent) => keyN.current(event);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const movingEntry = dayDrag?.active ? days.find((d) => d.day.id === dayDrag.id) : undefined;
   const dayTarget =
     movingEntry && dayDrag?.target !== movingEntry.draft.date ? (dayDrag?.target ?? null) : null;

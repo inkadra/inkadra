@@ -11,6 +11,7 @@ import {
   castName,
   defaultOptions,
   MAX_IMPORT_FRAMES,
+  placeName,
   planImport,
   sceneNumbers,
 } from './plan.ts';
@@ -111,6 +112,14 @@ describe('planImport', () => {
       'Hall (Flashback)',
       'Yard',
     ]);
+  });
+
+  it('keeps the small words of a scene name in lower case', () => {
+    expect(placeName('FARO, SCALA A CHIOCCIOLA')).toBe('Faro, Scala a Chiocciola');
+    expect(placeName('STANZA DELLA LAMPADA')).toBe('Stanza della Lampada');
+    expect(placeName('LA SCOGLIERA')).toBe('La Scogliera');
+    expect(placeName('HOUSE OF THE RISING SUN')).toBe('House of the Rising Sun');
+    expect(placeName('Casa Di Mario')).toBe('Casa Di Mario');
   });
 
   it('writes names in title case', () => {

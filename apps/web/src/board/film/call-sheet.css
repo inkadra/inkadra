@@ -681,6 +681,10 @@
 .sheet__table th {
   white-space: normal;
 }
+/* A heading breaks between words only: the place column is as wide as "Luogo" needs. */
+.sheet__table--schedule th {
+  overflow-wrap: normal;
+}
 .sheet__reference {
   width: 64px;
 }

@@ -15,14 +15,39 @@
   transform: scaleX(-1);
 }
 .schedule__range {
+  /* A zero basis keeps the bar from wrapping for it, and it grows back to its full text, before
+     the spacer, when there is room; it is cut only when even the folded buttons do not fit. */
+  flex: 1000 1 0;
+  min-width: 0;
+  max-width: max-content;
   margin: 0 6px 0 2px;
+  overflow: hidden;
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.01em;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .schedule__range::first-letter {
   text-transform: uppercase;
+}
+/* The Day view's bar also holds Block: the call sheet button folds to its icon before the date
+   is cut, so "Domenica 22 novembre 2026" stays whole at 1280 px beside the sidebar. */
+.schedule--day .schedule__bar {
+  container: schedule-bar / inline-size;
+}
+@container schedule-bar (width < 1120px) {
+  .schedule__callsheet-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .schedule__callsheet.ink-btn {
+    padding-inline: 8px;
+  }
 }
 .schedule__status {
   display: inline-flex;

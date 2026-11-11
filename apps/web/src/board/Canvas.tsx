@@ -12,6 +12,7 @@ import {
   boundViewport,
   bringToFront,
   centerOn,
+  claimSpot,
   clampZoom,
   containsPoint,
   copyElements,
@@ -24,6 +25,8 @@ import {
   fillTable,
   fitRect,
   frameLabels,
+  freeSpot,
+  freeSpots,
   GRID,
   type Guide,
   gestureArea,
@@ -197,6 +200,15 @@ const DRAG_THRESHOLD = 3;
 /** Controls inside cards, which take the pointer instead of the canvas. */
 const INTERACTIVE = 'input, textarea, select, button, a, [contenteditable="true"], [data-no-drag]';
 const SNAP_PX = 6;
+/** Room kept for a new card while its height is unknown: a link, an image or a map end up so tall. */
+const NEW_HEIGHT = 240;
+/** New cards that stay shorter, so they still fit between others. */
+const NEW_SHORT: Partial<Record<string, number>> = {
+  board: 66,
+  section: 44,
+  color: 120,
+  table: 96,
+};
 /** Extra world around the screen that stays rendered, so short pans show no gaps. */
 const OVERSCAN_PX = 400;
 /** Below this zoom, text is too small to read: cards are drawn as plain shapes. */
@@ -953,42 +965,21 @@ export function Canvas({
   }, []);
 
   /** A free spot near the middle of the view, so new cards do not land on each other. */
+  /** The part of the board on screen, clear of the floating panels and the toolbar below. */
+  const onScreen = useCallback((): Rect => {
+    const inset = freeInset.current;
+    const from = screenToWorld(vp.current, { x: inset.left + 16, y: Math.max(inset.top, 56) + 16 });
+    const to = screenToWorld(vp.current, { x: size.w - 16, y: size.h - 112 });
+    return { x: from.x, y: from.y, w: Math.max(0, to.x - from.x), h: Math.max(0, to.y - from.y) };
+  }, [size]);
   const center = useCallback(
-    (w = 240): Point => {
+    (w = 240, h = NEW_HEIGHT): Point => {
       const c = screenToWorld(vp.current, { x: size.w / 2, y: size.h / 2 });
-      const start = { x: c.x - w / 2, y: c.y - 60 };
       const rects = store.getSnapshot().canvas.map(liveRect);
-      const free = (x: number, y: number) =>
-        !rects.some((r) => intersects(inflate(r, 12), { x, y, w, h: 120 }));
-      // Down and to the right first, as cards cascade…
-      for (let i = 0; i < 12; i++) {
-        const at = { x: start.x + i * 32, y: start.y + i * 32 };
-        if (free(at.x, at.y)) return at;
-      }
-      // …then the nearest free spot in growing rings, so a crowded middle never stacks cards.
-      for (let ring = 1; ring <= 40; ring++) {
-        let best: Point | undefined;
-        let bestDistance = Number.POSITIVE_INFINITY;
-        for (let i = -ring; i <= ring; i++) {
-          for (const [dx, dy] of [
-            [i, -ring],
-            [i, ring],
-            [-ring, i],
-            [ring, i],
-          ] as const) {
-            const at = { x: start.x + dx * 32, y: start.y + dy * 32 };
-            const distance = dx * dx + dy * dy;
-            if (distance < bestDistance && free(at.x, at.y)) {
-              best = at;
-              bestDistance = distance;
-            }
-          }
-        }
-        if (best) return best;
-      }
-      return start;
+      const start = { x: c.x - w / 2, y: c.y - 60 };
+      return freeSpot(start, { w, h }, rects, onScreen());
     },
-    [size, store, liveRect],
+    [size, store, liveRect, onScreen],
   );
 
   // Edits ---------------------------------------------------------------------
@@ -1007,7 +998,7 @@ export function Canvas({
   const insertCanvas = useCallback(
     async (kind: 'board' | 'storyboard' = 'board', at?: Point) => {
       if (readOnly) return;
-      const pos = place(at ?? center(DEFAULT_WIDTH.board));
+      const pos = place(at ?? center(DEFAULT_WIDTH.board, NEW_SHORT.board));
       try {
         const board = await createBoard(
           projectId,
@@ -1066,7 +1057,7 @@ export function Canvas({
       const card = createElement(
         doc,
         'board',
-        place(center(DEFAULT_WIDTH.board)),
+        place(center(DEFAULT_WIDTH.board, NEW_SHORT.board)),
         { boardId: board.id },
         { userId, origin: LOCAL },
       );
@@ -1099,7 +1090,9 @@ export function Canvas({
   const add = useCallback(
     async (type: ToolType, at?: Point) => {
       if (readOnly) return;
-      const pos = place(at ?? center(DEFAULT_WIDTH[type as Element['type']] ?? 240));
+      const pos = place(
+        at ?? center(DEFAULT_WIDTH[type as Element['type']] ?? 240, NEW_SHORT[type] ?? NEW_HEIGHT),
+      );
       const opts = { userId, origin: LOCAL };
       store.undo.stopCapturing();
       let created: Element | null = null;
@@ -1190,9 +1183,20 @@ export function Canvas({
           store.undo.stopCapturing();
         });
       };
+      // Several files: each card gets its own free spot near the first, never on another card.
+      const spots =
+        accepted.length > 1
+          ? freeSpots(
+              at,
+              accepted.map(() => ({ w: DEFAULT_WIDTH.image, h: NEW_HEIGHT })),
+              store.getSnapshot().canvas.map(liveRect),
+              onScreen(),
+            )
+          : [at];
+      // The cards on the board now: a card made later in a planned spot is checked against them.
+      const before = new Set(store.getSnapshot().canvas.map((el) => el.id));
       accepted.forEach((file, i) => {
-        const step = magnetRef.current ? GRID : 24;
-        const pos = place({ x: at.x + i * step, y: at.y + i * step });
+        const pos = place(spots[i] ?? at);
         const type = file.type.startsWith('image/') && !isDesignFile(file.name) ? 'image' : 'file';
         const detection = type === 'file' ? detectScreenplay(file) : Promise.resolve(null);
         const rememberScript = (id: string) => {
@@ -1217,7 +1221,19 @@ export function Canvas({
               settled();
               return;
             }
-            const el = createElement(doc, type, pos, { assetId }, { userId, origin: LOCAL });
+            // Another upload or a collaborator may have taken the spot since it was planned.
+            const cards = store
+              .getSnapshot()
+              .canvas.map((card) => ({ ...liveRect(card), id: card.id }));
+            const size = { w: DEFAULT_WIDTH[type], h: NEW_HEIGHT };
+            const spot = claimSpot(pos, size, cards, before, onScreen());
+            const el = createElement(
+              doc,
+              type,
+              spot === pos ? pos : place(spot),
+              { assetId },
+              { userId, origin: LOCAL },
+            );
             store.undo.stopCapturing();
             if (i === 0) select([el.id]);
             created.push(el.id);
@@ -1245,7 +1261,21 @@ export function Canvas({
         });
       });
     },
-    [readOnly, projectId, boardId, doc, userId, store, select, t, instance, place, summarize],
+    [
+      readOnly,
+      projectId,
+      boardId,
+      doc,
+      userId,
+      store,
+      select,
+      t,
+      instance,
+      place,
+      summarize,
+      liveRect,
+      onScreen,
+    ],
   );
 
   /** A map card from a map link or a typed address; the server finds the place and its map. */

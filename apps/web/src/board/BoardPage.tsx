@@ -307,7 +307,11 @@ function BoardScreen({
   const navigate = useNavigate();
   const { user } = useSession();
   // The sidebar's rule for the film links, so the header tabs never disagree with it.
-  const { filmLinks } = useProjects();
+  const { filmLinks, projects } = useProjects();
+  // The project's dates for the schedule. The page waits for the list; a grant on one board has
+  // no project in it, so its dates are unavailable rather than loading forever.
+  const listed = projects?.find((p) => p.id === projectId);
+  const datesStatus = !projects ? 'loading' : listed ? 'ready' : 'unavailable';
   const { items: boards, error: boardsError } = useProjectBoards(projectId);
   const conn = useBoardConnection(boardId);
   useEffect(() => {
@@ -927,6 +931,8 @@ function BoardScreen({
             projectName={projectName}
             projectId={projectId}
             timeZone={shootingZone(projectTimeZone)}
+            shootingStart={listed?.shootingStart}
+            datesStatus={datesStatus}
             canEditCrew={!!projectRole && atLeast(projectRole, 'editor')}
             boardId={boardId}
             userId={user.id}

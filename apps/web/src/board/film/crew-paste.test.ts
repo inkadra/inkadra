@@ -13,6 +13,12 @@ describe('crew paste', () => {
       status: 'new',
     });
   });
+  it('drops a separator left at the end of the line', () => {
+    expect(parseCrewPaste('Paolo Riva · Fonico · ')[0]).toMatchObject({
+      name: 'Paolo Riva',
+      role: 'Fonico',
+    });
+  });
   it('finds phones in any column and preserves free roles', () => {
     expect(parseCrewPaste('+44 123 456 7890;Anna Rossi;Modella · linea donna')[0]).toMatchObject({
       name: 'Anna Rossi',

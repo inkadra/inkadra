@@ -191,6 +191,21 @@ describe('PresentationView', () => {
     expect(host.querySelector('.present-stage__location')?.textContent).toBe('Milano');
   });
 
+  it('names the setting and time of day with the translated labels', async () => {
+    const { doc, store } = setup();
+    const scene = addScene(
+      doc,
+      { number: '1', title: 'Scogliera', setting: 'ext', time: 'dawn' },
+      { userId: 'u1' },
+    );
+    addFrame(doc, scene.id, null, { action: 'Alba' }, { userId: 'u1' });
+    const host = await mount(view(store));
+    const heading = host.querySelector('.present-stage__heading')?.textContent ?? '';
+    // Translations are keys here: the raw "EXT" and "DAWN" must not show.
+    expect(heading).toContain('FILM.SCENE.SETTINGS.EXT');
+    expect(heading).toContain('FILM.SCENE.TIMES.DAWN');
+  });
+
   it('only presents the frames it is given (scene filter / guest visibility)', async () => {
     const { doc, store } = setup();
     const a = addScene(doc, { title: 'Visibile' }, { userId: 'u1' });

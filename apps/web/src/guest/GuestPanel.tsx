@@ -140,7 +140,13 @@ export function GuestPanel({
       )}
 
       {selected ? (
-        <CardSection key={selected.id} element={selected} title={label(selected)} />
+        <CardSection
+          key={selected.id}
+          element={selected}
+          title={label(selected)}
+          // The picker above already shows its name: the heading stays for screen readers only.
+          picked={cards.length > 0}
+        />
       ) : (
         <>
           <section className="guest-panel__section">
@@ -168,7 +174,15 @@ export function GuestPanel({
   );
 }
 
-function CardSection({ element, title }: { element: GuestElement; title: string }) {
+function CardSection({
+  element,
+  title,
+  picked,
+}: {
+  element: GuestElement;
+  title: string;
+  picked: boolean;
+}) {
   const { t } = useTranslation();
   const actions = useGuestActions();
   const { rights } = actions;
@@ -179,7 +193,10 @@ function CardSection({ element, title }: { element: GuestElement; title: string 
   return (
     <>
       <section className="guest-panel__section" aria-labelledby={`card-${element.id}`}>
-        <h2 id={`card-${element.id}`} className="guest-panel__card-title">
+        <h2
+          id={`card-${element.id}`}
+          className={`guest-panel__card-title${picked ? ' ink-sr-only' : ''}`}
+        >
           {title}
         </h2>
         <p className="ink-muted guest-panel__type">{t(`board.types.${element.type}`)}</p>

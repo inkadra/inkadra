@@ -2625,6 +2625,8 @@
     "callShort": "Conv.",
     "character": "Personnage",
     "sun": "Lever · Coucher du soleil (Loc. {{n}})",
+    "sunAddress": "Lever · Coucher du soleil (adresse)",
+    "address": "Adresse",
     "sunrise": "Lever du soleil",
     "sunset": "Coucher du soleil",
     "you": "(vous)",
@@ -2734,7 +2736,7 @@
     "count_other": "{{count}} projets"
   },
   "onboarding": {
-    "guidedSetup": "Configuration guidée",
+    "guidedSetup": "Premiers pas",
     "title": "Nouveau projet",
     "firstTitle": "Votre premier projet",
     "subtitle": "Choisissez les dates et invitez l’équipe. Vous pourrez tout changer plus tard.",
@@ -4396,7 +4398,7 @@
           },
           "2": {
             "title": "Dessiner un bloc",
-            "text": "Glissez sur un temps libre pour dessiner un bloc par pas de 5 minutes, puis choisissez son type (touches 1–5). Au clavier, N ajoute un bloc après celui sélectionné."
+            "text": "Glissez sur un temps libre pour dessiner un bloc par pas de 5 minutes, puis choisissez son type (touches 1–5). La vue Day a aussi « Block » dans la barre. Au clavier, N ajoute un bloc après celui sélectionné, ou à la fin de la journée."
           },
           "3": {
             "title": "Déplacer une journée entière",
@@ -5353,6 +5355,7 @@
     "characterLabel": "Fiche personnage",
     "optionalTag": "facultative",
     "characterHint": "Aucune. Le nom dans le déroulé suffit pour la convocation ; liez une fiche seulement si elle a costume et références.",
+    "characterNone": "Pas encore de fiche personnage dans le projet. Pas besoin : un rôle identique au nom dans le déroulé suffit pour la convocation.",
     "link": "Lier",
     "unlinkShort": "Délier",
     "accountHint": "Liez un compte pour envoyer la convocation sur son téléphone et demander une confirmation.",

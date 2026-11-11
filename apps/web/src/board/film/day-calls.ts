@@ -32,7 +32,7 @@ export interface DayCrewEntry {
   ownPickup: string | null;
   /** First block with them in its cast. */
   scene: { start: number; blockId: string } | null;
-  /** The cast names of the blocks that are theirs: their name or their character's. */
+  /** The cast names of the blocks that are theirs: their name, their character's or their role. */
   names: string[];
 }
 
@@ -80,6 +80,39 @@ export function castCard(
   return linked && castNameKey(linked.name) === castNameKey(name) ? linked : undefined;
 }
 
+/**
+ * The cast names of each crew row (decisions 0092, 0095): its own name and its linked card's
+ * always; the role of a row in Cast only when no row has that name or card, and then for the
+ * first such row by roster position. The server reads the same rule (`crewCastKeys`).
+ */
+export function castKeysOf(
+  crew: readonly CrewMember[],
+  elements: ReadonlyMap<string, Element> = new Map(),
+  characters: readonly CrewCharacter[] = [],
+): Map<string, Set<string>> {
+  const own = new Map(
+    crew.map((member) => [
+      member.id,
+      new Set(
+        [member.name, characterName(member, elements, characters)]
+          .filter((name) => name.trim())
+          .map(castNameKey),
+      ),
+    ]),
+  );
+  const named = new Set([...own.values()].flatMap((keys) => [...keys]));
+  const roles = new Map<string, string>();
+  // Roster order: position, then id, as the server's `crewCastKeys`.
+  const order = (a: CrewMember, b: CrewMember) =>
+    a.position - b.position || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  for (const member of [...crew].sort(order)) {
+    const role = castNameKey(member.department) === 'cast' ? castNameKey(member.role) : '';
+    if (role && !named.has(role) && !roles.has(role)) roles.set(role, member.id);
+  }
+  for (const [role, id] of roles) own.get(id)?.add(role);
+  return own;
+}
+
 export function dayCrew(
   day: ShootingDayInput,
   crew: readonly CrewMember[],
@@ -88,10 +121,9 @@ export function dayCrew(
 ): DayCrewEntry[] {
   const dayCall = clockMinutes(day.callTime);
   const slots = scheduleTimes(day);
+  const castKeys = castKeysOf(crew, elements, characters);
   return crew.map((member) => {
-    const keys = new Set(
-      [member.name, characterName(member, elements, characters)].filter(Boolean).map(castNameKey),
-    );
+    const keys = castKeys.get(member.id) ?? new Set<string>();
     const names = [
       ...new Set(day.blocks.flatMap((b) => b.cast.filter((name) => keys.has(castNameKey(name))))),
     ];
@@ -221,22 +253,24 @@ export function personalDayCall(
 /**
  * Sunrise and sunset at the first location with coordinates: a location card's map link, else a
  * map link in the day's own location text, on the clock of the project (see `sunTimes`). None
- * without coordinates.
+ * without coordinates. `location` is its number on the sheet, 0 for the day's `address`.
  */
 export function sunOfDay(
   day: ShootingDayInput,
   locations: readonly DayLocation[],
   timeZone?: string | undefined,
+  address?: DayLocation | null,
 ) {
   for (const [index, location] of locations.entries()) {
     const coords = location.mapUrl ? locationCoords(location.mapUrl) : null;
     if (coords)
       return { ...sunTimes(day.date, coords.lat, coords.lng, timeZone), location: index + 1 };
   }
-  const coords = locationCoords(day.location);
+  const coords =
+    locationCoords(day.location) ?? (address?.mapUrl ? locationCoords(address.mapUrl) : null);
   if (!coords) return null;
-  // The day's own location is Loc. 1 when the scenes name none.
-  return { ...sunTimes(day.date, coords.lat, coords.lng, timeZone), location: 1 };
+  // The day's own location is Loc. 1 when the scenes name none, else its own Address line.
+  return { ...sunTimes(day.date, coords.lat, coords.lng, timeZone), location: address ? 0 : 1 };
 }
 
 export interface CrewState {

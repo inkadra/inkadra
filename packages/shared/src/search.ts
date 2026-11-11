@@ -9,9 +9,16 @@ import { ProjectRole } from './projects.ts';
  */
 export const SearchQuery = z
   .object({
-    q: z.string().trim().max(200).optional().openapi({
-      description: 'Words to find in titles, notes, captions, shot data and file names.',
-    }),
+    q: z
+      .string()
+      .trim()
+      .max(200)
+      .optional()
+      .openapi({
+        description:
+          'Words to find in titles, notes, captions, shot data and file names; also the crew ' +
+          '(name, role, department; project members only) and the locations of shooting days.',
+      }),
     projectId: Id.optional().openapi({ description: 'Search one project only.' }),
     tag: z.string().trim().min(1).max(40).optional().openapi({
       description: 'Only cards with this tag (compared without case).',
@@ -54,7 +61,9 @@ export const SearchHit = z
       .openapi({
         description:
           'Element type from @inkadra/doc-schema. Clients show types they do not know as plain ' +
-          'results.',
+          'results. Two are not cards: `crew`, a person of the crew (`elementId` is the crew ' +
+          'row, the board the root board), and `shootingDay`, a shooting day found by its ' +
+          'location (`elementId` is the day, `snippet` its date).',
       }),
     title: z.string().openapi({ description: 'Best short label: name, title, shot or file.' }),
     snippet: z.string().nullable().openapi({ description: 'Text around the match.' }),

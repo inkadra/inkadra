@@ -509,6 +509,58 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     expect((await get('owner', '/api/v1/search?q=85mm')).body.items).toHaveLength(1);
   });
 
+  it('finds the crew for project members and the location of shooting days', async () => {
+    const post = (path: string, payload: object) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/v1${path}`,
+        headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+        payload,
+      });
+    const person = await post(`/projects/${projectId}/crew`, {
+      name: 'Paolo Riva',
+      role: 'Fonico',
+      department: 'Suono',
+      phone: '',
+      email: '',
+      pickup: '',
+      notes: '',
+      userId: null,
+      character: null,
+      onSetContact: false,
+      position: 0,
+    });
+    expect(person.statusCode).toBe(201);
+    const day = await post(`/boards/${boardId}/schedule`, {
+      date: '2026-11-21',
+      callTime: '08:00',
+      wrap: null,
+      location: 'https://maps.example.com/x\nFaro di Punta Palascìa',
+      notes: '',
+      blocks: [],
+    });
+    expect(day.statusCode).toBe(201);
+    expect((await get('owner', '/api/v1/search?q=fonico')).body.items).toContainEqual(
+      expect.objectContaining({
+        elementType: 'crew',
+        title: 'Paolo Riva',
+        snippet: 'Fonico · Suono',
+      }),
+    );
+    expect((await get('owner', '/api/v1/search?q=palasc')).body.items).toContainEqual(
+      expect.objectContaining({
+        elementType: 'shootingDay',
+        boardId,
+        title: 'Faro di Punta Palascìa',
+        snippet: '2026-11-21',
+      }),
+    );
+    // A grant on the board finds its days, never the project's roster.
+    expect((await get('guest', '/api/v1/search?q=fonico')).body.items).toEqual([]);
+    expect((await get('guest', '/api/v1/search?q=palasc')).body.items).toHaveLength(1);
+    expect((await get('stranger', '/api/v1/search?q=palasc')).body.items).toEqual([]);
+  });
+
   it('hides boards in the trash', async () => {
     await app.inject({
       method: 'DELETE',

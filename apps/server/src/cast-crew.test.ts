@@ -402,4 +402,79 @@ describe.skipIf(!url)('cast links through the crew (needs DATABASE_URL)', () => 
     const read = await request('owner', 'GET', `/projects/${unset.json().id}`);
     expect(read.json()).not.toHaveProperty('timeZone');
   });
+
+  it('reads the role of a row in Cast as its character', async () => {
+    const double = people.double?.id ?? null;
+    await db.insert(crewMember).values({
+      ...blank,
+      projectId,
+      name: 'Renato De Santis',
+      role: 'Pietro',
+      userId: double,
+      position: 90,
+    });
+    const owner = (
+      await request('owner', 'GET', `/boards/${planBoard}/schedule/attendance`)
+    ).json();
+    expect(owner.links).toContainEqual({ castKey: 'pietro', userId: double });
+    // Linking the character from the presence panel finds that row instead of adding one.
+    const linked = await request('owner', 'PUT', `/boards/${planBoard}/schedule/cast-links`, {
+      name: 'Pietro',
+      userId: double,
+    });
+    expect(linked.statusCode).toBe(204);
+    expect(
+      (await crew()).filter((row) => ['Renato De Santis', 'Pietro'].includes(row.name)),
+    ).toEqual([{ name: 'Renato De Santis', department: 'Cast', userId: double, character: null }]);
+  });
+
+  it('gives a shared role to the first row by position, and a name before any role', async () => {
+    const [first, later, nobody] = [people.grantEditor?.id, people.actor?.id, people.guest?.id];
+    await db.insert(crewMember).values([
+      { ...blank, projectId, name: 'Gianni A', role: 'Giovanni', userId: later!, position: 95 },
+      { ...blank, projectId, name: 'Gianni B', role: 'Giovanni', userId: first!, position: 94 },
+      { ...blank, projectId, name: 'Lucia', position: 96 },
+      { ...blank, projectId, name: 'Lia', role: 'Lucia', userId: nobody!, position: 97 },
+    ]);
+    const links = (await request('owner', 'GET', `/boards/${planBoard}/schedule/attendance`)).json()
+      .links as Array<{ castKey: string; userId: string }>;
+    expect(links.filter((l) => l.castKey === 'giovanni')).toEqual([
+      { castKey: 'giovanni', userId: first },
+    ]);
+    // "Lucia" is somebody's own name: Lia's role does not take it.
+    expect(links.filter((l) => l.castKey === 'lucia')).toEqual([]);
+  });
+
+  it('breaks a tie of positions by id, as the web does', async () => {
+    const [x, y] = [people.actor?.id, people.grantEditor?.id];
+    const made = await db
+      .insert(crewMember)
+      .values([
+        { ...blank, projectId, name: 'Zeno A', role: 'Zaccaria', userId: x!, position: 120 },
+        { ...blank, projectId, name: 'Zeno B', role: 'Zaccaria', userId: y!, position: 120 },
+      ])
+      .returning({ id: crewMember.id, userId: crewMember.userId });
+    const first = [...made].sort((a, b) => (a.id < b.id ? -1 : 1))[0];
+    const links = (await request('owner', 'GET', `/boards/${planBoard}/schedule/attendance`)).json()
+      .links as Array<{ castKey: string; userId: string }>;
+    expect(links.filter((l) => l.castKey === 'zaccaria')).toEqual([
+      { castKey: 'zaccaria', userId: first?.userId },
+    ]);
+  });
+
+  it('never lets a grant on one board learn of a hidden row through its role', async () => {
+    const guest = people.guest?.id ?? null;
+    // The guest's own row plays Bruno; a row the guest cannot see is named Bruno.
+    await db.insert(crewMember).values([
+      { ...blank, projectId, name: 'Ospite', role: 'Bruno', userId: guest, position: 130 },
+      { ...blank, projectId, name: 'Bruno', position: 131 },
+    ]);
+    const own = (await request('guest', 'GET', `/boards/${planBoard}/schedule/attendance`)).json()
+      .links as Array<{ castKey: string; userId: string }>;
+    expect(own).toContainEqual({ castKey: 'bruno', userId: guest });
+    // The team reads the whole roster: there the name comes first.
+    const team = (await request('owner', 'GET', `/boards/${planBoard}/schedule/attendance`)).json()
+      .links as Array<{ castKey: string; userId: string }>;
+    expect(team).not.toContainEqual({ castKey: 'bruno', userId: guest });
+  });
 });

@@ -50,7 +50,13 @@ const ICONS: Record<string, IconName> = {
   arrow: 'arrow',
   character: 'user',
   location: 'pin',
+  // Not cards: a person of the crew and the location of a shooting day.
+  crew: 'people',
+  shootingDay: 'calendar',
 };
+
+/** Results that are no card open a view: the crew the Troupe, a shooting day the Schedule. */
+const HIT_VIEWS: Record<string, string | undefined> = { crew: 'troupe', shootingDay: 'schedule' };
 
 function iconOf(hit: SearchHit): IconName {
   if (hit.kind === 'project') return 'home';
@@ -192,6 +198,12 @@ export function SearchDialog({
     const path = boardPath(hit.projectId, hit.boardId, root);
     if (hit.kind === 'board') {
       navigate(path);
+      return;
+    }
+    // The crew and the shooting days have views of their own.
+    const view = HIT_VIEWS[hit.elementType ?? ''];
+    if (view) {
+      navigate(`${path}?view=${view}`);
       return;
     }
     // Cards open on the canvas, selected; storyboards would open on the storyboard view.

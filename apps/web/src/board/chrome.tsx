@@ -1532,6 +1532,8 @@ export function CommandPalette({
 
 /** How long a toast stays; the pointer or the focus on it pauses the count (#310). */
 export const TOAST_MS = 6000;
+/** A toast that offers Show or Undo stays longer: there is time to read it and then act. */
+export const TOAST_ACTION_MS = 12_000;
 
 export function Toast({
   text,
@@ -1565,7 +1567,8 @@ export function Toast({
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [stale, setStale] = useState(false);
-  const left = useRef(TOAST_MS);
+  const time = onShow || onUndo ? TOAST_ACTION_MS : TOAST_MS;
+  const left = useRef(time);
   const held = hovered || focused;
   useEffect(() => {
     if (held) return;
@@ -1657,7 +1660,7 @@ export function Toast({
             className="toast__bar"
             aria-hidden="true"
             data-held={held || undefined}
-            style={{ animationDuration: `${TOAST_MS}ms` }}
+            style={{ animationDuration: `${time}ms` }}
           />
         </>
       )}

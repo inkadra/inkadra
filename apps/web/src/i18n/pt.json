@@ -2625,6 +2625,8 @@
     "callShort": "Conv.",
     "character": "Personagem",
     "sun": "Nascer · Pôr do sol (Loc. {{n}})",
+    "sunAddress": "Nascer · Pôr do sol (morada)",
+    "address": "Morada",
     "sunrise": "Nascer do sol",
     "sunset": "Pôr do sol",
     "you": "(tu)",
@@ -2734,7 +2736,7 @@
     "count_other": "{{count}} projetos"
   },
   "onboarding": {
-    "guidedSetup": "Configuração guiada",
+    "guidedSetup": "Primeiros passos",
     "title": "Novo projeto",
     "firstTitle": "Seu primeiro projeto",
     "subtitle": "Escolha as datas e convide a equipe. Você poderá alterar tudo depois.",
@@ -4396,7 +4398,7 @@
           },
           "2": {
             "title": "Desenhe um bloco",
-            "text": "Arraste sobre tempo livre para desenhar um bloco em passos de 5 minutos e escolha o tipo (teclas 1–5). Com o teclado, N adiciona um bloco depois do selecionado."
+            "text": "Arraste sobre tempo livre para desenhar um bloco em passos de 5 minutos e escolha o tipo (teclas 1–5). A vista Day também tem «Block» na barra. Com o teclado, N adiciona um bloco depois do selecionado, ou no fim do dia."
           },
           "3": {
             "title": "Mova um dia inteiro",
@@ -5353,6 +5355,7 @@
     "characterLabel": "Ficha de personagem",
     "optionalTag": "opcional",
     "characterHint": "Nenhuma. O nome na programação basta para a convocatória; ligue uma ficha só se tiver figurino e referências.",
+    "characterNone": "Ainda não há fichas de personagem no projeto. Não é preciso: um papel igual ao nome na programação basta para a convocatória.",
     "link": "Ligar",
     "unlinkShort": "Desligar",
     "accountHint": "Ligue uma conta para enviar a convocatória para o telemóvel e pedir confirmação.",

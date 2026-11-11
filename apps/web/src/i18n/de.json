@@ -2625,6 +2625,8 @@
     "callShort": "Treff",
     "character": "Rolle",
     "sun": "Sonnenaufgang · -untergang (Loc. {{n}})",
+    "sunAddress": "Sonnenaufgang · -untergang (Adresse)",
+    "address": "Adresse",
     "sunrise": "Sonnenaufgang",
     "sunset": "Sonnenuntergang",
     "you": "(du)",
@@ -2734,7 +2736,7 @@
     "count_other": "{{count}} Projekte"
   },
   "onboarding": {
-    "guidedSetup": "Geführte Einrichtung",
+    "guidedSetup": "Erste Schritte",
     "title": "Neues Projekt",
     "firstTitle": "Dein erstes Projekt",
     "subtitle": "Wähle die Termine und lade dein Team ein. Du kannst später alles ändern.",
@@ -4396,7 +4398,7 @@
           },
           "2": {
             "title": "Einen Block zeichnen",
-            "text": "Zieh über freie Zeit, um einen Block in 5-Minuten-Schritten zu zeichnen, und wähle dann die Art (Tasten 1–5). Mit der Tastatur fügt N einen Block nach dem gewählten ein."
+            "text": "Zieh über freie Zeit, um einen Block in 5-Minuten-Schritten zu zeichnen, und wähle dann die Art (Tasten 1–5). Die Ansicht Day hat auch „Block“ in der Leiste. Mit der Tastatur fügt N einen Block nach dem gewählten ein, oder am Ende des Tages."
           },
           "3": {
             "title": "Einen ganzen Tag verschieben",
@@ -5353,6 +5355,7 @@
     "characterLabel": "Figurenkarte",
     "optionalTag": "optional",
     "characterHint": "Keine. Der Name im Ablauf reicht für die Dispo; verknüpf nur eine Karte mit Kostüm und Referenzen.",
+    "characterNone": "Noch keine Figurenkarten im Projekt. Nicht nötig: Eine Rolle, die dem Namen im Ablauf entspricht, reicht für die Dispo.",
     "link": "Verknüpfen",
     "unlinkShort": "Trennen",
     "accountHint": "Verknüpf ein Konto, um den Call aufs Handy zu schicken und die Anwesenheit abzufragen.",

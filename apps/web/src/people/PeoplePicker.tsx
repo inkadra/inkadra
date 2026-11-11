@@ -26,6 +26,10 @@ export interface PeoplePickerProps
   exclude?: (person: Person) => boolean;
   /** The latest suggestions, so a typed name can be matched to an account. */
   onResults?: (people: Person[]) => void;
+  /** People the search never returns but who may be picked here, such as the one searching. */
+  include?: Person[];
+  /** Said under the field when the text matches nobody. */
+  empty?: string;
   'aria-label': string;
   inputClassName?: string;
 }
@@ -42,6 +46,8 @@ export function PeoplePicker({
   onPick,
   exclude,
   onResults,
+  include,
+  empty,
   className,
   inputClassName,
   onKeyDown,
@@ -52,6 +58,10 @@ export function PeoplePicker({
   const [found, setFound] = useState<Person[]>([]);
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(false);
+  /** The search for the current text has answered. */
+  const [searched, setSearched] = useState(false);
+  const extra = useRef(include);
+  extra.current = include;
   useEffect(() => {
     if (supplied) {
       setFound(
@@ -66,17 +76,27 @@ export function PeoplePicker({
     // Results of the previous text must never be picked for the new one.
     setFound([]);
     setActive(0);
+    setSearched(false);
     if (q.length < 2 || EMAIL.test(q)) return;
+    const words = q.toLocaleLowerCase();
+    const mine = (extra.current ?? []).filter((p) =>
+      [p.name, p.email ?? ''].some((text) => text.toLocaleLowerCase().includes(words)),
+    );
     let current = true;
     const timer = setTimeout(() => {
       api
         .get<{ items: Person[] }>(`/users/search?q=${encodeURIComponent(q)}`)
         .then((r) => {
           if (!current) return;
-          setFound(r.items);
+          setFound([...mine, ...r.items.filter((p) => !mine.some((m) => m.id === p.id))]);
+          setSearched(true);
           setOpen(true);
         })
-        .catch(() => current && setFound([]));
+        .catch(() => {
+          if (!current) return;
+          setFound(mine);
+          setSearched(true);
+        });
     }, 250);
     return () => {
       current = false;
@@ -165,6 +185,11 @@ export function PeoplePicker({
             </div>
           ))}
       </div>
+      {empty && open && searched && !people.length && (
+        <p className="people-picker__list people-picker__empty" role="status">
+          {empty}
+        </p>
+      )}
     </div>
   );
 }

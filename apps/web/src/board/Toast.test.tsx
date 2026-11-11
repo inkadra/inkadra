@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { setFeedbackStatus } from '../feedback/state.ts';
-import { TOAST_MS, Toast } from './chrome.tsx';
+import { TOAST_ACTION_MS, TOAST_MS, Toast } from './chrome.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -36,7 +36,7 @@ it('leaves after its time, which hover and focus pause', async () => {
   const onClose = vi.fn();
   await act(async () => root.render(<Toast text="Done" onUndo={() => {}} onClose={onClose} />));
   const toast = host.querySelector('.toast') as HTMLElement;
-  await act(async () => vi.advanceTimersByTime(TOAST_MS - 1000));
+  await act(async () => vi.advanceTimersByTime(TOAST_ACTION_MS - 1000));
   await act(async () => toast.dispatchEvent(new PointerEvent('pointerover', { bubbles: true })));
   await act(async () => vi.advanceTimersByTime(10_000));
   expect(onClose).not.toHaveBeenCalled();
@@ -50,6 +50,21 @@ it('leaves after its time, which hover and focus pause', async () => {
   expect(onClose).not.toHaveBeenCalled();
   await act(async () => vi.advanceTimersByTime(1));
   expect(onClose).toHaveBeenCalledOnce();
+});
+
+it('stays longer when it offers an action than when it only says something', async () => {
+  const plain = vi.fn();
+  await act(async () => root.render(<Toast text="Saved" onClose={plain} />));
+  await act(async () => vi.advanceTimersByTime(TOAST_MS));
+  expect(plain).toHaveBeenCalledOnce();
+  const withShow = vi.fn();
+  await act(async () =>
+    root.render(<Toast key="show" text="5 scenes imported" onShow={() => {}} onClose={withShow} />),
+  );
+  await act(async () => vi.advanceTimersByTime(TOAST_MS));
+  expect(withShow).not.toHaveBeenCalled();
+  await act(async () => vi.advanceTimersByTime(TOAST_ACTION_MS - TOAST_MS));
+  expect(withShow).toHaveBeenCalledOnce();
 });
 
 it('undoes in one step, and drops Undo once the history moves on', async () => {

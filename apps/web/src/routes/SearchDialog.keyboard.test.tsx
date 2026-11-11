@@ -2,7 +2,7 @@
 import { DEFAULT_CLASSIFICATIONS, type SearchHit } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { PaletteAction } from '../commands/actions.ts';
 import { api } from '../lib/api.ts';
@@ -124,4 +124,36 @@ it('returns focus to the element that opened it', async () => {
   expect(document.activeElement).toBe(input());
   await render([], false);
   expect(document.activeElement).toBe(host.querySelector('#opener'));
+});
+
+function Where() {
+  const location = useLocation();
+  return <output id="where">{location.pathname + location.search}</output>;
+}
+
+it.each([
+  ['crew', 'troupe'],
+  ['shootingDay', 'schedule'],
+])('opens a %s result on its own view', async (elementType, view) => {
+  const found = {
+    ...hit,
+    kind: 'element',
+    boardId: 'b1',
+    boardKind: 'board',
+    elementId: 'x1',
+    elementType,
+    title: 'Paolo Riva',
+  } as unknown as SearchHit;
+  vi.mocked(api.get).mockResolvedValue({ items: [found] });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <SearchDialog projects={[]} shared={[]} onClose={close} />
+        <Where />
+      </MemoryRouter>,
+    ),
+  );
+  await type('paolo');
+  await act(async () => host.querySelector<HTMLElement>('[role="option"]')?.click());
+  expect(host.querySelector('#where')?.textContent).toBe(`/p/p1/b/b1?view=${view}`);
 });

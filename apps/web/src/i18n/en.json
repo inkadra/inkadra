@@ -2625,6 +2625,8 @@
     "callShort": "Call",
     "character": "Character",
     "sun": "Sunrise · Sunset (Loc. {{n}})",
+    "sunAddress": "Sunrise · Sunset (address)",
+    "address": "Address",
     "sunrise": "Sunrise",
     "sunset": "Sunset",
     "you": "(you)",
@@ -2734,7 +2736,7 @@
     "count_other": "{{count}} projects"
   },
   "onboarding": {
-    "guidedSetup": "Guided setup",
+    "guidedSetup": "Getting started",
     "title": "New project",
     "firstTitle": "Your first project",
     "subtitle": "Choose dates and invite your team. You can change everything later.",
@@ -4396,7 +4398,7 @@
           },
           "2": {
             "title": "Draw a block",
-            "text": "Drag on empty time to draw a block in 5-minute steps, then pick its type (keys 1–5). With the keyboard, N adds a block after the selected one."
+            "text": "Drag on empty time to draw a block in 5-minute steps, then pick its type (keys 1–5). The Day view also has “Block” in the bar. With the keyboard, N adds a block after the selected one, or at the end of the day."
           },
           "3": {
             "title": "Move a whole day",
@@ -5353,6 +5355,7 @@
     "characterLabel": "Character card",
     "optionalTag": "optional",
     "characterHint": "None. The name in the schedule is enough for the call; link a card only if it has costume and references.",
+    "characterNone": "No character cards in the project yet. You don’t need one: a role that matches the name in the schedule is enough for the call.",
     "link": "Link",
     "unlinkShort": "Unlink",
     "accountHint": "Link an account to send the call to their phone and ask for confirmation.",

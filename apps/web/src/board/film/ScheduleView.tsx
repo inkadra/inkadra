@@ -104,10 +104,10 @@ function inputOf(day: ShootingDay): ShootingDayInput {
   return { date, callTime, wrap, location, notes, blocks, ...(calls ? { calls } : {}) };
 }
 
-/** The day after the last shooting day, or today for the first one. */
-function nextDate(days: readonly ShootingDay[]): string {
+/** The day after the last shooting day; the first one goes on `first`. */
+function nextDate(days: readonly ShootingDay[], first: string): string {
   const last = days.at(-1)?.date;
-  return last ? addDays(last, 1) : localDate(new Date());
+  return last ? addDays(last, 1) : first;
 }
 
 type Drafts = Record<string, { revision: number; draft: ShootingDayInput | null }>;
@@ -150,6 +150,8 @@ export function ScheduleView({
   projectName,
   projectId,
   timeZone,
+  shootingStart,
+  datesStatus = 'ready',
   canEditCrew = false,
   boardId = '',
   userId,
@@ -164,6 +166,13 @@ export function ScheduleView({
   projectId?: string;
   /** The project's clock for sunrise and sunset (`shootingZone`); the device's when none. */
   timeZone?: string | undefined;
+  /** The project's first shooting date: where an empty calendar opens and its first day goes. */
+  shootingStart?: string | null | undefined;
+  /**
+   * Whether the project's dates are in: an empty calendar waits while they load, and opens on
+   * today when they failed or cannot be read (a grant on one board: no project in the list).
+   */
+  datesStatus?: 'loading' | 'ready' | 'error' | 'unavailable';
   /** A project editor: linking a cast name to an account writes the crew (decision 0091). */
   canEditCrew?: boolean;
   boardId?: string;
@@ -347,14 +356,21 @@ export function ScheduleView({
   const today = localDate(now);
   // The calendar opens on the day being shot, else the next shooting day, else the last one.
   // Picked once, when the days arrive: it must not move under someone reading it.
-  if (focus === null && !loading) {
+  // Without days it waits while the project's dates load: an empty calendar must not settle on
+  // today before they arrive. Failed or unreadable dates open it on today.
+  if (focus === null && !loading && (drafted.length > 0 || datesStatus !== 'loading')) {
     const current = drafted.find((d) => nowOnDay(d.draft, plannedWrap(d.draft), now) !== null);
     const next = drafted.find((d) => d.draft.date >= today) ?? drafted.at(-1);
-    setFocus((current ?? next)?.draft.date ?? today);
+    setFocus((current ?? next)?.draft.date ?? shootingStart ?? today);
   }
   const focusDate = focus ?? today;
   const shootingDates = new Set(drafted.map((d) => d.draft.date));
-  const dates = view === 'week' ? weekDates(focusDate, shootingDates) : [focusDate];
+  const selectedDate = drafted.find((d) => d.day.id === selection.day)?.draft.date;
+  // A Saturday or Sunday picked in the month, or holding the selected day, gets its column.
+  const dates =
+    view === 'week'
+      ? weekDates(focusDate, new Set([...shootingDates, focusDate, selectedDate ?? focusDate]))
+      : [focusDate];
   const columns = dates.flatMap((date): CalendarColumn[] => {
     const on = drafted.filter((d) => d.draft.date === date);
     return on.length ? on.map((entry) => ({ date, entry })) : [{ date, entry: null }];
@@ -617,7 +633,8 @@ export function ScheduleView({
     write(async () => {
       const free = view === 'day' && !shootingDates.has(focusDate);
       const day = await api.post<ShootingDay>(path, {
-        date: free ? focusDate : nextDate(days),
+        // The first day goes on the date picked in the month: the project's start until then.
+        date: free ? focusDate : nextDate(days, focusDate),
         callTime: '08:00',
         wrap: null,
         location: '',
@@ -1176,12 +1193,25 @@ export function ScheduleView({
             )}
             <Button
               icon="file"
+              className="schedule__callsheet"
               data-tour="schedule-callsheet"
+              data-ink-tooltip={t('shells.callSheet')}
               disabled={loading || loadError}
               onClick={() => setCallSheetOpen(true)}
             >
-              {t('shells.callSheet')}
+              {/* Folds to its icon first when the Day view's bar is narrow (it stays its name). */}
+              <span className="schedule__callsheet-label">{t('shells.callSheet')}</span>
             </Button>
+            {!readOnly && view === 'day' && (
+              <Button
+                icon="plus"
+                data-tour="schedule-add-block"
+                disabled={!selectedEntry || disabled}
+                onClick={() => addBlock(selectedEntry)}
+              >
+                {t('schedule.addBlockShort')}
+              </Button>
+            )}
             {!readOnly && (
               <Button
                 variant="primary"

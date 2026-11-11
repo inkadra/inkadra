@@ -329,12 +329,17 @@ export function NotificationBell({
 }
 
 export function initials(name: string | null | undefined): string {
-  if (!name) return 'IN';
-  const parts = name.trim().split(/\s+/);
+  // Words without their leading punctuation: "Carla (cliente)" is CC, not C(.
+  const parts = (name ?? '')
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.replace(/^[^\p{L}\p{N}]+/u, ''))
+    .filter(Boolean);
+  if (!parts.length) return 'IN';
   if (parts.length >= 2) {
     return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
   }
-  return name.slice(0, 2).toUpperCase();
+  return (parts[0] ?? '').slice(0, 2).toUpperCase();
 }
 
 export function avatarBg(name: string | null | undefined): string {

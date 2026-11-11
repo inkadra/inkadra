@@ -10,7 +10,9 @@ export interface PastedCrew {
 const header =
   /^(name|nome|cognome|ruolo|role|phone|telephone|telefono|tel\.?|pick[ -]?up(?:\/call)?|call(?: time)?|email|e-mail|department|reparto)$/i;
 const phone = /(?:\+?\d[\d ()./-]*){7,}/;
-const split = (line: string) => line.split(/\t|;| · | {2,}/).map((s) => s.trim());
+// A separator left at either end of a column ("Fonico ·" from "Paolo Riva · Fonico · ") goes too.
+const split = (line: string) =>
+  line.split(/\t|;| · | {2,}/).map((s) => s.trim().replace(/^·\s*|\s*·$/g, ''));
 const count = (text: string, char: string) => text.split(char).length - 1;
 
 /** The phone in a column, without the punctuation of a note that follows it: "… 789 (agent)". */

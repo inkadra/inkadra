@@ -1,6 +1,6 @@
 import { type CastLink, type CrewCharacter, castNameKey } from '@inkadra/shared';
-import { and, asc, eq, gt, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
-import { type Actor, boardRoles } from './access.ts';
+import { and, asc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { type Actor, boardRoles, projectRole } from './access.ts';
 import { type BoardReader, storedCharacters } from './board-content.ts';
 import type { Database } from './db/client.ts';
 import { board, castLink, crewMember, shootingDay } from './db/schema.ts';
@@ -13,7 +13,14 @@ import { board, castLink, crewMember, shootingDay } from './db/schema.ts';
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 type Source = Database | Transaction;
 type CharacterReader = Pick<BoardReader, 'characters'> | undefined;
-type CastRow = Pick<typeof crewMember.$inferSelect, 'name' | 'character'>;
+type CastRow = Pick<
+  typeof crewMember.$inferSelect,
+  'id' | 'name' | 'character' | 'department' | 'role' | 'position'
+>;
+
+/** Roster order: position, then id; the web's `castKeysOf` sorts the same way. */
+const byPosition = (a: Pick<CastRow, 'id' | 'position'>, b: Pick<CastRow, 'id' | 'position'>) =>
+  a.position - b.position || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 /**
  * The boards whose character cards may be read: in the project and not in the trash, and, for a
@@ -59,13 +66,16 @@ export function characterCards(db: Source, reader: CharacterReader, allowed: Rea
 
 /**
  * The cast names of each row: its own and its character card's, on any board of the project
- * (crew rows are project data, so a card on another board counts as one on this board).
+ * (crew rows are project data, so a card on another board counts as one on this board). The role
+ * of a row in Cast names the character it plays ("Anna Greco · Elena") only when no row has that
+ * name or card, and then for the first such row by position (decision 0095, as the web's
+ * `castKeysOf`). `rows` are all the rows of the project.
  */
 export async function crewCastKeys(
   rows: readonly CastRow[],
   cards: ReturnType<typeof characterCards>,
 ): Promise<Set<string>[]> {
-  return Promise.all(
+  const keys = await Promise.all(
     rows.map(async ({ name, character }) => {
       const card = character
         ? (await cards(character.boardId)).find((c) => c.elementId === character.elementId)
@@ -73,6 +83,17 @@ export async function crewCastKeys(
       return new Set([name, card?.name ?? ''].filter((n) => n.trim()).map(castNameKey));
     }),
   );
+  const named = new Set(keys.flatMap((set) => [...set]));
+  const roles = new Map<string, number>();
+  rows
+    .map((row, i) => ({ row, i }))
+    .sort((a, b) => byPosition(a.row, b.row))
+    .forEach(({ row, i }) => {
+      const role = castNameKey(row.department) === 'cast' ? castNameKey(row.role) : '';
+      if (role && !named.has(role) && !roles.has(role)) roles.set(role, i);
+    });
+  for (const [role, i] of roles) keys[i]?.add(role);
+  return keys;
 }
 
 /**
@@ -86,16 +107,25 @@ export async function castLinksOf(
   userId?: string,
   viewer?: Pick<Actor, 'id'>,
 ): Promise<CastLink[]> {
-  const rows = await db
-    .select({ name: crewMember.name, character: crewMember.character, userId: crewMember.userId })
+  const all = await db
+    .select({
+      id: crewMember.id,
+      name: crewMember.name,
+      character: crewMember.character,
+      department: crewMember.department,
+      role: crewMember.role,
+      position: crewMember.position,
+      userId: crewMember.userId,
+    })
     .from(crewMember)
-    .where(
-      and(
-        eq(crewMember.projectId, projectId),
-        userId ? eq(crewMember.userId, userId) : isNotNull(crewMember.userId),
-      ),
-    )
+    .where(eq(crewMember.projectId, projectId))
     .orderBy(asc(crewMember.position), asc(crewMember.id));
+  // A role counts only when no other row holds that name (crewCastKeys), among the rows the
+  // caller may know of (decision 0095): the whole roster for project members and the server;
+  // for a grant on one board, their own rows only, so a hidden row never makes their role
+  // disappear and give the roster away.
+  const roster = !viewer || (await projectRole(db, viewer, projectId)) !== null;
+  const rows = roster ? all : all.filter((row) => row.userId === viewer?.id);
   const allowed = await cardBoards(
     db,
     projectId,
@@ -107,7 +137,7 @@ export async function castLinksOf(
   return rows.flatMap((row, i) =>
     [...(keys[i] ?? [])].flatMap((castKey) => {
       const id = `${castKey}\n${row.userId}`;
-      if (!row.userId || seen.has(id)) return [];
+      if (!row.userId || (userId && row.userId !== userId) || seen.has(id)) return [];
       seen.add(id);
       return [{ castKey, userId: row.userId }];
     }),

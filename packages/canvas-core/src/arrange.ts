@@ -3,7 +3,7 @@
  * Tidying a selection (#320): packing cards into rows or a mosaic of columns with an even gap.
  * Pure geometry; the canvas decides which cards take part and writes the result.
  */
-import { boundsOf, type Point, type Rect } from './geometry.ts';
+import { boundsOf, containsRect, inflate, intersects, type Point, type Rect } from './geometry.ts';
 
 export interface ArrangeItem extends Rect {
   /**
@@ -215,4 +215,122 @@ export function stackColumns(
     }
   }
   return out;
+}
+
+/**
+ * Where a new card of `size` goes so that it lands on none of the `taken` rects, kept 12 apart:
+ * `start` when it is free, else down and to the right as cards cascade, else the nearest free spot
+ * in growing rings of 32. With an `area` (the part of the board on screen), a spot inside it wins
+ * over a nearer one outside. `start` when nothing within 40 rings is free.
+ */
+export function freeSpot(
+  start: Point,
+  size: { w: number; h: number },
+  taken: readonly Rect[],
+  area?: Rect,
+): Point {
+  const gap = 12;
+  const step = 32;
+  const rings = 40;
+  // Only the cards the search can reach, in cells of the board: each spot is checked against the
+  // few cards around it, not all of a board of thousands (20 files took seconds before).
+  const reach = (rings + 1) * step + gap;
+  const window = {
+    x: start.x - reach,
+    y: start.y - reach,
+    w: size.w + 2 * reach,
+    h: size.h + 2 * reach,
+  };
+  const CELL = 256;
+  const cells = new Map<string, Rect[]>();
+  // A card goes in the cells it covers inside the window only (every spot searched lies there):
+  // a valid card can be a million units wide, and must not fill a million cells.
+  const cellsOf = (from: number, to: number, min: number, max: number): [number, number] => [
+    Math.floor(Math.max(from, min) / CELL),
+    Math.floor(Math.min(to, max) / CELL),
+  ];
+  for (const r of taken) {
+    const box = inflate(r, gap);
+    if (!intersects(box, window)) continue;
+    const [x0, x1] = cellsOf(box.x, box.x + box.w, window.x, window.x + window.w);
+    const [y0, y1] = cellsOf(box.y, box.y + box.h, window.y, window.y + window.h);
+    for (let cx = x0; cx <= x1; cx++)
+      for (let cy = y0; cy <= y1; cy++) {
+        const key = `${cx},${cy}`;
+        const list = cells.get(key);
+        if (list) list.push(box);
+        else cells.set(key, [box]);
+      }
+  }
+  const free = (p: Point) => {
+    const box = { ...p, ...size };
+    for (let cx = Math.floor(box.x / CELL); cx <= Math.floor((box.x + box.w) / CELL); cx++)
+      for (let cy = Math.floor(box.y / CELL); cy <= Math.floor((box.y + box.h) / CELL); cy++)
+        if (cells.get(`${cx},${cy}`)?.some((r) => intersects(r, box))) return false;
+    return true;
+  };
+  const search = (inside: (p: Point) => boolean): Point | undefined => {
+    for (let i = 0; i < 12; i++) {
+      const at = { x: start.x + i * step, y: start.y + i * step };
+      if (inside(at) && free(at)) return at;
+    }
+    for (let ring = 1; ring <= rings; ring++) {
+      let best: Point | undefined;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      for (let i = -ring; i <= ring; i++) {
+        for (const [dx, dy] of [
+          [i, -ring],
+          [i, ring],
+          [-ring, i],
+          [ring, i],
+        ] as const) {
+          const at = { x: start.x + dx * step, y: start.y + dy * step };
+          const distance = dx * dx + dy * dy;
+          if (distance < bestDistance && inside(at) && free(at)) {
+            best = at;
+            bestDistance = distance;
+          }
+        }
+      }
+      if (best) return best;
+    }
+    return undefined;
+  };
+  return (
+    (area && search((p) => containsRect(area, { ...p, ...size }))) ?? search(() => true) ?? start
+  );
+}
+
+/** `freeSpot` for several new cards at once: each also stays clear of the ones before it. */
+export function freeSpots(
+  start: Point,
+  sizes: ReadonlyArray<{ w: number; h: number }>,
+  taken: readonly Rect[],
+  area?: Rect,
+): Point[] {
+  const used = [...taken];
+  return sizes.map((size) => {
+    const at = freeSpot(start, size, used, area);
+    used.push({ ...at, ...size });
+    return at;
+  });
+}
+
+/**
+ * A spot planned for a new card, checked again when the card is made (an upload ends later): it
+ * stays unless a card that was not on the board when it was planned (`before`: their ids) now
+ * covers it, from another upload or a collaborator; then the nearest free spot from there.
+ * It checks the board as this client has it: two people whose uploads end before their changes
+ * reach each other can still pick the same spot.
+ */
+export function claimSpot(
+  planned: Point,
+  size: { w: number; h: number },
+  cards: ReadonlyArray<Rect & { id: string }>,
+  before: ReadonlySet<string>,
+  area?: Rect,
+): Point {
+  const box = { ...planned, ...size };
+  if (!cards.some((card) => !before.has(card.id) && intersects(card, box))) return planned;
+  return freeSpot(planned, size, cards, area);
 }

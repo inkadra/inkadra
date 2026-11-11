@@ -136,6 +136,8 @@ it('builds initials from the first two words, ignoring extra whitespace', () => 
   expect(initials('Laura')).toBe('LA');
   expect(initials(null)).toBe('IN');
   expect(initials('')).toBe('IN');
+  expect(initials('Carla (cliente)')).toBe('CC');
+  expect(initials('(ospite)')).toBe('OS');
 });
 
 it('names an opened link by its label, with no guest or visit details', () => {

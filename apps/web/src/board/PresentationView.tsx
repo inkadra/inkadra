@@ -139,8 +139,9 @@ export function PresentationView({
       const sceneHeading = [
         scene ? t('film.scene.heading', { number: scene.number }).toUpperCase() : undefined,
         scene?.title ? scene.title.toUpperCase() : undefined,
-        scene?.setting ? scene.setting.toUpperCase() : undefined,
-        scene?.time ? scene.time.toUpperCase() : undefined,
+        // The same translated labels as the storyboard's slugline ("EST.", "ALBA").
+        scene?.setting ? t(`film.scene.settings.${scene.setting}`).toUpperCase() : undefined,
+        scene?.time ? t(`film.scene.times.${scene.time}`).toUpperCase() : undefined,
       ]
         .filter(Boolean)
         .join(' · ');
