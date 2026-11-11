@@ -637,7 +637,8 @@ const reachable = (item: PlanItem, view?: PlanView) =>
 
 /**
  * The item drawn on top under `p` (relative to the drawing, 0 to 1), in the stacking order the
- * renderers draw (planStack): what is seen on top is picked first.
+ * renderers draw (planStack): what is seen on top is picked first. Measures are drawn on top but
+ * yield to the icons their ends sit on: a thin line must not hide the body under it.
  */
 export function planItemAt(
   plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
@@ -646,7 +647,10 @@ export function planItemAt(
   radius = 0.012,
 ): PlanItemRef | null {
   const v = { x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H };
-  const stack = planStack(plan);
+  const all = planStack(plan);
+  const isMeasure = (e: PlanStackEntry) =>
+    e.ref.kind === 'shapes' && (e.item as PlanShape).kind === 'measure';
+  const stack = [...all.filter(isMeasure), ...all.filter((e) => !isMeasure(e))];
   for (let i = stack.length - 1; i >= 0; i--) {
     const { ref, item } = stack[i] as PlanStackEntry;
     if (!reachable(item, view)) continue;

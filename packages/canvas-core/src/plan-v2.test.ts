@@ -23,6 +23,7 @@ import {
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
+  planItemAt,
   planStack,
   removePlanItems,
   SYMBOL_SIZES,
@@ -260,6 +261,26 @@ describe('stacking', () => {
       lifted.id,
     ]);
     expect(planStack(plan, ['actors', 'notes']).map((e) => e.item.id)).not.toContain(anna.id);
+  });
+
+  it('picks a note on top of an icon, but an icon over a measure that ends on it', () => {
+    const cam = at('camera', 500, 300);
+    const shape = (kind: 'text' | 'measure') => ({
+      id: `${kind}AAAAAAAAAAAAA`.slice(0, 13),
+      kind,
+      color: '#7AD689',
+      width: 18,
+      x0: cam.x,
+      y0: cam.y,
+      x1: cam.x + 400,
+      y1: cam.y,
+      ...(kind === 'measure' ? { from: cam.id } : { text: 'Nota lunga' }),
+    });
+    const p = { x: 0.5, y: 300 / PLAN_VIEW_H };
+    expect(planItemAt({ icons: [cam], shapes: [shape('measure')] }, p)?.kind).toBe('icons');
+    expect(planItemAt({ icons: [cam], shapes: [shape('measure')] }, { x: 0.55, y: p.y })?.kind).toBe(
+      'shapes',
+    );
   });
 });
 
