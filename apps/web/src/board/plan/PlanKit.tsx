@@ -1,10 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type CircuitLoad, type PlanElement, planPower, variantView } from '@inkadra/canvas-core';
-import { MAX_PLAN_CIRCUITS, newElementId, type PlanIcon } from '@inkadra/doc-schema';
+import {
+  addPlanCircuit,
+  type CircuitLoad,
+  type PlanElement,
+  planPower,
+  removePlanCircuits,
+  updatePlanCircuits,
+  variantView,
+} from '@inkadra/canvas-core';
+import { MAX_PLAN_CIRCUITS, type PlanCircuit, type PlanIcon } from '@inkadra/doc-schema';
 import { Button, IconButton, Segmented } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
 import { itemName } from './elements.ts';
 import { KIT_GROUPS, kitList } from './kit.ts';
@@ -66,8 +75,9 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
     0,
   );
   const circuits = plan.circuits ?? [];
-  const writeCircuits = (next: typeof circuits) =>
-    ed.editPlan({ circuits: next.length ? next : undefined });
+  // One circuit at a time, field by field: two people editing two circuits both keep theirs.
+  const editCircuit = (c: PlanCircuit) =>
+    ed.change(() => updatePlanCircuits(ed.doc, plan.id, [c], LOCAL));
   const names = (load: CircuitLoad) =>
     load.lights
       .map((id) => drawn.icons?.find((i) => i.id === id))
@@ -127,19 +137,10 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
             <div key={c.id ?? 'none'} className={`plan-kit__circuit is-${c.status}`}>
               {own ? (
                 <div className="plan-kit__circuit-head">
-                  <input
-                    className="plan-field"
-                    aria-label={t('board.plan.circuitName')}
-                    maxLength={40}
+                  <CircuitName
                     value={own.name}
-                    onFocus={() => ed.store.undo.stopCapturing()}
-                    onChange={(e) =>
-                      ed.editPlan({
-                        circuits: circuits.map((x) =>
-                          x.id === own.id ? { ...x, name: e.target.value } : x,
-                        ),
-                      })
-                    }
+                    label={t('board.plan.circuitName')}
+                    onCommit={(name) => editCircuit({ ...own, name })}
                   />
                   <NumberField
                     value={own.amps}
@@ -147,14 +148,14 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
                     max={1000}
                     unit="A"
                     label={t('board.plan.breaker')}
-                    onCommit={(a) =>
-                      writeCircuits(circuits.map((x) => (x.id === own.id ? { ...x, amps: a } : x)))
-                    }
+                    onCommit={(amps) => editCircuit({ ...own, amps })}
                   />
                   <IconButton
                     icon="trash"
                     label={t('board.plan.removeCircuit', { name: own.name })}
-                    onClick={() => writeCircuits(circuits.filter((x) => x.id !== own.id))}
+                    onClick={() =>
+                      ed.change(() => removePlanCircuits(ed.doc, plan.id, [own.id], LOCAL))
+                    }
                   />
                 </div>
               ) : (
@@ -186,16 +187,19 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
           icon="plus"
           disabled={circuits.length >= MAX_PLAN_CIRCUITS}
           onClick={() =>
-            writeCircuits([
-              ...circuits,
-              {
-                id: newElementId(),
-                name: t('board.plan.circuitNamed', {
-                  letter: String.fromCharCode(65 + (circuits.length % 26)),
-                }),
-                amps: power.voltage === 120 ? 20 : 16,
-              },
-            ])
+            ed.change(() =>
+              addPlanCircuit(
+                ed.doc,
+                plan.id,
+                {
+                  name: t('board.plan.circuitNamed', {
+                    letter: String.fromCharCode(65 + (circuits.length % 26)),
+                  }),
+                  amps: power.voltage === 120 ? 20 : 16,
+                },
+                LOCAL,
+              ),
+            )
           }
         >
           {t('board.plan.addCircuit')}
@@ -234,5 +238,50 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * A circuit's name, written on Enter or blur, as the setup's name and NumberField are: one undo
+ * step per name, and a name someone else gives the circuit meanwhile shows when not typing.
+ */
+function CircuitName({
+  value,
+  label,
+  onCommit,
+}: {
+  value: string;
+  label: string;
+  onCommit: (name: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  /** Escape blurs without writing, whatever the draft of this render says. */
+  const cancelled = useRef(false);
+  useEffect(() => setDraft(value), [value]);
+  const commit = () => {
+    const name = draft.trim();
+    if (!cancelled.current && name && name !== value) onCommit(name);
+    else setDraft(value);
+  };
+  return (
+    <input
+      className="plan-field"
+      aria-label={label}
+      maxLength={40}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.currentTarget.blur();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          cancelled.current = true;
+          e.currentTarget.blur();
+          cancelled.current = false;
+        }
+      }}
+    />
   );
 }

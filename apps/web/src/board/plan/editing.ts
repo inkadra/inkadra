@@ -10,7 +10,6 @@ import {
   itemsBox,
   itemTier,
   kindLayer,
-  layerOf,
   measureEnds,
   moveItem,
   moveWithAttached,
@@ -25,6 +24,7 @@ import {
   rotateWithAttached,
   type SceneElement,
   toGrid,
+  transferPlanItems,
   updateElement,
   updatePlanItems,
   variantView,
@@ -133,9 +133,9 @@ export function usePlanEditing(props: PlanEditorProps) {
   }, [plan, base]);
   const step = gridStep(drawn);
   const scaleOwner = base?.id ?? plan.id;
-  const baseIds = new Set(
-    base ? planItems(drawn).flatMap(({ item }) => (layerOf(item) === 'set' ? [item.id] : [])) : [],
-  );
+  // What the base holds, not what is drawn on Set: an item of the setup stranded on Set is the
+  // setup's (variantView shows it), and moving it to Set again moves it into the base.
+  const baseIds = new Set(base ? planItems(base).map(({ item }) => item.id) : []);
   const ownerOf = (id: string) => (base && baseIds.has(id) ? base.id : plan.id);
   const targetFor = (layer: PlanLayer) => (base && layer === 'set' ? base.id : plan.id);
   const hiddenLayers = new Set<PlanLayer>([...(plan.hiddenLayers ?? []), ...myHidden]);
@@ -266,15 +266,29 @@ export function usePlanEditing(props: PlanEditorProps) {
     if (items.length)
       write(items.map((i) => ({ ...i, tier: Math.max(0, Math.min(5, Number(itemTier(i)) + by)) })));
   };
+  /**
+   * Moves the selected items of this plan to a layer. On a setup, Set is the base's, shared by
+   * every setup (decisions 0062, 0104): what goes there moves into the base, in one undo step,
+   * so a setup never keeps items of its own on Set.
+   */
   const moveToLayer = (layer: PlanLayer) => {
     const items = chosen().filter((i) => ownerOf(i.id) === plan.id);
-    write(
-      items.map((i) => {
-        const next = { ...i, layer };
-        if (defaultLayer(i) === layer) delete (next as Partial<PlanIcon>).layer;
-        return next;
-      }),
-    );
+    const onLayer = (i: PlanItem) => ({ layer: defaultLayer(i) === layer ? undefined : layer });
+    if (base && layer === 'set') {
+      if (items.length)
+        change(() =>
+          transferPlanItems(
+            doc,
+            plan.id,
+            base.id,
+            items.map((i) => i.id),
+            onLayer,
+            LOCAL,
+          ),
+        );
+      return;
+    }
+    write(items.map((i) => ({ ...i, ...onLayer(i) }) as PlanItem));
   };
   const toggleHidden = (layer: PlanLayer) => {
     if (plan.variantOf) {

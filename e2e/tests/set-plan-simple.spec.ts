@@ -2,7 +2,7 @@
 // The simpler set plan (decision 0071): one bar of tools, one bar on the item, nothing open until
 // asked. Each state of the approved mockup is checked and photographed, light and dark, at 1280
 // and 390 px. Runs after first-run.spec.ts in CI; alone, it signs up.
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createElement } from '@inkadra/canvas-core';
@@ -58,7 +58,13 @@ const POINTS = {
   empty: [960, 620],
 } as const;
 
-async function seed(page: Page, baseURL: string, theme: Theme, width: number) {
+async function seed(
+  page: Page,
+  baseURL: string,
+  theme: Theme,
+  width: number,
+  opts: { steps?: boolean } = {},
+) {
   const cookie = await signIn(baseURL, account);
   await page.context().addCookies(
     cookie.split('; ').map((pair) => ({
@@ -115,6 +121,8 @@ async function seed(page: Page, baseURL: string, theme: Theme, width: number) {
           ...icon('Cam', 'camera', '#9DB8F2', POINTS.camera[0], POINTS.camera[1]),
           label: 'A cam',
           showLens: true,
+          // An earlier position, for the test of the plan's menu.
+          ...(opts.steps ? { steps: [{ x: gx(120), y: gy(400) }] } : {}),
         },
       ],
     },
@@ -457,6 +465,89 @@ async function openEditor(page: Page, planId: string) {
   await expect(stage).toBeVisible();
   return { editor, stage };
 }
+
+test('every library name fits its tile, in all six languages, at 1280 and 390 px', async ({
+  page,
+  baseURL,
+  browser,
+}) => {
+  test.setTimeout(300_000);
+  const { project, planId } = await seed(page, baseURL!, 'dark', 1280);
+  const state = await page.context().storageState();
+  const cut: string[] = [];
+  for (const locale of ['en', 'it', 'es', 'de', 'fr', 'pt'])
+    for (const width of [1280, 390]) {
+      const phone = width < 600;
+      const context = await browser.newContext({
+        viewport: { width, height: phone ? 844 : 800 },
+        ...(phone ? { hasTouch: true, isMobile: true } : {}),
+        locale,
+        reducedMotion: 'reduce',
+        storageState: state,
+      });
+      try {
+        const m = await context.newPage();
+        await m.goto(`${baseURL}/p/${project.id}?view=canvas`);
+        if (phone) {
+          const words = JSON.parse(
+            readFileSync(
+              new URL(`../../apps/web/src/i18n/${locale}.json`, import.meta.url),
+              'utf8',
+            ),
+          );
+          await m.getByRole('button', { name: words.board.zoom.fit }).first().click();
+        }
+        await m.locator(`[data-el="${planId}"]`).dblclick();
+        const editor = m.locator('.plan-editor--v2');
+        await expect(editor).toBeVisible();
+        if (phone) await editor.locator('.plan-canvas__phone-tools button').nth(3).tap();
+        const library = editor.locator(phone ? '.plan-lib--sheet' : '.plan-lib--dock');
+        const categories = library.locator(phone ? '.plan-lib__chips button' : '.plan-lib__cat');
+        const count = await categories.count();
+        expect(count).toBeGreaterThan(5);
+        for (let i = 0; i < count; i++) {
+          await categories.nth(i).click();
+          // A name is cut when its two lines overflow, or when one of its words is wider than
+          // the tile and is broken inside.
+          const bad = await library.locator('.plan-lib__tile span').evaluateAll((spans) =>
+            spans.flatMap((span) => {
+              const el = span as HTMLElement;
+              const probe = document.createElement('span');
+              probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap';
+              el.append(probe);
+              const words = (el.firstChild?.textContent ?? '').split(/\s+/);
+              const wide = words.some((w) => {
+                probe.textContent = w;
+                return probe.getBoundingClientRect().width > el.clientWidth + 0.5;
+              });
+              probe.remove();
+              return wide || el.scrollHeight > el.clientHeight + 1 ? [el.textContent ?? ''] : [];
+            }),
+          );
+          cut.push(...bad.map((name) => `${locale} ${width}: ${name}`));
+        }
+      } finally {
+        await context.close();
+      }
+    }
+  expect(cut).toEqual([]);
+});
+
+test('earlier positions can be shown from the plan menu whenever an item has some', async ({
+  page,
+  baseURL,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const { planId } = await seed(page, baseURL!, 'dark', 1280, { steps: true });
+  await page.locator(`[data-el="${planId}"]`).dblclick();
+  const editor = page.getByRole('dialog', { name: /Pianta del set/ });
+  const faded = editor.locator('.plan-editor__stage [style*="opacity: 0.4"]');
+  await expect(faded).toHaveCount(0);
+  // Nothing selected: the plan's menu (by the scale) has the switch, as before decision 0104.
+  await editor.locator('.plan-top__end .plan-top__btn').first().click();
+  await page.getByRole('menuitemradio', { name: 'Mostra posizioni precedenti' }).click();
+  await expect(faded).toHaveCount(1);
+});
 
 test('a drag writes only what it changed: a colour set meanwhile by someone else stays', async ({
   page,

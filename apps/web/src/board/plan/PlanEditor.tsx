@@ -318,6 +318,10 @@ export function PlanEditor(props: PlanEditorProps) {
       </Button>
     </section>
   );
+  /** In the plan's menu whenever an item has earlier positions, as before decision 0104. */
+  const ghostsItem = (drawn.icons ?? []).some((i) => i.steps?.length)
+    ? [{ label: t('board.plan.ghosts'), checked: ed.ghosts, action: () => ed.setGhosts((v) => !v) }]
+    : [];
   const scalePop = scaleOpen && (
     <ContextMenu
       className="plan-menu"
@@ -359,6 +363,7 @@ export function PlanEditor(props: PlanEditorProps) {
           checked: ed.snap,
           action: () => ed.setSnap((v) => !v),
         },
+        ...ghostsItem,
         {
           label: t('board.plan.snapIcons'),
           shortcut: 'Alt',
@@ -580,6 +585,7 @@ export function PlanEditor(props: PlanEditorProps) {
                   ]
                 : []),
               ...(base ? [{ label: t('board.plan.rename'), action: () => setRenaming(true) }] : []),
+              ...(ghostsItem.length ? [{ divider: true as const }, ...ghostsItem] : []),
             ]}
             onClose={() => setSetupMenu(null)}
           />
