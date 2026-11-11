@@ -416,7 +416,8 @@ function readItem(item: z.ZodType, value: unknown): unknown {
   if (value instanceof Y.Map) {
     const cached = parsedMaps.get(value);
     const pending = value.doc ? pendingTransactions(value.doc) : [];
-    const open = value.doc?._transaction != null;
+    // Yjs records no changes before a type is attached: a detached row is not trusted either.
+    const open = value.doc?._transaction != null || !value.doc;
     if (cached?.item === item) {
       if (!cached.dirty && !(pending.length && changedWithin(value, pending))) return cached.data;
       if (sameContent(value, cached.plain)) {

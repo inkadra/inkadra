@@ -49,6 +49,29 @@ it('reads every card of the reference board as the whole-card parse does', {
   // A board with a real history: about 4 s on a CI runner, past the default 5 s when it is busy.
 });
 
+it('reads a table first read detached, then attached with an edited cell in one transaction', () => {
+  const id = 'table0000000000000000';
+  const column = 'col000000000000000000';
+  const row = tableRowMap({ id: `row${'0'.repeat(18)}`, cells: { [column]: 'old' } });
+  const table = new Y.Map<unknown>(
+    Object.entries({
+      ...base,
+      id,
+      type: 'table',
+      columns: Y.Array.from([new Y.Map<unknown>([['id', column]])]),
+      rows: Y.Array.from([row]),
+    }),
+  );
+  readElement(table);
+  const doc = new Y.Doc();
+  doc.transact(() => {
+    roots(doc).elements.set(id, table);
+    (row.get('cells') as Y.Map<string>).set(column, 'new');
+  });
+  same(table);
+  expect(JSON.stringify(readElement(table))).toContain('"new"');
+});
+
 it('follows strokes and rows as they change, bad items included', () => {
   const doc = new Y.Doc();
   const { elements } = roots(doc);
