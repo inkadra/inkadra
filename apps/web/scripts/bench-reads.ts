@@ -10,13 +10,16 @@ import { z } from 'zod';
 const { values } = parseArgs({
   options: {
     boards: { type: 'string', default: '../../packages/doc-schema/reference-boards' },
-    sizes: { type: 'string', default: 'medium,large' },
+    sizes: { type: 'string', default: 'small,medium,large' },
     seed: { type: 'string', default: '1' },
     runs: { type: 'string', default: '40' },
     // Zod without `new Function`, as on an engine that forbids eval.
     'zod-jitless': { type: 'boolean', default: false },
+    baseline: { type: 'boolean', default: false },
+    hydrate: { type: 'boolean', default: false },
   },
 });
+if (values.baseline && values.hydrate) throw new Error('--baseline and --hydrate are exclusive');
 // Before the schemas are built: Zod decides on its compiled fast path when it builds them.
 if (values['zod-jitless']) z.config({ jitless: true });
 const { addStroke, createElement, deleteElements, removeStrokes, setTableCell } = await import(
@@ -24,7 +27,10 @@ const { addStroke, createElement, deleteElements, removeStrokes, setTableCell } 
 );
 const { roots } = await import('@inkadra/doc-schema');
 const Y = await import('yjs');
-const { BoardStore, LOCAL } = await import('../src/board/store.ts');
+// For comparisons, extract the base revision's store beside store.ts (do not commit it).
+const { BoardStore, LOCAL } = await import(
+  values.baseline ? '../src/board/store-baseline.ts' : '../src/board/store.ts'
+);
 const runs = Number(values.runs);
 const jitless = process.execArgv.includes('--jitless');
 
@@ -55,9 +61,9 @@ console.log(
   )}`,
 );
 console.log(
-  '| board | open: applyUpdate | open: first read | add stroke (800) | edit cell | createElement |',
+  '| board | open: applyUpdate | open: first read | open: total | open: longest slice | hydrate: longest gap | add stroke | edit cell | createElement |',
 );
-console.log('|---|---|---|---|---|---|');
+console.log('|---|---|---|---|---|---|---|---|---|');
 for (const size of values.sizes.split(',')) {
   const base = resolve(values.boards, `reference-board-${size}-${values.seed}`);
   if (!existsSync(`${base}.ybin`))
@@ -70,6 +76,9 @@ for (const size of values.sizes.split(',')) {
   const opens = Math.max(3, Math.round(runs / 8));
   const applies: number[] = [];
   const reads: number[] = [];
+  const totals: number[] = [];
+  const slices: number[] = [];
+  const hydrationGaps: number[] = [];
   let doc = new Y.Doc();
   let store: InstanceType<typeof BoardStore> | undefined;
   for (let i = 0; i < opens; i++) {
@@ -78,11 +87,32 @@ for (const size of values.sizes.split(',')) {
     doc = new Y.Doc();
     const d = doc;
     applies.push(time(() => Y.applyUpdate(d, update)));
-    reads.push(
-      time(() => {
-        store = new BoardStore(d);
-      }),
-    );
+    let gap = 0;
+    if (values.hydrate) {
+      let last = performance.now();
+      const tick = () => {
+        const now = performance.now();
+        gap = Math.max(gap, now - last);
+        last = now;
+      };
+      const timer = setInterval(tick, 0);
+      const start = performance.now();
+      store = BoardStore.hydrate(d, { budgetMs: 8 });
+      await store.whenHydrated;
+      reads.push(performance.now() - start);
+      tick();
+      clearInterval(timer);
+      hydrationGaps.push(gap);
+      slices.push(Math.max(applies[i]!, gap));
+    } else {
+      reads.push(
+        time(() => {
+          store = new BoardStore(d);
+        }),
+      );
+      slices.push(applies[i]! + reads[i]!);
+    }
+    totals.push(applies[i]! + reads[i]!);
   }
 
   const stroke = {
@@ -120,7 +150,7 @@ for (const size of values.sizes.split(',')) {
   );
 
   console.log(
-    `| ${size} | ${ms(median(applies))} ms | ${ms(median(reads))} ms | ${ms(addOne)} ms | ${ms(cell)} ms | ${ms(create)} ms |`,
+    `| ${size} | ${ms(median(applies))} ms | ${ms(median(reads))} ms | ${ms(median(totals))} ms | ${ms(Math.max(...slices))} ms | ${values.hydrate ? `${ms(Math.max(...hydrationGaps))} ms` : '—'} | ${ms(addOne)} ms | ${ms(cell)} ms | ${ms(create)} ms |`,
   );
   store?.destroy();
 }

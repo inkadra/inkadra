@@ -5,7 +5,8 @@
   "license": "MPL-2.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./reference-board": "./src/reference-board.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

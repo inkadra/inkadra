@@ -103,6 +103,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0097](0097-client-asset-identifiers.md) | `clientAssetId` in tus creation: the asset id is a UUIDv5 of it in the uploader's namespace; a deleted id is never made again |
 | [0098](0098-idempotent-creations.md) | `Idempotency-Key` on board and comment creation; a retry reads the created resource as it is now |
 | [0099](0099-invalid-token-reasons.md) | A REST 401 says why a recognised token stopped working; revoked hashes kept apart for 30 days |
+| [0100](0100-incremental-board-index.md) | Only affected containers are indexed and sorted after a board edit |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

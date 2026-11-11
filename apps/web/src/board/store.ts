@@ -5,7 +5,14 @@ import {
   isContainer,
   setElementView,
 } from '@inkadra/canvas-core';
-import { type Element, PLAN_ASPECT, readElement, roots, UNSORTED } from '@inkadra/doc-schema';
+import {
+  type Element,
+  PLAN_ASPECT,
+  readElement,
+  readElementSteps,
+  roots,
+  UNSORTED,
+} from '@inkadra/doc-schema';
 import * as Y from 'yjs';
 import { croppedRotatedSize } from './image-crop.ts';
 
@@ -42,25 +49,56 @@ export class BoardStore {
   /** False once an element's key and id differ: the snapshot then keeps one of the two. */
   private exact = true;
   private removeView: () => void;
+  private loading = false;
+  private destroyed = false;
+  /** Keys of elements changed while hydrating: their validated reads are taken again. */
+  private stale = new Set<string>();
+  /** Resolves when the complete initial snapshot is available (or the store is destroyed). */
+  readonly whenHydrated: Promise<void>;
+  /** Why hydration stopped: the snapshot stays empty and `whenHydrated` rejects with it. */
+  hydrationError: unknown;
 
-  constructor(readonly doc: Y.Doc) {
+  get hydrating() {
+    return this.loading;
+  }
+
+  /** Opt-in cooperative initialization. The regular constructor remains synchronous. */
+  static hydrate(doc: Y.Doc, { budgetMs = 8 }: { budgetMs?: number } = {}): BoardStore {
+    return new BoardStore(doc, { budgetMs });
+  }
+
+  constructor(
+    readonly doc: Y.Doc,
+    options?: { budgetMs: number },
+  ) {
+    if (options && (!Number.isFinite(options.budgetMs) || options.budgetMs <= 0))
+      throw new RangeError('budgetMs must be positive and finite');
     const { elements } = roots(doc);
     this.undo = new Y.UndoManager(elements, {
       trackedOrigins: new Set([LOCAL]),
       captureTimeout: 400,
     });
-    this.rebuild();
+    this.loading = options !== undefined;
+    if (!this.loading) this.rebuild();
     elements.observeDeep(this.onChange);
     // Yjs calls the observers, this one included, before afterTransaction.
     doc.on('beforeTransaction', this.begin);
     doc.on('afterTransaction', this.end);
     this.open = doc._transaction ? 1 : 0;
     this.removeView = setElementView(doc, () =>
-      this.open === 0 && this.exact ? [...this.snapshot.byId.values()] : null,
+      !this.loading && this.open === 0 && this.exact ? [...this.snapshot.byId.values()] : null,
     );
+    this.whenHydrated = options
+      ? this.hydrate(options.budgetMs).catch((error: unknown) => {
+          this.hydrationError = error;
+          throw error;
+        })
+      : Promise.resolve();
   }
 
   destroy() {
+    this.destroyed = true;
+    this.loading = false;
     roots(this.doc).elements.unobserveDeep(this.onChange);
     this.doc.off('beforeTransaction', this.begin);
     this.doc.off('afterTransaction', this.end);
@@ -89,6 +127,11 @@ export class BoardStore {
       if (typeof id === 'string' && field !== 'body') touched.add(id);
     }
     if (touched.size === 0) return;
+    // No partial snapshot is published: hydration reads these elements again.
+    if (this.loading) {
+      for (const id of touched) this.stale.add(id);
+      return;
+    }
     const byId = new Map(this.snapshot.byId);
     let changed = false;
     const added: string[] = [];
@@ -113,7 +156,7 @@ export class BoardStore {
       for (const [id, at] of this.added) if (now - at > 1000) this.added.delete(id);
       for (const id of added) this.added.set(id, now);
     }
-    this.index(byId);
+    this.index(byId, touched);
     for (const l of this.listeners) l();
   };
 
@@ -128,17 +171,133 @@ export class BoardStore {
     this.index(byId);
   }
 
-  private index(byId: Map<string, Element>) {
-    const all = [...byId.values()];
-    const columns = new Map<string, Element[]>();
-    for (const el of all) {
-      if (isContainer(el)) columns.set(el.id, childrenOf(all, el.id));
+  private async hydrate(budgetMs: number) {
+    const pause = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+    // Also separates applyUpdate from the initial read when called in the same JS task.
+    await pause();
+    if (this.destroyed) return;
+    const { elements } = roots(this.doc);
+    /** Validated reads by key, each current: a change since then puts its key in stale. */
+    const done = new Map<string, Element | null>();
+    /** Changed in the middle of their own read: read in one go next time, so typing ends. */
+    const interrupted = new Set<string>();
+    let start = performance.now();
+    // Queue the next turn before doing work, so the timer delay overlaps this slice.
+    let nextPause = pause();
+    const due = () => performance.now() - start >= budgetMs;
+    const yieldNow = async () => {
+      await nextPause;
+      nextPause = pause();
+      start = performance.now();
+    };
+    for (;;) {
+      for (const key of this.stale) done.delete(key);
+      this.stale.clear();
+      const todo = [...elements.keys()].filter((key) => !done.has(key));
+      // Every element is read and current, in this same task: publish.
+      if (todo.length === 0) break;
+      for (const key of todo) {
+        if (due()) await yieldNow();
+        if (this.destroyed) return;
+        const map = elements.get(key);
+        if (!map) continue;
+        // From here the read sees the current element; a change during a pause aborts it.
+        this.stale.delete(key);
+        if (interrupted.has(key)) {
+          done.set(key, readElement(map));
+          continue;
+        }
+        const steps = readElementSteps(map);
+        let step = steps.next();
+        while (!step.done) {
+          if (due()) await yieldNow();
+          if (this.destroyed) return;
+          if (this.stale.has(key)) break;
+          step = steps.next();
+        }
+        if (step.done) done.set(key, step.value);
+        else interrupted.add(key);
+      }
+    }
+    // Document order, as the synchronous read (a duplicated id keeps the last element).
+    const byId = new Map<string, Element>();
+    let exact = true;
+    for (const key of elements.keys()) {
+      const el = done.get(key);
+      if (!el) continue;
+      byId.set(el.id, el);
+      if (el.id !== key) exact = false;
+    }
+    this.exact = exact;
+    this.index(byId);
+    this.loading = false;
+    for (const listener of this.listeners) listener();
+  }
+
+  private index(byId: Map<string, Element>, touched?: ReadonlySet<string>) {
+    // A mismatched key can leave multiple entries with the same element id. Preserve the
+    // full-rebuild semantics for these malformed documents (also excluded from the view).
+    if (!this.exact) {
+      const all = [...byId.values()];
+      this.snapshot = {
+        byId,
+        canvas: canvasElements(all),
+        columns: new Map(all.filter(isContainer).map((el) => [el.id, childrenOf(all, el.id)])),
+        unsorted: childrenOf(all, UNSORTED),
+      };
+      return;
+    }
+    const previous = this.snapshot;
+    const columns = new Map(previous.columns);
+    const dirty = new Set<string | null>();
+    const reordered = new Set<string | null>();
+    for (const id of touched ?? byId.keys()) {
+      const old = previous.byId.get(id);
+      const next = byId.get(id);
+      if (old === next) continue;
+      if (old) dirty.add(old.parent);
+      if (next) dirty.add(next.parent);
+      if (!old || !next || old.parent !== next.parent || old.z !== next.z || old.id !== next.id) {
+        if (old) reordered.add(old.parent);
+        if (next) reordered.add(next.parent);
+      }
+      if (old && isContainer(old) && (!next || !isContainer(next))) columns.delete(id);
+      if (next && isContainer(next) && !columns.has(id)) {
+        columns.set(id, []);
+        dirty.add(id);
+        reordered.add(id);
+      }
+    }
+    // Group once, rather than scanning the entire board for every column on open.
+    const groups = new Map<string | null, Element[]>();
+    if (reordered.size) {
+      for (const el of byId.values()) {
+        if (!reordered.has(el.parent)) continue;
+        const group = groups.get(el.parent);
+        if (group) group.push(el);
+        else groups.set(el.parent, [el]);
+      }
+    }
+    let canvas = previous.canvas;
+    let unsorted = previous.unsorted;
+    for (const parent of dirty) {
+      const before =
+        parent === null ? canvas : parent === UNSORTED ? unsorted : columns.get(parent);
+      if (!before) continue; // Children of a missing container are not in the public index.
+      const next = reordered.has(parent)
+        ? parent === null
+          ? canvasElements(groups.get(parent) ?? [])
+          : childrenOf(groups.get(parent) ?? [], parent)
+        : before.map((el) => byId.get(el.id)!);
+      if (parent === null) canvas = next;
+      else if (parent === UNSORTED) unsorted = next;
+      else columns.set(parent, next);
     }
     this.snapshot = {
       byId,
-      canvas: canvasElements(all),
+      canvas,
       columns,
-      unsorted: childrenOf(all, UNSORTED),
+      unsorted,
     };
   }
 
@@ -237,7 +396,10 @@ function sameElement(a: Element, b: Element): boolean {
     const vb = (b as Record<string, unknown>)[k];
     if (va === vb) continue;
     // Strokes and rows keep their objects while they do not change (readElement).
-    if (Array.isArray(va) && Array.isArray(vb) && sameItems(va, vb)) continue;
+    if (Array.isArray(va) && Array.isArray(vb)) {
+      if (!sameItems(va, vb)) return false;
+      continue;
+    }
     if (typeof va === 'object' && JSON.stringify(va) === JSON.stringify(vb)) continue;
     return false;
   }
@@ -246,6 +408,11 @@ function sameElement(a: Element, b: Element): boolean {
 
 function sameItems(a: readonly unknown[], b: readonly unknown[]): boolean {
   if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] === b[i]) continue;
+    // Preserve JSON equality (including null/undefined array entries), but serialize only
+    // replaced items, never all unchanged strokes or rows after a single edit.
+    if (JSON.stringify([a[i]]) !== JSON.stringify([b[i]])) return false;
+  }
   return true;
 }

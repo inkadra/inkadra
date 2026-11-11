@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { readElement, roots, tableRowMap } from './doc.ts';
+import { readElement, readElementSteps, roots, tableRowMap } from './doc.ts';
 import { Element, MAX_STROKES, MAX_TABLE_CELL } from './elements.ts';
 import { generateReferenceBoard } from './reference-board.ts';
 
@@ -21,6 +21,13 @@ const same = (map: Y.Map<unknown>) => {
   const expected = JSON.stringify(wholeCard(map));
   expect(JSON.stringify(readElement(map))).toBe(expected);
   expect(JSON.stringify(readElement(map))).toBe(expected);
+  const steps = readElementSteps(map);
+  let step = steps.next();
+  while (!step.done) {
+    expect(step.value).toBeUndefined();
+    step = steps.next();
+  }
+  expect(JSON.stringify(step.value)).toBe(expected);
 };
 
 const stroke = (id: string, extra: Record<string, unknown> = {}) => ({
@@ -40,6 +47,29 @@ it('reads every card of the reference board as the whole-card parse does', {
   Y.applyUpdate(doc, generateReferenceBoard('small', 3).update);
   for (const map of roots(doc).elements.values()) same(map);
   // A board with a real history: about 4 s on a CI runner, past the default 5 s when it is busy.
+});
+
+it('reads a table first read detached, then attached with an edited cell in one transaction', () => {
+  const id = 'table0000000000000000';
+  const column = 'col000000000000000000';
+  const row = tableRowMap({ id: `row${'0'.repeat(18)}`, cells: { [column]: 'old' } });
+  const table = new Y.Map<unknown>(
+    Object.entries({
+      ...base,
+      id,
+      type: 'table',
+      columns: Y.Array.from([new Y.Map<unknown>([['id', column]])]),
+      rows: Y.Array.from([row]),
+    }),
+  );
+  readElement(table);
+  const doc = new Y.Doc();
+  doc.transact(() => {
+    roots(doc).elements.set(id, table);
+    (row.get('cells') as Y.Map<string>).set(column, 'new');
+  });
+  same(table);
+  expect(JSON.stringify(readElement(table))).toContain('"new"');
 });
 
 it('follows strokes and rows as they change, bad items included', () => {
@@ -68,6 +98,9 @@ it('follows strokes and rows as they change, bad items included', () => {
   frame.set('strokes', frameStrokes);
   plan.set('strokes', planStrokes);
   table.set('rows', rows);
+  // Register before the cache's invalidation hook: reads in deep observers must be current.
+  elements.observeDeep(() => same(table));
+  doc.on('beforeObserverCalls', () => same(table));
   const check = () => {
     for (const map of [frame, plan, table]) same(map);
   };
@@ -102,6 +135,33 @@ it('follows strokes and rows as they change, bad items included', () => {
   check();
   // A cell edited in place, too long, fixed, a key the schema does not know, the row removed.
   const cells = rows.get(0).get('cells') as Y.Map<string>;
+  doc.transact(() => {
+    cells.set('col000000000000000000', 'x'.repeat(MAX_TABLE_CELL + 1));
+    expect(readElement(table)).toBeNull();
+    cells.set('col000000000000000000', 'inside');
+    same(table);
+    cells.set('second', 'changed after an earlier cached read in the same transaction');
+    same(table);
+  });
+  const remote = new Y.Doc();
+  Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+  const remoteRows = roots(remote)
+    .elements.get(table.get('id') as string)!
+    .get('rows') as Y.Array<Y.Map<unknown>>;
+  (remoteRows.get(0).get('cells') as Y.Map<string>).set('second', 'remote');
+  Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote, Y.encodeStateVector(doc)));
+  same(table);
+  remote.destroy();
+  // Yjs does not record changes to a type created in the same transaction: a row added, read,
+  // then edited must not keep its first parse, during or after the transaction.
+  doc.transact(() => {
+    rows.push([tableRowMap({ id: `new${'0'.repeat(18)}`, cells: {} })]);
+    same(table);
+    (rows.get(rows.length - 1).get('cells') as Y.Map<string>).set('second', 'late');
+    same(table);
+  });
+  same(table);
+  rows.delete(rows.length - 1, 1);
   cells.set('col000000000000000000', 'due');
   check();
   cells.set('col000000000000000000', 'x'.repeat(MAX_TABLE_CELL + 1));

@@ -42,15 +42,33 @@ with `validateBoardDoc` and has the counts of its size.
 
 ## Benchmark of the reads
 
-`apps/web/scripts/bench-reads.ts` loads the medium and large boards from the default folder and
+`apps/web/scripts/bench-reads.ts` loads the small, medium and large boards from the default folder and
 times, with the web app's `BoardStore` attached: opening (`Y.applyUpdate`, then the first full
 read), adding a stroke to the frame with 800 strokes, editing a table cell and `createElement`
 (medians; decision [0094](../decisions/0094-lighter-core-reads.md)).
 
 ```sh
 pnpm --filter @inkadra/doc-schema reference-board --size medium
+pnpm --filter @inkadra/doc-schema reference-board --size small
 pnpm --filter @inkadra/doc-schema reference-board --size large
 pnpm --filter @inkadra/web bench:reads
 # Without a JIT, as Hermes on iOS; --zod-jitless also turns off Zod's compiled fast path
 cd apps/web && node --jitless --import tsx scripts/bench-reads.ts --runs 15 --zod-jitless
 ```
+
+Open total is the median of paired applyUpdate + first-read times; longest slice is the
+maximum of those paired totals across opens. There is no yield between the two steps.
+Small boards have 60–120 strokes per frame, rather than the medium/large frame's 800.
+For a before/after comparison, extract the base revision's `apps/web/src/board/store.ts`
+to `apps/web/src/board/store-baseline.ts`, then run the same command with `--baseline`
+and without it, both normally and under `node --jitless`. Remove that temporary source
+afterwards; do not commit it. Use the same Node version, seed, sizes and run count and
+avoid running builds or tests concurrently with the benchmark.
+
+`--hydrate` uses the opt-in `BoardStore.hydrate(doc, { budgetMs: 8 })` path, awaiting
+`store.whenHydrated` before editing. Its first read includes time yielded to the event loop.
+The longest open slice includes the still-monolithic applyUpdate; `hydrate: longest gap`
+is measured with a zero-delay timer only during hydration (including GC and scheduling).
+The synchronous web constructor is unchanged. While `store.hydrating` is true the snapshot
+is empty; it is published only after full validation. Local/remote changes during a pause
+make only the changed cards be read again, and destroy cancels it.
