@@ -388,8 +388,14 @@ describe('on a phone', () => {
       { boardId: 'board', userId: 'me', store },
     );
     await act(async () => new Promise((resolve) => setTimeout(resolve)));
-    expect(host.querySelector('.sheet__place')?.textContent).toContain('Scogliera');
-    expect(host.querySelector<HTMLAnchorElement>('.sheet__maps')?.href).toBe(mapUrl);
+    // The day's place is its own Address line (decision 0095), before the scene's place, and
+    // its one Maps button opens the day's map link.
+    const places = [...host.querySelectorAll('.sheet__place')].map((p) => p.textContent);
+    expect(places[0]).toContain('Faro di Punta Palascia');
+    expect(places[1]).toContain('Scogliera');
+    const maps = host.querySelectorAll<HTMLAnchorElement>('.sheet__maps');
+    expect(maps).toHaveLength(1);
+    expect(maps[0]?.href).toBe(mapUrl);
     store.destroy();
   });
   it('keeps the status region in place before the first answer', async () => {
