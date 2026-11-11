@@ -4,7 +4,7 @@ Playwright against the built server in all-in-one mode: `pnpm build`, then `pnpm
 They need Postgres (`DATABASE_URL`, an empty database) and Valkey or Redis (`REDIS_URL`); see
 `playwright.config.ts`. The load tests run on their own with `pnpm test:perf`.
 
-**Shards.** CI splits the suite into four runners (`pnpm test:e2e --shard=1/4`), each on an empty
+**Shards.** CI splits the suite into six runners (`pnpm test:e2e --shard=1/6`), each on an empty
 database with `first-run.spec.ts` run first. A spec can rely on what `first-run.spec.ts` leaves,
 never on another spec: the split moves as files are added.
 

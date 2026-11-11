@@ -969,6 +969,8 @@ test('bands take the chosen colour in any theme, and a selection downloads its f
   await expect(radio('Colore…')).toBeChecked();
   const custom = await save('band-custom.png', () => button('Esporta').click());
   near(await pixelOf(page, custom.bytes, 540, 10), [0x20, 0x60, 0x40]);
+  // The dialog closes once the choices are saved, after the download has started.
+  await expect(dialog).toBeHidden();
   const stored = await (
     await page.request.get(`/api/v1/projects/${project.id}/export-settings`)
   ).json();

@@ -37,7 +37,8 @@ it('reads every card of the reference board as the whole-card parse does', () =>
   const doc = new Y.Doc();
   Y.applyUpdate(doc, generateReferenceBoard('small', 3).update);
   for (const map of roots(doc).elements.values()) same(map);
-});
+  // A board with a real history: about 4 s on a CI runner, past the default 5 s when it is busy.
+}, 30_000);
 
 it('follows strokes and rows as they change, bad items included', () => {
   const doc = new Y.Doc();

@@ -44,4 +44,5 @@ it('builds a valid board with the counts of its size, the same for the same seed
   expect(summary.history.clientIds).toBeGreaterThan(spec.sessions / 2);
   expect(summary.history.operations).toBeGreaterThan(spec.moves + spec.deletions);
   expect(generateReferenceBoard('small', 7).update).toEqual(update);
-});
+  // Two boards with a real history: about 4 s on a CI runner, past the default 5 s when it is busy.
+}, 30_000);

@@ -22,26 +22,11 @@ env:
 
 # Third-party actions are pinned to a commit; Dependabot keeps the pins and comments current.
 jobs:
+  # The server's suite runs in its own job (server): only it needs a database and media tools.
   checks:
-    name: Lint, types, unit tests
+    name: Lint, types, package tests
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: inkadra
-          POSTGRES_PASSWORD: inkadra
-          POSTGRES_DB: inkadra
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U inkadra" --health-interval 5s --health-timeout 5s --health-retries 20
-      # The tests of the queues (split mode) run against it, through REDIS_URL.
-      valkey:
-        image: valkey/valkey:9-alpine
-        ports: ["6379:6379"]
-        options: >-
-          --health-cmd "valkey-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -63,32 +48,26 @@ jobs:
           test ! -s /tmp/drizzle-diff || { echo "Schema changed without a migration: run pnpm db:generate"; exit 1; }
       - name: Types
         run: pnpm turbo run typecheck
-      # The media worker tests skip what needs a tool the runner does not have.
-      - name: Media tools of the standard image
-        run: |
-          # A mirror can hang for many minutes, past the job's timeout: try again instead.
-          for attempt in 1 2 3; do
-            sudo timeout 90 apt-get update -qq &&
-              sudo timeout 180 apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils && break
-            [ "$attempt" -lt 3 ] || exit 1
-            sleep 15
-          done
-      - name: Unit and integration tests
-        run: pnpm turbo run test
+      - name: Unit tests
+        run: pnpm turbo run test --filter='!@inkadra/server'
       - name: Licences of production dependencies
         run: pnpm check:licenses
       - name: Script tests
         run: node --test scripts/*.test.mjs
 
   # PostgreSQL 16 keeps working for one more release (deploy/compose.postgres16.yaml): the
-  # suites that need a database run against it too. Remove with that file.
-  server-postgres16:
-    name: Server tests (PostgreSQL 16)
+  # suites that need a database run against it too. Remove 16 with that file.
+  server:
+    name: Server tests (PostgreSQL ${{ matrix.postgres }})
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: [18, 16]
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:${{ matrix.postgres }}-alpine
         env:
           POSTGRES_USER: inkadra
           POSTGRES_PASSWORD: inkadra
@@ -111,18 +90,52 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm # zizmor: ignore[cache-poisoning] publishes nothing; publish jobs use no cache
       - run: pnpm install --frozen-lockfile
+      # The media worker tests skip what needs a tool the runner does not have: run them once.
+      # The packages the end-to-end shards keep; this job only reads them.
+      - if: matrix.postgres == 18
+        run: sudo chown "$USER" /var/cache/apt/archives
+      - if: matrix.postgres == 18
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /var/cache/apt/archives/*.deb
+          key: apt-e2e-ubuntu-24.04-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: apt-e2e-ubuntu-24.04-
+      - name: Media tools of the standard image
+        if: matrix.postgres == 18
+        run: |
+          # A mirror can hang for many minutes, past the job's timeout: try again instead.
+          for attempt in 1 2 3; do
+            sudo timeout 90 apt-get update -qq &&
+              sudo timeout 180 apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils && break
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep 15
+          done
       - run: pnpm turbo run test --filter=@inkadra/server
+
+  # The check the ruleset of main requires: keep its name.
+  tests:
+    name: Lint, types, unit tests
+    if: ${{ !cancelled() }}
+    needs: [checks, server]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every suite passed
+        env:
+          CHECKS: ${{ needs.checks.result }}
+          SERVER: ${{ needs.server.result }}
+        run: test "$CHECKS" = success && test "$SERVER" = success
 
   # The suite runs on one worker, so it is split across runners, each with its own database.
   # Playwright repeats the first-run project (the administrator) in every shard.
   e2e-shard:
-    name: End-to-end (shard ${{ matrix.shard }}/4)
+    name: End-to-end (shard ${{ matrix.shard }}/6)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     services:
       postgres:
         image: postgres:18-alpine
@@ -178,7 +191,7 @@ jobs:
             [ "$attempt" -lt 3 ] || exit 1
             sleep 15
           done
-      - run: pnpm test:e2e "--shard=$SHARD/4"
+      - run: pnpm test:e2e "--shard=$SHARD/6"
         env:
           SHARD: ${{ matrix.shard }}
       - if: failure()
@@ -452,7 +465,7 @@ jobs:
     name: Publish image (${{ matrix.variant }}, ${{ matrix.arch }})
     if: github.event_name != 'pull_request'
     needs:
-      [checks, server-postgres16, e2e, secrets, workflows, proxy, data-dir, postgres-upgrade, scan]
+      [tests, e2e, secrets, workflows, proxy, data-dir, postgres-upgrade, scan]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     # The organisation default for GITHUB_TOKEN is read-only: publishing needs this grant.
