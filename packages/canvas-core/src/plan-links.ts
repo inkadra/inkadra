@@ -19,10 +19,20 @@ const card = <T extends Element['type']>(cards: CardsById, id: string | undefine
   return found?.type === type ? (found as Card<T>) : undefined;
 };
 
-/** The focal length in a frame's lens field ("35mm", "35 mm", "35"), or null. */
+/**
+ * The focal length in a frame's lens field: the one number of millimetres in it, with words
+ * around it or not ("35mm", "35 mm", "anamorphic 50", "Cooke 32"). Null for none, for a zoom
+ * ("24-70mm") or for several numbers, which name no single focal length. Numbers glued to letters
+ * ("S4", "2x") or behind f/ and T are not focal lengths.
+ */
 export function lensMillimetres(lens: string | undefined): number | null {
-  const match = /^\s*(\d+(?:[.,]\d+)?)\s*(?:mm)?\s*$/i.exec(lens ?? '');
-  const mm = match?.[1] ? Number(match[1].replace(',', '.')) : 0;
+  const text = lens ?? '';
+  if (/\d\s*[-–—/]\s*\d/.test(text.replace(/\b[ft]\s*\/?\s*\d+(?:[.,]\d+)?/gi, ''))) return null;
+  const numbers = [...text.matchAll(/(?<![\w.,/])(\d+(?:[.,]\d+)?)(?:\s*mm)?(?![\w.,])/gi)].map(
+    (m) => Number((m[1] as string).replace(',', '.')),
+  );
+  if (numbers.length !== 1) return null;
+  const mm = numbers[0] as number;
   return mm >= 4 && mm <= 2000 ? Math.round(mm) : null;
 }
 

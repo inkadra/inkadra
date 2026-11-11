@@ -95,7 +95,9 @@ export function adoptBase(variant: Y.Map<unknown>, base: PlanBase): void {
     }
     (list as Y.Array<unknown>).insert(
       0,
-      kind === 'icons' ? items.map((i) => new Y.Map<unknown>(Object.entries(i))) : items,
+      kind === 'icons' || kind === 'walls' || kind === 'openings'
+        ? items.map((i) => new Y.Map<unknown>(Object.entries(i)))
+        : items,
     );
   }
   for (const key of ['scale', 'grid', 'rulers'] as const)

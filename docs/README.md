@@ -13,6 +13,7 @@ write them here, and add a new page to the list in `scripts/wiki-sync.mjs`.
 | [Contributing](../CONTRIBUTING.md)                              | Conventions for every change: contracts, code, pull requests, releases |
 | [Clipper](../apps/clipper)                                      | Building and installing the browser extension                          |
 | [Collaboration simulation](testing/collaboration-simulation.md) | Gate 0.3 ten-user integration test and 30-minute soak                  |
+| [Opening large boards](opening-boards.md)                       | How a client opens a board without blocking: applyUpdate, scheduler    |
 | [End-to-end tests](../e2e)                                      | Running the Playwright tests and the load tests                        |
 | [Report relay](../relay)                                        | The Worker that passes in-app reports to the developers                |
 | [Public demo](demo.md)                                          | The rules of demo.inkadra.com, and how to run a demo                   |

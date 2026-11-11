@@ -647,10 +647,7 @@ export function planItemAt(
   radius = 0.012,
 ): PlanItemRef | null {
   const v = { x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H };
-  const all = planStack(plan);
-  const isMeasure = (e: PlanStackEntry) =>
-    e.ref.kind === 'shapes' && (e.item as PlanShape).kind === 'measure';
-  const stack = [...all.filter(isMeasure), ...all.filter((e) => !isMeasure(e))];
+  const stack = planStack(plan);
   for (let i = stack.length - 1; i >= 0; i--) {
     const { ref, item } = stack[i] as PlanStackEntry;
     if (!reachable(item, view)) continue;
@@ -660,7 +657,19 @@ export function planItemAt(
         : ref.kind === 'shapes'
           ? planShapeHit(item as PlanShape, p, radius)
           : strokeHit(item as PlanStroke, p, radius);
-    if (hit) return ref;
+    if (!hit) continue;
+    // A measure yields only to the icons its ends sit on, where they are under `p`.
+    const shape = item as PlanShape;
+    if (ref.kind === 'shapes' && shape.kind === 'measure' && (shape.from || shape.to)) {
+      const end = (plan.icons ?? []).find(
+        (icon) =>
+          (icon.id === shape.from || icon.id === shape.to) &&
+          reachable(icon, view) &&
+          iconHit(icon, v),
+      );
+      if (end) return { kind: 'icons', id: end.id };
+    }
+    return ref;
   }
   return null;
 }
@@ -1050,6 +1059,7 @@ export function addVariant(
 
 // Writing to the document --------------------------------------------------------
 
+/** The plan's list, created when missing; call inside the transaction that writes to it. */
 function listOf(doc: Y.Doc, planId: string, kind: PlanItemKind): Y.Array<unknown> | null {
   const map = roots(doc).elements.get(planId);
   if (map?.get('type') !== 'plan') return null;
@@ -1076,11 +1086,13 @@ export function addPlanIcon(
   icon: Omit<PlanIcon, 'id'>,
   origin?: unknown,
 ): string | null {
-  const icons = listOf(doc, planId, 'icons');
-  if (!icons || icons.length >= MAX_PLAN_ICONS) return null;
-  const id = newElementId();
-  const map = new Y.Map<unknown>();
+  let id: string | null = null;
+  // The list is created, when a plan lacks it, in the same undo step as the icon.
   doc.transact(() => {
+    const icons = listOf(doc, planId, 'icons');
+    if (!icons || icons.length >= MAX_PLAN_ICONS) return;
+    id = newElementId();
+    const map = new Y.Map<unknown>();
     for (const [key, value] of Object.entries({ ...icon, id }))
       if (value !== undefined) map.set(key, value);
     icons.push([map]);

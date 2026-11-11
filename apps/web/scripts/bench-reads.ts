@@ -17,6 +17,8 @@ const { values } = parseArgs({
     'zod-jitless': { type: 'boolean', default: false },
     baseline: { type: 'boolean', default: false },
     hydrate: { type: 'boolean', default: false },
+    // Only the first table (the open breakdown is the slow part without a JIT).
+    'no-breakdown': { type: 'boolean', default: false },
   },
 });
 if (values.baseline && values.hydrate) throw new Error('--baseline and --hydrate are exclusive');
@@ -25,7 +27,7 @@ if (values['zod-jitless']) z.config({ jitless: true });
 const { addStroke, createElement, deleteElements, removeStrokes, setTableCell } = await import(
   '@inkadra/canvas-core'
 );
-const { checkCard, roots } = await import('@inkadra/doc-schema');
+const { checkCard, readElement, roots } = await import('@inkadra/doc-schema');
 const Y = await import('yjs');
 // For comparisons, extract the base revision's store beside store.ts (do not commit it).
 const { BoardStore, LOCAL } = await import(
@@ -54,6 +56,30 @@ const repeat = (n: number, f: (i: number) => void, undo: () => void) => {
   return median(out);
 };
 const ms = (x: number) => (x < 10 ? x.toFixed(2) : x.toFixed(0));
+const breakdown: string[] = [];
+
+/**
+ * Measures how long the thread stays blocked, whatever schedules the work: an immediate that
+ * queues itself again runs once per turn of the event loop, so the longest time between two
+ * runs is the longest slice (scheduling included).
+ */
+function blockingProbe() {
+  let longest = 0;
+  let last = performance.now();
+  let on = true;
+  const tick = () => {
+    const now = performance.now();
+    longest = Math.max(longest, now - last);
+    last = now;
+    if (on) setImmediate(tick);
+  };
+  setImmediate(tick);
+  return () => {
+    on = false;
+    tick();
+    return longest;
+  };
+}
 
 console.log(
   `node ${process.version}${jitless ? ' --jitless' : ''}, zod fast path (allowsEval and not jitless): ${String(
@@ -180,4 +206,142 @@ for (const size of values.sizes.split(',')) {
     `| ${size} | ${ms(median(applies))} ms | ${ms(median(reads))} ms | ${ms(median(totals))} ms | ${ms(Math.max(...slices))} ms | ${values.hydrate ? `${ms(Math.max(...hydrationGaps))} ms` : '—'} | ${ms(addOne)} ms | ${ms(cell)} ms | ${ms(create)} ms | ${ms(median(stricts))} ms | ${ms(strictStroke)} ms | ${ms(strictCell)} ms |`,
   );
   store?.destroy();
+  if (!values['no-breakdown'] && !values.baseline)
+    breakdown.push(await openBreakdown(size, update, bench));
+}
+
+if (breakdown.length) {
+  console.log(
+    '\n| board | applyUpdate | validation | index | sync read | hydrate (timeout): total / longest slice | hydrate (immediate): total / longest slice | immediate / sync | first stroke after open | snapshot: export, size | sync read with snapshot | speed-up | hydrate with snapshot (immediate): total / longest slice | first stroke after a snapshot open |',
+  );
+  console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+  for (const line of breakdown) console.log(line);
+}
+
+/**
+ * Where an open goes (decision 0104), medians of fresh opens: applyUpdate; validation, every
+ * card read once with readElement; the index alone; the synchronous store; the opt-in
+ * hydration (total, longest blocking slice) with the default scheduler and, where the store
+ * takes one (decision 0105), with setImmediate; the first stroke drawn after an open.
+ */
+async function openBreakdown(
+  size: string,
+  update: Uint8Array,
+  bench: { frameId: string; tableId: string },
+): Promise<string> {
+  const opens = Math.max(3, Math.round(runs / 8));
+  const fresh = () => {
+    const d = new Y.Doc();
+    const t = performance.now();
+    Y.applyUpdate(d, update);
+    return [d, performance.now() - t] as const;
+  };
+  const stroke = { tool: 'pencil' as const, color: '#202020', width: 4, points: [1, 2, 3, 4] };
+  const r: Record<string, number[]> = {};
+  const add = (k: string, v: number) => {
+    r[k] ??= [];
+    r[k].push(v);
+  };
+  for (let i = 0; i < opens; i++) {
+    let [d, apply] = fresh();
+    add('apply', apply);
+    add(
+      'validate',
+      time(() => {
+        for (const map of roots(d).elements.values()) readElement(map);
+      }),
+    );
+    d.destroy();
+    let s: InstanceType<typeof BoardStore> | undefined;
+    for (const kind of ['timeout', 'immediate'] as const) {
+      [d] = fresh();
+      let calls = 0;
+      const immediate = () => {
+        calls++;
+        return new Promise<void>((resolve) => setImmediate(resolve));
+      };
+      const stop = blockingProbe();
+      const t = performance.now();
+      s = BoardStore.hydrate(d, {
+        budgetMs: 8,
+        ...(kind === 'immediate' ? { schedule: immediate } : {}),
+      });
+      await s.whenHydrated;
+      // A store without the `schedule` option (the base revision) never calls it.
+      if (kind === 'timeout' || calls > 0) {
+        add(`${kind}Total`, performance.now() - t);
+        add(`${kind}Slice`, stop());
+      } else stop();
+      s.destroy();
+      d.destroy();
+    }
+    [d] = fresh();
+    add(
+      'sync',
+      time(() => {
+        s = new BoardStore(d);
+      }),
+    );
+    const byId = new Map(s!.getSnapshot().byId);
+    const priv = s as unknown as { snapshot: unknown; index(b: Map<string, unknown>): void };
+    const kept = priv.snapshot;
+    priv.snapshot = { byId: new Map(), canvas: [], columns: new Map(), unsorted: [] };
+    add(
+      'index',
+      time(() => priv.index(byId)),
+    );
+    priv.snapshot = kept;
+    // A validated snapshot (decision 0106), where the store has them.
+    let snapshot: string | null = null;
+    if (typeof s!.exportValidatedSnapshot === 'function') {
+      add(
+        'export',
+        time(() => {
+          snapshot = s!.exportValidatedSnapshot('bench');
+        }),
+      );
+      add('size', (snapshot as string | null)?.length ?? 0);
+    }
+    add(
+      'stroke',
+      time(() => addStroke(d, bench.frameId, stroke, LOCAL)),
+    );
+    s!.destroy();
+    d.destroy();
+    if (snapshot) {
+      const saved = { text: snapshot, build: 'bench' };
+      [d] = fresh();
+      add(
+        'withSnapshot',
+        time(() => {
+          s = new BoardStore(d, { snapshot: saved });
+        }),
+      );
+      add(
+        'strokeSnapshot',
+        time(() => addStroke(d, bench.frameId, stroke, LOCAL)),
+      );
+      s!.destroy();
+      d.destroy();
+      [d] = fresh();
+      const stop = blockingProbe();
+      const t = performance.now();
+      s = BoardStore.hydrate(d, {
+        budgetMs: 8,
+        schedule: () => new Promise((resolve) => setImmediate(resolve)),
+        snapshot: saved,
+      });
+      await s.whenHydrated;
+      add('snapTotal', performance.now() - t);
+      add('snapSlice', stop());
+      s.destroy();
+      d.destroy();
+    }
+  }
+  const med = (k: string) => (r[k] ? `${ms(median(r[k]))} ms` : '—');
+  const max = (k: string) => (r[k] ? `${ms(Math.max(...r[k]))} ms` : '—');
+  const ratio = (a: string, b: string) =>
+    r[a] && r[b] ? `${(median(r[a]) / median(r[b])).toFixed(2)}×` : '—';
+  const mb = r.size ? `${(median(r.size) / 1e6).toFixed(1)} MB` : '—';
+  return `| ${size} | ${med('apply')} | ${med('validate')} | ${med('index')} | ${med('sync')} | ${med('timeoutTotal')} / ${max('timeoutSlice')} | ${med('immediateTotal')} / ${max('immediateSlice')} | ${ratio('immediateTotal', 'sync')} | ${med('stroke')} | ${med('export')}, ${mb} | ${med('withSnapshot')} | ${ratio('sync', 'withSnapshot')} | ${med('snapTotal')} / ${max('snapSlice')} | ${med('strokeSnapshot')} |`;
 }

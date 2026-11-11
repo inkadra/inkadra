@@ -62,7 +62,7 @@ footprint, the prompter's glass. A ring light's hole is the paper; a gel keeps i
 vehicles; 2 stands, supports and track; 3 lights, camera and grip; 4 people; 5 labels, measures
 and notes (the Notes layer). An attached icon draws over its base; within a tier the plan's order
 holds. An icon's optional `tier` (0 to 5) is what Bring forward and Send back set. Beams, cones
-and blocking moves draw between tiers 1 and 2; numbers and labels last. Hit testing follows the same order (`planStack`), except that a measure yields the click to the icon its end sits on. Strokes and shapes not on Notes are tier 0, so texts and measures now
+and blocking moves draw between tiers 1 and 2; numbers and labels last. Hit testing follows the same order (`planStack`), except that a measure yields the click to an icon one of its ends is attached to (`from`, `to`) where that icon is under the pointer; over anything else (a zone, a shape, a stroke, another icon) the measure is picked. Strokes and shapes not on Notes are tier 0, so texts and measures now
 draw over icons.
 
 **Attachments.** An icon may carry `on`, the id of the icon it is attached to. What attaches to
@@ -89,9 +89,18 @@ is drawn with those glyphs.
 `openings` (door, double door, sliding door, window, plain opening) belong to a wall by id, sit
 `at` view units along it with a `width`, a door swinging to the `side` of the wall (left or right
 of the way it is drawn) from its `hinge`. Renderers fill the outline of each piece between the
-gaps, so an opening cuts its gap, and draw the opening's lines (`openingLines`). Both are plain
-objects in a Y.Array, created with the card; at most 200 walls and 200 openings, as decision 0062
-bounds strokes. A wall's removal removes its openings; a variant shows its base's walls.
+gaps, so an opening cuts its gap, and draw the opening's lines (`openingLines`); a gap that starts
+or ends on a corner leaves no zero-length piece, so the wall ends square there. Both are Y.Maps in
+a Y.Array, as icons are (decision 0062), created with the card: a wall or an opening is edited in
+place, field by field (`updatePlanWalls`), so one person moving an opening while another flips
+its side, or one dragging a corner while another changes the thickness, merge instead of leaving
+two copies with the same id. A wall's `points` are one field: two people dragging different
+corners of the same wall at once keep the last drag. Lists of plain objects, as the first builds
+of this record wrote them, are still read and pass the stored-shape check; an edit stores the
+item as a Y.Map. A list missing on a plan of an older version is created in the same transaction,
+and undo step, as the item added to it. At most 200 walls and 200 openings, as decision 0062
+bounds strokes. A wall's removal removes its openings; a variant shows its base's walls, and
+keeps them, as Y.Maps, when its base is deleted.
 
 **New fields.** Lights: `role` (key, fill, back, practical), `watts`, `make` (make and model, free
 text), `gel` (text), `stand` (C-stand, combo, boom arm, rigged, floor, when it stands on no stand
@@ -120,7 +129,13 @@ text; the camera's own `lens` wins on the plan and is never written back), the s
 title, setting and time, the location's name, setting, address and light notes. `plan-links.ts`
 resolves them against the cards the caller can see, already cut to what a guest may see; a card
 that is gone leaves the item's own text, and `unlinkCharacter` writes the name into the label
-before a link is dropped.
+before a link is dropped. A frame's lens field gives a focal length when it holds one number of
+millimetres, with words around it or not ("50mm anamorphic", "Cooke 32"); a zoom ("24-70mm") or
+several numbers give none, and the camera keeps its own `lens` or the plan's default. Copies
+follow links as they follow scenes: duplicating a plan with its location, or with the frames and
+characters its icons link to, points the copy at their copies; pasting on another board drops
+`locationId`, `frameId` and `characterId` that point at no card there, an actor keeping the
+character's name as its label (copying writes it into the label).
 
 **Guests** see the whole plan, new fields included (decision 0062's rule; whether kit and power
 are for guests is still open). Walls and openings are left out when a variant hides its Set. A
