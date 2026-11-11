@@ -56,7 +56,10 @@ it('lists the setups each shot belongs to, by the frames its cameras link to', (
   ];
   const t = ((key: string) => key) as unknown as TFunction;
   expect(shotSetups(elements, t).get('frameAAAAAAAA')).toEqual([
-    { planId: 'baseAAAAAAAAA', name: '1 · board.plan.base', plan: 'board.plan.name · Diner',
+    {
+      planId: 'baseAAAAAAAAA',
+      name: '1 · board.plan.base',
+      plan: 'board.plan.name · Diner',
       order: 0,
     },
     {

@@ -23,9 +23,9 @@ import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { formatClock } from '../../lib/datetime.ts';
 import { useIsPhone } from '../../lib/phone.ts';
+import { loadScheduleBySetup, saveScheduleBySetup } from '../canvas-prefs.ts';
 import { CHARACTER_COLOURS } from '../plan/PlanDrawing.tsx';
 import { plansOfScene } from '../plan/scenes.tsx';
-import { loadScheduleBySetup, saveScheduleBySetup } from '../canvas-prefs.ts';
 import { groupBySetup, shotSetups } from '../plan/setups.ts';
 import { isMac, isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
@@ -916,7 +916,9 @@ export function ScheduleView({
                 className="schedule__day-shot"
                 onClick={() => openBlock(entry.day.id, block.id, null)}
               >
-                {[block.shotId && labels.get(block.shotId), block.title].filter(Boolean).join(' · ')}
+                {[block.shotId && labels.get(block.shotId), block.title]
+                  .filter(Boolean)
+                  .join(' · ')}
               </button>
             ))}
           </section>

@@ -154,7 +154,11 @@ it('leaves the sun and the other sources that are no kit out of the kit and the 
       icon('floorlamp'),
     ],
   };
-  expect(lines(kitList(plan, t)).map((l) => l.name)).toEqual(['practical 60 W', 'pendant', 'floorlamp']);
+  expect(lines(kitList(plan, t)).map((l) => l.name)).toEqual([
+    'practical 60 W',
+    'pendant',
+    'floorlamp',
+  ]);
   const power = powerLines(plan, t, 'en');
   expect(power?.rows.map((r) => r.text)).toEqual(['noCircuit: practical, pendant, floorlamp']);
   expect(powerLines({ icons: [icon('sun', { watts: 5000 })] }, t, 'en')).toBeNull();

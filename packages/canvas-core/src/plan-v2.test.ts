@@ -78,6 +78,7 @@ import {
   NOT_KIT_LIGHTS,
   PLAN_CATEGORIES,
 } from './plan-icons.ts';
+import { projectKit } from './plan-kit.ts';
 import {
   keptOnDelete,
   lensMillimetres,
@@ -91,7 +92,6 @@ import {
   unlinkCharacter,
 } from './plan-links.ts';
 import { circuitStatus, iconWatts, parseWatts, planPower } from './plan-power.ts';
-import { projectKit } from './plan-kit.ts';
 import {
   addPlanCircuit,
   addPlanOpening,
