@@ -1194,7 +1194,16 @@ describe('set plan v2 (version 23, decision 0104)', () => {
         locationId: 'placeAAAAAAAA',
         circuits: [{ id: 'circuitAAAAAA', name: 'A', amps: 16 }],
         voltage: 120,
-        background: { assetId: 'asset-1', opacity: 0.4, grey: true },
+        background: {
+          assetId: 'asset-1',
+          opacity: 0.4,
+          grey: true,
+          x: -20,
+          y: 10,
+          w: 1100,
+          h: 600,
+          hidden: true,
+        },
         north: 30,
       }),
     );

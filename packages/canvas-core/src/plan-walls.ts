@@ -521,3 +521,168 @@ export function removePlanWalls(
     }
   }, origin);
 }
+
+// Drawing and editing walls (the Walls and Openings tools) ------------------------------
+
+/** How the sides of a wall being drawn turn: by right angles, by 45°, or freely. */
+export type WallAngles = '90' | '45' | 'free';
+
+/** Wall thicknesses the tools offer, in metres. */
+export const WALL_THICKNESSES = [0.1, 0.15, 0.2] as const;
+
+/**
+ * Where the side drawn from `from` ends for the pointer at `to` (view units): along the nearest
+ * allowed direction, as far as the pointer reaches along it.
+ */
+export function snapWallEnd(from: Point, to: Point, angles: WallAngles): Point {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (angles === 'free' || (dx === 0 && dy === 0)) return to;
+  const step = angles === '90' ? Math.PI / 2 : Math.PI / 4;
+  const a = Math.round(Math.atan2(dy, dx) / step) * step;
+  const along = dx * Math.cos(a) + dy * Math.sin(a);
+  return { x: from.x + Math.cos(a) * along, y: from.y + Math.sin(a) * along };
+}
+
+/** The point `length` view units from `from` towards `to` (to the right when they meet). */
+export function atLength(from: Point, to: Point, length: number): Point {
+  const d = dist(from, to);
+  const u = d > 1e-9 ? { x: (to.x - from.x) / d, y: (to.y - from.y) / d } : { x: 1, y: 0 };
+  return { x: from.x + u.x * length, y: from.y + u.y * length };
+}
+
+/**
+ * The angle a side makes, in whole degrees: at its first corner with the side before it (0 to
+ * 180, 90 for a right angle), or with the horizontal for the first side (0 to 180).
+ */
+export function sideAngle(from: Point, to: Point, before?: Point): number {
+  const a = Math.atan2(to.y - from.y, to.x - from.x);
+  if (!before) return Math.round((Math.abs(a) * 180) / Math.PI);
+  const b = Math.atan2(before.y - from.y, before.x - from.x);
+  let turn = Math.abs(a - b);
+  if (turn > Math.PI) turn = 2 * Math.PI - turn;
+  return Math.round((turn * 180) / Math.PI);
+}
+
+/** Points in view units as a wall's `points`: grid units, kept on the drawing. */
+export function toWallPoints(points: readonly Point[]): number[] {
+  const grid = (v: number, size: number) =>
+    Math.max(0, Math.min(STROKE_GRID, Math.round((v / size) * STROKE_GRID)));
+  return points.flatMap((p) => [grid(p.x, PLAN_VIEW_W), grid(p.y, PLAN_VIEW_H)]);
+}
+
+/** The sides of a wall's path, each with where it starts and ends along the wall. */
+function sides(wall: Pick<PlanWall, 'points' | 'closed'>) {
+  const pts = path(wall);
+  const out: Array<{ a: Point; b: Point; from: number; to: number }> = [];
+  let walked = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1] as Point;
+    const b = pts[i] as Point;
+    const len = dist(a, b);
+    out.push({ a, b, from: walked, to: walked + len });
+    walked += len;
+  }
+  return out;
+}
+
+/** The side of a wall `at` view units along it, by its index. */
+function sideAt(wall: Pick<PlanWall, 'points' | 'closed'>, at: number) {
+  const list = sides(wall);
+  const found = list.findIndex((s) => at <= s.to + 1e-9);
+  return { index: found < 0 ? list.length - 1 : found, list };
+}
+
+/**
+ * Where an opening `width` wide goes on a wall for a pointer at `p` (view units): its `at`, on
+ * the side of the wall nearest the pointer, kept whole on that side so it never runs round a
+ * corner; in the middle of a side shorter than it.
+ */
+export function openingPlace(
+  wall: Pick<PlanWall, 'points' | 'closed'>,
+  p: Point,
+  width: number,
+): number {
+  const near = nearestOnWall(wall, p);
+  const { index, list } = sideAt(wall, near.at);
+  const side = list[index];
+  if (!side) return near.at;
+  const lo = side.from + width / 2;
+  const hi = side.to - width / 2;
+  return lo > hi ? (side.from + side.to) / 2 : Math.max(lo, Math.min(hi, near.at));
+}
+
+/**
+ * How far an opening's gap is from the two corners of its side (view units): what the Openings
+ * tool shows while it places or moves one.
+ */
+export function openingCorners(
+  wall: Pick<PlanWall, 'points' | 'closed'>,
+  opening: Pick<PlanOpening, 'at' | 'width'>,
+): { before: number; after: number } {
+  const span = openingSpan(wall, opening);
+  const { index, list } = sideAt(wall, (span.from + span.to) / 2);
+  const side = list[index];
+  if (!side) return { before: 0, after: 0 };
+  return { before: Math.max(0, span.from - side.from), after: Math.max(0, side.to - span.to) };
+}
+
+/**
+ * A wall with corner `index` moved to `p` (view units), and its openings kept where they were
+ * on their own side: at the same share of its length.
+ */
+export function moveWallCorner(
+  wall: PlanWall,
+  index: number,
+  p: Point,
+  openings: readonly PlanOpening[],
+): { wall: PlanWall; openings: PlanOpening[] } {
+  const points = [...wall.points];
+  const [gx, gy] = toWallPoints([p]) as [number, number];
+  points[index * 2] = gx;
+  points[index * 2 + 1] = gy;
+  const moved = { ...wall, points };
+  const before = sides(wall);
+  const after = sides(moved);
+  const next = openings
+    .filter((o) => o.wall === wall.id)
+    .map((o) => {
+      const { index: i } = sideAt(wall, o.at);
+      const a = before[i];
+      const b = after[i];
+      if (!a || !b) return o;
+      const share = a.to > a.from ? (o.at - a.from) / (a.to - a.from) : 0.5;
+      return { ...o, at: Math.round((b.from + share * (b.to - b.from)) * 100) / 100 };
+    });
+  return { wall: moved, openings: next };
+}
+
+/**
+ * The walls and openings of `source` added to plan `targetId` with new ids, each opening in the
+ * copy of its wall: how a plan reuses the set of another (one transaction, one undo step).
+ */
+export function copyPlanWalls(
+  doc: Y.Doc,
+  source: Pick<PlanElement, 'walls' | 'openings'>,
+  targetId: string,
+  origin?: unknown,
+): void {
+  doc.transact(() => {
+    const walls = listOf(doc, targetId, 'walls');
+    const openings = listOf(doc, targetId, 'openings');
+    if (!walls || !openings) return;
+    const fresh = new Map<string, string>();
+    for (const wall of source.walls ?? []) {
+      if (walls.length >= MAX_PLAN_WALLS) break;
+      const id = newElementId();
+      fresh.set(wall.id, id);
+      const { group: _group, ...rest } = wall;
+      walls.push([toMap({ ...rest, id })]);
+    }
+    for (const o of source.openings ?? []) {
+      const wall = fresh.get(o.wall);
+      if (!wall || openings.length >= MAX_PLAN_OPENINGS) continue;
+      openings.push([toMap({ ...o, id: newElementId(), wall })]);
+    }
+  }, origin);
+}

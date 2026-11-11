@@ -1199,7 +1199,8 @@ export function removePlanItems(
  * Copies items next to the originals, `offset` view units away. Returns the copies. Groups
  * among them become new groups of the copies; an attached measure is copied where it is drawn,
  * detached, so it does not land on the original. Icons attached to a copied icon are copied
- * with it and attached to its copy; a copy whose base was not copied stands free.
+ * with it and attached to its copy; a copy whose base was not copied stands free. The copies go
+ * on plan `targetId`, the plan itself unless another reuses its set (decision 0109).
  */
 export function duplicatePlanItems(
   doc: Y.Doc,
@@ -1207,6 +1208,7 @@ export function duplicatePlanItems(
   refs: readonly PlanItemRef[],
   offset: Point,
   origin?: unknown,
+  targetId: string = plan.id,
 ): PlanItemRef[] {
   const out: PlanItemRef[] = [];
   const groups = new Map<string, string>();
@@ -1229,7 +1231,7 @@ export function duplicatePlanItems(
   doc.transact(() => {
     for (const ref of all) {
       const found = planItem(plan, ref);
-      const list = listOf(doc, plan.id, ref.kind);
+      const list = listOf(doc, targetId, ref.kind);
       if (!found || !list || list.length >= LIMITS[ref.kind]) continue;
       const item =
         'x0' in found && found.kind === 'measure' ? measureEnds(found, plan.icons) : found;
