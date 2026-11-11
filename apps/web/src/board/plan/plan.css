@@ -2056,7 +2056,7 @@ span.plan-pill {
   justify-content: space-between;
   gap: 8px;
 }
-.plan-range__slider {
+.plan-editor--v2 .plan-range__slider {
   width: 100%;
 }
 .plan-props__actions {

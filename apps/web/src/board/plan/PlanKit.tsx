@@ -226,7 +226,10 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
         <Button onClick={copy} disabled={!kit.length}>
           {copied ? t('board.plan.copied') : t('board.plan.copyList')}
         </Button>
-        <Button onClick={(e) => onCallSheet(e.currentTarget.getBoundingClientRect())}>
+        <Button
+          variant={ed.phone ? 'primary' : 'secondary'}
+          onClick={(e) => onCallSheet(e.currentTarget.getBoundingClientRect())}
+        >
           {t('board.plan.addToCallSheet')}
         </Button>
       </div>
