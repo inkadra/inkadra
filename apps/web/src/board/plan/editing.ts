@@ -247,7 +247,11 @@ export function usePlanEditing(props: PlanEditorProps) {
   const nudge = (d: Point) => {
     const items = chosen();
     if (!items.length) return;
-    const carried = moveWithAttached(icons, items.filter(isIcon).map((i) => i.id), d);
+    const carried = moveWithAttached(
+      icons,
+      items.filter(isIcon).map((i) => i.id),
+      d,
+    );
     write([...items.filter((i) => !isIcon(i)).map((i) => moveItem(i, d)), ...carried]);
   };
   /** The colours paint what is selected; with nothing selected, the next strokes and icons. */

@@ -1,25 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
-  attachedPlacement,
-  attachIcon,
-  attachRole,
-  detachIcon,
-  iconCentre,
-  moveWithAttached,
-  pulledAway,
-  rotateWithAttached,
-  settleAttached,
-  snapTarget,
-  withAttached,
   addBlockingStep,
   addShape,
   addStroke,
+  attachedPlacement,
+  attachIcon,
+  attachRole,
   bendThrough,
   blockingCurve,
   blockingPositions,
   coneEnd,
+  detachIcon,
   encodeStroke,
   gridLength,
+  iconCentre,
   iconCone,
   isSized,
   itemBox,
@@ -27,6 +21,7 @@ import {
   itemsBox,
   itemsInRect,
   moveItem,
+  moveWithAttached,
   normalizeRotation,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
@@ -36,15 +31,20 @@ import {
   planItem,
   planItemAt,
   planItems,
+  pulledAway,
   type ResizeHandle,
   ROTATE_STEP,
   resizeItem,
   rotateItem,
+  rotateWithAttached,
   scaleFor,
+  settleAttached,
   shownAngle,
   snapPlanPoint,
+  snapTarget,
   toGrid,
   updateElement,
+  withAttached,
   withGroups,
   withReachAt,
 } from '@inkadra/canvas-core';
@@ -582,7 +582,11 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         d = { x: view(to).x - b.x, y: view(to).y - b.y };
       }
       // Icons take what is attached to them along.
-      const carried = moveWithAttached(ed.icons, g.items.filter(isIcon).map((i) => i.id), d);
+      const carried = moveWithAttached(
+        ed.icons,
+        g.items.filter(isIcon).map((i) => i.id),
+        d,
+      );
       ed.setPreview([...g.items.filter((i) => !isIcon(i)).map((i) => moveItem(i, d)), ...carried]);
       return;
     }
