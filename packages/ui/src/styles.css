@@ -1331,7 +1331,7 @@ select {
   --ink-slider-track: linear-gradient(
     to right,
     var(--ink-text-primary) var(--ink-slider-fill, 0%),
-    var(--ink-border-strong) var(--ink-slider-fill, 0%)
+    var(--ink-text-secondary) var(--ink-slider-fill, 0%)
   );
   appearance: none;
   width: 96px;
@@ -1348,36 +1348,39 @@ select {
   cursor: default;
 }
 .ink-slider::-webkit-slider-runnable-track {
-  height: 2px;
-  border-radius: 1px;
+  height: var(--ink-slider-height, 4px);
+  border-radius: var(--ink-radius-full);
   background: var(--ink-slider-track);
 }
 .ink-slider::-moz-range-track {
-  height: 2px;
-  border-radius: 1px;
+  height: var(--ink-slider-height, 4px);
+  border-radius: var(--ink-radius-full);
   background: var(--ink-slider-track);
 }
 .ink-slider::-webkit-slider-thumb {
   appearance: none;
-  width: 12px;
-  height: 12px;
-  margin-top: -5px;
+  width: 16px;
+  height: 16px;
+  margin-top: calc((var(--ink-slider-height, 4px) - 16px) / 2);
   border-radius: 50%;
-  border: 2px solid var(--ink-surface-1);
-  background: var(--ink-text-primary);
+  border: 3px solid var(--ink-surface-1);
+  background: var(--ink-slider-thumb, var(--ink-text-primary));
+  box-shadow: 0 0 0 1px var(--ink-text-secondary);
 }
 .ink-slider::-moz-range-thumb {
-  width: 8px;
-  height: 8px;
+  box-sizing: content-box;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  border: 2px solid var(--ink-surface-1);
-  background: var(--ink-text-primary);
+  border: 3px solid var(--ink-surface-1);
+  background: var(--ink-slider-thumb, var(--ink-text-primary));
+  box-shadow: 0 0 0 1px var(--ink-text-secondary);
 }
 .ink-slider:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: 0 0 0 3px var(--ink-accent-primary);
 }
 .ink-slider:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: 0 0 0 3px var(--ink-accent-primary);
 }
 @media (pointer: coarse) {
   .ink-slider {
@@ -1386,12 +1389,16 @@ select {
   .ink-slider::-webkit-slider-thumb {
     width: 20px;
     height: 20px;
-    margin-top: -9px;
+    margin-top: calc((var(--ink-slider-height, 4px) - 20px) / 2);
   }
   .ink-slider::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
   }
+}
+
+.ink-slider--meaning {
+  --ink-slider-height: 8px;
 }
 
 /* Choice controls ---------------------------------------------------------- */
