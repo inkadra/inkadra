@@ -95,7 +95,7 @@ it('prints one A4 landscape page per setup with the title block, legend, power a
     '32 mm',
     '3200 K',
     'Leo',
-    'powerAt(230)',
+    'POWERAT(230)',
     'Rosa diner · Day 3',
     'foot(1,2)',
   ])
@@ -116,7 +116,7 @@ it('prints one A4 landscape page per setup with the title block, legend, power a
       ctx,
     )[0]?.ops ?? [],
   ).join('|');
-  expect(bare).not.toContain('powerAt');
+  expect(bare).not.toContain('POWERAT');
   expect(bare).not.toContain('off the back wall');
   expect(bare).not.toContain('CAMERAS');
 });
