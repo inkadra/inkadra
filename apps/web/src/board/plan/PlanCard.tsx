@@ -70,7 +70,7 @@ export function PlanCard({ element }: { element: PlanElement }) {
   return (
     <div className="plan plan--card">
       <div className="plan__body card__media">
-        <PlanDrawing plan={plan} />
+        <PlanDrawing plan={plan} background />
       </div>
       <div className="plan__foot">
         <div className="plan__head">

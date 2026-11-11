@@ -17,6 +17,7 @@ import {
   measureEnds,
   moveItem,
   moveWithAttached,
+  NOMINAL_SCALE,
   type PlanElement,
   type PlanGroupName,
   type PlanItem,
@@ -27,6 +28,7 @@ import {
   planItem,
   planItems,
   removePlanItems,
+  removePlanWalls,
   rotateItem,
   rotateManyWithAttached,
   rotateWithAttached,
@@ -37,6 +39,7 @@ import {
   transferPlanItems,
   updateElement,
   updatePlanItems,
+  updatePlanWalls,
   variantView,
   withAttached,
   withGroups,
@@ -47,6 +50,9 @@ import {
   type PlanIcon,
   type PlanIconKind,
   type PlanLayer,
+  type PlanOpening,
+  type PlanOpeningKind,
+  type PlanWall,
 } from '@inkadra/doc-schema';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type BoardStore, LOCAL } from '../store.ts';
@@ -56,7 +62,25 @@ import { rememberRecent } from './PlanLibrary.tsx';
 import type { KitScope } from './project-kit.ts';
 
 export type DragKind = 'line' | 'arrow' | 'rect' | 'ellipse' | 'zone' | 'measure' | 'scale';
-export type Tool = 'select' | 'pencil' | 'text' | 'icons' | 'move' | DragKind;
+export type Tool =
+  | 'select'
+  | 'pencil'
+  | 'text'
+  | 'icons'
+  | 'move'
+  | 'walls'
+  | 'openings'
+  | DragKind;
+/** A wall or an opening, picked or being edited (decision 0110). */
+export interface WallRef {
+  kind: 'walls' | 'openings';
+  id: string;
+}
+/** Walls and openings shown in place while a gesture moves them. */
+export interface WallPreview {
+  walls?: PlanWall[];
+  openings?: PlanOpening[];
+}
 export type PanelTab = 'properties' | 'elements' | 'kit';
 /** A full sheet of the phone over the plan. */
 export type PhoneSheet = 'library' | 'elements' | 'kit' | null;
@@ -91,6 +115,8 @@ export interface PlanEditorProps {
   /** Lenses of the frames of the plan's scenes, proposed for a camera ("5A · 35 mm"). */
   lenses?: ReadonlyArray<{ label: string; mm: number }>;
   onOpenScene: (id: string) => void;
+  /** The project, for uploading a background picture; none where nothing is uploaded. */
+  projectId?: string | undefined;
   /** Opens a linked character, frame or location card (decision 0104), leaving the editor. */
   onOpenCard?: ((id: string) => void) | undefined;
   /** The board's frame aspect, for the picture of a linked frame. */
@@ -100,7 +126,7 @@ export interface PlanEditorProps {
 
 const replaceIn = <T extends { id: string }>(
   list: T[] | undefined,
-  next: readonly PlanItem[],
+  next: ReadonlyArray<{ id: string }>,
 ): T[] | undefined =>
   list?.map((item) => (next.find((n) => n.id === item.id) as unknown as T | undefined) ?? item);
 
@@ -140,6 +166,15 @@ export function usePlanEditing(props: PlanEditorProps) {
     previewRef.current = list;
     setPreviewState(list);
   };
+  /** The wall or opening picked (decision 0110); items and walls are never picked together. */
+  const [wallSel, setWallSelState] = useState<WallRef | null>(null);
+  /** A wall of the locked Set layer was clicked: the properties say why it does not pick. */
+  const [lockedWall, setLockedWall] = useState(false);
+  const [wallPreview, setWallPreview] = useState<WallPreview | null>(null);
+  /** What the Openings tool places next. */
+  const [openingKind, setOpeningKind] = useState<PlanOpeningKind>('door');
+  /** The picture under the plan being moved and scaled (decision 0110). */
+  const [placingBackground, setPlacingBackground] = useState(false);
   /** Called with the client point of the middle of the plan, to place there. */
   const middle = useRef<() => Point>(() => ({ x: 0.5, y: 0.5 }));
 
@@ -163,7 +198,7 @@ export function usePlanEditing(props: PlanEditorProps) {
   const hiddenLayers = new Set<PlanGroupName>([...(plan.hiddenLayers ?? []), ...myHidden]);
   const locked = new Set<PlanLayer>(plan.lockedLayers ?? []);
   const viewOf = { hidden: hiddenLayers, locked };
-  const shown =
+  const moved =
     preview === null
       ? drawn
       : {
@@ -186,6 +221,16 @@ export function usePlanEditing(props: PlanEditorProps) {
         (i) => !hiddenLayers.has(layerOf(i)) && !hiddenLayers.has(planGroupOf(i)),
       ),
     );
+  const shown =
+    wallPreview === null
+      ? moved
+      : {
+          ...moved,
+          walls: wallPreview.walls ? replaceIn(moved.walls, wallPreview.walls) : moved.walls,
+          openings: wallPreview.openings
+            ? replaceIn(moved.openings, wallPreview.openings)
+            : moved.openings,
+        };
   const selected = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
   const item = selected ? (planItem(drawn, selected) ?? null) : null;
   const many = selection.length > 1 ? selection.flatMap((r) => planItem(drawn, r) ?? []) : [];
@@ -197,12 +242,26 @@ export function usePlanEditing(props: PlanEditorProps) {
     if (selection.some((r) => !planItem(drawn, r)))
       setSelection((s) => s.filter((r) => planItem(drawn, r)));
   }, [selection, drawn]);
+  // Picking items lets go of the wall; a wall that goes is no longer picked.
+  useEffect(() => {
+    if (selection.length) setWallSelState(null);
+  }, [selection]);
+  useEffect(() => {
+    if (wallSel && !(drawn[wallSel.kind] ?? []).some((w) => w.id === wallSel.id))
+      setWallSelState(null);
+  }, [wallSel, drawn]);
   // Another tool ends the movement being drawn.
   useEffect(() => {
     if (tool !== 'move') setMoving(null);
   }, [tool]);
 
   const select = (ref: PlanItemRef | null) => setSelection(ref ? withGroups(drawn, [ref]) : []);
+  const selectWall = (ref: WallRef | null) => {
+    setSelection([]);
+    setLockedItem(null);
+    setLockedWall(false);
+    setWallSelState(ref);
+  };
   /** One change, one undo step. */
   const change = (write: () => void) => {
     store.undo.stopCapturing();
@@ -252,7 +311,47 @@ export function usePlanEditing(props: PlanEditorProps) {
   const editPlan = (patch: Partial<PlanElement>, id = plan.id) =>
     change(() => updateElement(doc, id, patch as never, LOCAL));
 
+  // Walls and openings (decision 0110): on the Set layer, the base's for a setup. -----------
+  const setOwner = targetFor('set');
+  /** View units per metre for walls: the plan's scale, or the nominal one until it has one. */
+  const wallScale = drawn.scale ?? NOMINAL_SCALE;
+  const setLocked = locked.has('set');
+  /**
+   * A plan drawn in metres before it has a scale gets the nominal one with its first wall, in the
+   * same change: what the walls tool showed in metres stays true (decision 0110).
+   */
+  const ensureScale = () => {
+    if (!drawn.scale) updateElement(doc, scaleOwner, { scale: NOMINAL_SCALE, grid: '0.5' }, LOCAL);
+  };
+  /** Walls or openings written, as the locks allow (decision 0114): nothing else is sent. */
+  const writeWalls = (key: WallRef['kind'], items: ReadonlyArray<PlanWall | PlanOpening>) => {
+    const allowed = allowedWrites(drawn[key] ?? [], items);
+    if (allowed.length) change(() => updatePlanWalls(doc, setOwner, key, allowed, LOCAL));
+  };
+  /** Removes walls and openings; those locked on their own stay, and stay picked. */
+  const removeWalls = (ids: readonly string[]) => {
+    const locked = new Set(
+      [...(drawn.walls ?? []), ...(drawn.openings ?? [])].flatMap((w) =>
+        itemLocked(w) ? [w.id] : [],
+      ),
+    );
+    const doomed = ids.filter((id) => !locked.has(id));
+    if (!doomed.length) return;
+    change(() => removePlanWalls(doc, setOwner, doomed, LOCAL));
+    if (wallSel && doomed.includes(wallSel.id)) setWallSelState(null);
+  };
+  /** Locks or unlocks a wall or an opening on its own (decision 0114). */
+  const toggleWallLock = (ref: WallRef) => {
+    const target = (drawn[ref.kind] ?? []).find((w) => w.id === ref.id);
+    if (target)
+      writeWalls(ref.kind, [{ ...target, locked: itemLocked(target) ? undefined : true }]);
+  };
+
   const remove = (all = selection.map((r) => r.id)) => {
+    if (wallSel && all.length === 0) {
+      removeWalls([wallSel.id]);
+      return;
+    }
     // Items locked on their own stay, and stay picked (decision 0114).
     const kept = new Set(planItems(drawn).flatMap((e) => (itemLocked(e.item) ? [e.item.id] : [])));
     const ids = all.filter((id) => !kept.has(id));
@@ -471,6 +570,23 @@ export function usePlanEditing(props: PlanEditorProps) {
 
   return {
     ...props,
+    wallSel,
+    selectWall,
+    lockedWall,
+    setLockedWall,
+    wallPreview,
+    setWallPreview,
+    openingKind,
+    setOpeningKind,
+    placingBackground,
+    setPlacingBackground,
+    setOwner,
+    wallScale,
+    setLocked,
+    ensureScale,
+    writeWalls,
+    removeWalls,
+    toggleWallLock,
     cards: props.cards ?? new Map(),
     phone,
     doc,

@@ -356,6 +356,13 @@ const paths = {
     </>
   ),
   ruler: <path d="M3 15L15 3l6 6L9 21zM7 11l2 2M10 8l2 2M13 5l2 2" />,
+  // Walls and openings of a set plan, seen from above (decision 0110).
+  wall: <path d="M5 19V5h14" strokeWidth="2.6" />,
+  door: <path d="M5 19V5M5 5a14 14 0 0 1 14 14" />,
+  doubleDoor: <path d="M4 18V9M20 18V9M4 9a9 9 0 0 1 8 9M20 9a9 9 0 0 0-8 9" />,
+  slidingDoor: <path d="M3 10h12M9 14h12" />,
+  windowPane: <path d="M3 9h18v6H3zM3 12h18" />,
+  opening: <path d="M3 12h3M10.5 12h3M18 12h3" />,
   groupItems: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="3 2.5" />

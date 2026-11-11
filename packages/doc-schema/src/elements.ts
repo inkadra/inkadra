@@ -981,9 +981,17 @@ export const PlanElement = Base.extend({
       assetId: z.string().min(1).max(64),
       opacity: z.number().min(0.05).max(1).optional().describe('Omitted = 1.'),
       grey: z.boolean().optional().describe('Drawn in greys.'),
+      // Where it lies, in view units of the drawing; all four or none (none = stretched over it).
+      x: z.number().min(-10000).max(10000).optional(),
+      y: z.number().min(-10000).max(10000).optional(),
+      w: z.number().positive().max(20000).optional(),
+      h: z.number().positive().max(20000).optional(),
+      hidden: z.boolean().optional().describe('Kept but not drawn.'),
     })
     .optional()
-    .describe('A picture under the plan, stretched over the drawing: a floor plan to trace.'),
+    .describe(
+      'A picture under the plan, a floor plan to trace; stretched over the drawing unless placed.',
+    ),
   north: z
     .int()
     .min(0)

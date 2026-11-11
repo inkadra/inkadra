@@ -59,6 +59,8 @@ export type Op =
       h: number;
       fit: 'cover' | 'contain';
       opacity?: number;
+      /** Drawn in greys: a set plan's background picture (decision 0110). */
+      grey?: boolean;
       crop?: { x: number; y: number; w: number; h: number };
       rotation?: number;
     }

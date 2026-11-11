@@ -769,7 +769,9 @@
         "shape": "Rectángulo o elipse",
         "shapes": "Formas y líneas",
         "draw": "Dibujar",
-        "lineOrArrow": "Línea o flecha"
+        "lineOrArrow": "Línea o flecha",
+        "walls": "Paredes",
+        "openings": "Aberturas"
       },
       "snap": "Ajustar a la cuadrícula",
       "library": "Iconos de set",
@@ -1308,7 +1310,7 @@
       "marquee_other": "Arrastra para seleccionar · {{count}} elementos",
       "marqueeHold_one": "Mantén pulsado y arrastra · {{count}} elemento",
       "marqueeHold_other": "Mantén pulsado y arrastra · {{count}} elementos",
-      "emptyHint": "Dibuja las paredes con Línea o Rectángulo y luego añade cámaras y luces desde la biblioteca de la izquierda.",
+      "emptyHint": "Dibuja las paredes con la herramienta Paredes y luego añade cámaras y luces desde la biblioteca de la izquierda.",
       "measureMetres": "Medida en metros",
       "measureHint": "El dibujo queda igual: solo cambia el número mostrado.",
       "measureWrong": "Escribe un número mayor que 0.",
@@ -1456,8 +1458,6 @@
       "textSize": "Tamaño del texto",
       "tilt": "Inclinación",
       "viewLength": "Longitud de la vista",
-      "wallCount_one": "{{count}} pared",
-      "wallCount_other": "{{count}} paredes",
       "zoom": "Zoom",
       "zoomFit": "Ajustar el plano",
       "stands": {
@@ -1624,6 +1624,106 @@
         "hint": "Arrastra para mover, pellizca o desplaza para el zoom",
         "note": "Quien puede abrir el tablero ve este plano, la leyenda, el material y la potencia.",
         "guestNote": "Ves el plano tal como se comparte contigo: los setups, la leyenda, el material y la potencia."
+      },
+      "walls": {
+        "options": "Opciones de la herramienta de paredes",
+        "thickness": "Grosor",
+        "angles": "Ángulos",
+        "free": "Libres",
+        "typeHint": "Escribe una longitud y pulsa Intro",
+        "typedLength": "Longitud del siguiente lado, en metros",
+        "typedWidth": "Anchura de la siguiente abertura, en metros",
+        "openings": "Aberturas",
+        "kinds": {
+          "door": "Puerta",
+          "doubledoor": "Puerta doble",
+          "sliding": "Puerta corredera",
+          "window": "Ventana",
+          "opening": "Hueco"
+        },
+        "closeClick": "Haz clic aquí para cerrar la habitación",
+        "closeTap": "Toca aquí para cerrar la habitación",
+        "locked": "La capa Set está bloqueada: desbloquéala en Elementos para dibujar paredes.",
+        "hidden": "La capa Set está oculta: muéstrala en Elementos para dibujar paredes.",
+        "done": "Terminar paredes",
+        "summaryWalls_one": "{{count}} pared",
+        "summaryWalls_other": "{{count}} paredes",
+        "summary": {
+          "door_one": "{{count}} puerta",
+          "door_other": "{{count}} puertas",
+          "doubledoor_one": "{{count}} puerta doble",
+          "doubledoor_other": "{{count}} puertas dobles",
+          "sliding_one": "{{count}} puerta corredera",
+          "sliding_other": "{{count}} puertas correderas",
+          "window_one": "{{count}} ventana",
+          "window_other": "{{count}} ventanas",
+          "opening_one": "{{count}} hueco",
+          "opening_other": "{{count}} huecos"
+        },
+        "labelPlaceholder": "p. ej. Pared de la cocina",
+        "kind": "Tipo de abertura",
+        "fromCorners": "a {{before}} y {{after}} de las esquinas",
+        "openingWidth": "Anchura de la abertura",
+        "flip": "Cambiar de lado",
+        "swing": "Abrir desde el otro extremo",
+        "doorHint": "Arrástrala a lo largo de su pared para moverla.",
+        "wall": "Pared",
+        "wallSummary_one": "{{count}} lado · {{length}}",
+        "wallSummary_other": "{{count}} lados · {{length}}",
+        "cornersHint": "Arrastra una esquina para moverla; las aberturas se quedan en su lado."
+      },
+      "background": {
+        "button": "Fondo",
+        "title": "Imagen de fondo",
+        "uploading": "Subiendo la imagen…",
+        "failed": "No se pudo subir la imagen. Inténtalo de nuevo.",
+        "picture": "Imagen",
+        "opacity": "Opacidad",
+        "grey": "En grises",
+        "greyShort": "grises",
+        "show": "Visible",
+        "place": "Mover y escalar",
+        "replace": "Sustituir",
+        "remove": "Quitar",
+        "empty": "Un plano o una foto de la localización, bajo el dibujo, para calcar.",
+        "choose": "Elegir una imagen",
+        "placing": "Arrastra la imagen para moverla, una esquina para escalarla",
+        "edit": "Ajustes de la imagen de fondo",
+        "showIt": "Mostrar el fondo",
+        "hideIt": "Ocultar el fondo"
+      },
+      "start": {
+        "title": "Empieza el plano",
+        "titleOf": "Empieza el plano de {{name}}",
+        "scene": "Escena {{number}}",
+        "later": "Puedes cambiarlo todo después.",
+        "how": "Cómo empezar",
+        "reuse": "Reutilizar el set de esta localización",
+        "reuseText": "{{what}} de “{{name}}”. Luces, cámaras y actores empiezan vacíos.",
+        "reuseFrom": "Reutilizar el set de",
+        "furniture": "muebles",
+        "reuseGo": "Reutilizar el set",
+        "draw": "Dibujar las paredes",
+        "drawText": "Haz clic esquina por esquina, escribe las longitudes.",
+        "drawGo": "Dibujar las paredes",
+        "trace": "Calcar una imagen",
+        "traceText": "Un plano o una foto de la localización, bajo el dibujo.",
+        "traceGo": "Elegir una imagen",
+        "scan": "Escanear la habitación",
+        "scanText": "Con la app del móvil, cuando esté lista.",
+        "ready": "O una habitación lista",
+        "rooms": {
+          "rect": "Rectángulo",
+          "l": "En L",
+          "u": "En U",
+          "studio": "Plató con tres paredes",
+          "exterior": "Exterior, sin paredes"
+        },
+        "by": "por",
+        "roomGo": "Crear la habitación",
+        "tooBig": "Demasiado grande para este plano a su escala.",
+        "empty": "Empezar vacío",
+        "again": "Formas de empezar…"
       }
     },
     "contextual": {
@@ -5007,6 +5107,14 @@
           "3": {
             "title": "Setups",
             "text": "Una pestaña por setup. En un setup, la nota dice qué cambió respecto a la base, que puede verse detrás."
+          },
+          "4": {
+            "title": "Paredes y aberturas",
+            "text": "Paredes: haz clic esquina por esquina, escribe una longitud e Intro, haz clic en la primera esquina para cerrar la habitación. Aberturas: puertas y ventanas van en una pared."
+          },
+          "5": {
+            "title": "Fondo",
+            "text": "Un plano o una foto bajo el dibujo para calcar: muévela, escálala, elige opacidad y grises."
           }
         }
       },

@@ -769,7 +769,9 @@
         "shape": "Rechteck oder Ellipse",
         "shapes": "Formen und Linien",
         "draw": "Zeichnen",
-        "lineOrArrow": "Linie oder Pfeil"
+        "lineOrArrow": "Linie oder Pfeil",
+        "walls": "Wände",
+        "openings": "Öffnungen"
       },
       "snap": "Am Raster ausrichten",
       "library": "Set-Symbole",
@@ -1308,7 +1310,7 @@
       "marquee_other": "Zum Auswählen ziehen · {{count}} Elemente",
       "marqueeHold_one": "Gedrückt halten und ziehen · {{count}} Element",
       "marqueeHold_other": "Gedrückt halten und ziehen · {{count}} Elemente",
-      "emptyHint": "Zeichne die Wände mit Linie oder Rechteck und füge dann Kameras und Lichter aus der Bibliothek links hinzu.",
+      "emptyHint": "Zeichne die Wände mit dem Werkzeug Wände und füge dann Kameras und Lichter aus der Bibliothek links hinzu.",
       "measureMetres": "Maß in Metern",
       "measureHint": "Die Zeichnung bleibt, wie sie ist: Nur die angezeigte Zahl ändert sich.",
       "measureWrong": "Gib eine Zahl größer als 0 ein.",
@@ -1456,8 +1458,6 @@
       "textSize": "Textgröße",
       "tilt": "Neigung",
       "viewLength": "Sichtlänge",
-      "wallCount_one": "{{count}} Wand",
-      "wallCount_other": "{{count}} Wände",
       "zoom": "Zoom",
       "zoomFit": "Plan einpassen",
       "stands": {
@@ -1624,6 +1624,106 @@
         "hint": "Ziehen zum Verschieben, kneifen oder scrollen zum Zoomen",
         "note": "Wer das Board öffnen kann, sieht diesen Plan, die Legende, das Material und den Strom.",
         "guestNote": "Du siehst den Plan so, wie er mit dir geteilt ist: Setups, Legende, Material und Strom."
+      },
+      "walls": {
+        "options": "Optionen des Wandwerkzeugs",
+        "thickness": "Stärke",
+        "angles": "Winkel",
+        "free": "Frei",
+        "typeHint": "Länge eingeben, dann Enter",
+        "typedLength": "Länge der nächsten Seite, in Metern",
+        "typedWidth": "Breite der nächsten Öffnung, in Metern",
+        "openings": "Öffnungen",
+        "kinds": {
+          "door": "Tür",
+          "doubledoor": "Doppeltür",
+          "sliding": "Schiebetür",
+          "window": "Fenster",
+          "opening": "Durchgang"
+        },
+        "closeClick": "Hier klicken, um den Raum zu schließen",
+        "closeTap": "Hier tippen, um den Raum zu schließen",
+        "locked": "Die Ebene Set ist gesperrt: entsperre sie unter Elemente, um Wände zu zeichnen.",
+        "hidden": "Die Ebene Set ist ausgeblendet: blende sie unter Elemente ein, um Wände zu zeichnen.",
+        "done": "Wände fertig",
+        "summaryWalls_one": "{{count}} Wand",
+        "summaryWalls_other": "{{count}} Wände",
+        "summary": {
+          "door_one": "{{count}} Tür",
+          "door_other": "{{count}} Türen",
+          "doubledoor_one": "{{count}} Doppeltür",
+          "doubledoor_other": "{{count}} Doppeltüren",
+          "sliding_one": "{{count}} Schiebetür",
+          "sliding_other": "{{count}} Schiebetüren",
+          "window_one": "{{count}} Fenster",
+          "window_other": "{{count}} Fenster",
+          "opening_one": "{{count}} Durchgang",
+          "opening_other": "{{count}} Durchgänge"
+        },
+        "labelPlaceholder": "z. B. Küchenwand",
+        "kind": "Art der Öffnung",
+        "fromCorners": "{{before}} und {{after}} von den Ecken",
+        "openingWidth": "Breite der Öffnung",
+        "flip": "Seite wechseln",
+        "swing": "Vom anderen Ende öffnen",
+        "doorHint": "Entlang der Wand ziehen, um sie zu verschieben.",
+        "wall": "Wand",
+        "wallSummary_one": "{{count}} Seite · {{length}}",
+        "wallSummary_other": "{{count}} Seiten · {{length}}",
+        "cornersHint": "Ziehe eine Ecke, um sie zu verschieben; die Öffnungen bleiben auf ihrer Seite."
+      },
+      "background": {
+        "button": "Hintergrund",
+        "title": "Hintergrundbild",
+        "uploading": "Bild wird hochgeladen…",
+        "failed": "Das Bild konnte nicht hochgeladen werden. Versuche es erneut.",
+        "picture": "Bild",
+        "opacity": "Deckkraft",
+        "grey": "In Grautönen",
+        "greyShort": "grau",
+        "show": "Sichtbar",
+        "place": "Verschieben und skalieren",
+        "replace": "Ersetzen",
+        "remove": "Entfernen",
+        "empty": "Ein Grundriss oder ein Foto der Besichtigung, unter der Zeichnung, zum Nachzeichnen.",
+        "choose": "Bild auswählen",
+        "placing": "Bild ziehen zum Verschieben, eine Ecke zum Skalieren",
+        "edit": "Einstellungen des Hintergrundbilds",
+        "showIt": "Hintergrund einblenden",
+        "hideIt": "Hintergrund ausblenden"
+      },
+      "start": {
+        "title": "Plan beginnen",
+        "titleOf": "Plan von {{name}} beginnen",
+        "scene": "Szene {{number}}",
+        "later": "Du kannst später alles ändern.",
+        "how": "Wie beginnen",
+        "reuse": "Set dieses Drehorts wiederverwenden",
+        "reuseText": "{{what}} aus „{{name}}“. Lichter, Kameras und Darsteller beginnen leer.",
+        "reuseFrom": "Set wiederverwenden von",
+        "furniture": "Möbel",
+        "reuseGo": "Set wiederverwenden",
+        "draw": "Wände zeichnen",
+        "drawText": "Ecke für Ecke klicken, die Längen eingeben.",
+        "drawGo": "Wände zeichnen",
+        "trace": "Ein Bild nachzeichnen",
+        "traceText": "Ein Grundriss oder ein Foto der Besichtigung, unter der Zeichnung.",
+        "traceGo": "Bild auswählen",
+        "scan": "Raum scannen",
+        "scanText": "Mit der Handy-App, sobald sie fertig ist.",
+        "ready": "Oder ein fertiger Raum",
+        "rooms": {
+          "rect": "Rechteck",
+          "l": "L-Form",
+          "u": "U-Form",
+          "studio": "Studio mit drei Wänden",
+          "exterior": "Außen, ohne Wände"
+        },
+        "by": "mal",
+        "roomGo": "Raum erstellen",
+        "tooBig": "Zu groß für diesen Plan in seinem Maßstab.",
+        "empty": "Leer beginnen",
+        "again": "Wege zu beginnen…"
       }
     },
     "contextual": {
@@ -5007,6 +5107,14 @@
           "3": {
             "title": "Setups",
             "text": "Ein Reiter pro Setup. Auf einem Setup sagt die Notiz, was sich gegenüber der Basis geändert hat; die Basis kann dahinter erscheinen."
+          },
+          "4": {
+            "title": "Wände und Öffnungen",
+            "text": "Wände: Ecke für Ecke klicken, eine Länge eingeben und Enter, die erste Ecke klicken, um den Raum zu schließen. Öffnungen: Türen und Fenster sitzen in einer Wand."
+          },
+          "5": {
+            "title": "Hintergrund",
+            "text": "Ein Grundriss oder ein Foto unter der Zeichnung zum Nachzeichnen: verschieben, skalieren, Deckkraft und Grautöne wählen."
           }
         }
       },

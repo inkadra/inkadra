@@ -99,6 +99,21 @@ takes the whole screen: the library on the left, the drawing in the middle with 
 bottom, and a panel on the right with **Properties**, **Elements** and **Kit**. Nothing floats over
 the drawing.
 
+- **Starting**: an empty plan opens with a choice: reuse the walls, doors and furniture of
+  another plan of the same location (lights, cameras and actors stay behind), draw the walls,
+  trace an image, or a ready room (rectangle, L, U, a studio's three walls, an exterior) at the
+  width and depth you type. **Start empty** closes it; the plan's menu offers it again while the
+  plan is empty.
+- **Walls** (`W`): click corner by corner; the side being drawn shows its length and angle, turns
+  by 90°, 45° or freely, and takes a length typed on the keyboard with `Enter`. Click the first
+  corner to close the room; `Esc` or **Done with walls** ends. Pick a wall to drag its corners,
+  change its thickness (10, 15 or 20 cm) or delete it; its sides show their lengths.
+- **Openings** (`D`): a door, double door, sliding door, window or plain opening goes where you
+  click on a wall, with its width and its distance from the corners. Pick it to type its width,
+  flip its side or swing, or drag it along its wall.
+- **Background**: a floor plan or a photo of the survey under the drawing. Move and scale it, then
+  it stays locked under everything; set its opacity, show it in greys, hide it or remove it from
+  the **Background** button or the Set layer in **Elements**. It shows on the card too.
 - **Library**: 163 types in six categories on the rail (lights; modifiers and grip; camera and
   movement; people; set and props; sound and video), plus annotations. Search finds names, the
   other names crews use and categories; `Enter` places the first result in the middle. Click a

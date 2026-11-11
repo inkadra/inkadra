@@ -518,11 +518,10 @@ describe('walls and openings', () => {
     // An open wall with an opening in the middle is two pieces.
     const open = { ...room, closed: false };
     expect(wallPieces(open, [door])).toHaveLength(2);
-    // An opening wider than the wall is cut to it.
-    expect(openingSpan(open, { ...door, at: 0, width: 5000 })).toEqual({
-      from: 0,
-      to: wallLength(open),
-    });
+    // An opening wider than its side is cut to the side, never round a corner (decision 0110).
+    const first = openingSpan(open, { ...door, at: 0, width: 5000 });
+    expect(first.from).toBe(0);
+    expect(first.to).toBeCloseTo(400, 0);
   });
 
   it('outlines a piece with square ends and mitred corners', () => {

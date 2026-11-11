@@ -9,6 +9,7 @@ import {
   PLAN_VIEW_W,
   type Point,
   planItem,
+  planItems,
   planPower,
   projectKit,
   toggleGroup,
@@ -24,6 +25,7 @@ import { isMac } from '../shortcuts.ts';
 import { isIcon, type PlanEditorProps, QUARTER_TURN, usePlanEditing } from './editing.ts';
 import { kitList } from './kit.ts';
 import { isNoteTool, type LibraryItem } from './library.ts';
+import { BackgroundPanel, useBackgroundPicker } from './PlanBackground.tsx';
 import { type CanvasHandle, PlanCanvas, TOOL_KEYS } from './PlanCanvas.tsx';
 import { planTitle } from './PlanCard.tsx';
 import { PlanElements } from './PlanElements.tsx';
@@ -32,6 +34,7 @@ import { PlanKit, powerText, setupName } from './PlanKit.tsx';
 import { type Dragged, PlanLibrary } from './PlanLibrary.tsx';
 import { SceneChips } from './PlanLinks.tsx';
 import { PlanProperties } from './PlanProperties.tsx';
+import { PlanStart } from './PlanStart.tsx';
 import { ScenePicker } from './scenes.tsx';
 import { type SetupChange, setupChanges } from './setups.ts';
 import './plan.css';
@@ -81,6 +84,20 @@ export function PlanEditor(props: PlanEditorProps) {
   const [setupMenu, setSetupMenu] = useState<CSSProperties | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [fullProps, setFullProps] = useState(false);
+  const [backgroundOpen, setBackgroundOpen] = useState<CSSProperties | null>(null);
+  const backgroundButton = useRef<HTMLButtonElement>(null);
+  const picker = useBackgroundPicker(ed);
+  const empty = planItems(drawn).length === 0 && !(drawn.walls?.length ?? 0) && !drawn.background;
+  /** The start dialog: open on a plan with nothing on it, until a way to start is picked. */
+  const [starting, setStarting] = useState(empty);
+  // Something on the plan (drawn here, by undo or by someone else) closes it.
+  useEffect(() => {
+    if (!empty) setStarting(false);
+  }, [empty]);
+  // So does picking a tool or a type to place: that is starting too.
+  useEffect(() => {
+    if (ed.tool !== 'select' || ed.armed) setStarting(false);
+  }, [ed.tool, ed.armed]);
   const [exporting, setExporting] = useState<{ area: ReturnType<typeof visibleArea> } | null>(null);
   const scaleButton = useRef<HTMLButtonElement>(null);
   const family = props.family?.length ? props.family : [plan];
@@ -150,12 +167,19 @@ export function PlanEditor(props: PlanEditorProps) {
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
     const { selection, item } = ed;
+    if (canvas.current?.key(e)) {
+      e.preventDefault();
+      return;
+    }
     if (e.key === 'Escape') {
       if (canvas.current?.escape()) return;
-      if (scaleOpen) setScaleOpen(null);
+      if (starting) setStarting(false);
+      else if (backgroundOpen) setBackgroundOpen(null);
+      else if (scaleOpen) setScaleOpen(null);
       else if (ed.moving) ed.endRoute();
       else if (ed.armed) ed.disarm();
       else if (selection.length) ed.setSelection([]);
+      else if (ed.wallSel || ed.lockedWall) ed.selectWall(null);
       else if (ed.tool !== 'select') ed.setTool('select');
       else if (ed.sheet) ed.setSheet(null);
       else props.onClose();
@@ -170,7 +194,8 @@ export function PlanEditor(props: PlanEditorProps) {
       requestAnimationFrame(() =>
         document.querySelector<HTMLInputElement>('[data-plan-field="text"]')?.focus(),
       );
-    } else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length) ed.remove();
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && (selection.length || ed.wallSel))
+      ed.remove();
     else if (mod && key === 'a')
       ed.setSelection(
         itemsInRect(drawn, { x: -1, y: -1, w: 2000, h: 2000 }, ed.viewOf).filter((r) => {
@@ -341,6 +366,44 @@ export function PlanEditor(props: PlanEditorProps) {
       </Button>
     </section>
   );
+  // The start dialog again, from the plan's menu, while the plan is still empty (decision 0110).
+  const startItem = empty
+    ? [
+        {
+          label: t('board.plan.start.again'),
+          icon: 'plus' as const,
+          action: () => setStarting(true),
+        },
+      ]
+    : [];
+  const openBackground = (r: DOMRect) => {
+    if (!drawn.background && !backgroundOpen && picker.can && picker.state === 'idle') {
+      picker.pick();
+      return;
+    }
+    setBackgroundOpen(
+      backgroundOpen
+        ? null
+        : phone
+          ? { position: 'fixed', left: 8, right: 8, bottom: 8, width: 'auto' }
+          : {
+              position: 'fixed',
+              right: Math.max(8, window.innerWidth - r.right),
+              top: r.bottom + 6,
+            },
+    );
+  };
+  const backgroundPop = backgroundOpen && (
+    <BackgroundPanel
+      ed={ed}
+      picker={picker}
+      style={backgroundOpen}
+      onClose={() => setBackgroundOpen(null)}
+    />
+  );
+  const startDialog = starting && empty && (
+    <PlanStart ed={ed} picker={picker} onClose={() => setStarting(false)} />
+  );
   /** In the plan's menu whenever an item has earlier positions, as before decision 0104. */
   const ghostsItem = (drawn.icons ?? []).some((i) => i.steps?.length)
     ? [{ label: t('board.plan.ghosts'), checked: ed.ghosts, action: () => ed.setGhosts((v) => !v) }]
@@ -399,6 +462,7 @@ export function PlanEditor(props: PlanEditorProps) {
           action: () =>
             ed.editPlan({ presentation: plan.presentation !== false ? false : undefined }),
         },
+        ...startItem,
       ]}
       onClose={() => setScaleOpen(null)}
     />
@@ -460,7 +524,15 @@ export function PlanEditor(props: PlanEditorProps) {
         {ed.tab === 'properties' && (
           <PlanProperties ed={ed} onMeasure={(id) => canvas.current?.openMeasure(id)} />
         )}
-        {ed.tab === 'elements' && <PlanElements ed={ed} />}
+        {ed.tab === 'elements' && (
+          <PlanElements
+            ed={ed}
+            onBackground={() => {
+              const r = backgroundButton.current?.getBoundingClientRect();
+              if (r) openBackground(r);
+            }}
+          />
+        )}
         {ed.tab === 'kit' && <PlanKit ed={ed} onCallSheet={callSheet} />}
       </div>
       {ed.tab === 'properties' && kitCard}
@@ -525,9 +597,11 @@ export function PlanEditor(props: PlanEditorProps) {
             aria-pressed={ed.attach}
             onClick={() => ed.setAttach((v) => !v)}
           />
+          {/* The background is reached from Elements on a phone: the tour points here. */}
           <IconButton
             icon="layers"
             label={t('board.plan.tabs2.elements')}
+            data-tour="plan-background"
             onClick={() => ed.setSheet('elements')}
           />
           <Button variant="primary" onClick={props.onClose}>
@@ -550,6 +624,7 @@ export function PlanEditor(props: PlanEditorProps) {
             {powerText(power.watts, power.amps, lang).split(' · ')[0]}
           </button>
           {base && !selectedSomething && !ed.sheet && setupNote}
+          {!ed.sheet && startDialog}
         </div>
         {/* While a path is drawn the plan takes the room: the sheet comes back after Done. */}
         {selectedSomething && !ed.sheet && !ed.moving && (
@@ -567,6 +642,8 @@ export function PlanEditor(props: PlanEditorProps) {
           </section>
         )}
         {ed.sheet === 'library' && library}
+        {picker.field}
+        {backgroundPop}
         {(ed.sheet === 'elements' || ed.sheet === 'kit') && (
           <section className="plan-sheet plan-sheet--full" aria-label={sheetTitle}>
             <header className="plan-top plan-top--phone">
@@ -580,7 +657,14 @@ export function PlanEditor(props: PlanEditorProps) {
             </header>
             <div className="plan-sheet__body">
               {ed.sheet === 'elements' ? (
-                <PlanElements ed={ed} onPicked={() => ed.setSheet(null)} />
+                <PlanElements
+                  ed={ed}
+                  onPicked={() => ed.setSheet(null)}
+                  onBackground={() => {
+                    ed.setSheet(null);
+                    openBackground(new DOMRect());
+                  }}
+                />
               ) : (
                 <PlanKit ed={ed} onCallSheet={callSheet} />
               )}
@@ -609,7 +693,15 @@ export function PlanEditor(props: PlanEditorProps) {
                   ]
                 : []),
               ...(base ? [{ label: t('board.plan.rename'), action: () => setRenaming(true) }] : []),
-              ...(ghostsItem.length ? [{ divider: true as const }, ...ghostsItem] : []),
+              { divider: true as const },
+              {
+                label: t('board.plan.background.button'),
+                icon: 'image' as const,
+                disabled: !picker.can && !drawn.background,
+                action: () => openBackground(new DOMRect()),
+              },
+              ...startItem,
+              ...ghostsItem,
             ]}
             onClose={() => setSetupMenu(null)}
           />
@@ -665,6 +757,19 @@ export function PlanEditor(props: PlanEditorProps) {
         {setupTabs}
         <div className="plan-top__end">
           <button
+            ref={backgroundButton}
+            type="button"
+            className="plan-top__btn"
+            data-tour="plan-background"
+            aria-haspopup="dialog"
+            aria-expanded={!!backgroundOpen}
+            disabled={!picker.can && !drawn.background}
+            onClick={(e) => openBackground(e.currentTarget.getBoundingClientRect())}
+          >
+            <Icon name="image" size={16} />
+            {t('board.plan.background.button')}
+          </button>
+          <button
             ref={scaleButton}
             type="button"
             className="plan-top__btn"
@@ -704,9 +809,12 @@ export function PlanEditor(props: PlanEditorProps) {
         <main className="plan-main__canvas">
           <PlanCanvas ed={ed} handle={canvas} />
           {setupNote}
+          {startDialog}
         </main>
         {panel}
       </div>
+      {picker.field}
+      {backgroundPop}
       {scalePop}
       {scenePicker}
       {exporting && (
