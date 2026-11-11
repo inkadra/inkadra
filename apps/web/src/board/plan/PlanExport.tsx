@@ -225,6 +225,7 @@ export function PlanExport({
               { value: 'jpeg', label: 'JPEG' },
             ]}
           />
+          {family.length > 1 && (
           <Segmented
             label={t('board.plan.exportSheet.setups')}
             hideLabel={false}
@@ -237,10 +238,10 @@ export function PlanExport({
                 label: scene
                   ? t('board.plan.exportSheet.allOfScene', { count: family.length, scene })
                   : t('board.plan.exportSheet.allSetups', { count: family.length }),
-                disabled: family.length < 2,
               },
             ]}
           />
+          )}
           <Segmented
             label={t('board.plan.exportSheet.area')}
             hideLabel={false}
