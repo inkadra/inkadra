@@ -30,8 +30,20 @@ export const RestoredNotice = z.object({ type: z.literal('restored'), versionId:
  */
 export const VersionsNotice = z.object({ type: z.literal('versions'), versionId: z.uuid() });
 
+/**
+ * Edits of this connection were not applied (decision 0102). `schema`: its client is older than
+ * the oldest schema that may write the board, `schemaVersion`, so it keeps the edits and asks
+ * for an update of the app; `role`: it may only read; `frozen`: the board is over its caps.
+ */
+export const WriteRefusedNotice = z.object({
+  type: z.literal('writeRefused'),
+  reason: z.enum(['schema', 'role', 'frozen']),
+  schemaVersion: z.int().min(1).optional(),
+});
+
 export const BoardNotice = z.discriminatedUnion('type', [
   AccessNotice,
+  WriteRefusedNotice,
   CommentsNotice,
   ReviewNotice,
   RestoredNotice,

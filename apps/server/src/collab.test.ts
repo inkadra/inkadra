@@ -464,8 +464,11 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     const check = connect(as('owner'));
     await check.synced;
     expect(roots(check.doc).elements.has(forged.id)).toBe(false);
-    // The client was told, so its editor turns read-only too.
-    expect(notices).toEqual([{ type: 'access', readOnly: true }]);
+    // The client was told, so its editor turns read-only too, and why its edit was refused.
+    expect(notices).toEqual([
+      { type: 'access', readOnly: true },
+      { type: 'writeRefused', reason: 'role' },
+    ]);
 
     const closed = new Promise<boolean>((resolve) => {
       editor.provider.on('close', () => resolve(true));

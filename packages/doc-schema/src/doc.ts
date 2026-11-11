@@ -18,6 +18,23 @@ import {
 /** Bump when the shape of the board document changes, and add a migration below. */
 export const CURRENT_SCHEMA_VERSION = 22;
 
+/**
+ * For each document schema since decision 0102, the oldest client schema proven safe to write a
+ * document of it, with the test that proves it (a test of canvas-core's older-client.test.ts, by
+ * its title). Each version needs its own entry, and an entry is its own version unless a proof
+ * says otherwise: a bump never inherits the minimum of the version before it.
+ */
+export const WRITER_SCHEMAS: Readonly<Record<number, { min: number; proof?: string }>> = {
+  22: { min: 22 },
+};
+
+/**
+ * The oldest schema whose clients may write a document of CURRENT_SCHEMA_VERSION, if they run
+ * the strict card check (decision 0102); clients that do not need the current schema.
+ */
+export const MIN_WRITER_SCHEMA: number =
+  WRITER_SCHEMAS[CURRENT_SCHEMA_VERSION]?.min ?? CURRENT_SCHEMA_VERSION;
+
 /** Persisted ProseMirror additions: older editor schemas can destructively normalize them. */
 export const NOTE_BODY_FORMAT = {
   version: 19,

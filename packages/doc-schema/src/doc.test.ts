@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { BOARD_V1 } from './board-v1.fixture.ts';
@@ -15,6 +17,7 @@ import {
   getBoardAspect,
   getSchemaVersion,
   MAX_PLAN_ICONS,
+  MIN_WRITER_SCHEMA,
   migrateBoardDoc,
   newElementId,
   parseBoardDocName,
@@ -26,6 +29,7 @@ import {
   setBoardAspect,
   UNSORTED,
   validateBoardDoc,
+  WRITER_SCHEMAS,
 } from './index.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
@@ -1026,5 +1030,46 @@ describe('set plans', () => {
     addElement(doc, rich);
     expect(readElement(roots(doc).elements.get(rich.id)!)).toEqual(rich);
     expect(validateBoardDoc(doc)).toEqual([]);
+  });
+});
+
+describe('writer schemas (decision 0102)', () => {
+  const proofs = readFileSync(
+    fileURLToPath(new URL('../../canvas-core/src/older-client.test.ts', import.meta.url)),
+    'utf8',
+  );
+  /**
+   * Versions whose minimum is lower than themselves without a proof for that very pair: a test
+   * of older-client.test.ts whose title starts with "schema <version> from <min>:".
+   */
+  const unproven = (schemas: typeof WRITER_SCHEMAS, file: string) =>
+    Object.entries(schemas).flatMap(([version, { min, proof }]) => {
+      if (min > Number(version)) return [Number(version)];
+      if (min === Number(version)) return [];
+      const title = `schema ${version} from ${min}: `;
+      const proven =
+        proof?.startsWith(title) &&
+        new RegExp(`\\bit\\(\\s*'${proof.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`).test(file);
+      return proven ? [] : [Number(version)];
+    });
+
+  it('has an entry for the current schema, from which the minimum comes', () => {
+    expect(WRITER_SCHEMAS[CURRENT_SCHEMA_VERSION]).toBeDefined();
+    expect(MIN_WRITER_SCHEMA).toBe(WRITER_SCHEMAS[CURRENT_SCHEMA_VERSION]?.min);
+  });
+
+  it('lowers no minimum without a test that proves it for that version', () => {
+    expect(unproven(WRITER_SCHEMAS, proofs)).toEqual([]);
+    // A test that exists but proves nothing about the version does not count.
+    const file =
+      "it('duplicates a card', () => {});\nit('schema 24 from 23: keeps the new field', () => {});";
+    expect(unproven({ 24: { min: 23, proof: 'duplicates a card' } }, file)).toEqual([24]);
+    expect(
+      unproven({ 24: { min: 23, proof: 'schema 24 from 22: keeps the new field' } }, file),
+    ).toEqual([24]);
+    expect(
+      unproven({ 24: { min: 23, proof: 'schema 24 from 23: keeps the new field' } }, file),
+    ).toEqual([]);
+    expect(unproven({ 24: { min: 25 } }, file)).toEqual([24]);
   });
 });

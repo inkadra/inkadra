@@ -1,5 +1,10 @@
 import { HocuspocusProvider, type onUnsyncedChangesParameters } from '@hocuspocus/provider';
-import { boardDocName, CURRENT_SCHEMA_VERSION, readBoardNotice } from '@inkadra/doc-schema';
+import {
+  boardDocName,
+  CURRENT_SCHEMA_VERSION,
+  getSchemaVersion,
+  readBoardNotice,
+} from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
@@ -101,18 +106,24 @@ export function watchSaves(
   };
 }
 
-/** Watch the live document, rather than only guarding saved-version previews. */
+/**
+ * Watch the live document, rather than only guarding saved-version previews. A client that runs
+ * the strict card check and declares it (decision 0102) may pass `writers`, the pair the server
+ * advertises (`docSchemaVersion`, `minWriterSchema`): it then also writes a document of exactly
+ * that newer schema down to its minimum. The web app does not, so it reads any newer document.
+ */
 export function watchDocumentSchema(
   doc: Y.Doc,
   changed: (tooNew: boolean) => void,
   supported = CURRENT_SCHEMA_VERSION,
+  writers?: { schemaVersion: number; minWriterSchema: number },
 ): () => void {
   const meta = doc.getMap('meta');
-  const check = () =>
-    changed(
-      typeof meta.get('schemaVersion') === 'number' &&
-        (meta.get('schemaVersion') as number) > supported,
-    );
+  const check = () => {
+    const version = getSchemaVersion(doc);
+    const allowed = writers?.schemaVersion === version && supported >= writers.minWriterSchema;
+    changed(version > supported && !allowed);
+  };
   meta.observe(check);
   check();
   return () => meta.unobserve(check);

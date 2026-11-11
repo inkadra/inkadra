@@ -165,6 +165,10 @@ export const InstanceVersion = z
     version: z.string(),
     api: z.string().optional().openapi({ description: 'HTTP API version, currently v1.' }),
     docSchemaVersion: z.int().min(1).optional(),
+    minWriterSchema: z.int().min(1).optional().openapi({
+      description:
+        'Oldest board document schema whose clients may still write (decision 0102). Absent on older servers, where it is docSchemaVersion.',
+    }),
     minClient: z.record(z.string(), z.string()).optional().openapi({
       description: 'Minimum client version by platform; absent when no minimum is required.',
     }),

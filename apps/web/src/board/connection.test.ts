@@ -209,3 +209,21 @@ it('observes live schema changes before permitting an editor and unsubscribes cl
   doc.getMap('meta').set('schemaVersion', 17);
   expect(values.at(-1)).toBe(false);
 });
+
+it('lets a client given the writers of a newer schema write down to their minimum', async () => {
+  const { watchDocumentSchema } = await import('./connection.ts');
+  const doc = new Y.Doc();
+  const meta = doc.getMap('meta');
+  meta.set('schemaVersion', 16);
+  const given: boolean[] = [];
+  const plain: boolean[] = [];
+  watchDocumentSchema(doc, (value) => given.push(value), 15, {
+    schemaVersion: 16,
+    minWriterSchema: 15,
+  });
+  watchDocumentSchema(doc, (value) => plain.push(value), 15);
+  expect([given.at(-1), plain.at(-1)]).toEqual([false, true]);
+  // The pair is for schema 16 only: a later version needs its own.
+  meta.set('schemaVersion', 17);
+  expect(given.at(-1)).toBe(true);
+});
