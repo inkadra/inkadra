@@ -1028,13 +1028,26 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
   base:
     | Pick<
         PlanElement,
-        'strokes' | 'shapes' | 'icons' | 'scale' | 'grid' | 'rulers' | 'walls' | 'openings'
+        | 'strokes'
+        | 'shapes'
+        | 'icons'
+        | 'scale'
+        | 'grid'
+        | 'rulers'
+        | 'walls'
+        | 'openings'
+        | 'circuits'
+        | 'voltage'
       >
     | undefined,
 ): P {
   if (!base) return plan;
   // The Set is the base's, and so is its scale: walls measured once, metres in every variant.
-  const shared = base as Partial<Pick<PlanElement, 'scale' | 'grid' | 'rulers'>>;
+  const shared = base as Partial<
+    Pick<PlanElement, 'scale' | 'grid' | 'rulers' | 'circuits' | 'voltage'>
+  >;
+  const own = (plan as Partial<Pick<PlanElement, 'circuits'>>).circuits ?? [];
+  const baseCircuits = shared.circuits ?? [];
   return {
     ...plan,
     scale: shared.scale,
@@ -1046,6 +1059,10 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
     // Walls and their openings are the Set: the base's (decision 0104).
     walls: base.walls,
     openings: base.openings,
+    // So are the electrics of the location (decision 0116): the base's circuits and voltage,
+    // then any circuit a setup was given by an earlier build, so none of its lights loses its own.
+    circuits: [...baseCircuits, ...own.filter((c) => !baseCircuits.some((b) => b.id === c.id))],
+    voltage: shared.voltage,
   };
 }
 
@@ -1124,7 +1141,8 @@ export function addVariant(
     copy.set('strokes', Y.Array.from(strokes));
     copy.set('shapes', Y.Array.from(shapes));
     copy.set('icons', Y.Array.from(icons.map((i) => new Y.Map<unknown>(Object.entries(i)))));
-    // The setup's own circuits, added one by one (decision 0104).
+    // Circuits are the base's, shared by its setups (decision 0116): the setup's own list stays
+    // empty, as the card's shape expects.
     copy.set('circuits', new Y.Array());
     roots(doc).elements.set(id, copy);
   }, opts.origin);

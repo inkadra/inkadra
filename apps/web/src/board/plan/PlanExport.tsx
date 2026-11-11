@@ -13,7 +13,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ExportCache } from '../export/cache.ts';
 import type { ExportEnv, ExportFormat, ExportRequest } from '../export/engine.ts';
-import { PLAN_SHEET_INCLUDE, type PlanSheetInclude } from '../export/plan-sheet.ts';
+import {
+  PLAN_SHEET_FRAME,
+  PLAN_SHEET_INCLUDE,
+  type PlanSheetInclude,
+} from '../export/plan-sheet.ts';
 import type { BoardStore } from '../store.ts';
 import { planTitle } from './PlanCard.tsx';
 import './outputs.css';
@@ -151,12 +155,28 @@ export function PlanExport({
         const el = preview.current;
         if (controller.signal.aborted) return;
         if (el && page) {
+          // The drawing of the first page, large, as the mockup: the sheet cropped to its frame.
+          const frame = PLAN_SHEET_FRAME;
           const css = el.clientWidth || 232;
-          const scale = (css / page.width) * (window.devicePixelRatio || 1);
-          el.width = Math.round(page.width * scale);
-          el.height = Math.round(page.height * scale);
-          const ctx = el.getContext('2d');
-          if (ctx) drawPage(ctx, page, scale, built.images, 0, built.fonts.headingFamily);
+          const scale = (css / frame.w) * (window.devicePixelRatio || 1);
+          const full = document.createElement('canvas');
+          full.width = Math.round(page.width * scale);
+          full.height = Math.round(page.height * scale);
+          const off = full.getContext('2d');
+          if (off) drawPage(off, page, scale, built.images, 0, built.fonts.headingFamily);
+          el.width = Math.round(frame.w * scale);
+          el.height = Math.round(frame.h * scale);
+          el.getContext('2d')?.drawImage(
+            full,
+            frame.x * scale,
+            frame.y * scale,
+            el.width,
+            el.height,
+            0,
+            0,
+            el.width,
+            el.height,
+          );
         }
         setPages(built.pages.length);
         setStatus('ready');

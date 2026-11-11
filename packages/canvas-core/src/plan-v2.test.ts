@@ -1269,3 +1269,37 @@ describe('review of snapping (pull request 603)', () => {
     expect(iconCone(box)?.beam).toBeFalsy();
   });
 });
+
+describe('circuits of the setups (decision 0116)', () => {
+  const planOf = (doc: Y.Doc, id: string) =>
+    listElements(doc).find((e) => e.id === id) as PlanElement;
+
+  it('gives every setup its base circuits and voltage, and keeps a circuit a setup has', () => {
+    const doc = createBoardDoc(boardId);
+    const base = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+    const a = addPlanCircuit(doc, base.id, { name: 'A', amps: 16 }) as string;
+    roots(doc).elements.get(base.id)?.set('voltage', 120);
+    const setup = addVariant(doc, planOf(doc, base.id), 'CU Anna', { userId: null });
+    addPlanIcon(doc, setup, {
+      kind: 'fresnel',
+      x: 0,
+      y: 0,
+      w: 40,
+      h: 40,
+      color: '#1C1C1E',
+      watts: 2400,
+      circuit: a,
+    });
+    // A setup made by an earlier build with a circuit of its own keeps it, after the base's.
+    const old = addPlanCircuit(doc, setup, { name: 'Old', amps: 10 }) as string;
+    const view = variantView(planOf(doc, setup), planOf(doc, base.id));
+    expect(view.voltage).toBe(120);
+    expect(view.circuits?.map((c) => c.id)).toEqual([a, old]);
+    // The light keeps the base's circuit id: it is counted on circuit A, not on no circuit.
+    const power = planPower(view);
+    expect(power.circuits.map((c) => [c.name, c.amps])).toEqual([
+      ['A', 20],
+      ['Old', 0],
+    ]);
+  });
+});

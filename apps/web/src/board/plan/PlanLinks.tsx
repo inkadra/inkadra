@@ -277,7 +277,7 @@ export function CharacterLink({ ed, icon }: { ed: Ed; icon: PlanIcon }) {
               colour={ed.linked.icons?.find((i) => i.id === icon.id)?.color}
             />
           }
-          name={character.name}
+          name={t('board.plan.links.fromCharacters', { name: character.name })}
           sub={
             character.actor
               ? t('board.plan.links.playedBy', { actor: character.actor })
@@ -361,7 +361,10 @@ export function ShotLink({ ed, icon }: { ed: Ed; icon: PlanIcon }) {
                 />
               </span>
             }
-            name={[shot.label, preset('shotSizes', shot.shot)].filter(Boolean).join(' · ')}
+            // "2A · Master, wide": the frame's action says the shot, else its size.
+            name={[shot.label, frame.action?.split('\n')[0]?.trim() || preset('shotSizes', shot.shot)]
+              .filter(Boolean)
+              .join(' · ')}
             sub={[
               shot.frameLens ? t('board.plan.lensInFrame', { mm: shot.frameLens }) : '',
               preset('shotMovements', shot.movement),
@@ -377,7 +380,7 @@ export function ShotLink({ ed, icon }: { ed: Ed; icon: PlanIcon }) {
           />
           <p className="plan-props__hint">
             {t('board.plan.lensFollows')}
-            {own && shot.frameLens ? (
+            {own && shot.frameLens && icon.lens !== shot.frameLens ? (
               <>
                 {' '}
                 <button

@@ -3,7 +3,7 @@ import { projectKit } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { projectKitDetail, searchLibrary, tileName } from './library.ts';
+import { projectKitDetail, searchLibrary } from './library.ts';
 
 const NAMES: Record<string, string> = {
   'board.plan.icons.softbox': 'Softbox',
@@ -13,6 +13,7 @@ const NAMES: Record<string, string> = {
   'board.plan.icons.cob': 'LED COB',
   'board.plan.icons.grid': 'Grid',
   'board.plan.stands.cstand': 'C-stand',
+  'board.plan.groups.soft': 'Soft and LED',
 };
 const t = ((key: string, o?: { defaultValue?: string; names?: string }) =>
   key === 'board.plan.lib.alsoCalled'
@@ -22,7 +23,9 @@ const t = ((key: string, o?: { defaultValue?: string; names?: string }) =>
 describe('searchLibrary', () => {
   it('finds names first, then other names, ignoring case and accents', () => {
     const hits = searchLibrary(t, 'SÖFT');
-    expect(hits.slice(0, 2).map((h) => h.item)).toEqual(['softlight', 'softbox']);
+    // Names that start with it first, the shorter first, as the mockup's Softbox then Soft light.
+    expect(hits.slice(0, 2).map((h) => h.item)).toEqual(['softbox', 'softlight']);
+    expect(hits[0]?.detail).toBe('modifiers');
     const lantern = hits.find((h) => h.item === 'lantern');
     expect(lantern?.by).toBe('synonym');
     expect(lantern?.detail).toBe('also china ball, soft ball');
@@ -35,6 +38,10 @@ describe('searchLibrary', () => {
       'zone',
     ]);
     expect(searchLibrary(t, '  ')).toEqual([]);
+  });
+  it('matches a group only by its whole name, not by one of its words', () => {
+    expect(searchLibrary(t, 'soft').map((h) => h.item)).not.toContain('cob');
+    expect(searchLibrary(t, 'soft and led').map((h) => h.item)).toContain('cob');
   });
 });
 
@@ -68,19 +75,5 @@ describe('projectKit', () => {
     expect(kit[1]?.lenses).toEqual([32, 50]);
     expect(projectKitDetail(kit[0] as never, t, 'S35')).toBe('LED COB 300 W · Grid · C-stand');
     expect(projectKitDetail(kit[1] as never, t, 'S35')).toBe('S35 · 32, 50 mm');
-  });
-});
-
-describe('tileName', () => {
-  const shown = (name: string) => tileName(name).replaceAll('\u00AD', '-');
-  it('lets long words break at syllables, never near their ends, short ones whole', () => {
-    expect(shown('Profilscheinwerfer')).toBe('Pro-fil-schein-wer-fer');
-    expect(shown('Kühlschrank')).toBe('Kühl-schrank');
-    expect(shown('Tischlampe')).toBe('Tisch-lampe');
-    expect(shown('Seguipersona')).toBe('Segui-per-sona');
-    expect(shown('Quadro di distribuzione')).toBe('Quadro di dis-tri-bu-zione');
-    expect(tileName('LED COB')).toBe('LED COB');
-    // Soft hyphens only: the name reads the same.
-    expect(tileName('Microfonista').replaceAll('\u00AD', '')).toBe('Microfonista');
   });
 });

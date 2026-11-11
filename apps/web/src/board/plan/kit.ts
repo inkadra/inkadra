@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  attachRole,
   type CircuitStatus,
   categoryOf,
   iconSize,
@@ -7,6 +8,7 @@ import {
   isLight,
   isSized,
   layerOf,
+  modifiersOn,
   type PlanElement,
   planPower,
 } from '@inkadra/canvas-core';
@@ -29,9 +31,19 @@ const STAND_KIT = new Set([
   'jib',
 ]);
 
-/** The sections of the kit list: the categories of the library that are kit. */
-export type KitGroup = 'lights' | 'grip' | 'camera' | 'av';
-export const KIT_GROUPS: readonly KitGroup[] = ['lights', 'grip', 'camera', 'av'];
+/**
+ * The sections of the kit list, as the mockup: lights; modifiers, grip and stands; camera and
+ * movement, with video and sound (the village is the camera department's).
+ */
+export type KitGroup = 'lights' | 'grip' | 'camera';
+export const KIT_GROUPS: readonly KitGroup[] = ['lights', 'grip', 'camera'];
+
+/** "300 W", "2K", "1.2K": a light's watts as the mockup writes them, in the reader's language. */
+export function wattsText(watts: number, locale?: string): string {
+  return watts >= 1000
+    ? `${(watts / 1000).toLocaleString(locale, { maximumFractionDigits: 1 })}K`
+    : `${watts.toLocaleString(locale, { maximumFractionDigits: 0 })} W`;
+}
 /** A line of the kit: a type with its spec, how many, its section and a light's watts each. */
 export interface KitLine {
   name: string;
@@ -41,11 +53,12 @@ export interface KitLine {
 }
 
 /**
- * The kit a plan needs (#335 round 6, i; decision 0104), "Fresnel 1,2K ×1", "Binario 3 m ×1":
- * its icons of kit categories (lights, modifiers and grip, stands, power, camera and movement,
- * video and sound) counted by type and power or length, then the gels written on lights and the
- * stands and supports named on lights and cameras that stand on no icon, in the order they first
- * appear. People, furniture and hidden layers are left out.
+ * The kit a plan needs (#335 round 6, i; decisions 0104 and 0116), "Fresnel 2K ×1", "Track 3 m
+ * ×1": its icons of kit categories (lights, modifiers and grip, stands, power, camera and
+ * movement, video and sound) counted by type and power or length; the modifiers on a light as
+ * one line ("Softbox, grid ×1"); the gels written on lights as one line counting them all ("Gel:
+ * 216, CTO full ×2"); then the stands and supports named on lights and cameras that stand on no
+ * icon, in the order they first appear. People, furniture and hidden layers are left out.
  */
 export function kitList(
   plan: {
@@ -64,25 +77,42 @@ export function kitList(
   };
   const icons = (plan.icons ?? []).filter((i) => !plan.hiddenLayers?.includes(layerOf(i)));
   const ids = new Set(icons.map((i) => i.id));
+  const byId = new Map(icons.map((i) => [i.id, i]));
+  /** A modifier on a light of the plan: a part of its light's line. */
+  const onLight = (icon: PlanIcon) => {
+    const light = icon.on ? byId.get(icon.on) : undefined;
+    return attachRole(icon.kind) === 'modifier' && !!light && isLight(light.kind);
+  };
   for (const icon of icons) {
-    if (!KIT.has(categoryOf(icon.kind).id) || NOT_KIT.has(icon.kind)) continue;
+    if (!KIT.has(categoryOf(icon.kind).id) || NOT_KIT.has(icon.kind) || onLight(icon)) continue;
     // Type and spec, as the mockup: the power of a light, the length of a track or a frame.
-    const power = icon.power || (icon.watts ? `${icon.watts} W` : '');
+    const power = icon.power || (icon.watts ? wattsText(icon.watts, locale) : '');
     const size =
       !power && plan.scale && isSized(icon.kind)
         ? `${(Math.max(...Object.values(iconSize(icon))) / plan.scale).toLocaleString(locale, {
             maximumFractionDigits: 1,
           })} m`
         : '';
-    const category = categoryOf(icon.kind).id as KitGroup;
+    const category = categoryOf(icon.kind).id;
     add(
       [t(`board.plan.icons.${icon.kind}`), power, size].filter(Boolean).join(' '),
-      category,
+      category === 'av' ? 'camera' : (category as KitGroup),
       isLight(icon.kind) ? iconWatts(icon) : undefined,
     );
   }
+  // The modifiers of each light on one line, as they are rigged together.
   for (const icon of icons) {
-    if (icon.gel) add(`${t('board.plan.icons.gel')}: ${icon.gel}`, 'grip');
+    if (!isLight(icon.kind)) continue;
+    const mods = modifiersOn(icon, icons).map((m) => t(`board.plan.icons.${m.kind}`));
+    if (mods.length) add(mods.join(', '), 'grip');
+  }
+  // Every gel on one line: the colours to bring, and how many sheets.
+  const gels = icons.flatMap((i) => (i.gel ? [i.gel] : []));
+  if (gels.length) {
+    const name = `${t('board.plan.icons.gel')}: ${[...new Set(gels)].join(', ')}`;
+    counts.set(name, { name, count: gels.length, group: 'grip' });
+  }
+  for (const icon of icons) {
     // A stand or a support named on the item, when it stands on no icon of the plan.
     const holder = icon.stand ?? icon.support;
     if (holder && STAND_KIT.has(holder) && !(icon.on && ids.has(icon.on)))

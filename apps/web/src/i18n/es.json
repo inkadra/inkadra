@@ -1157,7 +1157,7 @@
       },
       "tabs": {
         "lights": "Luces",
-        "grip": "Grip",
+        "grip": "Modificadores",
         "camera": "Cámara",
         "people": "Personas",
         "set": "Set",
@@ -1203,7 +1203,6 @@
       "lens": "Óptica",
       "otherLens": "Otra…",
       "focal": "Focal",
-      "fromFrames": "De los planos",
       "sensor": "Sensor",
       "sensors": {
         "s35": "Super 35",
@@ -1212,7 +1211,7 @@
         "s16": "Super 16"
       },
       "angle": "Ángulo de visión",
-      "angleValue": "{{angle}}° horiz.",
+      "angleValue": "{{angle}}° de ancho",
       "showLens": "Mostrar la óptica en la etiqueta",
       "power": "Potencia",
       "beam": "Haz",
@@ -1238,7 +1237,7 @@
       "group": "Agrupar",
       "ungroup": "Desagrupar",
       "scale": "Escala",
-      "scaleGrid": "{{grid}} m por cuadro",
+      "scaleGrid": "1 cuadro = {{grid}} m",
       "noScale": "Ninguna, sin metros",
       "setScale": "Definir la escala",
       "scaleHint": "Traza una línea sobre algo cuya medida conozcas",
@@ -1404,7 +1403,7 @@
       "unlock": "Desbloquear",
       "mains": "Red",
       "make": "Marca y modelo, opcional",
-      "makePlaceholder": "Como en la lista de alquiler",
+      "makePlaceholder": "p. ej. el nombre en la lista de alquiler",
       "mixed": "Mixto",
       "modifier": "Modificador",
       "modifierCount_one": "Modificadores {{count}}",
@@ -1412,7 +1411,7 @@
       "moreProps": "Todas las propiedades",
       "movement": "Movimiento",
       "nameField": "Nombre",
-      "nameFollows": "El nombre sigue a la ficha",
+      "nameFollows": "El nombre y el color siguen a la ficha",
       "newSetup": "Añadir un setup",
       "noCircuit": "En ningún circuito",
       "noGel": "Sin gelatina",
@@ -1478,8 +1477,7 @@
       "kitGroups": {
         "lights": "Luces",
         "grip": "Modificadores, maquinaria y soportes",
-        "camera": "Cámara y movimiento",
-        "av": "Vídeo, sonido y equipo"
+        "camera": "Cámara y movimiento"
       },
       "mix": {
         "lights_one": "{{count}} luz",
@@ -1564,7 +1562,8 @@
           "dawn": "Amanecer",
           "dusk": "Atardecer"
         },
-        "circuitLine": "{{name}} · {{amps}} A"
+        "circuitLine": "{{name}} · {{amps}} A",
+        "fromCharacters": "{{name}}, de las fichas de personaje"
       },
       "exportSheet": {
         "title": "Exportar el plano de set",
@@ -1624,7 +1623,44 @@
         "hint": "Arrastra para mover, pellizca o desplaza para el zoom",
         "note": "Quien puede abrir el tablero ve este plano, la leyenda, el material y la potencia.",
         "guestNote": "Ves el plano tal como se comparte contigo: los setups, la leyenda, el material y la potencia."
-      }
+      },
+      "onAnotherSetup": "En otro setup",
+      "renameHint": "Doble clic o F2 para renombrar",
+      "tagColourFollows": "El color sigue la ficha del personaje",
+      "onTrack": "{{name}} en vía",
+      "onTrackLength": "{{name}} en vía de {{metres}} m",
+      "seatsAround_one": "{{count}} plaza",
+      "seatsAround_other": "{{count}} plazas",
+      "allSetupsOfScene_one": "Todos los setups de la escena {{scene}}: {{count}} elemento",
+      "allSetupsOfScene_other": "Todos los setups de la escena {{scene}}: {{count}} elementos",
+      "editCircuit": "Editar {{name}}",
+      "doneCircuit": "Terminar de editar {{name}}",
+      "setWalls": "Paredes",
+      "setWindows_one": "ventana",
+      "setWindows_other": "{{count}} ventanas",
+      "setDoors_one": "puerta",
+      "setDoors_other": "{{count}} puertas",
+      "setProps_one": "{{count}} objeto",
+      "setProps_other": "{{count}} objetos",
+      "tileNames": {
+        "bounce": "Panel reflector",
+        "curve": "Vía curva",
+        "cyc": "Luz de ciclorama",
+        "distro": "Caja de distribución",
+        "frame": "Bastidor de difusión",
+        "kino": "Banco de tubos",
+        "leko": "Recortador",
+        "molebeam": "Proyector de haz",
+        "neon": "Letrero de neón",
+        "plantmic": "Micro oculto",
+        "polecat": "Barra telescópica",
+        "rack": "Burra de vestuario",
+        "screen": "Luz de pantalla",
+        "streetlight": "Farola",
+        "trackingcar": "Coche de cámara"
+      },
+      "selectBase": "Seleccionar",
+      "selectNamed": "Seleccionar {{name}}"
     },
     "contextual": {
       "done": "Listo",
@@ -5002,11 +5038,11 @@
           },
           "2": {
             "title": "Propiedades, elementos, material",
-            "text": "Lo que seleccionas se ajusta en el panel derecho, y Bloquear lo deja donde está; Elementos lista el plano por grupos, Material cuenta el material y la potencia por circuito."
+            "text": "Lo que seleccionas se ajusta en el panel derecho, y Bloquear lo deja donde está; Elementos lista el plano por grupos, Material cuenta el material y la potencia por circuito, con los circuitos del primer setup para todos."
           },
           "3": {
             "title": "Setups",
-            "text": "Una pestaña por setup. En un setup, la nota dice qué cambió respecto a la base, que puede verse detrás."
+            "text": "Una pestaña por setup: doble clic para renombrarla, también la primera. Bajo las pestañas, un setup dice qué cambió respecto al primero, que puede verse detrás."
           }
         }
       },

@@ -100,7 +100,8 @@ bottom, and a panel on the right with **Properties**, **Elements** and **Kit**. 
 the drawing.
 
 - **Library**: 163 types in six categories on the rail (lights; modifiers and grip; camera and
-  movement; people; set and props; sound and video), plus annotations. Search finds names, the
+  movement; people; set and props; sound and video); arrows, texts and measures are in the
+  toolbar and the search. Search finds names, the
   other names crews use and categories; `Enter` places the first result in the middle. Click a
   type and then the plan, or drag it there; hold `Shift` to keep placing. The star keeps a type
   among your favourites, next to the recent ones and the **project kit**: the lights and cameras
@@ -118,13 +119,17 @@ the drawing.
   the selected items where they are: a locked item can still be picked, to unlock it, but it is
   not moved, turned, resized, edited or deleted, and nothing new snaps onto it.
 - **Elements** lists the plan by group (Lights, Camera, Actors, Grip and crew, Set, Notes),
-  filtered by group or colour, with a lock on each locked item. A layer's eye and lock hide and
+  filtered by group or by the colours in use, with a lock on each locked item. Identical items
+  share a row ("Table lamp ×3", a click selects them all), a stand or a dolly is listed with what
+  it carries, and the Set is one line of counts that opens on a click. A layer's eye and lock hide and
   lock the layer; those of Grip and crew hide its flags, stands and crew for you and lock each
   of them. **Kit** counts the kit of the setup and its power per circuit at 120 or 230 V:
-  a circuit turns orange above 80 % of its breaker and red above it. **Copy list** copies it;
-  the call sheet prints the kit of the plans of its scenes.
-- **Setups** are the tabs at the top; **+** copies the current one. On a setup, a note says what
-  changed from the base, which can be shown faintly behind it.
+  a circuit turns orange above 80 % of its breaker and red above it. The circuits and the mains
+  voltage belong to the first setup and serve every setup; the pencil on a circuit edits it.
+  **Copy list** copies it; the call sheet prints the kit of the plans of its scenes.
+- **Setups** are the tabs at the top; **+** copies the current one. Double-click a tab (or `F2`)
+  to rename it, the first one too. The title of the plan is the same on every setup. Under the
+  tabs a setup says what changed from the first one, which can be shown faintly behind it.
 - **Scale** sets the metres from a line of known length; a number written on a measure is a
   label, and on a plan without a scale Inkadra offers to use that line as the scale.
 

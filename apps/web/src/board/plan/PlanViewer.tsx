@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { ExportCache } from '../export/cache.ts';
 import { PLAN_SHEET_INCLUDE } from '../export/plan-sheet.ts';
 import type { BoardStore } from '../store.ts';
-import { itemSummary } from './elements.ts';
+import { foldIcons, itemSummary } from './elements.ts';
 import { kitList, powerLines } from './kit.ts';
 import { planTitle } from './PlanCard.tsx';
 import { PlanDrawing, PlanGlyph, planCss, useLinkedPlan } from './PlanDrawing.tsx';
@@ -49,14 +49,23 @@ function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
           <section key={title} className="plan-view__group">
             <h3 className="plan-props__cap">{title}</h3>
             <ul>
-              {list.map((icon) => {
-                const name = icon.label || t(`board.plan.icons.${icon.kind}`);
+              {foldIcons(list, icons).map(({ icon, count }) => {
+                const name =
+                  (icon.label || t(`board.plan.icons.${icon.kind}`)) +
+                  (count > 1 ? ` ×${count}` : '');
+                // An actor's way through the scene: the notes of its positions, in order.
+                const route = icon.steps?.length
+                  ? [...icon.steps.map((s) => s.note), icon.note].filter(Boolean).join(' → ')
+                  : '';
                 const lens = catalogueKind(icon.kind) === 'camera' ? `${icon.lens ?? 35} mm` : '';
                 const kelvin = icon.kelvin ? `${icon.kelvin} K` : '';
                 // The lens is in the name: the summary goes on with the support and the moves.
-                const summary = lens
-                  ? itemSummary(icon, icons, t).replace(/^\d+ mm( · )?/, '')
-                  : itemSummary(icon, icons, t);
+                const shown = { scale: plan.scale, locale: i18n.language };
+                const summary = route
+                  ? route
+                  : lens
+                    ? itemSummary(icon, icons, t, shown).replace(/^\d+ mm( · )?/, '')
+                    : itemSummary(icon, icons, t, shown);
                 const sub = [summary, kelvin].filter(Boolean).join(' · ');
                 return (
                   <li key={icon.id} className="plan-view__item">

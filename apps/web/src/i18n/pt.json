@@ -1157,7 +1157,7 @@
       },
       "tabs": {
         "lights": "Luzes",
-        "grip": "Maquinária",
+        "grip": "Modificadores",
         "camera": "Câmera",
         "people": "Pessoas",
         "set": "Cenário",
@@ -1203,7 +1203,6 @@
       "lens": "Lente",
       "otherLens": "Outra…",
       "focal": "Distância focal",
-      "fromFrames": "Dos frames",
       "sensor": "Sensor",
       "sensors": {
         "s35": "Super 35",
@@ -1212,7 +1211,7 @@
         "s16": "Super 16"
       },
       "angle": "Ângulo de visão",
-      "angleValue": "{{angle}}° horiz.",
+      "angleValue": "{{angle}}° de largura",
       "showLens": "Mostrar a lente no rótulo",
       "power": "Potência",
       "beam": "Facho",
@@ -1238,7 +1237,7 @@
       "group": "Agrupar",
       "ungroup": "Desagrupar",
       "scale": "Escala",
-      "scaleGrid": "{{grid}} m por quadrado",
+      "scaleGrid": "1 quadrado = {{grid}} m",
       "noScale": "Nenhuma, sem metros",
       "setScale": "Definir a escala",
       "scaleHint": "Trace uma linha sobre algo cuja medida você conhece",
@@ -1404,7 +1403,7 @@
       "unlock": "Desbloquear",
       "mains": "Rede",
       "make": "Marca e modelo, opcional",
-      "makePlaceholder": "Como na lista de aluguer",
+      "makePlaceholder": "ex.: o nome na lista de aluguer",
       "mixed": "Misto",
       "modifier": "Modificador",
       "modifierCount_one": "Modificadores {{count}}",
@@ -1412,7 +1411,7 @@
       "moreProps": "Todas as propriedades",
       "movement": "Movimento",
       "nameField": "Nome",
-      "nameFollows": "O nome segue o cartão",
+      "nameFollows": "O nome e a cor seguem o cartão",
       "newSetup": "Adicionar um setup",
       "noCircuit": "Em nenhum circuito",
       "noGel": "Sem gelatina",
@@ -1478,8 +1477,7 @@
       "kitGroups": {
         "lights": "Luzes",
         "grip": "Modificadores, maquinaria e tripés",
-        "camera": "Câmera e movimento",
-        "av": "Vídeo, som e equipa"
+        "camera": "Câmera e movimento"
       },
       "mix": {
         "lights_one": "{{count}} luz",
@@ -1564,7 +1562,8 @@
           "dawn": "Madrugada",
           "dusk": "Crepúsculo"
         },
-        "circuitLine": "{{name}} · {{amps}} A"
+        "circuitLine": "{{name}} · {{amps}} A",
+        "fromCharacters": "{{name}}, dos cartões de personagem"
       },
       "exportSheet": {
         "title": "Exportar a planta do set",
@@ -1624,7 +1623,44 @@
         "hint": "Arraste para mover, belisque ou role para o zoom",
         "note": "Quem pode abrir o quadro vê esta planta, a legenda, o material e a potência.",
         "guestNote": "Vê a planta tal como é partilhada consigo: os setups, a legenda, o material e a potência."
-      }
+      },
+      "onAnotherSetup": "Em outro setup",
+      "renameHint": "Duplo clique ou F2 para mudar o nome",
+      "tagColourFollows": "A cor segue o cartão da personagem",
+      "onTrack": "{{name}} no trilho",
+      "onTrackLength": "{{name}} em trilho de {{metres}} m",
+      "seatsAround_one": "{{count}} lugar",
+      "seatsAround_other": "{{count}} lugares",
+      "allSetupsOfScene_one": "Todos os setups da cena {{scene}}: {{count}} item",
+      "allSetupsOfScene_other": "Todos os setups da cena {{scene}}: {{count}} itens",
+      "editCircuit": "Editar {{name}}",
+      "doneCircuit": "Concluir {{name}}",
+      "setWalls": "Paredes",
+      "setWindows_one": "janela",
+      "setWindows_other": "{{count}} janelas",
+      "setDoors_one": "porta",
+      "setDoors_other": "{{count}} portas",
+      "setProps_one": "{{count}} objeto",
+      "setProps_other": "{{count}} objetos",
+      "tileNames": {
+        "bounce": "Rebatedor",
+        "curve": "Trilho curvo",
+        "cyc": "Luz de ciclorama",
+        "distro": "Caixa de distribuição",
+        "frame": "Quadro de difusão",
+        "kino": "Banco de tubos",
+        "leko": "Elipsoidal",
+        "molebeam": "Projetor de feixe",
+        "neon": "Letreiro de neon",
+        "plantmic": "Microfone escondido",
+        "polecat": "Barra telescópica",
+        "rack": "Arara de figurino",
+        "screen": "Luz de tela",
+        "streetlight": "Poste de luz",
+        "trackingcar": "Carro de câmera"
+      },
+      "selectBase": "Selecionar",
+      "selectNamed": "Selecionar {{name}}"
     },
     "contextual": {
       "done": "Concluir",
@@ -5002,11 +5038,11 @@
           },
           "2": {
             "title": "Propriedades, elementos, material",
-            "text": "O que seleciona configura-se no painel à direita, e Bloquear mantém-no no lugar; Elementos lista a planta por grupos, Material conta o material e a potência por circuito."
+            "text": "O que seleciona configura-se no painel à direita, e Bloquear mantém-no no lugar; Elementos lista a planta por grupos, Material conta o material e a potência por circuito, com os circuitos do primeiro setup para todos."
           },
           "3": {
             "title": "Setups",
-            "text": "Um separador por setup. Num setup, a nota diz o que mudou em relação à base, que pode aparecer atrás."
+            "text": "Um separador por setup: duplo clique para mudar o nome, também o primeiro. Sob os separadores, um setup diz o que mudou em relação ao primeiro, que pode aparecer atrás."
           }
         }
       },

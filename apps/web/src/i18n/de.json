@@ -1157,7 +1157,7 @@
       },
       "tabs": {
         "lights": "Licht",
-        "grip": "Grip",
+        "grip": "Lichtformer",
         "camera": "Kamera",
         "people": "Personen",
         "set": "Set",
@@ -1203,7 +1203,6 @@
       "lens": "Objektiv",
       "otherLens": "Andere…",
       "focal": "Brennweite",
-      "fromFrames": "Aus den Frames",
       "sensor": "Sensor",
       "sensors": {
         "s35": "Super 35",
@@ -1212,7 +1211,7 @@
         "s16": "Super 16"
       },
       "angle": "Bildwinkel",
-      "angleValue": "{{angle}}° horiz.",
+      "angleValue": "{{angle}}° breit",
       "showLens": "Objektiv in der Beschriftung zeigen",
       "power": "Leistung",
       "beam": "Lichtkegel",
@@ -1238,7 +1237,7 @@
       "group": "Gruppieren",
       "ungroup": "Gruppierung aufheben",
       "scale": "Maßstab",
-      "scaleGrid": "{{grid}} m pro Kästchen",
+      "scaleGrid": "1 Kästchen = {{grid}} m",
       "noScale": "Keiner, ohne Meter",
       "setScale": "Maßstab festlegen",
       "scaleHint": "Zieh eine Linie entlang von etwas, dessen Länge du kennst",
@@ -1404,7 +1403,7 @@
       "unlock": "Entsperren",
       "mains": "Netz",
       "make": "Marke und Modell, optional",
-      "makePlaceholder": "Wie auf der Mietliste",
+      "makePlaceholder": "z. B. der Name auf der Mietliste",
       "mixed": "Gemischt",
       "modifier": "Lichtformer",
       "modifierCount_one": "Lichtformer {{count}}",
@@ -1412,7 +1411,7 @@
       "moreProps": "Alle Eigenschaften",
       "movement": "Bewegung",
       "nameField": "Name",
-      "nameFollows": "Der Name folgt der Karte",
+      "nameFollows": "Name und Farbe folgen der Karte",
       "newSetup": "Setup hinzufügen",
       "noCircuit": "An keinem Stromkreis",
       "noGel": "Keine Folie",
@@ -1478,8 +1477,7 @@
       "kitGroups": {
         "lights": "Licht",
         "grip": "Lichtformer, Grip und Stative",
-        "camera": "Kamera und Bewegung",
-        "av": "Video, Ton und Team"
+        "camera": "Kamera und Bewegung"
       },
       "mix": {
         "lights_one": "{{count}} Licht",
@@ -1564,7 +1562,8 @@
           "dawn": "Morgengrauen",
           "dusk": "Abenddämmerung"
         },
-        "circuitLine": "{{name}} · {{amps}} A"
+        "circuitLine": "{{name}} · {{amps}} A",
+        "fromCharacters": "{{name}}, aus den Figurenkarten"
       },
       "exportSheet": {
         "title": "Setplan exportieren",
@@ -1624,7 +1623,44 @@
         "hint": "Ziehen zum Verschieben, kneifen oder scrollen zum Zoomen",
         "note": "Wer das Board öffnen kann, sieht diesen Plan, die Legende, das Material und den Strom.",
         "guestNote": "Du siehst den Plan so, wie er mit dir geteilt ist: Setups, Legende, Material und Strom."
-      }
+      },
+      "onAnotherSetup": "In einem anderen Setup",
+      "renameHint": "Doppelklick oder F2 zum Umbenennen",
+      "tagColourFollows": "Die Farbe folgt der Figurenkarte",
+      "onTrack": "{{name}} auf Schiene",
+      "onTrackLength": "{{name}} auf {{metres}} m Schiene",
+      "seatsAround_one": "{{count}} Platz",
+      "seatsAround_other": "{{count}} Plätze",
+      "allSetupsOfScene_one": "Alle Setups von Szene {{scene}}: {{count}} Teil",
+      "allSetupsOfScene_other": "Alle Setups von Szene {{scene}}: {{count}} Teile",
+      "editCircuit": "{{name}} bearbeiten",
+      "doneCircuit": "{{name}} fertig bearbeitet",
+      "setWalls": "Wände",
+      "setWindows_one": "Fenster",
+      "setWindows_other": "{{count}} Fenster",
+      "setDoors_one": "Tür",
+      "setDoors_other": "{{count}} Türen",
+      "setProps_one": "{{count}} Requisit",
+      "setProps_other": "{{count}} Requisiten",
+      "tileNames": {
+        "bounce": "Reflektor",
+        "curve": "Kurven-Schiene",
+        "cyc": "Horizont-Leuchte",
+        "distro": "Strom-Verteiler",
+        "frame": "Diffusor-Rahmen",
+        "kino": "Röhren-Leuchte",
+        "leko": "Profil-Scheinwerfer",
+        "molebeam": "Beam-Projektor",
+        "neon": "Leucht-Reklame",
+        "plantmic": "Versteck-Mikrofon",
+        "polecat": "Teleskop-Stange",
+        "rack": "Kostüm-Ständer",
+        "screen": "Bildschirm-Licht",
+        "streetlight": "Straßen-Laterne",
+        "trackingcar": "Kamera-Wagen"
+      },
+      "selectBase": "Auswählen",
+      "selectNamed": "{{name}} auswählen"
     },
     "contextual": {
       "done": "Fertig",
@@ -5002,11 +5038,11 @@
           },
           "2": {
             "title": "Eigenschaften, Elemente, Material",
-            "text": "Was du auswählst, stellst du rechts ein, und Sperren hält es, wo es ist; Elemente listet den Plan nach Gruppen, Material zählt Material und Leistung pro Stromkreis."
+            "text": "Was du auswählst, stellst du rechts ein, und Sperren hält es, wo es ist; Elemente listet den Plan nach Gruppen, Material zählt Material und Leistung pro Stromkreis, mit den Stromkreisen des ersten Setups für alle."
           },
           "3": {
             "title": "Setups",
-            "text": "Ein Reiter pro Setup. Auf einem Setup sagt die Notiz, was sich gegenüber der Basis geändert hat; die Basis kann dahinter erscheinen."
+            "text": "Ein Reiter pro Setup: Doppelklick zum Umbenennen, auch beim ersten. Unter den Reitern sagt ein Setup, was sich gegenüber dem ersten geändert hat; das erste kann dahinter erscheinen."
           }
         }
       },

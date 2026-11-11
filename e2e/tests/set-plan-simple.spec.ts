@@ -310,13 +310,16 @@ for (const theme of ['dark', 'light'] as const) {
     await page.getByRole('option', { name: 'Circuito A · 16 A' }).click();
     await expect.poll(async () => (await key())?.circuit).toBe((await saved()).circuits?.[0]?.id);
     await editor.getByRole('tab', { name: 'Materiale' }).click();
+    // A circuit reads as the mockup's card; its pencil opens the fields.
+    await expect(kit).toContainText('Circuito A · 16 A');
+    await kit.getByRole('button', { name: 'Modifica Circuito A' }).click();
     const breaker = kit.getByRole('textbox', { name: 'Interruttore' });
     await breaker.fill('1');
     await breaker.press('Enter');
     await expect(kit.locator('.plan-kit__circuit.is-over')).toHaveCount(1);
     await kit.getByRole('radio', { name: '120 V' }).check();
     await expect.poll(async () => (await saved()).voltage).toBe(120);
-    await expect(kit).toContainText('Potenza a 120 V');
+    await expect(kit.getByRole('radio', { name: '120 V' })).toBeChecked();
     await shot('kit');
 
     // Zoom in and back to fit.
@@ -340,7 +343,7 @@ for (const theme of ['dark', 'light'] as const) {
     await page.mouse.move(from.x + 80, from.y - 40, { steps: 5 });
     await page.mouse.up();
     await expect(note).toContainText('A cam spostato');
-    await note.getByRole('button', { name: 'Mostra 1 · Base in trasparenza' }).click();
+    await note.getByRole('button', { name: 'Mostra Base in trasparenza' }).click();
     await expect(setup.locator('.plan-canvas__ghost')).toHaveCount(1);
     await page.keyboard.press('Escape');
     await settle(page, setup);

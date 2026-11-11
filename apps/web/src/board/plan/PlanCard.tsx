@@ -9,7 +9,6 @@ import {
   variantFamily,
   variantView,
 } from '@inkadra/canvas-core';
-import { Icon } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,9 +24,12 @@ function LinkedScenes({ scenes }: { scenes: Parameters<typeof SceneBadges>[0]['s
 }
 
 /** "Set plan · Kitchen, day 2": the header of a plan, on the board and in the editor. */
-export function planTitle(t: TFunction, plan: Pick<PlanElement, 'title' | 'variant'>): string {
-  // A variant reads "Kitchen · Evening", as its tab does.
-  if (plan.variant) return `${plan.title || t('board.plan.name')} · ${plan.variant}`;
+export function planTitle(
+  t: TFunction,
+  plan: Pick<PlanElement, 'title' | 'variant' | 'variantOf'>,
+): string {
+  // A variant reads "Kitchen · Evening", as its tab does; the base's setup name stays on its tab.
+  if (plan.variantOf && plan.variant) return `${plan.title || t('board.plan.name')} · ${plan.variant}`;
   return plan.title ? `${t('board.plan.name')} · ${plan.title}` : t('board.plan.name');
 }
 
@@ -53,7 +55,8 @@ export function PlanCard({ element }: { element: PlanElement }) {
   const lights = icons.filter((i) => isLight(i.kind) && !i.on).length;
   const watts = planPower(plan).watts;
   const place = linkedLocation(base ?? element, byId)?.name;
-  const name = element.title || base?.title || place || t('board.plan.name');
+  // The title is the base's, shown by every setup (decision 0116).
+  const name = base?.title || element.title || place || t('board.plan.name');
   const kw =
     watts >= 1000
       ? `${(watts / 1000).toLocaleString(i18n.language, { maximumFractionDigits: 1 })} kW`
@@ -74,9 +77,8 @@ export function PlanCard({ element }: { element: PlanElement }) {
       </div>
       <div className="plan__foot">
         <div className="plan__head">
-          <Icon name="map" size={14} />
           <span className="plan__title">
-            {element.variant ? `${name} · ${element.variant}` : name}
+            {element.variantOf && element.variant ? `${name} · ${element.variant}` : name}
           </span>
           {useInRouterContext() ? (
             <LinkedScenes scenes={scenes} />

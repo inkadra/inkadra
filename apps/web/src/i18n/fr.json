@@ -1157,7 +1157,7 @@
       },
       "tabs": {
         "lights": "Lumières",
-        "grip": "Machinerie",
+        "grip": "Modificateurs",
         "camera": "Caméra",
         "people": "Personnes",
         "set": "Décor",
@@ -1203,7 +1203,6 @@
       "lens": "Optique",
       "otherLens": "Autre…",
       "focal": "Focale",
-      "fromFrames": "Depuis les plans",
       "sensor": "Capteur",
       "sensors": {
         "s35": "Super 35",
@@ -1212,7 +1211,7 @@
         "s16": "Super 16"
       },
       "angle": "Angle de champ",
-      "angleValue": "{{angle}}° horiz.",
+      "angleValue": "{{angle}}° de large",
       "showLens": "Afficher l’optique dans le libellé",
       "power": "Puissance",
       "beam": "Faisceau",
@@ -1238,7 +1237,7 @@
       "group": "Grouper",
       "ungroup": "Dissocier",
       "scale": "Échelle",
-      "scaleGrid": "{{grid}} m par carreau",
+      "scaleGrid": "1 carreau = {{grid}} m",
       "noScale": "Aucune, sans mètres",
       "setScale": "Définir l’échelle",
       "scaleHint": "Tracez une ligne sur quelque chose dont vous connaissez la longueur",
@@ -1404,7 +1403,7 @@
       "unlock": "Déverrouiller",
       "mains": "Secteur",
       "make": "Marque et modèle, facultatif",
-      "makePlaceholder": "Comme sur la liste de location",
+      "makePlaceholder": "p. ex. le nom sur la liste de location",
       "mixed": "Mixte",
       "modifier": "Modificateur",
       "modifierCount_one": "Modificateurs {{count}}",
@@ -1412,7 +1411,7 @@
       "moreProps": "Toutes les propriétés",
       "movement": "Mouvement",
       "nameField": "Nom",
-      "nameFollows": "Le nom suit la fiche",
+      "nameFollows": "Le nom et la couleur suivent la fiche",
       "newSetup": "Ajouter un setup",
       "noCircuit": "Sur aucun circuit",
       "noGel": "Pas de gélatine",
@@ -1478,8 +1477,7 @@
       "kitGroups": {
         "lights": "Lumières",
         "grip": "Modificateurs, machinerie et pieds",
-        "camera": "Caméra et mouvement",
-        "av": "Vidéo, son et équipe"
+        "camera": "Caméra et mouvement"
       },
       "mix": {
         "lights_one": "{{count}} lumière",
@@ -1564,7 +1562,8 @@
           "dawn": "Aube",
           "dusk": "Crépuscule"
         },
-        "circuitLine": "{{name}} · {{amps}} A"
+        "circuitLine": "{{name}} · {{amps}} A",
+        "fromCharacters": "{{name}}, des fiches personnage"
       },
       "exportSheet": {
         "title": "Exporter le plan de plateau",
@@ -1624,7 +1623,44 @@
         "hint": "Glissez pour déplacer, pincez ou faites défiler pour zoomer",
         "note": "Qui peut ouvrir le tableau voit ce plan, la légende, le matériel et la puissance.",
         "guestNote": "Vous voyez le plan tel qu’il est partagé avec vous : les setups, la légende, le matériel et la puissance."
-      }
+      },
+      "onAnotherSetup": "Sur un autre setup",
+      "renameHint": "Double-clic ou F2 pour renommer",
+      "tagColourFollows": "La couleur suit la fiche du personnage",
+      "onTrack": "{{name}} sur rails",
+      "onTrackLength": "{{name}} sur {{metres}} m de rails",
+      "seatsAround_one": "{{count}} place",
+      "seatsAround_other": "{{count}} places",
+      "allSetupsOfScene_one": "Tous les setups de la scène {{scene}} : {{count}} élément",
+      "allSetupsOfScene_other": "Tous les setups de la scène {{scene}} : {{count}} éléments",
+      "editCircuit": "Modifier {{name}}",
+      "doneCircuit": "Terminer {{name}}",
+      "setWalls": "Murs",
+      "setWindows_one": "fenêtre",
+      "setWindows_other": "{{count}} fenêtres",
+      "setDoors_one": "porte",
+      "setDoors_other": "{{count}} portes",
+      "setProps_one": "{{count}} accessoire",
+      "setProps_other": "{{count}} accessoires",
+      "tileNames": {
+        "bounce": "Réflecteur",
+        "curve": "Rail courbe",
+        "cyc": "Rampe de cyclo",
+        "distro": "Boîtier de distribution",
+        "frame": "Cadre de diffusion",
+        "kino": "Banque de tubes",
+        "leko": "Découpe",
+        "molebeam": "Projecteur à faisceau",
+        "neon": "Enseigne néon",
+        "plantmic": "Micro caché",
+        "polecat": "Autopole",
+        "rack": "Portant",
+        "screen": "Lueur d'écran",
+        "streetlight": "Lampadaire de rue",
+        "trackingcar": "Voiture travelling"
+      },
+      "selectBase": "Sélectionner",
+      "selectNamed": "Sélectionner {{name}}"
     },
     "contextual": {
       "done": "Terminé",
@@ -5002,11 +5038,11 @@
           },
           "2": {
             "title": "Propriétés, éléments, matériel",
-            "text": "Ce que vous sélectionnez se règle dans le panneau de droite, et Verrouiller le garde en place ; Éléments liste le plan par groupes, Matériel compte le matériel et la puissance par circuit."
+            "text": "Ce que vous sélectionnez se règle dans le panneau de droite, et Verrouiller le garde en place ; Éléments liste le plan par groupes, Matériel compte le matériel et la puissance par circuit, les circuits du premier setup valant pour tous."
           },
           "3": {
             "title": "Setups",
-            "text": "Un onglet par setup. Sur un setup, la note dit ce qui a changé par rapport à la base, qui peut apparaître derrière."
+            "text": "Un onglet par setup : double-cliquez pour le renommer, le premier aussi. Sous les onglets, un setup dit ce qui a changé par rapport au premier, qui peut apparaître derrière."
           }
         }
       },

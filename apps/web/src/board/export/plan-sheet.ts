@@ -72,6 +72,13 @@ const PAD = 24;
 const PLAN_W = 480;
 const GAP = 21;
 const CAP = 8.25;
+/** Where the drawing sits on the sheet, below the title block: the export dialog previews it. */
+export const PLAN_SHEET_FRAME = {
+  x: PAD,
+  y: PAD + 52,
+  w: PLAN_W,
+  h: PAPER.height - PAD - 18 - (PAD + 52),
+} as const;
 const TEXT = 9.75;
 const ROW = 15;
 
@@ -174,9 +181,7 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
     });
 
     // The drawing.
-    const top = lineY + 12;
-    const bottom = PAPER.height - PAD - 18;
-    const frame = { x: PAD, y: top, w: PLAN_W, h: bottom - top };
+    const frame = PLAN_SHEET_FRAME;
     ops.push({
       kind: 'rect',
       ...frame,

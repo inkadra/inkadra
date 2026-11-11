@@ -395,9 +395,9 @@
   opacity: 0;
   cursor: pointer;
 }
+/* Tiles stay plain, as the mockup: the star shows under the pointer or the keyboard. */
 .plan-lib__cell:hover .plan-lib__star,
-.plan-lib__star:focus-visible,
-.plan-lib__star[aria-pressed="true"] {
+.plan-lib__cell:focus-within .plan-lib__star {
   opacity: 1;
 }
 .plan-lib__star[aria-pressed="true"] {
@@ -602,6 +602,9 @@ button.plan__badge:hover {
   color: var(--ink-text-secondary);
   font-size: 12.5px;
 }
+.plan-num--tight {
+  gap: 0;
+}
 .plan-num:focus-within {
   border-color: var(--ink-accent-primary);
 }
@@ -665,6 +668,10 @@ button.plan__badge:hover {
   place-items: center;
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
+}
+.plan-props__num[style] {
+  background: color-mix(in srgb, var(--plan-tag) 24%, var(--ink-bg-panel));
+  color: var(--plan-tag);
   font-size: 11px;
   font-weight: 600;
 }
@@ -1037,7 +1044,7 @@ button.plan__badge:hover {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px;
+  padding: 12px 8px;
 }
 .plan-editor--v2 .plan-lib__search {
   flex: none;
@@ -1078,23 +1085,31 @@ button.plan__badge:hover {
   gap: 2px 4px;
 }
 .plan-editor--v2 .plan-lib__tile {
-  /* The mockup's 56 px; a name of three lines makes its row a little taller, never cut. */
-  min-height: 56px;
+  /* The mockup's 56 px, a name of one line or two (tileName in the catalogues, decision 0116). */
+  height: 56px;
   align-content: center;
   gap: 1px;
-  padding: 4px 2px;
+  padding: 1px 0;
   border: 1px solid transparent;
   border-radius: var(--ink-radius-sm);
   color: var(--ink-text-icon);
   font-size: 10px;
-  overflow: hidden;
+  overflow: visible;
 }
-/* Long names wrap, long words break at their soft hyphens (tileName), in every language. */
+/*
+ * A name on one line where it fits, a little wider than the tile as the mockup's; else on two,
+ * broken between words, never inside one: a word too long has a short name in the catalogue.
+ */
 .plan-editor--v2 .plan-lib__tile span {
-  max-width: 100%;
+  width: calc(100% + 6px);
+  margin: 0 -3px;
   line-height: 1.1;
-  overflow-wrap: anywhere;
-  hyphens: manual;
+  hyphens: none;
+  overflow-wrap: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 .plan-editor--v2 .plan-lib__tile .plan-glyph {
   color: inherit;
@@ -1312,30 +1327,55 @@ button.plan__badge:hover {
   font-size: 12px;
   color: var(--ink-text-secondary);
 }
-.plan-setup-note {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  translate: -50% 0;
-  max-width: min(560px, calc(100% - 32px));
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
-  padding: 10px 12px;
-}
-.plan-setup-note__head {
+.plan-main__column {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.plan-main__column .plan-main__canvas {
+  flex: 1;
+}
+/* What a setup changed from its base: a strip under the setup tabs, above the drawing. */
+.plan-setup-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--ink-border-muted);
+  background: var(--ink-bg-panel);
+  font-size: 13px;
 }
 .plan-setup-note__text {
-  margin: 0;
+  flex: 1;
+  min-width: 0;
   color: var(--ink-text-secondary);
   font-size: 12px;
 }
-.plan-setup-note .ink-btn {
-  align-self: flex-start;
+.plan-setup-note__ghost {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-accent-soft-fg);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.plan-setup-note__ghost:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--ink-radius-xs);
+}
+.plan-setups__tab--rename {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2px;
+}
+.plan-setups__tab--rename .plan-field {
+  width: 140px;
+  height: 26px;
 }
 
 /* The right panel. */
@@ -1551,6 +1591,27 @@ span.plan-pill {
   flex: 1;
   justify-content: center;
 }
+/* Delete outlined in red, as the mockup, in both themes; filled only under the pointer. */
+.plan-props__actions .ink-btn--danger {
+  background: transparent;
+}
+.plan-props__actions .ink-btn--danger:hover:not(:disabled) {
+  background: var(--ink-danger-bg);
+}
+/* Duplicate, Lock and Delete stay in view at the foot of a long panel (the mockup's 1440 × 900). */
+.plan-side__body .plan-props__actions--foot {
+  position: sticky;
+  bottom: -12px;
+  margin: 0 -16px -12px;
+  padding: 8px 16px 12px;
+  background: var(--ink-bg-panel);
+}
+.plan-props__bordered {
+  border: 1px solid var(--ink-border-default);
+}
+.plan-swatch--static {
+  cursor: default;
+}
 .plan-props__on,
 .plan-props__locked,
 .plan-props__card {
@@ -1663,6 +1724,33 @@ span.plan-pill {
   margin-left: auto;
   display: flex;
 }
+.plan-elements__section--set {
+  border-top: 1px solid var(--ink-border-muted);
+  padding-top: 6px;
+}
+.plan-elements__toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.plan-elements__toggle .plan-prop__label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.plan-elements__toggle:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--ink-radius-xs);
+}
 .plan-elements__glyph {
   flex: none;
   width: 28px;
@@ -1721,9 +1809,18 @@ span.plan-pill {
 }
 .plan-kit__circuit-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 72px auto;
+  grid-template-columns: minmax(0, 1fr) 72px auto auto;
   gap: 6px;
   align-items: center;
+}
+.plan-kit__amps {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.plan-kit__amps .ink-iconbtn {
+  width: 26px;
+  height: 26px;
 }
 .plan-kit__bar {
   height: 6px;
@@ -1778,7 +1875,7 @@ span.plan-pill {
 .plan-top__kitpill {
   position: absolute;
   top: 8px;
-  right: 8px;
+  left: 8px;
   gap: 6px;
   height: 32px;
   padding: 0 10px;
@@ -1793,8 +1890,18 @@ span.plan-pill {
   background: var(--ink-status-ok);
 }
 .plan-main--phone .plan-setup-note {
-  top: auto;
+  position: absolute;
+  left: 8px;
+  right: 8px;
   bottom: 76px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  box-shadow: var(--ink-shadow-menu);
+}
+.plan-top__setup .plan-field {
+  width: 160px;
+  height: 30px;
 }
 .plan-canvas__phone-tools {
   position: absolute;
@@ -1845,6 +1952,13 @@ span.plan-pill {
   z-index: 5;
   border: 0;
   border-radius: 0;
+}
+/* The phone's Kit sheet: Add to the call sheet stays at its foot, full width. */
+.plan-sheet__body .plan-kit .plan-props__actions {
+  position: sticky;
+  bottom: 0;
+  padding: 8px 0 4px;
+  background: var(--ink-bg-panel);
 }
 .plan-sheet__body {
   flex: 1;

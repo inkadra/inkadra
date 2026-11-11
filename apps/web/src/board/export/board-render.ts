@@ -630,7 +630,8 @@ export function body(p: Placed, ctx: CardContext): Op[] {
     case 'table':
       return tableOps(el, p, c, m);
     case 'plan': {
-      const title = el.variant
+      const title =
+        el.variantOf && el.variant
         ? [el.title || ctx.words.plan, el.variant].filter(Boolean).join(' · ')
         : [ctx.words.plan, el.title].filter(Boolean).join(' · ');
       const ops: Op[] = [
