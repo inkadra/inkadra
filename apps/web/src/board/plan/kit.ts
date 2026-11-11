@@ -130,20 +130,20 @@ export function powerLines(
     rows: power.circuits
       .filter((c) => c.breaker !== null || c.watts > 0)
       .map((c) => {
-      const names = c.lights
-        .map((id) => byId.get(id))
-        .map((i) => (i ? i.label || t(`board.plan.icons.${i.kind}`) : ''))
-        .filter(Boolean)
-        .join(', ');
-      const head =
-        c.breaker !== null
-          ? t('board.plan.links.circuitLine', { name: c.name, amps: n(c.breaker, 1) })
-          : t('board.plan.noCircuit');
-      return {
-        text: names ? `${head}: ${names}` : head,
-        amps: `${n(c.amps, 1)} A`,
-        status: c.status,
-      };
-    }),
+        const names = c.lights
+          .map((id) => byId.get(id))
+          .map((i) => (i ? i.label || t(`board.plan.icons.${i.kind}`) : ''))
+          .filter(Boolean)
+          .join(', ');
+        const head =
+          c.breaker !== null
+            ? t('board.plan.links.circuitLine', { name: c.name, amps: n(c.breaker, 1) })
+            : t('board.plan.noCircuit');
+        return {
+          text: names ? `${head}: ${names}` : head,
+          amps: `${n(c.amps, 1)} A`,
+          status: c.status,
+        };
+      }),
   };
 }
