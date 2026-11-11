@@ -246,7 +246,11 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
   await angle.focus();
   await page.keyboard.press('ArrowRight');
   await expect(angleField).toHaveValue('91');
-  await angle.dblclick();
+  // On the thumb: a click elsewhere on the track would first move it there.
+  const track = (await angle.boundingBox())!;
+  await angle.dblclick({
+    position: { x: 8 + ((91 + 179) / 358) * (track.width - 16), y: track.height / 2 },
+  });
   await expect(angleField).toHaveValue('90');
   await angleField.fill('95');
   await angleField.press('Enter');
