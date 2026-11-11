@@ -293,8 +293,8 @@ select {
 
 .ink-shell {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  grid-template-rows: 48px minmax(0, 1fr);
+  grid-template-columns: var(--ink-sidebar-width) minmax(0, 1fr);
+  grid-template-rows: var(--ink-header-height) minmax(0, 1fr);
   height: 100%;
   background: var(--ink-bg-rail);
 }
@@ -302,13 +302,13 @@ select {
   grid-template-columns: 56px minmax(0, 1fr);
 }
 .ink-shell--rail {
-  grid-template-columns: 52px 210px minmax(0, 1fr);
+  grid-template-columns: var(--ink-rail-width) var(--ink-sidebar-width) minmax(0, 1fr);
 }
 .ink-shell--no-sidebar {
   grid-template-columns: minmax(0, 1fr);
 }
 .ink-shell--rail.ink-shell--no-sidebar {
-  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-columns: var(--ink-rail-width) minmax(0, 1fr);
 }
 
 .ink-rail {
@@ -560,8 +560,8 @@ select {
   overflow: clip;
   background-color: var(--ink-bg-canvas);
   background-image: radial-gradient(circle, var(--ink-canvas-dot) 1px, transparent 1.5px);
-  background-size: 22px 22px;
-  background-position: 11px 11px;
+  background-size: var(--ink-canvas-grid) var(--ink-canvas-grid);
+  background-position: calc(var(--ink-canvas-grid) / 2) calc(var(--ink-canvas-grid) / 2);
 }
 
 /* Floating shell (#333) ------------------------------------------------------- */
@@ -586,11 +586,8 @@ select {
    from each other. Phones keep their own layout (mobile-shell.css in the web app). */
 @media (width >= 768px) {
   .ink-shell {
-    --ink-float-gap: 12px;
-    --ink-sidebar-width: 236px;
-    --ink-launcher-size: 42px;
-    --ink-header-height: 42px;
-    /* Where the panels beside the navigation start, and where the free part of a board begins. */
+    /* Sizes come from tokens.layout (tokens.css). Where the panels beside the navigation start,
+       and where the free part of a board begins. */
     --ink-shell-left: calc(var(--ink-sidebar-width) + var(--ink-float-gap) * 2);
     --ink-board-left: calc(var(--ink-sidebar-width) + var(--ink-float-gap));
     position: relative;

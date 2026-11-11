@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { type ContentKind, kindColor } from './kind-color.ts';
 import { contrast, distance } from './oklab.ts';
-import { type ColorToken, dark, light } from './tokens.ts';
+import { type ColorToken, dark, layout, light } from './tokens.ts';
 import { tokensCss } from './tokens-css.ts';
 import { type ToolKind, toolColor } from './tool-color.ts';
 
@@ -11,6 +11,14 @@ describe('tokens', () => {
   it('tokens.css matches tokens.ts', () => {
     const css = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8');
     expect(css, 'run `pnpm --filter @inkadra/ui tokens`').toBe(tokensCss());
+  });
+
+  it('the shell takes its sizes from tokens.layout only', () => {
+    const css = readFileSync(new URL('./styles.css', import.meta.url), 'utf8');
+    for (const name of Object.keys(layout)) {
+      expect(css, name).toContain(`var(--ink-${name})`);
+      expect(css, `${name} is set in tokens.ts`).not.toMatch(new RegExp(`--ink-${name}\\s*:`));
+    }
   });
 
   it('light theme defines every dark token', () => {
