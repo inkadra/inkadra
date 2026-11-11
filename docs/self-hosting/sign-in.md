@@ -224,3 +224,16 @@ Rate-limit refusals (429) of per-user, per-address and per-link budgets return `
 in whole seconds (at least 1) until another attempt is allowed; clients should wait that
 long before retrying with the same creation key. Refusals because the server is at capacity
 (busy media workers, a full demo) may omit it: retry with backoff.
+
+### Recognizable invalid tokens
+
+A REST 401 with `error.code: unauthorized` may additionally contain
+`error.details.reason`: `token_revoked`, `token_expired` or `account_deactivated`.
+Only a request presenting the exact previously issued bearer token receives a reason;
+unknown tokens remain generic. Revoked token hashes and their reason are retained for
+30 days, expired tokens for 30 days after expiry, then purged by upload housekeeping.
+Only hashes are stored. Revoked rows are excluded from account token lists and limits.
+Deleting an account removes its hashes immediately. Account reactivation does not
+reactivate its old tokens. Collaboration preserves code 4401 and supplies the reason
+where recognized, including the authentication failure reason on new connections.
+These signals do not request or authorize deletion of client data.

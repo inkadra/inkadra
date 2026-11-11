@@ -665,7 +665,9 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect(listed.body.items[0]).toMatchObject({ id, name: 'Script', client: null });
     expect(listed.body.items[0].lastUsedAt).not.toBeNull();
     expect((await call(bearer, 'DELETE', `/api/v1/me/tokens/${id}`)).status).toBe(204);
-    expect((await call(bearer, 'GET', '/api/v1/me')).status).toBe(401);
+    const refused = await call(bearer, 'GET', '/api/v1/me');
+    expect(refused.status).toBe(401);
+    expect(refused.body.error.details).toEqual({ reason: 'token_revoked' });
   });
 
   it('requires a fresh cookie session to create tokens and app authorizations', async () => {

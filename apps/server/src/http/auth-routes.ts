@@ -7,7 +7,7 @@ import { type Auth, CLIENT_IP_HEADER } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { user } from '../db/schema.ts';
 import { allowedOrigin, ORIGIN_HEADER, requestOrigin } from '../request-origin.ts';
-import { actorFromToken, bearerToken } from '../tokens.ts';
+import { actorFromToken, bearerToken, invalidTokenReason } from '../tokens.ts';
 import { HttpError, sendError } from './errors.ts';
 
 export function toHeaders(req: FastifyRequest): Headers {
@@ -74,7 +74,10 @@ export async function requireActor(
   const token = bearerToken(req.headers.authorization);
   if (token) {
     const actor = await actorFromToken(db, token);
-    if (!actor) throw new HttpError('unauthorized', 'The token is not valid any more.');
+    if (!actor) {
+      const reason = await invalidTokenReason(db, token);
+      throw new HttpError('unauthorized', 'The token is not valid any more.', reason ? { reason } : undefined);
+    }
     if (!enrollment) await enforceAdminTwoFactor(db, actor);
     return actor;
   }

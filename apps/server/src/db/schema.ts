@@ -152,6 +152,8 @@ export const personalToken = pgTable(
     name: text('name').notNull(),
     client: text('client', { enum: ['clipper', 'mobile'] }),
     tokenHash: text('token_hash').notNull().unique(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    revocationReason: text('revocation_reason', { enum: ['token_revoked', 'account_deactivated'] }),
     prefix: text('prefix').notNull(),
     lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
@@ -376,6 +378,7 @@ export const invitation = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     kind: text('kind', { enum: ['email', 'link'] }).notNull(),
     tokenHash: text('token_hash').notNull().unique(),
+
     tokenSealed: text('token_sealed'),
     email: text('email'),
     projectId: uuid('project_id').references(() => project.id, { onDelete: 'cascade' }),
@@ -932,6 +935,7 @@ export const shareLink = pgTable(
     includeSubBoards: boolean('include_sub_boards').notNull().default(true),
     label: text('label'),
     tokenHash: text('token_hash').notNull().unique(),
+
     tokenSealed: text('token_sealed').notNull(),
     passwordHash: text('password_hash'),
     sessionsValidAfter: timestamp('sessions_valid_after', { withTimezone: true })

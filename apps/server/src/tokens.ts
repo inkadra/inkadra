@@ -64,6 +64,7 @@ export async function actorFromToken(
       and(
         eq(personalToken.tokenHash, sha256(token)),
         isNull(user.deactivatedAt),
+        isNull(personalToken.revokedAt),
         or(isNull(personalToken.expiresAt), gt(personalToken.expiresAt, now)),
       ),
     );
@@ -92,4 +93,33 @@ export async function actorFromToken(
 export function bearerToken(authorization: string | undefined): string | null {
   const m = /^Bearer\s+(\S+)$/i.exec(authorization ?? '');
   return m?.[1] ?? null;
+}
+
+export const TOKEN_REASON_RETENTION_MS = 30 * 24 * 60 * 60_000;
+export type InvalidTokenReason = 'token_revoked' | 'token_expired' | 'account_deactivated';
+
+/** Never disclose recognition except to the holder of the exact hashed token. */
+export async function invalidTokenReason(db: Database, token: string): Promise<InvalidTokenReason | undefined> {
+  if (!isToken(token)) return undefined;
+  const [row] = await db.select({
+    revokedAt: personalToken.revokedAt, reason: personalToken.revocationReason,
+    expiresAt: personalToken.expiresAt, deactivatedAt: user.deactivatedAt,
+  }).from(personalToken).innerJoin(user, eq(user.id, personalToken.userId))
+    .where(eq(personalToken.tokenHash, sha256(token)));
+  if (!row) return undefined;
+  const now = Date.now();
+  if (row.revokedAt) return now - row.revokedAt.getTime() < TOKEN_REASON_RETENTION_MS
+    ? row.reason ?? 'token_revoked' : undefined;
+  if (row.expiresAt && row.expiresAt.getTime() <= now)
+    return now - row.expiresAt.getTime() < TOKEN_REASON_RETENTION_MS ? 'token_expired' : undefined;
+  if (row.deactivatedAt) return 'account_deactivated';
+  return undefined;
+}
+
+export async function purgeInvalidTokens(db: Database) {
+  const cutoff = new Date(Date.now() - TOKEN_REASON_RETENTION_MS);
+  await db.delete(personalToken).where(or(
+    lt(personalToken.revokedAt, cutoff),
+    and(isNull(personalToken.revokedAt), lt(personalToken.expiresAt, cutoff)),
+  ));
 }

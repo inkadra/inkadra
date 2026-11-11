@@ -1,3 +1,4 @@
+import { purgeInvalidTokens } from './tokens.ts';
 import type { BoardNotice } from '@inkadra/doc-schema';
 import type { BackupSettings, BoardColumn, ServerQueueId } from '@inkadra/shared';
 import { type Job, Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
@@ -213,6 +214,7 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
  */
 export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
   await db.delete(creationRequest).where(lt(creationRequest.expiresAt, new Date()));
+  await purgeInvalidTokens(db);
   const stale = await db
     .select({ id: asset.id, key: asset.storageKey, size: asset.size })
     .from(asset)

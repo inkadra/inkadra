@@ -275,7 +275,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     const rows = await db
       .select()
       .from(personalToken)
-      .where(eq(personalToken.userId, session.user.id))
+      .where(and(eq(personalToken.userId, session.user.id), isNull(personalToken.revokedAt)))
       .orderBy(asc(personalToken.createdAt));
     return { items: rows.map(toPersonalToken) };
   });
@@ -288,7 +288,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     const [mine] = await db
       .select({ n: count() })
       .from(personalToken)
-      .where(eq(personalToken.userId, session.user.id));
+      .where(and(eq(personalToken.userId, session.user.id), isNull(personalToken.revokedAt)));
     if ((mine?.n ?? 0) >= 100) throw new HttpError('conflict', 'Too many tokens: revoke some.');
     const { token, row } = await issueToken(db, session.user.id, {
       name: input.name,
@@ -309,8 +309,9 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db, true);
     const { tokenId } = TokenParams.parse(req.params);
     const removed = await db
-      .delete(personalToken)
-      .where(and(eq(personalToken.id, tokenId), eq(personalToken.userId, actor.id)))
+      .update(personalToken)
+      .set({ revokedAt: new Date(), revocationReason: 'token_revoked' })
+      .where(and(eq(personalToken.id, tokenId), eq(personalToken.userId, actor.id), isNull(personalToken.revokedAt)))
       .returning({ id: personalToken.id });
     if (removed.length === 0) throw new HttpError('not_found', 'Token not found.');
     return reply.status(204).send();
