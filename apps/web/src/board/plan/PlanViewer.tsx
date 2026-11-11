@@ -53,7 +53,11 @@ function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
                 const name = icon.label || t(`board.plan.icons.${icon.kind}`);
                 const lens = catalogueKind(icon.kind) === 'camera' ? `${icon.lens ?? 35} mm` : '';
                 const kelvin = icon.kelvin ? `${icon.kelvin} K` : '';
-                const sub = [itemSummary(icon, icons, t), kelvin].filter(Boolean).join(' · ');
+                // The lens is in the name: the summary goes on with the support and the moves.
+                const summary = lens
+                  ? itemSummary(icon, icons, t).replace(/^\d+ mm( · )?/, '')
+                  : itemSummary(icon, icons, t);
+                const sub = [summary, kelvin].filter(Boolean).join(' · ');
                 return (
                   <li key={icon.id} className="plan-view__item">
                     <span style={{ color: planCss(icon.color) }}>

@@ -126,7 +126,10 @@ export function powerLines(
   return {
     title: t('board.plan.powerAt', { volts: power.voltage }),
     total: `${watts} · ${n(power.amps, 1)} A`,
-    rows: power.circuits.map((c) => {
+    // Lights that draw nothing and are on no circuit (a sun, a moon) say nothing about power.
+    rows: power.circuits
+      .filter((c) => c.breaker !== null || c.watts > 0)
+      .map((c) => {
       const names = c.lights
         .map((id) => byId.get(id))
         .map((i) => (i ? i.label || t(`board.plan.icons.${i.kind}`) : ''))
