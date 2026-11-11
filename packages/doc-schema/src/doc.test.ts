@@ -1366,7 +1366,8 @@ describe('items locked on their own (version 24, decision 0114)', () => {
     expect(el.type === 'plan' && el.openings?.[0]?.locked).toBe(true);
     addElement(doc, el);
     const map = roots(doc).elements.get(el.id)!;
-    expect(readElement(map)).toEqual(el);
+    // Circuits are a list of their own, created with the plan.
+    expect(readElement(map)).toEqual({ ...el, circuits: [] });
     expect(hasStoredShape(map)).toBe(true);
     expect(checkCard(map)).toEqual({ status: 'known' });
     // A lock that is not a boolean leaves the item out, as any other bad field does.
