@@ -208,6 +208,8 @@ describe('beams and glows', () => {
     expect(iconCone(cob)?.beam).toBe(true);
     expect(iconCone(at('softbox', 500, 300))?.beam).toBe(true);
     expect(iconCone(at('softbox', 500, 300, { on: cob.id }))).toBeNull();
+    // A light on a stand keeps its own beam.
+    expect(iconCone({ ...cob, on: 'standAAAAAAAA' })?.beam).toBe(true);
     expect(iconCone(at('practical', 500, 300))).toBeNull();
     expect(iconGlow(at('practical', 500, 300))?.radius).toBeGreaterThan(0);
     expect(iconGlow(cob)).toBeNull();

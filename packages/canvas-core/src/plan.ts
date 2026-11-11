@@ -239,7 +239,8 @@ export function iconCone(
   sensor?: PlanSensor,
 ): { points: [Point, Point, Point]; angle: number; reach: number; beam: boolean } | null {
   // A modifier of version 15 that is attached to a light lends it its light (decision 0104).
-  const beam = BEAM_KINDS.has(icon.kind) && !icon.on;
+  const modifier = icon.kind === 'softbox' || icon.kind === 'para';
+  const beam = BEAM_KINDS.has(icon.kind) && !(modifier && icon.on);
   if (!beam && icon.kind !== 'camera') return null;
   const angle = beam ? (icon.beam ?? DEFAULT_BEAM) : lensAngle(icon.lens ?? DEFAULT_LENS, sensor);
   const reach = icon.reach ?? (beam ? DEFAULT_REACH.beam : DEFAULT_REACH.cone);
