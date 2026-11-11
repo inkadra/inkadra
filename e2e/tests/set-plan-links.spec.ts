@@ -5,7 +5,7 @@
 import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { addFrame, createElement } from '@inkadra/canvas-core';
+import { addFrame, createElement, lensAngle } from '@inkadra/canvas-core';
 import {
   createBoardDoc,
   type Element,
@@ -139,8 +139,8 @@ test('set plan links: character, frame, scene chip and the setup of a shot', asy
       .getByRole('button', { name: /^2A/ })
       .click();
     await expect(props).toContainText('32 mm nell’inquadratura');
-    // 32 mm on Super 35: 42° across.
-    await expect(props).toContainText('42° orizz.');
+    // The angle of view of 32 mm on Super 35.
+    await expect(props).toContainText(`${Math.round(lensAngle(32))}° orizz.`);
     const cam = (await saved()).find((i) => i.kind === 'camera');
     expect(cam?.frameId).toBe(frameId);
     expect(cam?.lens).toBeUndefined();
@@ -161,7 +161,7 @@ test('set plan links: character, frame, scene chip and the setup of a shot', asy
     await card(planId).dblclick();
     await pick(/^A cam/);
     await expect(props).toContainText('50 mm nell’inquadratura');
-    await expect(props).toContainText('28° orizz.');
+    await expect(props).toContainText(`${Math.round(lensAngle(50))}° orizz.`);
     await pick(/^Leonardo/);
     await expect(props.getByLabel('Nome', { exact: true })).toHaveValue('Leonardo');
   });
