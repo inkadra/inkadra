@@ -51,7 +51,10 @@ afterEach(() => {
 
 it('schedules anonymisation separately and isolates it from upload purge failures', async () => {
   const pendingUploads = vi.fn().mockResolvedValue([]);
-  const db = { select: () => ({ from: () => ({ where: pendingUploads }) }) } as unknown as Database;
+  const db = {
+    select: () => ({ from: () => ({ where: pendingUploads }) }),
+    delete: () => ({ where: vi.fn().mockResolvedValue(undefined) }),
+  } as unknown as Database;
   const workers = await startWorkers('redis://unused', pino({ level: 'silent' }), {
     db,
     storage: {} as Storage,
