@@ -358,3 +358,18 @@ describe('who plays a character when several rows could (decision 0095)', () => 
     ]);
   });
 });
+
+describe('equal positions in the roster', () => {
+  it('give a shared role to the row with the smaller id, whatever the order received', () => {
+    const shoot = day({ blocks: [block(1, ['Elena'])] });
+    const a = member(21, { name: 'Ada', role: 'Elena', department: 'Cast', position: 4 });
+    const b = member(22, { name: 'Bea', role: 'Elena', department: 'Cast', position: 4 });
+    for (const crew of [
+      [a, b],
+      [b, a],
+    ])
+      expect(dayCrew(shoot, crew).filter((e) => e.called).map((e) => e.member.name)).toEqual([
+        'Ada',
+      ]);
+  });
+});

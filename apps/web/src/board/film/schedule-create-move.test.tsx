@@ -7,6 +7,7 @@ import * as Y from 'yjs';
 import { api } from '../../lib/api.ts';
 import { BoardStore } from '../store.ts';
 import { ScheduleView } from './ScheduleView.tsx';
+import { localDate } from './calendar.ts';
 
 /** Phases 2 and 3 of decision 0089: drawing a block on empty time and moving a whole day. */
 
@@ -278,11 +279,35 @@ it('waits for the project dates before it opens an empty calendar on today', asy
     host.remove();
   });
   // The days answer first; the project and its dates arrive after.
-  await act(async () => root.render(<ScheduleView store={board} boardId="board" />));
   await act(async () =>
-    root.render(<ScheduleView store={board} boardId="board" shootingStart="2026-11-21" />),
+    root.render(<ScheduleView store={board} boardId="board" datesStatus="loading" />),
+  );
+  await act(async () =>
+    root.render(
+      <ScheduleView store={board} boardId="board" datesStatus="ready" shootingStart="2026-11-21" />,
+    ),
   );
   expect(host.querySelector('.schedule__month-day[aria-pressed="true"]')?.textContent).toBe('21');
   await act(async () => button(host, 'schedule.addDayShort')?.click());
   expect(post.mock.calls[0]?.[1]).toMatchObject({ date: '2026-11-21' });
 });
+
+it.each(['error', 'unavailable'] as const)(
+  'opens on today when the project dates are %s, and stays there when days arrive later',
+  async (datesStatus) => {
+    // No days yet; a minute later a collaborator's day comes with the refresh.
+    vi.spyOn(api, 'get')
+      .mockResolvedValueOnce({ items: [], nextCursor: null })
+      .mockResolvedValue({ items: [monday], nextCursor: null });
+    const host = await mount(<ScheduleView store={store()} boardId="board" datesStatus={datesStatus} />);
+    const pressed = () =>
+      host.querySelector<HTMLElement>('.schedule__month-day[aria-pressed="true"]')?.dataset.dayDrop;
+    expect(pressed()).toBe(localDate(new Date()));
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await settle();
+    // The calendar does not move under someone reading it.
+    expect(pressed()).toBe(localDate(new Date()));
+  },
+);

@@ -243,11 +243,19 @@ export function freeSpot(
   };
   const CELL = 256;
   const cells = new Map<string, Rect[]>();
+  // A card goes in the cells it covers inside the window only (every spot searched lies there):
+  // a valid card can be a million units wide, and must not fill a million cells.
+  const cellsOf = (from: number, to: number, min: number, max: number): [number, number] => [
+    Math.floor(Math.max(from, min) / CELL),
+    Math.floor(Math.min(to, max) / CELL),
+  ];
   for (const r of taken) {
     const box = inflate(r, gap);
     if (!intersects(box, window)) continue;
-    for (let cx = Math.floor(box.x / CELL); cx <= Math.floor((box.x + box.w) / CELL); cx++)
-      for (let cy = Math.floor(box.y / CELL); cy <= Math.floor((box.y + box.h) / CELL); cy++) {
+    const [x0, x1] = cellsOf(box.x, box.x + box.w, window.x, window.x + window.w);
+    const [y0, y1] = cellsOf(box.y, box.y + box.h, window.y, window.y + window.h);
+    for (let cx = x0; cx <= x1; cx++)
+      for (let cy = y0; cy <= y1; cy++) {
         const key = `${cx},${cy}`;
         const list = cells.get(key);
         if (list) list.push(box);
@@ -312,6 +320,8 @@ export function freeSpots(
  * A spot planned for a new card, checked again when the card is made (an upload ends later): it
  * stays unless a card that was not on the board when it was planned (`before`: their ids) now
  * covers it, from another upload or a collaborator; then the nearest free spot from there.
+ * It checks the board as this client has it: two people whose uploads end before their changes
+ * reach each other can still pick the same spot.
  */
 export function claimSpot(
   planned: Point,

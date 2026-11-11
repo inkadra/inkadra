@@ -102,7 +102,10 @@ export function castKeysOf(
   );
   const named = new Set([...own.values()].flatMap((keys) => [...keys]));
   const roles = new Map<string, string>();
-  for (const member of [...crew].sort((a, b) => a.position - b.position)) {
+  // Roster order: position, then id, as the server's `crewCastKeys`.
+  const order = (a: CrewMember, b: CrewMember) =>
+    a.position - b.position || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  for (const member of [...crew].sort(order)) {
     const role = castNameKey(member.department) === 'cast' ? castNameKey(member.role) : '';
     if (role && !named.has(role) && !roles.has(role)) roles.set(role, member.id);
   }

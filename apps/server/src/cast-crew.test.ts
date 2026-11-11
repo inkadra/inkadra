@@ -444,4 +444,37 @@ describe.skipIf(!url)('cast links through the crew (needs DATABASE_URL)', () => 
     // "Lucia" is somebody's own name: Lia's role does not take it.
     expect(links.filter((l) => l.castKey === 'lucia')).toEqual([]);
   });
+
+  it('breaks a tie of positions by id, as the web does', async () => {
+    const [x, y] = [people.actor?.id, people.grantEditor?.id];
+    const made = await db
+      .insert(crewMember)
+      .values([
+        { ...blank, projectId, name: 'Zeno A', role: 'Zaccaria', userId: x!, position: 120 },
+        { ...blank, projectId, name: 'Zeno B', role: 'Zaccaria', userId: y!, position: 120 },
+      ])
+      .returning({ id: crewMember.id, userId: crewMember.userId });
+    const first = [...made].sort((a, b) => (a.id < b.id ? -1 : 1))[0];
+    const links = (await request('owner', 'GET', `/boards/${planBoard}/schedule/attendance`)).json()
+      .links as Array<{ castKey: string; userId: string }>;
+    expect(links.filter((l) => l.castKey === 'zaccaria')).toEqual([
+      { castKey: 'zaccaria', userId: first?.userId },
+    ]);
+  });
+
+  it('never lets a grant on one board learn of a hidden row through its role', async () => {
+    const guest = people.guest?.id ?? null;
+    // The guest's own row plays Bruno; a row the guest cannot see is named Bruno.
+    await db.insert(crewMember).values([
+      { ...blank, projectId, name: 'Ospite', role: 'Bruno', userId: guest, position: 130 },
+      { ...blank, projectId, name: 'Bruno', position: 131 },
+    ]);
+    const own = (await request('guest', 'GET', `/boards/${planBoard}/schedule/attendance`)).json()
+      .links as Array<{ castKey: string; userId: string }>;
+    expect(own).toContainEqual({ castKey: 'bruno', userId: guest });
+    // The team reads the whole roster: there the name comes first.
+    const team = (await request('owner', 'GET', `/boards/${planBoard}/schedule/attendance`)).json()
+      .links as Array<{ castKey: string; userId: string }>;
+    expect(team).not.toContainEqual({ castKey: 'bruno', userId: guest });
+  });
 });

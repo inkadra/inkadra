@@ -227,3 +227,104 @@ const intersectsRect = (
   a: { x: number; y: number; w: number; h: number },
   b: { x: number; y: number; w: number; h: number },
 ) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/** The search as first written, every spot against every card: the reference for the index. */
+function referenceSpot(
+  start: { x: number; y: number },
+  size: { w: number; h: number },
+  taken: ReadonlyArray<{ x: number; y: number; w: number; h: number }>,
+  area?: { x: number; y: number; w: number; h: number },
+) {
+  const gap = 12;
+  const step = 32;
+  const free = (p: { x: number; y: number }) =>
+    !taken.some((r) =>
+      intersectsRect({ x: r.x - gap, y: r.y - gap, w: r.w + gap * 2, h: r.h + gap * 2 }, { ...p, ...size }),
+    );
+  const within = (p: { x: number; y: number }) =>
+    !area ||
+    (p.x >= area.x &&
+      p.y >= area.y &&
+      p.x + size.w <= area.x + area.w &&
+      p.y + size.h <= area.y + area.h);
+  const search = (inside: (p: { x: number; y: number }) => boolean) => {
+    for (let i = 0; i < 12; i++) {
+      const at = { x: start.x + i * step, y: start.y + i * step };
+      if (inside(at) && free(at)) return at;
+    }
+    for (let ring = 1; ring <= 40; ring++) {
+      let best: { x: number; y: number } | undefined;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      for (let i = -ring; i <= ring; i++)
+        for (const [dx, dy] of [
+          [i, -ring],
+          [i, ring],
+          [-ring, i],
+          [ring, i],
+        ] as const) {
+          const at = { x: start.x + dx * step, y: start.y + dy * step };
+          const distance = dx * dx + dy * dy;
+          if (distance < bestDistance && inside(at) && free(at)) {
+            best = at;
+            bestDistance = distance;
+          }
+        }
+      if (best) return best;
+    }
+    return undefined;
+  };
+  return (area && search(within)) ?? search(() => true) ?? start;
+}
+
+describe('freeSpot with its index', () => {
+  // mulberry32: the same cases on every run.
+  const random = (seed: number) => () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const huge = { x: -500_000, y: -500_000, w: 1_000_000, h: 1_000_000 };
+
+  it('finds the same spot as the plain search, whatever the board', () => {
+    const next = random(578);
+    const pick = (min: number, max: number) => Math.round(min + next() * (max - min));
+    for (let n = 0; n < 400; n++) {
+      const cards = Array.from({ length: pick(0, 120) }, () => {
+        const kind = next();
+        // On a cell border once inflated, straddling cells, empty, or anywhere.
+        if (kind < 0.2) return { x: pick(-8, 8) * 256 - 12, y: pick(-8, 8) * 256 - 12, w: 232, h: 488 };
+        if (kind < 0.3) return { x: pick(-2000, 2000), y: pick(-2000, 2000), w: 0, h: 0 };
+        if (kind < 0.4) return { x: pick(-8, 8) * 256 - 100, y: pick(-2000, 2000), w: 200, h: 300 };
+        return { x: pick(-2000, 2000), y: pick(-2000, 2000), w: pick(0, 700), h: pick(0, 700) };
+      });
+      if (n % 25 === 0) cards.push(huge);
+      if (n % 40 === 1)
+        // A packed field around the start: the 40 rings run out.
+        for (let x = -1800; x < 1800; x += 250)
+          for (let y = -1800; y < 1800; y += 190) cards.push({ x, y, w: 240, h: 180 });
+      const start = { x: pick(-1500, 1500), y: pick(-1500, 1500) };
+      const card = { w: pick(0, 640), h: pick(0, 400) };
+      const area =
+        next() < 0.5
+          ? { x: start.x - pick(0, 900), y: start.y - pick(0, 700), w: pick(0, 2000), h: pick(0, 1400) }
+          : undefined;
+      expect(freeSpot(start, card, cards, area)).toEqual(referenceSpot(start, card, cards, area));
+    }
+  });
+
+  it('stays fast with a card a million units wide', () => {
+    const others = Array.from({ length: 2000 }, (_, i) => ({
+      x: (i % 50) * 300,
+      y: Math.floor(i / 50) * 300,
+      w: 240,
+      h: 180,
+    }));
+    const begin = performance.now();
+    const at = freeSpot({ x: 0, y: 0 }, { w: 240, h: 240 }, [huge, ...others], { x: -600, y: -400, w: 1200, h: 800 });
+    const ms = performance.now() - begin;
+    // Nothing is free under it: every ring is searched, against a few cells, not a million.
+    expect(at).toEqual({ x: 0, y: 0 });
+    expect(ms).toBeLessThan(250);
+  });
+});

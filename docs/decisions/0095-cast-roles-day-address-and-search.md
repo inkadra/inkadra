@@ -20,8 +20,14 @@ of its cast names (`castNameKey`), beside its own name and its linked card's nam
 the same row). It is called on the days that name the character, and its name and phone fill
 Actor and Contact. Rows outside Cast are left alone: there a role is a job. A row's own name or
 its linked card comes before any role: a role counts only when no row has that name or card, and
-a role shared by several Cast rows goes to the first by position. A character card with that
-name still gives the actor and contact.
+a role shared by several Cast rows goes to the first by position, then by id (web and server
+sort the same way). A character card with that name still gives the actor and contact.
+
+The roster is private to project members (0091, 0092), so the precedence looks only at the rows
+the caller may know of: the whole roster for members and for the server, the caller's own rows
+for a grant on one board. Otherwise a hidden row named like their role would make that role
+vanish from their links and tell them it exists. Such a person may then see themselves called
+for a character the team's sheet gives to someone else; the team's view is the one that counts.
 
 **The day's address.** When the scenes name their places, the call sheet and its PDF keep the
 numbered scene locations and add the day's Location first, labelled "Address", with its map

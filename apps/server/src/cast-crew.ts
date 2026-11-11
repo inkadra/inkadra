@@ -1,6 +1,6 @@
 import { type CastLink, type CrewCharacter, castNameKey } from '@inkadra/shared';
 import { and, asc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
-import { type Actor, boardRoles } from './access.ts';
+import { type Actor, boardRoles, projectRole } from './access.ts';
 import { type BoardReader, storedCharacters } from './board-content.ts';
 import type { Database } from './db/client.ts';
 import { board, castLink, crewMember, shootingDay } from './db/schema.ts';
@@ -15,8 +15,12 @@ type Source = Database | Transaction;
 type CharacterReader = Pick<BoardReader, 'characters'> | undefined;
 type CastRow = Pick<
   typeof crewMember.$inferSelect,
-  'name' | 'character' | 'department' | 'role' | 'position'
+  'id' | 'name' | 'character' | 'department' | 'role' | 'position'
 >;
+
+/** Roster order: position, then id; the web's `castKeysOf` sorts the same way. */
+const byPosition = (a: Pick<CastRow, 'id' | 'position'>, b: Pick<CastRow, 'id' | 'position'>) =>
+  a.position - b.position || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 /**
  * The boards whose character cards may be read: in the project and not in the trash, and, for a
@@ -83,7 +87,7 @@ export async function crewCastKeys(
   const roles = new Map<string, number>();
   rows
     .map((row, i) => ({ row, i }))
-    .sort((a, b) => a.row.position - b.row.position)
+    .sort((a, b) => byPosition(a.row, b.row))
     .forEach(({ row, i }) => {
       const role = castNameKey(row.department) === 'cast' ? castNameKey(row.role) : '';
       if (role && !named.has(role) && !roles.has(role)) roles.set(role, i);
@@ -103,8 +107,9 @@ export async function castLinksOf(
   userId?: string,
   viewer?: Pick<Actor, 'id'>,
 ): Promise<CastLink[]> {
-  const rows = await db
+  const all = await db
     .select({
+      id: crewMember.id,
       name: crewMember.name,
       character: crewMember.character,
       department: crewMember.department,
@@ -113,9 +118,14 @@ export async function castLinksOf(
       userId: crewMember.userId,
     })
     .from(crewMember)
-    // Every row: a role counts only when no other row holds that name (crewCastKeys).
     .where(eq(crewMember.projectId, projectId))
     .orderBy(asc(crewMember.position), asc(crewMember.id));
+  // A role counts only when no other row holds that name (crewCastKeys), among the rows the
+  // caller may know of (decision 0095): the whole roster for project members and the server;
+  // for a grant on one board, their own rows only, so a hidden row never makes their role
+  // disappear and give the roster away.
+  const roster = !viewer || (await projectRole(db, viewer, projectId)) !== null;
+  const rows = roster ? all : all.filter((row) => row.userId === viewer?.id);
   const allowed = await cardBoards(
     db,
     projectId,

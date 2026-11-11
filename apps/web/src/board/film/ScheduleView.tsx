@@ -151,6 +151,7 @@ export function ScheduleView({
   projectId,
   timeZone,
   shootingStart,
+  datesStatus = 'ready',
   canEditCrew = false,
   boardId = '',
   userId,
@@ -167,6 +168,11 @@ export function ScheduleView({
   timeZone?: string | undefined;
   /** The project's first shooting date: where an empty calendar opens and its first day goes. */
   shootingStart?: string | null | undefined;
+  /**
+   * Whether the project's dates are in: an empty calendar waits while they load, and opens on
+   * today when they failed or cannot be read (a grant on one board: no project in the list).
+   */
+  datesStatus?: 'loading' | 'ready' | 'error' | 'unavailable';
   /** A project editor: linking a cast name to an account writes the crew (decision 0091). */
   canEditCrew?: boolean;
   boardId?: string;
@@ -350,9 +356,9 @@ export function ScheduleView({
   const today = localDate(now);
   // The calendar opens on the day being shot, else the next shooting day, else the last one.
   // Picked once, when the days arrive: it must not move under someone reading it.
-  // Without days it waits for the project's dates (undefined until they load, null when the
-  // project has none): an empty calendar must not settle on today before they arrive.
-  if (focus === null && !loading && (drafted.length > 0 || shootingStart !== undefined)) {
+  // Without days it waits while the project's dates load: an empty calendar must not settle on
+  // today before they arrive. Failed or unreadable dates open it on today.
+  if (focus === null && !loading && (drafted.length > 0 || datesStatus !== 'loading')) {
     const current = drafted.find((d) => nowOnDay(d.draft, plannedWrap(d.draft), now) !== null);
     const next = drafted.find((d) => d.draft.date >= today) ?? drafted.at(-1);
     setFocus((current ?? next)?.draft.date ?? shootingStart ?? today);
