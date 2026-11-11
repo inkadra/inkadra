@@ -201,10 +201,10 @@ export function BackgroundPanel({
             <Icon name="image" size={16} />
             <span>{name || t('board.plan.background.picture')}</span>
           </p>
-          <label className="plan-props__row plan-background__opacity">
+          <div className="plan-props__row">
             <span className="plan-prop__label">{t('board.plan.background.opacity')}</span>
             <span className="plan-chip">{opacity}%</span>
-          </label>
+          </div>
           <Slider
             aria-label={t('board.plan.background.opacity')}
             min={5}

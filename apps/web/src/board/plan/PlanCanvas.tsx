@@ -573,7 +573,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       setLive([p]);
       return;
     }
-    if ((ed.plan.shapes?.length ?? 0) >= MAX_SHAPES) return;
+    if ((ed.plan.shapes?.length ?? 0) >= MAX_SHAPES || tool === 'walls' || tool === 'openings')
+      return;
     const a = snapped(p);
     gesture.current = { kind: 'shape', shape: tool, a, b: a, raw: [p, p] };
     setLiveShape({ kind: tool, a, b: a });

@@ -5,7 +5,6 @@ import {
   atLength,
   DEFAULT_OPENING_METRES,
   DEFAULT_WALL_METRES,
-  MAX_PLAN_OPENINGS,
   metresToView,
   moveWallCorner,
   nearestOnWall,
@@ -27,6 +26,7 @@ import {
   wallPoints,
 } from '@inkadra/canvas-core';
 import {
+  MAX_PLAN_OPENINGS,
   MAX_PLAN_WALLS,
   MAX_WALL_POINTS,
   PLAN_OPENING_KINDS,

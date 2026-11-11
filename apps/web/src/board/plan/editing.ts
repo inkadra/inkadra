@@ -102,7 +102,7 @@ export interface PlanEditorProps {
 
 const replaceIn = <T extends { id: string }>(
   list: T[] | undefined,
-  next: readonly PlanItem[],
+  next: ReadonlyArray<{ id: string }>,
 ): T[] | undefined =>
   list?.map((item) => (next.find((n) => n.id === item.id) as unknown as T | undefined) ?? item);
 
