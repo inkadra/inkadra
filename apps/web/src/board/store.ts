@@ -7,11 +7,15 @@ import {
 } from '@inkadra/canvas-core';
 import {
   type Element,
+  encodeValidatedSnapshot,
+  openValidatedSnapshot,
+  openValidatedSnapshotSteps,
   PLAN_ASPECT,
   readElement,
   readElementSteps,
   roots,
   UNSORTED,
+  type ValidatedSnapshot,
 } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
 import { croppedRotatedSize } from './image-crop.ts';
@@ -30,8 +34,19 @@ export interface Snapshot {
 
 const EMPTY: Snapshot = { byId: new Map(), canvas: [], columns: new Map(), unsorted: [] };
 
+/** Options of `new BoardStore` and `BoardStore.hydrate`. */
+export interface OpenOptions {
+  /**
+   * A validated snapshot this same build exported for the same board (`exportValidatedSnapshot`,
+   * decision 0106) and the build identity it was exported with: cards made of the same items
+   * skip validation; everything else is read as usual, and a snapshot of another build, schema or
+   * board, or a malformed one, is ignored as a whole.
+   */
+  snapshot?: { text: string; build: string } | null;
+}
+
 /** Options of `BoardStore.hydrate` (decision 0105). */
-export interface HydrateOptions {
+export interface HydrateOptions extends OpenOptions {
   /** Work per slice, in milliseconds (default 8). */
   budgetMs?: number;
   /**
@@ -126,7 +141,7 @@ export class BoardStore {
       captureTimeout: 400,
     });
     this.loading = budgetMs !== undefined;
-    if (!this.loading) this.rebuild();
+    if (!this.loading) this.rebuild(options?.snapshot);
     else this.stopped = new Promise((resolve) => (this.stop = resolve));
     elements.observeDeep(this.onChange);
     // Yjs calls the observers, this one included, before afterTransaction.
@@ -229,10 +244,12 @@ export class BoardStore {
     for (const l of this.listeners) l();
   };
 
-  private rebuild() {
+  private rebuild(saved?: OpenOptions['snapshot']) {
+    const snapshot = saved ? openValidatedSnapshot(this.doc, saved.text, saved) : null;
     const byId = new Map<string, Element>();
     for (const [key, map] of roots(this.doc).elements.entries()) {
-      const el = readElement(map);
+      const hit = snapshot?.take(key, map);
+      const el = hit !== undefined ? hit : readElement(map);
       if (!el) continue;
       if (el.id !== key) this.exact = false;
       byId.set(el.id, el);
@@ -262,6 +279,17 @@ export class BoardStore {
       nextPause = queue();
       start = performance.now();
     };
+    let snapshot: ValidatedSnapshot | null = null;
+    if (options.snapshot) {
+      const steps = openValidatedSnapshotSteps(this.doc, options.snapshot.text, options.snapshot);
+      let step = steps.next();
+      while (!step.done) {
+        if (due()) await yieldNow();
+        if (this.destroyed) return;
+        step = steps.next();
+      }
+      snapshot = step.value;
+    }
     /** Validated reads by key, each current: a change since then puts its key in stale. */
     const done = new Map<string, Element | null>();
     /** Changed in the middle of their own read: read in one go next time, so typing ends. */
@@ -305,7 +333,9 @@ export class BoardStore {
         }
         // From here the read sees the current element; a change during a pause aborts it.
         this.stale.delete(key);
-        if (interrupted.has(key)) done.set(key, readElement(map));
+        const hit = snapshot?.take(key, map);
+        if (hit !== undefined) done.set(key, hit);
+        else if (interrupted.has(key)) done.set(key, readElement(map));
         else {
           const steps = readElementSteps(map);
           let step = steps.next();
@@ -362,6 +392,23 @@ export class BoardStore {
     this.snapshot = EMPTY;
     this.index(byId);
     for (const listener of this.listeners) listener();
+  }
+
+  /**
+   * A validated snapshot of the current view, for a later open of the same board by the same
+   * build (decision 0106): `build` is the host's build identity, the same it will pass to open it.
+   * Null while hydrating, inside a transaction or when a card's key and id differ. It runs in one
+   * block (about 0.18 s on the medium reference board without a JIT): call it when idle.
+   */
+  exportValidatedSnapshot(build: string): string | null {
+    if (this.loading || this.destroyed || this.open > 0 || !this.exact) return null;
+    const { byId } = this.snapshot;
+    const keys = [...roots(this.doc).elements.keys()];
+    return encodeValidatedSnapshot(
+      this.doc,
+      keys.map((key) => [key, byId.get(key) ?? null]),
+      { build },
+    );
   }
 
   private index(byId: Map<string, Element>, touched?: ReadonlySet<string>) {

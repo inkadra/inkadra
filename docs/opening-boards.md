@@ -2,9 +2,10 @@
 
 How an app that hosts the shared core (`doc-schema`, `canvas-core` and a `BoardStore` like the web
 app's) opens a board without freezing, above all on phones without a JIT. The reasons and the
-numbers are in decisions [0104](decisions/0104-hand-checked-strokes.md) and
-[0105](decisions/0105-hydration-scheduler-and-priority.md); the reference boards and the benchmark
-in [testing/reference-board.md](testing/reference-board.md).
+numbers are in decisions [0104](decisions/0104-hand-checked-strokes.md),
+[0105](decisions/0105-hydration-scheduler-and-priority.md) and
+[0106](decisions/0106-validated-snapshots.md); the reference boards and the benchmark in
+[testing/reference-board.md](testing/reference-board.md).
 
 An open has two parts: `Y.applyUpdate` of the stored document, then the first read, which
 validates every card (the trust boundary of decision 0094) and builds the index.
@@ -40,6 +41,7 @@ every card is read; the constructor stays synchronous. Options:
 | `schedule`    | How to give the thread back, default `setTimeout(0)`. On React Native pass `() => new Promise((r) => setImmediate(r))`: a timeout there waits about a frame. Never an already resolved promise. |
 | `priority`    | Keys of the cards to read first, or a test `(key, map) => boolean` (for instance the cards whose stored `x`/`y` fall in the viewport). Their columns and scenes come with them.                 |
 | `progressive` | Publish, once the priority cards are read, a snapshot of those cards only, kept current; the complete snapshot replaces it. `hydrating` stays true.                                             |
+| `snapshot`    | A validated snapshot saved by an earlier open of this build, with the build identity (below).                                                                                                   |
 
 A progressive snapshot never holds a card that is not validated and current: each card in it is
 the result of `readElement` on the card as it is now, read again at once when it changes. Cards
@@ -49,3 +51,25 @@ hydration fails (`whenHydrated` rejects, `hydrationError` says why) the progress
 withdrawn and the store shows nothing. A `schedule` that rejects ends hydration that way; one that
 never resolves stops it until `destroy()`, which also settles `whenHydrated`. Helpers of
 `canvas-core` read the document, not the store, until hydration ends.
+
+## 3. Save a validated snapshot
+
+After an open, when the app is idle, save `store.exportValidatedSnapshot(build)` (a string; null
+while it cannot be exported) next to the local copy of the document, and pass
+`{ snapshot: { text, build } }` to the next open of the same board. `build` is the app's build
+identity, the same for both calls: its version and commit (for the web, the bundle hash). Cards made
+of the same Yjs items take the validated read of that time instead of being validated again; cards
+that changed are read as usual; a snapshot of another build, board or schema, or a malformed one,
+is ignored as a whole.
+
+- **Delete every snapshot when the app is updated.** A new build ignores them, but they take space
+  until they are replaced, and an update must never be the moment an old one is trusted.
+- Keep it in the app's private storage, with the same protection as the document, and delete it
+  with the document. Never pass a snapshot from anywhere else.
+- Exporting is one block (about 0.18 s on the medium reference board without a JIT): call it
+  when nothing else needs the thread, not at every edit.
+
+Without a JIT, opening the medium reference board from a matching snapshot reads the cards about
+three times faster than validating them; the first edit of each drawn card afterwards checks that
+card's strokes once. With a JIT validating is as fast as the snapshot, so a browser does not need
+one.
