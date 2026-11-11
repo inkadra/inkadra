@@ -195,7 +195,8 @@ Existing HTTPS sessions keep their Secure `__Host-` cookies; no migration is nee
 `docSchemaVersion` and `capabilities`. The initial capability names are `boards`
 (board REST operations), `comments` (board comments) and `resumable-uploads` (tus);
 `idempotent-creations` means the `Idempotency-Key` retries below are supported, and
-`token-invalid-reasons` that a 401 may say why a token stopped working.
+`token-invalid-reasons` that a 401 may say why a token stopped working, and
+`client-asset-ids` that tus creations accept `clientAssetId` (see Storage).
 Clients must ignore unknown capability names and tolerate missing fields on older servers.
 `minClient`, when present, maps platform names to minimum client versions; no minimum
 is currently imposed. Capabilities describe implemented protocols, not a user's permissions.

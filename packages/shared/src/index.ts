@@ -4,6 +4,7 @@ export * from './backups.ts';
 export * from './boards.ts';
 export * from './calendar.ts';
 export * from './classifications.ts';
+export * from './client-asset-id.ts';
 export * from './clip.ts';
 export * from './comments.ts';
 export * from './common.ts';

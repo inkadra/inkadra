@@ -133,6 +133,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'resumable-uploads',
         'idempotent-creations',
         'token-invalid-reasons',
+        'client-asset-ids',
       ],
     } satisfies InstanceVersion;
   });

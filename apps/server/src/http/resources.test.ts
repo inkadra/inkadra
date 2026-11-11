@@ -1,6 +1,7 @@
 import { createServer, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
+import { clientAssetUploadId } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
@@ -9,6 +10,7 @@ import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, assetVariant, creationRequest } from '../db/schema.ts';
+import { purgeUploads } from '../queues.ts';
 import { originalKey, proxyKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
@@ -322,6 +324,75 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
   const tus = { 'tus-resumable': '1.0.0' };
   const metadata = (filename: string, filetype: string, project = projectId) =>
     `projectId ${b64(project)},filename ${b64(filename)},filetype ${b64(filetype)}`;
+
+  it('derives client asset ids per uploader, retries without a second asset, also after a purge', async () => {
+    const clientAssetId = crypto.randomUUID();
+    const id = clientAssetUploadId(as.owner.id, clientAssetId);
+    const headers = {
+      ...tus,
+      'upload-length': '100',
+      'upload-metadata': `${metadata('offline.jpg', 'image/jpeg')},clientAssetId ${b64(clientAssetId)}`,
+    };
+    const create = (who: keyof typeof as = 'owner', extra = {}) =>
+      call(who, 'POST', '/api/v1/uploads', undefined, { ...headers, ...extra });
+    // Concurrent creations of the same id: one asset, every answer points at it.
+    const results = await Promise.all(Array.from({ length: 6 }, () => create()));
+    expect(results.map((r) => r.statusCode)).toEqual(Array(6).fill(201));
+    for (const r of results) {
+      expect(r.headers['inkadra-asset-id']).toBe(id);
+      expect(r.headers.location).toBe(`/api/v1/uploads/${id}`);
+    }
+    expect(await db.select().from(asset).where(eq(asset.id, id))).toHaveLength(1);
+    const head = await call('owner', 'HEAD', `/api/v1/uploads/${id}`, undefined, tus);
+    expect(head.headers['upload-offset']).toBe('0');
+    // A retry after some bytes keeps them: the offset tells where to resume.
+    const patch = await call('owner', 'PATCH', `/api/v1/uploads/${id}`, Buffer.alloc(40), {
+      ...tus,
+      'upload-offset': '0',
+      'content-type': 'application/offset+octet-stream',
+    });
+    expect(patch.statusCode).toBe(204);
+    const again = await create();
+    expect(again.statusCode).toBe(201);
+    expect(again.headers['upload-offset']).toBe('40');
+
+    // The pending-upload purge removes it; the same client id starts it again.
+    await db
+      .update(asset)
+      .set({ createdAt: new Date(Date.now() - 2 * 24 * 60 * 60_000) })
+      .where(eq(asset.id, id));
+    await purgeUploads(db, deps.storage, deps.jobs);
+    expect(await db.select().from(asset).where(eq(asset.id, id))).toEqual([]);
+    const restarted = await create();
+    expect(restarted.statusCode).toBe(201);
+    expect(restarted.headers['inkadra-asset-id']).toBe(id);
+    expect(restarted.headers['upload-offset']).toBeUndefined();
+
+    // Another person's same client id is another asset in their own project, never a 409.
+    const theirs = (await call('stranger', 'POST', '/api/v1/projects', { name: 'Theirs' })).json();
+    const stranger = await create('stranger', {
+      'upload-metadata': `${metadata('offline.jpg', 'image/jpeg', theirs.id)},clientAssetId ${b64(clientAssetId)}`,
+    });
+    expect(stranger.statusCode).toBe(201);
+    expect(stranger.headers['inkadra-asset-id']).toBe(
+      clientAssetUploadId(as.stranger.id, clientAssetId),
+    );
+    // Without access to the project, nothing is made or told.
+    expect((await create('stranger')).statusCode).toBe(404);
+
+    // The same id for another file, a bad id, a refusal by tus after the asset was made.
+    expect((await create('owner', { 'upload-length': '101' })).statusCode).toBe(409);
+    const bad = `${metadata('bad.jpg', 'image/jpeg')},clientAssetId ${b64('invalid')}`;
+    expect((await create('owner', { 'upload-metadata': bad })).statusCode).toBe(400);
+    const tooBig = crypto.randomUUID();
+    const refused = await create('owner', {
+      'upload-length': String(6 * 1024 * 1024),
+      'upload-metadata': `${metadata('big.jpg', 'image/jpeg')},clientAssetId ${b64(tooBig)}`,
+    });
+    expect(refused.statusCode).toBe(413);
+    const bigId = clientAssetUploadId(as.owner.id, tooBig);
+    expect(await db.select().from(asset).where(eq(asset.id, bigId))).toEqual([]);
+  });
 
   it('uploads in chunks, resumes, then processes the image', async () => {
     const jpeg = await sharp({
