@@ -5060,12 +5060,12 @@
         "name": "Plano de rodagem",
         "steps": {
           "0": {
-            "title": "The shooting calendar",
-            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end. With set plans, “Group by: Setup” puts the shots of each scene and day under their setup."
+            "title": "O calendário de rodagem",
+            "text": "Dia ou semana, como num calendário: os blocos põem-se em fila sozinhos. Arraste um plano para a hora certa, ou clique nele para o pôr no fim. Com plantas do set, «Agrupar por: Setup» põe os planos de cada cena e de cada dia sob o seu setup."
           },
           "1": {
-            "title": "Move and stretch",
-            "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
+            "title": "Mova e estique",
+            "text": "Arraste para reordenar, com Alt para fixar a hora, pela margem inferior para a duração. Largue numa data livre para criar um dia de rodagem; Ctrl+Z desfaz o gesto inteiro."
           },
           "2": {
             "title": "Desenhe um bloco",
@@ -5076,8 +5076,8 @@
             "text": "Arraste o cabeçalho para outra coluna ou para uma data do mês: os blocos acompanham, e numa data ocupada os dois dias trocam. Alt+←/→ ou «Mover para outra data…» no dia."
           },
           "4": {
-            "title": "Saves by itself",
-            "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
+            "title": "Guarda-se sozinho",
+            "text": "Cada alteração fica guardada; Ctrl+Z desfá-la, mesmo entre dois dias."
           },
           "5": {
             "title": "Convocatórias",

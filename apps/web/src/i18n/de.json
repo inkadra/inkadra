@@ -5060,12 +5060,12 @@
         "name": "Drehplan",
         "steps": {
           "0": {
-            "title": "The shooting calendar",
-            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end. With set plans, “Group by: Setup” puts the shots of each scene and day under their setup."
+            "title": "Der Drehkalender",
+            "text": "Tag oder Woche, wie in einem Kalender: Die Blöcke reihen sich von selbst aneinander. Zieh eine Einstellung auf die richtige Uhrzeit oder klick sie an, um sie ans Ende zu setzen. Mit Setplänen ordnet „Gruppieren nach: Setup“ die Einstellungen jeder Szene und jedes Drehtags ihrem Setup zu."
           },
           "1": {
-            "title": "Move and stretch",
-            "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
+            "title": "Verschieben und dehnen",
+            "text": "Zieh zum Umsortieren, mit Alt für eine feste Uhrzeit, an der Unterkante für die Dauer. Auf einem freien Datum legst du einen Drehtag an; Strg+Z macht die ganze Geste rückgängig."
           },
           "2": {
             "title": "Einen Block zeichnen",
@@ -5076,8 +5076,8 @@
             "text": "Zieh die Kopfzeile auf eine andere Spalte oder ein Datum im Monat: Die Blöcke folgen, und an einem belegten Datum tauschen die beiden Tage. Alt+←/→ oder „Auf ein anderes Datum verschieben…“ im Tag."
           },
           "4": {
-            "title": "Saves by itself",
-            "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
+            "title": "Speichert von selbst",
+            "text": "Jede Änderung wird gespeichert; Strg+Z macht sie rückgängig, auch über zwei Tage hinweg."
           },
           "5": {
             "title": "Treffzeiten",

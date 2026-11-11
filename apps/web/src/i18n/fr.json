@@ -5060,12 +5060,12 @@
         "name": "Plan de tournage",
         "steps": {
           "0": {
-            "title": "The shooting calendar",
-            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end. With set plans, “Group by: Setup” puts the shots of each scene and day under their setup."
+            "title": "Le calendrier de tournage",
+            "text": "Jour ou semaine, comme un agenda : les blocs se mettent à la suite tout seuls. Glissez un plan à la bonne heure, ou cliquez dessus pour l’ajouter à la fin. Avec des plans au sol, « Grouper par : Setup » range les plans de chaque scène et de chaque journée sous leur setup."
           },
           "1": {
-            "title": "Move and stretch",
-            "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
+            "title": "Déplacer et allonger",
+            "text": "Glissez pour réordonner, avec Alt pour fixer l’heure, par le bord inférieur pour la durée. Déposez sur une date libre pour créer une journée de tournage ; Ctrl+Z annule tout le geste."
           },
           "2": {
             "title": "Dessiner un bloc",
@@ -5076,8 +5076,8 @@
             "text": "Glissez son en-tête sur une autre colonne ou sur une date du mois : les blocs suivent, et sur une date prise les deux journées s’échangent. Alt+←/→ ou « Déplacer à une autre date… » dans la journée."
           },
           "4": {
-            "title": "Saves by itself",
-            "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
+            "title": "S’enregistre tout seul",
+            "text": "Chaque modification est enregistrée ; Ctrl+Z l’annule, même d’une journée à l’autre."
           },
           "5": {
             "title": "Convocations",
