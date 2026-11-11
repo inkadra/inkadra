@@ -14,20 +14,27 @@ import { newSecret, sealer } from './secrets.ts';
 
 const INSTANCE_ID_KEY = 'instance-id';
 
+/** Read once per database and kept in memory: the id never changes once made. */
+const known = new WeakMap<object, string>();
+
 /** This server's random id, or null before the first enrolment. Reads only. */
 export async function readInstanceId(db: Pick<Database, 'select'>): Promise<string | null> {
+  const cached = known.get(db);
+  if (cached) return cached;
   const [row] = await db
     .select({ value: instanceSetting.value })
     .from(instanceSetting)
     .where(eq(instanceSetting.key, INSTANCE_ID_KEY));
   const id = row?.value.id;
-  return typeof id === 'string' ? id : null;
+  if (typeof id !== 'string') return null;
+  known.set(db, id);
+  return id;
 }
 
 /** This server's random id, made at the first enrolment (an authenticated request). */
 async function instanceId(db: Pick<Database, 'select' | 'insert'>): Promise<string> {
-  const known = await readInstanceId(db);
-  if (known) return known;
+  const existing = await readInstanceId(db);
+  if (existing) return existing;
   await db
     .insert(instanceSetting)
     .values({ key: INSTANCE_ID_KEY, value: { id: randomUUID() } })

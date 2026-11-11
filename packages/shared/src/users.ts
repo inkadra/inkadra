@@ -185,7 +185,10 @@ export const TokenProofKey = z
     keyId: Base64Url.min(16)
       .max(64)
       .openapi({ description: 'Names the key in POST /token-proof; not a secret.' }),
-    key: Base64Url.length(43).openapi({ description: '32 random bytes, base64url. A secret.' }),
+    key: Base64Url.length(43).openapi({
+      description:
+        'A secret: 32 random bytes, base64url without padding. Decode it and use the 32 bytes as the HMAC-SHA256 key, never the 43 characters.',
+    }),
   })
   .openapi('TokenProofKey');
 export type TokenProofKey = z.infer<typeof TokenProofKey>;
@@ -208,7 +211,7 @@ export const TokenProof = z
     purpose: z.literal(TOKEN_PROOF_PURPOSE),
     proof: Base64Url.length(43).openapi({
       description:
-        'base64url(HMAC-SHA256(key, "inkadra-token-proof/v1\\n" + purpose + "\\n" + instanceId + "\\n" + keyId + "\\n" + nonce)).',
+        'base64url(HMAC-SHA256(K, "inkadra-token-proof/v1\\n" + purpose + "\\n" + instanceId + "\\n" + keyId + "\\n" + nonce)), where K is the 32 bytes decoded from the base64url `key` (not its text) and the message is UTF-8.',
     }),
   })
   .openapi('TokenProof');

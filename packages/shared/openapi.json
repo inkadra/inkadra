@@ -2974,7 +2974,7 @@
             "minLength": 43,
             "maxLength": 43,
             "pattern": "^[A-Za-z0-9_-]+$",
-            "description": "32 random bytes, base64url. A secret."
+            "description": "A secret: 32 random bytes, base64url without padding. Decode it and use the 32 bytes as the HMAC-SHA256 key, never the 43 characters."
           }
         },
         "required": [
@@ -3002,7 +3002,7 @@
             "minLength": 43,
             "maxLength": 43,
             "pattern": "^[A-Za-z0-9_-]+$",
-            "description": "base64url(HMAC-SHA256(key, \"inkadra-token-proof/v1\\n\" + purpose + \"\\n\" + instanceId + \"\\n\" + keyId + \"\\n\" + nonce))."
+            "description": "base64url(HMAC-SHA256(K, \"inkadra-token-proof/v1\\n\" + purpose + \"\\n\" + instanceId + \"\\n\" + keyId + \"\\n\" + nonce)), where K is the 32 bytes decoded from the base64url `key` (not its text) and the message is UTF-8."
           }
         },
         "required": [

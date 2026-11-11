@@ -10,6 +10,7 @@ import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { instanceSetting, personalToken, user } from '../db/schema.ts';
 import { memoryMailer } from '../mailer.ts';
+import { sealer } from '../secrets.ts';
 import { testDeps } from '../test-deps.ts';
 import { proofKeyFor } from '../token-proof.ts';
 import { issueToken, revokeTokens } from '../tokens.ts';
@@ -157,16 +158,32 @@ describe.skipIf(!url)('token proof', () => {
     expect(anonymous.statusCode).toBe(401);
   });
 
-  it('stores the key sealed, and never logs it, its id, the nonce or the answer', async () => {
+  it('stores the key sealed: it opens with this AUTH_SECRET only', async () => {
     const { token, row } = await appToken();
     const key = TokenProofKey.parse((await askKey(token)).json());
     const [stored] = await db.select().from(personalToken).where(eq(personalToken.id, row.id));
     expect(stored?.proofKeyId).toBe(key.keyId);
     expect(stored?.proofKey).not.toContain(key.key);
+    expect(sealer(config.AUTH_SECRET, 'token-proof-key').open(stored?.proofKey ?? '')).toBe(
+      key.key,
+    );
+    const other = sealer('another-secret-another-secret-another-0123', 'token-proof-key');
+    expect(other.open(stored?.proofKey ?? '')).toBeNull();
+  });
+
+  it('logs both routes without the key, the key id, the nonce, the proof or the token', async () => {
+    const { token } = await appToken();
+    const key = TokenProofKey.parse((await askKey(token)).json());
+    logged.length = 0;
     const n = nonce();
     const proof = TokenProof.parse((await prove(key.keyId, n)).json()).proof;
     expect((await prove(`${key.keyId}x`, n)).statusCode).toBe(404);
+    await askKey(token);
     const all = logged.join('');
+    // The routes' own log lines (request and response at trace) are there...
+    expect(all).toContain('/api/v1/token-proof');
+    expect(all).toContain('/api/v1/me/token-proof-key');
+    // ...and nothing of the exchange is in them.
     expect(all).not.toContain(key.key);
     expect(all).not.toContain(key.keyId);
     expect(all).not.toContain(n);
