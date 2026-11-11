@@ -77,10 +77,7 @@ export function PlanEditor(props: PlanEditorProps) {
   const sensorName = t(`board.plan.sensors.${plan.sensor ?? 's35'}`);
   // Read with the live names of what the icons link to (decision 0111).
   const changes = base
-    ? setupChanges(
-        linkedPlan(base, ed.cards).icons ?? [],
-        linkedPlan(plan, ed.cards).icons ?? [],
-      )
+    ? setupChanges(linkedPlan(base, ed.cards).icons ?? [], linkedPlan(plan, ed.cards).icons ?? [])
     : [];
   const scaleValue = drawn.scale
     ? t('board.plan.scaleGrid', { grid: Number(drawn.grid ?? '0.5').toLocaleString(lang) })

@@ -62,9 +62,7 @@ function Editor({
 async function editor(doc: Y.Doc, planId: string, part: (ed: Ed) => React.ReactNode) {
   const store = new BoardStore(doc);
   cleanups.push(async () => store.destroy());
-  const view = await render(() => (
-    <Editor doc={doc} store={store} planId={planId} part={part} />
-  ));
+  const view = await render(() => <Editor doc={doc} store={store} planId={planId} part={part} />);
   return { store, ...view };
 }
 

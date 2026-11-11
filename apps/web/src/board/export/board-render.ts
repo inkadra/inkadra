@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
-  type CardsById,
   arrowGeometry,
   arrowPolyline,
   beamWarmth,
   blockingCurve,
   blockingPositions,
+  type CardsById,
   curvePoints,
   DEFAULT_GLYPH_STROKE,
   decodeStroke,

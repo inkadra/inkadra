@@ -24,10 +24,10 @@ import type { BoardStore } from '../store.ts';
 import { paperAccent, type Theme } from '../theme.ts';
 import {
   type Audience,
+  audienceCards,
   type BoardSource,
   collectBoard,
   type ExportScope,
-  audienceCards,
   exportable,
   type Placed,
 } from './board-model.ts';
