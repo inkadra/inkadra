@@ -236,14 +236,14 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     const { excludeBoardId } = PlanKitQuery.parse(req.query ?? {});
     const { boardIds } = await readableBoards(db, actor, projectId);
     const ids = boardIds.filter((id) => id !== excludeBoardId);
-    const kits: ProjectKitEntry[][] = [];
+    const perBoard: ProjectKitEntry[][] = [];
     for (const elements of await boardsWith(db, ids, 'plan', req.log))
-      kits.push(
+      perBoard.push(
         projectKit(
           elements.filter((e): e is Extract<Element, { type: 'plan' }> => e.type === 'plan'),
         ),
       );
-    return { items: mergeProjectKits(...kits) };
+    return { items: mergeProjectKits(...perBoard) };
   });
 
   app.get(v1('/search'), async (req) => {

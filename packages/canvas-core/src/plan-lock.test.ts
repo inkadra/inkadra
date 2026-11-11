@@ -282,6 +282,8 @@ describe('the project kit across boards (decision 0114)', () => {
       2000,
     ]);
     expect(kit[1]?.lenses).toEqual([32, 50]);
+    // The inputs are left as they were.
+    expect(here[1]?.lenses).toEqual([50]);
   });
 
   it('takes the same modifiers in any order for the same light', () => {
@@ -293,7 +295,5 @@ describe('the project kit across boards (decision 0114)', () => {
     // Scrim and gobo share a rank: the plan's order decides how they are drawn, not the kit.
     const kit = projectKit([{ icons: light('a', 'scrim', 'gobo') }, { icons: light('b', 'gobo', 'scrim') }]);
     expect(kit).toHaveLength(1);
-    // The inputs are left as they were.
-    expect(here[1]?.lenses).toEqual([50]);
   });
 });

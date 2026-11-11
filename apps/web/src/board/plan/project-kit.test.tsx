@@ -60,17 +60,20 @@ describe('loadOtherKits (decision 0114)', () => {
   });
 });
 
+type ProbeProps = { projectId: string; boardId: string; skip: boolean };
+const seen: Array<{ makes: string[]; scope: KitScope }> = [];
+function Probe(p: ProbeProps) {
+  const { entries, scope } = useOtherKits(p.projectId, p.boardId, p.skip);
+  seen.push({ makes: entries.map((e) => e.icon.make ?? ''), scope });
+  return null;
+}
+
 describe('useOtherKits (decision 0114)', () => {
   async function mount() {
-    const seen: Array<{ makes: string[]; scope: KitScope }> = [];
-    let props = { projectId: 'p', boardId: 'board-a', skip: false };
-    const Probe = (p: typeof props) => {
-      const { entries, scope } = useOtherKits(p.projectId, p.boardId, p.skip);
-      seen.push({ makes: entries.map((e) => e.icon.make ?? ''), scope });
-      return null;
-    };
+    seen.length = 0;
+    let props: ProbeProps = { projectId: 'p', boardId: 'board-a', skip: false };
     const root = createRoot(document.createElement('div'));
-    const render = async (next: Partial<typeof props>) => {
+    const render = async (next: Partial<ProbeProps>) => {
       props = { ...props, ...next };
       await act(async () => root.render(<Probe {...props} />));
       return seen.at(-1);
