@@ -3326,7 +3326,7 @@ button.crumb--editable:focus-visible {
   padding: 2px 6px;
   border-radius: var(--ink-radius-sm);
   background: var(--peer);
-  color: var(--ink-on-accent);
+  color: var(--ink-on-peer);
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
