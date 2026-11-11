@@ -192,8 +192,9 @@ const migrations: Record<number, Migration> = {
   21: () => {},
   // 23: set plan v2 (decision 0104): the catalogue of 163 icon kinds, attachments, stacking
   // tiers, light, camera and actor fields, walls and openings, circuits, voltage, a background
-  // picture, north and the location link. All additive and optional, and every kind of version
-  // 22 stays valid; older clients stay read-only and cannot drop what they do not know.
+  // picture, north, the sun's time and date and the location link. All additive and optional,
+  // and every kind of version 22 stays valid; older clients stay read-only and cannot drop what
+  // they do not know.
   22: () => {},
 };
 

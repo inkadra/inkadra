@@ -1196,6 +1196,7 @@ describe('set plan v2 (version 23, decision 0104)', () => {
         voltage: 120,
         background: { assetId: 'asset-1', opacity: 0.4, grey: true },
         north: 30,
+        sun: { time: 1050, date: '2026-11-11' },
       }),
     );
     addElement(doc, el);
@@ -1242,6 +1243,8 @@ describe('set plan v2 (version 23, decision 0104)', () => {
     for (const wrong of [
       { voltage: 110 },
       { north: 360 },
+      { sun: { time: 1440 } },
+      { sun: { time: 600, date: '11/11/2026' } },
       { circuits: [{ id: 'circuitAAAAAA', name: 'A', amps: 0 }] },
       { background: { assetId: '' } },
     ])

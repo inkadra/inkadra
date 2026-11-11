@@ -148,3 +148,67 @@ export function unlinkCharacter(icon: PlanIcon, cards: CardsById): PlanIcon {
   const name = card(cards, icon.characterId, 'character')?.name;
   return name ? { ...rest, label: name.slice(0, 60) } : rest;
 }
+
+/** Character cards in a stable order, oldest first: the order their colours follow. */
+function characterOrder(cards: CardsById): string[] {
+  return [...cards.values()]
+    .filter((c) => c.type === 'character')
+    .sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1))
+    .map((c) => c.id);
+}
+
+/**
+ * A plan as it is drawn and listed, its links resolved (decision 0104): an actor shows the
+ * name of the character it plays and, given a `palette`, that character's colour (one per
+ * character, in the order of the character cards, so it is the same on every plan); a camera
+ * without a lens of its own takes the one its frame names. Nothing here is ever written back:
+ * edits start from the stored plan. Icons without a live link are kept as they are.
+ */
+export function linkedPlan<P extends Pick<PlanElement, 'icons'>>(
+  plan: P,
+  cards: CardsById,
+  opts: { palette?: readonly string[] } = {},
+): P {
+  if (!plan.icons?.some((i) => i.characterId || i.frameId)) return plan;
+  let order: string[] | null = null;
+  const icons = plan.icons.map((icon) => {
+    let next = icon;
+    const c = card(cards, icon.characterId, 'character');
+    if (c) {
+      next = { ...next, label: c.name.slice(0, 60) };
+      if (opts.palette?.length) {
+        order ??= characterOrder(cards);
+        next.color = opts.palette[order.indexOf(c.id) % opts.palette.length] as string;
+      }
+    }
+    const f = icon.lens === undefined ? card(cards, icon.frameId, 'frame') : undefined;
+    const mm = f ? lensMillimetres(f.lens) : null;
+    if (mm) next = { ...next, lens: mm };
+    return next;
+  });
+  return { ...plan, icons };
+}
+
+/**
+ * What the icons of a plan keep when cards they link to are deleted (decision 0104): an actor
+ * the character's name as its label, a camera without a lens of its own the frame's lens. The
+ * changed icons only, by id; the caller writes them with the deletion, in one undo step.
+ */
+export function keptOnDelete(
+  plan: Pick<PlanElement, 'icons'>,
+  doomed: ReadonlySet<string>,
+  cards: CardsById,
+): PlanIcon[] {
+  return (plan.icons ?? []).flatMap((icon) => {
+    const character = icon.characterId && doomed.has(icon.characterId);
+    const frame = icon.frameId && doomed.has(icon.frameId);
+    if (!character && !frame) return [];
+    let next = character ? unlinkCharacter(icon, cards) : icon;
+    if (frame) {
+      const { frameId: _gone, ...rest } = next;
+      const mm = lensMillimetres(card(cards, icon.frameId, 'frame')?.lens);
+      next = rest.lens === undefined && mm ? { ...rest, lens: mm } : rest;
+    }
+    return [next];
+  });
+}

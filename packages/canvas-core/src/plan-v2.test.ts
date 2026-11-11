@@ -73,8 +73,10 @@ import {
 import {
   lensMillimetres,
   linkedCharacter,
+  keptOnDelete,
   linkedLabel,
   linkedLocation,
+  linkedPlan,
   linkedScenes,
   linkedShot,
   setupFrames,
@@ -1005,5 +1007,56 @@ describe('review of the model (pull request 600)', () => {
     const map = roots(doc).elements.get(variant) as Y.Map<unknown>;
     expect((map.get('walls') as Y.Array<unknown>).get(0)).toBeInstanceOf(Y.Map);
     expect(hasStoredShape(map)).toBe(true);
+  });
+});
+
+describe('links drawn and kept (set plan v2, pull request D)', () => {
+  const card = { x: 0, y: 0, w: 100, z: 'a0', parent: null, createdBy: null };
+  const cards = new Map<string, Element>(
+    [
+      { ...card, createdAt: 2, id: 'charBBBBBBBBB', type: 'character', name: 'Leo' },
+      { ...card, createdAt: 1, id: 'charAAAAAAAAA', type: 'character', name: 'Anna' },
+      { ...card, createdAt: 1, id: 'frameAAAAAAAA', type: 'frame', lens: '32mm' },
+    ].map((c) => [c.id, c as Element]),
+  );
+  const actor = at('actor', 0, 0, { characterId: 'charBBBBBBBBB', label: 'old' });
+  const cam = at('camera', 0, 0, { frameId: 'frameAAAAAAAA' });
+
+  it('draws the live name, colour and lens, and leaves the rest as it is', () => {
+    const other = at('chair', 0, 0);
+    const plan = { icons: [actor, cam, other] };
+    const linked = linkedPlan(plan, cards, { palette: ['#1', '#2', '#3'] });
+    // Leo is the second character card by age: the second colour.
+    expect(linked.icons?.[0]).toMatchObject({ label: 'Leo', color: '#2' });
+    expect(linked.icons?.[1]?.lens).toBe(32);
+    expect(linked.icons?.[2]).toBe(other);
+    // The plan's own lens wins; without a palette the colour stays the icon's.
+    expect(linkedPlan({ icons: [{ ...cam, lens: 85 }] }, cards).icons?.[0]?.lens).toBe(85);
+    expect(linkedPlan({ icons: [actor] }, cards).icons?.[0]?.color).toBe(actor.color);
+    // Nothing linked: the same plan.
+    const plain = { icons: [other] };
+    expect(linkedPlan(plain, cards)).toBe(plain);
+  });
+
+  it('keeps the name and the lens when the linked cards are deleted', () => {
+    const doomed = new Set(['charBBBBBBBBB', 'frameAAAAAAAA']);
+    const kept = keptOnDelete({ icons: [actor, cam, at('chair', 0, 0)] }, doomed, cards);
+    expect(kept).toHaveLength(2);
+    expect(kept[0]).toMatchObject({ label: 'Leo' });
+    expect(kept[0]?.characterId).toBeUndefined();
+    expect(kept[1]).toMatchObject({ lens: 32 });
+    expect(kept[1]?.frameId).toBeUndefined();
+    expect(keptOnDelete({ icons: [{ ...cam, lens: 85 }] }, doomed, cards)[0]?.lens).toBe(85);
+  });
+
+  it('writes what the icons keep in the same step as the deletion', () => {
+    const doc = createBoardDoc(boardId);
+    const leo = createElement(doc, 'character', { x: 0, y: 0 }, { name: 'Leo' }, { userId: null });
+    const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+    addPlanIcon(doc, plan.id, { ...at('actor', 10, 10), characterId: leo.id, label: 'Le' });
+    deleteElements(doc, [leo.id]);
+    const icon = (listElements(doc).find((e) => e.id === plan.id) as PlanElement).icons?.[0];
+    expect(icon?.label).toBe('Leo');
+    expect(icon?.characterId).toBeUndefined();
   });
 });
