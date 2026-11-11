@@ -1250,11 +1250,16 @@ export function PlanProperties({
   else if (!isIcon(item)) body = shape(item);
   else {
     const kind = catalogueKind(item.kind);
+    // The sun turns with the time of day (decision 0111): its section takes the light's place.
     if (kind === 'sun')
-      body = (
+      body = compact ? (
+        head(item)
+      ) : (
         <>
-          {light(item)}
+          {head(item)}
           <SunSection ed={ed} />
+          {note(item)}
+          {actions(item)}
         </>
       );
     else if (isLight(kind)) body = light(item);

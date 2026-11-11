@@ -22,7 +22,7 @@ import { locationCoords, sunBearingByClock, sunPosition } from '../film/sun.ts';
 import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
 import { NumberField } from './NumberField.tsx';
-import { PlanGlyph } from './PlanDrawing.tsx';
+import { PlanGlyph, planCss } from './PlanDrawing.tsx';
 import './links.css';
 
 type Character = Extract<Element, { type: 'character' }>;
@@ -190,13 +190,30 @@ function castOfScenes(ed: Ed): Set<string> {
   return out;
 }
 
-function CharacterPicture({ character }: { character: { name: string; assetId?: string } }) {
+function CharacterPicture({
+  character,
+  colour,
+}: {
+  character: { name: string; assetId?: string };
+  colour?: string | undefined;
+}) {
   const asset = useAsset(character.assetId);
   const src = asset && asset !== 'missing' ? pickVariant(asset, 80) : '';
   return src ? (
     <img className="plan-links__face" src={src} alt="" />
   ) : (
-    <span className="plan-props__initial" aria-hidden="true">
+    <span
+      className="plan-props__initial"
+      aria-hidden="true"
+      style={
+        colour
+          ? {
+              color: planCss(colour),
+              background: `color-mix(in srgb, ${planCss(colour)} 18%, var(--ink-surface-1))`,
+            }
+          : undefined
+      }
+    >
       {character.name.slice(0, 1).toLocaleUpperCase()}
     </span>
   );
@@ -233,7 +250,12 @@ export function CharacterLink({ ed, icon }: { ed: Ed; icon: PlanIcon }) {
       <span className="plan-props__cap">{t('board.plan.characterCard')}</span>
       {character ? (
         <LinkCard
-          picture={<CharacterPicture character={character} />}
+          picture={
+            <CharacterPicture
+              character={character}
+              colour={ed.linked.icons?.find((i) => i.id === icon.id)?.color}
+            />
+          }
           name={character.name}
           sub={
             character.actor
