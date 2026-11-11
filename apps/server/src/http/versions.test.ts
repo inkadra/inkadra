@@ -1528,22 +1528,28 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     const restoresOf = async (as: string, after?: number) => {
       const res = await request(
         'GET',
-        `/boards/${boardId}/restores${after === undefined ? '' : `?after=${after}`}`,
+        `/boards/${hist}/restores${after === undefined ? '' : `?after=${after}`}`,
         as,
       );
       expect(res.statusCode).toBe(200);
       return (res.json() as BoardRestores).items;
     };
-    const countOf = () => read(boardId, (doc) => getRestoreCount(doc));
+    const countOf = () => read(hist, (doc) => getRestoreCount(doc));
     const restore = (versionId: string, as = 'editor') =>
-      request('POST', `/boards/${boardId}/versions/${versionId}/restore`, as);
+      request('POST', `/boards/${hist}/versions/${versionId}/restore`, as);
 
+    // A board of its own per test: restores are limited to ten an hour per board.
+    let hist = '';
     beforeEach(async () => {
-      await db.delete(boardRestore).where(eq(boardRestore.boardId, boardId));
+      const created = await request('POST', `/projects/${projectId}/boards`, 'owner', {
+        parentBoardId: boardId,
+        title: 'History',
+      });
+      hist = created.json().id;
     });
 
     it('records who restored and to which version, with the count the document got', async () => {
-      const version = await changedBoard(boardId);
+      const version = await changedBoard(hist);
       const res = await restore(version.id);
       expect(res.statusCode).toBe(200);
       const count = await countOf();
@@ -1560,22 +1566,22 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
 
       // Renaming and deleting the restored version and the backup change nothing of it.
       const backup = (res.json() as { backup: BoardVersion }).backup;
-      await request('PATCH', `/boards/${boardId}/versions/${version.id}`, 'owner', {
+      await request('PATCH', `/boards/${hist}/versions/${version.id}`, 'owner', {
         name: 'Renamed',
       });
-      await request('PATCH', `/boards/${boardId}/versions/${backup.id}`, 'owner', {
+      await request('PATCH', `/boards/${hist}/versions/${backup.id}`, 'owner', {
         name: 'Kept',
       });
       for (const id of [version.id, backup.id])
         expect(
-          (await request('DELETE', `/boards/${boardId}/versions/${id}`, 'owner')).statusCode,
+          (await request('DELETE', `/boards/${hist}/versions/${id}`, 'owner')).statusCode,
         ).toBe(204);
       await applyVersionRetention(db, new Date(Date.now() + 365 * 24 * HOUR));
       expect(await restoresOf('owner', count - 1)).toEqual([item]);
     });
 
     it('does not record a restore that changes nothing, as it is not counted', async () => {
-      const version = await changedBoard(boardId);
+      const version = await changedBoard(hist);
       expect((await restore(version.id)).statusCode).toBe(200);
       const count = await countOf();
       expect((await restore(version.id)).statusCode).toBe(200);
@@ -1584,9 +1590,9 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     });
 
     it('lists restores newest first; below editor only counts and times; others nothing', async () => {
-      const version = await changedBoard(boardId);
+      const version = await changedBoard(hist);
       await restore(version.id);
-      await edit(boardId, (doc) => addElement(doc, note('again001')));
+      await edit(hist, (doc) => addElement(doc, note('again001')));
       await restore(version.id, 'owner');
       const count = await countOf();
       const items = await restoresOf('editor', count - 2);
@@ -1602,7 +1608,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
           expect(r.version).toBeNull();
         }
       }
-      const path = `/boards/${boardId}/restores`;
+      const path = `/boards/${hist}/restores`;
       expect((await request('GET', path, null)).statusCode).toBe(401);
       expect((await request('GET', path, 'stranger')).statusCode).toBe(404);
       expect((await request('GET', `${path}?after=-1`, 'editor')).statusCode).toBe(400);
@@ -1613,7 +1619,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
       await request('PUT', `/projects/${projectId}/members/${people.leaver?.id}`, 'owner', {
         role: 'editor',
       });
-      const version = await changedBoard(boardId);
+      const version = await changedBoard(hist);
       expect((await restore(version.id, 'leaver')).statusCode).toBe(200);
       await db.delete(projectMember).where(eq(projectMember.userId, people.leaver?.id ?? ''));
       await db.delete(user).where(eq(user.id, people.leaver?.id ?? ''));
@@ -1624,7 +1630,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     });
 
     it('lets the restore stand when the record fails, and records the next one', async () => {
-      const version = await changedBoard(boardId);
+      const version = await changedBoard(hist);
       const before = await countOf();
       await db.execute(sql`
         create or replace function board_restore_refuse() returns trigger language plpgsql
@@ -1639,16 +1645,16 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
         await db.execute(sql`drop function board_restore_refuse()`);
       }
       expect(await countOf()).toBe(before + 1);
-      expectRestored(await read(boardId, (doc) => doc));
+      expectRestored(await read(hist, (doc) => doc));
       expect(await restoresOf('editor')).toEqual([]);
-      await edit(boardId, (doc) => addElement(doc, note('again002')));
+      await edit(hist, (doc) => addElement(doc, note('again002')));
       expect((await restore(version.id)).statusCode).toBe(200);
       expect((await restoresOf('editor')).map((r) => r.count)).toEqual([before + 2]);
     });
 
     it('replaces records at or above a new count, and keeps the last 50', async () => {
       const row = (count: number) => ({
-        boardId,
+        boardId: hist,
         count,
         restoredBy: people.editor?.id ?? null,
         versionId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
