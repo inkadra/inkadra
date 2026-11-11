@@ -36,6 +36,7 @@ import {
   type BoardSource,
   collectBoard,
   type ExportScope,
+  audienceCards,
   exportable,
   type Placed,
 } from './board-model.ts';
@@ -312,7 +313,10 @@ export async function buildPages(
       .filter(Boolean)
       .join(' ');
   const pixels = thumbnailPixels(req, preview);
+  // What set plans' links resolve against: the cards this audience may see (decision 0111).
+  const cards = audienceCards(all, lookup, filter);
   const ctx: CardContext = {
+    cards,
     measure: fonts.measure,
     colors: PALETTE,
     noteBlocks: (id) => noteBlocks(store.map(id)?.get('body')),

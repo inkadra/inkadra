@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { variantView } from '@inkadra/canvas-core';
+import { linkedPlan, variantView } from '@inkadra/canvas-core';
 import {
   ShootingDayInput as DaySchema,
   type Person,
@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { formatClock } from '../../lib/datetime.ts';
 import { useIsPhone } from '../../lib/phone.ts';
+import { CHARACTER_COLOURS } from '../plan/PlanDrawing.tsx';
 import { plansOfScene } from '../plan/scenes.tsx';
 import { shotSetups } from '../plan/setups.ts';
 import { isMac, isTyping } from '../shortcuts.ts';
@@ -912,7 +913,12 @@ export function ScheduleView({
             label: labels.get(frame.id) ?? '',
             frame,
           })),
-          plan: plan && base?.type === 'plan' ? variantView(plan, base) : plan,
+          // Its links read from the board's cards: the call sheet is for the team (decision 0111).
+          plan: plan
+            ? linkedPlan(base?.type === 'plan' ? variantView(plan, base) : plan, snap.byId, {
+                palette: CHARACTER_COLOURS,
+              })
+            : plan,
           boardAspect,
         },
       ];

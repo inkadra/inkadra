@@ -131,6 +131,50 @@ describe('guest view of a board document', () => {
     );
   });
 
+  it('drops the links of a set plan to cards guests do not get', () => {
+    const d2 = doc([
+      { ...base, id: id('leo'), type: 'character', name: 'Leo', x: 0, y: 0, parent: null },
+      {
+        ...base,
+        id: id('secret'),
+        type: 'character',
+        name: 'Secret',
+        x: 0,
+        y: 0,
+        parent: null,
+        guestHidden: true,
+      },
+      {
+        ...base,
+        id: id('place'),
+        type: 'location',
+        name: 'Hidden place',
+        x: 0,
+        y: 0,
+        parent: 'unsorted',
+      },
+      {
+        ...base,
+        id: id('plan'),
+        type: 'plan',
+        x: 0,
+        y: 0,
+        parent: null,
+        locationId: id('place'),
+        icons: [
+          { id: id('i1'), kind: 'actor', color: '#9DB8F2', x: 1, y: 1, characterId: id('leo') },
+          { id: id('i2'), kind: 'actor', color: '#9DB8F2', x: 1, y: 1, characterId: id('secret') },
+        ],
+      },
+    ]);
+    const v = viewOf(d2);
+    const plan = guestElement(v, v.visible.find((e) => e.id === id('plan')) as Element);
+    const icons = plan.icons as Array<Record<string, unknown>>;
+    expect(icons[0]?.characterId).toBe(id('leo'));
+    expect(icons[1]).not.toHaveProperty('characterId');
+    expect(plan).not.toHaveProperty('locationId');
+  });
+
   it('sends only the allowed fields, and notes with their rich text', () => {
     const img = shown.find((e) => e.id === id('img')) as Element;
     expect(guestElement(view, img)).toEqual({

@@ -1,6 +1,8 @@
 import type { Element } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
-import { type CardContext, drawBoard, type Palette } from './board-render.ts';
+import { audienceCards } from './board-model.ts';
+import { type CardContext, drawBoard, type Palette, planOps } from './board-render.ts';
+import type { Op } from './pages.ts';
 
 const colors = new Proxy({}, { get: (_, key) => `#${String(key)}` }) as Palette;
 const ctx = {
@@ -185,4 +187,66 @@ it('exports explicit section bold at 700 while preserving legacy 600 and explici
     const ops = drawBoard([card({ type: 'section', title: 'Title', bold })], ctx);
     expect(ops.find((op) => op.kind === 'text')).toMatchObject({ weight });
   }
+});
+
+describe('set plan links in exports (decision 0111)', () => {
+  const card = { x: 0, y: 0, w: 100, z: 'a0', createdBy: null, createdAt: 1 };
+  const leo = { ...card, id: 'charAAAAAAAAA', parent: null, type: 'character', name: 'Leo' };
+  const secret = {
+    ...card,
+    id: 'charBBBBBBBBB',
+    parent: null,
+    type: 'character',
+    name: 'Secret',
+    guestHidden: true,
+  };
+  const tray = { ...card, id: 'charCCCCCCCCC', parent: 'unsorted', type: 'character', name: 'Tray' };
+  const actor = (id: string, characterId: string) => ({
+    id,
+    kind: 'actor',
+    color: '#9DB8F2',
+    x: 5000,
+    y: 5000,
+    characterId,
+  });
+  const plan = {
+    ...card,
+    id: 'planAAAAAAAAA',
+    parent: null,
+    type: 'plan',
+    icons: [
+      actor('iconAAAAAAAAA', leo.id),
+      actor('iconBBBBBBBBB', secret.id),
+      actor('iconCCCCCCCCC', tray.id),
+    ],
+  } as unknown as Extract<Element, { type: 'plan' }>;
+  const all = [leo, secret, tray, plan] as unknown as Element[];
+  const byId = new Map(all.map((e) => [e.id, e]));
+  const texts = (ops: readonly Op[]): string[] =>
+    ops.flatMap((op) => (op.kind === 'text' ? [op.text] : op.kind === 'clip' ? texts(op.ops) : []));
+  const drawn = (audience: 'team' | 'client') =>
+    texts(
+      planOps(
+        plan,
+        { x: 0, y: 0, w: 600, h: 400 },
+        {
+          ...ctx,
+          cards: audienceCards(all, (id) => byId.get(id), {
+            audience,
+            hideGuestHidden: audience === 'client',
+          }),
+        },
+      ),
+    );
+
+  it('draws the live names of the characters the team may see', () => {
+    expect(drawn('team')).toEqual(expect.arrayContaining(['Leo', 'Secret', 'Tray']));
+  });
+
+  it('draws for clients and guests only the characters they may see', () => {
+    const names = drawn('client');
+    expect(names).toContain('Leo');
+    expect(names).not.toContain('Secret');
+    expect(names).not.toContain('Tray');
+  });
 });

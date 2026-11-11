@@ -36,28 +36,44 @@ interface Option {
   first?: boolean;
 }
 
+/** Where a picker opens and the button that opened it, which gets the focus back. */
+export interface PickerAt {
+  style: CSSProperties;
+  opener: HTMLElement;
+}
+
 /**
  * A list to link an item to a card (decision 0104): a search on top, the proposed cards first.
- * Closes on Escape and on a press outside, as the scene picker does.
+ * Closes on Escape and on a press outside, as the scene picker does, and gives the focus back
+ * to the button that opened it, if that button is still there.
  */
-function LinkPicker({
+export function LinkPicker({
   title,
   search,
   options,
-  style,
+  at,
   onPick,
   onClose,
 }: {
   title: string;
   search: string;
   options: readonly Option[];
-  style: CSSProperties;
+  at: PickerAt;
   onPick: (id: string) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const box = useRef<HTMLDivElement>(null);
+  const { style, opener } = at;
+  // Closed, the list leaves the focus on nothing: it goes back to its button.
+  useEffect(
+    () => () => {
+      const lost = !document.activeElement || document.activeElement === document.body;
+      if (lost && opener.isConnected) opener.focus();
+    },
+    [opener],
+  );
   useEffect(() => {
     const away = (e: PointerEvent) => {
       if (!box.current?.contains(e.target as Node)) onClose();
@@ -128,12 +144,15 @@ function LinkPicker({
 }
 
 /** Where a picker opens: under the button that asked for it, inside the window. */
-function under(at: HTMLElement): CSSProperties {
+function under(at: HTMLElement): PickerAt {
   const r = at.getBoundingClientRect();
   return {
-    position: 'fixed',
-    left: Math.max(8, Math.min(r.left, window.innerWidth - 268)),
-    top: Math.min(r.bottom + 6, window.innerHeight - 340),
+    style: {
+      position: 'fixed',
+      left: Math.max(8, Math.min(r.left, window.innerWidth - 268)),
+      top: Math.min(r.bottom + 6, window.innerHeight - 340),
+    },
+    opener: at,
   };
 }
 
@@ -226,12 +245,14 @@ function CharacterPicture({
  */
 export function CharacterLink({ ed, icon }: { ed: Ed; icon: PlanIcon }) {
   const { t } = useTranslation();
-  const [picking, setPicking] = useState<CSSProperties | null>(null);
+  const [picking, setPicking] = useState<PickerAt | null>(null);
   const character = linkedCharacter(icon, ed.cards);
   const pick = (id: string) => {
     const c = ed.cards.get(id) as Character | undefined;
     setPicking(null);
-    if (c) ed.write({ ...icon, characterId: c.id, label: c.name.slice(0, 60) });
+    // The id only (decision 0111): the name is read from the card; it is written into the label
+    // only when the link breaks (unlink, delete, a paste where the character is not).
+    if (c) ed.write({ ...icon, characterId: c.id });
   };
   const options = (): Option[] => {
     const cast = castOfScenes(ed);
@@ -280,7 +301,7 @@ export function CharacterLink({ ed, icon }: { ed: Ed; icon: PlanIcon }) {
           title={t('board.plan.links.linkCharacter')}
           search={t('board.plan.links.searchCharacter')}
           options={options()}
-          style={picking}
+          at={picking}
           onPick={pick}
           onClose={() => setPicking(null)}
         />
@@ -306,7 +327,7 @@ function frameOptions(ed: Ed): { frames: FrameElement[]; first: Set<string> } {
 export function ShotLink({ ed, icon }: { ed: Ed; icon: PlanIcon }) {
   const { t } = useTranslation();
   const preset = usePresetText();
-  const [picking, setPicking] = useState<CSSProperties | null>(null);
+  const [picking, setPicking] = useState<PickerAt | null>(null);
   const shot = linkedShot(icon, ed.cards, ed.labels);
   const frame = shot ? (ed.cards.get(shot.id) as FrameElement) : null;
   const options = (): Option[] => {
@@ -387,7 +408,7 @@ export function ShotLink({ ed, icon }: { ed: Ed; icon: PlanIcon }) {
           title={t('board.plan.links.linkFrame')}
           search={t('board.plan.links.searchFrame')}
           options={options()}
-          style={picking}
+          at={picking}
           onPick={(id) => {
             setPicking(null);
             ed.write({ ...icon, frameId: id });
@@ -406,7 +427,7 @@ export function ShotLink({ ed, icon }: { ed: Ed; icon: PlanIcon }) {
  */
 export function LocationLink({ ed }: { ed: Ed }) {
   const { t } = useTranslation();
-  const [picking, setPicking] = useState<CSSProperties | null>(null);
+  const [picking, setPicking] = useState<PickerAt | null>(null);
   const owner = ed.base ?? ed.plan;
   const location = linkedLocation(owner, ed.cards);
   const options = (): Option[] => {
@@ -459,7 +480,7 @@ export function LocationLink({ ed }: { ed: Ed }) {
           title={t('board.plan.links.linkLocation')}
           search={t('board.plan.links.searchLocation')}
           options={options()}
-          style={picking}
+          at={picking}
           onPick={(id) => {
             setPicking(null);
             ed.editPlan({ locationId: id }, owner.id);
@@ -534,14 +555,14 @@ export function SunSection({ ed }: { ed: Ed }) {
           ? 'mid'
           : 'high';
   const suns = ed.icons.filter((i) => catalogueKind(i.kind) === 'sun');
-  /** Writes the time, the date or north, and turns the sun icons with them, in one step. */
-  const set = (next: { time?: number; date?: string | undefined; north?: number }) => {
+  /** Writes the time, the date or north, and turns the sun icons with them. */
+  const write = (next: { time?: number; date?: string | undefined; north?: number }) => {
     const t2 = next.time ?? time;
     const d2 = 'date' in next ? next.date : date;
     const n2 = next.north ?? north;
     const p = coords ? sunPosition(d2 ?? today, t2, coords.lat, coords.lng) : null;
     const rotation = sunRotation(p?.azimuth ?? sunBearingByClock(t2), n2);
-    ed.change(() => {
+    ed.doc.transact(() => {
       if (next.north !== undefined)
         updateElement(ed.doc, owner.id, { north: n2 || undefined }, LOCAL);
       if (next.time !== undefined || 'date' in next)
@@ -552,8 +573,10 @@ export function SunSection({ ed }: { ed: Ed }) {
           LOCAL,
         );
       ed.writeItems(suns.filter((s) => s.rotation !== rotation).map((s) => ({ ...s, rotation })));
-    });
+    }, LOCAL);
   };
+  /** A date or north: one undo step. The slider is one step per drag, as the other sliders. */
+  const set = (next: Parameters<typeof write>[0]) => ed.change(() => write(next));
   return (
     <section
       className="plan-links__sun"
@@ -577,7 +600,7 @@ export function SunSection({ ed }: { ed: Ed }) {
           meaning={{ gradient: DAY_TRACK, thumbColor: 'var(--ink-tag-orange)' }}
           onPointerDown={() => ed.store.undo.stopCapturing()}
           onPointerUp={() => ed.store.undo.stopCapturing()}
-          onChange={(v) => set({ time: v })}
+          onChange={(v) => write({ time: v })}
         />
       </div>
       <div className="plan-props__grid">
