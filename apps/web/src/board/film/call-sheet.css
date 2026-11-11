@@ -575,7 +575,7 @@
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -847,7 +847,7 @@
   margin-top: 2px;
   color: var(--ink-tag-orange);
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .sheet__phone-troupe ul {
   margin: 0;
