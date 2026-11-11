@@ -151,7 +151,7 @@ test('the crop comes back when the angle does, and a long to-do reads in full', 
       await shoot(page, 'crop-30');
     }
     for (const angle of [20, 10, 0]) await slider.fill(String(angle * sign));
-    await expect(page.locator('.crop-bar__deg')).toHaveText('0°');
+    await expect(page.getByRole('textbox', { name: 'Angolo di rotazione' })).toHaveValue('0');
     await expect.poll(coverage).toBe(100);
   }
   await slider.blur();
