@@ -20,7 +20,7 @@ import {
   type Stroke,
 } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton, type IconName, Select, Slider } from '@inkadra/ui';
-import { type PointerEvent, useEffect, useRef, useState } from 'react';
+import { type PointerEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NumberField } from '../plan/NumberField.tsx';
 import { isMac } from '../shortcuts.ts';
@@ -315,6 +315,7 @@ export function DrawingEditor({
     write();
     store.undo.stopCapturing();
   };
+  const opacityId = useId();
   const opacity = Math.round((frame.referenceOpacity ?? 1) * 100);
   const setOpacity = (value: number) =>
     change(() => updateElement(store.doc, frame.id, { referenceOpacity: value / 100 }, LOCAL));
@@ -705,18 +706,18 @@ export function DrawingEditor({
                 {frame.assetId && (
                   <div className="pen__opacity">
                     <span className="pen__opacity-label">
-                      {t('film.pen.opacity')}
+                      <label htmlFor={opacityId}>{t('film.pen.opacity')}</label>
                       <NumberField
                         value={opacity}
                         min={5}
                         max={100}
                         unit="%"
-                        label={t('film.pen.opacity')}
+                        label={t('board.typedValue', { label: t('film.pen.opacity') })}
                         onCommit={setOpacity}
                       />
                     </span>
                     <Slider
-                      aria-label={t('film.pen.opacity')}
+                      id={opacityId}
                       min={5}
                       max={100}
                       step={5}

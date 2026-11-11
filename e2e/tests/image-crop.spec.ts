@@ -221,7 +221,7 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
     await page.mouse.up();
   }
   await cropToolbar.getByRole('button', { name: 'Ruota di 90° a destra' }).click();
-  const angleField = cropToolbar.getByRole('textbox', { name: 'Angolo di rotazione' });
+  const angleField = cropToolbar.getByRole('textbox', { name: 'Angolo di rotazione: valore' });
   await expect(angleField).toHaveValue('90');
 
   // The crop stage shows the whole turned picture; the 16:9 preset stays landscape.
@@ -257,6 +257,11 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
   await expect(angle).toHaveValue('95');
   await angleField.fill('90');
   await angleField.press('Enter');
+  await expect(angle).toHaveValue('90');
+  // The field shares the slider's range: ±180 is not a free angle and goes back.
+  await angleField.fill('-180');
+  await angleField.press('Enter');
+  await expect(angleField).toHaveValue('90');
   await expect(angle).toHaveValue('90');
   await page.mouse.move(0, 0);
 

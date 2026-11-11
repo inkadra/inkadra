@@ -289,6 +289,7 @@
     }
   },
   "board": {
+    "typedValue": "{{label}}: valore",
     "canvasMenu": {
       "label": "Canvas",
       "hint": "Inserisci un canvas",

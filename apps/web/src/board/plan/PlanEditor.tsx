@@ -1946,10 +1946,11 @@ export function PlanEditor({
         min={min}
         max={max}
         unit={unit}
-        label={label}
+        label={t('board.typedValue', { label })}
         onCommit={(v) => {
           store.undo.stopCapturing();
           writeItems([set(v)]);
+          store.undo.stopCapturing();
         }}
       />
     </div>

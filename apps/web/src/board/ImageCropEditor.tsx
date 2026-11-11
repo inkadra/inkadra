@@ -303,6 +303,13 @@ export function ImageCropStage({
 }
 
 /**
+ * The free angle of the slider and its field: 0 in the middle. Not ±180: -180 normalizes to +180
+ * and the thumb would jump to the other end. A half turn is two 90° steps away, and shows at the
+ * end of the slider.
+ */
+const ANGLE_LIMIT = 179;
+
+/**
  * Floating toolbar shown above/below the card while cropping and rotating an image.
  * Uses the same `.ctxbar` surface and token system as the selection toolbar.
  */
@@ -410,10 +417,8 @@ export function ImageCropToolbar({
       </button>
       <span className="crop-bar__angle">
         <Slider
-          // 0 in the middle. Not ±180: -180 normalizes to +180 and the thumb would jump to the
-          // other end. A half turn is two 90° steps away, and shows at the end of the slider.
-          min={-179}
-          max={179}
+          min={-ANGLE_LIMIT}
+          max={ANGLE_LIMIT}
           step={1}
           value={rot}
           aria-label={t('board.image.angle')}
@@ -425,13 +430,15 @@ export function ImageCropToolbar({
         />
         <NumberField
           value={Math.round(rot)}
-          min={-180}
-          max={180}
+          min={-ANGLE_LIMIT}
+          max={ANGLE_LIMIT}
           unit="°"
-          label={t('board.image.angle')}
+          label={t('board.typedValue', { label: t('board.image.angle') })}
           onCommit={(deg) => {
+            // Its own undo step, as a drag of the slider is.
             store.undo.stopCapturing();
             changeAngle(deg);
+            store.undo.stopCapturing();
           }}
         />
       </span>

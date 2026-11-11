@@ -259,6 +259,20 @@ describe('drawing editor', () => {
     );
     expect(frameOf(store, first.id).referenceOpacity).toBe(0.45);
   });
+
+  it('names the opacity slider by its visible label and the field apart from it', async () => {
+    const { doc, store, first } = board();
+    updateElement(doc, first.id, { referenceOpacity: 0.3, assetId: 'photo' });
+    const { host } = await mount({ store, frame: frameOf(store, first.id) });
+    await act(async () => button(host, 'More actions').click());
+    const label = host.querySelector<HTMLLabelElement>('.pen__opacity label');
+    const slider = host.querySelector<HTMLInputElement>('.pen__opacity input[type="range"]');
+    const field = host.querySelector<HTMLInputElement>('.pen__opacity .plan-num input');
+    expect(label?.textContent).toBe('Picture opacity');
+    expect(label?.htmlFor).toBe(slider?.id);
+    expect(slider?.getAttribute('aria-label')).toBeNull();
+    expect(field?.getAttribute('aria-label')).toBe('Picture opacity: value');
+  });
   it('uses visible red ink over photos and keeps arrow navigation', async () => {
     const { doc, store, first, second } = board();
     updateElement(doc, first.id, { assetId: 'photo' });

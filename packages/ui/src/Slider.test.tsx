@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { Slider } from './components.tsx';
 
@@ -27,4 +28,19 @@ it('passes meaningful colours to CSS without leaking the prop to the input', () 
   expect(input.props.style['--ink-slider-thumb']).toBe(meaning.thumbColor);
   expect(input.props.meaning).toBeUndefined();
   expect(Slider(props).props.className).toBe('ink-slider');
+});
+
+it('draws the same outer thumb in Gecko as in WebKit', () => {
+  const css = readFileSync(new URL('./styles.css', import.meta.url), 'utf8');
+  const block = (selector: string) => css.split(`${selector} {`)[1]?.split('}')[0] ?? '';
+  // WebKit: the size includes the border.
+  const webkit = block('.ink-slider::-webkit-slider-thumb');
+  expect(webkit).toContain('box-sizing: border-box;');
+  expect(webkit).toContain('width: var(--ink-slider-size);');
+  // Gecko adds the border outside the size, so the content is the size less both borders.
+  const gecko = block('.ink-slider::-moz-range-thumb');
+  expect(gecko).toContain('box-sizing: content-box;');
+  expect(gecko).toContain('width: calc(var(--ink-slider-size) - 2 * var(--ink-slider-border-width));');
+  expect(gecko).toContain('height: calc(var(--ink-slider-size) - 2 * var(--ink-slider-border-width));');
+  expect(gecko).toContain('border: var(--ink-slider-border-width) solid');
 });

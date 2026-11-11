@@ -1341,7 +1341,8 @@ select {
   );
   --ink-slider-height: 4px;
   --ink-slider-size: 16px;
-  --ink-slider-border: 3px solid var(--ink-surface-1);
+  --ink-slider-border-width: 3px;
+  --ink-slider-border-color: var(--ink-surface-1);
   --ink-slider-ring: 0 0 0 1px var(--ink-text-secondary);
   appearance: none;
   width: 96px;
@@ -1353,7 +1354,8 @@ select {
 .ink-slider--meaning {
   --ink-slider-height: 8px;
   --ink-slider-size: 18px;
-  --ink-slider-border: 2px solid var(--ink-text-primary);
+  --ink-slider-border-width: 2px;
+  --ink-slider-border-color: var(--ink-text-primary);
   --ink-slider-ring: 0 0 0 2px var(--ink-surface-1);
 }
 .ink-slider:focus-visible {
@@ -1380,16 +1382,18 @@ select {
   height: var(--ink-slider-size);
   margin-top: calc((var(--ink-slider-height) - var(--ink-slider-size)) / 2);
   border-radius: 50%;
-  border: var(--ink-slider-border);
+  border: var(--ink-slider-border-width) solid var(--ink-slider-border-color);
   background: var(--ink-slider-thumb, var(--ink-text-primary));
   box-shadow: var(--ink-slider-ring);
 }
+/* Gecko sizes the thumb's content box and adds the border outside it, whatever box-sizing says:
+ * the content is the WebKit size less both borders, so the two engines draw the same thumb. */
 .ink-slider::-moz-range-thumb {
-  box-sizing: border-box;
-  width: var(--ink-slider-size);
-  height: var(--ink-slider-size);
+  box-sizing: content-box;
+  width: calc(var(--ink-slider-size) - 2 * var(--ink-slider-border-width));
+  height: calc(var(--ink-slider-size) - 2 * var(--ink-slider-border-width));
   border-radius: 50%;
-  border: var(--ink-slider-border);
+  border: var(--ink-slider-border-width) solid var(--ink-slider-border-color);
   background: var(--ink-slider-thumb, var(--ink-text-primary));
   box-shadow: var(--ink-slider-ring);
 }
