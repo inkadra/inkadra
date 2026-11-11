@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
   type CircuitStatus,
+  catalogueKind,
   categoryOf,
   iconSize,
   iconWatts,
@@ -93,6 +94,20 @@ export function kitList(
       add(t(`board.plan.icons.${holder}`), icon.support ? 'camera' : 'grip');
   }
   return [...counts.values()];
+}
+
+/**
+ * The counts of the card on the board (decision 0111): cameras, and the lights with the watts
+ * they draw, by the rule of the kit and the power: a sun, a moon, a fire… are no light to bring
+ * (decision 0115). Modifiers on a light and hidden layers are not counted.
+ */
+export function planCounts(plan: Pick<PlanElement, 'icons' | 'hiddenLayers' | 'circuits' | 'voltage'>) {
+  const icons = (plan.icons ?? []).filter((i) => !plan.hiddenLayers?.includes(layerOf(i)));
+  return {
+    cameras: icons.filter((i) => catalogueKind(i.kind) === 'camera').length,
+    lights: icons.filter((i) => isKitLight(i.kind) && !i.on).length,
+    watts: planPower(plan).watts,
+  };
 }
 
 /** A number typed on a measure as it is stored ("6,20" gives "6.2"); null if it is no length. */
