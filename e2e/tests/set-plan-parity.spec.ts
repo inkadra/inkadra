@@ -117,6 +117,8 @@ async function signUpGuest(browser: Browser, url: string) {
   await guest.getByLabel('Email').fill(`pietro-${Date.now()}@example.com`);
   await guest.getByLabel('Password').fill('fourth-horse-battery');
   await guest.getByRole('button', { name: 'Crea account' }).click();
+  // Signed in: the app's navigation shows before the board is opened.
+  await expect(guest.getByRole('complementary', { name: 'Navigazione' })).toBeVisible();
   return guest;
 }
 
@@ -159,6 +161,9 @@ test('an item locked on its own is not moved, edited or deleted until it is unlo
   await expect(props.getByRole('textbox', { name: 'Nome' })).toBeDisabled();
   await expect(props.getByRole('button', { name: 'Elimina' })).toBeDisabled();
   await page.screenshot({ path: join(out, 'parity-1280-locked.png') });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.screenshot({ path: join(out, 'parity-1280-locked-dark.png') });
+  await page.emulateMedia({ colorScheme: 'light' });
 
   // Dragged, nudged, turned and deleted: it stays as it was.
   await drag(CHAIR, [700, 450]);
@@ -174,6 +179,9 @@ test('an item locked on its own is not moved, edited or deleted until it is unlo
   const elements = editor.getByRole('tabpanel', { name: 'Elementi' });
   await expect(elements.getByRole('button', { name: /Sedia Rosa.*Bloccato/ })).toBeVisible();
   await page.screenshot({ path: join(out, 'parity-1280-elements.png') });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.screenshot({ path: join(out, 'parity-1280-elements-dark.png') });
+  await page.emulateMedia({ colorScheme: 'light' });
 
   // Unlocked, it moves again.
   await elements.getByRole('button', { name: /Sedia Rosa/ }).click();
@@ -211,6 +219,8 @@ test('the project kit shows the lights of other boards, and a guest only those t
   await expect(library.getByRole('button', { name: /Aputure 600d/ })).toContainText('Griglia');
   await expect(library.getByRole('button', { name: /Luce ospite/ })).toBeVisible();
   await page.screenshot({ path: join(out, 'parity-1280-project-kit.png') });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.screenshot({ path: join(out, 'parity-1280-project-kit-dark.png') });
 
   // A guest of one sub-board sees its own light, not the one of a board they cannot open.
   const invited = await page.request.post('/api/v1/invitations', {
