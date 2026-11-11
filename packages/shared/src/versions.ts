@@ -100,11 +100,14 @@ export type RestoredBoardVersion = z.infer<typeof RestoredBoardVersion>;
  */
 export const BoardRestore = z
   .object({
-    count: z.int().min(1).openapi({
-      description:
-        'The board document’s `meta.restores` after this restore (decision 0109). Higher than ' +
-        'the count the client reads in the document: a restore not stored yet, or lost; ignore it.',
-    }),
+    count: z
+      .int()
+      .min(1)
+      .openapi({
+        description:
+          'The board document’s `meta.restores` after this restore (decision 0109). Higher than ' +
+          'the count the client reads in the document: a restore not stored yet, or lost; ignore it.',
+      }),
     restoredAt: Timestamp,
     restoredBy: UserSummary.nullable().openapi({
       description: 'Null below editor, and when the account was deleted since.',

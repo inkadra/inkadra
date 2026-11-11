@@ -1,8 +1,8 @@
 import { CURRENT_SCHEMA_VERSION, SchemaTooNewError } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
-  type BoardRestores,
   BoardRestoreQuery,
+  type BoardRestores,
   type BoardVersion,
   BoardVersionQuery,
   CreateBoardVersion,
