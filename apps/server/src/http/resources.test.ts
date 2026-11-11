@@ -407,13 +407,60 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     ).toBe(409);
     await rejects(dayPath, dayInput);
 
-    // Permissions run on every attempt, before the key is looked up: a person without access
-    // reusing the owner's key is refused and gets neither the crew member nor the day.
+    // Permissions run on every attempt: a person without access is refused, key or not.
     for (const [path, payload, name] of [
       [crewPath, crewInput, 'c'],
       [dayPath, dayInput, 'd'],
     ] as const)
       expect((await call('stranger', 'POST', path, payload, key(name))).statusCode).toBe(404);
+
+    // A key is scoped to the endpoint and its parent: the same owner, key and body on another
+    // project (crew) or board (shooting day) creates a new resource, and so does a person
+    // with access to their own project and board. Neither learns anything of the first.
+    const other = (
+      await call('owner', 'POST', '/api/v1/projects', { name: 'Second' }, key('p2'))
+    ).json();
+    const ownerCrew = await call(
+      'owner',
+      'POST',
+      `/api/v1/projects/${other.id}/crew`,
+      crewInput,
+      key('c'),
+    );
+    expect(ownerCrew.statusCode).toBe(201);
+    expect(ownerCrew.json().id).not.toBe(memberId);
+    const ownerDay = await call(
+      'owner',
+      'POST',
+      `/api/v1/boards/${other.rootBoardId}/schedule`,
+      dayInput,
+      key('d'),
+    );
+    expect(ownerDay.statusCode).toBe(201);
+    expect(ownerDay.json().id).not.toBe(days[0]!.json().id);
+    const mine = theirs.json();
+    const theirCrew = await call(
+      'stranger',
+      'POST',
+      `/api/v1/projects/${mine.id}/crew`,
+      crewInput,
+      key('c'),
+    );
+    expect(theirCrew.statusCode).toBe(201);
+    expect(theirCrew.json()).toMatchObject({ projectId: mine.id });
+    expect(theirCrew.json().id).not.toBe(memberId);
+    const theirDay = await call(
+      'stranger',
+      'POST',
+      `/api/v1/boards/${mine.rootBoardId}/schedule`,
+      dayInput,
+      key('d'),
+    );
+    expect(theirDay.statusCode).toBe(201);
+    expect(theirDay.json().id).not.toBe(days[0]!.json().id);
+    expect((await call('owner', 'GET', crewPath)).json().items).toHaveLength(1);
+    expect((await call('owner', 'GET', dayPath)).json().items).toHaveLength(1);
+    await call('owner', 'DELETE', `/api/v1/projects/${other.id}`);
 
     // A replay reads the resource as it is now, and answers 404 once it is gone.
     await call('owner', 'PUT', `${crewPath}/${memberId}`, {

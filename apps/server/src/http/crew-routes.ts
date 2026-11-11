@@ -125,7 +125,12 @@ export function registerCrewRoutes(
     const { projectId } = Params.parse(req.params);
     await requireProjectRole(db, actor, projectId, 'editor');
     const input = CrewMemberInput.parse(req.body);
-    await validateLinks(actor, projectId, input);
+    // The links depend on current state, so they count only when something is created: a retry
+    // answers with the row it made even if the account or card has gone since (decision 0103).
+    const invalid = validateLinks(actor, projectId, input).then(
+      () => null,
+      (error: unknown) => error,
+    );
     const result = await idempotentCreation(
       db,
       req,
@@ -133,6 +138,8 @@ export function registerCrewRoutes(
       `crew:${projectId}`,
       input,
       async (tx) => {
+        const error = await invalid;
+        if (error) throw error;
         const [row] = await tx
           .insert(crewMember)
           .values({ ...input, projectId })

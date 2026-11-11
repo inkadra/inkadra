@@ -9,7 +9,7 @@ import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { boardDoc, crewMember, shootingDay } from '../db/schema.ts';
+import { boardDoc, crewMember, shootingDay, user } from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -394,5 +394,86 @@ describe.skipIf(!url)('private project crew', () => {
     } finally {
       merge.release();
     }
+  });
+  it('answers a retry with the crew member it made after the linked account or card is gone', async () => {
+    const count = async () =>
+      (await db.select().from(crewMember).where(eq(crewMember.projectId, projectId))).length;
+    const keyed = (key: string, payload: unknown) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/v1${base()}`,
+        headers: {
+          cookie: people.editor?.cookie ?? '',
+          origin: config.PUBLIC_URL,
+          'idempotency-key': key,
+        },
+        payload: payload as object,
+      });
+    const before = await count();
+
+    // A linked account that is deleted before the retry arrives.
+    const account = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      headers: { origin: config.PUBLIC_URL },
+      payload: { email: 'leaving@example.com', password: 'correct-horse-battery', name: 'Leaving' },
+    });
+    const linkedAccount = { ...input, name: 'Linked account', userId: account.json().user.id };
+    const first = await keyed('linked-account', linkedAccount);
+    expect(first.statusCode).toBe(201);
+    await db.delete(user).where(eq(user.id, account.json().user.id));
+    const retried = await keyed('linked-account', linkedAccount);
+    expect(retried.statusCode).toBe(201);
+    expect(retried.json()).toMatchObject({ id: first.json().id, userId: null });
+
+    // A linked card whose board is deleted, and one removed from its board.
+    const root = (await request('owner', 'GET', `/projects/${projectId}`)).json().rootBoardId;
+    const cardOn = async (title: string) => {
+      const made = await request('owner', 'POST', `/projects/${projectId}/boards`, {
+        parentBoardId: root,
+        title,
+      });
+      const target = made.json().id as string;
+      const doc = createBoardDoc(target);
+      const card = createElement(
+        doc,
+        'character',
+        { x: 0, y: 0 },
+        { name: title },
+        { userId: null },
+      );
+      const state = Buffer.from(Y.encodeStateAsUpdate(doc));
+      await db.insert(boardDoc).values({
+        boardId: target,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        size: state.length,
+        state,
+      });
+      doc.destroy();
+      return { boardId: target, elementId: card.id };
+    };
+    const trashed = await cardOn('Trashed');
+    const linkedBoard = { ...input, name: 'Linked board', character: trashed };
+    const second = await keyed('linked-board', linkedBoard);
+    expect(second.statusCode).toBe(201);
+    await request('owner', 'DELETE', `/boards/${trashed.boardId}`);
+    const again = await keyed('linked-board', linkedBoard);
+    expect(again.statusCode).toBe(201);
+    expect(again.json().id).toBe(second.json().id);
+
+    const emptied = await cardOn('Emptied');
+    const linkedCard = { ...input, name: 'Linked card', character: emptied };
+    const third = await keyed('linked-card', linkedCard);
+    expect(third.statusCode).toBe(201);
+    await db.delete(boardDoc).where(eq(boardDoc.boardId, emptied.boardId));
+    const repeated = await keyed('linked-card', linkedCard);
+    expect(repeated.statusCode).toBe(201);
+    expect(repeated.json().id).toBe(third.json().id);
+
+    // Three members, no duplicates; a new request without a key is still validated.
+    expect(await count()).toBe(before + 3);
+    expect(
+      (await request('editor', 'POST', base(), { ...input, character: emptied })).statusCode,
+    ).toBe(400);
   });
 });
