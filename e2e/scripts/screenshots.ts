@@ -116,7 +116,7 @@ async function shootGuide(page: Page, sample: SampleProject, theme: Theme) {
   await page.locator('.pen').waitFor();
   await save(page, file('draw'));
 
-  // The set plan with the camera selected: both bars.
+  // The set plan with the camera selected: its properties in the right panel.
   await fit(page, canvas(setPlan.id));
   await page.locator(`[data-el="${planId}"]`).dblclick();
   const stage = page.getByRole('dialog').locator('.plan-editor__stage');
