@@ -18,6 +18,13 @@ import {
 /** Bump when the shape of the board document changes, and add a migration below. */
 export const CURRENT_SCHEMA_VERSION = 22;
 
+/**
+ * The oldest schema whose clients may still write a document of CURRENT_SCHEMA_VERSION
+ * (decision 0102). It follows CURRENT_SCHEMA_VERSION unless a test like older-client.test.ts
+ * in canvas-core proves that clients of the older schema cannot lose what the change adds.
+ */
+export const MIN_WRITER_SCHEMA: number = CURRENT_SCHEMA_VERSION;
+
 /** Persisted ProseMirror additions: older editor schemas can destructively normalize them. */
 export const NOTE_BODY_FORMAT = {
   version: 19,
@@ -69,7 +76,8 @@ export function parseBoardDocName(name: string): string | null {
 /**
  * Root types of a board document. Nothing else may be stored at the root.
  * `meta` holds `schemaVersion`, `boardId`, from version 2 `aspect` (the AspectRatio of a
- * storyboard's frames) and from version 9 `animaticAudio` (the sound track of its animatic).
+ * storyboard's frames), from version 9 `animaticAudio` (the sound track of its animatic) and,
+ * when it is lower than `schemaVersion`, `minWriterSchema` (decision 0102).
  */
 export function roots(doc: Y.Doc) {
   return {
@@ -81,6 +89,22 @@ export function roots(doc: Y.Doc) {
 export function getSchemaVersion(doc: Y.Doc): number {
   const v = roots(doc).meta.get('schemaVersion');
   return typeof v === 'number' ? v : 0;
+}
+
+/** The oldest schema that may write this document: `meta.minWriterSchema`, else its version. */
+export function getMinWriterSchema(doc: Y.Doc): number {
+  const version = getSchemaVersion(doc);
+  const min = roots(doc).meta.get('minWriterSchema');
+  return typeof min === 'number' && Number.isInteger(min) && min < version ? min : version;
+}
+
+/** Records for clients the oldest schema that may write; nothing while it is the version. */
+export function setMinWriterSchema(doc: Y.Doc, min: number): void {
+  const { meta } = roots(doc);
+  const stored = min < getSchemaVersion(doc) ? min : undefined;
+  if (meta.get('minWriterSchema') === stored) return;
+  if (stored === undefined) meta.delete('minWriterSchema');
+  else meta.set('minWriterSchema', stored);
 }
 
 export function initBoardDoc(doc: Y.Doc, boardId: string): void {

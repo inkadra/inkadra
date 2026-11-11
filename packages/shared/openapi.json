@@ -1525,6 +1525,11 @@
             "type": "integer",
             "minimum": 1
           },
+          "minWriterSchema": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Oldest board document schema whose clients may still write (decision 0102). Absent on older servers, where it is docSchemaVersion."
+          },
           "minClient": {
             "type": "object",
             "additionalProperties": {

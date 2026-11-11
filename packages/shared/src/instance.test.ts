@@ -9,9 +9,14 @@ it('accepts older servers and unknown capabilities and platforms', () => {
       version: '1.0.0',
       api: 'v1',
       docSchemaVersion: 20,
+      minWriterSchema: 19,
       capabilities: ['future-feature'],
       minClient: { future: '2.0.0' },
     }),
-  ).toMatchObject({ capabilities: ['future-feature'], minClient: { future: '2.0.0' } });
+  ).toMatchObject({
+    minWriterSchema: 19,
+    capabilities: ['future-feature'],
+    minClient: { future: '2.0.0' },
+  });
   expect(InstanceVersion.safeParse({ version: '1', docSchemaVersion: 0 }).success).toBe(false);
 });

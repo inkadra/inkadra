@@ -5,10 +5,12 @@ import {
   CURRENT_SCHEMA_VERSION,
   getSchemaVersion,
   LocalPresence,
+  MIN_WRITER_SCHEMA,
   migrateBoardDoc,
   type PresenceState,
   type PresenceUser,
   parseBoardDocName,
+  setMinWriterSchema,
   validateBoardDoc,
 } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared';
@@ -81,8 +83,16 @@ export function createCollabServer(deps: {
   now?: () => Date;
   /** The demo's caps (DEMO_COLLAB_LIMITS); none elsewhere, where boards can grow large. */
   limits?: CollabLimits;
+  /** Oldest client schema that may write (decision 0102); tests lower it. */
+  minWriterSchema?: number;
 }) {
   const { db, auth, log, limits } = deps;
+  const minWriterSchema = deps.minWriterSchema ?? MIN_WRITER_SCHEMA;
+  /** The oldest schema that may write a document: ours, unless a newer client upgraded it. */
+  const writerSchema = (document: Y.Doc) => {
+    const version = getSchemaVersion(document);
+    return version > CURRENT_SCHEMA_VERSION ? version : minWriterSchema;
+  };
   /** Boards past a cap: nobody writes to them and they are not saved (decision 0084). */
   const frozen = new WeakSet<Y.Doc>();
   /**
@@ -186,15 +196,11 @@ export function createCollabServer(deps: {
             const readOnly =
               frozen.has(document) ||
               !atLeast(access.role, 'editor') ||
-              ctx.supportedSchemaVersion <
-                Math.max(CURRENT_SCHEMA_VERSION, getSchemaVersion(document));
+              ctx.supportedSchemaVersion < writerSchema(document);
             if (readOnly !== connection.readOnly) {
               connection.readOnly = readOnly;
               // Tell the client, so the editor follows instead of dropping what someone types.
-              if (
-                ctx.supportedSchemaVersion >=
-                Math.max(CURRENT_SCHEMA_VERSION, getSchemaVersion(document))
-              )
+              if (ctx.supportedSchemaVersion >= writerSchema(document))
                 connection.sendStateless(
                   JSON.stringify({ type: 'access', readOnly } satisfies AccessMessage),
                 );
@@ -275,7 +281,7 @@ export function createCollabServer(deps: {
           ? Number(advertised)
           : 0;
       connectionConfig.readOnly =
-        !atLeast(access.role, 'editor') || supportedSchemaVersion < CURRENT_SCHEMA_VERSION;
+        !atLeast(access.role, 'editor') || supportedSchemaVersion < minWriterSchema;
       const open = server.hocuspocus.documents.get(documentName);
       if (open && frozen.has(open)) connectionConfig.readOnly = true;
       return {
@@ -333,6 +339,8 @@ export function createCollabServer(deps: {
       if (limits) grown.set(document, row?.state.byteLength ?? 0);
       const steps = migrateBoardDoc(document, boardId);
       if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
+      // So clients see which older schemas may write it (decision 0102).
+      setMinWriterSchema(document, minWriterSchema);
       prepareImageDrawings(document);
       assignments.set(document, assignedItems(document));
       openedAt.set(document, Date.now());
@@ -357,7 +365,7 @@ export function createCollabServer(deps: {
       }
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
         if (
-          (connection.context?.supportedSchemaVersion ?? 0) < getSchemaVersion(document) &&
+          (connection.context?.supportedSchemaVersion ?? 0) < writerSchema(document) &&
           !connection.readOnly
         ) {
           connection.readOnly = true;

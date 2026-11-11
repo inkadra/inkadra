@@ -13,8 +13,10 @@ import {
   type FrameShape,
   getAnimaticAudio,
   getBoardAspect,
+  getMinWriterSchema,
   getSchemaVersion,
   MAX_PLAN_ICONS,
+  MIN_WRITER_SCHEMA,
   migrateBoardDoc,
   newElementId,
   parseBoardDocName,
@@ -24,6 +26,7 @@ import {
   STROKE_GRID,
   setAnimaticAudio,
   setBoardAspect,
+  setMinWriterSchema,
   UNSORTED,
   validateBoardDoc,
 } from './index.ts';
@@ -1026,5 +1029,22 @@ describe('set plans', () => {
     addElement(doc, rich);
     expect(readElement(roots(doc).elements.get(rich.id)!)).toEqual(rich);
     expect(validateBoardDoc(doc)).toEqual([]);
+  });
+});
+
+describe('minWriterSchema (decision 0102)', () => {
+  it('is the document version unless a lower one is recorded', () => {
+    const doc = createBoardDoc('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10');
+    expect(MIN_WRITER_SCHEMA).toBe(CURRENT_SCHEMA_VERSION);
+    expect(getMinWriterSchema(doc)).toBe(CURRENT_SCHEMA_VERSION);
+    setMinWriterSchema(doc, CURRENT_SCHEMA_VERSION);
+    expect(roots(doc).meta.has('minWriterSchema')).toBe(false);
+    setMinWriterSchema(doc, CURRENT_SCHEMA_VERSION - 2);
+    expect(getMinWriterSchema(doc)).toBe(CURRENT_SCHEMA_VERSION - 2);
+    // Nothing above the version is trusted.
+    roots(doc).meta.set('minWriterSchema', CURRENT_SCHEMA_VERSION + 5);
+    expect(getMinWriterSchema(doc)).toBe(CURRENT_SCHEMA_VERSION);
+    setMinWriterSchema(doc, CURRENT_SCHEMA_VERSION);
+    expect(roots(doc).meta.has('minWriterSchema')).toBe(false);
   });
 });

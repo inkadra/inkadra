@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import { sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -97,7 +98,8 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
     expect(response.json()).toMatchObject({
       version: expect.any(String),
       api: 'v1',
-      docSchemaVersion: expect.any(Number),
+      docSchemaVersion: CURRENT_SCHEMA_VERSION,
+      minWriterSchema: CURRENT_SCHEMA_VERSION,
       capabilities: [
         'boards',
         'comments',
@@ -105,10 +107,11 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'idempotent-creations',
         'token-invalid-reasons',
         'client-asset-ids',
+        'min-writer-schema',
       ],
     });
     const publicBody = (await app.inject('/api/v1/instance')).json();
-    for (const field of ['api', 'docSchemaVersion', 'minClient', 'capabilities'])
+    for (const field of ['api', 'docSchemaVersion', 'minWriterSchema', 'minClient', 'capabilities'])
       expect(publicBody).not.toHaveProperty(field);
   });
 

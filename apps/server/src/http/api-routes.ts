@@ -1,4 +1,4 @@
-import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
+import { CURRENT_SCHEMA_VERSION, MIN_WRITER_SCHEMA } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
   COLLAB_PATH,
@@ -127,6 +127,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
       version: VERSION,
       api: 'v1',
       docSchemaVersion: CURRENT_SCHEMA_VERSION,
+      minWriterSchema: MIN_WRITER_SCHEMA,
       capabilities: [
         'boards',
         'comments',
@@ -134,6 +135,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'idempotent-creations',
         'token-invalid-reasons',
         'client-asset-ids',
+        'min-writer-schema',
       ],
     } satisfies InstanceVersion;
   });

@@ -1,5 +1,11 @@
 import { HocuspocusProvider, type onUnsyncedChangesParameters } from '@hocuspocus/provider';
-import { boardDocName, CURRENT_SCHEMA_VERSION, readBoardNotice } from '@inkadra/doc-schema';
+import {
+  boardDocName,
+  CURRENT_SCHEMA_VERSION,
+  getMinWriterSchema,
+  getSchemaVersion,
+  readBoardNotice,
+} from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
@@ -101,18 +107,21 @@ export function watchSaves(
   };
 }
 
-/** Watch the live document, rather than only guarding saved-version previews. */
+/**
+ * Watch the live document, rather than only guarding saved-version previews. A client that
+ * leaves foreign cards read-only (`checksCards`, decision 0101) may also write documents of a
+ * newer schema down to their `minWriterSchema` (decision 0102); the web app does not yet, so
+ * it stays read-only on any newer document.
+ */
 export function watchDocumentSchema(
   doc: Y.Doc,
   changed: (tooNew: boolean) => void,
   supported = CURRENT_SCHEMA_VERSION,
+  checksCards = false,
 ): () => void {
   const meta = doc.getMap('meta');
   const check = () =>
-    changed(
-      typeof meta.get('schemaVersion') === 'number' &&
-        (meta.get('schemaVersion') as number) > supported,
-    );
+    changed(supported < (checksCards ? getMinWriterSchema(doc) : getSchemaVersion(doc)));
   meta.observe(check);
   check();
   return () => meta.unobserve(check);

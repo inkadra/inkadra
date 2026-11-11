@@ -209,3 +209,20 @@ it('observes live schema changes before permitting an editor and unsubscribes cl
   doc.getMap('meta').set('schemaVersion', 17);
   expect(values.at(-1)).toBe(false);
 });
+
+it('lets a client that checks cards write a newer document down to its minWriterSchema', async () => {
+  const { watchDocumentSchema } = await import('./connection.ts');
+  const doc = new Y.Doc();
+  const meta = doc.getMap('meta');
+  meta.set('schemaVersion', 16);
+  meta.set('minWriterSchema', 15);
+  const checks: boolean[] = [];
+  const plain: boolean[] = [];
+  watchDocumentSchema(doc, (value) => checks.push(value), 15, true);
+  watchDocumentSchema(doc, (value) => plain.push(value), 15);
+  expect([checks.at(-1), plain.at(-1)]).toEqual([false, true]);
+  meta.set('minWriterSchema', 16);
+  expect(checks.at(-1)).toBe(true);
+  meta.delete('minWriterSchema');
+  expect(checks.at(-1)).toBe(true);
+});
