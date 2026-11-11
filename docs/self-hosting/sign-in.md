@@ -198,8 +198,11 @@ Existing HTTPS sessions keep their Secure `__Host-` cookies; no migration is nee
 `token-invalid-reasons` that a 401 may say why a token stopped working, and
 `client-asset-ids` that tus creations accept `clientAssetId` (see Storage).
 `min-writer-schema` means the response has `minWriterSchema`: the oldest board document schema
-whose clients may still write; a client whose schema is older edits read-only. The collaboration
-socket applies the same rule (decision 0102). Without it, `minWriterSchema` is `docSchemaVersion`.
+whose clients may still write a document of `docSchemaVersion`, if they run the strict card check
+and say so on the collaboration socket (`strictCards=1` beside `schemaVersion`); other clients
+write only at `docSchemaVersion`. A read-only connection that sends changes gets the stateless
+notice `writeRefused` with the reason (`schema`, `role`, `frozen`) (decision 0102). Without the
+capability, `minWriterSchema` is `docSchemaVersion`.
 Clients must ignore unknown capability names and tolerate missing fields on older servers.
 `minClient`, when present, maps platform names to minimum client versions; no minimum
 is currently imposed. Capabilities describe implemented protocols, not a user's permissions.

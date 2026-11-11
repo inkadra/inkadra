@@ -45,9 +45,10 @@ released; add a new one. Migrations run automatically when the server starts.
 
 **Board documents.** Bump `CURRENT_SCHEMA_VERSION` in `packages/doc-schema/src/doc.ts` and add
 a migration from the previous version, with a test that upgrades a document of the old shape.
-Documents are migrated when the collaboration server loads them. `MIN_WRITER_SCHEMA` follows
-the version unless a test like `canvas-core/src/older-client.test.ts` proves that clients of
-the older schema lose nothing of the change; only then may it stay lower
+Documents are migrated when the collaboration server loads them. Add the new version to
+`WRITER_SCHEMAS` in the same file as `{ min: <the new version> }`; only a test like
+`canvas-core/src/older-client.test.ts`, proving that clients of the older schema lose nothing of
+the change, may lower `min`, and the entry names that test
 ([decision 0102](docs/decisions/0102-min-writer-schema.md)).
 
 ## Code

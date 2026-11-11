@@ -210,19 +210,20 @@ it('observes live schema changes before permitting an editor and unsubscribes cl
   expect(values.at(-1)).toBe(false);
 });
 
-it('lets a client that checks cards write a newer document down to its minWriterSchema', async () => {
+it('lets a client given the writers of a newer schema write down to their minimum', async () => {
   const { watchDocumentSchema } = await import('./connection.ts');
   const doc = new Y.Doc();
   const meta = doc.getMap('meta');
   meta.set('schemaVersion', 16);
-  meta.set('minWriterSchema', 15);
-  const checks: boolean[] = [];
+  const given: boolean[] = [];
   const plain: boolean[] = [];
-  watchDocumentSchema(doc, (value) => checks.push(value), 15, true);
+  watchDocumentSchema(doc, (value) => given.push(value), 15, {
+    schemaVersion: 16,
+    minWriterSchema: 15,
+  });
   watchDocumentSchema(doc, (value) => plain.push(value), 15);
-  expect([checks.at(-1), plain.at(-1)]).toEqual([false, true]);
-  meta.set('minWriterSchema', 16);
-  expect(checks.at(-1)).toBe(true);
-  meta.delete('minWriterSchema');
-  expect(checks.at(-1)).toBe(true);
+  expect([given.at(-1), plain.at(-1)]).toEqual([false, true]);
+  // The pair is for schema 16 only: a later version needs its own.
+  meta.set('schemaVersion', 17);
+  expect(given.at(-1)).toBe(true);
 });

@@ -10,7 +10,6 @@ import {
   type PresenceState,
   type PresenceUser,
   parseBoardDocName,
-  setMinWriterSchema,
   validateBoardDoc,
 } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared';
@@ -38,6 +37,10 @@ import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 interface Context {
   actor: Actor;
   supportedSchemaVersion: number;
+  /** The client runs the strict card check (`?strictCards=1`, decision 0102). */
+  strictCards: boolean;
+  /** Its role lets it edit; kept with the rechecks. */
+  canEdit: boolean;
   /** Browser sign-ins: the session behind the cookie, checked again like the role. */
   sessionId: string | null;
   boardId: string;
@@ -49,6 +52,11 @@ export interface AccessMessage {
   type: 'access';
   readOnly: boolean;
 }
+
+type WriteRefusal = { reason: 'frozen' | 'role' } | { reason: 'schema'; schemaVersion: number };
+
+/** Sent to a client whose edits were not applied, with the reason (decision 0102). */
+export type WriteRefusedMessage = { type: 'writeRefused' } & WriteRefusal;
 
 /** How often open connections are checked against the current roles (decision 0011). */
 export const ACCESS_RECHECK_MS = 30_000;
@@ -88,11 +96,24 @@ export function createCollabServer(deps: {
 }) {
   const { db, auth, log, limits } = deps;
   const minWriterSchema = deps.minWriterSchema ?? MIN_WRITER_SCHEMA;
-  /** The oldest schema that may write a document: ours, unless a newer client upgraded it. */
-  const writerSchema = (document: Y.Doc) => {
-    const version = getSchemaVersion(document);
-    return version > CURRENT_SCHEMA_VERSION ? version : minWriterSchema;
+  /**
+   * The oldest client schema that may write a document (decision 0102): the minimum for clients
+   * that declare the strict card check, the current schema for the others. A document a newer
+   * client upgraded needs that client's schema.
+   */
+  const requiredSchema = (ctx: Pick<Context, 'strictCards'>, document?: Y.Doc) => {
+    const version = document ? getSchemaVersion(document) : 0;
+    if (version > CURRENT_SCHEMA_VERSION) return version;
+    return ctx.strictCards ? minWriterSchema : CURRENT_SCHEMA_VERSION;
   };
+  /** Why a connection only reads, for the clients whose edits are refused. */
+  const refusal = (ctx: Context, document: Y.Doc): WriteRefusal => {
+    if (frozen.has(document)) return { reason: 'frozen' };
+    if (!ctx.canEdit) return { reason: 'role' };
+    return { reason: 'schema', schemaVersion: requiredSchema(ctx, document) };
+  };
+  /** The refusal last told to each connection: said once, and again when it changes. */
+  const refusalsSent = new WeakMap<object, string>();
   /** Boards past a cap: nobody writes to them and they are not saved (decision 0084). */
   const frozen = new WeakSet<Y.Doc>();
   /**
@@ -193,14 +214,15 @@ export function createCollabServer(deps: {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: access removed');
             connection.close({ code: 4403, reason: 'Forbidden' });
           } else {
+            ctx.canEdit = atLeast(access.role, 'editor');
             const readOnly =
               frozen.has(document) ||
-              !atLeast(access.role, 'editor') ||
-              ctx.supportedSchemaVersion < writerSchema(document);
+              !ctx.canEdit ||
+              ctx.supportedSchemaVersion < requiredSchema(ctx, document);
             if (readOnly !== connection.readOnly) {
               connection.readOnly = readOnly;
               // Tell the client, so the editor follows instead of dropping what someone types.
-              if (ctx.supportedSchemaVersion >= writerSchema(document))
+              if (ctx.supportedSchemaVersion >= requiredSchema(ctx, document))
                 connection.sendStateless(
                   JSON.stringify({ type: 'access', readOnly } satisfies AccessMessage),
                 );
@@ -280,13 +302,18 @@ export function createCollabServer(deps: {
         advertised && /^\d+$/.test(advertised) && Number.isSafeInteger(Number(advertised))
           ? Number(advertised)
           : 0;
-      connectionConfig.readOnly =
-        !atLeast(access.role, 'editor') || supportedSchemaVersion < minWriterSchema;
+      const strictCards = requestParameters.get('strictCards') === '1';
+      const canEdit = atLeast(access.role, 'editor');
+      // An open document may already be of a newer schema than ours (a newer client upgraded it).
       const open = server.hocuspocus.documents.get(documentName);
+      connectionConfig.readOnly =
+        !canEdit || supportedSchemaVersion < requiredSchema({ strictCards }, open);
       if (open && frozen.has(open)) connectionConfig.readOnly = true;
       return {
         actor,
         supportedSchemaVersion,
+        strictCards,
+        canEdit,
         sessionId: signed.sessionId,
         boardId,
         user: { id: actor.id, name: me?.name ?? '', image: me?.image ?? null },
@@ -339,8 +366,6 @@ export function createCollabServer(deps: {
       if (limits) grown.set(document, row?.state.byteLength ?? 0);
       const steps = migrateBoardDoc(document, boardId);
       if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
-      // So clients see which older schemas may write it (decision 0102).
-      setMinWriterSchema(document, minWriterSchema);
       prepareImageDrawings(document);
       assignments.set(document, assignedItems(document));
       openedAt.set(document, Date.now());
@@ -348,8 +373,20 @@ export function createCollabServer(deps: {
     },
 
     async beforeSync({ connection, document, context, type, payload }) {
-      // Hocuspocus answers a read-only connection without applying what it sent.
-      if ((type !== 1 && type !== 2) || connection.readOnly) return;
+      if (type !== 1 && type !== 2) return;
+      // Hocuspocus answers a read-only connection without applying what it sent. When it sent
+      // changes, say why, so a client can tell "update the app" from the rest (decision 0102).
+      if (connection.readOnly) {
+        if (type === 1 && Y.snapshotContainsUpdate(Y.snapshot(document), payload)) return;
+        const why = refusal(context, document);
+        const key = JSON.stringify(why);
+        if (refusalsSent.get(connection) === key) return;
+        refusalsSent.set(connection, key);
+        connection.sendStateless(
+          JSON.stringify({ type: 'writeRefused', ...why } satisfies WriteRefusedMessage),
+        );
+        return;
+      }
       await validateTaskUpdate(db, context.boardId, context.actor?.id, document, payload);
     },
 
@@ -365,7 +402,10 @@ export function createCollabServer(deps: {
       }
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
         if (
-          (connection.context?.supportedSchemaVersion ?? 0) < writerSchema(document) &&
+          (connection.context
+            ? connection.context.supportedSchemaVersion <
+              requiredSchema(connection.context, document)
+            : true) &&
           !connection.readOnly
         ) {
           connection.readOnly = true;

@@ -2,7 +2,6 @@ import { HocuspocusProvider, type onUnsyncedChangesParameters } from '@hocuspocu
 import {
   boardDocName,
   CURRENT_SCHEMA_VERSION,
-  getMinWriterSchema,
   getSchemaVersion,
   readBoardNotice,
 } from '@inkadra/doc-schema';
@@ -108,20 +107,23 @@ export function watchSaves(
 }
 
 /**
- * Watch the live document, rather than only guarding saved-version previews. A client that
- * leaves foreign cards read-only (`checksCards`, decision 0101) may also write documents of a
- * newer schema down to their `minWriterSchema` (decision 0102); the web app does not yet, so
- * it stays read-only on any newer document.
+ * Watch the live document, rather than only guarding saved-version previews. A client that runs
+ * the strict card check and declares it (decision 0102) may pass `writers`, the pair the server
+ * advertises (`docSchemaVersion`, `minWriterSchema`): it then also writes a document of exactly
+ * that newer schema down to its minimum. The web app does not, so it reads any newer document.
  */
 export function watchDocumentSchema(
   doc: Y.Doc,
   changed: (tooNew: boolean) => void,
   supported = CURRENT_SCHEMA_VERSION,
-  checksCards = false,
+  writers?: { schemaVersion: number; minWriterSchema: number },
 ): () => void {
   const meta = doc.getMap('meta');
-  const check = () =>
-    changed(supported < (checksCards ? getMinWriterSchema(doc) : getSchemaVersion(doc)));
+  const check = () => {
+    const version = getSchemaVersion(doc);
+    const allowed = writers?.schemaVersion === version && supported >= writers.minWriterSchema;
+    changed(version > supported && !allowed);
+  };
   meta.observe(check);
   check();
   return () => meta.unobserve(check);

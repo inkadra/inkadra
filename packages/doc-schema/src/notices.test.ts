@@ -19,6 +19,9 @@ describe('board notices', () => {
       type: 'versions',
       versionId: threadId,
     });
+    expect(readBoardNotice('{"type":"writeRefused","reason":"schema","schemaVersion":22}')).toEqual(
+      { type: 'writeRefused', reason: 'schema', schemaVersion: 22 },
+    );
   });
 
   it('ignores malformed and unknown messages', () => {

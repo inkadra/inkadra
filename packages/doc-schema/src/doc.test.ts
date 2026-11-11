@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { BOARD_V1 } from './board-v1.fixture.ts';
@@ -13,7 +15,6 @@ import {
   type FrameShape,
   getAnimaticAudio,
   getBoardAspect,
-  getMinWriterSchema,
   getSchemaVersion,
   MAX_PLAN_ICONS,
   MIN_WRITER_SCHEMA,
@@ -26,9 +27,9 @@ import {
   STROKE_GRID,
   setAnimaticAudio,
   setBoardAspect,
-  setMinWriterSchema,
   UNSORTED,
   validateBoardDoc,
+  WRITER_SCHEMAS,
 } from './index.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
@@ -1032,19 +1033,23 @@ describe('set plans', () => {
   });
 });
 
-describe('minWriterSchema (decision 0102)', () => {
-  it('is the document version unless a lower one is recorded', () => {
-    const doc = createBoardDoc('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10');
-    expect(MIN_WRITER_SCHEMA).toBe(CURRENT_SCHEMA_VERSION);
-    expect(getMinWriterSchema(doc)).toBe(CURRENT_SCHEMA_VERSION);
-    setMinWriterSchema(doc, CURRENT_SCHEMA_VERSION);
-    expect(roots(doc).meta.has('minWriterSchema')).toBe(false);
-    setMinWriterSchema(doc, CURRENT_SCHEMA_VERSION - 2);
-    expect(getMinWriterSchema(doc)).toBe(CURRENT_SCHEMA_VERSION - 2);
-    // Nothing above the version is trusted.
-    roots(doc).meta.set('minWriterSchema', CURRENT_SCHEMA_VERSION + 5);
-    expect(getMinWriterSchema(doc)).toBe(CURRENT_SCHEMA_VERSION);
-    setMinWriterSchema(doc, CURRENT_SCHEMA_VERSION);
-    expect(roots(doc).meta.has('minWriterSchema')).toBe(false);
+describe('writer schemas (decision 0102)', () => {
+  const proofs = readFileSync(
+    fileURLToPath(new URL('../../canvas-core/src/older-client.test.ts', import.meta.url)),
+    'utf8',
+  );
+
+  it('has an entry for the current schema, from which the minimum comes', () => {
+    expect(WRITER_SCHEMAS[CURRENT_SCHEMA_VERSION]).toBeDefined();
+    expect(MIN_WRITER_SCHEMA).toBe(WRITER_SCHEMAS[CURRENT_SCHEMA_VERSION]?.min);
+  });
+
+  it('lowers no minimum without a test that proves it', () => {
+    for (const [version, { min, proof }] of Object.entries(WRITER_SCHEMAS)) {
+      expect(min).toBeLessThanOrEqual(Number(version));
+      if (min === Number(version)) continue;
+      expect(proof, `schema ${version}`).toBeTypeOf('string');
+      expect(proofs).toContain(`'${proof}'`);
+    }
   });
 });
