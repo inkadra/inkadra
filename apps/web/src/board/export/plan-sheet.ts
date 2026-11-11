@@ -144,7 +144,8 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
     cap(PAD, PAD + 8, heading);
     text(PAD, PAD + 30, setup.name, 18, 700, c['text-primary']);
     const facts: Array<[string, string]> = [];
-    if (setup.shots.length) facts.push([t('board.plan.sheet.shots'), setup.shots.join(', ')]);
+    const shots = setup.shots.filter(Boolean);
+    if (shots.length) facts.push([t('board.plan.sheet.shots'), shots.join(', ')]);
     if (include.scale && plan.scale) {
       facts.push([
         t('board.plan.sheet.scale'),

@@ -406,19 +406,22 @@ export async function buildPages(
     // A sheet of its own per setup, with its own title block and foot (decision 0111).
     bare = true;
     const sheet = req.setPlan;
+    // Everything from the cards this audience may see (decisions 0013, 0044, 0111): a plan, a
+    // base, a scene, a character, a frame or a location hidden from guests is not read for them.
+    const see = (id: string) => cards.get(id);
     const plans = sheet.planIds.flatMap((id) => {
-      const el = lookup(id);
+      const el = see(id);
       return el?.type === 'plan' ? [el] : [];
     });
     const first = plans[0];
     const baseOf = (p: PlanElement) => {
-      const base = p.variantOf ? lookup(p.variantOf) : undefined;
+      const base = p.variantOf ? see(p.variantOf) : undefined;
       return base?.type === 'plan' ? base : undefined;
     };
     const owner = first ? (baseOf(first) ?? first) : undefined;
     const sceneIds = first?.sceneIds ?? owner?.sceneIds ?? [];
-    const scene = sceneIds.map(lookup).find((el) => el?.type === 'scene');
-    const location = owner ? linkedLocation(owner, snapshot.byId) : null;
+    const scene = sceneIds.map(see).find((el) => el?.type === 'scene');
+    const location = owner ? linkedLocation(owner, cards) : null;
     // The shooting day of the scene, when the schedule has one of its frames (team only).
     let day = '';
     if (scene?.type === 'scene' && team && sheet.include.dateScene) {
@@ -438,11 +441,16 @@ export async function buildPages(
         setups: plans.map((p) => {
           const base = baseOf(p);
           return {
-            plan: linkedPlan(base ? variantView(p, base) : p, snapshot.byId, {
+            plan: linkedPlan(base ? variantView(p, base) : p, cards, {
               palette: CHARACTER_COLOURS,
             }),
-            name: `${t('board.plan.sheet.setup')} ${setupName(p, variantFamily(all, p), t)}`,
-            shots: setupFrames(p, snapshot.byId).map((id) => labels.get(id) ?? ''),
+            name: `${t('board.plan.sheet.setup')} ${setupName(p, variantFamily(cards.values(), p), t)}`,
+            // The storyboard's number of each shot, else the frame's own label; none, left out.
+            shots: setupFrames(p, cards).flatMap((id) => {
+              const frame = cards.get(id);
+              const label = labels.get(id) || (frame?.type === 'frame' ? frame.label : '');
+              return label ? [label] : [];
+            }),
           };
         }),
         scene:

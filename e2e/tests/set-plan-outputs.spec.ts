@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { addFrame, createElement } from '@inkadra/canvas-core';
-import { createBoardDoc, STROKE_GRID } from '@inkadra/doc-schema';
+import { createBoardDoc, type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
@@ -63,7 +63,15 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
   );
   const frame = addFrame(doc, scene.id, null, { action: 'Master', lens: '32mm' }, opts);
   const leo = createElement(doc, 'character', { x: 640, y: 120 }, { name: 'Leo' }, opts);
-  const icon = (id: string, kind: string, x: number, y: number, extra = {}) => ({
+  // A character hidden from guests: its name is for the team only (decision 0111).
+  const secret = createElement(
+    doc,
+    'character',
+    { x: 640, y: 360 },
+    { name: 'Segreto', guestHidden: true },
+    opts,
+  );
+  const icon = (id: string, kind: PlanIcon['kind'], x: number, y: number, extra = {}) => ({
     id: `icon${id}`.padEnd(13, 'A'),
     kind,
     color: '#9DB8F2',
@@ -90,6 +98,7 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
           note: 'Lontano dal muro di fondo',
         }),
         icon('Leo', 'actor', 0.5, 0.45, { label: 'vecchio', characterId: leo.id }),
+        icon('Sec', 'actor', 0.7, 0.45, { characterId: secret.id }),
       ],
     },
     opts,
@@ -136,8 +145,9 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
       '32 mm',
       'Chiave',
       '3200 K',
-      // The actor's live name, not the text it holds.
+      // The actors' live names, not the text they hold; the team sees the hidden one.
       'Leo',
+      'Segreto',
       'POTENZA A 230 V',
       '2 kW · 8,7 A',
       'Circuito A · 16 A: Chiave',
@@ -170,6 +180,7 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
       const legend = viewer.getByRole('complementary', { name: 'Legenda' });
       await expect(legend).toContainText('A cam · 32 mm');
       await expect(legend).toContainText('Leo');
+      await expect(legend).not.toContainText('Segreto');
       await expect(legend).toContainText('Potenza a 230 V');
       await expect(legend).toContainText('Circuito A · 16 A: Chiave');
       // Pan and zoom: the wheel zooms, a drag moves the sheet.
@@ -189,7 +200,9 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
       ]);
       const file = join(tmpdir(), `guest-plan-${Date.now()}.pdf`);
       await download.saveAs(file);
-      expect((await pdfText(file)).text).toContain('Setup 2 · Primo piano');
+      const guestText = (await pdfText(file)).text;
+      expect(guestText).toContain('Setup 2 · Primo piano');
+      expect(guestText).not.toContain('Segreto');
       await viewer.getByRole('button', { name: 'Chiudi' }).click();
       await expect(viewer).toHaveCount(0);
     } finally {

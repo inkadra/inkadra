@@ -126,3 +126,21 @@ it('measures the room from the walls, in metres', () => {
   expect(roomSize(plan, 'en')).toMatch(/^\d+\.\d × \d+\.\d m$/);
   expect(roomSize({ ...plan, scale: undefined }, 'en')).toBeNull();
 });
+
+it('lists the shots without empty labels', () => {
+  const [page] = planSheetPages(
+    {
+      setups: [{ plan, name: 'Setup 1', shots: ['2A', '', '2B'] }],
+      scene: '',
+      place: '',
+      area: null,
+      include: PLAN_SHEET_INCLUDE,
+      t,
+      locale: 'en',
+    },
+    ctx,
+  );
+  const words = texts(page?.ops ?? []);
+  expect(words).toContain('2A, 2B');
+  expect(words.join('|')).not.toContain(', ,');
+});
