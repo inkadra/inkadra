@@ -769,7 +769,9 @@
         "shape": "Rectangle ou ellipse",
         "shapes": "Formes et lignes",
         "draw": "Dessiner",
-        "lineOrArrow": "Ligne ou flèche"
+        "lineOrArrow": "Ligne ou flèche",
+        "walls": "Murs",
+        "openings": "Ouvertures"
       },
       "snap": "Aligner sur la grille",
       "library": "Icônes de plateau",
@@ -1308,7 +1310,7 @@
       "marquee_other": "Faites glisser pour sélectionner · {{count}} éléments",
       "marqueeHold_one": "Maintenez et faites glisser · {{count}} élément",
       "marqueeHold_other": "Maintenez et faites glisser · {{count}} éléments",
-      "emptyHint": "Dessinez les murs avec Ligne ou Rectangle, puis ajoutez caméras et lumières depuis la bibliothèque à gauche.",
+      "emptyHint": "Dessinez les murs avec l’outil Murs, puis ajoutez caméras et lumières depuis la bibliothèque à gauche.",
       "measureMetres": "Mesure en mètres",
       "measureHint": "Le dessin ne change pas : seul le nombre affiché change.",
       "measureWrong": "Saisissez un nombre supérieur à 0.",
@@ -1456,8 +1458,6 @@
       "textSize": "Taille du texte",
       "tilt": "Inclinaison",
       "viewLength": "Longueur de vue",
-      "wallCount_one": "{{count}} mur",
-      "wallCount_other": "{{count}} murs",
       "zoom": "Zoom",
       "zoomFit": "Ajuster le plan",
       "stands": {
@@ -1624,6 +1624,106 @@
         "hint": "Glissez pour déplacer, pincez ou faites défiler pour zoomer",
         "note": "Qui peut ouvrir le tableau voit ce plan, la légende, le matériel et la puissance.",
         "guestNote": "Vous voyez le plan tel qu’il est partagé avec vous : les setups, la légende, le matériel et la puissance."
+      },
+      "walls": {
+        "options": "Options de l’outil murs",
+        "thickness": "Épaisseur",
+        "angles": "Angles",
+        "free": "Libres",
+        "typeHint": "Tapez une longueur, puis Entrée",
+        "typedLength": "Longueur du prochain côté, en mètres",
+        "typedWidth": "Largeur de la prochaine ouverture, en mètres",
+        "openings": "Ouvertures",
+        "kinds": {
+          "door": "Porte",
+          "doubledoor": "Porte double",
+          "sliding": "Porte coulissante",
+          "window": "Fenêtre",
+          "opening": "Passage"
+        },
+        "closeClick": "Cliquez ici pour fermer la pièce",
+        "closeTap": "Touchez ici pour fermer la pièce",
+        "locked": "Le calque Set est verrouillé : déverrouillez-le dans Éléments pour dessiner des murs.",
+        "hidden": "Le calque Set est masqué : affichez-le dans Éléments pour dessiner des murs.",
+        "done": "Terminer les murs",
+        "summaryWalls_one": "{{count}} mur",
+        "summaryWalls_other": "{{count}} murs",
+        "summary": {
+          "door_one": "{{count}} porte",
+          "door_other": "{{count}} portes",
+          "doubledoor_one": "{{count}} porte double",
+          "doubledoor_other": "{{count}} portes doubles",
+          "sliding_one": "{{count}} porte coulissante",
+          "sliding_other": "{{count}} portes coulissantes",
+          "window_one": "{{count}} fenêtre",
+          "window_other": "{{count}} fenêtres",
+          "opening_one": "{{count}} passage",
+          "opening_other": "{{count}} passages"
+        },
+        "labelPlaceholder": "ex. Mur de la cuisine",
+        "kind": "Type d’ouverture",
+        "fromCorners": "à {{before}} et {{after}} des angles",
+        "openingWidth": "Largeur de l’ouverture",
+        "flip": "Changer de côté",
+        "swing": "Ouvrir depuis l’autre bout",
+        "doorHint": "Faites-la glisser le long de son mur pour la déplacer.",
+        "wall": "Mur",
+        "wallSummary_one": "{{count}} côté · {{length}}",
+        "wallSummary_other": "{{count}} côtés · {{length}}",
+        "cornersHint": "Faites glisser un angle pour le déplacer ; les ouvertures restent sur leur côté."
+      },
+      "background": {
+        "button": "Fond",
+        "title": "Image de fond",
+        "uploading": "Envoi de l’image…",
+        "failed": "L’image n’a pas pu être envoyée. Réessayez.",
+        "picture": "Image",
+        "opacity": "Opacité",
+        "grey": "En gris",
+        "greyShort": "gris",
+        "show": "Visible",
+        "place": "Déplacer et redimensionner",
+        "replace": "Remplacer",
+        "remove": "Retirer",
+        "empty": "Un plan ou une photo du repérage, sous le dessin, à décalquer.",
+        "choose": "Choisir une image",
+        "placing": "Faites glisser l’image pour la déplacer, un angle pour la redimensionner",
+        "edit": "Réglages de l’image de fond",
+        "showIt": "Afficher le fond",
+        "hideIt": "Masquer le fond"
+      },
+      "start": {
+        "title": "Commencer le plan",
+        "titleOf": "Commencer le plan de {{name}}",
+        "scene": "Scène {{number}}",
+        "later": "Vous pourrez tout changer ensuite.",
+        "how": "Comment commencer",
+        "reuse": "Réutiliser le décor de ce lieu",
+        "reuseText": "{{what}} de « {{name}} ». Lumières, caméras et acteurs démarrent vides.",
+        "reuseFrom": "Réutiliser le décor de",
+        "furniture": "mobilier",
+        "reuseGo": "Réutiliser le décor",
+        "draw": "Dessiner les murs",
+        "drawText": "Cliquez angle par angle, tapez les longueurs.",
+        "drawGo": "Dessiner les murs",
+        "trace": "Décalquer une image",
+        "traceText": "Un plan ou une photo du repérage, sous le dessin.",
+        "traceGo": "Choisir une image",
+        "scan": "Scanner la pièce",
+        "scanText": "Avec l’app mobile, quand elle sera prête.",
+        "ready": "Ou une pièce prête",
+        "rooms": {
+          "rect": "Rectangle",
+          "l": "En L",
+          "u": "En U",
+          "studio": "Studio à trois murs",
+          "exterior": "Extérieur, sans murs"
+        },
+        "by": "par",
+        "roomGo": "Créer la pièce",
+        "tooBig": "Trop grande pour ce plan à son échelle.",
+        "empty": "Commencer vide",
+        "again": "Façons de commencer…"
       }
     },
     "contextual": {
@@ -5007,6 +5107,14 @@
           "3": {
             "title": "Setups",
             "text": "Un onglet par setup. Sur un setup, la note dit ce qui a changé par rapport à la base, qui peut apparaître derrière."
+          },
+          "4": {
+            "title": "Murs et ouvertures",
+            "text": "Murs : cliquez angle par angle, tapez une longueur et Entrée, cliquez le premier angle pour fermer la pièce. Ouvertures : portes et fenêtres se posent sur un mur."
+          },
+          "5": {
+            "title": "Fond",
+            "text": "Un plan ou une photo sous le dessin à décalquer : déplacez-la, redimensionnez-la, réglez opacité et gris."
           }
         }
       },

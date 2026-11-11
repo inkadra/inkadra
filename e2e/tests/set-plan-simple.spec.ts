@@ -540,7 +540,8 @@ test('every library name fits its tile, in all six languages, at 1280 and 390 px
         await expect(dock).toBeVisible();
         await check(dock, dock.locator('.plan-lib__cat'), `${locale} 1280`);
         await m.setViewportSize({ width: 390, height: 844 });
-        await editor.locator('.plan-canvas__phone-tools button').nth(3).click();
+        // Library is the last of the phone's tools (Walls came before Draw with decision 0110).
+        await editor.locator('.plan-canvas__phone-tools button').last().click();
         const sheet = editor.locator('.plan-lib--sheet');
         await expect(sheet).toBeVisible();
         await check(sheet, sheet.locator('.plan-lib__chips button'), `${locale} 390`);
@@ -565,7 +566,7 @@ test('earlier positions can be shown from the plan menu whenever an item has som
   const faded = editor.locator('.plan-editor__stage [style*="opacity: 0.4"]');
   await expect(faded).toHaveCount(0);
   // Nothing selected: the plan's menu (by the scale) has the switch, as before decision 0104.
-  await editor.locator('.plan-top__end .plan-top__btn').first().click();
+  await editor.locator('.plan-top__end .plan-top__btn[aria-haspopup="menu"]').click();
   await page.getByRole('menuitemradio', { name: 'Mostra posizioni precedenti' }).click();
   await expect(faded).toHaveCount(1);
 });

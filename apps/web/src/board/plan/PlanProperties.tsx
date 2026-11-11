@@ -52,6 +52,7 @@ import { NumberField } from './NumberField.tsx';
 import { selectionMenu } from './PlanCanvas.tsx';
 import { measureText, PLAN_COLORS, PlanGlyph, planCss, TEXT_SIZES } from './PlanDrawing.tsx';
 import { CharacterLink, LocationLink, needsSun, ShotLink, SunSection } from './PlanLinks.tsx';
+import { PlanWallProperties } from './PlanWallProperties.tsx';
 
 /** Lens presets of a camera, as on the mockup; Other takes any focal length. */
 const LENSES = [24, 35, 50, 85];
@@ -1230,7 +1231,20 @@ export function PlanProperties({
 
   const nothing = () => (
     <>
-      {ed.lockedItem ? (
+      {ed.lockedWall ? (
+        <div className="plan-props__locked" role="status">
+          <Icon name="lock" size={16} />
+          <span>{t('board.plan.lockedAs.set')}</span>
+          <Button
+            onClick={() => {
+              ed.toggleLocked('set');
+              ed.setLockedWall(false);
+            }}
+          >
+            {t('board.plan.unlock')}
+          </Button>
+        </div>
+      ) : ed.lockedItem ? (
         <div className="plan-props__locked" role="status">
           <Icon name="lock" size={16} />
           <span>{t(`board.plan.lockedAs.${layerOf(ed.lockedItem)}`)}</span>
@@ -1257,7 +1271,8 @@ export function PlanProperties({
   );
 
   let body: ReactNode;
-  if (many.length > 1) body = several();
+  if (ed.wallSel) body = <PlanWallProperties ed={ed} />;
+  else if (many.length > 1) body = several();
   else if (!item) body = nothing();
   else if (!isIcon(item)) body = shape(item);
   else {

@@ -280,7 +280,7 @@ export function PlanViewer({
               translate: `${pan.x}px ${pan.y}px`,
             }}
           >
-            <PlanDrawing plan={shown} />
+            <PlanDrawing plan={shown} background />
           </div>
           <div className="plan-view__bar" role="toolbar" aria-label={t('board.plan.name')}>
             <IconButton

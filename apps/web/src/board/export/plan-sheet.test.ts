@@ -4,6 +4,7 @@ import { light } from '@inkadra/ui/tokens';
 import type { TFunction } from 'i18next';
 import { expect, it } from 'vitest';
 import type { CardContext } from './board-render.ts';
+import { greyPixels } from './images.ts';
 import type { Op } from './pages.ts';
 import { PLAN_SHEET_INCLUDE, planSheetPages, roomSize } from './plan-sheet.ts';
 
@@ -147,4 +148,38 @@ it('lists the shots without empty labels', () => {
   const words = texts(page?.ops ?? []);
   expect(words).toContain('2A, 2B');
   expect(words.join('|')).not.toContain(', ,');
+});
+
+it('draws the background where it was placed, at its opacity, in greys, and not when hidden', () => {
+  const images = (ops: readonly Op[]): Array<Extract<Op, { kind: 'image' }>> =>
+    ops.flatMap((op) => (op.kind === 'image' ? [op] : op.kind === 'clip' ? images(op.ops) : []));
+  const sheet = (background: PlanElement['background'], hidden?: PlanElement['hiddenLayers']) =>
+    images(
+      planSheetPages(
+        {
+          setups: [{ plan: { ...plan, background, hiddenLayers: hidden }, name: 'S', shots: [] }],
+          scene: '',
+          place: '',
+          area: null,
+          include: { ...PLAN_SHEET_INCLUDE, background: true },
+          t,
+          locale: 'en',
+        },
+        ctx,
+      )[0]?.ops ?? [],
+    );
+  const whole = sheet({ assetId: 'pic', opacity: 0.4 })[0];
+  const placed = sheet({ assetId: 'pic', opacity: 0.4, grey: true, x: 0, y: 0, w: 500, h: 250 })[0];
+  // Placed: half as wide as the drawing, from its corner; faded and grey.
+  expect(placed?.w).toBeCloseTo((whole?.w ?? 0) / 2, 3);
+  expect([placed?.x, placed?.y]).toEqual([whole?.x, whole?.y]);
+  expect([placed?.opacity, placed?.grey]).toEqual([0.4, true]);
+  expect(whole?.grey).toBeUndefined();
+  expect(sheet({ assetId: 'pic', hidden: true })).toHaveLength(0);
+  expect(sheet({ assetId: 'pic' }, ['set'])).toHaveLength(0);
+});
+
+it('turns pixels to greys by their luma, alpha kept', () => {
+  const px = greyPixels(new Uint8ClampedArray([255, 0, 0, 128, 0, 255, 0, 255]));
+  expect([...px]).toEqual([76, 76, 76, 128, 150, 150, 150, 255]);
 });

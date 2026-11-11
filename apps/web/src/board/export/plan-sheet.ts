@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
   attachRole,
+  backgroundBox,
   catalogueKind,
   categoryOf,
   gridStep,
@@ -201,13 +202,21 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
       h: PLAN_VIEW_H * k,
     };
     const inside: Op[] = [];
-    if (include.background && plan.background) {
+    // The picture under the plan where it was placed, at its opacity, in greys if the plan says
+    // so; not when it is hidden, nor with the Set (decision 0110).
+    const bg = plan.background;
+    if (include.background && bg && !bg.hidden && !plan.hiddenLayers?.includes('set')) {
+      const box = backgroundBox(bg);
       inside.push({
         kind: 'image',
-        key: plan.background.assetId,
-        ...whole,
+        key: bg.assetId,
+        x: whole.x + box.x * k,
+        y: whole.y + box.y * k,
+        w: box.w * k,
+        h: box.h * k,
         fit: 'cover',
-        ...(plan.background.opacity !== undefined ? { opacity: plan.background.opacity } : {}),
+        ...(bg.opacity !== undefined ? { opacity: bg.opacity } : {}),
+        ...(bg.grey ? { grey: true } : {}),
       });
     }
     if (include.grid) {
