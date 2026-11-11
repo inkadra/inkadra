@@ -10278,6 +10278,94 @@
           "backup"
         ]
       },
+      "BoardRestores": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardRestore"
+            },
+            "description": "Newest first, at most the last 50 of the board. Fewer than the counts differ by: the older ones are gone, or a record failed to write; the counts still say how many."
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "BoardRestore": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The board document’s `meta.restores` after this restore (decision 0109). Higher than the count the client reads in the document: a restore not stored yet, or lost; ignore it."
+          },
+          "restoredAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "restoredBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserSummary"
+              },
+              {
+                "description": "Null below editor, and when the account was deleted since."
+              }
+            ]
+          },
+          "version": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+                "description": "May no longer exist: versions are pruned and deleted."
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "named",
+                  "restore"
+                ],
+                "description": "`auto`: taken by the server while the board is edited, removed by retention. `named`: saved by someone with a name, kept until deleted. `restore`: the state just before a restore, kept like an automatic one. Open: clients show a kind they do not know like `auto`."
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Null for an unnamed version."
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2026-11-02T09:30:00.000Z"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "name",
+              "createdAt"
+            ],
+            "description": "The version the board was brought back to. Null below editor."
+          }
+        },
+        "required": [
+          "count",
+          "restoredAt",
+          "restoredBy",
+          "version"
+        ]
+      },
       "ClipResult": {
         "type": "object",
         "properties": {
@@ -27670,6 +27758,102 @@
           },
           "500": {
             "description": "The change may or may not have been made. OutcomeUnknown (`outcome_unknown`) explicitly reports uncertainty. A missing or unrecognized details.reason also means the outcome is unknown, including on legacy servers. Reconcile state before retrying; never infer that a retry is safe from the absence of a recognized reason.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/restores": {
+      "get": {
+        "tags": [
+          "Versions"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The last restores of a board, newest first. Needs viewer; details need editor.",
+        "description": "For a client that edited the board offline and finds `meta.restores` changed (decision 0109): who restored it and to which version, as the version was named at the restore (decision 0112). Below editor, who and which version are null, as the versions list is out of reach. Servers that keep this list advertise `board-restore-history`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "default": 0,
+              "description": "The restore count the client last confirmed: only later restores are listed."
+            },
+            "required": false,
+            "description": "The restore count the client last confirmed: only later restores are listed.",
+            "name": "after",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardRestores"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
