@@ -110,6 +110,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'client-asset-ids',
         'min-writer-schema',
         'board-restore-marker',
+        'token-proof',
       ],
     });
     const publicBody = (await app.inject('/api/v1/instance')).json();

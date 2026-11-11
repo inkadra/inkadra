@@ -175,6 +175,45 @@ export const AppToken = z
   .openapi('AppToken');
 export type AppToken = z.infer<typeof AppToken>;
 
+/**
+ * Token proof (decision 0110): the key a token holder keeps to check, before sending the token,
+ * that the server answering is the one that issued it. Only for tokens; never logged.
+ */
+export const TokenProofKey = z
+  .object({
+    instanceId: Id.openapi({ description: 'Random id of this server, made once.' }),
+    keyId: Base64Url.min(16)
+      .max(64)
+      .openapi({ description: 'Names the key in POST /token-proof; not a secret.' }),
+    key: Base64Url.length(43).openapi({ description: '32 random bytes, base64url. A secret.' }),
+  })
+  .openapi('TokenProofKey');
+export type TokenProofKey = z.infer<typeof TokenProofKey>;
+
+export const TOKEN_PROOF_PURPOSE = 'unlock-network';
+
+export const TokenProofRequest = z
+  .object({
+    keyId: Base64Url.min(16).max(64),
+    nonce: Base64Url.min(22)
+      .max(128)
+      .openapi({ description: 'Fresh random bytes from the client, used once.' }),
+  })
+  .openapi('TokenProofRequest');
+export type TokenProofRequest = z.infer<typeof TokenProofRequest>;
+
+export const TokenProof = z
+  .object({
+    instanceId: Id,
+    purpose: z.literal(TOKEN_PROOF_PURPOSE),
+    proof: Base64Url.length(43).openapi({
+      description:
+        'base64url(HMAC-SHA256(key, "inkadra-token-proof/v1\\n" + purpose + "\\n" + instanceId + "\\n" + keyId + "\\n" + nonce)).',
+    }),
+  })
+  .openapi('TokenProof');
+export type TokenProof = z.infer<typeof TokenProof>;
+
 /** JPEG, PNG or WebP, at most 1 MiB before base64 encoding. */
 export const UploadAvatar = z
   .object({
