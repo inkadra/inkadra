@@ -29,9 +29,10 @@ version from 22 on, the oldest writer schema proven safe for it and the test tha
 which is its own version (`{ 23: { min: 23 } }`) unless a test in the style of P11
 (`canvas-core/src/older-client.test.ts`) proves that a client of the older schema cannot lose
 what the change adds, through paste, duplicate, delete, edits of nested values and notes; then
-the entry names that test by its title (`{ 23: { min: 22, proof: '…' } }`). A unit test fails
-when the current version has no entry, or when an entry is lower than its version without a
-proof found in that file. So a bump never inherits the minimum of the version before it.
+the entry names that test by its title, which starts with the pair it proves
+(`{ 23: { min: 22, proof: 'schema 23 from 22: …' } }`). A unit test fails when the current
+version has no entry, or when an entry is lower than its version without a test of that file
+whose title starts with that very pair. So a bump never inherits the minimum of the version before it.
 Better read-only than damaged.
 
 **What a compatible change may be.** Additions only: an optional field, an enumeration value, an
@@ -66,8 +67,11 @@ of today keeps its unsent edits as before and shows the update notice.
   `strictCards=1`. A document a newer client upgraded needs that client's schema, as before; at
   authentication the server also looks at the document if it is already open.
 - When a read-only connection sends changes, the server answers, once per reason, with the
-  stateless notice `writeRefused`: `schema` with the `schemaVersion` this client would need
-  (update the app), `role` or `frozen`. A client tells "update the app" from the rest by it.
+  stateless notice `writeRefused`: `role` to a client that may not edit, whatever else holds the
+  board; otherwise `frozen`, or `schema` with the `schemaVersion` this client would need (update
+  the app). A client tells "update the app" from the rest by it. The server decides from the
+  update's clocks and the document's state vector, never by walking the document, and not again
+  once it has told the connection.
 - Nothing is stored in the document: the minimum always comes from the server's table, so it
   cannot be stale or forged. A client that holds a newer document offline learns whether it may
   write it from `GET /api/v1/instance/version`, which returns `minWriterSchema` beside

@@ -1038,18 +1038,38 @@ describe('writer schemas (decision 0102)', () => {
     fileURLToPath(new URL('../../canvas-core/src/older-client.test.ts', import.meta.url)),
     'utf8',
   );
+  /**
+   * Versions whose minimum is lower than themselves without a proof for that very pair: a test
+   * of older-client.test.ts whose title starts with "schema <version> from <min>:".
+   */
+  const unproven = (schemas: typeof WRITER_SCHEMAS, file: string) =>
+    Object.entries(schemas).flatMap(([version, { min, proof }]) => {
+      if (min > Number(version)) return [Number(version)];
+      if (min === Number(version)) return [];
+      const title = `schema ${version} from ${min}: `;
+      const proven =
+        proof?.startsWith(title) &&
+        new RegExp(`\\bit\\(\\s*'${proof.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`).test(file);
+      return proven ? [] : [Number(version)];
+    });
 
   it('has an entry for the current schema, from which the minimum comes', () => {
     expect(WRITER_SCHEMAS[CURRENT_SCHEMA_VERSION]).toBeDefined();
     expect(MIN_WRITER_SCHEMA).toBe(WRITER_SCHEMAS[CURRENT_SCHEMA_VERSION]?.min);
   });
 
-  it('lowers no minimum without a test that proves it', () => {
-    for (const [version, { min, proof }] of Object.entries(WRITER_SCHEMAS)) {
-      expect(min).toBeLessThanOrEqual(Number(version));
-      if (min === Number(version)) continue;
-      expect(proof, `schema ${version}`).toBeTypeOf('string');
-      expect(proofs).toContain(`'${proof}'`);
-    }
+  it('lowers no minimum without a test that proves it for that version', () => {
+    expect(unproven(WRITER_SCHEMAS, proofs)).toEqual([]);
+    // A test that exists but proves nothing about the version does not count.
+    const file =
+      "it('duplicates a card', () => {});\nit('schema 24 from 23: keeps the new field', () => {});";
+    expect(unproven({ 24: { min: 23, proof: 'duplicates a card' } }, file)).toEqual([24]);
+    expect(
+      unproven({ 24: { min: 23, proof: 'schema 24 from 22: keeps the new field' } }, file),
+    ).toEqual([24]);
+    expect(
+      unproven({ 24: { min: 23, proof: 'schema 24 from 23: keeps the new field' } }, file),
+    ).toEqual([]);
+    expect(unproven({ 24: { min: 25 } }, file)).toEqual([24]);
   });
 });

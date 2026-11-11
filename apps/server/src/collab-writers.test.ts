@@ -10,15 +10,21 @@ import {
 } from '@inkadra/doc-schema';
 import { sql } from 'drizzle-orm';
 import pino from 'pino';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { createAuth } from './auth.ts';
-import { attachCollab, createCollabServer } from './collab.ts';
+import { attachCollab, createCollabServer, writeRefusal } from './collab.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { createApp } from './http/app.ts';
 import { testDeps } from './test-deps.ts';
+
+// Counts the snapshots of whole documents the server takes (Hocuspocus has its own yjs import).
+vi.mock('yjs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('yjs')>();
+  return { ...actual, snapshot: vi.fn(actual.snapshot) };
+});
 
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../drizzle', import.meta.url));
@@ -34,6 +40,19 @@ const column = (title: string) => ({
   parent: null,
   createdBy: null,
   createdAt: Date.now(),
+});
+
+it('tells a client that may not edit only that, whatever else holds the board', () => {
+  expect(writeRefusal({ canEdit: false, frozen: true, schemaVersion: 30 })).toEqual({
+    reason: 'role',
+  });
+  expect(writeRefusal({ canEdit: true, frozen: true, schemaVersion: 30 })).toEqual({
+    reason: 'frozen',
+  });
+  expect(writeRefusal({ canEdit: true, frozen: false, schemaVersion: 30 })).toEqual({
+    reason: 'schema',
+    schemaVersion: 30,
+  });
 });
 
 /**
@@ -207,6 +226,20 @@ describe.skipIf(!url)('collab writers by schema (needs DATABASE_URL)', () => {
       .poll(() => viewer.notices)
       .toContainEqual({ type: 'writeRefused', reason: 'role' });
     for (const c of [tooOld, unchecked, viewer]) c.close();
+  });
+
+  it('reads no whole document to answer a read-only client', async () => {
+    const snapshot = vi.mocked(Y.snapshot);
+    snapshot.mockClear();
+    const viewer = connect(CURRENT_SCHEMA_VERSION, { as: viewerCookie });
+    expect(await writes(viewer)).toBe(false);
+    // Reconnecting sends the whole sync again.
+    viewer.close();
+    const again = connect(CURRENT_SCHEMA_VERSION, { as: viewerCookie, doc: viewer.doc });
+    await again.synced;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(snapshot).not.toHaveBeenCalled();
+    again.close();
   });
 
   it('accepts what a client of minWriterSchema with the strict check edited offline', async () => {

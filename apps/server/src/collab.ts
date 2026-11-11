@@ -58,6 +58,37 @@ type WriteRefusal = { reason: 'frozen' | 'role' } | { reason: 'schema'; schemaVe
 /** Sent to a client whose edits were not applied, with the reason (decision 0102). */
 export type WriteRefusedMessage = { type: 'writeRefused' } & WriteRefusal;
 
+/**
+ * Why a connection only reads (decision 0102). A client that may not edit is told only that,
+ * whatever else holds the board; the schema it would need is the one it can already learn.
+ */
+export function writeRefusal(state: {
+  canEdit: boolean;
+  frozen: boolean;
+  schemaVersion: number;
+}): WriteRefusal {
+  if (!state.canEdit) return { reason: 'role' };
+  if (state.frozen) return { reason: 'frozen' };
+  return { reason: 'schema', schemaVersion: state.schemaVersion };
+}
+
+/**
+ * Whether an update holds items the document does not have, from the clocks alone: no walk of
+ * the document. Deletions alone are not seen; the next edit with content is.
+ */
+function addsItems(document: Y.Doc, update: Uint8Array): boolean {
+  let to: Map<number, number>;
+  try {
+    to = Y.parseUpdateMeta(update).to;
+  } catch {
+    return false;
+  }
+  if (to.size === 0) return false;
+  const have = Y.decodeStateVector(Y.encodeStateVector(document));
+  for (const [client, clock] of to) if (clock > (have.get(client) ?? 0)) return true;
+  return false;
+}
+
 /** How often open connections are checked against the current roles (decision 0011). */
 export const ACCESS_RECHECK_MS = 30_000;
 
@@ -106,12 +137,12 @@ export function createCollabServer(deps: {
     if (version > CURRENT_SCHEMA_VERSION) return version;
     return ctx.strictCards ? minWriterSchema : CURRENT_SCHEMA_VERSION;
   };
-  /** Why a connection only reads, for the clients whose edits are refused. */
-  const refusal = (ctx: Context, document: Y.Doc): WriteRefusal => {
-    if (frozen.has(document)) return { reason: 'frozen' };
-    if (!ctx.canEdit) return { reason: 'role' };
-    return { reason: 'schema', schemaVersion: requiredSchema(ctx, document) };
-  };
+  const refusal = (ctx: Context, document: Y.Doc) =>
+    writeRefusal({
+      canEdit: ctx.canEdit,
+      frozen: frozen.has(document),
+      schemaVersion: requiredSchema(ctx, document),
+    });
   /** The refusal last told to each connection: said once, and again when it changes. */
   const refusalsSent = new WeakMap<object, string>();
   /** Boards past a cap: nobody writes to them and they are not saved (decision 0084). */
@@ -377,10 +408,11 @@ export function createCollabServer(deps: {
       // Hocuspocus answers a read-only connection without applying what it sent. When it sent
       // changes, say why, so a client can tell "update the app" from the rest (decision 0102).
       if (connection.readOnly) {
-        if (type === 1 && Y.snapshotContainsUpdate(Y.snapshot(document), payload)) return;
         const why = refusal(context, document);
         const key = JSON.stringify(why);
         if (refusalsSent.get(connection) === key) return;
+        // A sync step carries what the client has: only items the document lacks are edits.
+        if (type === 1 && !addsItems(document, payload)) return;
         refusalsSent.set(connection, key);
         connection.sendStateless(
           JSON.stringify({ type: 'writeRefused', ...why } satisfies WriteRefusedMessage),
