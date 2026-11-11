@@ -2034,8 +2034,14 @@ span.plan-pill {
   align-items: center;
   overflow-x: auto;
 }
-.plan-main--phone .plan-walls__palette .plan-props__cap {
+.plan-main--phone .plan-walls__palette .plan-props__cap,
+.plan-main--phone .plan-walls__palette .plan-tool span {
   display: none;
+}
+.plan-main--phone .plan-walls__palette .plan-tool {
+  flex: none;
+  min-width: 44px;
+  height: 44px;
 }
 .plan-main--phone .plan-walls__palette .ink-btn {
   flex: none;
@@ -2209,4 +2215,24 @@ span.plan-pill {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Where the drawing is narrow, the bar of tools moves left of the zoom and the scale bar above. */
+.plan-canvas {
+  container-type: inline-size;
+}
+@container (max-width: 1000px) {
+  .plan-canvas__tools {
+    left: 16px;
+    translate: none;
+  }
+  .plan-canvas__tools .plan-tool span {
+    display: none;
+  }
+  .plan-canvas__scalebar {
+    bottom: 72px;
+  }
+}
+.plan-background .ink-slider {
+  width: 100%;
 }

@@ -569,6 +569,7 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
           key={kind}
           type="button"
           className="plan-tool"
+          aria-label={t(`board.plan.walls.kinds.${kind}`)}
           aria-pressed={tool === 'openings' && ed.openingKind === kind}
           onClick={() => {
             finish();
