@@ -385,9 +385,9 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     );
     // Without access to the project, nothing is made or told; the owner's upload stays theirs.
     expect((await create('stranger')).statusCode).toBe(404);
-    expect((await call('stranger', 'HEAD', `/api/v1/uploads/${id}`, undefined, tus)).statusCode).toBe(
-      404,
-    );
+    expect(
+      (await call('stranger', 'HEAD', `/api/v1/uploads/${id}`, undefined, tus)).statusCode,
+    ).toBe(404);
 
     // The same id for another file, a bad id, a refusal by tus after the asset was made.
     expect((await create('owner', { 'upload-length': '101' })).statusCode).toBe(409);
