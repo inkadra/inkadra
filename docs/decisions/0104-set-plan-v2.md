@@ -51,7 +51,12 @@ library tabs are now the six categories (Furniture and Exteriors became Set and 
 
 **Layers** stay the five of version 15. Lights, modifiers, grip, stands and power are on Lights;
 camera, movement, video and sound on Camera; people and the crew on Actors; the set, furniture and
-exteriors on Set. Walls and openings are on Set.
+exteriors on Set. Walls and openings are on Set. Set is the base plan's, shared by all its setups
+(decision 0062): moving an item of a setup to Set moves it into the base, in one transaction and
+one undo step (`transferPlanItems`), so a setup keeps nothing of its own on Set. An item a setup
+still holds on Set (written by an older build, or a layer change racing that move) is shown, not
+migrated: `variantView` draws it over the base's Set, everywhere the setup is drawn, and moving it
+to Set again moves it into the base. Showing it changes nothing stored behind anyone's back.
 
 **Fills are opaque.** A glyph part is filled with the icon's colour mixed into the paper (the
 card's `surface-1`, on paper the printed theme's), so what is under it is hidden. The parts the
@@ -110,7 +115,11 @@ icon), `kelvin`, `height` (m), `tilt`, `circuit`; modifiers are attachments. Cam
 as before. Plans: `locationId`, `circuits` (name and breaker amps, up to 30), `voltage` (120 or
 230, 230 when omitted), `background` (an uploaded picture's id, `opacity`, `grey`) and `north`
 (degrees clockwise from the top). `power`, `beam`, `intensity`, `lens`, `steps` and the rest keep
-working.
+working. Circuits are Y.Maps in a Y.Array, as walls are, created with the card and edited one
+circuit and one field at a time (`addPlanCircuit`, `updatePlanCircuits`, `removePlanCircuits`),
+so two people renaming two circuits both keep their change; a name is written when its field is
+left, one undo step. The list is read leniently and cut at 30, as walls are, since two people may
+each add one at once; a plain list, as the first builds of this record wrote it, is still read.
 
 **Power.** `watts` is the number the maths uses; without it, the `power` text of version 15 is
 read for one ("1,2K", "2 kW", "300 W", "650"), and a text that says no number counts as nothing.

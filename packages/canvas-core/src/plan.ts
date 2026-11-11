@@ -949,7 +949,10 @@ const onlySet = <T extends PlanItem>(items: readonly T[] | undefined) =>
 
 /**
  * What a variant shows: the Set layer of its base (walls and furniture shared by all the
- * variants) under its own lights, cameras, actors and notes (decision 0062).
+ * variants) under its own lights, cameras, actors and notes (decision 0062). An item of the
+ * variant itself on Set (written by an older build, or a layer change racing a move to the base)
+ * is shown too, so it is never invisible; moving it to Set again moves it into the base
+ * (`transferPlanItems`, decision 0104).
  */
 export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>>(
   plan: P,
@@ -968,9 +971,9 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
     scale: shared.scale,
     grid: shared.grid,
     rulers: shared.rulers,
-    strokes: [...onlySet(base.strokes), ...notSet(plan.strokes)],
-    shapes: [...onlySet(base.shapes), ...notSet(plan.shapes)],
-    icons: [...onlySet(base.icons), ...notSet(plan.icons)],
+    strokes: [...onlySet(base.strokes), ...(plan.strokes ?? [])],
+    shapes: [...onlySet(base.shapes), ...(plan.shapes ?? [])],
+    icons: [...onlySet(base.icons), ...(plan.icons ?? [])],
     // Walls and their openings are the Set: the base's (decision 0104).
     walls: base.walls,
     openings: base.openings,
@@ -1052,6 +1055,8 @@ export function addVariant(
     copy.set('strokes', Y.Array.from(strokes));
     copy.set('shapes', Y.Array.from(shapes));
     copy.set('icons', Y.Array.from(icons.map((i) => new Y.Map<unknown>(Object.entries(i)))));
+    // The setup's own circuits, added one by one (decision 0104).
+    copy.set('circuits', new Y.Array());
     roots(doc).elements.set(id, copy);
   }, opts.origin);
   return id;
@@ -1147,6 +1152,53 @@ export function updatePlanItems(
       });
     }
   }, origin);
+}
+
+/**
+ * Moves items from one plan's lists to another's in one transaction, one undo step: from a
+ * setup into its base when they go to the Set layer, which all the setups share (decision
+ * 0104). Each item is moved as it is stored, with `patch(item)` written over it (a field set to
+ * undefined is removed), and keeps its id, so measures and attachments that point at it still
+ * find it in the setup's view. An item the target has no room for stays where it was. Returns
+ * the ids moved.
+ */
+export function transferPlanItems(
+  doc: Y.Doc,
+  fromId: string,
+  toId: string,
+  ids: Iterable<string>,
+  patch: (item: PlanItem) => Partial<PlanItem>,
+  origin?: unknown,
+): string[] {
+  const moved: string[] = [];
+  const wanted = new Set(ids);
+  doc.transact(() => {
+    for (const kind of ['strokes', 'shapes', 'icons'] as const) {
+      const from = listOf(doc, fromId, kind);
+      const to = listOf(doc, toId, kind);
+      if (!from || !to) return;
+      // In the plan's order, so a base still comes before what is attached to it.
+      const going = from
+        .toArray()
+        .map((value, index) => ({ index, value }))
+        .filter(({ value }) => wanted.has(idOf(value) as string))
+        .slice(0, Math.max(0, LIMITS[kind] - to.length))
+        // Read before the delete: a removed Y.Map no longer reads.
+        .map(({ index, value }) => ({
+          index,
+          stored: (value instanceof Y.Map ? value.toJSON() : value) as PlanItem,
+        }));
+      for (const { index } of [...going].reverse()) from.delete(index, 1);
+      for (const { stored } of going) {
+        const next: Record<string, unknown> = { ...stored, ...patch(stored) };
+        for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
+        if (kind === 'icons') to.push([new Y.Map<unknown>(Object.entries(next))]);
+        else to.push([next]);
+        moved.push(stored.id);
+      }
+    }
+  }, origin);
+  return moved;
 }
 
 /**

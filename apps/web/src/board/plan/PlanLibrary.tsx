@@ -1,53 +1,41 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import {
-  groupOf,
-  PLAN_CATEGORIES,
-  PLAN_NOTE_TOOLS,
-  type PlanCategory,
-  type PlanNoteTool,
-} from '@inkadra/canvas-core';
+import { PLAN_CATEGORIES, PLAN_NOTE_TOOLS } from '@inkadra/canvas-core';
 import { PLAN_ICON_KINDS, type PlanIconKind } from '@inkadra/doc-schema';
 import { Icon, IconButton } from '@inkadra/ui';
-import type { TFunction } from 'i18next';
-import { type PointerEvent, useId, useMemo, useRef, useState } from 'react';
+import { type PointerEvent, type ReactNode, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { getPreferences, updatePreferences, usePreferences } from '../../lib/preferences.ts';
-import { moveTabFocus } from '../../lib/tabs.ts';
+import {
+  type CategoryId,
+  fold,
+  LIBRARY_CATEGORIES,
+  type LibraryItem,
+  type ProjectKitEntry,
+  projectKitDetail,
+  searchLibrary,
+  tileName,
+} from './library.ts';
 import { PlanGlyph } from './PlanDrawing.tsx';
 
-/** What a library tile places: a set icon, or an annotation tool (arrow, text, measure, zone). */
-export type LibraryItem = PlanIconKind | PlanNoteTool;
-type CategoryId = PlanCategory['id'] | 'notes';
+export type { LibraryItem } from './library.ts';
 
 const KNOWN = new Set<string>([...PLAN_ICON_KINDS, ...PLAN_NOTE_TOOLS]);
-const NOTE_TOOLS = new Set<string>(PLAN_NOTE_TOOLS);
 /** How many recent icons the library keeps for a person (decision 0062). */
 const RECENTS = 8;
 /** A pointer that moves less than this (screen pixels) from a tile taps it. */
 const TAP_SLOP = 6;
-
-const fold = (s: string) =>
-  s
-    .toLocaleLowerCase()
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '');
-
-/** The words an item is found by: its name, its synonyms, its category and group. */
-function words(t: TFunction, item: LibraryItem, category: string): string {
-  return fold(
-    [
-      t(`board.plan.icons.${item}`),
-      t(`board.plan.synonyms.${item}`, { defaultValue: '' }),
-      t(`board.plan.categories.${category}`),
-      NOTE_TOOLS.has(item) ? '' : t(`board.plan.groups.${groupOf(item as PlanIconKind).id}`),
-    ].join(' '),
-  );
-}
-
-const CATEGORIES: Array<{ id: CategoryId; items: readonly LibraryItem[] }> = [
-  ...PLAN_CATEGORIES.map((c) => ({ id: c.id as CategoryId, items: c.kinds })),
-  { id: 'notes', items: PLAN_NOTE_TOOLS },
-];
+/** The glyph each category shows on the rail, as on the mockup. */
+const RAIL_GLYPH: Record<CategoryId, LibraryItem> = {
+  lights: 'fresnel',
+  grip: 'softbox',
+  camera: 'camera',
+  people: 'actor',
+  set: 'sofa',
+  av: 'monitor',
+  notes: 'arrow',
+};
+type Shelf = CategoryId | 'mine';
 
 let pendingRecents: LibraryItem[] = [];
 let recentsTimer: ReturnType<typeof setTimeout> | undefined;
@@ -68,47 +56,73 @@ export function rememberRecent(item: LibraryItem) {
   }, 400);
 }
 
+/** What is being dragged out of the library: a type, or an entry of the project kit. */
+export type Dragged = { item: LibraryItem } | { kit: ProjectKitEntry };
+type At = { clientX: number; clientY: number };
+
+/** The name of a match with what was searched marked. */
+function Marked({ text, query }: { text: string; query: string }) {
+  const at = fold(text).indexOf(fold(query));
+  if (!query || at < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, at)}
+      <mark>{text.slice(at, at + query.length)}</mark>
+      {text.slice(at + query.length)}
+    </>
+  );
+}
+
 /**
- * The icon library of a set plan (#335): a search that knows synonyms ("kino" finds the tube),
- * the categories as chips, and the person's recent and starred icons. A tap arms an icon for the
- * next tap on the plan; a drag drops it where it lands. It floats over the right of the plan, on
- * a phone as a sheet from the bottom.
+ * The library of a set plan (decision 0104): docked on the left on a wide screen, with the rail
+ * of categories, the groups of the chosen one, a search over names, other names and categories,
+ * the person's favourites and recent icons and the project kit; a sheet from the bottom on a
+ * phone, with the categories as chips. A click arms a type for a click on the plan (on a phone a
+ * tap places it in the middle); a drag drops it where it lands; Enter on the search places the
+ * first match in the middle of the view.
  */
 export function PlanLibrary({
   armed,
   phone,
+  kit,
+  sensor,
   onArm,
-  onDrop,
-  onPlaceFirst,
+  onPlace,
+  onDrag,
   onClose,
 }: {
   armed: LibraryItem | null;
   phone: boolean;
+  kit: readonly ProjectKitEntry[];
+  /** The name of the plan's sensor, for the cameras of the kit. */
+  sensor: string;
   onArm: (item: LibraryItem) => void;
-  /** A tile dragged and let go at these client coordinates. */
-  onDrop: (item: LibraryItem, at: { clientX: number; clientY: number }) => void;
-  /** Enter in the search: the first match, at the middle of the view. */
-  onPlaceFirst: (item: LibraryItem) => void;
-  onClose: () => void;
+  /** Places what was picked or dragged: at these client coordinates, or in the middle. */
+  onPlace: (what: Dragged, at: At | null, alt?: boolean) => void;
+  /** A drag over the plan, to show where it lands; null when it ends. */
+  onDrag?: (what: Dragged | null, at?: At) => void;
+  onClose?: () => void;
 }) {
   const { t } = useTranslation();
   const prefs = usePreferences();
   const [query, setQuery] = useState('');
-  const [tab, setTab] = useState<CategoryId | 'recent' | 'starred'>('lights');
-  const tabsId = useId();
+  const [shelf, setShelf] = useState<Shelf>('lights');
   const [tall, setTall] = useState(false);
-  const drag = useRef<{ item: LibraryItem; x: number; y: number; moved: boolean } | null>(null);
+  const [ghost, setGhost] = useState<{ what: Dragged; x: number; y: number } | null>(null);
+  const drag = useRef<{ what: Dragged; x: number; y: number; moved: boolean } | null>(null);
   const known = (list: readonly string[]) => list.filter((k) => KNOWN.has(k)) as LibraryItem[];
   const recents = known(prefs.planRecents);
   const favourites = known(prefs.planFavorites);
   const starred = new Set(favourites);
-
-  const index = useMemo(
-    () => CATEGORIES.flatMap((c) => c.items.map((item) => ({ item, words: words(t, item, c.id) }))),
-    [t],
-  );
-  const q = fold(query.trim());
-  const found = q ? index.filter((e) => e.words.includes(q)).map((e) => e.item) : null;
+  const hits = useMemo(() => searchLibrary(t, query), [t, query]);
+  const kitHits = query.trim()
+    ? kit.filter((k) =>
+        fold(`${k.icon.label ?? ''} ${projectKitDetail(k, t, sensor)}`).includes(
+          fold(query.trim()),
+        ),
+      )
+    : [];
+  const searching = query.trim() !== '';
 
   const toggleStar = (item: LibraryItem) => {
     // From the stored list, so stars on kinds a newer build added are kept.
@@ -117,40 +131,58 @@ export function PlanLibrary({
     void updatePreferences({ planFavorites: next }).catch(() => {});
   };
 
-  function down(e: PointerEvent<HTMLButtonElement>, item: LibraryItem) {
-    onArm(item);
-    e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { item, x: e.clientX, y: e.clientY, moved: false };
-  }
-  function move(e: PointerEvent<HTMLButtonElement>) {
-    const d = drag.current;
-    if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > TAP_SLOP) d.moved = true;
-  }
-  function up(e: PointerEvent<HTMLButtonElement>) {
-    const d = drag.current;
-    drag.current = null;
-    if (d?.moved) onDrop(d.item, e);
-  }
+  const handlers = (what: Dragged, tap: () => void) => ({
+    onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
+      if (e.button !== 0) return;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      drag.current = { what, x: e.clientX, y: e.clientY, moved: false };
+    },
+    onPointerMove: (e: PointerEvent<HTMLButtonElement>) => {
+      const d = drag.current;
+      if (!d) return;
+      if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > TAP_SLOP) d.moved = true;
+      if (d.moved) {
+        setGhost({ what, x: e.clientX, y: e.clientY });
+        onDrag?.(what, e);
+      }
+    },
+    onPointerUp: (e: PointerEvent<HTMLButtonElement>) => {
+      const d = drag.current;
+      drag.current = null;
+      setGhost(null);
+      onDrag?.(null);
+      if (!d) return;
+      if (d.moved) onPlace(d.what, e, e.altKey);
+      else tap();
+    },
+    onPointerCancel: () => {
+      drag.current = null;
+      setGhost(null);
+      onDrag?.(null);
+    },
+    // Keyboard: Enter or Space arms; again on the armed tile places it in the middle.
+    onClick: (e: { detail: number }) => {
+      if (e.detail === 0) tap();
+    },
+  });
+  /** A tap: on a phone it places in the middle; elsewhere it arms, and again it places. */
+  const tapItem = (item: LibraryItem) => () => {
+    if (phone || armed === item) onPlace({ item }, null);
+    else onArm(item);
+  };
 
   const tile = (item: LibraryItem, key: string = item) => (
     <div key={key} className="plan-lib__cell">
       <button
         type="button"
         className="plan-lib__tile"
+        // The plain name: the label below carries soft hyphens to fit the tile.
+        aria-label={t(`board.plan.icons.${item}`)}
         aria-pressed={armed === item}
-        onPointerDown={(e) => down(e, item)}
-        onPointerMove={move}
-        onPointerUp={up}
-        // Keyboard: Enter or Space arms the tile; again on the armed tile places it in the
-        // middle of the plan.
-        onClick={(e) => {
-          if (e.detail !== 0) return;
-          if (armed === item) onPlaceFirst(item);
-          else onArm(item);
-        }}
+        {...handlers({ item }, tapItem(item))}
       >
-        <PlanGlyph kind={item} size={phone ? 24 : 26} />
-        <span>{t(`board.plan.icons.${item}`)}</span>
+        <PlanGlyph kind={item} size={phone ? 30 : 30} />
+        <span aria-hidden="true">{tileName(t(`board.plan.icons.${item}`))}</span>
       </button>
       {!phone && (
         <button
@@ -168,20 +200,135 @@ export function PlanLibrary({
   const grid = (items: readonly LibraryItem[], prefix = '') => (
     <div className="plan-lib__grid">{items.map((item) => tile(item, `${prefix}${item}`))}</div>
   );
+  const kitRow = (entry: ProjectKitEntry, marked = '') => (
+    <button
+      key={entry.key}
+      type="button"
+      className="plan-lib__item"
+      {...handlers({ kit: entry }, () => onPlace({ kit: entry }, null))}
+    >
+      <PlanGlyph kind={entry.icon.kind} size={26} />
+      <span className="plan-lib__text">
+        <span>
+          <Marked
+            text={entry.icon.label || t(`board.plan.icons.${entry.icon.kind}`)}
+            query={marked}
+          />
+        </span>
+        <small>
+          <Marked text={projectKitDetail(entry, t, sensor)} query={marked} />
+        </small>
+      </span>
+    </button>
+  );
 
+  const mine = (
+    <>
+      <span className="plan-lib__cap">{t('board.plan.starred')}</span>
+      {favourites.length ? (
+        grid(favourites, 's')
+      ) : (
+        <p className="plan-lib__hint">{t('board.plan.lib.noFavourites')}</p>
+      )}
+      <span className="plan-lib__cap">{t('board.plan.recent')}</span>
+      {recents.length ? (
+        grid(recents, 'r')
+      ) : (
+        <p className="plan-lib__hint">{t('board.plan.lib.noRecent')}</p>
+      )}
+      <div className="plan-lib__row">
+        <span className="plan-lib__cap">{t('board.plan.lib.projectKit')}</span>
+        <span className="plan-lib__count">{t('board.plan.lib.saved', { count: kit.length })}</span>
+      </div>
+      <div className="plan-lib__list">{kit.map((k) => kitRow(k))}</div>
+      <p className="plan-lib__hint">{t('board.plan.lib.kitHint')}</p>
+    </>
+  );
+  const category = LIBRARY_CATEGORIES.find((c) => c.id === shelf);
+  const groups =
+    shelf === 'notes'
+      ? [{ id: 'notes', kinds: PLAN_NOTE_TOOLS as readonly LibraryItem[] }]
+      : (PLAN_CATEGORIES.find((c) => c.id === shelf)?.groups.map((g) => ({
+          id: g.id as string,
+          kinds: g.kinds as readonly PlanIconKind[],
+        })) ?? []);
+  const shelfBody =
+    shelf === 'mine' ? (
+      mine
+    ) : (
+      <>
+        {!phone && (
+          <div className="plan-lib__row">
+            <b>{t(`board.plan.categories.${shelf}`)}</b>
+            <span className="plan-lib__count">
+              {t('board.plan.lib.types', { count: category?.items.length ?? 0 })}
+            </span>
+          </div>
+        )}
+        {groups.map((g) => (
+          <section key={g.id} className="plan-lib__group">
+            <span className="plan-lib__cap">
+              {shelf === 'notes'
+                ? t('board.plan.categories.notes')
+                : t(`board.plan.groups.${g.id}`)}
+            </span>
+            {grid(g.kinds, g.id)}
+          </section>
+        ))}
+      </>
+    );
+  const results = (
+    <>
+      <p className="plan-lib__hint" role="status">
+        {t('board.plan.lib.results', { count: hits.length })}
+        {kitHits.length > 0 && ` · ${t('board.plan.lib.kitResults', { count: kitHits.length })}`}
+      </p>
+      <div className="plan-lib__list">
+        {hits.map((h, i) => (
+          <button
+            key={h.item}
+            type="button"
+            className="plan-lib__item"
+            aria-pressed={armed === h.item}
+            {...handlers({ item: h.item }, tapItem(h.item))}
+          >
+            <PlanGlyph kind={h.item} size={26} />
+            <span className="plan-lib__text">
+              <span>
+                <Marked text={h.name} query={h.by === 'name' ? query.trim() : ''} />
+              </span>
+              <small>
+                <Marked text={h.detail} query={h.by === 'name' ? '' : query.trim()} />
+              </small>
+            </span>
+            {i === 0 && !phone && <kbd>Enter</kbd>}
+          </button>
+        ))}
+      </div>
+      {kitHits.length > 0 && (
+        <>
+          <span className="plan-lib__cap">{t('board.plan.lib.projectKit')}</span>
+          <div className="plan-lib__list">{kitHits.map((k) => kitRow(k, query.trim()))}</div>
+        </>
+      )}
+      <p className="plan-lib__hint">{t('board.plan.lib.searchHint')}</p>
+    </>
+  );
   const search = (
     <label className="plan-lib__search">
-      <Icon name="search" size={13} />
+      <Icon name="search" size={15} />
       <input
         type="search"
-        placeholder={t('board.plan.search')}
-        aria-label={t('board.plan.search')}
+        placeholder={t('board.plan.lib.searchAll', {
+          total: PLAN_CATEGORIES.reduce((n, c) => n + c.kinds.length, 0),
+        })}
+        aria-label={t('board.plan.lib.searchLabel')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && found?.[0]) {
+          if (e.key === 'Enter' && hits[0]) {
             e.preventDefault();
-            onPlaceFirst(found[0]);
+            onPlace({ item: hits[0].item }, null);
           } else if (e.key === 'Escape' && query) {
             e.stopPropagation();
             setQuery('');
@@ -191,95 +338,96 @@ export function PlanLibrary({
       {!phone && !query && <kbd>/</kbd>}
     </label>
   );
+  const shelves: Shelf[] = ['mine', ...LIBRARY_CATEGORIES.map((c) => c.id)];
+  const shelfName = (s: Shelf) =>
+    s === 'mine' ? t('board.plan.lib.mine') : t(`board.plan.categories.${s}`);
+  const ghostView =
+    ghost &&
+    createPortal(
+      <div className="plan-lib__ghost" style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">
+        <PlanGlyph
+          kind={'item' in ghost.what ? ghost.what.item : ghost.what.kit.icon.kind}
+          size={36}
+        />
+      </div>,
+      document.body,
+    );
 
-  const list =
-    found ??
-    (tab === 'recent'
-      ? recents
-      : tab === 'starred'
-        ? favourites
-        : (CATEGORIES.find((c) => c.id === tab)?.items ?? []));
-  return (
-    <section
-      className={`plan-lib ${phone ? 'plan-lib--sheet' : 'plan-lib--panel'} ink-motion-rise${tall ? ' is-tall' : ''}`}
-      aria-label={t('board.plan.library')}
-    >
-      {phone && (
+  let body: ReactNode;
+  if (phone)
+    body = (
+      <section
+        className={`plan-lib plan-lib--sheet ink-motion-rise${tall ? ' is-tall' : ''}`}
+        aria-label={t('board.plan.library')}
+        data-tour="plan-library"
+      >
         <button
           type="button"
           className="plan-lib__handle"
           aria-label={t(tall ? 'board.plan.sheetHalf' : 'board.plan.sheetFull')}
           onClick={() => setTall((v) => !v)}
         />
-      )}
-      <div className="plan-lib__head">
-        <b>{t('board.plan.library')}</b>
-        <IconButton icon="close" label={t('board.plan.closeLibrary')} onClick={onClose} />
-      </div>
-      {search}
-      {!found && (
-        <div
-          className="plan-lib__tabs"
-          role="tablist"
-          aria-label={t('board.plan.categoryTabs')}
-          onKeyDown={moveTabFocus}
-        >
-          {CATEGORIES.map((c) => (
+        <div className="plan-lib__top">
+          {search}
+          {onClose && (
+            <IconButton icon="close" label={t('board.plan.closeLibrary')} onClick={onClose} />
+          )}
+        </div>
+        {!searching && (
+          <fieldset className="plan-lib__chips" aria-label={t('board.plan.categoryTabs')}>
+            {shelves.map((s) => (
+              <button key={s} type="button" aria-pressed={shelf === s} onClick={() => setShelf(s)}>
+                {s === 'mine' ? t('board.plan.starred') : t(`board.plan.tabs.${s}`)}
+              </button>
+            ))}
+          </fieldset>
+        )}
+        <div className="plan-lib__body">
+          {searching ? results : shelfBody}
+          {!searching && <p className="plan-lib__hint">{t('board.plan.lib.tapHint')}</p>}
+        </div>
+      </section>
+    );
+  else
+    body = (
+      <aside
+        className="plan-lib plan-lib--dock"
+        aria-label={t('board.plan.library')}
+        data-tour="plan-library"
+      >
+        <nav className="plan-lib__rail" aria-label={t('board.plan.categoryTabs')}>
+          {shelves.map((s) => (
             <button
-              key={c.id}
+              key={s}
               type="button"
-              role="tab"
-              id={`${tabsId}-${c.id}`}
-              aria-selected={tab === c.id}
-              aria-controls={`${tabsId}-panel`}
-              tabIndex={tab === c.id ? 0 : -1}
-              onClick={() => setTab(c.id)}
+              className="plan-lib__cat"
+              aria-pressed={!searching && shelf === s}
+              aria-label={shelfName(s)}
+              data-ink-tooltip={shelfName(s)}
+              data-tooltip-side="right"
+              onClick={() => {
+                setQuery('');
+                setShelf(s);
+              }}
             >
-              {t(`board.plan.tabs.${c.id}`)}
+              {s === 'mine' ? (
+                <Icon name="star" size={18} />
+              ) : (
+                <PlanGlyph kind={RAIL_GLYPH[s]} size={26} />
+              )}
             </button>
           ))}
-          <button
-            type="button"
-            role="tab"
-            id={`${tabsId}-recent`}
-            aria-selected={tab === 'recent'}
-            aria-controls={`${tabsId}-panel`}
-            tabIndex={tab === 'recent' ? 0 : -1}
-            aria-label={t('board.plan.recent')}
-            data-ink-tooltip={t('board.plan.recent')}
-            onClick={() => setTab('recent')}
-          >
-            <Icon name="clock" size={13} />
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id={`${tabsId}-starred`}
-            aria-selected={tab === 'starred'}
-            aria-controls={`${tabsId}-panel`}
-            tabIndex={tab === 'starred' ? 0 : -1}
-            aria-label={t('board.plan.starred')}
-            data-ink-tooltip={t('board.plan.starred')}
-            onClick={() => setTab('starred')}
-          >
-            <Icon name="star" size={13} />
-          </button>
+        </nav>
+        <div className="plan-lib__body">
+          {search}
+          {searching ? results : shelfBody}
         </div>
-      )}
-      <div
-        className="plan-lib__body"
-        // Search results replace the tabs, and then the list is no tab's panel.
-        {...(found
-          ? {}
-          : { role: 'tabpanel', id: `${tabsId}-panel`, 'aria-labelledby': `${tabsId}-${tab}` })}
-      >
-        {grid(list)}
-        {found?.length === 0 && <p className="plan-lib__hint">{t('board.plan.noMatch')}</p>}
-        {found && found.length > 0 && (
-          <p className="plan-lib__hint">{t('board.plan.searchHint')}</p>
-        )}
-        {!found && !phone && <p className="plan-lib__hint">{t('board.plan.shiftHint')}</p>}
-      </div>
-    </section>
+      </aside>
+    );
+  return (
+    <>
+      {body}
+      {ghostView}
+    </>
   );
 }

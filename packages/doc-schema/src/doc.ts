@@ -5,6 +5,7 @@ import {
   AspectRatio,
   Element,
   type ElementType,
+  MAX_PLAN_CIRCUITS,
   MAX_PLAN_ICONS,
   MAX_PLAN_OPENINGS,
   MAX_PLAN_WALLS,
@@ -304,6 +305,7 @@ export function addElement(doc: Y.Doc, element: Element): Y.Map<unknown> {
       if (!parsed.icons) map.set('icons', new Y.Array());
       if (!parsed.walls) map.set('walls', new Y.Array());
       if (!parsed.openings) map.set('openings', new Y.Array());
+      if (!parsed.circuits) map.set('circuits', new Y.Array());
     }
     roots(doc).elements.set(parsed.id, map);
   });
@@ -323,7 +325,7 @@ export function tableRowMap(row: TableRow): Y.Map<unknown> {
 }
 
 /**
- * To-do items, table columns, plan icons, walls and openings are Y.Maps in a Y.Array so two
+ * To-do items, table columns, plan icons, walls, openings and circuits are Y.Maps in a Y.Array so two
  * people can edit different items, or different fields of one (decisions 0062, 0104); table rows
  * too, with their cells in a nested Y.Map; pen strokes are plain objects in a Y.Array (so are
  * frame shapes) so two people can draw on the same frame. Everything else is a plain value that
@@ -335,7 +337,8 @@ function toYValue(key: string, value: unknown): unknown {
     key === 'columns' ||
     key === 'icons' ||
     key === 'walls' ||
-    key === 'openings'
+    key === 'openings' ||
+    key === 'circuits'
   )
     return Y.Array.from((value as object[]).map(toYMap));
   if (key === 'rows') return Y.Array.from((value as TableRow[]).map(tableRowMap));
@@ -345,7 +348,8 @@ function toYValue(key: string, value: unknown): unknown {
 
 /**
  * Lists as toYValue stores them, with the most items any element allows in them. `plainToo`:
- * items may also be plain objects, as walls and openings were first written (decision 0104).
+ * items may also be plain objects, as walls, openings and circuits were first written (decision
+ * 0104).
  */
 const STORED_LISTS: Record<string, { maps: boolean; max: number; plainToo?: true }> = {
   items: { maps: true, max: Number.POSITIVE_INFINITY },
@@ -356,6 +360,7 @@ const STORED_LISTS: Record<string, { maps: boolean; max: number; plainToo?: true
   shapes: { maps: false, max: MAX_SHAPES },
   walls: { maps: true, max: MAX_PLAN_WALLS, plainToo: true },
   openings: { maps: true, max: MAX_PLAN_OPENINGS, plainToo: true },
+  circuits: { maps: true, max: MAX_PLAN_CIRCUITS, plainToo: true },
 };
 const ELEMENT_KEYS = new Map<unknown, Set<string>>(
   Element.options.map((option) => [option.shape.type.value, new Set(Object.keys(option.shape))]),

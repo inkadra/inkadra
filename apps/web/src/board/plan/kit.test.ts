@@ -6,6 +6,8 @@ import { kitList, measureValue } from './kit.ts';
 import { measureText } from './PlanDrawing.tsx';
 
 const t = ((key: string) => key.split('.').at(-1)) as unknown as TFunction;
+/** The name and count of each line, what these tests are about. */
+const lines = (kit: ReturnType<typeof kitList>) => kit.map(({ name, count }) => ({ name, count }));
 const icon = (kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
   id: `${kind}AAAAAAAAAAAA`.slice(0, 13),
   kind,
@@ -28,16 +30,18 @@ it('counts the kit of a plan by type and power, and nothing else', () => {
       icon('dolly'),
     ],
   };
-  expect(kitList(plan, t)).toEqual([
+  expect(lines(kitList(plan, t))).toEqual([
     { name: 'fresnel 1,2K', count: 1 },
     { name: 'cstand', count: 3 },
     { name: 'fresnel 650', count: 1 },
     { name: 'dolly', count: 1 },
   ]);
-  expect(kitList({ ...plan, hiddenLayers: ['lights'] }, t)).toEqual([{ name: 'dolly', count: 1 }]);
+  expect(lines(kitList({ ...plan, hiddenLayers: ['lights'] }, t))).toEqual([
+    { name: 'dolly', count: 1 },
+  ]);
   // With a scale, a track says how long it is.
   const track = icon('track', { w: 300, h: 40 });
-  expect(kitList({ icons: [track], scale: 100 }, t, 'it')).toEqual([
+  expect(lines(kitList({ icons: [track], scale: 100 }, t, 'it'))).toEqual([
     { name: 'track 3 m', count: 1 },
   ]);
 });
@@ -78,7 +82,7 @@ it('counts watts, modifiers, gels and the stands named on lights (decision 0104)
       icon('crew'),
     ],
   };
-  expect(kitList(plan, t)).toEqual([
+  expect(lines(kitList(plan, t))).toEqual([
     { name: 'cob 300 W', count: 1 },
     { name: 'softbox', count: 1 },
     { name: 'led', count: 1 },
@@ -87,5 +91,24 @@ it('counts watts, modifiers, gels and the stands named on lights (decision 0104)
     { name: 'gel: CTO ½', count: 2 },
     { name: 'combo', count: 1 },
     { name: 'tripod', count: 1 },
+  ]);
+});
+
+it('sorts each line into its section, with the watts of a light each', () => {
+  const kit = kitList(
+    {
+      icons: [
+        icon('fresnel', { watts: 2000 }),
+        icon('flag'),
+        icon('camera', { support: 'tripod' }),
+      ],
+    },
+    t,
+  );
+  expect(kit).toEqual([
+    { name: 'fresnel 2000 W', count: 1, group: 'lights', watts: 2000 },
+    { name: 'flag', count: 1, group: 'grip' },
+    { name: 'camera', count: 1, group: 'camera' },
+    { name: 'tripod', count: 1, group: 'camera' },
   ]);
 });
