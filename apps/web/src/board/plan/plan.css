@@ -2288,6 +2288,8 @@ span.plan-pill {
   background: var(--ink-bg-canvas);
 }
 .plan-main--phone .plan-canvas__scroll {
+  /* On top, as on the mockup: the selection's sheet opening below never moves the plan. */
+  place-items: start center;
   padding: 8px 8px 76px;
 }
 .plan-top__kitpill {

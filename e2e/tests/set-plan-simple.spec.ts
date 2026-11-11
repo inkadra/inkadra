@@ -335,7 +335,8 @@ for (const theme of ['dark', 'light'] as const) {
     await note.getByRole('button', { name: 'Mostra 1 · Base in trasparenza' }).click();
     await expect(setup.locator('.plan-canvas__ghost')).toHaveCount(1);
     await page.keyboard.press('Escape');
-    await shot('setup');
+    await settle(page, setup);
+    await page.screenshot({ path: join(out, `1280-${theme}-setup.png`) });
     await setup.locator('.plan-top').getByRole('button', { name: 'Fatto' }).click();
     await expect(setup).toHaveCount(0);
   });

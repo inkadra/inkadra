@@ -616,11 +616,11 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(selection).toBeVisible();
       await expect(selection.getByRole('group', { name: 'Ottica' })).toBeVisible();
       await selection.getByRole('button', { name: 'Tutte le proprietà' }).tap();
-      const dimension = selection.getByLabel('Dimensione');
-      await expect(dimension).toHaveValue('100');
-      await dimension.fill('120');
-      await dimension.press('Enter');
-      await expect(dimension).toHaveValue('120');
+      const height = selection.getByRole('textbox', { name: 'Altezza' });
+      await expect(height).toHaveValue('0');
+      await height.fill('1,2');
+      await height.press('Enter');
+      await expect(height).toHaveValue('1,2');
       // The tools keep their names and are not covered by the sheet.
       const tools = full.getByRole('navigation', { name: 'Strumenti della pianta' });
       for (const name of ['Seleziona', 'Disegna', 'Misura', 'Icone da set']) {
