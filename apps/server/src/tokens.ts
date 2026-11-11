@@ -3,9 +3,9 @@ import { and, eq, gt, isNull, lt, or, type SQL } from 'drizzle-orm';
 import type { Actor } from './access.ts';
 import type { Database } from './db/client.ts';
 import { personalToken, revokedToken, user } from './db/schema.ts';
+import { newSecret, sha256 } from './secrets.ts';
 
 type RevokedToken = typeof revokedToken.$inferSelect;
-import { newSecret, sha256 } from './secrets.ts';
 
 export const TOKEN_PREFIX = 'ink_';
 
@@ -107,10 +107,11 @@ export async function revokeTokens(
   where: SQL | undefined,
   reason: RevokedToken['reason'],
 ) {
-  const removed = await db
-    .delete(personalToken)
-    .where(where)
-    .returning({ id: personalToken.id, userId: personalToken.userId, hash: personalToken.tokenHash });
+  const removed = await db.delete(personalToken).where(where).returning({
+    id: personalToken.id,
+    userId: personalToken.userId,
+    hash: personalToken.tokenHash,
+  });
   if (removed.length > 0)
     await db
       .insert(revokedToken)

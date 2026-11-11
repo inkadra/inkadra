@@ -33,9 +33,9 @@ describe.skipIf(!url)('recognizable invalid tokens', () => {
     await revokeTokens(db, eq(personalToken.id, issued.row.id), 'token_revoked');
     // The token row is gone, as before: code that knows nothing of revoked_token (an older
     // server image after a rollback) cannot authenticate it.
-    expect(await db.select().from(personalToken).where(eq(personalToken.id, issued.row.id))).toEqual(
-      [],
-    );
+    expect(
+      await db.select().from(personalToken).where(eq(personalToken.id, issued.row.id)),
+    ).toEqual([]);
     expect(await actorFromToken(db, issued.token)).toBeNull();
     expect(await invalidTokenReason(db, issued.token)).toBe('token_revoked');
     expect(await invalidTokenReason(db, `${issued.token}x`)).toBeUndefined();

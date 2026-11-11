@@ -93,9 +93,7 @@ export const InvalidTokenReason = z
       'expired, or its account was deactivated. Sign in again; do not retry the request.',
   });
 export type InvalidTokenReason = z.infer<typeof InvalidTokenReason>;
-export const InvalidToken = z
-  .object({ reason: InvalidTokenReason })
-  .openapi('InvalidToken');
+export const InvalidToken = z.object({ reason: InvalidTokenReason }).openapi('InvalidToken');
 export type InvalidToken = z.infer<typeof InvalidToken>;
 
 export { z };
