@@ -52,7 +52,7 @@ request need the same reading).
 
 **Background picture.** Picked with the upload of the cards' pictures (no new upload code), it is
 written when all its bytes have arrived, in one change, fitted in the middle of the drawing with
-its shape kept, 40 % opaque and grey, and the editor goes into *place the background*: the
+its shape kept, 40 % opaque and grey, and the editor goes into _place the background_: the
 picture framed with four corners, dragged to move, a corner to scale with its shape kept, one
 change per drag; **Done** locks it under everything again. Schema 23 (unreleased) gains its
 placement (`x`, `y`, `w`, `h` in view units, all four or none, none meaning stretched over the

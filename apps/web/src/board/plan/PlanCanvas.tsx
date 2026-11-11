@@ -1696,11 +1696,6 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       {walls.options}
       {walls.palette}
       {walls.lockedNote}
-      {phone && walls.active && (
-        <div className="plan-float plan-canvas__movebar plan-walls__phone-done">
-          {walls.doneButton}
-        </div>
-      )}
       {layerStatus.length > 0 && !phone && (
         <p className="plan-canvas__status">{layerStatus.join(' · ')}</p>
       )}

@@ -81,6 +81,10 @@ export function PlanEditor(props: PlanEditorProps) {
   useEffect(() => {
     if (!empty) setStarting(false);
   }, [empty]);
+  // So does picking a tool or a type to place: that is starting too.
+  useEffect(() => {
+    if (ed.tool !== 'select' || ed.armed) setStarting(false);
+  }, [ed.tool, ed.armed]);
   const scaleButton = useRef<HTMLButtonElement>(null);
   const family = props.family?.length ? props.family : [plan];
   const linked = scenesOfPlan(plan, new Map(props.scenes.map((s) => [s.id, s])));

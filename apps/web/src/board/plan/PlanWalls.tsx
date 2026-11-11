@@ -361,7 +361,7 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
     ed.setWallPreview(null);
   };
   /** Escape: the typed length first, then the wall being drawn. True when it closed something. */
-  const escape = (): boolean => {
+  const onEscape = (): boolean => {
     if (typed) setTyped('');
     else if (draft) finish();
     else return false;
@@ -552,6 +552,11 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
       />
     </div>
   );
+  const doneButton = (
+    <Button variant="primary" onClick={done}>
+      {t('board.plan.walls.done')}
+    </Button>
+  );
   const palette = active && (
     <div
       className="plan-float plan-walls__palette"
@@ -575,6 +580,8 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
           <span>{t(`board.plan.walls.kinds.${kind}`)}</span>
         </button>
       ))}
+      {/* On a phone the bar of the selection is gone: Done ends here. */}
+      {ed.phone && doneButton}
     </div>
   );
   const lockedNote = active && (ed.setLocked || setHidden) && (
@@ -582,18 +589,13 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
       {t(ed.setLocked ? 'board.plan.walls.locked' : 'board.plan.walls.hidden')}
     </p>
   );
-  const doneButton = (
-    <Button variant="primary" onClick={done}>
-      {t('board.plan.walls.done')}
-    </Button>
-  );
   return {
     down,
     pick,
     move,
     up,
     cancel,
-    escape,
+    escape: onEscape,
     key,
     done,
     overlay,

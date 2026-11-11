@@ -105,7 +105,7 @@ export function PlanWallProperties({ ed }: { ed: Ed }) {
           ))}
         </fieldset>
         <div className="plan-props__grid">
-          <label className="plan-prop">
+          <div className="plan-prop">
             <span className="plan-prop__label">{t('board.plan.width')}</span>
             <NumberField
               value={Math.round(((span.to - span.from) / scale) * 100) / 100}
@@ -117,7 +117,7 @@ export function PlanWallProperties({ ed }: { ed: Ed }) {
               label={t('board.plan.walls.openingWidth')}
               onCommit={(v) => write({ width: Math.round(v * scale * 100) / 100 })}
             />
-          </label>
+          </div>
         </div>
         <div className="plan-props__actions">
           <Button

@@ -2017,24 +2017,29 @@ span.plan-pill {
   cursor: move;
 }
 .plan-main--phone .plan-walls__options {
-  top: 8px;
+  top: auto;
+  bottom: 128px;
   left: 8px;
   right: 8px;
   translate: none;
   max-width: none;
 }
+/* On a phone the plan is on top: the bars of the walls tools sit above the tools. */
 .plan-main--phone .plan-walls__palette {
-  top: 60px;
+  top: auto;
+  bottom: 76px;
   left: 8px;
   right: 8px;
   flex-direction: row;
+  align-items: center;
   overflow-x: auto;
 }
 .plan-main--phone .plan-walls__palette .plan-props__cap {
   display: none;
 }
-.plan-main--phone .plan-walls__phone-done {
-  bottom: 76px;
+.plan-main--phone .plan-walls__palette .ink-btn {
+  flex: none;
+  margin-left: auto;
 }
 @media (prefers-reduced-motion: no-preference) {
   .plan-walls__side {
@@ -2060,12 +2065,13 @@ span.plan-pill {
 }
 .plan-start.plan-sheet {
   top: auto;
-  bottom: 0;
+  /* Above the bar of tools, which stays at hand: picking a tool is starting too. */
+  bottom: calc(65px + env(safe-area-inset-bottom));
   left: 0;
   translate: none;
   width: 100%;
-  max-height: 86%;
-  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  max-height: calc(100% - 81px);
+  padding: 16px;
   border-radius: var(--ink-radius-lg) var(--ink-radius-lg) 0 0;
   box-shadow: var(--ink-shadow-menu);
 }
