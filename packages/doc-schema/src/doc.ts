@@ -314,14 +314,52 @@ const INVALID = Symbol('invalid');
  * or arrived. Callers must not mutate what they read, as with every other read.
  */
 const parsedItems = new WeakMap<z.ZodType, WeakMap<object, unknown>>();
-/** Parsed Y.Map items (table rows); changed rows compare content before reusing a parse. */
+/**
+ * Parsed Y.Map items (table rows); dirty rows compare content before reusing a parse. A row is
+ * dirty after a transaction changed it or a type inside it, and while it was last checked
+ * with a transaction pending: Yjs does not record changes to types created in the same
+ * transaction, so only a content compare after the transaction can trust such a parse.
+ */
 const parsedMaps = new WeakMap<
   Y.Map<unknown>,
   { item: z.ZodType; plain: Record<string, unknown>; data: unknown; dirty: boolean }
 >();
 const activeTransactions = new WeakMap<Y.Doc, Set<Y.Transaction>>();
 
-/** Include ancestors: a changed cell map invalidates its cached table row. */
+/**
+ * Transactions whose changes are not yet in the dirty flags: open, or cleaning up (Yjs clears
+ * _transaction before observers). Also the first transaction if its read installs the hooks.
+ */
+function pendingTransactions(doc: Y.Doc): Y.Transaction[] {
+  let active = activeTransactions.get(doc);
+  if (!active) {
+    const transactions = new Set<Y.Transaction>();
+    active = transactions;
+    activeTransactions.set(doc, transactions);
+    doc.on('beforeTransaction', (transaction) => transactions.add(transaction));
+    doc.on('afterAllTransactions', () => {
+      for (const transaction of transactions) invalidateMaps(transaction);
+      transactions.clear();
+    });
+  }
+  const pending = [...active];
+  if (doc._transaction && !active.has(doc._transaction)) pending.push(doc._transaction);
+  return pending;
+}
+
+/**
+ * Whether a pending transaction changed this type or one inside it (a row's cell map). Walks
+ * the row, not the transaction: a move of thousands of cards stays linear (decision 0100).
+ */
+function changedWithin(type: object, pending: Y.Transaction[]): boolean {
+  for (const transaction of pending) if (transaction.changed.has(type as never)) return true;
+  const children = type instanceof Y.Map ? type.values() : type instanceof Y.Array ? type : [];
+  for (const child of children)
+    if (child instanceof Y.AbstractType && changedWithin(child, pending)) return true;
+  return false;
+}
+
+/** Include ancestors: a changed cell map invalidates its cached table row. Once per transaction. */
 function changedTypes(transaction: Y.Transaction): Set<object> {
   const changed = new Set<object>();
   for (const type of transaction.changed.keys()) {
@@ -358,19 +396,20 @@ function sameContent(map: Y.Map<unknown>, plain: Record<string, unknown>): boole
   return size === Object.keys(plain).length;
 }
 
-function readItem(item: z.ZodType, value: unknown, changed?: ReadonlySet<object>): unknown {
+function readItem(item: z.ZodType, value: unknown): unknown {
   if (value instanceof Y.Map) {
     const cached = parsedMaps.get(value);
+    const pending = value.doc ? pendingTransactions(value.doc) : [];
     if (cached?.item === item) {
-      if (!cached.dirty && !changed?.has(value)) return cached.data;
+      if (!cached.dirty && !(pending.length && changedWithin(value, pending))) return cached.data;
       if (sameContent(value, cached.plain)) {
-        cached.dirty = false;
+        cached.dirty = pending.length > 0;
         return cached.data;
       }
     }
     const plain = value.toJSON();
     const data = parseItem(item, plain);
-    parsedMaps.set(value, { item, plain, data, dirty: false });
+    parsedMaps.set(value, { item, plain, data, dirty: pending.length > 0 });
     return data;
   }
   if (value instanceof Y.AbstractType) return parseItem(item, value.toJSON());
@@ -402,26 +441,6 @@ export function* readElementSteps(
   map: Y.Map<unknown>,
   cooperative = true,
 ): Generator<void, Element | null> {
-  const doc = map.doc;
-  let active = doc ? activeTransactions.get(doc) : undefined;
-  if (doc && !active) {
-    const transactions = new Set<Y.Transaction>();
-    active = transactions;
-    activeTransactions.set(doc, transactions);
-    doc.on('beforeTransaction', (transaction) => transactions.add(transaction));
-    doc.on('afterAllTransactions', () => {
-      for (const transaction of transactions) invalidateMaps(transaction);
-      transactions.clear();
-    });
-  }
-  // _transaction is cleared before observers. Keep all pending cleanups too, so reads in
-  // observers registered before our hooks cannot reuse a stale row. Also include the first
-  // transaction if this is the read that installs the lifecycle hooks.
-  const transactions = new Set(active);
-  if (doc?._transaction) transactions.add(doc._transaction);
-  const changed = transactions.size ? new Set<object>() : undefined;
-  for (const transaction of transactions)
-    for (const type of changedTypes(transaction)) changed?.add(type);
   const list = ITEM_LISTS.get(map.get('type') as string);
   let items: unknown[] | undefined;
   const plain: Record<string, unknown> = {};
@@ -431,7 +450,7 @@ export function* readElementSteps(
       if (!list.lenient && value.length > list.max) return null;
       items = [];
       for (const item of value.toArray()) {
-        const data = readItem(list.item, item, changed);
+        const data = readItem(list.item, item);
         if (data !== INVALID) items.push(data);
         else if (!list.lenient) return null;
         if (cooperative) yield;

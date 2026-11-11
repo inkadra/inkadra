@@ -129,6 +129,16 @@ it('follows strokes and rows as they change, bad items included', () => {
   Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote, Y.encodeStateVector(doc)));
   same(table);
   remote.destroy();
+  // Yjs does not record changes to a type created in the same transaction: a row added, read,
+  // then edited must not keep its first parse, during or after the transaction.
+  doc.transact(() => {
+    rows.push([tableRowMap({ id: `new${'0'.repeat(18)}`, cells: {} })]);
+    same(table);
+    (rows.get(rows.length - 1).get('cells') as Y.Map<string>).set('second', 'late');
+    same(table);
+  });
+  same(table);
+  rows.delete(rows.length - 1, 1);
   cells.set('col000000000000000000', 'due');
   check();
   cells.set('col000000000000000000', 'x'.repeat(MAX_TABLE_CELL + 1));

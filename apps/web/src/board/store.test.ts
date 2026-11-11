@@ -250,3 +250,71 @@ it('cancels hydration on destroy and rejects invalid budgets', async () => {
   expect(store.getSnapshot().byId.size).toBe(0);
   vi.useRealTimers();
 });
+
+/** Counts calls and visited entries on each transaction's `changed` map. */
+function countChangedReads(doc: Y.Doc) {
+  const count = { reads: 0 };
+  doc.on('beforeTransaction', (transaction: Y.Transaction) => {
+    const changed = transaction.changed;
+    const { has, get, forEach } = changed;
+    changed.has = (key) => {
+      count.reads++;
+      return has.call(changed, key);
+    };
+    changed.get = (key) => {
+      count.reads++;
+      return get.call(changed, key);
+    };
+    changed.forEach = (fn, thisArg) =>
+      forEach.call(changed, (value, key, map) => {
+        count.reads++;
+        fn.call(thisArg, value, key, map);
+      });
+    const loose = changed as unknown as Record<PropertyKey, () => Iterator<unknown>>;
+    for (const name of ['keys', 'values', 'entries', Symbol.iterator]) {
+      const original = loose[name]!;
+      loose[name] = function* () {
+        const it = original.call(changed);
+        for (let step = it.next(); !step.done; step = it.next()) {
+          count.reads++;
+          yield step.value;
+        }
+      };
+    }
+  });
+  return count;
+}
+
+it('reads a large remote move in time linear in the number of cards', () => {
+  const run = (n: number) => {
+    const doc = new Y.Doc();
+    const ids: string[] = [];
+    doc.transact(() => {
+      for (let i = 0; i < n; i++) {
+        const at = { x: i, y: 0 };
+        const el =
+          i % 2 === 0
+            ? createElement(doc, 'table', at, core.newTable(2, 2), opts)
+            : createElement(doc, 'note', at, {}, opts);
+        ids.push(el.id);
+      }
+    }, LOCAL);
+    const store = new BoardStore(doc);
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    remote.transact(() => {
+      for (const id of ids) roots(remote).elements.get(id)!.set('x', 5000);
+    });
+    const count = countChangedReads(doc);
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote, Y.encodeStateVector(doc)));
+    expect([...store.getSnapshot().byId.values()].every((el) => el.x === 5000)).toBe(true);
+    expect(store.getSnapshot().canvas).toEqual(core.canvasElements(listElements(doc)));
+    store.destroy();
+    remote.destroy();
+    return count.reads;
+  };
+  const small = run(250);
+  const large = run(2000);
+  // Linear: 8x the cards costs about 8x the reads. Quadratic would be about 64x.
+  expect(large / small).toBeLessThan(12);
+}, 60_000);
