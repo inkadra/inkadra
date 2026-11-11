@@ -317,8 +317,26 @@ const parsedItems = new WeakMap<z.ZodType, WeakMap<object, unknown>>();
 /** Parsed Y.Map items (table rows) with the content they had, compared on the next read. */
 const parsedMaps = new WeakMap<
   Y.Map<unknown>,
-  { item: z.ZodType; plain: Record<string, unknown>; data: unknown }
+  { item: z.ZodType; plain: Record<string, unknown>; data: unknown; dirty: boolean }
 >();
+const observedDocs = new WeakSet<Y.Doc>();
+
+/** Include ancestors: a changed cell map invalidates its cached table row. */
+function changedTypes(transaction: Y.Transaction): Set<object> {
+  const changed = new Set<object>();
+  for (const type of transaction.changed.keys()) {
+    for (let current: typeof type | null = type; current; current = current.parent)
+      changed.add(current);
+  }
+  return changed;
+}
+
+function invalidateMaps(transaction: Y.Transaction) {
+  for (const type of changedTypes(transaction)) {
+    const cached = parsedMaps.get(type as Y.Map<unknown>);
+    if (cached) cached.dirty = true;
+  }
+}
 
 function parseItem(item: z.ZodType, value: unknown): unknown {
   const result = item.safeParse(value);
@@ -340,13 +358,19 @@ function sameContent(map: Y.Map<unknown>, plain: Record<string, unknown>): boole
   return size === Object.keys(plain).length;
 }
 
-function readItem(item: z.ZodType, value: unknown): unknown {
+function readItem(item: z.ZodType, value: unknown, changed?: ReadonlySet<object>): unknown {
   if (value instanceof Y.Map) {
     const cached = parsedMaps.get(value);
-    if (cached?.item === item && sameContent(value, cached.plain)) return cached.data;
+    if (cached?.item === item) {
+      if (!cached.dirty && !changed?.has(value)) return cached.data;
+      if (sameContent(value, cached.plain)) {
+        cached.dirty = false;
+        return cached.data;
+      }
+    }
     const plain = value.toJSON();
     const data = parseItem(item, plain);
-    parsedMaps.set(value, { item, plain, data });
+    parsedMaps.set(value, { item, plain, data, dirty: false });
     return data;
   }
   if (value instanceof Y.AbstractType) return parseItem(item, value.toJSON());
@@ -378,6 +402,14 @@ export function* readElementSteps(
   map: Y.Map<unknown>,
   cooperative = true,
 ): Generator<void, Element | null> {
+  const doc = map.doc;
+  if (doc && !observedDocs.has(doc)) {
+    // Before any deep observer reads, including observers registered before the cache.
+    doc.on('beforeObserverCalls', invalidateMaps);
+    observedDocs.add(doc);
+  }
+  // Observers have not run inside an open transaction: inspect its current changes too.
+  const changed = doc?._transaction ? changedTypes(doc._transaction) : undefined;
   const list = ITEM_LISTS.get(map.get('type') as string);
   let items: unknown[] | undefined;
   const plain: Record<string, unknown> = {};
@@ -387,7 +419,7 @@ export function* readElementSteps(
       if (!list.lenient && value.length > list.max) return null;
       items = [];
       for (const item of value.toArray()) {
-        const data = readItem(list.item, item);
+        const data = readItem(list.item, item, changed);
         if (data !== INVALID) items.push(data);
         else if (!list.lenient) return null;
         if (cooperative) yield;

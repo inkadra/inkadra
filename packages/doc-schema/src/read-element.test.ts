@@ -75,6 +75,8 @@ it('follows strokes and rows as they change, bad items included', () => {
   frame.set('strokes', frameStrokes);
   plan.set('strokes', planStrokes);
   table.set('rows', rows);
+  // Register before the cache's invalidation hook: reads in deep observers must be current.
+  elements.observeDeep(() => same(table));
   const check = () => {
     for (const map of [frame, plan, table]) same(map);
   };
@@ -109,6 +111,23 @@ it('follows strokes and rows as they change, bad items included', () => {
   check();
   // A cell edited in place, too long, fixed, a key the schema does not know, the row removed.
   const cells = rows.get(0).get('cells') as Y.Map<string>;
+  doc.transact(() => {
+    cells.set('col000000000000000000', 'x'.repeat(MAX_TABLE_CELL + 1));
+    expect(readElement(table)).toBeNull();
+    cells.set('col000000000000000000', 'inside');
+    same(table);
+    cells.set('second', 'changed after an earlier cached read in the same transaction');
+    same(table);
+  });
+  const remote = new Y.Doc();
+  Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+  const remoteRows = roots(remote)
+    .elements.get(table.get('id') as string)!
+    .get('rows') as Y.Array<Y.Map<unknown>>;
+  (remoteRows.get(0).get('cells') as Y.Map<string>).set('second', 'remote');
+  Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote, Y.encodeStateVector(doc)));
+  same(table);
+  remote.destroy();
   cells.set('col000000000000000000', 'due');
   check();
   cells.set('col000000000000000000', 'x'.repeat(MAX_TABLE_CELL + 1));
