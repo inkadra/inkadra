@@ -18,6 +18,7 @@ import {
   isSized,
   itemBox,
   itemFrame,
+  itemLocked,
   itemsBox,
   itemsInRect,
   moveItem,
@@ -165,8 +166,14 @@ export function selectionMenu(ed: Ed, t: TFunction): MenuItem[] {
   const icons = items.some(isIcon);
   const ownLayer = items.every((i) => ed.ownerOf(i.id) === ed.plan.id);
   const layerOfAll = items.every((i) => (i.layer ?? null) === (items[0]?.layer ?? null));
+  const allLocked = items.every(itemLocked);
   return [
     { label: t('board.plan.duplicate'), icon: 'copy', shortcut: 'Ctrl+D', action: ed.duplicate },
+    {
+      label: t(allLocked ? 'board.plan.unlock' : 'board.plan.lock'),
+      icon: allLocked ? 'unlock' : 'lock',
+      action: () => ed.toggleItemLock(),
+    },
     {
       label: t('board.plan.forward'),
       icon: 'front',
@@ -203,6 +210,7 @@ export function selectionMenu(ed: Ed, t: TFunction): MenuItem[] {
       icon: 'trash',
       danger: true,
       shortcut: 'Del',
+      disabled: allLocked,
       action: () => ed.remove(),
     },
   ];
@@ -485,17 +493,19 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         ed.setSelection(picked);
         e.currentTarget.setPointerCapture(e.pointerId);
         ed.store.undo.stopCapturing();
+        // Items locked on their own stay where they are (decision 0110).
         gesture.current = {
           kind: 'moveMany',
           start: p,
-          items: picked.flatMap((r) => planItem(drawn, r) ?? []),
+          items: picked.flatMap((r) => planItem(drawn, r) ?? []).filter((i) => !itemLocked(i)),
         };
         return;
       }
       if (hit) {
         const target = planItem(drawn, hit);
         ed.select(hit);
-        if (!target) return;
+        // A locked item is picked, so it can be unlocked, but not moved.
+        if (!target || itemLocked(target)) return;
         e.currentTarget.setPointerCapture(e.pointerId);
         ed.store.undo.stopCapturing();
         gesture.current = { kind: 'move', ref: hit, start: p, item: target };
@@ -842,12 +852,14 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   };
 
   // Selection handles ------------------------------------------------------------------
+  /** Locked on its own (decision 0110): outlined, without handles. */
+  const frozen = itemLocked(current);
   const box = current ? itemBox(current) : null;
   const frame = current ? itemFrame(current) : null;
   const pad = 8;
   const symbol = isIcon(current) && !isSized(current.kind);
   const ends =
-    current && 'x0' in current && !frame
+    current && 'x0' in current && !frame && !frozen
       ? [
           { x: current.x0 * (PLAN_VIEW_W / 4096), y: current.y0 * (PLAN_VIEW_H / 4096) },
           { x: current.x1 * (PLAN_VIEW_W / 4096), y: current.y1 * (PLAN_VIEW_H / 4096) },
@@ -873,7 +885,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     box &&
     (frame ? (
       <g
-        className="plan-editor__selection"
+        className={`plan-editor__selection${frozen ? ' is-locked' : ''}`}
         transform={`translate(${frame.centre.x} ${frame.centre.y}) rotate(${frame.angle})`}
       >
         <rect
@@ -883,7 +895,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
           height={frame.h + pad * 2}
           rx={4}
         />
-        {HANDLES.filter((h) => !symbol || h.length === 2).map((h) => {
+        {HANDLES.filter((h) => !frozen && (!symbol || h.length === 2)).map((h) => {
           const [sx, sy] = HANDLE_SIGN[h];
           return (
             <rect
@@ -898,10 +910,10 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
             />
           );
         })}
-        {rotateGrip(0, -frame.h / 2 - pad)}
+        {!frozen && rotateGrip(0, -frame.h / 2 - pad)}
       </g>
     ) : (
-      <g className="plan-editor__selection">
+      <g className={`plan-editor__selection${frozen ? ' is-locked' : ''}`}>
         <rect
           x={box.x - pad}
           y={box.y - pad}
@@ -920,7 +932,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
             r={8}
           />
         ))}
-        {rotateGrip(box.x + box.w / 2, box.y - pad)}
+        {!frozen && rotateGrip(box.x + box.w / 2, box.y - pad)}
       </g>
     ));
   const groupBox = many.length > 1 ? itemsBox(many) : null;
@@ -973,7 +985,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     if (g.kind === 'resize') take(settleAttached(icons, id));
     return [...out.values()];
   };
-  const reachEnd = isIcon(current) && !moving ? coneEnd(current, ed.plan.sensor) : null;
+  const reachEnd =
+    isIcon(current) && !moving && !frozen ? coneEnd(current, ed.plan.sensor) : null;
   const reachGrip = reachEnd && (
     <circle
       data-reach=""
@@ -989,7 +1002,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       aria-valuenow={Math.round(iconCone(current as PlanIcon, ed.plan.sensor)?.reach ?? 0)}
     />
   );
-  const blockingGrips = isIcon(current) && !moving && (
+  const blockingGrips = isIcon(current) && !moving && !frozen && (
     <g className="plan-editor__selection">
       {blockingPositions(current)
         .slice(1)

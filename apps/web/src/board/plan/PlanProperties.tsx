@@ -12,6 +12,7 @@ import {
   isLight,
   isSized,
   itemFrame,
+  itemLocked,
   layerOf,
   linkedCharacter,
   linkedShot,
@@ -231,25 +232,23 @@ export function PlanProperties({
     </>
   );
 
-  const actions = (target: PlanItem) => {
-    const layer = layerOf(target);
-    const isLocked = ed.locked.has(layer);
+  /** Locked on its own (decision 0110): its fields are shown, not edited, and it stays. */
+  const frozen = many.length <= 1 && itemLocked(item);
+  /** Duplicate, Lock, Delete; for a locked item they are drawn after its disabled fields. */
+  const actions = (target: PlanItem, after = false) => {
+    if (frozen && !after) return null;
+    const isLocked = itemLocked(target);
     return (
       <div className="plan-props__actions">
         <Button onClick={ed.duplicate}>{t('board.plan.duplicate')}</Button>
         <Button
           aria-pressed={isLocked}
-          aria-label={t(isLocked ? 'board.plan.unlockLayer' : 'board.plan.lockLayer', {
-            layer: t(`board.plan.layers.${layer}`),
-          })}
-          data-ink-tooltip={t(isLocked ? 'board.plan.unlockLayer' : 'board.plan.lockLayer', {
-            layer: t(`board.plan.layers.${layer}`),
-          })}
-          onClick={() => ed.toggleLocked(layer)}
+          data-ink-tooltip={t(isLocked ? 'board.plan.unlockItemHint' : 'board.plan.lockItemHint')}
+          onClick={() => ed.toggleItemLock()}
         >
           {t(isLocked ? 'board.plan.unlock' : 'board.plan.lock')}
         </Button>
-        <Button variant="danger" onClick={() => ed.remove()}>
+        <Button variant="danger" disabled={isLocked} onClick={() => ed.remove()}>
           {t('board.plan.delete')}
         </Button>
         <IconButton
@@ -1154,6 +1153,7 @@ export function PlanProperties({
   const several = () => {
     const align = (how: PlanAlign) => ed.write(alignItems(many, how));
     const grouped = many.every((i) => i.group && i.group === many[0]?.group);
+    const allLocked = many.every(itemLocked);
     const colour = many.every((i) => i.color === many[0]?.color) ? (many[0]?.color ?? '') : 'mixed';
     const layers = new Set(many.map(layerOf));
     const alignIcons: Array<[PlanAlign, IconName]> = [
@@ -1220,7 +1220,14 @@ export function PlanProperties({
             {t(grouped ? 'board.plan.ungroup' : 'board.plan.group')}
           </Button>
           <Button onClick={ed.duplicate}>{t('board.plan.duplicate')}</Button>
-          <Button variant="danger" onClick={() => ed.remove()}>
+          <Button
+            aria-pressed={allLocked}
+            data-ink-tooltip={t(allLocked ? 'board.plan.unlockItemHint' : 'board.plan.lockItemHint')}
+            onClick={() => ed.toggleItemLock()}
+          >
+            {t(allLocked ? 'board.plan.unlock' : 'board.plan.lock')}
+          </Button>
+          <Button variant="danger" disabled={allLocked} onClick={() => ed.remove()}>
             {t('board.plan.delete')}
           </Button>
           <IconButton
@@ -1279,7 +1286,20 @@ export function PlanProperties({
       className={`plan-props${compact ? ' plan-props--compact' : ''}`}
       data-tour="plan-properties"
     >
-      {body}
+      {frozen && item ? (
+        <>
+          <div className="plan-props__locked" role="status">
+            <Icon name="lock" size={16} />
+            <span>{t('board.plan.itemLocked')}</span>
+          </div>
+          <fieldset className="plan-props__fields" disabled>
+            {body}
+          </fieldset>
+          {actions(item, true)}
+        </>
+      ) : (
+        body
+      )}
       {popups}
     </div>
   );

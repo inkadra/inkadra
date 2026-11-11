@@ -8,29 +8,41 @@ import {
   modifiersOn,
   type PlanElement,
   type PlanItem,
+  PLAN_GRIP,
+  type PlanGroupName,
   type PlanItemRef,
+  planGroupOf,
   planItems,
 } from '@inkadra/canvas-core';
 import type { PlanIcon, PlanLayer } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 
-/** The sections of the Elements tab, in the mockup's order. */
+/** The layers, in the mockup's order. */
 export const ELEMENT_LAYERS: readonly PlanLayer[] = ['lights', 'camera', 'actors', 'set', 'notes'];
+/** The sections of the Elements tab, in the mockup's order (decision 0110). */
+export const ELEMENT_GROUPS: readonly PlanGroupName[] = [
+  'lights',
+  'camera',
+  'actors',
+  PLAN_GRIP,
+  'set',
+  'notes',
+];
 
 export interface ElementsFilter {
-  layer: PlanLayer | 'all';
+  group: PlanGroupName | 'all';
   /** Only items of this tag colour (a stored hex). */
   color: string | null;
 }
 
 /**
- * The items of a plan for the Elements tab, by layer: modifiers listed with their light (not on
- * their own), the rest each once, filtered by layer and tag colour.
+ * The items of a plan for the Elements tab, by group (planGroupOf): modifiers listed with their
+ * light (not on their own), the rest each once, filtered by group and tag colour.
  */
 export function elementSections(
   plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
   filter: ElementsFilter,
-): Array<{ layer: PlanLayer; items: Array<{ ref: PlanItemRef; item: PlanItem }> }> {
+): Array<{ group: PlanGroupName; items: Array<{ ref: PlanItemRef; item: PlanItem }> }> {
   const icons = plan.icons ?? [];
   const ids = new Set(icons.map((i) => i.id));
   const all = planItems(plan).filter(({ item }) => {
@@ -40,8 +52,8 @@ export function elementSections(
       return false;
     return true;
   });
-  return ELEMENT_LAYERS.filter((l) => filter.layer === 'all' || filter.layer === l).map(
-    (layer) => ({ layer, items: all.filter(({ item }) => layerOf(item) === layer) }),
+  return ELEMENT_GROUPS.filter((g) => filter.group === 'all' || filter.group === g).map(
+    (group) => ({ group, items: all.filter(({ item }) => planGroupOf(item) === group) }),
   );
 }
 

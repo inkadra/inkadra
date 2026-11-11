@@ -7,6 +7,7 @@ import {
   defaultLayer,
   duplicatePlanItems,
   gridStep,
+  itemLocked,
   itemsBox,
   itemTier,
   kindLayer,
@@ -16,8 +17,10 @@ import {
   moveWithAttached,
   type PlanElement,
   type PlanItem,
+  type PlanGroupName,
   type PlanItemRef,
   type Point,
+  type ProjectKitEntry,
   planItem,
   planItems,
   removePlanItems,
@@ -42,6 +45,7 @@ import { type BoardStore, LOCAL } from '../store.ts';
 import type { LibraryItem } from './library.ts';
 import { iconColor } from './PlanDrawing.tsx';
 import { rememberRecent } from './PlanLibrary.tsx';
+import type { KitScope } from './project-kit.ts';
 
 export type DragKind = 'line' | 'arrow' | 'rect' | 'ellipse' | 'zone' | 'measure' | 'scale';
 export type Tool = 'select' | 'pencil' | 'text' | 'icons' | 'move' | DragKind;
@@ -69,8 +73,10 @@ export interface PlanEditorProps {
   cards?: CardsById;
   /** Shot labels of the storyboard, by frame id. */
   labels?: ReadonlyMap<string, string>;
-  /** The plans the project kit is derived from. */
+  /** The plans of this board, the project kit is derived from them live. */
   kitPlans?: readonly PlanElement[];
+  /** The kit of the other boards of the project, and whether it arrived (decision 0110). */
+  otherKits?: { entries: readonly ProjectKitEntry[]; scope: KitScope };
   onSwitch?: (id: string) => void;
   /** A new setup copied from the one being edited. */
   onNewVariant?: () => void;
@@ -103,7 +109,8 @@ export function usePlanEditing(props: PlanEditorProps) {
   const [snap, setSnap] = useState(true);
   /** Snap icons together (Alt while dropping, the Snap toggle on a phone). */
   const [attach, setAttach] = useState(true);
-  const [myHidden, setMyHidden] = useState<ReadonlySet<PlanLayer>>(new Set());
+  /** Layers, and the Grip and crew group, this person hides while editing. */
+  const [myHidden, setMyHidden] = useState<ReadonlySet<PlanGroupName>>(new Set());
   const [activeLayer, setActiveLayer] = useState<PlanLayer | null>(null);
   const [ghosts, setGhosts] = useState(false);
   /** The base setup drawn faintly behind a setup. */
@@ -138,7 +145,7 @@ export function usePlanEditing(props: PlanEditorProps) {
   );
   const ownerOf = (id: string) => (base && baseIds.has(id) ? base.id : plan.id);
   const targetFor = (layer: PlanLayer) => (base && layer === 'set' ? base.id : plan.id);
-  const hiddenLayers = new Set<PlanLayer>([...(plan.hiddenLayers ?? []), ...myHidden]);
+  const hiddenLayers = new Set<PlanGroupName>([...(plan.hiddenLayers ?? []), ...myHidden]);
   const locked = new Set<PlanLayer>(plan.lockedLayers ?? []);
   const viewOf = { hidden: hiddenLayers, locked };
   const shown =
@@ -199,7 +206,10 @@ export function usePlanEditing(props: PlanEditorProps) {
   const editPlan = (patch: Partial<PlanElement>, id = plan.id) =>
     change(() => updateElement(doc, id, patch as never, LOCAL));
 
-  const remove = (ids = selection.map((r) => r.id)) => {
+  const remove = (all = selection.map((r) => r.id)) => {
+    // Items locked on their own stay, and stay picked (decision 0110).
+    const kept = new Set(planItems(drawn).flatMap((e) => (itemLocked(e.item) ? [e.item.id] : [])));
+    const ids = all.filter((id) => !kept.has(id));
     if (ids.length === 0) return;
     change(() => {
       removePlanItems(doc, plan.id, ids, LOCAL);
@@ -234,6 +244,15 @@ export function usePlanEditing(props: PlanEditorProps) {
     setSelection(copies);
   };
   const chosen = (): PlanItem[] => (many.length > 1 ? many : item ? [item] : []);
+  /**
+   * Locks or unlocks the selected items on their own (decision 0110): locked when one of them is
+   * not yet. The only write a locked item takes, besides its base's moves.
+   */
+  const toggleItemLock = (items = chosen()) => {
+    if (!items.length) return;
+    const lock = !items.every(itemLocked);
+    write(items.map((i) => ({ ...i, locked: lock ? true : undefined }) as PlanItem));
+  };
   const rotate = (degrees: number) => {
     if (many.length > 1) {
       const b = itemsBox(many);
@@ -276,8 +295,9 @@ export function usePlanEditing(props: PlanEditorProps) {
       }),
     );
   };
-  const toggleHidden = (layer: PlanLayer) => {
-    if (plan.variantOf) {
+  const toggleHidden = (layer: PlanGroupName) => {
+    // Grip and crew is no layer of the document: hiding it is always this person's (decision 0110).
+    if (plan.variantOf && layer !== 'grip') {
       // On a setup, hiding is the setup's: for everyone, and in its exports.
       const next = hiddenLayers.has(layer)
         ? (plan.hiddenLayers ?? []).filter((l) => l !== layer)
@@ -411,6 +431,7 @@ export function usePlanEditing(props: PlanEditorProps) {
     moveToLayer,
     toggleHidden,
     toggleLocked,
+    toggleItemLock,
     placeIcon,
     startRoute,
     endRoute,

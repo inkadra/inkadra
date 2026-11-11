@@ -176,6 +176,7 @@ import { selectedBlocks } from './note-format.ts';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { PlanEditor } from './plan/PlanEditor.tsx';
 import { PlanViewer } from './plan/PlanViewer.tsx';
+import { useOtherKits } from './plan/project-kit.ts';
 import {
   lensMillimetres,
   ScenePicker,
@@ -2860,8 +2861,9 @@ export function Canvas({
     });
   }, [editedPlan, snap, labels]);
   const usedColors = useMemo(() => swatchColors(snap.byId.values()), [snap]);
-  // The plans the project kit of the set plan editor is derived from (decision 0104).
-  // shortcut: the plans of this board only, until other boards' plans can be read here.
+  // The plans of this board the project kit of the set plan editor is derived from live; the
+  // other boards' kit comes from the server, asked when a plan is opened (decision 0110).
+  const otherKits = useOtherKits(projectId, boardId, guest || !editedPlan);
   const allPlans = useMemo(
     () =>
       [...snap.byId.values()].filter(
@@ -4080,6 +4082,7 @@ export function Canvas({
             cards={snap.byId}
             labels={labels}
             kitPlans={allPlans}
+            otherKits={otherKits}
             base={editedBase}
             family={editedPlan ? variantFamily(snap.byId.values(), editedPlan) : []}
             onSwitch={(id) => {

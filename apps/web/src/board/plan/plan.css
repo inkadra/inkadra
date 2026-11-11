@@ -739,6 +739,18 @@ button.plan__badge:hover {
 .plan-editor__selection .plan-editor__member {
   stroke-opacity: 0.5;
 }
+/* An item locked on its own (decision 0110): picked, dashed, without handles. */
+.plan-editor__selection.is-locked rect {
+  stroke-dasharray: 4 3;
+}
+/* The properties of a locked item: shown, not edited. */
+.plan-props__fields {
+  display: contents;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
 
 /* Scale and measures (round 6, g). */
 .plan-ruler {
