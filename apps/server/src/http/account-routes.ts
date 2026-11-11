@@ -311,7 +311,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     const removed = await db
       .update(personalToken)
       .set({ revokedAt: new Date(), revocationReason: 'token_revoked' })
-      .where(and(eq(personalToken.id, tokenId), eq(personalToken.userId, actor.id), isNull(personalToken.revokedAt)))
+      .where(
+        and(
+          eq(personalToken.id, tokenId),
+          eq(personalToken.userId, actor.id),
+          isNull(personalToken.revokedAt),
+        ),
+      )
       .returning({ id: personalToken.id });
     if (removed.length === 0) throw new HttpError('not_found', 'Token not found.');
     return reply.status(204).send();

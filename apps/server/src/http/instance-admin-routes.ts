@@ -223,7 +223,10 @@ export function registerInstanceAdminRoutes(
         .where(eq(user.id, userId));
       if (patch.active === false) {
         await tx.delete(session).where(eq(session.userId, userId));
-        await tx.update(personalToken).set({ revokedAt: new Date(), revocationReason: 'account_deactivated' }).where(and(eq(personalToken.userId, userId), isNull(personalToken.revokedAt)));
+        await tx
+          .update(personalToken)
+          .set({ revokedAt: new Date(), revocationReason: 'account_deactivated' })
+          .where(and(eq(personalToken.userId, userId), isNull(personalToken.revokedAt)));
       }
     });
     return { ok: true };

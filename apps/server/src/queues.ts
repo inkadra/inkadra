@@ -1,4 +1,3 @@
-import { purgeInvalidTokens } from './tokens.ts';
 import type { BoardNotice } from '@inkadra/doc-schema';
 import type { BackupSettings, BoardColumn, ServerQueueId } from '@inkadra/shared';
 import { type Job, Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
@@ -41,6 +40,7 @@ import { enqueueReleaseNews, sendReleaseNews } from './release-news.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
 import type { StorageEnv } from './storage-limits.ts';
+import { purgeInvalidTokens } from './tokens.ts';
 import { runTransfer, sweepTransfers } from './transfers/service.ts';
 import { checkForUpdates, RETRY_MS } from './updates.ts';
 import {

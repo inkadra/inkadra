@@ -674,7 +674,10 @@ describe.skipIf(!url)('instance administration', () => {
       await db.select().from(session).where(eq(session.userId, people.member!.id)),
     ).toHaveLength(0);
     expect(
-      await db.select().from(personalToken).where(and(eq(personalToken.userId, people.member!.id), isNull(personalToken.revokedAt))),
+      await db
+        .select()
+        .from(personalToken)
+        .where(and(eq(personalToken.userId, people.member!.id), isNull(personalToken.revokedAt))),
     ).toHaveLength(0);
     expect((await request('member', 'GET', '/me')).statusCode).toBe(401);
     expect((await request('member', 'GET', '/me/sessions')).statusCode).toBe(401);

@@ -76,7 +76,11 @@ export async function requireActor(
     const actor = await actorFromToken(db, token);
     if (!actor) {
       const reason = await invalidTokenReason(db, token);
-      throw new HttpError('unauthorized', 'The token is not valid any more.', reason ? { reason } : undefined);
+      throw new HttpError(
+        'unauthorized',
+        'The token is not valid any more.',
+        reason ? { reason } : undefined,
+      );
     }
     if (!enrollment) await enforceAdminTwoFactor(db, actor);
     return actor;

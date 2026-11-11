@@ -178,7 +178,10 @@ export function createCollabServer(deps: {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: signed out');
             let reason = 'Unauthorized';
             if (ctx.actor.tokenId) {
-              const [row] = await db.select().from(personalToken).where(eq(personalToken.id, ctx.actor.tokenId));
+              const [row] = await db
+                .select()
+                .from(personalToken)
+                .where(eq(personalToken.id, ctx.actor.tokenId));
               if (row?.revokedAt) reason = row.revocationReason ?? 'token_revoked';
               else if (row?.expiresAt && row.expiresAt <= now) reason = 'token_expired';
               else if (owner?.deactivatedAt) reason = 'account_deactivated';
