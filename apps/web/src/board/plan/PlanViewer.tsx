@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
-  gridStep,
   attachRole,
   catalogueKind,
   categoryOf,
+  gridStep,
   isLight,
   layerOf,
   linkedLocation,
@@ -12,7 +12,13 @@ import {
 } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton } from '@inkadra/ui';
-import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ExportCache } from '../export/cache.ts';
@@ -28,7 +34,6 @@ import { usePlanSurface } from './PlanSurface.tsx';
 import { planContentBox } from './view.ts';
 import './plan.css';
 import './outputs.css';
-
 
 /** The legend of the view: cameras, lights and cast, each with its glyph and a line. */
 function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {

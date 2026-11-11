@@ -1,7 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { PLAN_VIEW_H, PLAN_VIEW_W, type Point, type Rect, type Viewport } from '@inkadra/canvas-core';
+import {
+  PLAN_VIEW_H,
+  PLAN_VIEW_W,
+  type Point,
+  type Rect,
+  type Viewport,
+} from '@inkadra/canvas-core';
 import { IconButton } from '@inkadra/ui';
-import { type PointerEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type PointerEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { wheelZoomFactor } from '../wheel-zoom.ts';
 import {
@@ -262,7 +275,10 @@ export function ZoomControl({
 }) {
   const { t } = useTranslation();
   return (
-    <fieldset className={`plan-float plan-canvas__zoom ${className}`} aria-label={t('board.plan.zoom')}>
+    <fieldset
+      className={`plan-float plan-canvas__zoom ${className}`}
+      aria-label={t('board.plan.zoom')}
+    >
       <IconButton
         icon="minus"
         label={t('board.plan.zoomOut')}

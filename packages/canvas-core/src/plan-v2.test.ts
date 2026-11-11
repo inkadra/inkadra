@@ -33,10 +33,10 @@ import {
   iconCone,
   iconGlow,
   iconSize,
+  nextPlanItemAt,
   normalizeRotation,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
-  nextPlanItemAt,
   type PlanElement,
   planItemAt,
   planItemsAt,
@@ -1273,22 +1273,13 @@ describe('review of snapping (pull request 603)', () => {
 
 describe('what a click picks (decision 0115)', () => {
   const pt = (x: number, y: number) => ({ x: x / PLAN_VIEW_W, y: y / PLAN_VIEW_H });
-  /** A key light on a C-stand with a softbox and a grid on its front, all placed by the rules. */
-  const keyRig = () => {
-    let icons: PlanIcon[] = [
-      at('cstand', 300, 300, { id: 'standAAAAAAAA' }),
-      at('cob', 300, 300, { id: 'keyAAAAAAAAAA' }),
-      at('softbox', 300, 300, { id: 'boxAAAAAAAAAA' }),
-      at('grid', 300, 300, { id: 'gridAAAAAAAAA' }),
-    ];
-    const merge = (changed: readonly PlanIcon[]) => {
-      icons = icons.map((i) => changed.find((c) => c.id === i.id) ?? i);
-    };
-    merge(attachIcon(icons, 'keyAAAAAAAAAA', 'standAAAAAAAA'));
-    merge(attachIcon(icons, 'boxAAAAAAAAAA', 'keyAAAAAAAAAA'));
-    merge(attachIcon(icons, 'gridAAAAAAAAA', 'keyAAAAAAAAAA'));
-    return icons;
-  };
+  /** A key light on a C-stand with a softbox and a grid on its front, stacked on one spot. */
+  const keyRig = (): PlanIcon[] => [
+    at('cstand', 300, 300, { id: 'standAAAAAAAA' }),
+    at('cob', 300, 300, { id: 'keyAAAAAAAAAA', on: 'standAAAAAAAA' }),
+    at('softbox', 300, 300, { id: 'boxAAAAAAAAAA', on: 'keyAAAAAAAAAA' }),
+    at('grid', 300, 300, { id: 'gridAAAAAAAAA', on: 'keyAAAAAAAAAA' }),
+  ];
 
   it('picks a light before the modifiers on its front, then them nearest first', () => {
     const icons = keyRig();

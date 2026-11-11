@@ -542,7 +542,11 @@ export function PlanCanvas({
       else if (onPicked && !e.shiftKey) {
         hit = single;
         if (under.length > 1)
-          cycle.current = { p, from: (single as PlanItemRef).id, at: { x: e.clientX, y: e.clientY } };
+          cycle.current = {
+            p,
+            from: (single as PlanItemRef).id,
+            at: { x: e.clientX, y: e.clientY },
+          };
       }
       if (
         hit &&
@@ -1707,71 +1711,71 @@ export function PlanCanvas({
         onContextMenu={contextMenu}
       >
         <div ref={stage} className="plan-editor__stage">
-            {rulers}
-            {ghostPlan && (
-              <div className="plan-canvas__ghost" aria-hidden="true">
-                <PlanDrawing plan={ghostPlan} moves={false} />
-              </div>
-            )}
-            <PlanDrawing
-              plan={
-                placing.preview && shown.background
-                  ? { ...shown, background: { ...shown.background, ...placing.preview } }
-                  : shown
-              }
-              background
-              // The surface draws the dots; over a picture the drawing draws them again.
-              grid={shown.background && !shown.background.hidden ? step : undefined}
-              ghosts={ed.ghosts}
-              route
-              hidden={hiddenList}
-              lifted={lifted}
-              label={t('board.plan.drawing')}
+          {rulers}
+          {ghostPlan && (
+            <div className="plan-canvas__ghost" aria-hidden="true">
+              <PlanDrawing plan={ghostPlan} moves={false} />
+            </div>
+          )}
+          <PlanDrawing
+            plan={
+              placing.preview && shown.background
+                ? { ...shown, background: { ...shown.background, ...placing.preview } }
+                : shown
+            }
+            background
+            // The surface draws the dots; over a picture the drawing draws them again.
+            grid={shown.background && !shown.background.hidden ? step : undefined}
+            ghosts={ed.ghosts}
+            route
+            hidden={hiddenList}
+            lifted={lifted}
+            label={t('board.plan.drawing')}
+          >
+            {liveLayer}
+          </PlanDrawing>
+          {isEmpty && tool === 'select' && !armed && (
+            <p className="plan-editor__empty">{t('board.plan.emptyHint')}</p>
+          )}
+          {marquee && !phone && (
+            <span
+              className="plan-editor__tool-label"
+              style={{
+                left: `${Math.min(Math.max(marquee.a.x, marquee.b.x) * 100, 72)}%`,
+                top: `${Math.min(Math.max(marquee.a.y, marquee.b.y) * 100, 94)}%`,
+              }}
             >
-              {liveLayer}
-            </PlanDrawing>
-            {isEmpty && tool === 'select' && !armed && (
-              <p className="plan-editor__empty">{t('board.plan.emptyHint')}</p>
-            )}
-            {marquee && !phone && (
-              <span
-                className="plan-editor__tool-label"
-                style={{
-                  left: `${Math.min(Math.max(marquee.a.x, marquee.b.x) * 100, 72)}%`,
-                  top: `${Math.min(Math.max(marquee.a.y, marquee.b.y) * 100, 94)}%`,
-                }}
-              >
-                {t('board.plan.marquee', { count: marqueeCount })}
-              </span>
-            )}
-            {text && (
-              <input
-                ref={textInput}
-                className="plan-editor__text"
-                aria-label={t('film.pen.textField')}
-                placeholder={t('film.pen.textPlaceholder')}
-                maxLength={500}
-                value={text.value}
-                style={{ left: `${text.at.x * 100}%`, top: `${text.at.y * 100}%` }}
-                onChange={(e) => {
-                  const draft = { ...text, value: e.target.value };
-                  textRef.current = draft;
-                  setText(draft);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    commitText();
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    textRef.current = null;
-                    setText(null);
-                  }
-                }}
-                onBlur={commitText}
-              />
-            )}
+              {t('board.plan.marquee', { count: marqueeCount })}
+            </span>
+          )}
+          {text && (
+            <input
+              ref={textInput}
+              className="plan-editor__text"
+              aria-label={t('film.pen.textField')}
+              placeholder={t('film.pen.textPlaceholder')}
+              maxLength={500}
+              value={text.value}
+              style={{ left: `${text.at.x * 100}%`, top: `${text.at.y * 100}%` }}
+              onChange={(e) => {
+                const draft = { ...text, value: e.target.value };
+                textRef.current = draft;
+                setText(draft);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitText();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  textRef.current = null;
+                  setText(null);
+                }
+              }}
+              onBlur={commitText}
+            />
+          )}
         </div>
       </div>
       {moveBar}

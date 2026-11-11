@@ -4,13 +4,13 @@ import {
   itemBox,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
+  type PlanElement,
   type Point,
   planItems,
   type Rect,
   type Viewport,
   wallBounds,
 } from '@inkadra/canvas-core';
-import type { PlanElement } from '@inkadra/doc-schema';
 
 /**
  * The view of a plan's drawing surface (decision 0115): the plan's 3:2 extent drawn inside a
@@ -75,7 +75,10 @@ export function boundView(v: Viewport, area: Area): Viewport {
 export function zoomAround(v: Viewport, area: Area, zoom: number, anchor: Point): Viewport {
   const next = clampZoom(zoom, area);
   const world = { x: anchor.x / v.zoom + v.x, y: anchor.y / v.zoom + v.y };
-  return boundView({ zoom: next, x: world.x - anchor.x / next, y: world.y - anchor.y / next }, area);
+  return boundView(
+    { zoom: next, x: world.x - anchor.x / next, y: world.y - anchor.y / next },
+    area,
+  );
 }
 
 /** One step of the zoom buttons (or keys) in or out, round the middle of the area. */

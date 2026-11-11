@@ -1197,11 +1197,7 @@ button.plan__badge:hover {
   -webkit-user-select: none;
   touch-action: none;
   cursor: crosshair;
-  background-image: radial-gradient(
-    circle,
-    var(--ink-canvas-dot) 1.2px,
-    transparent 1.7px
-  );
+  background-image: radial-gradient(circle, var(--ink-canvas-dot) 1.2px, transparent 1.7px);
   background-size: 0 0;
 }
 .plan-canvas__surface.is-hand,
