@@ -169,7 +169,8 @@ export const InstanceVersion = z
       description: 'Minimum client version by platform; absent when no minimum is required.',
     }),
     capabilities: z.array(z.string()).optional().openapi({
-      description: 'Stable feature names. Clients must ignore unknown names. Absent on older servers.',
+      description:
+        'Stable feature names. Clients must ignore unknown names. Absent on older servers.',
     }),
   })
   .openapi('InstanceVersion');

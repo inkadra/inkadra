@@ -120,7 +120,8 @@ export async function createApp(deps: AppDeps) {
               url,
               hostname: req.hostname,
               remoteAddress: req.ip,
-              ...(typeof client === 'string' && /^[a-z][a-z0-9-]{0,31}\/[0-9][a-zA-Z0-9.+-]{0,63}$/.test(client)
+              ...(typeof client === 'string' &&
+              /^[a-z][a-z0-9-]{0,31}\/[0-9][a-zA-Z0-9.+-]{0,63}$/.test(client)
                 ? { inkadraClient: client }
                 : {}),
             };
