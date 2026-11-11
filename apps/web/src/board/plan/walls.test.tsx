@@ -214,9 +214,7 @@ it('leaves a locked wall and a locked opening as they are, until unlocked', asyn
   await act(async () => m.ed.remove());
   expect(planOf(doc, plan.id).openings).toHaveLength(1);
   // A write of its fields is refused by the shared check.
-  await act(async () =>
-    m.ed.writeWalls('openings', [{ ...door, locked: true, side: 'right' }]),
-  );
+  await act(async () => m.ed.writeWalls('openings', [{ ...door, locked: true, side: 'right' }]));
   expect(planOf(doc, plan.id).openings?.[0]?.side).toBeUndefined();
   // Unlocked, it moves again.
   await act(async () => button(m.host, 'board.plan.unlock').click());

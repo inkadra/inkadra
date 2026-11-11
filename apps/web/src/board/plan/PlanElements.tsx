@@ -104,7 +104,10 @@ export function PlanElements({
               {/* The Set says what it holds, as the mockup does: "2 walls, 1 door, 9 items". */}
               <span className="plan-prop__label">
                 {layer === 'set' && walls > 0
-                  ? [setSummary(ed.drawn, t), items.length && t('board.plan.items', { count: items.length })]
+                  ? [
+                      setSummary(ed.drawn, t),
+                      items.length && t('board.plan.items', { count: items.length }),
+                    ]
                       .filter(Boolean)
                       .join(', ')
                   : count}
@@ -143,7 +146,10 @@ export function PlanElements({
             {layer === 'set' &&
               !filter.color &&
               [
-                ...(ed.drawn.walls ?? []).map((w) => ({ ref: { kind: 'walls' as const, id: w.id }, item: w })),
+                ...(ed.drawn.walls ?? []).map((w) => ({
+                  ref: { kind: 'walls' as const, id: w.id },
+                  item: w,
+                })),
                 ...shownOpenings(ed.drawn).map((o) => ({
                   ref: { kind: 'openings' as const, id: o.id },
                   item: o,
@@ -171,7 +177,11 @@ export function PlanElements({
                   <span className="plan-lib__text">
                     <span>
                       {item.label ||
-                        t('kind' in item ? `board.plan.walls.kinds.${item.kind}` : 'board.plan.walls.wall')}
+                        t(
+                          'kind' in item
+                            ? `board.plan.walls.kinds.${item.kind}`
+                            : 'board.plan.walls.wall',
+                        )}
                     </span>
                   </span>
                   {(locked || itemLocked(item)) && (

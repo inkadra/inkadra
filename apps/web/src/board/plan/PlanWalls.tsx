@@ -477,18 +477,18 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
           })()}
           {!itemLocked(pickedWall) &&
             wallPoints(pickedWall).map((q, i) => (
-            <rect
-              // biome-ignore lint/suspicious/noArrayIndexKey: a corner is its place in the wall.
-              key={i}
-              data-corner={i}
-              className="plan-editor__handle plan-walls__corner"
-              x={q.x - grip / 2}
-              y={q.y - grip / 2}
-              width={grip}
-              height={grip}
-              rx={grip / 2}
-            />
-          ))}
+              <rect
+                // biome-ignore lint/suspicious/noArrayIndexKey: a corner is its place in the wall.
+                key={i}
+                data-corner={i}
+                className="plan-editor__handle plan-walls__corner"
+                x={q.x - grip / 2}
+                y={q.y - grip / 2}
+                width={grip}
+                height={grip}
+                rx={grip / 2}
+              />
+            ))}
         </g>
       )}
       {pickedOpening && openingWall && (

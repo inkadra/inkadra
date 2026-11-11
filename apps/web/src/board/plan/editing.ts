@@ -343,7 +343,8 @@ export function usePlanEditing(props: PlanEditorProps) {
   /** Locks or unlocks a wall or an opening on its own (decision 0114). */
   const toggleWallLock = (ref: WallRef) => {
     const target = (drawn[ref.kind] ?? []).find((w) => w.id === ref.id);
-    if (target) writeWalls(ref.kind, [{ ...target, locked: itemLocked(target) ? undefined : true }]);
+    if (target)
+      writeWalls(ref.kind, [{ ...target, locked: itemLocked(target) ? undefined : true }]);
   };
 
   const remove = (all = selection.map((r) => r.id)) => {
