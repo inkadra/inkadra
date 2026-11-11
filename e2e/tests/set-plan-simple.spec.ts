@@ -58,7 +58,13 @@ const POINTS = {
   empty: [960, 620],
 } as const;
 
-async function seed(page: Page, baseURL: string, theme: Theme, width: number) {
+async function seed(
+  page: Page,
+  baseURL: string,
+  theme: Theme,
+  width: number,
+  opts: { steps?: boolean } = {},
+) {
   const cookie = await signIn(baseURL, account);
   await page.context().addCookies(
     cookie.split('; ').map((pair) => ({
@@ -115,6 +121,8 @@ async function seed(page: Page, baseURL: string, theme: Theme, width: number) {
           ...icon('Cam', 'camera', '#9DB8F2', POINTS.camera[0], POINTS.camera[1]),
           label: 'A cam',
           showLens: true,
+          // An earlier position, for the test of the plan's menu.
+          ...(opts.steps ? { steps: [{ x: gx(120), y: gy(400) }] } : {}),
         },
       ],
     },
@@ -457,6 +465,110 @@ async function openEditor(page: Page, planId: string) {
   await expect(stage).toBeVisible();
   return { editor, stage };
 }
+
+test('every library name fits its tile, in all six languages, at 1280 and 390 px', async ({
+  page,
+  baseURL,
+  browser,
+}) => {
+  test.setTimeout(300_000);
+  const { project, planId } = await seed(page, baseURL!, 'dark', 1280);
+  const state = await page.context().storageState();
+  const cut: string[] = [];
+  /** Every category of the open library: names that overflow, or words broken without a hyphen. */
+  const check = async (library: Locator, categories: Locator, label: string) => {
+    const count = await categories.count();
+    expect(count).toBeGreaterThan(5);
+    for (let i = 0; i < count; i++) {
+      await categories.nth(i).click();
+      if (i === 1)
+        await library.screenshot({ path: join(out, `library-${label.replace(' ', '-')}.png`) });
+      // A name is cut when it overflows its tile, or when a piece of it between two places it may
+      // break (a space, a soft hyphen, a hyphen) is wider than the tile: the browser then breaks
+      // that piece where no hyphen shows.
+      const bad = await library.locator('.plan-lib__tile').evaluateAll((tiles) =>
+        tiles.flatMap((tile) => {
+          const span = tile.querySelector('span') as HTMLElement;
+          const value = span.textContent ?? '';
+          const probe = document.createElement('span');
+          probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap';
+          span.append(probe);
+          // The span is as wide as its text; what it may take is the tile's inner width.
+          const style = getComputedStyle(tile);
+          const room =
+            tile.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+          const wide = value.split(/[\s\u00AD-]/).filter((piece) => {
+            probe.textContent = `${piece}-`;
+            return probe.getBoundingClientRect().width > room + 0.5;
+          });
+          probe.remove();
+          const s = span.getBoundingClientRect();
+          const t = tile.getBoundingClientRect();
+          const over = s.width > room + 1 || s.bottom > t.bottom + 1;
+          const why = [...wide.map((w) => `"${w}" too wide`), over ? 'overflows' : ''];
+          const said = why.filter(Boolean).join(', ');
+          return said ? [`${value.replaceAll('\u00AD', '')} (${said})`] : [];
+        }),
+      );
+      cut.push(...bad.map((name) => `${label}: ${name}`));
+    }
+  };
+  // The account's language wins over the browser's: set it, and give it back at the end.
+  const speak = async (locale: string) => {
+    const r = await page.request.patch('/api/v1/me', {
+      headers: { origin: baseURL! },
+      data: { locale },
+    });
+    expect(r.ok()).toBe(true);
+  };
+  try {
+    // The editor follows the width: each language at 1280 px, then the same page at 390 px.
+    for (const locale of ['en', 'it', 'es', 'de', 'fr', 'pt']) {
+      await speak(locale);
+      const context = await browser.newContext({
+        viewport: { width: 1280, height: 800 },
+        locale,
+        reducedMotion: 'reduce',
+        storageState: state,
+      });
+      try {
+        const m = await context.newPage();
+        await m.goto(`${baseURL}/p/${project.id}?view=canvas`);
+        await m.locator(`[data-el="${planId}"]`).dblclick();
+        const editor = m.locator('.plan-editor--v2');
+        const dock = editor.locator('.plan-lib--dock');
+        await expect(dock).toBeVisible();
+        await check(dock, dock.locator('.plan-lib__cat'), `${locale} 1280`);
+        await m.setViewportSize({ width: 390, height: 844 });
+        await editor.locator('.plan-canvas__phone-tools button').nth(3).click();
+        const sheet = editor.locator('.plan-lib--sheet');
+        await expect(sheet).toBeVisible();
+        await check(sheet, sheet.locator('.plan-lib__chips button'), `${locale} 390`);
+      } finally {
+        await context.close();
+      }
+    }
+  } finally {
+    await speak('it');
+  }
+  expect(cut).toEqual([]);
+});
+
+test('earlier positions can be shown from the plan menu whenever an item has some', async ({
+  page,
+  baseURL,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const { planId } = await seed(page, baseURL!, 'dark', 1280, { steps: true });
+  await page.locator(`[data-el="${planId}"]`).dblclick();
+  const editor = page.getByRole('dialog', { name: /Pianta del set/ });
+  const faded = editor.locator('.plan-editor__stage [style*="opacity: 0.4"]');
+  await expect(faded).toHaveCount(0);
+  // Nothing selected: the plan's menu (by the scale) has the switch, as before decision 0104.
+  await editor.locator('.plan-top__end .plan-top__btn').first().click();
+  await page.getByRole('menuitemradio', { name: 'Mostra posizioni precedenti' }).click();
+  await expect(faded).toHaveCount(1);
+});
 
 test('a drag writes only what it changed: a colour set meanwhile by someone else stays', async ({
   page,

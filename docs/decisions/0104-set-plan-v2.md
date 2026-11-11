@@ -51,7 +51,12 @@ library tabs are now the six categories (Furniture and Exteriors became Set and 
 
 **Layers** stay the five of version 15. Lights, modifiers, grip, stands and power are on Lights;
 camera, movement, video and sound on Camera; people and the crew on Actors; the set, furniture and
-exteriors on Set. Walls and openings are on Set.
+exteriors on Set. Walls and openings are on Set. Set is the base plan's, shared by all its setups
+(decision 0062): moving an item of a setup to Set moves it into the base, in one transaction and
+one undo step (`transferPlanItems`), so a setup keeps nothing of its own on Set. An item a setup
+still holds on Set (written by an older build, or a layer change racing that move) is shown, not
+migrated: `variantView` draws it over the base's Set, everywhere the setup is drawn, and moving it
+to Set again moves it into the base. Showing it changes nothing stored behind anyone's back.
 
 **Fills are opaque.** A glyph part is filled with the icon's colour mixed into the paper (the
 card's `surface-1`, on paper the printed theme's), so what is under it is hidden. The parts the
@@ -75,7 +80,15 @@ on a C-stand. Doors and windows go in walls as openings. The attached icon keeps
 rotation, placed where its base says (`attachedPlacement`): moving, turning, copying and deleting
 a base takes what is on it along; copying an attached icon alone makes a free copy; an `on` that
 points at nothing or loops attaches nothing. Pulling an icon away detaches it (`pulledAway`,
-`detachIcon`). Pure functions in `plan-attach.ts`; the editor wires them in a later pull request.
+`detachIcon`). Every write of the editor goes through the same rules (`settleWrite`), whatever made it (a
+drag, a handle, a field of Properties, a key): what sits on a written base is placed again, and an
+`on` whose base is gone is dropped; until that write such an icon reads as free everywhere (it is
+drawn, counted and listed as standing on nothing, `planStack`). Turning several items turns what is
+attached to them (`rotateManyWithAttached`). Icons on a hidden layer are never snap targets, so
+nothing attaches to something invisible; a locked layer's icons stay targets (a person may sit on a
+locked sofa, which itself does not move). A light of the project kit is placed with its modifiers
+attached in order, in one transaction and one undo step, the light selected. Pure functions in
+`plan-attach.ts`, wired in the editor.
 
 **Sizes when dropped.** Each kind has a real size (`DEFAULT_METRES`: a person, a chair and a
 camera 0.5 m, a desk 1.4 × 0.7 m, a sofa 2 × 0.9 m, a bed 2 × 1.6 m, a softbox and a C-stand 0.9 m,
@@ -110,7 +123,11 @@ icon), `kelvin`, `height` (m), `tilt`, `circuit`; modifiers are attachments. Cam
 as before. Plans: `locationId`, `circuits` (name and breaker amps, up to 30), `voltage` (120 or
 230, 230 when omitted), `background` (an uploaded picture's id, `opacity`, `grey`) and `north`
 (degrees clockwise from the top). `power`, `beam`, `intensity`, `lens`, `steps` and the rest keep
-working.
+working. Circuits are Y.Maps in a Y.Array, as walls are, created with the card and edited one
+circuit and one field at a time (`addPlanCircuit`, `updatePlanCircuits`, `removePlanCircuits`),
+so two people renaming two circuits both keep their change; a name is written when its field is
+left, one undo step. The list is read leniently and cut at 30, as walls are, since two people may
+each add one at once; a plain list, as the first builds of this record wrote it, is still read.
 
 **Power.** `watts` is the number the maths uses; without it, the `power` text of version 15 is
 read for one ("1,2K", "2 kW", "300 W", "650"), and a text that says no number counts as nothing.

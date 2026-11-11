@@ -144,6 +144,20 @@ test('icons snap together: seats, modifiers, stands; the base carries them; Alt 
     .toEqual(['iconLightAAAA', 'iconLightAAAA']);
   await page.screenshot({ path: join(out, 'snap-1280-modifiers.png') });
 
+  // The light is now project kit: placed from it, its modifiers come attached, one undo step.
+  await rail.getByRole('button', { name: 'Preferiti e recenti', exact: true }).click();
+  await library.locator('.plan-lib__item', { hasText: 'LED COB' }).first().click();
+  await expect.poll(async () => (await find('cob')).length).toBe(2);
+  const copy = (await find('cob')).find((i) => i.id !== 'iconLightAAAA') as PlanIcon;
+  await expect
+    .poll(async () => [...(await find('softbox')), ...(await find('grid'))].map((i) => i.on))
+    .toEqual(['iconLightAAAA', copy.id, 'iconLightAAAA', copy.id]);
+  await editor.getByRole('tab', { name: 'Proprietà' }).click();
+  await expect(editor.getByRole('tabpanel', { name: 'Proprietà' })).toContainText('LED COB');
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await find('cob')).length).toBe(1);
+  await expect.poll(async () => (await find('softbox')).length).toBe(1);
+
   // The light dragged onto the stand stands on it; moving the stand carries light and modifiers.
   await drag(P.light, P.stand, true);
   await expect.poll(async () => (await find('cob'))[0]?.on).toBe('iconStandAAAA');
@@ -157,6 +171,24 @@ test('icons snap together: seats, modifiers, stands; the base carries them; Alt 
   await pick('C-stand');
   for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowLeft');
   await expect.poll(async () => (await find('softbox'))[0]?.x ?? 0).toBeLessThan(before);
+  expect((await find('cob'))[0]?.on).toBe('iconStandAAAA');
+
+  // Turning the stand by its handle turns the light and its modifiers with it.
+  const turnedBefore = (await find('softbox'))[0]?.rotation ?? 0;
+  const handle = editor.locator('[data-rotate]').first();
+  const h = (await handle.boundingBox())!;
+  const stand = (await find('cstand'))[0] as PlanIcon;
+  const middle = await pointOf(stage, [
+    (stand.x / STROKE_GRID) * 1000,
+    (stand.y / STROKE_GRID) * (1000 / 1.5),
+  ]);
+  const r = Math.hypot(h.x + h.width / 2 - middle.x, h.y + h.height / 2 - middle.y);
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(middle.x + r, middle.y, { steps: 10 });
+  await page.mouse.up();
+  await expect.poll(async () => (await find('softbox'))[0]?.rotation ?? 0).not.toBe(turnedBefore);
+  expect((await find('softbox'))[0]?.on).toBe('iconLightAAAA');
   expect((await find('cob'))[0]?.on).toBe('iconStandAAAA');
 
   // The chair carries its person; pulling the person away detaches it.

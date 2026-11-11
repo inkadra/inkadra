@@ -17,6 +17,7 @@ import {
   getBoardAspect,
   getSchemaVersion,
   hasStoredShape,
+  MAX_PLAN_CIRCUITS,
   MAX_PLAN_ICONS,
   MAX_PLAN_WALLS,
   MAX_WALL_POINTS,
@@ -860,7 +861,7 @@ describe('set plans', () => {
     const el = plan();
     addElement(doc, el);
     const map = roots(doc).elements.get(el.id)!;
-    expect(readElement(map)).toEqual({ ...el, walls: [], openings: [] });
+    expect(readElement(map)).toEqual({ ...el, walls: [], openings: [], circuits: [] });
     expect((map.get('icons') as Y.Array<unknown>).get(0)).toBeInstanceOf(Y.Map);
     expect(validateBoardDoc(doc)).toEqual([]);
   });
@@ -974,6 +975,7 @@ describe('set plans', () => {
       ...old,
       walls: [],
       openings: [],
+      circuits: [],
     });
 
     const icon = { ...old.icons[0]!, percent: 120 };
@@ -997,6 +999,7 @@ describe('set plans', () => {
       ...old,
       walls: [],
       openings: [],
+      circuits: [],
     });
 
     const rich = {
@@ -1046,6 +1049,7 @@ describe('set plans', () => {
       ...rich,
       walls: [],
       openings: [],
+      circuits: [],
     });
     expect(validateBoardDoc(doc)).toEqual([]);
   });
@@ -1076,6 +1080,7 @@ describe('set plan v2 (version 23, decision 0104)', () => {
       ...old,
       walls: [],
       openings: [],
+      circuits: [],
     });
     const v22 = [
       'fresnel',
@@ -1245,10 +1250,25 @@ describe('set plan v2 (version 23, decision 0104)', () => {
       { north: 360 },
       { sun: { time: 1440 } },
       { sun: { time: 600, date: '11/11/2026' } },
-      { circuits: [{ id: 'circuitAAAAAA', name: 'A', amps: 0 }] },
       { background: { assetId: '' } },
     ])
       expect(Element.safeParse(plan(wrong)).success, JSON.stringify(wrong)).toBe(false);
+    // Circuits are read one by one, as walls are: a bad one is left out, the list cut at 30.
+    const circuit = { id: 'circuitAAAAAA', name: 'A', amps: 16 };
+    const circuits = Element.parse(
+      plan({
+        circuits: [
+          circuit,
+          { ...circuit, id: 'circuitBBBBBB', amps: 0 },
+          ...Array.from({ length: MAX_PLAN_CIRCUITS + 1 }, (_, i) => ({
+            ...circuit,
+            id: `circuit${String(i).padStart(6, '0')}`,
+          })),
+        ],
+      }),
+    );
+    expect(circuits.type === 'plan' && circuits.circuits?.length).toBe(MAX_PLAN_CIRCUITS);
+    expect(circuits.type === 'plan' && circuits.circuits?.[1]?.id).toBe('circuit000000');
     const icon = { id: 'iconAAAAAAAAA', kind: 'cob', color: '#EDD963', x: 1, y: 1 };
     for (const wrong of [
       { tier: 6 },
