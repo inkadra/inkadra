@@ -252,7 +252,9 @@ export function PlanExport({
             ]}
           />
           <fieldset className="plan-export__include">
-            <legend className="ink-radio-group__legend">{t('board.plan.exportSheet.includeTitle')}</legend>
+            <legend className="ink-radio-group__legend">
+              {t('board.plan.exportSheet.includeTitle')}
+            </legend>
             {(
               [
                 'legend',
@@ -280,7 +282,9 @@ export function PlanExport({
           {t('board.plan.addToCallSheet')}
         </Button>
         <Button variant="primary" disabled={busy || status === 'error'} onClick={run}>
-          {busy ? t('board.plan.exportSheet.working') : t('board.plan.exportSheet.run', { format: formatName })}
+          {busy
+            ? t('board.plan.exportSheet.working')
+            : t('board.plan.exportSheet.run', { format: formatName })}
         </Button>
       </DialogActions>
     </Dialog>

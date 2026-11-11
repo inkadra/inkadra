@@ -123,7 +123,9 @@ it('prints the power per circuit, computed from the lights', () => {
     ],
   };
   const t2 = ((key: string, o?: Record<string, unknown>) =>
-    o ? `${key.split('.').at(-1)}:${Object.values(o).join(',')}` : key.split('.').at(-1)) as unknown as TFunction;
+    o
+      ? `${key.split('.').at(-1)}:${Object.values(o).join(',')}`
+      : key.split('.').at(-1)) as unknown as TFunction;
   expect(powerLines(plan, t2, 'en')).toEqual({
     title: 'powerAt:230',
     total: '2.3 kW · 10 A',

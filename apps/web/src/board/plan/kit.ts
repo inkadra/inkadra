@@ -136,7 +136,11 @@ export function powerLines(
         c.breaker !== null
           ? t('board.plan.links.circuitLine', { name: c.name, amps: n(c.breaker, 1) })
           : t('board.plan.noCircuit');
-      return { text: names ? `${head}: ${names}` : head, amps: `${n(c.amps, 1)} A`, status: c.status };
+      return {
+        text: names ? `${head}: ${names}` : head,
+        amps: `${n(c.amps, 1)} A`,
+        status: c.status,
+      };
     }),
   };
 }

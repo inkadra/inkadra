@@ -254,7 +254,13 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
         h: PLAN_VIEW_H * s,
       };
       ops.push(
-        ...planOps({ ...plan, icons: [alone], shapes: [], strokes: [], walls: [] }, box, ctx, false, false),
+        ...planOps(
+          { ...plan, icons: [alone], shapes: [], strokes: [], walls: [] },
+          box,
+          ctx,
+          false,
+          false,
+        ),
       );
     };
     const fits = (h: number) => y + h <= limit;
@@ -282,13 +288,19 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
       const tx = icon ? sx + 18 : sx;
       const vw = val ? m(val, TEXT, 600) + 8 : 0;
       if (icon) glyph(icon, sx + 6, y + ROW / 2 - 1);
-      text(tx, y + 10.5, ellipsize(label, right - tx - vw, TEXT, 400, m), TEXT, 400, c['text-primary']);
+      text(
+        tx,
+        y + 10.5,
+        ellipsize(label, right - tx - vw, TEXT, 400, m),
+        TEXT,
+        400,
+        c['text-primary'],
+      );
       if (val) text(right - vw + 8, y + 10.5, val, TEXT, 600, c['text-primary']);
       y += ROW;
     };
     const more = (left: number) => {
-      if (left > 0 && fits(ROW))
-        row(t('board.plan.sheet.more', { count: left }), '');
+      if (left > 0 && fits(ROW)) row(t('board.plan.sheet.more', { count: left }), '');
     };
 
     if (include.legend) {
@@ -361,7 +373,14 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
       const room = Math.max(0, Math.floor((limit - y) / 14));
       const kept = lines.slice(0, room);
       if (lines.length > room && kept.length) kept[kept.length - 1] = `${kept.at(-1)}…`;
-      ops.push(...textBlock(kept, sx, y, { size: TEXT, weight: 400, color: c['text-primary'], leading: 14 }).ops);
+      ops.push(
+        ...textBlock(kept, sx, y, {
+          size: TEXT,
+          weight: 400,
+          color: c['text-primary'],
+          leading: 14,
+        }).ops,
+      );
     }
 
     // The foot of the page.

@@ -106,11 +106,7 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
 
   await test.step('the card shows the counts of the mockup', async () => {
     const card = page.locator(`[data-el="${plan.id}"]`);
-    await expect(card.locator('.plan__count')).toHaveText([
-      '2 setup',
-      '1 camera',
-      '1 luce · 2 kW',
-    ]);
+    await expect(card.locator('.plan__count')).toHaveText(['2 setup', '1 camera', '1 luce · 2 kW']);
     await expect(card.getByRole('button', { name: 'Scena 2' })).toBeVisible();
   });
 
@@ -160,7 +156,10 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
     });
     expect(link.ok).toBe(true);
     const { url } = (await link.json()) as { url: string };
-    const guest = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'it-IT' });
+    const guest = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      locale: 'it-IT',
+    });
     try {
       const view = await guest.newPage();
       await view.goto(url);

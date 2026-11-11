@@ -140,9 +140,7 @@ export function PlanViewer({
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
   const shown = useLinkedPlan(variantView(plan, base));
   const tabs = family?.length ? family : [plan];
-  const place = store
-    ? linkedLocation(base ?? plan, store.getSnapshot().byId)?.name
-    : undefined;
+  const place = store ? linkedLocation(base ?? plan, store.getSnapshot().byId)?.name : undefined;
   const at = ZOOMS.indexOf(zoom);
   // The view takes the focus, for its keys, and gives it back on close.
   const root = useRef<HTMLDivElement>(null);
@@ -157,7 +155,10 @@ export function PlanViewer({
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()] as [{ x: number; y: number }, { x: number; y: number }];
+      const [a, b] = [...pointers.current.values()] as [
+        { x: number; y: number },
+        { x: number; y: number },
+      ];
       pinch.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), zoom };
     }
   };
@@ -166,7 +167,10 @@ export function PlanViewer({
     if (!last) return;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.current.size === 2 && pinch.current) {
-      const [a, b] = [...pointers.current.values()] as [{ x: number; y: number }, { x: number; y: number }];
+      const [a, b] = [...pointers.current.values()] as [
+        { x: number; y: number },
+        { x: number; y: number },
+      ];
       zoomTo(pinch.current.zoom * (Math.hypot(a.x - b.x, a.y - b.y) / pinch.current.distance));
       return;
     }
@@ -214,9 +218,7 @@ export function PlanViewer({
       <header className="plan-top plan-view__top">
         <div className="plan-top__start">
           <b className="plan-top__name">{t('board.plan.name')}</b>
-          {!phone && (
-            <span className="plan-view__title">{place || plan.title || base?.title}</span>
-          )}
+          {!phone && <span className="plan-view__title">{place || plan.title || base?.title}</span>}
           <span className="plan-view__only">
             <Icon name="eye" size={13} />
             {t('board.plan.view.only')}
@@ -235,7 +237,8 @@ export function PlanViewer({
                 onClick={() => p.id !== plan.id && onSwitch?.(p.id)}
                 onKeyDown={(e) => {
                   if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-                  const i = tabs.findIndex((f) => f.id === p.id) + (e.key === 'ArrowRight' ? 1 : -1);
+                  const i =
+                    tabs.findIndex((f) => f.id === p.id) + (e.key === 'ArrowRight' ? 1 : -1);
                   const next = tabs[(i + tabs.length) % tabs.length];
                   if (next && next.id !== plan.id) onSwitch?.(next.id);
                 }}

@@ -26,10 +26,10 @@ import {
 import { loadCrew } from '../film/day-calls.ts';
 import { getFrameStatus, isApproved } from '../film/film-status.ts';
 import { croppedRotatedSize } from '../image-crop.ts';
-import type { BoardStore } from '../store.ts';
-import { CHARACTER_COLOURS } from '../plan/PlanDrawing.tsx';
 import { kitList, powerLines } from '../plan/kit.ts';
+import { CHARACTER_COLOURS } from '../plan/PlanDrawing.tsx';
 import { setupName } from '../plan/PlanKit.tsx';
+import type { BoardStore } from '../store.ts';
 import { paperAccent, type Theme } from '../theme.ts';
 import {
   type Audience,
@@ -84,8 +84,8 @@ import {
 } from './images.ts';
 import type { FramesPerPage, Orientation, PaperSize } from './layout.ts';
 import { noteBlocks } from './note-text.ts';
-import { type PlanSheetInclude, planSheetPages } from './plan-sheet.ts';
 import type { Op, Page } from './pages.ts';
+import { type PlanSheetInclude, planSheetPages } from './plan-sheet.ts';
 import {
   calendarDate,
   callSheetPages,
@@ -461,7 +461,9 @@ export async function buildPages(
     // The shooting day of the scene, when the schedule has one of its frames (team only).
     let day = '';
     if (scene?.type === 'scene' && team && sheet.include.dateScene) {
-      const frames = new Set(groupsAll.find((g) => g.scene?.id === scene.id)?.frames.map((f) => f.id));
+      const frames = new Set(
+        groupsAll.find((g) => g.scene?.id === scene.id)?.frames.map((f) => f.id),
+      );
       try {
         const { days } = await planningOnce();
         const at = days.findIndex((d) => d.blocks.some((b) => b.shotId && frames.has(b.shotId)));

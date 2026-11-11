@@ -54,14 +54,17 @@ export function PlanCard({ element }: { element: PlanElement }) {
   const watts = planPower(plan).watts;
   const place = linkedLocation(base ?? element, byId)?.name;
   const name = element.title || base?.title || place || t('board.plan.name');
-  const kw = watts >= 1000
-    ? `${(watts / 1000).toLocaleString(i18n.language, { maximumFractionDigits: 1 })} kW`
-    : `${watts} W`;
+  const kw =
+    watts >= 1000
+      ? `${(watts / 1000).toLocaleString(i18n.language, { maximumFractionDigits: 1 })} kW`
+      : `${watts} W`;
   const chips = [
     family.length > 1 ? t('board.plan.card.setups', { count: family.length }) : '',
     cameras ? t('board.plan.card.cameras', { count: cameras }) : '',
     lights
-      ? [t('board.plan.card.lights', { count: lights }), watts > 0 ? kw : ''].filter(Boolean).join(' · ')
+      ? [t('board.plan.card.lights', { count: lights }), watts > 0 ? kw : '']
+          .filter(Boolean)
+          .join(' · ')
       : '',
   ].filter(Boolean);
   return (
@@ -75,7 +78,11 @@ export function PlanCard({ element }: { element: PlanElement }) {
           <span className="plan__title">
             {element.variant ? `${name} · ${element.variant}` : name}
           </span>
-          {useInRouterContext() ? <LinkedScenes scenes={scenes} /> : <SceneBadges scenes={scenes} />}
+          {useInRouterContext() ? (
+            <LinkedScenes scenes={scenes} />
+          ) : (
+            <SceneBadges scenes={scenes} />
+          )}
         </div>
         {chips.length > 0 && (
           <div className="plan__chips">

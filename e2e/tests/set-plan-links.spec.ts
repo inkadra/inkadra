@@ -59,7 +59,13 @@ async function seed(page: Page, baseURL: string) {
     { number: '2', title: '', location: 'Tavola calda', setting: 'int', time: 'night' },
     opts,
   );
-  const frame = addFrame(doc, scene.id, null, { action: 'Master', lens: '32mm', cast: ['Leo'] }, opts);
+  const frame = addFrame(
+    doc,
+    scene.id,
+    null,
+    { action: 'Master', lens: '32mm', cast: ['Leo'] },
+    opts,
+  );
   const leo = createElement(
     doc,
     'character',

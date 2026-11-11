@@ -226,10 +226,12 @@ export interface SheetWords {
   continuity: string;
   setPlan: string;
   /** The kit of a plan, "Fresnel 2K ×1", and its power per circuit (decision 0111). */
-  planKit?: ((plan: Extract<Element, { type: 'plan' }>) => {
-    kit: { label: string; lines: string[] } | null;
-    power: { label: string; lines: string[] } | null;
-  }) | undefined;
+  planKit?:
+    | ((plan: Extract<Element, { type: 'plan' }>) => {
+        kit: { label: string; lines: string[] } | null;
+        power: { label: string; lines: string[] } | null;
+      })
+    | undefined;
   frameNotes: string;
   light: string;
   shootingDay: string;

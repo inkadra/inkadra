@@ -3,9 +3,9 @@ import {
   beamWarmth,
   blockingCurve,
   blockingPositions,
+  type CardsById,
   categoryOf,
   DEFAULT_GLYPH_STROKE,
-  type CardsById,
   type GlyphPart,
   glyphOf,
   iconCone,
@@ -648,9 +648,7 @@ function StackItem({ entry, plan }: { entry: PlanStackEntry; plan: PlanLike }) {
  * view units); `children` draws on top (the live line, the selection). Memoized: it redraws
  * only when the plan changes.
  */
-export const PlanDrawing = memo(function PlanDrawing(
-  props: Parameters<typeof PlanDrawingView>[0],
-) {
+export const PlanDrawing = memo(function PlanDrawing(props: Parameters<typeof PlanDrawingView>[0]) {
   return <PlanDrawingView {...props} plan={useLinkedPlan(props.plan)} />;
 });
 

@@ -23,7 +23,9 @@ const ctx: CardContext = {
   words: { board: 'Board', file: 'File', plan: 'Set plan' },
 };
 const t = ((key: string, o?: Record<string, unknown>) =>
-  o ? `${key.split('.').at(-1)}(${Object.values(o).join(',')})` : key.split('.').at(-1)) as unknown as TFunction;
+  o
+    ? `${key.split('.').at(-1)}(${Object.values(o).join(',')})`
+    : key.split('.').at(-1)) as unknown as TFunction;
 const texts = (ops: readonly Op[]): string[] =>
   ops.flatMap((op) => (op.kind === 'text' ? [op.text] : op.kind === 'clip' ? texts(op.ops) : []));
 const plan = {
@@ -40,7 +42,15 @@ const plan = {
   walls: [{ id: 'wallAAAAAAAAA', points: [0, 0, 5000, 0, 5000, 3000], thickness: 10 }],
   circuits: [{ id: 'circuitAAAAAA', name: 'A', amps: 16 }],
   icons: [
-    { id: 'camAAAAAAAAAA', kind: 'camera', color: '#9DB8F2', x: 100, y: 100, label: 'A cam', lens: 32 },
+    {
+      id: 'camAAAAAAAAAA',
+      kind: 'camera',
+      color: '#9DB8F2',
+      x: 100,
+      y: 100,
+      label: 'A cam',
+      lens: 32,
+    },
     {
       id: 'keyAAAAAAAAAA',
       kind: 'fresnel',

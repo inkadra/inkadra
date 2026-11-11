@@ -79,9 +79,7 @@ export function PlanEditor(props: PlanEditorProps) {
   const [setupMenu, setSetupMenu] = useState<CSSProperties | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [fullProps, setFullProps] = useState(false);
-  const [exporting, setExporting] = useState<{ area: ReturnType<typeof visibleArea> } | null>(
-    null,
-  );
+  const [exporting, setExporting] = useState<{ area: ReturnType<typeof visibleArea> } | null>(null);
   const scaleButton = useRef<HTMLButtonElement>(null);
   const family = props.family?.length ? props.family : [plan];
   const title = planTitle(t, plan);
@@ -669,7 +667,9 @@ export function PlanEditor(props: PlanEditorProps) {
             className="plan-top__btn"
             data-tour="plan-export-button"
             onClick={() =>
-              setExporting({ area: visibleArea(dialogRef.current ?? document, PLAN_VIEW_W, PLAN_VIEW_H) })
+              setExporting({
+                area: visibleArea(dialogRef.current ?? document, PLAN_VIEW_W, PLAN_VIEW_H),
+              })
             }
           >
             <Icon name="download" size={16} />
