@@ -226,21 +226,21 @@ export function PlanExport({
             ]}
           />
           {family.length > 1 && (
-          <Segmented
-            label={t('board.plan.exportSheet.setups')}
-            hideLabel={false}
-            value={setups}
-            onChange={setSetups}
-            options={[
-              { value: 'this', label: t('board.plan.exportSheet.thisSetup') },
-              {
-                value: 'all',
-                label: scene
-                  ? t('board.plan.exportSheet.allOfScene', { count: family.length, scene })
-                  : t('board.plan.exportSheet.allSetups', { count: family.length }),
-              },
-            ]}
-          />
+            <Segmented
+              label={t('board.plan.exportSheet.setups')}
+              hideLabel={false}
+              value={setups}
+              onChange={setSetups}
+              options={[
+                { value: 'this', label: t('board.plan.exportSheet.thisSetup') },
+                {
+                  value: 'all',
+                  label: scene
+                    ? t('board.plan.exportSheet.allOfScene', { count: family.length, scene })
+                    : t('board.plan.exportSheet.allSetups', { count: family.length }),
+                },
+              ]}
+            />
           )}
           <Segmented
             label={t('board.plan.exportSheet.area')}
