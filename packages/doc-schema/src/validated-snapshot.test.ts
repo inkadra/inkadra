@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { addElement, readElement, roots } from './doc.ts';
-import { Element } from './elements.ts';
+import { Element, ElementId } from './elements.ts';
 import { generateReferenceBoard } from './reference-board.ts';
 import { checkCard } from './strict.ts';
 import {
@@ -353,6 +353,14 @@ describe('validated snapshots', () => {
     const map = roots(doc).elements.get('note00000001')!;
     expect(snapshot.take('note00000001', map)).not.toBeUndefined();
     expect(snapshot.take('note00000001', map)).toBeUndefined();
+  });
+
+  it('check ids with the pattern of ElementId', () => {
+    // validated-snapshot.ts copies it to check a line without a Zod call per card.
+    const [check] = (ElementId._zod.def.checks ?? []) as unknown as Array<{
+      _zod: { def: { pattern?: RegExp } };
+    }>;
+    expect(check?._zod.def.pattern?.source).toBe('^[A-Za-z0-9_-]{8,64}$');
   });
 
   it('leave out reads JSON would change, so a taken card is exactly the read', () => {

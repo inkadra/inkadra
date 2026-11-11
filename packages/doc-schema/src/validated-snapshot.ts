@@ -2,7 +2,7 @@
 import * as Y from 'yjs';
 import { z } from 'zod';
 import { CURRENT_SCHEMA_VERSION, roots } from './doc.ts';
-import { ELEMENT_TYPES, Element, ElementId } from './elements.ts';
+import { ELEMENT_TYPES, Element } from './elements.ts';
 
 /**
  * Validated snapshots (decision 0106): what a board's validated view looked like, saved by the
@@ -27,6 +27,8 @@ const READER = 3;
 const MAGIC = 'inkadra-validated-snapshot';
 const ELEMENT_TYPE_SET: ReadonlySet<unknown> = new Set(ELEMENT_TYPES);
 const HEX64 = /^[0-9a-f]{16}$/;
+/** ElementId's pattern (elements.ts), without a Zod call per card. */
+const ELEMENT_ID = /^[A-Za-z0-9_-]{8,64}$/;
 
 /** Who wrote a snapshot: the host's build identity, the same when it is written and opened. */
 export interface SnapshotBuild {
@@ -108,24 +110,86 @@ function absorb(word: number) {
   laneB ^= laneB >>> 15;
 }
 
-const valid = (n: number) => Number.isSafeInteger(n) && n >= 0;
-const narrow = (n: number) => n < TWO_32;
-
-/** A record of numbers: under `tag` when all fit in 32 bits, else halves under `wide`. */
-function record(tag: number, wide: number, a: number, b: number, c?: number) {
-  if (!valid(a) || !valid(b) || (c !== undefined && !valid(c))) {
-    poisoned = true;
+/**
+ * A record of three numbers: under `tag` when all are integers below 2^32 (`n >>> 0 === n`),
+ * else halves under `wide`. Inlined, with the steps of absorb(): this runs once per run of stroke
+ * items, and without a JIT a function call costs more than the arithmetic.
+ */
+function record3(tag: number, wide: number, a: number, b: number, c: number) {
+  if (a >>> 0 === a && b >>> 0 === b && c >>> 0 === c) {
+    let A = laneA;
+    let B = laneB;
+    A = Math.imul(A ^ tag, 0xcc9e2d51);
+    A = Math.imul(A ^ (A >>> 15), 0x1b873593);
+    A ^= A >>> 13;
+    B = Math.imul((B + tag) | 0, 0x85ebca6b);
+    B = Math.imul(B ^ (B >>> 16), 0x27d4eb2f);
+    B ^= B >>> 15;
+    A = Math.imul(A ^ a, 0xcc9e2d51);
+    A = Math.imul(A ^ (A >>> 15), 0x1b873593);
+    A ^= A >>> 13;
+    B = Math.imul((B + a) | 0, 0x85ebca6b);
+    B = Math.imul(B ^ (B >>> 16), 0x27d4eb2f);
+    B ^= B >>> 15;
+    A = Math.imul(A ^ b, 0xcc9e2d51);
+    A = Math.imul(A ^ (A >>> 15), 0x1b873593);
+    A ^= A >>> 13;
+    B = Math.imul((B + b) | 0, 0x85ebca6b);
+    B = Math.imul(B ^ (B >>> 16), 0x27d4eb2f);
+    B ^= B >>> 15;
+    A = Math.imul(A ^ c, 0xcc9e2d51);
+    A = Math.imul(A ^ (A >>> 15), 0x1b873593);
+    A ^= A >>> 13;
+    B = Math.imul((B + c) | 0, 0x85ebca6b);
+    B = Math.imul(B ^ (B >>> 16), 0x27d4eb2f);
+    B ^= B >>> 15;
+    laneA = A;
+    laneB = B;
     return;
   }
-  if (narrow(a) && narrow(b) && (c === undefined || narrow(c))) {
-    absorb(tag);
-    absorb(a);
-    absorb(b);
-    if (c !== undefined) absorb(c);
+  recordWide(wide, [a, b, c]);
+}
+
+/** A record of two numbers, as record3. */
+function record2(tag: number, wide: number, a: number, b: number) {
+  if (a >>> 0 === a && b >>> 0 === b) {
+    let A = laneA;
+    let B = laneB;
+    A = Math.imul(A ^ tag, 0xcc9e2d51);
+    A = Math.imul(A ^ (A >>> 15), 0x1b873593);
+    A ^= A >>> 13;
+    B = Math.imul((B + tag) | 0, 0x85ebca6b);
+    B = Math.imul(B ^ (B >>> 16), 0x27d4eb2f);
+    B ^= B >>> 15;
+    A = Math.imul(A ^ a, 0xcc9e2d51);
+    A = Math.imul(A ^ (A >>> 15), 0x1b873593);
+    A ^= A >>> 13;
+    B = Math.imul((B + a) | 0, 0x85ebca6b);
+    B = Math.imul(B ^ (B >>> 16), 0x27d4eb2f);
+    B ^= B >>> 15;
+    A = Math.imul(A ^ b, 0xcc9e2d51);
+    A = Math.imul(A ^ (A >>> 15), 0x1b873593);
+    A ^= A >>> 13;
+    B = Math.imul((B + b) | 0, 0x85ebca6b);
+    B = Math.imul(B ^ (B >>> 16), 0x27d4eb2f);
+    B ^= B >>> 15;
+    laneA = A;
+    laneB = B;
     return;
+  }
+  recordWide(wide, [a, b]);
+}
+
+/** Numbers past 32 bits: low and high halves; anything but a non-negative safe integer poisons. */
+function recordWide(wide: number, numbers: number[]) {
+  for (const n of numbers) {
+    if (!Number.isSafeInteger(n) || n < 0) {
+      poisoned = true;
+      return;
+    }
   }
   absorb(wide);
-  for (const n of c === undefined ? [a, b] : [a, b, c]) {
+  for (const n of numbers) {
     absorb(n >>> 0);
     absorb(Math.floor(n / TWO_32));
   }
@@ -159,7 +223,7 @@ function digest(): string {
 export function cardFingerprint(map: Y.Map<unknown>, key: FingerprintKey): string | null {
   start(key[0], key[1], T_CARD);
   const own = map._item?.id;
-  if (own) record(T_OWN, T_OWN_WIDE, own.client, own.clock);
+  if (own) record2(T_OWN, T_OWN_WIDE, own.client, own.clock);
   else absorb(T_NO_OWN);
   walkType(map);
   return poisoned ? null : digest();
@@ -168,15 +232,16 @@ export function cardFingerprint(map: Y.Map<unknown>, key: FingerprintKey): strin
 /** The parts of a Yjs type a fingerprint walks: its map entries and its list. */
 type Walked = Pick<Y.AbstractType<unknown>, '_map' | '_start'>;
 
-const byKey = (a: [string, Y.Item], b: [string, Y.Item]) => (a[0] < b[0] ? -1 : 1);
-
 function walkType(type: Walked) {
   absorb(T_BEGIN);
-  if (type._map.size > 0) {
-    const entries = type._map.size === 1 ? [...type._map] : [...type._map].sort(byKey);
-    for (const [, item] of entries) {
+  const map = type._map;
+  if (map.size > 0) {
+    // The default sort compares UTF-16 code units, as `<` does, without calling back into JS.
+    const keys = map.size === 1 ? map.keys() : [...map.keys()].sort();
+    for (const key of keys) {
+      const item = map.get(key)!;
       if (item.deleted) continue;
-      record(T_ENTRY, T_ENTRY_WIDE, item.id.client, item.id.clock);
+      record2(T_ENTRY, T_ENTRY_WIDE, item.id.client, item.id.clock);
       walkContent(item);
     }
   }
@@ -192,9 +257,9 @@ function walkType(type: Walked) {
       end += item.length;
       continue;
     }
-    if (client !== -1) record(T_RUN, T_RUN_WIDE, client, first, end);
+    if (client !== -1) record3(T_RUN, T_RUN_WIDE, client, first, end);
     if (nested) {
-      record(T_NESTED, T_NESTED_WIDE, id.client, id.clock);
+      record2(T_NESTED, T_NESTED_WIDE, id.client, id.clock);
       client = -1;
       walkContent(item);
     } else {
@@ -203,7 +268,7 @@ function walkType(type: Walked) {
       end = id.clock + item.length;
     }
   }
-  if (client !== -1) record(T_RUN, T_RUN_WIDE, client, first, end);
+  if (client !== -1) record3(T_RUN, T_RUN_WIDE, client, first, end);
   absorb(T_END);
 }
 
@@ -361,5 +426,5 @@ function parse(json: string): unknown {
 function isCardShaped(value: unknown): boolean {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
   const { id, type } = value as { id?: unknown; type?: unknown };
-  return ELEMENT_TYPE_SET.has(type) && ElementId.safeParse(id).success;
+  return ELEMENT_TYPE_SET.has(type) && typeof id === 'string' && ELEMENT_ID.test(id);
 }
