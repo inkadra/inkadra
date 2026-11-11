@@ -1509,10 +1509,10 @@
         "openCharacter": "Apri il personaggio",
         "linkCharacter": "Collega a un personaggio",
         "searchCharacter": "Cerca personaggi",
-        "openFrame": "Apri l'inquadratura",
-        "linkFrame": "Collega a un'inquadratura",
+        "openFrame": "Apri l’inquadratura",
+        "linkFrame": "Collega a un’inquadratura",
         "searchFrame": "Cerca inquadrature",
-        "followFrame": "Usa i {{mm}} mm dell'inquadratura",
+        "followFrame": "Usa i {{mm}} mm dell’inquadratura",
         "location": "Location",
         "openLocation": "Apri la location",
         "linkLocation": "Collega a una location",
@@ -1533,13 +1533,13 @@
           "northWest": "Da nord-ovest"
         },
         "height": {
-          "down": "sotto l'orizzonte",
+          "down": "sotto l’orizzonte",
           "low": "basso",
           "mid": "a metà altezza",
           "high": "alto"
         },
-        "sunFromPlace": "Calcolato dal link della mappa di {{place}}: {{degrees}}° sull'orizzonte. Le icone del sole girano quando cambia l'ora.",
-        "sunByClock": "Solo dall'ora: a est al mattino, a ovest la sera. Aggiungi un link della mappa alla location per l'altezza del sole. Le icone del sole girano quando cambia l'ora; il nord si imposta a mano.",
+        "sunFromPlace": "Calcolato dal link della mappa di {{place}}: {{degrees}}° sull’orizzonte. Le icone del sole girano quando cambia l’ora.",
+        "sunByClock": "Solo dall’ora: a est al mattino, a ovest la sera. Aggiungi un link della mappa alla location per l’altezza del sole. Le icone del sole girano quando cambia l’ora; il nord si imposta a mano.",
         "scene": "Scena {{number}}",
         "settings": {
           "int": "INT",
@@ -5260,7 +5260,7 @@
           },
           "1": {
             "title": "Collegati, mai copiati",
-            "text": "Collega un attore a un personaggio e una camera a un'inquadratura dello storyboard: nomi, colori e ottiche seguono le schede. Senza selezione, collega la pianta alla sua location."
+            "text": "Collega un attore a un personaggio e una camera a un’inquadratura dello storyboard: nomi, colori e ottiche seguono le schede. Senza selezione, collega la pianta alla sua location."
           },
           "2": {
             "title": "Il sole, per gli esterni",

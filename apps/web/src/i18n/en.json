@@ -1512,7 +1512,7 @@
         "openFrame": "Open the frame",
         "linkFrame": "Link to a frame",
         "searchFrame": "Search frames",
-        "followFrame": "Use the frame's {{mm}} mm",
+        "followFrame": "Use the frame’s {{mm}} mm",
         "location": "Location",
         "openLocation": "Open the location",
         "linkLocation": "Link to a location",
@@ -1539,7 +1539,7 @@
           "high": "high"
         },
         "sunFromPlace": "Worked out for the map link of {{place}}: {{degrees}}° above the horizon. The sun icons turn as the time changes.",
-        "sunByClock": "From the clock alone: east in the morning, west in the evening. Add a map link to the location for the sun's height. The sun icons turn as the time changes; set north by hand.",
+        "sunByClock": "From the clock alone: east in the morning, west in the evening. Add a map link to the location for the sun’s height. The sun icons turn as the time changes; set north by hand.",
         "scene": "Scene {{number}}",
         "settings": {
           "int": "INT",
@@ -5256,7 +5256,7 @@
         "steps": {
           "0": {
             "title": "Scenes from the storyboard",
-            "text": "The chip reads the scene's number, INT or EXT and time of day from its card. Click it to open the scene."
+            "text": "The chip reads the scene’s number, INT or EXT and time of day from its card. Click it to open the scene."
           },
           "1": {
             "title": "Linked, never copied",

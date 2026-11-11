@@ -1525,21 +1525,21 @@
         "from": {
           "north": "Du nord",
           "northEast": "Du nord-est",
-          "east": "De l'est",
+          "east": "De l’est",
           "southEast": "Du sud-est",
           "south": "Du sud",
           "southWest": "Du sud-ouest",
-          "west": "De l'ouest",
+          "west": "De l’ouest",
           "northWest": "Du nord-ouest"
         },
         "height": {
-          "down": "sous l'horizon",
+          "down": "sous l’horizon",
           "low": "bas",
           "mid": "à mi-hauteur",
           "high": "haut"
         },
-        "sunFromPlace": "Calculé avec le lien de carte de {{place}} : {{degrees}}° au-dessus de l'horizon. Les icônes du soleil tournent avec l'heure.",
-        "sunByClock": "D'après l'heure seule : à l'est le matin, à l'ouest le soir. Ajoutez un lien de carte au décor pour la hauteur du soleil. Les icônes du soleil tournent avec l'heure ; le nord se règle à la main.",
+        "sunFromPlace": "Calculé avec le lien de carte de {{place}} : {{degrees}}° au-dessus de l’horizon. Les icônes du soleil tournent avec l’heure.",
+        "sunByClock": "D’après l’heure seule : à l’est le matin, à l’ouest le soir. Ajoutez un lien de carte au décor pour la hauteur du soleil. Les icônes du soleil tournent avec l’heure ; le nord se règle à la main.",
         "scene": "Scène {{number}}",
         "settings": {
           "int": "INT",
@@ -5264,7 +5264,7 @@
           },
           "2": {
             "title": "Le soleil, pour les extérieurs",
-            "text": "Réglez l'heure et la date : les icônes du soleil tournent avec. Le nord se règle à la main."
+            "text": "Réglez l’heure et la date : les icônes du soleil tournent avec. Le nord se règle à la main."
           },
           "3": {
             "title": "Les setups dans la liste des plans",
