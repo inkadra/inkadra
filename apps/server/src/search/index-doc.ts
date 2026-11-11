@@ -130,10 +130,13 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
         assetId: uuidOrNull(el.imageAssetId),
       };
     case 'plan': {
-      // Labels of icons and the texts written on the plan, as on the card.
+      // Labels of icons and the texts written on the plan, as on the card; makes and notes of
+      // icons and labels of walls and openings (decision 0104).
       const words = [
-        ...(el.icons ?? []).map((i) => i.label),
+        ...(el.icons ?? []).flatMap((i) => [i.label, i.make, i.note]),
         ...(el.shapes ?? []).map((s) => s.text),
+        ...(el.walls ?? []).map((w) => w.label),
+        ...(el.openings ?? []).map((o) => o.label),
       ].filter((w): w is string => !!w);
       return { ...base, title: el.title ?? '', text: join(el.title, words) };
     }

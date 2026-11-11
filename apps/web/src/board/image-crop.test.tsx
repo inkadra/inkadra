@@ -335,6 +335,8 @@ describe('CroppedImage component & BoardStore integration', () => {
       'tag-green-bg': '#efe',
       'tag-yellow': '#880',
       'tag-red': '#a00',
+      'tag-teal': '#088',
+      'tag-pink': '#a08',
     } satisfies Palette;
     const ctx: CardContext = {
       measure: (text, size) => text.length * size * 0.5,

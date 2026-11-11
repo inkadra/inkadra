@@ -84,7 +84,7 @@ describe('index entries', () => {
     );
   });
 
-  it('indexes the title, icon labels and texts of a set plan', () => {
+  it('indexes the title, icon labels, makes, wall labels and texts of a set plan', () => {
     const doc = createBoardDoc('board');
     const plan = {
       ...base(),
@@ -98,8 +98,11 @@ describe('index entries', () => {
           x: 9,
           y: 9,
           label: 'A cam',
+          make: 'Arri Alexa',
         },
       ],
+      walls: [{ id: newElementId(), points: [0, 0, 99, 0], thickness: 9, label: 'muro nord' }],
+      openings: [],
       shapes: [
         {
           id: newElementId(),
@@ -116,7 +119,11 @@ describe('index entries', () => {
     };
     addElement(doc, plan);
     expect(entriesFor(doc)).toEqual([
-      expect.objectContaining({ type: 'plan', title: 'Cucina', text: 'Cucina A cam finestra' }),
+      expect.objectContaining({
+        type: 'plan',
+        title: 'Cucina',
+        text: 'Cucina A cam Arri Alexa finestra muro nord',
+      }),
     ]);
   });
 

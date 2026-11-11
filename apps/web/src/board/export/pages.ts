@@ -64,7 +64,8 @@ export type Op =
     }
   /** Flat list x0, y0, x1, y1, … of an open line with round caps and joins. */
   | { kind: 'polyline'; points: number[]; color: string; width: number; opacity?: number }
-  | { kind: 'polygon'; points: number[]; fill: string }
+  /** `opacity` lets what is under it show: a beam, a see-through frame (decision 0104). */
+  | { kind: 'polygon'; points: number[]; fill: string; opacity?: number }
   | {
       kind: 'ellipse';
       cx: number;

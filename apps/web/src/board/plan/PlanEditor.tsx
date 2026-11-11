@@ -8,9 +8,9 @@ import {
   bendThrough,
   blockingCurve,
   blockingPositions,
-  categoryOf,
   coneEnd,
   DEFAULT_LENS,
+  defaultIconSize,
   defaultLayer,
   duplicatePlanItems,
   encodeStroke,
@@ -22,6 +22,7 @@ import {
   itemFrame,
   itemsBox,
   itemsInRect,
+  kindLayer,
   layerCounts,
   layerOf,
   measureEnds,
@@ -435,7 +436,7 @@ export function PlanEditor({
     const q = snapped(p);
     let id: string | null = null;
     change(() => {
-      const layer = activeLayer ?? categoryOf(kind).layer;
+      const layer = activeLayer ?? kindLayer(kind);
       id = addPlanIcon(
         doc,
         targetFor(layer),
@@ -444,7 +445,9 @@ export function PlanEditor({
           color: penColor ?? iconColor(kind),
           x: toGrid(q.x),
           y: toGrid(q.y),
-          ...(layer !== categoryOf(kind).layer ? { layer } : {}),
+          // Its real size, or its size in proportion on a plan without a scale (decision 0104).
+          ...defaultIconSize(kind, drawn.scale),
+          ...(layer !== kindLayer(kind) ? { layer } : {}),
         },
         LOCAL,
       );

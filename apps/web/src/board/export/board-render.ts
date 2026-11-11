@@ -2,22 +2,29 @@
 import {
   arrowGeometry,
   arrowPolyline,
+  beamWarmth,
   blockingCurve,
   blockingPositions,
   curvePoints,
+  DEFAULT_GLYPH_STROKE,
   decodeStroke,
   flattenGlyph,
-  glyphOf,
   iconCone,
+  iconGlow,
+  iconGlyph,
   iconPoint,
   iconTransform,
   labelAnchor,
-  layerOf,
   measureEnds,
+  openingLines,
   PLAN_VIEW_W,
-  type PlanItem,
+  type PlanStackEntry,
+  pieceOutline,
+  planStack,
   type Rect,
+  shownOpenings,
   variantView,
+  wallPieces,
 } from '@inkadra/canvas-core';
 import {
   type Element,
@@ -30,7 +37,7 @@ import {
 import type { AssetTrack } from '@inkadra/shared';
 import { dark, light } from '@inkadra/ui/tokens';
 import { croppedRotatedSize } from '../image-crop.ts';
-import { iconLabel, LABEL_SIZE, measureText, planToken } from '../plan/PlanDrawing.tsx';
+import { iconLabel, LABEL_SIZE, measureText, PLAN_INK, planToken } from '../plan/PlanDrawing.tsx';
 import { videoEmbedUrl } from '../youtube.ts';
 import type { Placed } from './board-model.ts';
 import { type ImageInfo, imagePlacement, type Measure, type Op } from './pages.ts';
@@ -56,7 +63,9 @@ export type Palette = Record<
   | 'tag-purple-bg'
   | 'tag-green-bg'
   | 'tag-yellow'
-  | 'tag-red',
+  | 'tag-red'
+  | 'tag-teal'
+  | 'tag-pink',
   string
 >;
 
@@ -931,10 +940,11 @@ function mix(hex: string, base: string, t: number): string {
 }
 
 /**
- * A set plan's drawing as vectors, without the grid (decision 0062): strokes, shapes, then the
- * set icons with their labels, in the printed theme's colours.
+ * A set plan's drawing as vectors, without the grid (decisions 0062 and 0104), in the printed
+ * theme's colours and the stacking order of the board: walls, tiers 0 and 1, beams and blocking
+ * moves, tiers 2 to 5, blocking numbers, labels. `moves`: blocking moves and numbers, on unless
+ * an export leaves them out (round 6, i).
  */
-/** `moves`: blocking moves and numbers, on unless an export leaves them out (round 6, i). */
 export function planOps(
   el: Extract<Element, { type: 'plan' }>,
   box: Rect,
@@ -946,19 +956,60 @@ export function planOps(
     const token = planToken(hex);
     return token ? c[token as keyof Palette] : hex;
   };
-  const shown = <T extends PlanItem>(items: readonly T[] | undefined) =>
-    (items ?? []).filter((item) => !el.hiddenLayers?.includes(layerOf(item)));
+  const stack = planStack(el, el.hiddenLayers);
+  const shownIcons = stack.filter((e) => e.ref.kind === 'icons').map((e) => e.item as PlanIcon);
   const k = box.w / PLAN_VIEW_W;
   const at = (x: number, y: number) => ({ x: box.x + x * k, y: box.y + y * k });
+  const flat = (pts: ReadonlyArray<{ x: number; y: number }>) =>
+    pts.flatMap((p) => [box.x + p.x * k, box.y + p.y * k]);
   const inside: Op[] = [];
-  for (const stroke of shown(el.strokes))
-    inside.push(strokeOp({ ...stroke, color: ink(stroke.color) }, box));
-  for (const shape of shown(el.shapes))
-    inside.push(
-      ...planShapeOps(measureEnds(shape, el.icons), box, ink(shape.color), el.scale, ctx),
-    );
+  const labels: Op[] = [];
+  // Walls and their openings, on the Set layer (decision 0104).
+  if (!el.hiddenLayers?.includes('set')) {
+    const wallInk = ink(PLAN_INK);
+    const openings = shownOpenings(el);
+    const walls = new Map((el.walls ?? []).map((w) => [w.id, w]));
+    for (const wall of el.walls ?? [])
+      for (const piece of wallPieces(wall, openings))
+        inside.push({
+          kind: 'polygon',
+          points: flat(pieceOutline(piece, wall.thickness)),
+          fill: wallInk,
+        });
+    for (const o of openings) {
+      const wall = walls.get(o.wall);
+      if (!wall) continue;
+      for (const line of openingLines(wall, o)) {
+        const pts = line.points.map((p) => at(p.x, p.y));
+        const w = (line.leaf ? 2.9 : 1.6) * k;
+        if (line.dashed) inside.push(...dashes(pts, 4 * k, 4 * k, wallInk, w));
+        else
+          inside.push({
+            kind: 'polyline',
+            points: pts.flatMap((p) => [p.x, p.y]),
+            color: wallInk,
+            width: w,
+          });
+      }
+    }
+  }
+  const itemOps = (e: PlanStackEntry): Op[] => {
+    if (e.ref.kind === 'strokes') {
+      const stroke = e.item as Stroke;
+      return [strokeOp({ ...stroke, color: ink(stroke.color) }, box)];
+    }
+    if (e.ref.kind === 'shapes') {
+      const shape = e.item as PlanShape;
+      return planShapeOps(measureEnds(shape, el.icons), box, ink(shape.color), el.scale, ctx);
+    }
+    const icon = e.item as PlanIcon;
+    return iconOps(icon, ink(icon.color), 1, true);
+  };
+  for (const e of stack) if (e.tier < 2) inside.push(...itemOps(e));
+  for (const icon of shownIcons) inside.push(...beamOps(icon));
   // Blocking: the moves, the veiled earlier positions and the numbers (round 6, d).
-  for (const icon of moves ? shown(el.icons) : []) {
+  const numbers: Op[] = [];
+  for (const icon of moves ? shownIcons : []) {
     const steps = icon.steps ?? [];
     if (steps.length === 0) continue;
     const color = ink(icon.color);
@@ -1005,7 +1056,7 @@ export function planOps(
           cy + 11 * k * Math.sin((j / 20) * Math.PI * 2),
         );
       const label = String(i + 1);
-      inside.push(
+      numbers.push(
         { kind: 'polygon', points: ring, fill: color },
         {
           kind: 'text',
@@ -1019,50 +1070,86 @@ export function planOps(
       );
     });
   }
-  const labels: Op[] = [];
-  for (const icon of shown(el.icons)) inside.push(...iconOps(icon, ink(icon.color), 1, true));
-  inside.push(...labels);
+  for (const e of stack) if (e.tier >= 2) inside.push(...itemOps(e));
+  inside.push(...numbers, ...labels);
   return [{ kind: 'clip', ...box, ops: inside }];
 
-  /** An icon: its cone or beam, its glyph and its label; `veil` fades a blocking copy. */
+  /**
+   * A camera's cone, a light's beam tinted by its colour temperature, or the glow of a light
+   * that shines all round (decision 0104), as flat shades of the printed page.
+   */
+  function beamOps(icon: PlanIcon): Op[] {
+    const cone = iconCone(icon, el.sensor);
+    const glow = cone ? null : iconGlow(icon);
+    const warmth = icon.kind === 'camera' ? null : beamWarmth(icon.kelvin);
+    const color = warmth === null ? ink(icon.color) : mix(c['tag-orange'], c['tag-blue'], warmth);
+    const shade = 0.06 + 0.16 * (icon.intensity ?? 0.8);
+    if (glow) {
+      const ring: number[] = [];
+      for (let j = 0; j < 32; j++) {
+        const a = (j / 32) * Math.PI * 2;
+        const p = at(
+          glow.centre.x + glow.radius * Math.cos(a),
+          glow.centre.y + glow.radius * Math.sin(a),
+        );
+        ring.push(p.x, p.y);
+      }
+      return [{ kind: 'polygon', points: ring, fill: color, opacity: shade }];
+    }
+    if (!cone) return [];
+    const pts = cone.points.map((p) => at(p.x, p.y));
+    return [
+      {
+        kind: 'polygon',
+        points: pts.flatMap((p) => [p.x, p.y]),
+        fill: color,
+        opacity: cone.beam ? shade : 0.14,
+      },
+      {
+        kind: 'polyline',
+        points: [...pts, pts[0] as { x: number; y: number }].flatMap((p) => [p.x, p.y]),
+        color: mix(color, c['surface-1'], cone.beam ? 0.35 : 0.5),
+        width: 1.5 * k,
+      },
+    ];
+  }
+
+  /** An icon: its glyph and its label; `veil` fades a blocking copy. */
   function iconOps(icon: PlanIcon, base: string, veil: number, full: boolean): Op[] {
     const out: Op[] = [];
     const color = veil < 1 ? mix(base, c['surface-1'], veil) : base;
-    const cone = full ? iconCone(icon, el.sensor) : null;
-    if (cone) {
-      const pts = cone.points.map((p) => at(p.x, p.y));
-      const shade = cone.beam ? 0.06 + 0.16 * (icon.intensity ?? 0.8) : 0.14;
-      out.push(
-        {
-          kind: 'polygon',
-          points: pts.flatMap((p) => [p.x, p.y]),
-          fill: mix(color, c['surface-1'], shade),
-        },
-        {
-          kind: 'polyline',
-          points: [...pts, pts[0] as { x: number; y: number }].flatMap((p) => [p.x, p.y]),
-          color: mix(color, c['surface-1'], 0.5),
-          width: 1.5 * k,
-        },
-      );
-    }
     const t = iconTransform(icon);
     const place = (x: number, y: number) => {
       const q = iconPoint(t, x, y);
       return at(q.x, q.y);
     };
     const width = Math.min(1.6, 1.7 / Math.sqrt(t.sx * t.sy)) * Math.sqrt(t.sx * t.sy) * k;
-    const wash = mix(color, c['surface-1'], 0.12);
-    for (const part of flattenGlyph(glyphOf(icon.kind))) {
+    const paper = c['surface-1'];
+    for (const part of flattenGlyph(iconGlyph(icon))) {
       const pts: Array<{ x: number; y: number }> = [];
       for (let i = 0; i + 1 < part.points.length; i += 2)
         pts.push(place(part.points[i] as number, part.points[i + 1] as number));
-      if (part.closed && pts[0]) {
-        out.push({ kind: 'polygon', points: pts.flatMap((p) => [p.x, p.y]), fill: wash });
-        pts.push(pts[0]);
-      }
-      const w = (width * part.width) / 1.5;
-      const stroke = part.opacity !== undefined ? mix(color, c['surface-1'], part.opacity) : color;
+      const own = part.color ? ink(part.color) : color;
+      // Opaque parts mix their colour into the paper; see-through ones only tint it (0104).
+      const fill = part.fill?.hole
+        ? paper
+        : part.fill?.mix !== undefined
+          ? mix(own, paper, part.fill.mix)
+          : part.fill?.alpha !== undefined
+            ? own
+            : null;
+      const alpha =
+        part.fill?.alpha !== undefined && part.fill.alpha < 1 ? part.fill.alpha : undefined;
+      if (fill && pts[0])
+        out.push({
+          kind: 'polygon',
+          points: pts.flatMap((p) => [p.x, p.y]),
+          fill,
+          ...(alpha !== undefined ? { opacity: alpha * veil } : {}),
+        });
+      if (part.closed && pts[0]) pts.push(pts[0]);
+      const w = (width * part.width) / DEFAULT_GLYPH_STROKE;
+      const stroke = part.opacity !== undefined ? mix(own, paper, part.opacity) : own;
       if (part.dash)
         out.push(
           ...dashes(
