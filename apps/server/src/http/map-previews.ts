@@ -110,8 +110,7 @@ export function registerMapPreviews(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const input = SearchMapPlaces.parse(req.body);
     await requireWriteAccess(db, actor, input.projectId, input.boardId);
-    if (!searchLimiter.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many address searches: wait a minute.');
+    searchLimiter.require(actor.id, 'Too many address searches: wait a minute.');
     if (!config.MAP_GEOCODER_URL)
       throw new HttpError('bad_request', 'Address search is not configured.');
     if (new URL(config.MAP_GEOCODER_URL).hostname === 'nominatim.openstreetmap.org')
@@ -138,8 +137,7 @@ export function registerMapPreviews(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const input = CreateMapPreview.parse(req.body);
     await requireWriteAccess(db, actor, input.projectId, input.boardId);
-    if (!limiter.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many map previews: wait a minute.');
+    limiter.require(actor.id, 'Too many map previews: wait a minute.');
 
     let url = input.url ?? null;
     let place = url ? parseMapLink(url) : null;

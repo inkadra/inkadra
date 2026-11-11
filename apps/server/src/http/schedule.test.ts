@@ -806,7 +806,9 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
       remoteAddress: '192.0.2.10',
     });
     expect(limited.statusCode).toBe(429);
-    expect(limited.headers['retry-after']).toBe('60');
+    // The window of the oldest of the 60 requests, which ran a moment ago.
+    expect(Number(limited.headers['retry-after'])).toBeGreaterThanOrEqual(58);
+    expect(Number(limited.headers['retry-after'])).toBeLessThanOrEqual(60);
   });
   it.each([false, true])(
     'keeps private notes on a cross-day move (existing destination: %s)',

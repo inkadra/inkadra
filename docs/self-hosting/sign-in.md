@@ -193,7 +193,9 @@ Existing HTTPS sessions keep their Secure `__Host-` cookies; no migration is nee
 
 `GET /api/v1/instance/version` returns the software `version`, `api` (`v1`),
 `docSchemaVersion` and `capabilities`. The initial capability names are `boards`
-(board REST operations), `comments` (board comments) and `resumable-uploads` (tus).
+(board REST operations), `comments` (board comments) and `resumable-uploads` (tus);
+`idempotent-creations` means the `Idempotency-Key` retries below are supported, and
+`token-invalid-reasons` that a 401 may say why a token stopped working.
 Clients must ignore unknown capability names and tolerate missing fields on older servers.
 `minClient`, when present, maps platform names to minimum client versions; no minimum
 is currently imposed. Capabilities describe implemented protocols, not a user's permissions.
@@ -202,3 +204,37 @@ These fields are never added to the public instance or health responses.
 Clients may send `Inkadra-Client: ios/1.2.0` (or another platform/version). Well-formed
 values are recorded only as the structured request log field `inkadraClient`; malformed
 values are ignored. The header does not change authentication or request handling.
+
+### Retrying offline creations
+
+Authenticated `POST /api/v1/projects/{projectId}/boards` and
+`POST /api/v1/boards/{boardId}/comments` accept an optional `Idempotency-Key` header
+(1–128 printable ASCII characters, without spaces). Reuse the same key and body for
+retries: a retry creates nothing and sends no notification. It answers 201 with the
+created board or comment **as it is now**, read like a `GET` would read it (current title,
+role, edits and reactions); if the resource has since been deleted or moved out of reach,
+the retry answers 404 and the client should drop the queued creation. Only the id of the
+created resource is remembered, never a copy of the response.
+Keys are scoped to the authenticated user and endpoint, retained for seven days, and
+purged by upload housekeeping. Reusing a key with a different validated body returns 409;
+invalid keys return 400. Authorization and rate limits are checked on every attempt, before
+the key is looked up. After expiry the key may create a new resource. Requests without a key
+keep their existing behavior.
+
+Rate-limit refusals (429) of per-user, per-address and per-link budgets return `Retry-After`
+in whole seconds (at least 1) until another attempt is allowed; clients should wait that
+long before retrying with the same creation key. Refusals because the server is at capacity
+(busy media workers, a full demo) may omit it: retry with backoff.
+
+### Recognizable invalid tokens
+
+A REST 401 for a bearer token may add `error.details.reason` (schema `InvalidToken`):
+`token_revoked` (revoked by its owner, a password change or a reset), `token_expired` or
+`account_deactivated`. Only a request presenting the exact token the server issued gets a
+reason; unknown tokens stay generic. Revoking a token deletes it as before; its hash and
+reason go to a separate table for 30 days, then upload housekeeping purges them. Only
+hashes are stored, and deleting an account removes them at once. Reactivating an account
+does not bring its old tokens back. The collaboration socket is unchanged (4401
+`Unauthorized`): ask a REST endpoint for the reason. These signals do not request or
+authorize deletion of client data. Servers that send reasons list the
+`token-invalid-reasons` capability.

@@ -203,8 +203,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
 
   app.get(v1('/search'), async (req) => {
     const actor = await requireActor(auth, req, db);
-    if (!searches.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many searches. Try again in a minute.');
+    searches.require(actor.id, 'Too many searches. Try again in a minute.');
     const query = SearchQuery.parse(req.query ?? {});
     const readable = await readableBoards(db, actor, query.projectId);
     if (readable.boardIds.length === 0) return { items: [] };

@@ -53,6 +53,7 @@ import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { authorOf, labelOf, loadPeople, type People } from './authors.ts';
 import { HttpError } from './errors.ts';
+import { idempotentCreation } from './idempotency.ts';
 import { afterCursor, atText, decodeCursor, pageOf } from './keyset.ts';
 import { RateLimiter } from './link-previews.ts';
 import { commentReactions, elementReactions } from './reactions.ts';
@@ -90,7 +91,11 @@ interface Viewer {
 const canWrite = (v: Viewer) => atLeast(v.role, CAPABILITY_ROLE.comment);
 
 /** The mentions of a body that name people who can read the board. */
-async function readableMentions(db: Database, boardId: string, body: string): Promise<string[]> {
+async function readableMentions(
+  db: Pick<Database, 'select' | 'execute'>,
+  boardId: string,
+  body: string,
+): Promise<string[]> {
   const ids = mentionedIds(body);
   const roles = await boardRolesForPeople(db, boardId, ids);
   return ids.filter((id) => roles.has(id));
@@ -238,7 +243,11 @@ async function toThreads(db: Database, rows: Row[], viewer: Viewer): Promise<Com
  * includes sub-boards, still working (not revoked or expired, and its creator still has at
  * least editor on its board and on this one, decision 0013).
  */
-async function checkAudience(db: Database, access: BoardAccess, linkId: string) {
+async function checkAudience(
+  db: Pick<Database, 'select' | 'execute'>,
+  access: BoardAccess,
+  linkId: string,
+) {
   const [link] = await db
     .select()
     .from(shareLink)
@@ -340,95 +349,119 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     const access = await readableBoard(actor, boardId);
     const viewer: Viewer = { actorId: actor.id, role: access.role };
     requireWriter(viewer);
-    if (!limiter.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many comments: wait a minute.');
+    // Before any lookup, retries included: a flood must not cost queries.
+    limiter.require(actor.id, 'Too many comments: wait a minute.');
 
-    let thread: Row | undefined;
-    if (input.parentId) {
-      [thread] = await db
-        .select()
-        .from(comment)
-        .where(and(eq(comment.id, input.parentId), eq(comment.boardId, boardId)));
-      if (!thread) throw new HttpError('not_found', 'Thread not found.');
-      if (thread.threadId)
-        throw new HttpError('bad_request', 'Reply to the first comment of the thread.');
-    }
-    const elementId = thread ? thread.elementId : (input.elementId ?? null);
-    const card = !thread && elementId ? await readElement(boardId, elementId) : null;
-    if (!thread && elementId && !card) throw new HttpError('not_found', 'Card not found.');
-    if (input.pin && thread)
-      throw new HttpError('bad_request', 'Only the first comment of a thread can be pinned.');
-    if (input.pin && !elementId) throw new HttpError('bad_request', 'Only a card can be pinned.');
-    // Replies take the visibility of their thread; a reply of the team carries no link.
-    const visibility = thread ? thread.visibility : (input.visibility ?? 'team');
-    const shareLinkId = thread ? null : (input.shareLinkId ?? null);
-    if (shareLinkId) {
-      if (visibility !== 'everyone')
-        throw new HttpError('bad_request', 'Only threads for everyone can be limited to a link.');
-      await checkAudience(db, access, shareLinkId);
-    }
-    const mentions = await readableMentions(db, boardId, input.body);
-    const row = await db.transaction(async (tx) => {
-      // Serialize with deletion of the thread start. A successful reply must never be
-      // cascaded away by a concurrent delete that saw no replies yet.
-      if (thread) {
-        const [current] = await tx
-          .select({ id: comment.id })
-          .from(comment)
-          .where(eq(comment.id, thread.id))
-          .for('update');
-        if (!current) throw new HttpError('not_found', 'Thread not found.');
-      }
-      const [created] = await tx
-        .insert(comment)
-        .values({
-          projectId: access.board.projectId,
-          boardId,
-          elementId,
-          threadId: thread?.id ?? null,
-          authorId: actor.id,
-          shareLinkId,
-          body: input.body,
-          mentions,
-          visibility,
-          pin: input.pin ?? null,
-        })
-        .returning();
-      if (!created) throw new Error('Comment insert returned nothing');
-      return created;
-    });
+    const pendingCard =
+      input.elementId && !input.parentId ? await readElement(boardId, input.elementId) : null;
+    let onCreated: (() => Promise<void>) | undefined;
+    const result = await idempotentCreation(
+      db,
+      req,
+      actor.id,
+      `comments:${boardId}`,
+      input,
+      async (tx) => {
+        let thread: Row | undefined;
+        if (input.parentId) {
+          [thread] = await tx
+            .select()
+            .from(comment)
+            .where(and(eq(comment.id, input.parentId), eq(comment.boardId, boardId)));
+          if (!thread) throw new HttpError('not_found', 'Thread not found.');
+          if (thread.threadId)
+            throw new HttpError('bad_request', 'Reply to the first comment of the thread.');
+        }
+        const elementId = thread ? thread.elementId : (input.elementId ?? null);
+        const card = pendingCard;
+        if (!thread && elementId && !card) throw new HttpError('not_found', 'Card not found.');
+        if (input.pin && thread)
+          throw new HttpError('bad_request', 'Only the first comment of a thread can be pinned.');
+        if (input.pin && !elementId)
+          throw new HttpError('bad_request', 'Only a card can be pinned.');
+        // Replies take the visibility of their thread; a reply of the team carries no link.
+        const visibility = thread ? thread.visibility : (input.visibility ?? 'team');
+        const shareLinkId = thread ? null : (input.shareLinkId ?? null);
+        if (shareLinkId) {
+          if (visibility !== 'everyone')
+            throw new HttpError(
+              'bad_request',
+              'Only threads for everyone can be limited to a link.',
+            );
+          await checkAudience(tx, access, shareLinkId);
+        }
+        const mentions = await readableMentions(tx, boardId, input.body);
+        // Serialize with deletion of the thread start. A successful reply must never be
+        // cascaded away by a concurrent delete that saw no replies yet.
+        if (thread) {
+          const [current] = await tx
+            .select({ id: comment.id })
+            .from(comment)
+            .where(eq(comment.id, thread.id))
+            .for('update');
+          if (!current) throw new HttpError('not_found', 'Thread not found.');
+        }
+        const [created] = await tx
+          .insert(comment)
+          .values({
+            projectId: access.board.projectId,
+            boardId,
+            elementId,
+            threadId: thread?.id ?? null,
+            authorId: actor.id,
+            shareLinkId,
+            body: input.body,
+            mentions,
+            visibility,
+            pin: input.pin ?? null,
+          })
+          .returning();
+        if (!created) throw new Error('Comment insert returned nothing');
+        onCreated = async () => {
+          await afterCommit(req.log, async () => {
+            const recipients = new Recipients(actor.id);
+            for (const id of mentions) recipients.add(id, 'mention');
+            if (thread) {
+              const writers = await db
+                .selectDistinct({ id: comment.authorId })
+                .from(comment)
+                .where(
+                  and(
+                    or(eq(comment.id, thread.id), eq(comment.threadId, thread.id)),
+                    isNotNull(comment.authorId),
+                    isNull(comment.deletedAt),
+                  ),
+                );
+              for (const w of writers) recipients.add(w.id, 'reply');
+            } else if (elementId) {
+              recipients.add(card?.createdBy, 'comment');
+            }
+            await notify(
+              db,
+              {
+                actor: { userId: actor.id },
+                projectId: access.board.projectId,
+                boardId,
+                elementId,
+                commentId: created.id,
+              },
+              recipients,
+            );
+          });
+          await afterCommit(req.log, () => tell(created));
+        };
+        return created;
+      },
+    );
 
-    await afterCommit(req.log, async () => {
-      const recipients = new Recipients(actor.id);
-      for (const id of mentions) recipients.add(id, 'mention');
-      if (thread) {
-        const writers = await db
-          .selectDistinct({ id: comment.authorId })
-          .from(comment)
-          .where(
-            and(
-              or(eq(comment.id, thread.id), eq(comment.threadId, thread.id)),
-              isNotNull(comment.authorId),
-              isNull(comment.deletedAt),
-            ),
-          );
-        for (const w of writers) recipients.add(w.id, 'reply');
-      } else if (elementId) {
-        recipients.add(card?.createdBy, 'comment');
-      }
-      await notify(
-        db,
-        {
-          actor: { userId: actor.id },
-          projectId: access.board.projectId,
-          boardId,
-          elementId,
-          commentId: row.id,
-        },
-        recipients,
-      );
-    });
-    await afterCommit(req.log, () => tell(row));
+    if ('replayed' in result) {
+      // A retry is answered with the comment as it is now (edited, deleted), like a read.
+      const { row, viewer: now } = await readableComment(actor, result.replayed);
+      const reactions = await commentReactions(db, [row.id], { userId: actor.id });
+      return reply.status(201).send(toComment(row, await peopleOf(db, [row], now), now, reactions));
+    }
+    await onCreated?.();
+    const row = result.created;
     return reply.status(201).send(toComment(row, await peopleOf(db, [row], viewer), viewer));
   });
 
@@ -474,8 +507,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     if (row.authorId !== actor.id)
       throw new HttpError('forbidden', 'Only the author can edit a comment.');
     requireWriter(viewer);
-    if (!limiter.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many comment writes: wait a minute.');
+    limiter.require(actor.id, 'Too many comment writes: wait a minute.');
     const mentions = await readableMentions(db, row.boardId, input.body);
     const [updated] = await db
       .update(comment)
@@ -582,8 +614,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
         const { row, viewer } = await readableComment(actor, commentId);
         requireWriter(viewer);
         if (row.deletedAt) throw new HttpError('not_found', 'Comment not found.');
-        if (!reactionsPerMinute.take(actor.id))
-          throw new HttpError('rate_limited', 'Too many reactions: wait a minute.');
+        reactionsPerMinute.require(actor.id, 'Too many reactions: wait a minute.');
         const changed = on
           ? await db
               .insert(commentReaction)
@@ -619,8 +650,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
         // Taking a reaction back works on a card that has since been removed.
         if (on && !(await readElement(boardId, elementId)))
           throw new HttpError('not_found', 'Card not found.');
-        if (!reactionsPerMinute.take(actor.id))
-          throw new HttpError('rate_limited', 'Too many reactions: wait a minute.');
+        reactionsPerMinute.require(actor.id, 'Too many reactions: wait a minute.');
         const changed = on
           ? await db
               .insert(elementReaction)

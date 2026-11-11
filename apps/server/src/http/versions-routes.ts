@@ -181,8 +181,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
     const input = CreateBoardVersion.parse(req.body);
     await requireBoardRole(db, actor, boardId, 'editor');
     const versions = writer();
-    if (!saves.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many saved versions: wait a while.');
+    saves.require(actor.id, 'Too many saved versions: wait a while.');
     let saved: Awaited<ReturnType<VersionWriter['save']>>;
     try {
       saved = await versions.save({ boardId, name: input.name, userId: actor.id });
@@ -273,8 +272,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
     await requireBoardRole(db, actor, boardId, 'editor');
     const restored = await findVersion(boardId, versionId);
     const versions = writer();
-    if (!restores.take(boardId))
-      throw new HttpError('rate_limited', 'Too many restores of this board: wait a while.');
+    restores.require(boardId, 'Too many restores of this board: wait a while.');
     let result: Awaited<ReturnType<VersionWriter['restore']>>;
     try {
       result = await versions.restore({ boardId, versionId, userId: actor.id });

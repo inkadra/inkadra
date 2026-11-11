@@ -42,7 +42,7 @@ import { type Mailer, securityNotification } from '../mailer.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
 import { largestFiles, myStorage } from '../storage-limits.ts';
-import { issueToken, toPersonalToken } from '../tokens.ts';
+import { issueToken, revokeTokens, toPersonalToken } from '../tokens.ts';
 import { toUser } from './api-routes.ts';
 import { requireActor, requireSession, toHeaders } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -308,10 +308,11 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   app.delete(v1('/me/tokens/:tokenId'), async (req, reply) => {
     const actor = await requireActor(auth, req, db, true);
     const { tokenId } = TokenParams.parse(req.params);
-    const removed = await db
-      .delete(personalToken)
-      .where(and(eq(personalToken.id, tokenId), eq(personalToken.userId, actor.id)))
-      .returning({ id: personalToken.id });
+    const removed = await revokeTokens(
+      db,
+      and(eq(personalToken.id, tokenId), eq(personalToken.userId, actor.id)),
+      'token_revoked',
+    );
     if (removed.length === 0) throw new HttpError('not_found', 'Token not found.');
     return reply.status(204).send();
   });
@@ -360,8 +361,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.post(v1('/app-authorizations/token'), async (req) => {
-    if (!exchangeLimiter.take(addressBucket(req.ip)))
-      throw new HttpError('rate_limited', 'Too many requests: wait a minute.');
+    exchangeLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const input = ExchangeAppCode.parse(req.body ?? {});
     // Deleting it first makes the code single use even with concurrent requests.
     const [row] = await db

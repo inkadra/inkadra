@@ -4,7 +4,10 @@ import * as Y from 'yjs';
 import { countByType, readElement, roots, validateBoardDoc } from './doc.ts';
 import { generateReferenceBoard, REFERENCE_SIZES } from './reference-board.ts';
 
-it('builds a valid board with the counts of its size, the same for the same seed', () => {
+// Two boards with a real history: about 4 s on a CI runner, past the default 5 s when it is busy.
+it('builds a valid board with the counts of its size, the same for the same seed', {
+  timeout: 30_000,
+}, () => {
   const spec = REFERENCE_SIZES.small;
   const { update, summary } = generateReferenceBoard('small', 7);
   const doc = new Y.Doc();
@@ -44,5 +47,4 @@ it('builds a valid board with the counts of its size, the same for the same seed
   expect(summary.history.clientIds).toBeGreaterThan(spec.sessions / 2);
   expect(summary.history.operations).toBeGreaterThan(spec.moves + spec.deletions);
   expect(generateReferenceBoard('small', 7).update).toEqual(update);
-  // Two boards with a real history: about 4 s on a CI runner, past the default 5 s when it is busy.
-}, 30_000);
+});

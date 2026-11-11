@@ -26,7 +26,7 @@ import {
 } from './board-writer.ts';
 import { VERSION } from './config.ts';
 import type { Database } from './db/client.ts';
-import { asset } from './db/schema.ts';
+import { asset, creationRequest } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
 import { officeConverterInstalled } from './media/office.ts';
@@ -40,6 +40,7 @@ import { enqueueReleaseNews, sendReleaseNews } from './release-news.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
 import type { StorageEnv } from './storage-limits.ts';
+import { purgeRevokedTokens } from './tokens.ts';
 import { runTransfer, sweepTransfers } from './transfers/service.ts';
 import { checkForUpdates, RETRY_MS } from './updates.ts';
 import {
@@ -212,6 +213,8 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
  * its sound track although no screen plays it (decision 0047).
  */
 export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
+  await db.delete(creationRequest).where(lt(creationRequest.expiresAt, new Date()));
+  await purgeRevokedTokens(db);
   const stale = await db
     .select({ id: asset.id, key: asset.storageKey, size: asset.size })
     .from(asset)

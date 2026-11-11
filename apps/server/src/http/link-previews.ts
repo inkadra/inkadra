@@ -285,8 +285,7 @@ export function registerLinkPreviews(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const input = CreateLinkPreview.parse(req.body);
     await requireWriteAccess(db, actor, input.projectId, input.boardId);
-    if (!limiter.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many link previews: wait a minute.');
+    limiter.require(actor.id, 'Too many link previews: wait a minute.');
 
     let page: Awaited<ReturnType<typeof safeFetch>>;
     try {

@@ -39,6 +39,7 @@ import { asset, board, boardDoc, clipBoardUse, project, shareLink } from '../db/
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
+import { idempotentCreation } from './idempotency.ts';
 
 interface Deps {
   db: Database;
@@ -382,38 +383,54 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     const parent = await requireBoardRole(db, actor, input.parentBoardId, 'editor');
     if (parent.board.projectId !== projectId)
       throw new HttpError('bad_request', 'The parent board is not in this project.');
-    const row = await db.transaction(async (tx) => {
-      if (deps.config?.DEMO_MODE) {
-        // Counted under a lock, so a burst of requests cannot pass the cap together.
-        await tx.execute(
-          sql`select pg_advisory_xact_lock(hashtext(${`demo-boards:${projectId}`}))`,
-        );
-        const [made] = await tx
-          .select({ n: count() })
-          .from(board)
-          .where(eq(board.projectId, projectId));
-        if ((made?.n ?? 0) >= DEMO_MAX_BOARDS)
-          throw new HttpError('conflict', `A demo project has at most ${DEMO_MAX_BOARDS} boards.`, {
-            reason: 'demo_limit',
-          });
-      }
-      const position = generateKeyBetween(await lastChildPosition(tx, input.parentBoardId), null);
-      const [created] = await tx
-        .insert(board)
-        .values({
-          projectId,
-          parentBoardId: input.parentBoardId,
-          kind: input.kind,
-          title: input.title,
-          position,
-          createdBy: actor.id,
-        })
-        .returning();
-      if (!created) throw new Error('Board insert returned nothing');
-      return created;
-    });
+    const result = await idempotentCreation(
+      db,
+      req,
+      actor.id,
+      `boards:${projectId}`,
+      input,
+      async (tx) => {
+        if (deps.config?.DEMO_MODE) {
+          // Counted under a lock, so a burst of requests cannot pass the cap together.
+          await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`demo-boards:${projectId}`}))`,
+          );
+          const [made] = await tx
+            .select({ n: count() })
+            .from(board)
+            .where(eq(board.projectId, projectId));
+          if ((made?.n ?? 0) >= DEMO_MAX_BOARDS)
+            throw new HttpError(
+              'conflict',
+              `A demo project has at most ${DEMO_MAX_BOARDS} boards.`,
+              {
+                reason: 'demo_limit',
+              },
+            );
+        }
+        const position = generateKeyBetween(await lastChildPosition(tx, input.parentBoardId), null);
+        const [created] = await tx
+          .insert(board)
+          .values({
+            projectId,
+            parentBoardId: input.parentBoardId,
+            kind: input.kind,
+            title: input.title,
+            position,
+            createdBy: actor.id,
+          })
+          .returning();
+        if (!created) throw new Error('Board insert returned nothing');
+        return created;
+      },
+    );
+    if ('replayed' in result) {
+      // A retry is answered with the board as it is now, like a read: 404 once it is gone.
+      const now = await requireBoardRole(db, actor, result.replayed, 'viewer');
+      return reply.status(201).send(toBoard(now.board, now.role));
+    }
     // A new board inherits from its parent, so the parent's role applies.
-    return reply.status(201).send(toBoard(row, parent.role));
+    return reply.status(201).send(toBoard(result.created, parent.role));
   });
 
   app.get(v1('/boards/:boardId'), async (req) => {

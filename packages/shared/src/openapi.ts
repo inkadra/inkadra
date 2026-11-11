@@ -54,7 +54,7 @@ import {
   ReplyQuery,
   UpdateComment,
 } from './comments.ts';
-import { ApiError, Id, OutcomeUnknown, PageQuery, page, z } from './common.ts';
+import { ApiError, Id, InvalidToken, OutcomeUnknown, PageQuery, page, z } from './common.ts';
 import { API_PREFIX, AUTH_PREFIX } from './constants.ts';
 import {
   BulkCreateCrew,
@@ -233,10 +233,14 @@ registry.registerComponent('securitySchemes', 'bearer', {
 const json = <T extends z.ZodType>(schema: T) => ({ content: { 'application/json': { schema } } });
 const errors = {
   400: { description: 'Invalid request', ...json(ApiError) },
-  401: { description: 'Not signed in', ...json(ApiError) },
+  401: {
+    description: 'Not signed in (for a recognised bearer token, details: InvalidToken)',
+    ...json(ApiError),
+  },
   403: { description: 'Not allowed', ...json(ApiError) },
   404: { description: 'Not found', ...json(ApiError) },
 };
+registry.register('InvalidToken', InvalidToken);
 const secured: Array<Record<string, string[]>> = [{ session: [] }, { bearer: [] }];
 const v1 = (path: string) => `${API_PREFIX}${path}`;
 const idParam = (name: string) => z.object({ [name]: Id });
@@ -1525,7 +1529,22 @@ registry.registerPath({
   path: v1('/projects/{projectId}/boards'),
   tags: ['Boards'],
   security: secured,
-  request: { params: idParam('projectId'), body: json(CreateBoard) },
+  request: {
+    headers: z.object({
+      'Idempotency-Key': z
+        .string()
+        .min(1)
+        .max(128)
+        .optional()
+        .openapi({
+          description:
+            'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
+            'created resource as it is now (404 once it is gone); a changed payload returns 409.',
+        }),
+    }),
+    params: idParam('projectId'),
+    body: json(CreateBoard),
+  },
   responses: { 201: { description: 'Created', ...json(Board) }, ...errors },
 });
 registry.registerPath({
@@ -2099,7 +2118,22 @@ registry.registerPath({
     'the authors of the thread and the creator of the card are notified. A reply must belong ' +
     'to a thread of the same board.' +
     realtime,
-  request: { params: idParam('boardId'), body: json(CreateComment) },
+  request: {
+    headers: z.object({
+      'Idempotency-Key': z
+        .string()
+        .min(1)
+        .max(128)
+        .optional()
+        .openapi({
+          description:
+            'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
+            'created resource as it is now (404 once it is gone); a changed payload returns 409.',
+        }),
+    }),
+    params: idParam('boardId'),
+    body: json(CreateComment),
+  },
   responses: { 201: { description: 'Created', ...json(CommentSchema) }, ...errors, ...tooMany },
 });
 registry.registerPath({

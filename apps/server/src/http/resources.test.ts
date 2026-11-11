@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, assetVariant } from '../db/schema.ts';
+import { asset, assetVariant, creationRequest } from '../db/schema.ts';
 import { originalKey, proxyKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
@@ -270,6 +270,51 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     const list = await call('owner', 'GET', `/api/v1/projects/${projectId}/boards`);
     expect(list.json().items.map((b: { id: string }) => b.id)).toEqual([rootBoardId]);
     expect((await call('owner', 'DELETE', `/api/v1/boards/${rootBoardId}`)).statusCode).toBe(400);
+  });
+
+  it('replays board and comment creations without duplicates and rejects changed payloads', async () => {
+    const headers = { 'idempotency-key': 'offline-create' };
+    const path = `/api/v1/projects/${projectId}/boards`;
+    const input = { parentBoardId: rootBoardId, kind: 'board', title: 'Offline board' };
+    const boards = await Promise.all([0, 1].map(() => call('owner', 'POST', path, input, headers)));
+    expect(boards.map((r) => r.statusCode)).toEqual([201, 201]);
+    expect(boards[0]!.json()).toEqual(boards[1]!.json());
+    expect(
+      (await call('owner', 'POST', path, { ...input, title: 'Changed' }, headers)).statusCode,
+    ).toBe(409);
+    const commentsPath = `/api/v1/boards/${boards[0]!.json().id}/comments`;
+    const comments = await Promise.all(
+      [0, 1].map(() => call('owner', 'POST', commentsPath, { body: 'Queued' }, headers)),
+    );
+    expect(comments.map((r) => r.statusCode)).toEqual([201, 201]);
+    expect(comments[0]!.json()).toEqual(comments[1]!.json());
+
+    // A replay answers with the resource as it is now, never with a remembered snapshot.
+    const boardId = boards[0]!.json().id;
+    await call('owner', 'PATCH', `/api/v1/boards/${boardId}`, { title: 'Renamed' });
+    const renamed = await call('owner', 'POST', path, input, headers);
+    expect(renamed.statusCode).toBe(201);
+    expect(renamed.json()).toMatchObject({ id: boardId, title: 'Renamed' });
+    const commentId = comments[0]!.json().id;
+    await call('owner', 'PATCH', `/api/v1/comments/${commentId}`, { body: 'Edited' });
+    const edited = await call('owner', 'POST', commentsPath, { body: 'Queued' }, headers);
+    expect(edited.statusCode).toBe(201);
+    expect(edited.json()).toMatchObject({ id: commentId, body: 'Edited' });
+    await call('owner', 'DELETE', `/api/v1/comments/${commentId}`);
+    expect(
+      (await call('owner', 'POST', commentsPath, { body: 'Queued' }, headers)).statusCode,
+    ).toBe(404);
+    await call('owner', 'DELETE', `/api/v1/boards/${boardId}`);
+    expect((await call('owner', 'POST', path, input, headers)).statusCode).toBe(404);
+
+    await db.update(creationRequest).set({ expiresAt: new Date(Date.now() - 1000) });
+    const afterExpiry = await call('owner', 'POST', path, input, headers);
+    expect(afterExpiry.statusCode).toBe(201);
+    expect(afterExpiry.json().id).not.toBe(boardId);
+
+    expect((await call('owner', 'POST', path, input, { 'idempotency-key': ' ' })).statusCode).toBe(
+      400,
+    );
   });
 
   // Uploads ----------------------------------------------------------------------

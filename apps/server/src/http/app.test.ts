@@ -98,7 +98,13 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
       version: expect.any(String),
       api: 'v1',
       docSchemaVersion: expect.any(Number),
-      capabilities: ['boards', 'comments', 'resumable-uploads'],
+      capabilities: [
+        'boards',
+        'comments',
+        'resumable-uploads',
+        'idempotent-creations',
+        'token-invalid-reasons',
+      ],
     });
     const publicBody = (await app.inject('/api/v1/instance')).json();
     for (const field of ['api', 'docSchemaVersion', 'minClient', 'capabilities'])
