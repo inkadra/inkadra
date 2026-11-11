@@ -74,7 +74,6 @@ export function usePlanSurface({
   const pinch = useRef<Pinch | null>(null);
   const pan = useRef<{ last: Point; moved: number } | null>(null);
   const gridRef = useRef(grid);
-  gridRef.current = grid;
   const fitArgs = useRef({ content, insets });
   fitArgs.current = { content, insets };
 
@@ -131,7 +130,8 @@ export function usePlanSurface({
     };
   }, [apply, fit]);
   // The grid follows the scale and the grid chosen.
-  useEffect(() => {
+  useLayoutEffect(() => {
+    gridRef.current = grid;
     if (viewRef.current) apply(viewRef.current, false);
   }, [grid, apply]);
 
@@ -148,6 +148,7 @@ export function usePlanSurface({
 
   // Wheel: zooms round the pointer, a notch a step as on the board, a trackpad pinch directly;
   // Shift + wheel and a sideways swipe pan.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refs only; bound once.
   useEffect(() => {
     const el = surface.current;
     if (!el) return;
@@ -172,7 +173,6 @@ export function usePlanSurface({
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('gesturestart', noPageZoom);
     };
-    // biome-ignore lint/correctness/useExhaustiveDependencies: refs only; bound once.
   }, []);
 
   const pinchPoints = (ids: [number, number]): [Point, Point] | null => {

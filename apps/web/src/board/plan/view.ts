@@ -140,10 +140,10 @@ export function fitView(box: Rect | null, area: Area, insets: Insets = NO_INSETS
  * in view units; null on an empty plan.
  */
 export function planContentBox(
-  plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'> &
-    Partial<Pick<PlanElement, 'walls' | 'background'>>,
+  plan: Partial<Pick<PlanElement, 'strokes' | 'shapes' | 'icons' | 'walls' | 'background'>>,
 ): Rect | null {
-  const boxes: Rect[] = planItems(plan).map((e) => itemBox(e.item));
+  const items = planItems({ strokes: plan.strokes, shapes: plan.shapes, icons: plan.icons });
+  const boxes: Rect[] = items.map((e) => itemBox(e.item));
   for (const wall of plan.walls ?? []) boxes.push(wallBounds(wall));
   if (plan.background && !plan.background.hidden) boxes.push(backgroundBox(plan.background));
   if (boxes.length === 0) return null;
