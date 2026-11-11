@@ -1469,6 +1469,7 @@
       "moreCards": "altre",
       "approvedHelper": "Trascina qui le inquadrature approvate",
       "approvedHint": "Si riempie anche dalle approvazioni del cliente",
+      "approvedLocked": "Approvata in revisione: cambia la revisione da «{{status}}» e lo stato di produzione dalla Tabella",
       "selectRow": "Seleziona inquadratura {{label}}"
     },
     "playback": {

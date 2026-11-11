@@ -375,4 +375,94 @@ describe('call sheet layout', () => {
       ).toBe(true);
     }
   });
+
+  it('keeps titles, departments and the first and last rows of a table with a neighbour', () => {
+    const member = (n: number, name: string, department: string): CrewMember => ({
+      id: `00000000-0000-4000-8000-0000000000${n}0`,
+      projectId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
+      name,
+      role: 'Role',
+      department,
+      phone: `+39 333 00${n}`,
+      email: '',
+      pickup: '',
+      notes: '',
+      userId: null,
+      character: null,
+      onSetContact: false,
+      position: n,
+      revision: 1,
+      createdAt: '2026-11-01T00:00:00.000Z',
+      updatedAt: '2026-11-01T00:00:00.000Z',
+    });
+    const crew = [
+      member(1, 'Matteo', 'Regia'),
+      member(2, 'Ada', 'Camera'),
+      member(3, 'Bruno', 'Camera'),
+      member(4, 'Carla', 'Suono'),
+      member(5, 'Elena', 'Cast'),
+      member(6, 'Pietro', 'Cast'),
+    ];
+    for (const orientation of ['portrait', 'landscape'] as const)
+      for (let count = 1; count < 24; count++) {
+        const sections = callSheetSections(
+          day('2026-11-19', {
+            location: 'Faro, Otranto',
+            notes: 'Accesso dal sentiero est.',
+            blocks: Array.from({ length: count }, (_, i) => ({
+              ...shot(i),
+              cast: i % 2 ? ['Elena', 'Pietro'] : ['Elena'],
+              departments: i ? [] : ['Fotografia: drone', 'Trucco: sole', 'Fonico: vento'],
+            })),
+            calls: crew
+              .slice(0, 4)
+              .map((c) => ({ crewMemberId: c.id, call: '06:30', pickup: null })),
+          }),
+          () => 'A',
+          t,
+          new Map(),
+          crew,
+        );
+        const pages = callSheetPages({ ...setup, orientation }, 'Call sheet', sections, ctx);
+        const texts = pages.map((page) =>
+          page.ops.flatMap((op) => (op.kind === 'text' ? [op.text] : [])).slice(1),
+        );
+        const all = sections.slice(1).flatMap((s) => s.rows.flat());
+        // The page of a row, found by a cell no later row repeats (the times come first).
+        const pageOf = (row: string[]) =>
+          Math.max(
+            ...row
+              .filter((value) => all.filter((v) => v === value).length === 1)
+              .map((cell) =>
+                texts.findLastIndex((page) => page.includes(cell.split('\n')[0] ?? '')),
+              ),
+          );
+        const where = `${orientation}, ${count} blocks`;
+        for (const section of sections) {
+          const first = section.title === 'callSheet.times' ? 2 : section.header ? 1 : 0;
+          const rows = section.rows.slice(first);
+          // The schedule names a column after the cast table: its title is the later one.
+          const title = texts.findLastIndex((page) => page.includes(section.title));
+          if (rows[0]) expect(pageOf(rows[0]), `${where}: ${section.title}`).toBe(title);
+          if (rows.length > 1) {
+            expect(pageOf(rows[1]!), `${where}: ${section.title} first`).toBe(pageOf(rows[0]!));
+            expect(pageOf(rows.at(-2)!), `${where}: ${section.title} last`).toBe(
+              pageOf(rows.at(-1)!),
+            );
+          }
+          // A department of the troupe stays with its first person.
+          for (const [i, row] of rows.entries())
+            if (section.title === 'callSheet.troupe' && row.length === 1)
+              expect(pageOf(rows[i + 1]!), `${where}: ${row[0]}`).toBe(
+                texts.findIndex((page) => page.includes(row[0]!)),
+              );
+        }
+        // No last page with only a section of one line.
+        const tail = texts.at(-1)!;
+        expect(
+          pages.length === 1 || !sections.some((s) => s.title === tail[0]) || tail.length > 2,
+          `${where}: ${tail.join(' | ')}`,
+        ).toBe(true);
+      }
+  });
 });

@@ -1530,7 +1530,7 @@ html[data-view-direction]::view-transition-new(board-view) {
 }
 
 .shots__group-pill--shot {
-  background: var(--ink-status-ok);
+  background: var(--ink-positive-button);
   color: var(--ink-on-accent);
 }
 
@@ -1684,9 +1684,18 @@ html[data-view-direction]::view-transition-new(board-view) {
   color: var(--ink-text-muted);
 }
 
-.kanban__empty-hint {
+.kanban__hint {
+  margin: -6px 0 0;
+  padding: 0 4px;
   font-size: 11px;
-  opacity: 0.8;
+  color: var(--ink-text-muted);
+}
+
+.kanban__locked {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink-text-muted);
 }
 
 .kanban__move-select {

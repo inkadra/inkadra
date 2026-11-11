@@ -7,6 +7,7 @@ import * as Y from 'yjs';
 import mockEn from '../../i18n/en.json';
 import { chooseSelect } from '../../test/select.ts';
 import { walkTabs } from '../../test/tabs.ts';
+import { resetReviews } from '../review-store.ts';
 import { BoardStore } from '../store.ts';
 import { ShotList } from './ShotList.tsx';
 
@@ -381,4 +382,46 @@ it('walks the view tabs by keyboard and switches only on a choice', async () => 
   const kanban = host.querySelector('[role="tab"][aria-selected="true"]');
   expect(kanban?.textContent).toBe('Kanban');
   expect(host.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe(kanban?.id);
+});
+
+it('counts and filters a shot approved in review as approved in the Kanban only', async () => {
+  const { doc, store } = board();
+  const scene = addScene(doc, { number: '1', title: 'Bar' }, { userId: null });
+  const o = { userId: null };
+  const client = addFrame(doc, scene.id, null, { label: '1A', status: 'shot' }, o);
+  addFrame(doc, scene.id, null, { label: '1B', status: 'shot', approved: true }, o);
+  addFrame(doc, scene.id, null, { label: '1C', status: 'shot' }, o);
+  resetReviews({ reviews: new Map([[client.id, { status: 'approved' } as never]]) });
+  disposals.push(() => resetReviews());
+
+  const host = await mount(<ShotList store={store} boardTitle="Test Board" readOnly={false} />);
+  const dots = () =>
+    [...host.querySelectorAll('.shots__footer-dot-item')].map((d) => d.textContent?.trim());
+  const filterTo = async (value: string) => {
+    const filter = host.querySelector<HTMLButtonElement>('.ink-select[aria-label="Status"]');
+    await act(async () => {
+      if (filter) chooseSelect(filter, value);
+    });
+  };
+
+  // Table: the production status, as before.
+  expect(dots()).toEqual(['2 shot', '1 approved']);
+  await filterTo('approved');
+  expect(host.querySelector('.shots__footer b')?.textContent).toBe('1 of 3 shots');
+
+  // Kanban: the same classification as the columns.
+  const kanbanTab = [...host.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+    (tab) => tab.textContent === 'Kanban',
+  );
+  await act(async () => kanbanTab?.click());
+  expect(host.querySelector('.shots__footer b')?.textContent).toBe('2 of 3 shots');
+  expect(
+    [...host.querySelectorAll('.kanban__card-label')].map((b) => b.textContent).sort(),
+  ).toEqual(['1A', '1B']);
+  await filterTo('shot');
+  expect([...host.querySelectorAll('.kanban__card-label')].map((b) => b.textContent)).toEqual([
+    '1C',
+  ]);
+  await filterTo('');
+  expect(dots()).toEqual(['1 shot', '2 approved']);
 });

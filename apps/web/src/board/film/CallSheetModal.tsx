@@ -213,6 +213,10 @@ export function CallSheetModal({
   const times = day ? keyTimes(day) : [];
   const locations = day ? locationsOfDay(day, elements) : [];
   const address = day ? dayAddress(day, elements) : null;
+  // The day's own place, with the map link of its Location field, for the phone's map button.
+  const dayPlace = day?.location.trim()
+    ? locationsOfDay({ ...day, blocks: [] }, elements)[0]
+    : undefined;
   const sun = day ? sunOfDay(day, locations, timeZone, address) : null;
   const sunCell = sun && (sun.sunrise !== null || sun.sunset !== null);
   const sunClock = (time: number | null) => (time === null ? '—' : clockLabel(time));
@@ -442,12 +446,14 @@ export function CallSheetModal({
                         {address.address && (
                           <p className="sheet__muted sheet__pre">{address.address}</p>
                         )}
-                        {isPhone && !address.mapUrl && (
+                        {/* On a phone, the same Maps button as the day's place (#577). */}
+                        {isPhone && (
                           <MapsLink
+                            url={address.mapUrl}
                             location={[address.name, address.address].filter(Boolean).join('\n')}
                           />
                         )}
-                        {address.mapUrl && /^https?:\/\//i.test(address.mapUrl) && (
+                        {!isPhone && address.mapUrl && /^https?:\/\//i.test(address.mapUrl) && (
                           <a href={address.mapUrl} target="_blank" rel="noopener noreferrer">
                             {t('story.location.openMap')}
                           </a>
@@ -465,9 +471,11 @@ export function CallSheetModal({
                         {location.address && (
                           <p className="sheet__muted sheet__pre">{location.address}</p>
                         )}
-                        {isPhone && !location.mapUrl && day.location.trim() && (
+                        {/* The day's place, unless its own Address line above already opens it. */}
+                        {isPhone && !location.mapUrl && dayPlace && !address && (
                           <MapsLink
-                            location={[location.name, location.address].filter(Boolean).join('\n')}
+                            url={dayPlace.mapUrl}
+                            location={[dayPlace.name, dayPlace.address].filter(Boolean).join('\n')}
                           />
                         )}
                         {location.mapUrl && /^https?:\/\//i.test(location.mapUrl) && (

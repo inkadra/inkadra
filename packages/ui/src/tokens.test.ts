@@ -53,6 +53,17 @@ describe('tokens', () => {
     expect(ratio(light['on-accent'], light['positive-button'])).toBeGreaterThan(4.5);
     expect(ratio(dark['text-muted'], dark['bg-app'])).toBeGreaterThan(4.5);
     expect(ratio(light['text-secondary'], light['bg-panel'])).toBeGreaterThan(4.5);
+    // Dark muted labels of 10-12 px sit on raised surfaces too. Green pills with white text
+    // (film.css) take positive-button, checked above: status-ok is too light under white.
+    for (const background of [
+      'bg-app',
+      'bg-panel',
+      'surface-1',
+      'surface-2',
+      'surface-3',
+      'surface-float',
+    ] as const)
+      expect(ratio(dark['text-muted'], dark[background]), background).toBeGreaterThanOrEqual(4.5);
   });
 
   /** The colour a content kind is drawn with, as a token. */

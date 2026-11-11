@@ -36,6 +36,9 @@ test('crew add, autosave and sheet paste persist across reload', async ({ page }
   // On a phone the row's ⋯ button (44px) fits its column: opening its menu shifts no row.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
+  // A person's row is a finger-sized target, as tall as its ⋯ button.
+  for (const person of await page.locator('.troupe__person').all())
+    expect((await person.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   const more = page.getByRole('button', { name: 'Azioni per Luca Verdi', exact: true });
   await more.click();
   await expect(page.getByRole('menu')).toBeVisible();

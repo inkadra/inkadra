@@ -358,6 +358,40 @@ describe('on a phone', () => {
     );
     expect(fetch.mock.calls.every(([url]) => String(url).startsWith('/'))).toBe(true);
   });
+  it("opens the day's own map link under a scene's place that has none", async () => {
+    stubs(empty);
+    const doc = new Y.Doc();
+    const scene = createElement(
+      doc,
+      'scene',
+      { x: 0, y: 0 },
+      { title: 'Scogliera', number: '1', location: 'Scogliera' },
+      { userId: null },
+    );
+    const frame = createElement(
+      doc,
+      'frame',
+      { x: 0, y: 0 },
+      { parent: scene.id },
+      { userId: null },
+    );
+    const store = new BoardStore(doc);
+    const mapUrl = 'https://www.openstreetmap.org/#map=16/40.1046/18.5196';
+    const host = await mount(
+      [
+        {
+          ...day,
+          location: `Faro di Punta Palascia, Otranto ${mapUrl}`,
+          blocks: [{ ...day.blocks[0]!, shotId: frame.id }],
+        },
+      ],
+      { boardId: 'board', userId: 'me', store },
+    );
+    await act(async () => new Promise((resolve) => setTimeout(resolve)));
+    expect(host.querySelector('.sheet__place')?.textContent).toContain('Scogliera');
+    expect(host.querySelector<HTMLAnchorElement>('.sheet__maps')?.href).toBe(mapUrl);
+    store.destroy();
+  });
   it('keeps the status region in place before the first answer', async () => {
     stubs({ ...empty, links: [{ castKey: 'bob', userId: 'me' }] });
     const host = await mountPhone();

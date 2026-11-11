@@ -1469,6 +1469,7 @@
       "moreCards": "weitere",
       "approvedHelper": "Freigegebene Shots hierher ziehen",
       "approvedHint": "Füllt sich auch durch Kundenfreigaben",
+      "approvedLocked": "In der Prüfung freigegeben: Prüfung über „{{status}}“ ändern, Produktionsstatus in der Tabelle",
       "selectRow": "Shot {{label}} auswählen"
     },
     "playback": {

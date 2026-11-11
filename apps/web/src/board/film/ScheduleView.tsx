@@ -43,7 +43,7 @@ import {
   weekDates,
   weekStart,
 } from './calendar.ts';
-import { plannedWrap } from './call-sheet.ts';
+import { locationsOfDay, plannedWrap } from './call-sheet.ts';
 import { DayCallsPanel } from './DayCallsPanel.tsx';
 import { dayCrew, useCrew } from './day-calls.ts';
 import { NeededItems } from './NeededItems.tsx';
@@ -1276,7 +1276,8 @@ export function ScheduleView({
                 <b>
                   {[
                     t('schedule.dayShort', { n: selectedEntry.index + 1 }),
-                    selectedEntry.draft.location.trim().split('\n')[0],
+                    // The place's name: its map link opens from the call sheet.
+                    locationsOfDay({ ...selectedEntry.draft, blocks: [] }, new Map())[0]?.name,
                   ]
                     .filter(Boolean)
                     .join(' · ')}
