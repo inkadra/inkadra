@@ -78,7 +78,8 @@ const ROW = 15;
 /** The legend's line of a camera, a light or a person: the item's summary, as in Elements. */
 function line(icon: PlanIcon, icons: readonly PlanIcon[], t: TFunction): string {
   const name = icon.label || t(`board.plan.icons.${icon.kind}`);
-  const summary = itemSummary(icon, icons, t);
+  // A camera's lens is the row's value at the right: not in the line too.
+  const summary = itemSummary(icon, icons, t, { lens: false });
   return summary ? `${name} · ${summary}` : name;
 }
 
@@ -243,7 +244,16 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
     const icons = (plan.icons ?? []).filter((i) => !plan.hiddenLayers?.includes(layerOf(i)));
     /** A glyph of `icon`, `size` points wide, centred at (x, y), without its beam or label. */
     const glyph = (icon: PlanIcon, x: number, cy: number, size = 12) => {
-      const alone: PlanIcon = { ...icon, rotation: 0, steps: undefined, label: undefined };
+      // Only the glyph: no label, power or lens of its own, which the row prints beside it.
+      const alone: PlanIcon = {
+        ...icon,
+        rotation: 0,
+        steps: undefined,
+        label: undefined,
+        power: undefined,
+        watts: undefined,
+        showLens: undefined,
+      };
       delete alone.on;
       const centre = iconCentre(alone);
       const long = Math.max(iconSize(alone).w, iconSize(alone).h) || 1;

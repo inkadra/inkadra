@@ -91,7 +91,7 @@ it('prints one A4 landscape page per setup with the title block, legend, power a
     'NAME · SCENE 2 · INT. DINER',
     'Setup 1 · Base',
     '2A, 2B',
-    'A cam · 32 mm',
+    'A cam',
     '32 mm',
     '3200 K',
     'Leo',
@@ -101,6 +101,10 @@ it('prints one A4 landscape page per setup with the title block, legend, power a
   ])
     expect(words.join('|')).toContain(expected);
   expect(words.join('|')).toContain('off the back wall');
+  // The lens once, at the right of the camera's row; the legend's glyph draws no "2000 W" of its
+  // own over itself (the drawing's label is "Key · 2000 W").
+  expect(words.filter((w) => w.includes('32 mm'))).toEqual(['32 mm']);
+  expect(words).not.toContain('2000 W');
   // Without the legend, the power and the notes, none of them.
   const bare = texts(
     planSheetPages(

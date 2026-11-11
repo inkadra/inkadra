@@ -54,9 +54,7 @@ function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
                 const lens = catalogueKind(icon.kind) === 'camera' ? `${icon.lens ?? 35} mm` : '';
                 const kelvin = icon.kelvin ? `${icon.kelvin} K` : '';
                 // The lens is in the name: the summary goes on with the support and the moves.
-                const summary = lens
-                  ? itemSummary(icon, icons, t).replace(/^\d+ mm( · )?/, '')
-                  : itemSummary(icon, icons, t);
+                const summary = itemSummary(icon, icons, t, { lens: !lens });
                 const sub = [summary, kelvin].filter(Boolean).join(' · ');
                 return (
                   <li key={icon.id} className="plan-view__item">
