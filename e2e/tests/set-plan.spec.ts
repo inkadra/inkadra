@@ -307,7 +307,7 @@ for (const theme of ['dark', 'light'] as const) {
     await menuItem('Ruota di 45°').click();
     await expect.poll(async () => (await camera())?.rotation).toBe(40);
     await props.getByRole('button', { name: 'Colore: Blu' }).click();
-    await menuItem('Giallo').click();
+    await page.getByRole('menuitemradio', { name: 'Giallo' }).click();
     await expect.poll(async () => (await camera())?.color).toBe('#EDD963');
     await props.getByRole('textbox', { name: 'Nome', exact: true }).fill('A cam 35mm');
     await expect

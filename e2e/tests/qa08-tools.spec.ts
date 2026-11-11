@@ -224,7 +224,13 @@ for (const width of [1280, 390]) {
           await expect(page.locator('.story-panel')).toHaveCount(0);
         } else if (kind === 'plan') {
           await card.dblclick();
-          await page.getByRole('button', { name: /^Testo( \(T\))?$/ }).click();
+          // The Text tool: in the bar on a wide screen, under Draw on a phone.
+          if (width === 1280)
+            await page.getByRole('button', { name: /^Testo( \(T\))?$/ }).click();
+          else {
+            await page.getByRole('button', { name: 'Disegna', exact: true }).click();
+            await page.getByRole('menuitemradio', { name: 'Testo' }).click();
+          }
           await page.locator('.plan-editor__stage').click({ position: { x: 100, y: 100 } });
           await page
             .getByRole('textbox', { name: 'Testo sul disegno', exact: true })

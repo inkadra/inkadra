@@ -306,7 +306,7 @@ for (const theme of ['dark', 'light'] as const) {
     await breaker.fill('1');
     await breaker.press('Enter');
     await expect(kit.locator('.plan-kit__circuit.is-over')).toHaveCount(1);
-    await kit.getByText('120 V').click();
+    await kit.getByRole('radio', { name: '120 V' }).check();
     await expect.poll(async () => (await saved()).voltage).toBe(120);
     await expect(kit).toContainText('Potenza a 120 V');
     await shot('kit');
@@ -482,7 +482,7 @@ test('a drag writes only what it changed: a colour set meanwhile by someone else
         .getByRole('tabpanel', { name: 'Proprietà' })
         .getByRole('button', { name: /^Colore:/ })
         .click();
-      await them.getByRole('menuitem', { name: 'Rosso' }).click();
+      await them.getByRole('menuitemradio', { name: 'Rosso' }).click();
     };
     const before = (await saved()).icons?.find((i) => i.label === 'A cam');
 
