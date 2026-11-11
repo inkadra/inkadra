@@ -54,6 +54,7 @@
   --ink-status-ok: #46A758;
   --ink-status-warn: #F2B08A;
   --ink-status-danger: #E5484D;
+  --ink-on-peer: #0E0E10;
   --ink-danger-bg: #2A1A1B;
   --ink-danger-border: #3A2326;
   --ink-danger-fg: #F2A9AC;
@@ -129,6 +130,7 @@
   --ink-status-ok: #23743F;
   --ink-status-warn: #A5521F;
   --ink-status-danger: #C8343A;
+  --ink-on-peer: #FFFFFF;
   --ink-danger-bg: #FBEAEA;
   --ink-danger-border: #F2CFD0;
   --ink-danger-fg: #A1262B;
@@ -203,6 +205,7 @@
     --ink-status-ok: #23743F;
     --ink-status-warn: #A5521F;
     --ink-status-danger: #C8343A;
+    --ink-on-peer: #FFFFFF;
     --ink-danger-bg: #FBEAEA;
     --ink-danger-border: #F2CFD0;
     --ink-danger-fg: #A1262B;
