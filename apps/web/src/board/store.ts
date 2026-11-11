@@ -55,6 +55,8 @@ export class BoardStore {
   private stale = new Set<string>();
   /** Resolves when the complete initial snapshot is available (or the store is destroyed). */
   readonly whenHydrated: Promise<void>;
+  /** Why hydration stopped: the snapshot stays empty and `whenHydrated` rejects with it. */
+  hydrationError: unknown;
 
   get hydrating() {
     return this.loading;
@@ -86,7 +88,12 @@ export class BoardStore {
     this.removeView = setElementView(doc, () =>
       !this.loading && this.open === 0 && this.exact ? [...this.snapshot.byId.values()] : null,
     );
-    this.whenHydrated = options ? this.hydrate(options.budgetMs) : Promise.resolve();
+    this.whenHydrated = options
+      ? this.hydrate(options.budgetMs).catch((error: unknown) => {
+          this.hydrationError = error;
+          throw error;
+        })
+      : Promise.resolve();
   }
 
   destroy() {

@@ -239,6 +239,26 @@ it('hydrates cooperatively without exposing partial elements, and rereads cards 
   }
 });
 
+it('fails closed when hydration throws: nothing published, the error exposed', async () => {
+  const { update } = generateReferenceBoard('small', 7);
+  const doc = new Y.Doc();
+  Y.applyUpdate(doc, update);
+  const failure = new Error('read failed');
+  vi.spyOn(schema, 'readElementSteps').mockImplementation(() => {
+    throw failure;
+  });
+  const store = BoardStore.hydrate(doc);
+  const listener = vi.fn();
+  store.subscribe(listener);
+  await expect(store.whenHydrated).rejects.toBe(failure);
+  expect(store.hydrationError).toBe(failure);
+  expect(store.hydrating).toBe(true);
+  expect(store.getSnapshot().byId.size).toBe(0);
+  expect(listener).not.toHaveBeenCalled();
+  vi.restoreAllMocks();
+  store.destroy();
+}, 30_000);
+
 it('cancels hydration on destroy and rejects invalid budgets', async () => {
   const doc = new Y.Doc();
   for (const budgetMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY])
@@ -315,6 +335,8 @@ it('reads a large remote move in time linear in the number of cards', () => {
     expect(store.getSnapshot().canvas).toEqual(core.canvasElements(listElements(doc)));
     store.destroy();
     remote.destroy();
+    // At least one read per card: the counter is really on the observed transaction.
+    expect(count.reads).toBeGreaterThanOrEqual(n);
     return count.reads;
   };
   const small = run(250);
