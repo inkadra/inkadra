@@ -70,8 +70,11 @@ avoid running builds or tests concurrently with the benchmark.
 After that table, a second one breaks the open down (decision
 [0104](../decisions/0104-hand-checked-strokes.md)), medians of fresh opens: `applyUpdate`;
 validation (`readElement` on every card); the index alone; the synchronous store; the opt-in
-hydration, total and longest blocking slice (an immediate that re-queues itself measures the
-longest turn of the event loop, GC included); and the first stroke drawn after an open. For a
+hydration with the default scheduler and with `setImmediate` (decision
+[0105](../decisions/0105-hydration-scheduler-and-priority.md)), total and longest blocking slice (an
+immediate that re-queues itself measures the longest turn of the event loop, GC included), and the
+immediate one against the synchronous read; and the first stroke drawn after an open. Columns a
+store cannot measure show `—`. For a
 before/after comparison copy the new script into a checkout of the base revision.
 `--no-breakdown` prints only the first table.
 

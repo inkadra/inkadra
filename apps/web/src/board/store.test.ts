@@ -407,3 +407,324 @@ it('edits a cell of a table made in this session without going through every row
   vi.restoreAllMocks();
   store.destroy();
 });
+
+/** A scheduler the test steps by hand: each slice starts when `step()` resolves the last call. */
+function manualScheduler() {
+  const waiting: Array<() => void> = [];
+  return {
+    calls: 0,
+    schedule() {
+      this.calls++;
+      return new Promise<void>((resolve) => waiting.push(resolve));
+    },
+    async step() {
+      for (const resolve of waiting.splice(0)) resolve();
+      // Let the hydration task run up to its next pause.
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+    },
+  };
+}
+
+/** Everything the store shows is the current, validated read of its card. */
+function expectValidatedView(store: BoardStore, doc: Y.Doc) {
+  for (const [id, el] of store.getSnapshot().byId) {
+    const map = roots(doc).elements.get(id);
+    expect(map).toBeDefined();
+    expect(el).toEqual(schema.readElement(map!));
+  }
+}
+
+/** The cards with the columns and scenes that hold them, as the progressive view reads them. */
+function withContainers(all: readonly schema.Element[], ids: readonly string[]) {
+  const byId = new Map(all.map((el) => [el.id, el]));
+  const out = new Set<string>();
+  for (const id of ids) {
+    let at: string | null | undefined = id;
+    while (at && byId.has(at) && !out.has(at)) {
+      out.add(at);
+      at = byId.get(at)!.parent;
+    }
+  }
+  return out;
+}
+
+function expectSameAsFresh(store: BoardStore, doc: Y.Doc) {
+  const fresh = new BoardStore(doc);
+  expect([...store.getSnapshot().byId]).toEqual([...fresh.getSnapshot().byId]);
+  expect(store.getSnapshot().canvas).toEqual(fresh.getSnapshot().canvas);
+  expect([...store.getSnapshot().columns]).toEqual([...fresh.getSnapshot().columns]);
+  expect(store.getSnapshot().unsorted).toEqual(fresh.getSnapshot().unsorted);
+  fresh.destroy();
+}
+
+it('hydrates with the scheduler it is given, never a timer', { timeout: 30_000 }, async () => {
+  const doc = new Y.Doc();
+  Y.applyUpdate(doc, generateReferenceBoard('small', 7).update);
+  const timers = vi.spyOn(globalThis, 'setTimeout');
+  let calls = 0;
+  const store = BoardStore.hydrate(doc, {
+    budgetMs: 1,
+    schedule: () => {
+      calls++;
+      return new Promise((resolve) => setImmediate(resolve));
+    },
+  });
+  await store.whenHydrated;
+  expect(calls).toBeGreaterThan(2);
+  expect(timers).not.toHaveBeenCalled();
+  vi.restoreAllMocks();
+  expectSameAsFresh(store, doc);
+  store.destroy();
+});
+
+it('reads priority cards first and shows only them, validated and current, until it is done', {
+  timeout: 30_000,
+}, async () => {
+  const doc = new Y.Doc();
+  Y.applyUpdate(doc, generateReferenceBoard('small', 11).update);
+  const all = listElements(doc);
+  const frames = all.filter((el) => el.type === 'frame').map((el) => el.id);
+  const [shown, other] = [frames.slice(0, 3), all.find((el) => el.type === 'note')!];
+  // The frames' scenes or columns are shown with them.
+  const expected = withContainers(all, shown);
+  const scheduler = manualScheduler();
+  const store = BoardStore.hydrate(doc, {
+    budgetMs: 0.01,
+    schedule: () => scheduler.schedule(),
+    priority: [shown[0]!, 'missing-key', shown[1]!, shown[2]!],
+    progressive: true,
+  });
+  const views: Array<Set<string>> = [];
+  store.subscribe(() => {
+    expectValidatedView(store, doc);
+    views.push(new Set(store.getSnapshot().byId.keys()));
+  });
+  const remote = new Y.Doc();
+  Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+  const sync = () => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote, Y.encodeStateVector(doc)));
+  let edits = 0;
+  let checked = 0;
+  while (store.hydrating && edits < 100_000) {
+    await scheduler.step();
+    expectValidatedView(store, doc);
+    // This step may have finished hydrating: the complete snapshot is then shown.
+    if (!store.hydrating) break;
+    for (const id of store.getSnapshot().byId.keys()) expect(expected.has(id)).toBe(true);
+    if (views.length > 0 && edits % 7 === 0) {
+      // A shown card moves, another becomes invalid then valid again; a hidden card moves.
+      roots(remote).elements.get(shown[0]!)!.set('x', edits);
+      roots(remote)
+        .elements.get(shown[1]!)!
+        .set('w', edits % 2 ? 'invalid' : 300);
+      roots(remote).elements.get(other.id)!.set('x', edits);
+      sync();
+      expectValidatedView(store, doc);
+      expect(store.getSnapshot().byId.get(shown[0]!)?.x).toBe(edits);
+      expect(store.getSnapshot().byId.has(other.id)).toBe(false);
+      checked++;
+    }
+    edits++;
+  }
+  await store.whenHydrated;
+  expect(store.hydrating).toBe(false);
+  // The first view held the priority cards only; the last one is the complete snapshot.
+  expect(views[0]).toEqual(expected);
+  expect(checked).toBeGreaterThan(0);
+  expect(views.length).toBeGreaterThan(2);
+  expect(views.at(-1)!.size).toBe(store.getSnapshot().byId.size);
+  expectSameAsFresh(store, doc);
+  remote.destroy();
+  store.destroy();
+});
+
+it('reads first the cards a priority test picks', { timeout: 30_000 }, async () => {
+  const doc = new Y.Doc();
+  Y.applyUpdate(doc, generateReferenceBoard('small', 11).update);
+  const types: string[] = [];
+  const original = schema.readElementSteps;
+  vi.spyOn(schema, 'readElementSteps').mockImplementation((map, cooperative) => {
+    types.push(map.get('type') as string);
+    return original(map, cooperative);
+  });
+  const store = BoardStore.hydrate(doc, { priority: (_key, map) => map.get('type') === 'table' });
+  await store.whenHydrated;
+  vi.restoreAllMocks();
+  const tables = listElements(doc).filter((el) => el.type === 'table').length;
+  expect(tables).toBeGreaterThan(0);
+  expect(types.slice(0, tables)).toEqual(Array(tables).fill('table'));
+  expect(types.slice(tables)).not.toContain('table');
+  store.destroy();
+});
+
+it('finishes a progressive hydration under continuous edits', {
+  timeout: 30_000,
+}, async () => {
+  const { update } = generateReferenceBoard('small', 3);
+  const doc = new Y.Doc();
+  Y.applyUpdate(doc, update);
+  const all = listElements(doc);
+  const note = all.find((el) => el.type === 'note')!;
+  const table = all.find((el) => el.type === 'table') as Extract<schema.Element, { type: 'table' }>;
+  const scheduler = manualScheduler();
+  const store = BoardStore.hydrate(doc, {
+    budgetMs: 0.02,
+    schedule: () => scheduler.schedule(),
+    priority: [note.id, table.id],
+    progressive: true,
+  });
+  store.subscribe(() => expectValidatedView(store, doc));
+  let edits = 0;
+  while (store.hydrating && edits < 20_000) {
+    core.setTableCell(doc, table.id, table.rows[0]!.id, table.columns[0]!.id, `typed ${edits}`);
+    updateElement(doc, note.id, { x: edits }, LOCAL);
+    edits++;
+    await scheduler.step();
+  }
+  await store.whenHydrated;
+  expect(store.hydrating).toBe(false);
+  expectSameAsFresh(store, doc);
+  expect(store.getSnapshot().byId.get(note.id)?.x).toBe(edits - 1);
+  store.destroy();
+});
+
+it('withdraws the progressive view when hydration fails after showing it', {
+  timeout: 30_000,
+}, async () => {
+  const doc = new Y.Doc();
+  Y.applyUpdate(doc, generateReferenceBoard('small', 11).update);
+  const all = listElements(doc);
+  const shown = all.filter((el) => el.type === 'note' && el.parent === null).slice(0, 2);
+  const failing = all.find((el) => el.type === 'frame')!;
+  const failure = new Error('read failed');
+  const original = schema.readElementSteps;
+  vi.spyOn(schema, 'readElementSteps').mockImplementation((map, cooperative) => {
+    if (map.get('id') === failing.id) throw failure;
+    return original(map, cooperative);
+  });
+  const scheduler = manualScheduler();
+  const store = BoardStore.hydrate(doc, {
+    budgetMs: 0.01,
+    schedule: () => scheduler.schedule(),
+    priority: shown.map((el) => el.id),
+    progressive: true,
+  });
+  const views: number[] = [];
+  store.subscribe(() => views.push(store.getSnapshot().byId.size));
+  try {
+    while (!store.hydrationError && scheduler.calls < 100_000) await scheduler.step();
+    await expect(store.whenHydrated).rejects.toBe(failure);
+    expect(store.hydrationError).toBe(failure);
+    // Shown, then withdrawn: nothing stays on screen that hydration no longer keeps current.
+    expect(views[0]).toBe(shown.length);
+    expect(views.at(-1)).toBe(0);
+    expect(store.getSnapshot().byId.size).toBe(0);
+    // No longer kept: an edit of a card that was shown publishes nothing.
+    const before = views.length;
+    updateElement(doc, shown[0]!.id, { x: 5 }, LOCAL);
+    expect(views.length).toBe(before);
+    expect(store.getSnapshot().byId.size).toBe(0);
+  } finally {
+    vi.restoreAllMocks();
+    store.destroy();
+  }
+});
+
+it('ends hydration with a rejecting scheduler, never with an unhandled rejection', async () => {
+  const unhandled: unknown[] = [];
+  const onUnhandled = (reason: unknown) => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  const settle = async () => {
+    for (let i = 0; i < 3; i++) await new Promise((resolve) => setImmediate(resolve));
+  };
+  try {
+    // Mid-way: hydration ends with the scheduler's error.
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, generateReferenceBoard('small', 7).update);
+    const failure = new Error('no more frames');
+    let calls = 0;
+    const store = BoardStore.hydrate(doc, {
+      budgetMs: 0.01,
+      schedule: () => (++calls > 3 ? Promise.reject(failure) : Promise.resolve()),
+    });
+    await expect(store.whenHydrated).rejects.toBe(failure);
+    expect(store.hydrationError).toBe(failure);
+    expect(store.getSnapshot().byId.size).toBe(0);
+    store.destroy();
+    // At the end: a small board finishes before the turn it queued is awaited.
+    const small = new Y.Doc();
+    createElement(small, 'note', { x: 0, y: 0 }, {}, opts);
+    let n = 0;
+    const done = BoardStore.hydrate(small, {
+      schedule: () => (++n === 1 ? Promise.resolve() : Promise.reject(new Error('late'))),
+    });
+    await done.whenHydrated;
+    expect(done.getSnapshot().byId.size).toBe(1);
+    done.destroy();
+    await settle();
+    expect(unhandled).toEqual([]);
+  } finally {
+    process.off('unhandledRejection', onUnhandled);
+  }
+}, 30_000);
+
+it('settles hydration on destroy while the scheduler never resolves', async () => {
+  const doc = new Y.Doc();
+  createElement(doc, 'note', { x: 0, y: 0 }, {}, opts);
+  const store = BoardStore.hydrate(doc, { schedule: () => new Promise<void>(() => {}) });
+  store.destroy();
+  await expect(store.whenHydrated).resolves.toBeUndefined();
+  expect(store.getSnapshot().byId.size).toBe(0);
+});
+
+it('draws a priority card inside its column, read with it', async () => {
+  const doc = new Y.Doc();
+  const column = createElement(doc, 'column', { x: 0, y: 0 }, { title: '' }, opts);
+  const inside = createElement(doc, 'note', { x: 0, y: 0 }, { parent: column.id }, opts);
+  createElement(doc, 'note', { x: 0, y: 0 }, { parent: column.id }, opts);
+  for (let i = 0; i < 50; i++) createElement(doc, 'note', { x: i, y: 0 }, {}, opts);
+  const scheduler = manualScheduler();
+  const store = BoardStore.hydrate(doc, {
+    budgetMs: 0.01,
+    schedule: () => scheduler.schedule(),
+    priority: [inside.id],
+    progressive: true,
+  });
+  let first: ReturnType<BoardStore['getSnapshot']> | null = null;
+  store.subscribe(() => {
+    first ??= store.getSnapshot();
+  });
+  while (!first && store.hydrating) await scheduler.step();
+  // The column comes with the card, holding only it for now.
+  expect([...first!.byId.keys()].sort()).toEqual([column.id, inside.id].sort());
+  expect(first!.columns.get(column.id)?.map((el) => el.id)).toEqual([inside.id]);
+  expect(store.hydrating).toBe(true);
+  while (store.hydrating) await scheduler.step();
+  expectSameAsFresh(store, doc);
+  store.destroy();
+});
+
+it('costs about the same with every card a priority card', { timeout: 60_000 }, async () => {
+  // Whether every priority card is read is a counter: thousands of them stay linear.
+  const doc = new Y.Doc();
+  doc.transact(() => {
+    for (let i = 0; i < 4000; i++) createElement(doc, 'note', { x: i, y: 0 }, {}, opts);
+  }, LOCAL);
+  const keys = [...roots(doc).elements.keys()];
+  const time = async (options: Parameters<typeof BoardStore.hydrate>[1]) => {
+    const start = performance.now();
+    const store = BoardStore.hydrate(doc, {
+      ...options,
+      schedule: () => new Promise((resolve) => setImmediate(resolve)),
+    });
+    await store.whenHydrated;
+    store.destroy();
+    return performance.now() - start;
+  };
+  await time({});
+  const plain = Math.min(await time({}), await time({}));
+  const prioritised = Math.min(
+    await time({ priority: keys, progressive: true }),
+    await time({ priority: keys, progressive: true }),
+  );
+  expect(prioritised / plain).toBeLessThan(2.5);
+});

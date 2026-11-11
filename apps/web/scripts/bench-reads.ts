@@ -212,16 +212,17 @@ for (const size of values.sizes.split(',')) {
 
 if (breakdown.length) {
   console.log(
-    '\n| board | applyUpdate | validation | index | sync read | hydrate: total / longest slice | first stroke after open |',
+    '\n| board | applyUpdate | validation | index | sync read | hydrate (timeout): total / longest slice | hydrate (immediate): total / longest slice | immediate / sync | first stroke after open |',
   );
-  console.log('|---|---|---|---|---|---|---|');
+  console.log('|---|---|---|---|---|---|---|---|---|');
   for (const line of breakdown) console.log(line);
 }
 
 /**
  * Where an open goes (decision 0104), medians of fresh opens: applyUpdate; validation, every
  * card read once with readElement; the index alone; the synchronous store; the opt-in
- * hydration (total, longest blocking slice); the first stroke drawn after an open.
+ * hydration (total, longest blocking slice) with the default scheduler and, where the store
+ * takes one (decision 0105), with setImmediate; the first stroke drawn after an open.
  */
 async function openBreakdown(
   size: string,
@@ -252,15 +253,28 @@ async function openBreakdown(
     );
     d.destroy();
     let s: InstanceType<typeof BoardStore> | undefined;
-    [d] = fresh();
-    const stop = blockingProbe();
-    const t = performance.now();
-    s = BoardStore.hydrate(d, { budgetMs: 8 });
-    await s.whenHydrated;
-    add('hydrateTotal', performance.now() - t);
-    add('hydrateSlice', stop());
-    s.destroy();
-    d.destroy();
+    for (const kind of ['timeout', 'immediate'] as const) {
+      [d] = fresh();
+      let calls = 0;
+      const immediate = () => {
+        calls++;
+        return new Promise<void>((resolve) => setImmediate(resolve));
+      };
+      const stop = blockingProbe();
+      const t = performance.now();
+      s = BoardStore.hydrate(d, {
+        budgetMs: 8,
+        ...(kind === 'immediate' ? { schedule: immediate } : {}),
+      });
+      await s.whenHydrated;
+      // A store without the `schedule` option (the base revision) never calls it.
+      if (kind === 'timeout' || calls > 0) {
+        add(`${kind}Total`, performance.now() - t);
+        add(`${kind}Slice`, stop());
+      } else stop();
+      s.destroy();
+      d.destroy();
+    }
     [d] = fresh();
     add(
       'sync',
@@ -286,5 +300,7 @@ async function openBreakdown(
   }
   const med = (k: string) => (r[k] ? `${ms(median(r[k]))} ms` : '—');
   const max = (k: string) => (r[k] ? `${ms(Math.max(...r[k]))} ms` : '—');
-  return `| ${size} | ${med('apply')} | ${med('validate')} | ${med('index')} | ${med('sync')} | ${med('hydrateTotal')} / ${max('hydrateSlice')} | ${med('stroke')} |`;
+  const ratio = (a: string, b: string) =>
+    r[a] && r[b] ? `${(median(r[a]) / median(r[b])).toFixed(2)}×` : '—';
+  return `| ${size} | ${med('apply')} | ${med('validate')} | ${med('index')} | ${med('sync')} | ${med('timeoutTotal')} / ${max('timeoutSlice')} | ${med('immediateTotal')} / ${max('immediateSlice')} | ${ratio('immediateTotal', 'sync')} | ${med('stroke')} |`;
 }

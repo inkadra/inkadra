@@ -570,8 +570,9 @@ export function readElement(map: Y.Map<unknown>): Element | null {
 }
 
 /**
- * Cooperative initial reads: each step checks at most one large-list item. Only the return
- * value is a validated element. If the element changes between steps, discard the read.
+ * Cooperative initial reads: each step checks at most one large-list item or converts one
+ * nested Yjs field; plain fields are copied between steps. Only the return value is a
+ * validated element. If the element changes between steps, discard the read.
  */
 export function* readElementSteps(
   map: Y.Map<unknown>,
@@ -594,8 +595,11 @@ export function* readElementSteps(
       if (list.lenient) items = items.slice(0, list.max);
       // The rest of the element is checked with an empty list, then gets the items back.
       plain[key] = [];
-    } else plain[key] = value instanceof Y.AbstractType ? value.toJSON() : value;
-    if (cooperative) yield;
+      if (cooperative) yield;
+    } else if (value instanceof Y.AbstractType) {
+      plain[key] = value.toJSON();
+      if (cooperative) yield;
+    } else plain[key] = value;
   }
   const result = Element.safeParse(plain);
   if (!result.success) return null;
