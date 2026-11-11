@@ -26,7 +26,7 @@ import { moveTabFocus } from '../../lib/tabs.ts';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility } from '../guest-visibility.tsx';
 import { SetupChips } from '../plan/SetupChips.tsx';
-import { shotSetups } from '../plan/setups.ts';
+import { groupBySetup, shotSetups } from '../plan/setups.ts';
 import { useReviews } from '../review-store.ts';
 import { insideDialog, isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
@@ -240,21 +240,12 @@ export function ShotList({
         frames: sortFrames(grpFrames),
       }));
     }
-    if (groupBy === 'setup') {
-      const map = new Map<string, { title: string; frames: FrameElement[] }>();
-      for (const f of filtered)
-        for (const s of setups.get(f.id) ?? [{ planId: 'none', name: '', plan: '' }]) {
-          const title = s.name ? `${s.plan} · ${s.name}` : t('film.list.noSetup');
-          const group = map.get(s.planId) ?? { title, frames: [] };
-          group.frames.push(f);
-          map.set(s.planId, group);
-        }
-      return Array.from(map.entries()).map(([id, g]) => ({
-        id: `setup-${id}`,
-        title: g.title,
-        frames: sortFrames(g.frames),
+    if (groupBy === 'setup')
+      return groupBySetup(filtered, setups).map(({ setup, shots }) => ({
+        id: `setup-${setup?.planId ?? 'none'}`,
+        title: setup ? `${setup.plan} · ${setup.name}` : t('film.list.noSetup'),
+        frames: sortFrames(shots),
       }));
-    }
     if (groupBy === 'status') {
       const map = new Map<string, FrameElement[]>();
       for (const f of filtered) {

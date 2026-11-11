@@ -300,6 +300,51 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* "Group by: Setup": a scene's shots under their setups (decision 0115). */
+.schedule__setup {
+  display: grid;
+  gap: 6px;
+  padding-left: 8px;
+  border-left: 1px solid var(--ink-border-default);
+}
+.schedule__setup-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin: 2px 4px 0 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-text-secondary);
+}
+.schedule__setup-title > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.schedule__day-setups {
+  display: grid;
+  gap: 8px;
+}
+.schedule__day-shot {
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.schedule__day-shot:hover {
+  border-color: var(--ink-border-strong);
+}
 .schedule__shot {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);

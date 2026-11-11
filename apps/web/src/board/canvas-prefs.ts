@@ -49,3 +49,14 @@ export function loadTidyGap(userId: string): TidyGap {
 export function saveTidyGap(userId: string, gap: TidyGap) {
   write(own(GAP_KEY, userId), gap);
 }
+
+const SCHEDULE_SETUP_KEY = 'inkadra.schedule.groupBySetup';
+
+/** Whether this person's schedule groups shots by the setup of their set plan (decision 0115). */
+export function loadScheduleBySetup(userId: string): boolean {
+  return read(own(SCHEDULE_SETUP_KEY, userId)) === '1';
+}
+
+export function saveScheduleBySetup(userId: string, on: boolean) {
+  write(own(SCHEDULE_SETUP_KEY, userId), on ? '1' : '0');
+}
