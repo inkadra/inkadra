@@ -2,6 +2,7 @@
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
+/* 700 only for bold the user writes (decision 0107); the interface stops at 600. */
 @import "@fontsource/inter/700.css";
 @import "./tokens.css";
 
@@ -28,6 +29,11 @@ body {
     system-ui,
     sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Browsers draw these at 700; the interface's heaviest weight is 600 (decision 0107). */
+:where(b, strong, th, h1, h2, h3, h4, h5, h6) {
+  font-weight: 600;
 }
 
 a {

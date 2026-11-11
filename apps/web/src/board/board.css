@@ -314,6 +314,11 @@
   outline: none;
 }
 
+/* Bold the user writes in a note keeps Inter 700 (decision 0107). */
+.note-text :where(b, strong) {
+  font-weight: 700;
+}
+
 /* The card already indicates editing; the global focus halo must not frame its text. */
 .note-text:focus-visible {
   box-shadow: none;
@@ -534,7 +539,7 @@
   display: grid;
   place-items: center;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.03em;
   overflow: hidden;
 }
@@ -594,7 +599,7 @@
   padding: 2px 5px;
   border-radius: var(--ink-radius-xs);
   font-size: 9.5px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0.04em;
 }
@@ -1635,7 +1640,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 }
 .column__number {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
 }
 /* Scene header: the slugline on one line, the scene's title under it; both end in an ellipsis. */
 .column__title--scene {
