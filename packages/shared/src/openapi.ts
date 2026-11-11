@@ -1050,15 +1050,20 @@ registry.registerPath({
   path: v1('/me/token-proof-key'),
   tags: ['Users'],
   security: [{ bearer: [] }],
-  summary: 'The proof key of the calling token (decision 0110).',
+  summary: 'The proof key of the calling app token (decision 0112).',
   description:
     'Made at the first call and returned again while the token lives; deleted with it. The ' +
     'app keeps it like the token and uses it with POST /token-proof to check that the server ' +
-    'answering is this one before it sends the token on a network it has not confirmed.',
+    'answering is this one before it sends the token on a network it has not confirmed. Clients ' +
+    'ask for it only where the token may already go, and fail closed (decision 0112).',
   responses: {
     200: { description: 'Proof key', ...json(TokenProofKey) },
     401: errors[401],
-    403: { description: 'Not a token (a browser session)', ...json(ApiError) },
+    403: {
+      description:
+        'Not an app token (a browser session or a personal API token), or an administrator without two-factor authentication',
+      ...json(ApiError),
+    },
   },
 });
 registry.registerPath({
@@ -1066,7 +1071,7 @@ registry.registerPath({
   path: v1('/token-proof'),
   tags: ['Users'],
   security: [{}],
-  summary: 'Prove this server holds a proof key, over a fresh nonce (decision 0110).',
+  summary: 'Prove this server holds a proof key, over a fresh nonce (decision 0112).',
   description:
     'No token is sent. The answer is an HMAC with the key over the purpose, the instance id, ' +
     'the key id and the nonce; the client checks it with its own copy of the key. Rate ' +

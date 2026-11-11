@@ -322,19 +322,20 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     return reply.status(204).send();
   });
 
-  // Token proof (decision 0110) -------------------------------------------------
+  // Token proof (decision 0112) -------------------------------------------------
 
   app.post(v1('/me/token-proof-key'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
-    if (!actor.tokenId) throw new HttpError('forbidden', 'Only a token has a proof key.');
+    if (!actor.tokenId) throw new HttpError('forbidden', 'Only an app token has a proof key.');
     const key = await proofKeyFor(db, config.AUTH_SECRET, actor.tokenId);
+    if (key === 'not_app') throw new HttpError('forbidden', 'Only an app token has a proof key.');
     if (!key) throw new HttpError('unauthorized', 'The token is not valid any more.');
     reply.header('cache-control', 'no-store');
     return key;
   });
 
-  // No token: this is what a client asks before it decides to send one.
-  app.post(v1('/token-proof'), async (req, reply) => {
+  // No token: this is what a client asks before it decides to send one. Reads only.
+  app.post(v1('/token-proof'), { bodyLimit: 1024 }, async (req, reply) => {
     proofLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const input = TokenProofRequest.parse(req.body ?? {});
     proofKeyLimiter.require(input.keyId, 'Too many requests: wait a minute.');

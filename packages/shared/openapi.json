@@ -15264,8 +15264,8 @@
             "bearer": []
           }
         ],
-        "summary": "The proof key of the calling token (decision 0110).",
-        "description": "Made at the first call and returned again while the token lives; deleted with it. The app keeps it like the token and uses it with POST /token-proof to check that the server answering is this one before it sends the token on a network it has not confirmed.",
+        "summary": "The proof key of the calling app token (decision 0112).",
+        "description": "Made at the first call and returned again while the token lives; deleted with it. The app keeps it like the token and uses it with POST /token-proof to check that the server answering is this one before it sends the token on a network it has not confirmed. Clients ask for it only where the token may already go, and fail closed (decision 0112).",
         "responses": {
           "200": {
             "description": "Proof key",
@@ -15288,7 +15288,7 @@
             }
           },
           "403": {
-            "description": "Not a token (a browser session)",
+            "description": "Not an app token (a browser session or a personal API token), or an administrator without two-factor authentication",
             "content": {
               "application/json": {
                 "schema": {
@@ -15308,7 +15308,7 @@
         "security": [
           {}
         ],
-        "summary": "Prove this server holds a proof key, over a fresh nonce (decision 0110).",
+        "summary": "Prove this server holds a proof key, over a fresh nonce (decision 0112).",
         "description": "No token is sent. The answer is an HMAC with the key over the purpose, the instance id, the key id and the nonce; the client checks it with its own copy of the key. Rate limited (30 a minute per address, 10 a minute per key); unknown, revoked and expired keys get the same 404.",
         "requestBody": {
           "content": {

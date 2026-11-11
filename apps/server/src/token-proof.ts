@@ -6,47 +6,61 @@ import { instanceSetting, personalToken, user } from './db/schema.ts';
 import { newSecret, sealer } from './secrets.ts';
 
 /**
- * Token proof (decision 0110). A token holder that cannot rely on the transport (an app on a
- * plain http server) asks for a proof key once, where it trusts the connection; later, on a
- * network it has not confirmed, it sends a fresh nonce and checks that the server answering
- * holds the same key before it sends the token. The token never travels for the check.
+ * Token proof (decision 0112). An official app that cannot rely on the transport (a server on
+ * plain http) asks for a proof key once, where it trusts the connection; later, on a network it
+ * has not confirmed, it sends a fresh nonce and checks that the server answering holds the same
+ * key before it sends the token. The token never travels for the check.
  */
 
 const INSTANCE_ID_KEY = 'instance-id';
 
-/** A random id of this server, made once and kept in the database. */
-export async function instanceId(db: Pick<Database, 'select' | 'insert'>): Promise<string> {
-  await db
-    .insert(instanceSetting)
-    .values({ key: INSTANCE_ID_KEY, value: { id: randomUUID() } })
-    .onConflictDoNothing();
+/** This server's random id, or null before the first enrolment. Reads only. */
+export async function readInstanceId(db: Pick<Database, 'select'>): Promise<string | null> {
   const [row] = await db
     .select({ value: instanceSetting.value })
     .from(instanceSetting)
     .where(eq(instanceSetting.key, INSTANCE_ID_KEY));
   const id = row?.value.id;
-  if (typeof id !== 'string') throw new Error('instance id missing');
-  return id;
+  return typeof id === 'string' ? id : null;
+}
+
+/** This server's random id, made at the first enrolment (an authenticated request). */
+async function instanceId(db: Pick<Database, 'select' | 'insert'>): Promise<string> {
+  const known = await readInstanceId(db);
+  if (known) return known;
+  await db
+    .insert(instanceSetting)
+    .values({ key: INSTANCE_ID_KEY, value: { id: randomUUID() } })
+    .onConflictDoNothing();
+  const made = await readInstanceId(db);
+  if (!made) throw new Error('instance id missing');
+  return made;
 }
 
 const keySealer = (authSecret: string) => sealer(authSecret, 'token-proof-key');
 
 /**
- * The proof key of a token: made at the first call, returned again while the token lives (a
- * client whose keychain write failed asks again). Sealed at rest with AUTH_SECRET; a key that no
- * longer opens (the secret was rotated) is replaced.
+ * The proof key of an official app's token: made at the first call, returned again while the
+ * token lives (a client whose keychain write failed asks again). Sealed at rest with
+ * AUTH_SECRET; a key that no longer opens (the secret was rotated) is replaced. `not_app` for a
+ * personal API token: scripts have no network to confirm.
  */
 export async function proofKeyFor(
   db: Database,
   authSecret: string,
   tokenId: string,
-): Promise<TokenProofKey | null> {
+): Promise<TokenProofKey | 'not_app' | null> {
   const seal = keySealer(authSecret);
   const [row] = await db
-    .select({ keyId: personalToken.proofKeyId, sealed: personalToken.proofKey })
+    .select({
+      client: personalToken.client,
+      keyId: personalToken.proofKeyId,
+      sealed: personalToken.proofKey,
+    })
     .from(personalToken)
     .where(eq(personalToken.id, tokenId));
   if (!row) return null;
+  if (!row.client) return 'not_app';
   const current = row.keyId && row.sealed ? seal.open(row.sealed) : null;
   if (row.keyId && current)
     return { instanceId: await instanceId(db), keyId: row.keyId, key: current };
@@ -78,7 +92,10 @@ export function proofOf(key: string, instance: string, keyId: string, nonce: str
     .digest('base64url');
 }
 
-/** The proof over a nonce, or null for an unknown key or a token revoked, expired or disabled. */
+/**
+ * The proof over a nonce, or null for an unknown key, a token revoked or expired, a deactivated
+ * account, or a key that no longer opens. Unauthenticated: it only reads.
+ */
 export async function proveNonce(
   db: Database,
   authSecret: string,
@@ -98,7 +115,8 @@ export async function proveNonce(
     );
   const key = row?.sealed ? keySealer(authSecret).open(row.sealed) : null;
   if (!key) return null;
-  const instance = await instanceId(db);
+  const instance = await readInstanceId(db);
+  if (!instance) return null;
   return {
     instanceId: instance,
     purpose: TOKEN_PROOF_PURPOSE,
