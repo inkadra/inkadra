@@ -23,12 +23,20 @@ holds only what a guest may see), and so do the lists of the editor and the sear
 start from the stored plan, so nothing resolved is ever written: renaming a character renames the
 icon on every plan, and the camera's lens is never written back to the frame (decision 0062).
 
+**For each audience, what it may see.** A link resolves only against the cards its reader may
+see (decisions 0013 and 0044): the board's store for the editor and the views (for a guest, the
+document the server already cut, which also drops a plan's links to cards guests do not get);
+for an export, the cards its audience may see (`audienceCards`), so an export for clients and
+guests never reads a character, frame or location hidden from them. An actor linked to a card
+its reader cannot see shows its own text, else the kind's name.
+
 **Colour follows the character.** Character cards have no colour, so a linked actor takes one of
 the eight tag colours by the order of the character cards (oldest first): the same character has
 the same colour on every plan, and characters differ until there are more than eight. The tag
 colour of a linked actor is not offered in Properties.
 
-**A card that goes leaves its text.** Deleting a character or a frame writes, in the same undo
+**The id only.** Linking stores the id and nothing else; the name is written into the label only
+when the link breaks. **A card that goes leaves its text.** Deleting a character or a frame writes, in the same undo
 step, the character's name as the label of the actors that played it and the frame's lens on the
 cameras that had none of their own (`keptOnDelete`). Unlinking an actor keeps the name as its
 label; unlinking a camera keeps its own lens.
