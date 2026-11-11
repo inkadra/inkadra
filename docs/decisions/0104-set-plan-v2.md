@@ -29,21 +29,21 @@ the board and in the editor, and the exports. Names and search words are in the 
 **Kinds of earlier versions keep their ids**, and where a kind is now another entry of the
 catalogue it is drawn with that glyph:
 
-| Kind | Now drawn as | Note |
-| --- | --- | --- |
-| `light` (v14) | Fresnel | readable, no longer offered |
-| `recorder` (v15) | Sound cart | readable, no longer offered |
-| `led` | LED panel | |
-| `camera` | Camera (`cam` in the mockup) | |
-| `carrig` | Car mount | |
-| `group` | Extras | |
-| `frame` | Diffusion frame | |
-| `monitor` | Monitor | "Video village" is its own kind (`village`) |
-| `boom` | Boom op | a person with the pole, on Camera as before |
-| `practical` | Table lamp | |
-| `softbox`, `para` | Softbox, Parabolic modifiers | a free one keeps the beam it had as a light; one attached to a light draws none of its own |
-| `sun` | Sun | without the window of version 15 |
-| `actor` | Lead | faced down in version 15's drawing, right now; `rotation` still says where it faces, so plans do not turn |
+| Kind              | Now drawn as                 | Note                                                                                                      |
+| ----------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `light` (v14)     | Fresnel                      | readable, no longer offered                                                                               |
+| `recorder` (v15)  | Sound cart                   | readable, no longer offered                                                                               |
+| `led`             | LED panel                    |                                                                                                           |
+| `camera`          | Camera (`cam` in the mockup) |                                                                                                           |
+| `carrig`          | Car mount                    |                                                                                                           |
+| `group`           | Extras                       |                                                                                                           |
+| `frame`           | Diffusion frame              |                                                                                                           |
+| `monitor`         | Monitor                      | "Video village" is its own kind (`village`)                                                               |
+| `boom`            | Boom op                      | a person with the pole, on Camera as before                                                               |
+| `practical`       | Table lamp                   |                                                                                                           |
+| `softbox`, `para` | Softbox, Parabolic modifiers | a free one keeps the beam it had as a light; one attached to a light draws none of its own                |
+| `sun`             | Sun                          | without the window of version 15                                                                          |
+| `actor`           | Lead                         | faced down in version 15's drawing, right now; `rotation` still says where it faces, so plans do not turn |
 
 Every other kind of version 22 keeps its id and gets the catalogue's glyph of the same name. Every
 icon changes shape, as the whole catalogue was redrawn; none changes meaning, size or layer. The
