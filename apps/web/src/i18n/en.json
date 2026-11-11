@@ -1469,6 +1469,7 @@
       "moreCards": "more",
       "approvedHelper": "Drag approved shots here",
       "approvedHint": "Also filled from client approvals",
+      "approvedLocked": "Approved in review: change the review from “{{status}}” and the production status from the Table",
       "selectRow": "Select shot {{label}}"
     },
     "playback": {

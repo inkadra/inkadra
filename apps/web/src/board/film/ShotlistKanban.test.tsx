@@ -258,20 +258,28 @@ it('fills Approved from client approvals and production approvals, counts includ
 
 it("doesn't offer to move a card the client approved, so it can't bounce back", async () => {
   const { doc, store } = board();
-  const frame = createElement(
-    doc,
-    'frame',
-    { x: 0, y: 0 },
-    { label: '3A', status: 'shot' },
-    { userId: null },
-  ) as FrameElement;
+  const make = (label: string) =>
+    createElement(
+      doc,
+      'frame',
+      { x: 0, y: 0 },
+      { label, status: 'shot' },
+      { userId: null },
+    ) as FrameElement;
+  const frame = make('3A');
+  const free = make('3B');
   mockReviews.set(frame.id, { status: 'approved', history: [] });
 
   const host = await mount(
     <ShotlistKanban
       store={store}
-      frames={[frame]}
-      labels={new Map([[frame.id, '3A']])}
+      frames={[frame, free]}
+      labels={
+        new Map([
+          [frame.id, '3A'],
+          [free.id, '3B'],
+        ])
+      }
       boardAspect="16:9"
       selected={null}
       onSelect={vi.fn()}
@@ -279,18 +287,47 @@ it("doesn't offer to move a card the client approved, so it can't bounce back", 
       onAddFrame={vi.fn()}
     />,
   );
+  const stored = (id: string) => doc.getMap('elements').get(id) as Y.Map<unknown> | undefined;
+  const dropOn = (column: string, id: string) => {
+    const drop = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, 'dataTransfer', {
+      value: { getData: (type: string) => (type === 'application/x-inkadra-frame' ? id : '') },
+    });
+    act(() => {
+      host.querySelector(`section.kanban__col[aria-label="${column}"]`)?.dispatchEvent(drop);
+    });
+  };
 
-  const card = host.querySelector<HTMLElement>('.kanban__card');
+  const card = [...host.querySelectorAll<HTMLElement>('.kanban__card')].find(
+    (c) => c.querySelector('.kanban__card-label')?.textContent === '3A',
+  );
   expect(card?.getAttribute('draggable')).toBe('false');
   expect(card?.querySelector('.kanban__move-select')).toBeNull();
   // The client's decision stays visible on the card.
   expect(card?.querySelector('.review-chip--approved')).not.toBeNull();
-  card?.dispatchEvent(
-    new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, bubbles: true }),
+  // The card button says why it can't move and where to change it, on screen too.
+  const body = card?.querySelector<HTMLButtonElement>('.kanban__card-body');
+  const reason = document.getElementById(body?.getAttribute('aria-describedby') ?? '');
+  expect(reason?.textContent).toBe(
+    'Approved in review: change the review from “Approved” and the production status from the Table',
   );
-  const stored = doc.getMap('elements').get(frame.id) as Y.Map<unknown> | undefined;
-  expect(stored?.get('status')).toBe('shot');
-  expect(stored?.get('approved')).toBeUndefined();
+  expect(card?.contains(reason ?? null)).toBe(true);
+
+  // Alt+arrow from the focused card button.
+  body?.focus();
+  act(() => {
+    body?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, bubbles: true }),
+    );
+  });
+  // A drop of the card's own data on another column.
+  dropOn('To shoot', frame.id);
+  expect(stored(frame.id)?.get('status')).toBe('shot');
+  expect(stored(frame.id)?.get('approved')).toBeUndefined();
+
+  // The same drop moves a card that isn't approved in review: the guard, not the event, stops it.
+  dropOn('To shoot', free.id);
+  expect(stored(free.id)?.get('status')).toBe('todo');
 
   mockReviews.clear();
 });

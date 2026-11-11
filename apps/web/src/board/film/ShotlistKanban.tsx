@@ -2,7 +2,7 @@
 import { type FrameElement, updateElement } from '@inkadra/canvas-core';
 import type { AspectRatio } from '@inkadra/doc-schema';
 import { Avatar, Icon, Select } from '@inkadra/ui';
-import { type DragEvent, useState } from 'react';
+import { type DragEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardReview } from '../CardReview.tsx';
 import { useReviews } from '../review-store.ts';
@@ -69,6 +69,7 @@ export function ShotlistKanban({
   const [dropTarget, setDropTarget] = useState<KanbanColumnKey | null>(null);
   const [expandedCols, setExpandedCols] = useState<Set<string>>(new Set());
   const reviews = useReviews((s) => s.reviews);
+  const lockedId = useId();
   // A card approved in review stays in "Approved" whatever its production status, so moving it
   // out would bounce back: it can't be moved here, and the column hint says why. The review
   // (decision 0013) is changed from its chip, the production status from the table.
@@ -170,6 +171,7 @@ export function ShotlistKanban({
                 const lensOrShot = f.lens || presetText('shotSizes', f.shot);
                 const isSelected = selected === f.id;
                 const movable = !readOnly && !approvedInReview(f.id);
+                const locked = !readOnly && !movable;
                 return (
                   <article
                     key={f.id}
@@ -193,6 +195,7 @@ export function ShotlistKanban({
                       onClick={() => onSelect(isSelected ? null : f.id)}
                       aria-label={t('film.list.cardAria', { label })}
                       aria-pressed={isSelected}
+                      aria-describedby={locked ? `${lockedId}-${f.id}` : undefined}
                     >
                       <div className="kanban__card-head">
                         <div className="kanban__card-pic">
@@ -256,6 +259,11 @@ export function ShotlistKanban({
                         <CardReview elementId={f.id} withPins={false} />
                       </div>
                     </div>
+                    {locked && (
+                      <p className="kanban__locked" id={`${lockedId}-${f.id}`}>
+                        {t('film.list.approvedLocked', { status: t('review.status.approved') })}
+                      </p>
+                    )}
                   </article>
                 );
               })}

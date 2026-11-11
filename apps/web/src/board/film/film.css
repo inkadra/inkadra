@@ -1700,6 +1700,13 @@ html[data-view-direction]::view-transition-new(board-view) {
   color: var(--ink-text-muted);
 }
 
+.kanban__locked {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink-text-muted);
+}
+
 .kanban__move-select {
   height: 20px;
   font-size: 11px;
