@@ -326,4 +326,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return demoConfig(parsed.data);
 }
 
-export const VERSION = process.env.INKADRA_VERSION ?? '0.1.0-dev';
+const version = process.env.INKADRA_VERSION ?? '0.1.0-dev';
+export const VERSION =
+  version === 'edge' && process.env.INKADRA_REVISION
+    ? `edge-${process.env.INKADRA_REVISION.slice(0, 7)}`
+    : version;

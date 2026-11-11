@@ -82,7 +82,7 @@ import {
 } from './views.ts';
 import './film/film.css';
 import { type Peer, usePeers } from './presence.ts';
-import { projectLanding } from './project-landing.ts';
+import { missingOwnedBoard, projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 import { useBoardReviews } from './use-board-reviews.ts';
 import './board.css';
@@ -308,7 +308,7 @@ function BoardScreen({
   const { user } = useSession();
   // The sidebar's rule for the film links, so the header tabs never disagree with it.
   const { filmLinks } = useProjects();
-  const { items: boards } = useProjectBoards(projectId);
+  const { items: boards, error: boardsError } = useProjectBoards(projectId);
   const conn = useBoardConnection(boardId);
   useEffect(() => {
     if (!conn) return;
@@ -321,6 +321,11 @@ function BoardScreen({
   const [detail, setDetail] = useState<BoardDetail | null>(null);
   const kind = detail?.kind ?? boards?.find((b) => b.id === boardId)?.kind;
   const [view, setView] = useBoardView(kind);
+  const [openedFilmViews, setOpenedFilmViews] = useState({ schedule: false, troupe: false });
+  useEffect(() => {
+    if (view === 'schedule' || view === 'troupe')
+      setOpenedFilmViews((opened) => (opened[view] ? opened : { ...opened, [view]: true }));
+  }, [view]);
   const [sharing, setSharing] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [headerMenu, setHeaderMenu] = useState(false);
@@ -584,6 +589,8 @@ function BoardScreen({
   const canPresent = tabs.includes('storyboard');
   const importable = kind === 'storyboard' && !preview;
 
+  const missing =
+    conn?.status === 'denied' && missingOwnedBoard(projectRole, boards, boardsError, boardId);
   const header = useMemo(
     () => ({
       start: (
@@ -709,7 +716,7 @@ function BoardScreen({
       ),
       end: (
         <>
-          {conn && <BoardPresence conn={conn} selfId={selfId} />}
+          {conn && !missing && <BoardPresence conn={conn} selfId={selfId} />}
           {editable && (
             <>
               <IconButton
@@ -755,6 +762,7 @@ function BoardScreen({
     }),
     [
       crumbs,
+      missing,
       t,
       projectId,
       rootBoardId,
@@ -796,7 +804,9 @@ function BoardScreen({
     />
   );
   if (conn.status === 'denied') {
-    return <DeniedState />;
+    // Only owners have a complete list, including restricted boards. Outsiders keep the
+    // same denial for missing and inaccessible boards; no existence probe is added.
+    return missing ? <NotFound /> : <DeniedState />;
   }
   const versions = editable && (
     <VersionsDialog
@@ -837,29 +847,7 @@ function BoardScreen({
         readOnly={!!preview || !editable}
         onExport={exportShotList}
       />
-    ) : view === 'schedule' ? (
-      <ScheduleView
-        key={preview?.version.id ?? 'live'}
-        store={preview?.store ?? conn.store}
-        boardTitle={crumbs.at(-1)?.title ?? ''}
-        projectName={projectName}
-        projectId={projectId}
-        timeZone={shootingZone(projectTimeZone)}
-        canEditCrew={!!projectRole && atLeast(projectRole, 'editor')}
-        boardId={boardId}
-        userId={user.id}
-        readOnly={!!preview || !editable}
-        onOpenScene={(sceneId) => navigate(`?view=storyboard&scene=${encodeURIComponent(sceneId)}`)}
-        onOpenTroupe={() => navigate('?view=troupe')}
-      />
-    ) : view === 'troupe' ? (
-      <TroupeView
-        store={conn.store}
-        projectId={projectId}
-        boardId={boardId}
-        readOnly={!!preview || !editable}
-      />
-    ) : view === 'review' ? (
+    ) : view === 'schedule' || view === 'troupe' ? null : view === 'review' ? (
       <ClientReviewView
         key={preview?.version.id ?? 'live'}
         store={preview?.store ?? conn.store}
@@ -925,6 +913,42 @@ function BoardScreen({
         </div>
       )}
       {versions}
+      {/* Keep drafts and their saves alive while another view is selected. */}
+      {(openedFilmViews.schedule || view === 'schedule') && (
+        <div
+          style={{ display: view === 'schedule' ? 'contents' : 'none' }}
+          inert={view !== 'schedule'}
+        >
+          <ScheduleView
+            active={view === 'schedule'}
+            key={`${boardId}-${preview?.version.id ?? 'live'}`}
+            store={preview?.store ?? conn.store}
+            boardTitle={crumbs.at(-1)?.title ?? ''}
+            projectName={projectName}
+            projectId={projectId}
+            timeZone={shootingZone(projectTimeZone)}
+            canEditCrew={!!projectRole && atLeast(projectRole, 'editor')}
+            boardId={boardId}
+            userId={user.id}
+            readOnly={!!preview || !editable}
+            onOpenScene={(sceneId) =>
+              navigate(`?view=storyboard&scene=${encodeURIComponent(sceneId)}`)
+            }
+            onOpenTroupe={() => navigate('?view=troupe')}
+          />
+        </div>
+      )}
+      {(openedFilmViews.troupe || view === 'troupe') && (
+        <div style={{ display: view === 'troupe' ? 'contents' : 'none' }} inert={view !== 'troupe'}>
+          <TroupeView
+            key={projectId}
+            store={conn.store}
+            projectId={projectId}
+            boardId={boardId}
+            readOnly={!!preview || !editable}
+          />
+        </div>
+      )}
       {content}
       {shareDialog}
       {iconBoard && (

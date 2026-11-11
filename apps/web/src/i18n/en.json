@@ -4737,7 +4737,7 @@
           },
           "2": {
             "title": "Paste from a sheet",
-            "text": "Review the preview before adding people. Headers and duplicates are skipped."
+            "text": "Open “Paste from sheet” in the Crew toolbar. Review the preview before adding people. Headers and duplicates are skipped."
           },
           "3": {
             "title": "Calls and call sheet",
@@ -5303,7 +5303,7 @@
     "error": "Could not save or load crew.",
     "retry": "Retry",
     "empty": "No crew yet.",
-    "emptyHint": "Paste a list from an old call sheet…",
+    "emptyHint": "Use “Paste from sheet” to import people from an old call sheet.",
     "noResults": "No people found.",
     "noDepartment": "No department",
     "name": "Name",

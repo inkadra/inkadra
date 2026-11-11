@@ -18,7 +18,7 @@ import {
   STROKE_GRID,
 } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
-import { keyAtEnd, listElements } from './board.ts';
+import { currentElements, keyAtEnd } from './board.ts';
 import { shapeHit, strokeHit } from './film.ts';
 import type { Point } from './geometry.ts';
 import { BEAM_KINDS, categoryOf, GLYPH_FACING, glyphBox, glyphOf, isSized } from './plan-icons.ts';
@@ -844,7 +844,7 @@ export function addVariant(
 ): string {
   const baseId = source.variantOf ?? source.id;
   const id = newElementId();
-  const z = keyAtEnd(listElements(doc), source.parent);
+  const z = keyAtEnd(currentElements(doc), source.parent);
   doc.transact(() => {
     const copy = new Y.Map<unknown>();
     const fields: Record<string, unknown> = {

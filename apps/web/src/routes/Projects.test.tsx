@@ -305,3 +305,8 @@ it('shows each group of the person with its projects, and folds it', async () =>
   vi.mocked(api.get).mockResolvedValue({ items: [] });
   await act(async () => refreshGroups());
 });
+
+it('shows a single shooting date once', async () => {
+  await render([], { ...project, shootingStart: '2026-11-07', shootingEnd: '2026-11-07' });
+  expect(host.querySelector('.project-card')?.textContent).not.toContain(' – ');
+});

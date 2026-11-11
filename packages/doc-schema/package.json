@@ -9,13 +9,16 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "reference-board": "tsx scripts/reference-board.ts"
   },
   "dependencies": {
     "yjs": "^13.6.0",
     "zod": "^4.6.0"
   },
   "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.0",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
   }

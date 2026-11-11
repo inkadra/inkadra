@@ -9,7 +9,7 @@ import {
 } from '@inkadra/shared';
 import type { TFunction } from 'i18next';
 import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
-import { api } from '../../lib/api.ts';
+import { api, RequestError } from '../../lib/api.ts';
 import {
   departmentNotes,
   hasSceneNumbers,
@@ -44,7 +44,10 @@ export interface Planning {
 export async function loadPlanning(boardId: string): Promise<Planning> {
   const days = await api.get<Schedule>(`/boards/${boardId}/schedule`).then(
     (r) => r.items,
-    () => [],
+    (error) => {
+      if (error instanceof RequestError && [403, 404].includes(error.status)) return [];
+      throw error;
+    },
   );
   return { days: [...days].sort((a, b) => a.date.localeCompare(b.date)) };
 }
