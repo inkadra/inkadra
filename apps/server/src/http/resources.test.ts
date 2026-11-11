@@ -1,4 +1,10 @@
-import { createServer, type Server, type ServerResponse } from 'node:http';
+import {
+  createServer,
+  type IncomingMessage,
+  request,
+  type Server,
+  type ServerResponse,
+} from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { clientAssetUploadId } from '@inkadra/shared';
@@ -377,8 +383,11 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     expect(stranger.headers['inkadra-asset-id']).toBe(
       clientAssetUploadId(as.stranger.id, clientAssetId),
     );
-    // Without access to the project, nothing is made or told.
+    // Without access to the project, nothing is made or told; the owner's upload stays theirs.
     expect((await create('stranger')).statusCode).toBe(404);
+    expect((await call('stranger', 'HEAD', `/api/v1/uploads/${id}`, undefined, tus)).statusCode).toBe(
+      404,
+    );
 
     // The same id for another file, a bad id, a refusal by tus after the asset was made.
     expect((await create('owner', { 'upload-length': '101' })).statusCode).toBe(409);
@@ -392,6 +401,65 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     expect(refused.statusCode).toBe(413);
     const bigId = clientAssetUploadId(as.owner.id, tooBig);
     expect(await db.select().from(asset).where(eq(asset.id, bigId))).toEqual([]);
+  });
+
+  it('holds no transaction while the body of a client-id creation arrives', async () => {
+    const clientAssetId = crypto.randomUUID();
+    const id = clientAssetUploadId(as.owner.id, clientAssetId);
+    const headers = {
+      cookie: as.owner.cookie,
+      origin: config.PUBLIC_URL,
+      ...tus,
+      'upload-length': '100',
+      'upload-metadata': `${metadata('slow.jpg', 'image/jpeg')},clientAssetId ${b64(clientAssetId)}`,
+    };
+    const slow = request(`${base}/api/v1/uploads`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/offset+octet-stream' },
+    });
+    const answered = new Promise<IncomingMessage>((resolve, reject) => {
+      slow.on('response', resolve);
+      slow.on('error', reject);
+    });
+    slow.write(Buffer.alloc(30));
+    // Mid-body, the pending asset is already committed: another connection sees it.
+    await expect
+      .poll(async () => (await db.select().from(asset).where(eq(asset.id, id))).length)
+      .toBe(1);
+    // A client that timed out and retries is answered at once, not queued behind the body.
+    const retry = await call('owner', 'POST', '/api/v1/uploads', undefined, {
+      ...tus,
+      'upload-length': '100',
+      'upload-metadata': headers['upload-metadata'],
+    });
+    expect(retry.statusCode).toBe(201);
+    expect(retry.headers['inkadra-asset-id']).toBe(id);
+    slow.end(Buffer.alloc(20));
+    const res = await answered;
+    res.resume();
+    expect(res.statusCode).toBe(201);
+    expect(res.headers['upload-offset']).toBe('50');
+  });
+
+  it('checks access again when a client-id creation is retried', async () => {
+    const member = `/api/v1/projects/${projectId}/members/${as.viewer.id}`;
+    await call('owner', 'PUT', member, { role: 'editor' });
+    const headers = {
+      ...tus,
+      'upload-length': '10',
+      'upload-metadata': `${metadata('mine.jpg', 'image/jpeg')},clientAssetId ${b64(crypto.randomUUID())}`,
+    };
+    try {
+      expect((await call('viewer', 'POST', '/api/v1/uploads', undefined, headers)).statusCode).toBe(
+        201,
+      );
+      await call('owner', 'PUT', member, { role: 'viewer' });
+      expect((await call('viewer', 'POST', '/api/v1/uploads', undefined, headers)).statusCode).toBe(
+        403,
+      );
+    } finally {
+      await call('owner', 'PUT', member, { role: 'viewer' });
+    }
   });
 
   it('uploads in chunks, resumes, then processes the image', async () => {
