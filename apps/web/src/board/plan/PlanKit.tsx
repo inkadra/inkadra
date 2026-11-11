@@ -51,11 +51,7 @@ export function setupKit(
  * How many items all the setups of a plan need together (decision 0116): per kit line, the most
  * any one setup needs, since the same lamp moves from setup to setup.
  */
-export function familyKitCount(
-  family: readonly PlanElement[],
-  t: TFunction,
-  lang: string,
-): number {
+export function familyKitCount(family: readonly PlanElement[], t: TFunction, lang: string): number {
   const most = new Map<string, number>();
   for (const p of family) {
     const base = p.variantOf ? family.find((f) => f.id === p.variantOf) : undefined;

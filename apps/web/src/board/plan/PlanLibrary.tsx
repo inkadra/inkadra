@@ -298,7 +298,10 @@ export function PlanLibrary({
             <PlanGlyph kind={h.item} size={26} />
             <span className="plan-lib__text">
               <span>
-                <Marked text={h.name} query={h.by === 'name' || h.by === 'prefix' ? query.trim() : ''} />
+                <Marked
+                  text={h.name}
+                  query={h.by === 'name' || h.by === 'prefix' ? query.trim() : ''}
+                />
               </span>
               <small>
                 <Marked text={h.detail} query={h.by === 'synonym' ? query.trim() : ''} />

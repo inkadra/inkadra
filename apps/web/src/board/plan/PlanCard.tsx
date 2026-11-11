@@ -29,7 +29,8 @@ export function planTitle(
   plan: Pick<PlanElement, 'title' | 'variant' | 'variantOf'>,
 ): string {
   // A variant reads "Kitchen · Evening", as its tab does; the base's setup name stays on its tab.
-  if (plan.variantOf && plan.variant) return `${plan.title || t('board.plan.name')} · ${plan.variant}`;
+  if (plan.variantOf && plan.variant)
+    return `${plan.title || t('board.plan.name')} · ${plan.variant}`;
   return plan.title ? `${t('board.plan.name')} · ${plan.title}` : t('board.plan.name');
 }
 

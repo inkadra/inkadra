@@ -362,7 +362,10 @@ export function ShotLink({ ed, icon }: { ed: Ed; icon: PlanIcon }) {
               </span>
             }
             // "2A · Master, wide": the frame's action says the shot, else its size.
-            name={[shot.label, frame.action?.split('\n')[0]?.trim() || preset('shotSizes', shot.shot)]
+            name={[
+              shot.label,
+              frame.action?.split('\n')[0]?.trim() || preset('shotSizes', shot.shot),
+            ]
               .filter(Boolean)
               .join(' · ')}
             sub={[

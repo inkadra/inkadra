@@ -47,13 +47,7 @@ import { type CSSProperties, type ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { type Ed, isIcon, MAX_UNITS } from './editing.ts';
-import {
-  itemName,
-  SEAT_SURFACES,
-  seatsAround,
-  selectionMix,
-  supportText,
-} from './elements.ts';
+import { itemName, SEAT_SURFACES, seatsAround, selectionMix, supportText } from './elements.ts';
 import { wattsText } from './kit.ts';
 import { NumberField } from './NumberField.tsx';
 import { selectionMenu } from './PlanCanvas.tsx';

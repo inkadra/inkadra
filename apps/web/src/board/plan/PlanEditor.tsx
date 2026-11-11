@@ -293,8 +293,7 @@ export function PlanEditor(props: PlanEditorProps) {
                 return;
               }
               if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-              const at =
-                family.findIndex((f) => f.id === p.id) + (e.key === 'ArrowRight' ? 1 : -1);
+              const at = family.findIndex((f) => f.id === p.id) + (e.key === 'ArrowRight' ? 1 : -1);
               const next = family[(at + family.length) % family.length];
               if (next && next.id !== plan.id) props.onSwitch?.(next.id);
             }}

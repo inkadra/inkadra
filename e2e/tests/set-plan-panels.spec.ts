@@ -58,7 +58,11 @@ test('set plan panels: circuits on every setup, the base renamed, identical lamp
       title: 'Tavola calda',
       circuits: [{ id: 'circuitAAAAAA', name: 'Circuito A', amps: 16 }],
       icons: [
-        icon('Key', 'fresnel', 0.2, 0.6, { label: 'Chiave', watts: 2000, circuit: 'circuitAAAAAA' }),
+        icon('Key', 'fresnel', 0.2, 0.6, {
+          label: 'Chiave',
+          watts: 2000,
+          circuit: 'circuitAAAAAA',
+        }),
         ...lamps,
       ],
     },
@@ -76,7 +80,11 @@ test('set plan panels: circuits on every setup, the base renamed, identical lamp
       variant: 'PP Anna',
       circuits: [],
       icons: [
-        icon('Key2', 'fresnel', 0.3, 0.6, { label: 'Chiave', watts: 2000, circuit: 'circuitAAAAAA' }),
+        icon('Key2', 'fresnel', 0.3, 0.6, {
+          label: 'Chiave',
+          watts: 2000,
+          circuit: 'circuitAAAAAA',
+        }),
       ],
     },
     opts,

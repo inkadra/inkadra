@@ -111,7 +111,7 @@ it('writes "5600 K" and "60%" as the mockup: no separator, % and ° against the 
     ),
   );
   const [kelvin, percent] = host.querySelectorAll('.plan-num');
-  expect((kelvin?.querySelector('input') as HTMLInputElement).value).toBe('5600');
+  expect(kelvin?.querySelector('input')?.value).toBe('5600');
   expect(kelvin?.classList.contains('plan-num--tight')).toBe(false);
   expect(percent?.classList.contains('plan-num--tight')).toBe(true);
   await act(async () => root.unmount());

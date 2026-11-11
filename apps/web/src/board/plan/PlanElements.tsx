@@ -41,8 +41,7 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
   const used = new Set(planItems(ed.linked).map(({ item }) => item.color));
   const colours = PLAN_COLORS.filter((c) => used.has(c.hex) || filter.color === c.hex);
   const nonEmpty = (g: PlanGroupName) =>
-    (everything.find((s) => s.group === g)?.items.length ?? 0) > 0 ||
-    (g === 'set' && walls > 0);
+    (everything.find((s) => s.group === g)?.items.length ?? 0) > 0 || (g === 'set' && walls > 0);
   /** "Walls, 2 windows, door, 9 props": the Set in one line. */
   const setSummary = (count: number) => {
     const windows = openings.filter((o) => o.kind === 'window').length;
@@ -64,17 +63,19 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
         className={`plan-pills${ed.phone ? ' plan-pills--scroll' : ''}`}
         aria-label={t('board.plan.filterLayer')}
       >
-        {(['all', ...ELEMENT_GROUPS.filter((g) => nonEmpty(g) || filter.group === g)] as const).map((l) => (
-          <button
-            key={l}
-            type="button"
-            className="plan-pill"
-            aria-pressed={filter.group === l}
-            onClick={() => setFilter({ ...filter, group: l })}
-          >
-            {l === 'all' ? t('board.plan.all') : layerName(l)}
-          </button>
-        ))}
+        {(['all', ...ELEMENT_GROUPS.filter((g) => nonEmpty(g) || filter.group === g)] as const).map(
+          (l) => (
+            <button
+              key={l}
+              type="button"
+              className="plan-pill"
+              aria-pressed={filter.group === l}
+              onClick={() => setFilter({ ...filter, group: l })}
+            >
+              {l === 'all' ? t('board.plan.all') : layerName(l)}
+            </button>
+          ),
+        )}
       </fieldset>
       <fieldset className="plan-elements__tags" aria-label={t('board.plan.filterTag')}>
         <span className="plan-prop__label">{t('board.plan.tag')}</span>
@@ -94,8 +95,7 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
       </fieldset>
       {sections.map(({ group: layer, items }) => {
         // A group with nothing in it says nothing, unless it is the one asked for.
-        if (filter.group === 'all' && !items.length && !(layer === 'set' && walls > 0))
-          return null;
+        if (filter.group === 'all' && !items.length && !(layer === 'set' && walls > 0)) return null;
         const grip = layer === PLAN_GRIP;
         const hidden = ed.hiddenLayers.has(layer);
         // Grip and crew is no layer: its lock is the lock of each of its items (decision 0114).
@@ -163,62 +163,63 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
             </div>
             {open &&
               items.map(({ item, refs }) => {
-              const icon = 'x' in item ? item : null;
-              const summary = icon
-                ? itemSummary(icon, ed.icons, t, { scale: ed.drawn.scale, locale: i18n.language })
-                : '';
-              const name = refs.length > 1 ? `${itemName(item, t)} ×${refs.length}` : itemName(item, t);
-              // An item of Grip and crew is on a layer of its own, that may be hidden or locked.
-              const layerLocked = ed.locked.has(layerOf(item));
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="plan-elements__item"
-                  aria-pressed={refs.every((r) => picked.has(r.id))}
-                  disabled={hidden || ed.hiddenLayers.has(layerOf(item))}
-                  onClick={(e) => {
-                    if (layerLocked) {
-                      ed.setLockedItem(item);
-                      ed.setSelection([]);
-                      return;
-                    }
-                    ed.setLockedItem(null);
-                    const group = withGroups(ed.drawn, refs);
-                    ed.setSelection(
-                      e.shiftKey
-                        ? [
-                            ...ed.selection.filter((r) => !group.some((g) => g.id === r.id)),
-                            ...group,
-                          ]
-                        : group,
-                    );
-                    onPicked?.();
-                  }}
-                >
-                  <span className="plan-elements__glyph" style={{ color: planCss(item.color) }}>
-                    {icon ? (
-                      <PlanGlyph kind={icon.kind} size={24} />
-                    ) : (
-                      <Icon
-                        name={'x0' in item ? (item.kind === 'text' ? 'text' : 'line') : 'pen'}
-                        size={18}
-                      />
+                const icon = 'x' in item ? item : null;
+                const summary = icon
+                  ? itemSummary(icon, ed.icons, t, { scale: ed.drawn.scale, locale: i18n.language })
+                  : '';
+                const name =
+                  refs.length > 1 ? `${itemName(item, t)} ×${refs.length}` : itemName(item, t);
+                // An item of Grip and crew is on a layer of its own, that may be hidden or locked.
+                const layerLocked = ed.locked.has(layerOf(item));
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="plan-elements__item"
+                    aria-pressed={refs.every((r) => picked.has(r.id))}
+                    disabled={hidden || ed.hiddenLayers.has(layerOf(item))}
+                    onClick={(e) => {
+                      if (layerLocked) {
+                        ed.setLockedItem(item);
+                        ed.setSelection([]);
+                        return;
+                      }
+                      ed.setLockedItem(null);
+                      const group = withGroups(ed.drawn, refs);
+                      ed.setSelection(
+                        e.shiftKey
+                          ? [
+                              ...ed.selection.filter((r) => !group.some((g) => g.id === r.id)),
+                              ...group,
+                            ]
+                          : group,
+                      );
+                      onPicked?.();
+                    }}
+                  >
+                    <span className="plan-elements__glyph" style={{ color: planCss(item.color) }}>
+                      {icon ? (
+                        <PlanGlyph kind={icon.kind} size={24} />
+                      ) : (
+                        <Icon
+                          name={'x0' in item ? (item.kind === 'text' ? 'text' : 'line') : 'pen'}
+                          size={18}
+                        />
+                      )}
+                    </span>
+                    <span className="plan-lib__text">
+                      <span>{name}</span>
+                      {summary && <small>{summary}</small>}
+                    </span>
+                    {(layerLocked || itemLocked(item)) && (
+                      <>
+                        <Icon name="lock" size={13} />
+                        <span className="ink-sr-only">{t('board.plan.lockedItem')}</span>
+                      </>
                     )}
-                  </span>
-                  <span className="plan-lib__text">
-                    <span>{name}</span>
-                    {summary && <small>{summary}</small>}
-                  </span>
-                  {(layerLocked || itemLocked(item)) && (
-                    <>
-                      <Icon name="lock" size={13} />
-                      <span className="ink-sr-only">{t('board.plan.lockedItem')}</span>
-                    </>
-                  )}
-                  <i className="plan-elements__tag" style={{ background: planCss(item.color) }} />
-                </button>
-              );
+                    <i className="plan-elements__tag" style={{ background: planCss(item.color) }} />
+                  </button>
+                );
               })}
           </section>
         );

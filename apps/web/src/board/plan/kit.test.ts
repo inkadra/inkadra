@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
+import type { PlanElement } from '@inkadra/canvas-core';
 import { type PlanIcon, type PlanShape, STROKE_GRID } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import type { PlanElement } from '@inkadra/canvas-core';
 import { kitList, measureValue, powerLines } from './kit.ts';
-import { familyKitCount, foldNames } from './PlanKit.tsx';
 import { measureText } from './PlanDrawing.tsx';
+import { familyKitCount, foldNames } from './PlanKit.tsx';
 
 const t = ((key: string) => key.split('.').at(-1)) as unknown as TFunction;
 /** The name and count of each line, what these tests are about. */

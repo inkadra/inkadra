@@ -6,6 +6,7 @@ import {
   iconSize,
   iconWatts,
   isLight,
+  itemFrame,
   layerOf,
   modifiersOn,
   PLAN_GRIP,
@@ -16,7 +17,6 @@ import {
   planGroupOf,
   planItems,
   SEATS,
-  itemFrame,
 } from '@inkadra/canvas-core';
 import type { PlanIcon, PlanLayer } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
@@ -97,7 +97,11 @@ export function elementSections(
   const carriers = new Set<string>();
   for (const icon of icons) {
     const base = icon.on ? byId.get(icon.on) : undefined;
-    if (base && attachRole(icon.kind) !== 'modifier' && ['camera', PLAN_GRIP].includes(planGroupOf(base)))
+    if (
+      base &&
+      attachRole(icon.kind) !== 'modifier' &&
+      ['camera', PLAN_GRIP].includes(planGroupOf(base))
+    )
       carriers.add(base.id);
   }
   const all = planItems(plan).filter(({ item }) => {
@@ -227,7 +231,12 @@ export function selectionMix(items: readonly PlanItem[], t: TFunction): string {
 }
 
 /** What people sit at: the props whose Properties count the seats around them. */
-export const SEAT_SURFACES: ReadonlySet<string> = new Set(['table', 'roundtable', 'desk', 'counter']);
+export const SEAT_SURFACES: ReadonlySet<string> = new Set([
+  'table',
+  'roundtable',
+  'desk',
+  'counter',
+]);
 
 /**
  * The seats at a table or a counter ("4 stools", decision 0116): the seats attached to it, or

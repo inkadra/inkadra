@@ -68,7 +68,9 @@ it('sums up a light, a camera and a person in one line', () => {
 
 describe('rows as the mockup lists them (decision 0116)', () => {
   const t2 = ((key: string, o?: Record<string, unknown>) =>
-    o ? `${key.split('.').at(-1)}:${Object.values(o).join(',')}` : key.split('.').at(-1)) as unknown as TFunction;
+    o
+      ? `${key.split('.').at(-1)}:${Object.values(o).join(',')}`
+      : key.split('.').at(-1)) as unknown as TFunction;
   // View (500, 333) is grid (2048, 2048); 1 view unit is 4.096 grid units across.
   const at = (vx: number, vy: number) => ({ x: (vx / 1000) * 4096, y: (vy / (1000 / 1.5)) * 4096 });
   const track = icon('track', 'track', { ...at(500, 600), w: 280, h: 20 });
