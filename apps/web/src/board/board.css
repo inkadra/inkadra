@@ -4614,7 +4614,7 @@ button.card__play {
   }
   /* A card's side panel opens under the top-right header panel, not behind it. */
   .ink-shell .canvas .canvas__panel {
-    top: calc(12px * 2 + 42px);
+    top: calc(var(--ink-float-gap) * 2 + var(--ink-header-height));
     right: 12px;
     bottom: 12px;
   }
@@ -4626,7 +4626,7 @@ button.card__play {
     top: calc(100% + 12px);
   }
   :root .comments-panel {
-    top: calc(12px * 2 + 42px);
+    top: calc(var(--ink-float-gap) * 2 + var(--ink-header-height));
     right: 12px;
     bottom: 12px;
   }
@@ -4667,7 +4667,8 @@ button.card__play {
   .ink-shell > .ink-main--canvas .board-preview > .version-banner {
     position: relative;
     z-index: 1;
-    margin: calc(12px * 2 + 42px) 12px 0 var(--ink-shell-left, 12px);
+    margin: calc(var(--ink-float-gap) * 2 + var(--ink-header-height)) var(--ink-float-gap) 0
+      var(--ink-shell-left, var(--ink-float-gap));
     border: 0;
     border-radius: var(--ink-radius-lg);
     background: var(--ink-surface-float);

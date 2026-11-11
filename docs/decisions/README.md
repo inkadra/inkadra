@@ -108,6 +108,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0102](0102-min-writer-schema.md) | `minWriterSchema`: older clients write only when a test proves they lose nothing; the schema does not freeze at 1.0 |
 | [0103](0103-idempotent-project-creations.md) | `Idempotency-Key` also on project, crew member and shooting day creation, with its own capability; links are checked only when something is created |
 | [0107](0107-weight-700-for-user-bold.md) | Inter 700 only for bold the user writes; the interface stops at 600 (amends 0006) |
+| [0108](0108-shell-sizes-from-tokens.md) | The shell reads its sizes (236 / 42 / 42 / 12) from `tokens.layout` (amends 0006) |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.
