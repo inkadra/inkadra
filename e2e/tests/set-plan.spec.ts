@@ -220,7 +220,7 @@ for (const theme of ['dark', 'light'] as const) {
 
     // On the board: the title and the drawing, without the grid.
     const card = page.locator(`[data-el="${planId}"]`);
-    await expect(card).toContainText('Pianta del set · Cucina, giorno 2');
+    await expect(card).toContainText('Cucina, giorno 2');
     await expect(card.locator('.plan__svg text', { hasText: 'A cam' })).toBeVisible();
     await expect(card.locator('pattern')).toHaveCount(0);
     await page.mouse.click(1300, 820);
@@ -540,7 +540,7 @@ for (const theme of ['dark', 'light'] as const) {
     {
       // Scenes (round 6, b): the badge on the card links to the scene in the storyboard, the
       // scene opens its plan, and the editor links the plan to more scenes.
-      await expect(card.getByRole('button', { name: 'Sc. 5' })).toBeVisible();
+      await expect(card.getByRole('button', { name: 'Scena 5' })).toBeVisible();
       await card.dblclick();
       await editor.getByRole('button', { name: 'Collega a una scena' }).click();
       const picker = page.getByRole('dialog', { name: 'Collega a una scena' });
@@ -548,11 +548,11 @@ for (const theme of ['dark', 'light'] as const) {
       await expect.poll(async () => (await saved()).plan?.sceneIds?.length).toBe(2);
       await page.keyboard.press('Escape');
       await expect(picker).toHaveCount(0);
-      await expect(editor.getByRole('button', { name: 'Sc. 7' })).toBeVisible();
+      await expect(editor.getByRole('button', { name: 'Scena 7 · INT · Tramonto' })).toBeVisible();
       await page.screenshot({ path: join(out, `desktop-${theme}-scenes.png`) });
       await page.keyboard.press('Escape');
       await expect(editor).toHaveCount(0);
-      await card.getByRole('button', { name: 'Sc. 5' }).click();
+      await card.getByRole('button', { name: 'Scena 5' }).click();
       await expect(page).toHaveURL(/view=storyboard/);
       const sceneHead = page.locator('[data-story-scene]').first();
       await sceneHead.getByRole('button', { name: 'Pianta del set' }).click();
@@ -576,6 +576,8 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(scenes.locator('.plan__svg')).toBeVisible();
       await expect(scenes.locator('.sheet__kit')).toContainText('Fresnel 1,2K');
       await expect(scenes.locator('.sheet__kit')).toContainText(/Binario \d/);
+      // The power per circuit under the kit (decision 0111): 1.2 kW at 230 V, on no circuit.
+      await expect(scenes.locator('.sheet__power')).toContainText('1,2 kW · 5,2 A');
       await scenes.scrollIntoViewIfNeeded();
       await page
         .getByRole('dialog', { name: 'Foglio di lavorazione' })

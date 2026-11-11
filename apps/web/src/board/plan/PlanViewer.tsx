@@ -1,92 +1,320 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type PlanElement, variantView } from '@inkadra/canvas-core';
-import { IconButton } from '@inkadra/ui';
-import { useState } from 'react';
+import {
+  attachRole,
+  catalogueKind,
+  categoryOf,
+  isLight,
+  layerOf,
+  linkedLocation,
+  type PlanElement,
+  variantView,
+} from '@inkadra/canvas-core';
+import type { PlanIcon } from '@inkadra/doc-schema';
+import { Button, Icon, IconButton } from '@inkadra/ui';
+import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { ExportCache } from '../export/cache.ts';
+import { PLAN_SHEET_INCLUDE } from '../export/plan-sheet.ts';
+import type { BoardStore } from '../store.ts';
+import { itemSummary } from './elements.ts';
+import { kitList, powerLines } from './kit.ts';
 import { planTitle } from './PlanCard.tsx';
-import { PlanDrawing } from './PlanDrawing.tsx';
+import { PlanDrawing, PlanGlyph, planCss, useLinkedPlan } from './PlanDrawing.tsx';
+import { downloadPlanSheet, planSheetEnv, planSheetRequest } from './PlanExport.tsx';
+import { setupName } from './PlanKit.tsx';
 import './plan.css';
+import './outputs.css';
 
 const ZOOMS = [50, 75, 100, 150, 200, 300];
 
-/** A set plan for who cannot edit it, guests first: the drawing and its zoom, nothing else. */
+/** The legend of the view: cameras, lights and cast, each with its glyph and a line. */
+function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
+  const { t, i18n } = useTranslation();
+  const icons = (plan.icons ?? []).filter((i) => !plan.hiddenLayers?.includes(layerOf(i)));
+  const groups: Array<[string, PlanIcon[]]> = [
+    [t('board.plan.sheet.cameras'), icons.filter((i) => catalogueKind(i.kind) === 'camera')],
+    [t('board.plan.sheet.lights'), icons.filter((i) => isLight(i.kind) && !i.on)],
+    [
+      t('board.plan.sheet.cast'),
+      icons.filter((i) => categoryOf(i.kind).id === 'people' && attachRole(i.kind) === 'seated'),
+    ],
+  ];
+  const kit = kitList(plan, t, i18n.language);
+  const power = powerLines(plan, t, i18n.language);
+  return (
+    <aside className="plan-view__legend" aria-label={t('board.plan.view.legend')}>
+      {groups.map(([title, list]) =>
+        list.length ? (
+          <section key={title} className="plan-view__group">
+            <h3 className="plan-props__cap">{title}</h3>
+            <ul>
+              {list.map((icon) => {
+                const name = icon.label || t(`board.plan.icons.${icon.kind}`);
+                const lens = catalogueKind(icon.kind) === 'camera' ? `${icon.lens ?? 35} mm` : '';
+                const kelvin = icon.kelvin ? `${icon.kelvin} K` : '';
+                // The lens is in the name: the summary goes on with the support and the moves.
+                const summary = lens
+                  ? itemSummary(icon, icons, t).replace(/^\d+ mm( · )?/, '')
+                  : itemSummary(icon, icons, t);
+                const sub = [summary, kelvin].filter(Boolean).join(' · ');
+                return (
+                  <li key={icon.id} className="plan-view__item">
+                    <span style={{ color: planCss(icon.color) }}>
+                      <PlanGlyph kind={icon.kind} size={24} />
+                    </span>
+                    <span className="plan-props__name">
+                      <span>{[name, lens].filter(Boolean).join(' · ')}</span>
+                      {sub && <small>{sub}</small>}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null,
+      )}
+      {kit.length > 0 && (
+        <section className="plan-view__group">
+          <h3 className="plan-props__cap">{t('board.plan.tabs2.kit')}</h3>
+          <ul>
+            {kit.map((l) => (
+              <li key={l.name} className="plan-view__row">
+                <span>{l.name}</span>
+                <span className="plan-view__n">×{l.count}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {power && (
+        <section className="plan-view__group plan-view__power">
+          <div className="plan-view__row">
+            <h3 className="plan-props__cap">{power.title}</h3>
+            <span className="plan-view__n">{power.total}</span>
+          </div>
+          <ul>
+            {power.rows.map((r) => (
+              <li key={r.text} className={`plan-view__row is-${r.status}`}>
+                <span>{r.text}</span>
+                <span className="plan-view__n">{r.amps}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <p className="plan-props__hint">
+        {t(guest ? 'board.plan.view.guestNote' : 'board.plan.view.note')}
+      </p>
+    </aside>
+  );
+}
+
+/**
+ * A set plan for who cannot edit it, guests first (decision 0111, the mockup's Viewing): the
+ * drawing with pan and zoom, the setups as tabs, the legend of cameras, lights and cast with the
+ * kit and the power per circuit (guests see what the plan shows, decision 0062), and the PDF.
+ */
 export function PlanViewer({
   plan,
   base,
+  family,
   phone,
+  guest = false,
+  store,
+  onSwitch,
   onClose,
 }: {
   plan: PlanElement;
   base?: PlanElement | undefined;
+  /** The base and its setups, for the tabs. */
+  family?: readonly PlanElement[];
   phone: boolean;
+  guest?: boolean;
+  store?: BoardStore;
+  onSwitch?: (id: string) => void;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [zoom, setZoom] = useState(100);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [busy, setBusy] = useState(false);
+  const [cache] = useState(() => new ExportCache());
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ distance: number; zoom: number } | null>(null);
+  const shown = useLinkedPlan(variantView(plan, base));
+  const tabs = family?.length ? family : [plan];
+  const place = store ? linkedLocation(base ?? plan, store.getSnapshot().byId)?.name : undefined;
   const at = ZOOMS.indexOf(zoom);
-  const close = (
-    <button type="button" className="plan-editor__done" onClick={onClose}>
-      {t('viewer.close')}
-    </button>
-  );
-  const body = (
-    <>
-      <div className="plan-viewer__scroll">
-        <div
-          className="plan-viewer__sheet"
-          style={{ width: `calc(min(100cqw, 150cqh) * ${zoom / 100})` }}
-        >
-          <PlanDrawing plan={variantView(plan, base)} background />
-        </div>
-      </div>
-      <div className="plan-viewer__bar" role="toolbar" aria-label={t('board.plan.name')}>
-        <IconButton
-          icon="minus"
-          label={t('board.plan.zoomOut')}
-          disabled={at === 0}
-          onClick={() => setZoom(ZOOMS[at - 1] as number)}
-        />
-        <button
-          type="button"
-          className="plan-editor__lens plan-viewer__zoom"
-          onClick={() => setZoom(100)}
-        >
-          {zoom}%
-        </button>
-        <IconButton
-          icon="plus"
-          label={t('board.plan.zoomIn')}
-          disabled={at === ZOOMS.length - 1}
-          onClick={() => setZoom(ZOOMS[at + 1] as number)}
-        />
-        <span className="plan-editor__vr" aria-hidden="true" />
-        {close}
-      </div>
-    </>
-  );
-  const dialog = {
-    role: 'dialog',
-    'aria-modal': true,
-    'aria-label': planTitle(t, plan),
-    onKeyDown: (e: { key: string }) => e.key === 'Escape' && onClose(),
-  } as const;
+  // The view takes the focus, for its keys, and gives it back on close.
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    root.current?.focus({ preventScroll: true });
+    return () => before?.focus?.({ preventScroll: true });
+  }, []);
+  const zoomTo = (next: number) => setZoom(Math.min(400, Math.max(25, Math.round(next))));
+
+  const down = (e: ReactPointerEvent<HTMLDivElement>) => {
+    // The zoom bar sits on the stage: its buttons keep their clicks.
+    if ((e.target as Element).closest('.plan-view__bar')) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()] as [
+        { x: number; y: number },
+        { x: number; y: number },
+      ];
+      pinch.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), zoom };
+    }
+  };
+  const move = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const last = pointers.current.get(e.pointerId);
+    if (!last) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2 && pinch.current) {
+      const [a, b] = [...pointers.current.values()] as [
+        { x: number; y: number },
+        { x: number; y: number },
+      ];
+      zoomTo(pinch.current.zoom * (Math.hypot(a.x - b.x, a.y - b.y) / pinch.current.distance));
+      return;
+    }
+    setPan((p) => ({ x: p.x + e.clientX - last.x, y: p.y + e.clientY - last.y }));
+  };
+  const up = (e: ReactPointerEvent<HTMLDivElement>) => {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size < 2) pinch.current = null;
+  };
+  const pdf = async () => {
+    if (!store) return;
+    setBusy(true);
+    try {
+      await downloadPlanSheet(
+        planSheetRequest('pdf', [plan.id], null, PLAN_SHEET_INCLUDE, guest),
+        planSheetEnv(store, plan, t, i18n.language, cache),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return createPortal(
-    phone ? (
-      <div className="plan-editor plan-editor--phone" data-chrome="" {...dialog}>
-        {body}
-      </div>
-    ) : (
-      <div className="plan-editor" data-chrome="">
-        <div className="plan-editor__backdrop" aria-hidden="true" onPointerDown={onClose} />
-        <div className="plan-editor__window ink-motion-rise" {...dialog}>
-          <header className="plan-editor__head">
-            <span className="plan-editor__name">{planTitle(t, plan)}</span>
-          </header>
-          {body}
+    <div
+      ref={root}
+      tabIndex={-1}
+      className={`plan-editor plan-view${phone ? ' plan-view--phone' : ''}`}
+      data-chrome=""
+      role="dialog"
+      aria-modal="true"
+      aria-label={planTitle(t, plan)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+        else if (e.key === '+' || e.key === '=') zoomTo(zoom * 1.25);
+        else if (e.key === '-') zoomTo(zoom / 1.25);
+        else if (e.key.startsWith('Arrow')) {
+          const d = 40;
+          setPan((p) => ({
+            x: p.x + (e.key === 'ArrowLeft' ? d : e.key === 'ArrowRight' ? -d : 0),
+            y: p.y + (e.key === 'ArrowUp' ? d : e.key === 'ArrowDown' ? -d : 0),
+          }));
+        }
+      }}
+    >
+      <header className="plan-top plan-view__top">
+        <div className="plan-top__start">
+          <b className="plan-top__name">{t('board.plan.name')}</b>
+          {!phone && <span className="plan-view__title">{place || plan.title || base?.title}</span>}
+          <span className="plan-view__only">
+            <Icon name="eye" size={13} />
+            {t('board.plan.view.only')}
+          </span>
         </div>
+        {tabs.length > 1 && (
+          <div className="plan-setups" role="tablist" aria-label={t('board.plan.setups')}>
+            {tabs.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                role="tab"
+                className="plan-setups__tab"
+                aria-selected={p.id === plan.id}
+                tabIndex={p.id === plan.id ? 0 : -1}
+                onClick={() => p.id !== plan.id && onSwitch?.(p.id)}
+                onKeyDown={(e) => {
+                  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+                  const i =
+                    tabs.findIndex((f) => f.id === p.id) + (e.key === 'ArrowRight' ? 1 : -1);
+                  const next = tabs[(i + tabs.length) % tabs.length];
+                  if (next && next.id !== plan.id) onSwitch?.(next.id);
+                }}
+              >
+                {setupName(p, tabs, t)}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="plan-top__end">
+          {store && (
+            <Button icon="download" disabled={busy} onClick={pdf} data-tour="plan-view-pdf">
+              PDF
+            </Button>
+          )}
+          <Button variant="primary" onClick={onClose}>
+            {t('viewer.close')}
+          </Button>
+        </div>
+      </header>
+      <div className="plan-view__body">
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: dragging pans; the keys and the bar do it too. */}
+        <div
+          className="plan-view__stage"
+          onPointerDown={down}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerCancel={up}
+          onWheel={(e) => zoomTo(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1))}
+        >
+          <div
+            className="plan-view__sheet"
+            style={{
+              width: `calc(min(100cqw, 150cqh) * ${zoom / 100})`,
+              translate: `${pan.x}px ${pan.y}px`,
+            }}
+          >
+            <PlanDrawing plan={shown} background />
+          </div>
+          <div className="plan-view__bar" role="toolbar" aria-label={t('board.plan.name')}>
+            <IconButton
+              icon="minus"
+              label={t('board.plan.zoomOut')}
+              disabled={zoom <= 25}
+              onClick={() => zoomTo(at > 0 ? (ZOOMS[at - 1] as number) : zoom / 1.25)}
+            />
+            <button
+              type="button"
+              className="plan-editor__lens plan-viewer__zoom"
+              onClick={() => {
+                setZoom(100);
+                setPan({ x: 0, y: 0 });
+              }}
+            >
+              {zoom}%
+            </button>
+            <IconButton
+              icon="plus"
+              label={t('board.plan.zoomIn')}
+              disabled={zoom >= 400}
+              onClick={() =>
+                zoomTo(at >= 0 && at < ZOOMS.length - 1 ? (ZOOMS[at + 1] as number) : zoom * 1.25)
+              }
+            />
+            {!phone && <span className="plan-view__hint">{t('board.plan.view.hint')}</span>}
+          </div>
+        </div>
+        <Legend plan={shown} guest={guest} />
       </div>
-    ),
+    </div>,
     document.body,
   );
 }

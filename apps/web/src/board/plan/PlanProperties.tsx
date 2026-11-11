@@ -14,6 +14,7 @@ import {
   itemFrame,
   layerOf,
   linkedCharacter,
+  linkedLabel,
   linkedShot,
   modifiersOn,
   normalizeRotation,
@@ -49,6 +50,7 @@ import { itemName, selectionMix } from './elements.ts';
 import { NumberField } from './NumberField.tsx';
 import { selectionMenu } from './PlanCanvas.tsx';
 import { measureText, PLAN_COLORS, PlanGlyph, planCss, TEXT_SIZES } from './PlanDrawing.tsx';
+import { CharacterLink, LocationLink, needsSun, ShotLink, SunSection } from './PlanLinks.tsx';
 import { PlanWallProperties } from './PlanWallProperties.tsx';
 
 /** Lens presets of a camera, as on the mockup; Other takes any focal length. */
@@ -266,31 +268,36 @@ export function PlanProperties({
   };
 
   /** Name field of an icon: its label; an actor's follows the character it plays. */
-  const head = (icon: PlanIcon, sub?: string) => (
-    <div className="plan-props__head">
-      <span className="plan-props__tile" style={{ color: planCss(icon.color) }}>
-        <PlanGlyph kind={icon.kind} size={30} />
-      </span>
-      {compact ? (
-        <span className="plan-props__name">
-          <b>{icon.label || t(`board.plan.icons.${icon.kind}`)}</b>
-          {sub && <small>{sub}</small>}
+  const head = (icon: PlanIcon, sub?: string) => {
+    const played = linkedCharacter(icon, ed.cards);
+    return (
+      <div className="plan-props__head">
+        <span className="plan-props__tile" style={{ color: planCss(icon.color) }}>
+          <PlanGlyph kind={icon.kind} size={30} />
         </span>
-      ) : (
-        <input
-          className="plan-field plan-field--strong"
-          aria-label={t('board.plan.nameField')}
-          placeholder={t(`board.plan.icons.${icon.kind}`)}
-          maxLength={60}
-          value={icon.label ?? ''}
-          {...fieldEvents}
-          onChange={(e) => ed.edit(icon, { label: e.target.value.slice(0, 60) })}
-        />
-      )}
-      {!compact && swatch(icon.color)}
-      {compact && <IconButton icon="more" label={t('board.plan.moreProps')} onClick={onMore} />}
-    </div>
-  );
+        {compact ? (
+          <span className="plan-props__name">
+            <b>{linkedLabel(icon, ed.cards) || t(`board.plan.icons.${icon.kind}`)}</b>
+            {sub && <small>{sub}</small>}
+          </span>
+        ) : (
+          <input
+            className="plan-field plan-field--strong"
+            aria-label={t('board.plan.nameField')}
+            placeholder={t(`board.plan.icons.${icon.kind}`)}
+            maxLength={60}
+            value={played?.name ?? icon.label ?? ''}
+            readOnly={!!played}
+            title={played ? t('board.plan.nameFollows') : undefined}
+            {...fieldEvents}
+            onChange={(e) => ed.edit(icon, { label: e.target.value.slice(0, 60) })}
+          />
+        )}
+        {!compact && !played && swatch(icon.color)}
+        {compact && <IconButton icon="more" label={t('board.plan.moreProps')} onClick={onMore} />}
+      </div>
+    );
+  };
   const note = (icon: PlanIcon) => (
     <Field label={t('board.plan.note')}>
       <input
@@ -781,7 +788,8 @@ export function PlanProperties({
   const camera = (icon: PlanIcon) => {
     const shot = icon.frameId ? linkedShot(icon, ed.cards, ed.labels) : null;
     const lens = icon.lens ?? shot?.frameLens ?? DEFAULT_LENS;
-    const cone = iconCone(icon, ed.plan.sensor);
+    // The cone of the lens shown: the plan's own, else the linked frame's (decision 0111).
+    const cone = iconCone({ ...icon, lens }, ed.plan.sensor);
     const base = baseOf(icon);
     const other = otherLens || !LENSES.includes(lens);
     const lensRow = (
@@ -843,21 +851,7 @@ export function PlanProperties({
     return (
       <>
         {head(icon)}
-        {shot && (
-          <>
-            <span className="plan-props__cap">{t('board.plan.shotCard')}</span>
-            <div className="plan-props__card">
-              <Icon name="frame" size={18} />
-              <span className="plan-props__name">
-                <b>{[shot.label, shot.shot].filter(Boolean).join(' · ')}</b>
-                {shot.frameLens && (
-                  <small>{t('board.plan.lensInFrame', { mm: shot.frameLens })}</small>
-                )}
-              </span>
-            </div>
-            <p className="plan-props__hint">{t('board.plan.lensFollows')}</p>
-          </>
-        )}
+        <ShotLink ed={ed} icon={icon} />
         {lensRow}
         {(ed.lenses ?? []).length > 0 && (
           <div className="plan-props__hints">
@@ -959,7 +953,6 @@ export function PlanProperties({
   };
 
   const person = (icon: PlanIcon) => {
-    const character = icon.characterId ? linkedCharacter(icon, ed.cards) : null;
     const posed = POSED.has(catalogueKind(icon.kind));
     const poses = posed && (
       <div className="plan-prop">
@@ -995,20 +988,7 @@ export function PlanProperties({
     return (
       <>
         {head(icon)}
-        {character && (
-          <>
-            <span className="plan-props__cap">{t('board.plan.characterCard')}</span>
-            <div className="plan-props__card">
-              <span className="plan-props__initial">
-                {character.name.slice(0, 1).toLocaleUpperCase()}
-              </span>
-              <span className="plan-props__name">
-                <b>{character.name}</b>
-                <small>{character.actor ?? t('board.plan.nameFollows')}</small>
-              </span>
-            </div>
-          </>
-        )}
+        <CharacterLink ed={ed} icon={icon} />
         {poses}
         {onRow(icon)}
         <div className="plan-props__grid">
@@ -1273,6 +1253,8 @@ export function PlanProperties({
         <span className="plan-prop__label">{t('board.plan.nextColor')}</span>
         {swatch(ed.penColor ?? PLAN_COLORS[0].hex)}
       </div>
+      <LocationLink ed={ed} />
+      {needsSun(ed) && <SunSection ed={ed} />}
     </>
   );
 
@@ -1283,7 +1265,19 @@ export function PlanProperties({
   else if (!isIcon(item)) body = shape(item);
   else {
     const kind = catalogueKind(item.kind);
-    if (isLight(kind)) body = light(item);
+    // The sun turns with the time of day (decision 0111): its section takes the light's place.
+    if (kind === 'sun')
+      body = compact ? (
+        head(item)
+      ) : (
+        <>
+          {head(item)}
+          <SunSection ed={ed} />
+          {note(item)}
+          {actions(item)}
+        </>
+      );
+    else if (isLight(kind)) body = light(item);
     else if (kind === 'camera') body = camera(item);
     else if (categoryOf(kind).id === 'people' && attachRole(kind) === 'seated') body = person(item);
     else if (isSized(kind)) body = prop(item);

@@ -19,7 +19,9 @@ import {
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { moveTabFocus } from '../../lib/tabs.ts';
+import { SetupChips } from '../plan/SetupChips.tsx';
 import { ScenePlanButton } from '../plan/scenes.tsx';
+import type { ShotSetup } from '../plan/setups.ts';
 import { clockString, minutesLabel, monthGrid, parseDuration, SHOT_DRAG_TYPE } from './calendar.ts';
 import { plannedWrap } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
@@ -68,6 +70,7 @@ export function ScheduleQueue({
   boardAspect,
   slugline,
   plansOf,
+  setupsOf,
   readOnly,
   disabled,
   loading,
@@ -89,6 +92,8 @@ export function ScheduleQueue({
   slugline: (scene: SceneElement) => string;
   /** The set plans of a scene, for its chip. */
   plansOf: (sceneId: string) => readonly PlanElement[];
+  /** The setups of the set plans a shot belongs to (decision 0104). */
+  setupsOf?: ((frameId: string) => readonly ShotSetup[] | undefined) | undefined;
   readOnly: boolean;
   disabled: boolean;
   loading: boolean;
@@ -242,6 +247,7 @@ export function ScheduleQueue({
                   boardId={boardId}
                   boardAspect={boardAspect}
                   disabled={disabled}
+                  setups={setupsOf?.(frame.id)}
                   onAdd={() => onAdd(frame.id)}
                 />
               ))}
@@ -260,6 +266,7 @@ function QueueShot({
   boardId,
   boardAspect,
   disabled,
+  setups,
   onAdd,
 }: {
   frame: FrameElement;
@@ -267,6 +274,7 @@ function QueueShot({
   boardId: string;
   boardAspect: AspectRatio;
   disabled: boolean;
+  setups?: readonly ShotSetup[] | undefined;
   onAdd: () => void;
 }) {
   return (
@@ -298,6 +306,7 @@ function QueueShot({
       <span className="schedule__shot-text">
         <span className="schedule__shot-label">{label}</span>
         {frame.action && <span className="schedule__shot-action">{frame.action}</span>}
+        <SetupChips setups={setups} />
       </span>
     </button>
   );
@@ -398,6 +407,7 @@ export function BlockEditor({
   onOpenScene,
   onDetails,
   onClose,
+  setupsOf,
 }: {
   variant: 'popover' | 'sheet' | 'panel';
   entry: CalendarDay;
@@ -419,6 +429,8 @@ export function BlockEditor({
   onOpenScene: ((sceneId: string) => void) | undefined;
   onDetails: () => void;
   onClose: () => void;
+  /** The setups of the set plans a shot belongs to (decision 0104). */
+  setupsOf?: ((frameId: string) => readonly ShotSetup[] | undefined) | undefined;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -483,6 +495,7 @@ export function BlockEditor({
           </span>
           <span className="schedule__editor-shot-text">
             <b>{shotTitle(block.shotId)}</b>
+            <SetupChips setups={setupsOf?.(block.shotId)} />
             {scene && (
               <span>
                 {[t('schedule.sceneShort', { number: scene.number }), slugline(scene)]

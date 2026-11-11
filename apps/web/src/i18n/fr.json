@@ -1500,6 +1500,119 @@
         "practical": "Practical"
       },
       "snapIcons": "Accrocher les icônes",
+      "links": {
+        "proposed": "Proposés",
+        "others": "Tout le reste",
+        "none": "Rien à lier",
+        "unlink": "Délier",
+        "playedBy": "Joué par {{actor}}",
+        "openCharacter": "Ouvrir le personnage",
+        "linkCharacter": "Lier à un personnage",
+        "searchCharacter": "Chercher des personnages",
+        "openFrame": "Ouvrir le plan",
+        "linkFrame": "Lier à un plan",
+        "searchFrame": "Chercher des plans",
+        "followFrame": "Utiliser les {{mm}} mm du plan",
+        "location": "Décor",
+        "openLocation": "Ouvrir le décor",
+        "linkLocation": "Lier à un décor",
+        "searchLocation": "Chercher des décors",
+        "lightNotes": "Lumière",
+        "sun": "Soleil, pour les extérieurs",
+        "timeOfDay": "Heure",
+        "date": "Date",
+        "north": "Le nord est à",
+        "from": {
+          "north": "Du nord",
+          "northEast": "Du nord-est",
+          "east": "De l’est",
+          "southEast": "Du sud-est",
+          "south": "Du sud",
+          "southWest": "Du sud-ouest",
+          "west": "De l’ouest",
+          "northWest": "Du nord-ouest"
+        },
+        "height": {
+          "down": "sous l’horizon",
+          "low": "bas",
+          "mid": "à mi-hauteur",
+          "high": "haut"
+        },
+        "sunFromPlace": "Calculé avec le lien de carte de {{place}} : {{degrees}}° au-dessus de l’horizon. Les icônes du soleil tournent avec l’heure.",
+        "sunByClock": "D’après l’heure seule : à l’est le matin, à l’ouest le soir. Ajoutez un lien de carte au décor pour la hauteur du soleil. Les icônes du soleil tournent avec l’heure ; le nord se règle à la main.",
+        "scene": "Scène {{number}}",
+        "settings": {
+          "int": "INT",
+          "ext": "EXT",
+          "int-ext": "INT/EXT"
+        },
+        "times": {
+          "day": "Jour",
+          "night": "Nuit",
+          "dawn": "Aube",
+          "dusk": "Crépuscule"
+        },
+        "circuitLine": "{{name}} · {{amps}} A"
+      },
+      "exportSheet": {
+        "title": "Exporter le plan de plateau",
+        "preview": "Aperçu de la première page",
+        "failed": "L’aperçu n’a pas pu être dessiné.",
+        "pages_one": "Page {{n}} sur {{count}} · A4 paysage. La légende, le matériel et la puissance à côté du plan.",
+        "pages_other": "Page {{n}} sur {{count}} · A4 paysage. La légende, le matériel et la puissance à côté du plan.",
+        "format": "Format",
+        "setups": "Setups",
+        "thisSetup": "Ce setup",
+        "allOfScene_one": "Les {{count}} de la scène {{scene}}",
+        "allOfScene_other": "Les {{count}} de la scène {{scene}}",
+        "allSetups_one": "Les {{count}} setups",
+        "allSetups_other": "Les {{count}} setups",
+        "area": "Zone",
+        "whole": "Tout le plan",
+        "view": "Ce que je vois",
+        "includeTitle": "Inclure",
+        "include": {
+          "legend": "Légende",
+          "kit": "Liste du matériel",
+          "power": "Puissance",
+          "notes": "Notes",
+          "scale": "Échelle et mesures",
+          "background": "Fond",
+          "dateScene": "Date et scène",
+          "grid": "Grille"
+        },
+        "working": "Export…",
+        "run": "Exporter en {{format}}"
+      },
+      "sheet": {
+        "shots": "Plans",
+        "scale": "Échelle",
+        "room": "Pièce",
+        "more_one": "+{{count}} autre",
+        "more_other": "+{{count}} autres",
+        "cameras": "Caméras",
+        "lights": "Lumières",
+        "cast": "Distribution",
+        "notes": "Notes",
+        "foot": "Fait avec Inkadra · page {{n}} sur {{total}}",
+        "day": "Jour {{n}}",
+        "setup": "Setup"
+      },
+      "card": {
+        "setups_one": "{{count}} setup",
+        "setups_other": "{{count}} setups",
+        "cameras_one": "{{count}} caméra",
+        "cameras_other": "{{count}} caméras",
+        "lights_one": "{{count}} lumière",
+        "lights_other": "{{count}} lumières"
+      },
+      "view": {
+        "only": "Lecture seule",
+        "legend": "Légende",
+        "hint": "Glissez pour déplacer, pincez ou faites défiler pour zoomer",
+        "note": "Qui peut ouvrir le tableau voit ce plan, la légende, le matériel et la puissance.",
+        "guestNote": "Vous voyez le plan tel qu’il est partagé avec vous : les setups, la légende, le matériel et la puissance."
+      },
       "walls": {
         "options": "Options de l’outil murs",
         "thickness": "Épaisseur",
@@ -2013,7 +2126,10 @@
       "approvedHelper": "Glissez ici les plans approuvés",
       "approvedHint": "Se remplit aussi avec les approbations du client",
       "approvedLocked": "Approuvé en révision : changez la révision depuis « {{status}} » et le statut de production depuis la vue Table",
-      "selectRow": "Sélectionner le plan {{label}}"
+      "selectRow": "Sélectionner le plan {{label}}",
+      "groupSetup": "Setup",
+      "noSetup": "Sans setup",
+      "inSetup": "Dans le setup du plan de plateau {{setup}}"
     },
     "playback": {
       "size": "Taille des vignettes",
@@ -5300,6 +5416,44 @@
           "3": {
             "title": "Convocations et feuille de service",
             "text": "Dans le Plan de tournage, onglet Convocations, choisissez qui est convoqué chaque jour. La feuille de service imprime l’équipe, les téléphones et le contact sur le plateau, jamais pour les invités ni les clients."
+          }
+        }
+      },
+      "setplanLinks": {
+        "name": "Liens du plan",
+        "steps": {
+          "0": {
+            "title": "Les scènes du storyboard",
+            "text": "La puce lit sur la fiche de la scène son numéro, INT ou EXT et le moment de la journée. Cliquez pour ouvrir la scène."
+          },
+          "1": {
+            "title": "Liés, jamais copiés",
+            "text": "Liez un acteur à un personnage et une caméra à un plan du storyboard : noms, couleurs et focales suivent les fiches. Sans sélection, liez le plan à son décor."
+          },
+          "2": {
+            "title": "Le soleil, pour les extérieurs",
+            "text": "Réglez l’heure et la date : les icônes du soleil tournent avec. Le nord se règle à la main."
+          },
+          "3": {
+            "title": "Les setups dans la liste des plans",
+            "text": "La liste des plans et le plan de travail montrent le setup de chaque plan, et la liste peut les regrouper par setup."
+          }
+        }
+      },
+      "setplanOutputs": {
+        "name": "Sorties du plan",
+        "steps": {
+          "0": {
+            "title": "Exporter",
+            "text": "PDF, PNG ou JPEG de ce setup ou de tous, avec la légende, le matériel, la puissance et les notes."
+          },
+          "1": {
+            "title": "La feuille",
+            "text": "Une page A4 par setup. Ajouter à la feuille de service lie le plan à ses scènes."
+          },
+          "2": {
+            "title": "Qui ne peut pas modifier",
+            "text": "Invités et lecteurs ouvrent le plan dans une vue avec déplacement et zoom, les setups, la légende et le PDF."
           }
         }
       }

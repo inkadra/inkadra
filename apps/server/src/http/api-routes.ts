@@ -139,6 +139,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'min-writer-schema',
         'board-restore-marker',
         'board-restore-history',
+        'token-proof',
       ],
     } satisfies InstanceVersion;
   });

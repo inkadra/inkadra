@@ -17,6 +17,7 @@ import {
   MAX_STROKES,
   newElementId,
   PlanElement,
+  type PlanIcon,
   readElement,
   roots,
   UNSORTED,
@@ -24,7 +25,7 @@ import {
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 import * as Y from 'yjs';
 import type { Point, Rect } from './geometry.ts';
-import { unlinkCharacter } from './plan-links.ts';
+import { keptOnDelete, unlinkCharacter } from './plan-links.ts';
 import { adoptBase, type PlanBase, planBaseOf } from './plan-variants.ts';
 
 /**
@@ -242,6 +243,50 @@ export function updateElements(
   }, origin);
 }
 
+/** The icons of plans that stay whose links to doomed cards turn into their text. */
+function keptLinks(
+  doc: Y.Doc,
+  doomed: ReadonlySet<string>,
+): Array<[Y.Array<unknown>, number, PlanIcon]> {
+  const { elements } = roots(doc);
+  const linked = [...doomed].some((id) => {
+    const type = elements.get(id)?.get('type');
+    return type === 'character' || type === 'frame';
+  });
+  if (!linked) return [];
+  const byId = new Map(listElements(doc).map((e) => [e.id, e]));
+  const out: Array<[Y.Array<unknown>, number, PlanIcon]> = [];
+  for (const [id, map] of elements.entries()) {
+    const plan = byId.get(id);
+    const list = map.get('icons');
+    if (doomed.has(id) || plan?.type !== 'plan' || !(list instanceof Y.Array)) continue;
+    const changed = new Map(keptOnDelete(plan, doomed, byId).map((i) => [i.id, i]));
+    list.toArray().forEach((value, index) => {
+      const stored = value instanceof Y.Map ? value.get('id') : (value as { id?: unknown })?.id;
+      const next = typeof stored === 'string' ? changed.get(stored) : undefined;
+      if (next) out.push([list, index, next]);
+    });
+  }
+  return out;
+}
+
+/** Writes an icon field by field into its Y.Map (or replaces a plain one), keeping the rest. */
+function writeIcon(list: Y.Array<unknown>, index: number, icon: PlanIcon): void {
+  const value = list.get(index);
+  if (value instanceof Y.Map) {
+    for (const key of ['label', 'lens'] as const)
+      if (icon[key] !== undefined && value.get(key) !== icon[key]) value.set(key, icon[key]);
+    for (const key of ['characterId', 'frameId'] as const) if (!icon[key]) value.delete(key);
+    return;
+  }
+  const merged = { ...(value as Record<string, unknown>) };
+  for (const key of ['label', 'lens'] as const)
+    if (icon[key] !== undefined) merged[key] = icon[key];
+  for (const key of ['characterId', 'frameId'] as const) if (!icon[key]) delete merged[key];
+  list.delete(index, 1);
+  list.insert(index, [merged]);
+}
+
 /** Deletes elements; deleting a column or a scene deletes the cards inside it too. */
 export function deleteElements(doc: Y.Doc, ids: Iterable<string>, origin?: unknown): void {
   const { elements } = roots(doc);
@@ -258,7 +303,10 @@ export function deleteElements(doc: Y.Doc, ids: Iterable<string>, origin?: unkno
     const baseMap = elements.get(base);
     if (doomed.has(base) && !doomed.has(id) && baseMap) orphans.push([map, baseMap]);
   }
+  // Icons linked to a character or a frame that goes keep its text (decision 0104).
+  const kept = keptLinks(doc, doomed);
   doc.transact(() => {
+    for (const [list, index, icon] of kept) writeIcon(list, index, icon);
     // From the stored base, so items and fields this build does not know go along (0101).
     for (const [variant, base] of orphans) {
       if (base.get('type') === 'plan') adoptBase(variant, planBaseOf(base));

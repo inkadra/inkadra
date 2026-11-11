@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type PlanElement, variantView } from '@inkadra/canvas-core';
+import {
+  catalogueKind,
+  isLight,
+  layerOf,
+  linkedLocation,
+  type PlanElement,
+  planPower,
+  variantFamily,
+  variantView,
+} from '@inkadra/canvas-core';
 import { Icon } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import { useSyncExternalStore } from 'react';
@@ -9,6 +18,7 @@ import { useBoard } from '../context.ts';
 import { PlanDrawing } from './PlanDrawing.tsx';
 import { SceneBadges, scenesOfPlan, usePlanNav } from './scenes.tsx';
 import './plan.css';
+import './outputs.css';
 
 function LinkedScenes({ scenes }: { scenes: Parameters<typeof SceneBadges>[0]['scenes'] }) {
   return <SceneBadges scenes={scenes} onOpen={usePlanNav().openScene} />;
@@ -22,30 +32,67 @@ export function planTitle(t: TFunction, plan: Pick<PlanElement, 'title' | 'varia
 }
 
 /**
- * A set plan on the board (#335): its title over the drawing, without the grid, so it reads
- * as a clean diagram next to the references. Double click (or Enter) edits it.
+ * A set plan on the board (#335, decision 0111): its drawing without the grid, then its name
+ * (the title, else the linked location) with the chips of its scenes, and the counts of its
+ * setups, cameras and lights with the power they draw. Double click (or Enter) edits it; a guest
+ * opens the read-only view.
  */
 export function PlanCard({ element }: { element: PlanElement }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { store } = useBoard();
-  const byId = store.getSnapshot().byId;
-  const scenes = scenesOfPlan(element, byId);
+  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const byId = snapshot.byId;
   // The base of a variant is another card: follow it, so a wall moved there moves here.
-  const base = useSyncExternalStore(store.subscribe, () =>
-    element.variantOf ? store.getSnapshot().byId.get(element.variantOf) : undefined,
-  );
+  const baseEl = element.variantOf ? byId.get(element.variantOf) : undefined;
+  const base = baseEl?.type === 'plan' ? baseEl : undefined;
+  const plan = base ? variantView(element, base) : element;
+  const scenes = scenesOfPlan(element.sceneIds ? element : (base ?? element), byId);
+  const family = variantFamily(byId.values(), element);
+  const icons = (plan.icons ?? []).filter((i) => !plan.hiddenLayers?.includes(layerOf(i)));
+  const cameras = icons.filter((i) => catalogueKind(i.kind) === 'camera').length;
+  const lights = icons.filter((i) => isLight(i.kind) && !i.on).length;
+  const watts = planPower(plan).watts;
+  const place = linkedLocation(base ?? element, byId)?.name;
+  const name = element.title || base?.title || place || t('board.plan.name');
+  const kw =
+    watts >= 1000
+      ? `${(watts / 1000).toLocaleString(i18n.language, { maximumFractionDigits: 1 })} kW`
+      : `${watts} W`;
+  const chips = [
+    family.length > 1 ? t('board.plan.card.setups', { count: family.length }) : '',
+    cameras ? t('board.plan.card.cameras', { count: cameras }) : '',
+    lights
+      ? [t('board.plan.card.lights', { count: lights }), watts > 0 ? kw : '']
+          .filter(Boolean)
+          .join(' · ')
+      : '',
+  ].filter(Boolean);
   return (
-    <div className="plan">
-      <div className="plan__head">
-        <Icon name="map" size={14} />
-        <span className="plan__title">{planTitle(t, element)}</span>
-        {useInRouterContext() ? <LinkedScenes scenes={scenes} /> : <SceneBadges scenes={scenes} />}
-      </div>
+    <div className="plan plan--card">
       <div className="plan__body card__media">
-        <PlanDrawing
-          plan={base?.type === 'plan' ? variantView(element, base) : element}
-          background
-        />
+        <PlanDrawing plan={plan} background />
+      </div>
+      <div className="plan__foot">
+        <div className="plan__head">
+          <Icon name="map" size={14} />
+          <span className="plan__title">
+            {element.variant ? `${name} · ${element.variant}` : name}
+          </span>
+          {useInRouterContext() ? (
+            <LinkedScenes scenes={scenes} />
+          ) : (
+            <SceneBadges scenes={scenes} />
+          )}
+        </div>
+        {chips.length > 0 && (
+          <div className="plan__chips">
+            {chips.map((c) => (
+              <span key={c} className="plan__count">
+                {c}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

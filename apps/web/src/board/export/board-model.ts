@@ -33,6 +33,23 @@ export function exportable(el: Element, lookup: Lookup, filter: ExportFilter): E
   return parsed.success ? parsed.data : null;
 }
 
+/**
+ * The cards an export's audience may see, by id, for the links of set plans (decision 0111): a
+ * plan linked to a card hidden from guests resolves nothing from it in an export for them.
+ */
+export function audienceCards(
+  all: Iterable<Element>,
+  lookup: Lookup,
+  filter: ExportFilter,
+): Map<string, Element> {
+  const out = new Map<string, Element>();
+  for (const el of all) {
+    const shown = exportable(el, lookup, filter);
+    if (shown) out.set(shown.id, shown);
+  }
+  return out;
+}
+
 export interface BoardSource {
   byId: ReadonlyMap<string, Element>;
   /** Elements on the canvas, in drawing order. */

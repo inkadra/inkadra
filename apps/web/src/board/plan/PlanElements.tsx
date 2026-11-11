@@ -43,7 +43,7 @@ export function PlanElements({
         .join(' · ')
     : '';
   const [filter, setFilter] = useState<ElementsFilter>({ layer: 'all', color: null });
-  const sections = elementSections(ed.drawn, filter);
+  const sections = elementSections(ed.linked, filter);
   const picked = new Set(ed.selection.map((r) => r.id));
   const walls = ed.drawn.walls?.length ?? 0;
   const layerName = (l: PlanLayer) => t(`board.plan.layers.${l}`);

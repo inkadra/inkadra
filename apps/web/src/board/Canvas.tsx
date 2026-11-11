@@ -4089,16 +4089,12 @@ export function Canvas({
             onNewVariant={() => editedPlan && newVariant(editedPlan, true)}
             onOpenScene={openScene}
             projectId={guest || preview ? undefined : projectId}
-            {...(onExportSelection && !preview
-              ? {
-                  // Today's export of the plan card: the board's export of the selection.
-                  onExport: () => {
-                    select([editedPlan.id]);
-                    setEditing(null);
-                    requestAnimationFrame(() => onExportSelection());
-                  },
-                }
-              : {})}
+            boardAspect={boardAspect}
+            onOpenCard={(id) => {
+              const card = snap.byId.get(id);
+              setEditing(null);
+              if (card) requestAnimationFrame(() => openElement(card));
+            }}
             onClose={() => setEditing(null)}
           />
         )}
@@ -4106,7 +4102,11 @@ export function Canvas({
           <PlanViewer
             plan={viewedPlan}
             base={viewedBase?.type === 'plan' ? viewedBase : undefined}
+            family={variantFamily(snap.byId.values(), viewedPlan)}
             phone={isPhone}
+            guest={!!guest}
+            store={store}
+            onSwitch={setViewedPlanId}
             onClose={() => setViewedPlanId(null)}
           />
         )}

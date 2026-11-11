@@ -70,7 +70,7 @@ export function useTakeParam(key: string): [string | null, () => void] {
   return [value, take];
 }
 
-/** "Sc. 5 · Sc. 7": the scenes of a plan, each a link to the scene in the storyboard. */
+/** "Scene 5 · Scene 7": the scenes of a plan, each a link to the scene in the storyboard. */
 export function SceneBadges({
   scenes,
   onOpen,
@@ -95,11 +95,11 @@ export function SceneBadges({
               onOpen(s.id);
             }}
           >
-            {t('needed.sceneNumber', { number: s.number || '—' })}
+            {t('board.plan.links.scene', { number: s.number || '—' })}
           </button>
         ) : (
           <span key={s.id} className="plan__badge">
-            {t('needed.sceneNumber', { number: s.number || '—' })}
+            {t('board.plan.links.scene', { number: s.number || '—' })}
           </span>
         ),
       )}

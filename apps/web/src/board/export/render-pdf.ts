@@ -19,7 +19,7 @@ import {
   rgb,
   setLineJoin,
 } from 'pdf-lib';
-import type { LoadedImage } from './images.ts';
+import { greyBytes, type LoadedImage } from './images.ts';
 import { type FontWeight, imagePlacement, type Op, type Page, roundedRectPath } from './pages.ts';
 
 export interface PdfMeta {
@@ -65,14 +65,16 @@ export async function renderPdf(
         : await pdf.embedFont(fonts.heading, { subset: true }),
   } satisfies Record<FontWeight, PDFFont>;
   const pictures = new Map<string, PDFImage>();
-  const pictureOf = async (key: string) => {
-    let img = pictures.get(key);
+  const pictureOf = async (key: string, grey = false) => {
+    const id = grey ? `${key}#grey` : key;
+    let img = pictures.get(id);
     if (img) return img;
-    const source = images.get(key);
+    const loaded = images.get(key);
+    const source = grey && loaded ? await greyBytes(loaded) : loaded;
     if (!source?.bytes) return null;
     img =
       source.type === 'png' ? await pdf.embedPng(source.bytes) : await pdf.embedJpg(source.bytes);
-    pictures.set(key, img);
+    pictures.set(id, img);
     return img;
   };
   for (const [n, page] of pages.entries()) {
@@ -92,7 +94,7 @@ async function drawOps(
   height: number,
   ops: readonly Op[],
   fonts: Record<FontWeight, PDFFont>,
-  pictureOf: (key: string) => Promise<PDFImage | null>,
+  pictureOf: (key: string, grey?: boolean) => Promise<PDFImage | null>,
 ) {
   // SVG paths are placed with their origin at the top left of the page, y going down.
   const svg = { x: 0, y: height };
@@ -127,7 +129,7 @@ async function drawOps(
         });
         break;
       case 'image': {
-        const img = await pictureOf(op.key);
+        const img = await pictureOf(op.key, op.grey);
         if (!img) break;
         const p = imagePlacement(img, op);
         if (!p.transformed || p.rotation === 0) {

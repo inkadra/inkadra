@@ -3,6 +3,7 @@ import {
   beamWarmth,
   blockingCurve,
   blockingPositions,
+  type CardsById,
   categoryOf,
   DEFAULT_GLYPH_STROKE,
   type GlyphPart,
@@ -12,6 +13,7 @@ import {
   iconGlyph,
   iconTransform,
   labelAnchor,
+  linkedPlan,
   measureEnds,
   openingLines,
   PLAN_VIEW_H,
@@ -33,7 +35,17 @@ import {
   type PlanStroke as PlanStrokeItem,
   STROKE_GRID,
 } from '@inkadra/doc-schema';
-import { type CSSProperties, memo, type ReactNode, useId } from 'react';
+import {
+  type CSSProperties,
+  createContext,
+  memo,
+  type ReactNode,
+  useContext,
+  useId,
+  useMemo,
+  useSyncExternalStore,
+} from 'react';
+import { BoardContext } from '../context.ts';
 import { StrokePath } from '../film/FramePicture.tsx';
 import { ShapeView } from '../film/shapes.tsx';
 import { PlanBackgroundView } from './PlanBackground.tsx';
@@ -56,6 +68,34 @@ export const PLAN_COLORS = [
 ] as const;
 export type PlanColor = (typeof PLAN_COLORS)[number];
 export const PLAN_INK = PLAN_COLORS[0].hex;
+/** The colours a linked actor takes from its character, one per character (decision 0104). */
+export const CHARACTER_COLOURS: readonly string[] = PLAN_COLORS.slice(1).map((c) => c.hex);
+
+/**
+ * The cards a plan's links resolve against wherever it is drawn (decision 0104): the board's,
+ * as this person sees them (a guest's are already cut to what a guest may see). Without it a
+ * plan draws the text its icons hold.
+ */
+export const PlanCardsContext = createContext<CardsById | null>(null);
+
+const noStore = () => () => {};
+
+/**
+ * A plan with its links resolved against the cards of the context, else of the board it is
+ * drawn on, for drawing and lists.
+ */
+export function useLinkedPlan<P extends Pick<PlanElement, 'icons'>>(plan: P): P {
+  const given = useContext(PlanCardsContext);
+  const board = useContext(BoardContext)?.store;
+  const onBoard = useSyncExternalStore(board?.subscribe ?? noStore, () =>
+    board ? board.getSnapshot().byId : null,
+  );
+  const cards = given ?? onBoard;
+  return useMemo(
+    () => (cards ? linkedPlan(plan, cards, { palette: CHARACTER_COLOURS }) : plan),
+    [plan, cards],
+  );
+}
 
 /**
  * The colour a family starts in: lights yellow, cameras blue, video and sound teal, people
@@ -609,7 +649,11 @@ function StackItem({ entry, plan }: { entry: PlanStackEntry; plan: PlanLike }) {
  * view units); `children` draws on top (the live line, the selection). Memoized: it redraws
  * only when the plan changes.
  */
-export const PlanDrawing = memo(function PlanDrawing({
+export const PlanDrawing = memo(function PlanDrawing(props: Parameters<typeof PlanDrawingView>[0]) {
+  return <PlanDrawingView {...props} plan={useLinkedPlan(props.plan)} />;
+});
+
+const PlanDrawingView = memo(function PlanDrawingView({
   plan,
   grid,
   hidden,

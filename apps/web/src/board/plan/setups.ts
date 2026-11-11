@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { catalogueKind, iconCentre, layerOf } from '@inkadra/canvas-core';
-import type { PlanIcon } from '@inkadra/doc-schema';
+import {
+  catalogueKind,
+  iconCentre,
+  layerOf,
+  type PlanElement,
+  setupFrames,
+  variantFamily,
+} from '@inkadra/canvas-core';
+import type { Element, PlanIcon } from '@inkadra/doc-schema';
+import type { TFunction } from 'i18next';
+import { planTitle } from './PlanCard.tsx';
+import { setupName } from './PlanKit.tsx';
 
 /**
  * What changed on a setup from the base setup (the note under the setup tabs, decision 0104):
@@ -85,5 +95,35 @@ export function setupChanges(base: readonly PlanIcon[], setup: readonly PlanIcon
     else if (FIELDS.some((f) => !same(icon[f], was[f]))) out.push({ kind: 'changed', icon });
   }
   for (const icon of left) if (!taken.has(icon)) out.push({ kind: 'removed', icon });
+  return out;
+}
+
+/** A setup a shot belongs to: the plan card, its name in its family, and the plan's title. */
+export interface ShotSetup {
+  planId: string;
+  /** "1 · Master". */
+  name: string;
+  /** "Set plan · Diner". */
+  plan: string;
+}
+
+/**
+ * The setups of the board each shot belongs to (decision 0104): a setup knows the frames its
+ * cameras link to (`setupFrames`). Computed from the plans every time, never stored. Shots in
+ * several setups list them in the order of the plans, the base of a family first.
+ */
+export function shotSetups(elements: readonly Element[], t: TFunction): Map<string, ShotSetup[]> {
+  const byId = new Map(elements.map((e) => [e.id, e]));
+  const out = new Map<string, ShotSetup[]>();
+  const plans = elements.filter((e): e is PlanElement => e.type === 'plan');
+  for (const base of plans.filter((p) => !p.variantOf || !byId.has(p.variantOf))) {
+    const family = variantFamily(plans, base);
+    for (const p of family)
+      for (const frameId of setupFrames(p, byId)) {
+        const list = out.get(frameId) ?? [];
+        list.push({ planId: p.id, name: setupName(p, family, t), plan: planTitle(t, base) });
+        out.set(frameId, list);
+      }
+  }
   return out;
 }
