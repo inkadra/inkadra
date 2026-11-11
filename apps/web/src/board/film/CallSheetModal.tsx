@@ -931,7 +931,7 @@ function SheetSceneBlock({
                 <p className="sheet__power-head">
                   <b>{power.title}</b> <span>{power.total}</span>
                 </p>
-                <ul className="sheet__kit">
+                <ul className="sheet__power-list">
                   {power.rows.map((r) => (
                     <li key={r.text}>
                       {r.text} · {r.amps}

@@ -398,50 +398,7 @@ export async function buildPages(
     return planning;
   };
 
-  if (kind === 'board') {
-    const scope: ExportScope =
-      req.what === 'selection'
-        ? { kind: 'selection', ids: env.selection }
-        : req.what === 'visible' && env.visible
-          ? { kind: 'visible', rect: env.visible }
-          : { kind: 'board' };
-    const source: BoardSource = {
-      byId: snapshot.byId,
-      canvas: snapshot.canvas,
-      columns: snapshot.columns,
-      heightOf: (el) => store.heightOf(el),
-      nestedHeight: (el, w) => cardHeight(el, w, ctx),
-    };
-    // Pictures first: their proportions set the height of cards stacked in columns.
-    const first = collectBoard(source, scope, filter);
-    await load(assetIdsOf(first.items.flatMap(flatten)));
-    const { items, region } = collectBoard(source, scope, filter);
-    for (const item of items.flatMap(flatten)) shownIds.add(item.id);
-    const count = items
-      .flatMap(flatten)
-      .filter((el) => el.type !== 'arrow' && el.type !== 'column' && el.type !== 'scene').length;
-    summary = t('export.cards', { count });
-    const empty = { x: 0, y: 0, w: 800, h: 500 };
-    const asImage = req.format !== 'pdf';
-    const image = req.image ?? ORIGINAL_IMAGE;
-    const ids = req.what === 'selection' ? env.selection : null;
-    if (asImage && ids && (ids.size === 1 || manyMode(image) === 'each')) {
-      bare = true;
-      const cards = selectedCards(source, ids, filter);
-      await load(assetIdsOf(cards.flatMap(flatten)));
-      for (const card of cards) for (const el of flatten(card)) shownIds.add(el.id);
-      content = cards.map((card) =>
-        cardPage(card, ctx, image.band, req.format === 'jpeg', exportSizes),
-      );
-    } else if (asImage && image.aspect !== 'original') {
-      bare = true;
-      if (region) content = [compositionPage(items, region, ctx)];
-    } else if (asImage && items.length === 0) {
-      bare = true;
-    } else {
-      content = [boardPage(asImage ? 'fit' : setup, items, region ?? empty, ctx)];
-    }
-  } else if (req.what === 'setplan' && req.setPlan) {
+  if (req.what === 'setplan' && req.setPlan) {
     // A sheet of its own per setup, with its own title block and foot (decision 0111).
     bare = true;
     const sheet = req.setPlan;
@@ -504,6 +461,49 @@ export async function buildPages(
       ctx,
     );
     summary = t('board.plan.name');
+  } else if (kind === 'board') {
+    const scope: ExportScope =
+      req.what === 'selection'
+        ? { kind: 'selection', ids: env.selection }
+        : req.what === 'visible' && env.visible
+          ? { kind: 'visible', rect: env.visible }
+          : { kind: 'board' };
+    const source: BoardSource = {
+      byId: snapshot.byId,
+      canvas: snapshot.canvas,
+      columns: snapshot.columns,
+      heightOf: (el) => store.heightOf(el),
+      nestedHeight: (el, w) => cardHeight(el, w, ctx),
+    };
+    // Pictures first: their proportions set the height of cards stacked in columns.
+    const first = collectBoard(source, scope, filter);
+    await load(assetIdsOf(first.items.flatMap(flatten)));
+    const { items, region } = collectBoard(source, scope, filter);
+    for (const item of items.flatMap(flatten)) shownIds.add(item.id);
+    const count = items
+      .flatMap(flatten)
+      .filter((el) => el.type !== 'arrow' && el.type !== 'column' && el.type !== 'scene').length;
+    summary = t('export.cards', { count });
+    const empty = { x: 0, y: 0, w: 800, h: 500 };
+    const asImage = req.format !== 'pdf';
+    const image = req.image ?? ORIGINAL_IMAGE;
+    const ids = req.what === 'selection' ? env.selection : null;
+    if (asImage && ids && (ids.size === 1 || manyMode(image) === 'each')) {
+      bare = true;
+      const cards = selectedCards(source, ids, filter);
+      await load(assetIdsOf(cards.flatMap(flatten)));
+      for (const card of cards) for (const el of flatten(card)) shownIds.add(el.id);
+      content = cards.map((card) =>
+        cardPage(card, ctx, image.band, req.format === 'jpeg', exportSizes),
+      );
+    } else if (asImage && image.aspect !== 'original') {
+      bare = true;
+      if (region) content = [compositionPage(items, region, ctx)];
+    } else if (asImage && items.length === 0) {
+      bare = true;
+    } else {
+      content = [boardPage(asImage ? 'fit' : setup, items, region ?? empty, ctx)];
+    }
   } else if (kind === 'scenesheets') {
     // The storyboard as this export may show it: scenes and frames left out for clients go, and
     // the scenes the script left out unless asked for (decision 0082).

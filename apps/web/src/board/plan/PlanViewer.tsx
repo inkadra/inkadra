@@ -152,6 +152,8 @@ export function PlanViewer({
   const zoomTo = (next: number) => setZoom(Math.min(400, Math.max(25, Math.round(next))));
 
   const down = (e: ReactPointerEvent<HTMLDivElement>) => {
+    // The zoom bar sits on the stage: its buttons keep their clicks.
+    if ((e.target as Element).closest('.plan-view__bar')) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.current.size === 2) {
