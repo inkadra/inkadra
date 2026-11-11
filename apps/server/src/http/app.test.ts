@@ -21,6 +21,15 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 2);
   let app: Awaited<ReturnType<typeof createApp>>;
   let cookie = '';
+  const records: Array<Record<string, unknown>> = [];
+  const log = pino(
+    {},
+    {
+      write: (line: string) => {
+        records.push(JSON.parse(line));
+      },
+    },
+  );
 
   beforeAll(async () => {
     await runMigrations(config.DATABASE_URL, migrationsFolder);
@@ -29,7 +38,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
       config,
       db,
       auth: createAuth(config, db),
-      log: pino({ level: 'silent' }),
+      log,
       ...testDeps(db, pino({ level: 'silent' })),
     });
   });
@@ -85,7 +94,33 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
   it('discloses the version only after authentication', async () => {
     const response = await app.inject({ url: '/api/v1/instance/version', headers: { cookie } });
     expect(response.statusCode).toBe(200);
-    expect(response.json().version).toEqual(expect.any(String));
+    expect(response.json()).toMatchObject({
+      version: expect.any(String),
+      api: 'v1',
+      docSchemaVersion: expect.any(Number),
+      capabilities: ['boards', 'comments', 'resumable-uploads'],
+    });
+    const publicBody = (await app.inject('/api/v1/instance')).json();
+    for (const field of ['api', 'docSchemaVersion', 'minClient', 'capabilities'])
+      expect(publicBody).not.toHaveProperty(field);
+  });
+
+  it('logs a bounded client identity only as structured metadata', async () => {
+    for (const client of ['ios/1.2.0', 'invalid client']) {
+      records.length = 0;
+      const response = await app.inject({
+        url: '/api/v1/instance/version',
+        headers: {
+          cookie,
+          'inkadra-client': client,
+        },
+      });
+      expect(response.statusCode).toBe(200);
+      const request = records.find((record) => record.req)?.req;
+      if (client === 'ios/1.2.0') expect(request).toMatchObject({ inkadraClient: client });
+      else expect(request).not.toHaveProperty('inkadraClient');
+      expect(response.json()).not.toHaveProperty('inkadraClient');
+    }
   });
 
   it('closes registration after the first account', async () => {

@@ -1493,6 +1493,28 @@
         "properties": {
           "version": {
             "type": "string"
+          },
+          "api": {
+            "type": "string",
+            "description": "HTTP API version, currently v1."
+          },
+          "docSchemaVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minClient": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Minimum client version by platform; absent when no minimum is required."
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Stable feature names. Clients must ignore unknown names. Absent on older servers."
           }
         },
         "required": [

@@ -188,3 +188,17 @@ Magic links, invitation and share links also open the canonical address. To use 
 or share link privately, replace just its origin with the private address, preserving its
 path and token. Plain HTTP sends credentials in clear text; use a trusted LAN or Tailscale.
 Existing HTTPS sessions keep their Secure `__Host-` cookies; no migration is needed.
+
+### Authenticated client compatibility
+
+`GET /api/v1/instance/version` returns the software `version`, `api` (`v1`),
+`docSchemaVersion` and `capabilities`. The initial capability names are `boards`
+(board REST operations), `comments` (board comments) and `resumable-uploads` (tus).
+Clients must ignore unknown capability names and tolerate missing fields on older servers.
+`minClient`, when present, maps platform names to minimum client versions; no minimum
+is currently imposed. Capabilities describe implemented protocols, not a user's permissions.
+These fields are never added to the public instance or health responses.
+
+Clients may send `Inkadra-Client: ios/1.2.0` (or another platform/version). Well-formed
+values are recorded only as the structured request log field `inkadraClient`; malformed
+values are ignored. The header does not change authentication or request handling.
