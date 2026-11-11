@@ -148,9 +148,7 @@ it('lists the shots without empty labels', () => {
 
 it('draws the background where it was placed, at its opacity, in greys, and not when hidden', () => {
   const images = (ops: readonly Op[]): Array<Extract<Op, { kind: 'image' }>> =>
-    ops.flatMap((op) =>
-      op.kind === 'image' ? [op] : op.kind === 'clip' ? images(op.ops) : [],
-    );
+    ops.flatMap((op) => (op.kind === 'image' ? [op] : op.kind === 'clip' ? images(op.ops) : []));
   const sheet = (background: PlanElement['background'], hidden?: PlanElement['hiddenLayers']) =>
     images(
       planSheetPages(

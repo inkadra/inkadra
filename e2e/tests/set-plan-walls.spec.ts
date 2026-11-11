@@ -189,7 +189,9 @@ test('starts from a ready room, draws and closes a room with a typed length, pla
   p = await at([800, 255]);
   await page.mouse.move(p.x, p.y, { steps: 4 });
   await page.keyboard.type('4');
-  await expect(editor.getByRole('textbox', { name: /Lunghezza del prossimo lato/ })).toHaveValue('4');
+  await expect(editor.getByRole('textbox', { name: /Lunghezza del prossimo lato/ })).toHaveValue(
+    '4',
+  );
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await read(ids.drawn)).walls?.length).toBe(1);
   // 4 m at the nominal scale the first wall gave the plan: 352 view units to the right. The
@@ -238,7 +240,9 @@ test('starts from a ready room, draws and closes a room with a typed length, pla
   const to = await at([650, 270]);
   await page.mouse.move(to.x, to.y, { steps: 8 });
   await page.mouse.up();
-  await expect.poll(async () => (await read(ids.drawn)).openings?.[0]?.at).toBeGreaterThan(placed + 60);
+  await expect
+    .poll(async () => (await read(ids.drawn)).openings?.[0]?.at)
+    .toBeGreaterThan(placed + 60);
   const panel = editor.getByRole('tabpanel', { name: 'Proprietà' });
   await expect(panel.getByText('Porta', { exact: true }).first()).toBeVisible();
   await page.screenshot({ path: join(out, 'walls-1280-door-picked.png') });
@@ -260,7 +264,9 @@ test('sets a background picture, places it and changes its opacity', async ({ pa
   const chooser = page.waitForEvent('filechooser');
   await editor.getByRole('button', { name: 'Sfondo', exact: true }).click();
   await (await chooser).setFiles({ name: 'sopralluogo.png', mimeType: 'image/png', buffer: png() });
-  await expect.poll(async () => (await read(ids.scene5)).background?.assetId, { timeout: 30_000 }).toBeTruthy();
+  await expect
+    .poll(async () => (await read(ids.scene5)).background?.assetId, { timeout: 30_000 })
+    .toBeTruthy();
   const placed = (await read(ids.scene5)).background;
   // Fitted with its shape kept, faint and grey, and the editor places it.
   expect(placed?.w).toBeCloseTo(1000, 0);
@@ -274,7 +280,9 @@ test('sets a background picture, places it and changes its opacity', async ({ pa
   await page.mouse.down();
   await page.mouse.move(b.x, b.y, { steps: 6 });
   await page.mouse.up();
-  await expect.poll(async () => (await read(ids.scene5)).background?.y ?? 0).toBeGreaterThan((placed?.y ?? 0) + 40);
+  await expect
+    .poll(async () => (await read(ids.scene5)).background?.y ?? 0)
+    .toBeGreaterThan((placed?.y ?? 0) + 40);
   // Escape leaves the placing, not the editor.
   await page.keyboard.press('Escape');
   await expect(bar).toHaveCount(0);
@@ -451,7 +459,10 @@ test('screenshots of the walls tools, the start dialog and the background', asyn
           await bar.getByRole('button', { name: 'Fatto' }).click();
           await editor.getByRole('button', { name: 'Sfondo', exact: true }).click();
           await shot('background-panel');
-          await m.getByRole('dialog', { name: 'Immagine di sfondo' }).getByRole('button', { name: 'Fatto' }).click();
+          await m
+            .getByRole('dialog', { name: 'Immagine di sfondo' })
+            .getByRole('button', { name: 'Fatto' })
+            .click();
           await editor.getByRole('tab', { name: 'Elementi' }).click();
           await shot('elements');
         }
