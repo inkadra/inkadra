@@ -5,6 +5,7 @@ import {
   hasStoredShape,
   LEGACY_PLAN_ICON_KINDS,
   PLAN_ICON_KINDS,
+  type PlanCircuit,
   type PlanIcon,
   type PlanOpening,
   type PlanShape,
@@ -32,6 +33,7 @@ import {
   iconCone,
   iconGlow,
   iconSize,
+  normalizeRotation,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
@@ -39,6 +41,7 @@ import {
   planStack,
   removePlanItems,
   SYMBOL_SIZES,
+  transferPlanItems,
   variantView,
   withAttached,
 } from './plan.ts';
@@ -49,9 +52,11 @@ import {
   modifiersOn,
   moveWithAttached,
   pulledAway,
+  rotateManyWithAttached,
   rotateWithAttached,
   seatSlots,
   settleAttached,
+  settleWrite,
   snapTarget,
 } from './plan-attach.ts';
 import {
@@ -84,6 +89,7 @@ import {
 } from './plan-links.ts';
 import { circuitStatus, iconWatts, parseWatts, planPower } from './plan-power.ts';
 import {
+  addPlanCircuit,
   addPlanOpening,
   addPlanWall,
   nearestOnWall,
@@ -91,7 +97,9 @@ import {
   openingSpan,
   pieceOutline,
   planWallAt,
+  removePlanCircuits,
   removePlanWalls,
+  updatePlanCircuits,
   updatePlanWalls,
   wallBounds,
   wallHit,
@@ -1058,5 +1066,168 @@ describe('links drawn and kept (set plan v2, pull request D)', () => {
     const icon = (listElements(doc).find((e) => e.id === plan.id) as PlanElement).icons?.[0];
     expect(icon?.label).toBe('Leo');
     expect(icon?.characterId).toBeUndefined();
+  });
+});
+
+describe('review of the editor (pull request 602)', () => {
+  const planOf = (doc: Y.Doc, id: string) =>
+    listElements(doc).find((e) => e.id === id) as PlanElement;
+  const sync = (from: Y.Doc, to: Y.Doc) => Y.applyUpdate(to, Y.encodeStateAsUpdate(from));
+  const at = { x: 400, y: 300, w: 60, h: 60, color: '#1C1C1E' };
+
+  it('shows an item a setup keeps on its own Set, and moves it into the base in one step', () => {
+    const doc = createBoardDoc(boardId);
+    const base = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+    const setup = addVariant(doc, planOf(doc, base.id), 'Sera', { userId: null });
+    const light = addPlanIcon(doc, setup, { ...at, kind: 'fresnel' }) as string;
+    const stray = addPlanIcon(doc, setup, { ...at, kind: 'table', layer: 'set' }) as string;
+    const light2 = addPlanIcon(doc, setup, { ...at, kind: 'fresnel', on: light }) as string;
+    // Stranded on the setup's Set (an older build, a race): drawn, not lost.
+    expect(variantView(planOf(doc, setup), planOf(doc, base.id)).icons?.map((i) => i.id)).toEqual([
+      light,
+      stray,
+      light2,
+    ]);
+    const undo = new Y.UndoManager(roots(doc).elements, { trackedOrigins: new Set(['me']) });
+    const moved = transferPlanItems(
+      doc,
+      setup,
+      base.id,
+      [light, light2],
+      () => ({ layer: 'set' }),
+      'me',
+    );
+    expect(moved).toEqual([light, light2]);
+    // In the base, in their order, with what they carried; gone from the setup.
+    expect(planOf(doc, base.id).icons).toMatchObject([
+      { id: light, kind: 'fresnel', layer: 'set' },
+      { id: light2, kind: 'fresnel', layer: 'set', on: light },
+    ]);
+    expect(planOf(doc, setup).icons?.map((i) => i.id)).toEqual([stray]);
+    expect(hasStoredShape(roots(doc).elements.get(base.id) as Y.Map<unknown>)).toBe(true);
+    // Every setup sees them now; one undo puts them back.
+    expect(variantView(planOf(doc, setup), planOf(doc, base.id)).icons?.map((i) => i.id)).toEqual([
+      light,
+      light2,
+      stray,
+    ]);
+    undo.undo();
+    expect(planOf(doc, base.id).icons ?? []).toEqual([]);
+    expect(planOf(doc, setup).icons?.map((i) => i.id)).toEqual([light, stray, light2]);
+  });
+
+  it('keeps two people editing two circuits at once', () => {
+    const a = createBoardDoc(boardId);
+    const el = createElement(a, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+    const first = addPlanCircuit(a, el.id, { name: 'A', amps: 16 }) as string;
+    const second = addPlanCircuit(a, el.id, { name: 'B', amps: 16 }) as string;
+    const b = new Y.Doc();
+    sync(a, b);
+    const [ca, cb] = planOf(a, el.id).circuits ?? [];
+    updatePlanCircuits(a, el.id, [{ ...(ca as PlanCircuit), name: 'Kitchen' }]);
+    updatePlanCircuits(b, el.id, [{ ...(cb as PlanCircuit), amps: 32 }]);
+    updatePlanCircuits(b, el.id, [{ ...(ca as PlanCircuit), amps: 20 }]);
+    sync(a, b);
+    sync(b, a);
+    for (const doc of [a, b])
+      expect(planOf(doc, el.id).circuits).toEqual([
+        { id: first, name: 'Kitchen', amps: 20 },
+        { id: second, name: 'B', amps: 32 },
+      ]);
+    // Stored as Y.Maps, as walls are, and still the plain list a reader sees.
+    const map = roots(a).elements.get(el.id) as Y.Map<unknown>;
+    expect((map.get('circuits') as Y.Array<unknown>).get(0)).toBeInstanceOf(Y.Map);
+    expect(hasStoredShape(map)).toBe(true);
+    removePlanCircuits(a, el.id, [first]);
+    expect(planOf(a, el.id).circuits?.map((c) => c.id)).toEqual([second]);
+  });
+
+  it('still reads and edits circuits stored as a plain list, and cuts them at the limit', () => {
+    const doc = createBoardDoc(boardId);
+    const el = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+    const map = roots(doc).elements.get(el.id) as Y.Map<unknown>;
+    const c = (i: number) => ({
+      id: `circuit${String(i).padStart(6, 'A')}`,
+      name: `C${i}`,
+      amps: 16,
+    });
+    doc.transact(() => map.set('circuits', [c(1)]));
+    expect(planOf(doc, el.id).circuits).toEqual([c(1)]);
+    updatePlanCircuits(doc, el.id, [{ ...c(1), name: 'Main' }]);
+    expect(planOf(doc, el.id).circuits).toEqual([{ ...c(1), name: 'Main' }]);
+    expect((map.get('circuits') as Y.Array<unknown>).get(0)).toBeInstanceOf(Y.Map);
+    // Two people adding at once can pass 30: the plan still reads, with the first 30.
+    doc.transact(() =>
+      map.set('circuits', Y.Array.from(Array.from({ length: 31 }, (_, i) => c(i)))),
+    );
+    expect(planOf(doc, el.id).circuits).toHaveLength(30);
+  });
+});
+
+describe('review of snapping (pull request 603)', () => {
+  /** A light on a stand with a softbox on its front, and a free chair. */
+  const rig = () => {
+    const stand = at('cstand', 300, 300, { id: 'standAAAAAAAA', ...defaultIconSize('cstand') });
+    let icons: PlanIcon[] = [
+      stand,
+      at('cob', 360, 300, { id: 'lightAAAAAAAA' }),
+      at('softbox', 100, 100, { id: 'boxAAAAAAAAAA', ...defaultIconSize('softbox') }),
+      at('chair', 600, 400, { id: 'chairAAAAAAAA', ...defaultIconSize('chair') }),
+    ];
+    const take = (changed: PlanIcon[]) => {
+      icons = icons.map((i) => changed.find((c) => c.id === i.id) ?? i);
+    };
+    take(attachIcon(icons, 'lightAAAAAAAA', stand.id));
+    take(attachIcon(icons, 'boxAAAAAAAAAA', 'lightAAAAAAAA'));
+    return icons;
+  };
+  const byId = (list: readonly { id: string }[], id: string) =>
+    list.find((i) => i.id === id) as PlanIcon;
+
+  it('turns several items with what is attached to them, as one piece', () => {
+    const icons = rig();
+    const stand = byId(icons, 'standAAAAAAAA');
+    const chair = byId(icons, 'chairAAAAAAAA');
+    const c = { x: 450, y: 350 };
+    const turned = rotateManyWithAttached(icons, [stand, chair], 90, c);
+    expect(turned.map((i) => i.id).sort()).toEqual(
+      ['boxAAAAAAAAAA', 'chairAAAAAAAA', 'lightAAAAAAAA', 'standAAAAAAAA'].sort(),
+    );
+    // The light and its softbox still sit where their bases say once turned.
+    const after = icons.map((i) => (byId(turned, i.id) as PlanIcon | undefined) ?? i);
+    expect(
+      settleAttached(after, stand.id).every((m) =>
+        near(iconCentre(m), iconCentre(byId(after, m.id)), 2),
+      ),
+    ).toBe(true);
+    expect(byId(turned, 'boxAAAAAAAAAA').rotation).toBe(
+      normalizeRotation((byId(icons, 'boxAAAAAAAAAA').rotation ?? 0) + 90),
+    );
+  });
+
+  it('settles what sits on a base resized by any write, and drops an on whose base is gone', () => {
+    const icons = rig();
+    const stand = byId(icons, 'standAAAAAAAA');
+    // Wider, as Properties writes it: the light moves with the stand's new front.
+    const wider = { ...stand, w: (stand.w ?? 40) * 3, h: (stand.h ?? 40) * 3 };
+    const written = settleWrite(icons, [wider]);
+    expect(written.map((i) => i.id)).toContain('lightAAAAAAAA');
+    expect(byId(written, 'standAAAAAAAA')).toEqual(wider);
+    // Explicitly written items keep what they say.
+    const light = { ...byId(icons, 'lightAAAAAAAA'), label: 'Key' };
+    expect(byId(settleWrite(icons, [wider, light]), 'lightAAAAAAAA')).toEqual(light);
+    // A base that is gone: the next write leaves it free.
+    const orphan = { ...byId(icons, 'boxAAAAAAAAAA'), on: 'goneAAAAAAAAA' };
+    const freed = settleWrite(icons, [orphan]);
+    expect(byId(freed, 'boxAAAAAAAAAA').on).toBeUndefined();
+  });
+
+  it('reads an icon whose base is gone as free when drawn', () => {
+    const box = at('softbox', 200, 200, { id: 'boxAAAAAAAAAA', on: 'goneAAAAAAAAA' });
+    const drawn = planStack({ icons: [box] })[0]?.item as PlanIcon;
+    expect(drawn.on).toBeUndefined();
+    // So a softbox of version 15 draws its own beam again, as a free one does.
+    expect(iconCone(drawn)?.beam).toBe(true);
+    expect(iconCone(box)?.beam).toBeFalsy();
   });
 });

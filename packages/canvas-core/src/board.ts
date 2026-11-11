@@ -9,6 +9,7 @@ import {
   type ElementType,
   getSchemaVersion,
   hasStoredShape,
+  MAX_PLAN_CIRCUITS,
   MAX_PLAN_ICONS,
   MAX_PLAN_OPENINGS,
   MAX_PLAN_WALLS,
@@ -1101,7 +1102,7 @@ function storedCopy(
     type === 'frame'
       ? ['strokes', 'shapes']
       : type === 'plan'
-        ? ['strokes', 'shapes', 'icons', 'walls', 'openings']
+        ? ['strokes', 'shapes', 'icons', 'walls', 'openings', 'circuits']
         : [];
   for (const key of lists) if (!copy.has(key)) copy.set(key, new Y.Array());
   // A variant with its base's Set within the plan's limits, as the validated paste cuts it.
@@ -1112,6 +1113,7 @@ function storedCopy(
       ['icons', MAX_PLAN_ICONS],
       ['walls', MAX_PLAN_WALLS],
       ['openings', MAX_PLAN_OPENINGS],
+      ['circuits', MAX_PLAN_CIRCUITS],
     ] as const) {
       const list = copy.get(key);
       if (list instanceof Y.Array && list.length > max) list.delete(max, list.length - max);
