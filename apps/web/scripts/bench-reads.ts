@@ -212,9 +212,9 @@ for (const size of values.sizes.split(',')) {
 
 if (breakdown.length) {
   console.log(
-    '\n| board | applyUpdate | validation | index | sync read | hydrate (timeout): total / longest slice | hydrate (immediate): total / longest slice | immediate / sync | first stroke after open |',
+    '\n| board | applyUpdate | validation | index | sync read | hydrate (timeout): total / longest slice | hydrate (immediate): total / longest slice | immediate / sync | first stroke after open | snapshot: export, size | sync read with snapshot | speed-up | hydrate with snapshot (immediate): total / longest slice | first stroke after a snapshot open |',
   );
-  console.log('|---|---|---|---|---|---|---|---|---|');
+  console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const line of breakdown) console.log(line);
 }
 
@@ -291,16 +291,57 @@ async function openBreakdown(
       time(() => priv.index(byId)),
     );
     priv.snapshot = kept;
+    // A validated snapshot (decision 0106), where the store has them.
+    let snapshot: string | null = null;
+    if (typeof s!.exportValidatedSnapshot === 'function') {
+      add(
+        'export',
+        time(() => {
+          snapshot = s!.exportValidatedSnapshot('bench');
+        }),
+      );
+      add('size', (snapshot as string | null)?.length ?? 0);
+    }
     add(
       'stroke',
       time(() => addStroke(d, bench.frameId, stroke, LOCAL)),
     );
     s!.destroy();
     d.destroy();
+    if (snapshot) {
+      const saved = { text: snapshot, build: 'bench' };
+      [d] = fresh();
+      add(
+        'withSnapshot',
+        time(() => {
+          s = new BoardStore(d, { snapshot: saved });
+        }),
+      );
+      add(
+        'strokeSnapshot',
+        time(() => addStroke(d, bench.frameId, stroke, LOCAL)),
+      );
+      s!.destroy();
+      d.destroy();
+      [d] = fresh();
+      const stop = blockingProbe();
+      const t = performance.now();
+      s = BoardStore.hydrate(d, {
+        budgetMs: 8,
+        schedule: () => new Promise((resolve) => setImmediate(resolve)),
+        snapshot: saved,
+      });
+      await s.whenHydrated;
+      add('snapTotal', performance.now() - t);
+      add('snapSlice', stop());
+      s.destroy();
+      d.destroy();
+    }
   }
   const med = (k: string) => (r[k] ? `${ms(median(r[k]))} ms` : '—');
   const max = (k: string) => (r[k] ? `${ms(Math.max(...r[k]))} ms` : '—');
   const ratio = (a: string, b: string) =>
     r[a] && r[b] ? `${(median(r[a]) / median(r[b])).toFixed(2)}×` : '—';
-  return `| ${size} | ${med('apply')} | ${med('validate')} | ${med('index')} | ${med('sync')} | ${med('timeoutTotal')} / ${max('timeoutSlice')} | ${med('immediateTotal')} / ${max('immediateSlice')} | ${ratio('immediateTotal', 'sync')} | ${med('stroke')} |`;
+  const mb = r.size ? `${(median(r.size) / 1e6).toFixed(1)} MB` : '—';
+  return `| ${size} | ${med('apply')} | ${med('validate')} | ${med('index')} | ${med('sync')} | ${med('timeoutTotal')} / ${max('timeoutSlice')} | ${med('immediateTotal')} / ${max('immediateSlice')} | ${ratio('immediateTotal', 'sync')} | ${med('stroke')} | ${med('export')}, ${mb} | ${med('withSnapshot')} | ${ratio('sync', 'withSnapshot')} | ${med('snapTotal')} / ${max('snapSlice')} | ${med('strokeSnapshot')} |`;
 }

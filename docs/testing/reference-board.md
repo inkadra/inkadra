@@ -73,8 +73,10 @@ validation (`readElement` on every card); the index alone; the synchronous store
 hydration with the default scheduler and with `setImmediate` (decision
 [0105](../decisions/0105-hydration-scheduler-and-priority.md)), total and longest blocking slice (an
 immediate that re-queues itself measures the longest turn of the event loop, GC included), and the
-immediate one against the synchronous read; and the first stroke drawn after an open. Columns a
-store cannot measure show `—`. For a
+immediate one against the synchronous read; the first stroke drawn after an open; and a
+validated snapshot (decision [0106](../decisions/0106-validated-snapshots.md)): export time and
+size, a synchronous read with it and the speed-up, hydration with it, and the first stroke after
+such an open. Columns a store cannot measure show `—`. For a
 before/after comparison copy the new script into a checkout of the base revision.
 `--no-breakdown` prints only the first table.
 

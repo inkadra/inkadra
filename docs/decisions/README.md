@@ -109,6 +109,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0103](0103-idempotent-project-creations.md) | `Idempotency-Key` also on project, crew member and shooting day creation, with its own capability; links are checked only when something is created |
 | [0104](0104-hand-checked-strokes.md) | Pen strokes are checked by a hand-written equivalent of their schema; Zod decides everything else |
 | [0105](0105-hydration-scheduler-and-priority.md) | Hydration takes a scheduler, cards to read first and an opt-in progressive view of only those; `applyUpdate` stays one block |
+| [0106](0106-validated-snapshots.md) | A snapshot of the validated view, bound to the build, the board and each card's Yjs items, lets an open skip unchanged cards |
 | [0107](0107-weight-700-for-user-bold.md) | Inter 700 only for bold the user writes; the interface stops at 600 (amends 0006) |
 | [0108](0108-shell-sizes-from-tokens.md) | The shell reads its sizes (236 / 42 / 42 / 12) from `tokens.layout` (amends 0006) |
 
