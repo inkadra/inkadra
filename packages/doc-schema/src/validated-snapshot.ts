@@ -23,7 +23,7 @@ import { ELEMENT_TYPES, Element, ElementId } from './elements.ts';
  */
 
 /** Bump when reading or validating changes in a way the JSON schema of Element does not show. */
-const READER = 2;
+const READER = 3;
 const MAGIC = 'inkadra-validated-snapshot';
 const ELEMENT_TYPE_SET: ReadonlySet<unknown> = new Set(ELEMENT_TYPES);
 const HEX64 = /^[0-9a-f]{16}$/;
@@ -49,12 +49,9 @@ let schemaId: string | undefined;
 function schemaFingerprint(): string {
   if (schemaId === undefined) {
     const json = JSON.stringify(z.toJSONSchema(Element, { io: 'input', unrepresentable: 'any' }));
-    laneA = 0x9747b28c;
-    laneB = 0x2b9e6b1f;
-    for (let i = 0; i < json.length; i += 3)
-      mix(json.charCodeAt(i), json.charCodeAt(i + 1) | 0, json.charCodeAt(i + 2) | 0);
-    mix(json.length, -6, -6);
-    schemaId = `${CURRENT_SCHEMA_VERSION}.${finish(laneA)}${finish(laneB)}`;
+    start(0x9747b28c, 0x2b9e6b1f, T_SCHEMA);
+    absorbString(json);
+    schemaId = `${CURRENT_SCHEMA_VERSION}.${digest()}`;
   }
   return schemaId;
 }
@@ -62,45 +59,110 @@ function schemaFingerprint(): string {
 /** The secret of one snapshot: two 32-bit words seeding the fingerprints. */
 export type FingerprintKey = readonly [number, number];
 
-/**
- * Fingerprint of what a card is made of: the ids of the items it holds that are not deleted,
- * through nested types, without its rich text (reads leave it out). Map entries are taken in key
- * order (two clients adding keys make different orders live and after a reload) and an item id
- * also fixes the key it was written under. Runs of consecutive clocks of one client count as one,
- * as Yjs merges and splits such items freely. Any edit adds items with new ids, so the
- * fingerprint changes. Seeded by the snapshot's random key, which never leaves the app's
- * storage, so someone editing the board cannot aim at a card's fingerprint. Two 32-bit lanes
- * mixed inline: this runs over every stroke item of a board when it opens, without a JIT.
+/*
+ * The fingerprint hash. Inputs are encoded as a sequence of 32-bit words that can be read back
+ * in one way only (decision 0106 lists it): every record starts with a tag that fixes how many
+ * words follow, a number below 2^32 is one word and any other safe integer (Yjs ids go up to
+ * 2^53) is its low and high halves under a tag of its own, a string is its length and then its
+ * UTF-16 code units two per word, and a nested type is enclosed in begin and end tags. Every word
+ * goes through both lanes, each a bijection of the word for a given state, seeded by the key.
+ * The two lanes are not a standard PRF: see the decision.
  */
-export function cardFingerprint(map: Y.Map<unknown>, key: FingerprintKey): string {
-  laneA = key[0] | 0;
-  laneB = key[1] | 0;
-  mix(0x5bd1e995, laneA, laneB);
-  const own = map._item?.id;
-  if (own) mix(own.client, own.clock, 0);
-  walkType(map);
-  return finish(laneA) + finish(laneB);
-}
+const T_CARD = 1;
+const T_OWN = 2;
+const T_NO_OWN = 3;
+const T_BEGIN = 4;
+const T_ENTRY = 5;
+const T_ENTRY_WIDE = 6;
+const T_LIST = 7;
+const T_RUN = 8;
+const T_RUN_WIDE = 9;
+const T_NESTED = 10;
+const T_NESTED_WIDE = 11;
+const T_END = 12;
+const T_PLAIN = 13;
+const T_XML = 14;
+const T_SCHEMA = 15;
+const T_OWN_WIDE = 16;
+const TWO_32 = 0x100000000;
 
 let laneA = 0;
 let laneB = 0;
+/** A number that is not a non-negative safe integer: the card gets no fingerprint. */
+let poisoned = false;
 
-/** Clocks past 2^32 fold onto lower ones: a collision there needs 4 billion edits by one client. */
-function mix(x: number, y: number, z: number) {
-  laneA = Math.imul(laneA ^ x, 0xcc9e2d51);
-  laneA = Math.imul(laneA ^ (laneA >>> 15) ^ y, 0x1b873593);
-  laneA = Math.imul(laneA ^ (laneA >>> 13) ^ z, 0xe6546b65);
-  laneA ^= laneA >>> 16;
-  laneB = Math.imul(laneB + x, 0x85ebca6b);
-  laneB = Math.imul(laneB ^ (laneB >>> 13), 0xc2b2ae35) + y;
-  laneB = Math.imul(laneB ^ (laneB >>> 16), 0x27d4eb2f) + z;
+function start(a: number, b: number, tag: number) {
+  laneA = a | 0;
+  laneB = b | 0;
+  poisoned = false;
+  absorb(tag);
+}
+
+/** One 32-bit word into both lanes; for a given state each lane is a bijection of the word. */
+function absorb(word: number) {
+  laneA = Math.imul(laneA ^ word, 0xcc9e2d51);
+  laneA = Math.imul(laneA ^ (laneA >>> 15), 0x1b873593);
+  laneA ^= laneA >>> 13;
+  laneB = Math.imul((laneB + word) | 0, 0x85ebca6b);
+  laneB = Math.imul(laneB ^ (laneB >>> 16), 0x27d4eb2f);
   laneB ^= laneB >>> 15;
 }
 
-function finish(h: number): string {
-  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
-  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-  return ((h ^ (h >>> 16)) >>> 0).toString(16).padStart(8, '0');
+const valid = (n: number) => Number.isSafeInteger(n) && n >= 0;
+const narrow = (n: number) => n < TWO_32;
+
+/** A record of numbers: under `tag` when all fit in 32 bits, else halves under `wide`. */
+function record(tag: number, wide: number, a: number, b: number, c?: number) {
+  if (!valid(a) || !valid(b) || (c !== undefined && !valid(c))) {
+    poisoned = true;
+    return;
+  }
+  if (narrow(a) && narrow(b) && (c === undefined || narrow(c))) {
+    absorb(tag);
+    absorb(a);
+    absorb(b);
+    if (c !== undefined) absorb(c);
+    return;
+  }
+  absorb(wide);
+  for (const n of c === undefined ? [a, b] : [a, b, c]) {
+    absorb(n >>> 0);
+    absorb(Math.floor(n / TWO_32));
+  }
+}
+
+function absorbString(text: string) {
+  absorb(text.length);
+  for (let i = 0; i < text.length; i += 2)
+    absorb((text.charCodeAt(i) << 16) | (i + 1 < text.length ? text.charCodeAt(i + 1) : 0));
+}
+
+function digest(): string {
+  const fold = (h: number) => {
+    h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+    return ((h ^ (h >>> 16)) >>> 0).toString(16).padStart(8, '0');
+  };
+  return fold(laneA ^ Math.imul(laneB, 0x9e3779b1)) + fold(laneB ^ Math.imul(laneA, 0x7feb352d));
+}
+
+/**
+ * Fingerprint of what a card is made of, keyed by the snapshot's secret: the id of the item that
+ * holds it, then the ids of the items it holds that are not deleted, through nested types,
+ * without its rich text (reads leave it out). Map entries are taken in key order (two clients
+ * adding keys make different orders live and after a reload); the key itself is not hashed, as
+ * an item id fixes the key it was written under. Runs of consecutive clocks of one client count
+ * as one, as Yjs merges and splits such items freely. Any edit adds items with new ids, so the
+ * fingerprint changes. Null when an id is not a non-negative safe integer: such a card is never
+ * taken from a snapshot.
+ */
+export function cardFingerprint(map: Y.Map<unknown>, key: FingerprintKey): string | null {
+  start(key[0], key[1], T_CARD);
+  const own = map._item?.id;
+  if (own) record(T_OWN, T_OWN_WIDE, own.client, own.clock);
+  else absorb(T_NO_OWN);
+  walkType(map);
+  return poisoned ? null : digest();
 }
 
 /** The parts of a Yjs type a fingerprint walks: its map entries and its list. */
@@ -109,17 +171,18 @@ type Walked = Pick<Y.AbstractType<unknown>, '_map' | '_start'>;
 const byKey = (a: [string, Y.Item], b: [string, Y.Item]) => (a[0] < b[0] ? -1 : 1);
 
 function walkType(type: Walked) {
+  absorb(T_BEGIN);
   if (type._map.size > 0) {
     const entries = type._map.size === 1 ? [...type._map] : [...type._map].sort(byKey);
     for (const [, item] of entries) {
       if (item.deleted) continue;
-      mix(item.id.client, item.id.clock, -1);
+      record(T_ENTRY, T_ENTRY_WIDE, item.id.client, item.id.clock);
       walkContent(item);
     }
   }
-  mix(-2, -2, -2);
+  absorb(T_LIST);
   let client = -1;
-  let start = 0;
+  let first = 0;
   let end = 0;
   for (let item = type._start; item; item = item.right) {
     if (item.deleted) continue;
@@ -129,26 +192,25 @@ function walkType(type: Walked) {
       end += item.length;
       continue;
     }
-    if (client !== -1) mix(client, start, end);
+    if (client !== -1) record(T_RUN, T_RUN_WIDE, client, first, end);
     if (nested) {
-      mix(id.client, id.clock, -3);
+      record(T_NESTED, T_NESTED_WIDE, id.client, id.clock);
       client = -1;
       walkContent(item);
     } else {
       client = id.client;
-      start = id.clock;
+      first = id.clock;
       end = id.clock + item.length;
     }
   }
-  if (client !== -1) mix(client, start, end);
-  mix(-4, -4, -4);
+  if (client !== -1) record(T_RUN, T_RUN_WIDE, client, first, end);
+  absorb(T_END);
 }
 
 function walkContent(item: Y.Item) {
-  if (!(item.content instanceof Y.ContentType)) return;
-  const type = item.content.type;
-  if (type instanceof Y.XmlFragment) mix(-5, -5, -5);
-  else walkType(type);
+  if (!(item.content instanceof Y.ContentType)) absorb(T_PLAIN);
+  else if (item.content.type instanceof Y.XmlFragment) absorb(T_XML);
+  else walkType(item.content.type);
 }
 
 const hex = (word: number) => (word >>> 0).toString(16).padStart(8, '0');
@@ -188,7 +250,9 @@ export function encodeValidatedSnapshot(
   for (const [id, element] of reads) {
     const map = elements.get(id);
     if (!(map instanceof Y.Map) || (element && !jsonFaithful(element))) continue;
-    lines.push(`${JSON.stringify(id)}\t${cardFingerprint(map, key)}\t${JSON.stringify(element)}`);
+    const fingerprint = cardFingerprint(map, key);
+    if (fingerprint === null) continue;
+    lines.push(`${JSON.stringify(id)}\t${fingerprint}\t${JSON.stringify(element)}`);
   }
   const header = [
     MAGIC,

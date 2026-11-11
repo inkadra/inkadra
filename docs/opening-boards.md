@@ -62,12 +62,32 @@ of the same Yjs items take the validated read of that time instead of being vali
 that changed are read as usual; a snapshot of another build, board or schema, or a malformed one,
 is ignored as a whole.
 
-- **Delete every snapshot when the app is updated.** A new build ignores them, but they take space
-  until they are replaced, and an update must never be the moment an old one is trusted.
-- Keep it in the app's private storage, with the same protection as the document, and delete it
-  with the document. Never pass a snapshot from anywhere else.
-- Exporting is one block (about 0.18 s on the medium reference board without a JIT): call it
-  when nothing else needs the thread, not at every edit.
+**What it contains, in clear:** plain JSON with the validated read of every card of the board:
+positions, texts, captions, notes of frames, table cells, strokes, links, names, everything the
+card shows except a note's rich-text body; the board id; the build identity; and the snapshot's
+fingerprint key. It is as sensitive as the board itself, and its key must stay secret.
+
+**Where and how long a host may keep it:**
+
+- Only in the app's private storage (the app sandbox on a phone; on the web, storage of the app's
+  own origin), never in shared folders, removable storage, backups that leave the device, logs,
+  crash reports, or anything synchronised or sent to a server or another person.
+- Under a namespace of **server + account + board**, never by board id alone: the board id is not
+  an identity, and two servers or two accounts can hold the same board.
+- Delete it:
+  - when the account **signs out** or its session is revoked (all of that account's snapshots);
+  - when the app is **updated** (all snapshots: a new build ignores them, and an update must
+    never be the moment an old one is trusted);
+  - when the board's local copy is deleted, or **replaced** rather than merged (a restore, a reset
+    from the server, a re-download): a replaced history can reuse item ids for other content, and
+    the snapshot would then show reads of the old one;
+  - when the account loses access to the board.
+- Never open a snapshot that came from anywhere else: it is trusted like the app's own storage,
+  and only its structure is checked. A bit flipped inside a saved number is not detected.
+
+Exporting is one block (about 0.18 s on the medium reference board without a JIT): call it when
+nothing else needs the thread, not at every edit. There is no size limit on the text: a host that
+stores snapshots where something else could make them huge must not use them.
 
 Without a JIT, opening the medium reference board from a matching snapshot reads the cards about
 three times faster than validating them; the first edit of each drawn card afterwards checks that

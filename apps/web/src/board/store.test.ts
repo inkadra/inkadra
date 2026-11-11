@@ -848,6 +848,33 @@ it('reads the live document, never the snapshot, for every edit after opening fr
   store.destroy();
 });
 
+it('reads a card again when its new writer differs from the old one only above 32 bits', async () => {
+  const doc = new Y.Doc();
+  const note = createElement(doc, 'note', { x: 0, y: 0 }, {}, opts);
+  const write = (client: number, w: unknown) => {
+    const writer = new Y.Doc();
+    Y.applyUpdate(writer, Y.encodeStateAsUpdate(doc));
+    writer.clientID = client;
+    roots(writer).elements.get(note.id)!.set('w', w);
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(writer, Y.encodeStateVector(doc)));
+  };
+  write(1000, 240);
+  const exporter = new BoardStore(doc);
+  const text = exporter.exportValidatedSnapshot(BUILD)!;
+  exporter.destroy();
+  write(1000 + 2 ** 32, 'wide');
+  for (const hydrate of [false, true]) {
+    const store = hydrate
+      ? BoardStore.hydrate(doc, { snapshot: { text, build: BUILD } })
+      : new BoardStore(doc, { snapshot: { text, build: BUILD } });
+    await store.whenHydrated;
+    // The card no longer validates: it is not shown, as without a snapshot.
+    expect(store.getSnapshot().byId.has(note.id)).toBe(false);
+    expectSameAsFresh(store, doc);
+    store.destroy();
+  }
+});
+
 it('finishes a progressive hydration from a snapshot under continuous edits', {
   timeout: 30_000,
 }, async () => {

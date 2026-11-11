@@ -159,6 +159,63 @@ describe('validated snapshots', () => {
     expect(taken).toEqual(readElement(mapTwo));
   });
 
+  it('never reuse a read when the writer of a field differs only above 32 bits of its id', () => {
+    // Two writers whose client ids differ by exactly 2^32 write the same field at the same clock:
+    // a board editor can choose such ids. The second write must not pass for the first.
+    const doc = new Y.Doc();
+    roots(doc).meta.set('boardId', 'board-a');
+    addElement(doc, { ...base, id: 'note00000001', type: 'note' });
+    const write = (client: number, w: unknown) => {
+      const writer = load(Y.encodeStateAsUpdate(doc));
+      writer.clientID = client;
+      roots(writer).elements.get('note00000001')!.set('w', w);
+      Y.applyUpdate(doc, Y.encodeStateAsUpdate(writer, Y.encodeStateVector(doc)));
+    };
+    write(1000, 240);
+    const text = exportOf(doc);
+    write(1000 + 2 ** 32, 'wide');
+    const map = roots(doc).elements.get('note00000001')!;
+    expect(map.get('w')).toBe('wide');
+    expect(readElement(map)).toBeNull();
+    expect(takeAll(doc, text)!.get('note00000001')).toBeUndefined();
+  });
+
+  it('hash every bit of client ids, clocks and lengths', () => {
+    // Item ids past 32 bits, as a crafted update can carry them: a stand-in for a map whose
+    // only field was written by one item.
+    const card = (client: number, clock: number, length = 1) =>
+      ({
+        _item: null,
+        _map: new Map([
+          ['w', { deleted: false, id: { client, clock }, length, content: {}, right: null }],
+        ]),
+        _start: null,
+      }) as unknown as Y.Map<unknown>;
+    const list = (client: number, clock: number, length = 1) =>
+      ({
+        _item: null,
+        _map: new Map(),
+        _start: { deleted: false, id: { client, clock }, length, content: {}, right: null },
+      }) as unknown as Y.Map<unknown>;
+    const prints = [
+      list(1, 0),
+      list(1 + 2 ** 32, 0),
+      list(1, 2 ** 32),
+      list(1, 0, 1 + 2 ** 32),
+      card(1, 0),
+      card(1 + 2 ** 32, 0),
+      card(1 + 2 ** 40, 0),
+      card(1, 2 ** 32),
+      card(1, 2 ** 32 + 2 ** 33),
+      card(2 ** 53 - 1, 2 ** 53 - 1),
+    ].map((map) => cardFingerprint(map, KEY));
+    expect(prints).not.toContain(null);
+    expect(new Set(prints).size).toBe(prints.length);
+    // An id that is not a safe integer gets no fingerprint: the card is never taken.
+    expect(cardFingerprint(card(2 ** 53, 0), KEY)).toBeNull();
+    expect(cardFingerprint(card(1, -1), KEY)).toBeNull();
+  });
+
   it('are keyed: the same card has another fingerprint under another key', () => {
     const doc = new Y.Doc();
     addElement(doc, { ...base, id: 'note00000001', type: 'note' });
@@ -207,6 +264,42 @@ describe('validated snapshots', () => {
     roots(doc2).elements.get('note00000001')!.set('x', 5);
     undo.undo();
     expect(takeAll(doc2, text2)!.get('note00000001')).toBeUndefined();
+  });
+
+  it('leave out a card whose cell, plan icon or redone field changed since', () => {
+    const doc = new Y.Doc();
+    const column = 'col00000001';
+    addElement(doc, {
+      ...base,
+      id: 'table0000001',
+      type: 'table',
+      columns: [{ id: column }],
+      rows: [{ id: 'row00000001', cells: { [column]: 'a' } }],
+    });
+    addElement(doc, {
+      ...base,
+      id: 'plan00000001',
+      type: 'plan',
+      icons: [{ id: 'icon0000001', kind: 'fresnel', color: '#FFFFFF', x: 1, y: 1 }],
+    });
+    addElement(doc, { ...base, id: 'note00000001', type: 'note' });
+    const { elements } = roots(doc);
+    const note = elements.get('note00000001')!;
+    const undo = new Y.UndoManager(note, { captureTimeout: 0 });
+    note.set('x', 5);
+    undo.undo();
+    // Saved with the note back at 0, then the move is redone: same value, new items.
+    const text = exportOf(doc);
+    const rows = elements.get('table0000001')!.get('rows') as Y.Array<Y.Map<unknown>>;
+    (rows.get(0).get('cells') as Y.Map<string>).set(column, 'b');
+    const icons = elements.get('plan00000001')!.get('icons') as Y.Array<Y.Map<unknown>>;
+    icons.get(0).set('label', 'Key');
+    undo.redo();
+    expect(elements.get('note00000001')!.get('x')).toBe(5);
+    const taken = takeAll(doc, text)!;
+    expect(taken.get('table0000001')).toBeUndefined();
+    expect(taken.get('plan00000001')).toBeUndefined();
+    expect(taken.get('note00000001')).toBeUndefined();
   });
 
   it('keep a card that does not validate as not validating', () => {
