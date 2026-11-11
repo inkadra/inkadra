@@ -1423,7 +1423,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       >
         <div
           className="plan-canvas__sheet"
-          style={{ width: `calc(min(100cqw, ${PLAN_ASPECT}cqh) * ${k})` }}
+          style={{ width: `calc(min(100cqw, ${PLAN_ASPECT * 100}cqh) * ${k})` }}
         >
           {/* biome-ignore lint/a11y/noStaticElementInteractions: the drawing is pointer work; the panels and keys give the same tools. */}
           <div
