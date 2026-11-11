@@ -77,6 +77,7 @@ import { LOCAL } from '../store.ts';
 import { type DragKind, type Ed, isIcon, MAX_SCALE, QUARTER_TURN, type Tool } from './editing.ts';
 import { measureValue } from './kit.ts';
 import { isNoteTool } from './library.ts';
+import { useBackgroundPlacing } from './PlanBackground.tsx';
 import {
   NOTE_COLOR,
   PLAN_INK,
@@ -87,6 +88,7 @@ import {
   planCss,
   TEXT_SIZES,
 } from './PlanDrawing.tsx';
+import { useWallTools } from './PlanWalls.tsx';
 
 /** Two presses on an item within this time (ms) are a double click, by mouse or by finger. */
 const DOUBLE_PRESS = 400;
@@ -107,9 +109,11 @@ const HANDLE_SIGN: Record<ResizeHandle, [number, number]> = {
   sw: [-1, 1],
   w: [-1, 0],
 };
-/** The tools of the bar at the bottom, with their keys (decision 0104: walls come later). */
+/** The tools of the bar at the bottom, with their keys (decisions 0104 and 0109). */
 export const TOOL_KEYS: Array<{ tool: Tool; key: string }> = [
   { tool: 'select', key: 'V' },
+  { tool: 'walls', key: 'W' },
+  { tool: 'openings', key: 'D' },
   { tool: 'pencil', key: 'P' },
   { tool: 'line', key: 'L' },
   { tool: 'arrow', key: 'A' },
@@ -156,6 +160,8 @@ export interface CanvasHandle {
   /** A client point as a point of the drawing (0 to 1), or null outside it. */
   pointOf: (at: { clientX: number; clientY: number }) => Point | null;
   zoomBy: (dir: 1 | -1) => void;
+  /** A key for the tool in use (the length typed for a wall); true when it took it. */
+  key: (e: KeyboardEvent) => boolean;
 }
 
 /** The menu of the selection: on a right click, and behind "…" in the properties. */
@@ -279,6 +285,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   };
   const inside = (p: Point) => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
   const snapped = (p: Point) => (ed.snap ? snapPlanPoint(p, step) : p);
+  const walls = useWallTools(ed, { snapped, zoom });
+  const placing = useBackgroundPlacing(ed, zoom);
   const zoomBy = (dir: 1 | -1) =>
     setZoom((z) => {
       const at = ZOOMS.indexOf(z);
@@ -319,7 +327,9 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   }
   useImperativeHandle(handle, () => ({
     escape: () => {
-      if (menu) setMenu(null);
+      if (walls.escape()) return true;
+      if (placing.active) ed.setPlacingBackground(false);
+      else if (menu) setMenu(null);
       else if (scaleDraft) setScaleDraft(null);
       else if (measureDraft) setMeasureDraft(null);
       else return false;
@@ -334,6 +344,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       return inside(p) ? p : null;
     },
     zoomBy,
+    key: (e) => walls.key(e),
   }));
 
   const commitText = () => {
@@ -375,6 +386,13 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       commitText();
       return;
     }
+    // Placing the background takes every press until Done (decision 0109).
+    if (placing.down(p, e.target as Element)) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      ed.store.undo.stopCapturing();
+      return;
+    }
+    if (walls.down(p)) return;
     // A double click writes: the words of a text in its field, the number of a measure.
     if (tool === 'select' && !armed) {
       const pressed = planItemAt(drawn, p, viewOf);
@@ -460,6 +478,12 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       };
       return;
     }
+    // The corners of a picked wall are on top of what is under them.
+    const corner = (e.target as Element).closest('[data-corner]');
+    if (tool === 'select' && corner && walls.pick(p, e.target as Element)) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      return;
+    }
     if (tool === 'select' || tool === 'icons') {
       const hit = planItemAt(drawn, p, viewOf);
       if (hit && (e.shiftKey || (phone && tool === 'select' && selection.length > 0))) {
@@ -501,6 +525,12 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         gesture.current = { kind: 'move', ref: hit, start: p, item: target };
         return;
       }
+      // Walls and openings, under the items (decision 0109).
+      if (tool === 'select' && !e.shiftKey && walls.pick(p, e.target as Element)) {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        return;
+      }
+      if (ed.wallSel || ed.lockedWall) ed.selectWall(null);
       // An item of a locked layer cannot be picked, but says why in the properties.
       const under = planItemAt(drawn, p, { hidden: ed.hiddenLayers });
       const lockedOne = under && planItem(drawn, under);
@@ -550,9 +580,10 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   }
 
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    const p = pointAt(e);
+    if (placing.move(p) || walls.move(p)) return;
     const g = gesture.current;
     if (!g) return;
-    const p = pointAt(e);
     if (g.kind === 'marquee') {
       if (!g.live) {
         const moved = Math.hypot(view(p).x - view(g.a).x, view(p).y - view(g.a).y) > 12;
@@ -694,6 +725,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
 
   /** A gesture the browser took away (a scroll, a second finger): nothing is written. */
   function onPointerCancel() {
+    walls.cancel();
     clearTimeout(longPress.current);
     tapOff.current = null;
     gesture.current = null;
@@ -705,6 +737,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   }
 
   function onPointerUp() {
+    if (placing.up() || walls.up()) return;
     clearTimeout(longPress.current);
     const taken = tapOff.current;
     tapOff.current = null;
@@ -1012,6 +1045,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   );
   const liveLayer = (
     <>
+      {placing.overlay}
+      {walls.overlay}
       {live && (
         <path
           d={pathOf(live.points, PLAN_VIEW_H)}
@@ -1096,7 +1131,47 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   );
   const plain = !armed;
   const undo = ed.store.undo;
-  const desktopTools = (
+  const wallButtons = (
+    <>
+      <span data-tour="plan-walls" className="plan-canvas__walltools">
+        {toolButton(
+          'walls',
+          t('board.plan.tool.walls'),
+          'wall',
+          tool === 'walls' && plain,
+          () => pickTool('walls'),
+          { shortcut: 'W', text: t('board.plan.tool.walls') },
+        )}
+        {toolButton(
+          'openings',
+          t('board.plan.tool.openings'),
+          'door',
+          tool === 'openings' && plain,
+          () => pickTool('openings'),
+          { shortcut: 'D', text: t('board.plan.tool.openings') },
+        )}
+      </span>
+    </>
+  );
+  const undoButton = toolButton('undo', t('board.plan.undo'), 'undo', false, () => undo.undo(), {
+    disabled: !undo.canUndo(),
+  });
+  const desktopTools = walls.active ? (
+    <div
+      className="plan-float plan-canvas__tools"
+      data-tour="plan-tools"
+      role="toolbar"
+      aria-label={t('board.plan.tools')}
+    >
+      {toolButton('select', t('board.plan.tool.select'), 'pointer', false, () => pickTool('select'), {
+        shortcut: 'V',
+      })}
+      {wallButtons}
+      <span className="plan-float__sep" aria-hidden="true" />
+      {undoButton}
+      {walls.doneButton}
+    </div>
+  ) : (
     <div
       className="plan-float plan-canvas__tools"
       data-tour="plan-tools"
@@ -1111,6 +1186,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         () => pickTool('select'),
         { shortcut: 'V' },
       )}
+      {wallButtons}
       <span className="plan-float__sep" aria-hidden="true" />
       {toolButton(
         'pencil',
@@ -1155,9 +1231,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         { shortcut: 'U' },
       )}
       <span className="plan-float__sep" aria-hidden="true" />
-      {toolButton('undo', t('board.plan.undo'), 'undo', false, () => undo.undo(), {
-        disabled: !undo.canUndo(),
-      })}
+      {undoButton}
       <span className="plan-float__mirror">
         {toolButton('redo', t('board.plan.redo'), 'undo', false, () => undo.redo(), {
           disabled: !undo.canRedo(),
@@ -1181,6 +1255,16 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         () => pickTool('select'),
         { text: t('board.plan.tool.select') },
       )}
+      <span data-tour="plan-walls" className="plan-canvas__walltools">
+        {toolButton(
+          'walls',
+          t('board.plan.tool.walls'),
+          'wall',
+          walls.active && plain,
+          () => pickTool('walls'),
+          { text: t('board.plan.tool.walls') },
+        )}
+      </span>
       {toolButton(
         'draw',
         t('board.plan.tool.draw'),
@@ -1482,7 +1566,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       ).length
     : 0;
   const armedName = armed && t(`board.plan.icons.${armed}`);
-  const isEmpty = planItems(drawn).length === 0 && !(drawn.walls?.length ?? 0);
+  const isEmpty =
+    planItems(drawn).length === 0 && !(drawn.walls?.length ?? 0) && !drawn.background;
   const hiddenList = [...ed.myHidden];
   const lifted = new Set(selection.map((r) => r.id));
   // A setup's base drawn faintly behind it: its own lights, cameras and people.
@@ -1539,7 +1624,12 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
               </div>
             )}
             <PlanDrawing
-              plan={shown}
+              plan={
+                placing.preview && shown.background
+                  ? { ...shown, background: { ...shown.background, ...placing.preview } }
+                  : shown
+              }
+              background
               grid={step}
               ghosts={ed.ghosts}
               route
@@ -1595,6 +1685,15 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         </div>
       </div>
       {moveBar}
+      {placing.bar}
+      {walls.options}
+      {walls.palette}
+      {walls.lockedNote}
+      {phone && walls.active && (
+        <div className="plan-float plan-canvas__movebar plan-walls__phone-done">
+          {walls.doneButton}
+        </div>
+      )}
       {layerStatus.length > 0 && !phone && (
         <p className="plan-canvas__status">{layerStatus.join(' · ')}</p>
       )}
@@ -1625,7 +1724,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         </p>
       )}
       {!phone && scaleBar}
-      {!phone && !movingIcon && desktopTools}
+      {!phone && !movingIcon && !placing.active && desktopTools}
       {!phone && zoomControl}
       {phone && phoneTools}
       {measurePanel}

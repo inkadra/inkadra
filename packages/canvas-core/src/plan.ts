@@ -956,7 +956,15 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
   base:
     | Pick<
         PlanElement,
-        'strokes' | 'shapes' | 'icons' | 'scale' | 'grid' | 'rulers' | 'walls' | 'openings'
+        | 'strokes'
+        | 'shapes'
+        | 'icons'
+        | 'scale'
+        | 'grid'
+        | 'rulers'
+        | 'walls'
+        | 'openings'
+        | 'background'
       >
     | undefined,
 ): P {
@@ -974,6 +982,8 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
     // Walls and their openings are the Set: the base's (decision 0104).
     walls: base.walls,
     openings: base.openings,
+    // So is the picture under them (decision 0109).
+    background: base.background,
   };
 }
 

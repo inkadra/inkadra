@@ -42,7 +42,10 @@ export function PlanCard({ element }: { element: PlanElement }) {
         {useInRouterContext() ? <LinkedScenes scenes={scenes} /> : <SceneBadges scenes={scenes} />}
       </div>
       <div className="plan__body card__media">
-        <PlanDrawing plan={base?.type === 'plan' ? variantView(element, base) : element} />
+        <PlanDrawing
+          plan={base?.type === 'plan' ? variantView(element, base) : element}
+          background
+        />
       </div>
     </div>
   );

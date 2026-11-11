@@ -4088,6 +4088,7 @@ export function Canvas({
             }}
             onNewVariant={() => editedPlan && newVariant(editedPlan, true)}
             onOpenScene={openScene}
+            projectId={guest || preview ? undefined : projectId}
             {...(onExportSelection && !preview
               ? {
                   // Today's export of the plan card: the board's export of the selection.

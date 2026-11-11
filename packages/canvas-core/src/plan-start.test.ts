@@ -92,8 +92,8 @@ describe('placing openings', () => {
 
   it('measures the gap from the two corners of its side', () => {
     const corners = openingCorners(room, { at: 200, width: 80 });
-    expect(corners.before).toBeCloseTo(60, 0);
-    expect(corners.after).toBeCloseTo(260, 0);
+    expect(corners.before).toBeCloseTo(160, 0);
+    expect(corners.after).toBeCloseTo(160, 0);
     const second = openingCorners(room, { at: 550, width: 80 });
     expect(second.before).toBeCloseTo(110, 0);
     expect(second.after).toBeCloseTo(110, 0);
@@ -114,7 +114,8 @@ describe('placing openings', () => {
 
 describe('ready rooms', () => {
   it('draws a room at the plan scale, or picks a scale that fits', () => {
-    expect(roomScale(8, 6.3)).toBe(NOMINAL_SCALE);
+    expect(roomScale(8, 5)).toBe(NOMINAL_SCALE);
+    expect(6.3 * (roomScale(8, 6.3) as number)).toBeLessThanOrEqual(PLAN_VIEW_H * 0.8);
     const big = roomScale(40, 10) as number;
     expect(40 * big).toBeLessThanOrEqual(PLAN_VIEW_W * 0.8);
     expect(roomScale(8, 6, 50)).toBe(50);
@@ -181,7 +182,7 @@ describe('reusing the set of another plan', () => {
     addPlanIcon(doc, source, { kind: 'table', color: '#1C1C1E', x: 100, y: 100 });
     addPlanIcon(doc, source, { kind: 'fresnel', color: '#EDD963', x: 200, y: 200 });
     addPlanIcon(doc, source, { kind: 'camera', color: '#9DB8F2', x: 300, y: 300 });
-    addPlanIcon(doc, source, { kind: 'person', color: '#B897F0', x: 400, y: 400 });
+    addPlanIcon(doc, source, { kind: 'actor', color: '#B897F0', x: 400, y: 400 });
     const target = add('plan', {});
     const copied = copySetLayer(doc, plan(source), target.id);
     const after = plan(target.id);

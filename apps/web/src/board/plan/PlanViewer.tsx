@@ -37,7 +37,7 @@ export function PlanViewer({
           className="plan-viewer__sheet"
           style={{ width: `calc(min(100cqw, 150cqh) * ${zoom / 100})` }}
         >
-          <PlanDrawing plan={variantView(plan, base)} />
+          <PlanDrawing plan={variantView(plan, base)} background />
         </div>
       </div>
       <div className="plan-viewer__bar" role="toolbar" aria-label={t('board.plan.name')}>

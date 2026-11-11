@@ -12,14 +12,36 @@ import {
   itemName,
   itemSummary,
 } from './elements.ts';
+import { useAsset } from '../assets.ts';
 import { PLAN_COLORS, PlanGlyph, planCss } from './PlanDrawing.tsx';
+import { setSummary } from './PlanWalls.tsx';
 
 /**
  * The Elements tab (decision 0104): what is on the plan, by layer with counts, filtered by layer
  * and tag colour; each layer shown or hidden and locked from its heading; a click selects.
  */
-export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }) {
+export function PlanElements({
+  ed,
+  onPicked,
+  onBackground,
+}: {
+  ed: Ed;
+  onPicked?: () => void;
+  /** Opens the controls of the background picture. */
+  onBackground?: () => void;
+}) {
   const { t } = useTranslation();
+  const background = ed.drawn.background;
+  const asset = useAsset(background?.assetId);
+  const backgroundText = background
+    ? [
+        asset && asset !== 'missing' ? asset.filename : t('board.plan.background.picture'),
+        `${Math.round((background.opacity ?? 1) * 100)}%`,
+        background.grey && t('board.plan.background.greyShort'),
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : '';
   const [filter, setFilter] = useState<ElementsFilter>({ layer: 'all', color: null });
   const sections = elementSections(ed.drawn, filter);
   const picked = new Set(ed.selection.map((r) => r.id));
@@ -85,7 +107,35 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
               </span>
             </div>
             {layer === 'set' && walls > 0 && (
-              <p className="plan-props__hint">{t('board.plan.wallCount', { count: walls })}</p>
+              <p className="plan-props__hint">{setSummary(ed.drawn, t)}</p>
+            )}
+            {layer === 'set' && background && (
+              <div className="plan-elements__head plan-elements__background">
+                <button
+                  type="button"
+                  className="plan-elements__bgopen"
+                  onClick={onBackground}
+                  aria-label={t('board.plan.background.edit')}
+                >
+                  <span className="plan-props__cap">{t('board.plan.background.button')}</span>
+                  <span className="plan-prop__label">{backgroundText}</span>
+                </button>
+                <span className="plan-elements__acts">
+                  <IconButton
+                    icon={background.hidden ? 'eyeOff' : 'eye'}
+                    aria-pressed={!!background.hidden}
+                    label={t(
+                      background.hidden ? 'board.plan.background.showIt' : 'board.plan.background.hideIt',
+                    )}
+                    onClick={() => {
+                      const next = { ...background };
+                      if (next.hidden) delete next.hidden;
+                      else next.hidden = true;
+                      ed.editPlan({ background: next }, ed.scaleOwner);
+                    }}
+                  />
+                </span>
+              </div>
             )}
             {items.map(({ ref, item }) => {
               const icon = 'x' in item ? item : null;
