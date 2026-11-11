@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { categoryOf, iconSize, isSized, layerOf } from '@inkadra/canvas-core';
+import { categoryOf, iconSize, iconWatts, isLight, isSized, layerOf } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 
@@ -19,6 +19,17 @@ const STAND_KIT = new Set([
   'jib',
 ]);
 
+/** The sections of the kit list: the categories of the library that are kit. */
+export type KitGroup = 'lights' | 'grip' | 'camera' | 'av';
+export const KIT_GROUPS: readonly KitGroup[] = ['lights', 'grip', 'camera', 'av'];
+/** A line of the kit: a type with its spec, how many, its section and a light's watts each. */
+export interface KitLine {
+  name: string;
+  count: number;
+  group: KitGroup;
+  watts?: number;
+}
+
 /**
  * The kit a plan needs (#335 round 6, i; decision 0104), "Fresnel 1,2K ×1", "Binario 3 m ×1":
  * its icons of kit categories (lights, modifiers and grip, stands, power, camera and movement,
@@ -34,9 +45,13 @@ export function kitList(
   },
   t: TFunction,
   locale?: string,
-): Array<{ name: string; count: number }> {
-  const counts = new Map<string, number>();
-  const add = (name: string) => counts.set(name, (counts.get(name) ?? 0) + 1);
+): KitLine[] {
+  const counts = new Map<string, KitLine>();
+  const add = (name: string, group: KitGroup, watts?: number) => {
+    const line = counts.get(name);
+    if (line) line.count += 1;
+    else counts.set(name, { name, count: 1, group, ...(watts ? { watts } : {}) });
+  };
   const icons = (plan.icons ?? []).filter((i) => !plan.hiddenLayers?.includes(layerOf(i)));
   const ids = new Set(icons.map((i) => i.id));
   for (const icon of icons) {
@@ -49,16 +64,21 @@ export function kitList(
             maximumFractionDigits: 1,
           })} m`
         : '';
-    add([t(`board.plan.icons.${icon.kind}`), power, size].filter(Boolean).join(' '));
+    const category = categoryOf(icon.kind).id as KitGroup;
+    add(
+      [t(`board.plan.icons.${icon.kind}`), power, size].filter(Boolean).join(' '),
+      category,
+      isLight(icon.kind) ? iconWatts(icon) : undefined,
+    );
   }
   for (const icon of icons) {
-    if (icon.gel) add(`${t('board.plan.icons.gel')}: ${icon.gel}`);
+    if (icon.gel) add(`${t('board.plan.icons.gel')}: ${icon.gel}`, 'grip');
     // A stand or a support named on the item, when it stands on no icon of the plan.
     const holder = icon.stand ?? icon.support;
     if (holder && STAND_KIT.has(holder) && !(icon.on && ids.has(icon.on)))
-      add(t(`board.plan.icons.${holder}`));
+      add(t(`board.plan.icons.${holder}`), icon.support ? 'camera' : 'grip');
   }
-  return [...counts].map(([name, count]) => ({ name, count }));
+  return [...counts.values()];
 }
 
 /** A number typed on a measure as it is stored ("6,20" gives "6.2"); null if it is no length. */

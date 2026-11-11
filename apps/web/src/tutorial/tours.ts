@@ -244,9 +244,11 @@ export const TOURS: Tour[] = [
     tool: 'plan',
     offer: 'plan-tools',
     steps: [
+      // The editor of decision 0104: tools, library, right panel, setups.
       { anchor: 'plan-tools', media: 'plan', side: 'top' },
-      { anchor: 'plan-icons', media: 'plan', side: 'top' },
-      { anchor: null, media: 'plan' },
+      { anchor: 'plan-library', media: 'drag', side: 'right' },
+      { anchor: 'plan-properties', media: 'plan', side: 'left' },
+      { anchor: 'plan-setups', media: 'plan', side: 'bottom' },
     ],
   },
   {

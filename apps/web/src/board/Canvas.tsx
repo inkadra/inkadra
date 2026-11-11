@@ -2860,6 +2860,12 @@ export function Canvas({
     });
   }, [editedPlan, snap, labels]);
   const usedColors = useMemo(() => swatchColors(snap.byId.values()), [snap]);
+  // The plans the project kit of the set plan editor is derived from (decision 0104).
+  // shortcut: the plans of this board only, until other boards' plans can be read here.
+  const allPlans = useMemo(
+    () => [...snap.byId.values()].filter((e): e is Extract<Element, { type: 'plan' }> => e.type === 'plan'),
+    [snap],
+  );
   const closePicker = useCallback(() => setEditing(null), [setEditing]);
   // Guests have no project to count in; versions show the counts of today.
   const boardCounts = useBoardCounts(guest ? undefined : projectId, boards);
@@ -4068,6 +4074,9 @@ export function Canvas({
             phone={isPhone}
             scenes={boardScenes}
             lenses={planLenses}
+            cards={snap.byId}
+            labels={labels}
+            kitPlans={allPlans}
             base={editedBase}
             family={editedPlan ? variantFamily(snap.byId.values(), editedPlan) : []}
             onSwitch={(id) => {
@@ -4076,6 +4085,16 @@ export function Canvas({
             }}
             onNewVariant={() => editedPlan && newVariant(editedPlan, true)}
             onOpenScene={openScene}
+            {...(onExportSelection && !preview
+              ? {
+                  // Today's export of the plan card: the board's export of the selection.
+                  onExport: () => {
+                    select([editedPlan.id]);
+                    setEditing(null);
+                    requestAnimationFrame(() => onExportSelection());
+                  },
+                }
+              : {})}
             onClose={() => setEditing(null)}
           />
         )}
