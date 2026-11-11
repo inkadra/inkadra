@@ -695,10 +695,18 @@ export function planItemLayer(item: {
   return item.kind === 'measure' || item.kind === 'text' ? 'notes' : 'set';
 }
 
+/**
+ * A plan item locked on its own (since version 24, decision 0110): not moved, turned, resized,
+ * edited or deleted, and no base to attach to, until it is unlocked. Icons, strokes, shapes,
+ * walls and openings all carry it under this one name.
+ */
+const PlanItemLocked = z.boolean().optional().describe('Locked on its own. Omitted = free.');
+
 /** Plain extras every plan item may carry (since version 15). */
 const PlanItemExtras = {
   layer: PlanLayer.optional().describe("Omitted = the layer of the item's family."),
   group: ElementId.optional().describe('Items with the same group move together; one level.'),
+  locked: PlanItemLocked,
 };
 
 /** A position an icon moved through, in blocking (since version 15). */
@@ -876,6 +884,7 @@ export const PlanWall = z.object({
   closed: z.boolean().optional(),
   label: z.string().max(60).optional(),
   group: ElementId.optional().describe('Items with the same group move together; one level.'),
+  locked: PlanItemLocked,
 });
 export type PlanWall = z.infer<typeof PlanWall>;
 
@@ -897,6 +906,7 @@ export const PlanOpening = z.object({
   side: z.enum(['left', 'right']).optional().describe('Omitted = left.'),
   hinge: z.enum(['start', 'end']).optional().describe('Doors. Omitted = start.'),
   label: z.string().max(60).optional(),
+  locked: PlanItemLocked,
 });
 export type PlanOpening = z.infer<typeof PlanOpening>;
 

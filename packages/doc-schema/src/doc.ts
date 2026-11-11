@@ -19,7 +19,7 @@ import {
 import { fastCheckOf, UNSURE } from './fast-items.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 23;
+export const CURRENT_SCHEMA_VERSION = 24;
 
 /**
  * For each document schema since decision 0102, the oldest client schema proven safe to write a
@@ -30,6 +30,7 @@ export const CURRENT_SCHEMA_VERSION = 23;
 export const WRITER_SCHEMAS: Readonly<Record<number, { min: number; proof?: string }>> = {
   22: { min: 22 },
   23: { min: 23 },
+  24: { min: 24 },
 };
 
 /**
@@ -195,6 +196,10 @@ const migrations: Record<number, Migration> = {
   // picture, north and the location link. All additive and optional, and every kind of version
   // 22 stays valid; older clients stay read-only and cannot drop what they do not know.
   22: () => {},
+  // 24: optional `locked` on plan icons, strokes, shapes, walls and openings, an item locked on
+  // its own (decision 0110). Nothing is locked by the migration; older clients stay read-only, so
+  // they can neither move a locked item nor drop the lock when they copy it.
+  23: () => {},
 };
 
 /**
