@@ -147,22 +147,33 @@ test('icons snap together: seats, modifiers, stands; the base carries them; Alt 
   // The light dragged onto the stand stands on it; moving the stand carries light and modifiers.
   await drag(P.light, P.stand, true);
   await expect.poll(async () => (await find('cob'))[0]?.on).toBe('iconStandAAAA');
+  // A base covered by what is on it is picked in Elements; moving it carries the rest along.
+  const elements = editor.getByRole('tabpanel', { name: 'Elementi' });
+  const pick = async (name: string) => {
+    await editor.getByRole('tab', { name: 'Elementi' }).click();
+    await elements.getByRole('button', { name: new RegExp(`^${name}`) }).click();
+  };
   const before = (await find('softbox'))[0]?.x ?? 0;
-  await drag(P.stand, [700, 480], false);
+  await pick('C-stand');
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowLeft');
   await expect.poll(async () => (await find('softbox'))[0]?.x ?? 0).toBeLessThan(before);
   expect((await find('cob'))[0]?.on).toBe('iconStandAAAA');
 
   // The chair carries its person; pulling the person away detaches it.
   const seated = (await find('actor'))[0]?.y ?? 0;
-  await drag(P.chair, [300, 380]);
+  await pick('Sedia');
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
   await expect.poll(async () => (await find('actor'))[0]?.y ?? 0).toBeGreaterThan(seated);
-  await drag([300, 380], [520, 560]);
+  expect((await find('actor'))[0]?.on).toBe('iconChairAAAA');
+  const chair = (await find('chair'))[0] as PlanIcon;
+  const at = [(chair.x / STROKE_GRID) * 1000, (chair.y / STROKE_GRID) * (1000 / 1.5)];
+  await drag(at, [520, 560]);
   await expect.poll(async () => (await find('actor'))[0]?.on).toBeUndefined();
 
   // Alt while dropping places free, even on the chair.
   await rail.getByRole('button', { name: 'Persone', exact: true }).click();
   await page.keyboard.down('Alt');
-  await dropTile('Comparsa', [300, 380], false);
+  await dropTile('Comparsa', at, false);
   await page.keyboard.up('Alt');
   await expect.poll(async () => (await find('extra')).length).toBe(1);
   expect((await find('extra'))[0]?.on).toBeUndefined();
