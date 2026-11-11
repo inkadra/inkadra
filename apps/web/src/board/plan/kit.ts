@@ -101,7 +101,9 @@ export function kitList(
  * they draw, by the rule of the kit and the power: a sun, a moon, a fire… are no light to bring
  * (decision 0115). Modifiers on a light and hidden layers are not counted.
  */
-export function planCounts(plan: Pick<PlanElement, 'icons' | 'hiddenLayers' | 'circuits' | 'voltage'>) {
+export function planCounts(
+  plan: Pick<PlanElement, 'icons' | 'hiddenLayers' | 'circuits' | 'voltage'>,
+) {
   const icons = (plan.icons ?? []).filter((i) => !plan.hiddenLayers?.includes(layerOf(i)));
   return {
     cameras: icons.filter((i) => catalogueKind(i.kind) === 'camera').length,

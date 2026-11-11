@@ -98,7 +98,10 @@ it("puts a day's shot blocks under their setups, leaving out omitted scenes and 
   const card = { x: 0, y: 0, w: 100, z: 'a0', createdBy: null, createdAt: 1 };
   const byId = new Map<string, Element>([
     ['s1', { ...card, id: 's1', type: 'scene', parent: null, number: '1' } as Element],
-    ['s2', { ...card, id: 's2', type: 'scene', parent: null, number: '2', omitted: true } as Element],
+    [
+      's2',
+      { ...card, id: 's2', type: 'scene', parent: null, number: '2', omitted: true } as Element,
+    ],
     ['f1', { ...card, id: 'f1', type: 'frame', parent: 's1' } as Element],
     ['f2', { ...card, id: 'f2', type: 'frame', parent: 's2' } as Element],
   ]);

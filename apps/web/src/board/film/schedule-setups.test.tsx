@@ -9,6 +9,7 @@ import {
 } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { api } from '../../lib/api.ts';
@@ -67,15 +68,15 @@ const camera = (id: string, frameId: string): PlanIcon => ({
 async function mount() {
   const doc = new Y.Doc();
   const store = new BoardStore(doc);
-  const s1 = createElement(doc, 'scene', { x: 0, y: 0 }, { number: '1', title: 'Bar' }, opts);
+  const s1 = createElement(doc, 'scene', { x: 0, y: 0 }, { number: '1', title: 'Bar', location: '', setting: 'int', time: 'day' }, opts);
   const s2 = createElement(
     doc,
     'scene',
     { x: 0, y: 400 },
-    { number: '2', title: 'Cut', omitted: true },
+    { number: '2', title: 'Cut', location: '', setting: 'int', time: 'day', omitted: true },
     opts,
   );
-  const s3 = createElement(doc, 'scene', { x: 0, y: 800 }, { number: '3', title: 'Car' }, opts);
+  const s3 = createElement(doc, 'scene', { x: 0, y: 800 }, { number: '3', title: 'Car', location: '', setting: 'ext', time: 'day' }, opts);
   const wide = addFrame(doc, s1.id, null, { action: 'Wide' }, opts);
   const pour = addFrame(doc, s1.id, null, { action: 'Pour' }, opts);
   const both = addFrame(doc, s1.id, null, { action: 'Both' }, opts);
@@ -116,7 +117,11 @@ async function mount() {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => root.render(<ScheduleView store={store} boardId="board" />));
+  await act(async () => root.render(
+        <MemoryRouter>
+          <ScheduleView store={store} boardId="board" />
+        </MemoryRouter>,
+      ));
   disposals.push(() => {
     act(() => root.unmount());
     host.remove();
@@ -140,6 +145,9 @@ it('groups the queue by scene until this person picks Setup, saved in their pref
   );
   expect(select?.textContent).toContain('film.list.groupScene');
   expect(queue(host).querySelector('.schedule__setup')).toBeNull();
+  // happy-dom has no popover API, which the shared Select opens its list with.
+  HTMLElement.prototype.showPopover ??= () => {};
+  HTMLElement.prototype.hidePopover ??= () => {};
   await act(async () => select?.click());
   const option = [...document.querySelectorAll('[role="option"]')].find((o) =>
     o.textContent?.includes('film.list.groupSetup'),
@@ -184,13 +192,17 @@ it('offers no grouping on a board without set plans', async () => {
   prefs.value = { shotGroupBy: 'setup' };
   const doc = new Y.Doc();
   const store = new BoardStore(doc);
-  const scene = createElement(doc, 'scene', { x: 0, y: 0 }, { number: '1' }, opts);
+  const scene = createElement(doc, 'scene', { x: 0, y: 0 }, { number: '1', title: '', location: '', setting: 'int', time: 'day' }, opts);
   addFrame(doc, scene.id, null, { action: 'Wide' }, opts);
   vi.spyOn(api, 'get').mockResolvedValue({ items: [], nextCursor: null });
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => root.render(<ScheduleView store={store} boardId="board" />));
+  await act(async () => root.render(
+        <MemoryRouter>
+          <ScheduleView store={store} boardId="board" />
+        </MemoryRouter>,
+      ));
   disposals.push(() => {
     act(() => root.unmount());
     host.remove();

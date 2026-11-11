@@ -31,7 +31,6 @@ import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
 import type { SheetScene } from './CallSheetModal.tsx';
 import { CallSheetModal } from './CallSheetModal.tsx';
-import { useShotGroupBy } from './group-by.ts';
 import {
   addDays,
   clockString,
@@ -49,6 +48,7 @@ import {
 import { locationsOfDay, plannedWrap } from './call-sheet.ts';
 import { DayCallsPanel } from './DayCallsPanel.tsx';
 import { dayCrew, useCrew } from './day-calls.ts';
+import { useShotGroupBy } from './group-by.ts';
 import { NeededItems } from './NeededItems.tsx';
 import { neededForDay, updateNeededRow } from './needed.ts';
 import {

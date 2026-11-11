@@ -36,7 +36,6 @@ import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import { blurOnEnter, ShotField, StatusChip, StatusSelect, usePresetText } from './fields.tsx';
-import { type ShotGroupBy, useShotGroupBy } from './group-by.ts';
 import {
   getFrameStatus,
   isApproved,
@@ -44,6 +43,7 @@ import {
   SHOT_DISPLAY_STATUSES,
   type ShotDisplayStatus,
 } from './film-status.ts';
+import { type ShotGroupBy, useShotGroupBy } from './group-by.ts';
 import { ShotlistKanban } from './ShotlistKanban.tsx';
 import { useSlugline, useStoryboard } from './storyboard-data.ts';
 import { ViewOptions } from './ViewOptions.tsx';

@@ -191,7 +191,9 @@ it('includes the background by default when the plan shows one, and prints it gr
   expect(include).toEqual({ ...PLAN_SHEET_INCLUDE, background: true });
   const [image] = planSheetPages(
     {
-      setups: [{ plan: { ...plan, background: { assetId: 'pic', grey: true } }, name: 'S', shots: [] }],
+      setups: [
+        { plan: { ...plan, background: { assetId: 'pic', grey: true } }, name: 'S', shots: [] },
+      ],
       scene: '',
       place: '',
       area: null,
@@ -200,7 +202,8 @@ it('includes the background by default when the plan shows one, and prints it gr
       locale: 'en',
     },
     ctx,
-  ).flatMap((page) => page.ops.flatMap((op) => (op.kind === 'clip' ? op.ops : [op])))
+  )
+    .flatMap((page) => page.ops.flatMap((op) => (op.kind === 'clip' ? op.ops : [op])))
     .filter((op) => op.kind === 'image');
   expect(image).toMatchObject({ key: 'pic', grey: true });
 });
