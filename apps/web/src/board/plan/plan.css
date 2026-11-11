@@ -1900,6 +1900,7 @@ span.plan-pill {
   bottom: 128px;
   max-width: calc(100% - 32px);
   white-space: normal;
+}
 /* The base a dragged icon would attach to (decision 0104). */
 .plan-editor__target {
   fill: color-mix(in srgb, var(--ink-accent-primary) 12%, transparent);
