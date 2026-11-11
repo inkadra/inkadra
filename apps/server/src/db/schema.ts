@@ -378,7 +378,6 @@ export const invitation = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     kind: text('kind', { enum: ['email', 'link'] }).notNull(),
     tokenHash: text('token_hash').notNull().unique(),
-
     tokenSealed: text('token_sealed'),
     email: text('email'),
     projectId: uuid('project_id').references(() => project.id, { onDelete: 'cascade' }),
@@ -935,7 +934,6 @@ export const shareLink = pgTable(
     includeSubBoards: boolean('include_sub_boards').notNull().default(true),
     label: text('label'),
     tokenHash: text('token_hash').notNull().unique(),
-
     tokenSealed: text('token_sealed').notNull(),
     passwordHash: text('password_hash'),
     sessionsValidAfter: timestamp('sessions_valid_after', { withTimezone: true })
