@@ -100,7 +100,11 @@ const DIGITS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const SYNC = Symbol('sync');
 
 /** Builds the board. Same size and seed, same bytes. */
-export function generateReferenceBoard(size: ReferenceBoardSize, seed = 1): ReferenceBoard {
+export function generateReferenceBoard(
+  size: ReferenceBoardSize,
+  seed = 1,
+  observeReplica?: (doc: Y.Doc) => void,
+): ReferenceBoard {
   const spec = REFERENCE_SIZES[size];
   let state = seed >>> 0 || 1;
   // mulberry32: small, fast and good enough to pick operations.
@@ -154,6 +158,7 @@ export function generateReferenceBoard(size: ReferenceBoardSize, seed = 1): Refe
       if (origin !== SYNC) outbox.push(update);
     });
     replicas.push(doc);
+    observeReplica?.(doc);
   }
   const sync = () => {
     if (outbox.length === 0) return;

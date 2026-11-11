@@ -1,6 +1,8 @@
+import * as core from '@inkadra/canvas-core';
 import { createElement, currentElements, listElements, updateElement } from '@inkadra/canvas-core';
-import { roots } from '@inkadra/doc-schema';
-import { expect, it } from 'vitest';
+import { addElement, roots, UNSORTED } from '@inkadra/doc-schema';
+import { generateReferenceBoard } from '@inkadra/doc-schema/reference-board';
+import { expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { BoardStore, LOCAL } from './store.ts';
 
@@ -13,6 +15,134 @@ const fromDoc = (doc: Y.Doc) =>
   listElements(doc)
     .map((e) => JSON.stringify(e))
     .sort();
+
+it('matches a full index through the reference generator gestures and remote syncs', () => {
+  let checked = 0;
+  generateReferenceBoard('small', 19, (doc) => {
+    const store = new BoardStore(doc);
+    doc.on('afterTransaction', () => {
+      const all = listElements(doc);
+      const snapshot = store.getSnapshot();
+      expect([...snapshot.byId.values()]).toEqual(all);
+      expect(snapshot.canvas).toEqual(core.canvasElements(all));
+      expect(snapshot.unsorted).toEqual(core.childrenOf(all, UNSORTED));
+      expect([...snapshot.columns]).toEqual(
+        all.filter(core.isContainer).map((el) => [el.id, core.childrenOf(all, el.id)]),
+      );
+      checked++;
+    });
+  });
+  expect(checked).toBeGreaterThan(1000);
+}, 120_000);
+
+it('sorts only the affected container, and never sorts content edits', () => {
+  const doc = new Y.Doc();
+  const column = createElement(doc, 'column', { x: 0, y: 0 }, { title: '' }, opts);
+  const note = createElement(doc, 'note', { x: 0, y: 0 }, { parent: column.id }, opts);
+  const store = new BoardStore(doc);
+  const before = store.getSnapshot();
+  const canvas = vi.spyOn(core, 'canvasElements');
+  const children = vi.spyOn(core, 'childrenOf');
+  updateElement(doc, note.id, { x: 10 }, LOCAL);
+  expect(canvas).not.toHaveBeenCalled();
+  expect(children).not.toHaveBeenCalled();
+  expect(store.getSnapshot().canvas).toBe(before.canvas);
+  expect(store.getSnapshot().byId.get(column.id)).toBe(before.byId.get(column.id));
+  expect(before.columns.get(column.id)?.[0]).toBe(before.byId.get(note.id));
+  expect(before.byId.get(note.id)?.x).toBe(0);
+  expect(store.getSnapshot().columns.get(column.id)?.[0]).toBe(
+    store.getSnapshot().byId.get(note.id),
+  );
+  updateElement(doc, note.id, { z: 'a9' }, LOCAL);
+  expect(canvas).not.toHaveBeenCalled();
+  expect(children).toHaveBeenCalledTimes(1);
+  vi.restoreAllMocks();
+  store.destroy();
+});
+
+it('keeps the full rebuild tie-break when a batch changes order and containers', () => {
+  const doc = new Y.Doc();
+  const a = createElement(doc, 'note', { x: 0, y: 0 }, {}, opts);
+  const b = createElement(doc, 'note', { x: 0, y: 0 }, {}, opts);
+  const store = new BoardStore(doc);
+  doc.transact(() => {
+    updateElement(doc, a.id, { z: 'a0' }, LOCAL);
+    updateElement(doc, b.id, { z: 'a0' }, LOCAL);
+  }, LOCAL);
+  expect(store.getSnapshot().canvas).toEqual(core.canvasElements(listElements(doc)));
+  doc.transact(() => {
+    updateElement(doc, a.id, { parent: UNSORTED }, LOCAL);
+    updateElement(doc, b.id, { parent: UNSORTED }, LOCAL);
+  }, LOCAL);
+  expect(store.getSnapshot().canvas).toEqual([]);
+  expect(store.getSnapshot().unsorted).toEqual(core.childrenOf(listElements(doc), UNSORTED));
+  store.destroy();
+});
+
+it('keeps element identity when list items are replaced with equal JSON', () => {
+  const doc = new Y.Doc();
+  const frame = createElement(doc, 'frame', { x: 0, y: 0 }, {}, opts);
+  core.addStroke(
+    doc,
+    frame.id,
+    {
+      tool: 'pencil',
+      color: '#202020',
+      width: 4,
+      points: [1, 2, 3, 4],
+    },
+    LOCAL,
+  );
+  const store = new BoardStore(doc);
+  const before = store.getSnapshot();
+  const map = roots(doc).elements.get(frame.id)!;
+  const strokes = map.get('strokes') as Y.Array<unknown>;
+  map.set('strokes', Y.Array.from(JSON.parse(JSON.stringify(strokes.toArray()))));
+  expect(store.getSnapshot()).toBe(before);
+  core.addStroke(
+    doc,
+    frame.id,
+    {
+      tool: 'pencil',
+      color: '#202020',
+      width: 4,
+      points: [5, 6, 7, 8],
+    },
+    LOCAL,
+  );
+  expect(store.getSnapshot().byId.get(frame.id)).not.toBe(before.byId.get(frame.id));
+  store.destroy();
+});
+
+it('indexes orphaned children when their container appears and removes invalid cards', () => {
+  const doc = new Y.Doc();
+  const container = 'container000000000000';
+  const note = createElement(doc, 'note', { x: 0, y: 0 }, { parent: container }, opts);
+  const store = new BoardStore(doc);
+  const column = createElement(doc, 'column', { x: 0, y: 0 }, { title: '' }, opts);
+  addElement(doc, { ...column, id: container });
+  expect(
+    store
+      .getSnapshot()
+      .columns.get(container)
+      ?.map((el) => el.id),
+  ).toEqual([note.id]);
+  updateElement(doc, note.id, { parent: column.id }, LOCAL);
+  expect(
+    store
+      .getSnapshot()
+      .columns.get(column.id)
+      ?.map((el) => el.id),
+  ).toEqual([note.id]);
+  updateElement(doc, note.id, { parent: UNSORTED }, LOCAL);
+  expect(store.getSnapshot().unsorted.map((el) => el.id)).toEqual([note.id]);
+  roots(doc).elements.get(note.id)!.set('w', 'invalid');
+  expect(store.getSnapshot().byId.has(note.id)).toBe(false);
+  expect(store.getSnapshot().unsorted).toEqual([]);
+  roots(doc).elements.get(note.id)!.set('w', 200);
+  expect(store.getSnapshot().unsorted.map((el) => el.id)).toEqual([note.id]);
+  store.destroy();
+});
 
 it('gives the helpers its snapshot only while it is current', () => {
   const doc = new Y.Doc();
@@ -53,5 +183,70 @@ it('reads the document when a card is stored under a key that is not its id', ()
   // The snapshot holds the card once, the document twice.
   expect(store.getSnapshot().byId.size).toBe(1);
   expect(currentElements(doc)).toHaveLength(2);
+  updateElement(doc, a.id, { x: 20 }, LOCAL);
+  expect(store.getSnapshot().canvas).toEqual(
+    core.canvasElements([...store.getSnapshot().byId.values()]),
+  );
   store.destroy();
+});
+
+it('hydrates cooperatively without exposing partial elements, and restarts after local and remote edits', async () => {
+  const { update } = generateReferenceBoard('small', 7);
+  const doc = new Y.Doc();
+  Y.applyUpdate(doc, update);
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const store = BoardStore.hydrate(doc, { budgetMs: 0.1 });
+  try {
+    const listener = vi.fn();
+    store.subscribe(listener);
+    await vi.advanceTimersToNextTimerAsync();
+    expect(store.hydrating).toBe(true);
+    expect(store.getSnapshot().byId.size).toBe(0);
+    expect(listener).not.toHaveBeenCalled();
+
+    const a = createElement(doc, 'note', { x: 0, y: 0 }, {}, opts);
+    const b = createElement(doc, 'note', { x: 0, y: 0 }, {}, opts);
+    expect(b.z > a.z).toBe(true); // Helpers fall back to validated reads while loading.
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    roots(remote).elements.get(a.id)!.set('w', 'invalid');
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote, Y.encodeStateVector(doc)));
+    await vi.advanceTimersToNextTimerAsync();
+    roots(remote).elements.get(b.id)!.set('x', 87);
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote, Y.encodeStateVector(doc)));
+    await vi.runAllTimersAsync();
+    await store.whenHydrated;
+    expect(store.hydrating).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(store.getSnapshot().byId.has(a.id)).toBe(false);
+    expect(store.getSnapshot().byId.get(b.id)?.x).toBe(87);
+    expect(sorted(doc)).toEqual(fromDoc(doc));
+    const all = listElements(doc);
+    expect(store.getSnapshot().canvas).toEqual(core.canvasElements(all));
+    expect([...store.getSnapshot().columns]).toEqual(
+      all.filter(core.isContainer).map((el) => [el.id, core.childrenOf(all, el.id)]),
+    );
+    updateElement(doc, b.id, { x: 90 }, LOCAL);
+    expect(store.getSnapshot().byId.get(b.id)?.x).toBe(90);
+    remote.destroy();
+  } finally {
+    store.destroy();
+    vi.useRealTimers();
+  }
+});
+
+it('cancels hydration on destroy and rejects invalid budgets', async () => {
+  const doc = new Y.Doc();
+  for (const budgetMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY])
+    expect(() => BoardStore.hydrate(doc, { budgetMs })).toThrow(RangeError);
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const store = BoardStore.hydrate(doc);
+  const listener = vi.fn();
+  store.subscribe(listener);
+  store.destroy();
+  await vi.runAllTimersAsync();
+  await store.whenHydrated;
+  expect(listener).not.toHaveBeenCalled();
+  expect(store.getSnapshot().byId.size).toBe(0);
+  vi.useRealTimers();
 });

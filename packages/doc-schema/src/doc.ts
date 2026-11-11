@@ -364,6 +364,20 @@ function readItem(item: z.ZodType, value: unknown): unknown {
 
 /** Plain JSON view of an element (without rich text), or null if it does not validate. */
 export function readElement(map: Y.Map<unknown>): Element | null {
+  const steps = readElementSteps(map, false);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/**
+ * Cooperative initial reads: each step checks at most one large-list item. Only the return
+ * value is a validated element. If the document changes between steps, discard and restart.
+ */
+export function* readElementSteps(
+  map: Y.Map<unknown>,
+  cooperative = true,
+): Generator<void, Element | null> {
   const list = ITEM_LISTS.get(map.get('type') as string);
   let items: unknown[] | undefined;
   const plain: Record<string, unknown> = {};
@@ -376,11 +390,13 @@ export function readElement(map: Y.Map<unknown>): Element | null {
         const data = readItem(list.item, item);
         if (data !== INVALID) items.push(data);
         else if (!list.lenient) return null;
+        if (cooperative) yield;
       }
       if (list.lenient) items = items.slice(0, list.max);
       // The rest of the element is checked with an empty list, then gets the items back.
       plain[key] = [];
     } else plain[key] = value instanceof Y.AbstractType ? value.toJSON() : value;
+    if (cooperative) yield;
   }
   const result = Element.safeParse(plain);
   if (!result.success) return null;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { readElement, roots, tableRowMap } from './doc.ts';
+import { readElement, readElementSteps, roots, tableRowMap } from './doc.ts';
 import { Element, MAX_STROKES, MAX_TABLE_CELL } from './elements.ts';
 import { generateReferenceBoard } from './reference-board.ts';
 
@@ -21,6 +21,13 @@ const same = (map: Y.Map<unknown>) => {
   const expected = JSON.stringify(wholeCard(map));
   expect(JSON.stringify(readElement(map))).toBe(expected);
   expect(JSON.stringify(readElement(map))).toBe(expected);
+  const steps = readElementSteps(map);
+  let step = steps.next();
+  while (!step.done) {
+    expect(step.value).toBeUndefined();
+    step = steps.next();
+  }
+  expect(JSON.stringify(step.value)).toBe(expected);
 };
 
 const stroke = (id: string, extra: Record<string, unknown> = {}) => ({
