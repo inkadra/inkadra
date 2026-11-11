@@ -1,21 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  beamWarmth,
   blockingCurve,
   blockingPositions,
   categoryOf,
+  DEFAULT_GLYPH_STROKE,
   type GlyphPart,
   glyphOf,
   iconCone,
+  iconGlow,
+  iconGlyph,
   iconTransform,
   labelAnchor,
-  layerOf,
   measureEnds,
+  openingLines,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
   type PlanFamily,
-  type PlanItem,
   type PlanNoteTool,
+  type PlanStackEntry,
+  pieceOutline,
+  planStack,
+  shownOpenings,
+  wallPieces,
 } from '@inkadra/canvas-core';
 import {
   PLAN_ASPECT,
@@ -48,10 +56,14 @@ export const PLAN_COLORS = [
 export type PlanColor = (typeof PLAN_COLORS)[number];
 export const PLAN_INK = PLAN_COLORS[0].hex;
 
-/** The colour a family starts in: lights yellow, cameras blue, people purple, the rest ink. */
+/**
+ * The colour a family starts in: lights yellow, cameras blue, video and sound teal, people
+ * purple, the rest ink.
+ */
 const FAMILY_COLORS: Record<PlanFamily, string> = {
   light: '#EDD963',
   camera: '#9DB8F2',
+  video: '#60D8EB',
   person: '#B897F0',
   ink: PLAN_INK,
 };
@@ -81,44 +93,49 @@ export const TEXT_SIZES = { S: 14, M: 18, L: 26 } as const;
 export const LABEL_SIZE = 16;
 export const PLAN_TEXT = TEXT_SIZES.M;
 
-/** Fill of the closed parts of an icon: a veil of its colour, what lies under it still shows. */
-const WASH = 'color-mix(in srgb, currentColor 12%, transparent)';
+/** The paper of a plan: what opaque fills mix into and holes show (decision 0104). */
+const PAPER = 'var(--plan-paper, var(--ink-surface-1))';
 
-/** The parts of a glyph as SVG, in its 32 grid. `fill` paints closed parts. */
-export function GlyphParts({ glyph, fill }: { glyph: GlyphPart[]; fill?: string }) {
+/**
+ * The fill of a glyph part (decision 0104): opaque parts mix the icon's colour into the paper, so
+ * what lies under them is hidden; see-through parts (an overhead frame, a tent) veil it.
+ */
+function partFill(part: GlyphPart): CSSProperties {
+  const color = part.color ? planCss(part.color) : 'currentColor';
+  if (part.hole) return { fill: PAPER };
+  if (part.mix !== undefined)
+    return { fill: `color-mix(in srgb, ${color} ${Math.round(part.mix * 100)}%, ${PAPER})` };
+  if (part.alpha !== undefined) return { fill: color, fillOpacity: part.alpha };
+  return {};
+}
+
+/** The parts of a glyph as SVG, in its units (a 40 box centred on 0,0). */
+export function GlyphParts({ glyph }: { glyph: GlyphPart[] }) {
   return glyph.map((part, i) => {
     const style: CSSProperties = {
       strokeWidth: part.w,
       strokeDasharray: part.dash?.join(' '),
-      opacity: part.o,
+      strokeOpacity: part.o,
+      strokeLinecap: part.butt ? 'butt' : undefined,
+      stroke: part.color ? planCss(part.color) : undefined,
+      ...partFill(part),
     };
     const key = i;
     if (part.c) {
       const [cx, cy, r] = part.c;
-      return <circle key={key} cx={cx} cy={cy} r={r} style={{ ...style, fill }} />;
+      return <circle key={key} cx={cx} cy={cy} r={r} style={style} />;
+    }
+    if (part.e) {
+      const [cx, cy, rx, ry] = part.e;
+      return <ellipse key={key} cx={cx} cy={cy} rx={rx} ry={ry} style={style} />;
     }
     if (part.r) {
       const [x, y, w, h, rx] = part.r;
       return (
-        <rect
-          key={key}
-          x={x}
-          y={y}
-          width={w}
-          height={h}
-          rx={rx || undefined}
-          transform={part.rot ? `rotate(${part.rot.join(' ')})` : undefined}
-          style={{ ...style, fill }}
-        />
+        <rect key={key} x={x} y={y} width={w} height={h} rx={rx || undefined} style={style} />
       );
     }
-    return (
-      <path
-        key={key}
-        d={part.d}
-        style={{ ...style, fill: /z$/i.test(part.d ?? '') ? fill : undefined }}
-      />
-    );
+    return <path key={key} d={part.d} style={style} />;
   });
 }
 
@@ -131,7 +148,7 @@ export function PlanGlyph({
   size?: number;
 }) {
   return (
-    <svg className="plan-glyph" viewBox="0 0 32 32" width={size} height={size} aria-hidden="true">
+    <svg className="plan-glyph" viewBox="-20 -20 40 40" width={size} height={size} aria-hidden="true">
       <GlyphParts glyph={glyphOf(kind)} />
     </svg>
   );
@@ -143,7 +160,9 @@ export function iconLabel(icon: PlanIcon): string {
   // "A cam 35mm" already says it: no "· 35 mm" again.
   const said = new RegExp(`\\b${mm}\\s?mm\\b`, 'i').test(icon.label ?? '');
   const lens = icon.kind === 'camera' && icon.showLens && !said ? `${mm} mm` : '';
-  const power = icon.power && !icon.label?.includes(icon.power) ? icon.power : '';
+  // The power as written, or the watts (decision 0104).
+  const written = icon.power || (icon.watts ? `${icon.watts} W` : '');
+  const power = written && !icon.label?.includes(written) ? written : '';
   return [icon.label, lens, power].filter(Boolean).join(' · ');
 }
 
@@ -191,7 +210,6 @@ export const PlanIconView = memo(function PlanIconView({
   noCone?: boolean;
 }) {
   const t = iconTransform(icon);
-  const cone = noCone ? null : iconCone(icon, sensor);
   const scale = Math.sqrt(t.sx * t.sy);
   return (
     <g
@@ -200,28 +218,134 @@ export const PlanIconView = memo(function PlanIconView({
       strokeLinejoin="round"
       data-icon={icon.id}
     >
-      {cone && (
-        <polygon
-          points={cone.points.map((p) => `${p.x},${p.y}`).join(' ')}
-          style={{
-            fill: 'currentColor',
-            fillOpacity: cone.beam ? 0.06 + 0.16 * (icon.intensity ?? 0.8) : 0.14,
-            stroke: 'currentColor',
-            strokeOpacity: 0.5,
-            strokeWidth: 1.5,
-          }}
-        />
-      )}
+      {!noCone && <PlanBeamView icon={icon} sensor={sensor} />}
       <g
         transform={`translate(${t.centre.x} ${t.centre.y}) rotate(${t.angle}) scale(${t.sx} ${t.sy}) translate(${-t.origin.x} ${-t.origin.y})`}
         style={{
           fill: 'none',
           stroke: 'currentColor',
-          strokeWidth: 1.5 * Math.min(1.6, 1.7 / scale),
+          strokeWidth: DEFAULT_GLYPH_STROKE * Math.min(1.6, 1.7 / scale),
         }}
       >
-        <GlyphParts glyph={glyphOf(icon.kind)} fill={WASH} />
+        <GlyphParts glyph={iconGlyph(icon)} />
       </g>
+    </g>
+  );
+});
+
+/**
+ * The colour of a light's beam: tinted from the palette's orange (warm) to its blue (cool) by its
+ * colour temperature, or its own colour without one (decision 0104).
+ */
+export function beamCss(icon: PlanIcon): string {
+  const warmth = beamWarmth(icon.kind === 'camera' ? undefined : icon.kelvin);
+  if (warmth === null) return planCss(icon.color);
+  return `color-mix(in srgb, var(--ink-tag-orange) ${Math.round(warmth * 100)}%, var(--ink-tag-blue))`;
+}
+
+/** A camera's view cone, a light's beam or the glow of a light that shines all round. */
+export const PlanBeamView = memo(function PlanBeamView({
+  icon,
+  sensor,
+}: {
+  icon: PlanIcon;
+  sensor?: PlanElement['sensor'];
+}) {
+  const id = `plan-beam-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const cone = iconCone(icon, sensor);
+  const glow = cone ? null : iconGlow(icon);
+  if (!cone && !glow) return null;
+  const color = beamCss(icon);
+  const strength = 0.06 + 0.16 * (icon.intensity ?? 0.8);
+  if (glow)
+    return (
+      <g style={{ color }}>
+        <defs>
+          <radialGradient id={id}>
+            <stop offset="0" stopColor="currentColor" stopOpacity={strength * 2} />
+            <stop offset="1" stopColor="currentColor" stopOpacity={0} />
+          </radialGradient>
+        </defs>
+        <circle cx={glow.centre.x} cy={glow.centre.y} r={glow.radius} fill={`url(#${id})`} />
+      </g>
+    );
+  const [from] = cone?.points ?? [];
+  return (
+    <g style={{ color: cone?.beam ? color : planCss(icon.color) }}>
+      {cone?.beam && from && (
+        <defs>
+          <radialGradient id={id} gradientUnits="userSpaceOnUse" cx={from.x} cy={from.y} r={cone.reach}>
+            <stop offset="0" stopColor="currentColor" stopOpacity={strength * 2} />
+            <stop offset="1" stopColor="currentColor" stopOpacity={strength / 3} />
+          </radialGradient>
+        </defs>
+      )}
+      <polygon
+        points={cone?.points.map((p) => `${p.x},${p.y}`).join(' ')}
+        style={{
+          fill: cone?.beam ? `url(#${id})` : 'currentColor',
+          fillOpacity: cone?.beam ? undefined : 0.14,
+          stroke: 'currentColor',
+          strokeOpacity: cone?.beam ? 0.35 : 0.5,
+          strokeWidth: 1.5,
+        }}
+      />
+    </g>
+  );
+});
+
+/** Width of the lines of doors and windows, in view units. */
+const OPENING_LINE = 1.6;
+
+/**
+ * The walls of a plan with their openings (decision 0104): each piece between the gaps filled in
+ * the ink of walls, then the doors, windows and openings drawn in their gaps.
+ */
+export const PlanWallsView = memo(function PlanWallsView({
+  plan,
+}: {
+  plan: Pick<PlanElement, 'walls' | 'openings'>;
+}) {
+  const walls = plan.walls ?? [];
+  if (walls.length === 0) return null;
+  const openings = shownOpenings(plan);
+  const byId = new Map(walls.map((w) => [w.id, w]));
+  return (
+    <g className="plan__walls" style={{ color: planCss(PLAN_INK) }}>
+      {walls.flatMap((wall) =>
+        wallPieces(wall, openings).map((piece, i) => (
+          <polygon
+            // biome-ignore lint/suspicious/noArrayIndexKey: a piece is its place between gaps.
+            key={`${wall.id}-${i}`}
+            points={pieceOutline(piece, wall.thickness)
+              .map((p) => `${p.x},${p.y}`)
+              .join(' ')}
+            style={{ fill: 'currentColor' }}
+          />
+        )),
+      )}
+      {openings.map((o) => {
+        const wall = byId.get(o.wall);
+        if (!wall) return null;
+        return (
+          <g key={o.id} data-opening={o.id}>
+            {openingLines(wall, o).map((line, i) => (
+              <polyline
+                // biome-ignore lint/suspicious/noArrayIndexKey: lines of one opening, in order.
+                key={i}
+                points={line.points.map((p) => `${p.x},${p.y}`).join(' ')}
+                style={{
+                  fill: 'none',
+                  stroke: 'currentColor',
+                  strokeWidth: line.leaf ? OPENING_LINE * 1.8 : OPENING_LINE,
+                  strokeDasharray: line.dashed ? '4 4' : undefined,
+                  strokeLinecap: 'butt',
+                }}
+              />
+            ))}
+          </g>
+        );
+      })}
     </g>
   );
 });
@@ -455,14 +579,22 @@ function GridDots({ step }: { step: number }) {
 export type PlanLike = Pick<
   PlanElement,
   'strokes' | 'shapes' | 'icons' | 'hiddenLayers' | 'sensor' | 'scale'
->;
+> &
+  Partial<Pick<PlanElement, 'walls' | 'openings'>>;
 
-const visible = <T extends PlanItem>(items: readonly T[] | undefined, hidden?: readonly string[]) =>
-  (items ?? []).filter((item) => !hidden?.includes(layerOf(item)));
+/** An item of the plan's stack as SVG. */
+function StackItem({ entry, plan }: { entry: PlanStackEntry; plan: PlanLike }) {
+  const { ref, item } = entry;
+  if (ref.kind === 'strokes') return <PlanStroke stroke={item as PlanStrokeItem} />;
+  if (ref.kind === 'shapes')
+    return <PlanShapeView shape={measureEnds(item as PlanShape, plan.icons)} scale={plan.scale} />;
+  return <PlanIconView icon={item as PlanIcon} sensor={plan.sensor} noCone />;
+}
 
 /**
- * A plan's drawing: strokes, then shapes and texts, then set icons, as vectors in the plan's
- * aspect ratio, its hidden layers left out. `grid` shows the dots while editing (every `step`
+ * A plan's drawing, as vectors in the plan's aspect ratio, its hidden layers left out, in the
+ * stacking order of decision 0104: walls, then the items of tiers 0 and 1 (the set, furniture),
+ * the beams and cones, blocking moves, the items of tiers 2 to 5, blocking numbers, labels. `grid` shows the dots while editing (every `step`
  * view units); `children` draws on top (the live line, the selection). Memoized: it redraws
  * only when the plan changes.
  */
@@ -494,6 +626,8 @@ export const PlanDrawing = memo(function PlanDrawing({
   children?: ReactNode;
 }) {
   const off = [...(plan.hiddenLayers ?? []), ...(hidden ?? [])];
+  const stack = planStack(plan, off);
+  const icons = stack.filter((e) => e.ref.kind === 'icons').map((e) => e.item as PlanIcon);
   return (
     // biome-ignore lint/a11y/noSvgWithoutTitle: named by aria-label in the editor, hidden elsewhere.
     <svg
@@ -503,24 +637,27 @@ export const PlanDrawing = memo(function PlanDrawing({
       {...(label ? { role: 'group', 'aria-label': label } : { 'aria-hidden': true })}
     >
       {grid && <GridDots step={grid} />}
-      {visible(plan.strokes, off).map((s) => (
-        <PlanStroke key={s.id} stroke={s} />
-      ))}
-      {visible(plan.shapes, off).map((s) => (
-        <PlanShapeView key={s.id} shape={measureEnds(s, plan.icons)} scale={plan.scale} />
+      {!off.includes('set') && <PlanWallsView plan={plan} />}
+      {stack
+        .filter((e) => e.tier < 2)
+        .map((e) => (
+          <StackItem key={e.item.id} entry={e} plan={plan} />
+        ))}
+      {icons.map((icon) => (
+        <PlanBeamView key={`c${icon.id}`} icon={icon} sensor={plan.sensor} />
       ))}
       {moves &&
-        visible(plan.icons, off).map((icon) => (
+        icons.map((icon) => (
           <BlockingView key={`b${icon.id}`} icon={icon} ghosts={ghosts} route={route} />
         ))}
-      {visible(plan.icons, off).map((icon) => (
-        <PlanIconView key={icon.id} icon={icon} sensor={plan.sensor} />
-      ))}
-      {moves &&
-        visible(plan.icons, off).map((icon) => (
-          <BlockingNumbers key={`n${icon.id}`} icon={icon} route={route} />
+      {stack
+        .filter((e) => e.tier >= 2)
+        .map((e) => (
+          <StackItem key={e.item.id} entry={e} plan={plan} />
         ))}
-      {visible(plan.icons, off).map((icon) => (
+      {moves &&
+        icons.map((icon) => <BlockingNumbers key={`n${icon.id}`} icon={icon} route={route} />)}
+      {icons.map((icon) => (
         <PlanLabel key={`l${icon.id}`} icon={icon} lifted={lifted?.has(icon.id)} />
       ))}
       {children}

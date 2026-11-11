@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  groupOf,
   PLAN_CATEGORIES,
   PLAN_NOTE_TOOLS,
   type PlanCategory,
@@ -19,6 +20,7 @@ export type LibraryItem = PlanIconKind | PlanNoteTool;
 type CategoryId = PlanCategory['id'] | 'notes';
 
 const KNOWN = new Set<string>([...PLAN_ICON_KINDS, ...PLAN_NOTE_TOOLS]);
+const NOTE_TOOLS = new Set<string>(PLAN_NOTE_TOOLS);
 /** How many recent icons the library keeps for a person (decision 0062). */
 const RECENTS = 8;
 /** A pointer that moves less than this (screen pixels) from a tile taps it. */
@@ -30,13 +32,14 @@ const fold = (s: string) =>
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '');
 
-/** The words an item is found by: its name, its synonyms, its category. */
+/** The words an item is found by: its name, its synonyms, its category and group. */
 function words(t: TFunction, item: LibraryItem, category: string): string {
   return fold(
     [
       t(`board.plan.icons.${item}`),
       t(`board.plan.synonyms.${item}`, { defaultValue: '' }),
       t(`board.plan.categories.${category}`),
+      NOTE_TOOLS.has(item) ? '' : t(`board.plan.groups.${groupOf(item as PlanIconKind).id}`),
     ].join(' '),
   );
 }

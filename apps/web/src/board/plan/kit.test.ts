@@ -66,3 +66,26 @@ describe('a measure written by hand', () => {
     expect(measureText({ ...line, text: '6.2' }, undefined, 'it')).toBe('6,20 m');
   });
 });
+
+it('counts watts, modifiers, gels and the stands named on lights (decision 0104)', () => {
+  const plan = {
+    icons: [
+      icon('cob', { id: 'cobAAAAAAAAAA', watts: 300, gel: 'CTO ½', stand: 'combo' }),
+      icon('softbox', { id: 'boxAAAAAAAAAA', on: 'cobAAAAAAAAAA' }),
+      icon('led', { id: 'ledAAAAAAAAAA', gel: 'CTO ½', stand: 'cstand', on: 'standAAAAAAAA' }),
+      icon('cstand', { id: 'standAAAAAAAA' }),
+      icon('camera', { id: 'camAAAAAAAAAA', support: 'tripod' }),
+      icon('crew'),
+    ],
+  };
+  expect(kitList(plan, t)).toEqual([
+    { name: 'cob 300 W', count: 1 },
+    { name: 'softbox', count: 1 },
+    { name: 'led', count: 1 },
+    { name: 'cstand', count: 1 },
+    { name: 'camera', count: 1 },
+    { name: 'gel: CTO ½', count: 2 },
+    { name: 'combo', count: 1 },
+    { name: 'tripod', count: 1 },
+  ]);
+});

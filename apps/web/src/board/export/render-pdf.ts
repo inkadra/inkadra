@@ -173,7 +173,11 @@ async function drawOps(
         let d = `M${op.points[0]} ${op.points[1]}`;
         for (let i = 2; i + 1 < op.points.length; i += 2)
           d += `L${op.points[i]} ${op.points[i + 1]}`;
-        page.drawSvgPath(`${d}Z`, { ...svg, color: color(op.fill) });
+        page.drawSvgPath(`${d}Z`, {
+          ...svg,
+          color: color(op.fill),
+          ...(op.opacity !== undefined && op.opacity < 1 ? { opacity: op.opacity } : {}),
+        });
         break;
       }
       case 'ellipse':
