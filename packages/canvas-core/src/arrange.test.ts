@@ -289,7 +289,8 @@ describe('freeSpot with its index', () => {
   };
   const huge = { x: -500_000, y: -500_000, w: 1_000_000, h: 1_000_000 };
 
-  it('finds the same spot as the plain search, whatever the board', () => {
+  // 400 boards against the plain search: about 4.5 s on a CI runner, near the 5 s default.
+  it('finds the same spot as the plain search, whatever the board', { timeout: 30_000 }, () => {
     const next = random(578);
     const pick = (min: number, max: number) => Math.round(min + next() * (max - min));
     for (let n = 0; n < 400; n++) {
