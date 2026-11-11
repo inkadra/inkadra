@@ -31,6 +31,25 @@ window, the hourly invitation and share-link caps the time until their oldest en
 the hour, the calendar feed its limiter window. Capacity refusals (busy workers, a full demo)
 may omit it.
 
+## Projects, crew members and shooting days
+
+The same mechanism, table, retention and error codes now also cover `POST /projects`
+(scope `projects`), `POST /projects/{id}/crew` (`crew:<projectId>`) and
+`POST /boards/{id}/schedule` (`shooting-days:<boardId>`). They are advertised separately, as
+`idempotent-project-creations`, so the meaning of `idempotent-creations` (boards and
+comments) never changes and a client can tell which servers honour which set. A retry reads
+the project, crew member or shooting day as it is now, or answers 404 once it is gone (a crew
+member merged into another counts as gone). Validation that looks at current state (a linked
+account or card of a crew member) runs on every attempt, so a retry can answer 400 where the
+original succeeded; the client drops the creation either way.
+
+Left out: the bulk crew paste (it skips names already present, so a replay creates nothing
+new), share links (the response carries a secret shown once), invitations (they send email and
+have their own resend), named versions and clips (outcome-unknown protocol, files and the
+collaboration server, not a plain row), uploads (tus has its own resumption and
+`clientAssetId`), `POST /schedule/edit` (a batch of edits with client ids), project groups,
+exports, backups and tokens.
+
 ## Consequences
 
 Old clients behave as before. Requests after expiry may create again. A retry after a

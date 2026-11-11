@@ -101,7 +101,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0095](0095-cast-roles-day-address-and-search.md) | A Cast row's role is its character, the day's address on the call sheet, search finds crew and day locations |
 | [0096](0096-authenticated-client-compatibility.md) | The authenticated version endpoint lists API, document schema and stable capability names |
 | [0097](0097-client-asset-identifiers.md) | `clientAssetId` in tus creation: the asset id is a UUIDv5 of it in the uploader's namespace; a deleted id is never made again |
-| [0098](0098-idempotent-creations.md) | `Idempotency-Key` on board and comment creation; a retry reads the created resource as it is now |
+| [0098](0098-idempotent-creations.md) | `Idempotency-Key` on board, comment, project, crew member and shooting day creation; a retry reads the created resource as it is now |
 | [0099](0099-invalid-token-reasons.md) | A REST 401 says why a recognised token stopped working; revoked hashes kept apart for 30 days |
 | [0100](0100-incremental-board-index.md) | Only affected containers are indexed and sorted after a board edit |
 | [0101](0101-strict-card-check.md) | A strict per-card check finds what a build does not understand; copies carry cards as stored |

@@ -244,6 +244,18 @@ registry.register('InvalidToken', InvalidToken);
 const secured: Array<Record<string, string[]>> = [{ session: [] }, { bearer: [] }];
 const v1 = (path: string) => `${API_PREFIX}${path}`;
 const idParam = (name: string) => z.object({ [name]: Id });
+const idempotencyKeyHeader = z.object({
+  'Idempotency-Key': z
+    .string()
+    .min(1)
+    .max(128)
+    .optional()
+    .openapi({
+      description:
+        'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
+        'created resource as it is now (404 once it is gone); a changed payload returns 409.',
+    }),
+});
 /** A change handed to the board: a 500 may leave it unknown whether it was made. */
 const outcome = {
   500: {
@@ -391,7 +403,11 @@ registry.registerPath({
   method: 'post',
   path: crewPath,
   summary: 'Add a crew member',
-  request: { params: idParam('projectId'), body: json(CrewMemberInput) },
+  request: {
+    headers: idempotencyKeyHeader,
+    params: idParam('projectId'),
+    body: json(CrewMemberInput),
+  },
   responses: { 201: { description: 'Created', ...json(CrewMember) }, ...errors },
 });
 registry.registerPath({
@@ -523,7 +539,11 @@ registry.registerPath({
   tags: ['Schedule'],
   security: secured,
   summary: 'Create a project shooting day anchored to this board; requires editor access.',
-  request: { params: idParam('boardId'), body: json(ShootingDayInput) },
+  request: {
+    headers: idempotencyKeyHeader,
+    params: idParam('boardId'),
+    body: json(ShootingDayInput),
+  },
   responses: { 201: { description: 'Created', ...json(ShootingDay) }, ...errors },
 });
 registry.registerPath({
@@ -1449,7 +1469,7 @@ registry.registerPath({
   description:
     'Refused with 403 (details: ProjectCreationDenied) when the caller cannot create projects ' +
     '(User.canCreateProjects).',
-  request: { body: json(CreateProject) },
+  request: { headers: idempotencyKeyHeader, body: json(CreateProject) },
   responses: { 201: { description: 'Created', ...json(Project) }, ...errors },
 });
 registry.registerPath({
@@ -1530,18 +1550,7 @@ registry.registerPath({
   tags: ['Boards'],
   security: secured,
   request: {
-    headers: z.object({
-      'Idempotency-Key': z
-        .string()
-        .min(1)
-        .max(128)
-        .optional()
-        .openapi({
-          description:
-            'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
-            'created resource as it is now (404 once it is gone); a changed payload returns 409.',
-        }),
-    }),
+    headers: idempotencyKeyHeader,
     params: idParam('projectId'),
     body: json(CreateBoard),
   },
@@ -2119,18 +2128,7 @@ registry.registerPath({
     'to a thread of the same board.' +
     realtime,
   request: {
-    headers: z.object({
-      'Idempotency-Key': z
-        .string()
-        .min(1)
-        .max(128)
-        .optional()
-        .openapi({
-          description:
-            'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
-            'created resource as it is now (404 once it is gone); a changed payload returns 409.',
-        }),
-    }),
+    headers: idempotencyKeyHeader,
     params: idParam('boardId'),
     body: json(CreateComment),
   },

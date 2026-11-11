@@ -105,6 +105,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'comments',
         'resumable-uploads',
         'idempotent-creations',
+        'idempotent-project-creations',
         'token-invalid-reasons',
         'client-asset-ids',
         'min-writer-schema',

@@ -194,8 +194,9 @@ Existing HTTPS sessions keep their Secure `__Host-` cookies; no migration is nee
 `GET /api/v1/instance/version` returns the software `version`, `api` (`v1`),
 `docSchemaVersion` and `capabilities`. The initial capability names are `boards`
 (board REST operations), `comments` (board comments) and `resumable-uploads` (tus);
-`idempotent-creations` means the `Idempotency-Key` retries below are supported, and
-`token-invalid-reasons` that a 401 may say why a token stopped working, and
+`idempotent-creations` means the `Idempotency-Key` retries below are supported for boards and
+comments, `idempotent-project-creations` that they are also supported for projects, crew
+members and shooting days, and `token-invalid-reasons` that a 401 may say why a token stopped working, and
 `client-asset-ids` that tus creations accept `clientAssetId` (see Storage).
 `min-writer-schema` means the response has `minWriterSchema`: the oldest board document schema
 whose clients may still write a document of `docSchemaVersion`, if they run the strict card check
@@ -215,17 +216,22 @@ values are ignored. The header does not change authentication or request handlin
 ### Retrying offline creations
 
 Authenticated `POST /api/v1/projects/{projectId}/boards` and
-`POST /api/v1/boards/{boardId}/comments` accept an optional `Idempotency-Key` header
+`POST /api/v1/boards/{boardId}/comments` (capability `idempotent-creations`), and
+`POST /api/v1/projects`, `POST /api/v1/projects/{projectId}/crew` and
+`POST /api/v1/boards/{boardId}/schedule` (capability `idempotent-project-creations`) accept
+an optional `Idempotency-Key` header
 (1–128 printable ASCII characters, without spaces). Reuse the same key and body for
 retries: a retry creates nothing and sends no notification. It answers 201 with the
-created board or comment **as it is now**, read like a `GET` would read it (current title,
+created resource **as it is now**, read like a `GET` would read it (current title,
 role, edits and reactions); if the resource has since been deleted or moved out of reach,
 the retry answers 404 and the client should drop the queued creation. Only the id of the
 created resource is remembered, never a copy of the response.
 Keys are scoped to the authenticated user and endpoint, retained for seven days, and
 purged by upload housekeeping. Reusing a key with a different validated body returns 409;
 invalid keys return 400. Authorization and rate limits are checked on every attempt, before
-the key is looked up. After expiry the key may create a new resource. Requests without a key
+the key is looked up; a retry of a crew member whose linked account or card has since
+disappeared answers 400 like a new request would. The bulk crew paste, share links,
+invitations, versions, clips and uploads do not take the key. After expiry the key may create a new resource. Requests without a key
 keep their existing behavior.
 
 Rate-limit refusals (429) of per-user, per-address and per-link budgets return `Retry-After`

@@ -11548,6 +11548,18 @@
             "required": true,
             "name": "projectId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "Retry the same creation for seven days: a retry creates nothing and answers with the created resource as it is now (404 once it is gone); a changed payload returns 409."
+            },
+            "required": false,
+            "description": "Retry the same creation for seven days: a retry creates nothing and answers with the created resource as it is now (404 once it is gone); a changed payload returns 409.",
+            "name": "Idempotency-Key",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -12418,6 +12430,18 @@
             "required": true,
             "name": "boardId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "Retry the same creation for seven days: a retry creates nothing and answers with the created resource as it is now (404 once it is gone); a changed payload returns 409."
+            },
+            "required": false,
+            "description": "Retry the same creation for seven days: a retry creates nothing and answers with the created resource as it is now (404 once it is gone); a changed payload returns 409.",
+            "name": "Idempotency-Key",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -17913,6 +17937,20 @@
         ],
         "summary": "Create a project with its root board. The creator becomes owner.",
         "description": "Refused with 403 (details: ProjectCreationDenied) when the caller cannot create projects (User.canCreateProjects).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "Retry the same creation for seven days: a retry creates nothing and answers with the created resource as it is now (404 once it is gone); a changed payload returns 409."
+            },
+            "required": false,
+            "description": "Retry the same creation for seven days: a retry creates nothing and answers with the created resource as it is now (404 once it is gone); a changed payload returns 409.",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {

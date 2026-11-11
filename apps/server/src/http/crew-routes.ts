@@ -19,6 +19,7 @@ import type { Database } from '../db/client.ts';
 import { board, crewMember, shootingDay, user } from '../db/schema.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
+import { idempotentCreation } from './idempotency.ts';
 
 const Params = z.object({ projectId: Id });
 const MemberParams = Params.extend({ memberId: Id });
@@ -125,12 +126,30 @@ export function registerCrewRoutes(
     await requireProjectRole(db, actor, projectId, 'editor');
     const input = CrewMemberInput.parse(req.body);
     await validateLinks(actor, projectId, input);
-    const [row] = await db
-      .insert(crewMember)
-      .values({ ...input, projectId })
-      .returning();
-    if (!row) throw new Error('Crew member missing');
-    return reply.code(201).send((await readRows([row]))[0]);
+    const result = await idempotentCreation(
+      db,
+      req,
+      actor.id,
+      `crew:${projectId}`,
+      input,
+      async (tx) => {
+        const [row] = await tx
+          .insert(crewMember)
+          .values({ ...input, projectId })
+          .returning();
+        if (!row) throw new Error('Crew member missing');
+        return row;
+      },
+    );
+    // A retry is answered with the crew member as it is now: 404 once it is gone or merged.
+    if ('replayed' in result) {
+      const [now] = await readCrew(
+        and(eq(crewMember.id, result.replayed), eq(crewMember.projectId, projectId)),
+      );
+      if (!now) throw new HttpError('not_found', 'Crew member not found.');
+      return reply.code(201).send(now);
+    }
+    return reply.code(201).send((await readRows([result.created]))[0]);
   });
   app.post(`${base}/bulk`, async (req, reply) => {
     const actor = await requireActor(auth, req, db);
