@@ -662,6 +662,23 @@ describe("the day's Location when the scenes name their own", () => {
     store.destroy();
   });
 
+  it('keeps the address written in the day when the location card of that name has none', () => {
+    const { doc, frame } = scenes();
+    createElement(doc, 'location', { x: 0, y: 0 }, { name: 'Faro' }, { userId: null });
+    const store = new BoardStore(doc);
+    const elements = store.getSnapshot().byId;
+    expect(dayAddress(at(frame, `Faro\nVia Roma 10 ${osm}`), elements)).toEqual({
+      name: 'Faro',
+      address: 'Via Roma 10',
+      mapUrl: osm,
+    });
+    // Without scene locations it is Loc. 1, with the same address.
+    expect(locationsOfDay({ ...day, location: 'Faro\nVia Roma 10', blocks: [] }, elements)).toEqual(
+      [{ name: 'Faro', address: 'Via Roma 10', mapUrl: undefined }],
+    );
+    store.destroy();
+  });
+
   it('prints the address and the map link on the sheet', async () => {
     const { doc, frame } = scenes();
     const store = new BoardStore(doc);

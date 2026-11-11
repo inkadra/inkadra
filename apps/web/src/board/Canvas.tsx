@@ -24,6 +24,7 @@ import {
   fillTable,
   fitRect,
   frameLabels,
+  claimSpot,
   freeSpot,
   freeSpots,
   GRID,
@@ -1192,6 +1193,8 @@ export function Canvas({
               onScreen(),
             )
           : [at];
+      // The cards on the board now: a card made later in a planned spot is checked against them.
+      const before = new Set(store.getSnapshot().canvas.map((el) => el.id));
       accepted.forEach((file, i) => {
         const pos = place(spots[i] ?? at);
         const type = file.type.startsWith('image/') && !isDesignFile(file.name) ? 'image' : 'file';
@@ -1218,7 +1221,19 @@ export function Canvas({
               settled();
               return;
             }
-            const el = createElement(doc, type, pos, { assetId }, { userId, origin: LOCAL });
+            // Another upload or a collaborator may have taken the spot since it was planned.
+            const cards = store
+              .getSnapshot()
+              .canvas.map((card) => ({ ...liveRect(card), id: card.id }));
+            const size = { w: DEFAULT_WIDTH[type], h: NEW_HEIGHT };
+            const spot = claimSpot(pos, size, cards, before, onScreen());
+            const el = createElement(
+              doc,
+              type,
+              spot === pos ? pos : place(spot),
+              { assetId },
+              { userId, origin: LOCAL },
+            );
             store.undo.stopCapturing();
             if (i === 0) select([el.id]);
             created.push(el.id);

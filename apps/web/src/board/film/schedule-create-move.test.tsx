@@ -263,3 +263,26 @@ it('offers Block next to Shooting day in the desktop Day view', async () => {
   await act(async () => button(host, 'schedule.addBlockShort')?.click());
   expect(blocksOf(host)).toEqual([A, expect.any(String)]);
 });
+
+it('waits for the project dates before it opens an empty calendar on today', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [], nextCursor: null });
+  const post = vi
+    .spyOn(api, 'post')
+    .mockImplementation(async (_path, body) => ({ ...monday, id: 'new', ...(body as object) }));
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const board = store();
+  disposals.push(() => {
+    act(() => root.unmount());
+    host.remove();
+  });
+  // The days answer first; the project and its dates arrive after.
+  await act(async () => root.render(<ScheduleView store={board} boardId="board" />));
+  await act(async () =>
+    root.render(<ScheduleView store={board} boardId="board" shootingStart="2026-11-21" />),
+  );
+  expect(host.querySelector('.schedule__month-day[aria-pressed="true"]')?.textContent).toBe('21');
+  await act(async () => button(host, 'schedule.addDayShort')?.click());
+  expect(post.mock.calls[0]?.[1]).toMatchObject({ date: '2026-11-21' });
+});

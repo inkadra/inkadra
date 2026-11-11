@@ -80,6 +80,36 @@ export function castCard(
   return linked && castNameKey(linked.name) === castNameKey(name) ? linked : undefined;
 }
 
+/**
+ * The cast names of each crew row (decisions 0092, 0095): its own name and its linked card's
+ * always; the role of a row in Cast only when no row has that name or card, and then for the
+ * first such row by roster position. The server reads the same rule (`crewCastKeys`).
+ */
+export function castKeysOf(
+  crew: readonly CrewMember[],
+  elements: ReadonlyMap<string, Element> = new Map(),
+  characters: readonly CrewCharacter[] = [],
+): Map<string, Set<string>> {
+  const own = new Map(
+    crew.map((member) => [
+      member.id,
+      new Set(
+        [member.name, characterName(member, elements, characters)]
+          .filter((name) => name.trim())
+          .map(castNameKey),
+      ),
+    ]),
+  );
+  const named = new Set([...own.values()].flatMap((keys) => [...keys]));
+  const roles = new Map<string, string>();
+  for (const member of [...crew].sort((a, b) => a.position - b.position)) {
+    const role = castNameKey(member.department) === 'cast' ? castNameKey(member.role) : '';
+    if (role && !named.has(role) && !roles.has(role)) roles.set(role, member.id);
+  }
+  for (const [role, id] of roles) own.get(id)?.add(role);
+  return own;
+}
+
 export function dayCrew(
   day: ShootingDayInput,
   crew: readonly CrewMember[],
@@ -88,17 +118,9 @@ export function dayCrew(
 ): DayCrewEntry[] {
   const dayCall = clockMinutes(day.callTime);
   const slots = scheduleTimes(day);
+  const castKeys = castKeysOf(crew, elements, characters);
   return crew.map((member) => {
-    // A row in Cast plays the character its role names ("Anna Greco · Elena"), as a card would.
-    const keys = new Set(
-      [
-        member.name,
-        characterName(member, elements, characters),
-        castNameKey(member.department) === 'cast' ? member.role : '',
-      ]
-        .filter((name) => name.trim())
-        .map(castNameKey),
-    );
+    const keys = castKeys.get(member.id) ?? new Set<string>();
     const names = [
       ...new Set(day.blocks.flatMap((b) => b.cast.filter((name) => keys.has(castNameKey(name))))),
     ];

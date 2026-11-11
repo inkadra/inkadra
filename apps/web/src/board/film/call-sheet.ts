@@ -138,11 +138,9 @@ function dayPlace(day: ShootingDayInput, elements: ReadonlyMap<string, Element>)
   const card = [...elements.values()].find(
     (el) => el.type === 'location' && castNameKey(el.name) === castNameKey(name),
   );
-  return {
-    name,
-    address: card?.type === 'location' ? card.address : address.join('\n'),
-    mapUrl: card?.type === 'location' ? card.mapUrl || mapUrl : mapUrl,
-  };
+  // A card without an address or a map keeps the ones written in the day's field.
+  const own = card?.type === 'location' ? card : undefined;
+  return { name, address: own?.address || address.join('\n'), mapUrl: own?.mapUrl || mapUrl };
 }
 
 /** Locations in shooting order; matching story cards provide the private address and map. */

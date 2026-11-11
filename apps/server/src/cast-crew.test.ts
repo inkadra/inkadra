@@ -427,4 +427,21 @@ describe.skipIf(!url)('cast links through the crew (needs DATABASE_URL)', () => 
       (await crew()).filter((row) => ['Renato De Santis', 'Pietro'].includes(row.name)),
     ).toEqual([{ name: 'Renato De Santis', department: 'Cast', userId: double, character: null }]);
   });
+
+  it('gives a shared role to the first row by position, and a name before any role', async () => {
+    const [first, later, nobody] = [people.grantEditor?.id, people.actor?.id, people.guest?.id];
+    await db.insert(crewMember).values([
+      { ...blank, projectId, name: 'Gianni A', role: 'Giovanni', userId: later!, position: 95 },
+      { ...blank, projectId, name: 'Gianni B', role: 'Giovanni', userId: first!, position: 94 },
+      { ...blank, projectId, name: 'Lucia', position: 96 },
+      { ...blank, projectId, name: 'Lia', role: 'Lucia', userId: nobody!, position: 97 },
+    ]);
+    const links = (await request('owner', 'GET', `/boards/${planBoard}/schedule/attendance`)).json()
+      .links as Array<{ castKey: string; userId: string }>;
+    expect(links.filter((l) => l.castKey === 'giovanni')).toEqual([
+      { castKey: 'giovanni', userId: first },
+    ]);
+    // "Lucia" is somebody's own name: Lia's role does not take it.
+    expect(links.filter((l) => l.castKey === 'lucia')).toEqual([]);
+  });
 });

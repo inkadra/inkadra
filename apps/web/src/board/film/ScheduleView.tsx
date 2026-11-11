@@ -350,7 +350,9 @@ export function ScheduleView({
   const today = localDate(now);
   // The calendar opens on the day being shot, else the next shooting day, else the last one.
   // Picked once, when the days arrive: it must not move under someone reading it.
-  if (focus === null && !loading) {
+  // Without days it waits for the project's dates (undefined until they load, null when the
+  // project has none): an empty calendar must not settle on today before they arrive.
+  if (focus === null && !loading && (drafted.length > 0 || shootingStart !== undefined)) {
     const current = drafted.find((d) => nowOnDay(d.draft, plannedWrap(d.draft), now) !== null);
     const next = drafted.find((d) => d.draft.date >= today) ?? drafted.at(-1);
     setFocus((current ?? next)?.draft.date ?? shootingStart ?? today);
@@ -1185,11 +1187,14 @@ export function ScheduleView({
             )}
             <Button
               icon="file"
+              className="schedule__callsheet"
               data-tour="schedule-callsheet"
+              data-ink-tooltip={t('shells.callSheet')}
               disabled={loading || loadError}
               onClick={() => setCallSheetOpen(true)}
             >
-              {t('shells.callSheet')}
+              {/* Folds to its icon first when the Day view's bar is narrow (it stays its name). */}
+              <span className="schedule__callsheet-label">{t('shells.callSheet')}</span>
             </Button>
             {!readOnly && view === 'day' && (
               <Button

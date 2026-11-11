@@ -278,3 +278,20 @@ export function freeSpots(
     return at;
   });
 }
+
+/**
+ * A spot planned for a new card, checked again when the card is made (an upload ends later): it
+ * stays unless a card that was not on the board when it was planned (`before`: their ids) now
+ * covers it, from another upload or a collaborator; then the nearest free spot from there.
+ */
+export function claimSpot(
+  planned: Point,
+  size: { w: number; h: number },
+  cards: ReadonlyArray<Rect & { id: string }>,
+  before: ReadonlySet<string>,
+  area?: Rect,
+): Point {
+  const box = { ...planned, ...size };
+  if (!cards.some((card) => !before.has(card.id) && intersects(card, box))) return planned;
+  return freeSpot(planned, size, cards, area);
+}

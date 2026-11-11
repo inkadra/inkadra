@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type ArrangeItem,
+  claimSpot,
   freeSpot,
   freeSpots,
   gridAround,
@@ -190,6 +191,25 @@ describe('freeSpot', () => {
     expect(at.x + size.w).toBeLessThanOrEqual(area.x + area.w);
     expect(at.y + size.h).toBeLessThanOrEqual(area.y + area.h);
     expect(intersectsRect(taken[0]!, { ...at, ...size })).toBe(false);
+  });
+
+  it('moves a planned spot that a newer card took meanwhile, and only then', () => {
+    const old = { id: 'old', x: 0, y: 0, w: 240, h: 240 };
+    // Planned on top of a card that was already there (a drop the person aimed): it stays.
+    expect(claimSpot({ x: 10, y: 10 }, size, [old], new Set(['old']))).toEqual({ x: 10, y: 10 });
+    // Another upload, or a collaborator, put a card there since: it moves to a free spot.
+    const newer = { id: 'newer', x: 400, y: 0, w: 240, h: 240 };
+    const at = claimSpot({ x: 400, y: 0 }, size, [old, newer], new Set(['old']));
+    expect([old, newer].some((r) => intersectsRect(r, { ...at, ...size }))).toBe(false);
+    // Two batches planned on the same spots before either arrived never land on each other.
+    const first = freeSpots({ x: 0, y: 400 }, [size, size], [old]);
+    const second = freeSpots({ x: 0, y: 400 }, [size, size], [old]);
+    const placed = first.map((p, i) => ({ id: `a${i}`, ...p, ...size }));
+    for (const spot of second) {
+      const claimed = claimSpot(spot, size, [old, ...placed], new Set(['old']));
+      expect(placed.some((r) => intersectsRect(r, { ...claimed, ...size }))).toBe(false);
+      placed.push({ id: `b${placed.length}`, ...claimed, ...size });
+    }
   });
 
   it('places several cards clear of the board and of each other', () => {
