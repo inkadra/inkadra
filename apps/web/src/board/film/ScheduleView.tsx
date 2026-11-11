@@ -23,15 +23,15 @@ import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { formatClock } from '../../lib/datetime.ts';
 import { useIsPhone } from '../../lib/phone.ts';
-import { loadScheduleBySetup, saveScheduleBySetup } from '../canvas-prefs.ts';
 import { CHARACTER_COLOURS } from '../plan/PlanDrawing.tsx';
 import { plansOfScene } from '../plan/scenes.tsx';
-import { groupBySetup, shotSetups } from '../plan/setups.ts';
+import { dayBySetup, shotSetups } from '../plan/setups.ts';
 import { isMac, isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
 import type { SheetScene } from './CallSheetModal.tsx';
 import { CallSheetModal } from './CallSheetModal.tsx';
+import { useShotGroupBy } from './group-by.ts';
 import {
   addDays,
   clockString,
@@ -877,26 +877,18 @@ export function ScheduleView({
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
   // The setups of the set plans each shot belongs to (decision 0104).
   const setups = useMemo(() => shotSetups([...snap.byId.values()], t), [snap, t]);
-  // "Group by: Setup", a personal choice kept on this device (decision 0115). A board with no
-  // setups offers nothing and groups nothing.
-  const [bySetupChoice, setBySetupChoice] = useState(() => loadScheduleBySetup(userId ?? ''));
-  const bySetup = bySetupChoice && setups.size > 0;
-  const chooseBySetup = (on: boolean) => {
-    setBySetupChoice(on);
-    saveScheduleBySetup(userId ?? '', on);
-  };
+  // "Group by: Setup", this person's grouping of shots, shared with the shot list (decision
+  // 0115). A board with no setups offers nothing and groups nothing.
+  const [groupBy, setGroupBy] = useShotGroupBy();
+  const bySetup = groupBy === 'setup' && setups.size > 0;
+  const chooseBySetup = (on: boolean) => setGroupBy(on ? 'setup' : 'scene');
   /** A day's shots under their setups, in the day's order; omitted scenes left out (0082). */
   const daySetups = (entry: CalendarDay) => {
-    const shots = entry.draft.blocks.flatMap((block) => {
-      const frame = block.shotId ? snap.byId.get(block.shotId) : undefined;
-      const scene = frame?.parent ? snap.byId.get(frame.parent) : undefined;
-      if (frame?.type !== 'frame' || (scene?.type === 'scene' && scene.omitted)) return [];
-      return [{ id: frame.id, block }];
-    });
-    if (!shots.length) return null;
+    const groups = dayBySetup(entry.draft.blocks, snap.byId, setups);
+    if (!groups.length) return null;
     return (
       <div className="schedule__day-setups">
-        {groupBySetup(shots, setups).map(({ setup, shots: list }) => (
+        {groups.map(({ setup, shots: list }) => (
           <section
             key={setup?.planId ?? 'none'}
             className="schedule__setup"
@@ -909,16 +901,15 @@ export function ScheduleView({
               {setup && <Icon name="map" size={11} />}
               <span>{setup ? setup.name : t('film.list.noSetup')}</span>
             </h4>
-            {list.map(({ block }) => (
+            {list.map(({ id, block }) => (
               <button
                 key={block.id}
                 type="button"
                 className="schedule__day-shot"
                 onClick={() => openBlock(entry.day.id, block.id, null)}
               >
-                {[block.shotId && labels.get(block.shotId), block.title]
-                  .filter(Boolean)
-                  .join(' · ')}
+                {/* As the calendar names it: its label and action, else "Missing shot". */}
+                {shotTitle(id)}
               </button>
             ))}
           </section>

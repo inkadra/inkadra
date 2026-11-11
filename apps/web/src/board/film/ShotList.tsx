@@ -36,6 +36,7 @@ import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import { blurOnEnter, ShotField, StatusChip, StatusSelect, usePresetText } from './fields.tsx';
+import { type ShotGroupBy, useShotGroupBy } from './group-by.ts';
 import {
   getFrameStatus,
   isApproved,
@@ -89,9 +90,8 @@ export function ShotList({
   const [selectedScene, setSelectedScene] = useState<string>('');
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedCast, setSelectedCast] = useState<string>('');
-  const [groupBy, setGroupBy] = useState<'scene' | 'location' | 'status' | 'setup' | 'none'>(
-    'scene',
-  );
+  // This person's grouping, shared with the schedule and kept on the server (decision 0115).
+  const [groupBy, setGroupBy] = useShotGroupBy();
   // The setups of the set plans each shot belongs to (decision 0104), computed, never stored.
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const setups = useMemo(() => shotSetups([...snapshot.byId.values()], t), [snapshot, t]);
@@ -563,7 +563,7 @@ export function ShotList({
         className="ink-input"
         value={groupBy}
         aria-label={t('film.list.groupBy')}
-        onChange={(e) => setGroupBy(e as 'scene' | 'location' | 'status' | 'setup' | 'none')}
+        onChange={(e) => setGroupBy(e as ShotGroupBy)}
       >
         <option value="scene">
           {t('film.list.groupBy')}: {t('film.list.groupScene')}

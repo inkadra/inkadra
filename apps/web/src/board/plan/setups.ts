@@ -156,3 +156,22 @@ export function groupBySetup<T extends { id: string }>(
   const out = [...groups.values()].sort((a, b) => (a.setup?.order ?? 0) - (b.setup?.order ?? 0));
   return loose.length ? [...out, { setup: null, shots: loose }] : out;
 }
+
+/**
+ * The shot blocks of a shooting day under their setups, in the day's order (the schedule's
+ * Block tab, decision 0115). Blocks of no frame, of a frame that is gone and of an omitted scene
+ * (decision 0082) are left out.
+ */
+export function dayBySetup<B extends { shotId: string | null }>(
+  blocks: readonly B[],
+  byId: ReadonlyMap<string, Element>,
+  setups: ReadonlyMap<string, readonly ShotSetup[]>,
+): Array<{ setup: ShotSetup | null; shots: Array<{ id: string; block: B }> }> {
+  const shots = blocks.flatMap((block) => {
+    const frame = block.shotId ? byId.get(block.shotId) : undefined;
+    const scene = frame?.parent ? byId.get(frame.parent) : undefined;
+    if (frame?.type !== 'frame' || (scene?.type === 'scene' && scene.omitted)) return [];
+    return [{ id: frame.id, block }];
+  });
+  return shots.length ? groupBySetup(shots, setups) : [];
+}

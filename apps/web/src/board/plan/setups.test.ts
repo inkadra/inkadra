@@ -2,7 +2,7 @@
 import type { Element, PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { expect, it } from 'vitest';
-import { groupBySetup, type ShotSetup, setupChanges, shotSetups } from './setups.ts';
+import { dayBySetup, groupBySetup, type ShotSetup, setupChanges, shotSetups } from './setups.ts';
 
 const icon = (id: string, kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
   id: id.padEnd(13, 'A'),
@@ -92,4 +92,20 @@ it('groups shots under their setups in the order of the plans, shots in none las
   ]);
   // No plans: no setup group, all shots under the plain heading.
   expect(groupBySetup([{ id: 's1' }], new Map())).toEqual([{ setup: null, shots: [{ id: 's1' }] }]);
+});
+
+it("puts a day's shot blocks under their setups, leaving out omitted scenes and other blocks", () => {
+  const card = { x: 0, y: 0, w: 100, z: 'a0', createdBy: null, createdAt: 1 };
+  const byId = new Map<string, Element>([
+    ['s1', { ...card, id: 's1', type: 'scene', parent: null, number: '1' } as Element],
+    ['s2', { ...card, id: 's2', type: 'scene', parent: null, number: '2', omitted: true } as Element],
+    ['f1', { ...card, id: 'f1', type: 'frame', parent: 's1' } as Element],
+    ['f2', { ...card, id: 'f2', type: 'frame', parent: 's2' } as Element],
+  ]);
+  const setup: ShotSetup = { planId: 'p', name: '1', plan: 'Plan', order: 0 };
+  const blocks = [{ shotId: 'f2' }, { shotId: null }, { shotId: 'gone' }, { shotId: 'f1' }];
+  expect(dayBySetup(blocks, byId, new Map([['f1', [setup]]]))).toEqual([
+    { setup, shots: [{ id: 'f1', block: { shotId: 'f1' } }] },
+  ]);
+  expect(dayBySetup([{ shotId: 'f2' }], byId, new Map())).toEqual([]);
 });
