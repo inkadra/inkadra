@@ -62,8 +62,7 @@ footprint, the prompter's glass. A ring light's hole is the paper; a gel keeps i
 vehicles; 2 stands, supports and track; 3 lights, camera and grip; 4 people; 5 labels, measures
 and notes (the Notes layer). An attached icon draws over its base; within a tier the plan's order
 holds. An icon's optional `tier` (0 to 5) is what Bring forward and Send back set. Beams, cones
-and blocking moves draw between tiers 1 and 2; numbers and labels last. Hit testing follows the
-same order (`planStack`). Strokes and shapes not on Notes are tier 0, so texts and measures now
+and blocking moves draw between tiers 1 and 2; numbers and labels last. Hit testing follows the same order (`planStack`), except that a measure yields the click to the icon its end sits on. Strokes and shapes not on Notes are tier 0, so texts and measures now
 draw over icons.
 
 **Attachments.** An icon may carry `on`, the id of the icon it is attached to. What attaches to
