@@ -21,7 +21,20 @@ import * as Y from 'yjs';
 import { currentElements, keyAtEnd } from './board.ts';
 import { shapeHit, strokeHit } from './film.ts';
 import type { Point } from './geometry.ts';
-import { BEAM_KINDS, categoryOf, GLYPH_FACING, glyphBox, glyphOf, isSized } from './plan-icons.ts';
+import {
+  BEAM_KINDS,
+  categoryOf,
+  DEFAULT_METRES,
+  GLOW_KINDS,
+  GLYPH_FACING,
+  glyphBox,
+  glyphOf,
+  iconGlyph,
+  isSized,
+  kindTier,
+  NOMINAL_SCALE,
+  type PlanTier,
+} from './plan-icons.ts';
 
 /**
  * Set plans (decision 0062): strokes and shapes as on frame drawings, plus set icons. Points
@@ -102,11 +115,13 @@ export function iconCentre(icon: Pick<PlanIcon, 'x' | 'y'>): Point {
 }
 
 /** Width and depth of an icon's drawing, unturned, in view units. */
-export function iconSize(icon: Pick<PlanIcon, 'kind' | 'size' | 'percent' | 'w' | 'h'>): {
+export function iconSize(
+  icon: Pick<PlanIcon, 'kind' | 'size' | 'percent' | 'w' | 'h'> & Partial<Pick<PlanIcon, 'pose'>>,
+): {
   w: number;
   h: number;
 } {
-  const box = glyphBox(glyphOf(icon.kind));
+  const box = glyphBox(iconGlyph(icon));
   if (isSized(icon.kind) && icon.w && icon.h) return { w: icon.w, h: icon.h };
   const symbol = icon.percent
     ? (icon.percent / 100) * SYMBOL_SIZES.M
@@ -114,6 +129,28 @@ export function iconSize(icon: Pick<PlanIcon, 'kind' | 'size' | 'percent' | 'w' 
   const long = isSized(icon.kind) ? 64 : symbol;
   const k = long / Math.max(box.w, box.h);
   return { w: icon.w ?? box.w * k, h: icon.h ?? box.h * k };
+}
+
+/**
+ * The size an icon of `kind` lands at (decision 0104): its real size in DEFAULT_METRES through
+ * the plan's `scale`, or through NOMINAL_SCALE on a plan without one, so icons keep their
+ * proportions to each other. Symbols get a `percent`, sized kinds a width and a depth.
+ */
+export function defaultIconSize(
+  kind: PlanIcon['kind'],
+  scale?: number,
+): Pick<PlanIcon, 'percent'> | Pick<PlanIcon, 'w' | 'h'> {
+  const k = scale ?? NOMINAL_SCALE;
+  const metres = DEFAULT_METRES[kind];
+  const [long, short] = typeof metres === 'number' ? [metres, metres] : metres;
+  if (isSized(kind)) {
+    const box = glyphBox(glyphOf(kind));
+    const [w, h] = box.w >= box.h ? [long, short] : [short, long];
+    const size = (m: number) => Math.round(Math.min(4000, Math.max(1, m * k)) * 10) / 10;
+    return { w: size(w), h: size(h) };
+  }
+  const percent = Math.round(((long * k) / SYMBOL_SIZES.M) * 100);
+  return { percent: Math.min(SYMBOL_PERCENT.max, Math.max(SYMBOL_PERCENT.min, percent)) };
 }
 
 /** A symbol's size in percent of medium: S and L of older plans read as 73 % and 136 %. */
@@ -147,7 +184,7 @@ export function iconTransform(icon: PlanIcon): {
   sy: number;
   angle: number;
 } {
-  const box = glyphBox(glyphOf(icon.kind));
+  const box = glyphBox(iconGlyph(icon));
   const size = iconSize(icon);
   return {
     centre: iconCentre(icon),
@@ -201,7 +238,8 @@ export function iconCone(
   icon: PlanIcon,
   sensor?: PlanSensor,
 ): { points: [Point, Point, Point]; angle: number; reach: number; beam: boolean } | null {
-  const beam = BEAM_KINDS.has(icon.kind);
+  // A modifier of version 15 that is attached to a light lends it its light (decision 0104).
+  const beam = BEAM_KINDS.has(icon.kind) && !icon.on;
   if (!beam && icon.kind !== 'camera') return null;
   const angle = beam ? (icon.beam ?? DEFAULT_BEAM) : lensAngle(icon.lens ?? DEFAULT_LENS, sensor);
   const reach = icon.reach ?? (beam ? DEFAULT_REACH.beam : DEFAULT_REACH.cone);
@@ -226,6 +264,30 @@ export function coneEnd(icon: PlanIcon, sensor?: PlanSensor): Point | null {
   if (!cone) return null;
   const [, a, b] = cone.points;
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+/**
+ * The glow of a light that shines all around (a lantern, a practical, a candle): a circle round
+ * its centre, `reach` view units wide (DEFAULT_GLOW without one). Null for other icons.
+ */
+export function iconGlow(icon: PlanIcon): { centre: Point; radius: number } | null {
+  if (!GLOW_KINDS.has(icon.kind)) return null;
+  const size = iconSize(icon);
+  return {
+    centre: iconCentre(icon),
+    radius: icon.reach ?? Math.max(DEFAULT_GLOW, Math.max(size.w, size.h) * 1.5),
+  };
+}
+const DEFAULT_GLOW = 60;
+
+/**
+ * How warm a light's colour temperature is, from 0 (cool, 6500 K and above) to 1 (warm, 2000 K
+ * and below), to tint its beam between the palette's blue and orange; null without a `kelvin`
+ * (the beam keeps the icon's colour).
+ */
+export function beamWarmth(kelvin: number | undefined): number | null {
+  if (kelvin === undefined) return null;
+  return Math.min(1, Math.max(0, (6500 - kelvin) / 4500));
 }
 
 /** The icon with the end of its cone dragged to `p` (view units): only its length changes. */
@@ -636,6 +698,83 @@ export function itemBox(item: PlanItem): { x: number; y: number; w: number; h: n
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 }
 
+// Attachments and stacking -------------------------------------------------------
+
+/**
+ * The ids with every icon attached to them, directly or through another (a light on a stand with
+ * its softbox): what moves, turns, is copied and deleted with them (decision 0104). An `on` that
+ * points at nothing, or round in a loop, attaches to nothing.
+ */
+export function withAttached(icons: readonly PlanIcon[], ids: Iterable<string>): Set<string> {
+  const out = new Set(ids);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const icon of icons)
+      if (icon.on && !out.has(icon.id) && out.has(icon.on)) {
+        out.add(icon.id);
+        grew = true;
+      }
+  }
+  return out;
+}
+
+/** How deep an icon is attached: 0 free, 1 on a free base, 2 on an attached one… */
+export function attachDepth(icon: PlanIcon, byId: ReadonlyMap<string, PlanIcon>): number {
+  let depth = 0;
+  let at: PlanIcon | undefined = icon;
+  const seen = new Set<string>();
+  while (at?.on && !seen.has(at.id) && depth < 16) {
+    seen.add(at.id);
+    at = byId.get(at.on);
+    if (!at) break;
+    depth++;
+  }
+  return depth;
+}
+
+/** The stacking tier of an item: its own `tier`, its kind's, Notes on top, other drawing at 0. */
+export function itemTier(item: PlanItem): PlanTier | number {
+  if ('x' in item) return item.tier ?? kindTier(item.kind);
+  return layerOf(item) === 'notes' ? 5 : 0;
+}
+
+export interface PlanStackEntry {
+  ref: PlanItemRef;
+  item: PlanItem;
+  tier: number;
+}
+
+/**
+ * The items of a plan in drawing order (decision 0104): by tier (background and walls, furniture,
+ * supports, lights and camera and grip, people, notes), an attached icon over its base, strokes
+ * under shapes under icons, then their order in the plan. Items on `hidden` layers are left out.
+ * Renderers draw beams and blocking moves between tier 1 and tier 2, labels last.
+ */
+export function planStack(
+  plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
+  hidden?: readonly string[],
+): PlanStackEntry[] {
+  const byId = new Map((plan.icons ?? []).map((i) => [i.id, i]));
+  const rank = { strokes: 0, shapes: 1, icons: 2 } as const;
+  return planItems(plan)
+    .map((e, index) => ({
+      ...e,
+      tier: itemTier(e.item),
+      depth: e.ref.kind === 'icons' ? attachDepth(e.item as PlanIcon, byId) : 0,
+      index,
+    }))
+    .filter((e) => !hidden?.includes(layerOf(e.item)))
+    .sort(
+      (a, b) =>
+        a.tier - b.tier ||
+        a.depth - b.depth ||
+        rank[a.ref.kind] - rank[b.ref.kind] ||
+        a.index - b.index,
+    )
+    .map(({ ref, item, tier }) => ({ ref, item, tier }));
+}
+
 // Scale and measures --------------------------------------------------------------
 
 /**
@@ -802,7 +941,12 @@ const onlySet = <T extends PlanItem>(items: readonly T[] | undefined) =>
  */
 export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>>(
   plan: P,
-  base: Pick<PlanElement, 'strokes' | 'shapes' | 'icons' | 'scale' | 'grid' | 'rulers'> | undefined,
+  base:
+    | Pick<
+        PlanElement,
+        'strokes' | 'shapes' | 'icons' | 'scale' | 'grid' | 'rulers' | 'walls' | 'openings'
+      >
+    | undefined,
 ): P {
   if (!base) return plan;
   // The Set is the base's, and so is its scale: walls measured once, metres in every variant.
@@ -815,6 +959,9 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
     strokes: [...onlySet(base.strokes), ...notSet(plan.strokes)],
     shapes: [...onlySet(base.shapes), ...notSet(plan.shapes)],
     icons: [...onlySet(base.icons), ...notSet(plan.icons)],
+    // Walls and their openings are the Set: the base's (decision 0104).
+    walls: base.walls,
+    openings: base.openings,
   };
 }
 
@@ -988,8 +1135,8 @@ export function updatePlanItems(
 }
 
 /**
- * Removes items. Measures attached to a removed icon keep that end where the icon stood and
- * stop following it.
+ * Removes items, and the icons attached to removed icons. Measures attached to a removed icon
+ * keep that end where the icon stood and stop following it.
  */
 export function removePlanItems(
   doc: Y.Doc,
@@ -997,9 +1144,15 @@ export function removePlanItems(
   ids: Iterable<string>,
   origin?: unknown,
 ): void {
-  const doomed = new Set(ids);
   doc.transact(() => {
     const icons = listOf(doc, planId, 'icons');
+    // What is attached to a removed icon goes with it (decision 0104).
+    const doomed = withAttached(
+      (icons?.toArray() ?? []).map((m) =>
+        m instanceof Y.Map ? (m.toJSON() as PlanIcon) : (m as PlanIcon),
+      ),
+      ids,
+    );
     const shapes = listOf(doc, planId, 'shapes');
     const gone = (icons?.toArray() ?? [])
       .map((m) => (m instanceof Y.Map ? (m.toJSON() as PlanIcon) : (m as PlanIcon)))
@@ -1030,7 +1183,8 @@ export function removePlanItems(
 /**
  * Copies items next to the originals, `offset` view units away. Returns the copies. Groups
  * among them become new groups of the copies; an attached measure is copied where it is drawn,
- * detached, so it does not land on the original.
+ * detached, so it does not land on the original. Icons attached to a copied icon are copied
+ * with it and attached to its copy; a copy whose base was not copied stands free.
  */
 export function duplicatePlanItems(
   doc: Y.Doc,
@@ -1046,16 +1200,32 @@ export function duplicatePlanItems(
     if (!groups.has(g)) groups.set(g, newElementId());
     return groups.get(g);
   };
+  const icons = plan.icons ?? [];
+  const iconIds = withAttached(
+    icons,
+    refs.filter((r) => r.kind === 'icons').map((r) => r.id),
+  );
+  const all = [
+    ...refs.filter((r) => r.kind !== 'icons'),
+    // In the plan's order, so a base is copied before what is attached to it.
+    ...icons.filter((i) => iconIds.has(i.id)).map((i) => ({ kind: 'icons' as const, id: i.id })),
+  ];
+  const fresh = new Map(all.map((r) => [r.id, newElementId()]));
   doc.transact(() => {
-    for (const ref of refs) {
+    for (const ref of all) {
       const found = planItem(plan, ref);
       const list = listOf(doc, plan.id, ref.kind);
       if (!found || !list || list.length >= LIMITS[ref.kind]) continue;
       const item =
         'x0' in found && found.kind === 'measure' ? measureEnds(found, plan.icons) : found;
-      const copy = { ...moveItem(item, offset), id: newElementId() } as PlanItem;
+      const copy = { ...moveItem(item, offset), id: fresh.get(ref.id) as string } as PlanItem;
       const group = regroup(item.group);
       if (group) copy.group = group;
+      if ('x' in copy && copy.on) {
+        const base = iconIds.has(copy.on) ? fresh.get(copy.on) : undefined;
+        if (base) copy.on = base;
+        else delete copy.on;
+      }
       if (ref.kind === 'icons') {
         const map = new Y.Map<unknown>();
         for (const [key, value] of Object.entries(copy))

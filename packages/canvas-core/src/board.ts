@@ -10,6 +10,8 @@ import {
   getSchemaVersion,
   hasStoredShape,
   MAX_PLAN_ICONS,
+  MAX_PLAN_OPENINGS,
+  MAX_PLAN_WALLS,
   MAX_SHAPES,
   MAX_STROKES,
   newElementId,
@@ -786,7 +788,10 @@ function clipboardBase(base: unknown): PlanBase | null {
   if (
     !list(b.strokes, MAX_STROKES) ||
     !list(b.shapes, MAX_SHAPES) ||
-    !list(b.icons, MAX_PLAN_ICONS)
+    !list(b.icons, MAX_PLAN_ICONS) ||
+    // Walls and openings since version 23; a base copied by an older build has none.
+    (b.walls !== undefined && !list(b.walls, MAX_PLAN_WALLS)) ||
+    (b.openings !== undefined && !list(b.openings, MAX_PLAN_OPENINGS))
   )
     return null;
   for (const key of ['scale', 'grid', 'rulers'] as const)
@@ -904,6 +909,8 @@ function elementCopy(
         copy.strokes = [...base.strokes, ...(copy.strokes ?? [])];
         copy.shapes = [...base.shapes, ...(copy.shapes ?? [])];
         copy.icons = [...base.icons, ...(copy.icons ?? [])];
+        if (base.walls?.length) copy.walls = [...base.walls, ...(copy.walls ?? [])];
+        if (base.openings?.length) copy.openings = [...base.openings, ...(copy.openings ?? [])];
         if (base.scale && !copy.scale)
           Object.assign(copy, { scale: base.scale, grid: base.grid, rulers: base.rulers });
       }
@@ -988,7 +995,7 @@ function storedCopy(
     type === 'frame'
       ? ['strokes', 'shapes']
       : type === 'plan'
-        ? ['strokes', 'shapes', 'icons']
+        ? ['strokes', 'shapes', 'icons', 'walls', 'openings']
         : [];
   for (const key of lists) if (!copy.has(key)) copy.set(key, new Y.Array());
   // A variant with its base's Set within the plan's limits, as the validated paste cuts it.
@@ -997,6 +1004,8 @@ function storedCopy(
       ['strokes', MAX_STROKES],
       ['shapes', MAX_SHAPES],
       ['icons', MAX_PLAN_ICONS],
+      ['walls', MAX_PLAN_WALLS],
+      ['openings', MAX_PLAN_OPENINGS],
     ] as const) {
       const list = copy.get(key);
       if (list instanceof Y.Array && list.length > max) list.delete(max, list.length - max);
