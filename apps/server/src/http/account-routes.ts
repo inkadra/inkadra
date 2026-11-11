@@ -13,6 +13,7 @@ import {
   DenyAppAuthorization,
   ExchangeAppCode,
   Id,
+  TokenProofRequest,
   UploadAvatar,
   z,
 } from '@inkadra/shared';
@@ -42,6 +43,7 @@ import { type Mailer, securityNotification } from '../mailer.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
 import { largestFiles, myStorage } from '../storage-limits.ts';
+import { proofKeyFor, proveNonce } from '../token-proof.ts';
 import { issueToken, revokeTokens, toPersonalToken } from '../tokens.ts';
 import { toUser } from './api-routes.ts';
 import { requireActor, requireSession, toHeaders } from './auth-routes.ts';
@@ -102,6 +104,9 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   const mailInstance = { instanceName: config.INSTANCE_NAME, publicUrl: config.PUBLIC_URL };
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const exchangeLimiter = new RateLimiter(20, 60_000);
+  // The proof needs no token: limited per address and per key (decision 0113).
+  const proofLimiter = new RateLimiter(30, 60_000);
+  const proofKeyLimiter = new RateLimiter(10, 60_000);
 
   // A normalized avatar belongs to the account row, not project storage. Replacements
   // are atomic and bounded to one image; failed writes cannot leave orphan objects.
@@ -315,6 +320,30 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     );
     if (removed.length === 0) throw new HttpError('not_found', 'Token not found.');
     return reply.status(204).send();
+  });
+
+  // Token proof (decision 0113) -------------------------------------------------
+
+  app.post(v1('/me/token-proof-key'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    if (!actor.tokenId) throw new HttpError('forbidden', 'Only an app token has a proof key.');
+    const key = await proofKeyFor(db, config.AUTH_SECRET, actor.tokenId);
+    if (key === 'not_app') throw new HttpError('forbidden', 'Only an app token has a proof key.');
+    if (!key) throw new HttpError('unauthorized', 'The token is not valid any more.');
+    reply.header('cache-control', 'no-store');
+    return key;
+  });
+
+  // No token: this is what a client asks before it decides to send one. Reads only.
+  app.post(v1('/token-proof'), { bodyLimit: 1024 }, async (req, reply) => {
+    proofLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
+    const input = TokenProofRequest.parse(req.body ?? {});
+    proofKeyLimiter.require(input.keyId, 'Too many requests: wait a minute.');
+    const proof = await proveNonce(db, config.AUTH_SECRET, input.keyId, input.nonce);
+    // Unknown, revoked and expired keys alike: one query, one answer, nothing logged about them.
+    if (!proof) throw new HttpError('not_found', 'Unknown key.');
+    reply.header('cache-control', 'no-store');
+    return proof;
   });
 
   // Authorization of the official apps (code + PKCE) -----------------------------

@@ -156,6 +156,10 @@ export const personalToken = pgTable(
     lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     createdAt: createdAt(),
+    /** Token proof (decision 0113): names the key; null until the token asks for one. */
+    proofKeyId: text('proof_key_id').unique(),
+    /** The proof key, sealed with AUTH_SECRET. */
+    proofKey: text('proof_key'),
   },
   (t) => [index('personal_token_user_idx').on(t.userId)],
 );
