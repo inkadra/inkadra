@@ -103,14 +103,22 @@ jobs:
           restore-keys: apt-e2e-ubuntu-24.04-
       - name: Media tools of the standard image
         if: matrix.postgres == 18
-        run: |
-          # A mirror can hang for many minutes, past the job's timeout: try again instead.
+        # The end-to-end shards run the same script.
+        run: &media-tools |
+          # The mirrors can stop resolving for many minutes, and then every index fetch waits 20 s:
+          # first install offline, from the cached packages and the index the image ships.
+          if sudo apt-get install -y -qq --no-install-recommends --no-download ffmpeg libimage-exiftool-perl poppler-utils; then
+            echo "Installed from the cached packages, without the network."
+            exit 0
+          fi
+          echo "The cache lacks some packages: updating the index."
           for attempt in 1 2 3; do
-            sudo timeout 90 apt-get update -qq &&
-              sudo timeout 180 apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils && break
-            [ "$attempt" -lt 3 ] || exit 1
+            # A failed or slow update keeps the old index; the install decides.
+            sudo timeout 90 apt-get update -qq || echo "apt-get update failed (attempt $attempt)."
+            sudo timeout 180 apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils && exit 0
             sleep 15
           done
+          exit 1
       - run: pnpm turbo run test --filter=@inkadra/server -- "--shard=$SHARD/2"
         env:
           SHARD: ${{ matrix.shard }}
@@ -186,14 +194,7 @@ jobs:
       - run: pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium
       # media-cards.spec.ts checks page counts, codecs and playable copies made by these.
       - name: Media tools of the standard image
-        run: |
-          # A mirror can hang for many minutes, past the job's timeout: try again instead.
-          for attempt in 1 2 3; do
-            sudo timeout 90 apt-get update -qq &&
-              sudo timeout 180 apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils && break
-            [ "$attempt" -lt 3 ] || exit 1
-            sleep 15
-          done
+        run: *media-tools
       - name: Run duration-balanced end-to-end shard
         run: |
           node scripts/e2e-shards.mjs "$SHARD" 6 > /tmp/e2e-files
