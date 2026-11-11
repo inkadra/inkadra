@@ -20,8 +20,8 @@ import { type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
-import type { useBackgroundPicker } from './PlanBackground.tsx';
 import { NumberField } from './NumberField.tsx';
+import type { useBackgroundPicker } from './PlanBackground.tsx';
 import { setSummary } from './PlanWalls.tsx';
 
 type Choice = 'reuse' | 'draw' | 'trace' | 'scan' | `room:${RoomPreset}`;
@@ -145,7 +145,11 @@ export function PlanStart({
         : choice === 'trace'
           ? t('board.plan.start.traceGo')
           : t('board.plan.start.roomGo');
-  const tile = (value: Choice, children: ReactNode, opts: { label?: string; className?: string; disabled?: boolean } = {}) => (
+  const tile = (
+    value: Choice,
+    children: ReactNode,
+    opts: { label?: string; className?: string; disabled?: boolean } = {},
+  ) => (
     <ChoiceTile
       variant="card"
       name={id}

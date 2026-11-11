@@ -86,7 +86,14 @@ describe('placing openings', () => {
     // On the second side.
     expect(openingPlace(room, { x: 505, y: 250 }, 80)).toBeCloseTo(550, 0);
     // A side shorter than the opening takes it in its middle.
-    const short = { ...room, points: toWallPoints([{ x: 0, y: 0 }, { x: 40, y: 0 }]), closed: false };
+    const short = {
+      ...room,
+      points: toWallPoints([
+        { x: 0, y: 0 },
+        { x: 40, y: 0 },
+      ]),
+      closed: false,
+    };
     expect(openingPlace(short, { x: 5, y: 0 }, 80)).toBeCloseTo(20, 0);
   });
 
@@ -100,7 +107,13 @@ describe('placing openings', () => {
   });
 
   it('moves a corner and keeps each opening at its share of its own side', () => {
-    const door: PlanOpening = { id: 'doorAAAAAAAAA', wall: room.id, kind: 'door', at: 550, width: 80 };
+    const door: PlanOpening = {
+      id: 'doorAAAAAAAAA',
+      wall: room.id,
+      kind: 'door',
+      at: 550,
+      width: 80,
+    };
     const { wall, openings } = moveWallCorner(room, 1, { x: 700, y: 100 }, [door]);
     expect(near(wallPoints(wall)[1] as { x: number; y: number }, { x: 700, y: 100 })).toBe(true);
     expect(wallLength(wall)).toBeGreaterThan(wallLength(room));
@@ -147,11 +160,24 @@ describe('reusing the set of another plan', () => {
   const diner = add('location', { name: "Rosa's diner" });
   const garage = add('location', { name: 'Garage' });
   const scene = add('scene', { number: '5', title: 'Coffee', location: " rosa's DINER " });
-  const wall = { points: toWallPoints([{ x: 0, y: 0 }, { x: 100, y: 0 }]), thickness: 10 };
+  const wall = {
+    points: toWallPoints([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ]),
+    thickness: 10,
+  };
   const empty = add('plan', { locationId: diner.id });
-  const sameCard = add('plan', { locationId: diner.id, title: 'Scene 5', walls: [{ ...wall, id: 'wallAAAAAAAAA' }] });
+  const sameCard = add('plan', {
+    locationId: diner.id,
+    title: 'Scene 5',
+    walls: [{ ...wall, id: 'wallAAAAAAAAA' }],
+  });
   const byScene = add('plan', { sceneIds: [scene.id], walls: [{ ...wall, id: 'wallBBBBBBBBB' }] });
-  const otherPlace = add('plan', { locationId: garage.id, walls: [{ ...wall, id: 'wallCCCCCCCCC' }] });
+  const otherPlace = add('plan', {
+    locationId: garage.id,
+    walls: [{ ...wall, id: 'wallCCCCCCCCC' }],
+  });
   const nothingOnSet = add('plan', { locationId: diner.id });
   const setup = add('plan', { locationId: diner.id, variantOf: sameCard.id });
   const all = () => listElements(doc);
@@ -201,7 +227,12 @@ describe('reusing the set of another plan', () => {
 describe('the background picture', () => {
   it('lies over the drawing until it is placed', () => {
     expect(backgroundBox({ assetId: 'a' })).toEqual({ x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H });
-    expect(backgroundBox({ assetId: 'a', x: 1, y: 2, w: 3, h: 4 })).toEqual({ x: 1, y: 2, w: 3, h: 4 });
+    expect(backgroundBox({ assetId: 'a', x: 1, y: 2, w: 3, h: 4 })).toEqual({
+      x: 1,
+      y: 2,
+      w: 3,
+      h: 4,
+    });
   });
 
   it('fits a picture in the middle with its shape, and scales it from a corner', () => {

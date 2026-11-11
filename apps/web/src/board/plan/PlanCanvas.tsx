@@ -1164,9 +1164,16 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       role="toolbar"
       aria-label={t('board.plan.tools')}
     >
-      {toolButton('select', t('board.plan.tool.select'), 'pointer', false, () => pickTool('select'), {
-        shortcut: 'V',
-      })}
+      {toolButton(
+        'select',
+        t('board.plan.tool.select'),
+        'pointer',
+        false,
+        () => pickTool('select'),
+        {
+          shortcut: 'V',
+        },
+      )}
       {wallButtons}
       <span className="plan-float__sep" aria-hidden="true" />
       {undoButton}
@@ -1567,8 +1574,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       ).length
     : 0;
   const armedName = armed && t(`board.plan.icons.${armed}`);
-  const isEmpty =
-    planItems(drawn).length === 0 && !(drawn.walls?.length ?? 0) && !drawn.background;
+  const isEmpty = planItems(drawn).length === 0 && !(drawn.walls?.length ?? 0) && !drawn.background;
   const hiddenList = [...ed.myHidden];
   const lifted = new Set(selection.map((r) => r.id));
   // A setup's base drawn faintly behind it: its own lights, cameras and people.

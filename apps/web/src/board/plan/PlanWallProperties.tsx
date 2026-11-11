@@ -29,7 +29,8 @@ export function PlanWallProperties({ ed }: { ed: Ed }) {
     ref?.kind === 'walls'
       ? walls.find((w) => w.id === ref.id)
       : walls.find((w) => w.id === ed.shown.openings?.find((o) => o.id === ref?.id)?.wall);
-  const opening = ref?.kind === 'openings' ? ed.shown.openings?.find((o) => o.id === ref.id) : undefined;
+  const opening =
+    ref?.kind === 'openings' ? ed.shown.openings?.find((o) => o.id === ref.id) : undefined;
   if (!ref || !wall) return null;
   const scale = ed.wallScale;
   const label = (target: PlanWall | PlanOpening, key: 'walls' | 'openings') => (

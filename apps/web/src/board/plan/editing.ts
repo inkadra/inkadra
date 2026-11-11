@@ -50,7 +50,15 @@ import { iconColor } from './PlanDrawing.tsx';
 import { rememberRecent } from './PlanLibrary.tsx';
 
 export type DragKind = 'line' | 'arrow' | 'rect' | 'ellipse' | 'zone' | 'measure' | 'scale';
-export type Tool = 'select' | 'pencil' | 'text' | 'icons' | 'move' | 'walls' | 'openings' | DragKind;
+export type Tool =
+  | 'select'
+  | 'pencil'
+  | 'text'
+  | 'icons'
+  | 'move'
+  | 'walls'
+  | 'openings'
+  | DragKind;
 /** A wall or an opening, picked or being edited (decision 0109). */
 export interface WallRef {
   kind: 'walls' | 'openings';

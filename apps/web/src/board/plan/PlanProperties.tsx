@@ -47,9 +47,9 @@ import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { type Ed, isIcon, MAX_UNITS } from './editing.ts';
 import { itemName, selectionMix } from './elements.ts';
 import { NumberField } from './NumberField.tsx';
-import { PlanWallProperties } from './PlanWallProperties.tsx';
 import { selectionMenu } from './PlanCanvas.tsx';
 import { measureText, PLAN_COLORS, PlanGlyph, planCss, TEXT_SIZES } from './PlanDrawing.tsx';
+import { PlanWallProperties } from './PlanWallProperties.tsx';
 
 /** Lens presets of a camera, as on the mockup; Other takes any focal length. */
 const LENSES = [24, 35, 50, 85];

@@ -977,7 +977,9 @@ export const PlanElement = Base.extend({
       hidden: z.boolean().optional().describe('Kept but not drawn.'),
     })
     .optional()
-    .describe('A picture under the plan, a floor plan to trace; stretched over the drawing unless placed.'),
+    .describe(
+      'A picture under the plan, a floor plan to trace; stretched over the drawing unless placed.',
+    ),
   north: z
     .int()
     .min(0)

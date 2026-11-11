@@ -4,6 +4,7 @@ import type { PlanLayer } from '@inkadra/doc-schema';
 import { Icon, IconButton } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAsset } from '../assets.ts';
 import type { Ed } from './editing.ts';
 import {
   ELEMENT_LAYERS,
@@ -12,7 +13,6 @@ import {
   itemName,
   itemSummary,
 } from './elements.ts';
-import { useAsset } from '../assets.ts';
 import { PLAN_COLORS, PlanGlyph, planCss } from './PlanDrawing.tsx';
 import { setSummary } from './PlanWalls.tsx';
 
@@ -125,7 +125,9 @@ export function PlanElements({
                     icon={background.hidden ? 'eyeOff' : 'eye'}
                     aria-pressed={!!background.hidden}
                     label={t(
-                      background.hidden ? 'board.plan.background.showIt' : 'board.plan.background.hideIt',
+                      background.hidden
+                        ? 'board.plan.background.showIt'
+                        : 'board.plan.background.hideIt',
                     )}
                     onClick={() => {
                       const next = { ...background };

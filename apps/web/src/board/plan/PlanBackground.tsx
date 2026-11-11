@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
-  backgroundBox,
   type Box,
+  backgroundBox,
   fitBackground,
   PLAN_VIEW_H,
   PLAN_VIEW_W,

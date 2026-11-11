@@ -74,8 +74,7 @@ export function PlanEditor(props: PlanEditorProps) {
   const [backgroundOpen, setBackgroundOpen] = useState<CSSProperties | null>(null);
   const backgroundButton = useRef<HTMLButtonElement>(null);
   const picker = useBackgroundPicker(ed);
-  const empty =
-    planItems(drawn).length === 0 && !(drawn.walls?.length ?? 0) && !drawn.background;
+  const empty = planItems(drawn).length === 0 && !(drawn.walls?.length ?? 0) && !drawn.background;
   /** The start dialog: open on a plan with nothing on it, until a way to start is picked. */
   const [starting, setStarting] = useState(empty);
   // Something on the plan (drawn here, by undo or by someone else) closes it.
@@ -342,7 +341,13 @@ export function PlanEditor(props: PlanEditorProps) {
   );
   // The start dialog again, from the plan's menu, while the plan is still empty (decision 0109).
   const startItem = empty
-    ? [{ label: t('board.plan.start.again'), icon: 'plus' as const, action: () => setStarting(true) }]
+    ? [
+        {
+          label: t('board.plan.start.again'),
+          icon: 'plus' as const,
+          action: () => setStarting(true),
+        },
+      ]
     : [];
   const openBackground = (r: DOMRect) => {
     if (!drawn.background && !backgroundOpen && picker.can && picker.state === 'idle') {
@@ -354,7 +359,11 @@ export function PlanEditor(props: PlanEditorProps) {
         ? null
         : phone
           ? { position: 'fixed', left: 8, right: 8, bottom: 8, width: 'auto' }
-          : { position: 'fixed', right: Math.max(8, window.innerWidth - r.right), top: r.bottom + 6 },
+          : {
+              position: 'fixed',
+              right: Math.max(8, window.innerWidth - r.right),
+              top: r.bottom + 6,
+            },
     );
   };
   const backgroundPop = backgroundOpen && (

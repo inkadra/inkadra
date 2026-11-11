@@ -73,7 +73,19 @@ export function useMetres(ed: Ed) {
 }
 
 /** A dimension: a thin line with ticks from a to b, offset by `off`, its length written on it. */
-function Dim({ a, b, off, text, strong }: { a: Point; b: Point; off: number; text: string; strong?: boolean }) {
+function Dim({
+  a,
+  b,
+  off,
+  text,
+  strong,
+}: {
+  a: Point;
+  b: Point;
+  off: number;
+  text: string;
+  strong?: boolean;
+}) {
   const len = Math.hypot(b.x - a.x, b.y - a.y);
   if (len < 1) return null;
   const n = { x: (b.y - a.y) / len, y: -(b.x - a.x) / len };
@@ -109,7 +121,15 @@ function Dim({ a, b, off, text, strong }: { a: Point; b: Point; off: number; tex
 }
 
 /** The dimensions of an opening: its width, strong, and its distances to the corners of its side. */
-function OpeningDims({ wall, opening, metres }: { wall: PlanWall; opening: PlanOpening; metres: (v: number) => string }) {
+function OpeningDims({
+  wall,
+  opening,
+  metres,
+}: {
+  wall: PlanWall;
+  opening: PlanOpening;
+  metres: (v: number) => string;
+}) {
   const span = openingSpan(wall, opening);
   const corners = openingCorners(wall, opening);
   const a = pointAlongWall(wall, span.from).point;
@@ -167,7 +187,10 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
     return typedMetres > 0 ? atLength(last, end, typedMetres * ed.wallScale) : end;
   };
   const closes = (p: Point) =>
-    !!drafted && !drafted.closed && corners.length >= 3 && Math.hypot(p.x - (corners[0] as Point).x, p.y - (corners[0] as Point).y) <= CLOSE_SLOP / k;
+    !!drafted &&
+    !drafted.closed &&
+    corners.length >= 3 &&
+    Math.hypot(p.x - (corners[0] as Point).x, p.y - (corners[0] as Point).y) <= CLOSE_SLOP / k;
   const thicknessUnits = round2(metresToView(thickness, ed.wallScale));
 
   // Drawing -------------------------------------------------------------------------------
@@ -219,7 +242,11 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
   /** The typed length gives the next side, the way the pointer last pointed. */
   const commitTyped = () => {
     if (tool === 'walls' && last && typedMetres > 0) {
-      const towards = hover ?? (corners.length > 1 ? atLength(corners.at(-2) as Point, last, 1e6) : { x: last.x + 1, y: last.y });
+      const towards =
+        hover ??
+        (corners.length > 1
+          ? atLength(corners.at(-2) as Point, last, 1e6)
+          : { x: last.x + 1, y: last.y });
       corner(sideEnd(towards) ?? towards);
     }
   };
@@ -230,13 +257,18 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
     let best: { wall: PlanWall; distance: number } | null = null;
     for (const wall of walls) {
       const near = nearestOnWall(wall, p);
-      if (near.distance <= wall.thickness / 2 + WALL_SLOP / k && (!best || near.distance < best.distance))
+      if (
+        near.distance <= wall.thickness / 2 + WALL_SLOP / k &&
+        (!best || near.distance < best.distance)
+      )
         best = { wall, distance: near.distance };
     }
     if (!best) return null;
     const kind = ed.openingKind;
     const width =
-      typedMetres > 0 ? typedMetres * ed.wallScale : metresToView(DEFAULT_OPENING_METRES[kind], ed.wallScale);
+      typedMetres > 0
+        ? typedMetres * ed.wallScale
+        : metresToView(DEFAULT_OPENING_METRES[kind], ed.wallScale);
     return {
       id: 'ghostAAAAAAAA',
       wall: best.wall.id,
@@ -361,22 +393,34 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
         strokeWidth={thicknessUnits}
         className="plan-walls__side"
       />
-      <Dim a={last} b={end} off={thicknessUnits / 2 + 22} text={metres(Math.hypot(end.x - last.x, end.y - last.y))} strong />
+      <Dim
+        a={last}
+        b={end}
+        off={thicknessUnits / 2 + 22}
+        text={metres(Math.hypot(end.x - last.x, end.y - last.y))}
+        strong
+      />
       <text className="plan-walls__angle" x={last.x + 14} y={last.y - 12}>
         {`${sideAngle(last, end, before)}°`}
       </text>
     </g>
   );
   const firstCorner = corners[0];
-  const closer = tool === 'walls' && drafted && !drafted.closed && corners.length >= 3 && firstCorner && (
-    <g className="plan-walls__close">
-      <circle cx={firstCorner.x} cy={firstCorner.y} r={CLOSE_SLOP / k} />
-      <text x={firstCorner.x} y={firstCorner.y + CLOSE_SLOP / k + 16} textAnchor="middle">
-        {t(ed.phone ? 'board.plan.walls.closeTap' : 'board.plan.walls.closeClick')}
-      </text>
-    </g>
+  const closer = tool === 'walls' &&
+    drafted &&
+    !drafted.closed &&
+    corners.length >= 3 &&
+    firstCorner && (
+      <g className="plan-walls__close">
+        <circle cx={firstCorner.x} cy={firstCorner.y} r={CLOSE_SLOP / k} />
+        <text x={firstCorner.x} y={firstCorner.y + CLOSE_SLOP / k + 16} textAnchor="middle">
+          {t(ed.phone ? 'board.plan.walls.closeTap' : 'board.plan.walls.closeClick')}
+        </text>
+      </g>
+    );
+  const dot = last && tool === 'walls' && (
+    <circle className="plan-walls__dot" cx={last.x} cy={last.y} r={5 / k} />
   );
-  const dot = last && tool === 'walls' && <circle className="plan-walls__dot" cx={last.x} cy={last.y} r={5 / k} />;
   const ghostWall = ghost && walls.find((w) => w.id === ghost.wall);
   const ghostView = ghost && ghostWall && (
     <g className="plan-walls__ghost">
@@ -406,7 +450,8 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
           {(() => {
             const pts = wallPoints(pickedWall);
             const sides = pts.slice(1).map((b, i) => [pts[i] as Point, b] as const);
-            if (pickedWall.closed && pts.length > 2) sides.push([pts.at(-1) as Point, pts[0] as Point]);
+            if (pickedWall.closed && pts.length > 2)
+              sides.push([pts.at(-1) as Point, pts[0] as Point]);
             return sides.map(([a, b], i) => (
               <Dim
                 // biome-ignore lint/suspicious/noArrayIndexKey: a side is its place in the wall.
@@ -486,7 +531,9 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
         ref={typedRef}
         className="plan-walls__typed"
         inputMode="decimal"
-        aria-label={t(tool === 'openings' ? 'board.plan.walls.typedWidth' : 'board.plan.walls.typedLength')}
+        aria-label={t(
+          tool === 'openings' ? 'board.plan.walls.typedWidth' : 'board.plan.walls.typedLength',
+        )}
         placeholder={t('board.plan.walls.typeHint')}
         value={typed}
         onChange={(e) => setTyped(e.target.value.replace(/[^\d.,]/g, '').slice(0, 7))}
@@ -506,7 +553,11 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
     </div>
   );
   const palette = active && (
-    <div className="plan-float plan-walls__palette" role="toolbar" aria-label={t('board.plan.walls.openings')}>
+    <div
+      className="plan-float plan-walls__palette"
+      role="toolbar"
+      aria-label={t('board.plan.walls.openings')}
+    >
       <span className="plan-props__cap">{t('board.plan.walls.openings')}</span>
       {PLAN_OPENING_KINDS.map((kind) => (
         <button
@@ -536,7 +587,22 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
       {t('board.plan.walls.done')}
     </Button>
   );
-  return { down, pick, move, up, cancel, escape, key, done, overlay, options, palette, lockedNote, doneButton, active };
+  return {
+    down,
+    pick,
+    move,
+    up,
+    cancel,
+    escape,
+    key,
+    done,
+    overlay,
+    options,
+    palette,
+    lockedNote,
+    doneButton,
+    active,
+  };
 }
 
 export type WallTools = ReturnType<typeof useWallTools>;
@@ -561,4 +627,3 @@ export function setSummary(
 /** The thickness of a wall in centimetres at the plan's scale. */
 export const wallCentimetres = (wall: Pick<PlanWall, 'thickness'>, scale: number) =>
   Math.round((wall.thickness / scale) * 100);
-
