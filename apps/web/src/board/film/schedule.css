@@ -300,6 +300,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* "Group by: Setup": a scene's shots under their setups (decision 0115). Its own row: the
+   label does not fit beside the scene filter. */
+.schedule__filters .schedule__group-by {
+  flex-basis: 100%;
+}
 /* "Group by: Setup": a scene's shots under their setups (decision 0115). */
 .schedule__setup {
   display: grid;

@@ -231,6 +231,7 @@ export function ScheduleQueue({
             {!!setups?.size && onBySetup && (
               <Select
                 variant="quiet"
+                className="schedule__group-by"
                 aria-label={t('film.list.groupBy')}
                 value={bySetup ? 'setup' : 'scene'}
                 onChange={(value) => onBySetup(value === 'setup')}
