@@ -138,8 +138,8 @@ export const BoardRestoreQuery = z
       )
       .default(0)
       .openapi({
-      description: 'The restore count the client last confirmed: only later restores are listed.',
-    }),
+        description: 'The restore count the client last confirmed: only later restores are listed.',
+      }),
   })
   .openapi('BoardRestoreQuery');
 
