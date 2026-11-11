@@ -14,7 +14,8 @@ const release = join(root, 'release');
 const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 
 // Icons ----------------------------------------------------------------------------------
-// The logo of apps/web/public/favicon.svg (32×32 units): a light tile with two dark frames.
+// The logo of apps/web/public/favicon.svg (32×32 units) in its dark-scheme colours, the dark
+// theme's logo-tile and logo-ink (packages/ui/src/tokens.ts): a light tile with two dark frames.
 
 const TILE = [0xed, 0xed, 0xed];
 const INK = [0x0e, 0x0e, 0x10];
