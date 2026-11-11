@@ -25,6 +25,7 @@ import {
 import { type Mailer, securityNotification, sendDetached } from './mailer.ts';
 import { magicLinkMail, resetMail } from './mails.ts';
 import { ORIGIN_HEADER } from './request-origin.ts';
+import { revokeTokens as revokeStoredTokens } from './tokens.ts';
 
 /** Internal header carrying the client address from the HTTP layer to Better Auth. */
 export const CLIENT_IP_HEADER = 'x-inkadra-client-ip';
@@ -171,14 +172,14 @@ function createAuthInstance(
     user: { id: string; email: string; locale?: string | null },
     all = false,
   ) => {
-    await db
-      .delete(schema.personalToken)
-      .where(
-        and(
-          eq(schema.personalToken.userId, user.id),
-          all ? undefined : sql`${schema.personalToken.client} is null`,
-        ),
-      );
+    await revokeStoredTokens(
+      db,
+      and(
+        eq(schema.personalToken.userId, user.id),
+        all ? undefined : sql`${schema.personalToken.client} is null`,
+      ),
+      'token_revoked',
+    );
     securityNotification(mailer, user, 'password', mailInstance, deps.log);
   };
   // Invitations whose use the user-create hook counted, by the endpoint context it shares with

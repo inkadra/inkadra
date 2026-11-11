@@ -28,6 +28,7 @@ import {
   saveLimits,
   usedBytes,
 } from '../storage-limits.ts';
+import { revokeTokens } from '../tokens.ts';
 import { CHECK_NOW_MS, checkForUpdates, readUpdates } from '../updates.ts';
 import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -223,7 +224,7 @@ export function registerInstanceAdminRoutes(
         .where(eq(user.id, userId));
       if (patch.active === false) {
         await tx.delete(session).where(eq(session.userId, userId));
-        await tx.delete(personalToken).where(eq(personalToken.userId, userId));
+        await revokeTokens(tx, eq(personalToken.userId, userId), 'account_deactivated');
       }
     });
     return { ok: true };

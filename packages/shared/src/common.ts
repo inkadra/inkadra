@@ -81,4 +81,19 @@ export const OutcomeUnknown = z
   .openapi('OutcomeUnknown');
 export type OutcomeUnknown = z.infer<typeof OutcomeUnknown>;
 
+/**
+ * `details` of a 401 for a bearer token the server recognises by its exact hash (decision
+ * 0099). Unknown tokens, and revocations older than 30 days, get a 401 without details.
+ */
+export const InvalidTokenReason = z
+  .enum(['token_revoked', 'token_expired', 'account_deactivated'])
+  .openapi({
+    description:
+      'Why the token stopped working: revoked (by its owner, a password change or reset), ' +
+      'expired, or its account was deactivated. Sign in again; do not retry the request.',
+  });
+export type InvalidTokenReason = z.infer<typeof InvalidTokenReason>;
+export const InvalidToken = z.object({ reason: InvalidTokenReason }).openapi('InvalidToken');
+export type InvalidToken = z.infer<typeof InvalidToken>;
+
 export { z };

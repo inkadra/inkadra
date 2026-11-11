@@ -160,6 +160,23 @@ export const personalToken = pgTable(
   (t) => [index('personal_token_user_idx').on(t.userId)],
 );
 
+/**
+ * Hashes of revoked tokens, kept 30 days to tell their holder why (decision 0099). Revoking
+ * still deletes the `personal_token` row, so no token query can forget this table.
+ */
+export const revokedToken = pgTable(
+  'revoked_token',
+  {
+    tokenHash: text('token_hash').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    reason: text('reason', { enum: ['token_revoked', 'account_deactivated'] }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('revoked_token_revoked_at_idx').on(t.revokedAt)],
+);
+
 // Instance -------------------------------------------------------------------
 
 /** Instance-wide settings and one-time markers (key `setup`: the first account was claimed). */
