@@ -194,7 +194,8 @@ Existing HTTPS sessions keep their Secure `__Host-` cookies; no migration is nee
 `GET /api/v1/instance/version` returns the software `version`, `api` (`v1`),
 `docSchemaVersion` and `capabilities`. The initial capability names are `boards`
 (board REST operations), `comments` (board comments) and `resumable-uploads` (tus);
-`idempotent-creations` means the `Idempotency-Key` retries below are supported.
+`idempotent-creations` means the `Idempotency-Key` retries below are supported, and
+`token-invalid-reasons` that a 401 may say why a token stopped working.
 Clients must ignore unknown capability names and tolerate missing fields on older servers.
 `minClient`, when present, maps platform names to minimum client versions; no minimum
 is currently imposed. Capabilities describe implemented protocols, not a user's permissions.
@@ -227,13 +228,13 @@ long before retrying with the same creation key. Refusals because the server is 
 
 ### Recognizable invalid tokens
 
-A REST 401 with `error.code: unauthorized` may additionally contain
-`error.details.reason`: `token_revoked`, `token_expired` or `account_deactivated`.
-Only a request presenting the exact previously issued bearer token receives a reason;
-unknown tokens remain generic. Revoked token hashes and their reason are retained for
-30 days, expired tokens for 30 days after expiry, then purged by upload housekeeping.
-Only hashes are stored. Revoked rows are excluded from account token lists and limits.
-Deleting an account removes its hashes immediately. Account reactivation does not
-reactivate its old tokens. Collaboration preserves code 4401 and supplies the reason
-where recognized, including the authentication failure reason on new connections.
-These signals do not request or authorize deletion of client data.
+A REST 401 for a bearer token may add `error.details.reason` (schema `InvalidToken`):
+`token_revoked` (revoked by its owner, a password change or a reset), `token_expired` or
+`account_deactivated`. Only a request presenting the exact token the server issued gets a
+reason; unknown tokens stay generic. Revoking a token deletes it as before; its hash and
+reason go to a separate table for 30 days, then upload housekeeping purges them. Only
+hashes are stored, and deleting an account removes them at once. Reactivating an account
+does not bring its old tokens back. The collaboration socket is unchanged (4401
+`Unauthorized`): ask a REST endpoint for the reason. These signals do not request or
+authorize deletion of client data. Servers that send reasons list the
+`token-invalid-reasons` capability.

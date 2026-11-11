@@ -42,7 +42,7 @@ import { type Mailer, securityNotification } from '../mailer.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
 import { largestFiles, myStorage } from '../storage-limits.ts';
-import { issueToken, toPersonalToken } from '../tokens.ts';
+import { issueToken, revokeTokens, toPersonalToken } from '../tokens.ts';
 import { toUser } from './api-routes.ts';
 import { requireActor, requireSession, toHeaders } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -275,7 +275,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     const rows = await db
       .select()
       .from(personalToken)
-      .where(and(eq(personalToken.userId, session.user.id), isNull(personalToken.revokedAt)))
+      .where(eq(personalToken.userId, session.user.id))
       .orderBy(asc(personalToken.createdAt));
     return { items: rows.map(toPersonalToken) };
   });
@@ -288,7 +288,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     const [mine] = await db
       .select({ n: count() })
       .from(personalToken)
-      .where(and(eq(personalToken.userId, session.user.id), isNull(personalToken.revokedAt)));
+      .where(eq(personalToken.userId, session.user.id));
     if ((mine?.n ?? 0) >= 100) throw new HttpError('conflict', 'Too many tokens: revoke some.');
     const { token, row } = await issueToken(db, session.user.id, {
       name: input.name,
@@ -308,17 +308,11 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   app.delete(v1('/me/tokens/:tokenId'), async (req, reply) => {
     const actor = await requireActor(auth, req, db, true);
     const { tokenId } = TokenParams.parse(req.params);
-    const removed = await db
-      .update(personalToken)
-      .set({ revokedAt: new Date(), revocationReason: 'token_revoked' })
-      .where(
-        and(
-          eq(personalToken.id, tokenId),
-          eq(personalToken.userId, actor.id),
-          isNull(personalToken.revokedAt),
-        ),
-      )
-      .returning({ id: personalToken.id });
+    const removed = await revokeTokens(
+      db,
+      and(eq(personalToken.id, tokenId), eq(personalToken.userId, actor.id)),
+      'token_revoked',
+    );
     if (removed.length === 0) throw new HttpError('not_found', 'Token not found.');
     return reply.status(204).send();
   });

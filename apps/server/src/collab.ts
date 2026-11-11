@@ -30,7 +30,7 @@ import {
   notifyAssignment,
   validateTaskUpdate,
 } from './tasks.ts';
-import { actorFromToken, invalidTokenReason, isToken } from './tokens.ts';
+import { actorFromToken, isToken } from './tokens.ts';
 import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 
 interface Context {
@@ -142,7 +142,6 @@ export function createCollabServer(deps: {
         .where(
           and(
             eq(personalToken.id, ctx.actor.tokenId),
-            isNull(personalToken.revokedAt),
             or(isNull(personalToken.expiresAt), gt(personalToken.expiresAt, now)),
           ),
         );
@@ -176,17 +175,7 @@ export function createCollabServer(deps: {
             !(await stillSignedIn(ctx, now))
           ) {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: signed out');
-            let reason = 'Unauthorized';
-            if (ctx.actor.tokenId) {
-              const [row] = await db
-                .select()
-                .from(personalToken)
-                .where(eq(personalToken.id, ctx.actor.tokenId));
-              if (row?.revokedAt) reason = row.revocationReason ?? 'token_revoked';
-              else if (row?.expiresAt && row.expiresAt <= now) reason = 'token_expired';
-              else if (owner?.deactivatedAt) reason = 'account_deactivated';
-            }
-            connection.close({ code: 4401, reason });
+            connection.close({ code: 4401, reason: 'Unauthorized' });
             continue;
           }
           const access = await boardRole(db, ctx.actor, ctx.boardId);
@@ -272,10 +261,7 @@ export function createCollabServer(deps: {
       if (origin && !allowedOrigin(origin, requestHeaders.get(ORIGIN_HEADER) ?? '', deps.publicUrl))
         throw new Error('Origin not allowed');
       const signed = await signedIn(token, requestHeaders);
-      if (!signed) {
-        const reason = await invalidTokenReason(db, token);
-        throw Object.assign(new Error('Not signed in'), reason ? { reason } : {});
-      }
+      if (!signed) throw new Error('Not signed in');
       const { actor } = signed;
       const access = await boardRole(db, actor, boardId);
       if (!access?.role) throw new Error('Not allowed');

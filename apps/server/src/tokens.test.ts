@@ -2,12 +2,13 @@ import { fileURLToPath } from 'node:url';
 import { eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations } from './db/client.ts';
-import { personalToken, user } from './db/schema.ts';
+import { personalToken, revokedToken, user } from './db/schema.ts';
 import {
   actorFromToken,
   invalidTokenReason,
   issueToken,
-  purgeInvalidTokens,
+  purgeRevokedTokens,
+  revokeTokens,
   TOKEN_REASON_RETENTION_MS,
 } from './tokens.ts';
 
@@ -25,38 +26,45 @@ describe.skipIf(!url)('recognizable invalid tokens', () => {
     userId = owner!.id;
   });
   afterAll(() => client.end());
-  it('recognizes only exact hashes, never authenticates revoked tokens, and purges old reasons', async () => {
+
+  it('deletes revoked tokens, recognizes only exact hashes and purges old reasons', async () => {
     const issued = await issueToken(db, userId, { name: 'Device' });
     expect(await actorFromToken(db, issued.token)).toMatchObject({ id: userId });
-    await db
-      .update(personalToken)
-      .set({ revokedAt: new Date(), revocationReason: 'token_revoked' })
-      .where(eq(personalToken.id, issued.row.id));
+    await revokeTokens(db, eq(personalToken.id, issued.row.id), 'token_revoked');
+    // The token row is gone, as before: code that knows nothing of revoked_token (an older
+    // server image after a rollback) cannot authenticate it.
+    expect(await db.select().from(personalToken).where(eq(personalToken.id, issued.row.id))).toEqual(
+      [],
+    );
     expect(await actorFromToken(db, issued.token)).toBeNull();
     expect(await invalidTokenReason(db, issued.token)).toBe('token_revoked');
     expect(await invalidTokenReason(db, `${issued.token}x`)).toBeUndefined();
+    expect(await invalidTokenReason(db, 'not-a-token')).toBeUndefined();
+
     const expired = await issueToken(db, userId, {
       name: 'Expired',
       expiresAt: new Date(Date.now() - 1000),
     });
     expect(await actorFromToken(db, expired.token)).toBeNull();
     expect(await invalidTokenReason(db, expired.token)).toBe('token_expired');
+
     const active = await issueToken(db, userId, { name: 'Active' });
     await db.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, userId));
     expect(await actorFromToken(db, active.token)).toBeNull();
     expect(await invalidTokenReason(db, active.token)).toBe('account_deactivated');
+    await revokeTokens(db, eq(personalToken.id, active.row.id), 'account_deactivated');
+    await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, userId));
+    expect(await invalidTokenReason(db, active.token)).toBe('account_deactivated');
+
     const old = new Date(Date.now() - TOKEN_REASON_RETENTION_MS - 1000);
     await db
-      .update(personalToken)
+      .update(revokedToken)
       .set({ revokedAt: old })
-      .where(eq(personalToken.id, issued.row.id));
-    await db
-      .update(personalToken)
-      .set({ expiresAt: old })
-      .where(eq(personalToken.id, expired.row.id));
+      .where(eq(revokedToken.tokenHash, issued.row.tokenHash));
     expect(await invalidTokenReason(db, issued.token)).toBeUndefined();
-    await purgeInvalidTokens(db);
-    expect(await invalidTokenReason(db, expired.token)).toBeUndefined();
-    expect(await db.select().from(personalToken)).toHaveLength(1);
+    await purgeRevokedTokens(db);
+    expect((await db.select().from(revokedToken)).map((r) => r.reason)).toEqual([
+      'account_deactivated',
+    ]);
   });
 });

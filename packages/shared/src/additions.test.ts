@@ -10,6 +10,7 @@ import {
   Comment,
   DEFAULT_SHOT_CATALOGS,
   GuestSession,
+  InvalidToken,
   Notification,
   OutcomeUnknown,
   PickSummary,
@@ -229,5 +230,14 @@ describe('contract additions of API 0.5.0', () => {
     }
     expect(doc.components?.schemas).toHaveProperty('OutcomeUnknown');
     expect(doc.components?.schemas).toHaveProperty('BoardVersionConflict');
+  });
+});
+
+describe('invalid token reasons', () => {
+  it('parses the three reasons, rejects others and is documented', () => {
+    for (const reason of ['token_revoked', 'token_expired', 'account_deactivated'])
+      expect(InvalidToken.parse({ reason })).toEqual({ reason });
+    expect(InvalidToken.safeParse({ reason: 'unknown_token' }).success).toBe(false);
+    expect(buildOpenApiDocument().components?.schemas).toHaveProperty('InvalidToken');
   });
 });
