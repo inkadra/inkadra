@@ -80,6 +80,10 @@ describe('writeVersionOver', () => {
     // A restore that changes nothing is not counted (nothing an offline edit could miss).
     writeVersionOver(live, later);
     expect(getRestoreCount(live)).toBe(2);
+    // The first version carries no count: restoring it still gives 3, not 1.
+    move(4);
+    writeVersionOver(live, version);
+    expect(getRestoreCount(live)).toBe(3);
   });
 
   it('adds back, removes and reverts elements, rich text and fields', () => {

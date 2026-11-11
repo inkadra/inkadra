@@ -29,8 +29,17 @@ and it decides with the person before it sends. Servers that count advertise the
 assume no restore happened.
 
 The key is not a schema change: older clients do not read `meta.restores` and leave it alone (no
-client writes `meta` keys it does not know). It is not a permission boundary: a client could
-write it, which would only make other clients ask a needless question.
+client writes `meta` keys it does not know).
+
+The marker is advisory, not a permission boundary. The server does not stop a client from writing
+it, so any writer of the board can hide a restore from an offline client, not only cause a
+needless question: a client last saw 3, a writer sets 2, a restore brings it back to 3, and the
+client sees no difference. Such a writer can already change or delete the board's content, so
+this gives it no new power. A client therefore treats any difference, a lower value included, as
+a restore, and a server without the capability as "unknown", never as "no restore".
+
+Not built: a server check that refuses client updates touching `restores`. It is the upgrade if
+the marker ever has to hold against writers.
 
 ## Consequences
 
