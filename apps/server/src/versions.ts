@@ -16,7 +16,7 @@ import type { Logger } from 'pino';
 import * as Y from 'yjs';
 import type { CollabLimits, CollabServer } from './collab.ts';
 import type { Database } from './db/client.ts';
-import { boardDoc, boardVersion } from './db/schema.ts';
+import { boardDoc, boardRestore, boardVersion } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
 
 /**
@@ -253,8 +253,10 @@ function same(a: unknown, b: unknown): boolean {
  * a restore never shows guests a card hidden since the version was taken. Cards brought back keep
  * the flag they had in the version. Comments, reviews and picks live in Postgres and are not
  * touched.
+ *
+ * Returns the board's new restore count, or null when nothing changed and nothing was counted.
  */
-export function writeVersionOver(live: Y.Doc, version: Y.Doc): void {
+export function writeVersionOver(live: Y.Doc, version: Y.Doc): number | null {
   const now = roots(live);
   const then = roots(version);
   const lookup = (id: string) => {
@@ -263,6 +265,7 @@ export function writeVersionOver(live: Y.Doc, version: Y.Doc): void {
       ? { guestHidden: map.get(GUEST_HIDDEN) === true, parent: map.get('parent') as string | null }
       : undefined;
   };
+  let count: number | null = null;
   live.transact((tr) => {
     const hidden = [...now.elements.keys()].filter(
       (id) => then.elements.has(id) && hiddenFromGuests(id, lookup),
@@ -293,9 +296,12 @@ export function writeVersionOver(live: Y.Doc, version: Y.Doc): void {
     }
     // A restore that changed the board counts itself in the same transaction (decision 0109): a
     // client that edited the older board offline sees the count move before it sends its edits.
-    if (tr.changed.size > 0 || tr.deleteSet.clients.size > 0)
-      now.meta.set('restores', getRestoreCount(live) + 1);
+    if (tr.changed.size > 0 || tr.deleteSet.clients.size > 0) {
+      count = getRestoreCount(live) + 1;
+      now.meta.set('restores', count);
+    }
   });
+  return count;
 }
 
 export interface SaveVersion {
@@ -366,7 +372,12 @@ export function directVersionWriter(
 
     async restore({ boardId, versionId, userId, expiresAt = Date.now() + RESTORE_TIMEOUT_MS }) {
       const [row] = await db
-        .select({ state: boardVersion.state })
+        .select({
+          state: boardVersion.state,
+          kind: boardVersion.kind,
+          name: boardVersion.name,
+          createdAt: boardVersion.createdAt,
+        })
         .from(boardVersion)
         .where(and(eq(boardVersion.id, versionId), eq(boardVersion.boardId, boardId)));
       if (!row) return { ok: false, reason: 'missing' };
@@ -382,6 +393,7 @@ export function directVersionWriter(
       const connection = await collab.hocuspocus.openDirectConnection(boardDocName(boardId));
       let backupId: string | undefined;
       let written = false;
+      let count: number | null = null;
       try {
         const doc = connection.document;
         if (!doc) throw new Error('direct connection closed');
@@ -404,7 +416,7 @@ export function directVersionWriter(
               changed = current;
               return;
             }
-            writeVersionOver(live, old);
+            count = writeVersionOver(live, old);
             written = true;
           });
           if (changed) {
@@ -421,6 +433,26 @@ export function directVersionWriter(
         }
         if (!written) {
           return { ok: false, reason: 'expired' };
+        }
+        // After the document, never before: a record must not claim a restore that did not
+        // happen. If it fails the restore stands without its record (decision 0112).
+        // shortcut: one retry, then only a log line and clients say "details unknown"; a
+        // durable outbox is the upgrade if records go missing in practice.
+        if (count !== null) {
+          const record = {
+            boardId,
+            count,
+            restoredBy: userId,
+            versionId,
+            versionKind: row.kind,
+            versionName: row.name,
+            versionCreatedAt: row.createdAt,
+          };
+          try {
+            await recordRestore(db, record).catch(() => recordRestore(db, record));
+          } catch (err) {
+            log?.error({ err, boardId, count }, 'restore not recorded');
+          }
         }
         const notice: BoardNotice = { type: 'restored', versionId };
         doc.broadcastStateless(JSON.stringify(notice));
@@ -463,5 +495,38 @@ async function insertBackup(db: Database, boardId: string, userId: string, snap:
       .returning({ id: boardVersion.id });
     if (!row) throw new Error('Version insert returned nothing');
     return row.id;
+  });
+}
+
+/** Restores of a board kept in `board_restore`; older ones are removed as new ones come. */
+export const MAX_RESTORE_RECORDS = 50;
+
+/**
+ * Records a restore that changed the board (decision 0112). A record with the same count is
+ * replaced: it belongs to a restore whose document was never stored, or to a count a writer set
+ * back (decision 0109). Other records stay, whatever order they are saved in; the most recently
+ * saved ones are kept.
+ */
+export async function recordRestore(db: Database, values: typeof boardRestore.$inferInsert) {
+  await db.transaction(async (tx) => {
+    await lockBoard(tx, values.boardId);
+    await tx
+      .insert(boardRestore)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [boardRestore.boardId, boardRestore.count],
+        set: {
+          restoredBy: values.restoredBy ?? null,
+          versionId: values.versionId,
+          versionKind: values.versionKind,
+          versionName: values.versionName ?? null,
+          versionCreatedAt: values.versionCreatedAt,
+          createdAt: sql`now()`,
+        },
+      });
+    await tx.execute(sql`
+      delete from board_restore where board_id = ${values.boardId} and id not in (
+        select id from board_restore where board_id = ${values.boardId}
+        order by created_at desc, count desc limit ${MAX_RESTORE_RECORDS})`);
   });
 }

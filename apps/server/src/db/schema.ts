@@ -1093,6 +1093,34 @@ export const boardVersion = pgTable(
   ],
 );
 
+/**
+ * The last restores of each board (decision 0112), so a client that edited offline can say who
+ * restored it and to which version. The version's name and time are copied: they survive the
+ * version being renamed or pruned.
+ */
+export const boardRestore = pgTable(
+  'board_restore',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    /** `meta.restores` of the board document after this restore (decision 0109). */
+    count: integer('count').notNull(),
+    restoredBy: uuid('restored_by').references(() => user.id, { onDelete: 'set null' }),
+    /** No foreign key: the version may be pruned or deleted later. */
+    versionId: uuid('version_id').notNull(),
+    versionKind: text('version_kind', { enum: ['auto', 'named', 'restore'] }).notNull(),
+    versionName: text('version_name'),
+    versionCreatedAt: timestamp('version_created_at', { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('board_restore_count_idx').on(t.boardId, t.count),
+    index('board_restore_by_idx').on(t.restoredBy).where(sql`${t.restoredBy} is not null`),
+  ],
+);
+
 // Production planning is separate from storyboard content (decision 0022).
 export const shootingDay = pgTable(
   'shooting_day',
