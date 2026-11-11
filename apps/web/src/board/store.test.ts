@@ -191,7 +191,10 @@ it('reads the document when a card is stored under a key that is not its id', ()
   store.destroy();
 });
 
-it('hydrates cooperatively without exposing partial elements, and rereads cards changed by local and remote edits', async () => {
+// The reference board build alone takes about 4 s on a CI runner, near the 5 s default.
+it('hydrates cooperatively without exposing partial elements, and rereads cards changed by local and remote edits', {
+  timeout: 30_000,
+}, async () => {
   const { update } = generateReferenceBoard('small', 7);
   const doc = new Y.Doc();
   Y.applyUpdate(doc, update);
@@ -320,7 +323,9 @@ it('reads a large remote move in time linear in the number of cards', () => {
   expect(large / small).toBeLessThan(12);
 }, 60_000);
 
-it('finishes hydrating while one card is edited at every pause, rereading only what changed', async () => {
+it('finishes hydrating while one card is edited at every pause, rereading only what changed', {
+  timeout: 30_000,
+}, async () => {
   const { update } = generateReferenceBoard('small', 3);
   const doc = new Y.Doc();
   Y.applyUpdate(doc, update);
