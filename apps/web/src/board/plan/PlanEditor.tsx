@@ -485,6 +485,20 @@ export function PlanEditor(props: PlanEditorProps) {
     />
   );
 
+  const openExport = () =>
+    setExporting({ area: visibleArea(dialogRef.current ?? document, PLAN_VIEW_W, PLAN_VIEW_H) });
+  const exportDialog = exporting && (
+    <PlanExport
+      store={props.store}
+      plan={plan}
+      family={family}
+      scene={scenesOf(props.cards, plan.sceneIds ?? base?.sceneIds)}
+      area={exporting.area}
+      onCallSheet={callSheet}
+      onClose={() => setExporting(null)}
+    />
+  );
+
   if (phone) {
     const sheetTitle =
       ed.sheet === 'elements'
@@ -610,11 +624,15 @@ export function PlanEditor(props: PlanEditorProps) {
                 : []),
               ...(base ? [{ label: t('board.plan.rename'), action: () => setRenaming(true) }] : []),
               ...(ghostsItem.length ? [{ divider: true as const }, ...ghostsItem] : []),
+              // The phone's way to the export dialog, as the top bar's Export on a desktop.
+              { divider: true as const },
+              { label: t('board.plan.export'), icon: 'download' as const, action: openExport },
             ]}
             onClose={() => setSetupMenu(null)}
           />
         )}
         {scenePicker}
+        {exportDialog && <div className="phone-sheet">{exportDialog}</div>}
       </div>,
       document.body,
     );
@@ -685,11 +703,7 @@ export function PlanEditor(props: PlanEditorProps) {
             type="button"
             className="plan-top__btn"
             data-tour="plan-export-button"
-            onClick={() =>
-              setExporting({
-                area: visibleArea(dialogRef.current ?? document, PLAN_VIEW_W, PLAN_VIEW_H),
-              })
-            }
+            onClick={openExport}
           >
             <Icon name="download" size={16} />
             {t('board.plan.export')}
@@ -709,17 +723,7 @@ export function PlanEditor(props: PlanEditorProps) {
       </div>
       {scalePop}
       {scenePicker}
-      {exporting && (
-        <PlanExport
-          store={props.store}
-          plan={plan}
-          family={family}
-          scene={scenesOf(props.cards, plan.sceneIds ?? base?.sceneIds)}
-          area={exporting.area}
-          onCallSheet={callSheet}
-          onClose={() => setExporting(null)}
-        />
-      )}
+      {exportDialog}
     </div>,
     document.body,
   );
