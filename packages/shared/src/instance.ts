@@ -160,5 +160,17 @@ export const Diagnostics = z
 export type Diagnostics = z.infer<typeof Diagnostics>;
 
 /** Software identity is available only to signed-in users. */
-export const InstanceVersion = z.object({ version: z.string() }).openapi('InstanceVersion');
+export const InstanceVersion = z
+  .object({
+    version: z.string(),
+    api: z.string().optional().openapi({ description: 'HTTP API version, currently v1.' }),
+    docSchemaVersion: z.int().min(1).optional(),
+    minClient: z.record(z.string(), z.string()).optional().openapi({
+      description: 'Minimum client version by platform; absent when no minimum is required.',
+    }),
+    capabilities: z.array(z.string()).optional().openapi({
+      description: 'Stable feature names. Clients must ignore unknown names. Absent on older servers.',
+    }),
+  })
+  .openapi('InstanceVersion');
 export type InstanceVersion = z.infer<typeof InstanceVersion>;

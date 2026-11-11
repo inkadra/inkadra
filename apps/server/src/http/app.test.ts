@@ -85,7 +85,15 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
   it('discloses the version only after authentication', async () => {
     const response = await app.inject({ url: '/api/v1/instance/version', headers: { cookie } });
     expect(response.statusCode).toBe(200);
-    expect(response.json().version).toEqual(expect.any(String));
+    expect(response.json()).toMatchObject({
+      version: expect.any(String),
+      api: 'v1',
+      docSchemaVersion: expect.any(Number),
+      capabilities: ['boards', 'comments', 'resumable-uploads'],
+    });
+    const publicBody = (await app.inject('/api/v1/instance')).json();
+    for (const field of ['api', 'docSchemaVersion', 'minClient', 'capabilities'])
+      expect(publicBody).not.toHaveProperty(field);
   });
 
   it('closes registration after the first account', async () => {

@@ -114,7 +114,16 @@ export async function createApp(deps: AppDeps) {
                   : req.url.startsWith(`${API_PREFIX}/guest/by-token/`)
                     ? `${API_PREFIX}/guest/by-token/[redacted]`
                     : req.url;
-            return { method: req.method, url, hostname: req.hostname, remoteAddress: req.ip };
+            const client = req.headers['inkadra-client'];
+            return {
+              method: req.method,
+              url,
+              hostname: req.hostname,
+              remoteAddress: req.ip,
+              ...(typeof client === 'string' && /^[a-z][a-z0-9-]{0,31}\/[0-9][a-zA-Z0-9.+-]{0,63}$/.test(client)
+                ? { inkadraClient: client }
+                : {}),
+            };
           },
         },
       },

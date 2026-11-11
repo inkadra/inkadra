@@ -1,8 +1,10 @@
+import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
   COLLAB_PATH,
   type Health,
   type Instance,
+  type InstanceVersion,
   UpdateMe,
   type User,
 } from '@inkadra/shared';
@@ -121,7 +123,12 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
 
   app.get(v1('/instance/version'), async (req) => {
     await requireActor(auth, req, db);
-    return { version: VERSION };
+    return {
+      version: VERSION,
+      api: 'v1',
+      docSchemaVersion: CURRENT_SCHEMA_VERSION,
+      capabilities: ['boards', 'comments', 'resumable-uploads'],
+    } satisfies InstanceVersion;
   });
 
   app.get(v1('/me'), async (req) => {
