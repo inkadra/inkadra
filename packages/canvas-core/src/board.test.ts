@@ -132,7 +132,7 @@ describe('board operations', () => {
     addTodoItem(doc, a.id, 'Sopralluogo');
     const data = JSON.parse(JSON.stringify(copyElements(doc, [a.id])));
     const other = setup();
-    const [pasted] = pasteElements(other, data, { x: 0, y: 0 }, opts);
+    const [pasted] = pasteElements(other, data, { x: 0, y: 0 }, opts).ids;
     const el = listElements(other)[0]!;
     expect(el.id).toBe(pasted);
     expect(el.x).toBe(0);
@@ -252,7 +252,7 @@ it('keeps contextual appearance and image strokes in duplicate and clipboard cop
     expect(listElements(doc).find((card) => card.id === duplicate)).toMatchObject(data);
     const target = setup();
     const clipboard = JSON.parse(JSON.stringify(copyElements(doc, [original.id])));
-    const [pasted] = pasteElements(target, clipboard, { x: 0, y: 0 }, opts);
+    const [pasted] = pasteElements(target, clipboard, { x: 0, y: 0 }, opts).ids;
     expect(listElements(target).find((card) => card.id === pasted)).toMatchObject(data);
     expect(validateBoardDoc(target)).toEqual([]);
   }

@@ -358,6 +358,17 @@ export const FrameShape = z.object({
 export type FrameShape = z.infer<typeof FrameShape>;
 
 /**
+ * Lists read item by item that leave out the items they cannot read, with their item schema and
+ * the length they keep: the strict check (strict.ts) walks the items and notices the left-out ones.
+ */
+const LENIENT_LISTS = new WeakMap<z.ZodType, { item: z.ZodType; max: number }>();
+
+/** Item schema and kept length of a list that leaves out the items it cannot read. */
+export function lenientListOf(schema: z.ZodType): { item: z.ZodType; max: number } | undefined {
+  return LENIENT_LISTS.get(schema);
+}
+
+/**
  * Shapes are read one by one: a shape this client cannot read (a kind added later) is left out
  * instead of making the whole frame invalid.
  */
@@ -370,6 +381,7 @@ const FrameShapes = z
       return parsed.success ? [parsed.data] : [];
     }),
   );
+LENIENT_LISTS.set(FrameShapes, { item: FrameShape, max: MAX_SHAPES });
 
 export const ImageElement = Base.extend({
   type: z.literal('image'),
@@ -623,7 +635,7 @@ export type PlanIcon = z.infer<typeof PlanIcon>;
  * so two people adding at the limit at once never make the plan disappear.
  */
 function lenientList<T extends z.ZodType>(item: T, max: number) {
-  return z.array(z.unknown()).transform((items) =>
+  const list = z.array(z.unknown()).transform((items) =>
     items
       .flatMap((value) => {
         const parsed = item.safeParse(value);
@@ -631,6 +643,8 @@ function lenientList<T extends z.ZodType>(item: T, max: number) {
       })
       .slice(0, max),
   );
+  LENIENT_LISTS.set(list, { item, max });
+  return list;
 }
 
 const PlanIcons = lenientList(PlanIcon, MAX_PLAN_ICONS);

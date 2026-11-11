@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { Element, PlanIcon, PlanShape, PlanStroke } from '@inkadra/doc-schema';
+import {
+  type Element,
+  MAX_PLAN_ICONS,
+  MAX_SHAPES,
+  MAX_STROKES,
+  type PlanIcon,
+  type PlanShape,
+  type PlanStroke,
+} from '@inkadra/doc-schema';
 import * as Y from 'yjs';
 import { categoryOf } from './plan-icons.ts';
 
@@ -29,12 +37,30 @@ export interface PlanBase {
   rulers?: boolean | undefined;
 }
 
-export function planBaseOf(base: Plan): PlanBase {
+const LIMITS = { strokes: MAX_STROKES, shapes: MAX_SHAPES, icons: MAX_PLAN_ICONS };
+
+/**
+ * The Set of a base plan as stored, so fields and items this build does not know go along
+ * (decision 0101). Icons come out as plain objects; adoptBase stores them as Y.Maps again.
+ */
+export function planBaseOf(base: Y.Map<unknown>): PlanBase {
+  const set = (key: 'strokes' | 'shapes' | 'icons') => {
+    const list = base.get(key);
+    const items = list instanceof Y.Array ? list.toArray() : Array.isArray(list) ? list : [];
+    // Within the plan's limits, as reads cut them: two people drawing at once can pass them.
+    return items
+      .slice(0, LIMITS[key])
+      .map((item) => (item instanceof Y.Map ? item.toJSON() : item))
+      .filter((item) => typeof item === 'object' && item !== null && onSetLayer(item));
+  };
+  const scale = base.get('scale');
   return {
-    strokes: (base.strokes ?? []).filter(onSetLayer),
-    shapes: (base.shapes ?? []).filter(onSetLayer),
-    icons: (base.icons ?? []).filter(onSetLayer),
-    ...(base.scale ? { scale: base.scale, grid: base.grid, rulers: base.rulers } : {}),
+    strokes: set('strokes'),
+    shapes: set('shapes'),
+    icons: set('icons'),
+    ...(typeof scale === 'number' && scale
+      ? { scale, grid: base.get('grid') as Plan['grid'], rulers: base.get('rulers') as boolean }
+      : {}),
   };
 }
 

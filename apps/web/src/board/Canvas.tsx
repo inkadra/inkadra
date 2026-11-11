@@ -43,6 +43,7 @@ import {
   moveToUnsorted,
   newTable,
   nextZoomStep,
+  PasteRefusedError,
   type Point,
   panArea,
   pasteElements,
@@ -139,7 +140,7 @@ import {
   UploadPanel,
   ZoomControls,
 } from './chrome.tsx';
-import { decodeClipboard, encodeClipboard } from './clipboard.ts';
+import { decodeClipboard, encodeClipboard, skippedNotice } from './clipboard.ts';
 import { addPalette, swatchColors } from './colors.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
@@ -2661,7 +2662,7 @@ export function Canvas({
     if (isTyping(e.target) || !e.clipboardData) return;
     if (e.type === 'copy' || e.type === 'cut') {
       if (selection.size === 0) return;
-      const data = copyElements(doc, [...selection]);
+      const data = copyElements(doc, [...selection], { instance: window.location.origin });
       encodeClipboard(e.clipboardData, data);
       e.preventDefault();
       if (e.type === 'cut' && !readOnly) deleteElements(doc, selection, LOCAL);
@@ -2674,10 +2675,33 @@ export function Canvas({
     e.preventDefault();
     if (data) {
       store.undo.stopCapturing();
-      const ids = pasteElements(doc, data, at, { userId, origin: LOCAL });
+      let result: ReturnType<typeof pasteElements>;
+      try {
+        result = pasteElements(doc, data, at, {
+          userId,
+          origin: LOCAL,
+          instance: window.location.origin,
+        });
+      } catch (err) {
+        if (!(err instanceof PasteRefusedError)) throw err;
+        const text = t(
+          err.reason === 'newer' ? 'board.errors.pasteNewer' : 'board.errors.pasteInvalid',
+        );
+        setToast({ text, undo: false, error: true });
+        return;
+      }
       store.undo.stopCapturing();
+      const { ids } = result;
       select(ids);
-      if (ids.length > 1) summarize(ids, 'pasted');
+      // Cards that do not validate are left out, as always, and said (decision 0101).
+      const skipped = skippedNotice(result);
+      if (skipped)
+        setToast({
+          text: t('board.errors.pasteSkipped', { count: skipped.count }),
+          undo: skipped.undo,
+          error: true,
+        });
+      else if (ids.length > 1) summarize(ids, 'pasted');
       return;
     }
     const files = [...e.clipboardData.files];

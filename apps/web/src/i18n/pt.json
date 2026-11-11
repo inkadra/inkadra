@@ -655,7 +655,11 @@
     "errors": {
       "boardCreate": "Não foi possível criar o quadro.",
       "upload": "Falha ao enviar {{name}}.",
-      "tooBig": "{{name}} ultrapassa o tamanho máximo permitido."
+      "tooBig": "{{name}} ultrapassa o tamanho máximo permitido.",
+      "pasteSkipped_one": "1 item não foi colado: não é válido.",
+      "pasteSkipped_other": "{{count}} itens não foram colados: não são válidos.",
+      "pasteNewer": "Estes itens vêm de uma versão mais recente. Atualize o app para colá-los aqui.",
+      "pasteInvalid": "O conteúdo da área de transferência não é válido: nada foi colado."
     },
     "arrow": {
       "label": "Rótulo da seta",

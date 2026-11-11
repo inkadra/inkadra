@@ -45,7 +45,9 @@ with `validateBoardDoc` and has the counts of its size.
 `apps/web/scripts/bench-reads.ts` loads the small, medium and large boards from the default folder and
 times, with the web app's `BoardStore` attached: opening (`Y.applyUpdate`, then the first full
 read), adding a stroke to the frame with 800 strokes, editing a table cell and `createElement`
-(medians; decision [0094](../decisions/0094-lighter-core-reads.md)).
+(medians; decision [0094](../decisions/0094-lighter-core-reads.md)), and the strict check of
+decision [0101](../decisions/0101-strict-card-check.md): of every card once after opening, and of
+the frame and the table again after each change.
 
 ```sh
 pnpm --filter @inkadra/doc-schema reference-board --size medium

@@ -655,7 +655,11 @@
     "errors": {
       "boardCreate": "Impossible de créer le tableau.",
       "upload": "Échec de l’envoi de {{name}}.",
-      "tooBig": "{{name}} dépasse la taille maximale autorisée."
+      "tooBig": "{{name}} dépasse la taille maximale autorisée.",
+      "pasteSkipped_one": "1 élément n’a pas été collé : il n’est pas valide.",
+      "pasteSkipped_other": "{{count}} éléments n’ont pas été collés : ils ne sont pas valides.",
+      "pasteNewer": "Ces éléments viennent d’une version plus récente. Mettez à jour l’application pour les coller ici.",
+      "pasteInvalid": "Le contenu du presse-papiers n’est pas valide : rien n’a été collé."
     },
     "arrow": {
       "label": "Libellé de la flèche",
