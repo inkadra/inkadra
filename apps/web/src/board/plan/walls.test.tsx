@@ -9,7 +9,7 @@ import {
   toWallPoints,
 } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
-import { act } from 'react';
+import { act, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import type * as Y from 'yjs';
@@ -62,6 +62,8 @@ function Harness({
   out: { ed: Ed | null; tools: WallTools | null };
   view: 'props' | 'start';
 }) {
+  // Follows the document, as the board does: each write renders the editor again.
+  useSyncExternalStore(store.subscribe, () => store.getSnapshot());
   const ed = usePlanEditing({
     store,
     plan: planOf(doc, planId),
