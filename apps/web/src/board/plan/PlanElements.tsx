@@ -70,7 +70,9 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
         const hidden = ed.hiddenLayers.has(layer);
         // Grip and crew is no layer: its lock is the lock of each of its items (decision 0110).
         const locked = grip ? false : ed.locked.has(layer as PlanLayer);
-        const allLocked = grip ? items.length > 0 && items.every((e) => itemLocked(e.item)) : locked;
+        const allLocked = grip
+          ? items.length > 0 && items.every((e) => itemLocked(e.item))
+          : locked;
         const count = items.length + (layer === 'set' ? walls : 0);
         return (
           <section key={layer} className="plan-elements__section" aria-label={layerName(layer)}>

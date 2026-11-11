@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { createBoardDoc, type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
+import { createBoardDoc, type PlanIcon, type PlanWall, STROKE_GRID } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import type * as Y from 'yjs';
 import { createElement, listElements } from './board.ts';
@@ -110,9 +110,13 @@ describe('items locked on their own (decision 0110)', () => {
     const p = { x: 600 / PLAN_VIEW_W, y: 300 / PLAN_VIEW_H };
     expect(planItemAt(plan(), p)).toEqual({ kind: 'icons', id: chair });
     expect(snapTarget({ kind: 'actor' }, { x: 600, y: 300 }, plan().icons ?? [])).toBeNull();
-    const free = (plan().icons ?? []).map((i) => (i.id === chair ? { ...i, locked: undefined } : i));
+    const free = (plan().icons ?? []).map((i) =>
+      i.id === chair ? { ...i, locked: undefined } : i,
+    );
     expect(snapTarget({ kind: 'actor' }, { x: 600, y: 300 }, free)?.id).toBe(chair);
-    const all = itemsInRect(plan(), { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H }).map((r) => r.id);
+    const all = itemsInRect(plan(), { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H }).map(
+      (r) => r.id,
+    );
     expect(all).not.toContain(chair);
     expect(all).toHaveLength(2);
   });
@@ -147,7 +151,7 @@ describe('items locked on their own (decision 0110)', () => {
       width: 20,
       locked: true,
     });
-    const w = plan().walls?.find((x) => x.id === wall)!;
+    const w = (plan().walls ?? []).find((x) => x.id === wall) as PlanWall;
     updatePlanWalls(doc, el.id, 'walls', [{ ...w, thickness: 40 }]);
     expect(plan().walls?.find((x) => x.id === wall)?.thickness).toBe(9);
     updatePlanWalls(doc, el.id, 'walls', [{ ...w, locked: undefined }]);
@@ -186,8 +190,8 @@ describe('the Grip and crew group of Elements (decision 0110)', () => {
 
   it('is left out of the drawing when hidden, its items keeping their layer', () => {
     const plan = { icons: [icon('cob'), icon('flag'), icon('village')] };
-    expect(planStack(plan, ['grip']).map((e) => e.item.kind)).toEqual(['cob']);
-    expect(planStack(plan, ['lights']).map((e) => e.item.kind)).toEqual(['village']);
+    expect(planStack(plan, ['grip']).map((e) => (e.item as PlanIcon).kind)).toEqual(['cob']);
+    expect(planStack(plan, ['lights']).map((e) => (e.item as PlanIcon).kind)).toEqual(['village']);
     const p = { x: 100 / STROKE_GRID, y: 100 / STROKE_GRID };
     expect(planItemAt(plan, p, { hidden: new Set(['grip', 'lights']) })).toBeNull();
   });
@@ -205,7 +209,12 @@ describe('the project kit across boards (decision 0110)', () => {
 
   it('lists each light and camera once, gathering a camera’s lenses from every board', () => {
     const here = projectKit([
-      { icons: [icon('a', 'cob', { make: 'Aputure 600d' }), icon('c', 'camera', { label: 'A cam', lens: 50 })] },
+      {
+        icons: [
+          icon('a', 'cob', { make: 'Aputure 600d' }),
+          icon('c', 'camera', { label: 'A cam', lens: 50 }),
+        ],
+      },
     ]);
     const there = projectKit([
       {

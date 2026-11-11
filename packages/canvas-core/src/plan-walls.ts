@@ -520,7 +520,10 @@ export function removePlanWalls(
         const item = list.get(i);
         const plain = (item instanceof Y.Map ? item.toJSON() : item) as Record<string, unknown>;
         if (plain?.locked === true) continue;
-        if (doomed.has(idOf(item) as string) || (key === 'openings' && doomed.has(plain?.wall as string)))
+        if (
+          doomed.has(idOf(item) as string) ||
+          (key === 'openings' && doomed.has(plain?.wall as string))
+        )
           list.delete(i, 1);
       }
     }

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { projectKit } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { projectKit, projectKitDetail, searchLibrary } from './library.ts';
+import { projectKitDetail, searchLibrary } from './library.ts';
 
 const NAMES: Record<string, string> = {
   'board.plan.icons.softbox': 'Softbox',

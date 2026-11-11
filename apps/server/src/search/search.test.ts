@@ -503,7 +503,15 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
         icons: [
           key,
           { id: newElementId(), kind: 'grid', color: '#EDD963', x: 100, y: 100, on: key.id },
-          { id: newElementId(), kind: 'camera', color: '#7DA7F0', x: 300, y: 300, label: 'A cam', lens: 35 },
+          {
+            id: newElementId(),
+            kind: 'camera',
+            color: '#7DA7F0',
+            x: 300,
+            y: 300,
+            label: 'A cam',
+            lens: 35,
+          },
           // Not configured: no make, power or modifiers, so not in the kit.
           { id: newElementId(), kind: 'fresnel', color: '#EDD963', x: 500, y: 100 },
         ],
@@ -522,8 +530,8 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     const makes = async (who: keyof typeof cookies, query = '') => {
       const res = await get(who, `${path}${query}`);
       expect(res.status).toBe(200);
-      return res.body.items.map((i: { icon: { make?: string; label?: string } }) =>
-        i.icon.make ?? i.icon.label,
+      return res.body.items.map(
+        (i: { icon: { make?: string; label?: string } }) => i.icon.make ?? i.icon.label,
       );
     };
     const owner = await get('owner', path);

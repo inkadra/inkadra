@@ -1222,7 +1222,9 @@ export function PlanProperties({
           <Button onClick={ed.duplicate}>{t('board.plan.duplicate')}</Button>
           <Button
             aria-pressed={allLocked}
-            data-ink-tooltip={t(allLocked ? 'board.plan.unlockItemHint' : 'board.plan.lockItemHint')}
+            data-ink-tooltip={t(
+              allLocked ? 'board.plan.unlockItemHint' : 'board.plan.lockItemHint',
+            )}
             onClick={() => ed.toggleItemLock()}
           >
             {t(allLocked ? 'board.plan.unlock' : 'board.plan.lock')}

@@ -19,9 +19,7 @@ import { type Browser, expect, type Page, test } from '@playwright/test';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
-const out =
-  process.env.SET_PLAN_SHOTS ??
-  join(tmpdir(), 'inkadra-set-plan');
+const out = process.env.SET_PLAN_SHOTS ?? join(tmpdir(), 'inkadra-set-plan');
 const account = {
   name: 'Giulia Bianchi',
   email: 'giulia@example.com',

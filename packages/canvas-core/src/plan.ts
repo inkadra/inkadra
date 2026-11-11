@@ -24,12 +24,12 @@ import type { Point } from './geometry.ts';
 import {
   BEAM_KINDS,
   categoryOf,
-  groupOf,
   DEFAULT_METRES,
   GLOW_KINDS,
   GLYPH_FACING,
   glyphBox,
   glyphOf,
+  groupOf,
   iconGlyph,
   isSized,
   kindTier,

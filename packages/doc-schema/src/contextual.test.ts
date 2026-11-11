@@ -99,7 +99,7 @@ describe('contextual appearance contract', () => {
     ].map((card) => Element.parse(card));
     for (const card of old) addElement(doc, card);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([16, 17, 18, 19, 20, 21, 22, 23]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([16, 17, 18, 19, 20, 21, 22, 23, 24]);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect([...roots(doc).elements.values()].map(readElement)).toEqual(old);
     expect(migrateBoardDoc(doc, boardId)).toEqual([]);
@@ -160,6 +160,6 @@ it('upgrades old character cards without adding defaults or losing data', () => 
     }),
   );
   const before = roots(doc).elements.toJSON();
-  expect(migrateBoardDoc(doc, boardId)).toEqual([17, 18, 19, 20, 21, 22, 23]);
+  expect(migrateBoardDoc(doc, boardId)).toEqual([17, 18, 19, 20, 21, 22, 23, 24]);
   expect(roots(doc).elements.toJSON()).toEqual(before);
 });

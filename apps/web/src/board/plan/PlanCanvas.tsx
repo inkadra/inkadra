@@ -985,8 +985,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     if (g.kind === 'resize') take(settleAttached(icons, id));
     return [...out.values()];
   };
-  const reachEnd =
-    isIcon(current) && !moving && !frozen ? coneEnd(current, ed.plan.sensor) : null;
+  const reachEnd = isIcon(current) && !moving && !frozen ? coneEnd(current, ed.plan.sensor) : null;
   const reachGrip = reachEnd && (
     <circle
       data-reach=""

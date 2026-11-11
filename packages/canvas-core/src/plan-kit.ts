@@ -87,7 +87,9 @@ export function projectKit(plans: ReadonlyArray<Pick<PlanElement, 'icons'>>): Pr
  * derived from the other boards. An entry already listed is not listed twice; a camera's lenses
  * are gathered from all of them.
  */
-export function mergeProjectKits(...kits: ReadonlyArray<readonly ProjectKitEntry[]>): ProjectKitEntry[] {
+export function mergeProjectKits(
+  ...kits: ReadonlyArray<readonly ProjectKitEntry[]>
+): ProjectKitEntry[] {
   const out = new Map<string, ProjectKitEntry>();
   for (const kit of kits)
     for (const entry of kit) {

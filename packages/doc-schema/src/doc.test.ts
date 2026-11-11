@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { BOARD_V1 } from './board-v1.fixture.ts';
-import { checkCard } from './strict.ts';
 import {
   addElement,
   boardDocName,
@@ -35,6 +34,7 @@ import {
   validateBoardDoc,
   WRITER_SCHEMAS,
 } from './index.ts';
+import { checkCard } from './strict.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 const base = () => ({
@@ -1293,7 +1293,14 @@ describe('items locked on their own (version 24, decision 0110)', () => {
       plan({
         icons: [{ ...icon, locked: true }],
         strokes: [
-          { id: 'strokeAAAAAAA', tool: 'pencil', color: '#EDEDED', width: 2, points: [0, 0, 10, 10], locked: true },
+          {
+            id: 'strokeAAAAAAA',
+            tool: 'pencil',
+            color: '#EDEDED',
+            width: 2,
+            points: [0, 0, 10, 10],
+            locked: true,
+          },
         ],
         shapes: [
           {

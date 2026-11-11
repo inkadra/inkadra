@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { PLAN_ICON_KINDS } from '@inkadra/doc-schema';
 import type { ProjectKitEntry } from '@inkadra/canvas-core';
+import { PLAN_ICON_KINDS } from '@inkadra/doc-schema';
 import type { PlanKit } from '@inkadra/shared';
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api.ts';

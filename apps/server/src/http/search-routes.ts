@@ -10,8 +10,8 @@ import {
   API_PREFIX,
   CastAppearancesQuery,
   classificationOption,
-  PlanKitQuery,
   Id,
+  PlanKitQuery,
   type ProjectRole,
   type SearchHit,
   SearchQuery,
@@ -235,7 +235,9 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     const kits: ProjectKitEntry[][] = [];
     for (const elements of await boardsWith(db, ids, 'plan', req.log))
       kits.push(
-        projectKit(elements.filter((e): e is Extract<Element, { type: 'plan' }> => e.type === 'plan')),
+        projectKit(
+          elements.filter((e): e is Extract<Element, { type: 'plan' }> => e.type === 'plan'),
+        ),
       );
     return { items: mergeProjectKits(...kits) };
   });
