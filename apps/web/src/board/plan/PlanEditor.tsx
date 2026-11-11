@@ -3,6 +3,7 @@ import {
   iconCone,
   itemsInRect,
   layerOf,
+  linkedPlan,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type Point,
@@ -26,8 +27,9 @@ import { planTitle } from './PlanCard.tsx';
 import { PlanElements } from './PlanElements.tsx';
 import { PlanKit, powerText, setupName } from './PlanKit.tsx';
 import { type Dragged, PlanLibrary } from './PlanLibrary.tsx';
+import { SceneChips } from './PlanLinks.tsx';
 import { PlanProperties } from './PlanProperties.tsx';
-import { SceneBadges, ScenePicker, scenesOfPlan } from './scenes.tsx';
+import { ScenePicker } from './scenes.tsx';
 import { type SetupChange, setupChanges } from './setups.ts';
 import './plan.css';
 
@@ -69,12 +71,14 @@ export function PlanEditor(props: PlanEditorProps) {
   const [fullProps, setFullProps] = useState(false);
   const scaleButton = useRef<HTMLButtonElement>(null);
   const family = props.family?.length ? props.family : [plan];
-  const linked = scenesOfPlan(plan, new Map(props.scenes.map((s) => [s.id, s])));
   const title = planTitle(t, plan);
   const kitPlans = props.kitPlans;
   const kit = useMemo(() => projectKit(kitPlans ?? [plan]), [kitPlans, plan]);
   const sensorName = t(`board.plan.sensors.${plan.sensor ?? 's35'}`);
-  const changes = base ? setupChanges(base.icons ?? [], plan.icons ?? []) : [];
+  // Read with the live names of what the icons link to (decision 0111).
+  const changes = base
+    ? setupChanges(linkedPlan(base, ed.cards).icons ?? [], linkedPlan(plan, ed.cards).icons ?? [])
+    : [];
   const scaleValue = drawn.scale
     ? t('board.plan.scaleGrid', { grid: Number(drawn.grid ?? '0.5').toLocaleString(lang) })
     : t('board.plan.scale');
@@ -630,7 +634,7 @@ export function PlanEditor(props: PlanEditorProps) {
               }
             }}
           />
-          <SceneBadges scenes={linked} onOpen={props.onOpenScene} />
+          <SceneChips ed={ed} onOpen={props.onOpenScene} />
           <IconButton
             icon="link"
             label={t('board.plan.linkScene')}

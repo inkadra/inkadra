@@ -1216,6 +1216,7 @@ describe('set plan v2 (version 23, decision 0104)', () => {
         voltage: 120,
         background: { assetId: 'asset-1', opacity: 0.4, grey: true },
         north: 30,
+        sun: { time: 1050, date: '2026-11-11' },
       }),
     );
     addElement(doc, el);
@@ -1259,7 +1260,13 @@ describe('set plan v2 (version 23, decision 0104)', () => {
     }));
     const cut = Element.parse(plan({ walls: many }));
     expect(cut.type === 'plan' && cut.walls?.length).toBe(MAX_PLAN_WALLS);
-    for (const wrong of [{ voltage: 110 }, { north: 360 }, { background: { assetId: '' } }])
+    for (const wrong of [
+      { voltage: 110 },
+      { north: 360 },
+      { sun: { time: 1440 } },
+      { sun: { time: 600, date: '11/11/2026' } },
+      { background: { assetId: '' } },
+    ])
       expect(Element.safeParse(plan(wrong)).success, JSON.stringify(wrong)).toBe(false);
     // Circuits are read one by one, as walls are: a bad one is left out, the list cut at 30.
     const circuit = { id: 'circuitAAAAAA', name: 'A', amps: 16 };

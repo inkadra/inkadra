@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type FrameElement, type SceneGroup, variantView } from '@inkadra/canvas-core';
+import { type FrameElement, linkedPlan, type SceneGroup, variantView } from '@inkadra/canvas-core';
 import type { ExportSettings } from '@inkadra/shared';
 import { Button, Icon, IconButton, KeyCap } from '@inkadra/ui';
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -8,7 +8,7 @@ import { fetchExportSettings, logoUrl } from './export/settings.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
 import { usePresetText } from './film/fields.tsx';
-import { PlanDrawing, type PlanLike } from './plan/PlanDrawing.tsx';
+import { CHARACTER_COLOURS, PlanDrawing, type PlanLike } from './plan/PlanDrawing.tsx';
 import { plansOfScene } from './plan/scenes.tsx';
 import './presentation.css';
 import { isTyping } from './shortcuts.ts';
@@ -161,7 +161,12 @@ export function PresentationView({
           location: scene.location,
           action: scene.synopsis || '',
           notes: scene.synopsis || '',
-          plan: base?.type === 'plan' ? variantView(plan, base) : plan,
+          // Its links read from the cards of the board as this person sees them (decision 0111).
+          plan: linkedPlan(
+            base?.type === 'plan' ? variantView(plan, base) : plan,
+            store.getSnapshot().byId,
+            { palette: CHARACTER_COLOURS },
+          ),
           frames: group.frames.slice(0, 4),
         });
       }

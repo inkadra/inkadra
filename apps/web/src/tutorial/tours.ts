@@ -252,6 +252,20 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    // Links of the plan to the cards of the project (decision 0104): offered with the scene chip.
+    id: 'setplanLinks',
+    group: 'production',
+    icon: 'link',
+    tool: 'plan',
+    offer: 'plan-scene-chip',
+    steps: [
+      { anchor: 'plan-scene-chip', media: 'scenes', side: 'bottom' },
+      { anchor: 'plan-properties', media: 'plan', side: 'left' },
+      { anchor: 'plan-sun', media: 'plan', side: 'left' },
+      { anchor: null, media: 'rows' },
+    ],
+  },
+  {
     id: 'characters',
     group: 'production',
     icon: 'user',

@@ -1499,7 +1499,60 @@
         "back": "Contra",
         "practical": "Práctica"
       },
-      "snapIcons": "Encajar los iconos"
+      "snapIcons": "Encajar los iconos",
+      "links": {
+        "proposed": "Propuestos",
+        "others": "Todo lo demás",
+        "none": "Nada que vincular",
+        "unlink": "Desvincular",
+        "playedBy": "Interpretado por {{actor}}",
+        "openCharacter": "Abrir el personaje",
+        "linkCharacter": "Vincular a un personaje",
+        "searchCharacter": "Buscar personajes",
+        "openFrame": "Abrir el plano",
+        "linkFrame": "Vincular a un plano",
+        "searchFrame": "Buscar planos",
+        "followFrame": "Usar los {{mm}} mm del plano",
+        "location": "Localización",
+        "openLocation": "Abrir la localización",
+        "linkLocation": "Vincular a una localización",
+        "searchLocation": "Buscar localizaciones",
+        "lightNotes": "Luz",
+        "sun": "Sol, para exteriores",
+        "timeOfDay": "Hora del día",
+        "date": "Fecha",
+        "north": "El norte está a",
+        "from": {
+          "north": "Desde el norte",
+          "northEast": "Desde el noreste",
+          "east": "Desde el este",
+          "southEast": "Desde el sureste",
+          "south": "Desde el sur",
+          "southWest": "Desde el suroeste",
+          "west": "Desde el oeste",
+          "northWest": "Desde el noroeste"
+        },
+        "height": {
+          "down": "bajo el horizonte",
+          "low": "bajo",
+          "mid": "a media altura",
+          "high": "alto"
+        },
+        "sunFromPlace": "Calculado con el enlace del mapa de {{place}}: {{degrees}}° sobre el horizonte. Los iconos del sol giran al cambiar la hora.",
+        "sunByClock": "Solo con la hora: al este por la mañana, al oeste por la tarde. Añade un enlace de mapa a la localización para la altura del sol. Los iconos del sol giran al cambiar la hora; el norte se fija a mano.",
+        "scene": "Escena {{number}}",
+        "settings": {
+          "int": "INT",
+          "ext": "EXT",
+          "int-ext": "INT/EXT"
+        },
+        "times": {
+          "day": "Día",
+          "night": "Noche",
+          "dawn": "Amanecer",
+          "dusk": "Atardecer"
+        }
+      }
     },
     "contextual": {
       "done": "Listo",
@@ -1913,7 +1966,10 @@
       "approvedHelper": "Arrastra aquí los planos aprobados",
       "approvedHint": "También se llena con las aprobaciones del cliente",
       "approvedLocked": "Aprobada en revisión: cambia la revisión desde «{{status}}» y el estado de producción desde la Tabla",
-      "selectRow": "Seleccionar plano {{label}}"
+      "selectRow": "Seleccionar plano {{label}}",
+      "groupSetup": "Setup",
+      "noSetup": "Sin setup",
+      "inSetup": "En el setup del plano de set {{setup}}"
     },
     "playback": {
       "size": "Tamaño de las miniaturas",
@@ -5192,6 +5248,27 @@
           "3": {
             "title": "Citaciones y hoja",
             "text": "En el Plan de rodaje, pestaña Citaciones, eliges a quién se cita cada día. La hoja de rodaje imprime equipo, teléfonos y contacto en el set, nunca para invitados ni clientes."
+          }
+        }
+      },
+      "setplanLinks": {
+        "name": "Vínculos del plano",
+        "steps": {
+          "0": {
+            "title": "Escenas del storyboard",
+            "text": "La etiqueta lee de la ficha de la escena el número, INT o EXT y el momento del día. Haz clic para abrir la escena."
+          },
+          "1": {
+            "title": "Vinculados, nunca copiados",
+            "text": "Vincula un actor a un personaje y una cámara a un plano del storyboard: nombres, colores y ópticas siguen las fichas. Sin selección, vincula el plano de set a su localización."
+          },
+          "2": {
+            "title": "El sol, para exteriores",
+            "text": "Fija la hora y la fecha: los iconos del sol giran con ellas. El norte se fija a mano."
+          },
+          "3": {
+            "title": "Setups en la lista de planos",
+            "text": "La lista de planos y el plan de rodaje muestran el setup de cada plano, y la lista puede agruparlos por setup."
           }
         }
       }

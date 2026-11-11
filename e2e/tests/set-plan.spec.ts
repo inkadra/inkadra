@@ -548,7 +548,7 @@ for (const theme of ['dark', 'light'] as const) {
       await expect.poll(async () => (await saved()).plan?.sceneIds?.length).toBe(2);
       await page.keyboard.press('Escape');
       await expect(picker).toHaveCount(0);
-      await expect(editor.getByRole('button', { name: 'Sc. 7' })).toBeVisible();
+      await expect(editor.getByRole('button', { name: 'Scena 7 · INT · Tramonto' })).toBeVisible();
       await page.screenshot({ path: join(out, `desktop-${theme}-scenes.png`) });
       await page.keyboard.press('Escape');
       await expect(editor).toHaveCount(0);

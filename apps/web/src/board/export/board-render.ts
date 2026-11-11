@@ -5,6 +5,7 @@ import {
   beamWarmth,
   blockingCurve,
   blockingPositions,
+  type CardsById,
   curvePoints,
   DEFAULT_GLYPH_STROKE,
   decodeStroke,
@@ -15,6 +16,7 @@ import {
   iconPoint,
   iconTransform,
   labelAnchor,
+  linkedPlan,
   measureEnds,
   openingLines,
   PLAN_VIEW_W,
@@ -37,7 +39,14 @@ import {
 import type { AssetTrack } from '@inkadra/shared';
 import { dark, light } from '@inkadra/ui/tokens';
 import { croppedRotatedSize } from '../image-crop.ts';
-import { iconLabel, LABEL_SIZE, measureText, PLAN_INK, planToken } from '../plan/PlanDrawing.tsx';
+import {
+  CHARACTER_COLOURS,
+  iconLabel,
+  LABEL_SIZE,
+  measureText,
+  PLAN_INK,
+  planToken,
+} from '../plan/PlanDrawing.tsx';
 import { videoEmbedUrl } from '../youtube.ts';
 import type { Placed } from './board-model.ts';
 import { type ImageInfo, imagePlacement, type Measure, type Op } from './pages.ts';
@@ -100,6 +109,8 @@ export interface CardContext {
   words: { board: string; file: string; plan?: string };
   /** Another element of the board: the base of a plan variant, whose Set layer it shows. */
   element?(id: string): Element | undefined;
+  /** The cards this export's audience may see, which set plans' links resolve against. */
+  cards?: CardsById;
 }
 
 const PAD = 12;
@@ -946,11 +957,13 @@ function mix(hex: string, base: string, t: number): string {
  * an export leaves them out (round 6, i).
  */
 export function planOps(
-  el: Extract<Element, { type: 'plan' }>,
+  stored: Extract<Element, { type: 'plan' }>,
   box: Rect,
   ctx: CardContext,
   moves = true,
 ): Op[] {
+  // Links read from the cards the audience may see; without them, the text the icons hold.
+  const el = ctx.cards ? linkedPlan(stored, ctx.cards, { palette: CHARACTER_COLOURS }) : stored;
   const c = ctx.colors;
   const ink = (hex: string) => {
     const token = planToken(hex);

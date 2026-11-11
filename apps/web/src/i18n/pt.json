@@ -1499,7 +1499,60 @@
         "back": "Contraluz",
         "practical": "Prática"
       },
-      "snapIcons": "Encaixar os ícones"
+      "snapIcons": "Encaixar os ícones",
+      "links": {
+        "proposed": "Propostos",
+        "others": "Todo o resto",
+        "none": "Nada para ligar",
+        "unlink": "Desligar",
+        "playedBy": "Interpretado por {{actor}}",
+        "openCharacter": "Abrir a personagem",
+        "linkCharacter": "Ligar a uma personagem",
+        "searchCharacter": "Procurar personagens",
+        "openFrame": "Abrir o plano",
+        "linkFrame": "Ligar a um plano",
+        "searchFrame": "Procurar planos",
+        "followFrame": "Usar os {{mm}} mm do plano",
+        "location": "Local",
+        "openLocation": "Abrir o local",
+        "linkLocation": "Ligar a um local",
+        "searchLocation": "Procurar locais",
+        "lightNotes": "Luz",
+        "sun": "Sol, para exteriores",
+        "timeOfDay": "Hora do dia",
+        "date": "Data",
+        "north": "O norte está a",
+        "from": {
+          "north": "De norte",
+          "northEast": "De nordeste",
+          "east": "De leste",
+          "southEast": "De sudeste",
+          "south": "De sul",
+          "southWest": "De sudoeste",
+          "west": "De oeste",
+          "northWest": "De noroeste"
+        },
+        "height": {
+          "down": "abaixo do horizonte",
+          "low": "baixo",
+          "mid": "a meia altura",
+          "high": "alto"
+        },
+        "sunFromPlace": "Calculado a partir da ligação do mapa de {{place}}: {{degrees}}° acima do horizonte. Os ícones do sol rodam com a hora.",
+        "sunByClock": "Só pela hora: a leste de manhã, a oeste à tarde. Adicione uma ligação de mapa ao local para a altura do sol. Os ícones do sol rodam com a hora; o norte define-se à mão.",
+        "scene": "Cena {{number}}",
+        "settings": {
+          "int": "INT",
+          "ext": "EXT",
+          "int-ext": "INT/EXT"
+        },
+        "times": {
+          "day": "Dia",
+          "night": "Noite",
+          "dawn": "Madrugada",
+          "dusk": "Crepúsculo"
+        }
+      }
     },
     "contextual": {
       "done": "Concluir",
@@ -1913,7 +1966,10 @@
       "approvedHelper": "Arraste aqui os planos aprovados",
       "approvedHint": "Também é preenchido pelas aprovações do cliente",
       "approvedLocked": "Aprovado na revisão: altere a revisão em “{{status}}” e o estado de produção na Tabela",
-      "selectRow": "Selecionar plano {{label}}"
+      "selectRow": "Selecionar plano {{label}}",
+      "groupSetup": "Setup",
+      "noSetup": "Sem setup",
+      "inSetup": "No setup da planta {{setup}}"
     },
     "playback": {
       "size": "Tamanho dos blocos",
@@ -5192,6 +5248,27 @@
           "3": {
             "title": "Convocatórias e folha",
             "text": "No Plano de rodagem, separador Convocatórias, escolhes quem é convocado em cada dia. A folha de serviço imprime equipa, telefones e contacto no set, nunca para convidados nem clientes."
+          }
+        }
+      },
+      "setplanLinks": {
+        "name": "Ligações da planta",
+        "steps": {
+          "0": {
+            "title": "Cenas do storyboard",
+            "text": "O chip lê da ficha da cena o número, INT ou EXT e a hora do dia. Clique para abrir a cena."
+          },
+          "1": {
+            "title": "Ligados, nunca copiados",
+            "text": "Ligue um ator a uma personagem e uma câmara a um plano do storyboard: nomes, cores e objetivas seguem as fichas. Sem seleção, ligue a planta ao seu local."
+          },
+          "2": {
+            "title": "O sol, para exteriores",
+            "text": "Defina a hora e a data: os ícones do sol rodam com elas. O norte define-se à mão."
+          },
+          "3": {
+            "title": "Setups na lista de planos",
+            "text": "A lista de planos e o plano de rodagem mostram o setup de cada plano, e a lista pode agrupá-los por setup."
           }
         }
       }

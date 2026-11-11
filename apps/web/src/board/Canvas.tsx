@@ -4088,6 +4088,12 @@ export function Canvas({
             }}
             onNewVariant={() => editedPlan && newVariant(editedPlan, true)}
             onOpenScene={openScene}
+            boardAspect={boardAspect}
+            onOpenCard={(id) => {
+              const card = snap.byId.get(id);
+              setEditing(null);
+              if (card) requestAnimationFrame(() => openElement(card));
+            }}
             {...(onExportSelection && !preview
               ? {
                   // Today's export of the plan card: the board's export of the selection.

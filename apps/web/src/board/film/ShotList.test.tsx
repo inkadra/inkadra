@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { addFrame, addScene } from '@inkadra/canvas-core';
+import { addFrame, addScene, createElement } from '@inkadra/canvas-core';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -424,4 +424,33 @@ it('counts and filters a shot approved in review as approved in the Kanban only'
   ]);
   await filterTo('');
   expect(dots()).toEqual(['1 shot', '2 approved']);
+});
+
+it('lists a shot under each of its setups but counts it once', async () => {
+  const { doc, store } = board();
+  const scene = addScene(doc, { number: '2', title: 'Diner' }, { userId: null });
+  const frame = addFrame(doc, scene.id, null, { action: 'Master' }, { userId: null });
+  const cam = { kind: 'camera' as const, color: '#9DB8F2', x: 10, y: 10, frameId: frame.id };
+  const plan = createElement(
+    doc,
+    'plan',
+    { x: 0, y: 0 },
+    { icons: [{ ...cam, id: 'camAAAAAAAAAA' }] },
+    { userId: null },
+  );
+  createElement(
+    doc,
+    'plan',
+    { x: 0, y: 0 },
+    { variantOf: plan.id, variant: 'Close', icons: [{ ...cam, id: 'camBBBBBBBBBB' }] },
+    { userId: null },
+  );
+  const host = await mount(<ShotList store={store} boardTitle="Test Board" readOnly={false} />);
+  await act(async () => {
+    chooseSelect(host.querySelector('.ink-select[aria-label="Group by"]'), 'setup');
+  });
+  // Under both setups…
+  expect(host.querySelectorAll('tr.shots__scene')).toHaveLength(2);
+  // …but one shot in the totals and one box to select.
+  expect(host.querySelector('.shots__footer')?.textContent).toMatch(/\b1 shot(?!s)/);
 });

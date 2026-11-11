@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { PlanIcon } from '@inkadra/doc-schema';
+import type { Element, PlanIcon } from '@inkadra/doc-schema';
+import type { TFunction } from 'i18next';
 import { expect, it } from 'vitest';
-import { setupChanges } from './setups.ts';
+import { setupChanges, shotSetups } from './setups.ts';
 
 const icon = (id: string, kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
   id: id.padEnd(13, 'A'),
@@ -39,4 +40,23 @@ it('tells what a setup moved, changed, added and left out of the base', () => {
       base.map((i) => ({ ...i, id: `${i.id.slice(0, 12)}B` })),
     ),
   ).toEqual([]);
+});
+
+it('lists the setups each shot belongs to, by the frames its cameras link to', () => {
+  const card = { x: 0, y: 0, w: 100, z: 'a0', parent: null, createdBy: null };
+  const plan = (id: string, createdAt: number, extra: Record<string, unknown>) =>
+    ({ ...card, id: id.padEnd(13, 'A'), type: 'plan', createdAt, ...extra }) as Element;
+  const frame = { ...card, createdAt: 1, id: 'frameAAAAAAAA', type: 'frame' } as Element;
+  const cam = icon('c', 'camera', { frameId: 'frameAAAAAAAA' });
+  const elements = [
+    frame,
+    plan('base', 1, { title: 'Diner', icons: [cam] }),
+    plan('close', 2, { variantOf: 'baseAAAAAAAAA', variant: 'CU Anna', icons: [cam] }),
+    plan('empty', 3, { variantOf: 'baseAAAAAAAAA', icons: [] }),
+  ];
+  const t = ((key: string) => key) as unknown as TFunction;
+  expect(shotSetups(elements, t).get('frameAAAAAAAA')).toEqual([
+    { planId: 'baseAAAAAAAAA', name: '1 · board.plan.base', plan: 'board.plan.name · Diner' },
+    { planId: 'closeAAAAAAAA', name: '2 · CU Anna', plan: 'board.plan.name · Diner' },
+  ]);
 });

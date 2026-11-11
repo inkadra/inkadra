@@ -980,6 +980,17 @@ export const PlanElement = Base.extend({
     .max(359)
     .optional()
     .describe('Where north is, degrees clockwise from the top of the drawing. Omitted = not set.'),
+  sun: z
+    .object({
+      time: z.int().min(0).max(1439).describe('Minutes after midnight, on the clock of the set.'),
+      date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional()
+        .describe('YYYY-MM-DD. Omitted = today.'),
+    })
+    .optional()
+    .describe('The sun for exteriors: the time and date the sun icons are turned for.'),
 });
 export type PlanElementSchema = z.infer<typeof PlanElement>;
 
