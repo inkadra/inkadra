@@ -3308,11 +3308,15 @@ button.moodboard__card:focus-visible {
 }
 .pen__opacity-label {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
-.pen__opacity-label small {
-  color: var(--ink-text-secondary);
-  font-size: 12px;
+/* 16 px on touch screens, or the phone zooms in on the field. */
+@media (pointer: coarse) {
+  .pen__opacity .plan-num input {
+    font-size: 16px;
+  }
 }
 .pen__more .menu__item {
   gap: 8px;

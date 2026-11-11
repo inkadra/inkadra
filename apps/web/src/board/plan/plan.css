@@ -977,12 +977,6 @@ button.plan__badge:hover {
   flex: 1;
   min-width: 0;
 }
-.plan-props__value {
-  min-width: 44px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-text-primary);
-}
 .plan-props__row b {
   color: var(--ink-text-primary);
   font-weight: 500;
@@ -1084,7 +1078,7 @@ button.plan__badge:hover {
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .plan-props__segmented {
   min-width: 0;

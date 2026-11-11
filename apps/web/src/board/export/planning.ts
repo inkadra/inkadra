@@ -309,7 +309,7 @@ interface CallSheetSection extends Section {
   header?: boolean;
   links?: Array<string | undefined>;
   pictures?: Array<Extract<Element, { type: 'frame' }> | undefined>;
-  /** A block's own note, drawn bold in the warning colour under the description. */
+  /** A block's own note, drawn semibold in the warning colour under the description. */
   notes?: Array<string | undefined>;
   pictureColumn?: number;
   descriptionColumn?: number;
@@ -422,12 +422,12 @@ function sheetBlocks(
         const x = left;
         left += w;
         const described = col === (short ? row.length - 1 : section.descriptionColumn);
-        const wrap = (text: string, weight: 400 | 700) =>
+        const wrap = (text: string, weight: 400 | 600) =>
           wrapText(text, w - 8, 8.5, weight, ctx.measure);
         const [first = '', ...rest] = value.split('\n');
         // Description: its first paragraph, the block's note, then the muted lines.
         const head = described && (note || rest.length) ? wrap(first, 400) : wrap(value, 400);
-        const noted = described && note ? wrap(note, 700) : [];
+        const noted = described && note ? wrap(note, 600) : [];
         const tail = described && rest.length ? wrap(rest.join('\n'), 400) : [];
         return {
           x,
@@ -468,7 +468,7 @@ function sheetBlocks(
                   top + pad / 2 + (cell.picture ? 36 : 0) + n * 12,
                   {
                     size: 8.5,
-                    weight: n >= cell.noteFrom && n < cell.mutedFrom && note ? 700 : 400,
+                    weight: n >= cell.noteFrom && n < cell.mutedFrom && note ? 600 : 400,
                     leading: 12,
                     color:
                       ctx.colors[

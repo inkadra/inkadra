@@ -490,7 +490,7 @@ export function FrameGrab({
               {phone ? (
                 <button
                   type="button"
-                  className="menu__item viewer__grab-item"
+                  className="ink-menu__item menu__item viewer__grab-item"
                   onClick={() => screenshotInput.current?.click()}
                 >
                   <Icon name="upload" size={16} />
@@ -499,7 +499,7 @@ export function FrameGrab({
               ) : (
                 <button
                   type="button"
-                  className="menu__item viewer__grab-item"
+                  className="ink-menu__item menu__item viewer__grab-item"
                   aria-keyshortcuts={isMac() ? 'Meta+V' : 'Control+V'}
                   onClick={() => void pasteScreenshot()}
                 >
@@ -511,7 +511,7 @@ export function FrameGrab({
               {hasThumbnail && (
                 <button
                   type="button"
-                  className="menu__item viewer__grab-item"
+                  className="ink-menu__item menu__item viewer__grab-item"
                   onClick={takeThumbnail}
                 >
                   <Icon name="film" size={16} />

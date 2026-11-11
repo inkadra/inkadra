@@ -20,8 +20,9 @@ import {
   type Stroke,
 } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton, type IconName, Select, Slider } from '@inkadra/ui';
-import { type PointerEvent, useEffect, useRef, useState } from 'react';
+import { type PointerEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NumberField } from '../plan/NumberField.tsx';
 import { isMac } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { aspectLabel, frameRatio } from './aspect.ts';
@@ -314,6 +315,10 @@ export function DrawingEditor({
     write();
     store.undo.stopCapturing();
   };
+  const opacityId = useId();
+  const opacity = Math.round((frame.referenceOpacity ?? 1) * 100);
+  const setOpacity = (value: number) =>
+    change(() => updateElement(store.doc, frame.id, { referenceOpacity: value / 100 }, LOCAL));
 
   const commitText = () => {
     const draft = textRef.current;
@@ -699,30 +704,28 @@ export function DrawingEditor({
             {popover === 'more' && (
               <div className="pen__popover pen__more">
                 {frame.assetId && (
-                  // biome-ignore lint/a11y/noLabelWithoutControl: Slider renders a labelable range input.
-                  <label className="pen__opacity">
+                  <div className="pen__opacity">
                     <span className="pen__opacity-label">
-                      {t('film.pen.opacity')}
-                      <small>{Math.round((frame.referenceOpacity ?? 1) * 100)}%</small>
+                      <label htmlFor={opacityId}>{t('film.pen.opacity')}</label>
+                      <NumberField
+                        value={opacity}
+                        min={5}
+                        max={100}
+                        unit="%"
+                        label={t('board.typedValue', { label: t('film.pen.opacity') })}
+                        onCommit={setOpacity}
+                      />
                     </span>
                     <Slider
+                      id={opacityId}
                       aria-label={t('film.pen.opacity')}
                       min={5}
                       max={100}
                       step={5}
-                      value={Math.round((frame.referenceOpacity ?? 1) * 100)}
-                      onChange={(value) =>
-                        change(() =>
-                          updateElement(
-                            store.doc,
-                            frame.id,
-                            { referenceOpacity: value / 100 },
-                            LOCAL,
-                          ),
-                        )
-                      }
+                      value={opacity}
+                      onChange={setOpacity}
                     />
-                  </label>
+                  </div>
                 )}
                 {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
                 <label className="pen__aspect">
@@ -755,7 +758,7 @@ export function DrawingEditor({
                 {canUpload && (
                   <button
                     type="button"
-                    className="menu__item"
+                    className="ink-menu__item menu__item"
                     onClick={() => fileInput.current?.click()}
                   >
                     <Icon name="image" size={16} />
@@ -765,7 +768,7 @@ export function DrawingEditor({
                 <hr className="menu__divider" />
                 <button
                   type="button"
-                  className="menu__item is-danger"
+                  className="ink-menu__item menu__item is-danger"
                   disabled={strokes.length === 0 && shapes.length === 0}
                   onClick={() => change(() => clearDrawing(store.doc, frame.id, LOCAL))}
                 >

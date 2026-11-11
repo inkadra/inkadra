@@ -314,6 +314,11 @@
   outline: none;
 }
 
+/* Bold the user writes in a note keeps Inter 700 (decision 0107). */
+.note-text :where(b, strong) {
+  font-weight: 700;
+}
+
 /* The card already indicates editing; the global focus halo must not frame its text. */
 .note-text:focus-visible {
   box-shadow: none;
@@ -534,7 +539,7 @@
   display: grid;
   place-items: center;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.03em;
   overflow: hidden;
 }
@@ -594,7 +599,7 @@
   padding: 2px 5px;
   border-radius: var(--ink-radius-xs);
   font-size: 9.5px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0.04em;
 }
@@ -1635,7 +1640,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 }
 .column__number {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
 }
 /* Scene header: the slugline on one line, the scene's title under it; both end in an ellipsis. */
 .column__title--scene {
@@ -2023,40 +2028,11 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   background: var(--ink-tag-green);
 }
 
+/* The look of .menu and .menu__item is packages/ui's .ink-menu and .ink-menu__item. */
 .menu {
   position: absolute;
   z-index: 6;
   width: 210px;
-  padding: 4px;
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface-float);
-  border: 1px solid var(--ink-border-default);
-  box-shadow: var(--shadow-float);
-  transform-origin: var(--ink-origin, top left);
-  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
-}
-.menu__item {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  height: 28px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: calc(var(--ink-radius-md) - 4px);
-  background: transparent;
-  color: var(--ink-text-icon);
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-.menu__item:hover,
-.menu__item:focus-visible {
-  background: var(--ink-surface-3);
-  color: var(--ink-text-primary);
-  box-shadow: none;
-}
-.menu__item.is-danger {
-  color: var(--ink-danger-fg);
 }
 /* Available later: readable and hoverable, but it neither acts nor takes the focus ring. */
 .menu__item.is-disabled,
@@ -3326,7 +3302,7 @@ button.crumb--editable:focus-visible {
   padding: 2px 6px;
   border-radius: var(--ink-radius-sm);
   background: var(--peer);
-  color: var(--ink-on-accent);
+  color: var(--ink-on-peer);
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
@@ -3869,15 +3845,10 @@ button.crumb--editable:focus-visible {
       4px 0 0 var(--ink-surface-2),
       -10px 0 8px -4px var(--ink-surface-2);
   }
-  /* Menus: finger-sized rows, no keyboard shortcuts to read. */
+  /* Menus: no keyboard shortcuts to read. */
   .menu {
     overflow-y: auto;
     overscroll-behavior: contain;
-  }
-  .menu__item {
-    height: auto;
-    min-height: 44px;
-    font-size: 14px;
   }
   .menu__key {
     display: none;
@@ -4435,25 +4406,6 @@ button.card__play {
 .crop-bar__angle .ink-slider {
   width: 180px;
 }
-.crop-bar__deg {
-  min-width: 34px;
-  height: 26px;
-  padding: 0 4px;
-  border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: transparent;
-  color: var(--ink-text-muted);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-}
-.crop-bar__deg:hover:not(:disabled) {
-  background: var(--ink-surface-3);
-  color: var(--ink-text-primary);
-}
-.crop-bar__deg:disabled {
-  cursor: default;
-}
 .crop-bar__text-btn,
 .crop-bar__done {
   width: auto;
@@ -4506,9 +4458,11 @@ button.card__play {
   .crop-bar__angle {
     height: 44px;
   }
-  .crop-bar__deg {
-    min-width: 44px;
+  .crop-bar .plan-num {
     height: 44px;
+  }
+  .crop-bar .plan-num input {
+    font-size: 16px;
   }
   .crop-bar .ink-slider {
     height: 44px;
