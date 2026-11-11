@@ -237,7 +237,7 @@ export function PlanEditor(props: PlanEditorProps) {
   );
   const baseName = base ? setupName(base, family, t) : '';
   const setupNote = base && (
-    <div className="plan-float plan-setup-note" aria-label={t('board.plan.changedFrom', { name: baseName })} role="region">
+    <section className="plan-float plan-setup-note" aria-label={t('board.plan.changedFrom', { name: baseName })}>
       <div className="plan-setup-note__head">
         {renaming ? (
           <input
@@ -283,7 +283,7 @@ export function PlanEditor(props: PlanEditorProps) {
       >
         {t(ed.ghostBase ? 'board.plan.hideGhost' : 'board.plan.showGhost', { name: baseName })}
       </Button>
-    </div>
+    </section>
   );
   const scalePop = scaleOpen && (
     <ContextMenu
@@ -436,7 +436,7 @@ export function PlanEditor(props: PlanEditorProps) {
           <button
             type="button"
             className="plan-float plan-top__kitpill"
-            aria-label={t('board.plan.kitPillLabel', { count: kitCount, power: powerText(power.watts, power.amps, lang) })}
+            aria-label={t('board.plan.kitPillLabel', { items: kitCount, power: powerText(power.watts, power.amps, lang) })}
             onClick={() => ed.setSheet('kit')}
           >
             <i />

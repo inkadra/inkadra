@@ -157,14 +157,7 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
                 <span className="plan-kit__n">{c.amps.toLocaleString(lang, { maximumFractionDigits: 1 })} A</span>
               </div>
               {c.breaker && (
-                <span
-                  className="plan-kit__bar"
-                  role="meter"
-                  aria-label={t('board.plan.circuitLoad', { name: c.name })}
-                  aria-valuemin={0}
-                  aria-valuemax={c.breaker}
-                  aria-valuenow={c.amps}
-                >
+                <span className="plan-kit__bar" aria-hidden="true">
                   <i style={{ width: `${Math.min(100, c.load * 100)}%` }} />
                 </span>
               )}

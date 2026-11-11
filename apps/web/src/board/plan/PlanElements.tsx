@@ -21,7 +21,7 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
   const layerName = (l: PlanLayer) => t(`board.plan.layers.${l}`);
   return (
     <div className="plan-elements" data-tour="plan-elements">
-      <div className="plan-pills plan-pills--scroll" role="group" aria-label={t('board.plan.filterLayer')}>
+      <fieldset className="plan-pills plan-pills--scroll" aria-label={t('board.plan.filterLayer')}>
         {(['all', ...ELEMENT_LAYERS] as const).map((l) => (
           <button
             key={l}
@@ -33,8 +33,8 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
             {l === 'all' ? t('board.plan.all') : layerName(l)}
           </button>
         ))}
-      </div>
-      <div className="plan-elements__tags" role="group" aria-label={t('board.plan.filterTag')}>
+      </fieldset>
+      <fieldset className="plan-elements__tags" aria-label={t('board.plan.filterTag')}>
         <span className="plan-prop__label">{t('board.plan.tag')}</span>
         {PLAN_COLORS.map((c) => (
           <button
@@ -49,7 +49,7 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
             <i style={{ background: `var(--ink-${c.token})` }} />
           </button>
         ))}
-      </div>
+      </fieldset>
       {sections.map(({ layer, items }) => {
         const hidden = ed.hiddenLayers.has(layer);
         const locked = ed.locked.has(layer);

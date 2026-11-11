@@ -1050,14 +1050,14 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     action: () => pickTool(x),
   }));
   const zoomControl = (
-    <div className="plan-float plan-canvas__zoom" role="group" aria-label={t('board.plan.zoom')}>
+    <fieldset className="plan-float plan-canvas__zoom" aria-label={t('board.plan.zoom')}>
       <IconButton icon="minus" label={t('board.plan.zoomOut')} disabled={zoom === ZOOMS[0]} onClick={() => zoomBy(-1)} />
       <span className="plan-canvas__percent" aria-live="polite">
         {zoom}%
       </span>
       <IconButton icon="plus" label={t('board.plan.zoomIn')} disabled={zoom === ZOOMS.at(-1)} onClick={() => zoomBy(1)} />
       <IconButton icon="fit" label={t('board.plan.zoomFit')} onClick={() => setZoom(100)} />
-    </div>
+    </fieldset>
   );
   /** One metre on screen, when the plan has a scale. */
   const metrePx = drawn.scale && px ? (drawn.scale / PLAN_VIEW_W) * px : 0;

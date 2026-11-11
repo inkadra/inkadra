@@ -2433,3 +2433,13 @@ span.plan-pill {
     animation: none;
   }
 }
+.plan-editor--v2 fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.plan-editor--v2 fieldset.plan-float {
+  padding: 4px;
+  border: 1px solid var(--ink-border-default);
+}

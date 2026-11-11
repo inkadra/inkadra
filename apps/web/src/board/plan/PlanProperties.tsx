@@ -89,7 +89,7 @@ function Pills<T extends string>({
   onPick: (value: T) => void;
 }) {
   return (
-    <div className="plan-pills" role="group" aria-label={label}>
+    <fieldset className="plan-pills" aria-label={label}>
       {options.map((o) => (
         <button
           key={o.value}
@@ -101,7 +101,7 @@ function Pills<T extends string>({
           {o.label}
         </button>
       ))}
-    </div>
+    </fieldset>
   );
 }
 

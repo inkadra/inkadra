@@ -303,7 +303,7 @@ export function PlanLibrary({
       <Icon name="search" size={15} />
       <input
         type="search"
-        placeholder={t('board.plan.lib.searchAll', { count: PLAN_CATEGORIES.reduce((n, c) => n + c.kinds.length, 0) })}
+        placeholder={t('board.plan.lib.searchAll', { total: PLAN_CATEGORIES.reduce((n, c) => n + c.kinds.length, 0) })}
         aria-label={t('board.plan.lib.searchLabel')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -351,13 +351,13 @@ export function PlanLibrary({
           {onClose && <IconButton icon="close" label={t('board.plan.closeLibrary')} onClick={onClose} />}
         </div>
         {!searching && (
-          <div className="plan-lib__chips" role="group" aria-label={t('board.plan.categoryTabs')}>
+          <fieldset className="plan-lib__chips" aria-label={t('board.plan.categoryTabs')}>
             {shelves.map((s) => (
               <button key={s} type="button" aria-pressed={shelf === s} onClick={() => setShelf(s)}>
                 {s === 'mine' ? t('board.plan.starred') : t(`board.plan.tabs.${s}`)}
               </button>
             ))}
-          </div>
+          </fieldset>
         )}
         <div className="plan-lib__body">
           {searching ? results : shelfBody}
