@@ -48,6 +48,7 @@ import {
 import { BoardContext } from '../context.ts';
 import { StrokePath } from '../film/FramePicture.tsx';
 import { ShapeView } from '../film/shapes.tsx';
+import { PlanBackgroundView } from './PlanBackground.tsx';
 
 /**
  * The colours of a plan (decision 0062). Each is stored as a hex code, like a frame drawing's,
@@ -630,7 +631,7 @@ export type PlanLike = Pick<
   PlanElement,
   'strokes' | 'shapes' | 'icons' | 'hiddenLayers' | 'sensor' | 'scale'
 > &
-  Partial<Pick<PlanElement, 'walls' | 'openings'>>;
+  Partial<Pick<PlanElement, 'walls' | 'openings' | 'background'>>;
 
 /** An item of the plan's stack as SVG. */
 function StackItem({ entry, plan }: { entry: PlanStackEntry; plan: PlanLike }) {
@@ -661,9 +662,15 @@ const PlanDrawingView = memo(function PlanDrawingView({
   moves = true,
   lifted,
   label,
+  background = false,
   children,
 }: {
   plan: PlanLike;
+  /**
+   * The picture under the plan (decision 0110): drawn in the editor and on the board card, left
+   * out of the slides and sheets, as of exports, unless they ask for it.
+   */
+  background?: boolean;
   /** Names the drawing for the editor, where it holds a control; elsewhere it stays hidden. */
   label?: string;
   /** Blocking as the editor draws it: a line through numbered points. */
@@ -690,6 +697,9 @@ const PlanDrawingView = memo(function PlanDrawingView({
       style={{ aspectRatio: String(PLAN_ASPECT) }}
       {...(label ? { role: 'group', 'aria-label': label } : { 'aria-hidden': true })}
     >
+      {background && plan.background && !off.includes('set') && (
+        <PlanBackgroundView background={plan.background} />
+      )}
       {grid && <GridDots step={grid} />}
       {!off.includes('set') && <PlanWallsView plan={plan} />}
       {stack

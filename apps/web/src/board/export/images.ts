@@ -122,3 +122,47 @@ export async function pool<T>(
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
   signal?.throwIfAborted();
 }
+
+/** Pixels (RGBA) turned to greys in place, by their luma (Rec. 601), alpha kept. */
+export function greyPixels(data: Uint8ClampedArray): Uint8ClampedArray {
+  for (let i = 0; i + 3 < data.length; i += 4) {
+    const y = Math.round(
+      0.299 * (data[i] as number) +
+        0.587 * (data[i + 1] as number) +
+        0.114 * (data[i + 2] as number),
+    );
+    data[i] = y;
+    data[i + 1] = y;
+    data[i + 2] = y;
+  }
+  return data;
+}
+
+/** A picture drawn in greys on a canvas of its size, for a renderer to draw from. */
+export function greyCanvas(source: CanvasImageSource, width: number, height: number) {
+  const canvas = new OffscreenCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('No 2D context');
+  ctx.drawImage(source, 0, 0);
+  const pixels = ctx.getImageData(0, 0, width, height);
+  greyPixels(pixels.data);
+  ctx.putImageData(pixels, 0, 0);
+  return canvas;
+}
+
+/** The bytes of a PDF picture in greys, in the same format (decision 0110). */
+export async function greyBytes(img: LoadedImage): Promise<LoadedImage | null> {
+  if (!img.bytes) return null;
+  const bitmap = await createImageBitmap(
+    new Blob([img.bytes as BlobPart], { type: img.type === 'png' ? 'image/png' : 'image/jpeg' }),
+  );
+  try {
+    const canvas = greyCanvas(bitmap, bitmap.width, bitmap.height);
+    const out = await canvas.convertToBlob(
+      img.type === 'png' ? { type: 'image/png' } : { type: 'image/jpeg', quality: 0.9 },
+    );
+    return { ...img, bytes: new Uint8Array(await out.arrayBuffer()) };
+  } finally {
+    bitmap.close();
+  }
+}

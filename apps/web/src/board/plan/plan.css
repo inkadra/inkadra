@@ -2045,3 +2045,329 @@ span.plan-pill {
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
+
+/* Walls and openings tools (decision 0110). */
+.plan-editor__stage--walls,
+.plan-editor__stage--openings {
+  cursor: crosshair;
+}
+.plan-canvas__walltools {
+  display: contents;
+}
+.plan-walls__options {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  translate: -50% 0;
+  gap: 6px;
+  padding: 6px 10px;
+  max-width: calc(100% - 32px);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.plan-walls__typed {
+  width: 190px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.plan-walls__typed::placeholder {
+  color: var(--ink-text-secondary);
+}
+.plan-walls__typed:focus-visible {
+  outline: none;
+  border-color: var(--ink-accent-primary);
+  background: var(--ink-surface-1);
+}
+.plan-walls__palette {
+  position: absolute;
+  top: 64px;
+  left: 16px;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 8px;
+  gap: 2px;
+}
+.plan-walls__palette .plan-props__cap {
+  padding: 2px 8px 6px;
+}
+.plan-walls__palette .plan-tool {
+  justify-content: flex-start;
+  font-size: 13px;
+}
+.plan-walls__side {
+  stroke: var(--ink-accent-primary);
+  stroke-opacity: 0.85;
+  stroke-linecap: butt;
+}
+.plan-walls__dot {
+  fill: var(--ink-surface-1);
+  stroke: var(--ink-accent-primary);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.plan-walls__dim path {
+  fill: none;
+  stroke: var(--ink-text-muted);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+.plan-walls__dimtext,
+.plan-walls__angle,
+.plan-walls__close text {
+  font-size: 12px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  fill: var(--ink-text-secondary);
+  paint-order: stroke;
+  stroke: var(--ink-surface-1);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.plan-walls__angle {
+  fill: var(--ink-accent-soft-fg);
+}
+.plan-walls__close circle {
+  fill: none;
+  stroke: var(--ink-accent-soft-fg);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+  vector-effect: non-scaling-stroke;
+}
+.plan-walls__close text {
+  fill: var(--ink-accent-soft-fg);
+}
+.plan-walls__ghost polyline {
+  fill: none;
+  stroke: var(--ink-accent-primary);
+  stroke-width: 1.6;
+}
+.plan-walls__corner {
+  cursor: move;
+}
+.plan-main--phone .plan-walls__options {
+  top: auto;
+  bottom: 128px;
+  left: 8px;
+  right: 8px;
+  translate: none;
+  max-width: none;
+}
+/* On a phone the plan is on top: the bars of the walls tools sit above the tools. */
+.plan-main--phone .plan-walls__palette {
+  top: auto;
+  bottom: 76px;
+  left: 8px;
+  right: 8px;
+  flex-direction: row;
+  align-items: center;
+  overflow-x: auto;
+}
+.plan-main--phone .plan-walls__palette .plan-props__cap,
+.plan-main--phone .plan-walls__palette .plan-tool span {
+  display: none;
+}
+.plan-main--phone .plan-walls__palette .plan-tool {
+  flex: none;
+  min-width: 44px;
+  height: 44px;
+}
+.plan-main--phone .plan-walls__palette .ink-btn {
+  flex: none;
+  margin-left: auto;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .plan-walls__side {
+    transition: stroke-opacity 120ms;
+  }
+}
+
+/* The start dialog of an empty plan (decision 0110). */
+.plan-start {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  z-index: 4;
+  width: min(560px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  padding: 20px;
+  border-radius: var(--ink-radius-md);
+}
+.plan-start.plan-sheet {
+  top: auto;
+  /* Above the bar of tools, which stays at hand: picking a tool is starting too. */
+  bottom: calc(65px + env(safe-area-inset-bottom));
+  z-index: 4;
+  left: 0;
+  translate: none;
+  width: 100%;
+  max-height: calc(100% - 81px);
+  padding: 16px;
+  border-radius: var(--ink-radius-lg) var(--ink-radius-lg) 0 0;
+  box-shadow: var(--ink-shadow-menu);
+}
+.plan-start__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.plan-start__head b {
+  font-size: 16px;
+}
+.plan-start__choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.plan-start__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.plan-main--phone .plan-start__grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.plan-start .plan-start__opt {
+  gap: 8px;
+  padding: 14px;
+}
+.plan-start .ink-tile:has(> .ink-tile__input:checked) {
+  background: var(--ink-accent-soft-bg);
+}
+.plan-start__opt--wide {
+  width: 100%;
+}
+.plan-start__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.plan-start__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.plan-start__pic {
+  flex: none;
+  width: 44px;
+  height: 36px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.plan-start__rooms {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.plan-start .plan-start__shape {
+  width: 56px;
+  height: 48px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+}
+.plan-start__room {
+  width: 32px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+.plan-start__size {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plan-start__size .plan-num {
+  width: 84px;
+}
+.plan-start__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* The background picture (decision 0110). */
+.plan__background {
+  pointer-events: none;
+}
+.plan-background {
+  position: fixed;
+  width: 300px;
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+.plan-background__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+  color: var(--ink-text-secondary);
+}
+.plan-background__name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-background__frame > rect:first-child {
+  stroke-dasharray: 6 4;
+}
+.plan-elements__background {
+  margin-top: 6px;
+}
+.plan-elements__bgopen {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.plan-elements__bgopen .plan-prop__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Where the drawing is narrow, the bar of tools moves left of the zoom and the scale bar above. */
+.plan-canvas {
+  container-type: inline-size;
+}
+@container (max-width: 1000px) {
+  .plan-canvas__tools {
+    left: 16px;
+    translate: none;
+  }
+  .plan-canvas__tools .plan-tool span {
+    display: none;
+  }
+  .plan-canvas__scalebar {
+    bottom: 72px;
+  }
+}
+.plan-background .ink-slider {
+  width: 100%;
+}
