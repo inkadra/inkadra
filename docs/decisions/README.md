@@ -118,7 +118,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0112](0112-board-restore-history.md) | The last 50 restores of a board are kept with who, the count and the version's name as it was; editors read them, others only counts and times |
 | [0113](0113-token-proof.md) | `token-proof`: a key bound to an app token lets the server prove it issued the token, over a fresh nonce, before a client on an unconfirmed network sends it |
 | [0114](0114-set-plan-item-lock-and-project-kit.md) | Set plan: `locked` on each plan item (schema 24), the project kit read across the boards the caller can read, Grip and crew as a group of Elements |
-| [0115](0115-shared-client-logic-in-mpl-packages.md) | Product logic shared by clients (call sheet, moodboard groups, comment parts, card estimates and measures) lives once in an MPL package; a client never copies it from an AGPL app |
+| [0116](0116-shared-client-logic-in-mpl-packages.md) | Product logic shared by clients (call sheet, moodboard groups, comment parts, card estimates and measures) lives once in an MPL package; a client never copies it from an AGPL app |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071, 0104): they were accepted in parallel,
 and accepted records are not renumbered.

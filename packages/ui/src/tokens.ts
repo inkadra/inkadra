@@ -179,8 +179,11 @@ export const layout = {
 /**
  * Measures of a board card, in board units (px at 100 % zoom), for every client that draws
  * cards: padding, text sizes, the accent of a column, arrows and the blocks of a note. The web
- * stylesheet (board.css) writes the same numbers and a web test fails when one differs. The body
- * of a column or scene uses canvas-core's COLUMN_PADDING and COLUMN_GAP.
+ * stylesheet (apps/web/src/board/board.css) writes the same numbers and a web test
+ * (card-measures.test.ts) fails when one differs. The body of a column or scene uses
+ * canvas-core's COLUMN_PADDING and COLUMN_GAP.
+ * shortcut: the numbers live twice, here and in board.css, kept equal by that test; upgrade when
+ * board.css is reworked, by exposing them as --ink-* variables in tokens.css that it reads.
  */
 export const card = {
   padX: 12,
@@ -191,6 +194,8 @@ export const card = {
   smallFontSize: 11,
   /** A coloured column: a bar on top, the colour at 8 % fading out over 64 under the head. */
   accent: { bar: 3, tint: 0.08, fade: 64 },
+  /** Head of a column or scene: its height, a column's title, a scene's slugline and number. */
+  column: { headHeight: 22, title: 12.5, sceneTitle: 11, sceneNumber: 13 },
   arrow: { width: 2, dash: [8, 6] },
   /** Rich text of a note card: heading sizes, gap between blocks, list indent, code size. */
   note: { h1: 20, h2: 17, h3: 15, h4: 13, blockGap: 6, listIndent: 18, codeFontSize: 12 },
