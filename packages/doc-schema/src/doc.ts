@@ -14,6 +14,7 @@ import {
   Stroke,
   TableRow,
 } from './elements.ts';
+import { fastCheckOf, UNSURE } from './fast-items.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
 export const CURRENT_SCHEMA_VERSION = 22;
@@ -504,6 +505,12 @@ export function cachedPerMap<T>(compute: (map: Y.Map<unknown>) => T): (map: Y.Ma
 }
 
 function parseItem(item: z.ZodType, value: unknown): unknown {
+  // Strokes take a hand-written check equivalent to their schema; Zod decides the rest.
+  const check = fastCheckOf(item);
+  if (check) {
+    const data = check(value);
+    if (data !== UNSURE) return data;
+  }
   const result = item.safeParse(value);
   return result.success ? result.data : INVALID;
 }

@@ -107,6 +107,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0101](0101-strict-card-check.md) | A strict per-card check finds what a build does not understand; copies carry cards as stored |
 | [0102](0102-min-writer-schema.md) | `minWriterSchema`: older clients write only when a test proves they lose nothing; the schema does not freeze at 1.0 |
 | [0103](0103-idempotent-project-creations.md) | `Idempotency-Key` also on project, crew member and shooting day creation, with its own capability; links are checked only when something is created |
+| [0104](0104-hand-checked-strokes.md) | Pen strokes are checked by a hand-written equivalent of their schema; Zod decides everything else |
 | [0107](0107-weight-700-for-user-bold.md) | Inter 700 only for bold the user writes; the interface stops at 600 (amends 0006) |
 | [0108](0108-shell-sizes-from-tokens.md) | The shell reads its sizes (236 / 42 / 42 / 12) from `tokens.layout` (amends 0006) |
 
