@@ -50,6 +50,9 @@ describe('tokens', () => {
       }
     }
     for (const theme of [light, dark]) {
+      // The danger button and its hover (styles.css .ink-btn--danger).
+      expect(ratio(theme['danger-fg'], theme['danger-bg'])).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(theme['danger-fg'], theme['danger-border'])).toBeGreaterThanOrEqual(4.5);
       expect(ratio(theme['on-accent'], theme['accent-button'])).toBeGreaterThanOrEqual(4.5);
       expect(ratio(theme['on-accent'], theme['accent-button-hover'])).toBeGreaterThanOrEqual(4.5);
     }
@@ -147,8 +150,9 @@ describe('tokens', () => {
       ['light', light],
       ['dark', dark],
     ] as const) {
-      // .film-status--draft / --shot / --retake: the hue on a 12% tint of itself over surface-1.
-      for (const tag of ['tag-purple', 'tag-green', 'tag-orange'] as const)
+      // .film-status--shot / --retake: the hue on a 12% tint of itself over surface-1. Draft is
+      // neutral (text-muted, checked above).
+      for (const tag of ['tag-green', 'tag-orange'] as const)
         expect(
           contrast(theme[tag], mix(theme[tag], theme['surface-1'], 0.12)),
           `${name} ${tag} chip`,
