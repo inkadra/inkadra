@@ -204,6 +204,12 @@ and say so on the collaboration socket (`strictCards=1` beside `schemaVersion`);
 write only at `docSchemaVersion`. A read-only connection that sends changes gets the stateless
 notice `writeRefused` with the reason (`schema`, `role`, `frozen`) (decision 0102). Without the
 capability, `minWriterSchema` is `docSchemaVersion`.
+`board-restore-marker` means a restore of a saved version increments `meta.restores` in the
+board document in the restore's own transaction (decision 0109).
+`board-restore-history` means `GET /boards/{boardId}/restores?after=<count>` lists the last 50
+restores of a board after that count, newest first: who restored it and to which version, with the
+version's name and time as they were at the restore. Viewers and commenters get only the counts
+and times (decision 0112).
 Clients must ignore unknown capability names and tolerate missing fields on older servers.
 `minClient`, when present, maps platform names to minimum client versions; no minimum
 is currently imposed. Capabilities describe implemented protocols, not a user's permissions.

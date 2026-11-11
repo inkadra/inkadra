@@ -6,11 +6,12 @@ import {
   boardDocName,
   CURRENT_SCHEMA_VERSION,
   type Element,
+  getRestoreCount,
   readBoardNotice,
   readElement,
   roots,
 } from '@inkadra/doc-schema';
-import type { BoardVersion } from '@inkadra/shared';
+import type { BoardRestores, BoardVersion } from '@inkadra/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,7 +22,15 @@ import { directBoardNotifier } from '../board-notices.ts';
 import { attachCollab, createCollabServer } from '../collab.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { board, boardDoc, boardVersion, elementReview } from '../db/schema.ts';
+import {
+  board,
+  boardDoc,
+  boardRestore,
+  boardVersion,
+  elementReview,
+  projectMember,
+  user,
+} from '../db/schema.ts';
 import { CardOutcomeUnknown, queuedBoardWriter, startBoardWorker } from '../queues.ts';
 import { fragmentText } from '../search/index-doc.ts';
 import { testDeps } from '../test-deps.ts';
@@ -31,6 +40,8 @@ import {
   DAILY_KEEP_MS,
   directVersionWriter,
   HOURLY_KEEP_MS,
+  MAX_RESTORE_RECORDS,
+  recordRestore,
 } from '../versions.ts';
 import { createApp } from './app.ts';
 
@@ -1510,6 +1521,224 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
       expect((await versionsOf(id)).length).toBe(1);
       await db.delete(board).where(eq(board.id, id));
       expect((await versionsOf(id)).length).toBe(0);
+    });
+  });
+
+  describe('restore history (decision 0112)', () => {
+    const restoresOf = async (as: string, after?: number) => {
+      const res = await request(
+        'GET',
+        `/boards/${hist}/restores${after === undefined ? '' : `?after=${after}`}`,
+        as,
+      );
+      expect(res.statusCode).toBe(200);
+      return (res.json() as BoardRestores).items;
+    };
+    const countOf = () => read(hist, (doc) => getRestoreCount(doc));
+    const restore = (versionId: string, as = 'editor') =>
+      request('POST', `/boards/${hist}/versions/${versionId}/restore`, as);
+
+    // A board of its own per test: restores are limited to ten an hour per board.
+    let hist = '';
+    // Saves are limited to twenty an hour per person: the versions these tests save are theirs.
+    beforeAll(async () => {
+      await signUp('historian');
+      await request('PUT', `/projects/${projectId}/members/${people.historian?.id}`, 'owner', {
+        role: 'editor',
+      });
+    });
+    beforeEach(async () => {
+      const created = await request('POST', `/projects/${projectId}/boards`, 'owner', {
+        parentBoardId: boardId,
+        title: 'History',
+      });
+      hist = created.json().id;
+    });
+
+    it('records who restored and to which version, with the count the document got', async () => {
+      const version = await changedBoard(hist, 'historian');
+      const res = await restore(version.id);
+      expect(res.statusCode).toBe(200);
+      const count = await countOf();
+      expect(count).toBeGreaterThan(0);
+      const [item, ...rest] = await restoresOf('editor', count - 1);
+      expect(rest).toEqual([]);
+      expect(item).toEqual({
+        count,
+        restoredAt: expect.any(String),
+        restoredBy: { id: people.editor?.id, name: 'editor', image: null },
+        version: { id: version.id, kind: 'named', name: 'Good', createdAt: version.createdAt },
+      });
+      expect(await restoresOf('editor', count)).toEqual([]);
+
+      // Renaming and deleting the restored version and the backup change nothing of it.
+      const backup = (res.json() as { backup: BoardVersion }).backup;
+      await request('PATCH', `/boards/${hist}/versions/${version.id}`, 'owner', {
+        name: 'Renamed',
+      });
+      await request('PATCH', `/boards/${hist}/versions/${backup.id}`, 'owner', {
+        name: 'Kept',
+      });
+      for (const id of [version.id, backup.id])
+        expect(
+          (await request('DELETE', `/boards/${hist}/versions/${id}`, 'owner')).statusCode,
+        ).toBe(204);
+      await applyVersionRetention(db, new Date(Date.now() + 365 * 24 * HOUR));
+      expect(await restoresOf('owner', count - 1)).toEqual([item]);
+    });
+
+    it('does not record a restore that changes nothing, as it is not counted', async () => {
+      const version = await changedBoard(hist, 'historian');
+      expect((await restore(version.id)).statusCode).toBe(200);
+      const count = await countOf();
+      expect((await restore(version.id)).statusCode).toBe(200);
+      expect(await countOf()).toBe(count);
+      expect((await restoresOf('editor')).map((r) => r.count)).toEqual([count]);
+    });
+
+    it('lists restores newest first; below editor only counts and times; others nothing', async () => {
+      const version = await changedBoard(hist, 'historian');
+      await restore(version.id);
+      await edit(hist, (doc) => addElement(doc, note('again001')));
+      await restore(version.id, 'owner');
+      const count = await countOf();
+      const items = await restoresOf('editor', count - 2);
+      expect(items.map((r) => [r.count, r.restoredBy?.name])).toEqual([
+        [count, 'owner'],
+        [count - 1, 'editor'],
+      ]);
+      for (const who of ['viewer', 'commenter']) {
+        const hidden = await restoresOf(who, count - 2);
+        expect(hidden.map((r) => r.count)).toEqual([count, count - 1]);
+        for (const r of hidden) {
+          expect(r.restoredBy).toBeNull();
+          expect(r.version).toBeNull();
+        }
+      }
+      const path = `/boards/${hist}/restores`;
+      expect((await request('GET', path, null)).statusCode).toBe(401);
+      expect((await request('GET', path, 'stranger')).statusCode).toBe(404);
+      for (const after of ['-1', '2147483648', '3000000000', 'x'])
+        expect((await request('GET', `${path}?after=${after}`, 'editor')).statusCode).toBe(400);
+      expect(await restoresOf('editor', 2147483647)).toEqual([]);
+    });
+
+    it('follows board grants: details for an editor grant, not for a viewer grant', async () => {
+      await recordRestore(db, {
+        boardId: hist,
+        count: 1,
+        restoredBy: people.owner?.id ?? null,
+        versionId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
+        versionKind: 'named',
+        versionName: 'Before review',
+        versionCreatedAt: new Date(),
+      });
+      const grant = (who: string, role: string) =>
+        request('PUT', `/boards/${hist}/grants/${people[who]?.id}`, 'owner', { role });
+      expect((await grant('viewer', 'editor')).statusCode).toBeLessThan(300);
+      expect((await grant('editor', 'viewer')).statusCode).toBeLessThan(300);
+      const [raised] = await restoresOf('viewer');
+      expect(raised?.version?.name).toBe('Before review');
+      expect(raised?.restoredBy?.id).toBe(people.owner?.id);
+      const [lowered] = await restoresOf('editor');
+      expect(lowered).toMatchObject({ count: 1, restoredBy: null, version: null });
+    });
+
+    it('keeps the record without the person once their account is deleted', async () => {
+      await signUp('leaver');
+      await request('PUT', `/projects/${projectId}/members/${people.leaver?.id}`, 'owner', {
+        role: 'editor',
+      });
+      const version = await changedBoard(hist, 'historian');
+      expect((await restore(version.id, 'leaver')).statusCode).toBe(200);
+      await db.delete(projectMember).where(eq(projectMember.userId, people.leaver?.id ?? ''));
+      await db.delete(user).where(eq(user.id, people.leaver?.id ?? ''));
+      const [item] = await restoresOf('editor');
+      expect(item?.restoredBy).toBeNull();
+      expect(item?.version?.name).toBe('Good');
+      expect(JSON.stringify(item)).not.toContain('leaver');
+    });
+
+    it('lets the restore stand when the record fails, and records the next one', async () => {
+      const version = await changedBoard(hist, 'historian');
+      const before = await countOf();
+      await db.execute(sql`
+        create or replace function board_restore_refuse() returns trigger language plpgsql
+        as $$ begin raise exception 'refused by test'; end $$`);
+      await db.execute(sql`
+        create trigger board_restore_refuse before insert on board_restore
+        for each row execute function board_restore_refuse()`);
+      try {
+        expect((await restore(version.id)).statusCode).toBe(200);
+      } finally {
+        await db.execute(sql`drop trigger board_restore_refuse on board_restore`);
+        await db.execute(sql`drop function board_restore_refuse()`);
+      }
+      expect(await countOf()).toBe(before + 1);
+      expectRestored(await read(hist, (doc) => doc));
+      expect(await restoresOf('editor')).toEqual([]);
+      await edit(hist, (doc) => addElement(doc, note('again002')));
+      expect((await restore(version.id)).statusCode).toBe(200);
+      expect((await restoresOf('editor')).map((r) => r.count)).toEqual([before + 2]);
+    });
+
+    const row = (count: number, versionName: string | null = null) => ({
+      boardId: hist,
+      count,
+      restoredBy: people.editor?.id ?? null,
+      versionId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
+      versionKind: 'auto' as const,
+      versionName,
+      versionCreatedAt: new Date(),
+    });
+    const listed = async () =>
+      (await restoresOf('editor')).map((r) => [r.count, r.version?.name ?? null]);
+
+    it('keeps the newer record when two restores save theirs out of order', async () => {
+      // Restore A set 5, restore B set 6, and B's record was saved first.
+      await recordRestore(db, row(6, 'B'));
+      await recordRestore(db, row(5, 'A'));
+      expect(await listed()).toEqual([
+        [6, 'B'],
+        [5, 'A'],
+      ]);
+      // The same count again (a restore whose document was never stored, then the next one).
+      await recordRestore(db, row(6, 'C'));
+      expect(await listed()).toEqual([
+        [6, 'C'],
+        [5, 'A'],
+      ]);
+      // A writer set the count back (decision 0109): the history stays.
+      await recordRestore(db, row(1, 'D'));
+      expect((await listed()).map(([count]) => count)).toEqual([6, 5, 1]);
+    });
+
+    it('keeps the last 50', async () => {
+      for (let count = 1; count <= MAX_RESTORE_RECORDS + 5; count += 1)
+        await recordRestore(db, row(count));
+      const counts = (await restoresOf('editor')).map((r) => r.count);
+      expect(counts).toHaveLength(MAX_RESTORE_RECORDS);
+      expect(counts[0]).toBe(MAX_RESTORE_RECORDS + 5);
+      expect(counts.at(-1)).toBe(6);
+    });
+
+    it('goes with the board when it is deleted', async () => {
+      const created = await request('POST', `/projects/${projectId}/boards`, 'owner', {
+        parentBoardId: boardId,
+        title: 'Short-lived',
+      });
+      const id = created.json().id as string;
+      await recordRestore(db, {
+        boardId: id,
+        count: 1,
+        restoredBy: people.owner?.id ?? null,
+        versionId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
+        versionKind: 'auto',
+        versionName: null,
+        versionCreatedAt: new Date(),
+      });
+      await db.delete(board).where(eq(board.id, id));
+      expect(await db.select().from(boardRestore).where(eq(boardRestore.boardId, id))).toEqual([]);
     });
   });
 });
