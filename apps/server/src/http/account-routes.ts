@@ -104,7 +104,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   const mailInstance = { instanceName: config.INSTANCE_NAME, publicUrl: config.PUBLIC_URL };
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const exchangeLimiter = new RateLimiter(20, 60_000);
-  // The proof needs no token: limited per address and per key (decision 0112).
+  // The proof needs no token: limited per address and per key (decision 0113).
   const proofLimiter = new RateLimiter(30, 60_000);
   const proofKeyLimiter = new RateLimiter(10, 60_000);
 
@@ -322,7 +322,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     return reply.status(204).send();
   });
 
-  // Token proof (decision 0112) -------------------------------------------------
+  // Token proof (decision 0113) -------------------------------------------------
 
   app.post(v1('/me/token-proof-key'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);

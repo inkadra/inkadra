@@ -1,6 +1,8 @@
 import { CURRENT_SCHEMA_VERSION, SchemaTooNewError } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
+  BoardRestoreQuery,
+  type BoardRestores,
   type BoardVersion,
   BoardVersionQuery,
   CreateBoardVersion,
@@ -10,16 +12,16 @@ import {
   UpdateBoardVersion,
   z,
 } from '@inkadra/shared';
-import { and, desc, eq, getTableColumns, sql } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, gt, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import * as Y from 'yjs';
-import { requireBoardRole } from '../access.ts';
+import { atLeast, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import type { Database } from '../db/client.ts';
-import { boardVersion, user } from '../db/schema.ts';
+import { boardRestore, boardVersion, user } from '../db/schema.ts';
 import { CardOutcomeUnknown } from '../queues.ts';
-import { nameVersion, type VersionWriter, versionDoc } from '../versions.ts';
+import { MAX_RESTORE_RECORDS, nameVersion, type VersionWriter, versionDoc } from '../versions.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -264,6 +266,40 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
       .header('content-type', 'application/octet-stream')
       .header('cache-control', 'private, no-store')
       .send(Buffer.from(update));
+  });
+
+  // Who restored and to which version only for those who may list versions (decision 0112);
+  // readers below editor already see the count in the board document.
+  app.get(v1('/boards/:boardId/restores'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { boardId } = BoardParams.parse(req.params);
+    const { after } = BoardRestoreQuery.parse(req.query);
+    const { role } = await requireBoardRole(db, actor, boardId, 'viewer');
+    const details = atLeast(role, 'editor');
+    const rows = await db
+      .select({ restore: boardRestore, name: user.name, image: user.image })
+      .from(boardRestore)
+      .leftJoin(user, eq(user.id, boardRestore.restoredBy))
+      .where(and(eq(boardRestore.boardId, boardId), gt(boardRestore.count, after)))
+      .orderBy(desc(boardRestore.count))
+      .limit(MAX_RESTORE_RECORDS);
+    const body: BoardRestores = {
+      items: rows.map(({ restore: r, name, image }) => ({
+        count: r.count,
+        restoredAt: iso(r.createdAt),
+        restoredBy:
+          details && r.restoredBy && name !== null ? { id: r.restoredBy, name, image } : null,
+        version: details
+          ? {
+              id: r.versionId,
+              kind: r.versionKind,
+              name: r.versionName,
+              createdAt: iso(r.versionCreatedAt),
+            }
+          : null,
+      })),
+    };
+    return body;
   });
 
   app.post(v1('/boards/:boardId/versions/:versionId/restore'), async (req) => {

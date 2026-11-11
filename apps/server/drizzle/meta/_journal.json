@@ -285,8 +285,15 @@
     {
       "idx": 40,
       "version": "7",
-      "when": 1794430435433,
-      "tag": "0040_token_proof",
+      "when": 1794430437599,
+      "tag": "0040_board_restore",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794432402261,
+      "tag": "0041_token_proof",
       "breakpoints": true
     }
   ]

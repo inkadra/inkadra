@@ -1,5 +1,5 @@
 {
-  "id": "a82f6a8d-3e74-47fc-8b35-2ee722ff22af",
+  "id": "9cc83ab7-98b5-4ed5-8eb3-99c5896ad2ce",
   "prevId": "c7400d20-7d5c-457e-8395-822e1c0b016a",
   "version": "7",
   "dialect": "postgresql",
@@ -1009,6 +1009,140 @@
           "value": "\"board_grant\".\"role\" <> 'owner' or \"board_grant\".\"expires_at\" is null"
         }
       },
+      "isRLSEnabled": false
+    },
+    "public.board_restore": {
+      "name": "board_restore",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "board_id": {
+          "name": "board_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "restored_by": {
+          "name": "restored_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_id": {
+          "name": "version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version_kind": {
+          "name": "version_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version_name": {
+          "name": "version_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_created_at": {
+          "name": "version_created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "board_restore_count_idx": {
+          "name": "board_restore_count_idx",
+          "columns": [
+            {
+              "expression": "board_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "count",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "board_restore_by_idx": {
+          "name": "board_restore_by_idx",
+          "columns": [
+            {
+              "expression": "restored_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"board_restore\".\"restored_by\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "board_restore_board_id_board_id_fk": {
+          "name": "board_restore_board_id_board_id_fk",
+          "tableFrom": "board_restore",
+          "tableTo": "board",
+          "columnsFrom": [
+            "board_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "board_restore_restored_by_user_id_fk": {
+          "name": "board_restore_restored_by_user_id_fk",
+          "tableFrom": "board_restore",
+          "tableTo": "user",
+          "columnsFrom": [
+            "restored_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.board_version": {
@@ -4092,18 +4226,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "proof_key_id": {
-          "name": "proof_key_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "proof_key": {
-          "name": "proof_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -4145,13 +4267,6 @@
           "nullsNotDistinct": false,
           "columns": [
             "token_hash"
-          ]
-        },
-        "personal_token_proof_key_id_unique": {
-          "name": "personal_token_proof_key_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "proof_key_id"
           ]
         }
       },

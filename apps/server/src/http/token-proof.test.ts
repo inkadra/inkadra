@@ -16,7 +16,7 @@ import { proofKeyFor } from '../token-proof.ts';
 import { issueToken, revokeTokens } from '../tokens.ts';
 import { createApp } from './app.ts';
 
-/** What a client computes on its own, from its copy of the key (decision 0112). */
+/** What a client computes on its own, from its copy of the key (decision 0113). */
 const expected = (key: string, instanceId: string, keyId: string, nonce: string) =>
   createHmac('sha256', Buffer.from(key, 'base64url'))
     .update(`inkadra-token-proof/v1\nunlock-network\n${instanceId}\n${keyId}\n${nonce}`)

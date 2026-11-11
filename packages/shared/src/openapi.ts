@@ -206,6 +206,8 @@ import {
   User,
 } from './users.ts';
 import {
+  BoardRestoreQuery,
+  BoardRestores,
   BoardVersion,
   BoardVersionConflict,
   BoardVersionQuery,
@@ -1050,12 +1052,12 @@ registry.registerPath({
   path: v1('/me/token-proof-key'),
   tags: ['Users'],
   security: [{ bearer: [] }],
-  summary: 'The proof key of the calling app token (decision 0112).',
+  summary: 'The proof key of the calling app token (decision 0113).',
   description:
     'Made at the first call and returned again while the token lives; deleted with it. The ' +
     'app keeps it like the token and uses it with POST /token-proof to check that the server ' +
     'answering is this one before it sends the token on a network it has not confirmed. Clients ' +
-    'ask for it only where the token may already go, and fail closed (decision 0112).',
+    'ask for it only where the token may already go, and fail closed (decision 0113).',
   responses: {
     200: { description: 'Proof key', ...json(TokenProofKey) },
     401: errors[401],
@@ -1071,7 +1073,7 @@ registry.registerPath({
   path: v1('/token-proof'),
   tags: ['Users'],
   security: [{}],
-  summary: 'Prove this server holds a proof key, over a fresh nonce (decision 0112).',
+  summary: 'Prove this server holds a proof key, over a fresh nonce (decision 0113).',
   description:
     'No token is sent. The answer is an HMAC with the key over the purpose, the instance id, ' +
     'the key id and the nonce; the client checks it with its own copy of the key. Rate ' +
@@ -2985,6 +2987,21 @@ registry.registerPath({
     ...tooMany,
     ...outcome,
   },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/restores'),
+  tags: ['Versions'],
+  security: secured,
+  summary: 'The last restores of a board, newest first. Needs viewer; details need editor.',
+  description:
+    'For a client that edited the board offline and finds `meta.restores` changed (decision ' +
+    '0109): who restored it and to which version, as the version was named at the restore ' +
+    '(decision 0112). Below editor, who and which version are null, as the versions list is ' +
+    'out of reach. Servers that keep this list advertise `board-restore-history`.',
+  request: { params: idParam('boardId'), query: BoardRestoreQuery },
+  responses: { 200: { description: 'Restores', ...json(BoardRestores) }, ...errors },
 });
 
 // Clip -----------------------------------------------------------------------

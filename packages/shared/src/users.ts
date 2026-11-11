@@ -176,7 +176,7 @@ export const AppToken = z
 export type AppToken = z.infer<typeof AppToken>;
 
 /**
- * Token proof (decision 0112): the key a token holder keeps to check, before sending the token,
+ * Token proof (decision 0113): the key a token holder keeps to check, before sending the token,
  * that the server answering is the one that issued it. Only for tokens; never logged.
  */
 export const TokenProofKey = z

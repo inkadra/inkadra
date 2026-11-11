@@ -156,7 +156,7 @@ export const personalToken = pgTable(
     lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     createdAt: createdAt(),
-    /** Token proof (decision 0112): names the key; null until the token asks for one. */
+    /** Token proof (decision 0113): names the key; null until the token asks for one. */
     proofKeyId: text('proof_key_id').unique(),
     /** The proof key, sealed with AUTH_SECRET. */
     proofKey: text('proof_key'),
@@ -1094,6 +1094,34 @@ export const boardVersion = pgTable(
     index('board_version_expires_idx').on(t.expiresAt),
     index('board_version_created_by_idx').on(t.createdBy).where(sql`${t.createdBy} is not null`),
     check('board_version_named_ck', sql`${t.kind} <> 'named' or ${t.name} is not null`),
+  ],
+);
+
+/**
+ * The last restores of each board (decision 0112), so a client that edited offline can say who
+ * restored it and to which version. The version's name and time are copied: they survive the
+ * version being renamed or pruned.
+ */
+export const boardRestore = pgTable(
+  'board_restore',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    /** `meta.restores` of the board document after this restore (decision 0109). */
+    count: integer('count').notNull(),
+    restoredBy: uuid('restored_by').references(() => user.id, { onDelete: 'set null' }),
+    /** No foreign key: the version may be pruned or deleted later. */
+    versionId: uuid('version_id').notNull(),
+    versionKind: text('version_kind', { enum: ['auto', 'named', 'restore'] }).notNull(),
+    versionName: text('version_name'),
+    versionCreatedAt: timestamp('version_created_at', { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('board_restore_count_idx').on(t.boardId, t.count),
+    index('board_restore_by_idx').on(t.restoredBy).where(sql`${t.restoredBy} is not null`),
   ],
 );
 

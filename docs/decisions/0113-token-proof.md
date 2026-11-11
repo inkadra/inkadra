@@ -1,4 +1,4 @@
-# 0112 — Token proof: the server proves it is the one that issued a token
+# 0113 — Token proof: the server proves it is the one that issued a token
 
 Status: proposed. Builds on [0099](0099-invalid-token-reasons.md).
 

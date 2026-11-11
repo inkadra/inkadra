@@ -6,7 +6,7 @@ import { instanceSetting, personalToken, user } from './db/schema.ts';
 import { newSecret, sealer } from './secrets.ts';
 
 /**
- * Token proof (decision 0112). An official app that cannot rely on the transport (a server on
+ * Token proof (decision 0113). An official app that cannot rely on the transport (a server on
  * plain http) asks for a proof key once, where it trusts the connection; later, on a network it
  * has not confirmed, it sends a fresh nonce and checks that the server answering holds the same
  * key before it sends the token. The token never travels for the check.
