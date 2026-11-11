@@ -593,6 +593,7 @@ export function PlanEditor(props: PlanEditorProps) {
             {powerText(power.watts, power.amps, lang).split(' · ')[0]}
           </button>
           {base && !selectedSomething && !ed.sheet && setupNote}
+          {!ed.sheet && startDialog}
         </div>
         {/* While a path is drawn the plan takes the room: the sheet comes back after Done. */}
         {selectedSomething && !ed.sheet && !ed.moving && (
@@ -610,7 +611,6 @@ export function PlanEditor(props: PlanEditorProps) {
           </section>
         )}
         {ed.sheet === 'library' && library}
-        {!ed.sheet && startDialog}
         {picker.field}
         {backgroundPop}
         {(ed.sheet === 'elements' || ed.sheet === 'kit') && (

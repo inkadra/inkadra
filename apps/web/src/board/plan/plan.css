@@ -2067,6 +2067,7 @@ span.plan-pill {
   top: auto;
   /* Above the bar of tools, which stays at hand: picking a tool is starting too. */
   bottom: calc(65px + env(safe-area-inset-bottom));
+  z-index: 4;
   left: 0;
   translate: none;
   width: 100%;
