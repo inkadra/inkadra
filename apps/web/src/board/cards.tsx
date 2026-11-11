@@ -907,6 +907,11 @@ function TodoCard({
             if (e.key === 'Enter') {
               e.preventDefault();
               add();
+            } else if (e.key === '@' && draft.trim()) {
+              // As in an item: the text becomes an item and @ opens its people list.
+              e.preventDefault();
+              setAssigning(addTodoItem(store.doc, element.id, draft.trim(), undefined, LOCAL));
+              setDraft('');
             }
           }}
           onBlur={add}

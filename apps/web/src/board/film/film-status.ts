@@ -25,14 +25,16 @@ export function getFrameStatus(frame: {
 /**
  * Derives the kanban column a frame belongs to.
  * Columns: 'todo' | 'ready' | 'shot' | 'retake' | 'approved'.
- * 'approved' column shows frames with the new `approved: true` flag.
+ * 'approved' holds the frames `isApproved` counts (the same rule as the export, PR #112): the
+ * shot list flag or an approval in review. Only where the card is shown: the production status
+ * stays as it is (decision 0013 keeps the two apart).
  * 'todo' column includes 'draft', 'todo', and undefined when not approved.
  */
-export function getFrameKanbanColumn(frame: {
-  status?: FrameStatus | undefined;
-  approved?: boolean | undefined;
-}): KanbanColumnKey {
-  if (frame.approved) return 'approved';
+export function getFrameKanbanColumn(
+  frame: { id: string; status?: FrameStatus | undefined; approved?: boolean | undefined },
+  reviews: ReadonlyMap<string, { status: string }>,
+): KanbanColumnKey {
+  if (isApproved(frame, reviews)) return 'approved';
   const s = frame.status;
   if (s === 'ready' || s === 'shot' || s === 'retake') return s;
   return 'todo';

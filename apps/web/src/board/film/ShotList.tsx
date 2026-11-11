@@ -17,6 +17,7 @@ import { useIsPhone } from '../../lib/phone.ts';
 import { moveTabFocus } from '../../lib/tabs.ts';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility } from '../guest-visibility.tsx';
+import { useReviews } from '../review-store.ts';
 import { insideDialog, isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
@@ -27,6 +28,7 @@ import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import { blurOnEnter, ShotField, StatusChip, StatusSelect, usePresetText } from './fields.tsx';
 import {
   getFrameStatus,
+  isApproved,
   type KanbanColumnKey,
   SHOT_DISPLAY_STATUSES,
   type ShotDisplayStatus,
@@ -126,10 +128,19 @@ export function ShotList({
     [frames],
   );
 
+  const reviews = useReviews((s) => s.reviews);
+  // The Kanban puts a shot approved in review in "Approved" (getFrameKanbanColumn): its status
+  // filter and footer follow the columns; the table keeps the production status.
+  const statusOf = useCallback(
+    (f: FrameElement) =>
+      mode === 'kanban' && isApproved(f, reviews) ? 'approved' : getFrameStatus(f),
+    [mode, reviews],
+  );
+
   const q = query.trim().toLowerCase();
   const matches = useCallback(
     (f: FrameElement, sceneId?: string | null) => {
-      if (status && getFrameStatus(f) !== status) return false;
+      if (status && statusOf(f) !== status) return false;
       if (selectedScene) {
         const frameScene = sceneId ?? f.parent ?? null;
         if (frameScene !== selectedScene) return false;
@@ -162,7 +173,17 @@ export function ShotList({
       }
       return true;
     },
-    [status, selectedScene, selectedLocation, selectedCast, q, labels, presetText, tagLabel],
+    [
+      status,
+      statusOf,
+      selectedScene,
+      selectedLocation,
+      selectedCast,
+      q,
+      labels,
+      presetText,
+      tagLabel,
+    ],
   );
 
   const sortFrames = useCallback(
@@ -397,14 +418,14 @@ export function ShotList({
   const statusCounts = useMemo(() => {
     const counts = { shot: 0, todo: 0, retake: 0, approved: 0 };
     for (const f of allFilteredFrames) {
-      const s = getFrameStatus(f);
+      const s = statusOf(f);
       if (s === 'shot') counts.shot++;
       else if (s === 'retake') counts.retake++;
       else if (s === 'approved') counts.approved++;
       else counts.todo++;
     }
     return counts;
-  }, [allFilteredFrames]);
+  }, [allFilteredFrames, statusOf]);
 
   const hasActiveFilters = Boolean(status || selectedScene || selectedLocation || selectedCast);
 

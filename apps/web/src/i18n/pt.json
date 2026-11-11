@@ -1469,6 +1469,7 @@
       "moreCards": "mais",
       "approvedHelper": "Arraste aqui os planos aprovados",
       "approvedHint": "Também é preenchido pelas aprovações do cliente",
+      "approvedLocked": "Aprovado na revisão: altere a revisão em “{{status}}” e o estado de produção na Tabela",
       "selectRow": "Selecionar plano {{label}}"
     },
     "playback": {

@@ -34,7 +34,7 @@ import {
   shiftBlock,
   snap,
 } from './calendar.ts';
-import { plannedWrap } from './call-sheet.ts';
+import { locationsOfDay, plannedWrap } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { clockLabel, clockMinutes, scheduleTimes } from './schedule.ts';
 
@@ -1550,7 +1550,11 @@ function DayHead({
       {entry && draft ? (
         <>
           <span className="schedule__head-title schedule__day-sub">
-            {[t('schedule.dayShort', { n: entry.index + 1 }), draft.location.trim().split('\n')[0]]
+            {[
+              t('schedule.dayShort', { n: entry.index + 1 }),
+              // The place's name: its map link opens from the call sheet, not from here.
+              locationsOfDay({ ...draft, blocks: [] }, new Map())[0]?.name,
+            ]
               .filter(Boolean)
               .join(' · ')}
           </span>

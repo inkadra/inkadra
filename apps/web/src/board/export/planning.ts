@@ -312,21 +312,77 @@ export function callSheetPages(
 ): Page[] {
   const { width, height } = pageSize(setup.paper, setup.orientation);
   const box = contentBox(width, height);
+  const paginate = (blocks: ReturnType<typeof sheetBlocks>) =>
+    paginateRows(
+      blocks.map((block) => block.h),
+      box.h - 35,
+      blocks.map((block) => !!block.keep),
+    );
+  let blocks = sheetBlocks(sections, box, ctx, false);
+  let pages = paginate(blocks);
+  // A last page holding only a one-line section: tighter spacing, when it saves that page.
+  const last = pages.at(-1) ?? [];
+  if (pages.length > 1 && last.length <= 2 && blocks[last[0] ?? -1]?.title) {
+    const compact = sheetBlocks(sections, box, ctx, true);
+    const fewer = paginate(compact);
+    if (fewer.length < pages.length) [blocks, pages] = [compact, fewer];
+  }
+  return pages.map((indexes) => {
+    const ops: Op[] = [
+      {
+        kind: 'text',
+        x: box.x,
+        y: box.y + 16,
+        text: heading,
+        size: 12,
+        weight: 600,
+        color: ctx.colors['text-primary'],
+      },
+    ];
+    const callSheetLinks: MapLink[] = [];
+    let top = box.y + 35;
+    for (const index of indexes) {
+      const block = blocks[index];
+      if (block) {
+        ops.push(...block.draw(top));
+        if (block.link && /^https?:\/\//i.test(block.link))
+          callSheetLinks.push({ url: block.link, x: box.x, y: top, w: box.w, h: block.h });
+        top += block.h;
+      }
+    }
+    return { width, height, ops, callSheetLinks };
+  });
+}
+
+/**
+ * The titles and rows of a call sheet, each with the height it takes. A title stays with its
+ * first row, a department with its people, and a table never leaves one row alone at the top or
+ * the bottom of a page. `compact` trims the spacing.
+ */
+function sheetBlocks(
+  sections: CallSheetSection[],
+  box: ReturnType<typeof contentBox>,
+  ctx: CardContext,
+  compact: boolean,
+) {
+  const pad = compact ? 6 : 10;
   const blocks: Array<{
     h: number;
     keep?: boolean;
+    title?: boolean;
     link?: string | undefined;
     draw: (top: number) => Op[];
   }> = [];
   for (const section of sections) {
     blocks.push({
-      h: 28,
+      h: compact ? 22 : 28,
       keep: true,
+      title: true,
       draw: (top) => [
         {
           kind: 'text',
           x: box.x,
-          y: top + 18,
+          y: top + (compact ? 15 : 18),
           text: section.title,
           size: 11,
           weight: 600,
@@ -335,7 +391,10 @@ export function callSheetPages(
       ],
     });
     const total = section.columns.reduce((a, b) => a + b, 0);
-    for (const [index, row] of (section.rows.length ? section.rows : [[section.empty]]).entries()) {
+    const rows = section.rows.length ? section.rows : [[section.empty]];
+    const first = section.header ? 1 : 0;
+    const several = rows.length - first > 1;
+    for (const [index, row] of rows.entries()) {
       const frame = section.pictures?.[index];
       const tone = section.tones?.[index];
       let left = 0;
@@ -366,10 +425,15 @@ export function callSheetPages(
           mutedFrom: described && rest.length ? head.length + noted.length : Infinity,
         };
       });
-      const h = Math.max(1, ...cells.map((cell) => cell.lines.length)) * 12 + 10 + (frame ? 36 : 0);
+      const h =
+        Math.max(1, ...cells.map((cell) => cell.lines.length)) * 12 + pad + (frame ? 36 : 0);
       blocks.push({
         h,
-        keep: index === 0 && !!section.header && section.rows.length > 1,
+        keep:
+          (index < first && rows.length > 1) ||
+          // A department heading of the troupe: one cell across the table.
+          (row.length === 1 && section.columns.length > 1) ||
+          (several && (index === first || index === rows.length - 2)),
         link: section.links?.[index],
         draw: (top) => [
           ...(tone
@@ -377,58 +441,39 @@ export function callSheetPages(
             : []),
           ...cells.flatMap((cell) => [
             ...(cell.picture && frame
-              ? framePicture(frame, { x: box.x + cell.x, y: top + 4, w: cell.w - 8, h: 32 }, ctx)
+              ? framePicture(
+                  frame,
+                  { x: box.x + cell.x, y: top + pad / 2 - 1, w: cell.w - 8, h: 32 },
+                  ctx,
+                )
               : []),
             ...cell.lines.flatMap(
               (line, n) =>
-                textBlock([line], box.x + cell.x, top + 5 + (cell.picture ? 36 : 0) + n * 12, {
-                  size: 8.5,
-                  weight: n >= cell.noteFrom && n < cell.mutedFrom && note ? 700 : 400,
-                  leading: 12,
-                  color:
-                    ctx.colors[
-                      n >= cell.mutedFrom
-                        ? 'text-secondary'
-                        : n >= cell.noteFrom && note
-                          ? 'tag-orange'
-                          : 'text-primary'
-                    ],
-                }).ops,
+                textBlock(
+                  [line],
+                  box.x + cell.x,
+                  top + pad / 2 + (cell.picture ? 36 : 0) + n * 12,
+                  {
+                    size: 8.5,
+                    weight: n >= cell.noteFrom && n < cell.mutedFrom && note ? 700 : 400,
+                    leading: 12,
+                    color:
+                      ctx.colors[
+                        n >= cell.mutedFrom
+                          ? 'text-secondary'
+                          : n >= cell.noteFrom && note
+                            ? 'tag-orange'
+                            : 'text-primary'
+                      ],
+                  },
+                ).ops,
             ),
           ]),
         ],
       });
     }
   }
-  return paginateRows(
-    blocks.map((block) => block.h),
-    box.h - 35,
-    blocks.map((block) => !!block.keep),
-  ).map((indexes) => {
-    const ops: Op[] = [
-      {
-        kind: 'text',
-        x: box.x,
-        y: box.y + 16,
-        text: heading,
-        size: 12,
-        weight: 600,
-        color: ctx.colors['text-primary'],
-      },
-    ];
-    const callSheetLinks: MapLink[] = [];
-    let top = box.y + 35;
-    for (const index of indexes) {
-      const block = blocks[index];
-      if (block) {
-        ops.push(...block.draw(top));
-        if (block.link && /^https?:\/\//i.test(block.link))
-          callSheetLinks.push({ url: block.link, x: box.x, y: top, w: box.w, h: block.h });
-        top += block.h;
-      }
-    }
-    return { width, height, ops, callSheetLinks };
-  });
+  return blocks;
 }
 
 interface MapLink {

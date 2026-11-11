@@ -168,6 +168,11 @@
   }
   .troupe__row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+    padding-block: 0;
+  }
+  /* The whole row height is the person's touch target, as tall as the ⋯ button. */
+  .troupe__person {
+    min-height: 44px;
   }
 
   .troupe__panel {

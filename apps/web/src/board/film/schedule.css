@@ -678,6 +678,8 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* Time, title and details fit a 45-minute block, 14 px text on a phone included. */
+  line-height: 1.2;
 }
 .schedule__block.is-short .schedule__block-select {
   align-items: center;
@@ -710,8 +712,11 @@
   white-space: nowrap;
 }
 .schedule__block-meta {
+  overflow: hidden;
   color: var(--ink-text-secondary);
   font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .schedule__block-pic {
   flex: none;
