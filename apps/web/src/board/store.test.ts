@@ -361,3 +361,22 @@ it('finishes hydrating while one card is edited at every pause, rereading only w
     vi.restoreAllMocks();
   }
 });
+
+it('edits a cell of a table made in this session without going through every row', () => {
+  const doc = new Y.Doc();
+  const store = new BoardStore(doc);
+  // Its rows are first read by the store's observer, while the transaction cleans up.
+  const content = core.newTable(3, 300);
+  const table = createElement(doc, 'table', { x: 0, y: 0 }, content, opts);
+  const row = content.rows[150]!;
+  const column = content.columns[0]!;
+  const entries = vi.spyOn(Y.Map.prototype, 'entries');
+  const values = vi.spyOn(Y.Map.prototype, 'values');
+  core.setTableCell(doc, table.id, row.id, column.id, 'edited');
+  const el = store.getSnapshot().byId.get(table.id);
+  expect(el?.type === 'table' && el.rows[150]?.cells[column.id]).toBe('edited');
+  // Content compares and walks of unchanged rows would be 300 or more.
+  expect(entries.mock.calls.length + values.mock.calls.length).toBeLessThan(30);
+  vi.restoreAllMocks();
+  store.destroy();
+});

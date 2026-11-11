@@ -20,12 +20,13 @@ List equality first checks length and then compares items by identity or JSON, s
 only replaced items rather than all unchanged strokes/rows after a single edit.
 Cached Y.Map rows follow the document's transaction lifecycle, including ancestors of changed
 cell maps. Pending transactions remain visible through observer cleanup, so early observers
-and reads inside a transaction cannot reuse stale data. While a transaction is pending a
-cached row checks its own types (the row and its cell map) against it, never the whole set
-of changed types: a remote transaction moving thousands of cards stays linear. A row checked
-while a transaction is pending stays dirty, because Yjs does not record changes to types
-created in the same transaction. After all cleanups, changed rows are marked dirty before the
-transaction set is cleared. Unchanged rows no longer compare every
+and reads inside a transaction cannot reuse stale data. A finished transaction no longer
+changes, so its changed types and their ancestors are collected once and each cached row is a
+lookup; only inside a transaction that is still open does a row check its own types (the row
+and its cell map). No read walks every changed type: a remote transaction moving thousands of
+cards stays linear. Yjs does not record changes to types created in the same transaction, so
+a row read while one is open stays dirty and is compared by content on its next read. After all
+cleanups, changed rows are marked dirty before the transaction set is cleared. Unchanged rows no longer compare every
 cell; dirty rows still compare content and parse any new content as in 0094.
 
 Opening uses the same grouping pass, removing the scan of the whole board per column.

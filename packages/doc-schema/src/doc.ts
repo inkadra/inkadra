@@ -316,8 +316,8 @@ const INVALID = Symbol('invalid');
 const parsedItems = new WeakMap<z.ZodType, WeakMap<object, unknown>>();
 /**
  * Parsed Y.Map items (table rows); dirty rows compare content before reusing a parse. A row is
- * dirty after a transaction changed it or a type inside it, and while it was last checked
- * with a transaction pending: Yjs does not record changes to types created in the same
+ * dirty after a transaction changed it or a type inside it, and when it was last checked
+ * inside an open transaction: Yjs does not record changes to types created in the same
  * transaction, so only a content compare after the transaction can trust such a parse.
  */
 const parsedMaps = new WeakMap<
@@ -348,29 +348,45 @@ function pendingTransactions(doc: Y.Doc): Y.Transaction[] {
 }
 
 /**
- * Whether a pending transaction changed this type or one inside it (a row's cell map). Walks
- * the row, not the transaction: a move of thousands of cards stays linear (decision 0100).
+ * Whether a pending transaction changed this row or a type inside it (its cell map), never
+ * walking all changed types per read: a move of thousands of cards stays linear (decision
+ * 0100). A finished transaction no longer changes, so its types are collected once.
  */
-function changedWithin(type: object, pending: Y.Transaction[]): boolean {
-  for (const transaction of pending) if (transaction.changed.has(type as never)) return true;
-  const children = type instanceof Y.Map ? type.values() : type instanceof Y.Array ? type : [];
-  for (const child of children)
-    if (child instanceof Y.AbstractType && changedWithin(child, pending)) return true;
+function changedWithin(row: Y.Map<unknown>, pending: Y.Transaction[]): boolean {
+  for (const transaction of pending) {
+    const changed =
+      transaction === row.doc?._transaction
+        ? null
+        : (finishedChanges.get(transaction) ?? changedTypes(transaction));
+    if (changed ? changed.has(row) : changedInside(row, transaction)) return true;
+  }
   return false;
 }
 
-/** Include ancestors: a changed cell map invalidates its cached table row. Once per transaction. */
+/** For the open transaction, still growing: walk the row's own types. */
+function changedInside(type: object, transaction: Y.Transaction): boolean {
+  if (transaction.changed.has(type as never)) return true;
+  const children = type instanceof Y.Map ? type.values() : type instanceof Y.Array ? type : [];
+  for (const child of children)
+    if (child instanceof Y.AbstractType && changedInside(child, transaction)) return true;
+  return false;
+}
+
+/** Types a finished transaction changed, with their ancestors (a cell map marks its row). */
+const finishedChanges = new WeakMap<Y.Transaction, Set<object>>();
+
 function changedTypes(transaction: Y.Transaction): Set<object> {
   const changed = new Set<object>();
   for (const type of transaction.changed.keys()) {
     for (let current: typeof type | null = type; current; current = current.parent)
       changed.add(current);
   }
+  finishedChanges.set(transaction, changed);
   return changed;
 }
 
 function invalidateMaps(transaction: Y.Transaction) {
-  for (const type of changedTypes(transaction)) {
+  for (const type of finishedChanges.get(transaction) ?? changedTypes(transaction)) {
     const cached = parsedMaps.get(type as Y.Map<unknown>);
     if (cached) cached.dirty = true;
   }
@@ -400,16 +416,17 @@ function readItem(item: z.ZodType, value: unknown): unknown {
   if (value instanceof Y.Map) {
     const cached = parsedMaps.get(value);
     const pending = value.doc ? pendingTransactions(value.doc) : [];
+    const open = value.doc?._transaction != null;
     if (cached?.item === item) {
       if (!cached.dirty && !(pending.length && changedWithin(value, pending))) return cached.data;
       if (sameContent(value, cached.plain)) {
-        cached.dirty = pending.length > 0;
+        cached.dirty = open;
         return cached.data;
       }
     }
     const plain = value.toJSON();
     const data = parseItem(item, plain);
-    parsedMaps.set(value, { item, plain, data, dirty: pending.length > 0 });
+    parsedMaps.set(value, { item, plain, data, dirty: open });
     return data;
   }
   if (value instanceof Y.AbstractType) return parseItem(item, value.toJSON());
