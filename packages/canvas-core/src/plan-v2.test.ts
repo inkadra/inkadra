@@ -1057,6 +1057,23 @@ describe('links drawn and kept (set plan v2, pull request D)', () => {
     expect(keptOnDelete({ icons: [{ ...cam, lens: 85 }] }, doomed, cards)[0]?.lens).toBe(85);
   });
 
+  it('leaves the frames of an omitted scene out of a setup\'s shots', () => {
+    const omitted = { ...card, createdAt: 1, id: 'sceneAAAAAAAA', type: 'scene', number: '3', title: '', omitted: true };
+    const shown = { ...card, createdAt: 1, id: 'sceneBBBBBBBBB', type: 'scene', number: '4', title: '' };
+    const inOmitted = { ...card, createdAt: 1, parent: omitted.id, id: 'frameBBBBBBBB', type: 'frame' };
+    const inShown = { ...card, createdAt: 1, parent: shown.id, id: 'frameCCCCCCCC', type: 'frame' };
+    const all = new Map<string, Element>(
+      [omitted, shown, inOmitted, inShown].map((c) => [c.id, c as Element]),
+    );
+    const plan = {
+      icons: [
+        at('camera', 0, 0, { frameId: inOmitted.id }),
+        { ...at('camera', 0, 0, { frameId: inShown.id }), id: 'camBBBBBBBBBB' },
+      ],
+    };
+    expect(setupFrames(plan, all)).toEqual([inShown.id]);
+  });
+
   it('writes what the icons keep in the same step as the deletion', () => {
     const doc = createBoardDoc(boardId);
     const leo = createElement(doc, 'character', { x: 0, y: 0 }, { name: 'Leo' }, { userId: null });

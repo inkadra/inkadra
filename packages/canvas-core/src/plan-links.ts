@@ -129,12 +129,18 @@ export function linkedLocation(
   };
 }
 
-/** The frames a setup's cameras shoot, in the plan's order, each once: the setup's shots. */
+/**
+ * The frames a setup's cameras shoot, in the plan's order, each once: the setup's shots. A frame
+ * of a scene the script left out (decision 0082) is no shot to make, and is left out too.
+ */
 export function setupFrames(plan: Pick<PlanElement, 'icons'>, cards: CardsById): string[] {
   const out: string[] = [];
-  for (const icon of plan.icons ?? [])
-    if (icon.frameId && !out.includes(icon.frameId) && card(cards, icon.frameId, 'frame'))
-      out.push(icon.frameId);
+  for (const icon of plan.icons ?? []) {
+    const frame = card(cards, icon.frameId, 'frame');
+    if (!frame || out.includes(frame.id)) continue;
+    if (card(cards, frame.parent ?? undefined, 'scene')?.omitted) continue;
+    out.push(frame.id);
+  }
   return out;
 }
 

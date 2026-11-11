@@ -353,6 +353,20 @@ export function guestElement(view: BoardView, el: Element): Record<string, unkno
     const shown = new Set(view.visible.map((other) => other.id));
     out.relations = el.relations.filter((relation) => shown.has(relation.characterId));
   }
+  // Nor would a set plan's link to a card guests don't get (decision 0111): the icon keeps its
+  // own text, the link goes.
+  if (el.type === 'plan') {
+    const shown = new Set(view.visible.map((other) => other.id));
+    const icons = out.icons as Array<Record<string, unknown>> | undefined;
+    if (icons)
+      out.icons = icons.map((icon) => {
+        const kept = { ...icon };
+        for (const key of ['characterId', 'frameId'])
+          if (typeof kept[key] === 'string' && !shown.has(kept[key] as string)) delete kept[key];
+        return kept;
+      });
+    if (typeof out.locationId === 'string' && !shown.has(out.locationId)) delete out.locationId;
+  }
   const body = view.bodies.get(el.id);
   if (body) out.body = body;
   return out;

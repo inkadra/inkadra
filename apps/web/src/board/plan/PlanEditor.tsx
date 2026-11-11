@@ -3,6 +3,7 @@ import {
   iconCone,
   itemsInRect,
   layerOf,
+  linkedPlan,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type Point,
@@ -74,7 +75,13 @@ export function PlanEditor(props: PlanEditorProps) {
   const kitPlans = props.kitPlans;
   const kit = useMemo(() => projectKit(kitPlans ?? [plan]), [kitPlans, plan]);
   const sensorName = t(`board.plan.sensors.${plan.sensor ?? 's35'}`);
-  const changes = base ? setupChanges(base.icons ?? [], plan.icons ?? []) : [];
+  // Read with the live names of what the icons link to (decision 0111).
+  const changes = base
+    ? setupChanges(
+        linkedPlan(base, ed.cards).icons ?? [],
+        linkedPlan(plan, ed.cards).icons ?? [],
+      )
+    : [];
   const scaleValue = drawn.scale
     ? t('board.plan.scaleGrid', { grid: Number(drawn.grid ?? '0.5').toLocaleString(lang) })
     : t('board.plan.scale');

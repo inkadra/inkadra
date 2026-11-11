@@ -277,7 +277,12 @@ export function ShotList({
     ];
   }, [groupBy, groups, frames, matches, sortFrames, slugline, t, setups]);
 
-  const allFilteredFrames = useMemo(() => shownGroups.flatMap((g) => g.frames), [shownGroups]);
+  // Each shot once: grouped by setup, a shot of two setups is listed under both (decision 0111),
+  // but counted, selected and shown in the Kanban once.
+  const allFilteredFrames = useMemo(
+    () => [...new Map(shownGroups.flatMap((g) => g.frames).map((f) => [f.id, f])).values()],
+    [shownGroups],
+  );
 
   const allVisibleFrameIds = useMemo(() => allFilteredFrames.map((f) => f.id), [allFilteredFrames]);
 
