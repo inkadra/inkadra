@@ -423,7 +423,6 @@
       "rotateLeft": "Ruota di 90° a sinistra",
       "rotateRight": "Ruota di 90° a destra",
       "angle": "Angolo di rotazione",
-      "resetAngle": "Raddrizza al multiplo di 90° più vicino",
       "resetAngleHint": "Doppio clic per raddrizzare al multiplo di 90° più vicino",
       "done": "Fatto",
       "aspect": {

@@ -33,6 +33,7 @@ import {
   rotatedBounds,
   sanitizeCrop,
 } from './image-crop.ts';
+import { NumberField } from './plan/NumberField.tsx';
 import { HandleCurve, SQUARE_CORNER } from './ResizeHandles.tsx';
 import { LOCAL } from './store.ts';
 
@@ -422,20 +423,17 @@ export function ImageCropToolbar({
           onDoubleClick={() => changeAngle(Math.round(rot / 90) * 90)}
           onChange={changeAngle}
         />
-        <button
-          type="button"
-          className="crop-bar__deg ink-mono"
-          disabled={rot % 90 === 0}
-          aria-label={t('board.image.resetAngle')}
-          data-ink-tooltip={t('board.image.resetAngle')}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
+        <NumberField
+          value={Math.round(rot)}
+          min={-180}
+          max={180}
+          unit="°"
+          label={t('board.image.angle')}
+          onCommit={(deg) => {
             store.undo.stopCapturing();
-            changeAngle(Math.round(rot / 90) * 90);
+            changeAngle(deg);
           }}
-        >
-          {Math.round(rot)}°
-        </button>
+        />
       </span>
       <span className="ctxbar__sep" aria-hidden="true" />
       <button

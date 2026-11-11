@@ -22,6 +22,7 @@ import {
 import { Button, Icon, IconButton, type IconName, Select, Slider } from '@inkadra/ui';
 import { type PointerEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NumberField } from '../plan/NumberField.tsx';
 import { isMac } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { aspectLabel, frameRatio } from './aspect.ts';
@@ -314,6 +315,9 @@ export function DrawingEditor({
     write();
     store.undo.stopCapturing();
   };
+  const opacity = Math.round((frame.referenceOpacity ?? 1) * 100);
+  const setOpacity = (value: number) =>
+    change(() => updateElement(store.doc, frame.id, { referenceOpacity: value / 100 }, LOCAL));
 
   const commitText = () => {
     const draft = textRef.current;
@@ -699,30 +703,27 @@ export function DrawingEditor({
             {popover === 'more' && (
               <div className="pen__popover pen__more">
                 {frame.assetId && (
-                  // biome-ignore lint/a11y/noLabelWithoutControl: Slider renders a labelable range input.
-                  <label className="pen__opacity">
+                  <div className="pen__opacity">
                     <span className="pen__opacity-label">
                       {t('film.pen.opacity')}
-                      <small>{Math.round((frame.referenceOpacity ?? 1) * 100)}%</small>
+                      <NumberField
+                        value={opacity}
+                        min={5}
+                        max={100}
+                        unit="%"
+                        label={t('film.pen.opacity')}
+                        onCommit={setOpacity}
+                      />
                     </span>
                     <Slider
                       aria-label={t('film.pen.opacity')}
                       min={5}
                       max={100}
                       step={5}
-                      value={Math.round((frame.referenceOpacity ?? 1) * 100)}
-                      onChange={(value) =>
-                        change(() =>
-                          updateElement(
-                            store.doc,
-                            frame.id,
-                            { referenceOpacity: value / 100 },
-                            LOCAL,
-                          ),
-                        )
-                      }
+                      value={opacity}
+                      onChange={setOpacity}
                     />
-                  </label>
+                  </div>
                 )}
                 {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
                 <label className="pen__aspect">

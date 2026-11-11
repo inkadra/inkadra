@@ -423,7 +423,6 @@
       "rotateLeft": "90° nach links drehen",
       "rotateRight": "90° nach rechts drehen",
       "angle": "Drehwinkel",
-      "resetAngle": "Auf nächstes Vielfaches von 90° ausrichten",
       "resetAngleHint": "Doppelklick richtet auf das nächste Vielfache von 90° aus",
       "done": "Fertig",
       "aspect": {

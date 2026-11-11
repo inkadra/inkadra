@@ -423,7 +423,6 @@
       "rotateLeft": "Pivoter de 90° vers la gauche",
       "rotateRight": "Pivoter de 90° vers la droite",
       "angle": "Angle de rotation",
-      "resetAngle": "Redresser au multiple de 90° le plus proche",
       "resetAngleHint": "Double-cliquez pour redresser au multiple de 90° le plus proche",
       "done": "Terminé",
       "aspect": {

@@ -1327,18 +1327,34 @@ select {
 
 /* Slider ------------------------------------------------------------------------- */
 
+/*
+ * Default: a 4 px line, filled in the text colour, and a 16 px thumb with a surface border and a
+ * thin ring. `--meaning`: an 8 px track painted by the caller (a gradient) and an 18 px thumb in
+ * the colour at the value, ringed in text and surface colour so it reads on any gradient.
+ * The unfilled part is --ink-text-secondary: --ink-border-strong is under 3:1 on every surface.
+ */
 .ink-slider {
   --ink-slider-track: linear-gradient(
     to right,
     var(--ink-text-primary) var(--ink-slider-fill, 0%),
     var(--ink-text-secondary) var(--ink-slider-fill, 0%)
   );
+  --ink-slider-height: 4px;
+  --ink-slider-size: 16px;
+  --ink-slider-border: 3px solid var(--ink-surface-1);
+  --ink-slider-ring: 0 0 0 1px var(--ink-text-secondary);
   appearance: none;
   width: 96px;
   height: 28px;
   margin: 0;
   background: transparent;
   cursor: pointer;
+}
+.ink-slider--meaning {
+  --ink-slider-height: 8px;
+  --ink-slider-size: 18px;
+  --ink-slider-border: 2px solid var(--ink-text-primary);
+  --ink-slider-ring: 0 0 0 2px var(--ink-surface-1);
 }
 .ink-slider:focus-visible {
   box-shadow: none;
@@ -1348,57 +1364,54 @@ select {
   cursor: default;
 }
 .ink-slider::-webkit-slider-runnable-track {
-  height: var(--ink-slider-height, 4px);
+  height: var(--ink-slider-height);
   border-radius: var(--ink-radius-full);
   background: var(--ink-slider-track);
 }
 .ink-slider::-moz-range-track {
-  height: var(--ink-slider-height, 4px);
+  height: var(--ink-slider-height);
   border-radius: var(--ink-radius-full);
   background: var(--ink-slider-track);
 }
 .ink-slider::-webkit-slider-thumb {
   appearance: none;
-  width: 16px;
-  height: 16px;
-  margin-top: calc((var(--ink-slider-height, 4px) - 16px) / 2);
+  box-sizing: border-box;
+  width: var(--ink-slider-size);
+  height: var(--ink-slider-size);
+  margin-top: calc((var(--ink-slider-height) - var(--ink-slider-size)) / 2);
   border-radius: 50%;
-  border: 3px solid var(--ink-surface-1);
+  border: var(--ink-slider-border);
   background: var(--ink-slider-thumb, var(--ink-text-primary));
-  box-shadow: 0 0 0 1px var(--ink-text-secondary);
+  box-shadow: var(--ink-slider-ring);
 }
 .ink-slider::-moz-range-thumb {
-  box-sizing: content-box;
-  width: 10px;
-  height: 10px;
+  box-sizing: border-box;
+  width: var(--ink-slider-size);
+  height: var(--ink-slider-size);
   border-radius: 50%;
-  border: 3px solid var(--ink-surface-1);
+  border: var(--ink-slider-border);
   background: var(--ink-slider-thumb, var(--ink-text-primary));
-  box-shadow: 0 0 0 1px var(--ink-text-secondary);
+  box-shadow: var(--ink-slider-ring);
 }
+/* The ring stays inside the focus ring, so the meaning thumb keeps its surface gap. */
 .ink-slider:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px var(--ink-accent-primary);
+  box-shadow:
+    var(--ink-slider-ring),
+    0 0 0 5px var(--ink-accent-primary);
 }
 .ink-slider:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px var(--ink-accent-primary);
+  box-shadow:
+    var(--ink-slider-ring),
+    0 0 0 5px var(--ink-accent-primary);
 }
 @media (pointer: coarse) {
   .ink-slider {
+    --ink-slider-size: 20px;
     height: 44px;
   }
-  .ink-slider::-webkit-slider-thumb {
-    width: 20px;
-    height: 20px;
-    margin-top: calc((var(--ink-slider-height, 4px) - 20px) / 2);
+  .ink-slider--meaning {
+    --ink-slider-size: 22px;
   }
-  .ink-slider::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-  }
-}
-
-.ink-slider--meaning {
-  --ink-slider-height: 8px;
 }
 
 /* Choice controls ---------------------------------------------------------- */

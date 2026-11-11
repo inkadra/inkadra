@@ -1926,7 +1926,7 @@ export function PlanEditor({
     value: number,
     min: number,
     max: number,
-    shown: string,
+    unit: string,
     set: (v: number) => PlanIcon,
   ) => (
     <div className="plan-props__row">
@@ -1941,7 +1941,17 @@ export function PlanEditor({
         onPointerUp={() => store.undo.stopCapturing()}
         onChange={(v) => writeItems([set(v)])}
       />
-      <b className="plan-props__value">{shown}</b>
+      <NumberField
+        value={value}
+        min={min}
+        max={max}
+        unit={unit}
+        label={label}
+        onCommit={(v) => {
+          store.undo.stopCapturing();
+          writeItems([set(v)]);
+        }}
+      />
     </div>
   );
   const lightPanel = icon && cone?.beam && (
@@ -1962,16 +1972,13 @@ export function PlanEditor({
           }}
         />
       </div>
-      {range(t('board.plan.beam'), icon.beam ?? 30, 5, 180, `${icon.beam ?? 30}°`, (v) => ({
-        ...icon,
-        beam: v,
-      }))}
+      {range(t('board.plan.beam'), icon.beam ?? 30, 5, 180, '°', (v) => ({ ...icon, beam: v }))}
       {range(
         t('board.plan.intensity'),
         Math.round((icon.intensity ?? 0.8) * 100),
         0,
         100,
-        `${Math.round((icon.intensity ?? 0.8) * 100)}%`,
+        '%',
         (v) => ({ ...icon, intensity: v / 100 }),
       )}
       {reachField}

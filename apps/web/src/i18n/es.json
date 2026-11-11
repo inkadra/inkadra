@@ -423,7 +423,6 @@
       "rotateLeft": "Girar 90° a la izquierda",
       "rotateRight": "Girar 90° a la derecha",
       "angle": "Ángulo de giro",
-      "resetAngle": "Enderezar al múltiplo de 90° más cercano",
       "resetAngleHint": "Doble clic para enderezar al múltiplo de 90° más cercano",
       "done": "Listo",
       "aspect": {

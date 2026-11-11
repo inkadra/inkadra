@@ -975,12 +975,6 @@ button.plan__badge:hover {
   flex: 1;
   min-width: 0;
 }
-.plan-props__value {
-  min-width: 44px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-text-primary);
-}
 .plan-props__row b {
   color: var(--ink-text-primary);
   font-weight: 500;
