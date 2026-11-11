@@ -1499,7 +1499,60 @@
         "back": "Controluce",
         "practical": "In scena"
       },
-      "snapIcons": "Aggancia le icone"
+      "snapIcons": "Aggancia le icone",
+      "links": {
+        "proposed": "Proposti",
+        "others": "Tutti gli altri",
+        "none": "Niente da collegare",
+        "unlink": "Scollega",
+        "playedBy": "Interpretato da {{actor}}",
+        "openCharacter": "Apri il personaggio",
+        "linkCharacter": "Collega a un personaggio",
+        "searchCharacter": "Cerca personaggi",
+        "openFrame": "Apri l'inquadratura",
+        "linkFrame": "Collega a un'inquadratura",
+        "searchFrame": "Cerca inquadrature",
+        "followFrame": "Usa i {{mm}} mm dell'inquadratura",
+        "location": "Location",
+        "openLocation": "Apri la location",
+        "linkLocation": "Collega a una location",
+        "searchLocation": "Cerca location",
+        "lightNotes": "Luce",
+        "sun": "Sole, per gli esterni",
+        "timeOfDay": "Ora del giorno",
+        "date": "Data",
+        "north": "Il nord è a",
+        "from": {
+          "north": "Da nord",
+          "northEast": "Da nord-est",
+          "east": "Da est",
+          "southEast": "Da sud-est",
+          "south": "Da sud",
+          "southWest": "Da sud-ovest",
+          "west": "Da ovest",
+          "northWest": "Da nord-ovest"
+        },
+        "height": {
+          "down": "sotto l'orizzonte",
+          "low": "basso",
+          "mid": "a metà altezza",
+          "high": "alto"
+        },
+        "sunFromPlace": "Calcolato dal link della mappa di {{place}}: {{degrees}}° sull'orizzonte. Le icone del sole girano quando cambia l'ora.",
+        "sunByClock": "Solo dall'ora: a est al mattino, a ovest la sera. Aggiungi un link della mappa alla location per l'altezza del sole. Le icone del sole girano quando cambia l'ora; il nord si imposta a mano.",
+        "scene": "Scena {{number}}",
+        "settings": {
+          "int": "INT",
+          "ext": "EST",
+          "int-ext": "INT/EST"
+        },
+        "times": {
+          "day": "Giorno",
+          "night": "Notte",
+          "dawn": "Alba",
+          "dusk": "Tramonto"
+        }
+      }
     },
     "contextual": {
       "done": "Fatto",
@@ -1913,7 +1966,10 @@
       "approvedHelper": "Trascina qui le inquadrature approvate",
       "approvedHint": "Si riempie anche dalle approvazioni del cliente",
       "approvedLocked": "Approvata in revisione: cambia la revisione da «{{status}}» e lo stato di produzione dalla Tabella",
-      "selectRow": "Seleziona inquadratura {{label}}"
+      "selectRow": "Seleziona inquadratura {{label}}",
+      "groupSetup": "Setup",
+      "noSetup": "Senza setup",
+      "inSetup": "Nel setup della pianta {{setup}}"
     },
     "playback": {
       "size": "Dimensione riquadri",

@@ -174,6 +174,7 @@ import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
 import { selectedBlocks } from './note-format.ts';
 import { PresenceLayer } from './PresenceLayer.tsx';
+import { PlanCardsContext } from './plan/PlanDrawing.tsx';
 import { PlanEditor } from './plan/PlanEditor.tsx';
 import { PlanViewer } from './plan/PlanViewer.tsx';
 import {
@@ -3614,6 +3615,7 @@ export function Canvas({
 
   return (
     <BoardContext.Provider value={ctx}>
+      <PlanCardsContext.Provider value={snap.byId}>
       <div
         ref={rootRef}
         tabIndex={-1}
@@ -4088,6 +4090,12 @@ export function Canvas({
             }}
             onNewVariant={() => editedPlan && newVariant(editedPlan, true)}
             onOpenScene={openScene}
+            boardAspect={boardAspect}
+            onOpenCard={(id) => {
+              const card = snap.byId.get(id);
+              setEditing(null);
+              if (card) requestAnimationFrame(() => openElement(card));
+            }}
             {...(onExportSelection && !preview
               ? {
                   // Today's export of the plan card: the board's export of the selection.
@@ -4386,6 +4394,7 @@ export function Canvas({
           }}
         />
       </div>
+      </PlanCardsContext.Provider>
     </BoardContext.Provider>
   );
 }

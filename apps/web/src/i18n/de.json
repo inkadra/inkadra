@@ -1499,7 +1499,60 @@
         "back": "Gegenlicht",
         "practical": "Praktikabel"
       },
-      "snapIcons": "Symbole einrasten"
+      "snapIcons": "Symbole einrasten",
+      "links": {
+        "proposed": "Vorgeschlagen",
+        "others": "Alles andere",
+        "none": "Nichts zu verknüpfen",
+        "unlink": "Verknüpfung lösen",
+        "playedBy": "Gespielt von {{actor}}",
+        "openCharacter": "Figur öffnen",
+        "linkCharacter": "Mit einer Figur verknüpfen",
+        "searchCharacter": "Figuren suchen",
+        "openFrame": "Einstellung öffnen",
+        "linkFrame": "Mit einer Einstellung verknüpfen",
+        "searchFrame": "Einstellungen suchen",
+        "followFrame": "{{mm}} mm der Einstellung verwenden",
+        "location": "Drehort",
+        "openLocation": "Drehort öffnen",
+        "linkLocation": "Mit einem Drehort verknüpfen",
+        "searchLocation": "Drehorte suchen",
+        "lightNotes": "Licht",
+        "sun": "Sonne, für Außenaufnahmen",
+        "timeOfDay": "Tageszeit",
+        "date": "Datum",
+        "north": "Norden liegt bei",
+        "from": {
+          "north": "Von Norden",
+          "northEast": "Von Nordosten",
+          "east": "Von Osten",
+          "southEast": "Von Südosten",
+          "south": "Von Süden",
+          "southWest": "Von Südwesten",
+          "west": "Von Westen",
+          "northWest": "Von Nordwesten"
+        },
+        "height": {
+          "down": "unter dem Horizont",
+          "low": "tief",
+          "mid": "halbhoch",
+          "high": "hoch"
+        },
+        "sunFromPlace": "Berechnet aus dem Kartenlink von {{place}}: {{degrees}}° über dem Horizont. Die Sonnensymbole drehen sich mit der Uhrzeit.",
+        "sunByClock": "Nur aus der Uhrzeit: morgens im Osten, abends im Westen. Füge dem Drehort einen Kartenlink hinzu, um die Sonnenhöhe zu erhalten. Die Sonnensymbole drehen sich mit der Uhrzeit; Norden stellst du von Hand ein.",
+        "scene": "Szene {{number}}",
+        "settings": {
+          "int": "INT",
+          "ext": "EXT",
+          "int-ext": "INT/EXT"
+        },
+        "times": {
+          "day": "Tag",
+          "night": "Nacht",
+          "dawn": "Morgengrauen",
+          "dusk": "Abenddämmerung"
+        }
+      }
     },
     "contextual": {
       "done": "Fertig",
@@ -1913,7 +1966,10 @@
       "approvedHelper": "Freigegebene Shots hierher ziehen",
       "approvedHint": "Füllt sich auch durch Kundenfreigaben",
       "approvedLocked": "In der Prüfung freigegeben: Prüfung über „{{status}}“ ändern, Produktionsstatus in der Tabelle",
-      "selectRow": "Shot {{label}} auswählen"
+      "selectRow": "Shot {{label}} auswählen",
+      "groupSetup": "Setup",
+      "noSetup": "Ohne Setup",
+      "inSetup": "Im Setup des Setplans {{setup}}"
     },
     "playback": {
       "size": "Kachelgröße",

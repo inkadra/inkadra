@@ -1,3 +1,4 @@
+import { linkedLocation, linkedPlan } from '@inkadra/canvas-core';
 import { type Element, readElement, roots } from '@inkadra/doc-schema';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
@@ -138,7 +139,8 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
         ...(el.walls ?? []).map((w) => w.label),
         ...(el.openings ?? []).map((o) => o.label),
       ].filter((w): w is string => !!w);
-      return { ...base, title: el.title ?? '', text: join(el.title, words) };
+      // `autoLabel`: the name of the location it links to.
+      return { ...base, title: el.title ?? '', text: join(el.title, autoLabel, words) };
     }
     case 'table': {
       const cells = el.rows.flatMap((r) => el.columns.map((c) => r.cells[c.id] ?? ''));
@@ -223,9 +225,15 @@ export function entriesFor(doc: Y.Doc): IndexEntry[] {
     if (el) read.push({ el, map });
   }
   const labels = autoFrameLabels(read.map((r) => r.el));
+  // A plan is found by the live names of what it links to (decision 0104): the characters its
+  // actors play and its location, as they read now.
+  const byId = new Map(read.map((r) => [r.el.id, r.el]));
   return read.map(({ el, map }) => {
     const body = map.get('body');
-    return entryFor(el, body instanceof Y.XmlFragment ? fragmentText(body) : '', labels.get(el.id));
+    const text = body instanceof Y.XmlFragment ? fragmentText(body) : '';
+    if (el.type === 'plan')
+      return entryFor(linkedPlan(el, byId), text, linkedLocation(el, byId)?.name);
+    return entryFor(el, text, labels.get(el.id));
   });
 }
 

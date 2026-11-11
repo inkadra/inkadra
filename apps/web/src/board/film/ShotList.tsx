@@ -10,13 +10,23 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import { Button, Checkbox, EmptyState, Icon, IconButton, Select } from '@inkadra/ui';
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import { moveTabFocus } from '../../lib/tabs.ts';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility } from '../guest-visibility.tsx';
+import { SetupChips } from '../plan/SetupChips.tsx';
+import { shotSetups } from '../plan/setups.ts';
 import { useReviews } from '../review-store.ts';
 import { insideDialog, isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
@@ -79,7 +89,12 @@ export function ShotList({
   const [selectedScene, setSelectedScene] = useState<string>('');
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedCast, setSelectedCast] = useState<string>('');
-  const [groupBy, setGroupBy] = useState<'scene' | 'location' | 'status' | 'none'>('scene');
+  const [groupBy, setGroupBy] = useState<'scene' | 'location' | 'status' | 'setup' | 'none'>(
+    'scene',
+  );
+  // The setups of the set plans each shot belongs to (decision 0104), computed, never stored.
+  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const setups = useMemo(() => shotSetups([...snapshot.byId.values()], t), [snapshot, t]);
   const [sortBy, setSortBy] = useState<'manual' | 'label'>('manual');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -225,6 +240,21 @@ export function ShotList({
         frames: sortFrames(grpFrames),
       }));
     }
+    if (groupBy === 'setup') {
+      const map = new Map<string, { title: string; frames: FrameElement[] }>();
+      for (const f of filtered)
+        for (const s of setups.get(f.id) ?? [{ planId: 'none', name: '', plan: '' }]) {
+          const title = s.name ? `${s.plan} · ${s.name}` : t('film.list.noSetup');
+          const group = map.get(s.planId) ?? { title, frames: [] };
+          group.frames.push(f);
+          map.set(s.planId, group);
+        }
+      return Array.from(map.entries()).map(([id, g]) => ({
+        id: `setup-${id}`,
+        title: g.title,
+        frames: sortFrames(g.frames),
+      }));
+    }
     if (groupBy === 'status') {
       const map = new Map<string, FrameElement[]>();
       for (const f of filtered) {
@@ -245,7 +275,7 @@ export function ShotList({
         frames: sortFrames(filtered),
       },
     ];
-  }, [groupBy, groups, frames, matches, sortFrames, slugline, t]);
+  }, [groupBy, groups, frames, matches, sortFrames, slugline, t, setups]);
 
   const allFilteredFrames = useMemo(() => shownGroups.flatMap((g) => g.frames), [shownGroups]);
 
@@ -537,7 +567,7 @@ export function ShotList({
         className="ink-input"
         value={groupBy}
         aria-label={t('film.list.groupBy')}
-        onChange={(e) => setGroupBy(e as 'scene' | 'location' | 'status' | 'none')}
+        onChange={(e) => setGroupBy(e as 'scene' | 'location' | 'status' | 'setup' | 'none')}
       >
         <option value="scene">
           {t('film.list.groupBy')}: {t('film.list.groupScene')}
@@ -547,6 +577,9 @@ export function ShotList({
         </option>
         <option value="status">
           {t('film.list.groupBy')}: {t('film.list.groupStatus')}
+        </option>
+        <option value="setup">
+          {t('film.list.groupBy')}: {t('film.list.groupSetup')}
         </option>
         <option value="none">
           {t('film.list.groupBy')}: {t('film.list.groupNone')}
@@ -732,6 +765,7 @@ export function ShotList({
                           {meta.length > 0 && (
                             <span className="shot-card__meta">{meta.join(' · ')}</span>
                           )}
+                          <SetupChips setups={setups.get(f.id)} />
                           {f.action && <span className="shot-card__action">{f.action}</span>}
                         </span>
                       </button>
@@ -993,6 +1027,7 @@ export function ShotList({
                             </td>
                             <td className="shots__label">
                               {label}{' '}
+                              <SetupChips setups={setups.get(f.id)} />
                               {(readOnly || !f.guestHidden) && (
                                 <GuestVisibility store={store} element={f} />
                               )}

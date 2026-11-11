@@ -1499,7 +1499,60 @@
         "back": "Contra",
         "practical": "Práctica"
       },
-      "snapIcons": "Encajar los iconos"
+      "snapIcons": "Encajar los iconos",
+      "links": {
+        "proposed": "Propuestos",
+        "others": "Todo lo demás",
+        "none": "Nada que vincular",
+        "unlink": "Desvincular",
+        "playedBy": "Interpretado por {{actor}}",
+        "openCharacter": "Abrir el personaje",
+        "linkCharacter": "Vincular a un personaje",
+        "searchCharacter": "Buscar personajes",
+        "openFrame": "Abrir el plano",
+        "linkFrame": "Vincular a un plano",
+        "searchFrame": "Buscar planos",
+        "followFrame": "Usar los {{mm}} mm del plano",
+        "location": "Localización",
+        "openLocation": "Abrir la localización",
+        "linkLocation": "Vincular a una localización",
+        "searchLocation": "Buscar localizaciones",
+        "lightNotes": "Luz",
+        "sun": "Sol, para exteriores",
+        "timeOfDay": "Hora del día",
+        "date": "Fecha",
+        "north": "El norte está a",
+        "from": {
+          "north": "Desde el norte",
+          "northEast": "Desde el noreste",
+          "east": "Desde el este",
+          "southEast": "Desde el sureste",
+          "south": "Desde el sur",
+          "southWest": "Desde el suroeste",
+          "west": "Desde el oeste",
+          "northWest": "Desde el noroeste"
+        },
+        "height": {
+          "down": "bajo el horizonte",
+          "low": "bajo",
+          "mid": "a media altura",
+          "high": "alto"
+        },
+        "sunFromPlace": "Calculado con el enlace del mapa de {{place}}: {{degrees}}° sobre el horizonte. Los iconos del sol giran al cambiar la hora.",
+        "sunByClock": "Solo con la hora: al este por la mañana, al oeste por la tarde. Añade un enlace de mapa a la localización para la altura del sol. Los iconos del sol giran al cambiar la hora; el norte se fija a mano.",
+        "scene": "Escena {{number}}",
+        "settings": {
+          "int": "INT",
+          "ext": "EXT",
+          "int-ext": "INT/EXT"
+        },
+        "times": {
+          "day": "Día",
+          "night": "Noche",
+          "dawn": "Amanecer",
+          "dusk": "Atardecer"
+        }
+      }
     },
     "contextual": {
       "done": "Listo",
@@ -1913,7 +1966,10 @@
       "approvedHelper": "Arrastra aquí los planos aprobados",
       "approvedHint": "También se llena con las aprobaciones del cliente",
       "approvedLocked": "Aprobada en revisión: cambia la revisión desde «{{status}}» y el estado de producción desde la Tabla",
-      "selectRow": "Seleccionar plano {{label}}"
+      "selectRow": "Seleccionar plano {{label}}",
+      "groupSetup": "Setup",
+      "noSetup": "Sin setup",
+      "inSetup": "En el setup del plano de set {{setup}}"
     },
     "playback": {
       "size": "Tamaño de las miniaturas",

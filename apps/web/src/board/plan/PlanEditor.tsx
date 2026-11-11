@@ -28,7 +28,8 @@ import { PlanElements } from './PlanElements.tsx';
 import { PlanKit, powerText, setupName } from './PlanKit.tsx';
 import { type Dragged, PlanLibrary } from './PlanLibrary.tsx';
 import { PlanProperties } from './PlanProperties.tsx';
-import { SceneBadges, ScenePicker, scenesOfPlan } from './scenes.tsx';
+import { SceneChips } from './PlanLinks.tsx';
+import { ScenePicker } from './scenes.tsx';
 import { type SetupChange, setupChanges } from './setups.ts';
 import './plan.css';
 
@@ -70,7 +71,6 @@ export function PlanEditor(props: PlanEditorProps) {
   const [fullProps, setFullProps] = useState(false);
   const scaleButton = useRef<HTMLButtonElement>(null);
   const family = props.family?.length ? props.family : [plan];
-  const linked = scenesOfPlan(plan, new Map(props.scenes.map((s) => [s.id, s])));
   const title = planTitle(t, plan);
   const kitPlans = props.kitPlans;
   const kit = useMemo(() => projectKit(kitPlans ?? [plan]), [kitPlans, plan]);
@@ -622,7 +622,7 @@ export function PlanEditor(props: PlanEditorProps) {
               }
             }}
           />
-          <SceneBadges scenes={linked} onOpen={props.onOpenScene} />
+          <SceneChips ed={ed} onOpen={props.onOpenScene} />
           <IconButton
             icon="link"
             label={t('board.plan.linkScene')}

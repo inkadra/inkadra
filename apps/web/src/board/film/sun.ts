@@ -114,3 +114,51 @@ export function locationCoords(text: string): { lat: number; lng: number } | nul
   }
   return null;
 }
+
+/**
+ * Where the sun is at `minutes` after midnight of `date` on the clock of `timeZone` (the
+ * device's when none), seen from `lat`, `lng`: its bearing in degrees clockwise from north and
+ * its height above the horizon in degrees. The usual low-precision solar position (about a
+ * degree off), worked out on the device as `sunTimesUtc` is (decision 0089).
+ */
+export function sunPosition(
+  date: string,
+  minutes: number,
+  lat: number,
+  lng: number,
+  timeZone?: string | undefined,
+): { azimuth: number; elevation: number } {
+  const [y = 2000, mo = 1, d = 1] = date.split('-').map(Number);
+  const wall = Date.UTC(y, mo - 1, d) + minutes * 60_000;
+  const at = wall - zoneOffset(wall, timeZone) * 60_000;
+  const days = at / 86_400_000 + J1970 - J2000;
+  const m = (357.5291 + 0.98560028 * days) * RAD;
+  const centre = (1.9148 * Math.sin(m) + 0.02 * Math.sin(2 * m) + 0.0003 * Math.sin(3 * m)) * RAD;
+  const ecliptic = m + centre + 102.9372 * RAD + Math.PI;
+  const tilt = 23.4397 * RAD;
+  const declination = Math.asin(Math.sin(ecliptic) * Math.sin(tilt));
+  const ascension = Math.atan2(Math.sin(ecliptic) * Math.cos(tilt), Math.cos(ecliptic));
+  const hour = (280.16 + 360.9856235 * days) * RAD + lng * RAD - ascension;
+  const phi = lat * RAD;
+  const elevation = Math.asin(
+    Math.sin(phi) * Math.sin(declination) +
+      Math.cos(phi) * Math.cos(declination) * Math.cos(hour),
+  );
+  // Measured from the south, westwards; turned to a bearing from the north.
+  const fromSouth = Math.atan2(
+    Math.sin(hour),
+    Math.cos(hour) * Math.sin(phi) - Math.tan(declination) * Math.cos(phi),
+  );
+  const azimuth = (((fromSouth / RAD + 180) % 360) + 360) % 360;
+  return { azimuth: Math.round(azimuth), elevation: Math.round(elevation / RAD) };
+}
+
+/**
+ * The sun's bearing from the clock alone, for a set whose place is not known: east at six,
+ * south at noon, west at six in the evening, as north of the tropics. shortcut: no latitude nor
+ * season; a location with a map link gives `sunPosition` instead, and an address would need a
+ * geocoder.
+ */
+export function sunBearingByClock(minutes: number): number {
+  return (((180 + (minutes / 60 - 12) * 15) % 360) + 360) % 360;
+}

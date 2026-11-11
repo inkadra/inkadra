@@ -1499,7 +1499,60 @@
         "back": "Contre",
         "practical": "Practical"
       },
-      "snapIcons": "Accrocher les icônes"
+      "snapIcons": "Accrocher les icônes",
+      "links": {
+        "proposed": "Proposés",
+        "others": "Tout le reste",
+        "none": "Rien à lier",
+        "unlink": "Délier",
+        "playedBy": "Joué par {{actor}}",
+        "openCharacter": "Ouvrir le personnage",
+        "linkCharacter": "Lier à un personnage",
+        "searchCharacter": "Chercher des personnages",
+        "openFrame": "Ouvrir le plan",
+        "linkFrame": "Lier à un plan",
+        "searchFrame": "Chercher des plans",
+        "followFrame": "Utiliser les {{mm}} mm du plan",
+        "location": "Décor",
+        "openLocation": "Ouvrir le décor",
+        "linkLocation": "Lier à un décor",
+        "searchLocation": "Chercher des décors",
+        "lightNotes": "Lumière",
+        "sun": "Soleil, pour les extérieurs",
+        "timeOfDay": "Heure",
+        "date": "Date",
+        "north": "Le nord est à",
+        "from": {
+          "north": "Du nord",
+          "northEast": "Du nord-est",
+          "east": "De l'est",
+          "southEast": "Du sud-est",
+          "south": "Du sud",
+          "southWest": "Du sud-ouest",
+          "west": "De l'ouest",
+          "northWest": "Du nord-ouest"
+        },
+        "height": {
+          "down": "sous l'horizon",
+          "low": "bas",
+          "mid": "à mi-hauteur",
+          "high": "haut"
+        },
+        "sunFromPlace": "Calculé avec le lien de carte de {{place}} : {{degrees}}° au-dessus de l'horizon. Les icônes du soleil tournent avec l'heure.",
+        "sunByClock": "D'après l'heure seule : à l'est le matin, à l'ouest le soir. Ajoutez un lien de carte au décor pour la hauteur du soleil. Les icônes du soleil tournent avec l'heure ; le nord se règle à la main.",
+        "scene": "Scène {{number}}",
+        "settings": {
+          "int": "INT",
+          "ext": "EXT",
+          "int-ext": "INT/EXT"
+        },
+        "times": {
+          "day": "Jour",
+          "night": "Nuit",
+          "dawn": "Aube",
+          "dusk": "Crépuscule"
+        }
+      }
     },
     "contextual": {
       "done": "Terminé",
@@ -1913,7 +1966,10 @@
       "approvedHelper": "Glissez ici les plans approuvés",
       "approvedHint": "Se remplit aussi avec les approbations du client",
       "approvedLocked": "Approuvé en révision : changez la révision depuis « {{status}} » et le statut de production depuis la vue Table",
-      "selectRow": "Sélectionner le plan {{label}}"
+      "selectRow": "Sélectionner le plan {{label}}",
+      "groupSetup": "Setup",
+      "noSetup": "Sans setup",
+      "inSetup": "Dans le setup du plan de plateau {{setup}}"
     },
     "playback": {
       "size": "Taille des vignettes",
