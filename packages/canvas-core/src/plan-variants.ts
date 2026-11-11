@@ -29,12 +29,26 @@ export interface PlanBase {
   rulers?: boolean | undefined;
 }
 
-export function planBaseOf(base: Plan): PlanBase {
+/**
+ * The Set of a base plan as stored, so fields and items this build does not know go along
+ * (decision 0101). Icons come out as plain objects; adoptBase stores them as Y.Maps again.
+ */
+export function planBaseOf(base: Y.Map<unknown>): PlanBase {
+  const set = (key: 'strokes' | 'shapes' | 'icons') => {
+    const list = base.get(key);
+    const items = list instanceof Y.Array ? list.toArray() : Array.isArray(list) ? list : [];
+    return items
+      .map((item) => (item instanceof Y.Map ? item.toJSON() : item))
+      .filter((item) => typeof item === 'object' && item !== null && onSetLayer(item));
+  };
+  const scale = base.get('scale');
   return {
-    strokes: (base.strokes ?? []).filter(onSetLayer),
-    shapes: (base.shapes ?? []).filter(onSetLayer),
-    icons: (base.icons ?? []).filter(onSetLayer),
-    ...(base.scale ? { scale: base.scale, grid: base.grid, rulers: base.rulers } : {}),
+    strokes: set('strokes'),
+    shapes: set('shapes'),
+    icons: set('icons'),
+    ...(typeof scale === 'number' && scale
+      ? { scale, grid: base.get('grid') as Plan['grid'], rulers: base.get('rulers') as boolean }
+      : {}),
   };
 }
 

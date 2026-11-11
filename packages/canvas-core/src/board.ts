@@ -2,6 +2,7 @@
 import {
   addElement,
   CONTAINER_TYPES,
+  checkCard,
   type Element,
   type ElementType,
   newElementId,
@@ -246,13 +247,42 @@ export function deleteElements(doc: Y.Doc, ids: Iterable<string>, origin?: unkno
     if (doomed.has(base) && !doomed.has(id) && baseMap) orphans.push([map, baseMap]);
   }
   doc.transact(() => {
-    for (const [variant, base] of orphans) {
-      const plan = readElement(base);
-      if (plan?.type === 'plan') adoptBase(variant, planBaseOf(plan));
-      else variant.delete('variantOf');
-    }
+    // From the stored base, so items and fields this build does not know go along (0101).
+    for (const [variant, base] of orphans) adoptBase(variant, planBaseOf(base));
     for (const id of doomed) elements.delete(id);
   }, origin);
+}
+
+/**
+ * Cards that copying or deleting `ids` would copy, delete or rewrite and that this build does
+ * not fully understand (strict check, decision 0101): the cards themselves, the cards inside the
+ * columns and scenes among them and the variants of the plans among them. Read from the stored
+ * maps, so cards that do not validate, which no list shows, count too. A client refuses the
+ * operation, or asks, when either list is not empty.
+ */
+export function foreignCardsIn(
+  doc: Y.Doc,
+  ids: Iterable<string>,
+): { foreign: string[]; unreadable: string[] } {
+  const { elements } = roots(doc);
+  const picked = new Set(ids);
+  const affected = new Set([...picked].filter((id) => elements.has(id)));
+  for (const [id, map] of elements.entries()) {
+    const parent = map.get('parent');
+    const base = map.get('variantOf');
+    if (
+      (typeof parent === 'string' && picked.has(parent)) ||
+      (typeof base === 'string' && picked.has(base))
+    )
+      affected.add(id);
+  }
+  const foreign: string[] = [];
+  const unreadable: string[] = [];
+  for (const id of affected) {
+    const compat = checkCard(elements.get(id) as Y.Map<unknown>);
+    if (compat.status === 'foreign') (compat.readable ? foreign : unreadable).push(id);
+  }
+  return { foreign, unreadable };
 }
 
 /** Places elements on the canvas at the given positions, on top of everything else. */
@@ -345,6 +375,49 @@ function restack(doc: Y.Doc, ids: string[], where: 'front' | 'back', origin?: un
   }, origin);
 }
 
+/** A card as stored: what copies need of it, read without validating the card. */
+interface Stored {
+  id: string;
+  map: Y.Map<unknown>;
+  type: unknown;
+  parent: string | null;
+  x: number;
+  y: number;
+}
+
+function stored(id: string, map: Y.Map<unknown>): Stored {
+  const parent = map.get('parent');
+  const x = map.get('x');
+  const y = map.get('y');
+  return {
+    id,
+    map,
+    type: map.get('type'),
+    parent: typeof parent === 'string' ? parent : null,
+    x: typeof x === 'number' ? x : 0,
+    y: typeof y === 'number' ? y : 0,
+  };
+}
+
+const isStoredContainer = (card: Stored) =>
+  (CONTAINER_TYPES as readonly unknown[]).includes(card.type);
+
+/**
+ * The stored cards `ids` names, then the cards inside the columns and scenes among them, in the
+ * document's order. Read from the maps, not through listElements, so a copy holds every card the
+ * original holds, also those this build cannot validate (decision 0101).
+ */
+function storedSelection(doc: Y.Doc, ids: string[]): Stored[] {
+  const wanted = new Set(ids);
+  const all = [...roots(doc).elements.entries()].map(([id, map]) => stored(id, map));
+  const picked = all.filter((card) => wanted.has(card.id));
+  const containers = new Set(picked.filter(isStoredContainer).map((card) => card.id));
+  const children = all.filter(
+    (card) => card.parent !== null && containers.has(card.parent) && !wanted.has(card.id),
+  );
+  return [...picked, ...children];
+}
+
 /** Copies elements (and the cards inside copied columns). Returns the ids of the copies. */
 export function duplicateElements(
   doc: Y.Doc,
@@ -354,57 +427,61 @@ export function duplicateElements(
 ): string[] {
   const { elements } = roots(doc);
   const all = listElements(doc);
-  const picked = all.filter((e) => ids.includes(e.id));
+  const cards = storedSelection(doc, ids);
+  const picked = new Set(ids);
   const fresh = new Map<string, string>();
-  for (const e of picked) fresh.set(e.id, newElementId());
-  const children = all.filter((e) => e.parent && fresh.has(e.parent) && !fresh.has(e.id));
-  for (const e of children) fresh.set(e.id, newElementId());
+  for (const card of cards) fresh.set(card.id, newElementId());
 
-  const onCanvas = picked.filter((e) => e.parent === null);
+  const onCanvas = cards.filter((card) => picked.has(card.id) && card.parent === null);
   const canvasKeys = keysAt(canvasElements(all), canvasElements(all).length, onCanvas.length);
   const out: string[] = [];
   doc.transact(() => {
-    for (const e of [...picked, ...children]) {
-      const source = elements.get(e.id);
-      if (!source) continue;
-      const id = fresh.get(e.id) ?? newElementId();
-      const copy = new Y.Map<unknown>();
-      for (const [key, value] of source.entries()) {
-        if (value instanceof Y.AbstractType) copy.set(key, cloneType(value));
-        else copy.set(key, value);
-      }
+    for (const card of cards) {
+      const source = card.map;
+      const id = fresh.get(card.id) ?? newElementId();
+      const copy = cloneMap(source);
       copy.set('id', id);
       copy.set('createdBy', opts.userId);
       copy.set('createdAt', Date.now());
-      const parent = (e.parent && fresh.get(e.parent)) ?? e.parent;
+      const parent = (card.parent && fresh.get(card.parent)) ?? card.parent;
       copy.set('parent', parent);
       // A to-do list copied with its scene follows the copy, as arrows follow their cards.
-      if (e.type === 'todo' && e.sceneId && fresh.has(e.sceneId))
-        copy.set('sceneId', fresh.get(e.sceneId));
+      const sceneId = source.get('sceneId');
+      if (card.type === 'todo' && typeof sceneId === 'string' && fresh.has(sceneId))
+        copy.set('sceneId', fresh.get(sceneId));
       // A plan copied with its base or its scenes follows their copies.
-      if (e.type === 'plan') {
-        if (e.variantOf && fresh.has(e.variantOf)) copy.set('variantOf', fresh.get(e.variantOf));
-        if (e.sceneIds?.some((s) => fresh.has(s)))
+      if (card.type === 'plan') {
+        const variantOf = source.get('variantOf');
+        const sceneIds = source.get('sceneIds');
+        if (typeof variantOf === 'string' && fresh.has(variantOf))
+          copy.set('variantOf', fresh.get(variantOf));
+        if (Array.isArray(sceneIds) && sceneIds.some((s) => fresh.has(s)))
           copy.set(
             'sceneIds',
-            e.sceneIds.map((s) => fresh.get(s) ?? s),
+            sceneIds.map((s) => fresh.get(s) ?? s),
           );
       }
-      if (e.parent === null) {
-        copy.set('x', Math.round(e.x + offset.x));
-        copy.set('y', Math.round(e.y + offset.y));
-        copy.set('z', canvasKeys[onCanvas.indexOf(e)]);
-      } else if (!fresh.has(e.parent)) {
+      if (card.parent === null) {
+        copy.set('x', Math.round(card.x + offset.x));
+        copy.set('y', Math.round(card.y + offset.y));
+        copy.set('z', canvasKeys[onCanvas.indexOf(card)]);
+      } else if (!fresh.has(card.parent)) {
         // A card copied out of its column lands right below the original.
-        const siblings = childrenOf(listElements(doc), e.parent);
-        const index = siblings.findIndex((s) => s.id === e.id) + 1;
+        const siblings = childrenOf(listElements(doc), card.parent);
+        const index = siblings.findIndex((s) => s.id === card.id) + 1;
         copy.set('z', keysAt(siblings, index, 1)[0]);
       }
-      if (picked.includes(e)) out.push(id);
+      if (picked.has(card.id)) out.push(id);
       elements.set(id, copy);
     }
   }, opts.origin);
   return out;
+}
+
+function cloneMap(map: Y.Map<unknown>): Y.Map<unknown> {
+  const m = new Y.Map<unknown>();
+  for (const [k, v] of map.entries()) m.set(k, v instanceof Y.AbstractType ? cloneType(v) : v);
+  return m;
 }
 
 function cloneType(value: Y.AbstractType<unknown>): unknown {
@@ -414,12 +491,9 @@ function cloneType(value: Y.AbstractType<unknown>): unknown {
       value.toArray().map((v) => (v instanceof Y.AbstractType ? cloneType(v) : v)),
     );
   }
-  if (value instanceof Y.Map) {
-    const m = new Y.Map<unknown>();
-    for (const [k, v] of value.entries()) m.set(k, v instanceof Y.AbstractType ? cloneType(v) : v);
-    return m;
-  }
-  return value.toJSON();
+  if (value instanceof Y.Map) return cloneMap(value);
+  // Any other shared type, such as one a newer schema adds, is copied as it is (decision 0101).
+  return value.clone();
 }
 
 // To-do items ----------------------------------------------------------------
@@ -483,36 +557,75 @@ export function removeTodoItem(doc: Y.Doc, id: string, itemId: string, origin?: 
 
 // Clipboard ------------------------------------------------------------------
 
-/** Elements copied to the clipboard, with note bodies as Yjs updates. */
+/**
+ * Elements copied to the clipboard. The format crosses tabs and versions, so it only grows:
+ * `cards` (decision 0101) carries every card as stored, unknown fields, list items and note
+ * nodes included, and readers that know it paste from it alone; older readers paste `elements`,
+ * the validated view, with note bodies as Yjs updates in `bodies`.
+ */
 export interface ClipboardData {
   version: 1;
   elements: Element[];
   bodies: Record<string, string>;
   /** The Set of the base of each copied plan variant, for a board that lacks its base. */
   planBases?: Record<string, PlanBase>;
+  /** Each copied card's Y.Map, as a Yjs update of a document holding it under `card` in `m`. */
+  cards?: Array<{ id: string; update: string }>;
 }
 
 export function copyElements(doc: Y.Doc, ids: string[]): ClipboardData {
-  const all = listElements(doc);
-  const picked = all.filter((e) => ids.includes(e.id));
-  const columnIds = new Set(picked.filter(isContainer).map((e) => e.id));
-  const children = all.filter((e) => e.parent && columnIds.has(e.parent) && !ids.includes(e.id));
-  const elements = [...picked, ...children];
+  const byId = new Map(listElements(doc).map((e) => [e.id, e]));
+  const cards = storedSelection(doc, ids);
+  const elements = cards.flatMap((card) => byId.get(card.id) ?? []);
   const bodies: Record<string, string> = {};
   for (const e of elements) {
     const body = getMap(doc, e.id)?.get('body');
     if (!(body instanceof Y.XmlFragment)) continue;
-    const tmp = new Y.Doc();
-    tmp.getMap('m').set('body', body.clone());
-    bodies[e.id] = toBase64(Y.encodeStateAsUpdate(tmp));
+    bodies[e.id] = encodeShared('body', body.clone());
   }
   const planBases: Record<string, PlanBase> = {};
-  for (const e of elements) {
-    if (e.type !== 'plan' || !e.variantOf) continue;
-    const base = all.find((b) => b.id === e.variantOf);
-    if (base?.type === 'plan') planBases[e.id] = planBaseOf(base);
+  for (const card of cards) {
+    const baseId = card.map.get('variantOf');
+    const base = typeof baseId === 'string' ? getMap(doc, baseId) : undefined;
+    if (card.type === 'plan' && base?.get('type') === 'plan') planBases[card.id] = planBaseOf(base);
   }
-  return { version: 1, elements, bodies, ...(Object.keys(planBases).length ? { planBases } : {}) };
+  return {
+    version: 1,
+    elements,
+    bodies,
+    ...(Object.keys(planBases).length ? { planBases } : {}),
+    cards: cards.map((card) => ({
+      id: card.id,
+      update: encodeShared('card', cloneMap(card.map)),
+    })),
+  };
+}
+
+function encodeShared(key: string, value: Y.Map<unknown> | Y.XmlFragment): string {
+  const tmp = new Y.Doc();
+  tmp.getMap('m').set(key, value);
+  return toBase64(Y.encodeStateAsUpdate(tmp));
+}
+
+function decodeShared(key: string, update: string): unknown {
+  const tmp = new Y.Doc();
+  Y.applyUpdate(tmp, fromBase64(update));
+  return tmp.getMap('m').get(key);
+}
+
+/**
+ * The cards of the clipboard as stored, or null for a clipboard without them (an older build or
+ * another source). Throws when one does not decode or does not validate: the clipboard is
+ * outside data, checked as `addElement` checks the elements of an older clipboard.
+ */
+function clipboardCards(data: ClipboardData): Stored[] | null {
+  if (!Array.isArray(data.cards)) return null;
+  return data.cards.map(({ id, update }) => {
+    const map = typeof update === 'string' ? decodeShared('card', update) : null;
+    if (!(map instanceof Y.Map) || typeof id !== 'string' || !readElement(map))
+      throw new Error('A copied card does not match the schema.');
+    return stored(id, map);
+  });
 }
 
 /** Pastes copied elements with their top-left corner at `at`. Returns the new top-level ids. */
@@ -522,6 +635,8 @@ export function pasteElements(
   at: Point,
   opts: { userId: string | null; origin?: unknown },
 ): string[] {
+  const cards = clipboardCards(data);
+  if (cards) return pasteStored(doc, cards, data.planBases, at, opts);
   const all = listElements(doc);
   const fresh = new Map<string, string>();
   for (const e of data.elements) fresh.set(e.id, newElementId());
@@ -593,6 +708,93 @@ export function pasteElements(
         const fragment = tmp.getMap('m').get('body');
         if (fragment instanceof Y.XmlFragment) map.set('body', fragment.clone());
       }
+      if (onCanvas) out.push(id);
+    }
+  }, opts.origin);
+  return out;
+}
+
+/**
+ * Pastes stored cards as they are (decision 0101), with the placement and the links of the
+ * paste of elements below: fields this build does not know stay in the copies.
+ */
+function pasteStored(
+  doc: Y.Doc,
+  cards: Stored[],
+  planBases: ClipboardData['planBases'],
+  at: Point,
+  opts: { userId: string | null; origin?: unknown },
+): string[] {
+  const { elements } = roots(doc);
+  const all = listElements(doc);
+  const here = new Set(all.map((e) => e.id));
+  const fresh = new Map<string, string>();
+  for (const card of cards) fresh.set(card.id, newElementId());
+  const pasted = new Set(fresh.values());
+  // Everything that was not inside a copied column lands on the canvas.
+  const placed = cards.filter((card) => !(card.parent && fresh.has(card.parent)));
+  const free = placed.filter((card) => card.parent === null);
+  const minX = free.length ? Math.min(...free.map((card) => card.x)) : 0;
+  const minY = free.length ? Math.min(...free.map((card) => card.y)) : 0;
+  const keys = keysAt(canvasElements(all), canvasElements(all).length, placed.length);
+  const out: string[] = [];
+  doc.transact(() => {
+    for (const card of cards) {
+      const source = card.map;
+      const id = fresh.get(card.id) ?? newElementId();
+      const copiedParent = card.parent === null ? undefined : fresh.get(card.parent);
+      const onCanvas = copiedParent === undefined;
+      const x = onCanvas ? Math.round(at.x + (card.parent === null ? card.x - minX : 0)) : card.x;
+      const y = onCanvas ? Math.round(at.y + (card.parent === null ? card.y - minY : 0)) : card.y;
+      const copy = cloneMap(source);
+      copy.set('id', id);
+      copy.set('createdBy', opts.userId);
+      copy.set('createdAt', Date.now());
+      copy.set('parent', copiedParent ?? null);
+      copy.set('x', x);
+      copy.set('y', y);
+      if (onCanvas) copy.set('z', keys[placed.indexOf(card)] ?? keyAtEnd(all, null));
+      const sceneId = source.get('sceneId');
+      if (card.type === 'todo' && typeof sceneId === 'string')
+        copy.set('sceneId', fresh.get(sceneId) ?? sceneId);
+      if (card.type === 'arrow') {
+        // Ends move with the arrow; an attached end follows the copy of its card when the
+        // card was copied too, else the original card. Other fields of an end stay.
+        for (const key of ['from', 'to'] as const) {
+          const end = source.get(key) as Record<string, unknown>;
+          const elementId =
+            typeof end.elementId === 'string' ? (fresh.get(end.elementId) ?? end.elementId) : null;
+          const { elementId: _, ...rest } = end;
+          const moved = {
+            ...rest,
+            x: (end.x as number) + x - card.x,
+            y: (end.y as number) + y - card.y,
+          };
+          copy.set(key, elementId ? { ...moved, elementId } : moved);
+        }
+      }
+      let base: PlanBase | undefined;
+      if (card.type === 'plan') {
+        // Scenes: the copies of scenes pasted with it, or those of this board; others go.
+        const sceneIds = source.get('sceneIds');
+        const scenes = (Array.isArray(sceneIds) ? sceneIds : [])
+          .map((s) => fresh.get(s) ?? s)
+          .filter((s) => here.has(s) || pasted.has(s));
+        if (scenes.length) copy.set('sceneIds', scenes);
+        else copy.delete('sceneIds');
+        // A variant follows the copy of its base, or its base on this board; on a board
+        // without it, it stands alone with the base's Set (decision 0062).
+        const variantOf = source.get('variantOf');
+        if (typeof variantOf === 'string' && fresh.has(variantOf))
+          copy.set('variantOf', fresh.get(variantOf));
+        else if (typeof variantOf === 'string' && !here.has(variantOf)) {
+          copy.delete('variantOf');
+          base = planBases?.[card.id];
+        }
+      }
+      elements.set(id, copy);
+      // Once stored: a Y.Map not yet in a document cannot be read back.
+      if (base) adoptBase(copy, base);
       if (onCanvas) out.push(id);
     }
   }, opts.origin);

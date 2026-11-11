@@ -25,7 +25,7 @@ if (values['zod-jitless']) z.config({ jitless: true });
 const { addStroke, createElement, deleteElements, removeStrokes, setTableCell } = await import(
   '@inkadra/canvas-core'
 );
-const { roots } = await import('@inkadra/doc-schema');
+const { checkCard, roots } = await import('@inkadra/doc-schema');
 const Y = await import('yjs');
 // For comparisons, extract the base revision's store beside store.ts (do not commit it).
 const { BoardStore, LOCAL } = await import(
@@ -61,9 +61,9 @@ console.log(
   )}`,
 );
 console.log(
-  '| board | open: applyUpdate | open: first read | open: total | open: longest slice | hydrate: longest gap | add stroke | edit cell | createElement |',
+  '| board | open: applyUpdate | open: first read | open: total | open: longest slice | hydrate: longest gap | add stroke | edit cell | createElement | strict: every card | strict: frame after a stroke | strict: table after a cell |',
 );
-console.log('|---|---|---|---|---|---|---|---|---|');
+console.log('|---|---|---|---|---|---|---|---|---|---|---|---|');
 for (const size of values.sizes.split(',')) {
   const base = resolve(values.boards, `reference-board-${size}-${values.seed}`);
   if (!existsSync(`${base}.ybin`))
@@ -79,6 +79,7 @@ for (const size of values.sizes.split(',')) {
   const totals: number[] = [];
   const slices: number[] = [];
   const hydrationGaps: number[] = [];
+  const stricts: number[] = [];
   let doc = new Y.Doc();
   let store: InstanceType<typeof BoardStore> | undefined;
   for (let i = 0; i < opens; i++) {
@@ -113,6 +114,12 @@ for (const size of values.sizes.split(',')) {
       slices.push(applies[i]! + reads[i]!);
     }
     totals.push(applies[i]! + reads[i]!);
+    // The strict check of every card once, as a client that writes does on open (decision 0101).
+    stricts.push(
+      time(() => {
+        for (const map of roots(d).elements.values()) checkCard(map);
+      }),
+    );
   }
 
   const stroke = {
@@ -140,6 +147,26 @@ for (const size of values.sizes.split(',')) {
     () => {},
   );
 
+  // The strict check of the edited card: walked again after each change, then remembered.
+  const frameMap = roots(doc).elements.get(bench.frameId)!;
+  strokeId = addStroke(doc, bench.frameId, stroke, LOCAL);
+  const strictStroke = repeat(
+    runs,
+    () => checkCard(frameMap),
+    () => {
+      if (strokeId) removeStrokes(doc, bench.frameId, [strokeId], LOCAL);
+      strokeId = addStroke(doc, bench.frameId, stroke, LOCAL);
+    },
+  );
+  if (strokeId) removeStrokes(doc, bench.frameId, [strokeId], LOCAL);
+  const tableMap = roots(doc).elements.get(bench.tableId)!;
+  let edits = 0;
+  const strictCell = repeat(
+    runs,
+    () => checkCard(tableMap),
+    () => setTableCell(doc, bench.tableId, row, column, `Cella ${edits++}`, LOCAL),
+  );
+
   let created = '';
   const create = repeat(
     runs,
@@ -150,7 +177,7 @@ for (const size of values.sizes.split(',')) {
   );
 
   console.log(
-    `| ${size} | ${ms(median(applies))} ms | ${ms(median(reads))} ms | ${ms(median(totals))} ms | ${ms(Math.max(...slices))} ms | ${values.hydrate ? `${ms(Math.max(...hydrationGaps))} ms` : '—'} | ${ms(addOne)} ms | ${ms(cell)} ms | ${ms(create)} ms |`,
+    `| ${size} | ${ms(median(applies))} ms | ${ms(median(reads))} ms | ${ms(median(totals))} ms | ${ms(Math.max(...slices))} ms | ${values.hydrate ? `${ms(Math.max(...hydrationGaps))} ms` : '—'} | ${ms(addOne)} ms | ${ms(cell)} ms | ${ms(create)} ms | ${ms(median(stricts))} ms | ${ms(strictStroke)} ms | ${ms(strictCell)} ms |`,
   );
   store?.destroy();
 }

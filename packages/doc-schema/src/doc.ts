@@ -363,10 +363,17 @@ function changedWithin(row: Y.Map<unknown>, pending: Y.Transaction[]): boolean {
   return false;
 }
 
-/** For the open transaction, still growing: walk the row's own types. */
+/** For the open transaction, still growing: walk the row's own types (a note's body too). */
 function changedInside(type: object, transaction: Y.Transaction): boolean {
   if (transaction.changed.has(type as never)) return true;
-  const children = type instanceof Y.Map ? type.values() : type instanceof Y.Array ? type : [];
+  const children =
+    type instanceof Y.Map
+      ? type.values()
+      : type instanceof Y.Array
+        ? type
+        : type instanceof Y.XmlFragment
+          ? type.toArray()
+          : [];
   for (const child of children)
     if (child instanceof Y.AbstractType && changedInside(child, transaction)) return true;
   return false;
@@ -389,7 +396,32 @@ function invalidateMaps(transaction: Y.Transaction) {
   for (const type of finishedChanges.get(transaction) ?? changedTypes(transaction)) {
     const cached = parsedMaps.get(type as Y.Map<unknown>);
     if (cached) cached.dirty = true;
+    for (const cache of mapCaches) {
+      const entry = cache.get(type as Y.Map<unknown>);
+      if (entry) entry.dirty = true;
+    }
   }
+}
+
+const mapCaches: WeakMap<Y.Map<unknown>, { dirty: boolean }>[] = [];
+
+/**
+ * Remembers `compute(map)` until a transaction changes the map or a type inside it, with the
+ * same bookkeeping as the parsed table rows: a result computed inside an open transaction, or on
+ * a map not attached to a document, is not trusted for the next call.
+ */
+export function cachedPerMap<T>(compute: (map: Y.Map<unknown>) => T): (map: Y.Map<unknown>) => T {
+  const cache = new WeakMap<Y.Map<unknown>, { value: T; dirty: boolean }>();
+  mapCaches.push(cache);
+  return (map) => {
+    const cached = cache.get(map);
+    const pending = map.doc ? pendingTransactions(map.doc) : [];
+    if (cached && !cached.dirty && !(pending.length && changedWithin(map, pending)))
+      return cached.value;
+    const value = compute(map);
+    cache.set(map, { value, dirty: map.doc?._transaction != null || !map.doc });
+    return value;
+  };
 }
 
 function parseItem(item: z.ZodType, value: unknown): unknown {
