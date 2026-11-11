@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { categoryOf, iconSize, iconWatts, isLight, isSized, layerOf } from '@inkadra/canvas-core';
+import {
+  type CircuitStatus,
+  categoryOf,
+  iconSize,
+  iconWatts,
+  isLight,
+  isSized,
+  layerOf,
+  type PlanElement,
+  planPower,
+} from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 
@@ -85,4 +95,48 @@ export function kitList(
 export function measureValue(typed: string): string | null {
   const m = Number(typed.trim().replace(',', '.'));
   return Number.isFinite(m) && m > 0 && m < 100000 ? String(m) : null;
+}
+
+/** The power of a plan as the outputs print it (decision 0104): a total and a line per circuit. */
+export interface PowerLines {
+  /** "Power at 230 V". */
+  title: string;
+  /** "2.5 kW · 10.8 A". */
+  total: string;
+  /** "Circuit A · 16 A: Fresnel, LED COB" and "8.7 A". */
+  rows: Array<{ text: string; amps: string; status: CircuitStatus }>;
+}
+
+/**
+ * The power per circuit of a plan for the call sheet, the scene sheets, the PDF sheet and the
+ * read-only view: computed from the lights every time, never stored. Null without lights that
+ * draw power.
+ */
+export function powerLines(
+  plan: Pick<PlanElement, 'icons' | 'hiddenLayers' | 'circuits' | 'voltage'>,
+  t: TFunction,
+  locale?: string,
+): PowerLines | null {
+  const power = planPower(plan);
+  if (power.watts <= 0) return null;
+  const n = (v: number, digits: number) =>
+    v.toLocaleString(locale, { maximumFractionDigits: digits });
+  const watts = power.watts >= 1000 ? `${n(power.watts / 1000, 1)} kW` : `${n(power.watts, 0)} W`;
+  const byId = new Map((plan.icons ?? []).map((i) => [i.id, i]));
+  return {
+    title: t('board.plan.powerAt', { volts: power.voltage }),
+    total: `${watts} · ${n(power.amps, 1)} A`,
+    rows: power.circuits.map((c) => {
+      const names = c.lights
+        .map((id) => byId.get(id))
+        .map((i) => (i ? i.label || t(`board.plan.icons.${i.kind}`) : ''))
+        .filter(Boolean)
+        .join(', ');
+      const head =
+        c.breaker !== null
+          ? t('board.plan.links.circuitLine', { name: c.name, amps: n(c.breaker, 1) })
+          : t('board.plan.noCircuit');
+      return { text: names ? `${head}: ${names}` : head, amps: `${n(c.amps, 1)} A`, status: c.status };
+    }),
+  };
 }

@@ -1551,7 +1551,67 @@
           "night": "Notte",
           "dawn": "Alba",
           "dusk": "Tramonto"
-        }
+        },
+        "circuitLine": "{{name}} · {{amps}} A"
+      },
+      "exportSheet": {
+        "title": "Esporta la pianta del set",
+        "preview": "Anteprima della prima pagina",
+        "failed": "Non è stato possibile disegnare l’anteprima.",
+        "pages_one": "Pagina {{n}} di {{count}} · A4 orizzontale. Legenda, materiale e potenza accanto alla pianta.",
+        "pages_other": "Pagina {{n}} di {{count}} · A4 orizzontale. Legenda, materiale e potenza accanto alla pianta.",
+        "format": "Formato",
+        "setups": "Setup",
+        "thisSetup": "Questo setup",
+        "allOfScene_one": "Tutti i {{count}} della scena {{scene}}",
+        "allOfScene_other": "Tutti i {{count}} della scena {{scene}}",
+        "allSetups_one": "Tutti i {{count}} setup",
+        "allSetups_other": "Tutti i {{count}} setup",
+        "area": "Area",
+        "whole": "Tutta la pianta",
+        "view": "Quello che vedo ora",
+        "includeTitle": "Includi",
+        "include": {
+          "legend": "Legenda",
+          "kit": "Lista materiale",
+          "power": "Potenza",
+          "notes": "Note",
+          "scale": "Scala e misure",
+          "background": "Sfondo",
+          "dateScene": "Data e scena",
+          "grid": "Griglia"
+        },
+        "working": "Esportazione…",
+        "run": "Esporta {{format}}"
+      },
+      "sheet": {
+        "shots": "Inquadrature",
+        "scale": "Scala",
+        "room": "Stanza",
+        "more_one": "+{{count}} altro",
+        "more_other": "+{{count}} altri",
+        "cameras": "Camere",
+        "lights": "Luci",
+        "cast": "Cast",
+        "notes": "Note",
+        "foot": "Fatto con Inkadra · pagina {{n}} di {{total}}",
+        "day": "Giorno {{n}}",
+        "setup": "Setup"
+      },
+      "card": {
+        "setups_one": "{{count}} setup",
+        "setups_other": "{{count}} setup",
+        "cameras_one": "{{count}} camera",
+        "cameras_other": "{{count}} camere",
+        "lights_one": "{{count}} luce",
+        "lights_other": "{{count}} luci"
+      },
+      "view": {
+        "only": "Sola lettura",
+        "legend": "Legenda",
+        "hint": "Trascina per spostare, pizzica o scorri per lo zoom",
+        "note": "Chi può aprire la board vede questa pianta, la legenda, il materiale e la potenza.",
+        "guestNote": "Vedi la pianta come è condivisa con te: i setup, la legenda, il materiale e la potenza."
       }
     },
     "contextual": {
@@ -5269,6 +5329,23 @@
           "3": {
             "title": "I setup nella shot list",
             "text": "La shot list e il piano di lavorazione mostrano il setup di ogni inquadratura, e la shot list può raggrupparle per setup."
+          }
+        }
+      },
+      "setplanOutputs": {
+        "name": "Uscite della pianta",
+        "steps": {
+          "0": {
+            "title": "Esporta",
+            "text": "PDF, PNG o JPEG di questo setup o di tutti, con legenda, materiale, potenza e note."
+          },
+          "1": {
+            "title": "Il foglio",
+            "text": "Una pagina A4 per setup. Aggiungi al foglio di convocazione collega la pianta alle sue scene."
+          },
+          "2": {
+            "title": "Chi non può modificare",
+            "text": "Ospiti e lettori aprono la pianta in una vista con spostamento e zoom, i setup, la legenda e il PDF."
           }
         }
       }

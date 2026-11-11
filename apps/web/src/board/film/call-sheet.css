@@ -902,3 +902,13 @@
     display: none;
   }
 }
+/* The power per circuit under the kit of a set plan (decision 0111). */
+.sheet__power {
+  margin-top: 6px;
+}
+.sheet__power-head {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 9px;
+}

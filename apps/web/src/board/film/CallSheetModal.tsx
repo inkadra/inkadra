@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { FrameElement } from '@inkadra/canvas-core';
+import type { FrameElement, PlanElement } from '@inkadra/canvas-core';
 import { type AspectRatio, type Element, getBoardAspect } from '@inkadra/doc-schema';
 import {
   type Asset,
@@ -16,7 +16,7 @@ import { Fragment, type ReactNode, useEffect, useId, useState, useSyncExternalSt
 import { useTranslation } from 'react-i18next';
 import { Field } from '../export/fields.tsx';
 import { fetchExportSettings, logoUrl } from '../export/settings.ts';
-import { kitList } from '../plan/kit.ts';
+import { kitList, powerLines } from '../plan/kit.ts';
 import { PlanDrawing, type PlanLike } from '../plan/PlanDrawing.tsx';
 import {
   dayAddress,
@@ -889,7 +889,7 @@ export interface SheetScene {
   /** "INT. CUCINA – GIORNO". */
   heading: string;
   frames: ReadonlyArray<{ id: string; label: string; frame: FrameElement }>;
-  plan?: PlanLike | undefined;
+  plan?: (PlanLike & Partial<Pick<PlanElement, 'circuits' | 'voltage'>>) | undefined;
   boardAspect: AspectRatio;
 }
 
@@ -904,6 +904,8 @@ function SheetSceneBlock({
 }) {
   const { t, i18n } = useTranslation();
   const kit = scene.plan && options.kit ? kitList(scene.plan, t, i18n.language) : [];
+  // The power per circuit with the kit (decision 0111): computed from the plan, never stored.
+  const power = scene.plan && options.kit ? powerLines(scene.plan, t, i18n.language) : null;
   return (
     <div className={`sheet__scene${plan && options.fullPage ? ' sheet__scene--page' : ''}`}>
       <p className="sheet__scene-head">
@@ -923,6 +925,20 @@ function SheetSceneBlock({
                   </li>
                 ))}
               </ul>
+            )}
+            {power && (
+              <div className="sheet__power">
+                <p className="sheet__power-head">
+                  <b>{power.title}</b> <span>{power.total}</span>
+                </p>
+                <ul className="sheet__kit">
+                  {power.rows.map((r) => (
+                    <li key={r.text}>
+                      {r.text} · {r.amps}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         )}

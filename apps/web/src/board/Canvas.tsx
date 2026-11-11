@@ -4094,16 +4094,6 @@ export function Canvas({
               setEditing(null);
               if (card) requestAnimationFrame(() => openElement(card));
             }}
-            {...(onExportSelection && !preview
-              ? {
-                  // Today's export of the plan card: the board's export of the selection.
-                  onExport: () => {
-                    select([editedPlan.id]);
-                    setEditing(null);
-                    requestAnimationFrame(() => onExportSelection());
-                  },
-                }
-              : {})}
             onClose={() => setEditing(null)}
           />
         )}
@@ -4111,7 +4101,11 @@ export function Canvas({
           <PlanViewer
             plan={viewedPlan}
             base={viewedBase?.type === 'plan' ? viewedBase : undefined}
+            family={variantFamily(snap.byId.values(), viewedPlan)}
             phone={isPhone}
+            guest={!!guest}
+            store={store}
+            onSwitch={setViewedPlanId}
             onClose={() => setViewedPlanId(null)}
           />
         )}
