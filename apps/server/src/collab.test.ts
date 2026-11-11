@@ -329,8 +329,15 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       url: `/api/v1/me/tokens/${created.json().id}`,
       headers: as('editor'),
     });
-    expect(await closed).toBe('Unauthorized');
+    expect(await closed).toBe('token_revoked');
     c.close();
+    const retry = connect({ token: created.json().token });
+    const reason = await new Promise<string>((resolve) => {
+      retry.provider.on('authenticationFailed', ({ reason }: { reason: string }) => resolve(reason));
+      setTimeout(() => resolve('timeout'), 4000);
+    });
+    retry.close();
+    expect(reason).toBe('token_revoked');
   });
 
   it('closes the connection when the person signs out', async () => {
