@@ -377,8 +377,9 @@ jobs:
           path: ${{ runner.temp }}/image.tar
           retention-days: 1
 
+  # Both modes on one runner: loading the image costs as much as a test, and runners are shared.
   proxy:
-    name: Reverse proxy (${{ matrix.proxy }}, ${{ matrix.mode }})
+    name: Reverse proxy (${{ matrix.proxy }})
     needs: image
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -386,7 +387,6 @@ jobs:
       fail-fast: false
       matrix:
         proxy: [caddy, traefik, nginx]
-        mode: [all, split]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -400,8 +400,9 @@ jobs:
         env:
           INKADRA_TAG: ci
           PROXY: ${{ matrix.proxy }}
-          MODE: ${{ matrix.mode }}
-        run: scripts/test-proxy.sh "$PROXY" "$MODE"
+        run: |
+          scripts/test-proxy.sh "$PROXY" all
+          scripts/test-proxy.sh "$PROXY" split
 
   data-dir:
     name: Data folder owned by root
