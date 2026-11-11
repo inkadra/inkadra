@@ -30,6 +30,35 @@ export interface Snapshot {
 
 const EMPTY: Snapshot = { byId: new Map(), canvas: [], columns: new Map(), unsorted: [] };
 
+/** Options of `BoardStore.hydrate` (decision 0105). */
+export interface HydrateOptions {
+  /** Work per slice, in milliseconds (default 8). */
+  budgetMs?: number;
+  /**
+   * How hydration gives the thread back: called when a slice starts, and the next slice starts
+   * once its promise has resolved and this slice's budget is spent. Default: a zero timeout. A
+   * React Native host can pass `setImmediate`, a MessageChannel or a frame-aware scheduler. A
+   * rejection ends hydration with that error (`hydrationError`); a promise that never resolves
+   * stops it until `destroy()`. One that is already resolved never gives the thread back.
+   */
+  schedule?: () => Promise<void>;
+  /**
+   * Cards to read first, e.g. those in view: their keys, or a test on each stored card. The
+   * columns and scenes holding them (by their stored `parent`) are read with them, so that they
+   * can be drawn where they are.
+   */
+  priority?: Iterable<string> | ((key: string, map: Y.Map<unknown>) => boolean);
+  /**
+   * Opt-in: once every priority card (and its containers) is read, publish a snapshot of only
+   * those cards, each its current, validated read, read again at once when it changes, until the
+   * complete snapshot replaces it. A container shows only the priority cards inside it.
+   * `hydrating` stays true until then; if hydration fails, the view is withdrawn (empty).
+   */
+  progressive?: boolean;
+}
+
+const timeout = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
 /**
  * Plain view of a board document for React. Rebuilt after each Yjs transaction; element
  * objects keep their identity when they did not change, so memoised cards skip rendering.
@@ -53,9 +82,25 @@ export class BoardStore {
   private destroyed = false;
   /** Keys of elements changed while hydrating: their validated reads are taken again. */
   private stale = new Set<string>();
+  /**
+   * While hydrating: the validated reads by key, the priority cards with their containers, those
+   * of them not read and current yet, and whether they are shown (progressive snapshot).
+   */
+  private hydration: {
+    done: Map<string, Element | null>;
+    first: ReadonlySet<string>;
+    firstLeft: Set<string>;
+    shown: boolean;
+  } | null = null;
+  /** Resolves on destroy, so hydration stops even while a scheduler never resolves. */
+  private stopped: Promise<void> = Promise.resolve();
+  private stop = () => {};
   /** Resolves when the complete initial snapshot is available (or the store is destroyed). */
   readonly whenHydrated: Promise<void>;
-  /** Why hydration stopped: the snapshot stays empty and `whenHydrated` rejects with it. */
+  /**
+   * Why hydration stopped: the snapshot stays (or becomes) empty and `whenHydrated` rejects
+   * with it.
+   */
   hydrationError: unknown;
 
   get hydrating() {
@@ -63,23 +108,26 @@ export class BoardStore {
   }
 
   /** Opt-in cooperative initialization. The regular constructor remains synchronous. */
-  static hydrate(doc: Y.Doc, { budgetMs = 8 }: { budgetMs?: number } = {}): BoardStore {
-    return new BoardStore(doc, { budgetMs });
+  static hydrate(doc: Y.Doc, options: HydrateOptions = {}): BoardStore {
+    return new BoardStore(doc, { ...options, budgetMs: options.budgetMs ?? 8 });
   }
 
+  /** Synchronous unless `budgetMs` is given (use `BoardStore.hydrate`). */
   constructor(
     readonly doc: Y.Doc,
-    options?: { budgetMs: number },
+    options?: HydrateOptions,
   ) {
-    if (options && (!Number.isFinite(options.budgetMs) || options.budgetMs <= 0))
+    const budgetMs = options?.budgetMs;
+    if (budgetMs !== undefined && (!Number.isFinite(budgetMs) || budgetMs <= 0))
       throw new RangeError('budgetMs must be positive and finite');
     const { elements } = roots(doc);
     this.undo = new Y.UndoManager(elements, {
       trackedOrigins: new Set([LOCAL]),
       captureTimeout: 400,
     });
-    this.loading = options !== undefined;
+    this.loading = budgetMs !== undefined;
     if (!this.loading) this.rebuild();
+    else this.stopped = new Promise((resolve) => (this.stop = resolve));
     elements.observeDeep(this.onChange);
     // Yjs calls the observers, this one included, before afterTransaction.
     doc.on('beforeTransaction', this.begin);
@@ -88,9 +136,16 @@ export class BoardStore {
     this.removeView = setElementView(doc, () =>
       !this.loading && this.open === 0 && this.exact ? [...this.snapshot.byId.values()] : null,
     );
-    this.whenHydrated = options
-      ? this.hydrate(options.budgetMs).catch((error: unknown) => {
+    this.whenHydrated = this.loading
+      ? this.hydrate({ ...options, budgetMs: budgetMs! }).catch((error: unknown) => {
           this.hydrationError = error;
+          // A progressive view is withdrawn: nothing stays shown that hydration no longer keeps.
+          const shown = this.hydration?.shown;
+          this.hydration = null;
+          if (shown && !this.destroyed) {
+            this.snapshot = EMPTY;
+            for (const listener of this.listeners) listener();
+          }
           throw error;
         })
       : Promise.resolve();
@@ -99,6 +154,8 @@ export class BoardStore {
   destroy() {
     this.destroyed = true;
     this.loading = false;
+    this.hydration = null;
+    this.stop();
     roots(this.doc).elements.unobserveDeep(this.onChange);
     this.doc.off('beforeTransaction', this.begin);
     this.doc.off('afterTransaction', this.end);
@@ -127,9 +184,21 @@ export class BoardStore {
       if (typeof id === 'string' && field !== 'body') touched.add(id);
     }
     if (touched.size === 0) return;
-    // No partial snapshot is published: hydration reads these elements again.
+    // Hydration reads these elements again; the cards of a progressive snapshot at once.
     if (this.loading) {
-      for (const id of touched) this.stale.add(id);
+      const hydration = this.hydration;
+      let refreshed = false;
+      for (const id of touched) {
+        if (hydration?.shown && hydration.first.has(id)) {
+          const map = elements.get(id);
+          hydration.done.set(id, map ? readElement(map) : null);
+          refreshed = true;
+          continue;
+        }
+        this.stale.add(id);
+        if (hydration?.first.has(id)) hydration.firstLeft.add(id);
+      }
+      if (refreshed) this.publishPartial();
       return;
     }
     const byId = new Map(this.snapshot.byId);
@@ -171,54 +240,95 @@ export class BoardStore {
     this.index(byId);
   }
 
-  private async hydrate(budgetMs: number) {
-    const pause = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+  private async hydrate(options: HydrateOptions & { budgetMs: number }) {
+    const { budgetMs, priority, progressive = false } = options;
+    const schedule = options.schedule ?? timeout;
+    /** The next turn, queued at the start of a slice; never an unhandled rejection. */
+    const queue = () => {
+      const pause = schedule();
+      pause.catch(() => {});
+      return pause;
+    };
     // Also separates applyUpdate from the initial read when called in the same JS task.
-    await pause();
+    await Promise.race([queue(), this.stopped]);
     if (this.destroyed) return;
     const { elements } = roots(this.doc);
+    let start = performance.now();
+    // Queue the next turn before doing work, so the scheduler's delay overlaps this slice.
+    let nextPause = queue();
+    const due = () => performance.now() - start >= budgetMs;
+    const yieldNow = async () => {
+      await Promise.race([nextPause, this.stopped]);
+      nextPause = queue();
+      start = performance.now();
+    };
     /** Validated reads by key, each current: a change since then puts its key in stale. */
     const done = new Map<string, Element | null>();
     /** Changed in the middle of their own read: read in one go next time, so typing ends. */
     const interrupted = new Set<string>();
-    let start = performance.now();
-    // Queue the next turn before doing work, so the timer delay overlaps this slice.
-    let nextPause = pause();
-    const due = () => performance.now() - start >= budgetMs;
-    const yieldNow = async () => {
-      await nextPause;
-      nextPause = pause();
-      start = performance.now();
-    };
+    /** Read first, in this order; with `progressive`, published once all are read. */
+    const first = new Set<string>();
+    if (typeof priority === 'function') {
+      for (const [key, map] of elements.entries()) {
+        if (due()) await yieldNow();
+        if (this.destroyed) return;
+        if (priority(key, map)) first.add(key);
+      }
+    } else if (priority) for (const key of priority) if (elements.has(key)) first.add(key);
+    // A card in a column or a scene is drawn inside it: its containers come with it.
+    for (const key of [...first]) {
+      let parent = elements.get(key)?.get('parent');
+      while (typeof parent === 'string' && elements.has(parent) && !first.has(parent)) {
+        first.add(parent);
+        parent = elements.get(parent)?.get('parent');
+      }
+    }
+    const hydration = { done, first, firstLeft: new Set(first), shown: false };
+    this.hydration = hydration;
+    const show = progressive && first.size > 0;
     for (;;) {
       for (const key of this.stale) done.delete(key);
       this.stale.clear();
-      const todo = [...elements.keys()].filter((key) => !done.has(key));
+      const todo: string[] = [];
+      for (const key of first) if (!done.has(key)) todo.push(key);
+      for (const key of elements.keys()) if (!done.has(key) && !first.has(key)) todo.push(key);
       // Every element is read and current, in this same task: publish.
       if (todo.length === 0) break;
       for (const key of todo) {
         if (due()) await yieldNow();
         if (this.destroyed) return;
         const map = elements.get(key);
-        if (!map) continue;
-        // From here the read sees the current element; a change during a pause aborts it.
-        this.stale.delete(key);
-        if (interrupted.has(key)) {
-          done.set(key, readElement(map));
+        if (done.has(key)) continue;
+        if (!map) {
+          hydration.firstLeft.delete(key);
           continue;
         }
-        const steps = readElementSteps(map);
-        let step = steps.next();
-        while (!step.done) {
-          if (due()) await yieldNow();
-          if (this.destroyed) return;
-          if (this.stale.has(key)) break;
-          step = steps.next();
+        // From here the read sees the current element; a change during a pause aborts it.
+        this.stale.delete(key);
+        if (interrupted.has(key)) done.set(key, readElement(map));
+        else {
+          const steps = readElementSteps(map);
+          let step = steps.next();
+          while (!step.done) {
+            if (due()) await yieldNow();
+            if (this.destroyed) return;
+            if (this.stale.has(key)) break;
+            step = steps.next();
+          }
+          if (!step.done) {
+            interrupted.add(key);
+            continue;
+          }
+          done.set(key, step.value);
         }
-        if (step.done) done.set(key, step.value);
-        else interrupted.add(key);
+        hydration.firstLeft.delete(key);
+        if (show && !hydration.shown && hydration.firstLeft.size === 0) {
+          hydration.shown = true;
+          this.publishPartial();
+        }
       }
     }
+    this.hydration = null;
     // Document order, as the synchronous read (a duplicated id keeps the last element).
     const byId = new Map<string, Element>();
     let exact = true;
@@ -229,8 +339,28 @@ export class BoardStore {
       if (el.id !== key) exact = false;
     }
     this.exact = exact;
+    this.snapshot = EMPTY;
     this.index(byId);
     this.loading = false;
+    for (const listener of this.listeners) listener();
+  }
+
+  /** The progressive snapshot: the current, validated reads of the priority cards only. */
+  private publishPartial() {
+    const hydration = this.hydration;
+    if (!hydration?.shown) return;
+    const byId = new Map<string, Element>();
+    let exact = true;
+    for (const key of roots(this.doc).elements.keys()) {
+      if (!hydration.first.has(key)) continue;
+      const el = hydration.done.get(key);
+      if (!el) continue;
+      byId.set(el.id, el);
+      if (el.id !== key) exact = false;
+    }
+    this.exact = exact;
+    this.snapshot = EMPTY;
+    this.index(byId);
     for (const listener of this.listeners) listener();
   }
 

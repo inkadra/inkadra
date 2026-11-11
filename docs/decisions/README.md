@@ -108,6 +108,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0102](0102-min-writer-schema.md) | `minWriterSchema`: older clients write only when a test proves they lose nothing; the schema does not freeze at 1.0 |
 | [0103](0103-idempotent-project-creations.md) | `Idempotency-Key` also on project, crew member and shooting day creation, with its own capability; links are checked only when something is created |
 | [0104](0104-hand-checked-strokes.md) | Pen strokes are checked by a hand-written equivalent of their schema; Zod decides everything else |
+| [0105](0105-hydration-scheduler-and-priority.md) | Hydration takes a scheduler, cards to read first and an opt-in progressive view of only those; `applyUpdate` stays one block |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.
