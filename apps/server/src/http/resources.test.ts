@@ -325,6 +325,182 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     );
   });
 
+  it('replays project, crew member and shooting day creations like board creations', async () => {
+    const key = (name: string) => ({ 'idempotency-key': name });
+    const invalid = { 'idempotency-key': ' ' };
+    const rejects = async (path: string, payload: unknown) => {
+      expect((await call('owner', 'POST', path, payload, invalid)).statusCode).toBe(400);
+    };
+
+    // Projects: concurrent retries make one, a replay reads the project as it is now.
+    const projectInput = { name: 'Offline project' };
+    const projects = await Promise.all(
+      [0, 1].map(() => call('owner', 'POST', '/api/v1/projects', projectInput, key('p'))),
+    );
+    expect(projects.map((r) => r.statusCode)).toEqual([201, 201]);
+    expect(projects[0]!.json()).toEqual(projects[1]!.json());
+    const created = projects[0]!.json();
+    expect(
+      (await call('owner', 'POST', '/api/v1/projects', { name: 'Changed' }, key('p'))).statusCode,
+    ).toBe(409);
+    await rejects('/api/v1/projects', projectInput);
+    const own = await call('owner', 'GET', '/api/v1/projects?limit=100');
+    expect(
+      own.json().items.filter((p: { name: string }) => p.name === 'Offline project'),
+    ).toHaveLength(1);
+    // Another person with the same key and body makes their own project and learns nothing.
+    const theirs = await call('stranger', 'POST', '/api/v1/projects', projectInput, key('p'));
+    expect(theirs.statusCode).toBe(201);
+    expect(theirs.json().id).not.toBe(created.id);
+    await call('owner', 'PATCH', `/api/v1/projects/${created.id}`, { name: 'Renamed project' });
+    const renamed = await call('owner', 'POST', '/api/v1/projects', projectInput, key('p'));
+    expect(renamed.statusCode).toBe(201);
+    expect(renamed.json()).toMatchObject({ id: created.id, name: 'Renamed project' });
+
+    // Crew members and shooting days of that project.
+    const crewPath = `/api/v1/projects/${created.id}/crew`;
+    const crewInput = {
+      name: 'Anna',
+      department: 'Camera',
+      role: '1st AC',
+      phone: '',
+      email: '',
+      notes: '',
+      pickup: '',
+      character: null,
+      userId: null,
+      onSetContact: false,
+      position: 0,
+    };
+    const crew = await Promise.all(
+      [0, 1].map(() => call('owner', 'POST', crewPath, crewInput, key('c'))),
+    );
+    expect(crew.map((r) => r.statusCode)).toEqual([201, 201]);
+    expect(crew[0]!.json()).toEqual(crew[1]!.json());
+    const memberId = crew[0]!.json().id;
+    expect((await call('owner', 'GET', crewPath)).json().items).toHaveLength(1);
+    expect(
+      (await call('owner', 'POST', crewPath, { ...crewInput, name: 'Changed' }, key('c')))
+        .statusCode,
+    ).toBe(409);
+    await rejects(crewPath, crewInput);
+
+    const dayPath = `/api/v1/boards/${created.rootBoardId}/schedule`;
+    const dayInput = {
+      date: '2026-12-01',
+      callTime: '08:00',
+      wrap: null,
+      location: 'Station',
+      notes: '',
+      blocks: [],
+    };
+    const days = await Promise.all(
+      [0, 1].map(() => call('owner', 'POST', dayPath, dayInput, key('d'))),
+    );
+    expect(days.map((r) => r.statusCode)).toEqual([201, 201]);
+    expect(days[0]!.json()).toEqual(days[1]!.json());
+    const dayId = days[0]!.json().id;
+    expect((await call('owner', 'GET', dayPath)).json().items).toHaveLength(1);
+    expect(
+      (await call('owner', 'POST', dayPath, { ...dayInput, location: 'Changed' }, key('d')))
+        .statusCode,
+    ).toBe(409);
+    await rejects(dayPath, dayInput);
+
+    // Permissions run on every attempt: a person without access is refused, key or not.
+    for (const [path, payload, name] of [
+      [crewPath, crewInput, 'c'],
+      [dayPath, dayInput, 'd'],
+    ] as const)
+      expect((await call('stranger', 'POST', path, payload, key(name))).statusCode).toBe(404);
+
+    // A key is scoped to the endpoint and its parent: the same owner, key and body on another
+    // project (crew) or board (shooting day) creates a new resource, and so does a person
+    // with access to their own project and board. Neither learns anything of the first.
+    const other = (
+      await call('owner', 'POST', '/api/v1/projects', { name: 'Second' }, key('p2'))
+    ).json();
+    const ownerCrew = await call(
+      'owner',
+      'POST',
+      `/api/v1/projects/${other.id}/crew`,
+      crewInput,
+      key('c'),
+    );
+    expect(ownerCrew.statusCode).toBe(201);
+    expect(ownerCrew.json().id).not.toBe(memberId);
+    const ownerDay = await call(
+      'owner',
+      'POST',
+      `/api/v1/boards/${other.rootBoardId}/schedule`,
+      dayInput,
+      key('d'),
+    );
+    expect(ownerDay.statusCode).toBe(201);
+    expect(ownerDay.json().id).not.toBe(days[0]!.json().id);
+    const mine = theirs.json();
+    const theirCrew = await call(
+      'stranger',
+      'POST',
+      `/api/v1/projects/${mine.id}/crew`,
+      crewInput,
+      key('c'),
+    );
+    expect(theirCrew.statusCode).toBe(201);
+    expect(theirCrew.json()).toMatchObject({ projectId: mine.id });
+    expect(theirCrew.json().id).not.toBe(memberId);
+    const theirDay = await call(
+      'stranger',
+      'POST',
+      `/api/v1/boards/${mine.rootBoardId}/schedule`,
+      dayInput,
+      key('d'),
+    );
+    expect(theirDay.statusCode).toBe(201);
+    expect(theirDay.json().id).not.toBe(days[0]!.json().id);
+    expect((await call('owner', 'GET', crewPath)).json().items).toHaveLength(1);
+    expect((await call('owner', 'GET', dayPath)).json().items).toHaveLength(1);
+    await call('owner', 'DELETE', `/api/v1/projects/${other.id}`);
+
+    // A replay reads the resource as it is now, and answers 404 once it is gone.
+    await call('owner', 'PUT', `${crewPath}/${memberId}`, {
+      ...crewInput,
+      name: 'Anna R.',
+      revision: crew[0]!.json().revision,
+    });
+    const crewNow = await call('owner', 'POST', crewPath, crewInput, key('c'));
+    expect(crewNow.statusCode).toBe(201);
+    expect(crewNow.json()).toMatchObject({ id: memberId, name: 'Anna R.' });
+    await call('owner', 'PUT', `${dayPath}/${dayId}`, {
+      ...dayInput,
+      location: 'Studio',
+      revision: days[0]!.json().revision,
+    });
+    const dayNow = await call('owner', 'POST', dayPath, dayInput, key('d'));
+    expect(dayNow.statusCode).toBe(201);
+    expect(dayNow.json()).toMatchObject({ id: dayId, location: 'Studio' });
+    expect(
+      (await call('owner', 'DELETE', `${crewPath}/${memberId}`, { revision: 2 })).statusCode,
+    ).toBe(204);
+    expect((await call('owner', 'POST', crewPath, crewInput, key('c'))).statusCode).toBe(404);
+    expect((await call('owner', 'DELETE', `${dayPath}/${dayId}`, { revision: 2 })).statusCode).toBe(
+      204,
+    );
+    expect((await call('owner', 'POST', dayPath, dayInput, key('d'))).statusCode).toBe(404);
+    await call('owner', 'DELETE', `/api/v1/projects/${created.id}`);
+    expect(
+      (await call('owner', 'POST', '/api/v1/projects', projectInput, key('p'))).statusCode,
+    ).toBe(404);
+
+    // After expiry the same key creates again.
+    await db.update(creationRequest).set({ expiresAt: new Date(Date.now() - 1000) });
+    const again = await call('owner', 'POST', '/api/v1/projects', projectInput, key('p'));
+    expect(again.statusCode).toBe(201);
+    expect(again.json().id).not.toBe(created.id);
+    await call('owner', 'DELETE', `/api/v1/projects/${again.json().id}`);
+    await call('stranger', 'DELETE', `/api/v1/projects/${theirs.json().id}`);
+  });
+
   // Uploads ----------------------------------------------------------------------
 
   const tus = { 'tus-resumable': '1.0.0' };

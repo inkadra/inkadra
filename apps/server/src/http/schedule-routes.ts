@@ -43,6 +43,7 @@ import {
 } from '../db/schema.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
+import { idempotentCreation } from './idempotency.ts';
 
 const BoardParams = z.object({ boardId: Id });
 const DayParams = BoardParams.extend({ dayId: Id });
@@ -204,15 +205,32 @@ export function registerScheduleRoutes(
     const team = await isTeam(db, actor, access.board.projectId);
     const parsed = ShootingDayInput.parse(req.body);
     const updatedBy = await savedBy(actor.id);
-    const [row] = await db.transaction(async (tx) => {
-      const [input] = await cleanInputs(tx, [parsed], team, access.board.projectId);
-      return tx
-        .insert(shootingDay)
-        .values({ ...(input ?? parsed), boardId, projectId: access.board.projectId, updatedBy })
-        .returning();
-    });
-    if (!row) throw new Error('Shooting day missing');
-    return reply.code(201).send(publicDay(row, team));
+    const result = await idempotentCreation(
+      db,
+      req,
+      actor.id,
+      `shooting-days:${boardId}`,
+      parsed,
+      async (tx) => {
+        const [input] = await cleanInputs(tx, [parsed], team, access.board.projectId);
+        const [created] = await tx
+          .insert(shootingDay)
+          .values({ ...(input ?? parsed), boardId, projectId: access.board.projectId, updatedBy })
+          .returning();
+        if (!created) throw new Error('Shooting day missing');
+        return created;
+      },
+    );
+    // A retry is answered with the day as it is now: 404 once it has been deleted.
+    if ('replayed' in result) {
+      const [now] = await db
+        .select()
+        .from(shootingDay)
+        .where(and(eq(shootingDay.id, result.replayed), eq(shootingDay.boardId, boardId)));
+      if (!now) throw new HttpError('not_found', 'Shooting day not found.');
+      return reply.code(201).send(publicDay(now, team));
+    }
+    return reply.code(201).send(publicDay(result.created, team));
   });
   // People who cannot edit the schedule only learn about themselves. A person whose access
   // ended keeps their rows, in case it comes back, but drops out of the answer. The links come

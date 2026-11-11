@@ -133,6 +133,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'comments',
         'resumable-uploads',
         'idempotent-creations',
+        'idempotent-project-creations',
         'token-invalid-reasons',
         'client-asset-ids',
         'min-writer-schema',

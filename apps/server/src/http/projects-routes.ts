@@ -59,6 +59,7 @@ import { storageUsage } from '../storage-usage.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
+import { idempotentCreation } from './idempotency.ts';
 
 interface Deps {
   config: Config;
@@ -305,7 +306,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     validateDates(input.shootingStart ?? null, input.shootingEnd ?? null);
     const id = randomUUID();
     const icon = input.icon ?? defaultProjectIcon(id);
-    const created = await db.transaction(async (tx) => {
+    const result = await idempotentCreation(db, req, actor.id, 'projects', input, async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
       validateProjectType((await readClassifications(tx)).projectTypes, input.type);
       const [last] = await tx
@@ -338,7 +339,10 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       await tx.insert(projectMember).values({ projectId: p.id, userId: actor.id, role: 'owner' });
       return toProject(p, root.id, 'owner');
     });
-    return reply.status(201).send(created);
+    // A retry is answered with the project as it is now, like a read: 404 once it is gone.
+    if ('replayed' in result)
+      return reply.status(201).send(await loadProject(db, actor, result.replayed));
+    return reply.status(201).send(result.created);
   });
 
   app.get(v1('/projects/:projectId'), async (req) => {
