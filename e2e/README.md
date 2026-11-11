@@ -4,9 +4,15 @@ Playwright against the built server in all-in-one mode: `pnpm build`, then `pnpm
 They need Postgres (`DATABASE_URL`, an empty database) and Valkey or Redis (`REDIS_URL`); see
 `playwright.config.ts`. The load tests run on their own with `pnpm test:perf`.
 
-**Shards.** CI splits the suite into four runners (`pnpm test:e2e --shard=1/4`), each on an empty
-database with `first-run.spec.ts` run first. A spec can rely on what `first-run.spec.ts` leaves,
-never on another spec: the split moves as files are added.
+**Shards.** CI assigns whole spec files to six runners by recorded duration (longest first,
+then the lightest runner), using `node scripts/e2e-shards.mjs 1 6` to produce the exact-path
+CLI filters for `pnpm test:e2e`. `scripts/e2e-durations.mjs` records seconds per file from CI
+logs; new files use the median duration. See its comment to refresh the table. Perf specs stay
+excluded. Playwright's `chromium` project dependency runs all of `first-run.spec.ts` first on
+each empty database, even with CLI file filters. Specs may rely on its administrator Giulia
+Bianchi (`giulia@example.com`), the project "Ultima corsa" and its board story (including the
+notes "Sopralluogo al porto" and "Casting comparse"), never on another spec. Independent shell and upload regressions
+live in `shell-and-uploads.spec.ts` and run once.
 
 **Service worker network events.** `playwright.config.ts` sets
 `PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1` for every Chromium test, so that

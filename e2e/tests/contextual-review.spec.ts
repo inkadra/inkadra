@@ -106,6 +106,8 @@ test('a newer live document opens read-only with an update-app notice', async ({
 }) => {
   const base = baseURL as string;
   const card = await setup(page, base, 'column');
+  // The page must hold the board open: once unloaded, the server refuses to load a newer schema.
+  await expect(card).toBeVisible();
   const boardId = new URL(page.url()).pathname.split('/').at(-1)!;
   const cookie = await signIn(base, {
     name: 'Giulia',

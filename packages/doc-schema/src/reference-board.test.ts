@@ -4,7 +4,7 @@ import * as Y from 'yjs';
 import { countByType, readElement, roots, validateBoardDoc } from './doc.ts';
 import { generateReferenceBoard, REFERENCE_SIZES } from './reference-board.ts';
 
-// Builds a whole board through a real Yjs history: about 4 s on a CI runner, near the 5 s default.
+// Two boards with a real history: about 4 s on a CI runner, past the default 5 s when it is busy.
 it('builds a valid board with the counts of its size, the same for the same seed', {
   timeout: 30_000,
 }, () => {
