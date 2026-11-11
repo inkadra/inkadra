@@ -1527,11 +1527,16 @@ registry.registerPath({
   security: secured,
   request: {
     headers: z.object({
-      'Idempotency-Key': z.string().min(1).max(128).optional().openapi({
-        description:
-          'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
-          'created resource as it is now (404 once it is gone); a changed payload returns 409.',
-      }),
+      'Idempotency-Key': z
+        .string()
+        .min(1)
+        .max(128)
+        .optional()
+        .openapi({
+          description:
+            'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
+            'created resource as it is now (404 once it is gone); a changed payload returns 409.',
+        }),
     }),
     params: idParam('projectId'),
     body: json(CreateBoard),
@@ -2111,11 +2116,16 @@ registry.registerPath({
     realtime,
   request: {
     headers: z.object({
-      'Idempotency-Key': z.string().min(1).max(128).optional().openapi({
-        description:
-          'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
-          'created resource as it is now (404 once it is gone); a changed payload returns 409.',
-      }),
+      'Idempotency-Key': z
+        .string()
+        .min(1)
+        .max(128)
+        .optional()
+        .openapi({
+          description:
+            'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
+            'created resource as it is now (404 once it is gone); a changed payload returns 409.',
+        }),
     }),
     params: idParam('boardId'),
     body: json(CreateComment),

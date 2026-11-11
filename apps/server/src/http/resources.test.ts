@@ -301,9 +301,9 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     expect(edited.statusCode).toBe(201);
     expect(edited.json()).toMatchObject({ id: commentId, body: 'Edited' });
     await call('owner', 'DELETE', `/api/v1/comments/${commentId}`);
-    expect((await call('owner', 'POST', commentsPath, { body: 'Queued' }, headers)).statusCode).toBe(
-      404,
-    );
+    expect(
+      (await call('owner', 'POST', commentsPath, { body: 'Queued' }, headers)).statusCode,
+    ).toBe(404);
     await call('owner', 'DELETE', `/api/v1/boards/${boardId}`);
     expect((await call('owner', 'POST', path, input, headers)).statusCode).toBe(404);
 

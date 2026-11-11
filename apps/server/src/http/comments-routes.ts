@@ -458,9 +458,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       // A retry is answered with the comment as it is now (edited, deleted), like a read.
       const { row, viewer: now } = await readableComment(actor, result.replayed);
       const reactions = await commentReactions(db, [row.id], { userId: actor.id });
-      return reply
-        .status(201)
-        .send(toComment(row, await peopleOf(db, [row], now), now, reactions));
+      return reply.status(201).send(toComment(row, await peopleOf(db, [row], now), now, reactions));
     }
     await onCreated?.();
     const row = result.created;

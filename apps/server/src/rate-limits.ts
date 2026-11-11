@@ -3,7 +3,10 @@ import { HttpError } from './http/errors.ts';
 
 /** Whole seconds, at least one, until an hourly count window frees the slot taken at `oldest`. */
 export function hourlyRetryAfter(oldest: Date | null | undefined): number {
-  return Math.max(1, Math.ceil(((oldest?.getTime() ?? Date.now()) + 3_600_000 - Date.now()) / 1000));
+  return Math.max(
+    1,
+    Math.ceil(((oldest?.getTime() ?? Date.now()) + 3_600_000 - Date.now()) / 1000),
+  );
 }
 
 /** IPv6 privacy addresses share a /64 budget; mapped IPv4 uses the IPv4 budget. */
