@@ -58,7 +58,7 @@ function png(width = 64, height = 32): Buffer {
   ]);
 }
 
-async function seed(page: Page, baseURL: string) {
+async function seed(page: Page, baseURL: string, extra = 0) {
   const cookie = await signIn(baseURL, account);
   await page.context().addCookies(
     cookie.split('; ').map((pair) => ({
@@ -111,6 +111,12 @@ async function seed(page: Page, baseURL: string) {
     { w: 300, title: 'Scena 9', locationId: diner.id },
     opts,
   );
+  const spare = Array.from(
+    { length: extra },
+    (_, i) =>
+      createElement(doc, 'plan', { x: 1300 + i * 460, y: 80 }, { w: 420, title: `Vuota ${i}` }, opts)
+        .id,
+  );
   await pushBoardDoc(baseURL, cookie, root, doc);
   await page.goto(`/p/${project.id}?view=canvas`);
   const read = async (id: string) => {
@@ -119,7 +125,11 @@ async function seed(page: Page, baseURL: string) {
       .map((m) => readElement(m))
       .find((e): e is Plan => e?.id === id) as Plan;
   };
-  return { project, ids: { empty: empty.id, drawn: drawn.id, scene5: scene5.id, reuser: reuser.id }, read };
+  return {
+    project,
+    ids: { empty: empty.id, drawn: drawn.id, scene5: scene5.id, reuser: reuser.id, spare },
+    read,
+  };
 }
 
 const pointOf = async (stage: Locator, [x, y]: readonly number[]) => {
@@ -359,8 +369,9 @@ test('screenshots of the walls tools, the start dialog and the background', asyn
   test.skip(!process.env.SET_PLAN_SHOTS, 'screenshots only on request');
   test.setTimeout(300_000);
   mkdirSync(out, { recursive: true });
-  const { project, ids, read } = await seed(page, baseURL!);
+  const { project, ids } = await seed(page, baseURL!, 4);
   const state = await page.context().storageState();
+  let n = 0;
   for (const theme of ['light', 'dark'] as const)
     for (const width of [1280, 390]) {
       const phone = width < 600;
@@ -380,18 +391,16 @@ test('screenshots of the walls tools, the start dialog and the background', asyn
       try {
         await m.goto(`${baseURL}/p/${project.id}?view=canvas`);
         await m.getByRole('button', { name: 'Adatta alla vista' }).click();
-        const fresh = theme === 'light' && width === 1280 ? ids.empty : ids.drawn;
+        const fresh = ids.spare[n++] as string;
         await m.locator(`[data-el="${fresh}"]`).dblclick();
         const editor = m.getByRole('dialog', { name: /Pianta del set/ });
         const stage = editor.locator('.plan-editor__stage');
         const start = editor.getByRole('dialog', { name: /Inizia la pianta/ });
-        const hasWalls = ((await read(fresh)).walls?.length ?? 0) > 0;
-        if (!hasWalls) {
-          await expect(start).toBeVisible();
-          await shot('start');
-          await tap(start.getByRole('button', { name: 'Crea la stanza' }));
-          await expect(start).toHaveCount(0);
-        }
+        await expect(start).toBeVisible();
+        await shot('start');
+        // An 8 × 6 m room: x 148 to 852, y 69 to 597 of the drawing.
+        await tap(start.getByRole('button', { name: 'Crea la stanza' }));
+        await expect(start).toHaveCount(0);
         // The walls tool, a side being drawn with its length and angle.
         await tap(editor.getByRole('button', { name: /^Muri/ }).first());
         const go = async (q: readonly number[], click = true) => {
@@ -400,22 +409,22 @@ test('screenshots of the walls tools, the start dialog and the background', asyn
           else if (click) await m.mouse.click(p.x, p.y);
           else await m.mouse.move(p.x, p.y, { steps: 3 });
         };
-        await go([120, 60]);
-        await go([300, 62]);
-        await go([300, 120], false);
+        await go([250, 200]);
+        await go([450, 202]);
+        await go([452, 330], false);
         await shot('walls-drawing');
         await m.keyboard.press('Escape');
         // The Openings tool over a wall.
         await tap(editor.getByRole('button', { name: /^Porta/ }).first());
-        await go([480, 125], false);
+        await go([480, 72], false);
         await shot('door-ghost');
-        await go([480, 125]);
+        await go([480, 72]);
         await tap(editor.getByRole('button', { name: 'Fine muri' }));
         // A wall picked: its sides and corners; then the door: its properties.
-        await go([88, 400]);
+        await go([148, 400]);
         await m.mouse.move(0, 0);
         await shot('wall-picked');
-        await go([480, 125]);
+        await go([480, 70]);
         await m.mouse.move(0, 0);
         await shot('door-picked');
         await m.keyboard.press('Escape');
