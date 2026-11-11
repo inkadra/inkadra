@@ -314,12 +314,12 @@ const INVALID = Symbol('invalid');
  * or arrived. Callers must not mutate what they read, as with every other read.
  */
 const parsedItems = new WeakMap<z.ZodType, WeakMap<object, unknown>>();
-/** Parsed Y.Map items (table rows) with the content they had, compared on the next read. */
+/** Parsed Y.Map items (table rows); changed rows compare content before reusing a parse. */
 const parsedMaps = new WeakMap<
   Y.Map<unknown>,
   { item: z.ZodType; plain: Record<string, unknown>; data: unknown; dirty: boolean }
 >();
-const observedDocs = new WeakSet<Y.Doc>();
+const activeTransactions = new WeakMap<Y.Doc, Set<Y.Transaction>>();
 
 /** Include ancestors: a changed cell map invalidates its cached table row. */
 function changedTypes(transaction: Y.Transaction): Set<object> {
@@ -403,13 +403,25 @@ export function* readElementSteps(
   cooperative = true,
 ): Generator<void, Element | null> {
   const doc = map.doc;
-  if (doc && !observedDocs.has(doc)) {
-    // Before any deep observer reads, including observers registered before the cache.
-    doc.on('beforeObserverCalls', invalidateMaps);
-    observedDocs.add(doc);
+  let active = doc ? activeTransactions.get(doc) : undefined;
+  if (doc && !active) {
+    const transactions = new Set<Y.Transaction>();
+    active = transactions;
+    activeTransactions.set(doc, transactions);
+    doc.on('beforeTransaction', (transaction) => transactions.add(transaction));
+    doc.on('afterAllTransactions', () => {
+      for (const transaction of transactions) invalidateMaps(transaction);
+      transactions.clear();
+    });
   }
-  // Observers have not run inside an open transaction: inspect its current changes too.
-  const changed = doc?._transaction ? changedTypes(doc._transaction) : undefined;
+  // _transaction is cleared before observers. Keep all pending cleanups too, so reads in
+  // observers registered before our hooks cannot reuse a stale row. Also include the first
+  // transaction if this is the read that installs the lifecycle hooks.
+  const transactions = new Set(active);
+  if (doc?._transaction) transactions.add(doc._transaction);
+  const changed = transactions.size ? new Set<object>() : undefined;
+  for (const transaction of transactions)
+    for (const type of changedTypes(transaction)) changed?.add(type);
   const list = ITEM_LISTS.get(map.get('type') as string);
   let items: unknown[] | undefined;
   const plain: Record<string, unknown> = {};

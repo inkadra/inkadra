@@ -77,6 +77,7 @@ it('follows strokes and rows as they change, bad items included', () => {
   table.set('rows', rows);
   // Register before the cache's invalidation hook: reads in deep observers must be current.
   elements.observeDeep(() => same(table));
+  doc.on('beforeObserverCalls', () => same(table));
   const check = () => {
     for (const map of [frame, plan, table]) same(map);
   };

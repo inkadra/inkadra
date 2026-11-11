@@ -18,10 +18,11 @@ New containers also collect children that already referenced them. Unchanged car
 unaffected lists keep their identity; previously published snapshots remain unchanged.
 List equality first checks length and then compares items by identity or JSON, serializing
 only replaced items rather than all unchanged strokes/rows after a single edit.
-Cached Y.Map rows are invalidated through the document's `beforeObserverCalls` event,
-including ancestors of changed cell maps. Unchanged rows no longer compare every cell.
-Reads inside an open transaction also inspect its current changed types, before observers
-have run. Dirty rows still compare their content and parse any new content as in 0094.
+Cached Y.Map rows follow the document's transaction lifecycle, including ancestors of changed
+cell maps. Pending transactions remain visible through observer cleanup, so early observers
+and reads inside a transaction cannot reuse stale data. After all cleanups, changed rows are
+marked dirty before the transaction set is cleared. Unchanged rows no longer compare every
+cell; dirty rows still compare content and parse any new content as in 0094.
 
 Opening uses the same grouping pass, removing the scan of the whole board per column.
 Malformed key/id pairs retain the old full rebuild, as the helpers' snapshot view already
