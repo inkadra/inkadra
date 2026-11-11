@@ -249,7 +249,7 @@ export const TOURS: Tour[] = [
       { anchor: 'plan-library', media: 'drag', side: 'right' },
       { anchor: 'plan-properties', media: 'plan', side: 'left' },
       { anchor: 'plan-setups', media: 'plan', side: 'bottom' },
-      // The walls and openings tools and the background picture (decision 0109).
+      // The walls and openings tools and the background picture (decision 0110).
       { anchor: 'plan-walls', media: 'plan', side: 'top', keys: ['W', 'D'] },
       { anchor: 'plan-background', media: 'plan', side: 'bottom' },
     ],

@@ -59,7 +59,7 @@ export type Tool =
   | 'walls'
   | 'openings'
   | DragKind;
-/** A wall or an opening, picked or being edited (decision 0109). */
+/** A wall or an opening, picked or being edited (decision 0110). */
 export interface WallRef {
   kind: 'walls' | 'openings';
   id: string;
@@ -149,14 +149,14 @@ export function usePlanEditing(props: PlanEditorProps) {
     previewRef.current = list;
     setPreviewState(list);
   };
-  /** The wall or opening picked (decision 0109); items and walls are never picked together. */
+  /** The wall or opening picked (decision 0110); items and walls are never picked together. */
   const [wallSel, setWallSelState] = useState<WallRef | null>(null);
   /** A wall of the locked Set layer was clicked: the properties say why it does not pick. */
   const [lockedWall, setLockedWall] = useState(false);
   const [wallPreview, setWallPreview] = useState<WallPreview | null>(null);
   /** What the Openings tool places next. */
   const [openingKind, setOpeningKind] = useState<PlanOpeningKind>('door');
-  /** The picture under the plan being moved and scaled (decision 0109). */
+  /** The picture under the plan being moved and scaled (decision 0110). */
   const [placingBackground, setPlacingBackground] = useState(false);
   /** Called with the client point of the middle of the plan, to place there. */
   const middle = useRef<() => Point>(() => ({ x: 0.5, y: 0.5 }));
@@ -258,14 +258,14 @@ export function usePlanEditing(props: PlanEditorProps) {
   const editPlan = (patch: Partial<PlanElement>, id = plan.id) =>
     change(() => updateElement(doc, id, patch as never, LOCAL));
 
-  // Walls and openings (decision 0109): on the Set layer, the base's for a setup. -----------
+  // Walls and openings (decision 0110): on the Set layer, the base's for a setup. -----------
   const setOwner = targetFor('set');
   /** View units per metre for walls: the plan's scale, or the nominal one until it has one. */
   const wallScale = drawn.scale ?? NOMINAL_SCALE;
   const setLocked = locked.has('set');
   /**
    * A plan drawn in metres before it has a scale gets the nominal one with its first wall, in the
-   * same change: what the walls tool showed in metres stays true (decision 0109).
+   * same change: what the walls tool showed in metres stays true (decision 0110).
    */
   const ensureScale = () => {
     if (!drawn.scale) updateElement(doc, scaleOwner, { scale: NOMINAL_SCALE, grid: '0.5' }, LOCAL);

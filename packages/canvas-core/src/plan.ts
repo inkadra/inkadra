@@ -982,7 +982,7 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
     // Walls and their openings are the Set: the base's (decision 0104).
     walls: base.walls,
     openings: base.openings,
-    // So is the picture under them (decision 0109).
+    // So is the picture under them (decision 0110).
     background: base.background,
   };
 }
@@ -1210,7 +1210,7 @@ export function removePlanItems(
  * among them become new groups of the copies; an attached measure is copied where it is drawn,
  * detached, so it does not land on the original. Icons attached to a copied icon are copied
  * with it and attached to its copy; a copy whose base was not copied stands free. The copies go
- * on plan `targetId`, the plan itself unless another reuses its set (decision 0109).
+ * on plan `targetId`, the plan itself unless another reuses its set (decision 0110).
  */
 export function duplicatePlanItems(
   doc: Y.Doc,

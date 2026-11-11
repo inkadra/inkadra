@@ -343,7 +343,7 @@ export function PlanEditor(props: PlanEditorProps) {
       </Button>
     </section>
   );
-  // The start dialog again, from the plan's menu, while the plan is still empty (decision 0109).
+  // The start dialog again, from the plan's menu, while the plan is still empty (decision 0110).
   const startItem = empty
     ? [
         {

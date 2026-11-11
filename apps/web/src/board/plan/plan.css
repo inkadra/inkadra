@@ -1911,7 +1911,7 @@ span.plan-pill {
   pointer-events: none;
 }
 
-/* Walls and openings tools (decision 0109). */
+/* Walls and openings tools (decision 0110). */
 .plan-editor__stage--walls,
 .plan-editor__stage--openings {
   cursor: crosshair;
@@ -2053,7 +2053,7 @@ span.plan-pill {
   }
 }
 
-/* The start dialog of an empty plan (decision 0109). */
+/* The start dialog of an empty plan (decision 0110). */
 .plan-start {
   position: absolute;
   top: 50%;
@@ -2169,7 +2169,7 @@ span.plan-pill {
   gap: 8px;
 }
 
-/* The background picture (decision 0109). */
+/* The background picture (decision 0110). */
 .plan__background {
   pointer-events: none;
 }

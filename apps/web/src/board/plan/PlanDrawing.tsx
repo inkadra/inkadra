@@ -623,7 +623,7 @@ export const PlanDrawing = memo(function PlanDrawing({
 }: {
   plan: PlanLike;
   /**
-   * The picture under the plan (decision 0109): drawn in the editor and on the board card, left
+   * The picture under the plan (decision 0110): drawn in the editor and on the board card, left
    * out of the slides and sheets, as of exports, unless they ask for it.
    */
   background?: boolean;

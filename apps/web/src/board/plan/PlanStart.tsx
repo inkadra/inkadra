@@ -64,7 +64,7 @@ const ROOMS: Record<RoomPreset, ReactNode> = {
 };
 
 /**
- * The start dialog of an empty set plan (decision 0109), as the approved mockup draws it: reuse
+ * The start dialog of an empty set plan (decision 0110), as the approved mockup draws it: reuse
  * the Set of another plan of the same location, draw the walls, trace an image, scan the room
  * (coming with the phone app), or a ready room with its width and depth; or start empty. A
  * floating panel over the empty drawing; a sheet on a phone.

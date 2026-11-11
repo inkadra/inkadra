@@ -20,7 +20,7 @@ import { startUpload } from '../uploads.ts';
 import type { Ed } from './editing.ts';
 
 export type PlanBackground = NonNullable<PlanElement['background']>;
-/** How a new background starts: faint and grey, to trace over (decision 0109). */
+/** How a new background starts: faint and grey, to trace over (decision 0110). */
 const NEW_BACKGROUND = { opacity: 0.4, grey: true } as const;
 const round = (v: number) => Math.round(v * 10) / 10;
 
@@ -101,7 +101,7 @@ export async function uploadBackground(input: {
   });
 }
 
-/** The background of what the editor shows: the base's, for a setup (decision 0109). */
+/** The background of what the editor shows: the base's, for a setup (decision 0110). */
 export const backgroundOf = (ed: Ed) => ed.drawn.background;
 
 /**
@@ -270,7 +270,7 @@ export function BackgroundPanel({
 }
 
 /**
- * The "place the background" state (decision 0109): the picture framed with four corner
+ * The "place the background" state (decision 0110): the picture framed with four corner
  * handles; dragging it moves it, a corner scales it with its shape kept. Each drag is one undo
  * step; Done locks it under everything again.
  */

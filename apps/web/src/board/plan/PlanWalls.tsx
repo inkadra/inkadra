@@ -147,7 +147,7 @@ function OpeningDims({
 }
 
 /**
- * The Walls and Openings tools of the set plan editor (decision 0109) and the editing of walls
+ * The Walls and Openings tools of the set plan editor (decision 0110) and the editing of walls
  * with the Select tool: what PlanCanvas asks on each pointer event, the live drawing, the
  * dimensions, and the bars of the tools. Each corner placed, opening placed and drag finished is
  * one change of the document, one undo step.

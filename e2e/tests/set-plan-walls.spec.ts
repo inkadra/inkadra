@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Walls, openings and starting a set plan (decision 0109): the start dialog of an empty plan
+// Walls, openings and starting a set plan (decision 0110): the start dialog of an empty plan
 // (a ready room, the set of another plan of the same location), the Walls tool (corner by
 // corner, a typed length, closing on the first corner, one undo step per side), the Openings
 // tool (a door placed on a wall and dragged along it) and the background picture (uploaded,

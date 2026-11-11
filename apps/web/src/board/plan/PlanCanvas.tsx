@@ -109,7 +109,7 @@ const HANDLE_SIGN: Record<ResizeHandle, [number, number]> = {
   sw: [-1, 1],
   w: [-1, 0],
 };
-/** The tools of the bar at the bottom, with their keys (decisions 0104 and 0109). */
+/** The tools of the bar at the bottom, with their keys (decisions 0104 and 0110). */
 export const TOOL_KEYS: Array<{ tool: Tool; key: string }> = [
   { tool: 'select', key: 'V' },
   { tool: 'walls', key: 'W' },
@@ -386,7 +386,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       commitText();
       return;
     }
-    // Placing the background takes every press until Done (decision 0109).
+    // Placing the background takes every press until Done (decision 0110).
     if (placing.down(p, e.target as Element)) {
       e.currentTarget.setPointerCapture(e.pointerId);
       ed.store.undo.stopCapturing();
@@ -525,7 +525,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         gesture.current = { kind: 'move', ref: hit, start: p, item: target };
         return;
       }
-      // Walls and openings, under the items (decision 0109).
+      // Walls and openings, under the items (decision 0110).
       if (tool === 'select' && !e.shiftKey && walls.pick(p, e.target as Element)) {
         e.currentTarget.setPointerCapture(e.pointerId);
         return;

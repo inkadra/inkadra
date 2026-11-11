@@ -16,7 +16,7 @@ import { NumberField } from './NumberField.tsx';
 import { OPENING_ICONS, useMetres, wallCentimetres } from './PlanWalls.tsx';
 
 /**
- * The properties of a picked wall or opening (decision 0109): a wall's thickness, length and
+ * The properties of a picked wall or opening (decision 0110): a wall's thickness, length and
  * name; an opening's kind, width, side and swing, with its distances to the corners. Deleting a
  * wall deletes its openings.
  */

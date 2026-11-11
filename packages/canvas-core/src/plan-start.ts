@@ -16,7 +16,7 @@ import type { CardsById } from './plan-links.ts';
 import { copyPlanWalls, DEFAULT_WALL_METRES, metresToView, toWallPoints } from './plan-walls.ts';
 
 /**
- * Starting a set plan (decision 0109): the ready rooms of the start dialog, the plans whose Set
+ * Starting a set plan (decision 0110): the ready rooms of the start dialog, the plans whose Set
  * layer an empty plan may reuse, and where a background picture lies.
  */
 
@@ -147,7 +147,7 @@ export function hasSet(plan: Pick<PlanElement, 'walls' | 'strokes' | 'shapes' | 
 }
 
 /**
- * The plans whose Set layer `plan` may reuse (decision 0109): the other plans of the same
+ * The plans whose Set layer `plan` may reuse (decision 0110): the other plans of the same
  * location, by the location card both link to, or by the place's name when one of them links to
  * none; never the plan's own setups or base, never a setup (its Set is its base's), only plans
  * with a Set to give. `plans` are the plans the person can read.
@@ -167,7 +167,7 @@ export function setSources(
 }
 
 /**
- * Copies the Set layer of `source` onto plan `targetId` (decision 0109): its walls and openings
+ * Copies the Set layer of `source` onto plan `targetId` (decision 0110): its walls and openings
  * and the items on its Set layer, with new ids; lights, cameras, actors and notes stay behind.
  * Returns the refs of the items copied. Call it inside one change, for one undo step.
  */

@@ -1,4 +1,4 @@
-# 0109 · Set plan: walls, openings and starting
+# 0110 · Set plan: walls, openings and starting
 
 Proposed, 2026-11. Builds on decision 0104 (the model of set plan v2) and the editor of its
 second pull request. The mockup approved on 2026-11-11 (start dialog, drawing walls and openings,
