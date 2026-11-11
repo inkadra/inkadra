@@ -12,6 +12,7 @@ import {
   iconGlow,
   iconGlyph,
   iconTransform,
+  isLight,
   labelAnchor,
   linkedPlan,
   measureEnds,
@@ -26,6 +27,7 @@ import {
   planStack,
   shownOpenings,
   wallPieces,
+  wallPoints,
 } from '@inkadra/canvas-core';
 import {
   PLAN_ASPECT,
@@ -205,10 +207,29 @@ export function iconLabel(icon: PlanIcon): string {
   // "A cam 35mm" already says it: no "· 35 mm" again.
   const said = new RegExp(`\\b${mm}\\s?mm\\b`, 'i').test(icon.label ?? '');
   const lens = icon.kind === 'camera' && icon.showLens && !said ? `${mm} mm` : '';
-  // The power as written, or the watts (decision 0104).
-  const written = icon.power || (icon.watts ? `${icon.watts} W` : '');
+  // The power as written, or the watts (decision 0104); a kilowatt and more as "2K".
+  const written = icon.power || (icon.watts ? wattsShort(icon.watts) : '');
   const power = written && !icon.label?.includes(written) ? written : '';
   return [icon.label, lens, power].filter(Boolean).join(' · ');
+}
+
+/** Watts as the plan writes them: "300 W", "2K", "1.2K". */
+export function wattsShort(watts: number): string {
+  return watts >= 1000 ? `${Math.round(watts / 100) / 10}K` : `${watts} W`;
+}
+
+/**
+ * The second, dim line under a named light (the mockup's "5600 K · 60%"): its colour
+ * temperature and level; '' for other icons and for lights without either.
+ */
+export function iconSubLabel(icon: PlanIcon): string {
+  if (!icon.label || !isLight(icon.kind)) return '';
+  return [
+    icon.kelvin ? `${icon.kelvin} K` : '',
+    icon.intensity !== undefined ? `${Math.round(icon.intensity * 100)}%` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 /**
@@ -225,19 +246,35 @@ export const PlanLabel = memo(function PlanLabel({
   const label = iconLabel(icon);
   if (!label) return null;
   const at = labelAnchor(icon);
+  const sub = iconSubLabel(icon);
+  const y = at.y + (lifted ? 20 : 0);
   return (
-    <text
-      className="plan__label"
-      x={at.x}
-      y={at.y + (lifted ? 20 : 0)}
-      textAnchor="middle"
-      fontSize={LABEL_SIZE}
-      fontWeight={500}
-      fontFamily="inherit"
-      style={{ color: planCss(icon.color) }}
-    >
-      {label}
-    </text>
+    <>
+      <text
+        className="plan__label"
+        x={at.x}
+        y={y}
+        textAnchor="middle"
+        fontSize={LABEL_SIZE}
+        fontWeight={500}
+        fontFamily="inherit"
+        style={{ color: planCss(icon.color) }}
+      >
+        {label}
+      </text>
+      {sub && (
+        <text
+          className="plan__label plan__label--dim"
+          x={at.x}
+          y={y + LABEL_SIZE + 2}
+          textAnchor="middle"
+          fontSize={LABEL_SIZE - 2}
+          fontFamily="inherit"
+        >
+          {sub}
+        </text>
+      )}
+    </>
   );
 });
 
@@ -363,6 +400,18 @@ export const PlanWallsView = memo(function PlanWallsView({
   const byId = new Map(walls.map((w) => [w.id, w]));
   return (
     <g className="plan__walls" style={{ color: planCss(PLAN_INK) }}>
+      {/* A closed room's floor, tinted under everything (audit L1). */}
+      {walls
+        .filter((w) => w.closed)
+        .map((wall) => (
+          <polygon
+            key={`f${wall.id}`}
+            className="plan__floor"
+            points={wallPoints(wall)
+              .map((p) => `${p.x},${p.y}`)
+              .join(' ')}
+          />
+        ))}
       {walls.flatMap((wall) =>
         wallPieces(wall, openings).map((piece, i) => (
           <polygon
@@ -403,6 +452,8 @@ export const PlanWallsView = memo(function PlanWallsView({
 
 /** Radius of the number of a blocking position, in view units. */
 const STEP_DOT = 11;
+/** How far under a position the editor draws its number, view units. */
+const STEP_BELOW = 30;
 
 /**
  * The blocking of an icon (round 6, d): its earlier positions as veiled copies, the moves
@@ -484,12 +535,15 @@ const BlockingNumbers = memo(function BlockingNumbers({
   const at = blockingPositions(icon);
   return (
     <g style={{ color: planCss(icon.color) }}>
-      {(route ? at.slice(0, -1) : at).map((p, i) => (
+      {at.map((p, i) => (
         <g
           // biome-ignore lint/suspicious/noArrayIndexKey: the number is the place in the order.
           key={i}
           className="plan__step"
-          transform={route ? `translate(${p.x} ${p.y})` : `translate(${p.x - 24} ${p.y - 24})`}
+          // In the editor each position, the last too, is numbered under it (audit M5).
+          transform={
+            route ? `translate(${p.x} ${p.y + STEP_BELOW})` : `translate(${p.x - 24} ${p.y - 24})`
+          }
         >
           <circle r={STEP_DOT} style={{ fill: 'currentColor' }} />
           <text textAnchor="middle" y={4.5} fontSize={13} fontWeight={600}>

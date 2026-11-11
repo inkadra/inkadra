@@ -36,8 +36,10 @@ import {
   normalizeRotation,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
+  nextPlanItemAt,
   type PlanElement,
   planItemAt,
+  planItemsAt,
   planStack,
   removePlanItems,
   SYMBOL_SIZES,
@@ -1266,5 +1268,86 @@ describe('review of snapping (pull request 603)', () => {
     // So a softbox of version 15 draws its own beam again, as a free one does.
     expect(iconCone(drawn)?.beam).toBe(true);
     expect(iconCone(box)?.beam).toBeFalsy();
+  });
+});
+
+describe('what a click picks (decision 0115)', () => {
+  const pt = (x: number, y: number) => ({ x: x / PLAN_VIEW_W, y: y / PLAN_VIEW_H });
+  /** A key light on a C-stand with a softbox and a grid on its front, all placed by the rules. */
+  const keyRig = () => {
+    let icons: PlanIcon[] = [
+      at('cstand', 300, 300, { id: 'standAAAAAAAA' }),
+      at('cob', 300, 300, { id: 'keyAAAAAAAAAA' }),
+      at('softbox', 300, 300, { id: 'boxAAAAAAAAAA' }),
+      at('grid', 300, 300, { id: 'gridAAAAAAAAA' }),
+    ];
+    const merge = (changed: readonly PlanIcon[]) => {
+      icons = icons.map((i) => changed.find((c) => c.id === i.id) ?? i);
+    };
+    merge(attachIcon(icons, 'keyAAAAAAAAAA', 'standAAAAAAAA'));
+    merge(attachIcon(icons, 'boxAAAAAAAAAA', 'keyAAAAAAAAAA'));
+    merge(attachIcon(icons, 'gridAAAAAAAAA', 'keyAAAAAAAAAA'));
+    return icons;
+  };
+
+  it('picks a light before the modifiers on its front, then them nearest first', () => {
+    const icons = keyRig();
+    const key = icons.find((i) => i.id === 'keyAAAAAAAAAA') as PlanIcon;
+    const c = iconCentre(key);
+    const order = planItemsAt({ icons }, pt(c.x, c.y)).map((r) => r.id);
+    expect(order[0]).toBe('keyAAAAAAAAAA');
+    // The softbox went on first, so it sits nearest the light.
+    expect(order.indexOf('boxAAAAAAAAAA')).toBeLessThan(order.indexOf('gridAAAAAAAAA'));
+    expect(order.at(-1)).toBe('standAAAAAAAA');
+    expect(planItemAt({ icons }, pt(c.x, c.y))?.id).toBe('keyAAAAAAAAAA');
+  });
+
+  it('goes one further down on a second click, round to the top', () => {
+    let icons: PlanIcon[] = [
+      at('stool', 400, 300, { id: 'stoolAAAAAAAA' }),
+      at('actor', 400, 300, { id: 'annaAAAAAAAAA' }),
+    ];
+    icons = icons.map(
+      (i) => attachIcon(icons, 'annaAAAAAAAAA', 'stoolAAAAAAAA').find((c) => c.id === i.id) ?? i,
+    );
+    const anna = icons.find((i) => i.id === 'annaAAAAAAAAA') as PlanIcon;
+    const c = pt(iconCentre(anna).x, iconCentre(anna).y);
+    expect(planItemAt({ icons }, c)?.id).toBe('annaAAAAAAAAA');
+    expect(nextPlanItemAt({ icons }, c, null)?.id).toBe('annaAAAAAAAAA');
+    expect(nextPlanItemAt({ icons }, c, 'annaAAAAAAAAA')?.id).toBe('stoolAAAAAAAA');
+    expect(nextPlanItemAt({ icons }, c, 'stoolAAAAAAAA')?.id).toBe('annaAAAAAAAAA');
+    // Something picked elsewhere does not count: the top one comes first.
+    expect(nextPlanItemAt({ icons }, c, 'elsewhereAAAA')?.id).toBe('annaAAAAAAAAA');
+    expect(nextPlanItemAt({ icons }, pt(900, 600), 'annaAAAAAAAAA')).toBeNull();
+  });
+
+  it('keeps a measure after the icons its ends sit on, and before what is under them', () => {
+    const cam = at('camera', 300, 300, { id: 'camAAAAAAAAAA' });
+    const sofa = at('sofa', 300, 300, { id: 'sofaAAAAAAAAA' });
+    const measure = {
+      id: 'measureAAAAAA',
+      kind: 'measure',
+      color: '#1C1C1E',
+      width: 4,
+      x0: cam.x,
+      y0: cam.y,
+      x1: Math.round((700 / PLAN_VIEW_W) * STROKE_GRID),
+      y1: cam.y,
+      layer: 'notes',
+      from: cam.id,
+    } as PlanShape;
+    const order = planItemsAt({ icons: [sofa, cam], shapes: [measure] }, pt(300, 300)).map(
+      (r) => r.id,
+    );
+    expect(order).toEqual(['camAAAAAAAAAA', 'measureAAAAAA', 'sofaAAAAAAAAA']);
+  });
+});
+
+describe('tubes glow until aimed (audit M14)', () => {
+  it('draws a glow for a tube without a beam, and a cone once a beam is set', () => {
+    expect(iconCone(at('tube', 500, 300))).toBeNull();
+    expect(iconGlow(at('tube', 500, 300))?.radius).toBeGreaterThan(0);
+    expect(iconCone(at('tube', 500, 300, { beam: 60 }))?.beam).toBe(true);
+    expect(iconGlow(at('kino', 500, 300, { beam: 60 }))).toBeNull();
   });
 });

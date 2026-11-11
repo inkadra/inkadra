@@ -106,18 +106,19 @@
   outline: 2px solid var(--ink-accent-soft-fg);
   outline-offset: 1px;
 }
+/*
+ * The plan's 3:2 extent (decision 0115): a quiet frame inside the surface, sized and moved by
+ * the view (PlanSurface writes its width, height and transform).
+ */
 .plan-editor__stage {
-  position: relative;
-  /* A dragged box picks items, never the words drawn on the plan. */
-  user-select: none;
-  -webkit-user-select: none;
-  width: min(100cqw - 48px, (100cqh - 112px) * 1.5);
-  background: var(--ink-surface-1);
-  border: 1px solid var(--ink-border-muted);
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  outline: 1px solid var(--ink-border-muted);
   border-radius: var(--ink-radius-sm);
   container-type: inline-size;
-  touch-action: none;
-  cursor: crosshair;
+  will-change: transform;
 }
 .plan-editor__stage--select {
   cursor: default;
@@ -129,6 +130,13 @@
   fill: none;
   stroke: var(--ink-accent-primary);
   stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.plan-editor__selection .plan-editor__ring {
+  fill: none;
+  stroke: var(--ink-accent-primary);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
   vector-effect: non-scaling-stroke;
 }
 .plan-editor__rotate {
@@ -443,9 +451,6 @@
   padding: max(8px, env(safe-area-inset-top)) 12px 8px;
   font-size: 14px;
 }
-.plan-editor--phone .plan-editor__stage {
-  width: min(100cqw - 16px, (100cqh - 88px) * 1.5);
-}
 .plan-editor--phone .plan-num input {
   font-size: 16px;
 }
@@ -459,8 +464,9 @@
   max-width: none;
 }
 .plan-editor--phone .plan-pop--measure {
-  position: fixed;
-  top: calc(56px + (100vw - 16px) / 1.5 + 24px);
+  position: absolute;
+  top: auto;
+  bottom: 16px;
 }
 .plan-lib--sheet {
   position: absolute;
@@ -880,6 +886,12 @@ button.plan__badge:hover {
   stroke-linejoin: round;
   paint-order: stroke;
 }
+.plan__floor {
+  fill: color-mix(in srgb, var(--ink-text-primary) 4%, var(--plan-paper, var(--ink-surface-1)));
+}
+.plan__label--dim {
+  fill: var(--ink-text-secondary);
+}
 
 /* Set plan v2 (decision 0104): the whole screen, the library docked on the left, the drawing in
  * the middle with its tools, the right panel with Properties, Elements and Kit. ------------- */
@@ -1171,25 +1183,30 @@ button.plan__badge:hover {
   opacity: 0.85;
 }
 
-/* The drawing, fitted to its area and zoomable. */
+/* The drawing surface: the whole area, its dots, the plan panned and zoomed in it (0115). */
 .plan-canvas {
   position: absolute;
   inset: 0;
 }
-.plan-canvas__scroll {
+.plan-canvas__surface {
   position: absolute;
   inset: 0;
-  overflow: auto;
-  container-type: size;
-  display: grid;
-  place-items: center;
-  padding: 24px 24px 80px;
+  overflow: hidden;
+  /* A dragged box picks items, never the words drawn on the plan. */
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  cursor: crosshair;
+  background-image: radial-gradient(
+    circle,
+    var(--ink-canvas-dot) 1.2px,
+    transparent 1.7px
+  );
+  background-size: 0 0;
 }
-.plan-canvas__sheet {
-  max-width: none;
-}
-.plan-editor--v2 .plan-editor__stage {
-  width: 100%;
+.plan-canvas__surface.is-hand,
+.plan-canvas__surface.is-hand * {
+  cursor: grab;
 }
 .plan-canvas__ghost {
   position: absolute;
@@ -1770,15 +1787,10 @@ span.plan-pill {
   min-height: 0;
   background: var(--ink-bg-canvas);
 }
-.plan-main--phone .plan-canvas__scroll {
-  /* On top, as on the mockup: the selection's sheet opening below never moves the plan. */
-  place-items: start center;
-  padding: 8px 8px 76px;
-}
 .plan-top__kitpill {
   position: absolute;
   top: 8px;
-  right: 8px;
+  left: 8px;
   gap: 6px;
   height: 32px;
   padding: 0 10px;
@@ -1794,13 +1806,11 @@ span.plan-pill {
 }
 .plan-main--phone .plan-setup-note {
   top: auto;
-  bottom: 76px;
+  bottom: 16px;
 }
 .plan-canvas__phone-tools {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* Under the selection's sheet, at the very bottom (audit P2). */
+  flex: none;
   display: flex;
   justify-content: space-around;
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
@@ -1914,11 +1924,11 @@ span.plan-pill {
   border: 1px solid var(--ink-border-default);
 }
 .plan-main--phone .plan-canvas__movebar {
-  bottom: 76px;
+  bottom: 16px;
 }
 .plan-main--phone .plan-canvas__toast,
 .plan-main--phone .plan-canvas__tip {
-  bottom: 128px;
+  bottom: 72px;
   max-width: calc(100% - 32px);
   white-space: normal;
 }

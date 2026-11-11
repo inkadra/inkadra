@@ -21,7 +21,7 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu } from '../chrome.tsx';
-import { isMac } from '../shortcuts.ts';
+import { canSpacePan, isMac } from '../shortcuts.ts';
 import { isIcon, type PlanEditorProps, QUARTER_TURN, usePlanEditing } from './editing.ts';
 import { kitList } from './kit.ts';
 import { isNoteTool, type LibraryItem } from './library.ts';
@@ -84,6 +84,7 @@ export function PlanEditor(props: PlanEditorProps) {
   const [setupMenu, setSetupMenu] = useState<CSSProperties | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [fullProps, setFullProps] = useState(false);
+  const [toolSlot, setToolSlot] = useState<HTMLDivElement | null>(null);
   const [backgroundOpen, setBackgroundOpen] = useState<CSSProperties | null>(null);
   const backgroundButton = useRef<HTMLButtonElement>(null);
   const picker = useBackgroundPicker(ed);
@@ -163,6 +164,12 @@ export function PlanEditor(props: PlanEditorProps) {
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
     // Whatever the editor does not use never reaches the board behind it.
     e.stopImmediatePropagation();
+    // Space held pans the drawing, as on the board (decision 0115).
+    if (e.key === ' ' && canSpacePan(e.target)) {
+      e.preventDefault();
+      if (!e.repeat) canvas.current?.space(e.type === 'keydown');
+      return;
+    }
     if (e.type !== 'keydown') return;
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
@@ -609,7 +616,7 @@ export function PlanEditor(props: PlanEditorProps) {
           </Button>
         </header>
         <div className="plan-main plan-main--phone">
-          <PlanCanvas ed={ed} handle={canvas} />
+          <PlanCanvas ed={ed} handle={canvas} toolSlot={toolSlot} />
           <button
             type="button"
             className="plan-float plan-top__kitpill"
@@ -641,6 +648,8 @@ export function PlanEditor(props: PlanEditorProps) {
             />
           </section>
         )}
+        {/* The bar of tools, at the very bottom under the sheet (audit P2). */}
+        <div ref={setToolSlot} className="plan-phone-tools" />
         {ed.sheet === 'library' && library}
         {picker.field}
         {backgroundPop}

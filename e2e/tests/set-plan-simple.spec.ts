@@ -555,7 +555,7 @@ test('every library name fits its tile, in all six languages, at 1280 and 390 px
   expect(cut).toEqual([]);
 });
 
-test('earlier positions can be shown from the plan menu whenever an item has some', async ({
+test('earlier positions show by default and can be hidden from the plan menu', async ({
   page,
   baseURL,
 }) => {
@@ -564,11 +564,12 @@ test('earlier positions can be shown from the plan menu whenever an item has som
   await page.locator(`[data-el="${planId}"]`).dblclick();
   const editor = page.getByRole('dialog', { name: /Pianta del set/ });
   const faded = editor.locator('.plan-editor__stage [style*="opacity: 0.4"]');
-  await expect(faded).toHaveCount(0);
+  // As the mockup draws them (audit M5): the earlier position veiled.
+  await expect(faded).toHaveCount(1);
   // Nothing selected: the plan's menu (by the scale) has the switch, as before decision 0104.
   await editor.locator('.plan-top__end .plan-top__btn[aria-haspopup="menu"]').click();
   await page.getByRole('menuitemradio', { name: 'Mostra posizioni precedenti' }).click();
-  await expect(faded).toHaveCount(1);
+  await expect(faded).toHaveCount(0);
 });
 
 test('a drag writes only what it changed: a colour set meanwhile by someone else stays', async ({

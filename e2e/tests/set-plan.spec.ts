@@ -341,8 +341,8 @@ for (const theme of ['dark', 'light'] as const) {
     }
     const annaNow = async () => (await saved()).plan?.icons?.find((i) => i.label === 'Anna');
     await expect.poll(async () => (await annaNow())?.steps?.length).toBe(2);
-    // Numbered points, the icon being the last position; no veiled copies.
-    await expect(editor.locator('.plan__step')).toHaveCount(2);
+    // Every position numbered, the icon being the last one (audit M5).
+    await expect(editor.locator('.plan__step')).toHaveCount(3);
     await page.screenshot({ path: join(out, `desktop-${theme}-blocking.png`) });
     await editor
       .getByRole('toolbar', { name: 'Percorso' })

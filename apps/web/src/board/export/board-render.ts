@@ -27,6 +27,7 @@ import {
   shownOpenings,
   variantView,
   wallPieces,
+  wallPoints,
 } from '@inkadra/canvas-core';
 import {
   type Element,
@@ -950,6 +951,9 @@ function mix(hex: string, base: string, t: number): string {
     .join('')}`;
 }
 
+/** How much of the ink tints the floor of a closed room over the paper (audit L1). */
+const FLOOR_TINT = 0.04;
+
 /**
  * A set plan's drawing as vectors, without the grid (decisions 0062 and 0104), in the printed
  * theme's colours and the stacking order of the board: walls, tiers 0 and 1, beams and blocking
@@ -984,6 +988,14 @@ export function planOps(
     const wallInk = ink(PLAN_INK);
     const openings = shownOpenings(el);
     const walls = new Map((el.walls ?? []).map((w) => [w.id, w]));
+    // A closed room's floor, tinted under everything (audit L1).
+    for (const wall of el.walls ?? [])
+      if (wall.closed)
+        inside.push({
+          kind: 'polygon',
+          points: flat(wallPoints(wall)),
+          fill: mix(c['text-primary'], c['surface-1'], FLOOR_TINT),
+        });
     for (const wall of el.walls ?? [])
       for (const piece of wallPieces(wall, openings))
         inside.push({
