@@ -118,6 +118,10 @@ it('writes a circuit name once, on blur, and only that circuit', async () => {
   addPlanCircuit(doc, plan.id, { name: 'A', amps: 16 });
   addPlanCircuit(doc, plan.id, { name: 'B', amps: 16 });
   const m = await mount(doc, plan.id);
+  // A circuit reads as a card; its pencil opens the fields (decision 0116).
+  await act(async () =>
+    m.host.querySelector<HTMLButtonElement>('[aria-label="board.plan.editCircuit"]')?.click(),
+  );
   const input = m.host.querySelector<HTMLInputElement>(
     'input[aria-label="board.plan.circuitName"]',
   ) as HTMLInputElement;

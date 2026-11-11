@@ -183,6 +183,8 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
 
     // The drawing.
     const frame = PLAN_SHEET_FRAME;
+    const top = frame.y;
+    const bottom = frame.y + frame.h;
     ops.push({
       kind: 'rect',
       ...frame,
