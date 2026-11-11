@@ -531,8 +531,8 @@ export function ScreenplayImportDialog({
           </Button>
           <Button
             variant="primary"
-            disabled={nothing || busy}
-            aria-busy={busy || undefined}
+            disabled={nothing}
+            busy={busy}
             onClick={() => void submit()}
           >
             {revision ? t('screenplay.revision.submit') : (confirmLabel ?? t('screenplay.submit'))}

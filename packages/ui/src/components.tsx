@@ -66,6 +66,8 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: 'md' | 'lg';
   block?: boolean;
   icon?: IconName;
+  /** Working on it: the button is disabled and tells assistive technology it is busy. */
+  busy?: boolean;
 };
 
 export function Button({
@@ -76,11 +78,15 @@ export function Button({
   className,
   children,
   type = 'button',
+  busy,
+  disabled,
   ...props
 }: ButtonProps) {
   return (
     <button
       type={type}
+      disabled={disabled || busy}
+      aria-busy={busy || undefined}
       className={cx(
         'ink-btn',
         `ink-btn--${variant}`,
