@@ -13,6 +13,7 @@ import {
   itemTier,
   kindLayer,
   layerOf,
+  linkedPlan,
   measureEnds,
   moveItem,
   moveWithAttached,
@@ -41,6 +42,7 @@ import {
   withGroups,
 } from '@inkadra/canvas-core';
 import {
+  type AspectRatio,
   MAX_PLAN_ICONS,
   type PlanIcon,
   type PlanIconKind,
@@ -49,7 +51,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type BoardStore, LOCAL } from '../store.ts';
 import type { LibraryItem } from './library.ts';
-import { iconColor } from './PlanDrawing.tsx';
+import { CHARACTER_COLOURS, iconColor } from './PlanDrawing.tsx';
 import { rememberRecent } from './PlanLibrary.tsx';
 import type { KitScope } from './project-kit.ts';
 
@@ -89,8 +91,10 @@ export interface PlanEditorProps {
   /** Lenses of the frames of the plan's scenes, proposed for a camera ("5A · 35 mm"). */
   lenses?: ReadonlyArray<{ label: string; mm: number }>;
   onOpenScene: (id: string) => void;
-  /** Today's export of the plan card (the board's export of a selection). */
-  onExport?: () => void;
+  /** Opens a linked character, frame or location card (decision 0104), leaving the editor. */
+  onOpenCard?: ((id: string) => void) | undefined;
+  /** The board's frame aspect, for the picture of a linked frame. */
+  boardAspect?: AspectRatio | undefined;
   onClose: () => void;
 }
 
@@ -144,6 +148,11 @@ export function usePlanEditing(props: PlanEditorProps) {
     const merged = base ? variantView(plan, base) : plan;
     return { ...merged, shapes: merged.shapes?.map((sh) => measureEnds(sh, merged.icons)) };
   }, [plan, base]);
+  /** The plan as it is shown and listed, its links resolved; writes start from `drawn`. */
+  const linked = useMemo(
+    () => linkedPlan(drawn, props.cards ?? new Map(), { palette: CHARACTER_COLOURS }),
+    [drawn, props.cards],
+  );
   const step = gridStep(drawn);
   const scaleOwner = base?.id ?? plan.id;
   // What the base holds, not what is drawn on Set: an item of the setup stranded on Set is the
@@ -499,6 +508,7 @@ export function usePlanEditing(props: PlanEditorProps) {
     setPreview,
     middle,
     drawn,
+    linked,
     shown,
     step,
     scaleOwner,

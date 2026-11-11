@@ -1,0 +1,100 @@
+/* Links of the set plan to the cards of the project (decision 0104). */
+.plan-links__card {
+  align-items: flex-start;
+  color: var(--ink-text-primary);
+}
+.plan-links__card .plan-props__name b {
+  font-weight: 500;
+}
+.plan-links__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 2px;
+}
+.plan-links__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-accent-soft-fg);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.plan-links__link:hover {
+  text-decoration: underline;
+}
+.plan-links__face {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: var(--ink-radius-full);
+  object-fit: cover;
+}
+.plan-links__frame {
+  width: 96px;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-surface-2);
+}
+.plan-links__group {
+  display: block;
+  margin-top: 6px;
+}
+.plan-links__sun {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ink-border-muted);
+}
+.plan-links__sunglyph {
+  display: grid;
+  flex: none;
+  color: var(--ink-tag-yellow);
+}
+.plan-links__scenes {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.plan-links__scene {
+  height: 24px;
+  padding: 0 8px;
+  flex: none;
+  border: 0;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.plan-links__scene:hover {
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.plan-links__setups {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  vertical-align: middle;
+}
+.plan-links__setup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}

@@ -252,6 +252,33 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    // Links of the plan to the cards of the project (decision 0104): offered with the scene chip.
+    id: 'setplanLinks',
+    group: 'production',
+    icon: 'link',
+    tool: 'plan',
+    offer: 'plan-scene-chip',
+    steps: [
+      { anchor: 'plan-scene-chip', media: 'scenes', side: 'bottom' },
+      { anchor: 'plan-properties', media: 'plan', side: 'left' },
+      { anchor: 'plan-sun', media: 'plan', side: 'left' },
+      { anchor: null, media: 'rows' },
+    ],
+  },
+  {
+    // Outputs of the plan (decision 0111): the export dialog, the sheet, the read-only view.
+    id: 'setplanOutputs',
+    group: 'production',
+    icon: 'download',
+    tool: 'plan',
+    offer: 'plan-export-button',
+    steps: [
+      { anchor: 'plan-export-button', media: 'export', side: 'bottom' },
+      { anchor: 'plan-export', media: 'export', side: 'left' },
+      { anchor: null, media: 'plan' },
+    ],
+  },
+  {
     id: 'characters',
     group: 'production',
     icon: 'user',

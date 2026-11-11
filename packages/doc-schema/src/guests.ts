@@ -154,6 +154,7 @@ export const GUEST_ELEMENT_FIELDS = {
     'voltage',
     'background',
     'north',
+    'sun',
   ],
 } as const satisfies Record<ElementType, readonly string[]>;
 

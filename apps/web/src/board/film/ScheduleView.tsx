@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { variantView } from '@inkadra/canvas-core';
+import { linkedPlan, variantView } from '@inkadra/canvas-core';
 import {
   ShootingDayInput as DaySchema,
   type Person,
@@ -23,7 +23,9 @@ import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { formatClock } from '../../lib/datetime.ts';
 import { useIsPhone } from '../../lib/phone.ts';
+import { CHARACTER_COLOURS } from '../plan/PlanDrawing.tsx';
 import { plansOfScene } from '../plan/scenes.tsx';
+import { shotSetups } from '../plan/setups.ts';
 import { isMac, isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
@@ -872,6 +874,8 @@ export function ScheduleView({
   // Character cards of the board and names already in the storyboard or the plan, offered
   // while typing the cast of a block.
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  // The setups of the set plans each shot belongs to (decision 0104).
+  const setups = useMemo(() => shotSetups([...snap.byId.values()], t), [snap, t]);
   const castSuggestions = [
     ...new Map(
       [
@@ -909,7 +913,12 @@ export function ScheduleView({
             label: labels.get(frame.id) ?? '',
             frame,
           })),
-          plan: plan && base?.type === 'plan' ? variantView(plan, base) : plan,
+          // Its links read from the board's cards: the call sheet is for the team (decision 0111).
+          plan: plan
+            ? linkedPlan(base?.type === 'plan' ? variantView(plan, base) : plan, snap.byId, {
+                palette: CHARACTER_COLOURS,
+              })
+            : plan,
           boardAspect,
         },
       ];
@@ -980,6 +989,7 @@ export function ScheduleView({
     variant: 'popover' | 'sheet' | 'panel',
   ) => (
     <BlockEditor
+      setupsOf={(id) => setups.get(id)}
       key={`${entry.day.id}-${blockId}`}
       variant={variant}
       entry={entry}
@@ -1081,6 +1091,7 @@ export function ScheduleView({
       boardAspect={boardAspect}
       slugline={slugline}
       plansOf={(id) => plansOfScene(snap.byId.values(), id)}
+      setupsOf={(id) => setups.get(id)}
       readOnly={readOnly}
       disabled={disabled || !selectedEntry}
       loading={loading}

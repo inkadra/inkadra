@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { locationCoords, shootingZone, sunTimes, sunTimesUtc } from './sun.ts';
+import {
+  locationCoords,
+  shootingZone,
+  sunBearingByClock,
+  sunPosition,
+  sunTimes,
+  sunTimesUtc,
+} from './sun.ts';
 
 const london = { lat: 51.5072, lng: -0.1276 };
 
@@ -75,5 +82,25 @@ describe('coordinates in a location', () => {
     expect(locationCoords('Via Roma 4, Torino')).toBeNull();
     expect(locationCoords('https://example.com/@45.4,9.1')).toBeNull();
     expect(locationCoords('')).toBeNull();
+  });
+});
+
+describe('where the sun is, for a set plan', () => {
+  it('stands south and high at noon in June, north-west and on the horizon at sunset', () => {
+    const noon = sunPosition('2026-06-21', 12 * 60 + 2, london.lat, london.lng, 'UTC');
+    expect(Math.abs(noon.azimuth - 180)).toBeLessThanOrEqual(2);
+    expect(noon.elevation).toBeGreaterThanOrEqual(61);
+    expect(noon.elevation).toBeLessThanOrEqual(63);
+    const evening = sunPosition('2026-06-21', 20 * 60 + 21, london.lat, london.lng, 'UTC');
+    expect(evening.azimuth).toBeGreaterThan(300);
+    expect(evening.azimuth).toBeLessThan(320);
+    expect(Math.abs(evening.elevation)).toBeLessThanOrEqual(1);
+  });
+
+  it('turns with the clock alone when the place is not known', () => {
+    expect(sunBearingByClock(6 * 60)).toBe(90);
+    expect(sunBearingByClock(12 * 60)).toBe(180);
+    expect(sunBearingByClock(18 * 60)).toBe(270);
+    expect(sunBearingByClock(0)).toBe(0);
   });
 });

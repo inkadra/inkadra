@@ -29,7 +29,7 @@ import { PLAN_COLORS, PlanGlyph, planCss } from './PlanDrawing.tsx';
 export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<ElementsFilter>({ group: 'all', color: null });
-  const sections = elementSections(ed.drawn, filter);
+  const sections = elementSections(ed.linked, filter);
   const picked = new Set(ed.selection.map((r) => r.id));
   const walls = ed.drawn.walls?.length ?? 0;
   const layerName = (l: PlanGroupName) =>

@@ -2,7 +2,7 @@
 import { type PlanIcon, type PlanShape, STROKE_GRID } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { kitList, measureValue } from './kit.ts';
+import { kitList, measureValue, powerLines } from './kit.ts';
 import { measureText } from './PlanDrawing.tsx';
 
 const t = ((key: string) => key.split('.').at(-1)) as unknown as TFunction;
@@ -111,4 +111,28 @@ it('sorts each line into its section, with the watts of a light each', () => {
     { name: 'camera', count: 1, group: 'camera' },
     { name: 'tripod', count: 1, group: 'camera' },
   ]);
+});
+
+it('prints the power per circuit, computed from the lights', () => {
+  const plan = {
+    voltage: 230 as const,
+    circuits: [{ id: 'circuitAAAAAA', name: 'A', amps: 16 }],
+    icons: [
+      icon('fresnel', { label: 'Key', watts: 2000, circuit: 'circuitAAAAAA' }),
+      { ...icon('cob', { watts: 300 }), id: 'cobBBBBBBBBBB' },
+    ],
+  };
+  const t2 = ((key: string, o?: Record<string, unknown>) =>
+    o
+      ? `${key.split('.').at(-1)}:${Object.values(o).join(',')}`
+      : key.split('.').at(-1)) as unknown as TFunction;
+  expect(powerLines(plan, t2, 'en')).toEqual({
+    title: 'powerAt:230',
+    total: '2.3 kW · 10 A',
+    rows: [
+      { text: 'circuitLine:A,16: Key', amps: '8.7 A', status: 'ok' },
+      { text: 'noCircuit: cob', amps: '1.3 A', status: 'ok' },
+    ],
+  });
+  expect(powerLines({ icons: [icon('chair')] }, t2, 'en')).toBeNull();
 });

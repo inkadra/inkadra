@@ -1511,7 +1511,120 @@
       "itemLocked": "Bloccato: sbloccalo per spostarlo, modificarlo o eliminarlo.",
       "lockedItem": "Bloccato",
       "lockGroup": "Blocca ogni elemento di {{layer}}",
-      "unlockGroup": "Sblocca ogni elemento di {{layer}}"
+      "unlockGroup": "Sblocca ogni elemento di {{layer}}",
+      "links": {
+        "proposed": "Proposti",
+        "others": "Tutti gli altri",
+        "none": "Niente da collegare",
+        "unlink": "Scollega",
+        "playedBy": "Interpretato da {{actor}}",
+        "openCharacter": "Apri il personaggio",
+        "linkCharacter": "Collega a un personaggio",
+        "searchCharacter": "Cerca personaggi",
+        "openFrame": "Apri l’inquadratura",
+        "linkFrame": "Collega a un’inquadratura",
+        "searchFrame": "Cerca inquadrature",
+        "followFrame": "Usa i {{mm}} mm dell’inquadratura",
+        "location": "Location",
+        "openLocation": "Apri la location",
+        "linkLocation": "Collega a una location",
+        "searchLocation": "Cerca location",
+        "lightNotes": "Luce",
+        "sun": "Sole, per gli esterni",
+        "timeOfDay": "Ora del giorno",
+        "date": "Data",
+        "north": "Il nord è a",
+        "from": {
+          "north": "Da nord",
+          "northEast": "Da nord-est",
+          "east": "Da est",
+          "southEast": "Da sud-est",
+          "south": "Da sud",
+          "southWest": "Da sud-ovest",
+          "west": "Da ovest",
+          "northWest": "Da nord-ovest"
+        },
+        "height": {
+          "down": "sotto l’orizzonte",
+          "low": "basso",
+          "mid": "a metà altezza",
+          "high": "alto"
+        },
+        "sunFromPlace": "Calcolato dal link della mappa di {{place}}: {{degrees}}° sull’orizzonte. Le icone del sole girano quando cambia l’ora.",
+        "sunByClock": "Solo dall’ora: a est al mattino, a ovest la sera. Aggiungi un link della mappa alla location per l’altezza del sole. Le icone del sole girano quando cambia l’ora; il nord si imposta a mano.",
+        "scene": "Scena {{number}}",
+        "settings": {
+          "int": "INT",
+          "ext": "EST",
+          "int-ext": "INT/EST"
+        },
+        "times": {
+          "day": "Giorno",
+          "night": "Notte",
+          "dawn": "Alba",
+          "dusk": "Tramonto"
+        },
+        "circuitLine": "{{name}} · {{amps}} A"
+      },
+      "exportSheet": {
+        "title": "Esporta la pianta del set",
+        "preview": "Anteprima della prima pagina",
+        "failed": "Non è stato possibile disegnare l’anteprima.",
+        "pages_one": "Pagina {{n}} di {{count}} · A4 orizzontale. Legenda, materiale e potenza accanto alla pianta.",
+        "pages_other": "Pagina {{n}} di {{count}} · A4 orizzontale. Legenda, materiale e potenza accanto alla pianta.",
+        "format": "Formato",
+        "setups": "Setup",
+        "thisSetup": "Questo setup",
+        "allOfScene_one": "Tutti i {{count}} della scena {{scene}}",
+        "allOfScene_other": "Tutti i {{count}} della scena {{scene}}",
+        "allSetups_one": "Tutti i {{count}} setup",
+        "allSetups_other": "Tutti i {{count}} setup",
+        "area": "Area",
+        "whole": "Tutta la pianta",
+        "view": "Quello che vedo ora",
+        "includeTitle": "Includi",
+        "include": {
+          "legend": "Legenda",
+          "kit": "Lista materiale",
+          "power": "Potenza",
+          "notes": "Note",
+          "scale": "Scala e misure",
+          "background": "Sfondo",
+          "dateScene": "Data e scena",
+          "grid": "Griglia"
+        },
+        "working": "Esportazione…",
+        "run": "Esporta {{format}}"
+      },
+      "sheet": {
+        "shots": "Inquadrature",
+        "scale": "Scala",
+        "room": "Stanza",
+        "more_one": "+{{count}} altro",
+        "more_other": "+{{count}} altri",
+        "cameras": "Camere",
+        "lights": "Luci",
+        "cast": "Cast",
+        "notes": "Note",
+        "foot": "Fatto con Inkadra · pagina {{n}} di {{total}}",
+        "day": "Giorno {{n}}",
+        "setup": "Setup"
+      },
+      "card": {
+        "setups_one": "{{count}} setup",
+        "setups_other": "{{count}} setup",
+        "cameras_one": "{{count}} camera",
+        "cameras_other": "{{count}} camere",
+        "lights_one": "{{count}} luce",
+        "lights_other": "{{count}} luci"
+      },
+      "view": {
+        "only": "Sola lettura",
+        "legend": "Legenda",
+        "hint": "Trascina per spostare, pizzica o scorri per lo zoom",
+        "note": "Chi può aprire la board vede questa pianta, la legenda, il materiale e la potenza.",
+        "guestNote": "Vedi la pianta come è condivisa con te: i setup, la legenda, il materiale e la potenza."
+      }
     },
     "contextual": {
       "done": "Fatto",
@@ -1925,7 +2038,10 @@
       "approvedHelper": "Trascina qui le inquadrature approvate",
       "approvedHint": "Si riempie anche dalle approvazioni del cliente",
       "approvedLocked": "Approvata in revisione: cambia la revisione da «{{status}}» e lo stato di produzione dalla Tabella",
-      "selectRow": "Seleziona inquadratura {{label}}"
+      "selectRow": "Seleziona inquadratura {{label}}",
+      "groupSetup": "Setup",
+      "noSetup": "Senza setup",
+      "inSetup": "Nel setup della pianta {{setup}}"
     },
     "playback": {
       "size": "Dimensione riquadri",
@@ -5204,6 +5320,44 @@
           "3": {
             "title": "Convocazioni e foglio",
             "text": "Nel Piano riprese, scheda Convocazioni, scegli chi è convocato ogni giorno. Il foglio di lavorazione stampa troupe, telefoni e contatto sul set, mai per ospiti e clienti."
+          }
+        }
+      },
+      "setplanLinks": {
+        "name": "Collegamenti della pianta",
+        "steps": {
+          "0": {
+            "title": "Scene dallo storyboard",
+            "text": "Il chip legge dalla scheda della scena numero, INT o EST e momento del giorno. Cliccalo per aprire la scena."
+          },
+          "1": {
+            "title": "Collegati, mai copiati",
+            "text": "Collega un attore a un personaggio e una camera a un’inquadratura dello storyboard: nomi, colori e ottiche seguono le schede. Senza selezione, collega la pianta alla sua location."
+          },
+          "2": {
+            "title": "Il sole, per gli esterni",
+            "text": "Imposta ora e data: le icone del sole girano con loro. Il nord si imposta a mano."
+          },
+          "3": {
+            "title": "I setup nella shot list",
+            "text": "La shot list e il piano di lavorazione mostrano il setup di ogni inquadratura, e la shot list può raggrupparle per setup."
+          }
+        }
+      },
+      "setplanOutputs": {
+        "name": "Uscite della pianta",
+        "steps": {
+          "0": {
+            "title": "Esporta",
+            "text": "PDF, PNG o JPEG di questo setup o di tutti, con legenda, materiale, potenza e note."
+          },
+          "1": {
+            "title": "Il foglio",
+            "text": "Una pagina A4 per setup. Aggiungi al foglio di convocazione collega la pianta alle sue scene."
+          },
+          "2": {
+            "title": "Chi non può modificare",
+            "text": "Ospiti e lettori aprono la pianta in una vista con spostamento e zoom, i setup, la legenda e il PDF."
           }
         }
       }

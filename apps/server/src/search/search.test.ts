@@ -127,6 +127,33 @@ describe('index entries', () => {
     ]);
   });
 
+  it('indexes the live names of the characters and the location a set plan links to', () => {
+    const doc = createBoardDoc('board');
+    const anna = { ...base(), type: 'character' as const, name: 'Anna' };
+    const diner = { ...base(), type: 'location' as const, name: 'Rosa diner' };
+    const plan = {
+      ...base(),
+      type: 'plan' as const,
+      title: 'Bancone',
+      locationId: diner.id,
+      icons: [
+        {
+          id: newElementId(),
+          kind: 'actor' as const,
+          color: '#9DB8F2',
+          x: 9,
+          y: 9,
+          label: 'old name',
+          characterId: anna.id,
+        },
+      ],
+    };
+    for (const el of [anna, diner, plan]) addElement(doc, el);
+    expect(entriesFor(doc).find((e) => e.type === 'plan')).toEqual(
+      expect.objectContaining({ title: 'Bancone', text: 'Bancone Rosa diner Anna' }),
+    );
+  });
+
   it('indexes file captions and accepts files without a caption', () => {
     const doc = createBoardDoc('board');
     const file = {

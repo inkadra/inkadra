@@ -1511,7 +1511,120 @@
       "itemLocked": "Gesperrt: Entsperre es, um es zu verschieben, zu bearbeiten oder zu löschen.",
       "lockedItem": "Gesperrt",
       "lockGroup": "Jedes Element von {{layer}} sperren",
-      "unlockGroup": "Jedes Element von {{layer}} entsperren"
+      "unlockGroup": "Jedes Element von {{layer}} entsperren",
+      "links": {
+        "proposed": "Vorgeschlagen",
+        "others": "Alles andere",
+        "none": "Nichts zu verknüpfen",
+        "unlink": "Verknüpfung lösen",
+        "playedBy": "Gespielt von {{actor}}",
+        "openCharacter": "Figur öffnen",
+        "linkCharacter": "Mit einer Figur verknüpfen",
+        "searchCharacter": "Figuren suchen",
+        "openFrame": "Einstellung öffnen",
+        "linkFrame": "Mit einer Einstellung verknüpfen",
+        "searchFrame": "Einstellungen suchen",
+        "followFrame": "{{mm}} mm der Einstellung verwenden",
+        "location": "Drehort",
+        "openLocation": "Drehort öffnen",
+        "linkLocation": "Mit einem Drehort verknüpfen",
+        "searchLocation": "Drehorte suchen",
+        "lightNotes": "Licht",
+        "sun": "Sonne, für Außenaufnahmen",
+        "timeOfDay": "Tageszeit",
+        "date": "Datum",
+        "north": "Norden liegt bei",
+        "from": {
+          "north": "Von Norden",
+          "northEast": "Von Nordosten",
+          "east": "Von Osten",
+          "southEast": "Von Südosten",
+          "south": "Von Süden",
+          "southWest": "Von Südwesten",
+          "west": "Von Westen",
+          "northWest": "Von Nordwesten"
+        },
+        "height": {
+          "down": "unter dem Horizont",
+          "low": "tief",
+          "mid": "halbhoch",
+          "high": "hoch"
+        },
+        "sunFromPlace": "Berechnet aus dem Kartenlink von {{place}}: {{degrees}}° über dem Horizont. Die Sonnensymbole drehen sich mit der Uhrzeit.",
+        "sunByClock": "Nur aus der Uhrzeit: morgens im Osten, abends im Westen. Füge dem Drehort einen Kartenlink hinzu, um die Sonnenhöhe zu erhalten. Die Sonnensymbole drehen sich mit der Uhrzeit; Norden stellst du von Hand ein.",
+        "scene": "Szene {{number}}",
+        "settings": {
+          "int": "INT",
+          "ext": "EXT",
+          "int-ext": "INT/EXT"
+        },
+        "times": {
+          "day": "Tag",
+          "night": "Nacht",
+          "dawn": "Morgengrauen",
+          "dusk": "Abenddämmerung"
+        },
+        "circuitLine": "{{name}} · {{amps}} A"
+      },
+      "exportSheet": {
+        "title": "Setplan exportieren",
+        "preview": "Vorschau der ersten Seite",
+        "failed": "Die Vorschau konnte nicht gezeichnet werden.",
+        "pages_one": "Seite {{n}} von {{count}} · A4 quer. Legende, Material und Strom neben dem Plan.",
+        "pages_other": "Seite {{n}} von {{count}} · A4 quer. Legende, Material und Strom neben dem Plan.",
+        "format": "Format",
+        "setups": "Setups",
+        "thisSetup": "Dieses Setup",
+        "allOfScene_one": "Alle {{count}} der Szene {{scene}}",
+        "allOfScene_other": "Alle {{count}} der Szene {{scene}}",
+        "allSetups_one": "Alle {{count}} Setups",
+        "allSetups_other": "Alle {{count}} Setups",
+        "area": "Bereich",
+        "whole": "Ganzer Plan",
+        "view": "Was ich jetzt sehe",
+        "includeTitle": "Einschließen",
+        "include": {
+          "legend": "Legende",
+          "kit": "Materialliste",
+          "power": "Strom",
+          "notes": "Notizen",
+          "scale": "Maßstab und Maße",
+          "background": "Hintergrund",
+          "dateScene": "Datum und Szene",
+          "grid": "Raster"
+        },
+        "working": "Wird exportiert…",
+        "run": "{{format}} exportieren"
+      },
+      "sheet": {
+        "shots": "Einstellungen",
+        "scale": "Maßstab",
+        "room": "Raum",
+        "more_one": "+{{count}} weiteres",
+        "more_other": "+{{count}} weitere",
+        "cameras": "Kameras",
+        "lights": "Lichter",
+        "cast": "Besetzung",
+        "notes": "Notizen",
+        "foot": "Erstellt mit Inkadra · Seite {{n}} von {{total}}",
+        "day": "Tag {{n}}",
+        "setup": "Setup"
+      },
+      "card": {
+        "setups_one": "{{count}} Setup",
+        "setups_other": "{{count}} Setups",
+        "cameras_one": "{{count}} Kamera",
+        "cameras_other": "{{count}} Kameras",
+        "lights_one": "{{count}} Licht",
+        "lights_other": "{{count}} Lichter"
+      },
+      "view": {
+        "only": "Nur ansehen",
+        "legend": "Legende",
+        "hint": "Ziehen zum Verschieben, kneifen oder scrollen zum Zoomen",
+        "note": "Wer das Board öffnen kann, sieht diesen Plan, die Legende, das Material und den Strom.",
+        "guestNote": "Du siehst den Plan so, wie er mit dir geteilt ist: Setups, Legende, Material und Strom."
+      }
     },
     "contextual": {
       "done": "Fertig",
@@ -1925,7 +2038,10 @@
       "approvedHelper": "Freigegebene Shots hierher ziehen",
       "approvedHint": "Füllt sich auch durch Kundenfreigaben",
       "approvedLocked": "In der Prüfung freigegeben: Prüfung über „{{status}}“ ändern, Produktionsstatus in der Tabelle",
-      "selectRow": "Shot {{label}} auswählen"
+      "selectRow": "Shot {{label}} auswählen",
+      "groupSetup": "Setup",
+      "noSetup": "Ohne Setup",
+      "inSetup": "Im Setup des Setplans {{setup}}"
     },
     "playback": {
       "size": "Kachelgröße",
@@ -5204,6 +5320,44 @@
           "3": {
             "title": "Treffzeiten und Dispo",
             "text": "Im Drehplan, Reiter Treffzeiten, wählst du, wer an jedem Tag bestellt ist. Die Dispo druckt Team, Telefonnummern und Ansprechpartner am Set, nie für Gäste oder Kunden."
+          }
+        }
+      },
+      "setplanLinks": {
+        "name": "Verknüpfungen des Setplans",
+        "steps": {
+          "0": {
+            "title": "Szenen aus dem Storyboard",
+            "text": "Der Chip liest Nummer, INT oder EXT und Tageszeit von der Szenenkarte. Klicke ihn, um die Szene zu öffnen."
+          },
+          "1": {
+            "title": "Verknüpft, nie kopiert",
+            "text": "Verknüpfe einen Darsteller mit einer Figur und eine Kamera mit einer Einstellung des Storyboards: Namen, Farben und Objektive folgen den Karten. Ohne Auswahl verknüpfst du den Plan mit seinem Drehort."
+          },
+          "2": {
+            "title": "Die Sonne, für Außenaufnahmen",
+            "text": "Stelle Uhrzeit und Datum ein: die Sonnensymbole drehen sich mit. Norden stellst du von Hand ein."
+          },
+          "3": {
+            "title": "Setups in der Shotliste",
+            "text": "Shotliste und Drehplan zeigen das Setup jeder Einstellung, und die Shotliste kann nach Setup gruppieren."
+          }
+        }
+      },
+      "setplanOutputs": {
+        "name": "Ausgaben des Setplans",
+        "steps": {
+          "0": {
+            "title": "Exportieren",
+            "text": "PDF, PNG oder JPEG dieses Setups oder aller, mit Legende, Material, Strom und Notizen."
+          },
+          "1": {
+            "title": "Das Blatt",
+            "text": "Eine A4-Seite pro Setup. Zur Dispo hinzufügen verknüpft den Plan mit seinen Szenen."
+          },
+          "2": {
+            "title": "Wer nicht bearbeiten kann",
+            "text": "Gäste und Leser öffnen den Plan in einer Ansicht mit Verschieben und Zoom, den Setups, der Legende und dem PDF."
           }
         }
       }

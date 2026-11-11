@@ -200,6 +200,9 @@ import {
   DenyAppAuthorization,
   ExchangeAppCode,
   PersonalToken,
+  TokenProof,
+  TokenProofKey,
+  TokenProofRequest,
   UpdateMe,
   UploadAvatar,
   User,
@@ -1045,6 +1048,46 @@ registry.registerPath({
   summary: 'Revoke a token. A token can revoke itself (sign out of the app).',
   request: { params: idParam('tokenId') },
   responses: { 204: { description: 'Revoked' }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/me/token-proof-key'),
+  tags: ['Users'],
+  security: [{ bearer: [] }],
+  summary: 'The proof key of the calling app token (decision 0113).',
+  description:
+    'Made at the first call and returned again while the token lives; deleted with it. The ' +
+    'app keeps it like the token and uses it with POST /token-proof to check that the server ' +
+    'answering is this one before it sends the token on a network it has not confirmed. Clients ' +
+    'ask for it only where the token may already go, and fail closed (decision 0113).',
+  responses: {
+    200: { description: 'Proof key', ...json(TokenProofKey) },
+    401: errors[401],
+    403: {
+      description:
+        'Not an app token (a browser session or a personal API token), or an administrator without two-factor authentication',
+      ...json(ApiError),
+    },
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/token-proof'),
+  tags: ['Users'],
+  security: [{}],
+  summary: 'Prove this server holds a proof key, over a fresh nonce (decision 0113).',
+  description:
+    'No token is sent. The answer is an HMAC with the key over the purpose, the instance id, ' +
+    'the key id and the nonce; the client checks it with its own copy of the key. Rate ' +
+    'limited (30 a minute per address, 10 a minute per key); unknown, revoked and expired keys ' +
+    'get the same 404.',
+  request: { body: json(TokenProofRequest) },
+  responses: {
+    200: { description: 'Proof', ...json(TokenProof) },
+    400: errors[400],
+    404: { description: 'Unknown key, or its token was revoked or expired', ...json(ApiError) },
+    429: { description: 'Too many requests', ...json(ApiError) },
+  },
 });
 registry.registerPath({
   method: 'post',

@@ -1511,7 +1511,120 @@
       "itemLocked": "Bloqueado: desbloquéalo para moverlo, editarlo o eliminarlo.",
       "lockedItem": "Bloqueado",
       "lockGroup": "Bloquear cada elemento de {{layer}}",
-      "unlockGroup": "Desbloquear cada elemento de {{layer}}"
+      "unlockGroup": "Desbloquear cada elemento de {{layer}}",
+      "links": {
+        "proposed": "Propuestos",
+        "others": "Todo lo demás",
+        "none": "Nada que vincular",
+        "unlink": "Desvincular",
+        "playedBy": "Interpretado por {{actor}}",
+        "openCharacter": "Abrir el personaje",
+        "linkCharacter": "Vincular a un personaje",
+        "searchCharacter": "Buscar personajes",
+        "openFrame": "Abrir el plano",
+        "linkFrame": "Vincular a un plano",
+        "searchFrame": "Buscar planos",
+        "followFrame": "Usar los {{mm}} mm del plano",
+        "location": "Localización",
+        "openLocation": "Abrir la localización",
+        "linkLocation": "Vincular a una localización",
+        "searchLocation": "Buscar localizaciones",
+        "lightNotes": "Luz",
+        "sun": "Sol, para exteriores",
+        "timeOfDay": "Hora del día",
+        "date": "Fecha",
+        "north": "El norte está a",
+        "from": {
+          "north": "Desde el norte",
+          "northEast": "Desde el noreste",
+          "east": "Desde el este",
+          "southEast": "Desde el sureste",
+          "south": "Desde el sur",
+          "southWest": "Desde el suroeste",
+          "west": "Desde el oeste",
+          "northWest": "Desde el noroeste"
+        },
+        "height": {
+          "down": "bajo el horizonte",
+          "low": "bajo",
+          "mid": "a media altura",
+          "high": "alto"
+        },
+        "sunFromPlace": "Calculado con el enlace del mapa de {{place}}: {{degrees}}° sobre el horizonte. Los iconos del sol giran al cambiar la hora.",
+        "sunByClock": "Solo con la hora: al este por la mañana, al oeste por la tarde. Añade un enlace de mapa a la localización para la altura del sol. Los iconos del sol giran al cambiar la hora; el norte se fija a mano.",
+        "scene": "Escena {{number}}",
+        "settings": {
+          "int": "INT",
+          "ext": "EXT",
+          "int-ext": "INT/EXT"
+        },
+        "times": {
+          "day": "Día",
+          "night": "Noche",
+          "dawn": "Amanecer",
+          "dusk": "Atardecer"
+        },
+        "circuitLine": "{{name}} · {{amps}} A"
+      },
+      "exportSheet": {
+        "title": "Exportar el plano de set",
+        "preview": "Vista previa de la primera página",
+        "failed": "No se pudo dibujar la vista previa.",
+        "pages_one": "Página {{n}} de {{count}} · A4 horizontal. La leyenda, el material y la potencia junto al plano.",
+        "pages_other": "Página {{n}} de {{count}} · A4 horizontal. La leyenda, el material y la potencia junto al plano.",
+        "format": "Formato",
+        "setups": "Setups",
+        "thisSetup": "Este setup",
+        "allOfScene_one": "Los {{count}} de la escena {{scene}}",
+        "allOfScene_other": "Los {{count}} de la escena {{scene}}",
+        "allSetups_one": "Los {{count}} setups",
+        "allSetups_other": "Los {{count}} setups",
+        "area": "Área",
+        "whole": "Todo el plano",
+        "view": "Lo que veo ahora",
+        "includeTitle": "Incluir",
+        "include": {
+          "legend": "Leyenda",
+          "kit": "Lista de material",
+          "power": "Potencia",
+          "notes": "Notas",
+          "scale": "Escala y medidas",
+          "background": "Fondo",
+          "dateScene": "Fecha y escena",
+          "grid": "Cuadrícula"
+        },
+        "working": "Exportando…",
+        "run": "Exportar {{format}}"
+      },
+      "sheet": {
+        "shots": "Planos",
+        "scale": "Escala",
+        "room": "Sala",
+        "more_one": "+{{count}} más",
+        "more_other": "+{{count}} más",
+        "cameras": "Cámaras",
+        "lights": "Luces",
+        "cast": "Reparto",
+        "notes": "Notas",
+        "foot": "Hecho con Inkadra · página {{n}} de {{total}}",
+        "day": "Día {{n}}",
+        "setup": "Setup"
+      },
+      "card": {
+        "setups_one": "{{count}} setup",
+        "setups_other": "{{count}} setups",
+        "cameras_one": "{{count}} cámara",
+        "cameras_other": "{{count}} cámaras",
+        "lights_one": "{{count}} luz",
+        "lights_other": "{{count}} luces"
+      },
+      "view": {
+        "only": "Solo lectura",
+        "legend": "Leyenda",
+        "hint": "Arrastra para mover, pellizca o desplaza para el zoom",
+        "note": "Quien puede abrir el tablero ve este plano, la leyenda, el material y la potencia.",
+        "guestNote": "Ves el plano tal como se comparte contigo: los setups, la leyenda, el material y la potencia."
+      }
     },
     "contextual": {
       "done": "Listo",
@@ -1925,7 +2038,10 @@
       "approvedHelper": "Arrastra aquí los planos aprobados",
       "approvedHint": "También se llena con las aprobaciones del cliente",
       "approvedLocked": "Aprobada en revisión: cambia la revisión desde «{{status}}» y el estado de producción desde la Tabla",
-      "selectRow": "Seleccionar plano {{label}}"
+      "selectRow": "Seleccionar plano {{label}}",
+      "groupSetup": "Setup",
+      "noSetup": "Sin setup",
+      "inSetup": "En el setup del plano de set {{setup}}"
     },
     "playback": {
       "size": "Tamaño de las miniaturas",
@@ -5204,6 +5320,44 @@
           "3": {
             "title": "Citaciones y hoja",
             "text": "En el Plan de rodaje, pestaña Citaciones, eliges a quién se cita cada día. La hoja de rodaje imprime equipo, teléfonos y contacto en el set, nunca para invitados ni clientes."
+          }
+        }
+      },
+      "setplanLinks": {
+        "name": "Vínculos del plano",
+        "steps": {
+          "0": {
+            "title": "Escenas del storyboard",
+            "text": "La etiqueta lee de la ficha de la escena el número, INT o EXT y el momento del día. Haz clic para abrir la escena."
+          },
+          "1": {
+            "title": "Vinculados, nunca copiados",
+            "text": "Vincula un actor a un personaje y una cámara a un plano del storyboard: nombres, colores y ópticas siguen las fichas. Sin selección, vincula el plano de set a su localización."
+          },
+          "2": {
+            "title": "El sol, para exteriores",
+            "text": "Fija la hora y la fecha: los iconos del sol giran con ellas. El norte se fija a mano."
+          },
+          "3": {
+            "title": "Setups en la lista de planos",
+            "text": "La lista de planos y el plan de rodaje muestran el setup de cada plano, y la lista puede agruparlos por setup."
+          }
+        }
+      },
+      "setplanOutputs": {
+        "name": "Salidas del plano",
+        "steps": {
+          "0": {
+            "title": "Exportar",
+            "text": "PDF, PNG o JPEG de este setup o de todos, con leyenda, material, potencia y notas."
+          },
+          "1": {
+            "title": "La hoja",
+            "text": "Una página A4 por setup. Añadir a la hoja de rodaje vincula el plano a sus escenas."
+          },
+          "2": {
+            "title": "Quien no puede editar",
+            "text": "Invitados y lectores abren el plano en una vista con desplazamiento y zoom, los setups, la leyenda y el PDF."
           }
         }
       }

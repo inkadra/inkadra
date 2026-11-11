@@ -114,7 +114,9 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0107](0107-weight-700-for-user-bold.md) | Inter 700 only for bold the user writes; the interface stops at 600 (amends 0006) |
 | [0108](0108-shell-sizes-from-tokens.md) | The shell reads its sizes (236 / 42 / 42 / 12) from `tokens.layout` (amends 0006) |
 | [0109](0109-board-restore-marker.md) | A restore that changes the board increments `meta.restores` in the same transaction, so offline clients can tell before they send |
+| [0111](0111-set-plan-links-and-outputs.md) | Set plan links resolved where the plan is drawn, never written; a deleted card leaves its text; sun for exteriors; setups in the shot list and schedule; export dialog, PDF sheet, read-only view, card counts, power on the call sheet |
 | [0112](0112-board-restore-history.md) | The last 50 restores of a board are kept with who, the count and the version's name as it was; editors read them, others only counts and times |
+| [0113](0113-token-proof.md) | `token-proof`: a key bound to an app token lets the server prove it issued the token, over a fresh nonce, before a client on an unconfirmed network sends it |
 | [0114](0114-set-plan-item-lock-and-project-kit.md) | Set plan: `locked` on each plan item (schema 24), the project kit read across the boards the caller can read, Grip and crew as a group of Elements |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071, 0104): they were accepted in parallel,
