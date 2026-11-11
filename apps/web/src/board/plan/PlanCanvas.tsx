@@ -36,12 +36,12 @@ import {
   ROTATE_STEP,
   resizeItem,
   rotateItem,
+  rotateManyWithAttached,
   rotateWithAttached,
   scaleFor,
   settleAttached,
   shownAngle,
   snapPlanPoint,
-  snapTarget,
   toGrid,
   updateElement,
   withAttached,
@@ -446,7 +446,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     }
     ed.setLockedItem(null);
     if (armed && !isNoteTool(armed)) {
-      const on = ed.attach && !e.altKey ? snapTarget({ kind: armed }, view(p), ed.icons) : null;
+      const on = ed.attach && !e.altKey ? ed.snapAt({ kind: armed }, view(p)) : null;
       ed.placeIcon(armed, snapped(p), { keep: e.shiftKey, on: on?.id ?? null });
       return;
     }
@@ -626,7 +626,10 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       const q = view(p);
       let degrees = ((Math.atan2(q.y - g.centre.y, q.x - g.centre.x) - g.from) * 180) / Math.PI;
       if (ed.snap || e.shiftKey) degrees = Math.round(degrees / ROTATE_STEP) * ROTATE_STEP;
-      ed.setPreview(g.items.map((i) => rotateItem(i, normalizeRotation(degrees), g.centre)));
+      // What is attached to them turns with them (decision 0104).
+      ed.setPreview(
+        rotateManyWithAttached(ed.icons, g.items, normalizeRotation(degrees), g.centre),
+      );
       const shownDeg = normalizeRotation(degrees);
       setChip(`${shownDeg > 180 ? shownDeg - 360 : shownDeg}°`);
       return;
@@ -664,7 +667,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       // Free, or pulled off its base: it may land on another, unless Alt or Snap off says free.
       g.pulled = !!base;
       const free = !ed.attach || e.altKey || !attachRole(g.item.kind);
-      const target = free ? null : snapTarget(g.item, at, icons);
+      const target = free ? null : ed.snapAt(g.item, at);
       g.target = target?.id ?? null;
       setTarget(target);
       // What is on it moves with it.
@@ -989,7 +992,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   const lit = litIcon ? itemBox(litIcon) : null;
   /**
    * What a gesture writes, with the snapping of decision 0104: an icon pulled off its base is
-   * detached, one let go on a base is attached, a resized base settles what is on it.
+   * detached, one let go on a base is attached. What sits on a resized base settles in
+   * ed.writeItems, as for every write.
    */
   const withSnapping = (g: Gesture, next: PlanItem[]): PlanItem[] => {
     if (!('item' in g) || !isIcon(g.item)) return next;
@@ -1004,7 +1008,6 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     };
     if (g.kind === 'move' && g.pulled) take(detachIcon(icons, id));
     if (g.kind === 'move' && g.target) take(attachIcon(icons, id, g.target));
-    if (g.kind === 'resize') take(settleAttached(icons, id));
     return [...out.values()];
   };
   const reachEnd = isIcon(current) && !moving ? coneEnd(current, ed.plan.sensor) : null;

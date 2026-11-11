@@ -1059,21 +1059,23 @@ button.plan__badge:hover {
   gap: 2px 4px;
 }
 .plan-editor--v2 .plan-lib__tile {
-  height: 56px;
+  /* The mockup's 56 px; a name of three lines makes its row a little taller, never cut. */
+  min-height: 56px;
   align-content: center;
   gap: 1px;
-  padding: 0 2px;
+  padding: 4px 2px;
   border: 1px solid transparent;
   border-radius: var(--ink-radius-sm);
   color: var(--ink-text-icon);
   font-size: 10px;
-  white-space: nowrap;
   overflow: hidden;
 }
+/* Long names wrap, long words break at their soft hyphens (tileName), in every language. */
 .plan-editor--v2 .plan-lib__tile span {
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  hyphens: manual;
 }
 .plan-editor--v2 .plan-lib__tile .plan-glyph {
   color: inherit;
@@ -1872,7 +1874,7 @@ span.plan-pill {
   padding: 0 12px 16px;
 }
 .plan-editor--v2 .plan-lib--sheet .plan-lib__tile {
-  height: 72px;
+  min-height: 72px;
   border-color: var(--ink-border-muted);
   font-size: 11px;
 }
