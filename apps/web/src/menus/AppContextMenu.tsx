@@ -193,7 +193,7 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
         createPortal(
           <div
             ref={ref}
-            className="app-context-menu"
+            className="ink-menu app-context-menu"
             role="menu"
             aria-label={t('context.actions')}
             onContextMenu={(event) => event.preventDefault()}
@@ -225,6 +225,7 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 role="menuitem"
+                className="ink-menu__item"
                 key={entry.label}
                 onClick={() => {
                   close(true);

@@ -1017,11 +1017,9 @@ export function ExportDialog(props: ExportDialogProps) {
                 icon="download"
                 className="export__submit"
                 disabled={
-                  busy ||
-                  !settingsLoaded ||
-                  (fileMode ? fileCount === 0 || tooBig : asImage && !imageReady)
+                  !settingsLoaded || (fileMode ? fileCount === 0 || tooBig : asImage && !imageReady)
                 }
-                aria-busy={busy || undefined}
+                busy={busy}
                 onClick={() => void submit()}
               >
                 {busy

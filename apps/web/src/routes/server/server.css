@@ -604,7 +604,7 @@
   background: var(--ink-surface-2);
   color: var(--ink-status-warn);
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-align: center;
   text-transform: uppercase;

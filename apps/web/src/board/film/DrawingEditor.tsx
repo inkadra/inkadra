@@ -755,7 +755,7 @@ export function DrawingEditor({
                 {canUpload && (
                   <button
                     type="button"
-                    className="menu__item"
+                    className="ink-menu__item menu__item"
                     onClick={() => fileInput.current?.click()}
                   >
                     <Icon name="image" size={16} />
@@ -765,7 +765,7 @@ export function DrawingEditor({
                 <hr className="menu__divider" />
                 <button
                   type="button"
-                  className="menu__item is-danger"
+                  className="ink-menu__item menu__item is-danger"
                   disabled={strokes.length === 0 && shapes.length === 0}
                   onClick={() => change(() => clearDrawing(store.doc, frame.id, LOCAL))}
                 >
