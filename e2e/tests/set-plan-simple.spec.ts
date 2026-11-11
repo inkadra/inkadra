@@ -179,7 +179,10 @@ for (const theme of ['dark', 'light'] as const) {
 
     // A light's properties, as on the mockup.
     await props.getByRole('textbox', { name: 'Nome', exact: true }).fill('Key');
-    await props.getByRole('group', { name: 'Ruolo' }).getByRole('button', { name: 'Chiave' }).click();
+    await props
+      .getByRole('group', { name: 'Ruolo' })
+      .getByRole('button', { name: 'Chiave' })
+      .click();
     const power = props.getByRole('textbox', { name: 'Potenza' });
     await power.fill('300');
     await power.press('Enter');
@@ -202,9 +205,7 @@ for (const theme of ['dark', 'light'] as const) {
     // A modifier attached from the light: it sits on its front and is listed on it.
     await props.getByRole('button', { name: 'Modificatore' }).click();
     await page.getByRole('menuitem', { name: 'Softbox' }).click();
-    await expect
-      .poll(async () => (await icons('softbox'))[0]?.on)
-      .toBe((await key())?.id);
+    await expect.poll(async () => (await icons('softbox'))[0]?.on).toBe((await key())?.id);
     await expect(props.getByRole('button', { name: 'Togli Softbox' })).toBeVisible();
     await shot('light');
 
@@ -245,7 +246,10 @@ for (const theme of ['dark', 'light'] as const) {
 
     // An actor: pose and facing.
     await clickAt(POINTS.marta);
-    await props.getByRole('group', { name: 'Posa' }).getByRole('button', { name: 'Seduto' }).click();
+    await props
+      .getByRole('group', { name: 'Posa' })
+      .getByRole('button', { name: 'Seduto' })
+      .click();
     await expect.poll(async () => (await icons('actor'))[0]?.pose).toBe('seated');
     await shot('actor');
 
@@ -271,10 +275,16 @@ for (const theme of ['dark', 'light'] as const) {
     await editor.getByRole('tab', { name: 'Elementi' }).click();
     const elements = editor.getByRole('tabpanel', { name: 'Elementi' });
     await expect(elements.getByRole('button', { name: /^Key/ })).toBeVisible();
-    await elements.getByRole('group', { name: 'Filtra per livello' }).getByRole('button', { name: 'Camera' }).click();
+    await elements
+      .getByRole('group', { name: 'Filtra per livello' })
+      .getByRole('button', { name: 'Camera' })
+      .click();
     await expect(elements.getByRole('button', { name: /^Key/ })).toHaveCount(0);
     await expect(elements.getByRole('button', { name: /^A cam/ })).toBeVisible();
-    await elements.getByRole('group', { name: 'Filtra per livello' }).getByRole('button', { name: 'Tutti' }).click();
+    await elements
+      .getByRole('group', { name: 'Filtra per livello' })
+      .getByRole('button', { name: 'Tutti' })
+      .click();
     await elements.getByRole('button', { name: 'Giallo' }).click();
     await expect(elements.getByRole('button', { name: /^A cam/ })).toHaveCount(0);
     await shot('elements');
@@ -387,7 +397,9 @@ for (const theme of ['dark', 'light'] as const) {
       await elements.getByRole('button', { name: 'Torna alla pianta' }).tap();
       await full.getByRole('button', { name: /^Materiale: / }).tap();
       const kit = full.getByRole('region', { name: /^Materiale · / });
-      await expect(kit.getByRole('button', { name: 'Aggiungi all’ordine del giorno' })).toBeVisible();
+      await expect(
+        kit.getByRole('button', { name: 'Aggiungi all’ordine del giorno' }),
+      ).toBeVisible();
       await shot('kit');
       await kit.getByRole('button', { name: 'Torna alla pianta' }).tap();
 
@@ -435,7 +447,6 @@ for (const theme of ['dark', 'light'] as const) {
     }
   });
 }
-
 
 /** Opens the plan of `seed` in its editor on a desktop page. */
 async function openEditor(page: Page, planId: string) {

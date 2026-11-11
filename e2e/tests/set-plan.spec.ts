@@ -480,7 +480,10 @@ for (const theme of ['dark', 'light'] as const) {
       .toBe(4);
     await rail.getByRole('button', { name: 'Preferiti e recenti' }).click();
     await expect(
-      library.locator('.plan-lib__grid').nth(1).getByRole('button', { name: 'Fresnel', exact: true }),
+      library
+        .locator('.plan-lib__grid')
+        .nth(1)
+        .getByRole('button', { name: 'Fresnel', exact: true }),
     ).toBeVisible();
     await page.screenshot({ path: join(out, `desktop-${theme}-library.png`) });
 
