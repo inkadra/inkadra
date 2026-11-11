@@ -322,7 +322,12 @@ describe('who plays a character when several rows could (decision 0095)', () => 
   });
 
   it('lets a row named after the character win over a role', () => {
-    const byRole = member(9, { name: 'Anna Greco', role: 'Elena', department: 'Cast', position: 0 });
+    const byRole = member(9, {
+      name: 'Anna Greco',
+      role: 'Elena',
+      department: 'Cast',
+      position: 0,
+    });
     const byName = member(10, { name: 'Elena', department: 'Cast', position: 5 });
     expect(called([byRole, byName])).toEqual([
       ['Anna Greco', false],
@@ -335,7 +340,12 @@ describe('who plays a character when several rows could (decision 0095)', () => 
     const cards = new Map<string, Element>([
       ['char0009', { id: 'char0009', type: 'character', name: 'Elena' } as unknown as Element],
     ]);
-    const byRole = member(11, { name: 'Anna Greco', role: 'Elena', department: 'Cast', position: 0 });
+    const byRole = member(11, {
+      name: 'Anna Greco',
+      role: 'Elena',
+      department: 'Cast',
+      position: 0,
+    });
     const byCard = member(12, {
       name: 'Marta Neri',
       department: 'Cast',

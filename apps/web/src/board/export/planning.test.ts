@@ -112,7 +112,11 @@ describe("the day's Location beside the scene locations", () => {
       ['callSheet.locationNumber{"n":1}', 'Scogliera'],
     ]);
     // A location card named like the day's place, but empty, keeps the day's address.
-    elements.set('loc00001', { id: 'loc00001', type: 'location', name: 'Faro' } as unknown as Element);
+    elements.set('loc00001', {
+      id: 'loc00001',
+      type: 'location',
+      name: 'Faro',
+    } as unknown as Element);
     const again = callSheetSections(
       day('2026-11-21', { location: 'Faro\nVia del Faro', blocks: shotBlocks }),
       () => '1A',
