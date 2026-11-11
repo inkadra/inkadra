@@ -4,12 +4,14 @@ import {
   itemsInRect,
   layerOf,
   linkedPlan,
+  mergeProjectKits,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type Point,
   planItem,
   planItems,
   planPower,
+  projectKit,
   toggleGroup,
 } from '@inkadra/canvas-core';
 import type { PlanIconKind } from '@inkadra/doc-schema';
@@ -22,7 +24,7 @@ import { ContextMenu } from '../chrome.tsx';
 import { isMac } from '../shortcuts.ts';
 import { isIcon, type PlanEditorProps, QUARTER_TURN, usePlanEditing } from './editing.ts';
 import { kitList } from './kit.ts';
-import { isNoteTool, type LibraryItem, projectKit } from './library.ts';
+import { isNoteTool, type LibraryItem } from './library.ts';
 import { BackgroundPanel, useBackgroundPicker } from './PlanBackground.tsx';
 import { type CanvasHandle, PlanCanvas, TOOL_KEYS } from './PlanCanvas.tsx';
 import { planTitle } from './PlanCard.tsx';
@@ -100,8 +102,12 @@ export function PlanEditor(props: PlanEditorProps) {
   const scaleButton = useRef<HTMLButtonElement>(null);
   const family = props.family?.length ? props.family : [plan];
   const title = planTitle(t, plan);
-  const kitPlans = props.kitPlans;
-  const kit = useMemo(() => projectKit(kitPlans ?? [plan]), [kitPlans, plan]);
+  const { kitPlans, otherKits } = props;
+  // This board's plans live, the other boards' from the server (decision 0114).
+  const kit = useMemo(
+    () => mergeProjectKits(projectKit(kitPlans ?? [plan]), otherKits?.entries ?? []),
+    [kitPlans, plan, otherKits],
+  );
   const sensorName = t(`board.plan.sensors.${plan.sensor ?? 's35'}`);
   // Read with the live names of what the icons link to (decision 0111).
   const changes = base
@@ -537,6 +543,7 @@ export function PlanEditor(props: PlanEditorProps) {
       armed={ed.armed}
       phone={phone}
       kit={kit}
+      kitScope={otherKits?.scope ?? 'local'}
       sensor={sensorName}
       onArm={arm}
       onPlace={place}

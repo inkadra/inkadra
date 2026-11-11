@@ -119,7 +119,8 @@ the drawing.
   other names crews use and categories; `Enter` places the first result in the middle. Click a
   type and then the plan, or drag it there; hold `Shift` to keep placing. The star keeps a type
   among your favourites, next to the recent ones and the **project kit**: the lights and cameras
-  already set up in the plans of the board, with their make, power, modifiers and stand.
+  already set up in the plans of every board of the project you can open, with their make,
+  power, modifiers and stand. Offline it shows the kit of the open board only, and says so.
 - **Snapping**: drop a person on a chair, sofa or bed, a modifier on the front of a light, a
   light or a camera on a stand or support, a dolly on a track: the target lights up and the icon
   attaches. Moving or turning the base takes what is on it along; pull an icon away to detach it.
@@ -128,9 +129,13 @@ the drawing.
   stand, colour temperature, intensity, beam, height, tilt and circuit; a camera's lens, sensor,
   support, height, angle, view length and positions; a person's pose, seat and movement; a prop's
   width and depth. With several items selected: align, layer, colour and group. **Bring forward**
-  and **Send back** are in the selection's menu (right click, or `]` and `[`).
-- **Elements** lists the plan by layer, filtered by layer or colour, where layers are shown,
-  hidden and locked. **Kit** counts the kit of the setup and its power per circuit at 120 or 230 V:
+  and **Send back** are in the selection's menu (right click, or `]` and `[`). **Lock** keeps
+  the selected items where they are: a locked item can still be picked, to unlock it, but it is
+  not moved, turned, resized, edited or deleted, and nothing new snaps onto it.
+- **Elements** lists the plan by group (Lights, Camera, Actors, Grip and crew, Set, Notes),
+  filtered by group or colour, with a lock on each locked item. A layer's eye and lock hide and
+  lock the layer; those of Grip and crew hide its flags, stands and crew for you and lock each
+  of them. **Kit** counts the kit of the setup and its power per circuit at 120 or 230 V:
   a circuit turns orange above 80 % of its breaker and red above it. **Copy list** copies it;
   the call sheet prints the kit of the plans of its scenes.
 - **Setups** are the tabs at the top; **+** copies the current one. On a setup, a note says what

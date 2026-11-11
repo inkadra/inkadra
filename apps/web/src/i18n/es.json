@@ -1261,7 +1261,8 @@
         "lights": "Luces ocultas",
         "camera": "Cámara oculta",
         "actors": "Actores ocultos",
-        "notes": "Notas ocultas"
+        "notes": "Notas ocultas",
+        "grip": "Grip y equipo ocultos"
       },
       "lockedAs": {
         "set": "Set bloqueado",
@@ -1378,7 +1379,7 @@
       "lensInFrame": "{{mm}} mm en el plano",
       "lib": {
         "alsoCalled": "También llamado: {{names}}",
-        "kitHint": "Una luz o cámara configurada una vez aparece aquí con su marca, potencia, modificadores y soporte, para cada plano.",
+        "kitHint": "Una luz o cámara configurada una vez aparece aquí con su marca, potencia, modificadores y soporte, para cada plano del proyecto.",
         "kitResults_one": "{{count}} en el material del proyecto",
         "kitResults_other": "{{count}} en el material del proyecto",
         "mine": "Favoritos y recientes",
@@ -1395,7 +1396,11 @@
         "short": "Biblioteca",
         "tapHint": "Toca para colocarlo en el centro, o arrástralo al plano.",
         "types_one": "{{count}} tipo",
-        "types_other": "{{count}} tipos"
+        "types_other": "{{count}} tipos",
+        "kitScope": {
+          "loading": "Cargando el material de los otros tableros: por ahora solo el de este.",
+          "local": "Sin conexión o inaccesible: solo el material de este tablero."
+        }
       },
       "lock": "Bloquear",
       "unlock": "Desbloquear",
@@ -1500,6 +1505,13 @@
         "practical": "Práctica"
       },
       "snapIcons": "Encajar los iconos",
+      "gripGroup": "Grip y equipo",
+      "lockItemHint": "Bloquear este elemento: no se mueve, no se edita y no se elimina",
+      "unlockItemHint": "Desbloquear este elemento",
+      "itemLocked": "Bloqueado: desbloquéalo para moverlo, editarlo o eliminarlo.",
+      "lockedItem": "Bloqueado",
+      "lockGroup": "Bloquear cada elemento de {{layer}}",
+      "unlockGroup": "Desbloquear cada elemento de {{layer}}",
       "links": {
         "proposed": "Propuestos",
         "others": "Todo lo demás",
@@ -5086,11 +5098,11 @@
           },
           "1": {
             "title": "La biblioteca",
-            "text": "Elige una categoría o busca. Haz clic en un tipo y luego en el plano, o arrástralo allí. Alt lo suelta libre."
+            "text": "Elige una categoría o busca. Haz clic en un tipo y luego en el plano, o arrástralo allí. Alt lo suelta libre. El material del proyecto reúne las luces y cámaras de todos los planos."
           },
           "2": {
             "title": "Propiedades, elementos, material",
-            "text": "Lo que seleccionas se ajusta en el panel derecho; Elementos lista el plano por capas, Material cuenta el material y la potencia por circuito."
+            "text": "Lo que seleccionas se ajusta en el panel derecho, y Bloquear lo deja donde está; Elementos lista el plano por grupos, Material cuenta el material y la potencia por circuito."
           },
           "3": {
             "title": "Setups",

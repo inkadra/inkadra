@@ -1,10 +1,17 @@
-import { type CastAppearance, castAppearances } from '@inkadra/canvas-core';
-import { type Element, readElement, roots } from '@inkadra/doc-schema';
+import {
+  type CastAppearance,
+  castAppearances,
+  mergeProjectKits,
+  type ProjectKitEntry,
+  projectKit,
+} from '@inkadra/canvas-core';
+import { type Element, type ElementType, readElement, roots } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
   CastAppearancesQuery,
   classificationOption,
   Id,
+  PlanKitQuery,
   type ProjectRole,
   type SearchHit,
   SearchQuery,
@@ -12,7 +19,7 @@ import {
   z,
 } from '@inkadra/shared';
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import * as Y from 'yjs';
 import { type Actor, activeGrant, activeMember, effectiveRoles, live } from '../access.ts';
 import type { Auth } from '../auth.ts';
@@ -30,7 +37,7 @@ interface Deps {
 
 const ProjectParams = z.object({ projectId: Id });
 const SNIPPET = 140;
-/** Board documents read for one answer of cast-appearances. */
+/** Board documents read for one answer of cast-appearances or plan-kit. */
 const MAX_CAST_BOARDS = 40;
 
 /** `q` as a LIKE pattern that matches it anywhere, with % and _ taken literally. */
@@ -143,6 +150,53 @@ export async function readableBoards(
   return { boardIds, projectIds, roles: out };
 }
 
+/**
+ * The readable elements of the boards among `ids` whose index says they hold cards of `type`,
+ * one list per board. Only the documents of those boards are read: what is asked is not in the
+ * index. shortcut: the most recently edited MAX_CAST_BOARDS only, read on each request (clients
+ * keep the answer a minute); a project with more needs what is asked in the index.
+ */
+async function boardsWith(
+  db: Database,
+  ids: string[],
+  type: ElementType,
+  log: FastifyBaseLogger,
+): Promise<Element[][]> {
+  if (ids.length === 0) return [];
+  const docs = await db
+    .select({ boardId: boardDoc.boardId, state: boardDoc.state })
+    .from(boardDoc)
+    .where(
+      and(
+        inArray(boardDoc.boardId, ids),
+        sql`exists (select 1 from ${boardElementIndex}
+          where ${boardElementIndex.boardId} = ${boardDoc.boardId}
+            and ${boardElementIndex.type} = ${type})`,
+      ),
+    )
+    .orderBy(desc(boardDoc.updatedAt))
+    .limit(MAX_CAST_BOARDS);
+  const out: Element[][] = [];
+  for (const { boardId, state } of docs) {
+    const doc = new Y.Doc();
+    try {
+      Y.applyUpdate(doc, state);
+      out.push(
+        [...roots(doc).elements.values()].flatMap((map): Element[] => {
+          const el = readElement(map);
+          return el ? [el] : [];
+        }),
+      );
+    } catch (err) {
+      // One unreadable document must not cost the answers of all the others.
+      log.warn({ err, boardId }, `${type} cards: board document not readable`);
+    } finally {
+      doc.destroy();
+    }
+  }
+  return out;
+}
+
 const uuids = (ids: string[]) => sql`${`{${ids.join(',')}}`}::uuid[]`;
 
 export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
@@ -150,55 +204,46 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
   // Each search ranks trigrams over every card a person can read: a person typing makes a few
   // a second at most, a script would keep the database busy for everyone.
   const searches = new RateLimiter(60, 60_000);
+  // Each project kit reads and decodes up to MAX_CAST_BOARDS documents; the editor asks once a
+  // minute per board, so a person never needs more than a few (decision 0114).
+  const kits = new RateLimiter(20, 60_000);
 
   app.get(v1('/projects/:projectId/cast-appearances'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const { projectId } = ProjectParams.parse(req.params);
     const { excludeBoardId } = CastAppearancesQuery.parse(req.query ?? {});
     const { boardIds } = await readableBoards(db, actor, projectId);
-    const ids = boardIds.filter((id) => id !== excludeBoardId);
-    if (ids.length === 0) return { items: [] };
-    // Only the documents of boards the index says have frames: the cast is not in the index.
-    // shortcut: the most recently edited MAX_CAST_BOARDS only, read on each request (clients
-    // keep the answer a minute); a project with more needs the cast in the index.
-    const docs = await db
-      .select({ boardId: boardDoc.boardId, state: boardDoc.state })
-      .from(boardDoc)
-      .where(
-        and(
-          inArray(boardDoc.boardId, ids),
-          sql`exists (select 1 from ${boardElementIndex}
-            where ${boardElementIndex.boardId} = ${boardDoc.boardId}
-              and ${boardElementIndex.type} = 'frame')`,
-        ),
-      )
-      .orderBy(desc(boardDoc.updatedAt))
-      .limit(MAX_CAST_BOARDS);
     const merged = new Map<string, CastAppearance>();
-    for (const { boardId, state } of docs) {
-      const doc = new Y.Doc();
-      try {
-        Y.applyUpdate(doc, state);
-        const elements = [...roots(doc).elements.values()].flatMap((map): Element[] => {
-          const el = readElement(map);
-          return el ? [el] : [];
+    const ids = boardIds.filter((id) => id !== excludeBoardId);
+    for (const elements of await boardsWith(db, ids, 'frame', req.log))
+      for (const entry of castAppearances(elements)) {
+        const seen = merged.get(entry.name);
+        merged.set(entry.name, {
+          name: entry.name,
+          frames: entry.frames + (seen?.frames ?? 0),
+          scenes: [...new Set([...(seen?.scenes ?? []), ...entry.scenes])],
         });
-        for (const entry of castAppearances(elements)) {
-          const seen = merged.get(entry.name);
-          merged.set(entry.name, {
-            name: entry.name,
-            frames: entry.frames + (seen?.frames ?? 0),
-            scenes: [...new Set([...(seen?.scenes ?? []), ...entry.scenes])],
-          });
-        }
-      } catch (err) {
-        // One unreadable document must not cost the scenes of all the others.
-        req.log.warn({ err, boardId }, 'cast appearances: board document not readable');
-      } finally {
-        doc.destroy();
       }
-    }
     return { items: [...merged.values()] };
+  });
+
+  // The project kit of the set plan editor (decision 0114): the configured lights and cameras of
+  // the plans of the other boards the caller can read, derived on each request, never stored.
+  app.get(v1('/projects/:projectId/plan-kit'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    kits.require(actor.id, 'Too many reads of the project kit. Try again in a minute.');
+    const { projectId } = ProjectParams.parse(req.params);
+    const { excludeBoardId } = PlanKitQuery.parse(req.query ?? {});
+    const { boardIds } = await readableBoards(db, actor, projectId);
+    const ids = boardIds.filter((id) => id !== excludeBoardId);
+    const perBoard: ProjectKitEntry[][] = [];
+    for (const elements of await boardsWith(db, ids, 'plan', req.log))
+      perBoard.push(
+        projectKit(
+          elements.filter((e): e is Extract<Element, { type: 'plan' }> => e.type === 'plan'),
+        ),
+      );
+    return { items: mergeProjectKits(...perBoard) };
   });
 
   app.get(v1('/search'), async (req) => {

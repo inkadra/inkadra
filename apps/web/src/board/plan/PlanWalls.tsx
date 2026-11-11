@@ -5,6 +5,7 @@ import {
   atLength,
   DEFAULT_OPENING_METRES,
   DEFAULT_WALL_METRES,
+  itemLocked,
   metresToView,
   moveWallCorner,
   nearestOnWall,
@@ -256,6 +257,8 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
   const openingAt = (p: Point): PlanOpening | null => {
     let best: { wall: PlanWall; distance: number } | null = null;
     for (const wall of walls) {
+      // A locked wall takes no new opening (decision 0114).
+      if (itemLocked(wall)) continue;
       const near = nearestOnWall(wall, p);
       if (
         near.distance <= wall.thickness / 2 + WALL_SLOP / k &&
@@ -304,7 +307,7 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
       // As stored when the drag starts: each move is computed from them, never from the last
       // move's preview, so the openings do not creep along the wall.
       const wall = ed.drawn.walls?.find((w) => w.id === picked.id);
-      if (wall) {
+      if (wall && !itemLocked(wall)) {
         ed.store.undo.stopCapturing();
         gesture.current = {
           kind: 'corner',
@@ -326,7 +329,9 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
     if (hit.kind === 'openings') {
       const opening = shown.openings?.find((o) => o.id === hit.id);
       const wall = opening && walls.find((w) => w.id === opening.wall);
-      if (opening && wall) gesture.current = { kind: 'opening', wall, opening };
+      // A locked opening is picked, not dragged (decision 0114).
+      if (opening && wall && !itemLocked(opening))
+        gesture.current = { kind: 'opening', wall, opening };
     }
     return true;
   };
@@ -470,7 +475,8 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
               />
             ));
           })()}
-          {wallPoints(pickedWall).map((q, i) => (
+          {!itemLocked(pickedWall) &&
+            wallPoints(pickedWall).map((q, i) => (
             <rect
               // biome-ignore lint/suspicious/noArrayIndexKey: a corner is its place in the wall.
               key={i}

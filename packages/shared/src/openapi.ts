@@ -160,6 +160,8 @@ import {
 import {
   CastAppearances,
   CastAppearancesQuery,
+  PlanKit,
+  PlanKitQuery,
   SearchQuery,
   SearchResult,
   TagCount,
@@ -2112,6 +2114,18 @@ registry.registerPath({
     'the scenes of a character card. Names are compared without case.',
   request: { params: z.object({ projectId: Id }), query: CastAppearancesQuery },
   responses: { 200: { description: 'Names and scenes', ...json(CastAppearances) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/projects/{projectId}/plan-kit'),
+  tags: ['Search'],
+  security: secured,
+  summary: 'The configured lights and cameras of the set plans of a project.',
+  description:
+    'Derived on each request from the plans of the boards the caller can read: each light with ' +
+    'a make, power, gel, stand, colour temperature or modifiers, and each named camera, once.',
+  request: { params: z.object({ projectId: Id }), query: PlanKitQuery },
+  responses: { 200: { description: 'Lights and cameras', ...json(PlanKit) }, ...errors },
 });
 registry.registerPath({
   method: 'get',

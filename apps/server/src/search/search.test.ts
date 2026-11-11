@@ -499,6 +499,105 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     await db.delete(board).where(eq(board.id, broken));
   });
 
+  it('derives the project kit from the plans of the boards the caller can read', async () => {
+    const root = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+    });
+    const light = (id: string, make: string) => ({
+      id,
+      kind: 'cob' as const,
+      color: '#EDD963',
+      x: 100,
+      y: 100,
+      make,
+      watts: 600,
+    });
+    const addPlanBoard = async (parentBoardId: string, title: string, make: string) => {
+      const added = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/boards`,
+        headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+        payload: { parentBoardId, title },
+      });
+      const id = added.json().id as string;
+      const doc = createBoardDoc(id);
+      const key = light(newElementId(), make);
+      addElement(doc, {
+        ...base(),
+        type: 'plan',
+        icons: [
+          key,
+          { id: newElementId(), kind: 'grid', color: '#EDD963', x: 100, y: 100, on: key.id },
+          {
+            id: newElementId(),
+            kind: 'camera',
+            color: '#7DA7F0',
+            x: 300,
+            y: 300,
+            label: 'A cam',
+            lens: 35,
+          },
+          // Not configured: no make, power or modifiers, so not in the kit.
+          { id: newElementId(), kind: 'fresnel', color: '#EDD963', x: 500, y: 100 },
+        ],
+      });
+      const update = Y.encodeStateAsUpdate(doc);
+      await db
+        .insert(boardDoc)
+        .values({ boardId: id, state: update, schemaVersion: 24, size: update.byteLength });
+      await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+      return id;
+    };
+    // One under the board the guest was given, one the grant does not open.
+    const shared = await addPlanBoard(boardId, 'Set aperto', 'Aputure 600d');
+    const closed = await addPlanBoard(root.json().rootBoardId, 'Set chiuso', 'Segreta 1200');
+    const path = `/api/v1/projects/${projectId}/plan-kit`;
+    const makes = async (who: keyof typeof cookies, query = '') => {
+      const res = await get(who, `${path}${query}`);
+      expect(res.status).toBe(200);
+      return res.body.items.map(
+        (i: { icon: { make?: string; label?: string } }) => i.icon.make ?? i.icon.label,
+      );
+    };
+    const owner = await get('owner', path);
+    expect(owner.body.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          icon: expect.objectContaining({ kind: 'cob', make: 'Aputure 600d', watts: 600 }),
+          modifiers: ['grid'],
+          lenses: [],
+        }),
+        expect.objectContaining({
+          icon: expect.objectContaining({ kind: 'camera', label: 'A cam' }),
+          lenses: [35],
+        }),
+      ]),
+    );
+    // The same camera on two boards is listed once.
+    expect((await makes('owner')).sort()).toEqual(['A cam', 'Aputure 600d', 'Segreta 1200']);
+    expect(await makes('owner', `?excludeBoardId=${closed}`)).not.toContain('Segreta 1200');
+    expect(await makes('guest')).toContain('Aputure 600d');
+    expect(await makes('guest')).not.toContain('Segreta 1200');
+    expect(await makes('stranger')).toEqual([]);
+    expect((await get('owner', `${path}?excludeBoardId=nope`)).status).toBe(400);
+    for (const id of [shared, closed]) await db.delete(board).where(eq(board.id, id));
+  });
+
+  it('limits how often one person reads the project kit', async () => {
+    // Each answer decodes board documents: a script must not keep the server busy for everyone.
+    const path = `/api/v1/projects/${projectId}/plan-kit`;
+    const statuses: number[] = [];
+    for (let i = 0; i < 21; i++) statuses.push((await get('stranger', path)).status);
+    // 20 a minute; the stranger read it once in the test above.
+    const first = statuses.indexOf(429);
+    expect(first).toBe(19);
+    expect(statuses.slice(0, first).every((s) => s === 200)).toBe(true);
+    // Another person is not held back by it.
+    expect((await get('guest', path)).status).toBe(200);
+  });
+
   it('lists the named cards of one type only to people who can read them', async () => {
     const path = `/api/v1/search?type=character&projectId=${projectId}`;
     const names = async (who: keyof typeof cookies) => {

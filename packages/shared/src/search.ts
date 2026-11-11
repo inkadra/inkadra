@@ -101,5 +101,45 @@ export const CastAppearances = z
   .openapi('CastAppearances');
 export type CastAppearances = z.infer<typeof CastAppearances>;
 
+export const PlanKitQuery = z.object({
+  excludeBoardId: Id.optional().openapi({
+    description: 'Leave out this board, whose plans the caller already has live.',
+  }),
+});
+export type PlanKitQuery = z.infer<typeof PlanKitQuery>;
+
+export const PlanKit = z
+  .object({
+    items: z.array(
+      z.object({
+        key: z.string().openapi({ description: 'Same key, same light or camera.' }),
+        icon: z
+          .object({
+            kind: z.string().openapi({ description: 'Icon kind of the set plan.' }),
+            label: z.string().optional(),
+            make: z.string().optional(),
+            watts: z.number().optional(),
+            power: z.string().optional(),
+            gel: z.string().optional(),
+            stand: z.string().optional(),
+            kelvin: z.number().optional(),
+            role: z.string().optional(),
+            beam: z.number().optional(),
+            intensity: z.number().optional(),
+            lens: z.number().optional(),
+            support: z.string().optional(),
+            color: z.string().optional(),
+            percent: z.number().optional(),
+            size: z.string().optional(),
+          })
+          .openapi({ description: 'What a copy placed from the kit starts with.' }),
+        modifiers: z.array(z.string()).openapi({ description: 'Kinds attached to the light.' }),
+        lenses: z.array(z.number()).openapi({ description: 'Focal lengths of a camera, in mm.' }),
+      }),
+    ),
+  })
+  .openapi('PlanKit');
+export type PlanKit = z.infer<typeof PlanKit>;
+
 export const TagCount = z.object({ tag: z.string(), count: z.int().min(1) }).openapi('TagCount');
 export type TagCount = z.infer<typeof TagCount>;

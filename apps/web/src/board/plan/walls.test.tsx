@@ -192,3 +192,43 @@ it('writes a ready room once, however often its button is clicked', async () => 
   });
   expect(planOf(doc, plan.id).walls).toHaveLength(1);
 });
+
+it('leaves a locked wall and a locked opening as they are, until unlocked', async () => {
+  const doc = createBoardDoc(boardId);
+  const plan = roomPlan(doc);
+  const m = await mount(doc, plan.id);
+  // Lock the door from its properties.
+  await act(async () => m.ed.selectWall({ kind: 'openings', id: door.id }));
+  await act(async () => button(m.host, 'board.plan.lock').click());
+  expect(planOf(doc, plan.id).openings?.[0]?.locked).toBe(true);
+  // Its fields are disabled, a drag does not start, Delete does nothing.
+  expect((button(m.host, 'board.plan.walls.flip') as HTMLButtonElement).disabled).toBe(true);
+  const to01 = (x: number, y: number) => ({ x: x / PLAN_VIEW_W, y: y / PLAN_VIEW_H });
+  const at = planOf(doc, plan.id).openings?.[0]?.at;
+  const target = document.createElement('div');
+  await act(async () => void m.tools.pick(to01(500, 250), target));
+  await act(async () => void m.tools.move(to01(500, 350)));
+  await act(async () => void m.tools.up());
+  expect(planOf(doc, plan.id).openings?.[0]?.at).toBe(at);
+  await act(async () => m.ed.remove());
+  expect(planOf(doc, plan.id).openings).toHaveLength(1);
+  // A write of its fields is refused by the shared check.
+  await act(async () =>
+    m.ed.writeWalls('openings', [{ ...door, locked: true, side: 'right' }]),
+  );
+  expect(planOf(doc, plan.id).openings?.[0]?.side).toBeUndefined();
+  // Unlocked, it moves again.
+  await act(async () => button(m.host, 'board.plan.unlock').click());
+  expect(planOf(doc, plan.id).openings?.[0]?.locked).toBeUndefined();
+  // A locked wall shows no corners to drag, and Delete keeps it.
+  await act(async () => m.ed.selectWall({ kind: 'walls', id: room.id }));
+  await act(async () => m.ed.toggleWallLock({ kind: 'walls', id: room.id }));
+  const corner = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  corner.setAttribute('data-corner', '1');
+  expect(m.tools.pick(to01(500, 100), corner)).toBe(true);
+  await act(async () => void m.tools.move(to01(700, 100)));
+  await act(async () => void m.tools.up());
+  expect(planOf(doc, plan.id).walls?.[0]?.points).toEqual(room.points);
+  await act(async () => m.ed.remove());
+  expect(planOf(doc, plan.id).walls).toHaveLength(1);
+});

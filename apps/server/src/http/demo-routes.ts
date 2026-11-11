@@ -58,6 +58,7 @@ const ALLOWED: Record<string, readonly string[]> = {
     '/projects/:projectId/cast-appearances',
     '/projects/:projectId/export-settings',
     '/projects/:projectId/members',
+    '/projects/:projectId/plan-kit',
     '/projects/:projectId/tags',
     '/project-groups',
     '/shared-boards',

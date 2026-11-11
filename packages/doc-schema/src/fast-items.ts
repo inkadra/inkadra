@@ -69,6 +69,11 @@ function stroke(value: unknown, plan: boolean): unknown {
     if (g !== undefined && (typeof g !== 'string' || !ID.test(g))) return UNSURE;
     out.group = g;
   }
+  if ('locked' in value) {
+    const l = value.locked;
+    if (l !== undefined && typeof l !== 'boolean') return UNSURE;
+    out.locked = l;
+  }
   return out;
 }
 

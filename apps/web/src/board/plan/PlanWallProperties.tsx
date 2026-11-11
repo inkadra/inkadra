@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  itemLocked,
   metresToView,
   openingCorners,
   openingSide,
@@ -10,6 +11,7 @@ import {
 } from '@inkadra/canvas-core';
 import { PLAN_OPENING_KINDS, type PlanOpening, type PlanWall } from '@inkadra/doc-schema';
 import { Button, Icon } from '@inkadra/ui';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
@@ -57,12 +59,33 @@ export function PlanWallProperties({ ed }: { ed: Ed }) {
       />
     </label>
   );
-  const remove = (
-    <div className="plan-props__actions">
-      <Button variant="danger" onClick={() => ed.removeWalls([ref.id])}>
-        {t('board.plan.delete')}
-      </Button>
-    </div>
+  const target = opening ?? wall;
+  /** Locked on its own (decision 0114): its fields are shown, not edited, and it stays. */
+  const frozen = itemLocked(target);
+  const wrap = (body: ReactNode) => (
+    <>
+      {frozen && (
+        <div className="plan-props__locked" role="status">
+          <Icon name="lock" size={16} />
+          <span>{t('board.plan.itemLocked')}</span>
+        </div>
+      )}
+      <fieldset className="plan-props__fields" disabled={frozen}>
+        {body}
+      </fieldset>
+      <div className="plan-props__actions">
+        <Button
+          aria-pressed={frozen}
+          data-ink-tooltip={t(frozen ? 'board.plan.unlockItemHint' : 'board.plan.lockItemHint')}
+          onClick={() => ed.toggleWallLock(ref)}
+        >
+          {t(frozen ? 'board.plan.unlock' : 'board.plan.lock')}
+        </Button>
+        <Button variant="danger" disabled={frozen} onClick={() => ed.removeWalls([ref.id])}>
+          {t('board.plan.delete')}
+        </Button>
+      </div>
+    </>
   );
 
   if (opening) {
@@ -72,7 +95,7 @@ export function PlanWallProperties({ ed }: { ed: Ed }) {
     // A field set back to its default goes as undefined: updatePlanWalls deletes it.
     const write = (patch: Partial<PlanOpening>) =>
       ed.writeWalls('openings', [{ ...opening, ...patch }]);
-    return (
+    return wrap(
       <>
         <div className="plan-props__head">
           <span className="plan-props__tile">
@@ -132,14 +155,13 @@ export function PlanWallProperties({ ed }: { ed: Ed }) {
         </div>
         {isDoor && <p className="plan-props__hint">{t('board.plan.walls.doorHint')}</p>}
         {label(opening, 'openings')}
-        {remove}
-      </>
+      </>,
     );
   }
 
   const cm = wallCentimetres(wall, scale);
   const sides = Math.max(1, wall.points.length / 2 - (wall.closed ? 0 : 1));
-  return (
+  return wrap(
     <>
       <div className="plan-props__head">
         <span className="plan-props__tile">
@@ -177,7 +199,6 @@ export function PlanWallProperties({ ed }: { ed: Ed }) {
       </div>
       <p className="plan-props__hint">{t('board.plan.walls.cornersHint')}</p>
       {label(wall, 'walls')}
-      {remove}
-    </>
+    </>,
   );
 }

@@ -1261,7 +1261,8 @@
         "lights": "Licht ausgeblendet",
         "camera": "Kamera ausgeblendet",
         "actors": "Darsteller ausgeblendet",
-        "notes": "Notizen ausgeblendet"
+        "notes": "Notizen ausgeblendet",
+        "grip": "Grip und Crew ausgeblendet"
       },
       "lockedAs": {
         "set": "Set gesperrt",
@@ -1378,7 +1379,7 @@
       "lensInFrame": "{{mm}} mm im Frame",
       "lib": {
         "alsoCalled": "Auch genannt: {{names}}",
-        "kitHint": "Ein einmal eingerichtetes Licht oder eine Kamera erscheint hier mit Marke, Leistung, Lichtformern und Stativ, für jeden Plan.",
+        "kitHint": "Ein einmal eingerichtetes Licht oder eine Kamera erscheint hier mit Marke, Leistung, Lichtformern und Stativ, für jeden Plan des Projekts.",
         "kitResults_one": "{{count}} im Projektmaterial",
         "kitResults_other": "{{count}} im Projektmaterial",
         "mine": "Favoriten und zuletzt",
@@ -1395,7 +1396,11 @@
         "short": "Bibliothek",
         "tapHint": "Tippen setzt es in die Mitte, oder auf den Plan ziehen.",
         "types_one": "{{count}} Typ",
-        "types_other": "{{count}} Typen"
+        "types_other": "{{count}} Typen",
+        "kitScope": {
+          "loading": "Das Material der anderen Boards wird geladen: vorerst nur das dieses Boards.",
+          "local": "Offline oder nicht erreichbar: nur das Material dieses Boards."
+        }
       },
       "lock": "Sperren",
       "unlock": "Entsperren",
@@ -1500,6 +1505,13 @@
         "practical": "Praktikabel"
       },
       "snapIcons": "Symbole einrasten",
+      "gripGroup": "Grip und Crew",
+      "lockItemHint": "Dieses Element sperren: Es wird nicht verschoben, bearbeitet oder gelöscht",
+      "unlockItemHint": "Dieses Element entsperren",
+      "itemLocked": "Gesperrt: Entsperre es, um es zu verschieben, zu bearbeiten oder zu löschen.",
+      "lockedItem": "Gesperrt",
+      "lockGroup": "Jedes Element von {{layer}} sperren",
+      "unlockGroup": "Jedes Element von {{layer}} entsperren",
       "links": {
         "proposed": "Vorgeschlagen",
         "others": "Alles andere",
@@ -5086,11 +5098,11 @@
           },
           "1": {
             "title": "Die Bibliothek",
-            "text": "Wähle eine Kategorie oder suche. Klicke einen Typ und dann den Plan an, oder zieh ihn dorthin. Alt setzt ihn frei ab."
+            "text": "Wähle eine Kategorie oder suche. Klicke einen Typ und dann den Plan an, oder zieh ihn dorthin. Alt setzt ihn frei ab. Das Projektmaterial sammelt die Lichter und Kameras aller Pläne."
           },
           "2": {
             "title": "Eigenschaften, Elemente, Material",
-            "text": "Was du auswählst, stellst du rechts ein; Elemente listet den Plan nach Ebenen, Material zählt Material und Leistung pro Stromkreis."
+            "text": "Was du auswählst, stellst du rechts ein, und Sperren hält es, wo es ist; Elemente listet den Plan nach Gruppen, Material zählt Material und Leistung pro Stromkreis."
           },
           "3": {
             "title": "Setups",
