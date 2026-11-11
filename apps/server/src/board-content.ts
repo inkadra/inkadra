@@ -87,7 +87,10 @@ export function docColumns(doc: Y.Doc): BoardColumn[] {
 }
 
 /** The columns of the stored document of a board; none when it has no stored document. */
-export async function storedColumns(db: Pick<Database, 'select' | 'execute'>, boardId: string): Promise<BoardColumn[]> {
+export async function storedColumns(
+  db: Pick<Database, 'select' | 'execute'>,
+  boardId: string,
+): Promise<BoardColumn[]> {
   const [row] = await db
     .select({ state: boardDoc.state })
     .from(boardDoc)
@@ -145,7 +148,10 @@ export interface BoardReader {
 }
 
 /** Read the authoritative live document, including deletions, before using stored state. */
-export function directBoardReader(collab: CollabServer, db: Pick<Database, 'select' | 'execute'>): BoardReader {
+export function directBoardReader(
+  collab: CollabServer,
+  db: Pick<Database, 'select' | 'execute'>,
+): BoardReader {
   return {
     async characters(boardId) {
       const doc = collab.hocuspocus.documents.get(boardDocName(boardId));
