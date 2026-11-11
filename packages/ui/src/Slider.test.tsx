@@ -40,7 +40,11 @@ it('draws the same outer thumb in Gecko as in WebKit', () => {
   // Gecko adds the border outside the size, so the content is the size less both borders.
   const gecko = block('.ink-slider::-moz-range-thumb');
   expect(gecko).toContain('box-sizing: content-box;');
-  expect(gecko).toContain('width: calc(var(--ink-slider-size) - 2 * var(--ink-slider-border-width));');
-  expect(gecko).toContain('height: calc(var(--ink-slider-size) - 2 * var(--ink-slider-border-width));');
+  expect(gecko).toContain(
+    'width: calc(var(--ink-slider-size) - 2 * var(--ink-slider-border-width));',
+  );
+  expect(gecko).toContain(
+    'height: calc(var(--ink-slider-size) - 2 * var(--ink-slider-border-width));',
+  );
   expect(gecko).toContain('border: var(--ink-slider-border-width) solid');
 });

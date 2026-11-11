@@ -50,7 +50,9 @@ async function field(value: number, min: number, max: number) {
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
   const enter = () =>
-    act(async () => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+    act(async () =>
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })),
+    );
   const blur = () => act(async () => input.blur());
   const done = async () => {
     await act(async () => root.unmount());

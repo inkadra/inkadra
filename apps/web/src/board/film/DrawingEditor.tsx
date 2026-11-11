@@ -718,6 +718,7 @@ export function DrawingEditor({
                     </span>
                     <Slider
                       id={opacityId}
+                      aria-label={t('film.pen.opacity')}
                       min={5}
                       max={100}
                       step={5}

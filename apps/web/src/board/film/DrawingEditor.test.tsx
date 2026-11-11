@@ -270,7 +270,7 @@ describe('drawing editor', () => {
     const field = host.querySelector<HTMLInputElement>('.pen__opacity .plan-num input');
     expect(label?.textContent).toBe('Picture opacity');
     expect(label?.htmlFor).toBe(slider?.id);
-    expect(slider?.getAttribute('aria-label')).toBeNull();
+    expect(slider?.getAttribute('aria-label')).toBe('Picture opacity');
     expect(field?.getAttribute('aria-label')).toBe('Picture opacity: value');
   });
   it('uses visible red ink over photos and keeps arrow navigation', async () => {
