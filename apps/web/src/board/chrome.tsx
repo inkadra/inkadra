@@ -742,7 +742,7 @@ function ArrangeButton({
       key={how}
       type="button"
       role="menuitem"
-      className="menu__item"
+      className="ink-menu__item menu__item"
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => run(how)}
     >
@@ -770,7 +770,7 @@ function ArrangeButton({
         createPortal(
           <div
             ref={menu}
-            className="menu arrange-menu"
+            className="ink-menu menu arrange-menu"
             role="menu"
             aria-label={label}
             data-chrome
@@ -947,7 +947,7 @@ export function ContextMenu({
   return (
     <div
       ref={ref}
-      className={className ? `menu ${className}` : 'menu'}
+      className={className ? `ink-menu menu ${className}` : 'ink-menu menu'}
       role="menu"
       aria-label={label}
       style={style ?? (x === undefined ? undefined : { left: x, top: y })}
@@ -990,7 +990,7 @@ export function ContextMenu({
             role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
             aria-checked={item.checked}
             aria-label={item.content ? item.label : undefined}
-            className={`menu__item${item.danger ? ' is-danger' : ''}${item.disabled ? ' is-disabled' : ''}`}
+            className={`ink-menu__item menu__item${item.danger ? ' is-danger' : ''}${item.disabled ? ' is-disabled' : ''}`}
             aria-disabled={item.disabled || undefined}
             aria-describedby={item.hint ? `${hintId}-${i}` : undefined}
             onClick={() => {

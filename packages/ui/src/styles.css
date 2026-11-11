@@ -2,6 +2,7 @@
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
+/* 700 only for bold the user writes (decision 0107); the interface stops at 600. */
 @import "@fontsource/inter/700.css";
 @import "./tokens.css";
 
@@ -28,6 +29,11 @@ body {
     system-ui,
     sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Browsers draw these at 700; the interface's heaviest weight is 600 (decision 0107). */
+:where(b, strong, th, h1, h2, h3, h4, h5, h6) {
+  font-weight: 600;
 }
 
 a {
@@ -136,6 +142,9 @@ select {
   background: var(--ink-danger-bg);
   border-color: var(--ink-danger-border);
   color: var(--ink-danger-fg);
+}
+.ink-btn--danger:hover:not(:disabled) {
+  background: var(--ink-danger-border);
 }
 .ink-iconbtn {
   width: 30px;
@@ -1237,6 +1246,58 @@ select {
 }
 .ink-select__label {
   flex: 1;
+}
+
+/* Menus: every action menu of the web app (the board's, the ⋯ menus, the right click) is one
+   floating surface with neutral rows. The row under the pointer or the keyboard turns
+   surface-3; keyboard focus adds the blue ring. Each menu places and sizes itself. */
+.ink-menu {
+  padding: 4px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  color: var(--ink-text-primary);
+  box-shadow: var(--ink-shadow-menu);
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
+}
+.ink-menu__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: calc(var(--ink-radius-md) - 4px);
+  background: transparent;
+  color: var(--ink-text-icon);
+  font-size: 12px;
+  text-align: start;
+  cursor: pointer;
+}
+.ink-menu__item:hover,
+.ink-menu__item:focus-visible {
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+}
+.ink-menu__item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ink-accent-primary);
+}
+.ink-menu__item.is-danger {
+  color: var(--ink-danger-fg);
+}
+.ink-menu__item:disabled {
+  background: transparent;
+  color: var(--ink-text-muted);
+  cursor: default;
+}
+/* Phones: finger-sized rows. */
+@media (width < 768px), (pointer: coarse) {
+  .ink-menu__item {
+    min-height: 44px;
+    font-size: 14px;
+  }
 }
 .ink-select__label small {
   display: block;
