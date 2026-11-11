@@ -62,9 +62,7 @@ function Editor({
 async function editor(doc: Y.Doc, planId: string, part: (ed: Ed) => React.ReactNode) {
   const store = new BoardStore(doc);
   cleanups.push(async () => store.destroy());
-  const view = await render(() => (
-    <Editor doc={doc} store={store} planId={planId} part={part} />
-  ));
+  const view = await render(() => <Editor doc={doc} store={store} planId={planId} part={part} />);
   return { store, ...view };
 }
 
@@ -110,40 +108,42 @@ it('makes one drag of the sun’s time one undo step', async () => {
   expect(planOf(doc, plan.id).sun).toBeUndefined();
 });
 
+/** A button that opens a picker, as the link cards do. */
+function PickerHarness({ out }: { out: { opener: HTMLButtonElement | null } }) {
+  const [at, setAt] = useState<PickerAt | null>(null);
+  return (
+    <>
+      <button
+        type="button"
+        ref={(el) => {
+          out.opener = el;
+        }}
+        onClick={(e) => setAt({ style: {}, opener: e.currentTarget })}
+      >
+        open
+      </button>
+      {at && (
+        <LinkPicker
+          title="Pick"
+          search="Search"
+          options={[{ id: 'a', label: 'A' }]}
+          at={at}
+          onPick={() => setAt(null)}
+          onClose={() => setAt(null)}
+        />
+      )}
+    </>
+  );
+}
+
 it('gives the focus back to its button when the list closes with Escape', async () => {
-  let opener: HTMLButtonElement | null = null;
-  function Harness() {
-    const [at, setAt] = useState<PickerAt | null>(null);
-    return (
-      <>
-        <button
-          type="button"
-          ref={(el) => {
-            opener = el;
-          }}
-          onClick={(e) => setAt({ style: {}, opener: e.currentTarget })}
-        >
-          open
-        </button>
-        {at && (
-          <LinkPicker
-            title="Pick"
-            search="Search"
-            options={[{ id: 'a', label: 'A' }]}
-            at={at}
-            onPick={() => setAt(null)}
-            onClose={() => setAt(null)}
-          />
-        )}
-      </>
-    );
-  }
-  await render(() => <Harness />);
-  await click(opener);
+  const out: { opener: HTMLButtonElement | null } = { opener: null };
+  await render(() => <PickerHarness out={out} />);
+  await click(out.opener);
   expect(document.activeElement?.getAttribute('type')).toBe('search');
   await act(async () =>
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
   );
   expect(document.querySelector('.plan-scenes')).toBeNull();
-  expect(document.activeElement).toBe(opener);
+  expect(document.activeElement).toBe(out.opener);
 });

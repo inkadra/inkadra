@@ -200,7 +200,13 @@ describe('set plan links in exports (decision 0111)', () => {
     name: 'Secret',
     guestHidden: true,
   };
-  const tray = { ...card, id: 'charCCCCCCCCC', parent: 'unsorted', type: 'character', name: 'Tray' };
+  const tray = {
+    ...card,
+    id: 'charCCCCCCCCC',
+    parent: 'unsorted',
+    type: 'character',
+    name: 'Tray',
+  };
   const actor = (id: string, characterId: string) => ({
     id,
     kind: 'actor',
