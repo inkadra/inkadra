@@ -181,7 +181,7 @@ export async function assertSpace(
  * (assertSpace). Without any limit it runs straight away.
  */
 export async function reserveSpace<T>(
-  db: Database,
+  db: Database | Tx,
   env: StorageEnv,
   userId: string,
   bytes: number,

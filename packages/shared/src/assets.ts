@@ -191,6 +191,14 @@ export type AudioWaveform = z.infer<typeof AudioWaveform>;
  */
 export const UploadMetadata = z
   .object({
+    clientAssetId: Id.optional().openapi({
+      description:
+        'A UUID the client chose for this file. The asset id is then ' +
+        '`clientAssetUploadId(userId, clientAssetId)` (UUIDv5, decision 0097), known offline; ' +
+        'repeating the creation with the same metadata and Upload-Length returns the same ' +
+        'upload instead of a new one. Once its asset is deleted the creation returns 409 ' +
+        'with details.reason client_asset_deleted: use a new clientAssetId.',
+    }),
     projectId: Id,
     boardId: Id.optional().openapi({
       description:

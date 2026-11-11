@@ -26,7 +26,7 @@ import {
 } from './board-writer.ts';
 import { VERSION } from './config.ts';
 import type { Database } from './db/client.ts';
-import { asset, creationRequest } from './db/schema.ts';
+import { asset, clientAsset, creationRequest } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
 import { officeConverterInstalled } from './media/office.ts';
@@ -38,7 +38,7 @@ import type { MonitorStore } from './monitor/store.ts';
 import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
 import { enqueueReleaseNews, sendReleaseNews } from './release-news.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
-import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
+import { lockUpload, type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
 import type { StorageEnv } from './storage-limits.ts';
 import { purgeRevokedTokens } from './tokens.ts';
 import { runTransfer, sweepTransfers } from './transfers/service.ts';
@@ -215,26 +215,37 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
 export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
   await db.delete(creationRequest).where(lt(creationRequest.expiresAt, new Date()));
   await purgeRevokedTokens(db);
+  const cutoff = new Date(Date.now() - UPLOAD_EXPIRY_MS);
   const stale = await db
-    .select({ id: asset.id, key: asset.storageKey, size: asset.size })
+    .select({ id: asset.id })
     .from(asset)
-    .where(
-      and(
-        eq(asset.status, 'pending'),
-        lt(asset.createdAt, new Date(Date.now() - UPLOAD_EXPIRY_MS)),
-      ),
-    );
+    .where(and(eq(asset.status, 'pending'), lt(asset.createdAt, cutoff)));
   let removed = 0;
-  for (const row of stale) {
-    if ((await storage.size(row.key)) === row.size) {
-      await jobs.processAsset(row.id);
-      continue;
+  let requeued = 0;
+  for (const { id } of stale) {
+    // Under the lock a creation with clientAssetId takes too, and checked again: the row may
+    // be a newer upload with the same id by now (decision 0097).
+    const outcome = await db.transaction(async (tx) => {
+      await lockUpload(tx, id);
+      const [row] = await tx
+        .select({ key: asset.storageKey, size: asset.size })
+        .from(asset)
+        .where(and(eq(asset.id, id), eq(asset.status, 'pending'), lt(asset.createdAt, cutoff)));
+      if (!row) return 'skipped';
+      if ((await storage.size(row.key)) === row.size) return 'complete';
+      await storage.remove([row.key]);
+      await tx.delete(asset).where(eq(asset.id, id));
+      // Never finished: the same clientAssetId may start it again.
+      await tx.delete(clientAsset).where(eq(clientAsset.id, id));
+      return 'removed';
+    });
+    if (outcome === 'complete') {
+      await jobs.processAsset(id);
+      requeued += 1;
     }
-    await storage.remove([row.key]);
-    await db.delete(asset).where(eq(asset.id, row.id));
-    removed += 1;
+    if (outcome === 'removed') removed += 1;
   }
-  return { removed, requeued: stale.length - removed };
+  return { removed, requeued };
 }
 
 /** The nightly backup at the time of the settings, in the server's time zone. */

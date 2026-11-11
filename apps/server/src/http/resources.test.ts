@@ -1,6 +1,13 @@
-import { createServer, type Server, type ServerResponse } from 'node:http';
+import {
+  createServer,
+  type IncomingMessage,
+  request,
+  type Server,
+  type ServerResponse,
+} from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
+import { clientAssetUploadId } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
@@ -9,6 +16,7 @@ import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, assetVariant, creationRequest } from '../db/schema.ts';
+import { purgeUploads } from '../queues.ts';
 import { originalKey, proxyKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
@@ -322,6 +330,264 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
   const tus = { 'tus-resumable': '1.0.0' };
   const metadata = (filename: string, filetype: string, project = projectId) =>
     `projectId ${b64(project)},filename ${b64(filename)},filetype ${b64(filetype)}`;
+
+  it('derives client asset ids per uploader, retries without a second asset, also after a purge', async () => {
+    const clientAssetId = crypto.randomUUID();
+    const id = clientAssetUploadId(as.owner.id, clientAssetId);
+    const headers = {
+      ...tus,
+      'upload-length': '100',
+      'upload-metadata': `${metadata('offline.jpg', 'image/jpeg')},clientAssetId ${b64(clientAssetId)}`,
+    };
+    const create = (who: keyof typeof as = 'owner', extra = {}) =>
+      call(who, 'POST', '/api/v1/uploads', undefined, { ...headers, ...extra });
+    // Concurrent creations of the same id: one asset, every answer points at it.
+    const results = await Promise.all(Array.from({ length: 6 }, () => create()));
+    expect(results.map((r) => r.statusCode)).toEqual(Array(6).fill(201));
+    for (const r of results) {
+      expect(r.headers['inkadra-asset-id']).toBe(id);
+      expect(r.headers.location).toBe(`/api/v1/uploads/${id}`);
+    }
+    expect(await db.select().from(asset).where(eq(asset.id, id))).toHaveLength(1);
+    const head = await call('owner', 'HEAD', `/api/v1/uploads/${id}`, undefined, tus);
+    expect(head.headers['upload-offset']).toBe('0');
+    // A retry after some bytes keeps them: the offset tells where to resume.
+    const patch = await call('owner', 'PATCH', `/api/v1/uploads/${id}`, Buffer.alloc(40), {
+      ...tus,
+      'upload-offset': '0',
+      'content-type': 'application/offset+octet-stream',
+    });
+    expect(patch.statusCode).toBe(204);
+    const again = await create();
+    expect(again.statusCode).toBe(201);
+    expect(again.headers['upload-offset']).toBe('40');
+
+    // The pending-upload purge removes it; the same client id starts it again.
+    await db
+      .update(asset)
+      .set({ createdAt: new Date(Date.now() - 2 * 24 * 60 * 60_000) })
+      .where(eq(asset.id, id));
+    await purgeUploads(db, deps.storage, deps.jobs);
+    expect(await db.select().from(asset).where(eq(asset.id, id))).toEqual([]);
+    const restarted = await create();
+    expect(restarted.statusCode).toBe(201);
+    expect(restarted.headers['inkadra-asset-id']).toBe(id);
+    expect(restarted.headers['upload-offset']).toBeUndefined();
+
+    // Another person's same client id is another asset in their own project, never a 409.
+    const theirs = (await call('stranger', 'POST', '/api/v1/projects', { name: 'Theirs' })).json();
+    const stranger = await create('stranger', {
+      'upload-metadata': `${metadata('offline.jpg', 'image/jpeg', theirs.id)},clientAssetId ${b64(clientAssetId)}`,
+    });
+    expect(stranger.statusCode).toBe(201);
+    expect(stranger.headers['inkadra-asset-id']).toBe(
+      clientAssetUploadId(as.stranger.id, clientAssetId),
+    );
+    // Without access to the project, nothing is made or told; the owner's upload stays theirs.
+    expect((await create('stranger')).statusCode).toBe(404);
+    expect(
+      (await call('stranger', 'HEAD', `/api/v1/uploads/${id}`, undefined, tus)).statusCode,
+    ).toBe(404);
+
+    // The same id for another file, a bad id, a refusal by tus after the asset was made.
+    expect((await create('owner', { 'upload-length': '101' })).statusCode).toBe(409);
+    const bad = `${metadata('bad.jpg', 'image/jpeg')},clientAssetId ${b64('invalid')}`;
+    expect((await create('owner', { 'upload-metadata': bad })).statusCode).toBe(400);
+    const tooBig = crypto.randomUUID();
+    const refused = await create('owner', {
+      'upload-length': String(6 * 1024 * 1024),
+      'upload-metadata': `${metadata('big.jpg', 'image/jpeg')},clientAssetId ${b64(tooBig)}`,
+    });
+    expect(refused.statusCode).toBe(413);
+    const bigId = clientAssetUploadId(as.owner.id, tooBig);
+    expect(await db.select().from(asset).where(eq(asset.id, bigId))).toEqual([]);
+  });
+
+  it('holds no transaction while the body of a client-id creation arrives', async () => {
+    const clientAssetId = crypto.randomUUID();
+    const id = clientAssetUploadId(as.owner.id, clientAssetId);
+    const headers = {
+      cookie: as.owner.cookie,
+      origin: config.PUBLIC_URL,
+      ...tus,
+      'upload-length': '100',
+      'upload-metadata': `${metadata('slow.jpg', 'image/jpeg')},clientAssetId ${b64(clientAssetId)}`,
+    };
+    const slow = request(`${base}/api/v1/uploads`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/offset+octet-stream' },
+    });
+    const answered = new Promise<IncomingMessage>((resolve, reject) => {
+      slow.on('response', resolve);
+      slow.on('error', reject);
+    });
+    slow.write(Buffer.alloc(30));
+    // Mid-body, the pending asset is already committed: another connection sees it.
+    await expect
+      .poll(async () => (await db.select().from(asset).where(eq(asset.id, id))).length)
+      .toBe(1);
+    // A client that timed out and retries is answered at once, not queued behind the body.
+    const retry = await call('owner', 'POST', '/api/v1/uploads', undefined, {
+      ...tus,
+      'upload-length': '100',
+      'upload-metadata': headers['upload-metadata'],
+    });
+    expect(retry.statusCode).toBe(201);
+    expect(retry.headers['inkadra-asset-id']).toBe(id);
+    slow.end(Buffer.alloc(20));
+    const res = await answered;
+    res.resume();
+    expect(res.statusCode).toBe(201);
+    expect(res.headers['upload-offset']).toBe('50');
+  });
+
+  it('checks access again when a client-id creation is retried', async () => {
+    const member = `/api/v1/projects/${projectId}/members/${as.viewer.id}`;
+    await call('owner', 'PUT', member, { role: 'editor' });
+    const headers = {
+      ...tus,
+      'upload-length': '10',
+      'upload-metadata': `${metadata('mine.jpg', 'image/jpeg')},clientAssetId ${b64(crypto.randomUUID())}`,
+    };
+    try {
+      expect((await call('viewer', 'POST', '/api/v1/uploads', undefined, headers)).statusCode).toBe(
+        201,
+      );
+      await call('owner', 'PUT', member, { role: 'viewer' });
+      expect((await call('viewer', 'POST', '/api/v1/uploads', undefined, headers)).statusCode).toBe(
+        403,
+      );
+    } finally {
+      await call('owner', 'PUT', member, { role: 'viewer' });
+    }
+  });
+
+  /** A tus creation carrying a fresh clientAssetId, and the asset id it derives. */
+  const clientCreation = (filename = 'offline.txt', filetype = 'text/plain', length = '5') => {
+    const clientAssetId = crypto.randomUUID();
+    const headers: Record<string, string> = {
+      ...tus,
+      'upload-length': length,
+      'upload-metadata': `${metadata(filename, filetype)},clientAssetId ${b64(clientAssetId)}`,
+    };
+    const id = clientAssetUploadId(as.owner.id, clientAssetId);
+    const post = (extra: Record<string, string | undefined> = {}) => {
+      const sent = { ...headers, ...extra };
+      for (const [k, v] of Object.entries(sent)) if (v === undefined) delete sent[k];
+      return call('owner', 'POST', '/api/v1/uploads', undefined, sent as Record<string, string>);
+    };
+    return { id, post };
+  };
+  const patchBytes = (id: string, offset: number, bytes: Buffer) =>
+    call('owner', 'PATCH', `/api/v1/uploads/${id}`, bytes, {
+      ...tus,
+      'upload-offset': String(offset),
+      'content-type': 'application/offset+octet-stream',
+    });
+
+  it('recovers a client-id creation that tus refused early or that lost its stored state', async () => {
+    const { id, post } = clientCreation();
+    // Refused by tus before any hook: nothing is made, nothing reserved.
+    expect((await post({ 'tus-resumable': undefined })).statusCode).toBe(412);
+    expect(await db.select().from(asset).where(eq(asset.id, id))).toEqual([]);
+    expect((await post()).statusCode).toBe(201);
+    const head = await call('owner', 'HEAD', `/api/v1/uploads/${id}`, undefined, tus);
+    expect(head.statusCode).toBe(200);
+    expect(head.headers['upload-offset']).toBe('0');
+    // A row whose stored upload is gone (a crash between the two) is made usable again.
+    await deps.storage.remove([originalKey(id)]);
+    expect((await post()).statusCode).toBe(201);
+    expect((await patchBytes(id, 0, Buffer.from('hello'))).statusCode).toBe(204);
+  });
+
+  it('answers a finished client-id upload as it is and never makes a deleted id again', async () => {
+    const { id, post } = clientCreation();
+    expect((await post()).statusCode).toBe(201);
+    expect((await patchBytes(id, 0, Buffer.from('hello'))).statusCode).toBe(204);
+    await expect
+      .poll(async () => (await db.select().from(asset).where(eq(asset.id, id)))[0]?.status)
+      .not.toBe('pending');
+    const [finished] = await db.select().from(asset).where(eq(asset.id, id));
+    const processAsset = deps.jobs.processAsset;
+    let processed = 0;
+    deps.jobs.processAsset = async (assetId) => {
+      processed += 1;
+      return processAsset.call(deps.jobs, assetId);
+    };
+    try {
+      const again = await post();
+      expect(again.statusCode).toBe(201);
+      expect(again.headers['upload-offset']).toBe('5');
+      expect(again.headers['upload-expires']).toBeUndefined();
+      expect((await db.select().from(asset).where(eq(asset.id, id)))[0]).toEqual(finished);
+      // Deleted (trash emptied, card removed): a blind retry must not make it again.
+      await db.delete(asset).where(eq(asset.id, id));
+      const gone = await post();
+      expect(gone.statusCode).toBe(409);
+      expect(JSON.parse(gone.rawPayload.toString())).toMatchObject({
+        error: { details: { reason: 'client_asset_deleted' } },
+      });
+      expect(await db.select().from(asset).where(eq(asset.id, id))).toEqual([]);
+      expect(processed).toBe(0);
+    } finally {
+      deps.jobs.processAsset = processAsset;
+    }
+  });
+
+  it('keeps a client-id upload made again while the pending purge runs', async () => {
+    const { id, post } = clientCreation('stale.txt', 'text/plain', '100');
+    expect((await post()).statusCode).toBe(201);
+    await db
+      .update(asset)
+      .set({ createdAt: new Date(Date.now() - 2 * 24 * 60 * 60_000) })
+      .where(eq(asset.id, id));
+    // The purge stops between choosing the stale upload and removing it.
+    let release = () => {};
+    const paused = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let reached = () => {};
+    const atBarrier = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    const slowStorage = new Proxy(deps.storage, {
+      get(target, prop) {
+        if (prop === 'size')
+          return async (key: string) => {
+            reached();
+            await paused;
+            return target.size(key);
+          };
+        const value = Reflect.get(target, prop, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+    const purge = purgeUploads(db, slowStorage, deps.jobs);
+    await atBarrier;
+    const retry = post();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    release();
+    await purge;
+    expect((await retry).statusCode).toBe(201);
+    // Whatever the order, the upload the client was just told about is there and usable.
+    const head = await call('owner', 'HEAD', `/api/v1/uploads/${id}`, undefined, tus);
+    expect(head.statusCode).toBe(200);
+    expect(head.headers['upload-offset']).toBe('0');
+  });
+
+  it('validates a client-id retry like a creation and answers with the same tus headers', async () => {
+    const { id, post } = clientCreation('same.txt', 'text/plain', '100');
+    const first = await post();
+    expect(first.statusCode).toBe(201);
+    expect(first.headers['upload-expires']).toBeDefined();
+    expect((await post({ 'tus-resumable': undefined })).statusCode).toBe(412);
+    expect((await post({ 'upload-defer-length': '1' })).statusCode).toBe(400);
+    const retry = await post();
+    expect(retry.statusCode).toBe(201);
+    for (const header of ['location', 'tus-resumable', 'upload-expires', 'inkadra-asset-id'])
+      expect(retry.headers[header]).toBe(first.headers[header]);
+    expect(retry.headers['inkadra-asset-id']).toBe(id);
+  });
 
   it('uploads in chunks, resumes, then processes the image', async () => {
     const jpeg = await sharp({

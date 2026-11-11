@@ -104,6 +104,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'resumable-uploads',
         'idempotent-creations',
         'token-invalid-reasons',
+        'client-asset-ids',
       ],
     });
     const publicBody = (await app.inject('/api/v1/instance')).json();
