@@ -462,6 +462,133 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     }
   });
 
+  /** A tus creation carrying a fresh clientAssetId, and the asset id it derives. */
+  const clientCreation = (filename = 'offline.txt', filetype = 'text/plain', length = '5') => {
+    const clientAssetId = crypto.randomUUID();
+    const headers: Record<string, string> = {
+      ...tus,
+      'upload-length': length,
+      'upload-metadata': `${metadata(filename, filetype)},clientAssetId ${b64(clientAssetId)}`,
+    };
+    const id = clientAssetUploadId(as.owner.id, clientAssetId);
+    const post = (extra: Record<string, string | undefined> = {}) => {
+      const sent = { ...headers, ...extra };
+      for (const [k, v] of Object.entries(sent)) if (v === undefined) delete sent[k];
+      return call('owner', 'POST', '/api/v1/uploads', undefined, sent as Record<string, string>);
+    };
+    return { id, post };
+  };
+  const patchBytes = (id: string, offset: number, bytes: Buffer) =>
+    call('owner', 'PATCH', `/api/v1/uploads/${id}`, bytes, {
+      ...tus,
+      'upload-offset': String(offset),
+      'content-type': 'application/offset+octet-stream',
+    });
+
+  it('recovers a client-id creation that tus refused early or that lost its stored state', async () => {
+    const { id, post } = clientCreation();
+    // Refused by tus before any hook: nothing is made, nothing reserved.
+    expect((await post({ 'tus-resumable': undefined })).statusCode).toBe(412);
+    expect(await db.select().from(asset).where(eq(asset.id, id))).toEqual([]);
+    expect((await post()).statusCode).toBe(201);
+    const head = await call('owner', 'HEAD', `/api/v1/uploads/${id}`, undefined, tus);
+    expect(head.statusCode).toBe(200);
+    expect(head.headers['upload-offset']).toBe('0');
+    // A row whose stored upload is gone (a crash between the two) is made usable again.
+    await deps.storage.remove([originalKey(id)]);
+    expect((await post()).statusCode).toBe(201);
+    expect((await patchBytes(id, 0, Buffer.from('hello'))).statusCode).toBe(204);
+  });
+
+  it('answers a finished client-id upload as it is and never makes a deleted id again', async () => {
+    const { id, post } = clientCreation();
+    expect((await post()).statusCode).toBe(201);
+    expect((await patchBytes(id, 0, Buffer.from('hello'))).statusCode).toBe(204);
+    await expect
+      .poll(async () => (await db.select().from(asset).where(eq(asset.id, id)))[0]?.status)
+      .not.toBe('pending');
+    const [finished] = await db.select().from(asset).where(eq(asset.id, id));
+    const processAsset = deps.jobs.processAsset;
+    let processed = 0;
+    deps.jobs.processAsset = async (assetId) => {
+      processed += 1;
+      return processAsset.call(deps.jobs, assetId);
+    };
+    try {
+      const again = await post();
+      expect(again.statusCode).toBe(201);
+      expect(again.headers['upload-offset']).toBe('5');
+      expect(again.headers['upload-expires']).toBeUndefined();
+      expect((await db.select().from(asset).where(eq(asset.id, id)))[0]).toEqual(finished);
+      // Deleted (trash emptied, card removed): a blind retry must not make it again.
+      await db.delete(asset).where(eq(asset.id, id));
+      const gone = await post();
+      expect(gone.statusCode).toBe(409);
+      expect(JSON.parse(gone.rawPayload.toString())).toMatchObject({
+        error: { details: { reason: 'client_asset_deleted' } },
+      });
+      expect(await db.select().from(asset).where(eq(asset.id, id))).toEqual([]);
+      expect(processed).toBe(0);
+    } finally {
+      deps.jobs.processAsset = processAsset;
+    }
+  });
+
+  it('keeps a client-id upload made again while the pending purge runs', async () => {
+    const { id, post } = clientCreation('stale.txt', 'text/plain', '100');
+    expect((await post()).statusCode).toBe(201);
+    await db
+      .update(asset)
+      .set({ createdAt: new Date(Date.now() - 2 * 24 * 60 * 60_000) })
+      .where(eq(asset.id, id));
+    // The purge stops between choosing the stale upload and removing it.
+    let release = () => {};
+    const paused = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let reached = () => {};
+    const atBarrier = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    const slowStorage = new Proxy(deps.storage, {
+      get(target, prop) {
+        if (prop === 'size')
+          return async (key: string) => {
+            reached();
+            await paused;
+            return target.size(key);
+          };
+        const value = Reflect.get(target, prop, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+    const purge = purgeUploads(db, slowStorage, deps.jobs);
+    await atBarrier;
+    const retry = post();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    release();
+    await purge;
+    expect((await retry).statusCode).toBe(201);
+    // Whatever the order, the upload the client was just told about is there and usable.
+    const head = await call('owner', 'HEAD', `/api/v1/uploads/${id}`, undefined, tus);
+    expect(head.statusCode).toBe(200);
+    expect(head.headers['upload-offset']).toBe('0');
+  });
+
+  it('validates a client-id retry like a creation and answers with the same tus headers', async () => {
+    const { id, post } = clientCreation('same.txt', 'text/plain', '100');
+    const first = await post();
+    expect(first.statusCode).toBe(201);
+    expect(first.headers['upload-expires']).toBeDefined();
+    expect((await post({ 'tus-resumable': undefined })).statusCode).toBe(412);
+    expect((await post({ 'upload-defer-length': '1' })).statusCode).toBe(400);
+    const retry = await post();
+    expect(retry.statusCode).toBe(201);
+    for (const header of ['location', 'tus-resumable', 'upload-expires', 'inkadra-asset-id'])
+      expect(retry.headers[header]).toBe(first.headers[header]);
+    expect(retry.headers['inkadra-asset-id']).toBe(id);
+  });
+
   it('uploads in chunks, resumes, then processes the image', async () => {
     const jpeg = await sharp({
       create: { width: 1600, height: 900, channels: 3, background: '#203040' },
