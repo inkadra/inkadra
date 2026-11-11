@@ -2,6 +2,7 @@ import {
   addElement,
   createBoardDoc,
   type Element,
+  getRestoreCount,
   hiddenFromGuests,
   readElement,
   roots,
@@ -53,6 +54,34 @@ const saved = (doc: Y.Doc) => {
 };
 
 describe('writeVersionOver', () => {
+  it('counts each restore in the board document, never taking the count from the version (decision 0109)', () => {
+    const live = createBoardDoc(BOARD);
+    addElement(live, note('card0000', { x: 1 }));
+    const version = saved(live);
+    const move = (x: number) =>
+      live.transact(() => roots(live).elements.get('card0000')?.set('x', x));
+    move(2);
+    // A client that synced before the restore.
+    const phone = saved(live);
+    expect(getRestoreCount(live)).toBe(0);
+    // One transaction: whoever receives the restore receives the new count with it.
+    const updates: Uint8Array[] = [];
+    live.on('update', (u: Uint8Array) => updates.push(u));
+    writeVersionOver(live, version);
+    expect(updates).toHaveLength(1);
+    expect(getRestoreCount(live)).toBe(1);
+    Y.applyUpdate(phone, updates[0]!);
+    expect(getRestoreCount(phone)).toBe(1);
+    // A version saved after a restore holds a count: restoring it still moves forward.
+    const later = saved(live);
+    move(3);
+    writeVersionOver(live, later);
+    expect(getRestoreCount(live)).toBe(2);
+    // A restore that changes nothing is not counted (nothing an offline edit could miss).
+    writeVersionOver(live, later);
+    expect(getRestoreCount(live)).toBe(2);
+  });
+
   it('adds back, removes and reverts elements, rich text and fields', () => {
     const live = createBoardDoc(BOARD);
     addElement(live, note('kept0000', { x: 10, tags: ['scene'] }));

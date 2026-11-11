@@ -86,7 +86,8 @@ export function parseBoardDocName(name: string): string | null {
 /**
  * Root types of a board document. Nothing else may be stored at the root.
  * `meta` holds `schemaVersion`, `boardId`, from version 2 `aspect` (the AspectRatio of a
- * storyboard's frames) and from version 9 `animaticAudio` (the sound track of its animatic).
+ * storyboard's frames), from version 9 `animaticAudio` (the sound track of its animatic) and
+ * `restores`, written by the server only (decision 0109).
  */
 export function roots(doc: Y.Doc) {
   return {
@@ -98,6 +99,16 @@ export function roots(doc: Y.Doc) {
 export function getSchemaVersion(doc: Y.Doc): number {
   const v = roots(doc).meta.get('schemaVersion');
   return typeof v === 'number' ? v : 0;
+}
+
+/**
+ * How many times the server brought the board back to a saved version (decision 0109), 0 before
+ * the first restore and on servers that do not count them. Written by the server in the restore's
+ * own transaction; clients only read it.
+ */
+export function getRestoreCount(doc: Y.Doc): number {
+  const v = roots(doc).meta.get('restores');
+  return typeof v === 'number' && Number.isSafeInteger(v) && v > 0 ? v : 0;
 }
 
 export function initBoardDoc(doc: Y.Doc, boardId: string): void {

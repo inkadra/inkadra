@@ -137,6 +137,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'token-invalid-reasons',
         'client-asset-ids',
         'min-writer-schema',
+        'board-restore-marker',
       ],
     } satisfies InstanceVersion;
   });
