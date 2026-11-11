@@ -529,12 +529,7 @@ export function ScreenplayImportDialog({
           <Button variant="ghost" onClick={() => dialog.current?.requestClose()}>
             {t('screenplay.cancel')}
           </Button>
-          <Button
-            variant="primary"
-            disabled={nothing}
-            busy={busy}
-            onClick={() => void submit()}
-          >
+          <Button variant="primary" disabled={nothing} busy={busy} onClick={() => void submit()}>
             {revision ? t('screenplay.revision.submit') : (confirmLabel ?? t('screenplay.submit'))}
           </Button>
         </DialogActions>
