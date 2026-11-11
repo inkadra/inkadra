@@ -3,37 +3,44 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { walkTabs } from '../../test/tabs.ts';
 import { PlanLibrary } from './PlanLibrary.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-it('names the category tabs and walks them by keyboard, switching only on a choice', async () => {
+it('switches categories on the rail, arms a tile and places the first search result', async () => {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
+  const onArm = vi.fn();
+  const onPlace = vi.fn();
   try {
     await act(async () =>
       root.render(
-        <PlanLibrary
-          armed={null}
-          phone={false}
-          onArm={vi.fn()}
-          onDrop={vi.fn()}
-          onPlaceFirst={vi.fn()}
-          onClose={vi.fn()}
-        />,
+        <PlanLibrary armed={null} phone={false} kit={[]} sensor="S35" onArm={onArm} onPlace={onPlace} />,
       ),
     );
-    const list = host.querySelector('[role="tablist"]');
-    expect(list?.getAttribute('aria-label')).toBe('board.plan.categoryTabs');
-    await walkTabs(list);
-    const next = document.activeElement as HTMLElement;
-    await act(async () => next.click());
-    expect(next.getAttribute('aria-selected')).toBe('true');
-    expect(host.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe(next.id);
+    const rail = host.querySelector('nav[aria-label="board.plan.categoryTabs"]');
+    const grip = rail?.querySelector<HTMLButtonElement>('[aria-label="board.plan.categories.grip"]');
+    await act(async () => grip?.click());
+    expect(grip?.getAttribute('aria-pressed')).toBe('true');
+    expect(host.textContent).toContain('board.plan.groups.modifiers');
+    const tile = [...host.querySelectorAll<HTMLButtonElement>('.plan-lib__tile')].find((b) =>
+      b.textContent?.includes('board.plan.icons.softbox'),
+    );
+    await act(async () => tile?.click());
+    expect(onArm).toHaveBeenCalledWith('softbox');
+    const search = host.querySelector<HTMLInputElement>('input[type="search"]') as HTMLInputElement;
+    await act(async () => {
+      const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      set?.call(search, 'octa');
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () =>
+      search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })),
+    );
+    expect(onPlace).toHaveBeenCalledWith({ item: 'octa' }, null);
   } finally {
     await act(async () => root.unmount());
     host.remove();

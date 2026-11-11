@@ -6,11 +6,12 @@ import {
   isLight,
   layerOf,
   modifiersOn,
+  type PlanElement,
   type PlanItem,
   type PlanItemRef,
   planItems,
 } from '@inkadra/canvas-core';
-import type { PlanElement, PlanIcon, PlanLayer } from '@inkadra/doc-schema';
+import type { PlanIcon, PlanLayer } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 
 /** The sections of the Elements tab, in the mockup's order. */

@@ -58,6 +58,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { pathOf } from '../film/strokes.ts';
@@ -139,7 +140,7 @@ export interface CanvasHandle {
 }
 
 /** The menu of the selection: on a right click, and behind "…" in the properties. */
-export function selectionMenu(ed: Ed, t: (key: string, o?: object) => string): MenuItem[] {
+export function selectionMenu(ed: Ed, t: TFunction): MenuItem[] {
   const items = ed.many.length > 1 ? ed.many : ed.item ? [ed.item] : [];
   if (!items.length) return [];
   const icons = items.some(isIcon);
