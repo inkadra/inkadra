@@ -787,7 +787,8 @@ export function PlanProperties({
   const camera = (icon: PlanIcon) => {
     const shot = icon.frameId ? linkedShot(icon, ed.cards, ed.labels) : null;
     const lens = icon.lens ?? shot?.frameLens ?? DEFAULT_LENS;
-    const cone = iconCone(icon, ed.plan.sensor);
+    // The cone of the lens shown: the plan's own, else the linked frame's (decision 0111).
+    const cone = iconCone({ ...icon, lens }, ed.plan.sensor);
     const base = baseOf(icon);
     const other = otherLens || !LENSES.includes(lens);
     const lensRow = (
