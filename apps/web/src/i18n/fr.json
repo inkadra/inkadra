@@ -4961,7 +4961,7 @@
         "steps": {
           "0": {
             "title": "The shooting calendar",
-            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end."
+            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end. With set plans, “Group by: Setup” puts the shots of each scene and day under their setup."
           },
           "1": {
             "title": "Move and stretch",
@@ -5349,7 +5349,7 @@
         "steps": {
           "0": {
             "title": "Exporter",
-            "text": "PDF, PNG ou JPEG de ce setup ou de tous, avec la légende, le matériel, la puissance et les notes."
+            "text": "PDF, PNG ou JPEG de ce setup ou de tous, avec la légende, le matériel, la puissance et les notes. Sur un téléphone, il est dans le menu du setup."
           },
           "1": {
             "title": "La feuille",
