@@ -41,15 +41,13 @@ export async function idempotentCreation<T>(
       return { value: previous.response as T, replayed: true };
     }
     const value = await create(tx);
-    await tx
-      .insert(creationRequest)
-      .values({
-        keyHash,
-        userId,
-        fingerprint,
-        response: value,
-        expiresAt: new Date(Date.now() + RETENTION_MS),
-      });
+    await tx.insert(creationRequest).values({
+      keyHash,
+      userId,
+      fingerprint,
+      response: value,
+      expiresAt: new Date(Date.now() + RETENTION_MS),
+    });
     return { value, replayed: false };
   });
 }
