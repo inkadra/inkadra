@@ -18,7 +18,9 @@ import {
 import { FileStore } from '@tus/file-store';
 import { S3Store } from '@tus/s3-store';
 import type { DataStore } from '@tus/utils';
+import { sql } from 'drizzle-orm';
 import type { Config } from './config.ts';
+import type { Database } from './db/client.ts';
 
 /**
  * File storage, on a local volume or an S3-compatible bucket.
@@ -51,6 +53,15 @@ export interface Storage {
 
 /** Hours before an unfinished upload is removed. */
 export const UPLOAD_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Serializes, for one asset id and until the transaction ends, the moments that make or
+ * remove an upload: a creation with clientAssetId, a cancellation and the pending purge.
+ * Held for those short steps only, never while bytes arrive (decision 0097).
+ */
+export async function lockUpload(tx: Pick<Database, 'execute'>, assetId: string) {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`upload:${assetId}`}, 0))`);
+}
 
 export const originalKey = (assetId: string) => `originals/${assetId}`;
 export const variantKey = (assetId: string, size: string) => `variants/${assetId}/${size}.webp`;

@@ -177,6 +177,19 @@ export const revokedToken = pgTable(
   (t) => [index('revoked_token_revoked_at_idx').on(t.revokedAt)],
 );
 
+/**
+ * Asset ids made from a clientAssetId (decision 0097). The row outlives its asset on
+ * purpose: an id whose asset was deleted is never made again by a blind retry. The purge
+ * of an unfinished upload removes both, so that one may start again. No key to `asset`.
+ */
+export const clientAsset = pgTable('client_asset', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: createdAt(),
+});
+
 // Instance -------------------------------------------------------------------
 
 /** Instance-wide settings and one-time markers (key `setup`: the first account was claimed). */

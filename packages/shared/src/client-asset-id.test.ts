@@ -23,8 +23,13 @@ it('matches RFC 9562 UUIDv5 for names of any length', () => {
     '886313e1-3b8a-5372-9b90-0c9aee199e5d',
   );
   const ns = Buffer.from(userId.replace(/-/g, ''), 'hex');
-  for (let n = 0; n < 200; n += 7) {
-    const name = 'é'.repeat(n);
+  // Every name length up to 100 bytes crosses the SHA-1 padding edges (16 + name = 55, 56,
+  // 63, 64, 65 bytes); the two-byte é covers longer and multi-byte names.
+  const names = [
+    ...Array.from({ length: 101 }, (_, n) => 'a'.repeat(n)),
+    ...Array.from({ length: 30 }, (_, n) => 'é'.repeat(n * 7)),
+  ];
+  for (const name of names) {
     const hash = createHash('sha1')
       .update(Buffer.concat([ns, Buffer.from(name)]))
       .digest();

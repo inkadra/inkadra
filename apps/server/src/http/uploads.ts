@@ -8,19 +8,20 @@ import {
   UploadMetadata,
 } from '@inkadra/shared';
 import { Server as TusServer } from '@tus/server';
-import { type DataStore, Metadata } from '@tus/utils';
-import { and, eq } from 'drizzle-orm';
+import type { DataStore, Upload } from '@tus/utils';
+import { eq } from 'drizzle-orm';
+import type { ServerResponse } from 'node:http';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Actor, requireAssetRole, requireWriteAccess } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { asset } from '../db/schema.ts';
+import { asset, clientAsset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { designExtension } from '../media/design.ts';
 import { sniffImage } from '../media/heic.ts';
 import { rawTypeOf } from '../media/raw.ts';
-import { originalKey, type Storage } from '../storage.ts';
+import { lockUpload, originalKey, type Storage } from '../storage.ts';
 import { reserveSpace, StorageFullError } from '../storage-limits.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
@@ -39,7 +40,15 @@ export const UPLOADS_PATH = `${API_PREFIX}/uploads`;
 export const ASSET_ID_HEADER = 'Inkadra-Asset-Id';
 
 /** Per-request state shared between the Fastify handler and the tus hooks. */
-const context = new AsyncLocalStorage<{ actor: Actor; assetId: string; made?: boolean }>();
+const context = new AsyncLocalStorage<{
+  actor: Actor;
+  assetId: string;
+  raw: ServerResponse;
+  /** The id was derived from clientAssetId (decision 0097). */
+  clientId?: boolean;
+  /** The stored upload was made under the lock already: tus must not make it again. */
+  stored?: boolean;
+}>();
 
 const HEIC = /\.(heic|heif)$/i;
 /** Audio files browsers often send without a type (#327). */
@@ -120,8 +129,13 @@ async function demoContentMatches(storage: Storage, key: string, assetId: string
 function tusError(status: number, message: string) {
   return { status_code: status, body: message };
 }
-const isTusError = (err: unknown): err is ReturnType<typeof tusError> =>
-  typeof err === 'object' && err !== null && 'status_code' in err && 'body' in err;
+/** An answer a tus hook gives in place of tus's own, written as is (onResponseError). */
+class Answer {
+  constructor(
+    readonly status_code: number,
+    readonly body: string,
+  ) {}
+}
 
 /**
  * The upload store, with the pending asset of a cancelled upload removed in the same step.
@@ -132,10 +146,16 @@ function removingAssets(store: DataStore, db: Database): DataStore {
   return new Proxy(store, {
     get(target, prop) {
       if (prop === 'remove')
-        return async (id: string) => {
-          await target.remove(id);
-          await db.delete(asset).where(eq(asset.id, id.slice('originals/'.length)));
-        };
+        return (id: string) =>
+          db.transaction(async (tx) => {
+            const assetId = id.slice('originals/'.length);
+            await lockUpload(tx, assetId);
+            await target.remove(id);
+            await tx.delete(asset).where(eq(asset.id, assetId));
+          });
+      if (prop === 'create')
+        return async (upload: Upload) =>
+          context.getStore()?.stored ? upload : target.create(upload);
       const value = Reflect.get(target, prop, target);
       return typeof value === 'function' ? value.bind(target) : value;
     },
@@ -159,9 +179,18 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
     maxSize: deps.uploadMaxSize > 0 ? deps.uploadMaxSize : undefined,
     exposedHeaders: [ASSET_ID_HEADER],
     // The id in the URL is the asset id; the file id is its storage key.
-    namingFunction: () => {
+    namingFunction: (_req, metadata) => {
       const ctx = context.getStore();
       if (!ctx) throw new Error('Upload outside a request');
+      const chosen = metadata?.clientAssetId;
+      if (chosen !== undefined) {
+        const parsed = Id.safeParse(chosen);
+        if (!parsed.success) throw tusError(400, 'clientAssetId must be a UUID.');
+        // Derived, never taken as is: nobody can take or probe another person's id.
+        ctx.assetId = clientAssetUploadId(ctx.actor.id, parsed.data);
+        ctx.clientId = true;
+        ctx.raw.setHeader(ASSET_ID_HEADER, ctx.assetId);
+      }
       return originalKey(ctx.assetId);
     },
     generateUrl: (_req, { path, id }) => `${path}/${id.slice('originals/'.length)}`,
@@ -170,19 +199,14 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
     async onUploadCreate(_req, upload) {
       const ctx = context.getStore();
       if (!ctx) throw tusError(500, 'Upload outside a request');
-      // A creation with clientAssetId made its pending asset before tus started, from the
-      // same header and the same tus parser (createWithClientId).
-      if (ctx.made) return {};
+      // Runs after tus checked the protocol (version, headers, length, size): retries too.
       const meta = await checkCreation(ctx.actor, upload.size, upload.metadata);
-      await insertPending(ctx.actor, ctx.assetId, upload.size as number, meta);
+      if (ctx.clientId) await createWithClientId(ctx, upload, meta);
+      else await insertPending(db, ctx.actor, ctx.assetId, upload.size as number, meta);
       return {};
     },
-    // tus refused a creation with clientAssetId before storing anything (size, headers): the
-    // pending asset made for it goes, before the client reads the refusal.
-    async onResponseError() {
-      const ctx = context.getStore();
-      if (ctx?.made && !(await datastore.getUpload(originalKey(ctx.assetId)).catch(() => null)))
-        await db.delete(asset).where(and(eq(asset.id, ctx.assetId), eq(asset.status, 'pending')));
+    async onResponseError(_req, err) {
+      if (err instanceof Answer) return { status_code: err.status_code, body: err.body };
     },
     async onUploadFinish(_req, upload) {
       const assetId = upload.id.slice('originals/'.length);
@@ -240,6 +264,7 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
    * clientAssetId won it.
    */
   async function insertPending(
+    db: Parameters<typeof reserveSpace>[0],
     actor: Actor,
     assetId: string,
     size: number,
@@ -274,70 +299,75 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
     });
   }
 
+  const expiration = datastore.hasExtension('expiration') ? datastore.getExpiration() : 0;
+
   /**
-   * A creation carrying clientAssetId (decision 0097). The asset id is derived from the
-   * uploader and that id, so nobody else can take or probe it. The pending asset is made
-   * here in a short transaction, before tus reads any of the body; no transaction stays open
-   * while bytes arrive. When the asset exists already (a retry, or a concurrent creation that
-   * won the primary key), the answer is the one tus gives a creation, with the stored bytes
-   * left alone: the client reads the offset with HEAD and resumes with PATCH.
-   * Undefined: no clientAssetId, or a header tus itself refuses.
+   * A creation carrying clientAssetId (decision 0097), under a short lock on the asset id
+   * that the cancellation and the pending purge take too. A new id gets its pending asset,
+   * its client_asset row and its stored upload together, so no step can be left half made;
+   * tus then streams any body with no transaction held. An existing one is answered as tus
+   * answers a creation (Location, Upload-Expires, plus Upload-Offset) with its bytes left
+   * alone. An id whose asset was deleted is refused: the client makes a new clientAssetId.
    */
   async function createWithClientId(
-    req: FastifyRequest,
-    reply: FastifyReply,
-    actor: Actor,
-  ): Promise<{ assetId: string; made: boolean } | 'answered' | undefined> {
-    const header = req.headers['upload-metadata'];
-    let metadata: Record<string, string | null>;
-    try {
-      metadata = Metadata.parse(typeof header === 'string' ? header : undefined);
-    } catch {
-      return undefined;
-    }
-    if (metadata.clientAssetId === undefined) return undefined;
-    const answer = (status: number, body: string, headers: Record<string, string> = {}) => {
-      reply
-        .status(status)
-        .headers({ 'Tus-Resumable': '1.0.0', ...headers })
-        .send(body);
-      return 'answered' as const;
+    ctx: NonNullable<ReturnType<typeof context.getStore>>,
+    upload: Upload,
+    meta: UploadMetadata,
+  ) {
+    const size = upload.size as number;
+    const created = (offset: number, since: string | undefined) => {
+      ctx.raw.setHeader('Location', `${UPLOADS_PATH}/${ctx.assetId}`);
+      ctx.raw.setHeader('Upload-Offset', String(offset));
+      if (offset < size && expiration > 0 && since)
+        ctx.raw.setHeader(
+          'Upload-Expires',
+          new Date(new Date(since).getTime() + expiration).toUTCString(),
+        );
+      return new Answer(201, '');
     };
-    const clientAssetId = Id.safeParse(metadata.clientAssetId);
-    if (!clientAssetId.success) return answer(400, 'clientAssetId must be a UUID.');
-    const length = req.headers['upload-length'];
-    const size = typeof length === 'string' && /^\d+$/.test(length) ? Number(length) : undefined;
-    const assetId = clientAssetUploadId(actor.id, clientAssetId.data);
-    try {
-      // Access is checked on every attempt, retries included.
-      const meta = await checkCreation(actor, size, metadata);
-      for (let attempt = 0; attempt < 2; attempt++) {
-        const [existing] = await db.select().from(asset).where(eq(asset.id, assetId));
-        if (!existing) {
-          if (await insertPending(actor, assetId, size as number, meta))
-            return { assetId, made: true };
-          continue;
+    const answer = await db.transaction(async (tx) => {
+      await lockUpload(tx, ctx.assetId);
+      const [row] = await tx.select().from(asset).where(eq(asset.id, ctx.assetId));
+      if (!row) {
+        const [used] = await tx
+          .select({ id: clientAsset.id })
+          .from(clientAsset)
+          .where(eq(clientAsset.id, ctx.assetId));
+        if (used) {
+          ctx.raw.setHeader('Content-Type', 'application/json; charset=utf-8');
+          return new Answer(
+            409,
+            JSON.stringify({
+              error: {
+                code: 'conflict',
+                message: 'This upload was deleted: send it with a new clientAssetId.',
+                details: { reason: 'client_asset_deleted' },
+              },
+            }),
+          );
         }
-        if (
-          existing.createdBy !== actor.id ||
-          existing.projectId !== meta.projectId ||
-          existing.filename !== meta.filename ||
-          existing.size !== size
-        )
-          return answer(409, 'This clientAssetId was used for another file.');
-        const stored = await datastore.getUpload(originalKey(assetId)).catch(() => null);
-        return answer(201, '', {
-          Location: `${UPLOADS_PATH}/${assetId}`,
-          [ASSET_ID_HEADER]: assetId,
-          ...(stored ? { 'Upload-Offset': String(stored.offset) } : {}),
-        });
+        await insertPending(tx, ctx.actor, ctx.assetId, size, meta);
+        await tx.insert(clientAsset).values({ id: ctx.assetId, userId: ctx.actor.id });
+        await storage.uploads.create(upload);
+        ctx.stored = true;
+        return undefined;
       }
-      // Made and removed again by a creation that failed meanwhile.
-      return answer(409, 'The upload changed meanwhile: try again.');
-    } catch (err) {
-      if (isTusError(err)) return answer(err.status_code, err.body);
-      throw err;
-    }
+      if (
+        row.createdBy !== ctx.actor.id ||
+        row.projectId !== meta.projectId ||
+        row.filename !== meta.filename ||
+        row.size !== size
+      )
+        return new Answer(409, 'This clientAssetId was used for another file.');
+      // Finished: answered as it is, never written or processed again.
+      if (row.status !== 'pending') return created(row.size, undefined);
+      const stored = await storage.uploads.getUpload(upload.id).catch(() => null);
+      if (stored) return created(stored.offset, stored.creation_date);
+      // The row lost its stored upload (a crash between the two): made usable again.
+      await storage.uploads.create(upload);
+      return created(0, upload.creation_date);
+    });
+    if (answer) throw answer;
   }
 
   // tus reads the request body itself: keep Fastify from parsing it.
@@ -350,12 +380,9 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
     }
     const actor = await requireActor(auth, req, db);
     let assetId: string;
-    let made = false;
     if (req.method === 'POST') {
-      const chosen = await createWithClientId(req, reply, actor);
-      if (chosen === 'answered') return;
-      assetId = chosen?.assetId ?? randomUUID();
-      made = chosen?.made ?? false;
+      // A clientAssetId replaces it with the derived id (namingFunction).
+      assetId = randomUUID();
     } else {
       const { uploadId } = req.params as { uploadId?: string };
       if (!uploadId || !Id.safeParse(uploadId).success)
@@ -368,7 +395,7 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
     }
     reply.raw.setHeader(ASSET_ID_HEADER, assetId);
     reply.hijack();
-    await context.run({ actor, assetId, made }, () => tus.handle(req.raw, reply.raw));
+    await context.run({ actor, assetId, raw: reply.raw }, () => tus.handle(req.raw, reply.raw));
   }
 
   const methods = ['POST', 'OPTIONS'] as const;

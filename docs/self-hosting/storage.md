@@ -182,9 +182,13 @@ next to `projectId`, optional `boardId`, `filename` and `filetype`. The asset id
 derived, not chosen: a UUIDv5 whose namespace is the uploader's user id and whose name is
 the lowercase `clientAssetId` (`clientAssetUploadId` in `@inkadra/shared`), so a client
 knows it offline and another account's identical `clientAssetId` is a different asset.
-Repeating the creation with the same metadata and `Upload-Length` answers 201 with the same
-`Location` and `Inkadra-Asset-Id`, plus `Upload-Offset` when bytes are stored; it never
-resets them. Resume with HEAD and PATCH. The same `clientAssetId` for another project, name
-or length returns 409. After the purge of unfinished uploads, the same id starts again at
-offset zero. Without `clientAssetId`, the server picks a random id as before. See
-[decision 0097](../decisions/0097-client-asset-identifiers.md).
+
+Repeating the creation with the same metadata and `Upload-Length` is checked like a first
+creation and answers 201 with the same `Location`, `Inkadra-Asset-Id` and `Upload-Expires`,
+plus `Upload-Offset`; it never resets stored bytes. Resume with HEAD and PATCH. A finished
+upload answers with its full offset and is never processed again. The same `clientAssetId`
+for another project, name or length returns 409. Once the asset has been deleted (or the
+upload cancelled), the creation returns 409 with `error.details.reason` set to
+`client_asset_deleted`: make a new `clientAssetId`. After the purge of unfinished uploads,
+the same id starts again at offset zero. Without `clientAssetId`, the server picks a random
+id as before. See [decision 0097](../decisions/0097-client-asset-identifiers.md).
