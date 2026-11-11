@@ -67,6 +67,14 @@ and without it, both normally and under `node --jitless`. Remove that temporary 
 afterwards; do not commit it. Use the same Node version, seed, sizes and run count and
 avoid running builds or tests concurrently with the benchmark.
 
+After that table, a second one breaks the open down (decision
+[0104](../decisions/0104-hand-checked-strokes.md)), medians of fresh opens: `applyUpdate`;
+validation (`readElement` on every card); the index alone; the synchronous store; the opt-in
+hydration, total and longest blocking slice (an immediate that re-queues itself measures the
+longest turn of the event loop, GC included); and the first stroke drawn after an open. For a
+before/after comparison copy the new script into a checkout of the base revision.
+`--no-breakdown` prints only the first table.
+
 `--hydrate` uses the opt-in `BoardStore.hydrate(doc, { budgetMs: 8 })` path, awaiting
 `store.whenHydrated` before editing. Its first read includes time yielded to the event loop.
 The longest open slice includes the still-monolithic applyUpdate; `hydrate: longest gap`

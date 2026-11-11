@@ -17,6 +17,8 @@ const { values } = parseArgs({
     'zod-jitless': { type: 'boolean', default: false },
     baseline: { type: 'boolean', default: false },
     hydrate: { type: 'boolean', default: false },
+    // Only the first table (the open breakdown is the slow part without a JIT).
+    'no-breakdown': { type: 'boolean', default: false },
   },
 });
 if (values.baseline && values.hydrate) throw new Error('--baseline and --hydrate are exclusive');
@@ -25,7 +27,7 @@ if (values['zod-jitless']) z.config({ jitless: true });
 const { addStroke, createElement, deleteElements, removeStrokes, setTableCell } = await import(
   '@inkadra/canvas-core'
 );
-const { checkCard, roots } = await import('@inkadra/doc-schema');
+const { checkCard, readElement, roots } = await import('@inkadra/doc-schema');
 const Y = await import('yjs');
 // For comparisons, extract the base revision's store beside store.ts (do not commit it).
 const { BoardStore, LOCAL } = await import(
@@ -54,6 +56,30 @@ const repeat = (n: number, f: (i: number) => void, undo: () => void) => {
   return median(out);
 };
 const ms = (x: number) => (x < 10 ? x.toFixed(2) : x.toFixed(0));
+const breakdown: string[] = [];
+
+/**
+ * Measures how long the thread stays blocked, whatever schedules the work: an immediate that
+ * queues itself again runs once per turn of the event loop, so the longest time between two
+ * runs is the longest slice (scheduling included).
+ */
+function blockingProbe() {
+  let longest = 0;
+  let last = performance.now();
+  let on = true;
+  const tick = () => {
+    const now = performance.now();
+    longest = Math.max(longest, now - last);
+    last = now;
+    if (on) setImmediate(tick);
+  };
+  setImmediate(tick);
+  return () => {
+    on = false;
+    tick();
+    return longest;
+  };
+}
 
 console.log(
   `node ${process.version}${jitless ? ' --jitless' : ''}, zod fast path (allowsEval and not jitless): ${String(
@@ -180,4 +206,85 @@ for (const size of values.sizes.split(',')) {
     `| ${size} | ${ms(median(applies))} ms | ${ms(median(reads))} ms | ${ms(median(totals))} ms | ${ms(Math.max(...slices))} ms | ${values.hydrate ? `${ms(Math.max(...hydrationGaps))} ms` : '—'} | ${ms(addOne)} ms | ${ms(cell)} ms | ${ms(create)} ms | ${ms(median(stricts))} ms | ${ms(strictStroke)} ms | ${ms(strictCell)} ms |`,
   );
   store?.destroy();
+  if (!values['no-breakdown'] && !values.baseline)
+    breakdown.push(await openBreakdown(size, update, bench));
+}
+
+if (breakdown.length) {
+  console.log(
+    '\n| board | applyUpdate | validation | index | sync read | hydrate: total / longest slice | first stroke after open |',
+  );
+  console.log('|---|---|---|---|---|---|---|');
+  for (const line of breakdown) console.log(line);
+}
+
+/**
+ * Where an open goes (decision 0104), medians of fresh opens: applyUpdate; validation, every
+ * card read once with readElement; the index alone; the synchronous store; the opt-in
+ * hydration (total, longest blocking slice); the first stroke drawn after an open.
+ */
+async function openBreakdown(
+  size: string,
+  update: Uint8Array,
+  bench: { frameId: string; tableId: string },
+): Promise<string> {
+  const opens = Math.max(3, Math.round(runs / 8));
+  const fresh = () => {
+    const d = new Y.Doc();
+    const t = performance.now();
+    Y.applyUpdate(d, update);
+    return [d, performance.now() - t] as const;
+  };
+  const stroke = { tool: 'pencil' as const, color: '#202020', width: 4, points: [1, 2, 3, 4] };
+  const r: Record<string, number[]> = {};
+  const add = (k: string, v: number) => {
+    r[k] ??= [];
+    r[k].push(v);
+  };
+  for (let i = 0; i < opens; i++) {
+    let [d, apply] = fresh();
+    add('apply', apply);
+    add(
+      'validate',
+      time(() => {
+        for (const map of roots(d).elements.values()) readElement(map);
+      }),
+    );
+    d.destroy();
+    let s: InstanceType<typeof BoardStore> | undefined;
+    [d] = fresh();
+    const stop = blockingProbe();
+    const t = performance.now();
+    s = BoardStore.hydrate(d, { budgetMs: 8 });
+    await s.whenHydrated;
+    add('hydrateTotal', performance.now() - t);
+    add('hydrateSlice', stop());
+    s.destroy();
+    d.destroy();
+    [d] = fresh();
+    add(
+      'sync',
+      time(() => {
+        s = new BoardStore(d);
+      }),
+    );
+    const byId = new Map(s!.getSnapshot().byId);
+    const priv = s as unknown as { snapshot: unknown; index(b: Map<string, unknown>): void };
+    const kept = priv.snapshot;
+    priv.snapshot = { byId: new Map(), canvas: [], columns: new Map(), unsorted: [] };
+    add(
+      'index',
+      time(() => priv.index(byId)),
+    );
+    priv.snapshot = kept;
+    add(
+      'stroke',
+      time(() => addStroke(d, bench.frameId, stroke, LOCAL)),
+    );
+    s!.destroy();
+    d.destroy();
+  }
+  const med = (k: string) => (r[k] ? `${ms(median(r[k]))} ms` : '—');
+  const max = (k: string) => (r[k] ? `${ms(Math.max(...r[k]))} ms` : '—');
+  return `| ${size} | ${med('apply')} | ${med('validate')} | ${med('index')} | ${med('sync')} | ${med('hydrateTotal')} / ${max('hydrateSlice')} | ${med('stroke')} |`;
 }
