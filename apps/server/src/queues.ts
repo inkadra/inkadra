@@ -1,3 +1,4 @@
+import { creationRequest } from './db/schema.ts';
 import type { BoardNotice } from '@inkadra/doc-schema';
 import type { BackupSettings, BoardColumn, ServerQueueId } from '@inkadra/shared';
 import { type Job, Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
@@ -212,6 +213,7 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
  * its sound track although no screen plays it (decision 0047).
  */
 export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
+  await db.delete(creationRequest).where(lt(creationRequest.expiresAt, new Date()));
   const stale = await db
     .select({ id: asset.id, key: asset.storageKey, size: asset.size })
     .from(asset)

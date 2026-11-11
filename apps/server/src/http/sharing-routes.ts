@@ -373,8 +373,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   app.get(v1('/users/search'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const { q } = UserSearchQuery.parse(req.query ?? {});
-    if (!searchLimiter.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many searches: wait a minute.');
+    searchLimiter.require(actor.id, 'Too many searches: wait a minute.');
     const [sharer] = await db.execute<{ ok: number }>(sql`
       select 1 as ok from ${projectMember} m
       where m.user_id = ${actor.id} and m.role in ('owner', 'editor') and ${live('m')}
@@ -642,8 +641,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.get(v1('/invitations/by-token/:token'), async (req) => {
-    if (!previewLimiter.take(addressBucket(req.ip)))
-      throw new HttpError('rate_limited', 'Too many requests: wait a minute.');
+    previewLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const { token } = TokenParams.parse(req.params);
     const row = await findInvitation(db, token);
     if (!row) throw new HttpError('not_found', 'Invitation not found.');
@@ -664,8 +662,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.post(v1('/invitations/by-token/:token/claim'), async (req, reply) => {
-    if (!previewLimiter.take(addressBucket(req.ip)))
-      throw new HttpError('rate_limited', 'Too many requests: wait a minute.');
+    previewLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const { token } = TokenParams.parse(req.params);
     const row = await findInvitation(db, token);
     if (!row || invitationStatus(row) !== 'valid')

@@ -1,3 +1,4 @@
+import { HttpError } from './http/errors.ts';
 import { isIP } from 'node:net';
 
 /** IPv6 privacy addresses share a /64 budget; mapped IPv4 uses the IPv4 budget. */
@@ -94,6 +95,10 @@ export class RateLimiter {
     return release === undefined
       ? 0
       : Math.max(0, Math.ceil((release + this.windowMs - Date.now()) / 1000));
+  }
+  require(key: string, message: string) {
+    if (!this.take(key))
+      throw new HttpError('rate_limited', message, undefined, Math.max(1, this.retryAfterSeconds(key)));
   }
   take(key: string) {
     const recent = this.recent(key);

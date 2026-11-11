@@ -43,8 +43,7 @@ export function registerDiagnostics(app: FastifyInstance, deps: DiagnosticsDeps)
   const limiter = new RateLimiter(10, 60_000);
 
   app.get(`${API_PREFIX}/diagnostics`, async (req) => {
-    if (!limiter.take(addressBucket(req.ip)))
-      throw new HttpError('rate_limited', 'Too many checks: wait a minute.');
+    limiter.require(addressBucket(req.ip), 'Too many checks: wait a minute.');
     const setup = (await countUsers(db)) === 0;
     if (!setup) {
       const { user: actor } = await requireSession(auth, req, db);

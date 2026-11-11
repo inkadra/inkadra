@@ -360,8 +360,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.post(v1('/app-authorizations/token'), async (req) => {
-    if (!exchangeLimiter.take(addressBucket(req.ip)))
-      throw new HttpError('rate_limited', 'Too many requests: wait a minute.');
+    exchangeLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const input = ExchangeAppCode.parse(req.body ?? {});
     // Deleting it first makes the code single use even with concurrent requests.
     const [row] = await db

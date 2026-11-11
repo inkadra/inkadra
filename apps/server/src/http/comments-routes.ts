@@ -1,3 +1,4 @@
+import { idempotentCreation } from './idempotency.ts';
 import {
   API_PREFIX,
   CAPABILITY_ROLE,
@@ -340,8 +341,6 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     const access = await readableBoard(actor, boardId);
     const viewer: Viewer = { actorId: actor.id, role: access.role };
     requireWriter(viewer);
-    if (!limiter.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many comments: wait a minute.');
 
     let thread: Row | undefined;
     if (input.parentId) {
@@ -368,7 +367,9 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       await checkAudience(db, access, shareLinkId);
     }
     const mentions = await readableMentions(db, boardId, input.body);
-    const row = await db.transaction(async (tx) => {
+    let createdRow: typeof comment.$inferSelect | undefined;
+    const result = await idempotentCreation(db, req, actor.id, `comments:${boardId}`, input, async (tx) => {
+      limiter.require(actor.id, 'Too many comments: wait a minute.');
       // Serialize with deletion of the thread start. A successful reply must never be
       // cascaded away by a concurrent delete that saw no replies yet.
       if (thread) {
@@ -395,9 +396,13 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
         })
         .returning();
       if (!created) throw new Error('Comment insert returned nothing');
-      return created;
+      createdRow = created;
+      return toComment(created, await peopleOf(db, [created], viewer), viewer);
     });
 
+    if (result.replayed) return reply.status(201).send(result.value);
+    if (!createdRow) throw new Error('Comment insert returned nothing');
+    const row = createdRow;
     await afterCommit(req.log, async () => {
       const recipients = new Recipients(actor.id);
       for (const id of mentions) recipients.add(id, 'mention');
@@ -429,7 +434,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       );
     });
     await afterCommit(req.log, () => tell(row));
-    return reply.status(201).send(toComment(row, await peopleOf(db, [row], viewer), viewer));
+    return reply.status(201).send(result.value);
   });
 
   app.get(v1('/comments/:commentId/replies'), async (req) => {
@@ -474,8 +479,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     if (row.authorId !== actor.id)
       throw new HttpError('forbidden', 'Only the author can edit a comment.');
     requireWriter(viewer);
-    if (!limiter.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many comment writes: wait a minute.');
+    limiter.require(actor.id, 'Too many comment writes: wait a minute.');
     const mentions = await readableMentions(db, row.boardId, input.body);
     const [updated] = await db
       .update(comment)
@@ -582,8 +586,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
         const { row, viewer } = await readableComment(actor, commentId);
         requireWriter(viewer);
         if (row.deletedAt) throw new HttpError('not_found', 'Comment not found.');
-        if (!reactionsPerMinute.take(actor.id))
-          throw new HttpError('rate_limited', 'Too many reactions: wait a minute.');
+        reactionsPerMinute.require(actor.id, 'Too many reactions: wait a minute.');
         const changed = on
           ? await db
               .insert(commentReaction)
@@ -619,8 +622,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
         // Taking a reaction back works on a card that has since been removed.
         if (on && !(await readElement(boardId, elementId)))
           throw new HttpError('not_found', 'Card not found.');
-        if (!reactionsPerMinute.take(actor.id))
-          throw new HttpError('rate_limited', 'Too many reactions: wait a minute.');
+        reactionsPerMinute.require(actor.id, 'Too many reactions: wait a minute.');
         const changed = on
           ? await db
               .insert(elementReaction)

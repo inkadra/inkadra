@@ -202,3 +202,16 @@ These fields are never added to the public instance or health responses.
 Clients may send `Inkadra-Client: ios/1.2.0` (or another platform/version). Well-formed
 values are recorded only as the structured request log field `inkadraClient`; malformed
 values are ignored. The header does not change authentication or request handling.
+
+### Retrying offline creations
+
+Authenticated `POST /api/v1/projects/{projectId}/boards` and
+`POST /api/v1/boards/{boardId}/comments` accept an optional `Idempotency-Key` header
+(1–128 printable ASCII characters, without spaces). Reuse the same key and body for
+retries: the original 201 JSON response is returned, without another creation or notification.
+Keys are scoped to the authenticated user and endpoint, retained for seven days, and
+purged by upload housekeeping. Reusing a key with a different validated body returns 409;
+invalid keys return 400. Authorization is checked on every attempt. After expiry the
+key may create a new resource. Requests without a key keep their existing behavior.
+Shared HTTP rate limiter refusals return `Retry-After` in whole seconds until another
+attempt is allowed; clients should wait before retrying with the same creation key.

@@ -1,3 +1,5 @@
+import Fastify from 'fastify';
+import { errorHandler } from './http/errors.ts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { addressBucket, Failures, RateLimiter } from './rate-limits.ts';
 
@@ -99,4 +101,21 @@ describe('per-process rate limits', () => {
     failures.finish('k', true);
     expect(failures.retryAfterSeconds('k')).toBe(1);
   });
+});
+
+it('returns Retry-After with the remaining shared limiter window', async () => {
+  const now = vi.spyOn(Date, 'now').mockReturnValue(100_000);
+  const app = Fastify();
+  app.setErrorHandler(errorHandler);
+  const limiter = new RateLimiter(1, 60_000);
+  app.get('/', () => { limiter.require('person', 'Wait.'); return {}; });
+  try {
+    expect((await app.inject('/')).statusCode).toBe(200);
+    now.mockReturnValue(101_100);
+    const refused = await app.inject('/');
+    expect(refused.statusCode).toBe(429);
+    expect(refused.headers['retry-after']).toBe('59');
+    now.mockReturnValue(160_001);
+    expect((await app.inject('/')).statusCode).toBe(200);
+  } finally { await app.close(); }
 });
