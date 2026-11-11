@@ -116,7 +116,9 @@ describe('items locked on their own (decision 0114)', () => {
     const moved = (all as PlanIcon[]).map((i) => ({ ...i, x: i.x + 1 }));
     // The chair is locked; the softbox is locked but rides its free light, which moves.
     expect(allowedWrites(all, moved).map((i) => i.id)).not.toContain(chair);
-    expect(allowedWrites(all, moved).map((i) => i.id)).toEqual(expect.arrayContaining([light, box]));
+    expect(allowedWrites(all, moved).map((i) => i.id)).toEqual(
+      expect.arrayContaining([light, box]),
+    );
   });
 
   it('leaves a locked item on a setup when it is moved to the base Set layer', () => {
@@ -293,7 +295,10 @@ describe('the project kit across boards (decision 0114)', () => {
       icon(`${id}2`, second, { on: id.padEnd(13, 'A') }),
     ];
     // Scrim and gobo share a rank: the plan's order decides how they are drawn, not the kit.
-    const kit = projectKit([{ icons: light('a', 'scrim', 'gobo') }, { icons: light('b', 'gobo', 'scrim') }]);
+    const kit = projectKit([
+      { icons: light('a', 'scrim', 'gobo') },
+      { icons: light('b', 'gobo', 'scrim') },
+    ]);
     expect(kit).toHaveLength(1);
   });
 });

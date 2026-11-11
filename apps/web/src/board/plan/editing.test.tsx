@@ -345,9 +345,15 @@ it('offers only Duplicate and Unlock in the menu of items locked on their own (d
 it('neither links nor unlinks an actor or a camera locked on its own (decision 0114)', async () => {
   const doc = createBoardDoc(boardId);
   const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
-  const character = createElement(doc, 'character', { x: 0, y: 0 }, { name: 'Rosa' }, {
-    userId: null,
-  });
+  const character = createElement(
+    doc,
+    'character',
+    { x: 0, y: 0 },
+    { name: 'Rosa' },
+    {
+      userId: null,
+    },
+  );
   const actor = addPlanIcon(doc, plan.id, {
     ...at,
     kind: 'actor',
