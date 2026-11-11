@@ -3,6 +3,7 @@ import {
   type BoardNotice,
   boardDocName,
   createBoardDoc,
+  getRestoreCount,
   getSchemaVersion,
   hiddenFromGuests,
   migrateBoardDoc,
@@ -262,7 +263,7 @@ export function writeVersionOver(live: Y.Doc, version: Y.Doc): void {
       ? { guestHidden: map.get(GUEST_HIDDEN) === true, parent: map.get('parent') as string | null }
       : undefined;
   };
-  live.transact(() => {
+  live.transact((tr) => {
     const hidden = [...now.elements.keys()].filter(
       (id) => then.elements.has(id) && hiddenFromGuests(id, lookup),
     );
@@ -290,6 +291,10 @@ export function writeVersionOver(live: Y.Doc, version: Y.Doc): void {
       if (value === undefined) now.meta.delete(key);
       else now.meta.set(key, value);
     }
+    // A restore that changed the board counts itself in the same transaction (decision 0109): a
+    // client that edited the older board offline sees the count move before it sends its edits.
+    if (tr.changed.size > 0 || tr.deleteSet.clients.size > 0)
+      now.meta.set('restores', getRestoreCount(live) + 1);
   });
 }
 
