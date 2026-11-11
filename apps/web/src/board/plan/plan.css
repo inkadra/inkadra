@@ -1067,13 +1067,18 @@ button.plan__badge:hover {
   border-radius: var(--ink-radius-sm);
   color: var(--ink-text-icon);
   font-size: 10px;
-  white-space: nowrap;
   overflow: hidden;
 }
+/* Long names ("Sagomatore", "Batteria di sacchi") take a second line inside the mockup's tile. */
 .plan-editor--v2 .plan-lib__tile span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 .plan-editor--v2 .plan-lib__tile .plan-glyph {
   color: inherit;
