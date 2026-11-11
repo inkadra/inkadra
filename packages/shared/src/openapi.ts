@@ -1070,7 +1070,8 @@ registry.registerPath({
   description:
     'No token is sent. The answer is an HMAC with the key over the purpose, the instance id, ' +
     'the key id and the nonce; the client checks it with its own copy of the key. Rate ' +
-    'limited (30 a minute per address).',
+    'limited (30 a minute per address, 10 a minute per key); unknown, revoked and expired keys ' +
+    'get the same 404.',
   request: { body: json(TokenProofRequest) },
   responses: {
     200: { description: 'Proof', ...json(TokenProof) },

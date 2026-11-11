@@ -104,7 +104,9 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   const mailInstance = { instanceName: config.INSTANCE_NAME, publicUrl: config.PUBLIC_URL };
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const exchangeLimiter = new RateLimiter(20, 60_000);
+  // The proof needs no token: limited per address and per key (decision 0112).
   const proofLimiter = new RateLimiter(30, 60_000);
+  const proofKeyLimiter = new RateLimiter(10, 60_000);
 
   // A normalized avatar belongs to the account row, not project storage. Replacements
   // are atomic and bounded to one image; failed writes cannot leave orphan objects.
@@ -335,7 +337,9 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   app.post(v1('/token-proof'), async (req, reply) => {
     proofLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const input = TokenProofRequest.parse(req.body ?? {});
+    proofKeyLimiter.require(input.keyId, 'Too many requests: wait a minute.');
     const proof = await proveNonce(db, config.AUTH_SECRET, input.keyId, input.nonce);
+    // Unknown, revoked and expired keys alike: one query, one answer, nothing logged about them.
     if (!proof) throw new HttpError('not_found', 'Unknown key.');
     reply.header('cache-control', 'no-store');
     return proof;

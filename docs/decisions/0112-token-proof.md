@@ -30,12 +30,15 @@ Servers advertise the capability `token-proof` on `GET /instance/version`.
   `{ instanceId, purpose: "unlock-network", proof }` where
   `proof = base64url(HMAC-SHA256(key, "inkadra-token-proof/v1\n" + purpose + "\n" + instanceId +
   "\n" + keyId + "\n" + nonce))`. An unknown key, or one whose token was revoked, expired or
-  whose account is deactivated, is 404. It is rate limited to 30 requests a minute per address.
+  whose account is deactivated, gets the same 404 from the same single query: the endpoint does
+  not tell them apart. It is rate limited to 30 requests a minute per address and 10 a minute
+  per `keyId`, and neither the key id nor the nonce is logged.
 - `instanceId` is a random id the server makes once and keeps in `instance_setting`
   (`instance-id`).
 
-The client asks for the key on a connection it trusts (right after sign-in, or after the person
-confirmed the network) and keeps it like the token. On a network it has not confirmed, before
+The client asks for the key only on a connection it trusts because the person made it so (right
+after sign-in, or after the person confirmed the network), never on one it opened because of a
+proof, and keeps it like the token. On a network it has not confirmed, before
 anything carries the token, it sends 32 fresh random bytes as the nonce and computes the HMAC
 itself; only an answer that matches, names the `instanceId` it stored, and arrives within a few
 seconds on the same network lets it send the token on that connection. The nonce is used once,

@@ -105,14 +105,18 @@ describe.skipIf(!url)('token proof', () => {
     expect(secondKey.instanceId).toBe(key.instanceId);
   });
 
-  it('stores the key sealed, and never logs it or the nonce answer', async () => {
+  it('stores the key sealed, and never logs it, its id, the nonce or the answer', async () => {
     const { token, row } = await issueToken(db, userId, { name: 'Phone', client: 'mobile' });
     const key = TokenProofKey.parse((await askKey(token)).json());
     const [stored] = await db.select().from(personalToken).where(eq(personalToken.id, row.id));
     expect(stored?.proofKeyId).toBe(key.keyId);
     expect(stored?.proofKey).not.toContain(key.key);
-    const proof = TokenProof.parse((await prove(key.keyId, nonce())).json()).proof;
+    const n = nonce();
+    const proof = TokenProof.parse((await prove(key.keyId, n)).json()).proof;
+    expect((await prove(`${key.keyId}x`, n)).statusCode).toBe(404);
     const all = logged.join('');
+    expect(all).not.toContain(key.keyId);
+    expect(all).not.toContain(n);
     expect(all).not.toContain(key.key);
     expect(all).not.toContain(proof);
     expect(all).not.toContain(token);
@@ -141,10 +145,18 @@ describe.skipIf(!url)('token proof', () => {
     expect((await prove('AAAAAAAAAAAAAAAAAAAAAA', 'tooshort')).statusCode).toBe(400);
   });
 
-  it('is rate limited per address', async () => {
+  it('is rate limited per key', async () => {
+    const codes: number[] = [];
+    for (let i = 0; i < 11; i++)
+      codes.push((await prove('BBBBBBBBBBBBBBBBBBBBBB', nonce())).statusCode);
+    expect(codes.slice(0, 10).every((c) => c === 404)).toBe(true);
+    expect(codes[10]).toBe(429);
+  });
+
+  it('is rate limited per address, whatever the key', async () => {
     const codes: number[] = [];
     for (let i = 0; i < 31; i++)
-      codes.push((await prove('AAAAAAAAAAAAAAAAAAAAAA', nonce())).statusCode);
+      codes.push((await prove(randomBytes(16).toString('base64url'), nonce())).statusCode);
     expect(codes).toContain(429);
   });
 });

@@ -15309,7 +15309,7 @@
           {}
         ],
         "summary": "Prove this server holds a proof key, over a fresh nonce (decision 0110).",
-        "description": "No token is sent. The answer is an HMAC with the key over the purpose, the instance id, the key id and the nonce; the client checks it with its own copy of the key. Rate limited (30 a minute per address).",
+        "description": "No token is sent. The answer is an HMAC with the key over the purpose, the instance id, the key id and the nonce; the client checks it with its own copy of the key. Rate limited (30 a minute per address, 10 a minute per key); unknown, revoked and expired keys get the same 404.",
         "requestBody": {
           "content": {
             "application/json": {
