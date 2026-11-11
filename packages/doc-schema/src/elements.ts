@@ -466,87 +466,219 @@ export const FrameElement = Base.extend({
 export const PLAN_ASPECT = 3 / 2;
 export const MAX_PLAN_ICONS = 300;
 /**
- * The set icons of a plan, by category (decision 0062): lights, grip, camera and movement,
- * people, audio and video, furniture, exteriors. `light` is the light of version 14 plans,
- * drawn as a Fresnel. Generic types only, no makes or models.
+ * The set icons of a plan (decision 0062, catalogue of decision 0104): 163 kinds in 15 groups,
+ * all seen from above, generic types only (make and model are free text on the item). Kinds of
+ * earlier versions keep their ids: `camera` is the camera, `led` the LED panel, `carrig` the car
+ * mount, `group` the extras. `light` (version 14) and `recorder` (version 15) stay readable and
+ * are drawn as a Fresnel and a sound cart; the library no longer offers them.
  */
 export const PLAN_ICON_KINDS = [
+  // Lights: hard
   'fresnel',
+  'openface',
+  'par',
+  'dedo',
+  'leko',
+  'hmi',
+  'molebeam',
+  'followspot',
+  // Lights: soft and LED
   'led',
+  'cob',
+  'flex',
   'tube',
-  'softbox',
+  'kino',
   'lantern',
-  'para',
-  'practical',
+  'space',
+  'softlight',
+  'ring',
+  'bulb',
+  // Lights: large and overhead
+  'skypan',
+  'array',
+  'cyc',
+  'balloon',
+  'coop',
+  'wendy',
+  // Lights: natural and practical
   'sun',
-  'cstand',
-  'flag',
-  'frame',
-  'bounce',
+  'moon',
+  'practical',
+  'pendant',
+  'floorlamp',
+  'candle',
+  'fire',
+  'screen',
+  'neon',
+  'headlights',
+  'streetlight',
+  // Modifiers on the light
+  'softbox',
+  'octa',
+  'para',
+  'grid',
+  'barn',
+  'snoot',
   'gel',
+  'scrim',
+  'gobo',
+  // Cut and shape
+  'flag',
+  'floppy',
+  'cutter',
+  'net',
+  'dot',
+  'cuco',
+  'branch',
+  'drape',
+  // Diffuse and bounce
+  'frame',
+  'butterfly',
+  'bounce',
+  'vflat',
+  'reflector',
+  'mirror',
+  // Stands and rigging
+  'cstand',
+  'combo',
+  'lightstand',
+  'roller',
+  'boomarm',
+  'polecat',
+  'rig',
+  'goalpost',
+  'clamp',
+  'sandbag',
+  'applebox',
+  'ladder',
+  'cart',
+  // Power and effects
+  'genny',
+  'distro',
+  'dimmer',
+  'cable',
+  'battery',
+  'haze',
+  'fan',
+  'rain',
+  'snow',
+  // Camera and movement
   'camera',
   'tripod',
+  'hihat',
+  'shoulder',
   'gimbal',
+  'steadi',
+  'slider',
   'dolly',
   'track',
-  'slider',
+  'curve',
   'jib',
+  'techno',
   'drone',
   'carrig',
-  'actor',
-  'group',
-  'crew',
-  'boom',
+  'trackingcar',
+  // Video, sound and crew
+  'village',
   'monitor',
-  'recorder',
+  'dit',
+  'boom',
+  'soundcart',
+  'plantmic',
+  'speaker',
+  'prompter',
+  'crew',
+  'dirchair',
+  'hmu',
+  'rack',
+  'crafty',
+  'tent',
+  // People
+  'actor',
+  'support',
+  'extra',
+  'group',
+  'seated',
+  'lying',
+  'child',
+  'stunt',
+  'mark',
+  'animal',
+  // Set
+  'wall',
+  'door',
+  'doubledoor',
+  'sliding',
+  'window',
+  'arch',
+  'column',
+  'stairs',
+  'platform',
+  'backdrop',
+  'curtain',
+  'flat',
+  // Furniture and props
   'table',
+  'roundtable',
+  'desk',
   'chair',
+  'armchair',
   'sofa',
+  'stool',
+  'bench',
   'bed',
   'wardrobe',
-  'desk',
-  'stairs',
-  'door',
-  'window',
-  'wall',
-  'column',
-  'tree',
+  'shelf',
+  'counter',
+  'kitchen',
+  'fridge',
+  'sink',
+  'bathtub',
+  'toilet',
+  'tv',
+  'piano',
+  'rug',
+  'plant',
+  // Exteriors and vehicles
   'car',
+  'truck',
+  'moto',
+  'bike',
   'road',
+  'tree',
+  'bush',
+  'fence',
+  'water',
+  'cone',
+  'barrier',
+  // Kinds of earlier versions, readable but no longer offered.
   'light',
+  'recorder',
 ] as const;
 export type PlanIconKind = (typeof PLAN_ICON_KINDS)[number];
+/** Kinds of earlier versions that the library no longer offers; they are drawn as another kind. */
+export const LEGACY_PLAN_ICON_KINDS = ['light', 'recorder'] as const satisfies PlanIconKind[];
 
 /** Layers of a plan; each item belongs to one (since version 15). */
 export const PLAN_LAYERS = ['set', 'lights', 'camera', 'actors', 'notes'] as const;
 export const PlanLayer = z.enum(PLAN_LAYERS);
 export type PlanLayer = z.infer<typeof PlanLayer>;
 
-/** The layer each icon kind goes to without one of its own (decision 0062). */
+const kindsBetween = (first: PlanIconKind, last: PlanIconKind) =>
+  PLAN_ICON_KINDS.slice(PLAN_ICON_KINDS.indexOf(first), PLAN_ICON_KINDS.indexOf(last) + 1);
+
+/**
+ * The layer each icon kind goes to without one of its own (decisions 0062 and 0104): lights,
+ * modifiers, grip, stands and power on Lights; camera, movement, video and sound on Camera;
+ * people and the crew on Actors; the rest (set, furniture, exteriors) on Set.
+ */
 const LAYER_OF_KIND: Record<string, PlanLayer> = {
-  ...Object.fromEntries(
-    ['fresnel', 'led', 'tube', 'softbox', 'lantern', 'para', 'practical', 'sun', 'light'].map(
-      (k) => [k, 'lights'],
-    ),
-  ),
-  ...Object.fromEntries(['cstand', 'flag', 'frame', 'bounce', 'gel'].map((k) => [k, 'lights'])),
-  ...Object.fromEntries(
-    [
-      'camera',
-      'tripod',
-      'gimbal',
-      'dolly',
-      'track',
-      'slider',
-      'jib',
-      'drone',
-      'carrig',
-      'boom',
-      'monitor',
-      'recorder',
-    ].map((k) => [k, 'camera']),
-  ),
-  ...Object.fromEntries(['actor', 'group', 'crew'].map((k) => [k, 'actors'])),
+  ...Object.fromEntries(kindsBetween('fresnel', 'snow').map((k) => [k, 'lights'])),
+  ...Object.fromEntries(kindsBetween('camera', 'tent').map((k) => [k, 'camera'])),
+  ...Object.fromEntries(kindsBetween('actor', 'animal').map((k) => [k, 'actors'])),
+  crew: 'actors',
+  light: 'lights',
+  recorder: 'camera',
 };
 
 /**
@@ -584,6 +716,20 @@ export const PlanStep = z.object({
     .describe('Bow of the move from here to the next position, in view units; omitted = straight.'),
 });
 export type PlanStep = z.infer<typeof PlanStep>;
+
+/** Roles of a light in the lighting (since version 23). */
+export const PLAN_LIGHT_ROLES = ['key', 'fill', 'back', 'practical'] as const;
+/** What holds a light that is not attached to a stand icon (since version 23). */
+export const PLAN_LIGHT_STANDS = ['cstand', 'combo', 'boomarm', 'rigged', 'floor'] as const;
+/** What carries a camera that is not attached to a support icon (since version 23). */
+export const PLAN_CAMERA_SUPPORTS = [
+  'dolly',
+  'tripod',
+  'handheld',
+  'gimbal',
+  'slider',
+  'jib',
+] as const;
 
 /**
  * A set icon of a plan, centred on (x, y) in STROKE_GRID units of the drawing. `rotation` turns
@@ -623,8 +769,47 @@ export const PlanIcon = z.object({
     .max(30)
     .optional()
     .describe('Blocking: the earlier positions, first first; the icon stands at the last one.'),
-  note: z.string().max(200).optional().describe('Blocking: what happens at the last position.'),
+  note: z
+    .string()
+    .max(200)
+    .optional()
+    .describe('Blocking: what happens at the last position; any other icon: its note.'),
   dashed: z.boolean().optional().describe('Blocking: moves drawn dashed (the camera, say).'),
+  // Since version 23 (decision 0104).
+  on: ElementId.optional().describe(
+    'The icon this one is attached to (a modifier on a light, a person on a seat, a camera on a ' +
+      'support); it moves, turns, is copied and deleted with it. Omitted = free.',
+  ),
+  tier: z
+    .int()
+    .min(0)
+    .max(5)
+    .optional()
+    .describe('Stacking tier set by Bring forward and Send back. Omitted = the tier of its kind.'),
+  role: z.enum(PLAN_LIGHT_ROLES).optional().describe('Light: its role in the lighting.'),
+  watts: z
+    .int()
+    .min(0)
+    .max(1_000_000)
+    .optional()
+    .describe('Light: power drawn, for the power per circuit. Wins over the `power` text.'),
+  make: z.string().max(80).optional().describe('Light or camera: make and model, free text.'),
+  gel: z.string().max(40).optional().describe('Light: its gel, "CTO ½", "216".'),
+  stand: z
+    .enum(PLAN_LIGHT_STANDS)
+    .optional()
+    .describe('Light: what holds it, when it is not attached to a stand icon.'),
+  kelvin: z.int().min(1000).max(20000).optional().describe('Light: colour temperature in K.'),
+  height: z.number().min(0).max(100).optional().describe('Light or camera: height in metres.'),
+  tilt: z.int().min(-90).max(90).optional().describe('Light or camera: degrees, up positive.'),
+  circuit: ElementId.optional().describe("Light: id of the plan's circuit it is plugged into."),
+  support: z
+    .enum(PLAN_CAMERA_SUPPORTS)
+    .optional()
+    .describe('Camera: what carries it, when it is not attached to a support icon.'),
+  frameId: ElementId.optional().describe('Camera: the storyboard frame it shoots (a link).'),
+  characterId: ElementId.optional().describe('Actor: the character card it plays (a link).'),
+  pose: z.enum(['standing', 'seated', 'lying']).optional().describe('Actor. Omitted = standing.'),
   ...PlanItemExtras,
 });
 export type PlanIcon = z.infer<typeof PlanIcon>;
@@ -671,6 +856,62 @@ export type PlanShape = z.infer<typeof PlanShape>;
 const PlanShapes = lenientList(PlanShape, MAX_SHAPES);
 const PlanStrokes = lenientList(PlanStroke, MAX_STROKES);
 
+export const MAX_PLAN_WALLS = 200;
+export const MAX_WALL_POINTS = 100;
+export const MAX_PLAN_OPENINGS = 200;
+
+/**
+ * A wall of a plan (since version 23, decision 0104): a polyline through `points` (x, y pairs in
+ * STROKE_GRID units of the drawing), `thickness` view units thick, joined back to its first point
+ * when `closed`. Walls are on the Set layer, plain objects in a Y.Array like strokes.
+ */
+export const PlanWall = z.object({
+  id: ElementId,
+  points: z
+    .array(GridCoord)
+    .min(4)
+    .max(MAX_WALL_POINTS * 2)
+    .refine((p) => p.length % 2 === 0, 'Points come in x, y pairs.'),
+  thickness: z.number().positive().max(200).describe('In view units.'),
+  closed: z.boolean().optional(),
+  label: z.string().max(60).optional(),
+  group: ElementId.optional().describe('Items with the same group move together; one level.'),
+});
+export type PlanWall = z.infer<typeof PlanWall>;
+
+export const PLAN_OPENING_KINDS = ['door', 'doubledoor', 'sliding', 'window', 'opening'] as const;
+export type PlanOpeningKind = (typeof PLAN_OPENING_KINDS)[number];
+
+/**
+ * A door, a window or a plain opening in a wall (since version 23): `width` view units wide, its
+ * middle `at` view units along the wall from its first point. It cuts its gap in the wall. A door
+ * swings to the `side` of the wall (left or right of the way the wall is drawn) from its `hinge`.
+ * An opening whose wall is gone is not drawn.
+ */
+export const PlanOpening = z.object({
+  id: ElementId,
+  wall: ElementId,
+  kind: z.enum(PLAN_OPENING_KINDS),
+  at: z.number().min(0).max(100_000),
+  width: z.number().positive().max(2000),
+  side: z.enum(['left', 'right']).optional().describe('Omitted = left.'),
+  hinge: z.enum(['start', 'end']).optional().describe('Doors. Omitted = start.'),
+  label: z.string().max(60).optional(),
+});
+export type PlanOpening = z.infer<typeof PlanOpening>;
+
+const PlanWalls = lenientList(PlanWall, MAX_PLAN_WALLS);
+const PlanOpenings = lenientList(PlanOpening, MAX_PLAN_OPENINGS);
+
+/** An electrical circuit of a set (since version 23): its name and its breaker. */
+export const PlanCircuit = z.object({
+  id: ElementId,
+  name: z.string().max(40),
+  amps: z.number().positive().max(1000).describe('Rating of the breaker, in amperes.'),
+});
+export type PlanCircuit = z.infer<typeof PlanCircuit>;
+export const MAX_PLAN_CIRCUITS = 30;
+
 /** Sensor formats for a camera's angle of view; widths in mm. */
 export const PLAN_SENSORS = { s35: 24.89, ff: 36, m43: 17.3, s16: 12.52 } as const;
 export type PlanSensor = keyof typeof PLAN_SENSORS;
@@ -714,6 +955,29 @@ export const PlanElement = Base.extend({
   rulers: z.boolean().optional(),
   sensor: z.enum(['s35', 'ff', 'm43', 's16']).optional().describe('Omitted = Super 35.'),
   presentation: z.boolean().optional().describe('False: left out of the scene slides.'),
+  // Since version 23 (decision 0104).
+  walls: PlanWalls.optional().describe('Walls, on the Set layer, under everything else.'),
+  openings: PlanOpenings.optional().describe('Doors and windows in the walls.'),
+  locationId: ElementId.optional().describe('The location card of the set (a link).'),
+  circuits: z.array(PlanCircuit).max(MAX_PLAN_CIRCUITS).optional(),
+  voltage: z
+    .union([z.literal(120), z.literal(230)])
+    .optional()
+    .describe('Mains voltage of the set. Omitted = 230.'),
+  background: z
+    .object({
+      assetId: z.string().min(1).max(64),
+      opacity: z.number().min(0.05).max(1).optional().describe('Omitted = 1.'),
+      grey: z.boolean().optional().describe('Drawn in greys.'),
+    })
+    .optional()
+    .describe('A picture under the plan, stretched over the drawing: a floor plan to trace.'),
+  north: z
+    .int()
+    .min(0)
+    .max(359)
+    .optional()
+    .describe('Where north is, degrees clockwise from the top of the drawing. Omitted = not set.'),
 });
 export type PlanElementSchema = z.infer<typeof PlanElement>;
 

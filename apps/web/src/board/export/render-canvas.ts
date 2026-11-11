@@ -94,8 +94,10 @@ function drawOps(ctx: Ctx, ops: readonly Op[], images: Images, heading: string) 
         }
         if (op.kind === 'polygon') {
           ctx.closePath();
+          ctx.globalAlpha = op.opacity ?? 1;
           ctx.fillStyle = op.fill;
           ctx.fill();
+          ctx.globalAlpha = 1;
         } else {
           ctx.globalAlpha = op.opacity ?? 1;
           ctx.strokeStyle = op.color;

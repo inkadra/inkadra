@@ -221,7 +221,8 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
     await page.mouse.up();
   }
   await cropToolbar.getByRole('button', { name: 'Ruota di 90° a destra' }).click();
-  await expect(cropToolbar.locator('.crop-bar__deg')).toHaveText('90°');
+  const angleField = cropToolbar.getByRole('textbox', { name: 'Angolo di rotazione: valore' });
+  await expect(angleField).toHaveValue('90');
 
   // The crop stage shows the whole turned picture; the 16:9 preset stays landscape.
   await expect
@@ -238,16 +239,30 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
   await expect.poll(async () => (await cropBox.boundingBox())?.y).toBeGreaterThan(before?.y ?? 0);
   await page.keyboard.press('ArrowUp');
   await expect.poll(async () => (await cropBox.boundingBox())?.y).toBeCloseTo(before?.y ?? 0, 0);
-  // The angle slider is the themed one; double-click and the readout straighten to the nearest quarter turn.
+  // The angle slider is the themed one; the field next to it follows it and takes a typed angle,
+  // and a double-click on the slider straightens to the nearest quarter turn.
   const angle = cropToolbar.getByRole('slider', { name: 'Angolo di rotazione' });
   await expect(angle).toHaveClass(/ink-slider/);
   await angle.focus();
   await page.keyboard.press('ArrowRight');
-  await expect(cropToolbar.locator('.crop-bar__deg')).toHaveText('91°');
-  await cropToolbar
-    .getByRole('button', { name: 'Raddrizza al multiplo di 90° più vicino' })
-    .click();
-  await expect(cropToolbar.locator('.crop-bar__deg')).toHaveText('90°');
+  await expect(angleField).toHaveValue('91');
+  // On the thumb: a click elsewhere on the track would first move it there.
+  const track = (await angle.boundingBox())!;
+  await angle.dblclick({
+    position: { x: 8 + ((91 + 179) / 358) * (track.width - 16), y: track.height / 2 },
+  });
+  await expect(angleField).toHaveValue('90');
+  await angleField.fill('95');
+  await angleField.press('Enter');
+  await expect(angle).toHaveValue('95');
+  await angleField.fill('90');
+  await angleField.press('Enter');
+  await expect(angle).toHaveValue('90');
+  // The field shares the slider's range: ±180 is not a free angle and goes back.
+  await angleField.fill('-180');
+  await angleField.press('Enter');
+  await expect(angleField).toHaveValue('90');
+  await expect(angle).toHaveValue('90');
   await page.mouse.move(0, 0);
 
   await shoot(page, 'dark', 'desktop-edit-dark.png');

@@ -24,6 +24,12 @@
   --ink-ease-out: cubic-bezier(.22, 1, .36, 1);
   --ink-ease-in: cubic-bezier(.4, 0, 1, 1);
   --ink-ease-pop: cubic-bezier(.34, 1.4, .64, 1);
+  --ink-sidebar-width: 236px;
+  --ink-launcher-size: 42px;
+  --ink-header-height: 42px;
+  --ink-float-gap: 12px;
+  --ink-rail-width: 52px;
+  --ink-canvas-grid: 22px;
   --ink-scrim-tour: rgba(10, 10, 12, 0.62);
   --ink-bg-rail: #0E0E10;
   --ink-bg-app: #141416;

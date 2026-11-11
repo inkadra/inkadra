@@ -147,6 +147,13 @@ export const GUEST_ELEMENT_FIELDS = {
     'rulers',
     'sensor',
     'presentation',
+    'walls',
+    'openings',
+    'locationId',
+    'circuits',
+    'voltage',
+    'background',
+    'north',
   ],
 } as const satisfies Record<ElementType, readonly string[]>;
 
@@ -172,6 +179,11 @@ export function toGuestElement(element: Element, label?: string): Record<string,
     for (const key of ['strokes', 'shapes', 'icons'] as const) {
       const list = element[key] as Array<Parameters<typeof planItemLayer>[0]> | undefined;
       if (list) out[key] = list.filter((item) => !hidden.has(planItemLayer(item)));
+    }
+    // Walls and their openings are the Set layer.
+    if (hidden.has('set')) {
+      delete out.walls;
+      delete out.openings;
     }
   }
   out.createdBy = null;

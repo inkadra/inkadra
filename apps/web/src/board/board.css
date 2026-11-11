@@ -4406,25 +4406,6 @@ button.card__play {
 .crop-bar__angle .ink-slider {
   width: 180px;
 }
-.crop-bar__deg {
-  min-width: 34px;
-  height: 26px;
-  padding: 0 4px;
-  border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: transparent;
-  color: var(--ink-text-muted);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-}
-.crop-bar__deg:hover:not(:disabled) {
-  background: var(--ink-surface-3);
-  color: var(--ink-text-primary);
-}
-.crop-bar__deg:disabled {
-  cursor: default;
-}
 .crop-bar__text-btn,
 .crop-bar__done {
   width: auto;
@@ -4477,9 +4458,11 @@ button.card__play {
   .crop-bar__angle {
     height: 44px;
   }
-  .crop-bar__deg {
-    min-width: 44px;
+  .crop-bar .plan-num {
     height: 44px;
+  }
+  .crop-bar .plan-num input {
+    font-size: 16px;
   }
   .crop-bar .ink-slider {
     height: 44px;
@@ -4631,7 +4614,7 @@ button.card__play {
   }
   /* A card's side panel opens under the top-right header panel, not behind it. */
   .ink-shell .canvas .canvas__panel {
-    top: calc(12px * 2 + 42px);
+    top: calc(var(--ink-float-gap) * 2 + var(--ink-header-height));
     right: 12px;
     bottom: 12px;
   }
@@ -4643,7 +4626,7 @@ button.card__play {
     top: calc(100% + 12px);
   }
   :root .comments-panel {
-    top: calc(12px * 2 + 42px);
+    top: calc(var(--ink-float-gap) * 2 + var(--ink-header-height));
     right: 12px;
     bottom: 12px;
   }
@@ -4684,7 +4667,8 @@ button.card__play {
   .ink-shell > .ink-main--canvas .board-preview > .version-banner {
     position: relative;
     z-index: 1;
-    margin: calc(12px * 2 + 42px) 12px 0 var(--ink-shell-left, 12px);
+    margin: calc(var(--ink-float-gap) * 2 + var(--ink-header-height)) var(--ink-float-gap) 0
+      var(--ink-shell-left, var(--ink-float-gap));
     border: 0;
     border-radius: var(--ink-radius-lg);
     background: var(--ink-surface-float);

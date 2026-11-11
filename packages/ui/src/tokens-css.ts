@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { dark, effects, layers, light, motion, radius } from './tokens.ts';
+import { dark, effects, layers, layout, light, motion, radius } from './tokens.ts';
 
 const vars = (tokens: Record<string, string>, indent: string) =>
   Object.entries(tokens)
@@ -19,6 +19,7 @@ ${vars(layers, '  ')}
 ${vars(effects, '  ')}
 ${vars(radius, '  ')}
 ${vars(motion, '  ')}
+${vars(Object.fromEntries(Object.entries(layout).map(([k, v]) => [k, `${v}px`])), '  ')}
 ${vars(dark, '  ')}
 }
 

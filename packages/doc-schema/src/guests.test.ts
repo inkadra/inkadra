@@ -304,6 +304,41 @@ it('leaves the layers hidden on a plan out of what guests receive', () => {
   expect(out.icons.map((i) => i.id)).toEqual(['sofaAAAAAAAAA']);
 });
 
+it('shows guests the walls, circuits and links of a plan, the walls only with its Set', () => {
+  const plan = Element.parse({
+    id: 'planAAAAAAAAA',
+    type: 'plan',
+    x: 0,
+    y: 0,
+    w: 480,
+    z: 'a0',
+    parent: null,
+    createdBy: 'u',
+    createdAt: 0,
+    walls: [{ id: 'wallAAAAAAAAA', points: [0, 0, 100, 0], thickness: 9 }],
+    openings: [{ id: 'doorAAAAAAAAA', wall: 'wallAAAAAAAAA', kind: 'door', at: 50, width: 40 }],
+    locationId: 'placeAAAAAAAA',
+    circuits: [{ id: 'circuitAAAAAA', name: 'A', amps: 16 }],
+    voltage: 120,
+    north: 90,
+    background: { assetId: 'asset-1', opacity: 0.5 },
+  });
+  const out = toGuestElement(plan);
+  expect(out).toMatchObject({
+    walls: [{ id: 'wallAAAAAAAAA' }],
+    openings: [{ id: 'doorAAAAAAAAA' }],
+    locationId: 'placeAAAAAAAA',
+    circuits: [{ name: 'A', amps: 16 }],
+    voltage: 120,
+    north: 90,
+    background: { assetId: 'asset-1' },
+  });
+  expect(Element.safeParse(out).success).toBe(true);
+  const noSet = toGuestElement({ ...plan, hiddenLayers: ['set'] } as typeof plan);
+  expect(noSet).not.toHaveProperty('walls');
+  expect(noSet).not.toHaveProperty('openings');
+});
+
 it('sends rich character details without contact or notes in the guest payload', () => {
   const card = Element.parse({
     id: 'character123',

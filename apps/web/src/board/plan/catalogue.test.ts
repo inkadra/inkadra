@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { LEGACY_KINDS, PLAN_CATEGORIES, PLAN_NOTE_TOOLS } from '@inkadra/canvas-core';
+import { PLAN_ICON_KINDS } from '@inkadra/doc-schema';
+import { describe, expect, it } from 'vitest';
+import { LOCALES } from '../../i18n/locales.ts';
+
+type Plan = {
+  icons: Record<string, string>;
+  synonyms: Record<string, string>;
+  categories: Record<string, string>;
+  groups: Record<string, string>;
+};
+const plan = (locale: string): Plan =>
+  JSON.parse(readFileSync(join(__dirname, `../../i18n/${locale}.json`), 'utf8')).board.plan;
+
+describe.each(LOCALES)('the set plan catalogue in %s (decision 0104)', (locale) => {
+  const p = plan(locale);
+
+  it('names every icon kind, every annotation tool, category and group', () => {
+    const missing = [
+      ...[...PLAN_ICON_KINDS, ...PLAN_NOTE_TOOLS].filter((k) => !p.icons[k]?.trim()),
+      ...PLAN_CATEGORIES.filter((c) => !p.categories[c.id]?.trim()).map((c) => `category ${c.id}`),
+      ...PLAN_CATEGORIES.flatMap((c) => c.groups)
+        .filter((g) => !p.groups[g.id]?.trim())
+        .map((g) => `group ${g.id}`),
+    ];
+    expect(missing).toEqual([]);
+    expect(p.categories.notes?.trim()).toBeTruthy();
+  });
+
+  it('gives every kind the library offers words to be found by', () => {
+    const offered = PLAN_ICON_KINDS.filter((k) => !(k in LEGACY_KINDS));
+    expect(offered.filter((k) => !p.synonyms[k]?.trim())).toEqual([]);
+  });
+});

@@ -302,8 +302,8 @@ select {
 
 .ink-shell {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  grid-template-rows: 48px minmax(0, 1fr);
+  grid-template-columns: var(--ink-sidebar-width) minmax(0, 1fr);
+  grid-template-rows: var(--ink-header-height) minmax(0, 1fr);
   height: 100%;
   background: var(--ink-bg-rail);
 }
@@ -311,13 +311,13 @@ select {
   grid-template-columns: 56px minmax(0, 1fr);
 }
 .ink-shell--rail {
-  grid-template-columns: 52px 210px minmax(0, 1fr);
+  grid-template-columns: var(--ink-rail-width) var(--ink-sidebar-width) minmax(0, 1fr);
 }
 .ink-shell--no-sidebar {
   grid-template-columns: minmax(0, 1fr);
 }
 .ink-shell--rail.ink-shell--no-sidebar {
-  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-columns: var(--ink-rail-width) minmax(0, 1fr);
 }
 
 .ink-rail {
@@ -569,8 +569,8 @@ select {
   overflow: clip;
   background-color: var(--ink-bg-canvas);
   background-image: radial-gradient(circle, var(--ink-canvas-dot) 1px, transparent 1.5px);
-  background-size: 22px 22px;
-  background-position: 11px 11px;
+  background-size: var(--ink-canvas-grid) var(--ink-canvas-grid);
+  background-position: calc(var(--ink-canvas-grid) / 2) calc(var(--ink-canvas-grid) / 2);
 }
 
 /* Floating shell (#333) ------------------------------------------------------- */
@@ -595,11 +595,8 @@ select {
    from each other. Phones keep their own layout (mobile-shell.css in the web app). */
 @media (width >= 768px) {
   .ink-shell {
-    --ink-float-gap: 12px;
-    --ink-sidebar-width: 236px;
-    --ink-launcher-size: 42px;
-    --ink-header-height: 42px;
-    /* Where the panels beside the navigation start, and where the free part of a board begins. */
+    /* Sizes come from tokens.layout (tokens.css). Where the panels beside the navigation start,
+       and where the free part of a board begins. */
     --ink-shell-left: calc(var(--ink-sidebar-width) + var(--ink-float-gap) * 2);
     --ink-board-left: calc(var(--ink-sidebar-width) + var(--ink-float-gap));
     position: relative;
@@ -1388,18 +1385,36 @@ select {
 
 /* Slider ------------------------------------------------------------------------- */
 
+/*
+ * Default: a 4 px line, filled in the text colour, and a 16 px thumb with a surface border and a
+ * thin ring. `--meaning`: an 8 px track painted by the caller (a gradient) and an 18 px thumb in
+ * the colour at the value, ringed in text and surface colour so it reads on any gradient.
+ * The unfilled part is --ink-text-secondary: --ink-border-strong is under 3:1 on every surface.
+ */
 .ink-slider {
   --ink-slider-track: linear-gradient(
     to right,
     var(--ink-text-primary) var(--ink-slider-fill, 0%),
-    var(--ink-border-strong) var(--ink-slider-fill, 0%)
+    var(--ink-text-secondary) var(--ink-slider-fill, 0%)
   );
+  --ink-slider-height: 4px;
+  --ink-slider-size: 16px;
+  --ink-slider-border-width: 3px;
+  --ink-slider-border-color: var(--ink-surface-1);
+  --ink-slider-ring: 0 0 0 1px var(--ink-text-secondary);
   appearance: none;
   width: 96px;
   height: 28px;
   margin: 0;
   background: transparent;
   cursor: pointer;
+}
+.ink-slider--meaning {
+  --ink-slider-height: 8px;
+  --ink-slider-size: 18px;
+  --ink-slider-border-width: 2px;
+  --ink-slider-border-color: var(--ink-text-primary);
+  --ink-slider-ring: 0 0 0 2px var(--ink-surface-1);
 }
 .ink-slider:focus-visible {
   box-shadow: none;
@@ -1409,49 +1424,55 @@ select {
   cursor: default;
 }
 .ink-slider::-webkit-slider-runnable-track {
-  height: 2px;
-  border-radius: 1px;
+  height: var(--ink-slider-height);
+  border-radius: var(--ink-radius-full);
   background: var(--ink-slider-track);
 }
 .ink-slider::-moz-range-track {
-  height: 2px;
-  border-radius: 1px;
+  height: var(--ink-slider-height);
+  border-radius: var(--ink-radius-full);
   background: var(--ink-slider-track);
 }
 .ink-slider::-webkit-slider-thumb {
   appearance: none;
-  width: 12px;
-  height: 12px;
-  margin-top: -5px;
+  box-sizing: border-box;
+  width: var(--ink-slider-size);
+  height: var(--ink-slider-size);
+  margin-top: calc((var(--ink-slider-height) - var(--ink-slider-size)) / 2);
   border-radius: 50%;
-  border: 2px solid var(--ink-surface-1);
-  background: var(--ink-text-primary);
+  border: var(--ink-slider-border-width) solid var(--ink-slider-border-color);
+  background: var(--ink-slider-thumb, var(--ink-text-primary));
+  box-shadow: var(--ink-slider-ring);
 }
+/* Gecko sizes the thumb's content box and adds the border outside it, whatever box-sizing says:
+ * the content is the WebKit size less both borders, so the two engines draw the same thumb. */
 .ink-slider::-moz-range-thumb {
-  width: 8px;
-  height: 8px;
+  box-sizing: content-box;
+  width: calc(var(--ink-slider-size) - 2 * var(--ink-slider-border-width));
+  height: calc(var(--ink-slider-size) - 2 * var(--ink-slider-border-width));
   border-radius: 50%;
-  border: 2px solid var(--ink-surface-1);
-  background: var(--ink-text-primary);
+  border: var(--ink-slider-border-width) solid var(--ink-slider-border-color);
+  background: var(--ink-slider-thumb, var(--ink-text-primary));
+  box-shadow: var(--ink-slider-ring);
 }
+/* The ring stays inside the focus ring, so the meaning thumb keeps its surface gap. */
 .ink-slider:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow:
+    var(--ink-slider-ring),
+    0 0 0 5px var(--ink-accent-primary);
 }
 .ink-slider:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow:
+    var(--ink-slider-ring),
+    0 0 0 5px var(--ink-accent-primary);
 }
 @media (pointer: coarse) {
   .ink-slider {
+    --ink-slider-size: 20px;
     height: 44px;
   }
-  .ink-slider::-webkit-slider-thumb {
-    width: 20px;
-    height: 20px;
-    margin-top: -9px;
-  }
-  .ink-slider::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
+  .ink-slider--meaning {
+    --ink-slider-size: 22px;
   }
 }
 

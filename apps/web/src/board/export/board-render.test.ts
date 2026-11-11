@@ -132,8 +132,10 @@ describe('set plans in exports', () => {
     // Ink and palette colours print with the theme's tokens.
     expect(drawing.ops[0]).toMatchObject({ kind: 'polyline', color: '#text-secondary' });
     const polygons = drawing.ops.filter((o) => o.kind === 'polygon');
-    // The view cone and the body of the camera.
-    expect(polygons).toHaveLength(2);
+    // The view cone, see-through, and the opaque body and lens of the camera (decision 0104).
+    expect(polygons).toHaveLength(3);
+    expect(polygons[0]).toMatchObject({ opacity: 0.14 });
+    expect(polygons[1]).not.toHaveProperty('opacity');
     // Turned 90°: the cone points down from the centre (320, 34 + 213).
     const cone = polygons[0] as Extract<(typeof polygons)[number], { kind: 'polygon' }>;
     const ys = cone.points.filter((_, i) => i % 2 === 1);

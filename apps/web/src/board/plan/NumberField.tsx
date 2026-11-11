@@ -33,7 +33,9 @@ export function NumberField({
   // biome-ignore lint/correctness/useExhaustiveDependencies: follows the value, not the locale.
   useEffect(() => setDraft(show(value)), [value]);
   const commit = () => {
-    const v = Number(draft.replace(',', '.').replace(/[^\d.-]/g, ''));
+    const text = draft.replace(',', '.').replace(/[^\d.-]/g, '');
+    // No digit at all (cleared, or only letters) is not a number: Number('') would read 0.
+    const v = /\d/.test(text) ? Number(text) : Number.NaN;
     if (Number.isFinite(v) && v >= min && v <= max && v !== value) onCommit(v);
     else setDraft(show(value));
   };

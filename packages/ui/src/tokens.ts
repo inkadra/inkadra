@@ -162,7 +162,19 @@ export const light: Record<ColorToken, string> = {
 };
 
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 6: 24, 8: 32, 12: 48 } as const;
-export const layout = { rail: 52, sidebar: 210, header: 48, inspector: 300, grid: 22 } as const;
+/**
+ * Shell sizes in px (#333), exposed as --ink-* by tokens.css: the floating navigation and the
+ * launcher that replaces it when collapsed, the header panels, the gap around them, the icon
+ * rail some callers pass, and the dot grid of the canvas background (canvas-core's GRID).
+ */
+export const layout = {
+  'sidebar-width': 236,
+  'launcher-size': 42,
+  'header-height': 42,
+  'float-gap': 12,
+  'rail-width': 52,
+  'canvas-grid': 22,
+} as const;
 
 /**
  * Corner radii (decision of #332): xs badges and small chips, sm buttons, fields and menu items,
