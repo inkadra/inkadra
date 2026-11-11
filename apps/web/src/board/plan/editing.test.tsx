@@ -5,11 +5,14 @@ import {
   addVariant,
   createElement,
   listElements,
+  modifiersOn,
+  PLAN_VIEW_H,
+  PLAN_VIEW_W,
   type PlanElement,
   updatePlanCircuits,
   variantView,
 } from '@inkadra/canvas-core';
-import { createBoardDoc } from '@inkadra/doc-schema';
+import { createBoardDoc, type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -134,4 +137,118 @@ it('writes a circuit name once, on blur, and only that circuit', async () => {
   expect(m.store.undo.undoStack).toHaveLength(1);
   m.store.undo.undo();
   expect(planOf(doc, plan.id).circuits?.map((c) => c.name)).toEqual(['A', 'Garden']);
+});
+
+// Snapping (pull request 603, decision 0104) ---------------------------------------
+
+const centreOf = (i: { x: number; y: number }) => ({
+  x: (i.x / STROKE_GRID) * PLAN_VIEW_W,
+  y: (i.y / STROKE_GRID) * PLAN_VIEW_H,
+});
+
+it('places a project-kit light with its modifiers in one undo step, the light selected', async () => {
+  const doc = createBoardDoc(boardId);
+  const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+  const m = await mount(doc, plan.id);
+  m.store.undo.clear();
+  let id: string | null = null;
+  await act(async () => {
+    id = m.ed.placeIcon(
+      'cob',
+      { x: 0.5, y: 0.5 },
+      {
+        fields: { watts: 300 },
+        modifiers: ['softbox', 'grid'],
+      },
+    );
+  });
+  await m.render();
+  const icons = planOf(doc, plan.id).icons ?? [];
+  expect(icons.map((i) => [i.kind, i.on])).toEqual([
+    ['cob', undefined],
+    ['softbox', id],
+    ['grid', id],
+  ]);
+  // Stacked outwards on its front, in order.
+  expect(modifiersOn(icons[0] as PlanIcon, icons).map((i) => i.kind)).toEqual(['softbox', 'grid']);
+  expect(m.ed.selection).toEqual([{ kind: 'icons', id }]);
+  expect(m.store.undo.undoStack).toHaveLength(1);
+  m.store.undo.undo();
+  expect(planOf(doc, plan.id).icons ?? []).toEqual([]);
+});
+
+/** A sofa with a person on it, and a stool. */
+async function seated() {
+  const doc = createBoardDoc(boardId);
+  const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+  const chair = addPlanIcon(doc, plan.id, { ...at, w: 180, h: 80, kind: 'sofa' }) as string;
+  const stool = addPlanIcon(doc, plan.id, { ...at, x: 1000, y: 1000, kind: 'stool' }) as string;
+  const m = await mount(doc, plan.id);
+  let actor: string | null = null;
+  await act(async () => {
+    actor = m.ed.placeIcon('actor', { x: 0.1, y: 0.1 }, { on: chair });
+  });
+  await m.render();
+  return { doc, plan, chair, stool, actor: actor as unknown as string, m };
+}
+
+it('turns what sits on items turned together, by R or the menu', async () => {
+  const { doc, plan, chair, stool, actor, m } = await seated();
+  const before = planOf(doc, plan.id).icons?.find((i) => i.id === actor) as PlanIcon;
+  await act(async () =>
+    m.ed.setSelection([
+      { kind: 'icons', id: chair },
+      { kind: 'icons', id: stool },
+    ]),
+  );
+  await m.render();
+  await act(async () => m.ed.rotate(90));
+  const after = planOf(doc, plan.id).icons?.find((i) => i.id === actor) as PlanIcon;
+  expect(after.on).toBe(chair);
+  expect(after.rotation ?? 0).toBe(((before.rotation ?? 0) + 90) % 360);
+  expect(centreOf(after)).not.toEqual(centreOf(before));
+});
+
+it('settles what sits on a base resized from Properties', async () => {
+  const { doc, plan, chair, actor, m } = await seated();
+  const base = planOf(doc, plan.id).icons?.find((i) => i.id === chair) as PlanIcon;
+  const before = planOf(doc, plan.id).icons?.find((i) => i.id === actor) as PlanIcon;
+  // As the Width field writes it.
+  await act(async () => m.ed.write({ ...base, w: (base.w ?? 60) * 2, h: (base.h ?? 60) * 2 }));
+  const after = planOf(doc, plan.id).icons?.find((i) => i.id === actor) as PlanIcon;
+  expect(after.on).toBe(chair);
+  expect([after.x, after.y]).not.toEqual([before.x, before.y]);
+});
+
+it('never snaps to an icon on a hidden layer', async () => {
+  const doc = createBoardDoc(boardId);
+  const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+  const chair = addPlanIcon(doc, plan.id, { ...at, kind: 'chair' }) as string;
+  const m = await mount(doc, plan.id);
+  const on = (i: PlanIcon) => centreOf(i);
+  const icon = planOf(doc, plan.id).icons?.[0] as PlanIcon;
+  expect(m.ed.snapAt({ kind: 'actor' }, on(icon))?.id).toBe(chair);
+  await act(async () => m.ed.toggleHidden('set'));
+  await m.render();
+  expect(m.ed.snapAt({ kind: 'actor' }, on(icon))).toBeNull();
+  // A locked layer's icons are still bases.
+  await act(async () => m.ed.toggleHidden('set'));
+  await act(async () => m.ed.toggleLocked('set'));
+  await m.render();
+  expect(m.ed.snapAt({ kind: 'actor' }, on(icon))?.id).toBe(chair);
+});
+
+it("drops an on whose base is gone at the item's next write", async () => {
+  const doc = createBoardDoc(boardId);
+  const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+  const box = addPlanIcon(doc, plan.id, {
+    ...at,
+    kind: 'softbox',
+    on: 'goneAAAAAAAAA',
+  }) as string;
+  const m = await mount(doc, plan.id);
+  const icon = planOf(doc, plan.id).icons?.find((i) => i.id === box) as PlanIcon;
+  await act(async () => m.ed.write({ ...icon, label: 'Box' }));
+  expect(planOf(doc, plan.id).icons?.find((i) => i.id === box)).toMatchObject({ label: 'Box' });
+  expect(planOf(doc, plan.id).icons?.find((i) => i.id === box)?.on).toBeUndefined();
 });

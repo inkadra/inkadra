@@ -3,12 +3,17 @@ import {
   addBlockingStep,
   addShape,
   addStroke,
+  attachedPlacement,
+  attachIcon,
+  attachRole,
   bendThrough,
   blockingCurve,
   blockingPositions,
   coneEnd,
+  detachIcon,
   encodeStroke,
   gridLength,
+  iconCentre,
   iconCone,
   isSized,
   itemBox,
@@ -16,6 +21,7 @@ import {
   itemsBox,
   itemsInRect,
   moveItem,
+  moveWithAttached,
   normalizeRotation,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
@@ -25,15 +31,20 @@ import {
   planItem,
   planItemAt,
   planItems,
+  pulledAway,
   type ResizeHandle,
   ROTATE_STEP,
   resizeItem,
   rotateItem,
+  rotateManyWithAttached,
+  rotateWithAttached,
   scaleFor,
+  settleAttached,
   shownAngle,
   snapPlanPoint,
   toGrid,
   updateElement,
+  withAttached,
   withGroups,
   withReachAt,
 } from '@inkadra/canvas-core';
@@ -114,7 +125,15 @@ interface TextDraft {
   color: string;
 }
 type Gesture =
-  | { kind: 'move'; ref: PlanItemRef; start: Point; item: PlanItem }
+  | {
+      kind: 'move';
+      ref: PlanItemRef;
+      start: Point;
+      item: PlanItem;
+      /** Snapping (decision 0104): the base it lands on, and whether it was pulled off its own. */
+      target?: string | null;
+      pulled?: boolean;
+    }
   | { kind: 'rotate'; ref: PlanItemRef; centre: Point; from: number; item: PlanItem }
   | { kind: 'draw'; points: Point[] }
   | { kind: 'shape'; shape: DragKind; a: Point; b: Point; raw: [Point, Point] }
@@ -214,6 +233,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   const [gridDraft, setGridDraft] = useState<'0.25' | '0.5' | '1'>(drawn.grid ?? '0.5');
   const [rulersDraft, setRulersDraft] = useState(drawn.rulers ?? true);
   const [chip, setChip] = useState<string | null>(null);
+  /** The base a dragged icon would attach to, lit while dragging (decision 0104). */
+  const [target, setTarget] = useState<PlanIcon | null>(null);
   const [marquee, setMarquee] = useState<{ a: Point; b: Point } | null>(null);
   const [live, setLiveState] = useState<{ points: Point[]; n: number } | null>(null);
   const setLive = (points: Point[] | null) =>
@@ -407,7 +428,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     }
     ed.setLockedItem(null);
     if (armed && !isNoteTool(armed)) {
-      ed.placeIcon(armed, snapped(p), { keep: e.shiftKey });
+      const on = ed.attach && !e.altKey ? ed.snapAt({ kind: armed }, view(p)) : null;
+      ed.placeIcon(armed, snapped(p), { keep: e.shiftKey, on: on?.id ?? null });
       return;
     }
     const rotateHandle = (e.target as Element).closest('[data-rotate]');
@@ -559,14 +581,23 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         );
         d = { x: view(to).x - b.x, y: view(to).y - b.y };
       }
-      ed.setPreview(g.items.map((i) => moveItem(i, d)));
+      // Icons take what is attached to them along.
+      const carried = moveWithAttached(
+        ed.icons,
+        g.items.filter(isIcon).map((i) => i.id),
+        d,
+      );
+      ed.setPreview([...g.items.filter((i) => !isIcon(i)).map((i) => moveItem(i, d)), ...carried]);
       return;
     }
     if (g.kind === 'rotateMany') {
       const q = view(p);
       let degrees = ((Math.atan2(q.y - g.centre.y, q.x - g.centre.x) - g.from) * 180) / Math.PI;
       if (ed.snap || e.shiftKey) degrees = Math.round(degrees / ROTATE_STEP) * ROTATE_STEP;
-      ed.setPreview(g.items.map((i) => rotateItem(i, normalizeRotation(degrees), g.centre)));
+      // What is attached to them turns with them (decision 0104).
+      ed.setPreview(
+        rotateManyWithAttached(ed.icons, g.items, normalizeRotation(degrees), g.centre),
+      );
       const shownDeg = normalizeRotation(degrees);
       setChip(`${shownDeg > 180 ? shownDeg - 360 : shownDeg}°`);
       return;
@@ -582,7 +613,34 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         );
         d = { x: view(to).x - c.x, y: view(to).y - c.y };
       }
-      ed.setPreview(moveItem(g.item, d));
+      if (!isIcon(g.item)) {
+        ed.setPreview(moveItem(g.item, d));
+        return;
+      }
+      const icons = ed.icons;
+      const moved = moveItem(g.item, d);
+      const at = iconCentre(moved);
+      const base = g.item.on ? icons.find((i) => i.id === (g.item as PlanIcon).on) : undefined;
+      if (base && !pulledAway(g.item, at, icons)) {
+        // Still on its base: a dolly slides along its track, a person takes the nearest seat.
+        const place = attachedPlacement(moved, base, icons);
+        const sits = place ? { ...moved, ...place } : g.item;
+        const rest = icons.map((i) => (i.id === sits.id ? sits : i));
+        g.pulled = false;
+        g.target = null;
+        setTarget(null);
+        ed.setPreview([sits, ...settleAttached(rest, sits.id)]);
+        return;
+      }
+      // Free, or pulled off its base: it may land on another, unless Alt or Snap off says free.
+      g.pulled = !!base;
+      const free = !ed.attach || e.altKey || !attachRole(g.item.kind);
+      const target = free ? null : ed.snapAt(g.item, at);
+      g.target = target?.id ?? null;
+      setTarget(target);
+      // What is on it moves with it.
+      const group = moveWithAttached(icons, [g.item.id], d);
+      ed.setPreview(group.length ? group.map((i) => (i.id === moved.id ? moved : i)) : moved);
     } else if (g.kind === 'resize') {
       const symbol = isIcon(g.item) && !isSized(g.item.kind);
       ed.setPreview(
@@ -619,7 +677,12 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       let degrees = ((angle - g.from) * 180) / Math.PI;
       if (ed.snap || e.shiftKey) degrees = Math.round(degrees / ROTATE_STEP) * ROTATE_STEP;
       const turned = rotateItem(g.item, normalizeRotation(degrees));
-      ed.setPreview(turned);
+      // A base turns what is on it as one piece.
+      const carried =
+        isIcon(g.item) && withAttached(ed.icons, [g.item.id]).size > 1
+          ? rotateWithAttached(ed.icons, g.item.id, normalizeRotation(degrees))
+          : [];
+      ed.setPreview(carried.length ? carried : turned);
       setChip(`${shownAngle(turned)}°`);
     } else if (g.kind === 'draw') {
       const events = e.nativeEvent.getCoalescedEvents?.() ?? [e.nativeEvent];
@@ -676,7 +739,9 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       setChip(null);
       const next = ed.previewRef.current;
       ed.setPreview(null);
-      if (next) ed.write(next, 'items' in g ? g.items : [g.item]);
+      setTarget(null);
+      if (!next) return;
+      ed.write(withSnapping(g, next), 'items' in g ? g.items : [g.item]);
       return;
     }
     if (g.kind === 'draw') {
@@ -889,6 +954,28 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     </g>
   );
   const moving = ed.moving;
+  const litIcon = target ?? ed.icons.find((i) => i.id === ed.dropTarget) ?? null;
+  const lit = litIcon ? itemBox(litIcon) : null;
+  /**
+   * What a gesture writes, with the snapping of decision 0104: an icon pulled off its base is
+   * detached, one let go on a base is attached. What sits on a resized base settles in
+   * ed.writeItems, as for every write.
+   */
+  const withSnapping = (g: Gesture, next: PlanItem[]): PlanItem[] => {
+    if (!('item' in g) || !isIcon(g.item)) return next;
+    const id = g.item.id;
+    const merge = (list: readonly PlanIcon[], by: readonly PlanItem[]) =>
+      list.map((i) => (by.find((n) => n.id === i.id) as PlanIcon | undefined) ?? i);
+    const out = new Map(next.map((i) => [i.id, i]));
+    let icons = merge(ed.icons, next);
+    const take = (changed: readonly PlanIcon[]) => {
+      for (const i of changed) out.set(i.id, i);
+      icons = merge(icons, changed);
+    };
+    if (g.kind === 'move' && g.pulled) take(detachIcon(icons, id));
+    if (g.kind === 'move' && g.target) take(attachIcon(icons, id, g.target));
+    return [...out.values()];
+  };
   const reachEnd = isIcon(current) && !moving ? coneEnd(current, ed.plan.sensor) : null;
   const reachGrip = reachEnd && (
     <circle
@@ -954,6 +1041,16 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
               y1: toGrid(liveShape.b.y),
             } as PlanShape
           }
+        />
+      )}
+      {lit && (
+        <rect
+          className="plan-editor__target"
+          x={lit.x - 6}
+          y={lit.y - 6}
+          width={lit.w + 12}
+          height={lit.h + 12}
+          rx={6}
         />
       )}
       {many.length > 1 ? manyBox : !moving && outline}

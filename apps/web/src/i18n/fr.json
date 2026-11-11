@@ -1498,7 +1498,8 @@
         "fill": "Remplissage",
         "back": "Contre",
         "practical": "Practical"
-      }
+      },
+      "snapIcons": "Accrocher les icônes"
     },
     "contextual": {
       "done": "Terminé",

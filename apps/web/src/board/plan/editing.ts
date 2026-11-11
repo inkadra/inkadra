@@ -10,8 +10,10 @@ import {
   itemsBox,
   itemTier,
   kindLayer,
+  layerOf,
   measureEnds,
   moveItem,
+  moveWithAttached,
   type PlanElement,
   type PlanItem,
   type PlanItemRef,
@@ -20,12 +22,17 @@ import {
   planItems,
   removePlanItems,
   rotateItem,
+  rotateManyWithAttached,
+  rotateWithAttached,
   type SceneElement,
+  settleWrite,
+  snapTarget,
   toGrid,
   transferPlanItems,
   updateElement,
   updatePlanItems,
   variantView,
+  withAttached,
   withGroups,
 } from '@inkadra/canvas-core';
 import {
@@ -106,6 +113,8 @@ export function usePlanEditing(props: PlanEditorProps) {
   /** The base setup drawn faintly behind a setup. */
   const [ghostBase, setGhostBase] = useState(false);
   const [moving, setMoving] = useState<string | null>(null);
+  /** The base an icon dragged from the library would attach to, lit on the plan. */
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [penColor, setPenColor] = useState<string | null>(null);
   const [lockedItem, setLockedItem] = useState<PlanItem | null>(null);
   const [tab, setTab] = useState<PanelTab>('properties');
@@ -145,6 +154,18 @@ export function usePlanEditing(props: PlanEditorProps) {
           shapes: replaceIn(drawn.shapes, preview),
           icons: replaceIn(drawn.icons, preview),
         };
+  /**
+   * The base an icon would attach to at `at` (view units), for every way of placing or dragging
+   * one (decision 0104): never an icon on a layer this person or the setup hides, so nothing
+   * attaches to something invisible. A locked layer's icons stay bases: a person may still sit
+   * on a locked sofa, which itself does not move.
+   */
+  const snapAt = (item: Pick<PlanIcon, 'kind'> & Partial<Pick<PlanIcon, 'id'>>, at: Point) =>
+    snapTarget(
+      item,
+      at,
+      (drawn.icons ?? []).filter((i) => !hiddenLayers.has(layerOf(i))),
+    );
   const selected = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
   const item = selected ? (planItem(drawn, selected) ?? null) : null;
   const many = selection.length > 1 ? selection.flatMap((r) => planItem(drawn, r) ?? []) : [];
@@ -173,12 +194,24 @@ export function usePlanEditing(props: PlanEditorProps) {
    * differs from `baseline` is written (for a gesture, the items as they were when it started),
    * so another person's edit of another field made meanwhile stays.
    */
-  const writeItems = (items: readonly PlanItem[], baseline?: readonly PlanItem[]) => {
+  const writeItems = (
+    written: readonly PlanItem[],
+    baseline?: readonly PlanItem[],
+    /** Icons placed in this change, not drawn yet, and the plan each went to. */
+    placed: { icons: readonly PlanIcon[]; owners: ReadonlyMap<string, string> } = {
+      icons: [],
+      owners: new Map(),
+    },
+  ) => {
+    // Whatever wrote them, the attachment rules hold (decision 0104): an `on` whose base is gone
+    // is dropped, and what sits on a written base is placed again.
+    const items = settleWrite([...icons, ...placed.icons], written);
     const all = planItems(drawn);
     const before =
       baseline ?? items.flatMap((i) => all.find((e) => e.item.id === i.id)?.item ?? []);
-    const own = items.filter((i) => ownerOf(i.id) === plan.id);
-    const shared = items.filter((i) => ownerOf(i.id) !== plan.id);
+    const owner = (id: string) => placed.owners.get(id) ?? ownerOf(id);
+    const own = items.filter((i) => owner(i.id) === plan.id);
+    const shared = items.filter((i) => owner(i.id) !== plan.id);
     if (own.length) updatePlanItems(doc, plan.id, own, LOCAL, before);
     if (shared.length && base) updatePlanItems(doc, base.id, shared, LOCAL, before);
   };
@@ -233,12 +266,22 @@ export function usePlanEditing(props: PlanEditorProps) {
     if (many.length > 1) {
       const b = itemsBox(many);
       const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
-      write(many.map((i) => rotateItem(i, degrees, c)));
-    } else if (item) write(rotateItem(item, degrees));
+      // What is attached to them turns with them, as they move together (decision 0104).
+      write(rotateManyWithAttached(icons, many, degrees, c));
+    } else if (isIcon(item) && withAttached(icons, [item.id]).size > 1)
+      // A base turns what is on it as one piece (decision 0104).
+      write(rotateWithAttached(icons, item.id, degrees));
+    else if (item) write(rotateItem(item, degrees));
   };
   const nudge = (d: Point) => {
     const items = chosen();
-    if (items.length) write(items.map((i) => moveItem(i, d)));
+    if (!items.length) return;
+    const carried = moveWithAttached(
+      icons,
+      items.filter(isIcon).map((i) => i.id),
+      d,
+    );
+    write([...items.filter((i) => !isIcon(i)).map((i) => moveItem(i, d)), ...carried]);
   };
   /** The colours paint what is selected; with nothing selected, the next strokes and icons. */
   const pickColor = (hex: string) => {
@@ -298,32 +341,73 @@ export function usePlanEditing(props: PlanEditorProps) {
 
   /**
    * Places an icon at `p` (0 to 1 of the drawing): its real size, its family's colour and layer.
-   * `on` attaches it to that icon (decision 0104). Returns its id.
+   * `on` attaches it to that icon; `modifiers` are placed on its front, in order (a light of the
+   * project kit). One transaction, one undo step (decision 0104). Returns its id.
    */
   const placeIcon = (
     kind: PlanIconKind,
     p: Point,
-    opts: { keep?: boolean; fields?: Partial<PlanIcon>; on?: string | null } = {},
+    opts: {
+      keep?: boolean;
+      fields?: Partial<PlanIcon>;
+      on?: string | null;
+      modifiers?: readonly PlanIconKind[];
+    } = {},
   ): string | null => {
     if ((plan.icons?.length ?? 0) >= MAX_PLAN_ICONS) return null;
     let id: string | null = null;
-    change(() => {
-      const layer = activeLayer ?? kindLayer(kind);
-      const fresh = {
-        kind,
-        color: penColor ?? iconColor(kind),
-        x: toGrid(p.x),
-        y: toGrid(p.y),
-        ...defaultIconSize(kind, drawn.scale),
-        ...(layer !== kindLayer(kind) ? { layer } : {}),
-        ...opts.fields,
+    const freshOf = (k: PlanIconKind) => {
+      const layer = activeLayer ?? kindLayer(k);
+      return {
+        layer,
+        icon: {
+          kind: k,
+          color: penColor ?? iconColor(k),
+          x: toGrid(p.x),
+          y: toGrid(p.y),
+          ...defaultIconSize(k, drawn.scale),
+          ...(layer !== kindLayer(k) ? { layer } : {}),
+        },
       };
-      id = addPlanIcon(doc, targetFor(layer), fresh, LOCAL);
-      if (id && opts.on) {
-        const placed = attachIcon([...icons, { ...fresh, id }], id, opts.on);
-        if (placed.length) writeItems(placed, [{ ...fresh, id }]);
-      }
-    });
+    };
+    change(() =>
+      doc.transact(() => {
+        const placed: { icons: PlanIcon[]; owners: Map<string, string> } = {
+          icons: [],
+          owners: new Map(),
+        };
+        const add = (k: PlanIconKind, fields?: Partial<PlanIcon>): PlanIcon | null => {
+          const { layer, icon } = freshOf(k);
+          const target = targetFor(layer);
+          const newId = addPlanIcon(doc, target, { ...icon, ...fields }, LOCAL);
+          if (!newId) return null;
+          const added = { ...icon, ...fields, id: newId } as PlanIcon;
+          placed.icons.push(added);
+          placed.owners.set(newId, target);
+          return added;
+        };
+        /** Attaches against what is there now, the icons just placed included. */
+        const attach = (itemId: string, baseId: string) => {
+          const all = [...icons, ...placed.icons];
+          const next = attachIcon(all, itemId, baseId);
+          if (!next.length) return;
+          writeItems(next, all, placed);
+          for (const n of next) {
+            const at = placed.icons.findIndex((i) => i.id === n.id);
+            if (at >= 0) placed.icons[at] = n;
+          }
+        };
+        const main = add(kind, opts.fields);
+        if (!main) return;
+        id = main.id;
+        if (opts.on) attach(main.id, opts.on);
+        for (const m of opts.modifiers ?? []) {
+          const mod = add(m);
+          if (!mod) break;
+          attach(mod.id, main.id);
+        }
+      }, LOCAL),
+    );
     rememberRecent(kind);
     if (opts.keep || !id) return id;
     setArmed(null);
@@ -372,6 +456,8 @@ export function usePlanEditing(props: PlanEditorProps) {
     setGhostBase,
     moving,
     movingIcon,
+    dropTarget,
+    setDropTarget,
     penColor,
     lockedItem,
     setLockedItem,
@@ -395,6 +481,7 @@ export function usePlanEditing(props: PlanEditorProps) {
     item,
     many,
     icons,
+    snapAt,
     change,
     writeItems,
     write,

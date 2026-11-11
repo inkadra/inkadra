@@ -7,7 +7,10 @@ import {
   normalizeRotation,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
+  type PlanItem,
+  rotateItem,
   withAttached,
+  withoutOn,
 } from './plan.ts';
 import {
   attachRole,
@@ -388,4 +391,46 @@ export function rotateWithAttached(
       if (rotation === 0) delete next.rotation;
       return next;
     });
+}
+
+const isIconItem = (item: PlanItem): item is PlanIcon => 'x' in item;
+
+/**
+ * Several items turned by `degrees` round `centre` as one piece, with every icon attached to the
+ * icons among them (decision 0104), as moveWithAttached carries them. Returns what changed.
+ */
+export function rotateManyWithAttached(
+  icons: readonly PlanIcon[],
+  items: readonly PlanItem[],
+  degrees: number,
+  centre: Point,
+): PlanItem[] {
+  const ids = new Set(items.map((i) => i.id));
+  const carried = withAttached(
+    icons,
+    items.filter(isIconItem).map((i) => i.id),
+  );
+  const extra = icons.filter((i) => carried.has(i.id) && !ids.has(i.id));
+  return [...items, ...extra].map((i) => rotateItem(i, degrees, centre));
+}
+
+/**
+ * What a write of `items` stores, by the attachment rules (decision 0104), whatever made it (a
+ * drag, a handle, a field of Properties, a key): an `on` whose base is gone is dropped, and what
+ * sits on a written base is placed again where the base now says. `icons` are the plan's icons
+ * as drawn (a setup's with its base's Set). Items written explicitly keep what they say.
+ */
+export function settleWrite(icons: readonly PlanIcon[], items: readonly PlanItem[]): PlanItem[] {
+  const out = new Map<string, PlanItem>(items.map((i) => [i.id, i]));
+  const present = new Set(icons.map((i) => i.id));
+  for (const item of items)
+    if (isIconItem(item) && item.on && !present.has(item.on)) out.set(item.id, withoutOn(item));
+  let all = icons.map((i) => (out.get(i.id) as PlanIcon | undefined) ?? i);
+  for (const item of items) {
+    if (!isIconItem(item) || !all.some((i) => i.on === item.id)) continue;
+    const moved = settleAttached(all, item.id).filter((i) => !items.some((n) => n.id === i.id));
+    for (const m of moved) out.set(m.id, m);
+    all = all.map((i) => moved.find((m) => m.id === i.id) ?? i);
+  }
+  return [...out.values()];
 }

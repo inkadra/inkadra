@@ -80,7 +80,15 @@ on a C-stand. Doors and windows go in walls as openings. The attached icon keeps
 rotation, placed where its base says (`attachedPlacement`): moving, turning, copying and deleting
 a base takes what is on it along; copying an attached icon alone makes a free copy; an `on` that
 points at nothing or loops attaches nothing. Pulling an icon away detaches it (`pulledAway`,
-`detachIcon`). Pure functions in `plan-attach.ts`; the editor wires them in a later pull request.
+`detachIcon`). Every write of the editor goes through the same rules (`settleWrite`), whatever made it (a
+drag, a handle, a field of Properties, a key): what sits on a written base is placed again, and an
+`on` whose base is gone is dropped; until that write such an icon reads as free everywhere (it is
+drawn, counted and listed as standing on nothing, `planStack`). Turning several items turns what is
+attached to them (`rotateManyWithAttached`). Icons on a hidden layer are never snap targets, so
+nothing attaches to something invisible; a locked layer's icons stay targets (a person may sit on a
+locked sofa, which itself does not move). A light of the project kit is placed with its modifiers
+attached in order, in one transaction and one undo step, the light selected. Pure functions in
+`plan-attach.ts`, wired in the editor.
 
 **Sizes when dropped.** Each kind has a real size (`DEFAULT_METRES`: a person, a chair and a
 camera 0.5 m, a desk 1.4 × 0.7 m, a sofa 2 × 0.9 m, a bed 2 × 1.6 m, a softbox and a C-stand 0.9 m,

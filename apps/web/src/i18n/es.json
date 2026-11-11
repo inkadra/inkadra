@@ -1498,7 +1498,8 @@
         "fill": "Relleno",
         "back": "Contra",
         "practical": "Práctica"
-      }
+      },
+      "snapIcons": "Encajar los iconos"
     },
     "contextual": {
       "done": "Listo",

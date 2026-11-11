@@ -33,6 +33,7 @@ import {
   iconCone,
   iconGlow,
   iconSize,
+  normalizeRotation,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
@@ -51,9 +52,11 @@ import {
   modifiersOn,
   moveWithAttached,
   pulledAway,
+  rotateManyWithAttached,
   rotateWithAttached,
   seatSlots,
   settleAttached,
+  settleWrite,
   snapTarget,
 } from './plan-attach.ts';
 import {
@@ -1105,5 +1108,73 @@ describe('review of the editor (pull request 602)', () => {
       map.set('circuits', Y.Array.from(Array.from({ length: 31 }, (_, i) => c(i)))),
     );
     expect(planOf(doc, el.id).circuits).toHaveLength(30);
+  });
+});
+
+describe('review of snapping (pull request 603)', () => {
+  /** A light on a stand with a softbox on its front, and a free chair. */
+  const rig = () => {
+    const stand = at('cstand', 300, 300, { id: 'standAAAAAAAA', ...defaultIconSize('cstand') });
+    let icons: PlanIcon[] = [
+      stand,
+      at('cob', 360, 300, { id: 'lightAAAAAAAA' }),
+      at('softbox', 100, 100, { id: 'boxAAAAAAAAAA', ...defaultIconSize('softbox') }),
+      at('chair', 600, 400, { id: 'chairAAAAAAAA', ...defaultIconSize('chair') }),
+    ];
+    const take = (changed: PlanIcon[]) => {
+      icons = icons.map((i) => changed.find((c) => c.id === i.id) ?? i);
+    };
+    take(attachIcon(icons, 'lightAAAAAAAA', stand.id));
+    take(attachIcon(icons, 'boxAAAAAAAAAA', 'lightAAAAAAAA'));
+    return icons;
+  };
+  const byId = (list: readonly { id: string }[], id: string) =>
+    list.find((i) => i.id === id) as PlanIcon;
+
+  it('turns several items with what is attached to them, as one piece', () => {
+    const icons = rig();
+    const stand = byId(icons, 'standAAAAAAAA');
+    const chair = byId(icons, 'chairAAAAAAAA');
+    const c = { x: 450, y: 350 };
+    const turned = rotateManyWithAttached(icons, [stand, chair], 90, c);
+    expect(turned.map((i) => i.id).sort()).toEqual(
+      ['boxAAAAAAAAAA', 'chairAAAAAAAA', 'lightAAAAAAAA', 'standAAAAAAAA'].sort(),
+    );
+    // The light and its softbox still sit where their bases say once turned.
+    const after = icons.map((i) => (byId(turned, i.id) as PlanIcon | undefined) ?? i);
+    expect(
+      settleAttached(after, stand.id).every((m) =>
+        near(iconCentre(m), iconCentre(byId(after, m.id)), 2),
+      ),
+    ).toBe(true);
+    expect(byId(turned, 'boxAAAAAAAAAA').rotation).toBe(
+      normalizeRotation((byId(icons, 'boxAAAAAAAAAA').rotation ?? 0) + 90),
+    );
+  });
+
+  it('settles what sits on a base resized by any write, and drops an on whose base is gone', () => {
+    const icons = rig();
+    const stand = byId(icons, 'standAAAAAAAA');
+    // Wider, as Properties writes it: the light moves with the stand's new front.
+    const wider = { ...stand, w: (stand.w ?? 40) * 3, h: (stand.h ?? 40) * 3 };
+    const written = settleWrite(icons, [wider]);
+    expect(written.map((i) => i.id)).toContain('lightAAAAAAAA');
+    expect(byId(written, 'standAAAAAAAA')).toEqual(wider);
+    // Explicitly written items keep what they say.
+    const light = { ...byId(icons, 'lightAAAAAAAA'), label: 'Key' };
+    expect(byId(settleWrite(icons, [wider, light]), 'lightAAAAAAAA')).toEqual(light);
+    // A base that is gone: the next write leaves it free.
+    const orphan = { ...byId(icons, 'boxAAAAAAAAAA'), on: 'goneAAAAAAAAA' };
+    const freed = settleWrite(icons, [orphan]);
+    expect(byId(freed, 'boxAAAAAAAAAA').on).toBeUndefined();
+  });
+
+  it('reads an icon whose base is gone as free when drawn', () => {
+    const box = at('softbox', 200, 200, { id: 'boxAAAAAAAAAA', on: 'goneAAAAAAAAA' });
+    const drawn = planStack({ icons: [box] })[0]?.item as PlanIcon;
+    expect(drawn.on).toBeUndefined();
+    // So a softbox of version 15 draws its own beam again, as a free one does.
+    expect(iconCone(drawn)?.beam).toBe(true);
+    expect(iconCone(box)?.beam).toBeFalsy();
   });
 });

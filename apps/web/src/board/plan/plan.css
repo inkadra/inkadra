@@ -1903,3 +1903,12 @@ span.plan-pill {
   max-width: calc(100% - 32px);
   white-space: normal;
 }
+/* The base a dragged icon would attach to (decision 0104). */
+.plan-editor__target {
+  fill: color-mix(in srgb, var(--ink-accent-primary) 12%, transparent);
+  stroke: var(--ink-accent-primary);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}

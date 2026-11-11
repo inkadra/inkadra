@@ -1498,7 +1498,8 @@
         "fill": "Aufhellung",
         "back": "Gegenlicht",
         "practical": "Praktikabel"
-      }
+      },
+      "snapIcons": "Symbole einrasten"
     },
     "contextual": {
       "done": "Fertig",
