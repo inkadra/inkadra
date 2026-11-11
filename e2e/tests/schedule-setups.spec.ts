@@ -15,6 +15,13 @@ const account = {
 const opts = { userId: null };
 
 test.use({ locale: 'it-IT' });
+// The grouping is the account's: leave the default to the next tests, even after a failure.
+test.afterEach(async ({ page, baseURL }) => {
+  await page.request.patch('/api/v1/me/preferences', {
+    headers: { origin: baseURL! },
+    data: { shotGroupBy: 'scene' },
+  });
+});
 
 test('the schedule groups by setup, saved on the account and shared with the shot list', async ({
   page,
@@ -99,5 +106,4 @@ test('the schedule groups by setup, saved on the account and shared with the sho
   await expect(page.getByRole('combobox', { name: 'Raggruppa per' })).toContainText(
     'Raggruppa per: Setup',
   );
-  await page.request.patch('/api/v1/me/preferences', { headers, data: { shotGroupBy: 'scene' } });
 });

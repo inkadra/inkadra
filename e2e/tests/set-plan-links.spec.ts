@@ -185,5 +185,11 @@ test('set plan links: character, frame, scene chip and the setup of a shot', asy
     await page.getByRole('option', { name: 'Raggruppa per: Setup' }).click();
     await expect(page.locator('.shots__scene', { hasText: 'Bancone · 1 · Base' })).toBeVisible();
     await page.screenshot({ path: join(out, 'links-shotlist.png') });
+    // The grouping is the account's (decision 0115): back to the default for the next tests.
+    await page.getByRole('combobox', { name: 'Raggruppa per' }).click();
+    await page.getByRole('option', { name: 'Raggruppa per: Scena' }).click();
+    await expect
+      .poll(async () => (await (await page.request.get('/api/v1/me/preferences')).json()).shotGroupBy)
+      .toBe('scene');
   });
 });
