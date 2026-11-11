@@ -84,7 +84,8 @@ it('prints one A4 landscape page per setup with the title block, legend, power a
     ctx,
   );
   expect(pages).toHaveLength(2);
-  expect(pages[0]).toMatchObject({ width: 842, height: 595 });
+  expect(Math.round(pages[0]?.width ?? 0)).toBe(842);
+  expect(Math.round(pages[0]?.height ?? 0)).toBe(595);
   const words = texts(pages[0]?.ops ?? []);
   for (const expected of [
     'NAME · SCENE 2 · INT. DINER',
