@@ -333,7 +333,9 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     c.close();
     const retry = connect({ token: created.json().token });
     const reason = await new Promise<string>((resolve) => {
-      retry.provider.on('authenticationFailed', ({ reason }: { reason: string }) => resolve(reason));
+      retry.provider.on('authenticationFailed', ({ reason }: { reason: string }) =>
+        resolve(reason),
+      );
       setTimeout(() => resolve('timeout'), 4000);
     });
     retry.close();
