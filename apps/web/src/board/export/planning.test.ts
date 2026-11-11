@@ -252,7 +252,7 @@ describe('the crew on the call sheet (decision 0092)', () => {
       expect.objectContaining({
         kind: 'text',
         text: 'LUMINARIE ACCESE',
-        weight: 700,
+        weight: 600,
         color: light['tag-orange'],
       }),
     );

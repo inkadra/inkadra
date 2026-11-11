@@ -111,7 +111,7 @@ export function ToolPopover({
             ref={panel}
             role="dialog"
             aria-label={label}
-            className="menu contextual-popover"
+            className="ink-menu menu contextual-popover"
             data-chrome
             style={{
               position: 'fixed',
@@ -222,7 +222,7 @@ export function ContextualTools({
     <button
       key={label}
       type="button"
-      className="menu__item"
+      className="ink-menu__item menu__item"
       aria-label={label}
       aria-pressed={pressed}
       disabled={disabled || noSelection}

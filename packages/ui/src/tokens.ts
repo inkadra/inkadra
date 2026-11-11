@@ -37,6 +37,9 @@ export const dark = {
   'status-ok': '#46A758',
   'status-warn': '#F2B08A',
   'status-danger': '#E5484D',
+  // Names on the colour of a person on the board (presence.ts): the pale dark-theme hues need
+  // dark text to reach 4.5:1.
+  'on-peer': '#0E0E10',
   'danger-bg': '#2A1A1B',
   'danger-border': '#3A2326',
   'danger-fg': '#F2A9AC',
@@ -114,6 +117,7 @@ export const light: Record<ColorToken, string> = {
   'status-ok': '#23743F',
   'status-warn': '#A5521F',
   'status-danger': '#C8343A',
+  'on-peer': '#FFFFFF',
   'danger-bg': '#FBEAEA',
   'danger-border': '#F2CFD0',
   'danger-fg': '#A1262B',

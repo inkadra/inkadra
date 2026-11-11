@@ -133,9 +133,6 @@
   border: 0;
   background: var(--ink-border-default);
 }
-.project-context-menu > button.is-danger {
-  color: var(--ink-danger-fg);
-}
 
 .project-group-dialog__swatches {
   --appearance-swatch: 22px;

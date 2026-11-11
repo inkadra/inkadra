@@ -246,7 +246,7 @@
   background: var(--ink-on-accent);
 }
 .schedule__month-day.is-today:not([aria-pressed="true"]) {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ink-accent-primary);
 }
 .schedule__search {
