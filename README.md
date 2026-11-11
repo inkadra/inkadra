@@ -196,3 +196,6 @@ run a modified Inkadra for other people over a network, you must offer them the 
 version. The shared packages in `packages/`, the mobile app and the browser extension are
 under the [Mozilla Public License 2.0](packages/shared/LICENSE). See
 [decision 0008](docs/decisions/0008-licences-per-component.md).
+
+The name "Inkadra" and the logo are not covered by these licences: a modified version or a
+hosting service needs its own name. See [TRADEMARKS.md](TRADEMARKS.md).
