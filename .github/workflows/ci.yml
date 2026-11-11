@@ -58,13 +58,14 @@ jobs:
   # PostgreSQL 16 keeps working for one more release (deploy/compose.postgres16.yaml): the
   # suites that need a database run against it too. Remove 16 with that file.
   server:
-    name: Server tests (PostgreSQL ${{ matrix.postgres }})
+    name: Server tests (PostgreSQL ${{ matrix.postgres }}, shard ${{ matrix.shard }}/2)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         postgres: [18, 16]
+        shard: [1, 2]
     services:
       postgres:
         image: postgres:${{ matrix.postgres }}-alpine
@@ -110,7 +111,9 @@ jobs:
             [ "$attempt" -lt 3 ] || exit 1
             sleep 15
           done
-      - run: pnpm turbo run test --filter=@inkadra/server
+      - run: pnpm turbo run test --filter=@inkadra/server -- "--shard=$SHARD/2"
+        env:
+          SHARD: ${{ matrix.shard }}
 
   # The check the ruleset of main requires: keep its name.
   tests:
@@ -191,7 +194,11 @@ jobs:
             [ "$attempt" -lt 3 ] || exit 1
             sleep 15
           done
-      - run: pnpm test:e2e "--shard=$SHARD/6"
+      - name: Run duration-balanced end-to-end shard
+        run: |
+          node scripts/e2e-shards.mjs "$SHARD" 6 > /tmp/e2e-files
+          mapfile -t files < /tmp/e2e-files
+          pnpm test:e2e "${files[@]}"
         env:
           SHARD: ${{ matrix.shard }}
       - if: failure()
