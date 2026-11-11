@@ -101,139 +101,10 @@
 .plan-editor__name {
   white-space: nowrap;
 }
-.plan-editor__spacer {
-  flex: 1;
-}
-.plan-editor__title {
-  min-width: 0;
-  max-width: 280px;
-  height: 28px;
-  padding: 0 4px;
-  border: 0;
-  border-radius: var(--ink-radius-xs);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-}
-.plan-editor__title:hover {
-  background: var(--ink-surface-2);
-}
-.plan-editor__title:focus-visible {
-  outline: 2px solid var(--ink-accent-soft-fg);
-}
-.plan-editor__body {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-}
-.plan-editor__subtitle {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 400;
-  color: var(--ink-text-secondary);
-}
-.plan-editor__headbtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: transparent;
-  color: var(--ink-text-icon);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 400;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.plan-editor__headbtn:hover {
-  background: var(--ink-surface-2);
-}
-/* The bar of tools at the bottom, floating over the plan. */
-.plan-editor__tools {
-  position: absolute;
-  left: 50%;
-  bottom: 14px;
-  translate: -50% 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px;
-  background: var(--ink-surface-2);
-  border: 1px solid var(--ink-border-strong);
-  border-radius: var(--ink-radius-md);
-  box-shadow: var(--ink-shadow-menu);
-  white-space: nowrap;
-}
-.plan-editor__btn {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: transparent;
-  color: var(--ink-text-icon);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-}
-.plan-editor__btn:hover {
-  background: var(--ink-surface-2);
-}
-.plan-editor__btn:disabled {
-  background: none;
-  color: var(--ink-text-muted);
-  opacity: 0.5;
-  cursor: default;
-}
-.plan-editor__btn--wide {
-  width: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 8px;
-  font: inherit;
-  font-size: 12.5px;
-}
-.plan-editor__mirror {
-  display: grid;
-  scale: -1 1;
-}
-.plan-editor__btn[aria-pressed="true"] {
-  background: var(--ink-accent-soft-bg);
-  color: var(--ink-accent-soft-fg);
-}
-.plan-editor__btn:focus-visible,
 .plan-lib__tile:focus-visible,
-.plan-lib__star:focus-visible,
-.plan-editor__swatch:focus-visible {
+.plan-lib__star:focus-visible {
   outline: 2px solid var(--ink-accent-soft-fg);
   outline-offset: 1px;
-}
-.plan-editor__sep {
-  flex: none;
-  width: 1px;
-  height: 18px;
-  margin: 0 3px;
-  background: var(--ink-border-strong);
-}
-.plan-editor__stage-wrap {
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-  container-type: size;
-  background: var(--ink-bg-canvas);
-}
-.plan-editor__fit {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
 }
 .plan-editor__stage {
   position: relative;
@@ -247,13 +118,6 @@
   container-type: inline-size;
   touch-action: none;
   cursor: crosshair;
-}
-/* The icons open beside the plan, which moves over instead of going under them. */
-.has-library .plan-editor__fit {
-  right: 276px;
-}
-.has-library .plan-editor__stage {
-  width: min(100cqw - 300px, (100cqh - 112px) * 1.5);
 }
 .plan-editor__stage--select {
   cursor: default;
@@ -295,26 +159,6 @@
   font-weight: 500;
   line-height: 1.2;
 }
-
-/* The bar of the selected item, on it: the editor places it. */
-.plan-editor__bar {
-  position: absolute;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 3px 4px;
-  background: var(--ink-surface-2);
-  border: 1px solid var(--ink-border-strong);
-  border-radius: var(--ink-radius-md);
-  box-shadow: var(--ink-shadow-menu);
-  font-size: 12px;
-  white-space: nowrap;
-}
-.plan-editor__cap {
-  padding: 0 2px 0 4px;
-  color: var(--ink-text-secondary);
-}
 .plan-editor__done {
   height: 26px;
   padding: 0 8px;
@@ -329,12 +173,6 @@
 }
 .plan-editor__done:hover {
   background: var(--ink-surface-3);
-}
-.plan-editor__locked {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--ink-text-primary);
 }
 .plan-editor__empty {
   position: absolute;
@@ -362,36 +200,6 @@
   font-size: 12px;
   white-space: nowrap;
   pointer-events: none;
-}
-/* What the tool waits for, over the bar of tools, with the way out in sight. */
-.plan-editor__toast {
-  position: absolute;
-  left: 50%;
-  bottom: 62px;
-  translate: -50% 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  padding: 7px 12px;
-  background: var(--ink-surface-float);
-  border: 1px solid var(--ink-border-strong);
-  border-radius: var(--ink-radius-md);
-  box-shadow: var(--ink-shadow-menu);
-  font-size: 13px;
-  white-space: nowrap;
-}
-.plan-editor__toast:has(button) {
-  padding: 3px 8px 3px 12px;
-}
-.plan-editor__toast kbd {
-  padding: 1px 5px;
-  border: 1px solid var(--ink-border-strong);
-  border-radius: var(--ink-radius-xs);
-  color: var(--ink-text-secondary);
-  font: inherit;
-  font-size: 11px;
 }
 /* Menus and small panels opened from the bars. */
 .menu.plan-menu {
@@ -422,10 +230,6 @@
 .plan-pop--measure {
   width: 270px;
 }
-.plan-pop__swatches {
-  display: flex;
-  gap: 2px;
-}
 .plan-pop__row {
   display: flex;
   gap: 8px;
@@ -441,15 +245,6 @@
   gap: 4px;
   font-size: 12px;
   color: var(--ink-text-secondary);
-}
-.plan-pop__field .plan-editor__field {
-  width: 100%;
-  height: 32px;
-}
-.plan-editor--phone .plan-pop__field .plan-editor__field {
-  flex: none;
-  height: 40px;
-  min-width: 0;
 }
 .plan-pop__unit {
   padding-bottom: 6px;
@@ -467,9 +262,6 @@
   font-size: 12px;
   color: var(--ink-status-danger);
 }
-.plan-editor__field.is-wrong {
-  border-color: var(--ink-status-danger);
-}
 .plan-pop__ask {
   padding-left: 10px;
   border-left: 3px solid var(--ink-accent-primary);
@@ -486,10 +278,6 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-.plan-pop .plan-layers {
-  width: 250px;
-  padding: 0;
-}
 .plan-editor__reach {
   fill: var(--ink-accent-primary);
   cursor: ew-resize;
@@ -499,28 +287,6 @@
   stroke: var(--ink-text-primary);
   stroke-width: 3;
 }
-.plan-editor__swatch {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: transparent;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-}
-.plan-editor__swatch i {
-  display: block;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-}
-.plan-editor__swatch[aria-pressed="true"] i {
-  box-shadow:
-    0 0 0 2px var(--ink-surface-float),
-    0 0 0 3.5px var(--ink-text-secondary);
-}
 .plan-editor__vr {
   flex-shrink: 0;
   pointer-events: none;
@@ -528,16 +294,6 @@
   height: 18px;
   margin: 0 3px;
   background: var(--ink-border-strong);
-}
-.plan-editor__field {
-  width: 96px;
-  height: 26px;
-  padding: 0 8px;
-  border: 1px solid var(--ink-border-default);
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-surface-1);
-  color: var(--ink-text-primary);
-  font: inherit;
 }
 
 /* The icons float over the right of the plan, opened only when asked. */
@@ -549,25 +305,6 @@
   /* Opaque parts of the glyphs mix into the panel they sit on (decision 0104). */
   --plan-paper: var(--ink-bg-panel);
   overflow: hidden;
-}
-.plan-lib--panel {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  bottom: 12px;
-  z-index: 4;
-  width: 264px;
-  border: 1px solid var(--ink-border-default);
-  border-radius: var(--ink-radius-md);
-  box-shadow: var(--ink-shadow-menu);
-}
-.plan-lib__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 8px 2px 12px;
-  font-size: 13px;
 }
 .plan-lib__search {
   display: flex;
@@ -706,88 +443,17 @@
   padding: max(8px, env(safe-area-inset-top)) 12px 8px;
   font-size: 14px;
 }
-.plan-editor--phone .plan-editor__stage-wrap {
-  flex: 1;
-  padding-bottom: 72px;
-  background: var(--ink-surface-1);
-}
-.plan-editor--phone .plan-editor__fit {
-  bottom: 72px;
-  /* At the top: the library sheet and the bars take the lower half. */
-  place-items: start center;
-  padding-top: 12px;
-}
 .plan-editor--phone .plan-editor__stage {
   width: min(100cqw - 16px, (100cqh - 88px) * 1.5);
 }
-/* Round 6 baseline: the phone bar wears the radius tokens and the soft accent, as on desktop. */
-.plan-editor--phone .plan-editor__tools {
-  left: 8px;
-  right: 8px;
-  bottom: calc(10px + env(safe-area-inset-bottom));
-  translate: none;
-  justify-content: space-between;
-  padding: 4px;
-}
-.plan-editor--phone .plan-editor__btn {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-}
-.plan-editor--phone .plan-editor__swatch {
-  width: 40px;
-  height: 40px;
-}
-.plan-editor--phone .plan-editor__swatch i {
-  width: 22px;
-  height: 22px;
-}
-/* Under the plan: its width is the wrap's less 16px, its height two thirds of that. */
-.plan-editor--phone .plan-editor__bar {
-  left: 8px !important;
-  right: 8px;
-  top: calc((100cqw - 16px) / 1.5 + 24px) !important;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--ink-space-1);
-  padding: 4px 6px;
-}
-.plan-editor--phone .plan-editor__bar .ink-iconbtn {
-  width: 40px;
-  height: 40px;
-}
-.plan-editor--phone .plan-editor__toast {
-  left: 8px;
-  right: 8px;
-  bottom: auto;
-  top: calc((100cqw - 16px) / 1.5 + 24px);
-  translate: none;
-  justify-content: center;
-  white-space: normal;
-}
-.plan-editor--phone .plan-editor__field {
-  flex: 1 0 96px;
-  min-width: 96px;
+.plan-editor--phone .plan-num input {
   font-size: 16px;
-}
-.plan-editor--phone .plan-num input,
-.plan-editor--phone .plan-editor__movebar input {
-  font-size: 16px;
-}
-.plan-editor--phone .plan-editor__movebar {
-  left: 8px;
-  right: 8px;
-  top: auto;
-  translate: none;
-  bottom: calc(66px + env(safe-area-inset-bottom));
-  justify-content: space-between;
 }
 .plan-editor--phone .plan-pop {
   left: 8px !important;
   right: 8px !important;
   width: auto;
 }
-.plan-editor--phone .plan-pop .plan-layers,
 .plan-editor--phone .plan-props__hint {
   width: auto;
   max-width: none;
@@ -828,41 +494,6 @@
   margin: 0 auto;
   border-radius: 2px;
   background: var(--ink-border-strong);
-}
-.plan-lib__tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 2px 10px 8px;
-}
-.plan-lib--sheet .plan-lib__tabs {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.plan-lib__tabs button {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 22px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--ink-radius-full);
-  background: var(--ink-surface-2);
-  color: var(--ink-text-secondary);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.plan-lib--sheet .plan-lib__tabs button {
-  height: 32px;
-  padding: 0 12px;
-  font-size: 13px;
-}
-.plan-lib__tabs button[aria-selected="true"] {
-  background: var(--ink-accent-soft-bg);
-  color: var(--ink-accent-soft-fg);
 }
 .plan-lib--sheet .plan-lib__tile {
   min-height: 58px;
@@ -947,24 +578,6 @@ button.plan__badge:hover {
   font-size: 11.5px;
   font-weight: 500;
 }
-
-/* Properties of a camera and a light (round 6, c). */
-.plan-props__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.plan-props__title .plan-glyph {
-  color: var(--ink-text-icon);
-}
-.plan-props__label {
-  margin-top: 2px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-text-muted);
-}
 .plan-props__hints {
   display: flex;
   flex-wrap: wrap;
@@ -972,10 +585,6 @@ button.plan__badge:hover {
   gap: 4px;
   font-size: 11.5px;
   color: var(--ink-text-muted);
-}
-.plan-props__range {
-  flex: 1;
-  min-width: 0;
 }
 .plan-props__row b {
   color: var(--ink-text-primary);
@@ -1034,24 +643,6 @@ button.plan__badge:hover {
   vector-effect: non-scaling-stroke;
   cursor: move;
 }
-.plan-editor__movebar {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  translate: -50% 0;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 3px 4px 3px 10px;
-  background: var(--ink-surface-2);
-  border: 1px solid var(--ink-border-default);
-  border-radius: var(--ink-radius-md);
-  box-shadow: var(--ink-shadow-menu);
-  font-size: 12.5px;
-  color: var(--ink-text-primary);
-  white-space: nowrap;
-}
 .plan-props__steps {
   margin: 0;
   padding: 0;
@@ -1064,9 +655,6 @@ button.plan__badge:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-.plan-props__steps .plan-editor__field {
-  flex: 1;
 }
 .plan-props__num {
   flex: none;
@@ -1139,25 +727,6 @@ button.plan__badge:hover {
   font-weight: 600;
   font-family: inherit;
 }
-.plan-editor__bar .ink-iconbtn {
-  width: 26px;
-  height: 26px;
-}
-.plan-editor__bar .ink-iconbtn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.plan-editor__movebar .ink-iconbtn[aria-pressed="true"] {
-  background: var(--ink-accent-soft-bg);
-  color: var(--ink-accent-soft-fg);
-}
-.plan-editor__times {
-  padding: 0 2px;
-  color: var(--ink-text-muted);
-}
-.plan-editor__bar .plan-num {
-  height: 26px;
-}
 
 /* Several items (round 6, f). */
 .plan-editor__marquee {
@@ -1169,10 +738,6 @@ button.plan__badge:hover {
 }
 .plan-editor__selection .plan-editor__member {
   stroke-opacity: 0.5;
-}
-.plan-editor__count {
-  padding: 0 8px 0 6px;
-  color: var(--ink-text-secondary);
 }
 
 /* Scale and measures (round 6, g). */
@@ -1208,10 +773,6 @@ button.plan__badge:hover {
 .plan-ruler--left span {
   left: 0;
   translate: 0 2px;
-}
-.plan-editor__tip {
-  margin: 0;
-  padding: 6px 12px;
 }
 .plan-scale {
   position: absolute;
@@ -1251,105 +812,6 @@ button.plan__badge:hover {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-}
-
-/* Layers and variants (round 6, h). */
-.plan-layers {
-  padding: 4px 8px;
-  overflow-y: auto;
-}
-.plan-layers ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.plan-layers li {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  border-radius: var(--ink-radius-sm);
-}
-.plan-layers li.is-active {
-  background: var(--ink-surface-2);
-}
-.plan-layers__name {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 36px;
-  padding: 0 8px;
-  border: 0;
-  background: transparent;
-  color: var(--ink-text-primary);
-  font: inherit;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-}
-.plan-layers__name .is-off {
-  color: var(--ink-text-muted);
-}
-.plan-layers__count {
-  margin-left: auto;
-  font-size: 11.5px;
-  color: var(--ink-text-muted);
-}
-.plan-layers__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: var(--ink-radius-xs);
-  background: var(--ink-text-secondary);
-}
-.plan-layers__dot--lights {
-  background: var(--ink-tag-yellow);
-}
-.plan-layers__dot--camera {
-  background: var(--ink-tag-blue);
-}
-.plan-layers__dot--actors {
-  background: var(--ink-tag-purple);
-}
-.plan-layers__dot--notes {
-  background: var(--ink-tag-green);
-}
-.plan-layers .ink-iconbtn[aria-pressed="true"] {
-  color: var(--ink-accent-soft-fg);
-}
-.plan-editor__status {
-  position: absolute;
-  left: 14px;
-  bottom: 14px;
-  margin: 0;
-  font-size: 11.5px;
-  font-weight: 400;
-  color: var(--ink-text-muted);
-}
-.plan-editor__variants {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: 4px;
-  padding: 2px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-surface-2);
-}
-.plan-editor__variants button:not(.ink-iconbtn) {
-  height: 24px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: calc(var(--ink-radius-sm) - 2px);
-  background: transparent;
-  color: var(--ink-text-secondary);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.plan-editor__variants button[aria-current="page"] {
-  background: var(--ink-surface-3);
-  color: var(--ink-text-primary);
 }
 .plan-editor__window:focus,
 .plan-editor--phone:focus {
