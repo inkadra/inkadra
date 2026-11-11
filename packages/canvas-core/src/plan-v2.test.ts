@@ -278,9 +278,9 @@ describe('stacking', () => {
     });
     const p = { x: 0.5, y: 300 / PLAN_VIEW_H };
     expect(planItemAt({ icons: [cam], shapes: [shape('measure')] }, p)?.kind).toBe('icons');
-    expect(planItemAt({ icons: [cam], shapes: [shape('measure')] }, { x: 0.55, y: p.y })?.kind).toBe(
-      'shapes',
-    );
+    expect(
+      planItemAt({ icons: [cam], shapes: [shape('measure')] }, { x: 0.55, y: p.y })?.kind,
+    ).toBe('shapes');
   });
 });
 
