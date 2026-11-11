@@ -109,6 +109,14 @@ async function seed(page: Page, baseURL: string) {
   return { project, root, lockPlan, guestBoard, guestPlan, saved };
 }
 
+/** The page in both themes, light then dark (the theme is the app's, not the system's). */
+async function shoot(page: Page, name: string) {
+  for (const theme of ['light', 'dark'] as const) {
+    await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme);
+    await page.screenshot({ path: join(out, `${name}-${theme}.png`) });
+  }
+}
+
 async function signUpGuest(browser: Browser, url: string) {
   const context = await browser.newContext({ locale: 'it-IT' });
   const guest = await context.newPage();
@@ -160,10 +168,7 @@ test('an item locked on its own is not moved, edited or deleted until it is unlo
   await expect(props.getByRole('status').getByText(/Bloccato/)).toBeVisible();
   await expect(props.getByRole('textbox', { name: 'Nome' })).toBeDisabled();
   await expect(props.getByRole('button', { name: 'Elimina' })).toBeDisabled();
-  await page.screenshot({ path: join(out, 'parity-1280-locked.png') });
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await page.screenshot({ path: join(out, 'parity-1280-locked-dark.png') });
-  await page.emulateMedia({ colorScheme: 'light' });
+  await shoot(page, 'parity-1280-locked');
 
   // Dragged, nudged, turned and deleted: it stays as it was.
   await drag(CHAIR, [700, 450]);
@@ -178,10 +183,7 @@ test('an item locked on its own is not moved, edited or deleted until it is unlo
   await editor.getByRole('tab', { name: 'Elementi' }).click();
   const elements = editor.getByRole('tabpanel', { name: 'Elementi' });
   await expect(elements.getByRole('button', { name: /Sedia Rosa.*Bloccato/ })).toBeVisible();
-  await page.screenshot({ path: join(out, 'parity-1280-elements.png') });
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await page.screenshot({ path: join(out, 'parity-1280-elements-dark.png') });
-  await page.emulateMedia({ colorScheme: 'light' });
+  await shoot(page, 'parity-1280-elements');
 
   // Unlocked, it moves again.
   await elements.getByRole('button', { name: /Sedia Rosa/ }).click();
@@ -218,9 +220,7 @@ test('the project kit shows the lights of other boards, and a guest only those t
   const library = await kitOf(page);
   await expect(library.getByRole('button', { name: /Aputure 600d/ })).toContainText('Griglia');
   await expect(library.getByRole('button', { name: /Luce ospite/ })).toBeVisible();
-  await page.screenshot({ path: join(out, 'parity-1280-project-kit.png') });
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await page.screenshot({ path: join(out, 'parity-1280-project-kit-dark.png') });
+  await shoot(page, 'parity-1280-project-kit');
 
   // A guest of one sub-board sees its own light, not the one of a board they cannot open.
   const invited = await page.request.post('/api/v1/invitations', {
