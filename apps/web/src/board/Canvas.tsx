@@ -975,7 +975,7 @@ export function Canvas({
     (w = 240, h = NEW_HEIGHT): Point => {
       const c = screenToWorld(vp.current, { x: size.w / 2, y: size.h / 2 });
       const rects = store.getSnapshot().canvas.map(liveRect);
-      const start = { x: c.x - w / 2, y: c.y - Math.min(h, 240) / 2 };
+      const start = { x: c.x - w / 2, y: c.y - 60 };
       return freeSpot(start, { w, h }, rects, onScreen());
     },
     [size, store, liveRect, onScreen],

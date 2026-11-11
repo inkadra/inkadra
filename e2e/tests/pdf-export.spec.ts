@@ -501,7 +501,8 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   // The call sheet of the shooting day closes the book.
   expect(bookPdf.pages[2]).toContain('Foglio di lavorazione');
   expect(bookPdf.pages[2]).toContain('Station');
-  expect(bookPdf.pages[2]).not.toContain('Station platform 4');
+  // The day's own Location is printed too, as the address the crew needs (decision 0095).
+  expect(bookPdf.pages[2]).toContain('Station platform 4');
   expect(bookPdf.pages[2]).toContain('1A');
   expect(bookPdf.pages[2]).toContain('Frame action 1');
   expect(bookPdf.pages[2]).toContain('dolly track');
