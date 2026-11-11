@@ -1540,6 +1540,13 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
 
     // A board of its own per test: restores are limited to ten an hour per board.
     let hist = '';
+    // Saves are limited to twenty an hour per person: the versions these tests save are theirs.
+    beforeAll(async () => {
+      await signUp('historian');
+      await request('PUT', `/projects/${projectId}/members/${people.historian?.id}`, 'owner', {
+        role: 'editor',
+      });
+    });
     beforeEach(async () => {
       const created = await request('POST', `/projects/${projectId}/boards`, 'owner', {
         parentBoardId: boardId,
@@ -1549,7 +1556,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     });
 
     it('records who restored and to which version, with the count the document got', async () => {
-      const version = await changedBoard(hist);
+      const version = await changedBoard(hist, 'historian');
       const res = await restore(version.id);
       expect(res.statusCode).toBe(200);
       const count = await countOf();
@@ -1581,7 +1588,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     });
 
     it('does not record a restore that changes nothing, as it is not counted', async () => {
-      const version = await changedBoard(hist);
+      const version = await changedBoard(hist, 'historian');
       expect((await restore(version.id)).statusCode).toBe(200);
       const count = await countOf();
       expect((await restore(version.id)).statusCode).toBe(200);
@@ -1590,7 +1597,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     });
 
     it('lists restores newest first; below editor only counts and times; others nothing', async () => {
-      const version = await changedBoard(hist);
+      const version = await changedBoard(hist, 'historian');
       await restore(version.id);
       await edit(hist, (doc) => addElement(doc, note('again001')));
       await restore(version.id, 'owner');
@@ -1611,7 +1618,30 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
       const path = `/boards/${hist}/restores`;
       expect((await request('GET', path, null)).statusCode).toBe(401);
       expect((await request('GET', path, 'stranger')).statusCode).toBe(404);
-      expect((await request('GET', `${path}?after=-1`, 'editor')).statusCode).toBe(400);
+      for (const after of ['-1', '2147483648', '3000000000', 'x'])
+        expect((await request('GET', `${path}?after=${after}`, 'editor')).statusCode).toBe(400);
+      expect(await restoresOf('editor', 2147483647)).toEqual([]);
+    });
+
+    it('follows board grants: details for an editor grant, not for a viewer grant', async () => {
+      await recordRestore(db, {
+        boardId: hist,
+        count: 1,
+        restoredBy: people.owner?.id ?? null,
+        versionId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
+        versionKind: 'named',
+        versionName: 'Before review',
+        versionCreatedAt: new Date(),
+      });
+      const grant = (who: string, role: string) =>
+        request('PUT', `/boards/${hist}/grants/${people[who]?.id}`, 'owner', { role });
+      expect((await grant('viewer', 'editor')).statusCode).toBeLessThan(300);
+      expect((await grant('editor', 'viewer')).statusCode).toBeLessThan(300);
+      const [raised] = await restoresOf('viewer');
+      expect(raised?.version?.name).toBe('Before review');
+      expect(raised?.restoredBy?.id).toBe(people.owner?.id);
+      const [lowered] = await restoresOf('editor');
+      expect(lowered).toMatchObject({ count: 1, restoredBy: null, version: null });
     });
 
     it('keeps the record without the person once their account is deleted', async () => {
@@ -1619,7 +1649,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
       await request('PUT', `/projects/${projectId}/members/${people.leaver?.id}`, 'owner', {
         role: 'editor',
       });
-      const version = await changedBoard(hist);
+      const version = await changedBoard(hist, 'historian');
       expect((await restore(version.id, 'leaver')).statusCode).toBe(200);
       await db.delete(projectMember).where(eq(projectMember.userId, people.leaver?.id ?? ''));
       await db.delete(user).where(eq(user.id, people.leaver?.id ?? ''));
@@ -1630,7 +1660,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     });
 
     it('lets the restore stand when the record fails, and records the next one', async () => {
-      const version = await changedBoard(hist);
+      const version = await changedBoard(hist, 'historian');
       const before = await countOf();
       await db.execute(sql`
         create or replace function board_restore_refuse() returns trigger language plpgsql

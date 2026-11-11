@@ -436,20 +436,24 @@ export function directVersionWriter(
         }
         // After the document, never before: a record must not claim a restore that did not
         // happen. If it fails the restore stands without its record (decision 0112).
-        if (count !== null)
+        // shortcut: one retry, then only a log line and clients say "details unknown"; a
+        // durable outbox is the upgrade if records go missing in practice.
+        if (count !== null) {
+          const record = {
+            boardId,
+            count,
+            restoredBy: userId,
+            versionId,
+            versionKind: row.kind,
+            versionName: row.name,
+            versionCreatedAt: row.createdAt,
+          };
           try {
-            await recordRestore(db, {
-              boardId,
-              count,
-              restoredBy: userId,
-              versionId,
-              versionKind: row.kind,
-              versionName: row.name,
-              versionCreatedAt: row.createdAt,
-            });
+            await recordRestore(db, record).catch(() => recordRestore(db, record));
           } catch (err) {
             log?.error({ err, boardId, count }, 'restore not recorded');
           }
+        }
         const notice: BoardNotice = { type: 'restored', versionId };
         doc.broadcastStateless(JSON.stringify(notice));
         return { ok: true, backupId };
@@ -498,20 +502,31 @@ async function insertBackup(db: Database, boardId: string, userId: string, snap:
 export const MAX_RESTORE_RECORDS = 50;
 
 /**
- * Records a restore that changed the board (decision 0112). A record with the same or a higher
- * count is replaced: it belongs to a restore whose document was never stored, or to a count a
- * writer set back (decision 0109), and the document is what counts.
+ * Records a restore that changed the board (decision 0112). A record with the same count is
+ * replaced: it belongs to a restore whose document was never stored, or to a count a writer set
+ * back (decision 0109). Other records stay, whatever order they are saved in; the most recently
+ * saved ones are kept.
  */
 export async function recordRestore(db: Database, values: typeof boardRestore.$inferInsert) {
   await db.transaction(async (tx) => {
     await lockBoard(tx, values.boardId);
     await tx
-      .delete(boardRestore)
-      .where(and(eq(boardRestore.boardId, values.boardId), gte(boardRestore.count, values.count)));
-    await tx.insert(boardRestore).values(values);
+      .insert(boardRestore)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [boardRestore.boardId, boardRestore.count],
+        set: {
+          restoredBy: values.restoredBy ?? null,
+          versionId: values.versionId,
+          versionKind: values.versionKind,
+          versionName: values.versionName ?? null,
+          versionCreatedAt: values.versionCreatedAt,
+          createdAt: sql`now()`,
+        },
+      });
     await tx.execute(sql`
       delete from board_restore where board_id = ${values.boardId} and id not in (
         select id from board_restore where board_id = ${values.boardId}
-        order by count desc limit ${MAX_RESTORE_RECORDS})`);
+        order by created_at desc, count desc limit ${MAX_RESTORE_RECORDS})`);
   });
 }

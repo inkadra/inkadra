@@ -105,10 +105,13 @@ export const BoardRestore = z
       .min(1)
       .openapi({
         description:
-          'The board document’s `meta.restores` after this restore (decision 0109). Higher than ' +
-          'the count the client reads in the document: a restore not stored yet, or lost; ignore it.',
+          'The board document’s `meta.restores` after this restore (decision 0109). A record ' +
+          'with a count higher than the one the client reads in the document belongs to a ' +
+          'restore not stored yet, or lost: ignore it.',
       }),
-    restoredAt: Timestamp,
+    restoredAt: Timestamp.openapi({
+      description: 'When the record was saved, a moment after the board changed.',
+    }),
     restoredBy: UserSummary.nullable().openapi({
       description: 'Null below editor, and when the account was deleted since.',
     }),
@@ -127,7 +130,7 @@ export type BoardRestore = z.infer<typeof BoardRestore>;
 
 export const BoardRestoreQuery = z
   .object({
-    after: z.coerce.number().int().min(0).default(0).openapi({
+    after: z.coerce.number().int().min(0).max(2147483647).default(0).openapi({
       description: 'The restore count the client last confirmed: only later restores are listed.',
     }),
   })
@@ -137,8 +140,11 @@ export const BoardRestores = z
   .object({
     items: z.array(BoardRestore).openapi({
       description:
-        'Newest first, at most the last 50 of the board. Fewer than the counts differ by: the ' +
-        'older ones are gone, or a record failed to write; the counts still say how many.',
+        'Highest count first, at most the last 50 saved for the board. The record is saved just ' +
+        'after the board changes, so a client can see a count before its record: when one is ' +
+        'missing, ask again for a few seconds, then show the restore without details. Fewer ' +
+        'records than the counts differ by also means older ones are gone, or one failed to ' +
+        'save; the counts still say how many restores there were.',
     }),
   })
   .openapi('BoardRestores');

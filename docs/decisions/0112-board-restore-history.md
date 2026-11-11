@@ -25,14 +25,21 @@ as null, never as its email.
 Order and failures. The row is written after the document change, in its own transaction under
 the board's version lock, and only when the restore changed the board (`writeVersionOver`
 returns the count, or null when nothing was counted). A row is never written for a restore that
-did not happen in the live document. If the insert fails the restore stands: the failure is
-logged with the board id and count only, and the client sees fewer rows than the counts differ
-by. The live document is stored after the collaboration server's usual debounce, so a process
-that dies in between can leave a row whose restore was never stored; the next restore sets the
-same count, and inserting a row deletes the board's rows with the same or a higher count. The
-same rule absorbs a count a writer set back (decision 0109), and keeps counts unique per board.
-Two collaboration processes restoring one board at the same moment can both set the same count;
-the later row replaces the earlier, as the document holds one count for both.
+did not happen in the live document. Because of that order, connected clients can receive the new
+count a moment before its row is saved: a client that finds no row for a count it has seen asks
+again for a few seconds, then shows the restore without details. If the insert fails it is tried
+once more; if that fails too, the restore stands, the failure is logged with the board id and
+count only, and the client sees fewer rows than the counts differ by. A durable outbox would close
+that gap; it is not built until records go missing in practice.
+
+Rows are upserted on (board, count): a row with the same count is replaced, every other row
+stays, whatever order rows are saved in. The board worker runs several jobs at once, so two
+restores of one board can save their rows out of order; neither removes the other. The live
+document is stored after the collaboration server's usual debounce, so a process that dies in
+between can leave a row whose restore was never stored; the next restore sets the same count and
+replaces it. A writer that sets the count back (decision 0109) does not erase the history either:
+the next restores replace only the rows with their own counts. The 50 rows kept are the most
+recently saved ones. Rows with a count higher than the document's are ignored by clients.
 
 `GET /api/v1/boards/{boardId}/restores?after=<count>` lists the rows with a higher count, newest
 first. It needs viewer, the role that reads the document and its count. Who restored and which
