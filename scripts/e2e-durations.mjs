@@ -1,5 +1,5 @@
 // Seconds per chromium spec, averaged from CI runs 42995386678 and 42996631177.
-// shell-and-uploads: sum of the seven moved first-run tests, averaged across their runners.
+// shell-and-uploads: sum of the six moved first-run tests, averaged across their runners.
 // shortcut: timings go stale; regenerate after suite changes from `gh run view --job <id> --log`
 // for all six shards of two green runs: sum successful chromium test durations per file,
 // then average the per-run totals (including ms/s/m units). Keep first-run and perf excluded.
@@ -81,7 +81,7 @@ export const durations = {
   'tests/sharing-expiry.spec.ts': 8.3,
   'tests/sharing-guests.spec.ts': 30.45,
   'tests/sharing.spec.ts': 75.8,
-  'tests/shell-and-uploads.spec.ts': 35.075,
+  'tests/shell-and-uploads.spec.ts': 33.233,
   'tests/short-film.spec.ts': 25.05,
   'tests/sidebar-project-menu.spec.ts': 7.35,
   'tests/snap-arrange.spec.ts': 18.75,

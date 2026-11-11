@@ -30,26 +30,6 @@ test('sign out, wrong password, sign in again', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
 });
 
-test('keys typed while the new note is not focused still land in it', async ({ page }) => {
-  await signIn(page);
-  await openOwnProject(page);
-  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
-  await page.getByTestId('canvas').dblclick({ position: { x: 900, y: 120 } });
-  const editor = page.locator('[data-type="note"] [contenteditable="true"]');
-  await expect(editor).toBeFocused();
-  // The gap between creating the note and its editor taking focus, made deterministic: the
-  // letters and then the space each arrive while the editor does not have focus.
-  await editor.evaluate((el) => (el as HTMLElement).blur());
-  await page.keyboard.type('Casting');
-  await expect(editor).toBeFocused();
-  await editor.evaluate((el) => (el as HTMLElement).blur());
-  await page.keyboard.type(' comparse');
-  await page.keyboard.press('Escape');
-  await expect(page.locator('[data-type="note"]', { hasText: 'Casting comparse' })).toHaveText(
-    'Casting comparse',
-  );
-});
-
 test('an upload cut by a network outage resumes by itself', async ({ page, context }) => {
   test.setTimeout(120_000);
   // Three tus chunks of 50 MiB, sent slowly enough to cut the network in the middle.

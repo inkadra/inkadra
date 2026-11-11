@@ -11,7 +11,7 @@ logs; new files use the median duration. See its comment to refresh the table. P
 excluded. Playwright's `chromium` project dependency runs all of `first-run.spec.ts` first on
 each empty database, even with CLI file filters. Specs may rely on its administrator Giulia
 Bianchi (`giulia@example.com`), the project "Ultima corsa" and its board story (including the
-note "Sopralluogo al porto"), never on another spec. Independent shell and upload regressions
+notes "Sopralluogo al porto" and "Casting comparse"), never on another spec. Independent shell and upload regressions
 live in `shell-and-uploads.spec.ts` and run once.
 
 **Service worker network events.** `playwright.config.ts` sets

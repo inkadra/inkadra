@@ -224,6 +224,26 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
   ).toBeVisible();
 });
 
+test('keys typed while the new note is not focused still land in it', async ({ page }) => {
+  await signIn(page);
+  await page.getByRole('link', { name: 'Ultima corsa' }).first().click();
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await page.getByTestId('canvas').dblclick({ position: { x: 900, y: 120 } });
+  const editor = page.locator('[data-type="note"] [contenteditable="true"]');
+  await expect(editor).toBeFocused();
+  // The gap between creating the note and its editor taking focus, made deterministic: the
+  // letters and then the space each arrive while the editor does not have focus.
+  await editor.evaluate((el) => (el as HTMLElement).blur());
+  await page.keyboard.type('Casting');
+  await expect(editor).toBeFocused();
+  await editor.evaluate((el) => (el as HTMLElement).blur());
+  await page.keyboard.type(' comparse');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-type="note"]', { hasText: 'Casting comparse' })).toHaveText(
+    'Casting comparse',
+  );
+});
+
 async function signIn(page: import('@playwright/test').Page) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(admin.email);
