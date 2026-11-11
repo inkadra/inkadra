@@ -5,7 +5,10 @@ import {
   AspectRatio,
   Element,
   type ElementType,
+  MAX_PLAN_ICONS,
+  MAX_SHAPES,
   MAX_STROKES,
+  MAX_TABLE_COLUMNS,
   MAX_TABLE_ROWS,
   PlanStroke,
   Stroke,
@@ -292,6 +295,65 @@ function toYValue(key: string, value: unknown): unknown {
   if (key === 'rows') return Y.Array.from((value as TableRow[]).map(tableRowMap));
   if (key === 'strokes' || key === 'shapes') return Y.Array.from(value as object[]);
   return value;
+}
+
+/** Lists as toYValue stores them, with the most items any element allows in them. */
+const STORED_LISTS: Record<string, { maps: boolean; max: number }> = {
+  items: { maps: true, max: Number.POSITIVE_INFINITY },
+  columns: { maps: true, max: MAX_TABLE_COLUMNS },
+  icons: { maps: true, max: MAX_PLAN_ICONS },
+  rows: { maps: true, max: MAX_TABLE_ROWS },
+  strokes: { maps: false, max: MAX_STROKES },
+  shapes: { maps: false, max: MAX_SHAPES },
+};
+const ELEMENT_KEYS = new Map<unknown, Set<string>>(
+  Element.options.map((option) => [option.shape.type.value, new Set(Object.keys(option.shape))]),
+);
+
+function isPlain(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return true;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === Array.prototype;
+}
+
+/**
+ * Whether the fields this build knows are stored as addElement stores them: its lists as
+ * Y.Arrays (of Y.Maps, of plain objects) within the limits of any element, a table row's cells
+ * as a Y.Map, a note's body as rich text, every other field as a plain JSON value. Fields it
+ * does not know are not looked at. Cards pasted as stored are checked with it (decision 0101),
+ * as readElement reads lists and nested maps through toJSON and would not notice.
+ */
+export function hasStoredShape(map: Y.Map<unknown>): boolean {
+  const type = map.get('type');
+  const known = ELEMENT_KEYS.get(type);
+  if (!known) return false;
+  for (const [key, value] of map.entries()) {
+    if (key === 'body') {
+      if (type !== 'note' || !(value instanceof Y.XmlFragment)) return false;
+      continue;
+    }
+    if (!known.has(key)) continue;
+    const list = STORED_LISTS[key];
+    if (!list) {
+      if (value instanceof Y.AbstractType || !isPlain(value)) return false;
+      continue;
+    }
+    if (!(value instanceof Y.Array) || value.length > list.max) return false;
+    for (const item of value.toArray()) {
+      if (!list.maps) {
+        if (item instanceof Y.AbstractType || !isPlain(item)) return false;
+        continue;
+      }
+      if (!(item instanceof Y.Map)) return false;
+      for (const [k, v] of item.entries()) {
+        const plain = (x: unknown) => !(x instanceof Y.AbstractType) && isPlain(x);
+        if (key === 'rows' && k === 'cells') {
+          if (!(v instanceof Y.Map) || ![...v.values()].every(plain)) return false;
+        } else if (!plain(v)) return false;
+      }
+    }
+  }
+  return true;
 }
 
 /**

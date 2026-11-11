@@ -39,23 +39,43 @@ unreadable cards an operation on `ids` takes along: the cards, the cards inside 
 scenes among them, the variants of the plans among them. A client refuses, or asks, before it
 deletes or copies them.
 
-**Copies as stored.** Duplicate, copy and paste take the selection and the cards inside its
-containers from the stored maps and copy the Y.Maps, so unknown fields, list items and note
-nodes go along. The clipboard keeps `version: 1`, `elements` and `bodies` for older readers and
-adds `cards`, each copied card as a Yjs update; readers that know it paste from it alone and
-check each card with `readElement`, as `addElement` checks the elements of an older clipboard.
-A clipboard holding a card that does not validate is refused as a whole. Placement, ids,
-z-order and links (arrow ends, a to-do list's scene, a plan's scenes and base) are those of the
-paste of elements; an arrow end keeps its other fields. Deleting a plan base copies its Set
-into its variants from the stored base.
+**Duplicate copies as stored.** Duplicating takes the selection and the cards inside its
+containers from the stored maps and clones the Y.Maps within the same document, so unknown
+fields, list items and note nodes go along. Deleting a plan base copies its Set into its
+variants from the stored base, and only from a plan.
+
+**Paste is a trust boundary.** The clipboard keeps `version: 1`, `elements` and `bodies`, which
+older readers paste as before, and adds `source` (board id, schema version of the document, and
+the server as the copying client names it; the web app gives its origin) and `cards`: as Yjs
+updates, only the cards the copying build does not fully understand. A paste reads and checks
+everything before it writes, in one transaction, all or nothing; a malformed clipboard
+(elements that do not validate, cards that do not decode, a plan base's Set with lists past the
+plan's limits or fields the plan does not allow) is refused and nothing is written.
+
+- A card this build understands, and any card from a document that is not newer than this
+  build, goes through the validated view and `addElement`, exactly as before.
+- A card that does not validate, from a document that is not newer, is left out as before, and
+  the paste says how many were (the web app shows it).
+- A card from a newer document that this build does not understand is pasted as stored only
+  within its lineage: the same board (`meta.boardId`), or the same server when the client names
+  it in both copy and paste. There the document is of that newer schema, so nothing is written
+  that its own clients would not expect. It must also be stored as `addElement` stores the known
+  fields (`hasStoredShape`: lists as Y.Arrays within their limits, plain values where values are
+  plain) and validate. Anywhere else, or if a card cannot be read at all, the paste is refused:
+  the app says to update it.
+
+What is checkable is the board id in the document and the server the client names; a crafted
+clipboard can claim either, and then still meets the shape and schema checks above.
 
 ## Consequences
 
-- The web app does not call the strict check yet: while every schema bump keeps older clients
-  read-only, it only meets cards it understands. Its copies and pastes of known content are as
-  before; a clipboard now also carries `cards`, which roughly doubles its size.
-- A card that does not validate is now copied with its column; pasting such a clipboard is
-  refused instead of leaving the card out.
+- The web app does not call the strict check to edit: while every schema bump keeps older
+  clients read-only, it only meets cards it understands. It passes its origin to copy and paste
+  and shows a message when cards are left out or a paste is refused.
+- For content a build understands the clipboard is as before plus `source`, about 100 bytes;
+  a foreign card adds its Yjs update (a frame with 100 strokes of 200 points: 264 KB before,
+  490 KB with the frame foreign).
 - `older-client.test.ts` in `canvas-core` is test P11: this build against a document of a newer
-  schema, simulated by storing what it does not know.
+  schema, simulated by storing what it does not know. `clipboard.test.ts` covers crafted and
+  older clipboards.
 - Cost is measured by `bench:reads` (docs/testing/reference-board.md).

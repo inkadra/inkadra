@@ -83,7 +83,12 @@ describe('arrows', () => {
       {},
       opts,
     );
-    const pasted = pasteElements(doc, copyElements(doc, [a.id, arrow.id]), { x: 1000, y: 0 }, opts);
+    const pasted = pasteElements(
+      doc,
+      copyElements(doc, [a.id, arrow.id]),
+      { x: 1000, y: 0 },
+      opts,
+    ).ids;
     const copy = listElements(doc).find((e) => e.type === 'arrow' && pasted.includes(e.id));
     if (copy?.type !== 'arrow') throw new Error('arrow expected');
     expect(copy.from.elementId).not.toBe(a.id);

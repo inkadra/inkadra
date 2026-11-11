@@ -655,7 +655,11 @@
     "errors": {
       "boardCreate": "No se pudo crear el tablero.",
       "upload": "No se pudo subir {{name}}.",
-      "tooBig": "{{name}} supera el tamaño máximo permitido."
+      "tooBig": "{{name}} supera el tamaño máximo permitido.",
+      "pasteSkipped_one": "No se pegó 1 elemento: no es válido.",
+      "pasteSkipped_other": "No se pegaron {{count}} elementos: no son válidos.",
+      "pasteNewer": "Estos elementos vienen de una versión más reciente. Actualiza la app para pegarlos aquí.",
+      "pasteInvalid": "El contenido del portapapeles no es válido: no se pegó nada."
     },
     "arrow": {
       "label": "Etiqueta de la flecha",

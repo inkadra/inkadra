@@ -197,4 +197,25 @@ describe('the strict check of a card', () => {
     text.insert(0, 'x', { glow: {} });
     expect(issues(note)).toEqual([{ kind: 'mark', path: ['body', 0, 0], name: 'glow' }]);
   });
+
+  it('follows updates from another client and undo', () => {
+    const doc = createBoardDoc(boardId);
+    const note = add(doc, { type: 'note' });
+    const id = note.get('id') as string;
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    expect(checkCard(note)).toEqual({ status: 'known' });
+    const before = Y.encodeStateVector(remote);
+    roots(remote).elements.get(id)?.set('pinned', true);
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote, before));
+    expect(issues(note)).toEqual([{ kind: 'key', path: ['pinned'] }]);
+
+    const undo = new Y.UndoManager(roots(doc).elements, { trackedOrigins: new Set(['local']) });
+    doc.transact(() => note.delete('pinned'), 'local');
+    expect(isForeignCard(note)).toBe(false);
+    undo.undo();
+    expect(issues(note)).toEqual([{ kind: 'key', path: ['pinned'] }]);
+    undo.redo();
+    expect(isForeignCard(note)).toBe(false);
+  });
 });

@@ -199,7 +199,7 @@ describe('set plans on the clipboard', () => {
       copyElements(doc, [id]),
       { x: 900, y: 0 },
       { userId: null },
-    );
+    ).ids;
     for (const other of [copy, pasted]) {
       const plan = listElements(doc).find((e) => e.id === other) as PlanElement;
       expect(plan.icons).toEqual(read().icons);
@@ -611,10 +611,10 @@ describe('variants without their base', () => {
     updateElement(doc, variantId, { sceneIds: ['sceneAAAAAAAA'] });
     const data = copyElements(doc, [variantId]);
     // On the same board it stays a variant of its base.
-    const [same] = pasteElements(doc, data, { x: 0, y: 900 }, { userId: null });
+    const [same] = pasteElements(doc, data, { x: 0, y: 900 }, { userId: null }).ids;
     expect((listElements(doc).find((e) => e.id === same) as PlanElement).variantOf).toBe(id);
     const other = createBoardDoc(boardId);
-    const [pasted] = pasteElements(other, data, { x: 0, y: 0 }, { userId: null });
+    const [pasted] = pasteElements(other, data, { x: 0, y: 0 }, { userId: null }).ids;
     const plan = listElements(other).find((e) => e.id === pasted) as PlanElement;
     expect(plan.variantOf).toBeUndefined();
     expect(plan.sceneIds).toBeUndefined();

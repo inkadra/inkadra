@@ -66,7 +66,32 @@ export const NOTE_BODY_SCHEMA = {
 } as const satisfies Record<'nodes' | 'marks', Record<string, readonly string[]>>;
 
 /** Checks a card; the result is kept until the card or anything inside it changes. */
-export const checkCard: (map: Y.Map<unknown>) => CardCompat = cachedPerMap(checkNow);
+export const checkCard: (map: Y.Map<unknown>) => CardCompat = cachedPerMap((map) =>
+  checkNow(
+    map.get('type'),
+    map.entries(),
+    (key) => map.get(key),
+    () => readElement(map),
+  ),
+);
+
+/**
+ * Checks a card given as plain JSON, as the clipboard carries it, with its note body if any;
+ * not cached. Lists are plain arrays here, so only their items are walked.
+ */
+export function checkElement(element: Record<string, unknown>, body?: Y.XmlFragment): CardCompat {
+  const entries: Array<[string, unknown]> = Object.entries(element);
+  if (body) entries.push(['body', body]);
+  return checkNow(
+    element.type,
+    entries,
+    (key) => element[key],
+    () => {
+      const parsed = Element.safeParse(element);
+      return parsed.success ? parsed.data : null;
+    },
+  );
+}
 
 export function isForeignCard(map: Y.Map<unknown>): boolean {
   return checkCard(map).status === 'foreign';
@@ -101,15 +126,19 @@ const ELEMENTS = new Map<unknown, Record<string, z.ZodType>>(
   ]),
 );
 
-function checkNow(map: Y.Map<unknown>): CardCompat {
+function checkNow(
+  type: unknown,
+  entries: Iterable<[string, unknown]>,
+  get: (key: string) => unknown,
+  read: () => Element | null,
+): CardCompat {
   const issues: ForeignIssue[] = [];
-  const type = map.get('type');
   const shape = ELEMENTS.get(type);
   if (!shape) {
     if (typeof type === 'string') issues.push({ kind: 'value', path: ['type'], value: type });
     return { status: 'foreign', readable: false, issues: [...issues, invalid([])] };
   }
-  for (const [key, value] of map.entries()) {
+  for (const [key, value] of entries) {
     if (key === 'body' && type === 'note' && value instanceof Y.XmlFragment) {
       walkBody(value, ['body'], issues);
       continue;
@@ -118,13 +147,13 @@ function checkNow(map: Y.Map<unknown>): CardCompat {
     if (!field) issues.push({ kind: 'key', path: [key] });
     else walk(field, value, [key], issues);
   }
-  const element = readElement(map) as Record<string, unknown> | null;
+  const element = read() as Record<string, unknown> | null;
   if (!element) issues.push(invalid([]));
   else {
     // Lists that leave out the items they cannot read: the card validates without them.
     for (const [key, field] of Object.entries(shape)) {
       const lenient = lenientListOf(unwrap(field));
-      const raw = lenient && itemsOf(map.get(key));
+      const raw = lenient && itemsOf(get(key));
       if (!lenient || !raw) continue;
       const kept = (element[key] as unknown[] | undefined)?.length ?? 0;
       if (kept < Math.min(raw.length, lenient.max) && !issues.some((i) => i.path[0] === key))

@@ -6,7 +6,13 @@
  * delete (column, plan base), edits of nested plain values and opening a note, nothing it does
  * not know is lost, or the operation is refused (`foreignCardsIn`, `checkCard`).
  */
-import { checkCard, createBoardDoc, type Element, roots } from '@inkadra/doc-schema';
+import {
+  CURRENT_SCHEMA_VERSION,
+  checkCard,
+  createBoardDoc,
+  type Element,
+  roots,
+} from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import {
@@ -16,6 +22,7 @@ import {
   duplicateElements,
   foreignCardsIn,
   listElements,
+  PasteRefusedError,
   pasteElements,
 } from './board.ts';
 import { addPlanIcon, addVariant, type PlanElement } from './plan.ts';
@@ -33,9 +40,10 @@ function content(doc: Y.Doc, id: string): Record<string, unknown> {
 }
 const through = (data: unknown) => JSON.parse(JSON.stringify(data));
 
-/** A board with cards of a newer schema: what it adds is written as stored. */
+/** A board of a newer schema: what that schema adds is written as stored. */
 function newerBoard() {
   const doc = createBoardDoc(boardId);
+  roots(doc).meta.set('schemaVersion', CURRENT_SCHEMA_VERSION + 1);
   const at = { x: 0, y: 0 };
 
   const note = createElement(doc, 'note', at, {}, opts).id;
@@ -109,11 +117,17 @@ function newerBoard() {
 }
 
 describe('an older client on a newer document (P11)', () => {
-  it('pastes cards with every field, item and note node it does not know', () => {
+  it('pastes cards with every field, item and note node it does not know, on their board', () => {
     const b = newerBoard();
+    // The same board, as another client holds it.
     const target = createBoardDoc(boardId);
     const ids = [b.note, b.image, b.arrow];
-    const pasted = pasteElements(target, through(copyElements(b.doc, ids)), { x: 0, y: 0 }, opts);
+    const pasted = pasteElements(
+      target,
+      through(copyElements(b.doc, ids)),
+      { x: 0, y: 0 },
+      opts,
+    ).ids;
     for (const [i, id] of ids.entries()) {
       const copy = content(target, pasted[i]!);
       const original = content(b.doc, id);
@@ -127,6 +141,24 @@ describe('an older client on a newer document (P11)', () => {
       }
       expect(copy).toEqual(original);
     }
+  });
+
+  it('pastes them on another board of the same server, and refuses elsewhere', () => {
+    const b = newerBoard();
+    const elsewhere = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
+    const data = through(copyElements(b.doc, [b.note], { instance: 'https://a.example' }));
+    const sameServer = createBoardDoc(elsewhere);
+    const at = { x: 0, y: 0 };
+    const [copy] = pasteElements(sameServer, data, at, {
+      ...opts,
+      instance: 'https://a.example',
+    }).ids;
+    expect(content(sameServer, copy!)).toEqual(content(b.doc, b.note));
+    const otherServer = createBoardDoc(elsewhere);
+    expect(() =>
+      pasteElements(otherServer, data, at, { ...opts, instance: 'https://b.example' }),
+    ).toThrow(new PasteRefusedError('newer'));
+    expect(roots(otherServer).elements.size).toBe(0);
   });
 
   it('duplicates a card with what it does not know', () => {
@@ -147,11 +179,11 @@ describe('an older client on a newer document (P11)', () => {
     }
   });
 
-  it('copies a column with its cards, and refuses to paste a card it cannot read', () => {
+  it('copies a column with its cards, and refuses to paste a newer card it cannot read', () => {
     const b = newerBoard();
     const target = createBoardDoc(boardId);
     const data = through(copyElements(b.doc, [b.column]));
-    expect(() => pasteElements(target, data, { x: 0, y: 0 }, opts)).toThrow();
+    expect(() => pasteElements(target, data, { x: 0, y: 0 }, opts)).toThrow(PasteRefusedError);
     expect(roots(target).elements.size).toBe(0);
     // Without it, the column and the other cards keep everything.
     mapOf(b.doc, b.unreadable).delete('status');
@@ -160,7 +192,7 @@ describe('an older client on a newer document (P11)', () => {
       through(copyElements(b.doc, [b.column])),
       { x: 0, y: 0 },
       opts,
-    );
+    ).ids;
     const kids = [...roots(target).elements.values()].filter((map) => map.get('parent') === column);
     expect(kids.map((map) => map.get('pinned'))).toEqual([undefined, true, undefined]);
   });

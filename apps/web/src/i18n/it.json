@@ -655,7 +655,11 @@
     "errors": {
       "boardCreate": "Non è stato possibile creare la board.",
       "upload": "Caricamento di {{name}} non riuscito.",
-      "tooBig": "{{name}} supera la dimensione massima consentita."
+      "tooBig": "{{name}} supera la dimensione massima consentita.",
+      "pasteSkipped_one": "1 elemento non è stato incollato: non è valido.",
+      "pasteSkipped_other": "{{count}} elementi non sono stati incollati: non sono validi.",
+      "pasteNewer": "Questi elementi vengono da una versione più recente. Aggiorna l’app per incollarli qui.",
+      "pasteInvalid": "Il contenuto degli appunti non è valido: non è stato incollato nulla."
     },
     "arrow": {
       "label": "Etichetta della freccia",

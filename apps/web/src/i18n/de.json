@@ -655,7 +655,11 @@
     "errors": {
       "boardCreate": "Das Board konnte nicht erstellt werden.",
       "upload": "{{name}} konnte nicht hochgeladen werden.",
-      "tooBig": "{{name}} überschreitet die zulässige Maximalgröße."
+      "tooBig": "{{name}} überschreitet die zulässige Maximalgröße.",
+      "pasteSkipped_one": "1 Element wurde nicht eingefügt: Es ist ungültig.",
+      "pasteSkipped_other": "{{count}} Elemente wurden nicht eingefügt: Sie sind ungültig.",
+      "pasteNewer": "Diese Elemente stammen aus einer neueren Version. Aktualisiere die App, um sie hier einzufügen.",
+      "pasteInvalid": "Der Inhalt der Zwischenablage ist ungültig: Es wurde nichts eingefügt."
     },
     "arrow": {
       "label": "Beschriftung des Pfeils",

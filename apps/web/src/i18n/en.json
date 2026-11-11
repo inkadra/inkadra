@@ -655,7 +655,11 @@
     "errors": {
       "boardCreate": "The board could not be created.",
       "upload": "Uploading {{name}} failed.",
-      "tooBig": "{{name}} is larger than the allowed maximum."
+      "tooBig": "{{name}} is larger than the allowed maximum.",
+      "pasteSkipped_one": "1 item was not pasted: it is not valid.",
+      "pasteSkipped_other": "{{count}} items were not pasted: they are not valid.",
+      "pasteNewer": "These items come from a newer version. Update the app to paste them here.",
+      "pasteInvalid": "The clipboard content is not valid: nothing was pasted."
     },
     "arrow": {
       "label": "Arrow label",

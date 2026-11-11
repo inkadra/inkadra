@@ -187,6 +187,24 @@ export function fillFragment(fragment: Y.XmlFragment, text: string) {
   );
 }
 
+/**
+ * The extensions that make the schema of a note body. `NOTE_BODY_SCHEMA` in doc-schema lists
+ * the nodes, marks and attributes they store (decision 0101); a test keeps the two equal.
+ */
+export const NOTE_EXTENSIONS = [
+  StarterKit.configure({
+    // Collaboration brings its own undo history, scoped to this note.
+    undoRedo: false,
+    link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
+  }),
+  NoteAppearance,
+  NoteInk,
+  TaskList,
+  TaskItem,
+  NoteMention,
+  NoteImageNode,
+];
+
 export function NoteEditor({
   fragment,
   onReady,
@@ -199,17 +217,7 @@ export function NoteEditor({
   const { t } = useTranslation();
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        // Collaboration brings its own undo history, scoped to this note.
-        undoRedo: false,
-        link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
-      }),
-      NoteAppearance,
-      NoteInk,
-      TaskList,
-      TaskItem,
-      NoteMention,
-      NoteImageNode,
+      ...NOTE_EXTENSIONS,
       Collaboration.configure({ fragment }),
       Placeholder.configure({ placeholder: t('board.note.placeholder') }),
     ],
