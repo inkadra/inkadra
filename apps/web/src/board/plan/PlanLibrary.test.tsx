@@ -35,8 +35,9 @@ it('switches categories on the rail, arms a tile and places the first search res
     await act(async () => grip?.click());
     expect(grip?.getAttribute('aria-pressed')).toBe('true');
     expect(host.textContent).toContain('board.plan.groups.modifiers');
-    const tile = [...host.querySelectorAll<HTMLButtonElement>('.plan-lib__tile')].find((b) =>
-      b.textContent?.includes('board.plan.icons.softbox'),
+    // Named by the plain name; the label below it may carry soft hyphens (tileName).
+    const tile = host.querySelector<HTMLButtonElement>(
+      '.plan-lib__tile[aria-label="board.plan.icons.softbox"]',
     );
     await act(async () => tile?.click());
     expect(onArm).toHaveBeenCalledWith('softbox');

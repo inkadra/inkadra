@@ -2,7 +2,7 @@
 import type { PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { projectKit, projectKitDetail, searchLibrary } from './library.ts';
+import { projectKit, projectKitDetail, searchLibrary, tileName } from './library.ts';
 
 const NAMES: Record<string, string> = {
   'board.plan.icons.softbox': 'Softbox',
@@ -67,5 +67,19 @@ describe('projectKit', () => {
     expect(kit[1]?.lenses).toEqual([32, 50]);
     expect(projectKitDetail(kit[0] as never, t, 'S35')).toBe('LED COB 300 W · Grid · C-stand');
     expect(projectKitDetail(kit[1] as never, t, 'S35')).toBe('S35 · 32, 50 mm');
+  });
+});
+
+describe('tileName', () => {
+  const shown = (name: string) => tileName(name).replaceAll('\u00AD', '-');
+  it('lets long words break at syllables, never near their ends, short ones whole', () => {
+    expect(shown('Profilscheinwerfer')).toBe('Pro-fil-schein-wer-fer');
+    expect(shown('Kühlschrank')).toBe('Kühl-schrank');
+    expect(shown('Tischlampe')).toBe('Tisch-lampe');
+    expect(shown('Seguipersona')).toBe('Segui-per-sona');
+    expect(shown('Quadro di distribuzione')).toBe('Quadro di dis-tri-bu-zione');
+    expect(tileName('LED COB')).toBe('LED COB');
+    // Soft hyphens only: the name reads the same.
+    expect(tileName('Microfonista').replaceAll('\u00AD', '')).toBe('Microfonista');
   });
 });
