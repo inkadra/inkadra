@@ -435,7 +435,7 @@ export function readElement(map: Y.Map<unknown>): Element | null {
 
 /**
  * Cooperative initial reads: each step checks at most one large-list item. Only the return
- * value is a validated element. If the document changes between steps, discard and restart.
+ * value is a validated element. If the element changes between steps, discard the read.
  */
 export function* readElementSteps(
   map: Y.Map<unknown>,

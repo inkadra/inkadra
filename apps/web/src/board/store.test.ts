@@ -1,5 +1,6 @@
 import * as core from '@inkadra/canvas-core';
 import { createElement, currentElements, listElements, updateElement } from '@inkadra/canvas-core';
+import * as schema from '@inkadra/doc-schema';
 import { addElement, roots, UNSORTED } from '@inkadra/doc-schema';
 import { generateReferenceBoard } from '@inkadra/doc-schema/reference-board';
 import { expect, it, vi } from 'vitest';
@@ -190,7 +191,7 @@ it('reads the document when a card is stored under a key that is not its id', ()
   store.destroy();
 });
 
-it('hydrates cooperatively without exposing partial elements, and restarts after local and remote edits', async () => {
+it('hydrates cooperatively without exposing partial elements, and rereads cards changed by local and remote edits', async () => {
   const { update } = generateReferenceBoard('small', 7);
   const doc = new Y.Doc();
   Y.applyUpdate(doc, update);
@@ -318,3 +319,45 @@ it('reads a large remote move in time linear in the number of cards', () => {
   // Linear: 8x the cards costs about 8x the reads. Quadratic would be about 64x.
   expect(large / small).toBeLessThan(12);
 }, 60_000);
+
+it('finishes hydrating while one card is edited at every pause, rereading only what changed', async () => {
+  const { update } = generateReferenceBoard('small', 3);
+  const doc = new Y.Doc();
+  Y.applyUpdate(doc, update);
+  const all = listElements(doc);
+  const table = all
+    .filter((el) => el.type === 'table')
+    .sort((a, b) => b.rows.length - a.rows.length)[0]!;
+  const note = all.find((el) => el.type === 'note')!;
+  const [row] = table.rows;
+  const [column] = table.columns;
+  const steps = vi.spyOn(schema, 'readElementSteps');
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const store = BoardStore.hydrate(doc, { budgetMs: 0.05 });
+  try {
+    let edits = 0;
+    while (store.hydrating && edits < 20_000) {
+      // Typing: the same cell of the largest table, and a note that moves.
+      core.setTableCell(doc, table.id, row!.id, column!.id, `typed ${edits}`);
+      updateElement(doc, note.id, { x: edits }, LOCAL);
+      edits++;
+      await vi.advanceTimersToNextTimerAsync();
+    }
+    await store.whenHydrated;
+    expect(store.hydrating).toBe(false);
+    expect(edits).toBeGreaterThan(10);
+    // Each element is read cooperatively once; only the edited ones again.
+    expect(steps.mock.calls.length).toBeLessThan(all.length + 2 * edits);
+    const fresh = new BoardStore(doc);
+    expect([...store.getSnapshot().byId]).toEqual([...fresh.getSnapshot().byId]);
+    expect(store.getSnapshot().canvas).toEqual(fresh.getSnapshot().canvas);
+    expect([...store.getSnapshot().columns]).toEqual([...fresh.getSnapshot().columns]);
+    expect(store.getSnapshot().unsorted).toEqual(fresh.getSnapshot().unsorted);
+    expect(store.getSnapshot().byId.get(note.id)?.x).toBe(edits - 1);
+    fresh.destroy();
+  } finally {
+    store.destroy();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  }
+});

@@ -71,4 +71,4 @@ The longest open slice includes the still-monolithic applyUpdate; `hydrate: long
 is measured with a zero-delay timer only during hydration (including GC and scheduling).
 The synchronous web constructor is unchanged. While `store.hydrating` is true the snapshot
 is empty; it is published only after full validation. Local/remote changes during a pause
-restart the read, and destroy cancels it.
+make only the changed cards be read again, and destroy cancels it.

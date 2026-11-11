@@ -20,8 +20,12 @@ List equality first checks length and then compares items by identity or JSON, s
 only replaced items rather than all unchanged strokes/rows after a single edit.
 Cached Y.Map rows follow the document's transaction lifecycle, including ancestors of changed
 cell maps. Pending transactions remain visible through observer cleanup, so early observers
-and reads inside a transaction cannot reuse stale data. After all cleanups, changed rows are
-marked dirty before the transaction set is cleared. Unchanged rows no longer compare every
+and reads inside a transaction cannot reuse stale data. While a transaction is pending a
+cached row checks its own types (the row and its cell map) against it, never the whole set
+of changed types: a remote transaction moving thousands of cards stays linear. A row checked
+while a transaction is pending stays dirty, because Yjs does not record changes to types
+created in the same transaction. After all cleanups, changed rows are marked dirty before the
+transaction set is cleared. Unchanged rows no longer compare every
 cell; dirty rows still compare content and parse any new content as in 0094.
 
 Opening uses the same grouping pass, removing the scan of the whole board per column.
@@ -44,10 +48,15 @@ can compare the index against a full rebuild after the actual generator gestures
   snapshot is empty; no partial element is published. Subscribers are notified once the
   complete validated snapshot is ready. The normal constructor remains synchronous.
 - The element reader can yield between individual large-list items and fields; both paths
-  use the same validation logic. A local or remote change during a pause discards the pending
-  snapshot and restarts against the new document. Helpers fall back to validated document
-  reads during hydration. Continuous editing can postpone completion; consumers should await
-  readiness before rendering the board. Destroying the store cancels publication.
+  use the same validation logic. A local or remote change during a pause drops only the
+  validated reads of the cards it touched (the same rule as the snapshot's own updates, rich
+  text excluded); those cards are read again, and the snapshot is published in the task that
+  finds every card read and current, in document order, as the synchronous read builds it.
+  A card changed in the middle of its own read is read again in one go, as the snapshot does
+  after every edit, so typing in one card cannot keep hydration from finishing. Editing every
+  card at every pause still can. Helpers fall back to validated document reads during
+  hydration; consumers should await readiness before rendering the board. Destroying the
+  store cancels publication.
 - The budget is cooperative, not preemption: one item, one field conversion, the final
   element parse and the final index cannot be interrupted. Larger individual fields would
   need additional split points if they dominate a future reference board.

@@ -51,7 +51,8 @@ export class BoardStore {
   private removeView: () => void;
   private loading = false;
   private destroyed = false;
-  private revision = 0;
+  /** Keys of elements changed while hydrating: their validated reads are taken again. */
+  private stale = new Set<string>();
   /** Resolves when the complete initial snapshot is available (or the store is destroyed). */
   readonly whenHydrated: Promise<void>;
 
@@ -107,9 +108,6 @@ export class BoardStore {
   };
 
   private onChange = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>) => {
-    this.revision++;
-    // No partial snapshot is published. A concurrent edit restarts the cooperative read.
-    if (this.loading) return;
     const { elements } = roots(this.doc);
     const touched = new Set<string>();
     for (const event of events) {
@@ -122,6 +120,11 @@ export class BoardStore {
       if (typeof id === 'string' && field !== 'body') touched.add(id);
     }
     if (touched.size === 0) return;
+    // No partial snapshot is published: hydration reads these elements again.
+    if (this.loading) {
+      for (const id of touched) this.stale.add(id);
+      return;
+    }
     const byId = new Map(this.snapshot.byId);
     let changed = false;
     const added: string[] = [];
@@ -165,40 +168,63 @@ export class BoardStore {
     const pause = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
     // Also separates applyUpdate from the initial read when called in the same JS task.
     await pause();
-    while (!this.destroyed) {
-      const revision = this.revision;
-      const byId = new Map<string, Element>();
-      let exact = true;
-      let start = performance.now();
-      // Queue the next turn before doing work, so the timer delay overlaps this slice.
-      let nextPause = pause();
-      for (const [key, map] of roots(this.doc).elements.entries()) {
+    if (this.destroyed) return;
+    const { elements } = roots(this.doc);
+    /** Validated reads by key, each current: a change since then puts its key in stale. */
+    const done = new Map<string, Element | null>();
+    /** Changed in the middle of their own read: read in one go next time, so typing ends. */
+    const interrupted = new Set<string>();
+    let start = performance.now();
+    // Queue the next turn before doing work, so the timer delay overlaps this slice.
+    let nextPause = pause();
+    const due = () => performance.now() - start >= budgetMs;
+    const yieldNow = async () => {
+      await nextPause;
+      nextPause = pause();
+      start = performance.now();
+    };
+    for (;;) {
+      for (const key of this.stale) done.delete(key);
+      this.stale.clear();
+      const todo = [...elements.keys()].filter((key) => !done.has(key));
+      // Every element is read and current, in this same task: publish.
+      if (todo.length === 0) break;
+      for (const key of todo) {
+        if (due()) await yieldNow();
+        if (this.destroyed) return;
+        const map = elements.get(key);
+        if (!map) continue;
+        // From here the read sees the current element; a change during a pause aborts it.
+        this.stale.delete(key);
+        if (interrupted.has(key)) {
+          done.set(key, readElement(map));
+          continue;
+        }
         const steps = readElementSteps(map);
         let step = steps.next();
         while (!step.done) {
-          if (performance.now() - start >= budgetMs) {
-            await nextPause;
-            if (this.destroyed || this.revision !== revision) break;
-            nextPause = pause();
-            start = performance.now();
-          }
+          if (due()) await yieldNow();
+          if (this.destroyed) return;
+          if (this.stale.has(key)) break;
           step = steps.next();
         }
-        if (this.destroyed || this.revision !== revision) break;
-        const el = step.value;
-        if (el) {
-          byId.set(el.id, el);
-          if (el.id !== key) exact = false;
-        }
+        if (step.done) done.set(key, step.value);
+        else interrupted.add(key);
       }
-      if (this.destroyed) return;
-      if (this.revision !== revision) continue;
-      this.exact = exact;
-      this.index(byId);
-      this.loading = false;
-      for (const listener of this.listeners) listener();
-      return;
     }
+    // Document order, as the synchronous read (a duplicated id keeps the last element).
+    const byId = new Map<string, Element>();
+    let exact = true;
+    for (const key of elements.keys()) {
+      const el = done.get(key);
+      if (!el) continue;
+      byId.set(el.id, el);
+      if (el.id !== key) exact = false;
+    }
+    this.exact = exact;
+    this.index(byId);
+    this.loading = false;
+    for (const listener of this.listeners) listener();
   }
 
   private index(byId: Map<string, Element>, touched?: ReadonlySet<string>) {
