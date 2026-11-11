@@ -490,7 +490,10 @@ test('every library name fits its tile, in all six languages, at 1280 and 390 px
         await m.goto(`${baseURL}/p/${project.id}?view=canvas`);
         if (phone) {
           const words = JSON.parse(
-            readFileSync(new URL(`../../apps/web/src/i18n/${locale}.json`, import.meta.url), 'utf8'),
+            readFileSync(
+              new URL(`../../apps/web/src/i18n/${locale}.json`, import.meta.url),
+              'utf8',
+            ),
           );
           await m.getByRole('button', { name: words.board.zoom.fit }).first().click();
         }

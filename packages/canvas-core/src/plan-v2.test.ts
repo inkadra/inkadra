@@ -1019,7 +1019,7 @@ describe('review of the editor (pull request 602)', () => {
   const sync = (from: Y.Doc, to: Y.Doc) => Y.applyUpdate(to, Y.encodeStateAsUpdate(from));
   const at = { x: 400, y: 300, w: 60, h: 60, color: '#1C1C1E' };
 
-  it("shows an item a setup keeps on its own Set, and moves it into the base in one step", () => {
+  it('shows an item a setup keeps on its own Set, and moves it into the base in one step', () => {
     const doc = createBoardDoc(boardId);
     const base = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
     const setup = addVariant(doc, planOf(doc, base.id), 'Sera', { userId: null });
@@ -1027,9 +1027,11 @@ describe('review of the editor (pull request 602)', () => {
     const stray = addPlanIcon(doc, setup, { ...at, kind: 'table', layer: 'set' }) as string;
     const light2 = addPlanIcon(doc, setup, { ...at, kind: 'fresnel', on: light }) as string;
     // Stranded on the setup's Set (an older build, a race): drawn, not lost.
-    expect(variantView(planOf(doc, setup), planOf(doc, base.id)).icons?.map((i) => i.id)).toEqual(
-      [light, stray, light2],
-    );
+    expect(variantView(planOf(doc, setup), planOf(doc, base.id)).icons?.map((i) => i.id)).toEqual([
+      light,
+      stray,
+      light2,
+    ]);
     const undo = new Y.UndoManager(roots(doc).elements, { trackedOrigins: new Set(['me']) });
     const moved = transferPlanItems(
       doc,
@@ -1048,9 +1050,11 @@ describe('review of the editor (pull request 602)', () => {
     expect(planOf(doc, setup).icons?.map((i) => i.id)).toEqual([stray]);
     expect(hasStoredShape(roots(doc).elements.get(base.id) as Y.Map<unknown>)).toBe(true);
     // Every setup sees them now; one undo puts them back.
-    expect(variantView(planOf(doc, setup), planOf(doc, base.id)).icons?.map((i) => i.id)).toEqual(
-      [light, light2, stray],
-    );
+    expect(variantView(planOf(doc, setup), planOf(doc, base.id)).icons?.map((i) => i.id)).toEqual([
+      light,
+      light2,
+      stray,
+    ]);
     undo.undo();
     expect(planOf(doc, base.id).icons ?? []).toEqual([]);
     expect(planOf(doc, setup).icons?.map((i) => i.id)).toEqual([light, stray, light2]);
@@ -1086,14 +1090,20 @@ describe('review of the editor (pull request 602)', () => {
     const doc = createBoardDoc(boardId);
     const el = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
     const map = roots(doc).elements.get(el.id) as Y.Map<unknown>;
-    const c = (i: number) => ({ id: `circuit${String(i).padStart(6, 'A')}`, name: `C${i}`, amps: 16 });
+    const c = (i: number) => ({
+      id: `circuit${String(i).padStart(6, 'A')}`,
+      name: `C${i}`,
+      amps: 16,
+    });
     doc.transact(() => map.set('circuits', [c(1)]));
     expect(planOf(doc, el.id).circuits).toEqual([c(1)]);
     updatePlanCircuits(doc, el.id, [{ ...c(1), name: 'Main' }]);
     expect(planOf(doc, el.id).circuits).toEqual([{ ...c(1), name: 'Main' }]);
     expect((map.get('circuits') as Y.Array<unknown>).get(0)).toBeInstanceOf(Y.Map);
     // Two people adding at once can pass 30: the plan still reads, with the first 30.
-    doc.transact(() => map.set('circuits', Y.Array.from(Array.from({ length: 31 }, (_, i) => c(i)))));
+    doc.transact(() =>
+      map.set('circuits', Y.Array.from(Array.from({ length: 31 }, (_, i) => c(i)))),
+    );
     expect(planOf(doc, el.id).circuits).toHaveLength(30);
   });
 });

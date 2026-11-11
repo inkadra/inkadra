@@ -99,9 +99,9 @@ it('moves an item of a setup to Set into the base, in one undo step', async () =
   expect(planOf(doc, base.id).icons).toMatchObject([{ id: table, kind: 'table' }]);
   expect(planOf(doc, base.id).icons?.[0]?.layer).toBeUndefined();
   expect(planOf(doc, setup).icons ?? []).toEqual([]);
-  expect(
-    variantView(planOf(doc, setup), planOf(doc, base.id)).icons?.map((i) => i.id),
-  ).toEqual([table]);
+  expect(variantView(planOf(doc, setup), planOf(doc, base.id)).icons?.map((i) => i.id)).toEqual([
+    table,
+  ]);
   m.store.undo.undo();
   expect(planOf(doc, base.id).icons ?? []).toEqual([]);
   expect(planOf(doc, setup).icons).toMatchObject([{ id: table, layer: 'actors' }]);
