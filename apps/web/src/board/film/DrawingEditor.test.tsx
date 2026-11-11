@@ -177,7 +177,6 @@ describe('drawing editor', () => {
     const input = host.querySelector<HTMLInputElement>('.pen__text');
     if (!input) throw new Error('no text field');
     await act(async () => {
-      field.focus();
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
         input,
         'Treno',
@@ -251,6 +250,7 @@ describe('drawing editor', () => {
     const field = host.querySelector<HTMLInputElement>('.pen__opacity .plan-num input');
     if (!field) throw new Error('no opacity field');
     await act(async () => {
+      field.focus();
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, '45');
       field.dispatchEvent(new Event('input', { bubbles: true }));
     });
