@@ -16,6 +16,7 @@ import {
   getAnimaticAudio,
   getBoardAspect,
   getSchemaVersion,
+  hasStoredShape,
   MAX_PLAN_ICONS,
   MAX_PLAN_WALLS,
   MAX_WALL_POINTS,
@@ -1132,7 +1133,7 @@ describe('set plan v2 (version 23, decision 0104)', () => {
     expect(parsed.type === 'plan' && parsed.icons?.map((i) => i.kind)).toEqual(v22);
   });
 
-  it('keeps the new fields of icons and plans, walls and openings as plain items', () => {
+  it('keeps the new fields of icons and plans, walls and openings as Y.Maps', () => {
     const doc = createBoardDoc(boardId);
     const el = Element.parse(
       plan({
@@ -1200,8 +1201,16 @@ describe('set plan v2 (version 23, decision 0104)', () => {
     addElement(doc, el);
     const map = roots(doc).elements.get(el.id)!;
     expect(readElement(map)).toEqual(el);
-    expect((map.get('walls') as Y.Array<unknown>).get(0)).not.toBeInstanceOf(Y.Map);
+    // Walls and openings are Y.Maps, as icons, so edits of different fields merge.
+    expect((map.get('walls') as Y.Array<unknown>).get(0)).toBeInstanceOf(Y.Map);
+    expect((map.get('openings') as Y.Array<unknown>).get(0)).toBeInstanceOf(Y.Map);
+    expect(hasStoredShape(map)).toBe(true);
     expect(validateBoardDoc(doc)).toEqual([]);
+    // Walls first written as plain objects are still read and pass the stored-shape check.
+    const plain = el.type === 'plan' ? (el.walls ?? []) : [];
+    doc.transact(() => map.set('walls', Y.Array.from(plain)));
+    expect(readElement(map)).toEqual(el);
+    expect(hasStoredShape(map)).toBe(true);
   });
 
   it('bounds walls and openings, leaving out the ones it cannot read', () => {

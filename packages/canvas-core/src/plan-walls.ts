@@ -86,7 +86,21 @@ export function pointAlongWall(
   return { point: pts[0] ?? { x: 0, y: 0 }, dir: { x: 1, y: 0 } };
 }
 
-/** The part of a wall's path from `from` to `to` view units along it, as a polyline. */
+/** The points without the ones that repeat the point before: zero-length segments drop out. */
+function distinct(pts: readonly Point[]): Point[] {
+  const out: Point[] = [];
+  for (const p of pts) {
+    const last = out.at(-1);
+    if (!last || dist(last, p) > 1e-9) out.push(p);
+  }
+  return out;
+}
+
+/**
+ * The part of a wall's path from `from` to `to` view units along it, as a polyline. A segment
+ * that only touches the span at one end adds nothing, so a gap that starts or ends on a corner
+ * leaves no zero-length stub.
+ */
 function subPath(pts: readonly Point[], from: number, to: number): Point[] {
   const out: Point[] = [];
   let walked = 0;
@@ -97,7 +111,7 @@ function subPath(pts: readonly Point[], from: number, to: number): Point[] {
     const s = walked;
     const e = walked + len;
     walked = e;
-    if (e < from || s > to || len === 0) continue;
+    if (e <= from || s >= to || len === 0) continue;
     const at = (d: number) => ({
       x: a.x + ((b.x - a.x) * (d - s)) / len,
       y: a.y + ((b.y - a.y) * (d - s)) / len,
@@ -105,7 +119,7 @@ function subPath(pts: readonly Point[], from: number, to: number): Point[] {
     if (out.length === 0) out.push(at(Math.max(s, from)));
     out.push(at(Math.min(e, to)));
   }
-  return out;
+  return distinct(out);
 }
 
 /** Where an opening's gap runs along its wall, in view units from the wall's first point. */
@@ -172,9 +186,12 @@ export function wallPieces(
  * The outline of a piece of wall `thickness` wide, its corners mitred (cut flat past four times
  * the thickness) and its ends square: a polygon in view units, to fill.
  */
-export function pieceOutline(piece: readonly Point[], thickness: number): Point[] {
+export function pieceOutline(points: readonly Point[], thickness: number): Point[] {
   const half = thickness / 2;
+  // A point repeated has no way to run: it would give a normal of zero and a needle for an end.
+  const piece = distinct(points);
   const n = piece.length;
+  if (n < 2) return [];
   const left: Point[] = [];
   const right: Point[] = [];
   const normal = (a: Point, b: Point) => {
@@ -189,10 +206,13 @@ export function pieceOutline(piece: readonly Point[], thickness: number): Point[
     let k = half;
     if (before && after) {
       const sum = { x: before.x + after.x, y: before.y + after.y };
-      const len = Math.hypot(sum.x, sum.y) || 1;
-      m = { x: sum.x / len, y: sum.y / len };
-      const cos = m.x * after.x + m.y * after.y;
-      k = Math.min(half * 4, half / Math.max(0.05, cos));
+      const len = Math.hypot(sum.x, sum.y);
+      // A wall that turns straight back has no mitre: the corner keeps the side's own normal.
+      if (len > 1e-9) {
+        m = { x: sum.x / len, y: sum.y / len };
+        const cos = m.x * after.x + m.y * after.y;
+        k = Math.min(half * 4, half / Math.max(0.05, cos));
+      }
     }
     left.push({ x: p.x + m.x * k, y: p.y + m.y * k });
     right.push({ x: p.x - m.x * k, y: p.y - m.y * k });
@@ -375,7 +395,13 @@ export function shownOpenings(plan: Pick<PlanElement, 'walls' | 'openings'>): Pl
 }
 
 // Writing to the document --------------------------------------------------------
+//
+// Walls and openings are Y.Maps in their Y.Array, as icons are (decision 0062), so two people
+// editing different fields of the same wall merge instead of each replacing it with a copy.
+// Lists written before that (plain objects) are still read, and an edit of such an item stores
+// it as a Y.Map in its place.
 
+/** The plan's list, created when missing; call inside the transaction that writes to it. */
 function listOf(doc: Y.Doc, planId: string, key: 'walls' | 'openings'): Y.Array<unknown> | null {
   const map = roots(doc).elements.get(planId);
   if (map?.get('type') !== 'plan') return null;
@@ -386,6 +412,30 @@ function listOf(doc: Y.Doc, planId: string, key: 'walls' | 'openings'): Y.Array<
   return fresh;
 }
 
+const idOf = (value: unknown) =>
+  value instanceof Y.Map ? value.get('id') : (value as { id?: unknown } | null)?.id;
+
+const toMap = (item: object) =>
+  new Y.Map<unknown>(Object.entries(item).filter(([, v]) => v !== undefined));
+
+function addTo(
+  doc: Y.Doc,
+  planId: string,
+  key: 'walls' | 'openings',
+  item: object,
+  max: number,
+  origin: unknown,
+): string | null {
+  let id: string | null = null;
+  doc.transact(() => {
+    const list = listOf(doc, planId, key);
+    if (!list || list.length >= max) return;
+    id = newElementId();
+    list.push([toMap({ ...item, id })]);
+  }, origin);
+  return id;
+}
+
 /** Adds a wall; its id, or null when the plan already has MAX_PLAN_WALLS. */
 export function addPlanWall(
   doc: Y.Doc,
@@ -393,11 +443,7 @@ export function addPlanWall(
   wall: Omit<PlanWall, 'id'>,
   origin?: unknown,
 ): string | null {
-  const list = listOf(doc, planId, 'walls');
-  if (!list || list.length >= MAX_PLAN_WALLS) return null;
-  const id = newElementId();
-  doc.transact(() => list.push([{ ...wall, id }]), origin);
-  return id;
+  return addTo(doc, planId, 'walls', wall, MAX_PLAN_WALLS, origin);
 }
 
 /** Adds an opening to a wall; its id, or null when the plan already has MAX_PLAN_OPENINGS. */
@@ -407,14 +453,18 @@ export function addPlanOpening(
   opening: Omit<PlanOpening, 'id'>,
   origin?: unknown,
 ): string | null {
-  const list = listOf(doc, planId, 'openings');
-  if (!list || list.length >= MAX_PLAN_OPENINGS) return null;
-  const id = newElementId();
-  doc.transact(() => list.push([{ ...opening, id }]), origin);
-  return id;
+  return addTo(doc, planId, 'openings', opening, MAX_PLAN_OPENINGS, origin);
 }
 
-/** Replaces walls or openings by id, where they are in their list. */
+const same = (a: unknown, b: unknown) =>
+  a === b ||
+  (typeof a === 'object' && typeof b === 'object' && JSON.stringify(a) === JSON.stringify(b));
+
+/**
+ * Writes new versions of walls or openings, matched by id, field by field: only the fields that
+ * differ from what is stored are written, so one person moving an opening and another flipping
+ * its side both keep their change. A field set to undefined is removed.
+ */
 export function updatePlanWalls(
   doc: Y.Doc,
   planId: string,
@@ -422,15 +472,29 @@ export function updatePlanWalls(
   items: ReadonlyArray<PlanWall | PlanOpening>,
   origin?: unknown,
 ): void {
-  const byId = new Map(items.map((i) => [i.id, i]));
+  const byId = new Map(items.map((i) => [i.id, i as Record<string, unknown>]));
   doc.transact(() => {
     const list = listOf(doc, planId, key);
     if (!list) return;
     list.toArray().forEach((value, index) => {
-      const next = byId.get((value as { id?: string }).id ?? '');
+      const next = byId.get(idOf(value) as string);
       if (!next) return;
+      const stored = (value instanceof Y.Map ? value.toJSON() : value) as Record<string, unknown>;
+      const changed = Object.keys(next).filter((k) => !same(stored[k], next[k]));
+      if (changed.length === 0) return;
+      if (value instanceof Y.Map) {
+        for (const k of changed)
+          if (next[k] === undefined) value.delete(k);
+          else value.set(k, next[k]);
+        return;
+      }
+      // Written as a plain object before walls were Y.Maps: stored as one from now on.
+      const merged: Record<string, unknown> = { ...stored };
+      for (const k of changed)
+        if (next[k] === undefined) delete merged[k];
+        else merged[k] = next[k];
       list.delete(index, 1);
-      list.insert(index, [{ ...(value as object), ...next }]);
+      list.insert(index, [toMap(merged)]);
     });
   }, origin);
 }
@@ -445,11 +509,13 @@ export function removePlanWalls(
   const doomed = new Set(ids);
   doc.transact(() => {
     for (const key of ['walls', 'openings'] as const) {
-      const list = listOf(doc, planId, key);
-      if (!list) continue;
+      const map = roots(doc).elements.get(planId);
+      const list = map?.get('type') === 'plan' ? map.get(key) : null;
+      if (!(list instanceof Y.Array)) continue;
       for (let i = list.length - 1; i >= 0; i--) {
-        const item = list.get(i) as { id?: string; wall?: string };
-        if (doomed.has(item.id ?? '') || (key === 'openings' && doomed.has(item.wall ?? '')))
+        const item = list.get(i);
+        const wall = item instanceof Y.Map ? item.get('wall') : (item as { wall?: unknown })?.wall;
+        if (doomed.has(idOf(item) as string) || (key === 'openings' && doomed.has(wall as string)))
           list.delete(i, 1);
       }
     }

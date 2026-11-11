@@ -2,17 +2,29 @@
 import {
   createBoardDoc,
   type Element,
+  hasStoredShape,
   LEGACY_PLAN_ICON_KINDS,
   PLAN_ICON_KINDS,
   type PlanIcon,
   type PlanOpening,
+  type PlanShape,
   type PlanWall,
+  roots,
   STROKE_GRID,
 } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
-import { createElement, listElements } from './board.ts';
+import * as Y from 'yjs';
+import {
+  copyElements,
+  createElement,
+  deleteElements,
+  duplicateElements,
+  listElements,
+  pasteElements,
+} from './board.ts';
 import {
   addPlanIcon,
+  addVariant,
   beamWarmth,
   defaultIconSize,
   duplicatePlanItems,
@@ -39,6 +51,7 @@ import {
   pulledAway,
   rotateWithAttached,
   seatSlots,
+  settleAttached,
   snapTarget,
 } from './plan-attach.ts';
 import {
@@ -77,6 +90,7 @@ import {
   pieceOutline,
   planWallAt,
   removePlanWalls,
+  updatePlanWalls,
   wallBounds,
   wallHit,
   wallLength,
@@ -659,5 +673,337 @@ describe('links', () => {
     expect(linkedLocation({}, cards)).toBeNull();
     expect(lensMillimetres('35 mm')).toBe(35);
     expect(lensMillimetres('Cooke')).toBeNull();
+  });
+});
+
+describe('review of the model (pull request 600)', () => {
+  const g = (x: number, y: number) => [
+    Math.round((x / PLAN_VIEW_W) * STROKE_GRID),
+    Math.round((y / PLAN_VIEW_H) * STROKE_GRID),
+  ];
+  const planOf = (doc: Y.Doc, id: string) =>
+    listElements(doc).find((e) => e.id === id) as PlanElement;
+  const sync = (from: Y.Doc, to: Y.Doc) => Y.applyUpdate(to, Y.encodeStateAsUpdate(from));
+
+  it('ends a wall square where a gap starts or ends on a corner', () => {
+    // An L: 250 view units across exactly, then down; the door's gap ends on the corner.
+    const wall: PlanWall = {
+      id: 'wallAAAAAAAAA',
+      points: [1024, 1024, 2048, 1024, 2048, 2048],
+      thickness: 10,
+    };
+    const door: PlanOpening = {
+      id: 'doorAAAAAAAAA',
+      wall: wall.id,
+      kind: 'door',
+      at: 210,
+      width: 80,
+    };
+    expect(openingSpan(wall, door)).toEqual({ from: 170, to: 250 });
+    const pieces = wallPieces(wall, [door]);
+    expect(pieces).toHaveLength(2);
+    for (const piece of pieces)
+      for (let i = 1; i < piece.length; i++)
+        expect(
+          near(
+            piece[i - 1] as { x: number; y: number },
+            piece[i] as { x: number; y: number },
+            1e-6,
+          ),
+        ).toBe(false);
+    // The piece after the gap starts on the corner, square across the downward side.
+    const outline = pieceOutline(pieces[1] as { x: number; y: number }[], 10);
+    expect(outline).toHaveLength(4);
+    expect(
+      Math.hypot(
+        (outline[0] as { x: number }).x - (outline[3] as { x: number }).x,
+        (outline[0] as { y: number }).y - (outline[3] as { y: number }).y,
+      ),
+    ).toBeCloseTo(10, 6);
+    // Repeated points, wherever they come from, are no segment.
+    const corner = { x: 500, y: 0 };
+    const twice = pieceOutline([{ x: 0, y: 0 }, corner, corner, { x: 500, y: 100 }], 10);
+    expect(twice).toHaveLength(6);
+    expect(twice.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true);
+    expect(pieceOutline([corner, corner], 10)).toEqual([]);
+    // A closed wall whose gap ends on its first point.
+    const room: PlanWall = { ...wall, points: [...wall.points, 1024, 2048], closed: true };
+    const last: PlanOpening = { ...door, at: wallLength(room) - 40 };
+    for (const piece of wallPieces(room, [last]))
+      for (let i = 1; i < piece.length; i++)
+        expect(
+          near(
+            piece[i - 1] as { x: number; y: number },
+            piece[i] as { x: number; y: number },
+            1e-6,
+          ),
+        ).toBe(false);
+  });
+
+  it('merges two people editing the same wall or opening at once', () => {
+    const a = createBoardDoc(boardId);
+    const el = createElement(a, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+    const wallId = addPlanWall(a, el.id, {
+      points: [...g(100, 100), ...g(500, 100)],
+      thickness: 10,
+    }) as string;
+    const doorId = addPlanOpening(a, el.id, {
+      wall: wallId,
+      kind: 'door',
+      at: 100,
+      width: 60,
+    }) as string;
+    const b = new Y.Doc();
+    sync(a, b);
+    const wallA = planOf(a, el.id).walls?.[0] as PlanWall;
+    const doorA = planOf(a, el.id).openings?.[0] as PlanOpening;
+    // One moves the opening and drags a corner, the other flips its side and thickens the wall.
+    updatePlanWalls(a, el.id, 'openings', [{ ...doorA, at: 200 }]);
+    updatePlanWalls(a, el.id, 'walls', [{ ...wallA, points: [...g(100, 100), ...g(600, 100)] }]);
+    updatePlanWalls(b, el.id, 'openings', [{ ...doorA, side: 'right' }]);
+    updatePlanWalls(b, el.id, 'walls', [{ ...wallA, thickness: 20 }]);
+    sync(a, b);
+    sync(b, a);
+    for (const doc of [a, b]) {
+      const plan = planOf(doc, el.id);
+      expect(plan.openings).toEqual([{ ...doorA, id: doorId, at: 200, side: 'right' }]);
+      expect(plan.walls).toEqual([
+        { ...wallA, id: wallId, points: [...g(100, 100), ...g(600, 100)], thickness: 20 },
+      ]);
+    }
+    // A field set to undefined goes.
+    updatePlanWalls(a, el.id, 'openings', [{ ...doorA, at: 200, side: undefined }]);
+    expect(planOf(a, el.id).openings?.[0]?.side).toBeUndefined();
+  });
+
+  it('still reads, edits and removes walls stored as plain objects', () => {
+    const doc = createBoardDoc(boardId);
+    const el = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+    const wall: PlanWall = {
+      id: 'wallAAAAAAAAA',
+      points: [...g(0, 0), ...g(100, 0)],
+      thickness: 8,
+    };
+    const door: PlanOpening = {
+      id: 'doorAAAAAAAAA',
+      wall: wall.id,
+      kind: 'door',
+      at: 50,
+      width: 40,
+    };
+    const map = roots(doc).elements.get(el.id) as Y.Map<unknown>;
+    doc.transact(() => {
+      map.set('walls', Y.Array.from([wall]));
+      map.set('openings', Y.Array.from([door]));
+    });
+    expect(hasStoredShape(map)).toBe(true);
+    expect(planOf(doc, el.id)).toMatchObject({ walls: [wall], openings: [door] });
+    updatePlanWalls(doc, el.id, 'walls', [{ ...wall, label: 'Nord' }]);
+    expect(planOf(doc, el.id).walls).toEqual([{ ...wall, label: 'Nord' }]);
+    expect((map.get('walls') as Y.Array<unknown>).get(0)).toBeInstanceOf(Y.Map);
+    expect(hasStoredShape(map)).toBe(true);
+    removePlanWalls(doc, el.id, [wall.id]);
+    expect(planOf(doc, el.id)).toMatchObject({ walls: [], openings: [] });
+  });
+
+  it('creates a missing list of a plan made before schema 23 in the undo step that fills it', () => {
+    const doc = createBoardDoc(boardId);
+    const el = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+    const map = roots(doc).elements.get(el.id) as Y.Map<unknown>;
+    for (const key of ['icons', 'walls', 'openings']) map.delete(key);
+    const origin = Symbol('me');
+    const undo = new Y.UndoManager(roots(doc).elements, { trackedOrigins: new Set([origin]) });
+    const wall = addPlanWall(
+      doc,
+      el.id,
+      { points: [...g(0, 0), ...g(100, 0)], thickness: 8 },
+      origin,
+    );
+    undo.stopCapturing();
+    addPlanOpening(doc, el.id, { wall: wall as string, kind: 'window', at: 50, width: 40 }, origin);
+    undo.stopCapturing();
+    addPlanIcon(doc, el.id, { kind: 'cob', color: '#EDD963', x: 900, y: 900 }, origin);
+    for (const key of ['icons', 'openings', 'walls']) {
+      expect(map.get(key)).toBeInstanceOf(Y.Array);
+      undo.undo();
+      expect(map.get(key)).toBeUndefined();
+    }
+  });
+
+  it('lets a measure yield only to the icons its ends sit on', () => {
+    const cam = at('camera', 300, 300);
+    const sofa = at('sofa', 500, 300, { ...defaultIconSize('sofa') });
+    const measure = (extra: Partial<PlanShape> = {}): PlanShape => ({
+      id: 'measureAAAAAA',
+      kind: 'measure',
+      color: '#7AD689',
+      width: 18,
+      x0: cam.x,
+      y0: cam.y,
+      x1: cam.x + 1200,
+      y1: cam.y,
+      ...extra,
+    });
+    const zone: PlanShape = {
+      id: 'zoneAAAAAAAAA',
+      kind: 'zone',
+      color: '#7AD689',
+      width: 4,
+      x0: 0,
+      y0: 0,
+      x1: STROKE_GRID,
+      y1: STROKE_GRID,
+    };
+    const p = (x: number) => ({ x: x / PLAN_VIEW_W, y: 300 / PLAN_VIEW_H });
+    // Over a zone, a shape or an icon it does not end on, the measure is picked.
+    expect(planItemAt({ shapes: [zone, measure()] }, p(400))?.id).toBe('measureAAAAAA');
+    expect(planItemAt({ icons: [sofa], shapes: [measure()] }, p(500))?.id).toBe('measureAAAAAA');
+    expect(planItemAt({ icons: [cam], shapes: [measure()] }, p(300))?.id).toBe('measureAAAAAA');
+    // On the icon an end is attached to, the icon.
+    expect(planItemAt({ icons: [cam], shapes: [measure({ from: cam.id })] }, p(300))?.id).toBe(
+      cam.id,
+    );
+    expect(
+      planItemAt({ icons: [cam, sofa], shapes: [measure({ from: cam.id })] }, p(500))?.id,
+    ).toBe('measureAAAAAA');
+    // Not to an icon on a locked layer.
+    expect(
+      planItemAt({ icons: [cam], shapes: [measure({ from: cam.id })] }, p(300), {
+        locked: new Set(['camera']),
+      })?.id,
+    ).toBe('measureAAAAAA');
+  });
+
+  it('points copies at the copied location, frame and character, and drops links to nothing', () => {
+    const doc = createBoardDoc(boardId);
+    const opts = { userId: null };
+    const place = createElement(doc, 'location', { x: 0, y: 0 }, { name: "Rosa's diner" }, opts).id;
+    const frame = createElement(doc, 'frame', { x: 400, y: 0 }, {}, opts).id;
+    const anna = createElement(doc, 'character', { x: 800, y: 0 }, { name: 'Anna' }, opts).id;
+    const plan = createElement(doc, 'plan', { x: 0, y: 400 }, { locationId: place }, opts).id;
+    addPlanIcon(doc, plan, { kind: 'camera', color: '#1C1C1E', x: 900, y: 900, frameId: frame });
+    addPlanIcon(doc, plan, {
+      kind: 'actor',
+      color: '#1C1C1E',
+      x: 1200,
+      y: 900,
+      characterId: anna,
+      label: 'old',
+    });
+    const links = (p: PlanElement) => ({
+      locationId: p.locationId,
+      frameId: p.icons?.[0]?.frameId,
+      characterId: p.icons?.[1]?.characterId,
+      label: p.icons?.[1]?.label,
+    });
+    const byType = (d: Y.Doc, ids: string[]) =>
+      Object.fromEntries(
+        listElements(d)
+          .filter((e) => ids.includes(e.id))
+          .map((e) => [e.type, e.id]),
+      );
+    // Duplicated with its cards: the copy links the copies.
+    const copies = byType(
+      doc,
+      duplicateElements(doc, [plan, place, frame, anna], { x: 0, y: 1000 }, opts),
+    );
+    expect(links(planOf(doc, copies.plan as string))).toEqual({
+      locationId: copies.location,
+      frameId: copies.frame,
+      characterId: copies.character,
+      label: 'old',
+    });
+    // Duplicated alone: the same cards.
+    const [alone] = duplicateElements(doc, [plan], { x: 0, y: 2000 }, opts);
+    expect(links(planOf(doc, alone as string))).toMatchObject({
+      locationId: place,
+      frameId: frame,
+      characterId: anna,
+    });
+    // Pasted on another board: links to nothing go, the actor keeps the character's name.
+    const other = createBoardDoc(boardId);
+    const data = copyElements(doc, [plan]);
+    const [pasted] = pasteElements(other, data, { x: 0, y: 0 }, opts).ids;
+    expect(links(planOf(other, pasted as string))).toEqual({
+      locationId: undefined,
+      frameId: undefined,
+      characterId: undefined,
+      label: 'Anna',
+    });
+    // Pasted with its location: the pasted location.
+    const both = byType(
+      other,
+      pasteElements(other, copyElements(doc, [plan, place]), { x: 0, y: 900 }, opts).ids,
+    );
+    expect(planOf(other, both.plan as string).locationId).toBe(both.location);
+    // On the same board: the same cards.
+    const [same] = pasteElements(doc, data, { x: 0, y: 3000 }, opts).ids;
+    expect(links(planOf(doc, same as string))).toMatchObject({
+      locationId: place,
+      frameId: frame,
+      characterId: anna,
+    });
+  });
+
+  it('reads one focal length with words around it, and none in a zoom', () => {
+    for (const [text, mm] of [
+      ['35mm', 35],
+      ['anamorphic 50', 50],
+      ['50mm anamorphic', 50],
+      ['Cooke 32', 32],
+      ['Cooke S4 32', 32],
+      ['50mm f/2.8', 50],
+      ['24-70', null],
+      ['24-70mm', null],
+      ['24 – 70 mm', null],
+      ['Cooke', null],
+    ] as const)
+      expect(lensMillimetres(text), text).toBe(mm);
+    const base = { x: 0, y: 0, w: 100, z: 'a0', parent: null, createdBy: null, createdAt: 1 };
+    const zoom = { ...base, id: 'frameAAAAAAAA', type: 'frame', lens: '24-70mm' } as Element;
+    const cards = new Map([[zoom.id, zoom]]);
+    const cam = at('camera', 0, 0, { frameId: zoom.id });
+    // The frame names no single lens: the camera keeps its own, or none (the plan's default).
+    expect(linkedShot(cam, cards)).toMatchObject({ frameLens: null, lens: null });
+    expect(linkedShot({ ...cam, lens: 85 }, cards)).toMatchObject({ frameLens: null, lens: 85 });
+  });
+
+  it('settles what is on a base after the base is resized and turned', () => {
+    const sofa = at('sofa', 500, 300, { ...defaultIconSize('sofa') }) as PlanIcon & {
+      w: number;
+      h: number;
+    };
+    const placed = attachedPlacement(at('actor', 500, 300, { on: sofa.id }), sofa, [sofa]);
+    const anna = at('actor', 0, 0, { id: 'annaAAAAAAAAA', on: sofa.id, ...placed });
+    const bigger = { ...sofa, w: sofa.w * 1.5, h: sofa.h * 1.5, rotation: 90 };
+    const [settled, ...rest] = settleAttached([bigger, anna], sofa.id);
+    expect(rest).toHaveLength(0);
+    expect(settled?.id).toBe(anna.id);
+    // Where the bigger, turned sofa seats it, facing its front: no longer where it sat.
+    expect(settled).toMatchObject(attachedPlacement(anna, bigger, [bigger, anna]) ?? {});
+    expect(near(iconCentre(settled as PlanIcon), iconCentre(anna), 1)).toBe(false);
+    expect(settled?.rotation).toBe(((anna.rotation ?? 0) + 90) % 360);
+    // Nothing on it, nothing changes.
+    expect(settleAttached([bigger], sofa.id)).toEqual([]);
+  });
+
+  it('gives a variant its base walls and openings, as Y.Maps, when the base is deleted', () => {
+    const doc = createBoardDoc(boardId);
+    const base = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+    const wall = addPlanWall(doc, base.id, {
+      points: [...g(0, 0), ...g(300, 0)],
+      thickness: 10,
+    }) as string;
+    addPlanOpening(doc, base.id, { wall, kind: 'door', at: 100, width: 60 });
+    const variant = addVariant(doc, planOf(doc, base.id), 'Sera', { userId: null });
+    const before = planOf(doc, base.id);
+    deleteElements(doc, [base.id]);
+    const kept = planOf(doc, variant);
+    expect(kept.variantOf).toBeUndefined();
+    expect(kept.walls).toEqual(before.walls);
+    expect(kept.openings).toEqual(before.openings);
+    const map = roots(doc).elements.get(variant) as Y.Map<unknown>;
+    expect((map.get('walls') as Y.Array<unknown>).get(0)).toBeInstanceOf(Y.Map);
+    expect(hasStoredShape(map)).toBe(true);
   });
 });

@@ -23,6 +23,7 @@ import {
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 import * as Y from 'yjs';
 import type { Point, Rect } from './geometry.ts';
+import { unlinkCharacter } from './plan-links.ts';
 import { adoptBase, type PlanBase, planBaseOf } from './plan-variants.ts';
 
 /**
@@ -486,9 +487,36 @@ export function duplicateElements(
       }
       if (picked.has(card.id)) out.push(id);
       elements.set(id, copy);
+      // Its location and the frames and characters of its icons follow their copies too.
+      if (card.type === 'plan') relinkStoredPlan(copy, (l) => fresh.get(l) ?? l);
     }
   }, opts.origin);
   return out;
+}
+
+/**
+ * The links a plan holds to other cards (decision 0104): its location, and the frame a camera
+ * shoots and the character an actor plays.
+ */
+const ICON_LINKS = ['frameId', 'characterId'] as const;
+
+/**
+ * Points the links of a stored plan at `target(id)`: the id to keep, or undefined to drop the
+ * link. The map must be in a document, so its lists can be read.
+ */
+function relinkStoredPlan(copy: Y.Map<unknown>, target: (id: string) => string | undefined): void {
+  const relink = (map: Y.Map<unknown>, key: string) => {
+    const id = map.get(key);
+    if (typeof id !== 'string') return;
+    const next = target(id);
+    if (next === undefined) map.delete(key);
+    else if (next !== id) map.set(key, next);
+  };
+  relink(copy, 'locationId');
+  const icons = copy.get('icons');
+  if (icons instanceof Y.Array)
+    for (const icon of icons.toArray())
+      if (icon instanceof Y.Map) for (const key of ICON_LINKS) relink(icon, key);
 }
 
 function cloneMap(map: Y.Map<unknown>): Y.Map<unknown> {
@@ -624,7 +652,20 @@ export function copyElements(
 ): ClipboardData {
   const byId = new Map(listElements(doc).map((e) => [e.id, e]));
   const copied = storedSelection(doc, ids);
-  const elements = copied.flatMap((card) => byId.get(card.id) ?? []);
+  // An actor carries the name of the character it plays as its label, so it still reads the
+  // same pasted where that character is not (decision 0104).
+  const elements = copied
+    .flatMap((card) => byId.get(card.id) ?? [])
+    .map((e) =>
+      e.type === 'plan' && e.icons?.some((i) => i.characterId)
+        ? {
+            ...e,
+            icons: e.icons.map((i) =>
+              i.characterId ? { ...unlinkCharacter(i, byId), characterId: i.characterId } : i,
+            ),
+          }
+        : e,
+    );
   const bodies: Record<string, string> = {};
   for (const e of elements) {
     const body = getMap(doc, e.id)?.get('body');
@@ -915,6 +956,22 @@ function elementCopy(
           Object.assign(copy, { scale: base.scale, grid: base.grid, rulers: base.rulers });
       }
     }
+    // Its location and the frames and characters of its icons: their copies, or the cards of
+    // this board; a link to a card that is not here goes, the icon keeping its label.
+    const link = (l: string) => fresh.get(l) ?? (here.has(l) ? l : undefined);
+    const location = copy.locationId && link(copy.locationId);
+    if (location) copy.locationId = location;
+    else delete copy.locationId;
+    if (copy.icons)
+      copy.icons = copy.icons.map((icon) => {
+        const out = { ...icon };
+        for (const key of ICON_LINKS) {
+          const target = out[key] && link(out[key]);
+          if (target) out[key] = target;
+          else delete out[key];
+        }
+        return out;
+      });
   }
   if (copy.type === 'arrow') {
     // Ends move with the arrow; an attached end follows the copy of its card when the
@@ -989,6 +1046,7 @@ function storedCopy(
       if (base) adoptBase(copy, base);
       else copy.delete('variantOf');
     }
+    relinkStoredPlan(copy, (l) => fresh.get(l) ?? (here.has(l) ? l : undefined));
   }
   // As addElement creates them, so two people drawing on the copy add to the same lists.
   const lists =

@@ -311,30 +311,39 @@ export function tableRowMap(row: TableRow): Y.Map<unknown> {
 }
 
 /**
- * To-do items, table columns and plan icons are Y.Maps in a Y.Array so two people can edit
- * different items; table rows too, with their cells in a nested Y.Map; pen strokes are
- * plain objects in a Y.Array (so are frame shapes) so two people can draw on the same frame. Everything else is a
- * plain value that a write replaces.
+ * To-do items, table columns, plan icons, walls and openings are Y.Maps in a Y.Array so two
+ * people can edit different items, or different fields of one (decisions 0062, 0104); table rows
+ * too, with their cells in a nested Y.Map; pen strokes are plain objects in a Y.Array (so are
+ * frame shapes) so two people can draw on the same frame. Everything else is a plain value that
+ * a write replaces.
  */
 function toYValue(key: string, value: unknown): unknown {
-  if (key === 'items' || key === 'columns' || key === 'icons')
+  if (
+    key === 'items' ||
+    key === 'columns' ||
+    key === 'icons' ||
+    key === 'walls' ||
+    key === 'openings'
+  )
     return Y.Array.from((value as object[]).map(toYMap));
   if (key === 'rows') return Y.Array.from((value as TableRow[]).map(tableRowMap));
-  if (key === 'strokes' || key === 'shapes' || key === 'walls' || key === 'openings')
-    return Y.Array.from(value as object[]);
+  if (key === 'strokes' || key === 'shapes') return Y.Array.from(value as object[]);
   return value;
 }
 
-/** Lists as toYValue stores them, with the most items any element allows in them. */
-const STORED_LISTS: Record<string, { maps: boolean; max: number }> = {
+/**
+ * Lists as toYValue stores them, with the most items any element allows in them. `plainToo`:
+ * items may also be plain objects, as walls and openings were first written (decision 0104).
+ */
+const STORED_LISTS: Record<string, { maps: boolean; max: number; plainToo?: true }> = {
   items: { maps: true, max: Number.POSITIVE_INFINITY },
   columns: { maps: true, max: MAX_TABLE_COLUMNS },
   icons: { maps: true, max: MAX_PLAN_ICONS },
   rows: { maps: true, max: MAX_TABLE_ROWS },
   strokes: { maps: false, max: MAX_STROKES },
   shapes: { maps: false, max: MAX_SHAPES },
-  walls: { maps: false, max: MAX_PLAN_WALLS },
-  openings: { maps: false, max: MAX_PLAN_OPENINGS },
+  walls: { maps: true, max: MAX_PLAN_WALLS, plainToo: true },
+  openings: { maps: true, max: MAX_PLAN_OPENINGS, plainToo: true },
 };
 const ELEMENT_KEYS = new Map<unknown, Set<string>>(
   Element.options.map((option) => [option.shape.type.value, new Set(Object.keys(option.shape))]),
@@ -370,7 +379,7 @@ export function hasStoredShape(map: Y.Map<unknown>): boolean {
     }
     if (!(value instanceof Y.Array) || value.length > list.max) return false;
     for (const item of value.toArray()) {
-      if (!list.maps) {
+      if (!list.maps || (list.plainToo && !(item instanceof Y.Map))) {
         if (item instanceof Y.AbstractType || !isPlain(item)) return false;
         continue;
       }
