@@ -3,9 +3,9 @@ import {
   createElement,
   listElements,
   moveWallCorner,
-  type PlanElement,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
+  type PlanElement,
   toWallPoints,
 } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
