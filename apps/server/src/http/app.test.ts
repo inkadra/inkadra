@@ -22,7 +22,14 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
   let app: Awaited<ReturnType<typeof createApp>>;
   let cookie = '';
   const records: Array<Record<string, unknown>> = [];
-  const log = pino({}, { write: (line: string) => { records.push(JSON.parse(line)); } });
+  const log = pino(
+    {},
+    {
+      write: (line: string) => {
+        records.push(JSON.parse(line));
+      },
+    },
+  );
 
   beforeAll(async () => {
     await runMigrations(config.DATABASE_URL, migrationsFolder);
@@ -101,9 +108,13 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
   it('logs a bounded client identity only as structured metadata', async () => {
     for (const client of ['ios/1.2.0', 'invalid client']) {
       records.length = 0;
-      const response = await app.inject({ url: '/api/v1/instance/version', headers: {
-        cookie, 'inkadra-client': client,
-      } });
+      const response = await app.inject({
+        url: '/api/v1/instance/version',
+        headers: {
+          cookie,
+          'inkadra-client': client,
+        },
+      });
       expect(response.statusCode).toBe(200);
       const request = records.find((record) => record.req)?.req;
       if (client === 'ios/1.2.0') expect(request).toMatchObject({ inkadraClient: client });
