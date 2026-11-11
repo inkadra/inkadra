@@ -47,10 +47,7 @@ const distance = (a: PlanIcon, b: PlanIcon) => {
   return Math.hypot(p.x - q.x, p.y - q.y);
 };
 
-export function setupChanges(
-  base: readonly PlanIcon[],
-  setup: readonly PlanIcon[],
-): SetupChange[] {
+export function setupChanges(base: readonly PlanIcon[], setup: readonly PlanIcon[]): SetupChange[] {
   const own = (list: readonly PlanIcon[]) => list.filter((i) => layerOf(i) !== 'set');
   const left = own(base);
   const pairs = new Map<PlanIcon, PlanIcon>();
@@ -80,8 +77,10 @@ export function setupChanges(
       continue;
     }
     const by = distance(was, icon);
-    const lensChanged = catalogueKind(icon.kind) === 'camera' && (icon.lens ?? 0) !== (was.lens ?? 0);
-    if (by > SAME_PLACE) out.push({ kind: 'moved', icon, by, ...(lensChanged ? { lens: icon.lens ?? 35 } : {}) });
+    const lensChanged =
+      catalogueKind(icon.kind) === 'camera' && (icon.lens ?? 0) !== (was.lens ?? 0);
+    if (by > SAME_PLACE)
+      out.push({ kind: 'moved', icon, by, ...(lensChanged ? { lens: icon.lens ?? 35 } : {}) });
     else if (lensChanged) out.push({ kind: 'lens', icon, lens: icon.lens ?? 35 });
     else if (FIELDS.some((f) => !same(icon[f], was[f]))) out.push({ kind: 'changed', icon });
   }

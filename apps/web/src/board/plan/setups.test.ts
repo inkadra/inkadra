@@ -33,5 +33,10 @@ it('tells what a setup moved, changed, added and left out of the base', () => {
   ]);
   expect(changes[0]).toMatchObject({ lens: 85 });
   // The Set (the table) is shared, never a change; a copy left alone says nothing.
-  expect(setupChanges(base, base.map((i) => ({ ...i, id: `${i.id.slice(0, 12)}B` })))).toEqual([]);
+  expect(
+    setupChanges(
+      base,
+      base.map((i) => ({ ...i, id: `${i.id.slice(0, 12)}B` })),
+    ),
+  ).toEqual([]);
 });

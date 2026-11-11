@@ -5,7 +5,9 @@ import { expect, it } from 'vitest';
 import { elementSections, itemSummary, selectionMix } from './elements.ts';
 
 const t = ((key: string, o?: { count?: number }) =>
-  o?.count !== undefined ? `${o.count} ${key.split('.').at(-1)}` : key.split('.').at(-1)) as unknown as TFunction;
+  o?.count !== undefined
+    ? `${o.count} ${key.split('.').at(-1)}`
+    : key.split('.').at(-1)) as unknown as TFunction;
 const icon = (id: string, kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
   id: id.padEnd(13, 'A'),
   kind,
@@ -19,7 +21,12 @@ const plan = {
   icons: [
     key,
     icon('box', 'softbox', { on: key.id }),
-    icon('cam', 'camera', { color: '#9DB8F2', lens: 32, support: 'dolly', steps: [{ x: 1, y: 1 }] }),
+    icon('cam', 'camera', {
+      color: '#9DB8F2',
+      lens: 32,
+      support: 'dolly',
+      steps: [{ x: 1, y: 1 }],
+    }),
     icon('anna', 'actor', { color: '#B897F0', pose: 'seated' }),
   ],
 };

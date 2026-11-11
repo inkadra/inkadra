@@ -17,8 +17,8 @@ import { isMac } from '../shortcuts.ts';
 import { isIcon, type PlanEditorProps, QUARTER_TURN, usePlanEditing } from './editing.ts';
 import { kitList } from './kit.ts';
 import { isNoteTool, type LibraryItem, projectKit } from './library.ts';
-import { planTitle } from './PlanCard.tsx';
 import { type CanvasHandle, PlanCanvas, TOOL_KEYS } from './PlanCanvas.tsx';
+import { planTitle } from './PlanCard.tsx';
 import { PlanElements } from './PlanElements.tsx';
 import { PlanKit, powerText, setupName } from './PlanKit.tsx';
 import { type Dragged, PlanLibrary } from './PlanLibrary.tsx';
@@ -34,7 +34,9 @@ function changeText(c: SetupChange, scale: number | undefined, t: TFunction, lan
   const name = c.icon.label || t(`board.plan.icons.${c.icon.kind}`);
   if (c.kind === 'moved') {
     const by = scale ? (c.by / scale).toLocaleString(lang, { maximumFractionDigits: 1 }) : null;
-    const moved = by ? t('board.plan.change.movedBy', { name, metres: by }) : t('board.plan.change.moved', { name });
+    const moved = by
+      ? t('board.plan.change.movedBy', { name, metres: by })
+      : t('board.plan.change.moved', { name });
     return c.lens ? `${moved}, ${t('board.plan.change.nowLens', { mm: c.lens })}` : moved;
   }
   if (c.kind === 'lens') return t('board.plan.change.lens', { name, mm: c.lens });
@@ -123,7 +125,13 @@ export function PlanEditor(props: PlanEditorProps) {
       else if (ed.tool !== 'select') ed.setTool('select');
       else if (ed.sheet) ed.setSheet(null);
       else props.onClose();
-    } else if (e.key === 'Enter' && item && 'x0' in item && item.kind === 'text' && target?.tagName !== 'BUTTON') {
+    } else if (
+      e.key === 'Enter' &&
+      item &&
+      'x0' in item &&
+      item.kind === 'text' &&
+      target?.tagName !== 'BUTTON'
+    ) {
       ed.setTab('properties');
       requestAnimationFrame(() =>
         document.querySelector<HTMLInputElement>('[data-plan-field="text"]')?.focus(),
@@ -141,7 +149,10 @@ export function PlanEditor(props: PlanEditorProps) {
       const reach = iconCone(item, plan.sensor)?.reach ?? 0;
       const more = drawn.scale ? drawn.scale / 10 : ed.step;
       const by = e.key === 'ArrowUp' || e.key === 'ArrowRight' ? more : -more;
-      ed.write({ ...item, reach: Math.round(Math.min(4000, Math.max(20, reach + by)) * 100) / 100 });
+      ed.write({
+        ...item,
+        reach: Math.round(Math.min(4000, Math.max(20, reach + by)) * 100) / 100,
+      });
     } else if (e.key.startsWith('Arrow') && selection.length) {
       const k = e.shiftKey ? ed.step * 4 : ed.step;
       ed.nudge({
@@ -153,7 +164,8 @@ export function PlanEditor(props: PlanEditorProps) {
     else if (mod && key === 'd' && selection.length) ed.duplicate();
     else if (mod && (key === '=' || key === '+')) canvas.current?.zoomBy(1);
     else if (mod && key === '-') canvas.current?.zoomBy(-1);
-    else if (!mod && key === 'r' && selection.length) ed.rotate(e.shiftKey ? -QUARTER_TURN : QUARTER_TURN);
+    else if (!mod && key === 'r' && selection.length)
+      ed.rotate(e.shiftKey ? -QUARTER_TURN : QUARTER_TURN);
     else if (!mod && e.key === ']' && selection.length) ed.restack(1);
     else if (!mod && e.key === '[' && selection.length) ed.restack(-1);
     else if (!mod && key === '/') {
@@ -210,7 +222,12 @@ export function PlanEditor(props: PlanEditorProps) {
     />
   );
   const setupTabs = (
-    <div className="plan-setups" role="tablist" aria-label={t('board.plan.setups')} data-tour="plan-setups">
+    <div
+      className="plan-setups"
+      role="tablist"
+      aria-label={t('board.plan.setups')}
+      data-tour="plan-setups"
+    >
       {family.map((p) => (
         <button
           key={p.id}
@@ -237,7 +254,10 @@ export function PlanEditor(props: PlanEditorProps) {
   );
   const baseName = base ? setupName(base, family, t) : '';
   const setupNote = base && (
-    <section className="plan-float plan-setup-note" aria-label={t('board.plan.changedFrom', { name: baseName })}>
+    <section
+      className="plan-float plan-setup-note"
+      aria-label={t('board.plan.changedFrom', { name: baseName })}
+    >
       <div className="plan-setup-note__head">
         {renaming ? (
           <input
@@ -262,7 +282,9 @@ export function PlanEditor(props: PlanEditorProps) {
             }}
           />
         ) : (
-          <b>{t('board.plan.changedFromTitle', { name: setupName(plan, family, t), base: baseName })}</b>
+          <b>
+            {t('board.plan.changedFromTitle', { name: setupName(plan, family, t), base: baseName })}
+          </b>
         )}
         {!renaming && (
           <Button variant="ghost" onClick={() => setRenaming(true)}>
@@ -306,27 +328,38 @@ export function PlanEditor(props: PlanEditorProps) {
               {
                 label: t('board.plan.rulers'),
                 checked: !!drawn.rulers,
-                action: () => ed.editPlan({ rulers: drawn.rulers ? undefined : true }, ed.scaleOwner),
+                action: () =>
+                  ed.editPlan({ rulers: drawn.rulers ? undefined : true }, ed.scaleOwner),
               },
               {
                 label: t('board.plan.clearScale'),
                 action: () =>
-                  ed.editPlan({ scale: undefined, grid: undefined, rulers: undefined }, ed.scaleOwner),
+                  ed.editPlan(
+                    { scale: undefined, grid: undefined, rulers: undefined },
+                    ed.scaleOwner,
+                  ),
               },
             ]
           : []),
         { divider: true },
-        { label: t('board.plan.snap'), shortcut: 'G', checked: ed.snap, action: () => ed.setSnap((v) => !v) },
+        {
+          label: t('board.plan.snap'),
+          shortcut: 'G',
+          checked: ed.snap,
+          action: () => ed.setSnap((v) => !v),
+        },
         {
           label: t('board.plan.inPresentation'),
           checked: plan.presentation !== false,
-          action: () => ed.editPlan({ presentation: plan.presentation !== false ? false : undefined }),
+          action: () =>
+            ed.editPlan({ presentation: plan.presentation !== false ? false : undefined }),
         },
       ]}
       onClose={() => setScaleOpen(null)}
     />
   );
-  const callSheet = (r: DOMRect) => setPicking({ x: Math.max(8, r.left - 120), y: Math.max(8, r.top - 320) });
+  const callSheet = (r: DOMRect) =>
+    setPicking({ x: Math.max(8, r.left - 120), y: Math.max(8, r.top - 320) });
   const kitCard = (
     <button type="button" className="plan-side__kitcard" onClick={() => ed.setTab('kit')}>
       <span className="plan-props__row">
@@ -335,7 +368,10 @@ export function PlanEditor(props: PlanEditorProps) {
       </span>
       <span className="plan-props__row">
         <span className="plan-prop__label">
-          {t('board.plan.powerSummary', { power: powerText(power.watts, power.amps, lang), volts: power.voltage })}
+          {t('board.plan.powerSummary', {
+            power: powerText(power.watts, power.amps, lang),
+            volts: power.voltage,
+          })}
         </span>
         <span className="plan-side__open">{t('board.plan.open')}</span>
       </span>
@@ -358,7 +394,9 @@ export function PlanEditor(props: PlanEditorProps) {
               const order = ['properties', 'elements', 'kit'] as const;
               const at = order.indexOf(tab);
               if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                const next = order[(at + (e.key === 'ArrowRight' ? 1 : 2)) % 3] as (typeof order)[number];
+                const next = order[
+                  (at + (e.key === 'ArrowRight' ? 1 : 2)) % 3
+                ] as (typeof order)[number];
                 ed.setTab(next);
                 document.getElementById(`plan-tab-${next}`)?.focus();
               }
@@ -374,7 +412,9 @@ export function PlanEditor(props: PlanEditorProps) {
         id={`plan-panel-${ed.tab}`}
         aria-labelledby={`plan-tab-${ed.tab}`}
       >
-        {ed.tab === 'properties' && <PlanProperties ed={ed} onMeasure={(id) => canvas.current?.openMeasure(id)} />}
+        {ed.tab === 'properties' && (
+          <PlanProperties ed={ed} onMeasure={(id) => canvas.current?.openMeasure(id)} />
+        )}
         {ed.tab === 'elements' && <PlanElements ed={ed} />}
         {ed.tab === 'kit' && <PlanKit ed={ed} onCallSheet={callSheet} />}
       </div>
@@ -394,7 +434,10 @@ export function PlanEditor(props: PlanEditorProps) {
   );
 
   if (phone) {
-    const sheetTitle = ed.sheet === 'elements' ? t('board.plan.tabs2.elements') : `${t('board.plan.tabs2.kit')} · ${setupName(plan, family, t)}`;
+    const sheetTitle =
+      ed.sheet === 'elements'
+        ? t('board.plan.tabs2.elements')
+        : `${t('board.plan.tabs2.kit')} · ${setupName(plan, family, t)}`;
     const selectedSomething = ed.selection.length > 0;
     return createPortal(
       <div
@@ -415,7 +458,9 @@ export function PlanEditor(props: PlanEditorProps) {
             data-tour="plan-setups"
             onClick={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
-              setSetupMenu(setupMenu ? null : { position: 'fixed', left: r.left, top: r.bottom + 6 });
+              setSetupMenu(
+                setupMenu ? null : { position: 'fixed', left: r.left, top: r.bottom + 6 },
+              );
             }}
           >
             {setupName(plan, family, t)}
@@ -436,16 +481,23 @@ export function PlanEditor(props: PlanEditorProps) {
           <button
             type="button"
             className="plan-float plan-top__kitpill"
-            aria-label={t('board.plan.kitPillLabel', { items: kitCount, power: powerText(power.watts, power.amps, lang) })}
+            aria-label={t('board.plan.kitPillLabel', {
+              items: kitCount,
+              power: powerText(power.watts, power.amps, lang),
+            })}
             onClick={() => ed.setSheet('kit')}
           >
             <i />
-            {t('board.plan.items', { count: kitCount })} · {powerText(power.watts, power.amps, lang).split(' · ')[0]}
+            {t('board.plan.items', { count: kitCount })} ·{' '}
+            {powerText(power.watts, power.amps, lang).split(' · ')[0]}
           </button>
           {base && !selectedSomething && !ed.sheet && setupNote}
         </div>
         {selectedSomething && !ed.sheet && (
-          <section className={`plan-sheet plan-sheet--selection${fullProps ? ' is-tall' : ''}`} aria-label={t('board.plan.selection')}>
+          <section
+            className={`plan-sheet plan-sheet--selection${fullProps ? ' is-tall' : ''}`}
+            aria-label={t('board.plan.selection')}
+          >
             <span className="plan-sheet__grab" aria-hidden="true" />
             <PlanProperties
               ed={ed}
@@ -459,7 +511,11 @@ export function PlanEditor(props: PlanEditorProps) {
         {(ed.sheet === 'elements' || ed.sheet === 'kit') && (
           <section className="plan-sheet plan-sheet--full" aria-label={sheetTitle}>
             <header className="plan-top plan-top--phone">
-              <IconButton icon="chevronLeft" label={t('board.plan.backToPlan')} onClick={() => ed.setSheet(null)} />
+              <IconButton
+                icon="chevronLeft"
+                label={t('board.plan.backToPlan')}
+                onClick={() => ed.setSheet(null)}
+              />
               <b className="plan-top__title">{sheetTitle}</b>
               <span className="plan-top__spacer" />
             </header>
@@ -484,7 +540,14 @@ export function PlanEditor(props: PlanEditorProps) {
                 action: () => p.id !== plan.id && props.onSwitch?.(p.id),
               })),
               ...(props.onNewVariant
-                ? [{ divider: true as const }, { label: t('board.plan.newSetup'), icon: 'plus' as const, action: props.onNewVariant }]
+                ? [
+                    { divider: true as const },
+                    {
+                      label: t('board.plan.newSetup'),
+                      icon: 'plus' as const,
+                      action: props.onNewVariant,
+                    },
+                  ]
                 : []),
               ...(base ? [{ label: t('board.plan.rename'), action: () => setRenaming(true) }] : []),
             ]}
@@ -548,7 +611,11 @@ export function PlanEditor(props: PlanEditorProps) {
             aria-haspopup="menu"
             onClick={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
-              setScaleOpen(scaleOpen ? null : { position: 'fixed', right: window.innerWidth - r.right, top: r.bottom + 6 });
+              setScaleOpen(
+                scaleOpen
+                  ? null
+                  : { position: 'fixed', right: window.innerWidth - r.right, top: r.bottom + 6 },
+              );
             }}
           >
             <Icon name="ruler" size={16} />

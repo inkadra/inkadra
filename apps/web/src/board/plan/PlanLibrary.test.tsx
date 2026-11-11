@@ -18,11 +18,20 @@ it('switches categories on the rail, arms a tile and places the first search res
   try {
     await act(async () =>
       root.render(
-        <PlanLibrary armed={null} phone={false} kit={[]} sensor="S35" onArm={onArm} onPlace={onPlace} />,
+        <PlanLibrary
+          armed={null}
+          phone={false}
+          kit={[]}
+          sensor="S35"
+          onArm={onArm}
+          onPlace={onPlace}
+        />,
       ),
     );
     const rail = host.querySelector('nav[aria-label="board.plan.categoryTabs"]');
-    const grip = rail?.querySelector<HTMLButtonElement>('[aria-label="board.plan.categories.grip"]');
+    const grip = rail?.querySelector<HTMLButtonElement>(
+      '[aria-label="board.plan.categories.grip"]',
+    );
     await act(async () => grip?.click());
     expect(grip?.getAttribute('aria-pressed')).toBe('true');
     expect(host.textContent).toContain('board.plan.groups.modifiers');

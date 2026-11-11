@@ -48,17 +48,17 @@ import {
   type PlanStep,
 } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton, type IconName, Switch } from '@inkadra/ui';
+import type { TFunction } from 'i18next';
 import {
   type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
   type PointerEvent,
+  type MouseEvent as ReactMouseEvent,
   type RefObject,
   useEffect,
   useImperativeHandle,
   useRef,
   useState,
 } from 'react';
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { pathOf } from '../film/strokes.ts';
@@ -230,8 +230,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   const textInput = useRef<HTMLInputElement>(null);
   const viewOf = ed.viewOf;
   const ink =
-    ed.penColor ??
-    ((armed && isNoteTool(armed)) || tool === 'measure' ? NOTE_COLOR : PLAN_INK);
+    ed.penColor ?? ((armed && isNoteTool(armed)) || tool === 'measure' ? NOTE_COLOR : PLAN_INK);
   const onLayer = ed.activeLayer ? { layer: ed.activeLayer } : {};
   const selection = ed.selection;
   const selected = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
@@ -1004,10 +1003,29 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   const plain = !armed;
   const undo = ed.store.undo;
   const desktopTools = (
-    <div className="plan-float plan-canvas__tools" data-tour="plan-tools" role="toolbar" aria-label={t('board.plan.tools')}>
-      {toolButton('select', t('board.plan.tool.select'), 'pointer', tool === 'select' && plain, () => pickTool('select'), { shortcut: 'V' })}
+    <div
+      className="plan-float plan-canvas__tools"
+      data-tour="plan-tools"
+      role="toolbar"
+      aria-label={t('board.plan.tools')}
+    >
+      {toolButton(
+        'select',
+        t('board.plan.tool.select'),
+        'pointer',
+        tool === 'select' && plain,
+        () => pickTool('select'),
+        { shortcut: 'V' },
+      )}
       <span className="plan-float__sep" aria-hidden="true" />
-      {toolButton('pencil', t('board.plan.tool.pencil'), 'pen', tool === 'pencil' && plain, () => pickTool('pencil'), { shortcut: 'P' })}
+      {toolButton(
+        'pencil',
+        t('board.plan.tool.pencil'),
+        'pen',
+        tool === 'pencil' && plain,
+        () => pickTool('pencil'),
+        { shortcut: 'P' },
+      )}
       {toolButton(
         'line',
         t('board.plan.tool.lineOrArrow'),
@@ -1022,28 +1040,82 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         t('board.plan.tool.shape'),
         shapeTool,
         (tool === 'rect' || tool === 'ellipse') && plain,
-        () => pickTool(tool === shapeTool ? (shapeTool === 'rect' ? 'ellipse' : 'rect') : shapeTool),
+        () =>
+          pickTool(tool === shapeTool ? (shapeTool === 'rect' ? 'ellipse' : 'rect') : shapeTool),
         { shortcut: 'Q / O' },
       )}
-      {toolButton('text', t('board.plan.tool.text'), 'text', tool === 'text' && plain, () => pickTool('text'), { shortcut: 'T' })}
-      {toolButton('measure', t('board.plan.tool.measure'), 'ruler', tool === 'measure' && plain, () => pickTool('measure'), { shortcut: 'U' })}
+      {toolButton(
+        'text',
+        t('board.plan.tool.text'),
+        'text',
+        tool === 'text' && plain,
+        () => pickTool('text'),
+        { shortcut: 'T' },
+      )}
+      {toolButton(
+        'measure',
+        t('board.plan.tool.measure'),
+        'ruler',
+        tool === 'measure' && plain,
+        () => pickTool('measure'),
+        { shortcut: 'U' },
+      )}
       <span className="plan-float__sep" aria-hidden="true" />
-      {toolButton('undo', t('board.plan.undo'), 'undo', false, () => undo.undo(), { disabled: !undo.canUndo() })}
+      {toolButton('undo', t('board.plan.undo'), 'undo', false, () => undo.undo(), {
+        disabled: !undo.canUndo(),
+      })}
       <span className="plan-float__mirror">
-        {toolButton('redo', t('board.plan.redo'), 'undo', false, () => undo.redo(), { disabled: !undo.canRedo() })}
+        {toolButton('redo', t('board.plan.redo'), 'undo', false, () => undo.redo(), {
+          disabled: !undo.canRedo(),
+        })}
       </span>
     </div>
   );
-  const drawOn = (['pencil', 'line', 'arrow', 'rect', 'ellipse', 'text'] as Tool[]).includes(tool) && plain;
+  const drawOn =
+    (['pencil', 'line', 'arrow', 'rect', 'ellipse', 'text'] as Tool[]).includes(tool) && plain;
   const phoneTools = (
-    <nav className="plan-canvas__phone-tools" data-tour="plan-tools" aria-label={t('board.plan.tools')}>
-      {toolButton('select', t('board.plan.tool.select'), 'pointer', tool === 'select' && plain, () => pickTool('select'), { text: t('board.plan.tool.select') })}
-      {toolButton('draw', t('board.plan.tool.draw'), 'pen', drawOn, () => setMenu({ x: -1, y: -1 }), { text: t('board.plan.tool.draw') })}
-      {toolButton('measure', t('board.plan.tool.measure'), 'ruler', tool === 'measure' && plain, () => pickTool('measure'), { text: t('board.plan.tool.measure') })}
-      {toolButton('library', t('board.plan.library'), 'iconLibrary', ed.sheet === 'library', () => ed.setSheet(ed.sheet === 'library' ? null : 'library'), { text: t('board.plan.lib.short') })}
+    <nav
+      className="plan-canvas__phone-tools"
+      data-tour="plan-tools"
+      aria-label={t('board.plan.tools')}
+    >
+      {toolButton(
+        'select',
+        t('board.plan.tool.select'),
+        'pointer',
+        tool === 'select' && plain,
+        () => pickTool('select'),
+        { text: t('board.plan.tool.select') },
+      )}
+      {toolButton(
+        'draw',
+        t('board.plan.tool.draw'),
+        'pen',
+        drawOn,
+        () => setMenu({ x: -1, y: -1 }),
+        { text: t('board.plan.tool.draw') },
+      )}
+      {toolButton(
+        'measure',
+        t('board.plan.tool.measure'),
+        'ruler',
+        tool === 'measure' && plain,
+        () => pickTool('measure'),
+        { text: t('board.plan.tool.measure') },
+      )}
+      {toolButton(
+        'library',
+        t('board.plan.library'),
+        'iconLibrary',
+        ed.sheet === 'library',
+        () => ed.setSheet(ed.sheet === 'library' ? null : 'library'),
+        { text: t('board.plan.lib.short') },
+      )}
     </nav>
   );
-  const drawMenu: MenuItem[] = (['pencil', 'line', 'arrow', 'rect', 'ellipse', 'text'] as const).map((x) => ({
+  const drawMenu: MenuItem[] = (
+    ['pencil', 'line', 'arrow', 'rect', 'ellipse', 'text'] as const
+  ).map((x) => ({
     label: t(`board.plan.tool.${x}`),
     icon: (x === 'pencil' ? 'pen' : x) as IconName,
     checked: tool === x && plain,
@@ -1051,11 +1123,21 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   }));
   const zoomControl = (
     <fieldset className="plan-float plan-canvas__zoom" aria-label={t('board.plan.zoom')}>
-      <IconButton icon="minus" label={t('board.plan.zoomOut')} disabled={zoom === ZOOMS[0]} onClick={() => zoomBy(-1)} />
+      <IconButton
+        icon="minus"
+        label={t('board.plan.zoomOut')}
+        disabled={zoom === ZOOMS[0]}
+        onClick={() => zoomBy(-1)}
+      />
       <span className="plan-canvas__percent" aria-live="polite">
         {zoom}%
       </span>
-      <IconButton icon="plus" label={t('board.plan.zoomIn')} disabled={zoom === ZOOMS.at(-1)} onClick={() => zoomBy(1)} />
+      <IconButton
+        icon="plus"
+        label={t('board.plan.zoomIn')}
+        disabled={zoom === ZOOMS.at(-1)}
+        onClick={() => zoomBy(1)}
+      />
       <IconButton icon="fit" label={t('board.plan.zoomFit')} onClick={() => setZoom(100)} />
     </fieldset>
   );
@@ -1090,7 +1172,11 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
 
   const movingIcon = ed.movingIcon;
   const moveBar = movingIcon && (
-    <div className="plan-float plan-canvas__movebar ink-motion-pop" role="toolbar" aria-label={t('board.plan.routeBar')}>
+    <div
+      className="plan-float plan-canvas__movebar ink-motion-pop"
+      role="toolbar"
+      aria-label={t('board.plan.routeBar')}
+    >
       <span>
         {t('board.plan.routeOf', {
           name: movingIcon.label || t(`board.plan.icons.${movingIcon.kind}`),
@@ -1123,7 +1209,11 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     <div className="plan-scale ink-motion-pop" role="dialog" aria-label={t('board.plan.setScale')}>
       <div className="plan-scale__head">
         <b>{t('board.plan.setScale')}</b>
-        <IconButton icon="close" label={t('board.plan.cancel')} onClick={() => setScaleDraft(null)} />
+        <IconButton
+          icon="close"
+          label={t('board.plan.cancel')}
+          onClick={() => setScaleDraft(null)}
+        />
       </div>
       <label className="plan-scale__field">
         <span>{t('board.plan.lineIs')}</span>
@@ -1143,7 +1233,12 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         <span>{t('board.plan.grid')}</span>
         <fieldset className="plan-props__segmented" aria-label={t('board.plan.grid')}>
           {(['0.25', '0.5', '1'] as const).map((g) => (
-            <button key={g} type="button" aria-pressed={gridDraft === g} onClick={() => setGridDraft(g)}>
+            <button
+              key={g}
+              type="button"
+              aria-pressed={gridDraft === g}
+              onClick={() => setGridDraft(g)}
+            >
               {Number(g).toLocaleString(i18n.language)}
               {g === '1' ? ' m' : ''}
             </button>
@@ -1255,7 +1350,9 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
                   }
                 }}
                 value={measureDraft.value}
-                onChange={(e) => setMeasureDraft({ ...measureDraft, value: e.target.value, wrong: false })}
+                onChange={(e) =>
+                  setMeasureDraft({ ...measureDraft, value: e.target.value, wrong: false })
+                }
               />
             </label>
             <span className="plan-pop__unit">m</span>
@@ -1404,8 +1501,12 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         </div>
       </div>
       {moveBar}
-      {layerStatus.length > 0 && !phone && <p className="plan-canvas__status">{layerStatus.join(' · ')}</p>}
-      {tool === 'scale' && <p className="plan-float plan-canvas__tip">{t('board.plan.scaleHint')}</p>}
+      {layerStatus.length > 0 && !phone && (
+        <p className="plan-canvas__status">{layerStatus.join(' · ')}</p>
+      )}
+      {tool === 'scale' && (
+        <p className="plan-float plan-canvas__tip">{t('board.plan.scaleHint')}</p>
+      )}
       {scaleDialog}
       {armed && armedName && (
         <p className="plan-float plan-canvas__toast ink-motion-pop" role="status">
@@ -1448,4 +1549,3 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     </div>
   );
 }
-

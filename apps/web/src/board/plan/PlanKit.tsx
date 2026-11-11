@@ -1,10 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import {
-  type CircuitLoad,
-  type PlanElement,
-  planPower,
-  variantView,
-} from '@inkadra/canvas-core';
+import { type CircuitLoad, type PlanElement, planPower, variantView } from '@inkadra/canvas-core';
 import { MAX_PLAN_CIRCUITS, newElementId, type PlanIcon } from '@inkadra/doc-schema';
 import { Button, IconButton, Segmented } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
@@ -23,14 +18,23 @@ export function powerText(watts: number, amps: number, lang: string): string {
 }
 
 /** The kit of a setup as it is shown and counted: the setup over its base's Set. */
-export function setupKit(plan: PlanElement, base: PlanElement | undefined, t: TFunction, lang: string) {
+export function setupKit(
+  plan: PlanElement,
+  base: PlanElement | undefined,
+  t: TFunction,
+  lang: string,
+) {
   const merged = base ? variantView(plan, base) : plan;
   return kitList(merged, t, lang);
 }
 
 /** The name of a setup: "1 · Master", the base first. */
 export function setupName(p: PlanElement, family: readonly PlanElement[], t: TFunction): string {
-  const n = Math.max(0, family.findIndex((f) => f.id === p.id)) + 1;
+  const n =
+    Math.max(
+      0,
+      family.findIndex((f) => f.id === p.id),
+    ) + 1;
   const name = p.variantOf ? p.variant || t('board.plan.variant') : t('board.plan.base');
   return `${n} · ${name}`;
 }
@@ -53,10 +57,12 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
   const familyItems = family.reduce(
     (n, p) =>
       n +
-      setupKit(p, p.variantOf ? family.find((f) => f.id === p.variantOf) : undefined, t, lang).reduce(
-        (m, l) => m + l.count,
-        0,
-      ),
+      setupKit(
+        p,
+        p.variantOf ? family.find((f) => f.id === p.variantOf) : undefined,
+        t,
+        lang,
+      ).reduce((m, l) => m + l.count, 0),
     0,
   );
   const circuits = plan.circuits ?? [];
@@ -108,8 +114,12 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
       <div className="plan-props__sep" />
       <section className="plan-kit__section" aria-label={t('board.plan.power')}>
         <div className="plan-props__row">
-          <span className="plan-props__cap">{t('board.plan.powerAt', { volts: power.voltage })}</span>
-          <span className="plan-kit__n plan-kit__total">{powerText(power.watts, power.amps, lang)}</span>
+          <span className="plan-props__cap">
+            {t('board.plan.powerAt', { volts: power.voltage })}
+          </span>
+          <span className="plan-kit__n plan-kit__total">
+            {powerText(power.watts, power.amps, lang)}
+          </span>
         </div>
         {power.circuits.map((c) => {
           const own = c.id ? circuits.find((x) => x.id === c.id) : undefined;
@@ -125,7 +135,9 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
                     onFocus={() => ed.store.undo.stopCapturing()}
                     onChange={(e) =>
                       ed.editPlan({
-                        circuits: circuits.map((x) => (x.id === own.id ? { ...x, name: e.target.value } : x)),
+                        circuits: circuits.map((x) =>
+                          x.id === own.id ? { ...x, name: e.target.value } : x,
+                        ),
                       })
                     }
                   />
@@ -135,7 +147,9 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
                     max={1000}
                     unit="A"
                     label={t('board.plan.breaker')}
-                    onCommit={(a) => writeCircuits(circuits.map((x) => (x.id === own.id ? { ...x, amps: a } : x)))}
+                    onCommit={(a) =>
+                      writeCircuits(circuits.map((x) => (x.id === own.id ? { ...x, amps: a } : x)))
+                    }
                   />
                   <IconButton
                     icon="trash"
@@ -154,7 +168,9 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
                       ? t('board.plan.circuitWarning')
                       : ''}
                 </span>
-                <span className="plan-kit__n">{c.amps.toLocaleString(lang, { maximumFractionDigits: 1 })} A</span>
+                <span className="plan-kit__n">
+                  {c.amps.toLocaleString(lang, { maximumFractionDigits: 1 })} A
+                </span>
               </div>
               {c.breaker && (
                 <span className="plan-kit__bar" aria-hidden="true">
@@ -174,7 +190,9 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
               ...circuits,
               {
                 id: newElementId(),
-                name: t('board.plan.circuitNamed', { letter: String.fromCharCode(65 + (circuits.length % 26)) }),
+                name: t('board.plan.circuitNamed', {
+                  letter: String.fromCharCode(65 + (circuits.length % 26)),
+                }),
                 amps: power.voltage === 120 ? 20 : 16,
               },
             ])
@@ -191,7 +209,7 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
               { value: '120', label: '120 V' },
               { value: '230', label: '230 V' },
             ]}
-            onChange={(v) => ed.editPlan({ voltage: v === "120" ? 120 : undefined })}
+            onChange={(v) => ed.editPlan({ voltage: v === '120' ? 120 : undefined })}
           />
         </div>
       </section>

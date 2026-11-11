@@ -5,7 +5,13 @@ import { Icon, IconButton } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Ed } from './editing.ts';
-import { ELEMENT_LAYERS, type ElementsFilter, elementSections, itemName, itemSummary } from './elements.ts';
+import {
+  ELEMENT_LAYERS,
+  type ElementsFilter,
+  elementSections,
+  itemName,
+  itemSummary,
+} from './elements.ts';
 import { PLAN_COLORS, PlanGlyph, planCss } from './PlanDrawing.tsx';
 
 /**
@@ -63,13 +69,17 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
                 <IconButton
                   icon={hidden ? 'eyeOff' : 'eye'}
                   aria-pressed={hidden}
-                  label={t(hidden ? 'board.plan.showLayer' : 'board.plan.hideLayer', { layer: layerName(layer) })}
+                  label={t(hidden ? 'board.plan.showLayer' : 'board.plan.hideLayer', {
+                    layer: layerName(layer),
+                  })}
                   onClick={() => ed.toggleHidden(layer)}
                 />
                 <IconButton
                   icon={locked ? 'lock' : 'unlock'}
                   aria-pressed={locked}
-                  label={t(locked ? 'board.plan.unlockLayer' : 'board.plan.lockLayer', { layer: layerName(layer) })}
+                  label={t(locked ? 'board.plan.unlockLayer' : 'board.plan.lockLayer', {
+                    layer: layerName(layer),
+                  })}
                   onClick={() => ed.toggleLocked(layer)}
                 />
               </span>
@@ -97,14 +107,24 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
                     const group = withGroups(ed.drawn, [ref]);
                     ed.setSelection(
                       e.shiftKey
-                        ? [...ed.selection.filter((r) => !group.some((g) => g.id === r.id)), ...group]
+                        ? [
+                            ...ed.selection.filter((r) => !group.some((g) => g.id === r.id)),
+                            ...group,
+                          ]
                         : group,
                     );
                     onPicked?.();
                   }}
                 >
                   <span className="plan-elements__glyph" style={{ color: planCss(item.color) }}>
-                    {icon ? <PlanGlyph kind={icon.kind} size={24} /> : <Icon name={'x0' in item ? (item.kind === 'text' ? 'text' : 'line') : 'pen'} size={18} />}
+                    {icon ? (
+                      <PlanGlyph kind={icon.kind} size={24} />
+                    ) : (
+                      <Icon
+                        name={'x0' in item ? (item.kind === 'text' ? 'text' : 'line') : 'pen'}
+                        size={18}
+                      />
+                    )}
                   </span>
                   <span className="plan-lib__text">
                     <span>{itemName(item, t)}</span>

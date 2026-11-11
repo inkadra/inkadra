@@ -250,9 +250,7 @@ export function usePlanEditing(props: PlanEditorProps) {
   const restack = (by: 1 | -1) => {
     const items = chosen().filter(isIcon);
     if (items.length)
-      write(
-        items.map((i) => ({ ...i, tier: Math.max(0, Math.min(5, Number(itemTier(i)) + by)) })),
-      );
+      write(items.map((i) => ({ ...i, tier: Math.max(0, Math.min(5, Number(itemTier(i)) + by)) })));
   };
   const moveToLayer = (layer: PlanLayer) => {
     const items = chosen().filter((i) => ownerOf(i.id) === plan.id);

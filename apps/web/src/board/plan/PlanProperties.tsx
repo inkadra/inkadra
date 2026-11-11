@@ -47,8 +47,8 @@ import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { type Ed, isIcon, MAX_UNITS } from './editing.ts';
 import { itemName, selectionMix } from './elements.ts';
 import { NumberField } from './NumberField.tsx';
-import { measureText, PLAN_COLORS, PlanGlyph, planCss, TEXT_SIZES } from './PlanDrawing.tsx';
 import { selectionMenu } from './PlanCanvas.tsx';
+import { measureText, PLAN_COLORS, PlanGlyph, planCss, TEXT_SIZES } from './PlanDrawing.tsx';
 
 /** Lens presets of a camera, as on the mockup; Other takes any focal length. */
 const LENSES = [24, 35, 50, 85];
@@ -59,7 +59,18 @@ const KELVIN_RANGE = [2000, 10000] as const;
 const KELVIN_TRACK =
   'linear-gradient(90deg, var(--ink-tag-orange), color-mix(in srgb, var(--ink-tag-orange) 30%, white) 35%, white 50%, var(--ink-tag-blue))';
 /** Gels most crews ask for; anything else is typed. */
-const GELS = ['CTO ¼', 'CTO ½', 'CTO full', 'CTB ¼', 'CTB ½', 'CTB full', '216', '250', 'Plus green', 'Minus green'];
+const GELS = [
+  'CTO ¼',
+  'CTO ½',
+  'CTO full',
+  'CTB ¼',
+  'CTB ½',
+  'CTB full',
+  '216',
+  '250',
+  'Plus green',
+  'Minus green',
+];
 const LIGHT_KINDS = PLAN_CATEGORIES.find((c) => c.id === 'lights')?.kinds ?? [];
 const MODIFIER_KINDS =
   PLAN_CATEGORIES.flatMap((c) => c.groups).find((g) => g.id === 'modifiers')?.kinds ?? [];
@@ -128,7 +139,11 @@ export function PlanProperties({
   const [otherLens, setOtherLens] = useState(false);
   const [otherGel, setOtherGel] = useState(false);
   const [palette, setPalette] = useState<CSSProperties | null>(null);
-  const [menu, setMenu] = useState<{ items: MenuItem[]; style: CSSProperties; label: string } | null>(null);
+  const [menu, setMenu] = useState<{
+    items: MenuItem[];
+    style: CSSProperties;
+    label: string;
+  } | null>(null);
   const colourButton = useRef<HTMLButtonElement>(null);
   const { item, many, drawn, icons } = ed;
   const scale = drawn.scale;
@@ -142,7 +157,11 @@ export function PlanProperties({
     setMenu({
       items,
       label,
-      style: { position: 'fixed', right: Math.max(8, window.innerWidth - r.right), top: r.bottom + 6 },
+      style: {
+        position: 'fixed',
+        right: Math.max(8, window.innerWidth - r.right),
+        top: r.bottom + 6,
+      },
     });
   };
   const colorName = (hex: string) =>
@@ -157,7 +176,11 @@ export function PlanProperties({
       aria-haspopup="menu"
       onClick={(e) => {
         const r = e.currentTarget.getBoundingClientRect();
-        setPalette(palette ? null : { position: 'fixed', right: window.innerWidth - r.right, top: r.bottom + 6 });
+        setPalette(
+          palette
+            ? null
+            : { position: 'fixed', right: window.innerWidth - r.right, top: r.bottom + 6 },
+        );
       }}
     >
       <i style={{ background: planCss(hex) }} />
@@ -177,7 +200,8 @@ export function PlanProperties({
             {t(`board.plan.colors.${c.name}`)}
           </span>
         ),
-        checked: (many[0] ?? item)?.color === c.hex || (!item && !many.length && ed.penColor === c.hex),
+        checked:
+          (many[0] ?? item)?.color === c.hex || (!item && !many.length && ed.penColor === c.hex),
         action: () => ed.pickColor(c.hex),
       }))}
       onClose={() => setPalette(null)}
@@ -223,7 +247,9 @@ export function PlanProperties({
           icon="more"
           label={t('board.plan.selectionMenu')}
           aria-haspopup="menu"
-          onClick={(e) => openMenu(selectionMenu(ed, t), t('board.plan.selectionMenu'), e.currentTarget)}
+          onClick={(e) =>
+            openMenu(selectionMenu(ed, t), t('board.plan.selectionMenu'), e.currentTarget)
+          }
         />
       </div>
     );
@@ -252,9 +278,7 @@ export function PlanProperties({
         />
       )}
       {!compact && swatch(icon.color)}
-      {compact && (
-        <IconButton icon="more" label={t('board.plan.moreProps')} onClick={onMore} />
-      )}
+      {compact && <IconButton icon="more" label={t('board.plan.moreProps')} onClick={onMore} />}
     </div>
   );
   const note = (icon: PlanIcon) => (
@@ -354,7 +378,9 @@ export function PlanProperties({
     return (
       <div className="plan-props__on">
         <Icon name="link" size={14} />
-        <span>{t('board.plan.onBase', { name: base.label || t(`board.plan.icons.${base.kind}`) })}</span>
+        <span>
+          {t('board.plan.onBase', { name: base.label || t(`board.plan.icons.${base.kind}`) })}
+        </span>
         <Button variant="ghost" onClick={() => ed.write(detachIcon(icons, icon.id))}>
           {t('board.plan.detach')}
         </Button>
@@ -409,7 +435,17 @@ export function PlanProperties({
               { value: 'solid', label: t('board.plan.solid') },
               { value: 'dashed', label: t('board.plan.dashed') },
             ]}
-            onPick={(v) => ed.write(v === 'dashed' ? { ...icon, dashed: true } : (() => { const n = { ...icon }; delete n.dashed; return n; })())}
+            onPick={(v) =>
+              ed.write(
+                v === 'dashed'
+                  ? { ...icon, dashed: true }
+                  : (() => {
+                      const n = { ...icon };
+                      delete n.dashed;
+                      return n;
+                    })(),
+              )
+            }
           />
         </div>
       )}
@@ -428,18 +464,29 @@ export function PlanProperties({
     const base = baseOf(icon);
     const kelvin = icon.kelvin ?? 5600;
     const gelOther = otherGel || (!!icon.gel && !GELS.includes(icon.gel));
-    const sub = [icon.power || (watts ? `${watts} W` : ''), mods.map((m) => t(`board.plan.icons.${m.kind}`)).join(', ')]
+    const sub = [
+      icon.power || (watts ? `${watts} W` : ''),
+      mods.map((m) => t(`board.plan.icons.${m.kind}`)).join(', '),
+    ]
       .filter(Boolean)
       .join(' · ');
     const sliders = (
       <>
         <div className="plan-range">
-          {range(t('board.plan.kelvin'), kelvin, KELVIN_RANGE[0], KELVIN_RANGE[1], 'K', (v) => ed.edit(icon, { kelvin: Math.round(v) }), {
-            step: 100,
-            track: KELVIN_TRACK,
-            chipMin: 1000,
-            chipMax: 20000,
-          })}
+          {range(
+            t('board.plan.kelvin'),
+            kelvin,
+            KELVIN_RANGE[0],
+            KELVIN_RANGE[1],
+            'K',
+            (v) => ed.edit(icon, { kelvin: Math.round(v) }),
+            {
+              step: 100,
+              track: KELVIN_TRACK,
+              chipMin: 1000,
+              chipMax: 20000,
+            },
+          )}
           <Pills
             label={t('board.plan.kelvinPresets')}
             value={icon.kelvin ? String(icon.kelvin) : undefined}
@@ -447,11 +494,18 @@ export function PlanProperties({
             onPick={(v) => ed.write({ ...icon, kelvin: Number(v) })}
           />
         </div>
-        {range(t('board.plan.intensity'), Math.round((icon.intensity ?? 0.8) * 100), 0, 100, '%', (v) =>
-          ed.edit(icon, { intensity: v / 100 }),
+        {range(
+          t('board.plan.intensity'),
+          Math.round((icon.intensity ?? 0.8) * 100),
+          0,
+          100,
+          '%',
+          (v) => ed.edit(icon, { intensity: v / 100 }),
         )}
         {iconCone(icon)?.beam &&
-          range(t('board.plan.beam'), icon.beam ?? 30, 5, 180, '°', (v) => ed.edit(icon, { beam: Math.round(v) }))}
+          range(t('board.plan.beam'), icon.beam ?? 30, 5, 180, '°', (v) =>
+            ed.edit(icon, { beam: Math.round(v) }),
+          )}
       </>
     );
     if (compact)
@@ -460,7 +514,9 @@ export function PlanProperties({
           {head(icon, sub)}
           {sliders}
           <div className="plan-pills">
-            <span className="plan-pill">{t('board.plan.modifierCount', { count: mods.length })}</span>
+            <span className="plan-pill">
+              {t('board.plan.modifierCount', { count: mods.length })}
+            </span>
             {(base || icon.stand) && (
               <span className="plan-pill">
                 {base ? t(`board.plan.icons.${base.kind}`) : t(`board.plan.stands.${icon.stand}`)}
@@ -478,7 +534,15 @@ export function PlanProperties({
           value={icon.role}
           options={PLAN_LIGHT_ROLES.map((r) => ({ value: r, label: t(`board.plan.roles.${r}`) }))}
           onPick={(r) =>
-            ed.write(icon.role === r ? (() => { const n = { ...icon }; delete n.role; return n; })() : { ...icon, role: r })
+            ed.write(
+              icon.role === r
+                ? (() => {
+                    const n = { ...icon };
+                    delete n.role;
+                    return n;
+                  })()
+                : { ...icon, role: r },
+            )
           }
         />
         <div className="plan-props__grid plan-props__grid--fixture">
@@ -525,7 +589,9 @@ export function PlanProperties({
                 key={m.id}
                 type="button"
                 className="plan-pill"
-                aria-label={t('board.plan.removeModifier', { name: t(`board.plan.icons.${m.kind}`) })}
+                aria-label={t('board.plan.removeModifier', {
+                  name: t(`board.plan.icons.${m.kind}`),
+                })}
                 onClick={() => ed.remove([m.id])}
               >
                 {m.label || t(`board.plan.icons.${m.kind}`)}
@@ -548,7 +614,11 @@ export function PlanProperties({
                     ),
                     action: () => {
                       const c = iconCentre(icon);
-                      ed.placeIcon(k, { x: c.x / PLAN_VIEW_W, y: c.y / PLAN_VIEW_H }, { keep: true, on: icon.id });
+                      ed.placeIcon(
+                        k,
+                        { x: c.x / PLAN_VIEW_W, y: c.y / PLAN_VIEW_H },
+                        { keep: true, on: icon.id },
+                      );
                     },
                   })),
                   t('board.plan.addModifier'),
@@ -570,7 +640,15 @@ export function PlanProperties({
                 if (v === 'other') setOtherGel(true);
                 else {
                   setOtherGel(false);
-                  ed.write(v ? { ...icon, gel: v } : (() => { const n = { ...icon }; delete n.gel; return n; })());
+                  ed.write(
+                    v
+                      ? { ...icon, gel: v }
+                      : (() => {
+                          const n = { ...icon };
+                          delete n.gel;
+                          return n;
+                        })(),
+                  );
                 }
               }}
               options={[
@@ -582,7 +660,9 @@ export function PlanProperties({
           </Field>
           {base ? (
             <Field label={t('board.plan.stand')}>
-              <span className="plan-field plan-field--static">{base.label || t(`board.plan.icons.${base.kind}`)}</span>
+              <span className="plan-field plan-field--static">
+                {base.label || t(`board.plan.icons.${base.kind}`)}
+              </span>
             </Field>
           ) : (
             <Field label={t('board.plan.stand')}>
@@ -590,11 +670,22 @@ export function PlanProperties({
                 aria-label={t('board.plan.stand')}
                 value={icon.stand ?? ''}
                 onChange={(v) =>
-                  ed.write(v ? { ...icon, stand: v as PlanIcon['stand'] } : (() => { const n = { ...icon }; delete n.stand; return n; })())
+                  ed.write(
+                    v
+                      ? { ...icon, stand: v as PlanIcon['stand'] }
+                      : (() => {
+                          const n = { ...icon };
+                          delete n.stand;
+                          return n;
+                        })(),
+                  )
                 }
                 options={[
                   { value: '', label: t('board.plan.noStand') },
-                  ...PLAN_LIGHT_STANDS.map((s) => ({ value: s, label: t(`board.plan.stands.${s}`) })),
+                  ...PLAN_LIGHT_STANDS.map((s) => ({
+                    value: s,
+                    label: t(`board.plan.stands.${s}`),
+                  })),
                 ]}
               />
             </Field>
@@ -643,11 +734,22 @@ export function PlanProperties({
             aria-label={t('board.plan.circuit')}
             value={icon.circuit ?? ''}
             onChange={(v) =>
-              ed.write(v ? { ...icon, circuit: v } : (() => { const n = { ...icon }; delete n.circuit; return n; })())
+              ed.write(
+                v
+                  ? { ...icon, circuit: v }
+                  : (() => {
+                      const n = { ...icon };
+                      delete n.circuit;
+                      return n;
+                    })(),
+              )
             }
             options={[
               { value: '', label: t('board.plan.noCircuit') },
-              ...(ed.plan.circuits ?? []).map((c) => ({ value: c.id, label: `${c.name} · ${num(c.amps, 0)} A` })),
+              ...(ed.plan.circuits ?? []).map((c) => ({
+                value: c.id,
+                label: `${c.name} · ${num(c.amps, 0)} A`,
+              })),
             ]}
           />
         </Field>
@@ -669,7 +771,9 @@ export function PlanProperties({
         <div className="plan-range__head">
           <span className="plan-prop__label">{t('board.plan.lens')}</span>
           {cone && (
-            <span className="plan-chip">{t('board.plan.angleValue', { angle: Math.round(cone.angle) })}</span>
+            <span className="plan-chip">
+              {t('board.plan.angleValue', { angle: Math.round(cone.angle) })}
+            </span>
           )}
         </div>
         <Pills
@@ -728,7 +832,9 @@ export function PlanProperties({
               <Icon name="frame" size={18} />
               <span className="plan-props__name">
                 <b>{[shot.label, shot.shot].filter(Boolean).join(' · ')}</b>
-                {shot.frameLens && <small>{t('board.plan.lensInFrame', { mm: shot.frameLens })}</small>}
+                {shot.frameLens && (
+                  <small>{t('board.plan.lensInFrame', { mm: shot.frameLens })}</small>
+                )}
               </span>
             </div>
             <p className="plan-props__hint">{t('board.plan.lensFollows')}</p>
@@ -739,7 +845,12 @@ export function PlanProperties({
           <div className="plan-props__hints">
             <span>{t('board.plan.fromFrames')}</span>
             {(ed.lenses ?? []).map((l) => (
-              <button key={l.label} type="button" className="plan__badge" onClick={() => ed.write({ ...icon, lens: l.mm })}>
+              <button
+                key={l.label}
+                type="button"
+                className="plan__badge"
+                onClick={() => ed.write({ ...icon, lens: l.mm })}
+              >
                 {l.label} · {l.mm} mm
               </button>
             ))}
@@ -751,12 +862,17 @@ export function PlanProperties({
               aria-label={t('board.plan.sensor')}
               value={ed.plan.sensor ?? 's35'}
               onChange={(v) => ed.editPlan({ sensor: v === 's35' ? undefined : (v as PlanSensor) })}
-              options={(['s35', 'ff', 'm43', 's16'] as const).map((v) => ({ value: v, label: t(`board.plan.sensors.${v}`) }))}
+              options={(['s35', 'ff', 'm43', 's16'] as const).map((v) => ({
+                value: v,
+                label: t(`board.plan.sensors.${v}`),
+              }))}
             />
           </Field>
           {base ? (
             <Field label={t('board.plan.support')}>
-              <span className="plan-field plan-field--static">{base.label || t(`board.plan.icons.${base.kind}`)}</span>
+              <span className="plan-field plan-field--static">
+                {base.label || t(`board.plan.icons.${base.kind}`)}
+              </span>
             </Field>
           ) : (
             <Field label={t('board.plan.support')}>
@@ -764,11 +880,22 @@ export function PlanProperties({
                 aria-label={t('board.plan.support')}
                 value={icon.support ?? ''}
                 onChange={(v) =>
-                  ed.write(v ? { ...icon, support: v as PlanIcon['support'] } : (() => { const n = { ...icon }; delete n.support; return n; })())
+                  ed.write(
+                    v
+                      ? { ...icon, support: v as PlanIcon['support'] }
+                      : (() => {
+                          const n = { ...icon };
+                          delete n.support;
+                          return n;
+                        })(),
+                  )
                 }
                 options={[
                   { value: '', label: t('board.plan.noSupport') },
-                  ...PLAN_CAMERA_SUPPORTS.map((s) => ({ value: s, label: t(`board.plan.supports.${s}`) })),
+                  ...PLAN_CAMERA_SUPPORTS.map((s) => ({
+                    value: s,
+                    label: t(`board.plan.supports.${s}`),
+                  })),
                 ]}
               />
             </Field>
@@ -793,7 +920,17 @@ export function PlanProperties({
         <label className="plan-props__check">
           <Checkbox
             checked={!!icon.showLens}
-            onChange={(e) => ed.write(e.target.checked ? { ...icon, showLens: true } : (() => { const n = { ...icon }; delete n.showLens; return n; })())}
+            onChange={(e) =>
+              ed.write(
+                e.target.checked
+                  ? { ...icon, showLens: true }
+                  : (() => {
+                      const n = { ...icon };
+                      delete n.showLens;
+                      return n;
+                    })(),
+              )
+            }
           />
           {t('board.plan.showLens')}
         </label>
@@ -812,17 +949,31 @@ export function PlanProperties({
         <Pills
           label={t('board.plan.pose')}
           value={icon.pose ?? 'standing'}
-          options={(['standing', 'seated', 'lying'] as const).map((p) => ({ value: p, label: t(`board.plan.poses.${p}`) }))}
-          onPick={(p) => ed.write(p === 'standing' ? (() => { const n = { ...icon }; delete n.pose; return n; })() : { ...icon, pose: p })}
+          options={(['standing', 'seated', 'lying'] as const).map((p) => ({
+            value: p,
+            label: t(`board.plan.poses.${p}`),
+          }))}
+          onPick={(p) =>
+            ed.write(
+              p === 'standing'
+                ? (() => {
+                    const n = { ...icon };
+                    delete n.pose;
+                    return n;
+                  })()
+                : { ...icon, pose: p },
+            )
+          }
         />
       </div>
     );
-    if (compact) return (
-      <>
-        {head(icon, icon.note)}
-        {poses}
-      </>
-    );
+    if (compact)
+      return (
+        <>
+          {head(icon, icon.note)}
+          {poses}
+        </>
+      );
     return (
       <>
         {head(icon)}
@@ -830,7 +981,9 @@ export function PlanProperties({
           <>
             <span className="plan-props__cap">{t('board.plan.characterCard')}</span>
             <div className="plan-props__card">
-              <span className="plan-props__initial">{character.name.slice(0, 1).toLocaleUpperCase()}</span>
+              <span className="plan-props__initial">
+                {character.name.slice(0, 1).toLocaleUpperCase()}
+              </span>
               <span className="plan-props__name">
                 <b>{character.name}</b>
                 <small>{character.actor ?? t('board.plan.nameFollows')}</small>
@@ -880,7 +1033,9 @@ export function PlanProperties({
           {angleField(icon)}
           {seats !== undefined && (
             <Field label={t('board.plan.seats')}>
-              <span className="plan-field plan-field--static">{t('board.plan.seatsTaken', { count: seats, taken: seated })}</span>
+              <span className="plan-field plan-field--static">
+                {t('board.plan.seatsTaken', { count: seats, taken: seated })}
+              </span>
             </Field>
           )}
         </div>
@@ -901,7 +1056,9 @@ export function PlanProperties({
           {angleField(icon)}
         </div>
         {iconCone(icon)?.beam &&
-          range(t('board.plan.beam'), icon.beam ?? 30, 5, 180, '°', (v) => ed.edit(icon, { beam: Math.round(v) }))}
+          range(t('board.plan.beam'), icon.beam ?? 30, 5, 180, '°', (v) =>
+            ed.edit(icon, { beam: Math.round(v) }),
+          )}
         {positions(icon, t('board.plan.movement'))}
         {note(icon)}
         {actions(icon)}
@@ -915,7 +1072,10 @@ export function PlanProperties({
     const textStep = (dir: -1 | 1) => {
       if (!('x0' in target)) return null;
       const sizes = Object.values(TEXT_SIZES) as number[];
-      return (dir > 0 ? sizes.find((v) => v > target.width) : sizes.findLast((v) => v < target.width)) ?? null;
+      return (
+        (dir > 0 ? sizes.find((v) => v > target.width) : sizes.findLast((v) => v < target.width)) ??
+        null
+      );
     };
     return (
       <>
@@ -952,7 +1112,9 @@ export function PlanProperties({
                     icon={dir > 0 ? 'plus' : 'minus'}
                     label={t(dir > 0 ? 'board.plan.bigger' : 'board.plan.smaller')}
                     disabled={next === null}
-                    onClick={() => next !== null && ed.write({ ...target, width: next } as PlanItem)}
+                    onClick={() =>
+                      next !== null && ed.write({ ...target, width: next } as PlanItem)
+                    }
                   />
                 );
               })}
@@ -993,7 +1155,12 @@ export function PlanProperties({
           <span className="plan-prop__label">{t('board.plan.alignLabel')}</span>
           <span className="plan-props__buttons">
             {alignIcons.map(([how, icon]) => (
-              <IconButton key={how} icon={icon} label={t(`board.plan.align.${how}`)} onClick={() => align(how)} />
+              <IconButton
+                key={how}
+                icon={icon}
+                label={t(`board.plan.align.${how}`)}
+                onClick={() => align(how)}
+              />
             ))}
           </span>
         </div>
@@ -1001,11 +1168,16 @@ export function PlanProperties({
           <Field label={t('board.plan.layer')}>
             <Select
               aria-label={t('board.plan.layer')}
-              value={layers.size === 1 ? [...layers][0] as string : 'mixed'}
+              value={layers.size === 1 ? ([...layers][0] as string) : 'mixed'}
               onChange={(v) => v !== 'mixed' && ed.moveToLayer(v as never)}
               options={[
-                ...(layers.size > 1 ? [{ value: 'mixed', label: t('board.plan.mixed'), disabled: true }] : []),
-                ...PLAN_LAYERS.filter((l) => !(ed.base && l === 'set')).map((l) => ({ value: l, label: t(`board.plan.layers.${l}`) })),
+                ...(layers.size > 1
+                  ? [{ value: 'mixed', label: t('board.plan.mixed'), disabled: true }]
+                  : []),
+                ...PLAN_LAYERS.filter((l) => !(ed.base && l === 'set')).map((l) => ({
+                  value: l,
+                  label: t(`board.plan.layers.${l}`),
+                })),
               ]}
             />
           </Field>
@@ -1015,8 +1187,13 @@ export function PlanProperties({
               value={colour}
               onChange={(v) => v !== 'mixed' && ed.pickColor(v)}
               options={[
-                ...(colour === 'mixed' ? [{ value: 'mixed', label: t('board.plan.mixed'), disabled: true }] : []),
-                ...PLAN_COLORS.map((c) => ({ value: c.hex, label: t(`board.plan.colors.${c.name}`) })),
+                ...(colour === 'mixed'
+                  ? [{ value: 'mixed', label: t('board.plan.mixed'), disabled: true }]
+                  : []),
+                ...PLAN_COLORS.map((c) => ({
+                  value: c.hex,
+                  label: t(`board.plan.colors.${c.name}`),
+                })),
               ]}
             />
           </Field>
@@ -1033,7 +1210,9 @@ export function PlanProperties({
             icon="more"
             label={t('board.plan.selectionMenu')}
             aria-haspopup="menu"
-            onClick={(e) => openMenu(selectionMenu(ed, t), t('board.plan.selectionMenu'), e.currentTarget)}
+            onClick={(e) =>
+              openMenu(selectionMenu(ed, t), t('board.plan.selectionMenu'), e.currentTarget)
+            }
           />
         </div>
       </>
@@ -1046,11 +1225,13 @@ export function PlanProperties({
         <div className="plan-props__locked" role="status">
           <Icon name="lock" size={16} />
           <span>{t(`board.plan.lockedAs.${layerOf(ed.lockedItem)}`)}</span>
-          <Button onClick={() => {
-            const layer = layerOf(ed.lockedItem as PlanItem);
-            ed.toggleLocked(layer);
-            ed.setLockedItem(null);
-          }}>
+          <Button
+            onClick={() => {
+              const layer = layerOf(ed.lockedItem as PlanItem);
+              ed.toggleLocked(layer);
+              ed.setLockedItem(null);
+            }}
+          >
             {t('board.plan.unlock')}
           </Button>
         </div>
@@ -1077,7 +1258,10 @@ export function PlanProperties({
     else body = other(item);
   }
   return (
-    <div className={`plan-props${compact ? ' plan-props--compact' : ''}`} data-tour="plan-properties">
+    <div
+      className={`plan-props${compact ? ' plan-props--compact' : ''}`}
+      data-tour="plan-properties"
+    >
       {body}
       {popups}
     </div>

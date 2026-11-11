@@ -36,7 +36,9 @@ it('counts the kit of a plan by type and power, and nothing else', () => {
     { name: 'fresnel 650', count: 1 },
     { name: 'dolly', count: 1 },
   ]);
-  expect(lines(kitList({ ...plan, hiddenLayers: ['lights'] }, t))).toEqual([{ name: 'dolly', count: 1 }]);
+  expect(lines(kitList({ ...plan, hiddenLayers: ['lights'] }, t))).toEqual([
+    { name: 'dolly', count: 1 },
+  ]);
   // With a scale, a track says how long it is.
   const track = icon('track', { w: 300, h: 40 });
   expect(lines(kitList({ icons: [track], scale: 100 }, t, 'it'))).toEqual([
@@ -94,7 +96,13 @@ it('counts watts, modifiers, gels and the stands named on lights (decision 0104)
 
 it('sorts each line into its section, with the watts of a light each', () => {
   const kit = kitList(
-    { icons: [icon('fresnel', { watts: 2000 }), icon('flag'), icon('camera', { support: 'tripod' })] },
+    {
+      icons: [
+        icon('fresnel', { watts: 2000 }),
+        icon('flag'),
+        icon('camera', { support: 'tripod' }),
+      ],
+    },
     t,
   );
   expect(kit).toEqual([

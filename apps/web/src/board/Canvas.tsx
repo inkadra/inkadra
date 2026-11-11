@@ -2863,7 +2863,10 @@ export function Canvas({
   // The plans the project kit of the set plan editor is derived from (decision 0104).
   // shortcut: the plans of this board only, until other boards' plans can be read here.
   const allPlans = useMemo(
-    () => [...snap.byId.values()].filter((e): e is Extract<Element, { type: 'plan' }> => e.type === 'plan'),
+    () =>
+      [...snap.byId.values()].filter(
+        (e): e is Extract<Element, { type: 'plan' }> => e.type === 'plan',
+      ),
     [snap],
   );
   const closePicker = useCallback(() => setEditing(null), [setEditing]);

@@ -207,7 +207,10 @@ export function PlanLibrary({
       <PlanGlyph kind={entry.icon.kind} size={26} />
       <span className="plan-lib__text">
         <span>
-          <Marked text={entry.icon.label || t(`board.plan.icons.${entry.icon.kind}`)} query={marked} />
+          <Marked
+            text={entry.icon.label || t(`board.plan.icons.${entry.icon.kind}`)}
+            query={marked}
+          />
         </span>
         <small>
           <Marked text={projectKitDetail(entry, t, sensor)} query={marked} />
@@ -219,9 +222,17 @@ export function PlanLibrary({
   const mine = (
     <>
       <span className="plan-lib__cap">{t('board.plan.starred')}</span>
-      {favourites.length ? grid(favourites, 's') : <p className="plan-lib__hint">{t('board.plan.lib.noFavourites')}</p>}
+      {favourites.length ? (
+        grid(favourites, 's')
+      ) : (
+        <p className="plan-lib__hint">{t('board.plan.lib.noFavourites')}</p>
+      )}
       <span className="plan-lib__cap">{t('board.plan.recent')}</span>
-      {recents.length ? grid(recents, 'r') : <p className="plan-lib__hint">{t('board.plan.lib.noRecent')}</p>}
+      {recents.length ? (
+        grid(recents, 'r')
+      ) : (
+        <p className="plan-lib__hint">{t('board.plan.lib.noRecent')}</p>
+      )}
       <div className="plan-lib__row">
         <span className="plan-lib__cap">{t('board.plan.lib.projectKit')}</span>
         <span className="plan-lib__count">{t('board.plan.lib.saved', { count: kit.length })}</span>
@@ -254,7 +265,9 @@ export function PlanLibrary({
         {groups.map((g) => (
           <section key={g.id} className="plan-lib__group">
             <span className="plan-lib__cap">
-              {shelf === 'notes' ? t('board.plan.categories.notes') : t(`board.plan.groups.${g.id}`)}
+              {shelf === 'notes'
+                ? t('board.plan.categories.notes')
+                : t(`board.plan.groups.${g.id}`)}
             </span>
             {grid(g.kinds, g.id)}
           </section>
@@ -303,7 +316,9 @@ export function PlanLibrary({
       <Icon name="search" size={15} />
       <input
         type="search"
-        placeholder={t('board.plan.lib.searchAll', { total: PLAN_CATEGORIES.reduce((n, c) => n + c.kinds.length, 0) })}
+        placeholder={t('board.plan.lib.searchAll', {
+          total: PLAN_CATEGORIES.reduce((n, c) => n + c.kinds.length, 0),
+        })}
         aria-label={t('board.plan.lib.searchLabel')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -327,7 +342,10 @@ export function PlanLibrary({
     ghost &&
     createPortal(
       <div className="plan-lib__ghost" style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">
-        <PlanGlyph kind={'item' in ghost.what ? ghost.what.item : ghost.what.kit.icon.kind} size={36} />
+        <PlanGlyph
+          kind={'item' in ghost.what ? ghost.what.item : ghost.what.kit.icon.kind}
+          size={36}
+        />
       </div>,
       document.body,
     );
@@ -348,7 +366,9 @@ export function PlanLibrary({
         />
         <div className="plan-lib__top">
           {search}
-          {onClose && <IconButton icon="close" label={t('board.plan.closeLibrary')} onClick={onClose} />}
+          {onClose && (
+            <IconButton icon="close" label={t('board.plan.closeLibrary')} onClick={onClose} />
+          )}
         </div>
         {!searching && (
           <fieldset className="plan-lib__chips" aria-label={t('board.plan.categoryTabs')}>
@@ -367,7 +387,11 @@ export function PlanLibrary({
     );
   else
     body = (
-      <aside className="plan-lib plan-lib--dock" aria-label={t('board.plan.library')} data-tour="plan-library">
+      <aside
+        className="plan-lib plan-lib--dock"
+        aria-label={t('board.plan.library')}
+        data-tour="plan-library"
+      >
         <nav className="plan-lib__rail" aria-label={t('board.plan.categoryTabs')}>
           {shelves.map((s) => (
             <button
@@ -383,7 +407,11 @@ export function PlanLibrary({
                 setShelf(s);
               }}
             >
-              {s === 'mine' ? <Icon name="star" size={18} /> : <PlanGlyph kind={RAIL_GLYPH[s]} size={26} />}
+              {s === 'mine' ? (
+                <Icon name="star" size={18} />
+              ) : (
+                <PlanGlyph kind={RAIL_GLYPH[s]} size={26} />
+              )}
             </button>
           ))}
         </nav>

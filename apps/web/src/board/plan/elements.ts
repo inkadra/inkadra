@@ -56,11 +56,7 @@ export function itemName(item: PlanItem, t: TFunction): string {
  * The line under an item: "LED COB 300 W · Softbox, grid · C-stand" for a light, "32 mm · Dolly ·
  * 2 positions" for a camera, "Seated, Stool · 2 positions" for a person; the type for the rest.
  */
-export function itemSummary(
-  icon: PlanIcon,
-  icons: readonly PlanIcon[],
-  t: TFunction,
-): string {
+export function itemSummary(icon: PlanIcon, icons: readonly PlanIcon[], t: TFunction): string {
   const kind = catalogueKind(icon.kind);
   const typeName = t(`board.plan.icons.${icon.kind}`);
   const base = icon.on ? icons.find((i) => i.id === icon.on) : undefined;
@@ -78,7 +74,11 @@ export function itemSummary(
         .map((m) => t(`board.plan.icons.${m.kind}`))
         .join(', '),
       icon.gel ? `${t('board.plan.icons.gel')} ${icon.gel}` : '',
-      base ? t(`board.plan.icons.${base.kind}`) : icon.stand ? t(`board.plan.stands.${icon.stand}`) : '',
+      base
+        ? t(`board.plan.icons.${base.kind}`)
+        : icon.stand
+          ? t(`board.plan.stands.${icon.stand}`)
+          : '',
     ]
       .filter(Boolean)
       .join(' · ');
@@ -86,7 +86,11 @@ export function itemSummary(
   if (kind === 'camera')
     return [
       `${icon.lens ?? 35} mm`,
-      base ? t(`board.plan.icons.${base.kind}`) : icon.support ? t(`board.plan.supports.${icon.support}`) : '',
+      base
+        ? t(`board.plan.icons.${base.kind}`)
+        : icon.support
+          ? t(`board.plan.supports.${icon.support}`)
+          : '',
       positions,
     ]
       .filter(Boolean)

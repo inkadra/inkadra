@@ -72,12 +72,14 @@ export function searchLibrary(t: TFunction, query: string): LibraryHit[] {
             ? 'category'
             : null;
       if (!by) continue;
-      const detail =
-        by === 'synonym' ? t('board.plan.lib.alsoCalled', { names: synonyms }) : place;
+      const detail = by === 'synonym' ? t('board.plan.lib.alsoCalled', { names: synonyms }) : place;
       hits.push({ item, name, detail, by });
     }
   const rank = { name: 0, synonym: 1, category: 2 };
-  return hits.map((h, i) => ({ h, i })).sort((a, b) => rank[a.h.by] - rank[b.h.by] || a.i - b.i).map(({ h }) => h);
+  return hits
+    .map((h, i) => ({ h, i }))
+    .sort((a, b) => rank[a.h.by] - rank[b.h.by] || a.i - b.i)
+    .map(({ h }) => h);
 }
 
 /** Fields a configured light or camera of the project kit carries to a new copy. */
@@ -128,7 +130,11 @@ export function projectKit(plans: ReadonlyArray<Pick<PlanElement, 'icons'>>): Pr
       const kind = catalogueKind(icon.kind);
       const camera = kind === 'camera';
       const modifiers = camera ? [] : modifiersOn(icon, icons).map((m) => catalogueKind(m.kind));
-      if (camera ? !configuredCamera(icon) : !isLight(kind) || !configuredLight(icon, modifiers.length))
+      if (
+        camera
+          ? !configuredCamera(icon)
+          : !isLight(kind) || !configuredLight(icon, modifiers.length)
+      )
         continue;
       const kept: Record<string, unknown> = { kind };
       for (const field of KEPT) if (icon[field] !== undefined) kept[field] = icon[field];
@@ -155,11 +161,7 @@ export function projectKit(plans: ReadonlyArray<Pick<PlanElement, 'icons'>>): Pr
 }
 
 /** "LED COB 300 W · Softbox, grid", "Super 35 · 32, 50, 85 mm": the line under a kit entry. */
-export function projectKitDetail(
-  entry: ProjectKitEntry,
-  t: TFunction,
-  sensor: string,
-): string {
+export function projectKitDetail(entry: ProjectKitEntry, t: TFunction, sensor: string): string {
   const { icon } = entry;
   if (catalogueKind(icon.kind) === 'camera') {
     const lenses = entry.lenses.length ? `${entry.lenses.join(', ')} mm` : '';
