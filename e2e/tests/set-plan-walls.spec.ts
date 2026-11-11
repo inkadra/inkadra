@@ -275,8 +275,10 @@ test('sets a background picture, places it and changes its opacity', async ({ pa
   await page.mouse.move(b.x, b.y, { steps: 6 });
   await page.mouse.up();
   await expect.poll(async () => (await read(ids.scene5)).background?.y ?? 0).toBeGreaterThan((placed?.y ?? 0) + 40);
-  await bar.getByRole('button', { name: 'Fatto' }).click();
+  // Escape leaves the placing, not the editor.
+  await page.keyboard.press('Escape');
   await expect(bar).toHaveCount(0);
+  await expect(editor).toBeVisible();
   // Opacity from the Background panel.
   await editor.getByRole('button', { name: 'Sfondo', exact: true }).click();
   const pop = page.getByRole('dialog', { name: 'Immagine di sfondo' });
