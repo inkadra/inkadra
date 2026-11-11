@@ -45,6 +45,15 @@ export const PLAN_SHEET_INCLUDE: PlanSheetInclude = {
   grid: false,
 };
 
+/**
+ * What a sheet of `plan` includes until the person changes it: the defaults, with the background
+ * picture when the plan shows one, in greys if the plan's background is grey (decision 0115).
+ * `plan` is the plan as drawn: a setup shows its base's background.
+ */
+export function sheetInclude(plan: Pick<PlanElement, 'background'>): PlanSheetInclude {
+  return { ...PLAN_SHEET_INCLUDE, background: !!plan.background && !plan.background.hidden };
+}
+
 /** One setup on its page: the plan as it is drawn (its links resolved, over its base's Set). */
 export interface PlanSheetSetup {
   plan: PlanElement;

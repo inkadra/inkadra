@@ -6,7 +6,7 @@ import { expect, it } from 'vitest';
 import type { CardContext } from './board-render.ts';
 import { greyPixels } from './images.ts';
 import type { Op } from './pages.ts';
-import { PLAN_SHEET_INCLUDE, planSheetPages, roomSize } from './plan-sheet.ts';
+import { PLAN_SHEET_INCLUDE, planSheetPages, roomSize, sheetInclude } from './plan-sheet.ts';
 
 const ctx: CardContext = {
   measure: (value, size) => [...value].length * size * 0.5,
@@ -182,4 +182,25 @@ it('draws the background where it was placed, at its opacity, in greys, and not 
 it('turns pixels to greys by their luma, alpha kept', () => {
   const px = greyPixels(new Uint8ClampedArray([255, 0, 0, 128, 0, 255, 0, 255]));
   expect([...px]).toEqual([76, 76, 76, 128, 150, 150, 150, 255]);
+});
+
+it('includes the background by default when the plan shows one, and prints it grey if grey', () => {
+  expect(sheetInclude({}).background).toBe(false);
+  expect(sheetInclude({ background: { assetId: 'pic', hidden: true } }).background).toBe(false);
+  const include = sheetInclude({ background: { assetId: 'pic', grey: true } });
+  expect(include).toEqual({ ...PLAN_SHEET_INCLUDE, background: true });
+  const [image] = planSheetPages(
+    {
+      setups: [{ plan: { ...plan, background: { assetId: 'pic', grey: true } }, name: 'S', shots: [] }],
+      scene: '',
+      place: '',
+      area: null,
+      include,
+      t,
+      locale: 'en',
+    },
+    ctx,
+  ).flatMap((page) => page.ops.flatMap((op) => (op.kind === 'clip' ? op.ops : [op])))
+    .filter((op) => op.kind === 'image');
+  expect(image).toMatchObject({ key: 'pic', grey: true });
 });
