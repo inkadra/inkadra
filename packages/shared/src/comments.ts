@@ -362,3 +362,24 @@ export function renderMentions(body: string, names: ReadonlyMap<string, string>)
     (_, id: string) => `@${names.get(id.toLowerCase()) ?? '…'}`,
   );
 }
+
+export type BodyPart = { text: string } | { mention: string };
+
+/**
+ * Splits a body into text and mentions, for clients that draw mentions apart. Only ids listed in
+ * `mentions` become mentions; any other `@{…}` stays text as typed.
+ */
+export function commentParts(comment: Pick<Comment, 'body' | 'mentions'>): BodyPart[] {
+  const names = new Map(comment.mentions.map((p) => [p.id.toLowerCase(), p.name]));
+  const parts: BodyPart[] = [];
+  let last = 0;
+  for (const m of comment.body.matchAll(/@\{([0-9a-f-]{36})\}/gi)) {
+    const name = names.get((m[1] as string).toLowerCase());
+    if (!name) continue;
+    if (m.index > last) parts.push({ text: comment.body.slice(last, m.index) });
+    parts.push({ mention: name });
+    last = m.index + m[0].length;
+  }
+  if (last < comment.body.length) parts.push({ text: comment.body.slice(last) });
+  return parts;
+}

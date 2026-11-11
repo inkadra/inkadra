@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { rotatedBounds, sanitizeCrop } from '@inkadra/canvas-core';
 import type { ImageCrop, ImageCropAspect } from '@inkadra/doc-schema';
 
-export const FULL_CROP: ImageCrop = { x: 0, y: 0, w: 1, h: 1 };
+export {
+  croppedRotatedSize,
+  FULL_CROP,
+  rotatedBounds,
+  sanitizeCrop,
+} from '@inkadra/canvas-core';
 
 export const CROP_HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
 export type CropHandle = (typeof CROP_HANDLES)[number];
@@ -9,13 +15,6 @@ export type CropHandle = (typeof CROP_HANDLES)[number];
 /** Smallest crop the editor lets a hand drag to; documents may hold smaller ones. */
 const MIN_CROP_SIZE = 0.05;
 const EPS = 1e-4;
-/** Smallest crop any renderer keeps: the rounding step, so every positive schema value survives. */
-const MIN_STORED_SIZE = 1e-4;
-
-function round4(n: number): number {
-  const r = Math.round(n * 10000) / 10000;
-  return Object.is(r, -0) ? 0 : r;
-}
 
 export function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -42,22 +41,6 @@ export function splitRotation(rotation = 0): { base: 0 | 90 | 180 | 270; fine: n
   return { base, fine: Object.is(roundedFine, -0) ? 0 : roundedFine };
 }
 
-/** Clamps and rounds a crop rectangle so it always satisfies `ImageCrop` schema bounds. */
-export function sanitizeCrop(crop?: Partial<ImageCrop> | null): ImageCrop {
-  if (!crop) return { ...FULL_CROP };
-  const w = round4(clamp(Number.isFinite(crop.w) ? (crop.w as number) : 1, MIN_STORED_SIZE, 1));
-  const h = round4(clamp(Number.isFinite(crop.h) ? (crop.h as number) : 1, MIN_STORED_SIZE, 1));
-  const x = round4(clamp(Number.isFinite(crop.x) ? (crop.x as number) : 0, 0, Math.max(0, 1 - w)));
-  const y = round4(clamp(Number.isFinite(crop.y) ? (crop.y as number) : 0, 0, Math.max(0, 1 - h)));
-  return {
-    x,
-    y,
-    w: round4(Math.min(w, 1 - x)),
-    h: round4(Math.min(h, 1 - y)),
-    ...(crop.aspect ? { aspect: crop.aspect } : {}),
-  };
-}
-
 /** True when the crop covers the full `[0, 1] x [0, 1]` frame. */
 export function isIdentityCrop(crop?: ImageCrop | null): boolean {
   if (!crop) return true;
@@ -77,38 +60,6 @@ export function hasImageTransform(el: {
 }): boolean {
   if (!isIdentityCrop(el.crop)) return true;
   return Math.abs(normalizeRotation(el.rotation)) >= EPS;
-}
-
-/** Bounding box dimensions of an image `(width, height)` rotated by `rotation` degrees. */
-export function rotatedBounds(
-  width: number,
-  height: number,
-  rotation = 0,
-): { width: number; height: number } {
-  const w = width > 0 ? width : 4;
-  const h = height > 0 ? height : 3;
-  const rad = (rotation * Math.PI) / 180;
-  const c = Math.abs(Math.cos(rad));
-  const s = Math.abs(Math.sin(rad));
-  return {
-    width: Math.max(1e-3, w * c + h * s),
-    height: Math.max(1e-3, w * s + h * c),
-  };
-}
-
-/** Effective pixel dimensions of an image after applying `rotation` and `crop`. */
-export function croppedRotatedSize(
-  width: number,
-  height: number,
-  crop?: ImageCrop | null,
-  rotation = 0,
-): { width: number; height: number } {
-  const rot = rotatedBounds(width, height, rotation);
-  const c = sanitizeCrop(crop);
-  return {
-    width: Math.max(1e-3, rot.width * c.w),
-    height: Math.max(1e-3, rot.height * c.h),
-  };
 }
 
 /** Numeric width/height ratio for a preset, or null for `'free'`. */
