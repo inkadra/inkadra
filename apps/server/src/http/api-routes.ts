@@ -138,6 +138,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'client-asset-ids',
         'min-writer-schema',
         'board-restore-marker',
+        'board-restore-history',
       ],
     } satisfies InstanceVersion;
   });

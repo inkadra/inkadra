@@ -92,3 +92,51 @@ export const RestoredBoardVersion = z
   })
   .openapi('RestoredBoardVersion');
 export type RestoredBoardVersion = z.infer<typeof RestoredBoardVersion>;
+
+/**
+ * One restore of a board (decision 0112), so a client that edited offline can say who brought
+ * the board back and to which version. The version's name and time are as they were at the
+ * restore: renaming or pruning the version later does not change them.
+ */
+export const BoardRestore = z
+  .object({
+    count: z.int().min(1).openapi({
+      description:
+        'The board document’s `meta.restores` after this restore (decision 0109). Higher than ' +
+        'the count the client reads in the document: a restore not stored yet, or lost; ignore it.',
+    }),
+    restoredAt: Timestamp,
+    restoredBy: UserSummary.nullable().openapi({
+      description: 'Null below editor, and when the account was deleted since.',
+    }),
+    version: z
+      .object({
+        id: Id.openapi({ description: 'May no longer exist: versions are pruned and deleted.' }),
+        kind: BoardVersionKind,
+        name: z.string().nullable().openapi({ description: 'Null for an unnamed version.' }),
+        createdAt: Timestamp,
+      })
+      .nullable()
+      .openapi({ description: 'The version the board was brought back to. Null below editor.' }),
+  })
+  .openapi('BoardRestore');
+export type BoardRestore = z.infer<typeof BoardRestore>;
+
+export const BoardRestoreQuery = z
+  .object({
+    after: z.coerce.number().int().min(0).default(0).openapi({
+      description: 'The restore count the client last confirmed: only later restores are listed.',
+    }),
+  })
+  .openapi('BoardRestoreQuery');
+
+export const BoardRestores = z
+  .object({
+    items: z.array(BoardRestore).openapi({
+      description:
+        'Newest first, at most the last 50 of the board. Fewer than the counts differ by: the ' +
+        'older ones are gone, or a record failed to write; the counts still say how many.',
+    }),
+  })
+  .openapi('BoardRestores');
+export type BoardRestores = z.infer<typeof BoardRestores>;
