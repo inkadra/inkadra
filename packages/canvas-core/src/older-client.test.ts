@@ -39,6 +39,12 @@ function content(doc: Y.Doc, id: string): Record<string, unknown> {
   return json;
 }
 const through = (data: unknown) => JSON.parse(JSON.stringify(data));
+/** A board this build holds at a newer schema than its own, as the older client does. */
+function newerTarget(id = boardId, version = CURRENT_SCHEMA_VERSION + 1) {
+  const doc = createBoardDoc(id);
+  roots(doc).meta.set('schemaVersion', version);
+  return doc;
+}
 
 /** A board of a newer schema: what that schema adds is written as stored. */
 function newerBoard() {
@@ -120,7 +126,7 @@ describe('an older client on a newer document (P11)', () => {
   it('pastes cards with every field, item and note node it does not know, on their board', () => {
     const b = newerBoard();
     // The same board, as another client holds it.
-    const target = createBoardDoc(boardId);
+    const target = newerTarget();
     const ids = [b.note, b.image, b.arrow];
     const pasted = pasteElements(
       target,
@@ -147,18 +153,31 @@ describe('an older client on a newer document (P11)', () => {
     const b = newerBoard();
     const elsewhere = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
     const data = through(copyElements(b.doc, [b.note], { instance: 'https://a.example' }));
-    const sameServer = createBoardDoc(elsewhere);
+    const sameServer = newerTarget(elsewhere);
     const at = { x: 0, y: 0 };
     const [copy] = pasteElements(sameServer, data, at, {
       ...opts,
       instance: 'https://a.example',
     }).ids;
     expect(content(sameServer, copy!)).toEqual(content(b.doc, b.note));
-    const otherServer = createBoardDoc(elsewhere);
+    const otherServer = newerTarget(elsewhere);
     expect(() =>
       pasteElements(otherServer, data, at, { ...opts, instance: 'https://b.example' }),
     ).toThrow(new PasteRefusedError('newer'));
     expect(roots(otherServer).elements.size).toBe(0);
+  });
+
+  it('refuses cards of a later schema than the board it pastes on, on the same server', () => {
+    const b = newerBoard();
+    // A newer client upgraded the source board live; this board is still one version behind.
+    roots(b.doc).meta.set('schemaVersion', CURRENT_SCHEMA_VERSION + 2);
+    const elsewhere = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
+    const data = through(copyElements(b.doc, [b.note], { instance: 'https://a.example' }));
+    const target = newerTarget(elsewhere);
+    expect(() =>
+      pasteElements(target, data, { x: 0, y: 0 }, { ...opts, instance: 'https://a.example' }),
+    ).toThrow(new PasteRefusedError('newer'));
+    expect(roots(target).elements.size).toBe(0);
   });
 
   it('duplicates a card with what it does not know', () => {
@@ -181,7 +200,7 @@ describe('an older client on a newer document (P11)', () => {
 
   it('copies a column with its cards, and refuses to paste a newer card it cannot read', () => {
     const b = newerBoard();
-    const target = createBoardDoc(boardId);
+    const target = newerTarget();
     const data = through(copyElements(b.doc, [b.column]));
     expect(() => pasteElements(target, data, { x: 0, y: 0 }, opts)).toThrow(PasteRefusedError);
     expect(roots(target).elements.size).toBe(0);

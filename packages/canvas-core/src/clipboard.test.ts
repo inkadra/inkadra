@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
-import { createBoardDoc, MAX_STROKES, readElement, roots } from '@inkadra/doc-schema';
+import {
+  CURRENT_SCHEMA_VERSION,
+  createBoardDoc,
+  MAX_STROKES,
+  readElement,
+  roots,
+} from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import {
@@ -57,6 +63,34 @@ describe('pasting a card that does not validate (a link written before http(s) o
   });
 });
 
+describe('a clipboard that claims to come from a newer board', () => {
+  const origin = 'https://inkadra.example';
+  /** A clipboard a web page could put in copied HTML: unknown fields, junk plan items. */
+  function forged(source: { boardId?: string; instance?: string }) {
+    const doc = createBoardDoc(otherBoard);
+    const note = createElement(doc, 'note', at, {}, opts).id;
+    roots(doc).elements.get(note)?.set('evil', 'x'.repeat(100_000));
+    const plan = createElement(doc, 'plan', at, {}, opts).id;
+    (roots(doc).elements.get(plan)!.get('strokes') as Y.Array<unknown>).push([{ junk: 1 }]);
+    const data = through(copyElements(doc, [note, plan]));
+    data.source = { boardId: source.boardId ?? otherBoard, schemaVersion: 999, ...source };
+    return data;
+  }
+
+  it.each([
+    ['the server of the board', { instance: origin }],
+    ['the board itself', { boardId }],
+    ['both', { boardId, instance: origin }],
+  ])('writes nothing it has not validated on a board of this schema, naming %s', (_, source) => {
+    const target = createBoardDoc(boardId);
+    expect(roots(target).meta.get('schemaVersion')).toBe(CURRENT_SCHEMA_VERSION);
+    expect(() => pasteElements(target, forged(source), at, { ...opts, instance: origin })).toThrow(
+      new PasteRefusedError('newer'),
+    );
+    expect(roots(target).elements.size).toBe(0);
+  });
+});
+
 describe('a crafted clipboard is checked before anything is written', () => {
   function variantClipboard() {
     const doc = createBoardDoc(boardId);
@@ -94,8 +128,8 @@ describe('a crafted clipboard is checked before anything is written', () => {
 
   it.each([
     [
-      'an element that does not validate',
-      (d: ClipboardData) => ({ ...d, elements: [...d.elements, { id: 'x' }] }),
+      'an element without an id',
+      (d: ClipboardData) => ({ ...d, elements: [...d.elements, { type: 'note' }] }),
     ],
     [
       'an element that is not an object',
@@ -130,6 +164,44 @@ describe('a crafted clipboard is checked before anything is written', () => {
     );
     expect(roots(target).elements.size).toBe(0);
   });
+});
+
+it('leaves out and counts an element that does not validate, as a card that does not', () => {
+  // As an older build, which still took mailto: links, puts it in the clipboard.
+  const doc = createBoardDoc(boardId);
+  const note = createElement(doc, 'note', at, {}, opts).id;
+  const data = through(copyElements(doc, [note]));
+  data.elements.push({
+    ...data.elements[0]!,
+    id: 'linkAAAAAAAAA',
+    type: 'link',
+    url: 'mailto:a@b.c',
+  } as never);
+  delete data.source;
+  const target = createBoardDoc(otherBoard);
+  const result = pasteElements(target, data, at, opts);
+  expect(result.skipped).toBe(1);
+  expect(listElements(target).map((e) => e.type)).toEqual(['note']);
+});
+
+it('pastes a variant whose base grew past the limit by concurrent drawing', () => {
+  const doc = createBoardDoc(boardId);
+  const plan = createElement(doc, 'plan', at, {}, opts).id;
+  const read = listElements(doc).find((e) => e.id === plan) as PlanElement;
+  const variant = addVariant(doc, read, 'Sera', opts);
+  const stroke = (i: number) => ({
+    id: `stroke${String(i).padStart(7, 'A')}`,
+    tool: 'pencil',
+    color: '#202020',
+    width: 2,
+    points: [0, 0, 1, 1],
+  });
+  const strokes = roots(doc).elements.get(plan)!.get('strokes') as Y.Array<unknown>;
+  strokes.push(Array.from({ length: MAX_STROKES + 5 }, (_, i) => stroke(i)));
+  const target = createBoardDoc(otherBoard);
+  const { ids } = pasteElements(target, through(copyElements(doc, [variant])), at, opts);
+  const pasted = listElements(target).find((e) => e.id === ids[0]) as PlanElement;
+  expect(pasted.strokes).toHaveLength(MAX_STROKES);
 });
 
 describe('the clipboard of builds before and after decision 0101', () => {

@@ -140,7 +140,7 @@ import {
   UploadPanel,
   ZoomControls,
 } from './chrome.tsx';
-import { decodeClipboard, encodeClipboard } from './clipboard.ts';
+import { decodeClipboard, encodeClipboard, skippedNotice } from './clipboard.ts';
 import { addPalette, swatchColors } from './colors.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
@@ -2691,13 +2691,14 @@ export function Canvas({
         return;
       }
       store.undo.stopCapturing();
-      const { ids, skipped } = result;
+      const { ids } = result;
       select(ids);
       // Cards that do not validate are left out, as always, and said (decision 0101).
-      if (skipped > 0)
+      const skipped = skippedNotice(result);
+      if (skipped)
         setToast({
-          text: t('board.errors.pasteSkipped', { count: skipped }),
-          undo: true,
+          text: t('board.errors.pasteSkipped', { count: skipped.count }),
+          undo: skipped.undo,
           error: true,
         });
       else if (ids.length > 1) summarize(ids, 'pasted');

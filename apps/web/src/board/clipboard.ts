@@ -1,4 +1,4 @@
-import { type ClipboardData, tableGrid, toTsv } from '@inkadra/canvas-core';
+import { type ClipboardData, type PasteResult, tableGrid, toTsv } from '@inkadra/canvas-core';
 
 /**
  * Board elements travel through the system clipboard as HTML with the data in an attribute,
@@ -47,4 +47,12 @@ export function decodeClipboard(source: DataTransfer): ClipboardData | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * What the paste toast says of cards left out (decision 0101): their count, and Undo only when
+ * something was pasted, or Undo would take back the step before.
+ */
+export function skippedNotice({ ids, skipped }: PasteResult) {
+  return skipped > 0 ? { count: skipped, undo: ids.length > 0 } : null;
 }

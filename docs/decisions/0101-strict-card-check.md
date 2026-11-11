@@ -48,24 +48,31 @@ variants from the stored base, and only from a plan.
 older readers paste as before, and adds `source` (board id, schema version of the document, and
 the server as the copying client names it; the web app gives its origin) and `cards`: as Yjs
 updates, only the cards the copying build does not fully understand. A paste reads and checks
-everything before it writes, in one transaction, all or nothing; a malformed clipboard
-(elements that do not validate, cards that do not decode, a plan base's Set with lists past the
-plan's limits or fields the plan does not allow) is refused and nothing is written.
+everything before it writes, in one transaction, all or nothing; a malformed clipboard (entries
+that are not objects with an id, cards that do not decode, a plan base's Set with lists past the
+plan's limits, items that are not objects or fields the plan does not allow) is refused and
+nothing is written. The copying build cuts a base's Set to those limits, as reads do, so a Set
+that grew past them by concurrent drawing still pastes.
 
 - A card this build understands, and any card from a document that is not newer than this
   build, goes through the validated view and `addElement`, exactly as before.
-- A card that does not validate, from a document that is not newer, is left out as before, and
-  the paste says how many were (the web app shows it).
+- A card that does not validate, in `elements` or in `cards`, from a document that is not newer,
+  is left out, and the paste says how many were (the web app shows it, with Undo only when
+  something was pasted).
 - A card from a newer document that this build does not understand is pasted as stored only
-  within its lineage: the same board (`meta.boardId`), or the same server when the client names
-  it in both copy and paste. There the document is of that newer schema, so nothing is written
-  that its own clients would not expect. It must also be stored as `addElement` stores the known
-  fields (`hasStoredShape`: lists as Y.Arrays within their limits, plain values where values are
-  plain) and validate. Anywhere else, or if a card cannot be read at all, the paste is refused:
-  the app says to update it.
+  when **the board it is pasted on** is of a newer schema than this build and at least as new as
+  the copy's, within its lineage: the same board (`meta.boardId`), or the same server when the
+  client names it in both copy and paste. The board's own version decides, never the clipboard:
+  anyone can write a clipboard (a web page puts it in copied HTML), so on a board of this build's
+  schema, which is every board the web app writes today, this path is closed. The card must also
+  be stored as `addElement` stores the known fields (`hasStoredShape`: lists as Y.Arrays within
+  their limits, plain values where values are plain) and validate. Anywhere else, or if a card
+  cannot be read at all, the paste is refused: the app says to update it.
 
-What is checkable is the board id in the document and the server the client names; a crafted
-clipboard can claim either, and then still meets the shape and schema checks above.
+On a board of a newer schema an older build trusts a crafted clipboard more than a newer build
+would: it keeps keys it cannot check, where the newer build would strip them. That is the price
+of letting older clients copy what they do not understand, and a reason the server keeps the
+role as the trust boundary.
 
 ## Consequences
 

@@ -682,10 +682,10 @@ type Clip = { id: string; parent: string | null; x: number; y: number } & (
 /**
  * Reads and checks the clipboard before anything is written (it is outside data). A card this
  * build understands, or one that is not from a newer schema, goes through the validated view
- * as it always did; one that does not validate is left out and counted. A card of a newer schema
- * that this build does not understand is pasted as stored only within its lineage, the same
- * board or the same server, where the document is of that schema; elsewhere the paste is
- * refused (decision 0101).
+ * as it always did; one that does not validate, in `elements` or `cards`, is left out and
+ * counted. A card of a newer schema that this build does not understand is pasted as stored only
+ * on a board of a newer schema than this build, at least as new as the copy, within its lineage
+ * (the same board or the same server); elsewhere the paste is refused (decision 0101).
  */
 function readClipboard(
   doc: Y.Doc,
@@ -697,9 +697,16 @@ function readClipboard(
   const { source } = data;
   const newer =
     typeof source?.schemaVersion === 'number' && source.schemaVersion > CURRENT_SCHEMA_VERSION;
-  const lineage =
-    (typeof source?.boardId === 'string' && source.boardId === roots(doc).meta.get('boardId')) ||
-    (!!instance && source?.instance === instance);
+  // Pasting as stored is for an older build on a board of a newer schema, at least as new as
+  // the copy's: the board's own version decides, never the clipboard, which anyone can write
+  // (a web page puts it in copied HTML). On a board of this build's schema it is never open.
+  const version = getSchemaVersion(doc);
+  const asStored =
+    newer &&
+    version > CURRENT_SCHEMA_VERSION &&
+    version >= (source?.schemaVersion as number) &&
+    ((typeof source?.boardId === 'string' && source.boardId === roots(doc).meta.get('boardId')) ||
+      (!!instance && source?.instance === instance));
   const stored = new Map<string, Y.Map<unknown>>();
   if (data.cards !== undefined) {
     if (typeof data.cards !== 'object' || data.cards === null) throw invalid();
@@ -729,7 +736,7 @@ function readClipboard(
         ? checkElement(element, body instanceof Y.XmlFragment ? body : undefined)
         : null;
     if (compat?.status === 'foreign' && newer) {
-      if (!compat.readable || !map || !lineage || !hasStoredShape(map))
+      if (!compat.readable || !map || !asStored || !hasStoredShape(map))
         throw new PasteRefusedError('newer');
       clips.push({ ...place(id, map.get('parent'), map.get('x'), map.get('y')), stored: map });
       continue;
@@ -740,7 +747,10 @@ function readClipboard(
       continue;
     }
     const parsed = Element.safeParse(map ? readElement(map) : element);
-    if (!parsed.success) throw invalid();
+    if (!parsed.success) {
+      skipped += 1;
+      continue;
+    }
     const e = parsed.data;
     clips.push({
       ...place(id, e.parent, e.x, e.y),
@@ -981,6 +991,16 @@ function storedCopy(
         ? ['strokes', 'shapes', 'icons']
         : [];
   for (const key of lists) if (!copy.has(key)) copy.set(key, new Y.Array());
+  // A variant with its base's Set within the plan's limits, as the validated paste cuts it.
+  if (type === 'plan')
+    for (const [key, max] of [
+      ['strokes', MAX_STROKES],
+      ['shapes', MAX_SHAPES],
+      ['icons', MAX_PLAN_ICONS],
+    ] as const) {
+      const list = copy.get(key);
+      if (list instanceof Y.Array && list.length > max) list.delete(max, list.length - max);
+    }
   if (!readElement(copy) || !hasStoredShape(copy)) throw new PasteRefusedError('newer');
   return copy;
 }
