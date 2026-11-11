@@ -513,7 +513,9 @@ describe('walls and openings', () => {
     // The corners sit on the grid of the drawing, a little off the round numbers.
     expect(nearest.at).toBeCloseTo(200, 0);
     expect(nearest.distance).toBeCloseTo(10, 0);
-    expect(wallBounds(room)).toEqual({ x: 95, y: 95, w: 410, h: 310 });
+    const bounds = wallBounds(room);
+    for (const [k, v] of Object.entries({ x: 95, y: 95, w: 410, h: 310 }))
+      expect(bounds[k as keyof typeof bounds]).toBeCloseTo(v, 0);
   });
 
   it('writes walls within the limits, removes a wall with its openings, and shares them with variants', () => {

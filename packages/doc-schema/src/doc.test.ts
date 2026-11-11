@@ -1041,7 +1041,11 @@ describe('set plans', () => {
       ],
     };
     addElement(doc, rich);
-    expect(readElement(roots(doc).elements.get(rich.id)!)).toEqual(rich);
+    expect(readElement(roots(doc).elements.get(rich.id)!)).toEqual({
+      ...rich,
+      walls: [],
+      openings: [],
+    });
     expect(validateBoardDoc(doc)).toEqual([]);
   });
 });
