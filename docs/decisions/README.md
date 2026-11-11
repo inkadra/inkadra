@@ -99,6 +99,8 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0093](0093-reference-board.md) | A reference board grown through a real Yjs history, for performance work |
 | [0094](0094-lighter-core-reads.md) | Strokes and table rows validated once per item; helpers read the BoardStore snapshot |
 | [0095](0095-cast-roles-day-address-and-search.md) | A Cast row's role is its character, the day's address on the call sheet, search finds crew and day locations |
+| [0096](0096-authenticated-client-compatibility.md) | The authenticated version endpoint lists API, document schema and stable capability names |
+| [0098](0098-idempotent-creations.md) | `Idempotency-Key` on board and comment creation; a retry reads the created resource as it is now |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071): they were accepted in parallel,
 and accepted records are not renumbered.

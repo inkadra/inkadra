@@ -1,5 +1,7 @@
+import Fastify from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { addressBucket, Failures, RateLimiter } from './rate-limits.ts';
+import { errorHandler } from './http/errors.ts';
+import { addressBucket, Failures, hourlyRetryAfter, RateLimiter } from './rate-limits.ts';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -99,4 +101,33 @@ describe('per-process rate limits', () => {
     failures.finish('k', true);
     expect(failures.retryAfterSeconds('k')).toBe(1);
   });
+});
+
+it('returns Retry-After with the remaining shared limiter window', async () => {
+  const now = vi.spyOn(Date, 'now').mockReturnValue(100_000);
+  const app = Fastify();
+  app.setErrorHandler(errorHandler);
+  const limiter = new RateLimiter(1, 60_000);
+  app.get('/', () => {
+    limiter.require('person', 'Wait.');
+    return {};
+  });
+  try {
+    expect((await app.inject('/')).statusCode).toBe(200);
+    now.mockReturnValue(101_100);
+    const refused = await app.inject('/');
+    expect(refused.statusCode).toBe(429);
+    expect(refused.headers['retry-after']).toBe('59');
+    now.mockReturnValue(160_001);
+    expect((await app.inject('/')).statusCode).toBe(200);
+  } finally {
+    await app.close();
+  }
+});
+
+it('waits for the oldest request of an hourly count window', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(10_000_000);
+  expect(hourlyRetryAfter(new Date(10_000_000 - 3_000_000))).toBe(600);
+  expect(hourlyRetryAfter(new Date(10_000_000 - 3_600_000))).toBe(1);
+  expect(hourlyRetryAfter(null)).toBe(3600);
 });

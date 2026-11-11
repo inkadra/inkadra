@@ -1525,7 +1525,22 @@ registry.registerPath({
   path: v1('/projects/{projectId}/boards'),
   tags: ['Boards'],
   security: secured,
-  request: { params: idParam('projectId'), body: json(CreateBoard) },
+  request: {
+    headers: z.object({
+      'Idempotency-Key': z
+        .string()
+        .min(1)
+        .max(128)
+        .optional()
+        .openapi({
+          description:
+            'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
+            'created resource as it is now (404 once it is gone); a changed payload returns 409.',
+        }),
+    }),
+    params: idParam('projectId'),
+    body: json(CreateBoard),
+  },
   responses: { 201: { description: 'Created', ...json(Board) }, ...errors },
 });
 registry.registerPath({
@@ -2099,7 +2114,22 @@ registry.registerPath({
     'the authors of the thread and the creator of the card are notified. A reply must belong ' +
     'to a thread of the same board.' +
     realtime,
-  request: { params: idParam('boardId'), body: json(CreateComment) },
+  request: {
+    headers: z.object({
+      'Idempotency-Key': z
+        .string()
+        .min(1)
+        .max(128)
+        .optional()
+        .openapi({
+          description:
+            'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
+            'created resource as it is now (404 once it is gone); a changed payload returns 409.',
+        }),
+    }),
+    params: idParam('boardId'),
+    body: json(CreateComment),
+  },
   responses: { 201: { description: 'Created', ...json(CommentSchema) }, ...errors, ...tooMany },
 });
 registry.registerPath({

@@ -94,8 +94,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
     const { boardId, elementId } = ElementParams.parse(req.params);
     const input = SetElementReview.parse(req.body);
     const access = await requireBoardRole(db, actor, boardId, 'commenter');
-    if (!limiter.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many review writes: wait a minute.');
+    limiter.require(actor.id, 'Too many review writes: wait a minute.');
     const card = await readElement(boardId, elementId);
     if (!card) throw new HttpError('not_found', 'Card not found.');
     const note = input.note ? input.note : null;

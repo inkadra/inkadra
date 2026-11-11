@@ -356,8 +356,7 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
       const boards = deps.boards;
       if (!boards)
         throw new HttpError('internal', 'Clips need the collaboration server: set REDIS_URL.');
-      if (!limiter.take(actor.id))
-        throw new HttpError('rate_limited', 'Too many clips: wait a minute.');
+      limiter.require(actor.id, 'Too many clips: wait a minute.');
 
       const checked = new Map<string, ReturnType<typeof requireBoardRole>>();
       const check = (boardId: string) => {

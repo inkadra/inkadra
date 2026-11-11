@@ -127,7 +127,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
       version: VERSION,
       api: 'v1',
       docSchemaVersion: CURRENT_SCHEMA_VERSION,
-      capabilities: ['boards', 'comments', 'resumable-uploads'],
+      capabilities: ['boards', 'comments', 'resumable-uploads', 'idempotent-creations'],
     } satisfies InstanceVersion;
   });
 

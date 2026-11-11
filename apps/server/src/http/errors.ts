@@ -18,6 +18,7 @@ export class HttpError extends Error {
     readonly code: ErrorCode,
     message: string,
     readonly details?: unknown,
+    readonly retryAfter?: number,
   ) {
     super(message);
   }
@@ -36,7 +37,10 @@ export function sendError(
 }
 
 export function errorHandler(err: FastifyError | Error, req: FastifyRequest, reply: FastifyReply) {
-  if (err instanceof HttpError) return sendError(reply, err.code, err.message, err.details);
+  if (err instanceof HttpError) {
+    if (err.retryAfter !== undefined) reply.header('Retry-After', err.retryAfter);
+    return sendError(reply, err.code, err.message, err.details);
+  }
   if (err instanceof ZodError)
     return sendError(reply, 'bad_request', 'Invalid request', err.issues);
   const code = 'statusCode' in err ? err.statusCode : undefined;

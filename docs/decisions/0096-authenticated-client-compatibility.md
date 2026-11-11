@@ -1,5 +1,7 @@
 # 0096 — Authenticated client compatibility
 
+Status: accepted.
+
 ## Context
 
 Installed clients can talk to servers of different ages. Public endpoints intentionally

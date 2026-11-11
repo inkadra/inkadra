@@ -81,7 +81,10 @@ export function registerCalendarRoutes(
       .header('referrer-policy', 'no-referrer')
       .header('x-robots-tag', 'noindex, nofollow');
     if (!network.take(addressBucket(req.ip)))
-      return reply.code(429).header('retry-after', '60').send();
+      return reply
+        .code(429)
+        .header('retry-after', Math.max(1, network.retryAfterSeconds(addressBucket(req.ip))))
+        .send();
     const token = req.params.token;
     const userId = token.split('.')[0];
     if (!Id.safeParse(userId).success || token.length > 100)
@@ -103,7 +106,10 @@ export function registerCalendarRoutes(
     )
       throw new HttpError('not_found', 'Calendar not found.');
     if (!users.take(credential.feed.userId))
-      return reply.code(429).header('retry-after', '60').send();
+      return reply
+        .code(429)
+        .header('retry-after', Math.max(1, users.retryAfterSeconds(credential.feed.userId)))
+        .send();
     // Membership is read before content on every fetch, including conditional requests.
     // Content is read only after the cheap ETag misses (stored documents are the costly part).
     const rows = await db

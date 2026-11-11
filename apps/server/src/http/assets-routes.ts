@@ -210,8 +210,7 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
 
   app.get(v1('/assets/:assetId/frame'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
-    if (!frameLimiter.take(actor.id))
-      throw new HttpError('rate_limited', 'Too many frames: wait a minute.');
+    frameLimiter.require(actor.id, 'Too many frames: wait a minute.');
     const { assetId } = AssetParams.parse(req.params);
     const { time } = VideoFrameQuery.parse(req.query);
     const { asset: row } = await requireAssetRole(db, actor, assetId, 'editor');
