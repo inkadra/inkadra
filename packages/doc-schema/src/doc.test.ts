@@ -15,6 +15,7 @@ import {
   type FrameShape,
   getAnimaticAudio,
   getBoardAspect,
+  getRestoreCount,
   getSchemaVersion,
   hasStoredShape,
   MAX_PLAN_CIRCUITS,
@@ -52,6 +53,20 @@ describe('board document', () => {
   it('names documents after boards', () => {
     expect(parseBoardDocName(boardDocName(boardId))).toBe(boardId);
     expect(parseBoardDocName('project:x')).toBeNull();
+  });
+
+  it('reads the restore count, 0 when absent or not a count (decision 0109)', () => {
+    const doc = createBoardDoc(boardId);
+    expect(getRestoreCount(doc)).toBe(0);
+    for (const [value, count] of [
+      [2, 2],
+      [-1, 0],
+      [1.5, 0],
+      ['3', 0],
+    ] as const) {
+      roots(doc).meta.set('restores', value);
+      expect(getRestoreCount(doc)).toBe(count);
+    }
   });
 
   it('starts at the current version', () => {
