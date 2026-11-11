@@ -184,27 +184,28 @@ test('starts from a ready room, draws and closes a room with a typed length, pla
   await start.getByRole('radio', { name: /Disegna i muri/ }).check();
   await start.getByRole('button', { name: 'Disegna i muri' }).click();
   await expect(editor.getByRole('button', { name: 'Fine muri' })).toBeVisible();
-  let p = await at([200, 150]);
+  let p = await at([400, 250]);
   await page.mouse.click(p.x, p.y);
-  p = await at([600, 155]);
+  p = await at([800, 255]);
   await page.mouse.move(p.x, p.y, { steps: 4 });
   await page.keyboard.type('4');
   await expect(editor.getByRole('textbox', { name: /Lunghezza del prossimo lato/ })).toHaveValue('4');
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await read(ids.drawn)).walls?.length).toBe(1);
-  // 4 m at the nominal scale the first wall gave the plan: 352 view units to the right.
+  // 4 m at the nominal scale the first wall gave the plan: 352 view units to the right. The
+  // points stay clear of the openings palette, over the top left of the drawing.
   const first = (await read(ids.drawn)).walls?.[0];
   const rightX = ((first?.points[2] as number) / 4096) * 1000;
-  expect(rightX).toBeCloseTo(552, 0);
+  expect(rightX).toBeCloseTo(752, 0);
   expect((await read(ids.drawn)).scale).toBe(88);
-  p = await at([rightX, 455]);
+  p = await at([rightX, 555]);
   await page.mouse.move(p.x, p.y, { steps: 4 });
   await page.screenshot({ path: join(out, 'walls-1280-drawing.png') });
   await page.mouse.click(p.x, p.y);
-  p = await at([200, 452]);
+  p = await at([400, 552]);
   await page.mouse.click(p.x, p.y);
   await expect(editor.getByText('Clicca qui per chiudere la stanza')).toBeVisible();
-  p = await at([201, 151]);
+  p = await at([401, 251]);
   await page.mouse.click(p.x, p.y);
   await expect
     .poll(async () => {
@@ -221,7 +222,7 @@ test('starts from a ready room, draws and closes a room with a typed length, pla
   // A door placed on the top wall, its width and distances shown, then dragged along it.
   await editor.getByRole('button', { name: /^Aperture/ }).click();
   await expect(editor.getByRole('toolbar', { name: 'Aperture' })).toBeVisible();
-  p = await at([350, 150]);
+  p = await at([550, 250]);
   await page.mouse.move(p.x, p.y, { steps: 4 });
   await expect(editor.locator('.plan-walls__ghost')).toBeVisible();
   await page.screenshot({ path: join(out, 'walls-1280-door.png') });
@@ -231,10 +232,10 @@ test('starts from a ready room, draws and closes a room with a typed length, pla
   expect(placed).toBeGreaterThan(100);
   await editor.getByRole('button', { name: 'Fine muri' }).click();
   // The Select tool picks the door and drags it along its wall: one change.
-  p = await at([350, 150]);
+  p = await at([550, 250]);
   await page.mouse.move(p.x, p.y);
   await page.mouse.down();
-  const to = await at([450, 170]);
+  const to = await at([650, 270]);
   await page.mouse.move(to.x, to.y, { steps: 8 });
   await page.mouse.up();
   await expect.poll(async () => (await read(ids.drawn)).openings?.[0]?.at).toBeGreaterThan(placed + 60);
@@ -414,9 +415,9 @@ test('screenshots of the walls tools, the start dialog and the background', asyn
           else if (click) await m.mouse.click(p.x, p.y);
           else await m.mouse.move(p.x, p.y, { steps: 3 });
         };
-        await go([250, 200]);
-        await go([450, 202]);
-        await go([452, 330], false);
+        await go([300, 200]);
+        await go([500, 202]);
+        await go([502, 330], false);
         await shot('walls-drawing');
         await m.keyboard.press('Escape');
         // The Openings tool over a wall.
