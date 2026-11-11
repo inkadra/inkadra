@@ -221,8 +221,8 @@ describe('the icon library', () => {
     expect([...kinds, ...LEGACY_PLAN_ICON_KINDS].sort()).toEqual([...PLAN_ICON_KINDS].sort());
     for (const kind of kinds) {
       const box = glyphBox(glyphOf(kind));
-      expect(box.w).toBeGreaterThan(4);
-      expect(box.h).toBeGreaterThan(4);
+      // A wall is a line: long one way, flat the other.
+      expect(Math.max(box.w, box.h)).toBeGreaterThan(4);
     }
   });
 

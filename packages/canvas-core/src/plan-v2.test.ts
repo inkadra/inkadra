@@ -119,8 +119,7 @@ describe('the catalogue of 163 icons', () => {
   it('draws every kind with a glyph inside its 40 box, centred on its middle', () => {
     for (const kind of PLAN_ICON_KINDS) {
       const box = glyphBox(glyphOf(kind));
-      expect(box.w, kind).toBeGreaterThan(2);
-      expect(box.h, kind).toBeGreaterThan(2);
+      expect(Math.max(box.w, box.h), kind).toBeGreaterThan(10);
       expect(box.x, kind).toBeGreaterThanOrEqual(-20.5);
       expect(box.y, kind).toBeGreaterThanOrEqual(-20.5);
       expect(box.x + box.w, kind).toBeLessThanOrEqual(20.5);
@@ -510,7 +509,10 @@ describe('walls and openings', () => {
     expect(planWallAt(plan, { x: 300, y: 101 })).toEqual({ kind: 'openings', id: door.id });
     expect(planWallAt(plan, { x: 100, y: 300 })).toEqual({ kind: 'walls', id: room.id });
     expect(planWallAt(plan, { x: 300, y: 300 })).toBeNull();
-    expect(nearestOnWall(room, { x: 300, y: 90 })).toEqual({ at: 200, distance: 10 });
+    const nearest = nearestOnWall(room, { x: 300, y: 90 });
+    // The corners sit on the grid of the drawing, a little off the round numbers.
+    expect(nearest.at).toBeCloseTo(200, 0);
+    expect(nearest.distance).toBeCloseTo(10, 0);
     expect(wallBounds(room)).toEqual({ x: 95, y: 95, w: 410, h: 310 });
   });
 
