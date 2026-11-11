@@ -13,6 +13,7 @@ import {
   type LibraryItem,
   projectKitDetail,
   searchLibrary,
+  tileName,
 } from './library.ts';
 import { PlanGlyph } from './PlanDrawing.tsx';
 import type { KitScope } from './project-kit.ts';
@@ -94,7 +95,7 @@ export function PlanLibrary({
   armed: LibraryItem | null;
   phone: boolean;
   kit: readonly ProjectKitEntry[];
-  /** Whether the kit has the other boards' plans yet, or this board's only (decision 0110). */
+  /** Whether the kit has the other boards' plans yet, or this board's only (decision 0114). */
   kitScope?: KitScope;
   /** The name of the plan's sensor, for the cameras of the kit. */
   sensor: string;
@@ -178,11 +179,13 @@ export function PlanLibrary({
       <button
         type="button"
         className="plan-lib__tile"
+        // The plain name: the label below carries soft hyphens to fit the tile.
+        aria-label={t(`board.plan.icons.${item}`)}
         aria-pressed={armed === item}
         {...handlers({ item }, tapItem(item))}
       >
         <PlanGlyph kind={item} size={phone ? 30 : 30} />
-        <span>{t(`board.plan.icons.${item}`)}</span>
+        <span aria-hidden="true">{tileName(t(`board.plan.icons.${item}`))}</span>
       </button>
       {!phone && (
         <button

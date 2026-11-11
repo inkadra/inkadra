@@ -224,7 +224,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     return { items: [...merged.values()] };
   });
 
-  // The project kit of the set plan editor (decision 0110): the configured lights and cameras of
+  // The project kit of the set plan editor (decision 0114): the configured lights and cameras of
   // the plans of the other boards the caller can read, derived on each request, never stored.
   app.get(v1('/projects/:projectId/plan-kit'), async (req) => {
     const actor = await requireActor(auth, req, db);

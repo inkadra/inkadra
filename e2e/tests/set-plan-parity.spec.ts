@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Parity with the approved mockup (decision 0110): an item locked on its own cannot be moved,
+// Parity with the approved mockup (decision 0114): an item locked on its own cannot be moved,
 // edited or deleted until it is unlocked; the project kit lists a light set up on another board
 // of the project, and a guest of one board does not see the kit of a board they cannot open.
 // Runs after first-run.spec.ts in CI; alone, it signs up.

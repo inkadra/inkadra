@@ -21,7 +21,7 @@ import {
 import { PLAN_COLORS, PlanGlyph, planCss } from './PlanDrawing.tsx';
 
 /**
- * The Elements tab (decisions 0104 and 0110): what is on the plan, by group with counts (the
+ * The Elements tab (decisions 0104 and 0114): what is on the plan, by group with counts (the
  * layers, and Grip and crew), filtered by group and tag colour; each group shown or hidden and
  * locked from its heading (a layer's lock for a layer, every item's own lock for Grip and crew);
  * a lock on each item locked; a click selects.
@@ -68,7 +68,7 @@ export function PlanElements({ ed, onPicked }: { ed: Ed; onPicked?: () => void }
       {sections.map(({ group: layer, items }) => {
         const grip = layer === PLAN_GRIP;
         const hidden = ed.hiddenLayers.has(layer);
-        // Grip and crew is no layer: its lock is the lock of each of its items (decision 0110).
+        // Grip and crew is no layer: its lock is the lock of each of its items (decision 0114).
         const locked = grip ? false : ed.locked.has(layer as PlanLayer);
         const allLocked = grip
           ? items.length > 0 && items.every((e) => itemLocked(e.item))

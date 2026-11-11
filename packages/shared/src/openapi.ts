@@ -205,6 +205,8 @@ import {
   User,
 } from './users.ts';
 import {
+  BoardRestoreQuery,
+  BoardRestores,
   BoardVersion,
   BoardVersionConflict,
   BoardVersionQuery,
@@ -2956,6 +2958,21 @@ registry.registerPath({
     ...tooMany,
     ...outcome,
   },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/restores'),
+  tags: ['Versions'],
+  security: secured,
+  summary: 'The last restores of a board, newest first. Needs viewer; details need editor.',
+  description:
+    'For a client that edited the board offline and finds `meta.restores` changed (decision ' +
+    '0109): who restored it and to which version, as the version was named at the restore ' +
+    '(decision 0112). Below editor, who and which version are null, as the versions list is ' +
+    'out of reach. Servers that keep this list advertise `board-restore-history`.',
+  request: { params: idParam('boardId'), query: BoardRestoreQuery },
+  responses: { 200: { description: 'Restores', ...json(BoardRestores) }, ...errors },
 });
 
 // Clip -----------------------------------------------------------------------

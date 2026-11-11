@@ -281,6 +281,13 @@
       "when": 1794392148975,
       "tag": "0039_client_asset_ids",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794430437599,
+      "tag": "0040_board_restore",
+      "breakpoints": true
     }
   ]
 }

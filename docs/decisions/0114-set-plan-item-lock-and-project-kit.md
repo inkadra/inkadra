@@ -1,4 +1,4 @@
-# 0110 · Set plan: items locked on their own, a project kit across boards, Grip and crew
+# 0114 · Set plan: items locked on their own, a project kit across boards, Grip and crew
 
 Proposed, 2026-11. Extends decision 0104 (set plan v2) after the parity decisions Matteo took on
 the approved mockup: "Lock" in Properties locks one item, not its layer; the project kit lists the

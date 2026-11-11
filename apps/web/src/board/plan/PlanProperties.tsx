@@ -232,7 +232,7 @@ export function PlanProperties({
     </>
   );
 
-  /** Locked on its own (decision 0110): its fields are shown, not edited, and it stays. */
+  /** Locked on its own (decision 0114): its fields are shown, not edited, and it stays. */
   const frozen = many.length <= 1 && itemLocked(item);
   /** Duplicate, Lock, Delete; for a locked item they are drawn after its disabled fields. */
   const actions = (target: PlanItem, after = false) => {

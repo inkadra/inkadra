@@ -2862,7 +2862,7 @@ export function Canvas({
   }, [editedPlan, snap, labels]);
   const usedColors = useMemo(() => swatchColors(snap.byId.values()), [snap]);
   // The plans of this board the project kit of the set plan editor is derived from live; the
-  // other boards' kit comes from the server, asked when a plan is opened (decision 0110).
+  // other boards' kit comes from the server, asked when a plan is opened (decision 0114).
   const otherKits = useOtherKits(projectId, boardId, guest || !editedPlan);
   const allPlans = useMemo(
     () =>

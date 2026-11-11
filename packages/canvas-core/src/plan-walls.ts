@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 import {
+  MAX_PLAN_CIRCUITS,
   MAX_PLAN_OPENINGS,
   MAX_PLAN_WALLS,
   newElementId,
+  type PlanCircuit,
   type PlanOpening,
   type PlanOpeningKind,
   type PlanWall,
@@ -402,12 +404,17 @@ export function shownOpenings(plan: Pick<PlanElement, 'walls' | 'openings'>): Pl
 // it as a Y.Map in its place.
 
 /** The plan's list, created when missing; call inside the transaction that writes to it. */
-function listOf(doc: Y.Doc, planId: string, key: 'walls' | 'openings'): Y.Array<unknown> | null {
+type ListKey = 'walls' | 'openings' | 'circuits';
+
+function listOf(doc: Y.Doc, planId: string, key: ListKey): Y.Array<unknown> | null {
   const map = roots(doc).elements.get(planId);
   if (map?.get('type') !== 'plan') return null;
   const current = map.get(key);
   if (current instanceof Y.Array) return current;
   const fresh = new Y.Array<unknown>();
+  // Circuits written by the first builds of decision 0104: one plain list, kept as Y.Maps.
+  if (Array.isArray(current))
+    fresh.push(current.filter((i) => typeof i === 'object' && i !== null).map(toMap));
   map.set(key, fresh);
   return fresh;
 }
@@ -421,7 +428,7 @@ const toMap = (item: object) =>
 function addTo(
   doc: Y.Doc,
   planId: string,
-  key: 'walls' | 'openings',
+  key: ListKey,
   item: object,
   max: number,
   origin: unknown,
@@ -464,7 +471,7 @@ const same = (a: unknown, b: unknown) =>
  * Writes new versions of walls or openings, matched by id, field by field: only the fields that
  * differ from what is stored are written, so one person moving an opening and another flipping
  * its side both keep their change. A field set to undefined is removed. A wall or an opening
- * locked on its own changes only its lock (decision 0110).
+ * locked on its own changes only its lock (decision 0114).
  */
 export function updatePlanWalls(
   doc: Y.Doc,
@@ -473,7 +480,17 @@ export function updatePlanWalls(
   items: ReadonlyArray<PlanWall | PlanOpening>,
   origin?: unknown,
 ): void {
-  const byId = new Map(items.map((i) => [i.id, i as Record<string, unknown>]));
+  updateList(doc, planId, key, items, origin);
+}
+
+function updateList(
+  doc: Y.Doc,
+  planId: string,
+  key: ListKey,
+  items: ReadonlyArray<{ id: string }>,
+  origin?: unknown,
+): void {
+  const byId = new Map(items.map((i) => [i.id, i as unknown as Record<string, unknown>]));
   doc.transact(() => {
     const list = listOf(doc, planId, key);
     if (!list) return;
@@ -502,7 +519,7 @@ export function updatePlanWalls(
 
 /**
  * Removes walls and openings by id; the openings of a removed wall go with it. Those locked on
- * their own stay (decision 0110): a locked opening of a removed wall is kept, and not drawn.
+ * their own stay (decision 0114): a locked opening of a removed wall is kept, and not drawn.
  */
 export function removePlanWalls(
   doc: Y.Doc,
@@ -527,5 +544,46 @@ export function removePlanWalls(
           list.delete(i, 1);
       }
     }
+  }, origin);
+}
+
+// Circuits ------------------------------------------------------------------------
+//
+// A plan's circuits are Y.Maps in a Y.Array too, so two people renaming two circuits, or one
+// renaming a circuit while another changes its breaker, both keep their change (decision 0104).
+
+/** Adds a circuit; its id, or null when the plan already has MAX_PLAN_CIRCUITS. */
+export function addPlanCircuit(
+  doc: Y.Doc,
+  planId: string,
+  circuit: Omit<PlanCircuit, 'id'>,
+  origin?: unknown,
+): string | null {
+  return addTo(doc, planId, 'circuits', circuit, MAX_PLAN_CIRCUITS, origin);
+}
+
+/** Writes circuits, matched by id, field by field (only what differs from what is stored). */
+export function updatePlanCircuits(
+  doc: Y.Doc,
+  planId: string,
+  circuits: readonly PlanCircuit[],
+  origin?: unknown,
+): void {
+  updateList(doc, planId, 'circuits', circuits, origin);
+}
+
+/** Removes circuits by id; lights on a removed circuit count as on none. */
+export function removePlanCircuits(
+  doc: Y.Doc,
+  planId: string,
+  ids: Iterable<string>,
+  origin?: unknown,
+): void {
+  const doomed = new Set(ids);
+  doc.transact(() => {
+    const list = listOf(doc, planId, 'circuits');
+    if (!list) return;
+    for (let i = list.length - 1; i >= 0; i--)
+      if (doomed.has(idOf(list.get(i)) as string)) list.delete(i, 1);
   }, origin);
 }

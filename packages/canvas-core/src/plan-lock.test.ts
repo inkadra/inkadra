@@ -48,7 +48,7 @@ function setUp() {
   return { doc, el, stand, light, box, chair, plan, byId };
 }
 
-describe('items locked on their own (decision 0110)', () => {
+describe('items locked on their own (decision 0114)', () => {
   it('lets a write change only the lock of a locked item', () => {
     const { doc, el, chair, byId } = setUp();
     const before = byId(chair);
@@ -164,7 +164,7 @@ describe('items locked on their own (decision 0110)', () => {
   });
 });
 
-describe('the Grip and crew group of Elements (decision 0110)', () => {
+describe('the Grip and crew group of Elements (decision 0114)', () => {
   const icon = (kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
     id: `${kind}AAAAAAAAAAAAA`.slice(0, 13),
     kind,
@@ -197,7 +197,7 @@ describe('the Grip and crew group of Elements (decision 0110)', () => {
   });
 });
 
-describe('the project kit across boards (decision 0110)', () => {
+describe('the project kit across boards (decision 0114)', () => {
   const icon = (id: string, kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
     id: id.padEnd(13, 'A'),
     kind,

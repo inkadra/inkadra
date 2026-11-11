@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../lib/api.ts';
 
 /**
- * Where the project kit of the editor comes from (decision 0110): `all` when the other boards'
+ * Where the project kit of the editor comes from (decision 0114): `all` when the other boards'
  * kit arrived, `loading` while it is asked, `local` when it cannot be (offline, the server
  * refused, a guest link): then the kit is this board's only, and the panel says so.
  */

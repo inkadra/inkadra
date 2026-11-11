@@ -19,7 +19,7 @@ import type { TFunction } from 'i18next';
 
 /** The layers, in the mockup's order. */
 export const ELEMENT_LAYERS: readonly PlanLayer[] = ['lights', 'camera', 'actors', 'set', 'notes'];
-/** The sections of the Elements tab, in the mockup's order (decision 0110). */
+/** The sections of the Elements tab, in the mockup's order (decision 0114). */
 export const ELEMENT_GROUPS: readonly PlanGroupName[] = [
   'lights',
   'camera',

@@ -83,7 +83,7 @@ export function projectKit(plans: ReadonlyArray<Pick<PlanElement, 'icons'>>): Pr
 }
 
 /**
- * Kits joined into one (decision 0110): the open board's, derived live, then those the server
+ * Kits joined into one (decision 0114): the open board's, derived live, then those the server
  * derived from the other boards. An entry already listed is not listed twice; a camera's lenses
  * are gathered from all of them.
  */

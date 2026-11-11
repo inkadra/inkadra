@@ -696,7 +696,7 @@ export function planItemLayer(item: {
 }
 
 /**
- * A plan item locked on its own (since version 24, decision 0110): not moved, turned, resized,
+ * A plan item locked on its own (since version 24, decision 0114): not moved, turned, resized,
  * edited or deleted, and no base to attach to, until it is unlocked. Icons, strokes, shapes,
  * walls and openings all carry it under this one name.
  */
@@ -921,6 +921,8 @@ export const PlanCircuit = z.object({
 });
 export type PlanCircuit = z.infer<typeof PlanCircuit>;
 export const MAX_PLAN_CIRCUITS = 30;
+/** Read one by one and cut at the limit, as walls are: two people may add one each at once. */
+const PlanCircuits = lenientList(PlanCircuit, MAX_PLAN_CIRCUITS);
 
 /** Sensor formats for a camera's angle of view; widths in mm. */
 export const PLAN_SENSORS = { s35: 24.89, ff: 36, m43: 17.3, s16: 12.52 } as const;
@@ -969,7 +971,7 @@ export const PlanElement = Base.extend({
   walls: PlanWalls.optional().describe('Walls, on the Set layer, under everything else.'),
   openings: PlanOpenings.optional().describe('Doors and windows in the walls.'),
   locationId: ElementId.optional().describe('The location card of the set (a link).'),
-  circuits: z.array(PlanCircuit).max(MAX_PLAN_CIRCUITS).optional(),
+  circuits: PlanCircuits.optional(),
   voltage: z
     .union([z.literal(120), z.literal(230)])
     .optional()

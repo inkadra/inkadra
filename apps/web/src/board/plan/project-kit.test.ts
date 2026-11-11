@@ -13,7 +13,7 @@ const entry = (kind: string, make: string) => ({
   lenses: [],
 });
 
-describe('loadOtherKits (decision 0110)', () => {
+describe('loadOtherKits (decision 0114)', () => {
   it('asks for the other boards, leaving out kinds this build does not know', async () => {
     get.mockResolvedValueOnce({ items: [entry('cob', 'Aputure'), entry('hologram', 'Future')] });
     const kit = await loadOtherKits('project-1', 'board-1');

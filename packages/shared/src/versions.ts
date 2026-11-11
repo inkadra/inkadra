@@ -92,3 +92,67 @@ export const RestoredBoardVersion = z
   })
   .openapi('RestoredBoardVersion');
 export type RestoredBoardVersion = z.infer<typeof RestoredBoardVersion>;
+
+/**
+ * One restore of a board (decision 0112), so a client that edited offline can say who brought
+ * the board back and to which version. The version's name and time are as they were at the
+ * restore: renaming or pruning the version later does not change them.
+ */
+export const BoardRestore = z
+  .object({
+    count: z
+      .int()
+      .min(1)
+      .openapi({
+        description:
+          'The board document’s `meta.restores` after this restore (decision 0109). A record ' +
+          'with a count higher than the one the client reads in the document belongs to a ' +
+          'restore not stored yet, or lost: ignore it.',
+      }),
+    restoredAt: Timestamp.openapi({
+      description: 'When the record was saved, a moment after the board changed.',
+    }),
+    restoredBy: UserSummary.nullable().openapi({
+      description: 'Null below editor, and when the account was deleted since.',
+    }),
+    version: z
+      .object({
+        id: Id.openapi({ description: 'May no longer exist: versions are pruned and deleted.' }),
+        kind: BoardVersionKind,
+        name: z.string().nullable().openapi({ description: 'Null for an unnamed version.' }),
+        createdAt: Timestamp,
+      })
+      .nullable()
+      .openapi({ description: 'The version the board was brought back to. Null below editor.' }),
+  })
+  .openapi('BoardRestore');
+export type BoardRestore = z.infer<typeof BoardRestore>;
+
+export const BoardRestoreQuery = z
+  .object({
+    // Not z.coerce: it turns null into 0, and the OpenAPI document would then allow null.
+    after: z
+      .preprocess(
+        (v) => (v === undefined || v === null ? v : Number(v)),
+        z.int().min(0).max(2147483647),
+      )
+      .default(0)
+      .openapi({
+        description: 'The restore count the client last confirmed: only later restores are listed.',
+      }),
+  })
+  .openapi('BoardRestoreQuery');
+
+export const BoardRestores = z
+  .object({
+    items: z.array(BoardRestore).openapi({
+      description:
+        'Highest count first, at most the last 50 saved for the board. The record is saved just ' +
+        'after the board changes, so a client can see a count before its record: when one is ' +
+        'missing, ask again for a few seconds, then show the restore without details. Fewer ' +
+        'records than the counts differ by also means older ones are gone, or one failed to ' +
+        'save; the counts still say how many restores there were.',
+    }),
+  })
+  .openapi('BoardRestores');
+export type BoardRestores = z.infer<typeof BoardRestores>;
