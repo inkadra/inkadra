@@ -13,13 +13,13 @@ import { describe, expect, it } from 'vitest';
 import { createElement, listElements } from './board.ts';
 import {
   addPlanIcon,
+  beamWarmth,
   defaultIconSize,
   duplicatePlanItems,
   iconCentre,
   iconCone,
   iconGlow,
   iconSize,
-  beamWarmth,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
@@ -57,12 +57,12 @@ import {
   PLAN_CATEGORIES,
 } from './plan-icons.ts';
 import {
+  lensMillimetres,
   linkedCharacter,
   linkedLabel,
   linkedLocation,
   linkedScenes,
   linkedShot,
-  lensMillimetres,
   setupFrames,
   unlinkCharacter,
 } from './plan-links.ts';
@@ -100,7 +100,14 @@ const near = (a: { x: number; y: number }, b: { x: number; y: number }, slack = 
 describe('the catalogue of 163 icons', () => {
   it('has 15 groups in 6 categories, every kind of the schema in one of them but the legacy ones', () => {
     const groups = PLAN_CATEGORIES.flatMap((c) => c.groups);
-    expect(PLAN_CATEGORIES.map((c) => c.id)).toEqual(['lights', 'grip', 'camera', 'people', 'set', 'av']);
+    expect(PLAN_CATEGORIES.map((c) => c.id)).toEqual([
+      'lights',
+      'grip',
+      'camera',
+      'people',
+      'set',
+      'av',
+    ]);
     expect(groups).toHaveLength(15);
     const kinds = groups.flatMap((g) => g.kinds);
     expect(kinds).toHaveLength(163);
@@ -130,9 +137,15 @@ describe('the catalogue of 163 icons', () => {
       flattenGlyph(glyphOf(kind)).flatMap((p) => (p.fill ? [p.fill] : []));
     expect(fills('fresnel')).toEqual([{ mix: 0.22 }]);
     for (const kind of ['butterfly', 'tent', 'tripod', 'prompter'] as const)
-      expect(fills(kind).some((f) => f.alpha !== undefined && f.alpha < 0.5), kind).toBe(true);
+      expect(
+        fills(kind).some((f) => f.alpha !== undefined && f.alpha < 0.5),
+        kind,
+      ).toBe(true);
     expect(fills('ring')).toContainEqual({ hole: true });
-    expect(flattenGlyph(glyphOf('gel'))[0]).toMatchObject({ color: '#F79B54', fill: { alpha: 0.7 } });
+    expect(flattenGlyph(glyphOf('gel'))[0]).toMatchObject({
+      color: '#F79B54',
+      fill: { alpha: 0.7 },
+    });
   });
 
   it('flattens quadratic and smooth curves through their end points', () => {
@@ -589,14 +602,23 @@ describe('links', () => {
     const actor = at('actor', 0, 0, { characterId: 'charAAAAAAAAA', label: 'old' });
     expect(linkedLabel(actor, cards)).toBe('Anna');
     expect(linkedLabel({ ...actor, characterId: 'goneAAAAAAAAA' }, cards)).toBe('old');
-    expect(linkedCharacter(actor, cards)).toEqual({ id: 'charAAAAAAAAA', name: 'Anna', actor: 'Rita' });
+    expect(linkedCharacter(actor, cards)).toEqual({
+      id: 'charAAAAAAAAA',
+      name: 'Anna',
+      actor: 'Rita',
+    });
     expect(unlinkCharacter(actor, cards)).toMatchObject({ label: 'Anna' });
     expect(unlinkCharacter(actor, cards).characterId).toBeUndefined();
     const cam = at('camera', 0, 0, { frameId: 'frameAAAAAAAA' });
-    expect(linkedShot(cam, cards)).toMatchObject({ label: '2A', frameLens: 32, lens: 32, shot: 'wide' });
-    expect(linkedShot({ ...cam, lens: 85 }, cards, new Map([['frameAAAAAAAA', '2B']]))).toMatchObject(
-      { label: '2B', frameLens: 32, lens: 85 },
-    );
+    expect(linkedShot(cam, cards)).toMatchObject({
+      label: '2A',
+      frameLens: 32,
+      lens: 32,
+      shot: 'wide',
+    });
+    expect(
+      linkedShot({ ...cam, lens: 85 }, cards, new Map([['frameAAAAAAAA', '2B']])),
+    ).toMatchObject({ label: '2B', frameLens: 32, lens: 85 });
     expect(linkedShot({ ...cam, frameId: 'charAAAAAAAAA' }, cards)).toBeNull();
     expect(setupFrames({ icons: [cam, cam, actor] }, cards)).toEqual(['frameAAAAAAAA']);
     expect(linkedScenes({ sceneIds: ['sceneAAAAAAAA', 'goneAAAAAAAAA'] }, cards)).toEqual([

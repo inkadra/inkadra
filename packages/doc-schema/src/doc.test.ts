@@ -785,7 +785,9 @@ describe('table cards', () => {
     roots(doc).meta.set('schemaVersion', 10);
     addElement(doc, { ...base(), type: 'section' as const, title: 'Sequenza 1' });
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([
+      11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+    ]);
     expect(roots(doc).elements.toJSON()).toEqual(before);
   });
 });
@@ -1064,11 +1066,51 @@ describe('set plan v2 (version 23, decision 0104)', () => {
       walls: [],
       openings: [],
     });
-    const v22 = ['fresnel', 'led', 'tube', 'softbox', 'lantern', 'para', 'practical', 'sun',
-      'cstand', 'flag', 'frame', 'bounce', 'gel', 'camera', 'tripod', 'gimbal', 'dolly', 'track',
-      'slider', 'jib', 'drone', 'carrig', 'actor', 'group', 'crew', 'boom', 'monitor', 'recorder',
-      'table', 'chair', 'sofa', 'bed', 'wardrobe', 'desk', 'stairs', 'door', 'window', 'wall',
-      'column', 'tree', 'car', 'road', 'light'];
+    const v22 = [
+      'fresnel',
+      'led',
+      'tube',
+      'softbox',
+      'lantern',
+      'para',
+      'practical',
+      'sun',
+      'cstand',
+      'flag',
+      'frame',
+      'bounce',
+      'gel',
+      'camera',
+      'tripod',
+      'gimbal',
+      'dolly',
+      'track',
+      'slider',
+      'jib',
+      'drone',
+      'carrig',
+      'actor',
+      'group',
+      'crew',
+      'boom',
+      'monitor',
+      'recorder',
+      'table',
+      'chair',
+      'sofa',
+      'bed',
+      'wardrobe',
+      'desk',
+      'stairs',
+      'door',
+      'window',
+      'wall',
+      'column',
+      'tree',
+      'car',
+      'road',
+      'light',
+    ];
     const icons = v22.map((kind, i) => ({
       id: `icon${String(i).padStart(9, '0')}`,
       kind,
@@ -1124,7 +1166,9 @@ describe('set plan v2 (version 23, decision 0104)', () => {
             pose: 'seated',
           },
         ],
-        walls: [{ id: 'wallAAAAAAAAA', points: [0, 0, 100, 0, 100, 100], thickness: 9, closed: true }],
+        walls: [
+          { id: 'wallAAAAAAAAA', points: [0, 0, 100, 0, 100, 100], thickness: 9, closed: true },
+        ],
         openings: [
           {
             id: 'doorAAAAAAAAA',

@@ -131,9 +131,7 @@ export function GlyphParts({ glyph }: { glyph: GlyphPart[] }) {
     }
     if (part.r) {
       const [x, y, w, h, rx] = part.r;
-      return (
-        <rect key={key} x={x} y={y} width={w} height={h} rx={rx || undefined} style={style} />
-      );
+      return <rect key={key} x={x} y={y} width={w} height={h} rx={rx || undefined} style={style} />;
     }
     return <path key={key} d={part.d} style={style} />;
   });
@@ -148,7 +146,13 @@ export function PlanGlyph({
   size?: number;
 }) {
   return (
-    <svg className="plan-glyph" viewBox="-20 -20 40 40" width={size} height={size} aria-hidden="true">
+    <svg
+      className="plan-glyph"
+      viewBox="-20 -20 40 40"
+      width={size}
+      height={size}
+      aria-hidden="true"
+    >
       <GlyphParts glyph={glyphOf(kind)} />
     </svg>
   );
@@ -274,7 +278,13 @@ export const PlanBeamView = memo(function PlanBeamView({
     <g style={{ color: cone?.beam ? color : planCss(icon.color) }}>
       {cone?.beam && from && (
         <defs>
-          <radialGradient id={id} gradientUnits="userSpaceOnUse" cx={from.x} cy={from.y} r={cone.reach}>
+          <radialGradient
+            id={id}
+            gradientUnits="userSpaceOnUse"
+            cx={from.x}
+            cy={from.y}
+            r={cone.reach}
+          >
             <stop offset="0" stopColor="currentColor" stopOpacity={strength * 2} />
             <stop offset="1" stopColor="currentColor" stopOpacity={strength / 3} />
           </radialGradient>

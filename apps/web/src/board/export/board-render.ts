@@ -971,7 +971,11 @@ export function planOps(
     const walls = new Map((el.walls ?? []).map((w) => [w.id, w]));
     for (const wall of el.walls ?? [])
       for (const piece of wallPieces(wall, openings))
-        inside.push({ kind: 'polygon', points: flat(pieceOutline(piece, wall.thickness)), fill: wallInk });
+        inside.push({
+          kind: 'polygon',
+          points: flat(pieceOutline(piece, wall.thickness)),
+          fill: wallInk,
+        });
     for (const o of openings) {
       const wall = walls.get(o.wall);
       if (!wall) continue;
@@ -979,7 +983,13 @@ export function planOps(
         const pts = line.points.map((p) => at(p.x, p.y));
         const w = (line.leaf ? 2.9 : 1.6) * k;
         if (line.dashed) inside.push(...dashes(pts, 4 * k, 4 * k, wallInk, w));
-        else inside.push({ kind: 'polyline', points: pts.flatMap((p) => [p.x, p.y]), color: wallInk, width: w });
+        else
+          inside.push({
+            kind: 'polyline',
+            points: pts.flatMap((p) => [p.x, p.y]),
+            color: wallInk,
+            width: w,
+          });
       }
     }
   }
@@ -1072,14 +1082,16 @@ export function planOps(
     const cone = iconCone(icon, el.sensor);
     const glow = cone ? null : iconGlow(icon);
     const warmth = icon.kind === 'camera' ? null : beamWarmth(icon.kelvin);
-    const color =
-      warmth === null ? ink(icon.color) : mix(c['tag-orange'], c['tag-blue'], warmth);
+    const color = warmth === null ? ink(icon.color) : mix(c['tag-orange'], c['tag-blue'], warmth);
     const shade = 0.06 + 0.16 * (icon.intensity ?? 0.8);
     if (glow) {
       const ring: number[] = [];
       for (let j = 0; j < 32; j++) {
         const a = (j / 32) * Math.PI * 2;
-        const p = at(glow.centre.x + glow.radius * Math.cos(a), glow.centre.y + glow.radius * Math.sin(a));
+        const p = at(
+          glow.centre.x + glow.radius * Math.cos(a),
+          glow.centre.y + glow.radius * Math.sin(a),
+        );
         ring.push(p.x, p.y);
       }
       return [{ kind: 'polygon', points: ring, fill: color, opacity: shade }];
@@ -1126,7 +1138,8 @@ export function planOps(
           : part.fill?.alpha !== undefined
             ? own
             : null;
-      const alpha = part.fill?.alpha !== undefined && part.fill.alpha < 1 ? part.fill.alpha : undefined;
+      const alpha =
+        part.fill?.alpha !== undefined && part.fill.alpha < 1 ? part.fill.alpha : undefined;
       if (fill && pts[0])
         out.push({
           kind: 'polygon',

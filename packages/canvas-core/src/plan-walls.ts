@@ -98,7 +98,10 @@ function subPath(pts: readonly Point[], from: number, to: number): Point[] {
     const e = walked + len;
     walked = e;
     if (e < from || s > to || len === 0) continue;
-    const at = (d: number) => ({ x: a.x + ((b.x - a.x) * (d - s)) / len, y: a.y + ((b.y - a.y) * (d - s)) / len });
+    const at = (d: number) => ({
+      x: a.x + ((b.x - a.x) * (d - s)) / len,
+      y: a.y + ((b.y - a.y) * (d - s)) / len,
+    });
     if (out.length === 0) out.push(at(Math.max(s, from)));
     out.push(at(Math.min(e, to)));
   }
@@ -318,7 +321,11 @@ export function wallHit(wall: PlanWall, p: Point, slack = 4): boolean {
 export function openingHit(wall: PlanWall, opening: PlanOpening, p: Point, slack = 4): boolean {
   const { from, to } = openingSpan(wall, opening);
   const near = nearestOnWall(wall, p);
-  if (near.at >= from - slack && near.at <= to + slack && near.distance <= wall.thickness / 2 + slack)
+  if (
+    near.at >= from - slack &&
+    near.at <= to + slack &&
+    near.distance <= wall.thickness / 2 + slack
+  )
     return true;
   return openingLines(wall, opening).some(
     (line) =>

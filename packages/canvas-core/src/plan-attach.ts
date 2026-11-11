@@ -81,7 +81,10 @@ export function glyphLocalOf(icon: PlanIcon, p: Point): Point {
 }
 
 /** An icon where attachedPlacement puts it. */
-function applyPlace(icon: PlanIcon, place: Pick<PlanIcon, 'x' | 'y' | 'rotation' | 'pose'>): PlanIcon {
+function applyPlace(
+  icon: PlanIcon,
+  place: Pick<PlanIcon, 'x' | 'y' | 'rotation' | 'pose'>,
+): PlanIcon {
   const next: PlanIcon = { ...icon, x: place.x, y: place.y };
   if (place.rotation) next.rotation = place.rotation;
   else delete next.rotation;
@@ -161,7 +164,8 @@ export function attachedPlacement(
     const order = [...row];
     const at = order.findIndex(
       (m) =>
-        (MODIFIER_RANK[catalogueKind(m.kind)] ?? 9) > (MODIFIER_RANK[catalogueKind(item.kind)] ?? 9),
+        (MODIFIER_RANK[catalogueKind(m.kind)] ?? 9) >
+        (MODIFIER_RANK[catalogueKind(item.kind)] ?? 9),
     );
     order.splice(at < 0 ? order.length : at, 0, item);
     let front = glyphPointOf(base, { x: axis(base).front, y: 0 });
@@ -290,7 +294,12 @@ export function detachIcon(icons: readonly PlanIcon[], itemId: string): PlanIcon
   const { on: _on, ...free } = item;
   const base = icons.find((i) => i.id === item.on);
   // The rest of the row closes up behind it.
-  const rest = base ? settleAttached(icons.map((i) => (i.id === itemId ? free : i)), base.id) : [];
+  const rest = base
+    ? settleAttached(
+        icons.map((i) => (i.id === itemId ? free : i)),
+        base.id,
+      )
+    : [];
   return [free, ...rest.filter((i) => i.id !== itemId)];
 }
 

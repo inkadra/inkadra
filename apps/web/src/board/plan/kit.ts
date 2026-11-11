@@ -8,7 +8,16 @@ const KIT = new Set(['lights', 'grip', 'camera', 'av']);
 /** People of those categories, not kit. */
 const NOT_KIT = new Set<PlanIcon['kind']>(['crew']);
 /** What a light's `stand` or a camera's `support` names that is kit to bring (decision 0104). */
-const STAND_KIT = new Set(['cstand', 'combo', 'boomarm', 'dolly', 'tripod', 'gimbal', 'slider', 'jib']);
+const STAND_KIT = new Set([
+  'cstand',
+  'combo',
+  'boomarm',
+  'dolly',
+  'tripod',
+  'gimbal',
+  'slider',
+  'jib',
+]);
 
 /**
  * The kit a plan needs (#335 round 6, i; decision 0104), "Fresnel 1,2K ×1", "Binario 3 m ×1":

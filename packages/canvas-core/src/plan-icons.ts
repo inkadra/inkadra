@@ -41,8 +41,14 @@ export const GLYPHS = {
   // Annotation tools, listed with the icons; they draw shapes, not icons.
   arrow: [{ d: 'M-12 9C-8-4 0-8 11-8' }, { d: 'M5-13l6 5-5 6' }],
   text: [{ d: 'M-9-10h18M0-10v20M-4 10h8' }],
-  measure: [{ d: 'M-14 0h28M-14-5v10M14-5v10' }, { d: 'M-9 0l3-3M-9 0l3 3M9 0l-3-3M9 0l-3 3', w: 1 }],
-  zone: [{ d: 'M-12-10l22-2 4 18-21 6z', dash: [3, 2.5] }, { d: 'M-5-1h10', w: 1 }],
+  measure: [
+    { d: 'M-14 0h28M-14-5v10M14-5v10' },
+    { d: 'M-9 0l3-3M-9 0l3 3M9 0l-3-3M9 0l-3 3', w: 1 },
+  ],
+  zone: [
+    { d: 'M-12-10l22-2 4 18-21 6z', dash: [3, 2.5] },
+    { d: 'M-5-1h10', w: 1 },
+  ],
 } satisfies Record<string, GlyphPart[]>;
 export type GlyphName = keyof typeof GLYPHS;
 
@@ -55,7 +61,14 @@ export type PlanFamily = 'light' | 'camera' | 'video' | 'person' | 'ink';
  * vehicles; 2 stands, supports and track; 3 lights, camera and grip; 4 people; 5 labels, measures
  * and notes. An item's `tier` (Bring forward, Send back) overrides its kind's.
  */
-export const PLAN_TIERS = { set: 0, furniture: 1, support: 2, kit: 3, people: 4, notes: 5 } as const;
+export const PLAN_TIERS = {
+  set: 0,
+  furniture: 1,
+  support: 2,
+  kit: 3,
+  people: 4,
+  notes: 5,
+} as const;
 export type PlanTier = (typeof PLAN_TIERS)[keyof typeof PLAN_TIERS];
 
 export type PlanGroupId =
@@ -102,7 +115,11 @@ const group = (
   kinds: readonly PlanIconKind[],
   sized = false,
 ): PlanGroup => ({ id, family, tier, sized, kinds });
-const category = (id: PlanCategory['id'], family: PlanFamily, groups: PlanGroup[]): PlanCategory => ({
+const category = (
+  id: PlanCategory['id'],
+  family: PlanFamily,
+  groups: PlanGroup[],
+): PlanCategory => ({
   id,
   family,
   groups,
@@ -112,31 +129,208 @@ const category = (id: PlanCategory['id'], family: PlanFamily, groups: PlanGroup[
 /** The library, in its order: 6 categories, 15 groups, 163 kinds (decision 0104). */
 export const PLAN_CATEGORIES: readonly PlanCategory[] = [
   category('lights', 'light', [
-    group('hard', 'light', T.kit, ['fresnel', 'openface', 'par', 'dedo', 'leko', 'hmi', 'molebeam', 'followspot']),
-    group('soft', 'light', T.kit, ['led', 'cob', 'flex', 'tube', 'kino', 'lantern', 'space', 'softlight', 'ring', 'bulb']),
+    group('hard', 'light', T.kit, [
+      'fresnel',
+      'openface',
+      'par',
+      'dedo',
+      'leko',
+      'hmi',
+      'molebeam',
+      'followspot',
+    ]),
+    group('soft', 'light', T.kit, [
+      'led',
+      'cob',
+      'flex',
+      'tube',
+      'kino',
+      'lantern',
+      'space',
+      'softlight',
+      'ring',
+      'bulb',
+    ]),
     group('large', 'light', T.kit, ['skypan', 'array', 'cyc', 'balloon', 'coop', 'wendy']),
-    group('natural', 'light', T.kit, ['sun', 'moon', 'practical', 'pendant', 'floorlamp', 'candle', 'fire', 'screen', 'neon', 'headlights', 'streetlight']),
+    group('natural', 'light', T.kit, [
+      'sun',
+      'moon',
+      'practical',
+      'pendant',
+      'floorlamp',
+      'candle',
+      'fire',
+      'screen',
+      'neon',
+      'headlights',
+      'streetlight',
+    ]),
   ]),
   category('grip', 'ink', [
-    group('modifiers', 'ink', T.kit, ['softbox', 'octa', 'para', 'grid', 'barn', 'snoot', 'gel', 'scrim', 'gobo']),
-    group('cut', 'ink', T.kit, ['flag', 'floppy', 'cutter', 'net', 'dot', 'cuco', 'branch', 'drape']),
-    group('diffuse', 'ink', T.kit, ['frame', 'butterfly', 'bounce', 'vflat', 'reflector', 'mirror']),
-    group('stands', 'ink', T.support, ['cstand', 'combo', 'lightstand', 'roller', 'boomarm', 'polecat', 'rig', 'goalpost', 'clamp', 'sandbag', 'applebox', 'ladder', 'cart']),
-    group('power', 'ink', T.kit, ['genny', 'distro', 'dimmer', 'cable', 'battery', 'haze', 'fan', 'rain', 'snow']),
+    group('modifiers', 'ink', T.kit, [
+      'softbox',
+      'octa',
+      'para',
+      'grid',
+      'barn',
+      'snoot',
+      'gel',
+      'scrim',
+      'gobo',
+    ]),
+    group('cut', 'ink', T.kit, [
+      'flag',
+      'floppy',
+      'cutter',
+      'net',
+      'dot',
+      'cuco',
+      'branch',
+      'drape',
+    ]),
+    group('diffuse', 'ink', T.kit, [
+      'frame',
+      'butterfly',
+      'bounce',
+      'vflat',
+      'reflector',
+      'mirror',
+    ]),
+    group('stands', 'ink', T.support, [
+      'cstand',
+      'combo',
+      'lightstand',
+      'roller',
+      'boomarm',
+      'polecat',
+      'rig',
+      'goalpost',
+      'clamp',
+      'sandbag',
+      'applebox',
+      'ladder',
+      'cart',
+    ]),
+    group('power', 'ink', T.kit, [
+      'genny',
+      'distro',
+      'dimmer',
+      'cable',
+      'battery',
+      'haze',
+      'fan',
+      'rain',
+      'snow',
+    ]),
   ]),
   category('camera', 'camera', [
-    group('camera', 'camera', T.kit, ['camera', 'tripod', 'hihat', 'shoulder', 'gimbal', 'steadi', 'slider', 'dolly', 'track', 'curve', 'jib', 'techno', 'drone', 'carrig', 'trackingcar']),
+    group('camera', 'camera', T.kit, [
+      'camera',
+      'tripod',
+      'hihat',
+      'shoulder',
+      'gimbal',
+      'steadi',
+      'slider',
+      'dolly',
+      'track',
+      'curve',
+      'jib',
+      'techno',
+      'drone',
+      'carrig',
+      'trackingcar',
+    ]),
   ]),
   category('people', 'person', [
-    group('people', 'person', T.people, ['actor', 'support', 'extra', 'group', 'seated', 'lying', 'child', 'stunt', 'mark', 'animal']),
+    group('people', 'person', T.people, [
+      'actor',
+      'support',
+      'extra',
+      'group',
+      'seated',
+      'lying',
+      'child',
+      'stunt',
+      'mark',
+      'animal',
+    ]),
   ]),
   category('set', 'ink', [
-    group('set', 'ink', T.set, ['wall', 'door', 'doubledoor', 'sliding', 'window', 'arch', 'column', 'stairs', 'platform', 'backdrop', 'curtain', 'flat'], true),
-    group('furniture', 'ink', T.furniture, ['table', 'roundtable', 'desk', 'chair', 'armchair', 'sofa', 'stool', 'bench', 'bed', 'wardrobe', 'shelf', 'counter', 'kitchen', 'fridge', 'sink', 'bathtub', 'toilet', 'tv', 'piano', 'rug', 'plant'], true),
-    group('exterior', 'ink', T.furniture, ['car', 'truck', 'moto', 'bike', 'road', 'tree', 'bush', 'fence', 'water', 'cone', 'barrier'], true),
+    group(
+      'set',
+      'ink',
+      T.set,
+      [
+        'wall',
+        'door',
+        'doubledoor',
+        'sliding',
+        'window',
+        'arch',
+        'column',
+        'stairs',
+        'platform',
+        'backdrop',
+        'curtain',
+        'flat',
+      ],
+      true,
+    ),
+    group(
+      'furniture',
+      'ink',
+      T.furniture,
+      [
+        'table',
+        'roundtable',
+        'desk',
+        'chair',
+        'armchair',
+        'sofa',
+        'stool',
+        'bench',
+        'bed',
+        'wardrobe',
+        'shelf',
+        'counter',
+        'kitchen',
+        'fridge',
+        'sink',
+        'bathtub',
+        'toilet',
+        'tv',
+        'piano',
+        'rug',
+        'plant',
+      ],
+      true,
+    ),
+    group(
+      'exterior',
+      'ink',
+      T.furniture,
+      ['car', 'truck', 'moto', 'bike', 'road', 'tree', 'bush', 'fence', 'water', 'cone', 'barrier'],
+      true,
+    ),
   ]),
   category('av', 'video', [
-    group('video', 'video', T.kit, ['village', 'monitor', 'dit', 'boom', 'soundcart', 'plantmic', 'speaker', 'prompter', 'crew', 'dirchair', 'hmu', 'rack', 'crafty', 'tent']),
+    group('video', 'video', T.kit, [
+      'village',
+      'monitor',
+      'dit',
+      'boom',
+      'soundcart',
+      'plantmic',
+      'speaker',
+      'prompter',
+      'crew',
+      'dirchair',
+      'hmu',
+      'rack',
+      'crafty',
+      'tent',
+    ]),
   ]),
 ];
 
@@ -242,7 +436,10 @@ export function glyphOf(kind: PlanIconKind | PlanNoteTool): GlyphPart[] {
  * The glyph an icon is drawn with: its kind's, except people posed seated or lying, who take
  * those glyphs.
  */
-export function iconGlyph(icon: { kind: PlanIconKind; pose?: 'standing' | 'seated' | 'lying' | undefined }): GlyphPart[] {
+export function iconGlyph(icon: {
+  kind: PlanIconKind;
+  pose?: 'standing' | 'seated' | 'lying' | undefined;
+}): GlyphPart[] {
   if (icon.pose && icon.pose !== 'standing' && POSED.has(icon.kind)) return GLYPHS[icon.pose];
   return glyphOf(icon.kind);
 }
@@ -730,7 +927,9 @@ export function flattenPath(d: string): Array<{ points: number[]; closed: boolea
         const [c2x, c2y, ex, ey] = [num(), num(), num(), num()].map(
           (v, n) => v + (n % 2 === 0 ? ox : oy),
         ) as [number, number, number, number];
-        const c1: [number, number] = prevCubic ? [2 * x - prevCubic[0], 2 * y - prevCubic[1]] : [x, y];
+        const c1: [number, number] = prevCubic
+          ? [2 * x - prevCubic[0], 2 * y - prevCubic[1]]
+          : [x, y];
         cubic(c1[0], c1[1], c2x, c2y, ex, ey);
         break;
       }

@@ -2,6 +2,7 @@
 import {
   createBoardDoc,
   type FrameShape,
+  LEGACY_PLAN_ICON_KINDS,
   PLAN_ICON_KINDS,
   type PlanIcon,
   type PlanShape,
@@ -63,7 +64,7 @@ import {
   withPercent,
   withReachAt,
 } from './plan.ts';
-import { flattenPath, glyphBox, glyphOf, PLAN_CATEGORIES } from './plan-icons.ts';
+import { flattenPath, glyphBox, glyphOf, kindLayer, PLAN_CATEGORIES } from './plan-icons.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 
@@ -217,7 +218,7 @@ describe('the icon library', () => {
   it('has every kind in one category, with a glyph that flattens', () => {
     const kinds = PLAN_CATEGORIES.flatMap((c) => c.kinds);
     expect(new Set(kinds).size).toBe(kinds.length);
-    expect([...kinds, 'light'].sort()).toEqual([...PLAN_ICON_KINDS].sort());
+    expect([...kinds, ...LEGACY_PLAN_ICON_KINDS].sort()).toEqual([...PLAN_ICON_KINDS].sort());
     for (const kind of kinds) {
       const box = glyphBox(glyphOf(kind));
       expect(box.w).toBeGreaterThan(4);
@@ -625,5 +626,5 @@ describe('variants without their base', () => {
 it('agrees with doc-schema on the layer of every icon kind', () => {
   for (const c of PLAN_CATEGORIES)
     for (const kind of c.kinds)
-      expect(layerOf({ ...camera, id: 'iconAAAAAAAAA', kind })).toBe(c.layer);
+      expect(layerOf({ ...camera, id: 'iconAAAAAAAAA', kind })).toBe(kindLayer(kind));
 });

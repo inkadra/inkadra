@@ -119,7 +119,9 @@ describe('index entries', () => {
     };
     addElement(doc, plan);
     expect(entriesFor(doc)).toEqual([
-      expect.objectContaining({ type: 'plan', title: 'Cucina',
+      expect.objectContaining({
+        type: 'plan',
+        title: 'Cucina',
         text: 'Cucina A cam Arri Alexa finestra muro nord',
       }),
     ]);
