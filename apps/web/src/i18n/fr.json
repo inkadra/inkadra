@@ -1551,7 +1551,67 @@
           "night": "Nuit",
           "dawn": "Aube",
           "dusk": "Crépuscule"
-        }
+        },
+        "circuitLine": "{{name}} · {{amps}} A"
+      },
+      "exportSheet": {
+        "title": "Exporter le plan de plateau",
+        "preview": "Aperçu de la première page",
+        "failed": "L’aperçu n’a pas pu être dessiné.",
+        "pages_one": "Page {{n}} sur {{count}} · A4 paysage. La légende, le matériel et la puissance à côté du plan.",
+        "pages_other": "Page {{n}} sur {{count}} · A4 paysage. La légende, le matériel et la puissance à côté du plan.",
+        "format": "Format",
+        "setups": "Setups",
+        "thisSetup": "Ce setup",
+        "allOfScene_one": "Les {{count}} de la scène {{scene}}",
+        "allOfScene_other": "Les {{count}} de la scène {{scene}}",
+        "allSetups_one": "Les {{count}} setups",
+        "allSetups_other": "Les {{count}} setups",
+        "area": "Zone",
+        "whole": "Tout le plan",
+        "view": "Ce que je vois",
+        "includeTitle": "Inclure",
+        "include": {
+          "legend": "Légende",
+          "kit": "Liste du matériel",
+          "power": "Puissance",
+          "notes": "Notes",
+          "scale": "Échelle et mesures",
+          "background": "Fond",
+          "dateScene": "Date et scène",
+          "grid": "Grille"
+        },
+        "working": "Export…",
+        "run": "Exporter en {{format}}"
+      },
+      "sheet": {
+        "shots": "Plans",
+        "scale": "Échelle",
+        "room": "Pièce",
+        "more_one": "+{{count}} autre",
+        "more_other": "+{{count}} autres",
+        "cameras": "Caméras",
+        "lights": "Lumières",
+        "cast": "Distribution",
+        "notes": "Notes",
+        "foot": "Fait avec Inkadra · page {{n}} sur {{total}}",
+        "day": "Jour {{n}}",
+        "setup": "Setup"
+      },
+      "card": {
+        "setups_one": "{{count}} setup",
+        "setups_other": "{{count}} setups",
+        "cameras_one": "{{count}} caméra",
+        "cameras_other": "{{count}} caméras",
+        "lights_one": "{{count}} lumière",
+        "lights_other": "{{count}} lumières"
+      },
+      "view": {
+        "only": "Lecture seule",
+        "legend": "Légende",
+        "hint": "Glissez pour déplacer, pincez ou faites défiler pour zoomer",
+        "note": "Qui peut ouvrir le tableau voit ce plan, la légende, le matériel et la puissance.",
+        "guestNote": "Vous voyez le plan tel qu’il est partagé avec vous : les setups, la légende, le matériel et la puissance."
       }
     },
     "contextual": {
@@ -5269,6 +5329,23 @@
           "3": {
             "title": "Les setups dans la liste des plans",
             "text": "La liste des plans et le plan de travail montrent le setup de chaque plan, et la liste peut les regrouper par setup."
+          }
+        }
+      },
+      "setplanOutputs": {
+        "name": "Sorties du plan",
+        "steps": {
+          "0": {
+            "title": "Exporter",
+            "text": "PDF, PNG ou JPEG de ce setup ou de tous, avec la légende, le matériel, la puissance et les notes."
+          },
+          "1": {
+            "title": "La feuille",
+            "text": "Une page A4 par setup. Ajouter à la feuille de service lie le plan à ses scènes."
+          },
+          "2": {
+            "title": "Qui ne peut pas modifier",
+            "text": "Invités et lecteurs ouvrent le plan dans une vue avec déplacement et zoom, les setups, la légende et le PDF."
           }
         }
       }

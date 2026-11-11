@@ -68,9 +68,32 @@ choose, so it does not group by setup.
 **Search** indexes a plan by the live names of the characters its actors play and of its
 location.
 
+**Outputs.** The editor's Export opens "Export the set plan": PDF, PNG or JPEG; this setup or all
+setups of the plan; the whole plan or what the editor shows; legend, kit list, power, notes, scale
+and sizes, background, date and scene, grid; a live preview of the first page; "Add to the call
+sheet" links the plan to scenes (the call sheet prints the plans of its scenes). It replaces the
+board's export of the selected card. The sheet (`plan-sheet.ts`, an `ExportWhat` of the existing
+engine, so PDF and pictures come from the same operations) is A4 landscape in the light theme, one
+page per setup: a title block with the scene, the setup, its shots, the scale and the room's size
+measured on the walls; the drawing as vectors; beside it the legend of cameras, lights and cast
+with their glyphs, the kit not already in the legend, the power per circuit and the icons' notes;
+the location and the shooting day at the foot. The background prints at its opacity, not in
+grey (the operations have no grey filter).
+
+**Read-only view.** Who cannot edit (guests first) opens a view with the setups as tabs, the
+drawing with pan (drag, arrows) and zoom (wheel, pinch, `+`/`-`, the bar), the legend of cameras,
+lights and cast, the kit and the power per circuit, and the PDF. Guests see what the plan shows,
+kit and power included (decision 0062 stands until Matteo decides otherwise).
+
+**Card on the board.** The drawing, then the name (the title, else the linked location), the
+chips of its scenes and the counts: setups (with more than one), cameras, lights and the power
+they draw.
+
+**Call sheet and scene sheets** print the power per circuit under the kit of each plan
+(`powerLines`), computed from the lights every time.
+
 ## Consequences
 
 - Plans keep their stored text: older builds and exports made before this show what was typed.
 - An actor's colour changes when an older character card before it is deleted.
-- Outputs (the export dialog and PDF sheet, the read-only view, the card on the board, power in
-  the call sheet and the scene sheets) are recorded in the second part of this record.
+- The board's export draws a plan card as before (its header and drawing), not the new footer.

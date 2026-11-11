@@ -87,8 +87,6 @@ export interface PlanEditorProps {
   onOpenCard?: ((id: string) => void) | undefined;
   /** The board's frame aspect, for the picture of a linked frame. */
   boardAspect?: AspectRatio | undefined;
-  /** Today's export of the plan card (the board's export of a selection). */
-  onExport?: () => void;
   onClose: () => void;
 }
 

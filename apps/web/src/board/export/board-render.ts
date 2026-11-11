@@ -961,6 +961,8 @@ export function planOps(
   box: Rect,
   ctx: CardContext,
   moves = true,
+  /** Beams and cones; a legend's glyph leaves them out. */
+  beams = true,
 ): Op[] {
   // Links read from the cards the audience may see; without them, the text the icons hold.
   const el = ctx.cards ? linkedPlan(stored, ctx.cards, { palette: CHARACTER_COLOURS }) : stored;
@@ -1019,7 +1021,7 @@ export function planOps(
     return iconOps(icon, ink(icon.color), 1, true);
   };
   for (const e of stack) if (e.tier < 2) inside.push(...itemOps(e));
-  for (const icon of shownIcons) inside.push(...beamOps(icon));
+  for (const icon of beams ? shownIcons : []) inside.push(...beamOps(icon));
   // Blocking: the moves, the veiled earlier positions and the numbers (round 6, d).
   const numbers: Op[] = [];
   for (const icon of moves ? shownIcons : []) {

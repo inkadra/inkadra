@@ -1551,7 +1551,67 @@
           "night": "Noite",
           "dawn": "Madrugada",
           "dusk": "Crepúsculo"
-        }
+        },
+        "circuitLine": "{{name}} · {{amps}} A"
+      },
+      "exportSheet": {
+        "title": "Exportar a planta do set",
+        "preview": "Pré-visualização da primeira página",
+        "failed": "Não foi possível desenhar a pré-visualização.",
+        "pages_one": "Página {{n}} de {{count}} · A4 horizontal. A legenda, o material e a potência ao lado da planta.",
+        "pages_other": "Página {{n}} de {{count}} · A4 horizontal. A legenda, o material e a potência ao lado da planta.",
+        "format": "Formato",
+        "setups": "Setups",
+        "thisSetup": "Este setup",
+        "allOfScene_one": "Os {{count}} da cena {{scene}}",
+        "allOfScene_other": "Os {{count}} da cena {{scene}}",
+        "allSetups_one": "Os {{count}} setups",
+        "allSetups_other": "Os {{count}} setups",
+        "area": "Área",
+        "whole": "Toda a planta",
+        "view": "O que vejo agora",
+        "includeTitle": "Incluir",
+        "include": {
+          "legend": "Legenda",
+          "kit": "Lista de material",
+          "power": "Potência",
+          "notes": "Notas",
+          "scale": "Escala e medidas",
+          "background": "Fundo",
+          "dateScene": "Data e cena",
+          "grid": "Grelha"
+        },
+        "working": "A exportar…",
+        "run": "Exportar {{format}}"
+      },
+      "sheet": {
+        "shots": "Planos",
+        "scale": "Escala",
+        "room": "Sala",
+        "more_one": "+{{count}} mais",
+        "more_other": "+{{count}} mais",
+        "cameras": "Câmaras",
+        "lights": "Luzes",
+        "cast": "Elenco",
+        "notes": "Notas",
+        "foot": "Feito com Inkadra · página {{n}} de {{total}}",
+        "day": "Dia {{n}}",
+        "setup": "Setup"
+      },
+      "card": {
+        "setups_one": "{{count}} setup",
+        "setups_other": "{{count}} setups",
+        "cameras_one": "{{count}} câmara",
+        "cameras_other": "{{count}} câmaras",
+        "lights_one": "{{count}} luz",
+        "lights_other": "{{count}} luzes"
+      },
+      "view": {
+        "only": "Só leitura",
+        "legend": "Legenda",
+        "hint": "Arraste para mover, belisque ou role para o zoom",
+        "note": "Quem pode abrir o quadro vê esta planta, a legenda, o material e a potência.",
+        "guestNote": "Vê a planta tal como é partilhada consigo: os setups, a legenda, o material e a potência."
       }
     },
     "contextual": {
@@ -5269,6 +5329,23 @@
           "3": {
             "title": "Setups na lista de planos",
             "text": "A lista de planos e o plano de rodagem mostram o setup de cada plano, e a lista pode agrupá-los por setup."
+          }
+        }
+      },
+      "setplanOutputs": {
+        "name": "Saídas da planta",
+        "steps": {
+          "0": {
+            "title": "Exportar",
+            "text": "PDF, PNG ou JPEG deste setup ou de todos, com legenda, material, potência e notas."
+          },
+          "1": {
+            "title": "A folha",
+            "text": "Uma página A4 por setup. Adicionar à folha de serviço liga a planta às suas cenas."
+          },
+          "2": {
+            "title": "Quem não pode editar",
+            "text": "Convidados e leitores abrem a planta numa vista com deslocação e zoom, os setups, a legenda e o PDF."
           }
         }
       }

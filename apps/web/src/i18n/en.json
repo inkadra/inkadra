@@ -1551,7 +1551,67 @@
           "night": "Night",
           "dawn": "Dawn",
           "dusk": "Dusk"
-        }
+        },
+        "circuitLine": "{{name}} · {{amps}} A"
+      },
+      "exportSheet": {
+        "title": "Export the set plan",
+        "preview": "Preview of the first page",
+        "failed": "The preview could not be drawn.",
+        "pages_one": "Page {{n}} of {{count}} · A4 landscape. The legend, kit and power sit beside the plan.",
+        "pages_other": "Page {{n}} of {{count}} · A4 landscape. The legend, kit and power sit beside the plan.",
+        "format": "Format",
+        "setups": "Setups",
+        "thisSetup": "This setup",
+        "allOfScene_one": "All {{count}} of scene {{scene}}",
+        "allOfScene_other": "All {{count}} of scene {{scene}}",
+        "allSetups_one": "All {{count}} setups",
+        "allSetups_other": "All {{count}} setups",
+        "area": "Area",
+        "whole": "Whole plan",
+        "view": "What I see now",
+        "includeTitle": "Include",
+        "include": {
+          "legend": "Legend",
+          "kit": "Kit list",
+          "power": "Power",
+          "notes": "Notes",
+          "scale": "Scale and sizes",
+          "background": "Background",
+          "dateScene": "Date and scene",
+          "grid": "Grid"
+        },
+        "working": "Exporting…",
+        "run": "Export {{format}}"
+      },
+      "sheet": {
+        "shots": "Shots",
+        "scale": "Scale",
+        "room": "Room",
+        "more_one": "+{{count}} more",
+        "more_other": "+{{count}} more",
+        "cameras": "Cameras",
+        "lights": "Lights",
+        "cast": "Cast",
+        "notes": "Notes",
+        "foot": "Made with Inkadra · page {{n}} of {{total}}",
+        "day": "Day {{n}}",
+        "setup": "Setup"
+      },
+      "card": {
+        "setups_one": "{{count}} setup",
+        "setups_other": "{{count}} setups",
+        "cameras_one": "{{count}} camera",
+        "cameras_other": "{{count}} cameras",
+        "lights_one": "{{count}} light",
+        "lights_other": "{{count}} lights"
+      },
+      "view": {
+        "only": "View only",
+        "legend": "Legend",
+        "hint": "Drag to move, pinch or scroll to zoom",
+        "note": "Anyone who can open the board sees this plan, the legend, the kit and the power.",
+        "guestNote": "You see the plan as it is shared with you: the setups, the legend, the kit and the power."
       }
     },
     "contextual": {
@@ -5269,6 +5329,23 @@
           "3": {
             "title": "Setups in the shot list",
             "text": "The shot list and the schedule show the setup of each shot, and the shot list can group shots by setup."
+          }
+        }
+      },
+      "setplanOutputs": {
+        "name": "Plan outputs",
+        "steps": {
+          "0": {
+            "title": "Export",
+            "text": "A PDF, PNG or JPEG of this setup or all of them, with the legend, kit, power and notes."
+          },
+          "1": {
+            "title": "The sheet",
+            "text": "One A4 page per setup. Add to the call sheet links the plan to its scenes."
+          },
+          "2": {
+            "title": "Who cannot edit",
+            "text": "Guests and readers open the plan in a view with pan and zoom, the setups, the legend and the PDF."
           }
         }
       }

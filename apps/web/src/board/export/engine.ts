@@ -2,9 +2,15 @@
 import {
   castAppearances,
   frameLabels,
+  linkedLocation,
+  linkedPlan,
   listElements,
+  type PlanElement,
   type Rect,
+  setupFrames,
   storyboardOf,
+  variantFamily,
+  variantView,
 } from '@inkadra/canvas-core';
 import { aspectValue, type Element, getBoardAspect, hiddenFromGuests } from '@inkadra/doc-schema';
 import type { Asset, AssetTrack, Board, CommentThread, ShotCatalogKey } from '@inkadra/shared';
@@ -20,6 +26,9 @@ import {
 import { loadCrew } from '../film/day-calls.ts';
 import { getFrameStatus, isApproved } from '../film/film-status.ts';
 import { croppedRotatedSize } from '../image-crop.ts';
+import { kitList, powerLines } from '../plan/kit.ts';
+import { CHARACTER_COLOURS } from '../plan/PlanDrawing.tsx';
+import { setupName } from '../plan/PlanKit.tsx';
 import type { BoardStore } from '../store.ts';
 import { paperAccent, type Theme } from '../theme.ts';
 import {
@@ -77,6 +86,7 @@ import {
 import type { FramesPerPage, Orientation, PaperSize } from './layout.ts';
 import { noteBlocks } from './note-text.ts';
 import type { Op, Page } from './pages.ts';
+import { type PlanSheetInclude, planSheetPages } from './plan-sheet.ts';
 import {
   calendarDate,
   callSheetPages,
@@ -100,7 +110,9 @@ export type ExportWhat =
   | 'visible'
   | 'storyboard'
   | 'shotlist'
-  | 'scenesheets';
+  | 'scenesheets'
+  /** The sheet of a set plan (decision 0111), from its editor or its read-only view. */
+  | 'setplan';
 
 export interface ExportRequest {
   format: ExportFormat;
@@ -128,6 +140,15 @@ export interface ExportRequest {
   scenes?: SceneChoice | undefined;
   /** Scene sheets: no sheet and no continuity line for omitted scenes; left out, true. */
   leaveOutOmitted?: boolean | undefined;
+  /** The set plan sheet: the setups to print, the part of the drawing and what it includes. */
+  setPlan?: SetPlanRequest | undefined;
+}
+
+export interface SetPlanRequest {
+  planIds: readonly string[];
+  /** The part of the drawing on screen, in view units; null: the whole plan. */
+  area: { x: number; y: number; w: number; h: number } | null;
+  include: PlanSheetInclude;
 }
 
 export interface ExportEnv {
@@ -381,7 +402,78 @@ export async function buildPages(
     return planning;
   };
 
-  if (kind === 'board') {
+  if (req.what === 'setplan' && req.setPlan) {
+    // A sheet of its own per setup, with its own title block and foot (decision 0111).
+    bare = true;
+    const sheet = req.setPlan;
+    // Everything from the cards this audience may see (decisions 0013, 0044, 0111): a plan, a
+    // base, a scene, a character, a frame or a location hidden from guests is not read for them.
+    const see = (id: string) => cards.get(id);
+    const plans = sheet.planIds.flatMap((id) => {
+      const el = see(id);
+      return el?.type === 'plan' ? [el] : [];
+    });
+    const first = plans[0];
+    const baseOf = (p: PlanElement) => {
+      const base = p.variantOf ? see(p.variantOf) : undefined;
+      return base?.type === 'plan' ? base : undefined;
+    };
+    const owner = first ? (baseOf(first) ?? first) : undefined;
+    const sceneIds = first?.sceneIds ?? owner?.sceneIds ?? [];
+    const scene = sceneIds.map(see).find((el) => el?.type === 'scene');
+    const location = owner ? linkedLocation(owner, cards) : null;
+    // The shooting day of the scene, when the schedule has one of its frames (team only).
+    let day = '';
+    if (scene?.type === 'scene' && team && sheet.include.dateScene) {
+      const frames = new Set(
+        groupsAll.find((g) => g.scene?.id === scene.id)?.frames.map((f) => f.id),
+      );
+      try {
+        const { days } = await planningOnce();
+        const at = days.findIndex((d) => d.blocks.some((b) => b.shotId && frames.has(b.shotId)));
+        if (at >= 0) day = t('board.plan.sheet.day', { n: at + 1 });
+      } catch (err) {
+        if (signal?.aborted) throw err;
+      }
+    }
+    content = planSheetPages(
+      {
+        setups: plans.map((p) => {
+          const base = baseOf(p);
+          return {
+            plan: linkedPlan(base ? variantView(p, base) : p, cards, {
+              palette: CHARACTER_COLOURS,
+            }),
+            name: `${t('board.plan.sheet.setup')} ${setupName(p, variantFamily(cards.values(), p), t)}`,
+            // The storyboard's number of each shot, else the frame's own label; none, left out.
+            shots: setupFrames(p, cards).flatMap((id) => {
+              const frame = cards.get(id);
+              const label = labels.get(id) || (frame?.type === 'frame' ? frame.label : '');
+              return label ? [label] : [];
+            }),
+          };
+        }),
+        scene:
+          scene?.type === 'scene'
+            ? [t('board.plan.links.scene', { number: scene.number }), slugline(scene)]
+                .filter(Boolean)
+                .join(' · ')
+            : '',
+        place: [
+          location?.name ?? (scene?.type === 'scene' ? scene.location : '') ?? '',
+          sheet.include.dateScene ? day : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        area: sheet.area,
+        include: sheet.include,
+        t,
+        locale: env.language,
+      },
+      ctx,
+    );
+    summary = t('board.plan.name');
+  } else if (kind === 'board') {
     const scope: ExportScope =
       req.what === 'selection'
         ? { kind: 'selection', ids: env.selection }
@@ -506,6 +598,21 @@ export async function buildPages(
       playedBy: (actor) => t('export.sheets.playedBy', { actor }),
       continuity: t('export.sheets.continuity'),
       setPlan: t('board.plan.name'),
+      planKit: (plan) => {
+        const kit = kitList(plan, t, env.language);
+        const power = powerLines(plan, t, env.language);
+        return {
+          kit: kit.length
+            ? { label: t('board.plan.tabs2.kit'), lines: kit.map((l) => `${l.name} ×${l.count}`) }
+            : null,
+          power: power
+            ? {
+                label: power.title,
+                lines: [power.total, ...power.rows.map((r) => `${r.text} · ${r.amps}`)],
+              }
+            : null,
+        };
+      },
       frameNotes: t('export.sheets.frameNotes'),
       light: t('export.sheets.light'),
       shootingDay: t('export.sheets.shootingDay'),

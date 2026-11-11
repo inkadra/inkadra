@@ -225,6 +225,13 @@ export interface SheetWords {
   playedBy(actor: string): string;
   continuity: string;
   setPlan: string;
+  /** The kit of a plan, "Fresnel 2K ×1", and its power per circuit (decision 0111). */
+  planKit?:
+    | ((plan: Extract<Element, { type: 'plan' }>) => {
+        kit: { label: string; lines: string[] } | null;
+        power: { label: string; lines: string[] } | null;
+      })
+    | undefined;
   frameNotes: string;
   light: string;
   shootingDay: string;
@@ -576,6 +583,13 @@ export function sceneSheetPages(
             ];
           },
         },
+        // The kit as the call sheet prints it, and the power per circuit, computed each time.
+        ...(() => {
+          const extra = words.planKit?.(plan);
+          return [extra?.kit, extra?.power].flatMap((part) =>
+            part?.lines.length ? [row(part.label, part.lines)] : [],
+          );
+        })(),
       ];
     });
 

@@ -25,6 +25,7 @@ import { isNoteTool, type LibraryItem, projectKit } from './library.ts';
 import { type CanvasHandle, PlanCanvas, TOOL_KEYS } from './PlanCanvas.tsx';
 import { planTitle } from './PlanCard.tsx';
 import { PlanElements } from './PlanElements.tsx';
+import { PlanExport, visibleArea } from './PlanExport.tsx';
 import { PlanKit, powerText, setupName } from './PlanKit.tsx';
 import { type Dragged, PlanLibrary } from './PlanLibrary.tsx';
 import { SceneChips } from './PlanLinks.tsx';
@@ -34,6 +35,15 @@ import { type SetupChange, setupChanges } from './setups.ts';
 import './plan.css';
 
 const NOTE_TOOL = { arrow: 'arrow', text: 'text', measure: 'measure', zone: 'zone' } as const;
+
+/** The number of the first scene a plan serves, for "All 3 of scene 2". */
+function scenesOf(cards: PlanEditorProps['cards'], ids: readonly string[] | undefined) {
+  for (const id of ids ?? []) {
+    const scene = cards?.get(id);
+    if (scene?.type === 'scene') return scene.number || null;
+  }
+  return null;
+}
 
 /** "B cam moved 0.6 m, now 85 mm · Neg added": what a setup changed from its base. */
 function changeText(c: SetupChange, scale: number | undefined, t: TFunction, lang: string): string {
@@ -69,6 +79,7 @@ export function PlanEditor(props: PlanEditorProps) {
   const [setupMenu, setSetupMenu] = useState<CSSProperties | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [fullProps, setFullProps] = useState(false);
+  const [exporting, setExporting] = useState<{ area: ReturnType<typeof visibleArea> } | null>(null);
   const scaleButton = useRef<HTMLButtonElement>(null);
   const family = props.family?.length ? props.family : [plan];
   const title = planTitle(t, plan);
@@ -125,7 +136,7 @@ export function PlanEditor(props: PlanEditorProps) {
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   keys.current = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
-    if (target?.closest('.menu, [role="listbox"], .plan-scenes')) return;
+    if (target?.closest('.menu, [role="listbox"], .plan-scenes, dialog')) return;
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
     // Whatever the editor does not use never reaches the board behind it.
     e.stopImmediatePropagation();
@@ -663,12 +674,19 @@ export function PlanEditor(props: PlanEditorProps) {
             <Icon name="ruler" size={16} />
             {scaleValue}
           </button>
-          {props.onExport && (
-            <button type="button" className="plan-top__btn" onClick={props.onExport}>
-              <Icon name="download" size={16} />
-              {t('board.plan.export')}
-            </button>
-          )}
+          <button
+            type="button"
+            className="plan-top__btn"
+            data-tour="plan-export-button"
+            onClick={() =>
+              setExporting({
+                area: visibleArea(dialogRef.current ?? document, PLAN_VIEW_W, PLAN_VIEW_H),
+              })
+            }
+          >
+            <Icon name="download" size={16} />
+            {t('board.plan.export')}
+          </button>
           <Button variant="primary" onClick={props.onClose}>
             {t('film.pen.done')}
           </Button>
@@ -684,6 +702,17 @@ export function PlanEditor(props: PlanEditorProps) {
       </div>
       {scalePop}
       {scenePicker}
+      {exporting && (
+        <PlanExport
+          store={props.store}
+          plan={plan}
+          family={family}
+          scene={scenesOf(props.cards, plan.sceneIds ?? base?.sceneIds)}
+          area={exporting.area}
+          onCallSheet={callSheet}
+          onClose={() => setExporting(null)}
+        />
+      )}
     </div>,
     document.body,
   );

@@ -1551,7 +1551,67 @@
           "night": "Noche",
           "dawn": "Amanecer",
           "dusk": "Atardecer"
-        }
+        },
+        "circuitLine": "{{name}} · {{amps}} A"
+      },
+      "exportSheet": {
+        "title": "Exportar el plano de set",
+        "preview": "Vista previa de la primera página",
+        "failed": "No se pudo dibujar la vista previa.",
+        "pages_one": "Página {{n}} de {{count}} · A4 horizontal. La leyenda, el material y la potencia junto al plano.",
+        "pages_other": "Página {{n}} de {{count}} · A4 horizontal. La leyenda, el material y la potencia junto al plano.",
+        "format": "Formato",
+        "setups": "Setups",
+        "thisSetup": "Este setup",
+        "allOfScene_one": "Los {{count}} de la escena {{scene}}",
+        "allOfScene_other": "Los {{count}} de la escena {{scene}}",
+        "allSetups_one": "Los {{count}} setups",
+        "allSetups_other": "Los {{count}} setups",
+        "area": "Área",
+        "whole": "Todo el plano",
+        "view": "Lo que veo ahora",
+        "includeTitle": "Incluir",
+        "include": {
+          "legend": "Leyenda",
+          "kit": "Lista de material",
+          "power": "Potencia",
+          "notes": "Notas",
+          "scale": "Escala y medidas",
+          "background": "Fondo",
+          "dateScene": "Fecha y escena",
+          "grid": "Cuadrícula"
+        },
+        "working": "Exportando…",
+        "run": "Exportar {{format}}"
+      },
+      "sheet": {
+        "shots": "Planos",
+        "scale": "Escala",
+        "room": "Sala",
+        "more_one": "+{{count}} más",
+        "more_other": "+{{count}} más",
+        "cameras": "Cámaras",
+        "lights": "Luces",
+        "cast": "Reparto",
+        "notes": "Notas",
+        "foot": "Hecho con Inkadra · página {{n}} de {{total}}",
+        "day": "Día {{n}}",
+        "setup": "Setup"
+      },
+      "card": {
+        "setups_one": "{{count}} setup",
+        "setups_other": "{{count}} setups",
+        "cameras_one": "{{count}} cámara",
+        "cameras_other": "{{count}} cámaras",
+        "lights_one": "{{count}} luz",
+        "lights_other": "{{count}} luces"
+      },
+      "view": {
+        "only": "Solo lectura",
+        "legend": "Leyenda",
+        "hint": "Arrastra para mover, pellizca o desplaza para el zoom",
+        "note": "Quien puede abrir el tablero ve este plano, la leyenda, el material y la potencia.",
+        "guestNote": "Ves el plano tal como se comparte contigo: los setups, la leyenda, el material y la potencia."
       }
     },
     "contextual": {
@@ -5269,6 +5329,23 @@
           "3": {
             "title": "Setups en la lista de planos",
             "text": "La lista de planos y el plan de rodaje muestran el setup de cada plano, y la lista puede agruparlos por setup."
+          }
+        }
+      },
+      "setplanOutputs": {
+        "name": "Salidas del plano",
+        "steps": {
+          "0": {
+            "title": "Exportar",
+            "text": "PDF, PNG o JPEG de este setup o de todos, con leyenda, material, potencia y notas."
+          },
+          "1": {
+            "title": "La hoja",
+            "text": "Una página A4 por setup. Añadir a la hoja de rodaje vincula el plano a sus escenas."
+          },
+          "2": {
+            "title": "Quien no puede editar",
+            "text": "Invitados y lectores abren el plano en una vista con desplazamiento y zoom, los setups, la leyenda y el PDF."
           }
         }
       }

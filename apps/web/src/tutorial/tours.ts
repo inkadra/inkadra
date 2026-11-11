@@ -266,6 +266,19 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    // Outputs of the plan (decision 0111): the export dialog, the sheet, the read-only view.
+    id: 'setplanOutputs',
+    group: 'production',
+    icon: 'download',
+    tool: 'plan',
+    offer: 'plan-export-button',
+    steps: [
+      { anchor: 'plan-export-button', media: 'export', side: 'bottom' },
+      { anchor: 'plan-export', media: 'export', side: 'left' },
+      { anchor: null, media: 'plan' },
+    ],
+  },
+  {
     id: 'characters',
     group: 'production',
     icon: 'user',
