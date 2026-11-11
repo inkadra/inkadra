@@ -177,6 +177,13 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
       await insertPending(ctx.actor, ctx.assetId, upload.size as number, meta);
       return {};
     },
+    // tus refused a creation with clientAssetId before storing anything (size, headers): the
+    // pending asset made for it goes, before the client reads the refusal.
+    async onResponseError() {
+      const ctx = context.getStore();
+      if (ctx?.made && !(await datastore.getUpload(originalKey(ctx.assetId)).catch(() => null)))
+        await db.delete(asset).where(and(eq(asset.id, ctx.assetId), eq(asset.status, 'pending')));
+    },
     async onUploadFinish(_req, upload) {
       const assetId = upload.id.slice('originals/'.length);
       // Checked again with the last byte: a limit lowered meanwhile still applies.
@@ -355,9 +362,6 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
     reply.raw.setHeader(ASSET_ID_HEADER, assetId);
     reply.hijack();
     await context.run({ actor, assetId, made }, () => tus.handle(req.raw, reply.raw));
-    // tus refused before storing anything (size, headers): the pending asset made for it goes.
-    if (made && !(await datastore.getUpload(originalKey(assetId)).catch(() => null)))
-      await db.delete(asset).where(and(eq(asset.id, assetId), eq(asset.status, 'pending')));
   }
 
   const methods = ['POST', 'OPTIONS'] as const;

@@ -70,6 +70,6 @@ function sha1(message: Uint8Array): Uint8Array {
   }
   const out = new Uint8Array(20);
   const outView = new DataView(out.buffer);
-  h.forEach((v, i) => outView.setUint32(i * 4, v));
+  for (let i = 0; i < 5; i++) outView.setUint32(i * 4, h[i] as number);
   return out;
 }
