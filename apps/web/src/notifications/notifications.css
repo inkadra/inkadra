@@ -737,7 +737,7 @@
   }
   /* The Inbox is a page of the shell: the surface a page has, beside the floating panels (#333). */
   .notifications--fixed {
-    top: calc(var(--ink-float-gap, 12px) * 2 + var(--ink-header-height, 42px));
+    top: calc(var(--ink-float-gap) * 2 + var(--ink-header-height));
     bottom: 12px;
     left: var(--ink-shell-left, 66px);
     right: 12px;

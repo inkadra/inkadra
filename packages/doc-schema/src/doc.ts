@@ -16,6 +16,7 @@ import {
   Stroke,
   TableRow,
 } from './elements.ts';
+import { fastCheckOf, UNSURE } from './fast-items.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
 export const CURRENT_SCHEMA_VERSION = 23;
@@ -526,6 +527,12 @@ export function cachedPerMap<T>(compute: (map: Y.Map<unknown>) => T): (map: Y.Ma
 }
 
 function parseItem(item: z.ZodType, value: unknown): unknown {
+  // Strokes take a hand-written check equivalent to their schema; Zod decides the rest.
+  const check = fastCheckOf(item);
+  if (check) {
+    const data = check(value);
+    if (data !== UNSURE) return data;
+  }
   const result = item.safeParse(value);
   return result.success ? result.data : INVALID;
 }
@@ -585,8 +592,9 @@ export function readElement(map: Y.Map<unknown>): Element | null {
 }
 
 /**
- * Cooperative initial reads: each step checks at most one large-list item. Only the return
- * value is a validated element. If the element changes between steps, discard the read.
+ * Cooperative initial reads: each step checks at most one large-list item or converts one
+ * nested Yjs field; plain fields are copied between steps. Only the return value is a
+ * validated element. If the element changes between steps, discard the read.
  */
 export function* readElementSteps(
   map: Y.Map<unknown>,
@@ -609,8 +617,11 @@ export function* readElementSteps(
       if (list.lenient) items = items.slice(0, list.max);
       // The rest of the element is checked with an empty list, then gets the items back.
       plain[key] = [];
-    } else plain[key] = value instanceof Y.AbstractType ? value.toJSON() : value;
-    if (cooperative) yield;
+      if (cooperative) yield;
+    } else if (value instanceof Y.AbstractType) {
+      plain[key] = value.toJSON();
+      if (cooperative) yield;
+    } else plain[key] = value;
   }
   const result = Element.safeParse(plain);
   if (!result.success) return null;

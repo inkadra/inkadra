@@ -5,3 +5,4 @@ export * from './guests.ts';
 export * from './notices.ts';
 export * from './presence.ts';
 export * from './strict.ts';
+export * from './validated-snapshot.ts';
