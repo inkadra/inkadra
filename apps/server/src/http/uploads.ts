@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
+import type { ServerResponse } from 'node:http';
 import {
   API_PREFIX,
   type AssetKind,
@@ -10,7 +11,6 @@ import {
 import { Server as TusServer } from '@tus/server';
 import type { DataStore, Upload } from '@tus/utils';
 import { eq } from 'drizzle-orm';
-import type { ServerResponse } from 'node:http';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Actor, requireAssetRole, requireWriteAccess } from '../access.ts';
 import type { Auth } from '../auth.ts';

@@ -274,6 +274,13 @@
       "when": 1794387976442,
       "tag": "0038_token_invalid_reasons",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794392148975,
+      "tag": "0039_client_asset_ids",
+      "breakpoints": true
     }
   ]
 }

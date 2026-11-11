@@ -219,12 +219,7 @@ export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
   const stale = await db
     .select({ id: asset.id })
     .from(asset)
-    .where(
-      and(
-        eq(asset.status, 'pending'),
-        lt(asset.createdAt, cutoff),
-      ),
-    );
+    .where(and(eq(asset.status, 'pending'), lt(asset.createdAt, cutoff)));
   let removed = 0;
   let requeued = 0;
   for (const { id } of stale) {
