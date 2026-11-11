@@ -143,7 +143,7 @@ export interface BoardAccess {
 
 /** Effective access of a person to a board that is not in the trash; null if no such board. */
 export async function boardAccess(
-  db: Database,
+  db: Pick<Database, 'select' | 'execute'>,
   actor: Pick<Actor, 'id'>,
   boardId: string,
 ): Promise<BoardAccess | null> {
@@ -171,7 +171,7 @@ export async function boardAccess(
 
 /** Kept for the collab server: the role on a board and its project id. */
 export async function boardRole(
-  db: Database,
+  db: Pick<Database, 'select' | 'execute'>,
   actor: Pick<Actor, 'id'>,
   boardId: string,
 ): Promise<{ role: ProjectRole | null; projectId: string } | null> {
@@ -228,7 +228,7 @@ export async function touchesProject(
  * 404, so ids of other people's projects cannot be probed.
  */
 export async function requireProjectRole(
-  db: Database,
+  db: Pick<Database, 'select' | 'execute'>,
   actor: Actor,
   projectId: string,
   needed: ProjectRole,
@@ -241,7 +241,7 @@ export async function requireProjectRole(
 
 /** Like requireProjectRole, for a board that is not in the trash, with grants applied. */
 export async function requireBoardRole(
-  db: Database,
+  db: Pick<Database, 'select' | 'execute'>,
   actor: Actor,
   boardId: string,
   needed: ProjectRole,
@@ -257,7 +257,7 @@ export async function requireBoardRole(
  * (it must belong to the project), the project role otherwise.
  */
 export async function requireWriteAccess(
-  db: Database,
+  db: Pick<Database, 'select' | 'execute'>,
   actor: Actor,
   projectId: string,
   boardId: string | undefined,
@@ -275,7 +275,7 @@ export async function requireWriteAccess(
  * when their best grant is lower, which is what limits downloads.
  */
 export async function requireAssetRole(
-  db: Database,
+  db: Pick<Database, 'select' | 'execute'>,
   actor: Actor,
   assetId: string,
   needed: ProjectRole,
@@ -436,7 +436,7 @@ export async function boardRolesForPeople(
 
 /** Whether an active link can reach a board through visible cards and its creator's access. */
 export async function linkIncludesBoard(
-  db: Database,
+  db: Pick<Database, 'select' | 'execute'>,
   link: { boardId: string; includeSubBoards: boolean; createdBy: string | null },
   access: BoardAccess,
 ): Promise<boolean> {
@@ -459,7 +459,7 @@ export async function linkIncludesBoard(
  * link works and which of its boards guests can open.
  */
 export async function rolesOnProjectBoards(
-  db: Database,
+  db: Pick<Database, 'select' | 'execute'>,
   userId: string,
   projectId: string,
 ): Promise<{ boards: Array<typeof board.$inferSelect>; roles: Map<string, Effective> }> {

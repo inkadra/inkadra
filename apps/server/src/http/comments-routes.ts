@@ -91,13 +91,13 @@ interface Viewer {
 const canWrite = (v: Viewer) => atLeast(v.role, CAPABILITY_ROLE.comment);
 
 /** The mentions of a body that name people who can read the board. */
-async function readableMentions(db: Database, boardId: string, body: string): Promise<string[]> {
+async function readableMentions(db: Pick<Database, 'select' | 'execute'>, boardId: string, body: string): Promise<string[]> {
   const ids = mentionedIds(body);
   const roles = await boardRolesForPeople(db, boardId, ids);
   return ids.filter((id) => roles.has(id));
 }
 
-async function peopleOf(db: Database, rows: Row[], viewer: Viewer) {
+async function peopleOf(db: Pick<Database, 'select' | 'execute'>, rows: Row[], viewer: Viewer) {
   const boardId = rows[0]?.boardId;
   if (boardId) {
     const ids = rows.flatMap((r) => r.mentions);
@@ -239,7 +239,7 @@ async function toThreads(db: Database, rows: Row[], viewer: Viewer): Promise<Com
  * includes sub-boards, still working (not revoked or expired, and its creator still has at
  * least editor on its board and on this one, decision 0013).
  */
-async function checkAudience(db: Database, access: BoardAccess, linkId: string) {
+async function checkAudience(db: Pick<Database, 'select' | 'execute'>, access: BoardAccess, linkId: string) {
   const [link] = await db
     .select()
     .from(shareLink)
@@ -342,6 +342,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     const viewer: Viewer = { actorId: actor.id, role: access.role };
     requireWriter(viewer);
 
+    const pendingCard = input.elementId && !input.parentId ? await readElement(boardId, input.elementId) : null;
     let onCreated: (() => Promise<void>) | undefined;
     const result = await idempotentCreation(
       db,
@@ -352,7 +353,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       async (tx) => {
     let thread: Row | undefined;
     if (input.parentId) {
-      [thread] = await db
+      [thread] = await tx
         .select()
         .from(comment)
         .where(and(eq(comment.id, input.parentId), eq(comment.boardId, boardId)));
@@ -361,7 +362,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
         throw new HttpError('bad_request', 'Reply to the first comment of the thread.');
     }
     const elementId = thread ? thread.elementId : (input.elementId ?? null);
-    const card = !thread && elementId ? await readElement(boardId, elementId) : null;
+    const card = pendingCard;
     if (!thread && elementId && !card) throw new HttpError('not_found', 'Card not found.');
     if (input.pin && thread)
       throw new HttpError('bad_request', 'Only the first comment of a thread can be pinned.');
@@ -372,9 +373,9 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     if (shareLinkId) {
       if (visibility !== 'everyone')
         throw new HttpError('bad_request', 'Only threads for everyone can be limited to a link.');
-      await checkAudience(db, access, shareLinkId);
+      await checkAudience(tx, access, shareLinkId);
     }
-    const mentions = await readableMentions(db, boardId, input.body);
+    const mentions = await readableMentions(tx, boardId, input.body);
         limiter.require(actor.id, 'Too many comments: wait a minute.');
         // Serialize with deletion of the thread start. A successful reply must never be
         // cascaded away by a concurrent delete that saw no replies yet.
@@ -435,7 +436,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     });
     await afterCommit(req.log, () => tell(created));
         };
-        return toComment(created, await peopleOf(db, [created], viewer), viewer);
+        return toComment(created, await peopleOf(tx, [created], viewer), viewer);
       },
     );
 

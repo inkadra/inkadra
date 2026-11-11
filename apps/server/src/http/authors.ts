@@ -33,7 +33,7 @@ export function linkLabel(label: string | null | undefined): string | null {
 }
 
 export async function loadPeople(
-  db: Database,
+  db: Pick<Database, 'select' | 'execute'>,
   viewer: Pick<Actor, 'id'>,
   userIds: Iterable<string | null | undefined>,
   guestIds: Iterable<string | null | undefined> = [],
