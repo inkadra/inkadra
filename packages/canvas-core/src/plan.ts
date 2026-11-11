@@ -731,6 +731,12 @@ export function withAttached(icons: readonly PlanIcon[], ids: Iterable<string>):
   return out;
 }
 
+/** The icon standing free: its `on` dropped. */
+export function withoutOn(icon: PlanIcon): PlanIcon {
+  const { on: _on, ...free } = icon;
+  return free;
+}
+
 /** How deep an icon is attached: 0 free, 1 on a free base, 2 on an attached one… */
 export function attachDepth(icon: PlanIcon, byId: ReadonlyMap<string, PlanIcon>): number {
   let depth = 0;
@@ -769,22 +775,32 @@ export function planStack(
 ): PlanStackEntry[] {
   const byId = new Map((plan.icons ?? []).map((i) => [i.id, i]));
   const rank = { strokes: 0, shapes: 1, icons: 2 } as const;
-  return planItems(plan)
-    .map((e, index) => ({
-      ...e,
-      tier: itemTier(e.item),
-      depth: e.ref.kind === 'icons' ? attachDepth(e.item as PlanIcon, byId) : 0,
-      index,
-    }))
-    .filter((e) => !hidden?.includes(layerOf(e.item)))
-    .sort(
-      (a, b) =>
-        a.tier - b.tier ||
-        a.depth - b.depth ||
-        rank[a.ref.kind] - rank[b.ref.kind] ||
-        a.index - b.index,
-    )
-    .map(({ ref, item, tier }) => ({ ref, item, tier }));
+  return (
+    planItems(plan)
+      .map((e, index) => ({
+        ...e,
+        tier: itemTier(e.item),
+        depth: e.ref.kind === 'icons' ? attachDepth(e.item as PlanIcon, byId) : 0,
+        index,
+      }))
+      .filter((e) => !hidden?.includes(layerOf(e.item)))
+      // An `on` whose base is gone reads as free: a modifier draws its own beam again.
+      .map((e) =>
+        e.ref.kind === 'icons' &&
+        (e.item as PlanIcon).on &&
+        !byId.has((e.item as PlanIcon).on ?? '')
+          ? { ...e, item: withoutOn(e.item as PlanIcon) }
+          : e,
+      )
+      .sort(
+        (a, b) =>
+          a.tier - b.tier ||
+          a.depth - b.depth ||
+          rank[a.ref.kind] - rank[b.ref.kind] ||
+          a.index - b.index,
+      )
+      .map(({ ref, item, tier }) => ({ ref, item, tier }))
+  );
 }
 
 // Scale and measures --------------------------------------------------------------

@@ -8,7 +8,6 @@ import {
   type Point,
   planItem,
   planPower,
-  snapTarget,
   toggleGroup,
 } from '@inkadra/canvas-core';
 import type { PlanIconKind } from '@inkadra/doc-schema';
@@ -93,7 +92,7 @@ export function PlanEditor(props: PlanEditorProps) {
   /** The base an icon would attach to at `p` (0 to 1), unless Alt or Snap off (decision 0104). */
   const baseAt = (kind: PlanIconKind, p: Point, alt = false) =>
     ed.attach && !alt
-      ? (snapTarget({ kind }, { x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H }, ed.icons)?.id ?? null)
+      ? (ed.snapAt({ kind }, { x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H })?.id ?? null)
       : null;
   const place = (what: Dragged, at: { clientX: number; clientY: number } | null, alt = false) => {
     ed.setDropTarget(null);
@@ -108,9 +107,12 @@ export function PlanEditor(props: PlanEditorProps) {
     } else {
       const { kind, ...fields } = what.kit.icon;
       const lens = what.kit.lenses[0];
-      const id = ed.placeIcon(kind, p, { fields: { ...fields, ...(lens ? { lens } : {}) } });
-      if (id) for (const m of what.kit.modifiers) ed.placeIcon(m, p, { keep: true, on: id });
-      if (id) ed.setSelection([{ kind: 'icons', id }]);
+      // The light with its modifiers on its front: one drop, one undo step, the light selected.
+      ed.placeIcon(kind, p, {
+        fields: { ...fields, ...(lens ? { lens } : {}) },
+        modifiers: what.kit.modifiers,
+        on: at ? baseAt(kind, p, alt) : null,
+      });
     }
     if (phone) ed.setSheet(null);
   };
