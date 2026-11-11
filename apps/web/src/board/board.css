@@ -4406,25 +4406,6 @@ button.card__play {
 .crop-bar__angle .ink-slider {
   width: 180px;
 }
-.crop-bar__deg {
-  min-width: 34px;
-  height: 26px;
-  padding: 0 4px;
-  border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: transparent;
-  color: var(--ink-text-muted);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-}
-.crop-bar__deg:hover:not(:disabled) {
-  background: var(--ink-surface-3);
-  color: var(--ink-text-primary);
-}
-.crop-bar__deg:disabled {
-  cursor: default;
-}
 .crop-bar__text-btn,
 .crop-bar__done {
   width: auto;
@@ -4477,9 +4458,11 @@ button.card__play {
   .crop-bar__angle {
     height: 44px;
   }
-  .crop-bar__deg {
-    min-width: 44px;
+  .crop-bar .plan-num {
     height: 44px;
+  }
+  .crop-bar .plan-num input {
+    font-size: 16px;
   }
   .crop-bar .ink-slider {
     height: 44px;

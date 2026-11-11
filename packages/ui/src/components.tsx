@@ -228,6 +228,8 @@ export interface SliderProps
     InputHTMLAttributes<HTMLInputElement>,
     'type' | 'value' | 'onChange' | 'min' | 'max' | 'step'
   > {
+  /** A meaningful track; callers supply its gradient and the colour at the current value. */
+  meaning?: { gradient: string; thumbColor: string };
   value: number;
   min: number;
   max: number;
@@ -237,10 +239,11 @@ export interface SliderProps
 }
 
 /**
- * A themed range input: thin neutral track, the filled part and thumb in the text colour, the
+ * A themed range input: neutral track, the filled part and thumb in the text colour, the
  * global focus ring. Arrows, Page Up/Down, Home and End work natively.
  */
 export function Slider({
+  meaning,
   value,
   min,
   max,
@@ -254,12 +257,19 @@ export function Slider({
   return (
     <input
       type="range"
-      className={cx('ink-slider', className)}
+      className={cx('ink-slider', meaning && 'ink-slider--meaning', className)}
       min={min}
       max={max}
       step={step}
       value={value}
-      style={{ ['--ink-slider-fill' as string]: `${fill}%`, ...style }}
+      style={{
+        ['--ink-slider-fill' as string]: `${fill}%`,
+        ...(meaning && {
+          '--ink-slider-track': meaning.gradient,
+          '--ink-slider-thumb': meaning.thumbColor,
+        }),
+        ...style,
+      }}
       onChange={(e) => onChange(Number(e.currentTarget.value))}
       {...props}
     />

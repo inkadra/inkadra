@@ -33,6 +33,7 @@ import {
   rotatedBounds,
   sanitizeCrop,
 } from './image-crop.ts';
+import { NumberField } from './plan/NumberField.tsx';
 import { HandleCurve, SQUARE_CORNER } from './ResizeHandles.tsx';
 import { LOCAL } from './store.ts';
 
@@ -302,6 +303,13 @@ export function ImageCropStage({
 }
 
 /**
+ * The free angle of the slider and its field: 0 in the middle. Not ±180: -180 normalizes to +180
+ * and the thumb would jump to the other end. A half turn is two 90° steps away, and shows at the
+ * end of the slider.
+ */
+const ANGLE_LIMIT = 179;
+
+/**
  * Floating toolbar shown above/below the card while cropping and rotating an image.
  * Uses the same `.ctxbar` surface and token system as the selection toolbar.
  */
@@ -409,10 +417,8 @@ export function ImageCropToolbar({
       </button>
       <span className="crop-bar__angle">
         <Slider
-          // 0 in the middle. Not ±180: -180 normalizes to +180 and the thumb would jump to the
-          // other end. A half turn is two 90° steps away, and shows at the end of the slider.
-          min={-179}
-          max={179}
+          min={-ANGLE_LIMIT}
+          max={ANGLE_LIMIT}
           step={1}
           value={rot}
           aria-label={t('board.image.angle')}
@@ -422,20 +428,19 @@ export function ImageCropToolbar({
           onDoubleClick={() => changeAngle(Math.round(rot / 90) * 90)}
           onChange={changeAngle}
         />
-        <button
-          type="button"
-          className="crop-bar__deg ink-mono"
-          disabled={rot % 90 === 0}
-          aria-label={t('board.image.resetAngle')}
-          data-ink-tooltip={t('board.image.resetAngle')}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
+        <NumberField
+          value={Math.round(rot)}
+          min={-ANGLE_LIMIT}
+          max={ANGLE_LIMIT}
+          unit="°"
+          label={t('board.typedValue', { label: t('board.image.angle') })}
+          onCommit={(deg) => {
+            // Its own undo step, as a drag of the slider is.
             store.undo.stopCapturing();
-            changeAngle(Math.round(rot / 90) * 90);
+            changeAngle(deg);
+            store.undo.stopCapturing();
           }}
-        >
-          {Math.round(rot)}°
-        </button>
+        />
       </span>
       <span className="ctxbar__sep" aria-hidden="true" />
       <button
