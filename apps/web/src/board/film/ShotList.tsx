@@ -1026,8 +1026,7 @@ export function ShotList({
                               <CardReview elementId={f.id} withPins={false} />
                             </td>
                             <td className="shots__label">
-                              {label}{' '}
-                              <SetupChips setups={setups.get(f.id)} />
+                              {label} <SetupChips setups={setups.get(f.id)} />
                               {(readOnly || !f.guestHidden) && (
                                 <GuestVisibility store={store} element={f} />
                               )}

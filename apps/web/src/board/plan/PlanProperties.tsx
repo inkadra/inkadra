@@ -48,9 +48,9 @@ import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { type Ed, isIcon, MAX_UNITS } from './editing.ts';
 import { itemName, selectionMix } from './elements.ts';
 import { NumberField } from './NumberField.tsx';
-import { CharacterLink, LocationLink, needsSun, ShotLink, SunSection } from './PlanLinks.tsx';
 import { selectionMenu } from './PlanCanvas.tsx';
 import { measureText, PLAN_COLORS, PlanGlyph, planCss, TEXT_SIZES } from './PlanDrawing.tsx';
+import { CharacterLink, LocationLink, needsSun, ShotLink, SunSection } from './PlanLinks.tsx';
 
 /** Lens presets of a camera, as on the mockup; Other takes any focal length. */
 const LENSES = [24, 35, 50, 85];
@@ -270,31 +270,31 @@ export function PlanProperties({
   const head = (icon: PlanIcon, sub?: string) => {
     const played = linkedCharacter(icon, ed.cards);
     return (
-    <div className="plan-props__head">
-      <span className="plan-props__tile" style={{ color: planCss(icon.color) }}>
-        <PlanGlyph kind={icon.kind} size={30} />
-      </span>
-      {compact ? (
-        <span className="plan-props__name">
-          <b>{linkedLabel(icon, ed.cards) || t(`board.plan.icons.${icon.kind}`)}</b>
-          {sub && <small>{sub}</small>}
+      <div className="plan-props__head">
+        <span className="plan-props__tile" style={{ color: planCss(icon.color) }}>
+          <PlanGlyph kind={icon.kind} size={30} />
         </span>
-      ) : (
-        <input
-          className="plan-field plan-field--strong"
-          aria-label={t('board.plan.nameField')}
-          placeholder={t(`board.plan.icons.${icon.kind}`)}
-          maxLength={60}
-          value={played?.name ?? icon.label ?? ''}
-          readOnly={!!played}
-          title={played ? t('board.plan.nameFollows') : undefined}
-          {...fieldEvents}
-          onChange={(e) => ed.edit(icon, { label: e.target.value.slice(0, 60) })}
-        />
-      )}
-      {!compact && !played && swatch(icon.color)}
-      {compact && <IconButton icon="more" label={t('board.plan.moreProps')} onClick={onMore} />}
-    </div>
+        {compact ? (
+          <span className="plan-props__name">
+            <b>{linkedLabel(icon, ed.cards) || t(`board.plan.icons.${icon.kind}`)}</b>
+            {sub && <small>{sub}</small>}
+          </span>
+        ) : (
+          <input
+            className="plan-field plan-field--strong"
+            aria-label={t('board.plan.nameField')}
+            placeholder={t(`board.plan.icons.${icon.kind}`)}
+            maxLength={60}
+            value={played?.name ?? icon.label ?? ''}
+            readOnly={!!played}
+            title={played ? t('board.plan.nameFollows') : undefined}
+            {...fieldEvents}
+            onChange={(e) => ed.edit(icon, { label: e.target.value.slice(0, 60) })}
+          />
+        )}
+        {!compact && !played && swatch(icon.color)}
+        {compact && <IconButton icon="more" label={t('board.plan.moreProps')} onClick={onMore} />}
+      </div>
     );
   };
   const note = (icon: PlanIcon) => (

@@ -19,8 +19,8 @@ import {
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { moveTabFocus } from '../../lib/tabs.ts';
-import { ScenePlanButton } from '../plan/scenes.tsx';
 import { SetupChips } from '../plan/SetupChips.tsx';
+import { ScenePlanButton } from '../plan/scenes.tsx';
 import type { ShotSetup } from '../plan/setups.ts';
 import { clockString, minutesLabel, monthGrid, parseDuration, SHOT_DRAG_TYPE } from './calendar.ts';
 import { plannedWrap } from './call-sheet.ts';

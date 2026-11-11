@@ -43,7 +43,9 @@ import {
   useContext,
   useId,
   useMemo,
+  useSyncExternalStore,
 } from 'react';
+import { BoardContext } from '../context.ts';
 import { StrokePath } from '../film/FramePicture.tsx';
 import { ShapeView } from '../film/shapes.tsx';
 
@@ -75,9 +77,19 @@ export const CHARACTER_COLOURS: readonly string[] = PLAN_COLORS.slice(1).map((c)
  */
 export const PlanCardsContext = createContext<CardsById | null>(null);
 
-/** A plan with its links resolved against the cards of the context, for drawing and lists. */
+const noStore = () => () => {};
+
+/**
+ * A plan with its links resolved against the cards of the context, else of the board it is
+ * drawn on, for drawing and lists.
+ */
 export function useLinkedPlan<P extends Pick<PlanElement, 'icons'>>(plan: P): P {
-  const cards = useContext(PlanCardsContext);
+  const given = useContext(PlanCardsContext);
+  const board = useContext(BoardContext)?.store;
+  const onBoard = useSyncExternalStore(board?.subscribe ?? noStore, () =>
+    board ? board.getSnapshot().byId : null,
+  );
+  const cards = given ?? onBoard;
   return useMemo(
     () => (cards ? linkedPlan(plan, cards, { palette: CHARACTER_COLOURS }) : plan),
     [plan, cards],

@@ -71,9 +71,9 @@ import {
   PLAN_CATEGORIES,
 } from './plan-icons.ts';
 import {
+  keptOnDelete,
   lensMillimetres,
   linkedCharacter,
-  keptOnDelete,
   linkedLabel,
   linkedLocation,
   linkedPlan,

@@ -141,8 +141,7 @@ export function sunPosition(
   const hour = (280.16 + 360.9856235 * days) * RAD + lng * RAD - ascension;
   const phi = lat * RAD;
   const elevation = Math.asin(
-    Math.sin(phi) * Math.sin(declination) +
-      Math.cos(phi) * Math.cos(declination) * Math.cos(hour),
+    Math.sin(phi) * Math.sin(declination) + Math.cos(phi) * Math.cos(declination) * Math.cos(hour),
   );
   // Measured from the south, westwards; turned to a bearing from the north.
   const fromSouth = Math.atan2(

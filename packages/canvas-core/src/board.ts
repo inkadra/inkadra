@@ -243,7 +243,10 @@ export function updateElements(
 }
 
 /** The icons of plans that stay whose links to doomed cards turn into their text. */
-function keptLinks(doc: Y.Doc, doomed: ReadonlySet<string>): Array<[Y.Array<unknown>, number, PlanIcon]> {
+function keptLinks(
+  doc: Y.Doc,
+  doomed: ReadonlySet<string>,
+): Array<[Y.Array<unknown>, number, PlanIcon]> {
   const { elements } = roots(doc);
   const linked = [...doomed].some((id) => {
     const type = elements.get(id)?.get('type');
@@ -276,7 +279,8 @@ function writeIcon(list: Y.Array<unknown>, index: number, icon: PlanIcon): void 
     return;
   }
   const merged = { ...(value as Record<string, unknown>) };
-  for (const key of ['label', 'lens'] as const) if (icon[key] !== undefined) merged[key] = icon[key];
+  for (const key of ['label', 'lens'] as const)
+    if (icon[key] !== undefined) merged[key] = icon[key];
   for (const key of ['characterId', 'frameId'] as const) if (!icon[key]) delete merged[key];
   list.delete(index, 1);
   list.insert(index, [merged]);

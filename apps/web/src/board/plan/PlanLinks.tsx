@@ -16,8 +16,8 @@ import { Button, Icon, Slider } from '@inkadra/ui';
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from '../assets.ts';
-import { usePresetText } from '../film/fields.tsx';
 import { FramePicture } from '../film/FramePicture.tsx';
+import { usePresetText } from '../film/fields.tsx';
 import { locationCoords, sunBearingByClock, sunPosition } from '../film/sun.ts';
 import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
@@ -291,7 +291,9 @@ export function ShotLink({ ed, icon }: { ed: Ed; icon: PlanIcon }) {
     const { frames, first } = frameOptions(ed);
     return frames.map((f) => ({
       id: f.id,
-      label: [ed.labels?.get(f.id) ?? f.label, preset('shotSizes', f.shot)].filter(Boolean).join(' · '),
+      label: [ed.labels?.get(f.id) ?? f.label, preset('shotSizes', f.shot)]
+        .filter(Boolean)
+        .join(' · '),
       sub: f.lens,
       first: first.has(f.id),
     }));
@@ -395,7 +397,12 @@ export function LocationLink({ ed }: { ed: Ed }) {
     return [...ed.cards.values()]
       .filter((c): c is Location => c.type === 'location')
       .sort((a, b) => a.name.localeCompare(b.name))
-      .map((c) => ({ id: c.id, label: c.name, sub: c.address, first: named.has(castNameKey(c.name)) }));
+      .map((c) => ({
+        id: c.id,
+        label: c.name,
+        sub: c.address,
+        first: named.has(castNameKey(c.name)),
+      }));
   };
   return (
     <>
@@ -446,7 +453,16 @@ export function LocationLink({ ed }: { ed: Ed }) {
 const DAY_TRACK =
   'linear-gradient(90deg, var(--ink-tag-blue-bg), var(--ink-tag-orange) 28%, color-mix(in srgb, var(--ink-tag-yellow) 30%, white) 50%, var(--ink-tag-orange) 72%, var(--ink-tag-blue-bg))';
 const DEFAULT_SUN = 17 * 60 + 30;
-const COMPASS = ['north', 'northEast', 'east', 'southEast', 'south', 'southWest', 'west', 'northWest'];
+const COMPASS = [
+  'north',
+  'northEast',
+  'east',
+  'southEast',
+  'south',
+  'southWest',
+  'west',
+  'northWest',
+];
 
 /** The rotation of a sun icon that shines from `bearing` on a plan whose north is `north`. */
 export function sunRotation(bearing: number, north: number): number {
@@ -507,12 +523,21 @@ export function SunSection({ ed }: { ed: Ed }) {
       if (next.north !== undefined)
         updateElement(ed.doc, owner.id, { north: n2 || undefined }, LOCAL);
       if (next.time !== undefined || 'date' in next)
-        updateElement(ed.doc, ed.plan.id, { sun: { time: t2, ...(d2 ? { date: d2 } : {}) } }, LOCAL);
+        updateElement(
+          ed.doc,
+          ed.plan.id,
+          { sun: { time: t2, ...(d2 ? { date: d2 } : {}) } },
+          LOCAL,
+        );
       ed.writeItems(suns.filter((s) => s.rotation !== rotation).map((s) => ({ ...s, rotation })));
     });
   };
   return (
-    <section className="plan-links__sun" aria-label={t('board.plan.links.sun')} data-tour="plan-sun">
+    <section
+      className="plan-links__sun"
+      aria-label={t('board.plan.links.sun')}
+      data-tour="plan-sun"
+    >
       <span className="plan-props__cap">{t('board.plan.links.sun')}</span>
       <div className="plan-range">
         <div className="plan-range__head">
@@ -592,13 +617,7 @@ export function sceneChipText(
 }
 
 /** The scenes of a plan in the editor's top bar, read-only; each opens its scene. */
-export function SceneChips({
-  ed,
-  onOpen,
-}: {
-  ed: Ed;
-  onOpen: (id: string) => void;
-}) {
+export function SceneChips({ ed, onOpen }: { ed: Ed; onOpen: (id: string) => void }) {
   const { t } = useTranslation();
   const scenes = linkedScenes({ sceneIds: sceneIdsOf(ed) }, ed.cards);
   if (scenes.length === 0) return null;

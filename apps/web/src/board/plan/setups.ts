@@ -112,10 +112,7 @@ export interface ShotSetup {
  * cameras link to (`setupFrames`). Computed from the plans every time, never stored. Shots in
  * several setups list them in the order of the plans, the base of a family first.
  */
-export function shotSetups(
-  elements: readonly Element[],
-  t: TFunction,
-): Map<string, ShotSetup[]> {
+export function shotSetups(elements: readonly Element[], t: TFunction): Map<string, ShotSetup[]> {
   const byId = new Map(elements.map((e) => [e.id, e]));
   const out = new Map<string, ShotSetup[]>();
   const plans = elements.filter((e): e is PlanElement => e.type === 'plan');
