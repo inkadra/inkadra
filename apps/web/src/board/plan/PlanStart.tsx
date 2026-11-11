@@ -157,6 +157,7 @@ export function PlanStart({
     opts: { label?: string; className?: string; disabled?: boolean } = {},
   ) => (
     <ChoiceTile
+      key={value}
       variant="card"
       name={id}
       value={value}

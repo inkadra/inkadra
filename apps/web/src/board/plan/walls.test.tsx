@@ -202,7 +202,8 @@ it('leaves a locked wall and a locked opening as they are, until unlocked', asyn
   await act(async () => button(m.host, 'board.plan.lock').click());
   expect(planOf(doc, plan.id).openings?.[0]?.locked).toBe(true);
   // Its fields are disabled, a drag does not start, Delete does nothing.
-  expect((button(m.host, 'board.plan.walls.flip') as HTMLButtonElement).disabled).toBe(true);
+  // Disabled by the fieldset around the fields, as an item's are.
+  expect(button(m.host, 'board.plan.walls.flip').matches(':disabled')).toBe(true);
   const to01 = (x: number, y: number) => ({ x: x / PLAN_VIEW_W, y: y / PLAN_VIEW_H });
   const at = planOf(doc, plan.id).openings?.[0]?.at;
   const target = document.createElement('div');
