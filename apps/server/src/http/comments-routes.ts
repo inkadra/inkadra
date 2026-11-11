@@ -101,7 +101,7 @@ async function readableMentions(
   return ids.filter((id) => roles.has(id));
 }
 
-async function peopleOf(db: Pick<Database, 'select' | 'execute'>, rows: Row[], viewer: Viewer) {
+async function peopleOf(db: Database, rows: Row[], viewer: Viewer) {
   const boardId = rows[0]?.boardId;
   if (boardId) {
     const ids = rows.flatMap((r) => r.mentions);
@@ -349,6 +349,8 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     const access = await readableBoard(actor, boardId);
     const viewer: Viewer = { actorId: actor.id, role: access.role };
     requireWriter(viewer);
+    // Before any lookup, retries included: a flood must not cost queries.
+    limiter.require(actor.id, 'Too many comments: wait a minute.');
 
     const pendingCard =
       input.elementId && !input.parentId ? await readElement(boardId, input.elementId) : null;
@@ -389,7 +391,6 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
           await checkAudience(tx, access, shareLinkId);
         }
         const mentions = await readableMentions(tx, boardId, input.body);
-        limiter.require(actor.id, 'Too many comments: wait a minute.');
         // Serialize with deletion of the thread start. A successful reply must never be
         // cascaded away by a concurrent delete that saw no replies yet.
         if (thread) {
@@ -449,12 +450,21 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
           });
           await afterCommit(req.log, () => tell(created));
         };
-        return toComment(created, await peopleOf(tx, [created], viewer), viewer);
+        return created;
       },
     );
 
-    if (onCreated) await onCreated();
-    return reply.status(201).send(result.value);
+    if ('replayed' in result) {
+      // A retry is answered with the comment as it is now (edited, deleted), like a read.
+      const { row, viewer: now } = await readableComment(actor, result.replayed);
+      const reactions = await commentReactions(db, [row.id], { userId: actor.id });
+      return reply
+        .status(201)
+        .send(toComment(row, await peopleOf(db, [row], now), now, reactions));
+    }
+    await onCreated?.();
+    const row = result.created;
+    return reply.status(201).send(toComment(row, await peopleOf(db, [row], viewer), viewer));
   });
 
   app.get(v1('/comments/:commentId/replies'), async (req) => {

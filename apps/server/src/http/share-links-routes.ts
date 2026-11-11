@@ -10,7 +10,7 @@ import {
   z,
 } from '@inkadra/shared';
 import { hashPassword } from 'better-auth/crypto';
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, min, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { type Actor, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
@@ -25,6 +25,7 @@ import {
   sharePick,
   user,
 } from '../db/schema.ts';
+import { hourlyRetryAfter } from '../rate-limits.ts';
 import { newSecret, sealer, sha256 } from '../secrets.ts';
 import { DocViews, resolveLink, type ShareLinkRow } from '../share-links.ts';
 import { iso } from './api-routes.ts';
@@ -137,7 +138,7 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
       // Serialize the count and insert across all web processes, not only this instance.
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`share-links:${actor.id}`}))`);
       const [recent] = await tx
-        .select({ n: count() })
+        .select({ n: count(), oldest: min(shareLink.createdAt) })
         .from(shareLink)
         .where(
           and(
@@ -146,7 +147,12 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
           ),
         );
       if ((recent?.n ?? 0) >= LINKS_PER_HOUR)
-        throw new HttpError('rate_limited', 'Too many share links in the last hour.');
+        throw new HttpError(
+          'rate_limited',
+          'Too many share links in the last hour.',
+          undefined,
+          hourlyRetryAfter(recent?.oldest),
+        );
       return tx
         .insert(shareLink)
         .values({

@@ -288,10 +288,29 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     );
     expect(comments.map((r) => r.statusCode)).toEqual([201, 201]);
     expect(comments[0]!.json()).toEqual(comments[1]!.json());
+
+    // A replay answers with the resource as it is now, never with a remembered snapshot.
+    const boardId = boards[0]!.json().id;
+    await call('owner', 'PATCH', `/api/v1/boards/${boardId}`, { title: 'Renamed' });
+    const renamed = await call('owner', 'POST', path, input, headers);
+    expect(renamed.statusCode).toBe(201);
+    expect(renamed.json()).toMatchObject({ id: boardId, title: 'Renamed' });
+    const commentId = comments[0]!.json().id;
+    await call('owner', 'PATCH', `/api/v1/comments/${commentId}`, { body: 'Edited' });
+    const edited = await call('owner', 'POST', commentsPath, { body: 'Queued' }, headers);
+    expect(edited.statusCode).toBe(201);
+    expect(edited.json()).toMatchObject({ id: commentId, body: 'Edited' });
+    await call('owner', 'DELETE', `/api/v1/comments/${commentId}`);
+    expect((await call('owner', 'POST', commentsPath, { body: 'Queued' }, headers)).statusCode).toBe(
+      404,
+    );
+    await call('owner', 'DELETE', `/api/v1/boards/${boardId}`);
+    expect((await call('owner', 'POST', path, input, headers)).statusCode).toBe(404);
+
     await db.update(creationRequest).set({ expiresAt: new Date(Date.now() - 1000) });
     const afterExpiry = await call('owner', 'POST', path, input, headers);
     expect(afterExpiry.statusCode).toBe(201);
-    expect(afterExpiry.json().id).not.toBe(boards[0]!.json().id);
+    expect(afterExpiry.json().id).not.toBe(boardId);
 
     expect((await call('owner', 'POST', path, input, { 'idempotency-key': ' ' })).statusCode).toBe(
       400,

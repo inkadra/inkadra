@@ -421,11 +421,16 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
           })
           .returning();
         if (!created) throw new Error('Board insert returned nothing');
-        return toBoard(created, parent.role);
+        return created;
       },
     );
+    if ('replayed' in result) {
+      // A retry is answered with the board as it is now, like a read: 404 once it is gone.
+      const now = await requireBoardRole(db, actor, result.replayed, 'viewer');
+      return reply.status(201).send(toBoard(now.board, now.role));
+    }
     // A new board inherits from its parent, so the parent's role applies.
-    return reply.status(201).send(result.value);
+    return reply.status(201).send(toBoard(result.created, parent.role));
   });
 
   app.get(v1('/boards/:boardId'), async (req) => {

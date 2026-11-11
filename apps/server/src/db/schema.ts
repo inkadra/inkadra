@@ -1325,7 +1325,7 @@ export const crewMember = pgTable(
   (t) => [index('crew_member_project_position_idx').on(t.projectId, t.position, t.id)],
 );
 
-/** Successful creation responses; keys are scoped to user and endpoint and retained seven days. */
+/** Ids made by successful creations; keys are scoped to user and endpoint and retained seven days. */
 export const creationRequest = pgTable(
   'creation_request',
   {
@@ -1334,7 +1334,7 @@ export const creationRequest = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     fingerprint: text('fingerprint').notNull(),
-    response: jsonb('response').$type<unknown>().notNull(),
+    resourceId: uuid('resource_id').notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   },
   (t) => [index('creation_request_expiry_idx').on(t.expiresAt)],

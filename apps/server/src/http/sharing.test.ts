@@ -517,7 +517,11 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
 
     // Sending it again makes a new link; the old one stops working. At most once a minute.
     const again = `/api/v1/invitations/${invitation.id}/resend`;
-    expect((await call('editor', 'POST', again)).status).toBe(429);
+    const early = await call('editor', 'POST', again);
+    expect(early.status).toBe(429);
+    const wait = Number(early.readableHeaders.find(([name]) => name === 'retry-after')?.[1]);
+    expect(wait).toBeGreaterThan(0);
+    expect(wait).toBeLessThanOrEqual(60);
     await db
       .update(invitationTable)
       .set({ lastSentAt: new Date(Date.now() - 120_000) })

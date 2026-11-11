@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from './http/errors.ts';
-import { addressBucket, Failures, RateLimiter } from './rate-limits.ts';
+import { addressBucket, Failures, hourlyRetryAfter, RateLimiter } from './rate-limits.ts';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -123,4 +123,11 @@ it('returns Retry-After with the remaining shared limiter window', async () => {
   } finally {
     await app.close();
   }
+});
+
+it('waits for the oldest request of an hourly count window', () => {
+  vi.spyOn(Date, 'now').mockReturnValue(10_000_000);
+  expect(hourlyRetryAfter(new Date(10_000_000 - 3_000_000))).toBe(600);
+  expect(hourlyRetryAfter(new Date(10_000_000 - 3_600_000))).toBe(1);
+  expect(hourlyRetryAfter(null)).toBe(3600);
 });

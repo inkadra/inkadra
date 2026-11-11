@@ -14,7 +14,7 @@ import {
   UserSearchQuery,
   z,
 } from '@inkadra/shared';
-import { and, asc, count, eq, gt, ilike, inArray, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, asc, count, eq, gt, ilike, inArray, isNull, min, ne, or, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
   type BoardAccess as Access,
@@ -47,7 +47,7 @@ import {
 } from '../invitations.ts';
 import type { Mailer } from '../mailer.ts';
 import { inviteMail } from '../mails.ts';
-import { addressBucket, RateLimiter } from '../rate-limits.ts';
+import { addressBucket, hourlyRetryAfter, RateLimiter } from '../rate-limits.ts';
 import { requestOrigin } from '../request-origin.ts';
 import { newSecret, sealer, sha256 } from '../secrets.ts';
 import { iso } from './api-routes.ts';
@@ -466,7 +466,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     const accessExpiresAt = (role && readExpiry(input.accessExpiresAt, role)) || null;
 
     const [recent] = await db
-      .select({ n: count() })
+      .select({ n: count(), oldest: min(invitation.createdAt) })
       .from(invitation)
       .where(
         and(
@@ -475,7 +475,12 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         ),
       );
     if ((recent?.n ?? 0) >= INVITATIONS_PER_HOUR)
-      throw new HttpError('rate_limited', 'Too many invitations in the last hour.');
+      throw new HttpError(
+        'rate_limited',
+        'Too many invitations in the last hour.',
+        undefined,
+        hourlyRetryAfter(recent?.oldest),
+      );
 
     const email = input.kind === 'email' ? (input.email?.toLowerCase() ?? null) : null;
     if (email) {
@@ -621,7 +626,12 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       throw new HttpError('conflict', 'Only unused email invitations can be sent again.');
     if (!mailer.enabled) throw new HttpError('conflict', 'This instance cannot send email.');
     if (row.lastSentAt && Date.now() - row.lastSentAt.getTime() < 60_000)
-      throw new HttpError('rate_limited', 'Wait a minute before sending it again.');
+      throw new HttpError(
+        'rate_limited',
+        'Wait a minute before sending it again.',
+        undefined,
+        Math.max(1, Math.ceil((row.lastSentAt.getTime() + 60_000 - Date.now()) / 1000)),
+      );
     // A new token: the link of the previous email stops working.
     const token = newSecret('', 24);
     const [renewed] = await db

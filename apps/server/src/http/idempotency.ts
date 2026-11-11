@@ -8,17 +8,21 @@ import { HttpError } from './errors.ts';
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 const RETENTION_MS = 7 * 24 * 60 * 60_000;
 
-/** The creation and its remembered response commit together, as with feedback request ids. */
-export async function idempotentCreation<T>(
+/**
+ * The creation and the id it made commit together, as with feedback request ids. A retry
+ * gets back only the id: the caller reads the resource as it is now, so a replay never
+ * answers with a state (role, title, deletion) older than the request.
+ */
+export async function idempotentCreation<T extends { id: string }>(
   db: Database,
   req: FastifyRequest,
   userId: string,
   scope: string,
   input: unknown,
   create: (tx: Transaction) => Promise<T>,
-): Promise<{ value: T; replayed: boolean }> {
+): Promise<{ created: T } | { replayed: string }> {
   const key = req.headers['idempotency-key'];
-  if (key === undefined) return { value: await db.transaction(create), replayed: false };
+  if (key === undefined) return { created: await db.transaction(create) };
   if (typeof key !== 'string' || !/^[\x21-\x7e]{1,128}$/.test(key))
     throw new HttpError(
       'bad_request',
@@ -38,16 +42,16 @@ export async function idempotentCreation<T>(
     if (previous) {
       if (previous.fingerprint !== fingerprint)
         throw new HttpError('conflict', 'Idempotency-Key was used with a different request.');
-      return { value: previous.response as T, replayed: true };
+      return { replayed: previous.resourceId };
     }
-    const value = await create(tx);
+    const created = await create(tx);
     await tx.insert(creationRequest).values({
       keyHash,
       userId,
       fingerprint,
-      response: value,
+      resourceId: created.id,
       expiresAt: new Date(Date.now() + RETENTION_MS),
     });
-    return { value, replayed: false };
+    return { created };
   });
 }

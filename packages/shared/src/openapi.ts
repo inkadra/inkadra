@@ -1529,7 +1529,8 @@ registry.registerPath({
     headers: z.object({
       'Idempotency-Key': z.string().min(1).max(128).optional().openapi({
         description:
-          'Retry the same creation for seven days; changed payload with the same key returns 409.',
+          'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
+          'created resource as it is now (404 once it is gone); a changed payload returns 409.',
       }),
     }),
     params: idParam('projectId'),
@@ -2112,7 +2113,8 @@ registry.registerPath({
     headers: z.object({
       'Idempotency-Key': z.string().min(1).max(128).optional().openapi({
         description:
-          'Retry the same creation for seven days; changed payload with the same key returns 409.',
+          'Retry the same creation for seven days: a retry creates nothing and answers with the ' +
+          'created resource as it is now (404 once it is gone); a changed payload returns 409.',
       }),
     }),
     params: idParam('boardId'),
