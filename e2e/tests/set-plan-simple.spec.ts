@@ -2,7 +2,7 @@
 // The simpler set plan (decision 0071): one bar of tools, one bar on the item, nothing open until
 // asked. Each state of the approved mockup is checked and photographed, light and dark, at 1280
 // and 390 px. Runs after first-run.spec.ts in CI; alone, it signs up.
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createElement } from '@inkadra/canvas-core';
@@ -475,12 +475,58 @@ test('every library name fits its tile, in all six languages, at 1280 and 390 px
   const { project, planId } = await seed(page, baseURL!, 'dark', 1280);
   const state = await page.context().storageState();
   const cut: string[] = [];
-  for (const locale of ['en', 'it', 'es', 'de', 'fr', 'pt'])
-    for (const width of [1280, 390]) {
-      const phone = width < 600;
+  /** Every category of the open library: names that overflow, or words broken without a hyphen. */
+  const check = async (library: Locator, categories: Locator, label: string) => {
+    const count = await categories.count();
+    expect(count).toBeGreaterThan(5);
+    for (let i = 0; i < count; i++) {
+      await categories.nth(i).click();
+      if (i === 1)
+        await library.screenshot({ path: join(out, `library-${label.replace(' ', '-')}.png`) });
+      // A name is cut when it overflows its tile, or when a piece of it between two places it may
+      // break (a space, a soft hyphen, a hyphen) is wider than the tile: the browser then breaks
+      // that piece where no hyphen shows.
+      const bad = await library.locator('.plan-lib__tile').evaluateAll((tiles) =>
+        tiles.flatMap((tile) => {
+          const span = tile.querySelector('span') as HTMLElement;
+          const value = span.textContent ?? '';
+          const probe = document.createElement('span');
+          probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap';
+          span.append(probe);
+          // The span is as wide as its text; what it may take is the tile's inner width.
+          const style = getComputedStyle(tile);
+          const room =
+            tile.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+          const wide = value.split(/[\s\u00AD-]/).filter((piece) => {
+            probe.textContent = `${piece}-`;
+            return probe.getBoundingClientRect().width > room + 0.5;
+          });
+          probe.remove();
+          const s = span.getBoundingClientRect();
+          const t = tile.getBoundingClientRect();
+          const over = s.width > room + 1 || s.bottom > t.bottom + 1;
+          const why = [...wide.map((w) => `"${w}" too wide`), over ? 'overflows' : ''];
+          const said = why.filter(Boolean).join(', ');
+          return said ? [`${value.replaceAll('\u00AD', '')} (${said})`] : [];
+        }),
+      );
+      cut.push(...bad.map((name) => `${label}: ${name}`));
+    }
+  };
+  // The account's language wins over the browser's: set it, and give it back at the end.
+  const speak = async (locale: string) => {
+    const r = await page.request.patch('/api/v1/me', {
+      headers: { origin: baseURL! },
+      data: { locale },
+    });
+    expect(r.ok()).toBe(true);
+  };
+  try {
+    // The editor follows the width: each language at 1280 px, then the same page at 390 px.
+    for (const locale of ['en', 'it', 'es', 'de', 'fr', 'pt']) {
+      await speak(locale);
       const context = await browser.newContext({
-        viewport: { width, height: phone ? 844 : 800 },
-        ...(phone ? { hasTouch: true, isMobile: true } : {}),
+        viewport: { width: 1280, height: 800 },
         locale,
         reducedMotion: 'reduce',
         storageState: state,
@@ -488,48 +534,23 @@ test('every library name fits its tile, in all six languages, at 1280 and 390 px
       try {
         const m = await context.newPage();
         await m.goto(`${baseURL}/p/${project.id}?view=canvas`);
-        if (phone) {
-          const words = JSON.parse(
-            readFileSync(
-              new URL(`../../apps/web/src/i18n/${locale}.json`, import.meta.url),
-              'utf8',
-            ),
-          );
-          await m.getByRole('button', { name: words.board.zoom.fit }).first().click();
-        }
         await m.locator(`[data-el="${planId}"]`).dblclick();
         const editor = m.locator('.plan-editor--v2');
-        await expect(editor).toBeVisible();
-        if (phone) await editor.locator('.plan-canvas__phone-tools button').nth(3).tap();
-        const library = editor.locator(phone ? '.plan-lib--sheet' : '.plan-lib--dock');
-        const categories = library.locator(phone ? '.plan-lib__chips button' : '.plan-lib__cat');
-        const count = await categories.count();
-        expect(count).toBeGreaterThan(5);
-        for (let i = 0; i < count; i++) {
-          await categories.nth(i).click();
-          // A name is cut when its two lines overflow, or when one of its words is wider than
-          // the tile and is broken inside.
-          const bad = await library.locator('.plan-lib__tile span').evaluateAll((spans) =>
-            spans.flatMap((span) => {
-              const el = span as HTMLElement;
-              const probe = document.createElement('span');
-              probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap';
-              el.append(probe);
-              const words = (el.firstChild?.textContent ?? '').split(/\s+/);
-              const wide = words.some((w) => {
-                probe.textContent = w;
-                return probe.getBoundingClientRect().width > el.clientWidth + 0.5;
-              });
-              probe.remove();
-              return wide || el.scrollHeight > el.clientHeight + 1 ? [el.textContent ?? ''] : [];
-            }),
-          );
-          cut.push(...bad.map((name) => `${locale} ${width}: ${name}`));
-        }
+        const dock = editor.locator('.plan-lib--dock');
+        await expect(dock).toBeVisible();
+        await check(dock, dock.locator('.plan-lib__cat'), `${locale} 1280`);
+        await m.setViewportSize({ width: 390, height: 844 });
+        await editor.locator('.plan-canvas__phone-tools button').nth(3).click();
+        const sheet = editor.locator('.plan-lib--sheet');
+        await expect(sheet).toBeVisible();
+        await check(sheet, sheet.locator('.plan-lib__chips button'), `${locale} 390`);
       } finally {
         await context.close();
       }
     }
+  } finally {
+    await speak('it');
+  }
   expect(cut).toEqual([]);
 });
 

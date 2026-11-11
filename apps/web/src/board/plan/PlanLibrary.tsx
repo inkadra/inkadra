@@ -14,6 +14,7 @@ import {
   type ProjectKitEntry,
   projectKitDetail,
   searchLibrary,
+  tileName,
 } from './library.ts';
 import { PlanGlyph } from './PlanDrawing.tsx';
 
@@ -175,11 +176,13 @@ export function PlanLibrary({
       <button
         type="button"
         className="plan-lib__tile"
+        // The plain name: the label below carries soft hyphens to fit the tile.
+        aria-label={t(`board.plan.icons.${item}`)}
         aria-pressed={armed === item}
         {...handlers({ item }, tapItem(item))}
       >
         <PlanGlyph kind={item} size={phone ? 30 : 30} />
-        <span>{t(`board.plan.icons.${item}`)}</span>
+        <span aria-hidden="true">{tileName(t(`board.plan.icons.${item}`))}</span>
       </button>
       {!phone && (
         <button
