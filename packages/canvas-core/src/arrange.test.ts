@@ -239,7 +239,10 @@ function referenceSpot(
   const step = 32;
   const free = (p: { x: number; y: number }) =>
     !taken.some((r) =>
-      intersectsRect({ x: r.x - gap, y: r.y - gap, w: r.w + gap * 2, h: r.h + gap * 2 }, { ...p, ...size }),
+      intersectsRect(
+        { x: r.x - gap, y: r.y - gap, w: r.w + gap * 2, h: r.h + gap * 2 },
+        { ...p, ...size },
+      ),
     );
   const within = (p: { x: number; y: number }) =>
     !area ||
@@ -293,7 +296,8 @@ describe('freeSpot with its index', () => {
       const cards = Array.from({ length: pick(0, 120) }, () => {
         const kind = next();
         // On a cell border once inflated, straddling cells, empty, or anywhere.
-        if (kind < 0.2) return { x: pick(-8, 8) * 256 - 12, y: pick(-8, 8) * 256 - 12, w: 232, h: 488 };
+        if (kind < 0.2)
+          return { x: pick(-8, 8) * 256 - 12, y: pick(-8, 8) * 256 - 12, w: 232, h: 488 };
         if (kind < 0.3) return { x: pick(-2000, 2000), y: pick(-2000, 2000), w: 0, h: 0 };
         if (kind < 0.4) return { x: pick(-8, 8) * 256 - 100, y: pick(-2000, 2000), w: 200, h: 300 };
         return { x: pick(-2000, 2000), y: pick(-2000, 2000), w: pick(0, 700), h: pick(0, 700) };
@@ -307,7 +311,12 @@ describe('freeSpot with its index', () => {
       const card = { w: pick(0, 640), h: pick(0, 400) };
       const area =
         next() < 0.5
-          ? { x: start.x - pick(0, 900), y: start.y - pick(0, 700), w: pick(0, 2000), h: pick(0, 1400) }
+          ? {
+              x: start.x - pick(0, 900),
+              y: start.y - pick(0, 700),
+              w: pick(0, 2000),
+              h: pick(0, 1400),
+            }
           : undefined;
       expect(freeSpot(start, card, cards, area)).toEqual(referenceSpot(start, card, cards, area));
     }
@@ -321,7 +330,12 @@ describe('freeSpot with its index', () => {
       h: 180,
     }));
     const begin = performance.now();
-    const at = freeSpot({ x: 0, y: 0 }, { w: 240, h: 240 }, [huge, ...others], { x: -600, y: -400, w: 1200, h: 800 });
+    const at = freeSpot({ x: 0, y: 0 }, { w: 240, h: 240 }, [huge, ...others], {
+      x: -600,
+      y: -400,
+      w: 1200,
+      h: 800,
+    });
     const ms = performance.now() - begin;
     // Nothing is free under it: every ring is searched, against a few cells, not a million.
     expect(at).toEqual({ x: 0, y: 0 });

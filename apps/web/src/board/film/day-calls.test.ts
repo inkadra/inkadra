@@ -368,8 +368,10 @@ describe('equal positions in the roster', () => {
       [a, b],
       [b, a],
     ])
-      expect(dayCrew(shoot, crew).filter((e) => e.called).map((e) => e.member.name)).toEqual([
-        'Ada',
-      ]);
+      expect(
+        dayCrew(shoot, crew)
+          .filter((e) => e.called)
+          .map((e) => e.member.name),
+      ).toEqual(['Ada']);
   });
 });

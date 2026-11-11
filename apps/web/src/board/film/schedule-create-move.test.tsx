@@ -6,8 +6,8 @@ import { afterEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { api } from '../../lib/api.ts';
 import { BoardStore } from '../store.ts';
-import { ScheduleView } from './ScheduleView.tsx';
 import { localDate } from './calendar.ts';
+import { ScheduleView } from './ScheduleView.tsx';
 
 /** Phases 2 and 3 of decision 0089: drawing a block on empty time and moving a whole day. */
 
@@ -299,7 +299,9 @@ it.each(['error', 'unavailable'] as const)(
     vi.spyOn(api, 'get')
       .mockResolvedValueOnce({ items: [], nextCursor: null })
       .mockResolvedValue({ items: [monday], nextCursor: null });
-    const host = await mount(<ScheduleView store={store()} boardId="board" datesStatus={datesStatus} />);
+    const host = await mount(
+      <ScheduleView store={store()} boardId="board" datesStatus={datesStatus} />,
+    );
     const pressed = () =>
       host.querySelector<HTMLElement>('.schedule__month-day[aria-pressed="true"]')?.dataset.dayDrop;
     expect(pressed()).toBe(localDate(new Date()));
