@@ -1,5 +1,5 @@
-import { HttpError } from './http/errors.ts';
 import { isIP } from 'node:net';
+import { HttpError } from './http/errors.ts';
 
 /** IPv6 privacy addresses share a /64 budget; mapped IPv4 uses the IPv4 budget. */
 export function addressBucket(address: string): string {
@@ -98,7 +98,12 @@ export class RateLimiter {
   }
   require(key: string, message: string) {
     if (!this.take(key))
-      throw new HttpError('rate_limited', message, undefined, Math.max(1, this.retryAfterSeconds(key)));
+      throw new HttpError(
+        'rate_limited',
+        message,
+        undefined,
+        Math.max(1, this.retryAfterSeconds(key)),
+      );
   }
   take(key: string) {
     const recent = this.recent(key);

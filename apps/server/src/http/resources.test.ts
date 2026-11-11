@@ -275,16 +275,22 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
   it('replays board and comment creations without duplicates and rejects changed payloads', async () => {
     const headers = { 'idempotency-key': 'offline-create' };
     const path = `/api/v1/projects/${projectId}/boards`;
-    const input = { parentBoardId: rootBoardId, kind: 'moodboard', title: 'Offline board' };
+    const input = { parentBoardId: rootBoardId, kind: 'board', title: 'Offline board' };
     const boards = await Promise.all([0, 1].map(() => call('owner', 'POST', path, input, headers)));
     expect(boards.map((r) => r.statusCode)).toEqual([201, 201]);
     expect(boards[0]!.json()).toEqual(boards[1]!.json());
-    expect((await call('owner', 'POST', path, { ...input, title: 'Changed' }, headers)).statusCode).toBe(409);
+    expect(
+      (await call('owner', 'POST', path, { ...input, title: 'Changed' }, headers)).statusCode,
+    ).toBe(409);
     const commentsPath = `/api/v1/boards/${boards[0]!.json().id}/comments`;
-    const comments = await Promise.all([0, 1].map(() => call('owner', 'POST', commentsPath, { body: 'Queued' }, headers)));
+    const comments = await Promise.all(
+      [0, 1].map(() => call('owner', 'POST', commentsPath, { body: 'Queued' }, headers)),
+    );
     expect(comments.map((r) => r.statusCode)).toEqual([201, 201]);
     expect(comments[0]!.json()).toEqual(comments[1]!.json());
-    expect((await call('owner', 'POST', path, input, { 'idempotency-key': ' ' })).statusCode).toBe(400);
+    expect((await call('owner', 'POST', path, input, { 'idempotency-key': ' ' })).statusCode).toBe(
+      400,
+    );
   });
 
   // Uploads ----------------------------------------------------------------------

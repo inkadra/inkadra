@@ -1,4 +1,3 @@
-import { creationRequest } from './db/schema.ts';
 import type { BoardNotice } from '@inkadra/doc-schema';
 import type { BackupSettings, BoardColumn, ServerQueueId } from '@inkadra/shared';
 import { type Job, Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
@@ -27,7 +26,7 @@ import {
 } from './board-writer.ts';
 import { VERSION } from './config.ts';
 import type { Database } from './db/client.ts';
-import { asset } from './db/schema.ts';
+import { asset, creationRequest } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
 import { officeConverterInstalled } from './media/office.ts';

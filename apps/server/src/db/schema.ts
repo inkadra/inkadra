@@ -1326,10 +1326,16 @@ export const crewMember = pgTable(
 );
 
 /** Successful creation responses; keys are scoped to user and endpoint and retained seven days. */
-export const creationRequest = pgTable('creation_request', {
-  keyHash: text('key_hash').primaryKey(),
-  userId: uuid('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
-  fingerprint: text('fingerprint').notNull(),
-  response: jsonb('response').$type<unknown>().notNull(),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-}, (t) => [index('creation_request_expiry_idx').on(t.expiresAt)]);
+export const creationRequest = pgTable(
+  'creation_request',
+  {
+    keyHash: text('key_hash').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    fingerprint: text('fingerprint').notNull(),
+    response: jsonb('response').$type<unknown>().notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('creation_request_expiry_idx').on(t.expiresAt)],
+);

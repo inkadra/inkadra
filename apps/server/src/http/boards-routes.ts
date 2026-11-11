@@ -383,36 +383,47 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     const parent = await requireBoardRole(db, actor, input.parentBoardId, 'editor');
     if (parent.board.projectId !== projectId)
       throw new HttpError('bad_request', 'The parent board is not in this project.');
-    const result = await idempotentCreation(db, req, actor.id, `boards:${projectId}`, input, async (tx) => {
-      if (deps.config?.DEMO_MODE) {
-        // Counted under a lock, so a burst of requests cannot pass the cap together.
-        await tx.execute(
-          sql`select pg_advisory_xact_lock(hashtext(${`demo-boards:${projectId}`}))`,
-        );
-        const [made] = await tx
-          .select({ n: count() })
-          .from(board)
-          .where(eq(board.projectId, projectId));
-        if ((made?.n ?? 0) >= DEMO_MAX_BOARDS)
-          throw new HttpError('conflict', `A demo project has at most ${DEMO_MAX_BOARDS} boards.`, {
-            reason: 'demo_limit',
-          });
-      }
-      const position = generateKeyBetween(await lastChildPosition(tx, input.parentBoardId), null);
-      const [created] = await tx
-        .insert(board)
-        .values({
-          projectId,
-          parentBoardId: input.parentBoardId,
-          kind: input.kind,
-          title: input.title,
-          position,
-          createdBy: actor.id,
-        })
-        .returning();
-      if (!created) throw new Error('Board insert returned nothing');
-      return toBoard(created, parent.role);
-    });
+    const result = await idempotentCreation(
+      db,
+      req,
+      actor.id,
+      `boards:${projectId}`,
+      input,
+      async (tx) => {
+        if (deps.config?.DEMO_MODE) {
+          // Counted under a lock, so a burst of requests cannot pass the cap together.
+          await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`demo-boards:${projectId}`}))`,
+          );
+          const [made] = await tx
+            .select({ n: count() })
+            .from(board)
+            .where(eq(board.projectId, projectId));
+          if ((made?.n ?? 0) >= DEMO_MAX_BOARDS)
+            throw new HttpError(
+              'conflict',
+              `A demo project has at most ${DEMO_MAX_BOARDS} boards.`,
+              {
+                reason: 'demo_limit',
+              },
+            );
+        }
+        const position = generateKeyBetween(await lastChildPosition(tx, input.parentBoardId), null);
+        const [created] = await tx
+          .insert(board)
+          .values({
+            projectId,
+            parentBoardId: input.parentBoardId,
+            kind: input.kind,
+            title: input.title,
+            position,
+            createdBy: actor.id,
+          })
+          .returning();
+        if (!created) throw new Error('Board insert returned nothing');
+        return toBoard(created, parent.role);
+      },
+    );
     // A new board inherits from its parent, so the parent's role applies.
     return reply.status(201).send(result.value);
   });

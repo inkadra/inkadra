@@ -1,4 +1,3 @@
-import { idempotentCreation } from './idempotency.ts';
 import {
   API_PREFIX,
   CAPABILITY_ROLE,
@@ -54,6 +53,7 @@ import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { authorOf, labelOf, loadPeople, type People } from './authors.ts';
 import { HttpError } from './errors.ts';
+import { idempotentCreation } from './idempotency.ts';
 import { afterCursor, atText, decodeCursor, pageOf } from './keyset.ts';
 import { RateLimiter } from './link-previews.ts';
 import { commentReactions, elementReactions } from './reactions.ts';
@@ -368,37 +368,44 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     }
     const mentions = await readableMentions(db, boardId, input.body);
     let createdRow: typeof comment.$inferSelect | undefined;
-    const result = await idempotentCreation(db, req, actor.id, `comments:${boardId}`, input, async (tx) => {
-      limiter.require(actor.id, 'Too many comments: wait a minute.');
-      // Serialize with deletion of the thread start. A successful reply must never be
-      // cascaded away by a concurrent delete that saw no replies yet.
-      if (thread) {
-        const [current] = await tx
-          .select({ id: comment.id })
-          .from(comment)
-          .where(eq(comment.id, thread.id))
-          .for('update');
-        if (!current) throw new HttpError('not_found', 'Thread not found.');
-      }
-      const [created] = await tx
-        .insert(comment)
-        .values({
-          projectId: access.board.projectId,
-          boardId,
-          elementId,
-          threadId: thread?.id ?? null,
-          authorId: actor.id,
-          shareLinkId,
-          body: input.body,
-          mentions,
-          visibility,
-          pin: input.pin ?? null,
-        })
-        .returning();
-      if (!created) throw new Error('Comment insert returned nothing');
-      createdRow = created;
-      return toComment(created, await peopleOf(db, [created], viewer), viewer);
-    });
+    const result = await idempotentCreation(
+      db,
+      req,
+      actor.id,
+      `comments:${boardId}`,
+      input,
+      async (tx) => {
+        limiter.require(actor.id, 'Too many comments: wait a minute.');
+        // Serialize with deletion of the thread start. A successful reply must never be
+        // cascaded away by a concurrent delete that saw no replies yet.
+        if (thread) {
+          const [current] = await tx
+            .select({ id: comment.id })
+            .from(comment)
+            .where(eq(comment.id, thread.id))
+            .for('update');
+          if (!current) throw new HttpError('not_found', 'Thread not found.');
+        }
+        const [created] = await tx
+          .insert(comment)
+          .values({
+            projectId: access.board.projectId,
+            boardId,
+            elementId,
+            threadId: thread?.id ?? null,
+            authorId: actor.id,
+            shareLinkId,
+            body: input.body,
+            mentions,
+            visibility,
+            pin: input.pin ?? null,
+          })
+          .returning();
+        if (!created) throw new Error('Comment insert returned nothing');
+        createdRow = created;
+        return toComment(created, await peopleOf(db, [created], viewer), viewer);
+      },
+    );
 
     if (result.replayed) return reply.status(201).send(result.value);
     if (!createdRow) throw new Error('Comment insert returned nothing');
