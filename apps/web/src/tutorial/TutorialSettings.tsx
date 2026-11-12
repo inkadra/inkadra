@@ -103,7 +103,10 @@ export function TutorialSettings() {
         value={filter}
         onChange={setFilter}
         options={[
-          { value: 'all', label: <FilterLabel text={t('tutorial.settings.all')} n={tours.length} /> },
+          {
+            value: 'all',
+            label: <FilterLabel text={t('tutorial.settings.all')} n={tours.length} />,
+          },
           {
             value: 'unseen',
             label: <FilterLabel text={t('tutorial.settings.unseen')} n={unseen} />,
