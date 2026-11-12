@@ -4,12 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createElement, FAR_BLOCK, FAR_ZOOM, farLook } from '@inkadra/canvas-core';
-import {
-  createBoardDoc,
-  ELEMENT_TYPES,
-  type Element,
-  type ElementType,
-} from '@inkadra/doc-schema';
+import { createBoardDoc, ELEMENT_TYPES, type Element, type ElementType } from '@inkadra/doc-schema';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
