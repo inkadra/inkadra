@@ -20,6 +20,8 @@ import {
   measureEnds,
   openingLines,
   PLAN_DRAW_ORDER,
+  PLAN_ROOM_SIZE_GAP,
+  PLAN_ROOM_SIZE_TEXT,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanDrawLayer,
@@ -32,6 +34,7 @@ import {
   planShapeOutline,
   planStack,
   type Rect,
+  type RoomSizeWords,
   roomMetres,
   shownOpenings,
   variantView,
@@ -1007,6 +1010,12 @@ function mix(hex: string, base: string, t: number): string {
     .join('')}`;
 }
 
+/** A room's size as an export writes it: in the engine's words, English without them. */
+export const exportRoomSize =
+  (ctx: CardContext): RoomSizeWords =>
+  (length, scale, overall) =>
+    ctx.roomSize?.(length, scale, overall) ?? roomMetres(length, scale, 'en');
+
 /**
  * A plan framed in `box` (decision 0118): what is drawn on it (planFrame), centred, in the plan's
  * shape; what lies beyond the frame is cut.
@@ -1017,7 +1026,7 @@ export function framedPlanOps(
   ctx: CardContext,
   moves = true,
 ): Op[] {
-  const f = planFrame(stored, false);
+  const f = planFrame(stored, exportRoomSize(ctx), false);
   const k = Math.min(box.w / f.w, box.h / f.h);
   const whole = {
     x: box.x + (box.w - f.w * k) / 2 - f.x * k,
@@ -1122,18 +1131,16 @@ export function planOps(
           }),
         ),
       );
-      const text =
-        ctx.roomSize?.(d.length, el.scale as number, d.overall) ??
-        roomMetres(d.length, el.scale as number, 'en');
-      const size = 12 * k;
+      const text = exportRoomSize(ctx)(d.length, el.scale as number, d.overall);
+      const size = PLAN_ROOM_SIZE_TEXT * k;
       const tw = ctx.measure(text, size, 400);
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       // shortcut: the left side's size is written level, not turned as on screen; turn it when
       // the export ops can rotate text.
       labels.push({
         kind: 'text',
-        x: a.y === b.y ? mid.x - tw / 2 : mid.x - tw - 5 * k,
-        y: a.y === b.y ? mid.y - 5 * k : mid.y + size * 0.35,
+        x: a.y === b.y ? mid.x - tw / 2 : mid.x - tw - PLAN_ROOM_SIZE_GAP * k,
+        y: a.y === b.y ? mid.y - PLAN_ROOM_SIZE_GAP * k : mid.y + size * 0.35,
         text,
         size,
         weight: 400,

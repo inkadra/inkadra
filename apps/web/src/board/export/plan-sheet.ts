@@ -18,7 +18,7 @@ import type { PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { foldIcons } from '../plan/elements.ts';
 import { KIT_GROUPS, kitList, powerLines } from '../plan/kit.ts';
-import { type CardContext, planOps } from './board-render.ts';
+import { type CardContext, exportRoomSize, planOps } from './board-render.ts';
 import { pageSize } from './layout.ts';
 import type { Op, Page } from './pages.ts';
 import { ellipsize, textBlock, wrapText } from './text.ts';
@@ -201,7 +201,13 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
     // fills the frame with the card's small margin (decisions 0118 and 0119).
     const area =
       input.area ??
-      planFrame(plan, include.background, [], (frame.w - 16) / Math.max(1, frame.h - 16));
+      planFrame(
+        plan,
+        exportRoomSize(ctx),
+        include.background,
+        [],
+        (frame.w - 16) / Math.max(1, frame.h - 16),
+      );
     const k = Math.min((frame.w - 16) / area.w, (frame.h - 16) / area.h);
     const shown = { w: area.w * k, h: area.h * k };
     const view = {

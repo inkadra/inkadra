@@ -24,6 +24,7 @@ import {
   PLAN_DRAW_ORDER,
   PLAN_INK,
   PLAN_LABEL_SIZE,
+  PLAN_ROOM_SIZE_GAP,
   PLAN_SUB_LABEL_SIZE,
   PLAN_TEXT_SIZES,
   PLAN_VIEW_H,
@@ -40,6 +41,7 @@ import {
   planStack,
   planToken,
   type RoomDim,
+  type RoomSizeWords,
   roomSizeText,
   shownOpenings,
   wallPieces,
@@ -58,6 +60,7 @@ import {
   Fragment,
   memo,
   type ReactNode,
+  useCallback,
   useContext,
   useId,
   useMemo,
@@ -362,7 +365,7 @@ export function RoomDimView({ dim, text }: { dim: RoomDim; text: string }) {
       <text
         className="plan-walls__dimtext"
         transform={`translate(${m.x} ${m.y}) rotate(${angle})`}
-        y={-5}
+        y={-PLAN_ROOM_SIZE_GAP}
         textAnchor="middle"
       >
         {text}
@@ -373,6 +376,16 @@ export function RoomDimView({ dim, text }: { dim: RoomDim; text: string }) {
 
 /** A room's size as the plan writes it lives in canvas-core (decision 0116). */
 export { roomSizeText };
+
+/** `roomSizeText` in the app's language, for what frames a plan (planFrame, planContentBox). */
+export function useRoomSizeWords(): RoomSizeWords {
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
+  return useCallback(
+    (length, scale, overall) => roomSizeText(length, scale, overall, t, language),
+    [t, language],
+  );
+}
 
 /** The sizes of a plan's rooms, drawn when it has a scale and its switch is on (0119). */
 function RoomSizes({ plan, hidden }: { plan: PlanLike; hidden: readonly string[] }) {
@@ -802,9 +815,10 @@ const PlanDrawingView = memo(function PlanDrawingView({
   const off = [...(plan.hiddenLayers ?? []), ...(hidden ?? [])];
   const stack = planStack(plan, off);
   const icons = stack.filter((e) => e.ref.kind === 'icons').map((e) => e.item as PlanIcon);
+  const roomSize = useRoomSizeWords();
   const frame = extent
     ? { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H }
-    : planFrame(plan, background, hidden ?? []);
+    : planFrame(plan, roomSize, background, hidden ?? []);
   // The layers in canvas-core's order (decision 0116).
   const layers: Record<PlanDrawLayer, ReactNode> = {
     background: background && plan.background && !off.includes('set') && (

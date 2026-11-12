@@ -17,9 +17,20 @@ import {
   stepPlanZoom,
   zoomPlanAround,
 } from './plan-view.ts';
-import { planRoomDims, planRooms, roomDims, roomMetres } from './plan-walls.ts';
+import {
+  planRoomDims,
+  planRooms,
+  type RoomDim,
+  roomDims,
+  roomMetres,
+  roomSizeText,
+} from './plan-walls.ts';
+import { english, wordsOf } from './plan-words.fixture.ts';
+import { PLAN_WORDS_IT } from './plan-words-it.ts';
 
 const area = { w: 876, h: 848 };
+const words = (length: number, scale: number, overall: boolean) =>
+  roomSizeText(length, scale, overall, english, 'en');
 const toScreen = (v: { x: number; y: number; zoom: number }, p: { x: number; y: number }) => ({
   x: (p.x - v.x) * v.zoom,
   y: (p.y - v.y) * v.zoom,
@@ -125,42 +136,48 @@ describe('the view of the plan surface', () => {
   });
 
   it('frames what is on the plan: items, walls and the background', () => {
-    expect(planContentBox({})).toBeNull();
+    expect(planContentBox({}, words)).toBeNull();
     const icon = { id: 'aAAAAAAAAAAAA', kind: 'table', color: '#1C1C1E', x: 2048, y: 2048 };
-    const box = planContentBox({ icons: [icon as PlanIcon] });
+    const box = planContentBox({ icons: [icon as PlanIcon] }, words);
     expect(box?.x).toBeGreaterThan(400);
     expect(box?.x).toBeLessThan(500);
-    const walls = planContentBox({
-      walls: [{ id: 'wAAAAAAAAAAAA', points: [0, 0, 2048, 0, 2048, 4096], thickness: 10 }],
-    });
+    const walls = planContentBox(
+      {
+        walls: [{ id: 'wAAAAAAAAAAAA', points: [0, 0, 2048, 0, 2048, 4096], thickness: 10 }],
+      },
+      words,
+    );
     expect(walls).toEqual({ x: -5, y: -5, w: 510, h: PLAN_VIEW_H + 10 });
-    const placed = planContentBox({
-      background: { assetId: 'pic', x: -200, y: -100, w: 400, h: 200 },
-    });
+    const placed = planContentBox(
+      {
+        background: { assetId: 'pic', x: -200, y: -100, w: 400, h: 200 },
+      },
+      words,
+    );
     expect(placed).toEqual({ x: -200, y: -100, w: 400, h: 200 });
-    expect(planContentBox({ background: { assetId: 'pic', hidden: true } })).toBeNull();
+    expect(planContentBox({ background: { assetId: 'pic', hidden: true } }, words)).toBeNull();
   });
 
   it("frames what is drawn in the plan's shape, beyond the old extent too", () => {
-    expect(planFrame({})).toEqual({ x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H });
+    expect(planFrame({}, words)).toEqual({ x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H });
     const far = { id: 'aAAAAAAAAAAAA', kind: 'table', color: '#1C1C1E', x: -2048, y: 6000 };
     const near = { ...far, id: 'bAAAAAAAAAAAA', x: 2048, y: 2048 };
-    const content = planContentBox({ icons: [far, near] as PlanIcon[] });
-    const f = planFrame({ icons: [far, near] as PlanIcon[] });
+    const content = planContentBox({ icons: [far, near] as PlanIcon[] }, words);
+    const f = planFrame({ icons: [far, near] as PlanIcon[] }, words);
     expect(f.w / f.h).toBeCloseTo(1.5);
     expect(f.x).toBeLessThan(content?.x ?? 0);
     expect(f.y).toBeLessThan(content?.y ?? 0);
     expect(f.x + f.w).toBeGreaterThan((content?.x ?? 0) + (content?.w ?? 0));
     expect(f.y + f.h).toBeGreaterThan((content?.y ?? 0) + (content?.h ?? 0));
     // One small item: never narrower than 400 view units, centred on it.
-    const one = planFrame({ icons: [near] as PlanIcon[] });
+    const one = planFrame({ icons: [near] as PlanIcon[] }, words);
     expect(one.w).toBe(400);
-    const box = planContentBox({ icons: [near] as PlanIcon[] });
+    const box = planContentBox({ icons: [near] as PlanIcon[] }, words);
     expect(one.x + one.w / 2).toBeCloseTo((box?.x ?? 0) + (box?.w ?? 0) / 2);
     // The background counts only when asked.
     const bg = { assetId: 'pic', x: -900, y: -900, w: 100, h: 100 };
-    expect(planFrame({ icons: [near] as PlanIcon[], background: bg }, false)).toEqual(one);
-    expect(planFrame({ icons: [near] as PlanIcon[], background: bg }).x).toBeLessThan(-900);
+    expect(planFrame({ icons: [near] as PlanIcon[], background: bg }, words, false)).toEqual(one);
+    expect(planFrame({ icons: [near] as PlanIcon[], background: bg }, words).x).toBeLessThan(-900);
   });
 
   it('fits a phone by its width, from the top', () => {
@@ -190,11 +207,11 @@ describe('the view of the plan surface', () => {
     const seen = { id: 'aAAAAAAAAAAAA', kind: 'table', color: '#1C1C1E', x: 2048, y: 2048 };
     const away = { id: 'bAAAAAAAAAAAA', kind: 'cob', color: '#EDD963', x: 20000, y: 20000 };
     const icons = [seen, away] as PlanIcon[];
-    const alone = planFrame({ icons: [seen] as PlanIcon[] });
-    expect(planFrame({ icons, hiddenLayers: ['lights'] })).toEqual(alone);
-    expect(planFrame({ icons }, true, ['lights'])).toEqual(alone);
+    const alone = planFrame({ icons: [seen] as PlanIcon[] }, words);
+    expect(planFrame({ icons, hiddenLayers: ['lights'] }, words)).toEqual(alone);
+    expect(planFrame({ icons }, words, true, ['lights'])).toEqual(alone);
     // Nothing drawn: the standard extent.
-    expect(planFrame({ icons, hiddenLayers: ['lights', 'set'] })).toEqual({
+    expect(planFrame({ icons, hiddenLayers: ['lights', 'set'] }, words)).toEqual({
       x: 0,
       y: 0,
       w: PLAN_VIEW_W,
@@ -215,7 +232,12 @@ describe('the view of the plan surface', () => {
       intensity: 0.8,
       rotation: 90,
     } as PlanIcon;
-    const box = planContentBox({ icons: [key] }) as { x: number; y: number; w: number; h: number };
+    const box = planContentBox({ icons: [key] }, words) as {
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+    };
     const anchor = labelAnchor(key);
     // The second line, 12 + 2 + 11 units under the label's baseline.
     expect(box.y + box.h).toBeGreaterThanOrEqual(anchor.y + PLAN_LABEL_SIZE + 2);
@@ -233,7 +255,7 @@ describe('the view of the plan surface', () => {
       y: 2048,
       steps: [{ x: 0, y: 0 }],
     } as PlanIcon;
-    const moved = planContentBox({ icons: [walker] }) as { x: number; y: number };
+    const moved = planContentBox({ icons: [walker] }, words) as { x: number; y: number };
     expect(moved.x).toBeLessThan(0);
     expect(moved.y).toBeLessThan(0);
   });
@@ -376,9 +398,25 @@ describe('zoom, room sizes and the room a phone fits (decision 0119)', () => {
   });
 
   it('frames the room sizes with what is drawn', () => {
-    const bare = planContentBox({ walls: [room] }) as { y: number };
-    const sized = planContentBox({ walls: [room], scale: 70 }) as { y: number };
+    const bare = planContentBox({ walls: [room] }, words) as { y: number };
+    const sized = planContentBox({ walls: [room], scale: 70 }, words) as { y: number };
     expect(sized.y).toBeLessThan(bare.y);
+  });
+
+  it("frames a side's size with its whole text, as the editor and the exports draw it", () => {
+    const plan = { walls: [room], scale: 70 };
+    const side = planRoomDims(plan).find((d) => d.a.x === d.b.x && d.a.x < 160) as RoomDim;
+    const text = words(side.length, 70, side.overall);
+    const box = planContentBox(plan, words) as { x: number; y: number; w: number; h: number };
+    // The exports write it level, 5 units left of the line: at least half its size per letter.
+    expect(box.x).toBeLessThanOrEqual(side.a.x - 5 - text.length * 12 * 0.5);
+    // The editor turns it along the line, centred on it: inside the box top to bottom.
+    const mid = (side.a.y + side.b.y) / 2;
+    expect(box.y).toBeLessThanOrEqual(mid - text.length * 12 * 0.25);
+    // The words it is given count: "2,9 m in tutto" is wider than "2.9 m".
+    const italian = (length: number, scale: number) =>
+      roomSizeText(length, scale, true, wordsOf(PLAN_WORDS_IT), 'it');
+    expect((planContentBox(plan, italian) as { x: number }).x).toBeLessThan(box.x);
   });
 
   it('gives a phone the box of the rooms, none without a closed wall or with the Set hidden', () => {
@@ -396,9 +434,9 @@ describe('the frame of a sheet (decision 0119)', () => {
       { id: 'iconAAAAAAAAA', kind: 'cob', color: '#EDD963', x: 1000, y: 1000 },
       { id: 'iconBBBBBBBBB', kind: 'cob', color: '#EDD963', x: 3000, y: 3000 },
     ] as PlanIcon[];
-    const square = planFrame({ icons }, true, [], 1);
+    const square = planFrame({ icons }, words, true, [], 1);
     expect(square.w / square.h).toBeCloseTo(1, 5);
-    const plain = planFrame({ icons });
+    const plain = planFrame({ icons }, words);
     expect(plain.w / plain.h).toBeCloseTo(1.5, 5);
     // The same content, a frame no larger than it needs on its long side.
     expect(square.h).toBeLessThanOrEqual(plain.h * 1.5 + 1);

@@ -92,6 +92,7 @@ import {
   PlanShapeView,
   planCss,
   TEXT_SIZES,
+  useRoomSizeWords,
 } from './PlanDrawing.tsx';
 import { usePlanSurface, ZoomControl } from './PlanSurface.tsx';
 import { useWallTools } from './PlanWalls.tsx';
@@ -300,11 +301,12 @@ export function PlanCanvas({
   const shown = ed.shown;
   // Fit frames what this person sees drawn: their own hidden layers left out too. A phone fits
   // the room by its width, as the mockup shows it, when the plan has one (decision 0119).
+  const roomSize = useRoomSizeWords();
   const content = useMemo(
     () =>
       (phone && planRoomBox(shown, [...ed.myHidden])) ||
-      planContentBox(shown, true, [...ed.myHidden]),
-    [shown, ed.myHidden, phone],
+      planContentBox(shown, roomSize, true, [...ed.myHidden]),
+    [shown, ed.myHidden, phone, roomSize],
   );
   const surf = usePlanSurface({
     content,
