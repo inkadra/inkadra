@@ -5,7 +5,7 @@
 import { addFrame, createElement } from '@inkadra/canvas-core';
 import { createBoardDoc, type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
-import { addStoryboard } from '../helpers/views.ts';
+import { addProduction, addStoryboard } from '../helpers/views.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
 const account = {
@@ -47,7 +47,9 @@ test('the schedule groups by setup, saved on the account and shared with the sho
   });
   const project = await created.json();
   // Scenes, frames and plans live on a storyboard, whose views show them (decision 0121).
-  const root = (await addStoryboard(page.request, baseURL!, project, ['shotlist', 'schedule'])).id;
+  const root = (await addStoryboard(page.request, baseURL!, project, ['shotlist'])).id;
+  // Its frames are scheduled on the Production board (decision 0123).
+  const production = await addProduction(page.request, baseURL!, project);
   const doc = createBoardDoc(root);
   const scene = createElement(
     doc,
@@ -83,7 +85,7 @@ test('the schedule groups by setup, saved on the account and shared with the sho
   );
   await pushBoardDoc(baseURL!, cookie, root, doc);
 
-  await page.goto(`/p/${project.id}/b/${root}`);
+  await page.goto(`/p/${project.id}/b/${production.id}`);
   await page.getByRole('tab', { name: 'Piano riprese', exact: true }).click();
   const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
   const queue = schedule.locator('.schedule__queue');
@@ -103,8 +105,8 @@ test('the schedule groups by setup, saved on the account and shared with the sho
   await page.reload();
   await page.getByRole('tab', { name: 'Piano riprese', exact: true }).click();
   await expect(setups).toHaveText(['1 · Base', '2 · Primo piano', 'Senza setup']);
-  // The shot list groups the same way.
-  await page.getByRole('tab', { name: 'Shot list' }).click();
+  // The storyboard's shot list groups the same way.
+  await page.goto(`/p/${project.id}/b/${root}?view=shotlist`);
   await expect(page.getByRole('combobox', { name: 'Raggruppa per' })).toContainText(
     'Raggruppa per: Setup',
   );

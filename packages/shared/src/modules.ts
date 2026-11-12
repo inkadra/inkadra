@@ -30,8 +30,7 @@ export type ModulePart = keyof ModuleParts;
 
 /**
  * The one registry every surface reads: a new feature of a module is added here, not to each
- * surface. shortcut: while a project has no Production board (decision 0123), its storyboards
- * keep the Schedule and Troupe views, which Production owns; they go in step 6 of 0123.
+ * surface.
  */
 export const MODULES: Record<ModuleId, ModuleParts> = {
   storyboard: {
@@ -45,7 +44,7 @@ export const MODULES: Record<ModuleId, ModuleParts> = {
   },
   production: {
     kinds: ['production'],
-    views: ['schedule', 'troupe'],
+    views: [],
     tools: [],
     menus: [],
     tours: ['schedule', 'troupe'],

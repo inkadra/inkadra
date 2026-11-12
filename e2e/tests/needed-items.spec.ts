@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { addTodoItem, createElement, updateElement, updateTodoItem } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
-import { setViews } from '../helpers/views.ts';
+import { addProduction } from '../helpers/views.ts';
 import { perfUser, pushBoardDoc, signIn } from './perf/seed.ts';
 
 // #323: to-do lists typed Costumi / Attrezzeria / Attrezzatura and linked to a scene roll up
@@ -59,7 +59,6 @@ for (const theme of ['dark', 'light'] as const)
           data: { parentBoardId: project.rootBoardId, title: 'Storyboard', kind: 'storyboard' },
         })
       ).json();
-      await setViews(page.request, headers.origin, board.id, ['shotlist', 'schedule']);
 
       const doc = createBoardDoc(board.id);
       const opts = { userId: me.id };
@@ -141,6 +140,8 @@ for (const theme of ['dark', 'light'] as const)
         });
         expect(day.status()).toBe(201);
       }
+      // The days move to the Production board (decision 0123).
+      const production = await addProduction(page.request, headers.origin, project);
 
       // The card shows its kind and scene; its menu picks them.
       await page.goto(`/p/${project.id}/b/${board.id}?view=canvas`);
@@ -175,7 +176,7 @@ for (const theme of ['dark', 'light'] as const)
       }
 
       // The day that shoots scenes 3, 5 and 8 lists what they need, duplicates merged.
-      await page.goto(`/p/${project.id}/b/${board.id}?view=schedule`);
+      await page.goto(`/p/${project.id}/b/${production.id}`);
       // A phone shows one day at a time: pick the second from the row of days, then its details.
       // A wider screen opens the day from its heading in the week.
       const openSecondDay = async () => {

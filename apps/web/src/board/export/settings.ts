@@ -17,7 +17,7 @@ import { DEFAULT_BAND, type ImageOptions } from './image-format.ts';
 import type { PaperSize } from './layout.ts';
 
 /** Where the dialog was opened from: the canvas offers board scopes, film views their own. */
-export type ExportSource = 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'production';
+export type ExportSource = 'canvas' | 'storyboard' | 'shotlist' | 'production';
 
 /** Content made of frames, where "approved frames only" applies. */
 export function framesOf(what: ExportWhat): boolean {

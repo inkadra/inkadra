@@ -49,13 +49,6 @@ const ALWAYS: Record<BoardKind, readonly BoardView[]> = {
   production: ['schedule', 'troupe'],
 };
 
-/**
- * The views a storyboard has only while its project has no Production board (decision 0123):
- * then the Production board holds them. shortcut: the interim of 0121, until step 6 of 0123
- * moves every project and removes them from OPTIONAL_VIEWS.
- */
-const INTERIM: readonly BoardOptionalView[] = ['schedule', 'troupe'];
-
 export function isBoardView(value: string | null): value is BoardView {
   return ALL_VIEWS.includes(value as BoardView);
 }
@@ -82,21 +75,16 @@ export function defaultView(kind: BoardKind | undefined): BoardView {
 }
 
 type ViewsOf = Pick<Board, 'kind' | 'views'>;
-/** The project has a Production board: its storyboards lose Schedule and Troupe (0123). */
-type Production = boolean | undefined;
 type CountsOf = Pick<BoardCount, 'referenceCount' | 'looseCount' | 'clientReview'> | undefined;
 
 /**
  * The optional views that are on. Boards from before decision 0121 store none: a storyboard
  * keeps all of its views, an ordinary board its moodboard when it holds images, links or colours
- * and its review while a guest review link is live.
+ * and its review while a guest review link is live. A stored view the kind no longer allows
+ * (Schedule and Troupe of a storyboard, decision 0123) is left out.
  */
-export function viewsOn(
-  board: ViewsOf,
-  counts: CountsOf,
-  production?: Production,
-): BoardOptionalView[] {
-  const allowed = OPTIONAL_VIEWS[board.kind].filter((v) => !production || !INTERIM.includes(v));
+export function viewsOn(board: ViewsOf, counts: CountsOf): BoardOptionalView[] {
+  const allowed = OPTIONAL_VIEWS[board.kind];
   if (board.views) return allowed.filter((v) => board.views?.includes(v));
   if (board.kind === 'board')
     return allowed.filter((v) =>
@@ -113,17 +101,14 @@ export function offeredViews(
   board: ViewsOf,
   counts: CountsOf,
   off: readonly string[],
-  production?: Production,
 ): BoardOptionalView[] {
-  const on = viewsOn(board, counts, production);
-  return OPTIONAL_VIEWS[board.kind].filter(
-    (v) => (!production || !INTERIM.includes(v)) && (on.includes(v) || offered(off, 'views', v)),
-  );
+  const on = viewsOn(board, counts);
+  return OPTIONAL_VIEWS[board.kind].filter((v) => on.includes(v) || offered(off, 'views', v));
 }
 
 /** The views of a board, in reading order: the one of its kind, then those turned on. */
-export function boardViews(board: ViewsOf, counts: CountsOf, production?: Production): BoardView[] {
-  const on: readonly BoardView[] = viewsOn(board, counts, production);
+export function boardViews(board: ViewsOf, counts: CountsOf): BoardView[] {
+  const on: readonly BoardView[] = viewsOn(board, counts);
   return ALL_VIEWS.filter((v) => ALWAYS[board.kind].includes(v) || on.includes(v));
 }
 
@@ -144,11 +129,10 @@ export function openView(
   asked: string | null,
   board: ViewsOf | undefined,
   counts: CountsOf,
-  production?: Production,
 ): BoardView | null {
   if (!board) return isBoardView(asked) ? asked : null;
   if (asked === 'canvas' && hasOutsideCards(board, counts)) return 'canvas';
-  const views = boardViews(board, counts, production);
+  const views = boardViews(board, counts);
   return isBoardView(asked) && views.includes(asked)
     ? asked
     : (views[0] ?? defaultView(board.kind));
@@ -163,11 +147,25 @@ export function headerViews(
   board: ViewsOf | undefined,
   counts: CountsOf,
   active: BoardView | null,
-  production?: Production,
 ): BoardView[] {
   if (!board) return [];
-  const views = boardViews(board, counts, production);
+  const views = boardViews(board, counts);
   return active === 'canvas' && board.kind === 'storyboard' ? [...views, 'canvas'] : views;
+}
+
+/**
+ * Where a storyboard's old Schedule or Troupe address leads (decision 0123): that view of the
+ * project's Production board, when the person can see one. Null otherwise: the storyboard then
+ * opens its first view.
+ */
+export function movedView(
+  asked: string | null,
+  board: ViewsOf | undefined,
+  production: boolean,
+): 'schedule' | 'troupe' | null {
+  return board?.kind === 'storyboard' && production && (asked === 'schedule' || asked === 'troupe')
+    ? asked
+    : null;
 }
 
 /** The name key of a view; on a storyboard the canvas holds only the cards outside it. */

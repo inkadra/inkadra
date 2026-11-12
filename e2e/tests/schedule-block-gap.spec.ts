@@ -3,7 +3,7 @@
 // inside its slot, while the slot still starts on its minute. Uses the account created by
 // first-run.spec.ts. Set E2E_SHOTS to a folder to capture the views.
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { setViews } from '../helpers/views.ts';
+import { addProduction } from '../helpers/views.ts';
 
 const shots = process.env.E2E_SHOTS;
 const CALL = 8 * 60;
@@ -25,13 +25,8 @@ async function openSchedule(page: Page, name: string) {
   const project = await (
     await page.request.post('/api/v1/projects', { headers, data: { name } })
   ).json();
-  const board = await (
-    await page.request.post(`/api/v1/projects/${project.id}/boards`, {
-      headers,
-      data: { parentBoardId: project.rootBoardId, title: 'Schedule', kind: 'storyboard' },
-    })
-  ).json();
-  await setViews(page.request, headers.origin, board.id, ['shotlist', 'schedule']);
+  // The schedule is the Production board's (decision 0123).
+  const board = await addProduction(page.request, headers.origin, project);
   const response = await page.request.post(`/api/v1/boards/${board.id}/schedule`, {
     headers,
     data: {
@@ -53,7 +48,7 @@ async function openSchedule(page: Page, name: string) {
     },
   });
   expect(response.status()).toBe(201);
-  await page.goto(`/p/${project.id}/b/${board.id}?view=schedule`);
+  await page.goto(`/p/${project.id}/b/${board.id}`);
   return page.getByRole('region', { name: 'Piano riprese', exact: true });
 }
 

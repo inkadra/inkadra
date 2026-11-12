@@ -8,12 +8,26 @@ import type { Words } from './plan-words.ts';
  *
  * - `count` picks the form `Intl.PluralRules(language)` names (`_one`, `_few`, `_many`…), then
  *   `_other`; `_zero` first when the count is 0. French and Portuguese say "0 position", as i18next.
+ *   Where `Intl.PluralRules` is missing (Hermes, React Native), `one` for 1 and `other` else.
  * - `{{name}}` is filled in with the value as text, nothing escaped (the apps' `escapeValue:
  *   false`); a value not given leaves the placeholder, as i18next does.
  * - A key no catalogue has gives `defaultValue`, else the key itself.
  */
 export function wordsFrom(language: string, catalogues: readonly object[]): Words {
-  const plural = new Intl.PluralRules(language);
+  // Made on the first count, once: Hermes has no `Intl.PluralRules`.
+  let plural: ((count: number) => string) | undefined;
+  const pluralForm = (count: number) => {
+    if (!plural) {
+      // shortcut: English's rule for every language without Intl.PluralRules (Hermes), so a
+      // language with few/many forms says "other" there; upgrade with a plural rules polyfill.
+      const rules =
+        typeof Intl !== 'undefined' && typeof Intl.PluralRules === 'function'
+          ? new Intl.PluralRules(language)
+          : undefined;
+      plural = rules ? (n) => rules.select(n) : (n) => (n === 1 ? 'one' : 'other');
+    }
+    return plural(count);
+  };
   const read = (catalogue: object, key: string) => {
     const text = key
       .split('.')
@@ -30,7 +44,7 @@ export function wordsFrom(language: string, catalogues: readonly object[]): Word
       typeof count === 'number'
         ? [
             ...(count === 0 ? [`${key}_zero`] : []),
-            `${key}_${plural.select(count)}`,
+            `${key}_${pluralForm(count)}`,
             `${key}_other`,
             key,
           ]

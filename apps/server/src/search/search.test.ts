@@ -684,9 +684,21 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
       blocks: [],
     });
     expect(day.statusCode).toBe(201);
+    // Both open a view of the Production board (decision 0123): nothing while there is none.
+    expect((await get('owner', '/api/v1/search?q=fonico')).body.items).toEqual([]);
+    expect((await get('owner', '/api/v1/search?q=palasc')).body.items).toEqual([]);
+    const { rootBoardId } = (await get('owner', `/api/v1/projects/${projectId}`)).body;
+    const production = await post(`/projects/${projectId}/boards`, {
+      parentBoardId: rootBoardId,
+      kind: 'production',
+      title: 'Produzione',
+    });
+    expect(production.statusCode).toBe(201);
+    const productionId = production.json().id;
     expect((await get('owner', '/api/v1/search?q=fonico')).body.items).toContainEqual(
       expect.objectContaining({
         elementType: 'crew',
+        boardId: productionId,
         title: 'Paolo Riva',
         snippet: 'Fonico · Suono',
       }),
@@ -694,14 +706,14 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     expect((await get('owner', '/api/v1/search?q=palasc')).body.items).toContainEqual(
       expect.objectContaining({
         elementType: 'shootingDay',
-        boardId,
+        boardId: productionId,
         title: 'Faro di Punta Palascìa',
         snippet: '2026-11-21',
       }),
     );
-    // A grant on the board finds its days, never the project's roster.
+    // A grant on the storyboard finds neither the days nor the project's roster (answer 1).
     expect((await get('guest', '/api/v1/search?q=fonico')).body.items).toEqual([]);
-    expect((await get('guest', '/api/v1/search?q=palasc')).body.items).toHaveLength(1);
+    expect((await get('guest', '/api/v1/search?q=palasc')).body.items).toEqual([]);
     expect((await get('stranger', '/api/v1/search?q=palasc')).body.items).toEqual([]);
   });
 

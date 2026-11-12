@@ -322,6 +322,7 @@ it('renders the two-pane view and opens and reads a notification only when it is
             createdAt: '2026-10-25T11:00:00Z',
             author: baseNotification.actor,
             body: 'Need more light on frame',
+            mentions: [],
             visibility: 'everyone',
             resolvedAt: null,
             replyCount: 1,
@@ -334,6 +335,7 @@ it('renders the two-pane view and opens and reads a notification only when it is
                 createdAt: '2026-10-25T11:05:00Z',
                 author: { kind: 'user', user: { id: 'u2', name: 'Giulia', image: null } },
                 body: 'Small panel on the right',
+                mentions: [],
                 visibility: 'everyone',
               },
             ],
@@ -475,6 +477,7 @@ it('allows replying to and resolving threads from the inbox detail pane', async 
     createdAt: '2026-10-25T11:00:00Z',
     author: baseNotification.actor,
     body: 'Original thread',
+    mentions: [],
     visibility: 'everyone',
     resolvedAt: null,
     replyCount: 0,
@@ -506,6 +509,7 @@ it('allows replying to and resolving threads from the inbox detail pane', async 
         createdAt: '2026-10-25T12:05:00Z',
         author: { kind: 'user', user: { id: 'me', name: 'Me', image: null } },
         body: 'New reply from inbox',
+        mentions: [],
         visibility: 'everyone',
       });
     }

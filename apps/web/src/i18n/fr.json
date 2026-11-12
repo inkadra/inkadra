@@ -6351,6 +6351,8 @@
   },
   "production": {
     "storyboardLink_one": "Jours de tournage : {{count}} · Ouvrir la Production",
-    "storyboardLink_other": "Jours de tournage : {{count}} · Ouvrir la Production"
+    "storyboardLink_other": "Jours de tournage : {{count}} · Ouvrir la Production",
+    "storyboardMissing": "Le plan de travail et l’équipe sont désormais dans la Production · L’ajouter",
+    "storyboardWaiting": "Le plan de travail et l’équipe sont désormais dans la Production · Demandez à une personne qui peut modifier le projet de l’ajouter"
   }
 }

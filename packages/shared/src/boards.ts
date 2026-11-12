@@ -8,19 +8,23 @@ import { ScheduleBlock, ScheduleTime } from './schedule.ts';
 export const BoardKind = z.enum(['board', 'moodboard', 'storyboard', 'production']);
 export type BoardKind = z.infer<typeof BoardKind>;
 
-/** The views a board can turn on or off; the others always come with its kind. */
+/**
+ * The views a board can turn on or off; the others always come with its kind. `schedule` and
+ * `troupe` stay for storyboards stored before decision 0123, which list them: no kind allows them
+ * any more, and a stored list that names them is read without them.
+ */
 export const BoardOptionalView = z.enum(['moodboard', 'shotlist', 'schedule', 'troupe', 'review']);
 export type BoardOptionalView = z.infer<typeof BoardOptionalView>;
 
 /**
  * The views each kind may turn on (decision 0121): a board its moodboard and review (a guest
- * review link can be made on any board), a storyboard its shot list and review. shortcut: Schedule and Troupe stay on the storyboard until the Production
- * board of 0121 holds them; move them there in that step.
+ * review link can be made on any board), a storyboard its shot list and review. Schedule and
+ * Troupe belong to the Production board (decision 0123).
  */
 export const OPTIONAL_VIEWS: Record<BoardKind, readonly BoardOptionalView[]> = {
   board: ['moodboard', 'review'],
   moodboard: [],
-  storyboard: ['shotlist', 'schedule', 'troupe', 'review'],
+  storyboard: ['shotlist', 'review'],
   // Schedule and Troupe always come with it (decision 0123): nothing to turn on.
   production: [],
 };
@@ -219,10 +223,25 @@ export const BoardPreview = z
         description:
           'Review decisions as the team sees them: frames, or cards when there are none.',
       }),
-    dayCount: z.int().nonnegative().optional().openapi({ description: 'Shooting days.' }),
-    crewCount: z.int().nonnegative().optional().openapi({
-      description: "People of the project's troupe; only for members of the project.",
-    }),
+    dayCount: z
+      .int()
+      .nonnegative()
+      .optional()
+      .openapi({
+        description:
+          'Shooting days: of a Production board, its own. Of a storyboard (decision 0123), only ' +
+          "for members of a project without a live Production board: the project's days that " +
+          'adding one would show (on live boards or on the trashed Production board).',
+      }),
+    crewCount: z
+      .int()
+      .nonnegative()
+      .optional()
+      .openapi({
+        description:
+          "People of the project's troupe; only for members of the project. On a storyboard, " +
+          'only while the project has no live Production board, like `dayCount`.',
+      }),
     nextDay: PreviewDay.optional().openapi({
       description:
         'Production board (decision 0123): the next shooting day, the first on or after today ' +
