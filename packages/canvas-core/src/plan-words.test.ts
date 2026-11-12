@@ -175,7 +175,7 @@ it('carries every word the shared functions ask for: one plan with one of everyt
     itemName(plan.strokes?.[0] as never, english);
     for (const i of all) {
       itemSummary(i, all, english, { scale: 70, locale: 'en' });
-      itemSummary(i, all, english);
+      itemSummary(i, all, english, { locale: 'en' });
       legendRow(i, 2, all, english, { scale: 70, locale: 'en' });
       legendLine(i, all, english);
     }

@@ -49,9 +49,12 @@ it('lists items by group, modifiers with their light, filtered by group and colo
 });
 
 it('sums up a light, a camera and a person in one line', () => {
-  expect(itemSummary(key, plan.icons, t)).toBe('LED COB 300 W · Softbox · C-stand');
-  expect(itemSummary(plan.icons[2] as PlanIcon, plan.icons, t)).toBe('32 mm · Dolly · 2 positions');
-  expect(itemSummary(plan.icons[3] as PlanIcon, plan.icons, t)).toBe('Seated');
+  const en = { locale: 'en' };
+  expect(itemSummary(key, plan.icons, t, en)).toBe('LED COB 300 W · Softbox · C-stand');
+  expect(itemSummary(plan.icons[2] as PlanIcon, plan.icons, t, en)).toBe(
+    '32 mm · Dolly · 2 positions',
+  );
+  expect(itemSummary(plan.icons[3] as PlanIcon, plan.icons, t, en)).toBe('Seated');
 });
 
 describe('rows as the mockup lists them (decision 0117)', () => {

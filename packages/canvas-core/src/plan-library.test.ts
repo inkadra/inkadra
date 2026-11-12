@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { PlanIcon } from '@inkadra/doc-schema';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PLAN_CATEGORIES } from './plan-icons.ts';
 import { projectKit } from './plan-kit.ts';
 import {
@@ -243,7 +243,25 @@ describe('projectKit', () => {
     expect(kit[0]?.modifiers).toEqual(['grid']);
     expect(kit[0]?.icon).toMatchObject({ kind: 'cob', label: 'Key', watts: 300 });
     expect(kit[1]?.lenses).toEqual([32, 50]);
-    expect(projectKitDetail(kit[0] as never, t, 'S35')).toBe('LED COB 300 W · Grid · C-stand');
-    expect(projectKitDetail(kit[1] as never, t, 'S35')).toBe('S35 · 32, 50 mm');
+    expect(projectKitDetail(kit[0] as never, t, 'S35', 'en')).toBe(
+      'LED COB 300 W · Grid · C-stand',
+    );
+    expect(projectKitDetail(kit[1] as never, t, 'S35', 'en')).toBe('S35 · 32, 50 mm');
+  });
+
+  it('writes the watts of a light in the app language, not the browser one', () => {
+    // An English browser: numbers without a locale come out in English.
+    const own = Number.prototype.toLocaleString;
+    const spy = vi
+      .spyOn(Number.prototype, 'toLocaleString')
+      .mockImplementation(function (this: number, locale, options) {
+        return own.call(this, locale ?? 'en-US', options);
+      });
+    try {
+      const [entry] = projectKit([{ icons: [icon('key', 'cob', { label: 'Key', watts: 1200 })] }]);
+      expect(projectKitDetail(entry as never, t, 'S35', 'it')).toBe('LED COB 1,2K');
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

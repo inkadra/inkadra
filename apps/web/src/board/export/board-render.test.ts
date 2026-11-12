@@ -1,5 +1,5 @@
 import type { Element } from '@inkadra/doc-schema';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { audienceCards } from './board-model.ts';
 import { type CardContext, drawBoard, type Palette, planOps } from './board-render.ts';
 import type { Op } from './pages.ts';
@@ -146,6 +146,26 @@ describe('set plans in exports', () => {
     const ys = cone.points.filter((_, i) => i % 2 === 1);
     expect(Math.min(...ys)).toBeGreaterThan(213);
     expect(drawing.ops.at(-1)).toMatchObject({ kind: 'text', text: 'A cam', color: '#tag-blue' });
+  });
+
+  it('writes the watts of a label in the app language, not the machine one', () => {
+    // The machine writes numbers in English; the export is in Italian.
+    const own = Number.prototype.toLocaleString;
+    const spy = vi
+      .spyOn(Number.prototype, 'toLocaleString')
+      .mockImplementation(function (this: number, locale, options) {
+        return own.call(this, locale ?? 'en-US', options);
+      });
+    try {
+      const key = { id: 'keyAAAAAAAAAA', kind: 'cob', color: '#EDD963', x: 2048, y: 2048 };
+      const plan = card({ type: 'plan', icons: [{ ...key, label: 'Key', watts: 1200 }] })
+        .el as Extract<Element, { type: 'plan' }>;
+      const ops = planOps(plan, { x: 0, y: 0, w: 600, h: 400 }, { ...ctx, language: 'it' });
+      const texts = ops.flatMap((o) => (o.kind === 'text' ? [o.text] : []));
+      expect(texts).toContain('Key · 1,2K');
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 
