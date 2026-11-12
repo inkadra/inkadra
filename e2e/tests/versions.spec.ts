@@ -1,3 +1,5 @@
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { createElement, moveIntoParent } from '@inkadra/canvas-core';
 import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
@@ -743,4 +745,89 @@ test('visible header icon button opens the versions dialog', async ({ page, base
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Chiudi', exact: true }).click();
   await expect(dialog).toBeHidden();
+});
+
+const shots = process.env.E2E_SHOTS;
+
+/** Each state in both themes; no leftover hover. */
+async function shoot(page: Page, name: string) {
+  if (!shots) return;
+  mkdirSync(shots, { recursive: true });
+  for (const theme of ['dark', 'light']) {
+    await page.evaluate((t) => {
+      document.documentElement.dataset.theme = t;
+    }, theme);
+    await page.waitForTimeout(150);
+    await page.screenshot({ path: join(shots, `${name}-${theme}.png`), animations: 'disabled' });
+  }
+}
+
+test('captures the states of the versions dialog', async ({ page, baseURL }) => {
+  test.skip(!shots, 'Only for the screenshots (E2E_SHOTS).');
+  const { project } = await seed(page, baseURL!);
+  const day = 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const at = (daysAgo: number, hours: number, minutes: number) =>
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo, hours, minutes).getTime();
+  const author = {
+    id: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11',
+    name: 'Giulia Bianchi',
+    image: null,
+  };
+  const version = (id: number, kind: string, created: number, count: number, extra = {}) => ({
+    id: `0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a${String(id).padStart(2, '0')}`,
+    boardId: project.rootBoardId,
+    kind,
+    name: null,
+    createdBy: kind === 'auto' ? null : author,
+    createdAt: new Date(created).toISOString(),
+    size: 1000,
+    elementCount: count,
+    docSchemaVersion: CURRENT_SCHEMA_VERSION,
+    expiresAt: kind === 'named' ? null : new Date(created + 30 * day).toISOString(),
+    ...extra,
+  });
+  const items = [
+    version(20, 'auto', Math.min(at(0, 10, 43), Date.now() - 60_000), 3),
+    version(21, 'restore', Math.min(at(0, 9, 12), Date.now() - 120_000), 3),
+    version(22, 'auto', at(1, 0, 36), 3),
+    version(23, 'named', at(2, 23, 45), 3, { name: 'Prima stesura lavagna' }),
+    version(24, 'auto', at(2, 23, 34), 1),
+    version(25, 'auto', at(28, 18, 2), 2, {
+      expiresAt: new Date(Date.now() + 2 * day + 3_600_000).toISOString(),
+    }),
+  ];
+  await page.route('**/api/v1/boards/*/versions', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({ json: { items, nextCursor: null } })
+      : route.fallback(),
+  );
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  const dialog = await openVersions(page);
+  await expect(dialog.getByText('Prima stesura lavagna', { exact: true })).toBeVisible();
+  await page.mouse.move(1, 1);
+  await shoot(page, 'desktop');
+  const named = dialog.locator('li').filter({ hasText: 'Prima stesura lavagna' });
+  await named.getByRole('button', { name: /^Altre azioni per / }).click();
+  await expect(page.getByRole('menu')).toBeVisible();
+  await shoot(page, 'desktop-menu-named');
+  await page.keyboard.press('Escape');
+  const auto = dialog.locator('li').filter({ hasText: '1 elemento' });
+  await auto.getByRole('button', { name: /^Altre azioni per / }).click();
+  await shoot(page, 'desktop-menu-auto');
+  await page.getByRole('menuitem', { name: 'Dai un nome', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: 'Nome della versione', exact: true })
+    .fill('Dopo il sopralluogo');
+  await shoot(page, 'desktop-edit');
+  await page.keyboard.press('Escape');
+  await dialog.getByRole('radio', { name: 'Cestino' }).check();
+  await shoot(page, 'desktop-trash');
+  await dialog.getByRole('radio', { name: 'Versioni' }).check();
+  await page.setViewportSize({ width: 390, height: 1600 });
+  await page.mouse.move(1, 1);
+  await shoot(page, 'phone');
+  await auto.getByRole('button', { name: /^Altre azioni per / }).click();
+  await page.getByRole('menuitem', { name: 'Dai un nome', exact: true }).click();
+  await shoot(page, 'phone-edit');
 });
