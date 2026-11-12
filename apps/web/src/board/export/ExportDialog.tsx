@@ -850,14 +850,14 @@ export function ExportDialog(props: ExportDialogProps) {
                         {t('export.comments')}
                       </Check>
                       {offers('exports', 'callSheet') && (
-                      <Check
-                        checked={req.callSheet && teamPdf(req)}
-                        disabled={client}
-                        onChange={(v) => set('callSheet', v)}
-                        hint={client ? t('export.teamOnlyHint') : undefined}
-                      >
-                        {t('export.callSheet')}
-                      </Check>
+                        <Check
+                          checked={req.callSheet && teamPdf(req)}
+                          disabled={client}
+                          onChange={(v) => set('callSheet', v)}
+                          hint={client ? t('export.teamOnlyHint') : undefined}
+                        >
+                          {t('export.callSheet')}
+                        </Check>
                       )}
                       <div className="export__logo">
                         <span className="export__logo-label">{t('export.logo')}</span>

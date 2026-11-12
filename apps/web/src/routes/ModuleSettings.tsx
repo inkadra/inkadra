@@ -46,7 +46,9 @@ export function ModuleSettings() {
                 <>
                   {t(`modules.desc.${id}`)}
                   <span className="module-settings__keep">
-                    {on ? t(`modules.keep.${id}`) : t('modules.offKeep', { text: t(`modules.keep.${id}`) })}
+                    {on
+                      ? t(`modules.keep.${id}`)
+                      : t('modules.offKeep', { text: t(`modules.keep.${id}`) })}
                   </span>
                 </>
               }

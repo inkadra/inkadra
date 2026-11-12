@@ -7,8 +7,8 @@ import { deflateSync } from 'node:zlib';
 import { createElement } from '@inkadra/canvas-core';
 import { initBoardDoc } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
-import { addFromBar } from '../helpers/phone-board.ts';
 import * as Y from 'yjs';
+import { addFromBar } from '../helpers/phone-board.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists.

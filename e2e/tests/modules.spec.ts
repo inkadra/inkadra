@@ -62,8 +62,7 @@ async function newProject(page: Page, name: string) {
   return { ...project, storyboardId: ((await storyboard.json()) as { id: string }).id };
 }
 
-const modulesSwitch = (page: Page, name: string) =>
-  page.getByRole('switch', { name, exact: true });
+const modulesSwitch = (page: Page, name: string) => page.getByRole('switch', { name, exact: true });
 
 for (const width of [1280, 390]) {
   const phone = width < 768;
@@ -84,7 +83,9 @@ for (const width of [1280, 390]) {
       await modulesSwitch(page, 'Storyboard').click();
       await modulesSwitch(page, 'Pianta del set').click();
       await expect(modulesSwitch(page, 'Storyboard')).not.toBeChecked();
-      await expect(page.getByText('Spento · Le inquadrature che esistono restano dove sono.')).toBeVisible();
+      await expect(
+        page.getByText('Spento · Le inquadrature che esistono restano dove sono.'),
+      ).toBeVisible();
       await shoot(page, 'modules-page');
 
       await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
@@ -102,13 +103,16 @@ for (const width of [1280, 390]) {
         await toolbar.getByRole('button', { name: 'Altri strumenti', exact: true }).click();
         const more = page.locator('.more-tools');
         await expect(more.getByRole('button', { name: 'Tabella', exact: true })).toBeVisible();
-        await expect(more.getByRole('button', { name: 'Inquadratura', exact: true })).toHaveCount(0);
-        await expect(more.getByRole('button', { name: 'Pianta del set', exact: true })).toHaveCount(0);
-        await more.getByRole('button', { name: 'Metti Tabella nella barra' }).click();
-        await expect(more.getByRole('button', { name: 'Metti Tabella nella barra' })).toHaveAttribute(
-          'aria-pressed',
-          'true',
+        await expect(more.getByRole('button', { name: 'Inquadratura', exact: true })).toHaveCount(
+          0,
         );
+        await expect(more.getByRole('button', { name: 'Pianta del set', exact: true })).toHaveCount(
+          0,
+        );
+        await more.getByRole('button', { name: 'Metti Tabella nella barra' }).click();
+        await expect(
+          more.getByRole('button', { name: 'Metti Tabella nella barra' }),
+        ).toHaveAttribute('aria-pressed', 'true');
         await shoot(page, 'more');
         await page.keyboard.press('Escape');
         await expect(toolbar.getByRole('button', { name: 'Tabella', exact: true })).toBeVisible();
@@ -118,7 +122,9 @@ for (const width of [1280, 390]) {
       await page.locator('.toolbar__btn--canvas').click();
       const menu = page.getByRole('menu');
       await expect(menu.getByRole('menuitem', { name: 'Moodboard', exact: true })).toBeVisible();
-      await expect(menu.getByRole('menuitem', { name: 'Storyboard: modulo spento, accendi' })).toBeVisible();
+      await expect(
+        menu.getByRole('menuitem', { name: 'Storyboard: modulo spento, accendi' }),
+      ).toBeVisible();
       await expect(
         menu.getByRole('menuitem', { name: 'Importa un copione…: modulo spento, accendi' }),
       ).toBeVisible();

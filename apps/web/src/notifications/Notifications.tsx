@@ -872,7 +872,8 @@ export function EmailNotifications({
   const types = NotificationChannelType.options.filter((type) => offers('notifications', type));
   const inbox = (type: NotificationChannelType) => !prefs?.inboxOff.includes(type);
   // "Never" (an older choice) shows every email off; changing one keeps the others off.
-  const emailOff = prefs?.email === 'off' ? [...NotificationChannelType.options] : (prefs?.emailOff ?? []);
+  const emailOff =
+    prefs?.email === 'off' ? [...NotificationChannelType.options] : (prefs?.emailOff ?? []);
   const fromOff = prefs?.email === 'off' ? { email: 'immediate' as const } : {};
   return (
     <>

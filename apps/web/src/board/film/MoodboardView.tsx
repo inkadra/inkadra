@@ -25,6 +25,7 @@ import {
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
+import { useModules } from '../../lib/modules.ts';
 import { getCachedAsset, pickVariant, useAsset, useAssetPalettes } from '../assets.ts';
 import { CroppedImage } from '../CroppedImage.tsx';
 import { CopyHexButton } from '../cards.tsx';
@@ -34,7 +35,6 @@ import { uploadBoardId } from '../frame-grab.ts';
 import { croppedRotatedSize, hasImageTransform } from '../image-crop.ts';
 import { fillLinkPreview, webUrl } from '../links.ts';
 import { PresentationView } from '../PresentationView.tsx';
-import { useModules } from '../../lib/modules.ts';
 import { isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { normaliseTag } from '../tags.tsx';
@@ -972,23 +972,23 @@ export function MoodboardView({
               </Button>
             )}
             {offers('menus', 'sendToStoryboard') && (
-            <Button
-              disabled={sending || chosenMedia.length === 0}
-              aria-haspopup={storyboards.length > 1 ? 'menu' : undefined}
-              aria-expanded={storyboards.length > 1 ? !!pickingStoryboard : undefined}
-              onClick={(e) => {
-                if (storyboards.length < 2) return void sendToStoryboard();
-                // Above the button, as the Canvas menu opens above its own.
-                const rect = e.currentTarget.getBoundingClientRect();
-                sendButton.current = e.currentTarget;
-                setPickingStoryboard({
-                  left: rect.left,
-                  bottom: window.innerHeight - rect.top + 8,
-                });
-              }}
-            >
-              {t('moodboard.sendToStoryboard')}
-            </Button>
+              <Button
+                disabled={sending || chosenMedia.length === 0}
+                aria-haspopup={storyboards.length > 1 ? 'menu' : undefined}
+                aria-expanded={storyboards.length > 1 ? !!pickingStoryboard : undefined}
+                onClick={(e) => {
+                  if (storyboards.length < 2) return void sendToStoryboard();
+                  // Above the button, as the Canvas menu opens above its own.
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  sendButton.current = e.currentTarget;
+                  setPickingStoryboard({
+                    left: rect.left,
+                    bottom: window.innerHeight - rect.top + 8,
+                  });
+                }}
+              >
+                {t('moodboard.sendToStoryboard')}
+              </Button>
             )}
             {pickingStoryboard &&
               createPortal(

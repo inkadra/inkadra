@@ -64,8 +64,8 @@ import { FeedbackEntry } from '../feedback/FeedbackEntry.tsx';
 import { canCreateProjects } from '../lib/access.ts';
 import { authApi } from '../lib/api.ts';
 import { HeaderContext, type HeaderParts } from '../lib/header.tsx';
-import { usePreferences } from '../lib/preferences.ts';
 import { useIsPhone } from '../lib/phone.ts';
+import { usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
 import {

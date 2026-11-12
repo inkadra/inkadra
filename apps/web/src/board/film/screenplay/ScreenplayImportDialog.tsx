@@ -446,17 +446,17 @@ export function ScreenplayImportDialog({
                 </fieldset>
                 <div className="script-import__options">
                   {!scenesOnly && (
-                  <Segmented
-                    label={t('screenplay.frames')}
-                    value={options.frames}
-                    options={[
-                      ['none', t('screenplay.framesNone')],
-                      ['one', t('screenplay.framesOne')],
-                      ['action', t('screenplay.framesAction')],
-                    ]}
-                    onChange={(v) => set('frames', v as FramesMode)}
-                    hint={t(`screenplay.framesHint.${options.frames}`)}
-                  />
+                    <Segmented
+                      label={t('screenplay.frames')}
+                      value={options.frames}
+                      options={[
+                        ['none', t('screenplay.framesNone')],
+                        ['one', t('screenplay.framesOne')],
+                        ['action', t('screenplay.framesAction')],
+                      ]}
+                      onChange={(v) => set('frames', v as FramesMode)}
+                      hint={t(`screenplay.framesHint.${options.frames}`)}
+                    />
                   )}
                   {options.frames === 'action' && (
                     <Field label={t('screenplay.maxFrames')}>

@@ -269,7 +269,10 @@ export function Toolbar({
           </fieldset>
         )}
         {!phone && (
-          <fieldset className="toolbar__group toolbar__group--more" aria-label={t('board.more.title')}>
+          <fieldset
+            className="toolbar__group toolbar__group--more"
+            aria-label={t('board.more.title')}
+          >
             <MoreButton
               tools={more}
               pinned={pinned}
@@ -353,7 +356,9 @@ function MoreButton({
               }
               if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                 e.preventDefault();
-                const all = [...(panel.current?.querySelectorAll<HTMLElement>('.more-tools__add') ?? [])];
+                const all = [
+                  ...(panel.current?.querySelectorAll<HTMLElement>('.more-tools__add') ?? []),
+                ];
                 const i = all.indexOf(document.activeElement as HTMLElement);
                 const step = e.key === 'ArrowDown' ? 1 : -1;
                 all[(i + step + all.length) % all.length]?.focus();
@@ -375,7 +380,11 @@ function MoreButton({
                         onAdd(tl);
                       }}
                     >
-                      <span className="menu__tile" style={toolStyle(barKind(tl))} aria-hidden="true">
+                      <span
+                        className="menu__tile"
+                        style={toolStyle(barKind(tl))}
+                        aria-hidden="true"
+                      >
                         <Icon name={BAR_ICONS[tl]} size={14} />
                       </span>
                       {name}
@@ -467,7 +476,9 @@ function CanvasMenuButton({
   });
   const script: MenuItem | null = onScreenplay
     ? {
-        label: storyboardOn ? t('board.canvasMenu.screenplay') : t('modules.kindOff', { name: t('board.canvasMenu.screenplay') }),
+        label: storyboardOn
+          ? t('board.canvasMenu.screenplay')
+          : t('modules.kindOff', { name: t('board.canvasMenu.screenplay') }),
         icon: 'upload',
         kind: 'storyboard',
         content: (
@@ -481,7 +492,12 @@ function CanvasMenuButton({
     : null;
   const items: MenuItem[] = phone
     ? [
-        { label: t('board.tools.hand'), icon: 'hand', kind: 'canvas', action: () => onTool('hand') },
+        {
+          label: t('board.tools.hand'),
+          icon: 'hand',
+          kind: 'canvas',
+          action: () => onTool('hand'),
+        },
         {
           label: t('board.tools.arrow'),
           icon: 'arrow',

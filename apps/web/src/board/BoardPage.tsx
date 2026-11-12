@@ -733,7 +733,9 @@ function BoardScreen({
                   onClose={closeHeaderMenu}
                   anchor={headerMenuAnchor}
                   items={[
-                    ...(editable && board ? viewItems(board, counts, toggleView, t, modulesOff) : []),
+                    ...(editable && board
+                      ? viewItems(board, counts, toggleView, t, modulesOff)
+                      : []),
                     ...(outside > 0
                       ? [
                           {
@@ -1027,7 +1029,10 @@ function BoardScreen({
             <Icon name={MODULE_GLYPHS[moduleOff].icon} size={14} />
           </span>
           {t('modules.offLine', { name: t(`modules.names.${moduleOff}`) })}
-          <Button variant="secondary" onClick={() => void setModule(moduleOff, true).catch(() => {})}>
+          <Button
+            variant="secondary"
+            onClick={() => void setModule(moduleOff, true).catch(() => {})}
+          >
             {t('modules.turnOn')}
           </Button>
         </p>

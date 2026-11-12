@@ -142,17 +142,17 @@ export function GuestLinks({
         <Trans i18nKey="guestLinks.lead" components={{ b: <b /> }} />
       </p>
       {offers('menus', 'reviewLink') && (
-      <CreateForm
-        boardId={board.id}
-        subBoards={subBoards}
-        onCreated={async (link) => {
-          setFresh(link.id);
-          setError(null);
-          await load();
-          // A review link shows in the sidebar's Review row at once.
-          refreshBoardCounts();
-        }}
-      />
+        <CreateForm
+          boardId={board.id}
+          subBoards={subBoards}
+          onCreated={async (link) => {
+            setFresh(link.id);
+            setError(null);
+            await load();
+            // A review link shows in the sidebar's Review row at once.
+            refreshBoardCounts();
+          }}
+        />
       )}
       {error && (
         <p className="share__error" role="alert">

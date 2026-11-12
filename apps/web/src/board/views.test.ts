@@ -159,7 +159,10 @@ describe('the views a module that is off leaves out (decision 0121)', () => {
     ]);
     // Off: not offered to turn on; a view that is on stays, to be turned off.
     expect(
-      offeredViews(board('storyboard', ['shotlist', 'schedule']), undefined, ['production', 'review']),
+      offeredViews(board('storyboard', ['shotlist', 'schedule']), undefined, [
+        'production',
+        'review',
+      ]),
     ).toEqual(['shotlist', 'schedule']);
     expect(offeredViews(board('board', []), undefined, ['moodboard'])).toEqual(['review']);
     // The header still shows a view that is on, whatever the modules.
