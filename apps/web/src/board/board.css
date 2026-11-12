@@ -2096,8 +2096,10 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   width: auto;
   min-width: 220px;
   padding: 6px;
-  /* It opens above the Canvas button, aligned to its right edge. */
+  /* It opens above the Canvas button, aligned to its right edge; a long one scrolls. */
   --ink-origin: bottom right;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .menu--canvas .menu__item {
   border-radius: calc(var(--ink-radius-md) - 6px);

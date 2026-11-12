@@ -137,6 +137,8 @@ function placeAbove(button: HTMLElement | null) {
   return {
     right: Math.max(8, document.documentElement.clientWidth - rect.right),
     bottom: window.innerHeight - rect.top + 8,
+    // Below the header: a long menu scrolls instead of running under it.
+    maxHeight: Math.max(160, rect.top - 72),
   };
 }
 
@@ -322,7 +324,7 @@ function MoreButton({
   const { t } = useTranslation();
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
-  const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
+  const [at, setAt] = useState<ReturnType<typeof placeAbove>>(null);
   const close = useCallback(() => setAt(null), []);
   useOutsidePress(panel, button, close, !!at);
   useEffect(() => {
@@ -351,7 +353,7 @@ function MoreButton({
             className="ink-menu menu menu--canvas more-tools"
             role="dialog"
             aria-label={label}
-            style={{ right: at.right, bottom: at.bottom }}
+            style={{ right: at.right, bottom: at.bottom, maxHeight: at.maxHeight }}
             data-chrome
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
@@ -463,7 +465,7 @@ function CanvasMenuButton({
   const { t } = useTranslation();
   const { offers } = useModules();
   const button = useRef<HTMLButtonElement>(null);
-  const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
+  const [at, setAt] = useState<ReturnType<typeof placeAbove>>(null);
   const label = t(phone ? 'board.canvasMenu.more' : 'board.canvasMenu.label');
   const open = () => setAt(placeAbove(button.current));
   const storyboardOn = offers('menus', 'screenplayImport');
@@ -574,7 +576,7 @@ function CanvasMenuButton({
           <ContextMenu
             label={label}
             className={phone ? 'menu--canvas' : 'menu--canvas menu--new-board'}
-            style={{ right: at.right, bottom: at.bottom }}
+            style={{ right: at.right, bottom: at.bottom, maxHeight: at.maxHeight }}
             anchor={button}
             items={items}
             onClose={(reason) => {
