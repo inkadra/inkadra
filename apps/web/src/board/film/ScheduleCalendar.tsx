@@ -1094,7 +1094,7 @@ export function ScheduleCalendar({
                             top: start,
                             height: Math.max(40, block.duration),
                             left: 4,
-                            right: 4,
+                            right: 6,
                           }}
                         >
                           <div className="schedule__block-select">
@@ -1238,8 +1238,12 @@ export function ScheduleCalendar({
                       style={{
                         top: start * MINUTE_PX,
                         height,
-                        left: `calc(${(lane.lane / lane.lanes) * 100}% + 4px)`,
-                        width: `calc(${100 / lane.lanes}% - 8px)`,
+                        // 4 px from the left edge, 6 px from the right one, 2 px between lanes.
+                        left: lane.lane ? `calc(${(lane.lane / lane.lanes) * 100}% + 1px)` : 4,
+                        right:
+                          lane.lane < lane.lanes - 1
+                            ? `calc(${((lane.lanes - 1 - lane.lane) / lane.lanes) * 100}% + 1px)`
+                            : 6,
                       }}
                     >
                       <button
