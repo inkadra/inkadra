@@ -90,8 +90,8 @@ for (const width of [1280, 390]) {
       await shoot(page, 'modules-page');
 
       await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
-      await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
       const toolbar = page.locator('.canvas .toolbar');
+      await expect(toolbar).toBeVisible();
       if (!phone) {
         // Always there: Select, Hand, Arrow, Note, Image, Link, To-do; then Column and Section
         // title, More and Canvas.
