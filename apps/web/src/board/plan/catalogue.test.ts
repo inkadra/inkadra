@@ -7,6 +7,11 @@ import {
   PLAN_NOTE_TOOLS,
   PLAN_WORDS_EN,
 } from '@inkadra/canvas-core';
+import { PLAN_WORDS_DE } from '@inkadra/canvas-core/plan-words/de';
+import { PLAN_WORDS_ES } from '@inkadra/canvas-core/plan-words/es';
+import { PLAN_WORDS_FR } from '@inkadra/canvas-core/plan-words/fr';
+import { PLAN_WORDS_IT } from '@inkadra/canvas-core/plan-words/it';
+import { PLAN_WORDS_PT } from '@inkadra/canvas-core/plan-words/pt';
 import { PLAN_ICON_KINDS } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import { LOCALES } from '../../i18n/locales.ts';
@@ -54,15 +59,22 @@ describe.each(LOCALES)('the set plan catalogue in %s (decision 0104)', (locale) 
   });
 });
 
-it('says the same as the shared English words of canvas-core (decision 0116)', () => {
-  // The package is what another client loads; the web's English catalogue must not drift from it.
-  const en = JSON.parse(readFileSync(join(__dirname, '../../i18n/en.json'), 'utf8'));
+it.each([
+  ['en', PLAN_WORDS_EN],
+  ['it', PLAN_WORDS_IT],
+  ['es', PLAN_WORDS_ES],
+  ['de', PLAN_WORDS_DE],
+  ['fr', PLAN_WORDS_FR],
+  ['pt', PLAN_WORDS_PT],
+])('says the same in %s as the shared words of canvas-core (decision 0116)', (locale, words) => {
+  // The package is what another client loads; the web's catalogue must not drift from it.
+  const web = JSON.parse(readFileSync(join(__dirname, `../../i18n/${locale}.json`), 'utf8'));
   const leaves = (o: object, at: string[] = []): Array<[string[], string]> =>
     Object.entries(o).flatMap(([k, v]) =>
       typeof v === 'object' ? leaves(v, [...at, k]) : [[[...at, k], v as string]],
     );
-  const differ = leaves(PLAN_WORDS_EN).filter(
-    ([path, text]) => path.reduce<any>((o, k) => o?.[k], en) !== text,
+  const differ = leaves(words).filter(
+    ([path, text]) => path.reduce<any>((o, k) => o?.[k], web) !== text,
   );
   expect(differ).toEqual([]);
 });

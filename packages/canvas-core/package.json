@@ -6,7 +6,12 @@
   "license": "MPL-2.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./plan-words/it": "./src/plan-words-it.ts",
+    "./plan-words/es": "./src/plan-words-es.ts",
+    "./plan-words/de": "./src/plan-words-de.ts",
+    "./plan-words/fr": "./src/plan-words-fr.ts",
+    "./plan-words/pt": "./src/plan-words-pt.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

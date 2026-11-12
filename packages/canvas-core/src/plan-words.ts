@@ -5,8 +5,9 @@
  * icons with their search words, the library's tiles, groups and categories, and the words the
  * shared reading functions (kit, power, legend, card, setups, sun) ask for. English, the source;
  * the keys are those of the web catalogues (`board.plan.*`), so a client loads this object as its
- * English catalogue and translates the same keys. The web's English catalogue must say the same
- * (a web test compares them).
+ * English catalogue. The other languages have the same keys, one file each
+ * (`@inkadra/canvas-core/plan-words/it`, `es`, `de`, `fr`, `pt`), so a client imports only those
+ * it ships. The web's catalogues must say the same (a web test compares them).
  */
 
 /**
@@ -482,3 +483,6 @@ export const PLAN_WORDS_EN = {
     },
   },
 };
+
+/** The shape of every language's words: the keys of `PLAN_WORDS_EN`, each a string. */
+export type PlanWords = typeof PLAN_WORDS_EN;
