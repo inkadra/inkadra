@@ -64,6 +64,7 @@ it('makes the one Production board, or opens the one the project has (decision 0
   await expect(addBoard(project, 'production', t)).resolves.toBe('/p/p1/b/p');
   expect(createBoard).not.toHaveBeenCalled();
   const owner = { ...project, myRole: 'owner' } as Project;
-  expect(addBoardItems(owner, t, vi.fn(), [], undefined, [board('p', 'production')]).at(-1)?.label)
-    .toBe('film.views.production · board.canvasMenu.present');
+  expect(
+    addBoardItems(owner, t, vi.fn(), [], undefined, [board('p', 'production')]).at(-1)?.label,
+  ).toBe('film.views.production · board.canvasMenu.present');
 });

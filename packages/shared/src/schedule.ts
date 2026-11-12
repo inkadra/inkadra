@@ -194,7 +194,8 @@ export function blockTarget(
   block: Partial<BlockRefs>,
   dayBoardId: string,
 ): { kind: 'shot' | 'scene'; boardId: string; id: string } | null {
-  if (block.shotId) return { kind: 'shot', boardId: block.shotBoardId ?? dayBoardId, id: block.shotId };
+  if (block.shotId)
+    return { kind: 'shot', boardId: block.shotBoardId ?? dayBoardId, id: block.shotId };
   if (block.type === 'scene' && block.sceneId)
     return { kind: 'scene', boardId: block.sceneBoardId ?? dayBoardId, id: block.sceneId };
   return null;

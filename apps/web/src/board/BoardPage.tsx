@@ -42,18 +42,18 @@ import { useProjects } from '../routes/AppLayout.tsx';
 import { NotFound } from '../routes/NotFound.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
 import { renameProject } from '../routes/projects.ts';
+import { BOARD_CARD_SIZE } from './BoardCardPreview.tsx';
 import {
   boardPath,
   canRenameBoard,
   createBoard,
   fetchBoard,
+  productionOf,
   renameBoard,
   setBoardIcon,
-  productionOf,
   setBoardViews,
   useProjectBoards,
 } from './boards.ts';
-import { BOARD_CARD_SIZE } from './BoardCardPreview.tsx';
 import { Canvas } from './Canvas.tsx';
 import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
 import { ContextMenu, type MenuItem, Toast } from './chrome.tsx';
@@ -66,9 +66,9 @@ import { ClientReviewView } from './film/ClientReviewView.tsx';
 import { MoodboardView } from './film/MoodboardView.tsx';
 import { useDaysPointingAt } from './film/production-days.ts';
 import { ScheduleView } from './film/ScheduleView.tsx';
-import type { ScheduleSources } from './film/schedule-sources.tsx';
 import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
+import type { ScheduleSources } from './film/schedule-sources.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
 import { applyImport, type ImportPlan } from './film/screenplay/plan.ts';
 import { applyRevision, revisionCounts } from './film/screenplay/revision.ts';
@@ -407,10 +407,7 @@ function BoardScreen({
   // storyboards the calendar opened (decision 0123).
   const [scheduleSources, setScheduleSources] = useState<ScheduleSources | null>(null);
   // A storyboard's ⋯ menu leads to the Production board that plans it.
-  const pointing = useDaysPointingAt(
-    boardId,
-    kind === 'storyboard' ? production?.id : undefined,
-  );
+  const pointing = useDaysPointingAt(boardId, kind === 'storyboard' ? production?.id : undefined);
   useEffect(() => {
     if (view === 'schedule' || view === 'troupe')
       setOpenedFilmViews((opened) => (opened[view] ? opened : { ...opened, [view]: true }));
@@ -848,7 +845,9 @@ function BoardScreen({
                             : []),
                           {
                             label: t(
-                              kind === 'production' ? 'export.whatCallsheets' : 'board.export.action',
+                              kind === 'production'
+                                ? 'export.whatCallsheets'
+                                : 'board.export.action',
                             ),
                             icon: 'download' as const,
                             action: () => openExport(exportSourceOf(view, kind)),
@@ -908,9 +907,7 @@ function BoardScreen({
               <IconButton
                 icon="download"
                 className="board-header-export"
-                label={t(
-                  kind === 'production' ? 'export.whatCallsheets' : 'board.export.action',
-                )}
+                label={t(kind === 'production' ? 'export.whatCallsheets' : 'board.export.action')}
                 onClick={() => openExport(exportSourceOf(view, kind))}
               />
               {/* The Storyboard view has its own Presenta button, with the same name. */}

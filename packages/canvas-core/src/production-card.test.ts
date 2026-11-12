@@ -2,7 +2,7 @@
 import { createBoardDoc, roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { createElement, listElements, deleteElements } from './board.ts';
+import { createElement, deleteElements, listElements } from './board.ts';
 import { PRODUCTION_CARD_MARK, placeProductionCard, productionCardId } from './production-card.ts';
 
 const ROOT = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';

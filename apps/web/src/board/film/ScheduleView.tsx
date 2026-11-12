@@ -284,11 +284,16 @@ export function ScheduleView({
     if (!seen) return block.title || t(`schedule.types.${block.type}`);
     if (block.type === 'scene' && !block.shotId) {
       const name = seen.scene ? slugline(seen.scene) || seen.scene.title.trim() : '';
-      return [seen.label && t('schedule.sceneShort', { number: seen.label }), name]
-        .filter(Boolean)
-        .join(' · ') || t('schedule.missingScene');
+      return (
+        [seen.label && t('schedule.sceneShort', { number: seen.label }), name]
+          .filter(Boolean)
+          .join(' · ') || t('schedule.missingScene')
+      );
     }
-    if (seen.missing) return seen.label ? `${seen.label} · ${t('schedule.missingShot')}` : t('schedule.missingShot');
+    if (seen.missing)
+      return seen.label
+        ? `${seen.label} · ${t('schedule.missingShot')}`
+        : t('schedule.missingShot');
     if (!seen.frame) return seen.label || t('schedule.missingShot');
     return seen.frame.action ? `${seen.label} · ${seen.frame.action}` : seen.label;
   };
@@ -762,7 +767,9 @@ export function ScheduleView({
     if (!group?.scene) return;
     const cast = [
       ...new Map(
-        group.frames.flatMap((f) => f.cast ?? []).map((n) => [n.trim().toLocaleLowerCase(), n.trim()]),
+        group.frames
+          .flatMap((f) => f.cast ?? [])
+          .map((n) => [n.trim().toLocaleLowerCase(), n.trim()]),
       ).values(),
     ].slice(0, 100);
     const block = withLabels(
@@ -775,7 +782,9 @@ export function ScheduleView({
       },
       sources,
     );
-    commit([{ day: target.day, next: { ...target.draft, blocks: [...target.draft.blocks, block] } }]);
+    commit([
+      { day: target.day, next: { ...target.draft, blocks: [...target.draft.blocks, block] } },
+    ]);
     setSelection({ day: target.day.id, block: block.id });
     setNotice(t('schedule.addedTo', { shot: blockTitle(block), day: dayName(target) }));
   };

@@ -108,7 +108,10 @@ export function hasSceneNumbers(day: ShootingDayInput, elements: ReadonlyMap<str
  * The cast a sheet prints for a block: its own list, and for a scene block also the cast of the
  * scene's frames, if it has any (decision 0123). Each name once.
  */
-export function blockCast(block: Planned & Pick<ScheduleBlock, 'cast'>, elements: ReadonlyMap<string, Element>): string[] {
+export function blockCast(
+  block: Planned & Pick<ScheduleBlock, 'cast'>,
+  elements: ReadonlyMap<string, Element>,
+): string[] {
   const names = [...block.cast];
   if (block.type === 'scene' && block.sceneId)
     for (const el of elements.values())

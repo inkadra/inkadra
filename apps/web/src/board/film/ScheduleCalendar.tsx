@@ -124,7 +124,6 @@ const NEW_TYPES = ['shot', 'setup', 'break', 'move', 'note'] as const;
 /** About the height of the type menu, to open it above the block near the bottom. */
 const MENU_HEIGHT = 200;
 
-
 export function ScheduleCalendar({
   view,
   phone,
@@ -866,9 +865,7 @@ export function ScheduleCalendar({
         const previous = slots[index - 1];
         const after = previous
           ? t('schedule.after', {
-              block: blockTitle(previous.block).split(
-                ' · ',
-              )[0],
+              block: blockTitle(previous.block).split(' · ')[0],
             })
           : t('schedule.afterCall');
         // Only the moved block gets a label beside it; the blocks that shift show it inside.
@@ -1105,9 +1102,7 @@ export function ScheduleCalendar({
                               <span className="schedule__block-time">
                                 {clockLabel(start)} – {clockLabel(start + block.duration)}
                               </span>
-                              <span className="schedule__block-title">
-                                {blockTitle(block)}
-                              </span>
+                              <span className="schedule__block-title">{blockTitle(block)}</span>
                             </span>
                           </div>
                         </div>
@@ -1296,9 +1291,7 @@ export function ScheduleCalendar({
                             {tall ? time : clockLabel(start)}
                           </span>
                           <span className="schedule__block-title">
-                            {seen?.dot && (
-                              <SourceDot color={seen.dot.color} name={seen.dot.name} />
-                            )}
+                            {seen?.dot && <SourceDot color={seen.dot.color} name={seen.dot.name} />}
                             {name}
                           </span>
                           {roomy && (

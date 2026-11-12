@@ -455,7 +455,11 @@ function KindCard({
       </span>
       <span className="new-board__desc">
         {t(
-          off ? 'modules.off' : present ? 'board.canvasMenu.present' : `board.canvasMenu.desc.${kind}`,
+          off
+            ? 'modules.off'
+            : present
+              ? 'board.canvasMenu.present'
+              : `board.canvasMenu.desc.${kind}`,
         )}
       </span>
       {off && <span className="new-board__tag">{t('modules.turnOn')}</span>}

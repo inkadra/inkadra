@@ -187,9 +187,7 @@ export function sunDays(
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((d, i) => ({ id: d.id, n: i + 1, date: d.date, blocks: d.blocks }));
   const ofScenes = all.filter((d) =>
-    d.blocks.some(
-      (b) => (b.shotId && shots.has(b.shotId)) || (b.sceneId && scenes.has(b.sceneId)),
-    ),
+    d.blocks.some((b) => (b.shotId && shots.has(b.shotId)) || (b.sceneId && scenes.has(b.sceneId))),
   );
   return (ofScenes.length ? ofScenes : all).map(({ id, n, date }) => ({ id, n, date }));
 }

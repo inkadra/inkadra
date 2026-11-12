@@ -688,9 +688,10 @@ export async function buildPages(
             env.across?.byId ?? snapshot.byId,
             crew,
             {
-            characters,
-            timeZone: env.timeZone,
-          }),
+              characters,
+              timeZone: env.timeZone,
+            },
+          ),
           ctx,
         ),
       );

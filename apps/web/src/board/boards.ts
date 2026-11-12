@@ -171,7 +171,10 @@ export function treeOrder(items: readonly Board[]): Board[] {
   const out: Board[] = [];
   const walk = (parentId: string | null) => {
     for (const b of items
-      .filter((x) => x.parentBoardId === parentId || (parentId === null && !ids.has(x.parentBoardId ?? '')))
+      .filter(
+        (x) =>
+          x.parentBoardId === parentId || (parentId === null && !ids.has(x.parentBoardId ?? '')),
+      )
       .sort(comparePosition)) {
       if (out.includes(b)) continue;
       out.push(b);

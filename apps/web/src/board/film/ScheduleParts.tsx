@@ -257,18 +257,18 @@ export function ScheduleQueue({
             {sources && sources.length > 0 && (
               <span className="schedule__filter" data-tour="schedule-storyboards">
                 <Select
-                variant="quiet"
-                aria-label={t('schedule.filterStoryboard')}
-                value={board}
-                onChange={(value) => {
-                  setBoard(value);
-                  setScene('');
-                }}
-                options={[
-                  { value: '', label: t('schedule.storyboardFilterLabel') },
-                  ...sources.map((s) => ({ value: s.boardId, label: s.title, icon: dotIcon(s) })),
-                ]}
-              />
+                  variant="quiet"
+                  aria-label={t('schedule.filterStoryboard')}
+                  value={board}
+                  onChange={(value) => {
+                    setBoard(value);
+                    setScene('');
+                  }}
+                  options={[
+                    { value: '', label: t('schedule.storyboardFilterLabel') },
+                    ...sources.map((s) => ({ value: s.boardId, label: s.title, icon: dotIcon(s) })),
+                  ]}
+                />
               </span>
             )}
             <Select
@@ -594,7 +594,8 @@ export function BlockEditor({
       key,
     );
   const typeName = (type: ScheduleBlock['type']) => t(`schedule.types.${type}`);
-  const name = (b: ScheduleBlock) => (look(b) ? blockTitle(b).split(' · ')[0] : b.title || typeName(b.type));
+  const name = (b: ScheduleBlock) =>
+    look(b) ? blockTitle(b).split(' · ')[0] : b.title || typeName(b.type);
   const after = previous ? t('schedule.after', { block: name(previous) }) : t('schedule.afterCall');
   const others = days.filter((d) => d.day.id !== entry.day.id);
   const full = variant === 'panel';

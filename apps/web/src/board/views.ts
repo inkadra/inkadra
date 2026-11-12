@@ -117,17 +117,12 @@ export function offeredViews(
 ): BoardOptionalView[] {
   const on = viewsOn(board, counts, production);
   return OPTIONAL_VIEWS[board.kind].filter(
-    (v) =>
-      (!production || !INTERIM.includes(v)) && (on.includes(v) || offered(off, 'views', v)),
+    (v) => (!production || !INTERIM.includes(v)) && (on.includes(v) || offered(off, 'views', v)),
   );
 }
 
 /** The views of a board, in reading order: the one of its kind, then those turned on. */
-export function boardViews(
-  board: ViewsOf,
-  counts: CountsOf,
-  production?: Production,
-): BoardView[] {
+export function boardViews(board: ViewsOf, counts: CountsOf, production?: Production): BoardView[] {
   const on: readonly BoardView[] = viewsOn(board, counts, production);
   return ALL_VIEWS.filter((v) => ALWAYS[board.kind].includes(v) || on.includes(v));
 }

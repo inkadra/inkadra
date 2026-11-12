@@ -627,7 +627,8 @@ export function CallSheetModal({
                                     {whole
                                       ? t('schedule.types.scene')
                                       : block.shotId
-                                        ? (shot?.label ?? (seen?.label || t('schedule.missingShot')))
+                                        ? (shot?.label ??
+                                          (seen?.label || t('schedule.missingShot')))
                                         : '—'}
                                   </strong>
                                 </td>

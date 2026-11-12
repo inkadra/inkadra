@@ -39,11 +39,11 @@ import { useTranslation } from 'react-i18next';
 import { refreshClassifications } from '../../lib/classifications.ts';
 import { useModules } from '../../lib/modules.ts';
 import { useIsPhone } from '../../lib/phone.ts';
+import { productionOf } from '../boards.ts';
 import { ColorPicker } from '../ColorPicker.tsx';
 import { swatchColors } from '../colors.ts';
 import { formatBytes } from '../file-kinds.ts';
 import { sceneIdsOf } from '../film/needed.ts';
-import { productionOf } from '../boards.ts';
 import { loadBoardDays } from '../film/production-days.ts';
 import { getReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
@@ -452,13 +452,13 @@ export function ExportDialog(props: ExportDialogProps) {
   const allWhat: ExportWhat[] = production
     ? ['callsheets']
     : film
-    ? [
-        'storyboard',
-        'shotlist',
-        'scenesheets',
-        ...(asImage && props.selection.size ? ['selection' as const] : []),
-      ]
-    : ['board', 'selection', 'visible'];
+      ? [
+          'storyboard',
+          'shotlist',
+          'scenesheets',
+          ...(asImage && props.selection.size ? ['selection' as const] : []),
+        ]
+      : ['board', 'selection', 'visible'];
   const whatOptions = allWhat.filter((w) => w === req.what || offers('exports', w));
   const whatLabel = (w: ExportWhat) => {
     if (w !== 'selection') return t(`export.what${w[0]?.toUpperCase()}${w.slice(1)}`);

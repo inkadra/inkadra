@@ -127,7 +127,9 @@ export function lookOf(
   const parent = frame?.parent ? sources.byId.get(frame.parent) : undefined;
   const scene = el?.type === 'scene' ? el : parent?.type === 'scene' ? parent : undefined;
   const label =
-    target.kind === 'shot' ? (frame && sources.labels.get(frame.id)) || stored : scene?.number || stored;
+    target.kind === 'shot'
+      ? (frame && sources.labels.get(frame.id)) || stored
+      : scene?.number || stored;
   return {
     label,
     frame,
@@ -139,7 +141,7 @@ export function lookOf(
         ? { color: source.dot, name: source.title }
         : { color: UNAVAILABLE_DOT, name: unavailable }
       : undefined,
-    aspect: source ? getBoardAspect(source.store.doc) ?? DEFAULT_ASPECT : DEFAULT_ASPECT,
+    aspect: source ? (getBoardAspect(source.store.doc) ?? DEFAULT_ASPECT) : DEFAULT_ASPECT,
   };
 }
 
@@ -165,7 +167,9 @@ export function withLabels<B extends ScheduleBlock>(block: B, sources: ScheduleS
 
 /** One key per frame or scene that blocks plan, by board: frames scheduled leave the queue. */
 export function plannedKeys(
-  blocks: Iterable<Pick<ScheduleBlock, 'type' | 'shotId' | 'shotBoardId' | 'sceneId' | 'sceneBoardId'>>,
+  blocks: Iterable<
+    Pick<ScheduleBlock, 'type' | 'shotId' | 'shotBoardId' | 'sceneId' | 'sceneBoardId'>
+  >,
   dayBoardId: string,
 ): Set<string> {
   const keys = new Set<string>();
@@ -305,9 +309,7 @@ export function useScheduleSources({
         (!boards || ids.some((id) => !conns.has(id) || conns.get(id)?.status === 'connecting')),
     };
   }, [open, snapshots, boards, dots, boardId, across, ids, conns]);
-  const docs = across
-    ? ids.map((id) => <SourceDoc key={id} boardId={id} onConn={onConn} />)
-    : null;
+  const docs = across ? ids.map((id) => <SourceDoc key={id} boardId={id} onConn={onConn} />) : null;
   return { sources, docs };
 }
 

@@ -31,8 +31,8 @@ import {
 } from '../film/day-calls.ts';
 import { neededForDay } from '../film/needed.ts';
 import { loadBoardDays } from '../film/production-days.ts';
-import { sluglineOf } from '../film/storyboard-data.ts';
 import { clockLabel, clockMinutes, scheduleTimes } from '../film/schedule.ts';
+import { sluglineOf } from '../film/storyboard-data.ts';
 import { type CardContext, framePicture } from './board-render.ts';
 import type { Section, sectionPages } from './compose.ts';
 import { contentBox, pageSize, paginateRows } from './layout.ts';
