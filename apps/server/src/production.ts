@@ -176,7 +176,8 @@ export async function daysOfBoard(
     date: day.date,
     blocks: day.blocks.flatMap((b) => {
       const shot = (b.shotBoardId ?? from) === boardId ? (b.shotId ?? null) : null;
-      const scene = b.type === 'scene' && (b.sceneBoardId ?? from) === boardId ? b.sceneId : undefined;
+      const scene =
+        b.type === 'scene' && (b.sceneBoardId ?? from) === boardId ? b.sceneId : undefined;
       if (shot === null && scene === undefined) return [];
       return [scene === undefined ? { shotId: shot } : { shotId: shot, sceneId: scene }];
     }),

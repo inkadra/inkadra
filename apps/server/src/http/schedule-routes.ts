@@ -90,7 +90,9 @@ export function keepBlockKeys(
     if (!was) return block;
     const kept: ScheduleBlock = { ...block };
     if (!('notes' in block) && was.notes !== undefined) kept.notes = was.notes;
-    const fill = (keys: ReadonlyArray<(typeof SHOT_KEYS)[number] | (typeof SCENE_KEYS)[number]>) => {
+    const fill = (
+      keys: ReadonlyArray<(typeof SHOT_KEYS)[number] | (typeof SCENE_KEYS)[number]>,
+    ) => {
       for (const key of keys)
         if (!(key in block) && was[key] !== undefined) Object.assign(kept, { [key]: was[key] });
     };

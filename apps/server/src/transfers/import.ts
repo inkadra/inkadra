@@ -20,14 +20,14 @@ import {
   ArchiveShootingDay,
   ArchiveVersion,
   checkArchiveStructure,
-  NEW_BOARD_VIEWS,
-  type ScheduleBlock,
   EXPORT_LOGO_MAX_BYTES,
   EXPORT_LOGO_TYPES,
   PROJECT_ARCHIVE_LIMITS as LIMITS,
+  NEW_BOARD_VIEWS,
   PROJECT_ARCHIVE_FORMAT,
   PROJECT_ARCHIVE_VERSION,
   ProjectArchiveManifest,
+  type ScheduleBlock,
   SHOT_CATALOG_KEYS,
   type TransferSummary,
   z,
@@ -57,10 +57,10 @@ import {
   user,
 } from '../db/schema.ts';
 import { readPreferences, readTheme } from '../http/export-settings-routes.ts';
-import { mailText } from '../mail-texts.ts';
-import { adoptDays } from '../production.ts';
 import { cleanMime, kindOf } from '../http/uploads.ts';
 import type { Jobs } from '../jobs.ts';
+import { mailText } from '../mail-texts.ts';
+import { adoptDays } from '../production.ts';
 import { writeBoardIndex } from '../search/index-doc.ts';
 import { newSecret, sha256 } from '../secrets.ts';
 import { originalKey, type Storage } from '../storage.ts';

@@ -149,8 +149,7 @@ export async function resolveLink(
       for (const el of view.visible) {
         if (el.type !== 'board' || included.has(el.boardId)) continue;
         const row = byId.get(el.boardId);
-        if (!row || row.kind === 'production' || !isBelowTop(row.id) || !editable(row.id))
-          continue;
+        if (!row || row.kind === 'production' || !isBelowTop(row.id) || !editable(row.id)) continue;
         included.set(row.id, { row, parentBoardId: next });
         queue.push(row.id);
       }

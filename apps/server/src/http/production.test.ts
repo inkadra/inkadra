@@ -19,14 +19,7 @@ import { createAuth } from '../auth.ts';
 import { mergeCastLinks } from '../cast-crew.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import {
-  board,
-  boardDoc,
-  castLink,
-  crewMember,
-  shareLink,
-  shootingDay,
-} from '../db/schema.ts';
+import { board, boardDoc, castLink, crewMember, shareLink, shootingDay } from '../db/schema.ts';
 import { adoptDays, daysOfBoard, nextShootingDay } from '../production.ts';
 import { DocViews, resolveLink } from '../share-links.ts';
 import { testDeps } from '../test-deps.ts';
@@ -96,7 +89,11 @@ describe('the cross-board keys of a block (decision 0123)', () => {
     const days = [
       dayInput('2026-11-04', []),
       dayInput('2026-11-02', [
-        block({ shotId: 'f', shotBoardId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a20', shotLabel: '1A' }),
+        block({
+          shotId: 'f',
+          shotBoardId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a20',
+          shotLabel: '1A',
+        }),
         block({ type: 'break', title: 'Lunch', start: '13:00' }),
       ]),
     ];
@@ -294,8 +291,14 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
     expect(
       Schedule.parse((await request('owner', 'GET', `/boards/${ids.sa}/schedule`)).json()).items,
     ).toEqual([]);
-    const { id: _id, projectId: _p, boardId: _b, revision, updatedBy: _u, ...input } =
-      days.a2 as ShootingDay;
+    const {
+      id: _id,
+      projectId: _p,
+      boardId: _b,
+      revision,
+      updatedBy: _u,
+      ...input
+    } = days.a2 as ShootingDay;
     expect(
       (
         await request('owner', 'PUT', `/boards/${ids.production}/schedule/${days.a2?.id}`, {
@@ -400,7 +403,10 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
     await db
       .update(shootingDay)
       .set({
-        blocks: [{ ...(back?.blocks[0] as ScheduleBlock), shotBoardId: ids.ordinary }, ...(back?.blocks.slice(1) ?? [])],
+        blocks: [
+          { ...(back?.blocks[0] as ScheduleBlock), shotBoardId: ids.ordinary },
+          ...(back?.blocks.slice(1) ?? []),
+        ],
       })
       .where(eq(shootingDay.id, back?.id as string));
   });
@@ -439,7 +445,10 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
       '2026-11-04',
       '2026-11-05',
     ]);
-    expect(sheet.flatMap((d) => d.blocks)).toEqual([{ shotId: 'frame-a1' }, { shotId: 'frame-a2' }]);
+    expect(sheet.flatMap((d) => d.blocks)).toEqual([
+      { shotId: 'frame-a1' },
+      { shotId: 'frame-a2' },
+    ]);
     const scenes = await daysOfBoard(db, { id: people.member?.id as string }, ids.project, ids.sb);
     expect(scenes.flatMap((d) => d.blocks)).toContainEqual({ shotId: null, sceneId: 'scene-0001' });
     expect(
@@ -595,7 +604,10 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
     const blocks = imported.flatMap((d) => d.blocks);
     const of = (shotId: string) => blocks.find((b) => b.shotId === shotId);
     expect(of('frame-a1')?.shotBoardId).toBe(byTitle.get('Act one')?.id);
-    expect(of('frame-b1')).toMatchObject({ shotBoardId: byTitle.get('Teaser')?.id, shotLabel: '3A' });
+    expect(of('frame-b1')).toMatchObject({
+      shotBoardId: byTitle.get('Teaser')?.id,
+      shotLabel: '3A',
+    });
     expect(of('frame-o1')?.shotBoardId).toBe(byTitle.get('Notes')?.id);
     // The trashed storyboard is not in the archive: the label stays, the board goes.
     expect(of('frame-t1')).toMatchObject({ shotLabel: '9C' });
