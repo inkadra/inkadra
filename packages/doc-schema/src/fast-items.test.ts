@@ -44,6 +44,12 @@ const ODD: unknown[] = [
   1.5,
   4096,
   4097,
+  // A plan's reach (decision 0117): its points may lie beyond the extent, a frame's may not.
+  -1,
+  -16384,
+  -16385,
+  20480,
+  20481,
   2 ** 53,
   Number.NaN,
   Number.POSITIVE_INFINITY,
@@ -169,7 +175,7 @@ function compare(schema: z.ZodType, value: unknown) {
 }
 
 /** Pin of Stroke and PlanStroke as fast-items.ts checks them (see the test). */
-const STROKE_SCHEMAS_PIN = 'ea65a468bdf0e1eb 88b4fb2182df906f';
+const STROKE_SCHEMAS_PIN = 'ea65a468bdf0e1eb 70dfab3aa5b857e';
 
 /** A description of a Zod schema's definition, functions by their source, then a hash of it. */
 function pin(schema: z.ZodType): string {

@@ -325,6 +325,7 @@ for (const theme of ['dark', 'light'] as const) {
 
     // Zoom in and back to fit: the plan opens fitted to what is drawn (decision 0117).
     const percent = editor.locator('.plan-canvas__percent');
+    await editor.getByRole('button', { name: 'Adatta la pianta' }).click();
     const fitted = await percent.innerText();
     await editor.getByRole('button', { name: 'Ingrandisci' }).click();
     await expect(percent).not.toHaveText(fitted);

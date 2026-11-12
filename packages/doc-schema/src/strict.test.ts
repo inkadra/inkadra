@@ -108,7 +108,7 @@ describe('the strict check of a card', () => {
     });
     // A wider range than this build allows: no unknown name, but an item left out.
     const wide = add(doc, { type: 'plan' });
-    (wide.get('icons') as Y.Array<unknown>).push([icon('camera', 5000)]);
+    (wide.get('icons') as Y.Array<unknown>).push([icon('camera', 99999)]);
     expect(checkCard(wide)).toEqual({
       status: 'foreign',
       readable: true,
