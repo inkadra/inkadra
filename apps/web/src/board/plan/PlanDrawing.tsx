@@ -70,12 +70,14 @@ import { PlanBackgroundView } from './PlanBackground.tsx';
 // The plan's colours and an icon's first colour live in canvas-core (decision 0116); the web's
 // callers import them here.
 export {
+  CHARACTER_COLOURS,
   iconColor,
   NOTE_COLOR,
   PLAN_COLORS,
+  PLAN_INK,
   type PlanColor,
+  planToken,
 } from '@inkadra/canvas-core';
-export { CHARACTER_COLOURS, PLAN_INK, planToken };
 
 /**
  * The cards a plan's links resolve against wherever it is drawn (decision 0104): the board's,

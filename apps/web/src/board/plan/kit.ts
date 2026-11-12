@@ -8,13 +8,12 @@ export {
   circuitNames,
   foldNames,
   KIT_GROUPS,
-  measureValue,
   type KitGroup,
   type KitLine,
   kitList,
+  measureValue,
   type PowerLines,
   planCounts,
   powerLines,
   wattsText,
 } from '@inkadra/canvas-core';
-
