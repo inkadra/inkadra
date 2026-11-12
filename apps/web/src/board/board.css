@@ -2489,6 +2489,14 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .new-board__preview--storyboard {
   grid-template-columns: repeat(3, 1fr);
 }
+/* Production (decision 0123): the days of a calendar. */
+.new-board__preview--production {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 1fr 1fr;
+}
+.new-board__preview--production i:nth-child(even) {
+  opacity: 0.3;
+}
 .new-board__name {
   display: flex;
   align-items: center;
@@ -2525,6 +2533,11 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .new-board__script .new-board__tag {
   position: static;
   margin-left: auto;
+}
+.new-board__note {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-text-muted);
 }
 .new-board__script.is-off,
 .menu__item:has(.new-board__script.is-off) > .menu__tile {

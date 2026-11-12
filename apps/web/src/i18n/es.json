@@ -122,7 +122,8 @@
     "toShoot_other": "{{left}} de {{count}} planos aún por rodar",
     "items_one": "{{count}} elemento en el tablero",
     "items_other": "{{count}} elementos en el tablero",
-    "addMoodboard": "Añadir moodboard"
+    "addMoodboard": "Añadir moodboard",
+    "addProduction": "Añadir Producción"
   },
   "home": {
     "greeting": {
@@ -297,8 +298,10 @@
       "desc": {
         "board": "Espacio libre para notas, imágenes y archivos.",
         "moodboard": "Referencias en grupos, con paleta.",
-        "storyboard": "Escenas y planos, con lista de planos."
-      }
+        "storyboard": "Escenas y planos, con lista de planos.",
+        "production": "Plan de rodaje + Equipo"
+      },
+      "present": "Ya está en el proyecto"
     },
     "toolGroups": {
       "navigate": "Navegar y conectar",
@@ -2001,7 +2004,8 @@
       "schedule": "Plan de rodaje",
       "review": "Revisión",
       "moodboard": "Moodboard",
-      "troupe": "Equipo"
+      "troupe": "Equipo",
+      "production": "Producción"
     },
     "aspect": {
       "label": "Formato",
@@ -3155,7 +3159,8 @@
       "shot": "Toma",
       "break": "Pausa",
       "move": "Traslado",
-      "note": "Nota"
+      "note": "Nota",
+      "scene": "Escena completa"
     },
     "days_one": "{{count}} jornada de rodaje",
     "days_other": "{{count}} jornadas de rodaje",
@@ -3289,7 +3294,16 @@
     "dayMoved": "Día movido de {{from}} a {{to}}.",
     "daysSwapped": "{{from}} y {{to}} intercambiados.",
     "blockNotes": "Nota destacada",
-    "blockNotesPlaceholder": "Se imprime en la hoja, p. ej. LUCES Y ESCAPARATES ENCENDIDOS"
+    "blockNotesPlaceholder": "Se imprime en la hoja, p. ej. LUCES Y ESCAPARATES ENCENDIDOS",
+    "unavailable": "Storyboard no disponible",
+    "missingScene": "Escena eliminada",
+    "noStoryboardShots": "Aún no hay storyboards con escenas o planos. Las escenas y los planos de los storyboards del proyecto aparecen aquí.",
+    "filterStoryboard": "Filtrar por storyboard",
+    "storyboardFilterLabel": "Storyboard",
+    "wholeScene": "Planificar la escena completa",
+    "wholeSceneHint_one": "{{count}} plano, en un solo bloque",
+    "wholeSceneHint_other": "{{count}} planos, en un solo bloque",
+    "sceneNoFrames": "Aún sin planos: planifícala en un bloque"
   },
   "moodboard": {
     "count_one": "{{count}} referencia",
@@ -4307,7 +4321,8 @@
       "fraunces": "serif",
       "space-grotesk": "grotesk",
       "ibm-plex-mono": "mono"
-    }
+    },
+    "whatCallsheets": "Hojas de citación"
   },
   "screenplay": {
     "open": "Importar guion…",
@@ -5091,7 +5106,7 @@
           },
           "2": {
             "title": "Nuevos tableros",
-            "text": "Lienzo crea tableros, moodboards y storyboards, e importa un guion."
+            "text": "Canvas crea tableros, moodboards, storyboards y el único tablero Producción del proyecto (Plan de rodaje y Equipo), e importa un guion."
           },
           "3": {
             "title": "Selecciona una tarjeta",
@@ -5197,15 +5212,15 @@
         "steps": {
           "0": {
             "title": "El calendario de rodaje",
-            "text": "Día o semana, como un calendario: los bloques se ponen en fila solos. Arrastra un plano a la hora adecuada, o haz clic para añadirlo al final. Con plantas del set, «Agrupar por: Setup» pone los planos de cada escena y de cada jornada bajo su setup."
+            "text": "En el tablero Producción, un calendario para todo el proyecto: la cola reúne los planos y las escenas de cada storyboard. Día o semana, como un calendario: los bloques se ponen en fila solos. Arrastra un plano a la hora adecuada, o haz clic para añadirlo al final. Con plantas del set, «Agrupar por: Setup» pone los planos de cada escena y de cada jornada bajo su setup."
           },
           "1": {
-            "title": "Mueve y alarga",
-            "text": "Arrastra para reordenar, con Alt para fijar la hora, desde el borde inferior para la duración. Suelta en una fecha libre para crear una jornada de rodaje; Ctrl+Z deshace todo el gesto."
+            "title": "Storyboards y puntos",
+            "text": "El filtro Storyboard muestra los planos de uno solo; el punto de color indica de qué storyboard viene cada bloque. «Planificar la escena completa» pone una escena en un bloque, incluso antes de dibujarla. Un punto gris: storyboard no disponible, queda su etiqueta."
           },
           "2": {
-            "title": "Dibuja un bloque",
-            "text": "Arrastra sobre tiempo libre para dibujar un bloque en pasos de 5 minutos y elige su tipo (teclas 1–5). La vista Day también tiene «Block» en la barra. Con el teclado, N añade un bloque tras el seleccionado, o al final del día."
+            "title": "Mueve y alarga",
+            "text": "Arrastra para reordenar, con Alt para fijar la hora, desde el borde inferior para la duración. Suelta en una fecha libre para crear una jornada de rodaje; Ctrl+Z deshace todo el gesto. Arrastra sobre tiempo libre para dibujar un bloque en pasos de 5 minutos y elige su tipo (teclas 1–5). La vista Day también tiene «Block» en la barra. Con el teclado, N añade un bloque tras el seleccionado, o al final del día."
           },
           "3": {
             "title": "Mueve un día entero",
@@ -5555,7 +5570,7 @@
         "steps": {
           "0": {
             "title": "Equipo del proyecto",
-            "text": "Agrupa a las personas por departamento. Los contactos solo los ve el equipo del proyecto. ¿La misma persona en dos filas? Menú ⋯ de la fila, «Combinar con…»."
+            "text": "El equipo está en el tablero Producción, junto al plan de rodaje. Agrupa a las personas por departamento. Los contactos solo los ve el equipo del proyecto. ¿La misma persona en dos filas? Menú ⋯ de la fila, «Combinar con…»."
           },
           "1": {
             "title": "Editar una persona",
@@ -6299,5 +6314,9 @@
       "storyboard": "{{scenes}} en el tablero. Con Storyboard se convierten en planos."
     },
     "offLine": "Módulo {{name}} apagado: puedes leer este tablero."
+  },
+  "production": {
+    "storyboardLink_one": "Días de rodaje: {{count}} · Abrir Producción",
+    "storyboardLink_other": "Días de rodaje: {{count}} · Abrir Producción"
   }
 }

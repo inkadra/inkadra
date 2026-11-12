@@ -707,6 +707,11 @@
   --block-bg: var(--ink-tag-yellow-bg);
   --block-fg: var(--ink-tag-yellow);
 }
+/* A scene planned as a whole (decision 0123). */
+.schedule__block--scene {
+  --block-bg: var(--ink-tag-teal-bg);
+  --block-fg: var(--ink-tag-teal);
+}
 .schedule__block-select {
   position: relative;
   flex: 1;
@@ -970,6 +975,10 @@
 .schedule__type--note {
   --block-bg: var(--ink-tag-yellow-bg);
   --block-fg: var(--ink-tag-yellow);
+}
+.schedule__type--scene {
+  --block-bg: var(--ink-tag-teal-bg);
+  --block-fg: var(--ink-tag-teal);
 }
 .schedule__editor-shot {
   display: grid;
@@ -1620,4 +1629,42 @@ fieldset.schedule__field > legend {
   .schedule__inspector .day-calls__row .ink-input {
     height: 44px;
   }
+}
+
+/* The dot of a storyboard on the Production board (decision 0123): its colour, named by it. */
+.schedule__dot {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--dot);
+  vertical-align: 1px;
+}
+.schedule__source-title {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 12px 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-text-primary);
+}
+.schedule__shot--scene .schedule__shot-pic {
+  display: grid;
+  place-items: center;
+  color: var(--ink-tag-teal);
+  background: var(--ink-tag-teal-bg);
+}
+.schedule__shot--scene .schedule__shot-pic > *,
+.schedule__editor-pic > svg {
+  width: 16px;
+  height: 16px;
+}
+.schedule__editor-pic:has(> svg) {
+  display: grid;
+  place-items: center;
+  color: var(--ink-tag-teal);
+  background: var(--ink-tag-teal-bg);
 }

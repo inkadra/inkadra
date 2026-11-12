@@ -8,6 +8,7 @@ import {
   type CrewMember,
   castNameKey,
   type Person,
+  type ScheduleBlock,
   type ShootingDay,
   type ShootingDayInput,
 } from '@inkadra/shared';
@@ -19,6 +20,8 @@ import { fetchExportSettings, logoUrl } from '../export/settings.ts';
 import { kitList, powerLines } from '../plan/kit.ts';
 import { PlanDrawing, type PlanLike } from '../plan/PlanDrawing.tsx';
 import {
+  asideBlock,
+  blockCast,
   dayAddress,
   departmentNotes,
   keyTimes,
@@ -40,6 +43,8 @@ import {
 import { FramePicture } from './FramePicture.tsx';
 import type { NeededRow } from './needed.ts';
 import { clockLabel, clockMinutes, scheduleTimes } from './schedule.ts';
+import type { BlockLook } from './schedule-sources.tsx';
+import { useSlugline } from './storyboard-data.ts';
 import './call-sheet.css';
 import { useIsPhone } from '../../lib/phone.ts';
 import type { BoardStore, Snapshot } from '../store.ts';
@@ -74,6 +79,14 @@ export interface CallSheetShot {
 
 export interface CallSheetModalProps {
   store?: BoardStore | undefined;
+  /**
+   * The cards the sheet reads, when not the board's own: on the Production board, those of the
+   * day's storyboards, the first in tree order winning on a shared name (decision 0123).
+   */
+  elements?: ReadonlyMap<string, Element> | undefined;
+  /** What a block plans, read from its own storyboard, and its name as the calendar says it. */
+  look?: ((block: ScheduleBlock) => BlockLook | null) | undefined;
+  blockTitle?: ((block: ScheduleBlock) => string) | undefined;
   days: ShootingDay[];
   shots: ReadonlyMap<string, CallSheetShot>;
   projectName?: string | undefined;
@@ -139,6 +152,9 @@ function useDateLabel(style: 'short' | 'long' | 'phone') {
 
 export function CallSheetModal({
   store,
+  elements: cards,
+  look,
+  blockTitle,
   days,
   shots,
   projectName,
@@ -163,7 +179,8 @@ export function CallSheetModal({
     store?.subscribe ?? noSubscribe,
     store?.getSnapshot ?? emptySnapshot,
   );
-  const elements = snapshot.byId;
+  const elements = cards ?? snapshot.byId;
+  const slugline = useSlugline();
   const boardAspect = store ? (getBoardAspect(store.doc) ?? '16:9') : '16:9';
   const shortDate = useDateLabel('short');
   const longDate = useDateLabel('long');
@@ -230,7 +247,7 @@ export function CallSheetModal({
   const numbered = slots.some(
     ({ block }) =>
       shots.get(block.shotId ?? '')?.scene?.trim() ||
-      sheetShot(block.shotId, elements).scene?.number?.trim(),
+      sheetShot(block, elements).scene?.number?.trim(),
   );
   const needed = day && neededOf ? neededOf(day) : [];
   const dayScenes = day && scenesOf ? scenesOf(day) : [];
@@ -544,7 +561,11 @@ export function CallSheetModal({
                         <tbody>
                           {slots.map(({ block, start, end }) => {
                             const shot = shotOf(block.shotId);
-                            const { frame, scene } = sheetShot(block.shotId, elements);
+                            const { frame, scene } = sheetShot(block, elements);
+                            const seen = look?.(block);
+                            // A scene planned as a whole: its heading, its place, its cast.
+                            const whole = block.type === 'scene' && !block.shotId;
+                            const heading = scene ? slugline(scene) : '';
                             const locationIndex = locations.findIndex(
                               (loc) =>
                                 loc.name.trim().toLocaleLowerCase() ===
@@ -556,7 +577,7 @@ export function CallSheetModal({
                               </td>
                             );
                             // Breaks, moves and set-ups read as one quiet line across the table.
-                            if (block.type !== 'shot' && !block.shotId) {
+                            if (asideBlock(block)) {
                               return (
                                 <tr
                                   key={block.id}
@@ -577,9 +598,14 @@ export function CallSheetModal({
                                 {time}
                                 {numbered && (
                                   <td className="sheet__scene-number">
-                                    {shot?.scene && <strong>{shot.scene}</strong>}
-                                    {shot?.slugline && (
-                                      <span className="sheet__muted"> {shot.slugline}</span>
+                                    {(shot?.scene || scene?.number) && (
+                                      <strong>{shot?.scene || scene?.number}</strong>
+                                    )}
+                                    {(shot?.slugline || heading) && (
+                                      <span className="sheet__muted">
+                                        {' '}
+                                        {shot?.slugline || heading}
+                                      </span>
                                     )}
                                   </td>
                                 )}
@@ -589,7 +615,7 @@ export function CallSheetModal({
                                       <FramePicture
                                         assetId={frame.assetId}
                                         aspect={frame.aspect}
-                                        boardAspect={boardAspect}
+                                        boardAspect={seen?.aspect ?? boardAspect}
                                         strokes={frame.strokes}
                                         shapes={frame.shapes}
                                         referenceOpacity={frame.referenceOpacity}
@@ -598,13 +624,21 @@ export function CallSheetModal({
                                     </div>
                                   )}
                                   <strong>
-                                    {block.shotId
-                                      ? (shot?.label ?? t('schedule.missingShot'))
-                                      : '—'}
+                                    {whole
+                                      ? t('schedule.types.scene')
+                                      : block.shotId
+                                        ? (shot?.label ?? (seen?.label || t('schedule.missingShot')))
+                                        : '—'}
                                   </strong>
                                 </td>
                                 <td className="sheet__pre">
-                                  {shot?.action || block.title || t(`schedule.types.${block.type}`)}
+                                  {whole
+                                    ? [blockTitle?.(block) ?? heading, block.title]
+                                        .filter(Boolean)
+                                        .join('\n')
+                                    : shot?.action ||
+                                      block.title ||
+                                      t(`schedule.types.${block.type}`)}
                                   <BlockNote text={block.notes} />
                                   {serve.get(block.id) && (
                                     <div className="sheet__muted">
@@ -612,7 +646,9 @@ export function CallSheetModal({
                                     </div>
                                   )}
                                 </td>
-                                <td className="sheet__row-cast">{block.cast.join(', ')}</td>
+                                <td className="sheet__row-cast">
+                                  {blockCast(block, elements).join(', ')}
+                                </td>
                                 {locations.length > 1 && (
                                   <td className="sheet__row-location">
                                     {locationIndex >= 0

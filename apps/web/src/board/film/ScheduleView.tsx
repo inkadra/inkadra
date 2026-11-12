@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { linkedPlan, variantView } from '@inkadra/canvas-core';
+import { getBoardAspect } from '@inkadra/doc-schema';
 import {
+  type Board,
+  blockTarget,
   ShootingDayInput as DaySchema,
   type Person,
   type ProjectMember,
@@ -18,7 +21,7 @@ import {
   IconButton,
   Segmented,
 } from '@inkadra/ui';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { formatClock } from '../../lib/datetime.ts';
@@ -50,7 +53,7 @@ import { DayCallsPanel } from './DayCallsPanel.tsx';
 import { dayCrew, useCrew } from './day-calls.ts';
 import { useShotGroupBy } from './group-by.ts';
 import { NeededItems } from './NeededItems.tsx';
-import { neededForDay, updateNeededRow } from './needed.ts';
+import { neededForDay, sceneIdsOf, updateNeededRow } from './needed.ts';
 import {
   type CalendarColumn,
   type CalendarDay,
@@ -66,7 +69,15 @@ import {
   SunLine,
 } from './ScheduleParts.tsx';
 import { castConflicts, clockLabel, newScheduleBlock, nowOnDay, whileVisible } from './schedule.ts';
-import { useSlugline, useStoryboard } from './storyboard-data.ts';
+import {
+  type BlockLook,
+  lookOf,
+  plannedKeys,
+  type ScheduleSources,
+  useScheduleSources,
+  withLabels,
+} from './schedule-sources.tsx';
+import { useSlugline } from './storyboard-data.ts';
 import { locationCoords, sunTimes } from './sun.ts';
 import './film.css';
 import './schedule.css';
@@ -159,6 +170,9 @@ export function ScheduleView({
   boardId = '',
   userId,
   readOnly = false,
+  boards = null,
+  across = false,
+  onSources,
   onOpenScene,
   onOpenTroupe,
 }: {
@@ -181,14 +195,19 @@ export function ScheduleView({
   boardId?: string;
   userId?: string;
   readOnly?: boolean;
-  /** "Open in the storyboard" on a shot's block: the storyboard, scrolled to its scene. */
-  onOpenScene?: (sceneId: string) => void;
+  /** The project's boards the person can read: the storyboards of the Production board. */
+  boards?: readonly Board[] | null;
+  /** The Production board: one calendar for every storyboard of the project (decision 0123). */
+  across?: boolean;
+  /** Told the storyboards read, for the Production board's call sheets export. */
+  onSources?: ((sources: ScheduleSources) => void) | undefined;
+  /** "Open in the storyboard" on a shot's block: its storyboard, scrolled to its scene. */
+  onOpenScene?: (sceneId: string, boardId: string) => void;
   /** The empty "Convocazioni" tab links to the Troupe view. */
   onOpenTroupe?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const slugline = useSlugline();
-  const { groups, frames, labels } = useStoryboard(store);
   const [callSheetOpen, setCallSheetOpen] = useState(false);
   const [days, setDays] = useState<ShootingDay[]>([]);
   // Unsaved edits per day, with the revision they started from. A draft is never dropped when
@@ -241,6 +260,41 @@ export function ScheduleView({
   daysRef.current = days;
   const draftsRef = useRef(drafts);
   draftsRef.current = drafts;
+  // The boards the blocks point to: on the Production board, the storyboards it opens.
+  const referencedKey = [
+    ...new Set(
+      days.flatMap((day) =>
+        day.blocks.flatMap((block) => blockTarget(block, day.boardId)?.boardId ?? []),
+      ),
+    ),
+  ]
+    .sort()
+    .join(' ');
+  const referenced = useMemo(() => referencedKey.split(' ').filter(Boolean), [referencedKey]);
+  const { sources, docs } = useScheduleSources({ store, boardId, boards, across, referenced });
+  const sourcesRef = useRef<ScheduleSources>(sources);
+  sourcesRef.current = sources;
+  useEffect(() => onSources?.(sources), [onSources, sources]);
+  const { groups, frames, labels } = sources;
+  const unavailable = t('schedule.unavailable');
+  const look = (block: ScheduleBlock): BlockLook | null => lookOf(block, sources, unavailable);
+  /** The name of a block: its frame ("12A · action"), its scene, else its title or type. */
+  const blockTitle = (block: ScheduleBlock): string => {
+    const seen = look(block);
+    if (!seen) return block.title || t(`schedule.types.${block.type}`);
+    if (block.type === 'scene' && !block.shotId) {
+      const name = seen.scene ? slugline(seen.scene) || seen.scene.title.trim() : '';
+      return [seen.label && t('schedule.sceneShort', { number: seen.label }), name]
+        .filter(Boolean)
+        .join(' · ') || t('schedule.missingScene');
+    }
+    if (seen.missing) return seen.label ? `${seen.label} · ${t('schedule.missingShot')}` : t('schedule.missingShot');
+    if (!seen.frame) return seen.label || t('schedule.missingShot');
+    return seen.frame.action ? `${seen.label} · ${seen.frame.action}` : seen.label;
+  };
+  /** A frame or scene of a source, by its board, as the queue and the drops name it. */
+  const frameKey = (frameId: string) =>
+    `shot:${sources.boardOf.get(frameId) ?? boardId}/${frameId}`;
 
   // Who brings what: the project's members, as on the to-do cards.
   useEffect(() => {
@@ -352,8 +406,10 @@ export function ScheduleView({
     [days, drafts],
   );
   const conflicts = useMemo(() => castConflicts(drafted.map((d) => d.draft)), [drafted]);
-  const scheduled = new Set(
-    drafted.flatMap((d) => d.draft.blocks.map((block) => block.shotId).filter(Boolean)),
+  // Frames and scenes already planned, by board and id (decision 0123).
+  const scheduled = plannedKeys(
+    drafted.flatMap((d) => d.draft.blocks),
+    boardId,
   );
   const now = useMinute(true);
   const today = localDate(now);
@@ -401,8 +457,17 @@ export function ScheduleView({
   // --- Edits, undo and redo -------------------------------------------------------------------
 
   /** Every edit of a day goes through here: one step of undo, saved on its own after a moment. */
-  const commit = (changes: DayChange[], key?: string) => {
-    if (readOnly || !changes.length) return;
+  const commit = (edits: DayChange[], key?: string) => {
+    if (readOnly || !edits.length) return;
+    // Every save keeps each block's label as last seen, for readers who cannot open its
+    // storyboard (decision 0123).
+    const changes = edits.map((change) => ({
+      ...change,
+      next: {
+        ...change.next,
+        blocks: change.next.blocks.map((block) => withLabels(block, sourcesRef.current)),
+      },
+    }));
     const current = draftsRef.current;
     const step: Step = {
       key,
@@ -650,17 +715,30 @@ export function ScheduleView({
       setTab('day');
     });
   const findEntry = (id: string) => drafted.find((d) => d.day.id === id);
+  /** A new shot block for a frame of the queue, pointing at its storyboard (decision 0123). */
+  const shotBlock = (shotId: string): ScheduleBlock | null => {
+    const frame = frames.find((item) => item.id === shotId);
+    if (!frame) return null;
+    const from = sources.boardOf.get(shotId) ?? boardId;
+    return withLabels(
+      {
+        ...newScheduleBlock('shot', shotId),
+        ...(from !== boardId ? { shotBoardId: from } : {}),
+        cast: frame.cast ?? [],
+      },
+      sources,
+    );
+  };
   /** A shot from the queue, at `minute` or at the end of the day. */
   const addShot = (target: CalendarDay | null, shotId: string, minute?: number) => {
-    if (!target || disabled || scheduled.has(shotId)) return;
+    if (!target || disabled || scheduled.has(frameKey(shotId))) return;
     const { day, draft, stale } = target;
     if (stale) {
       setError(t('schedule.staleBlocked', { day: dayName(target) }));
       return;
     }
-    const frame = frames.find((item) => item.id === shotId);
-    if (!frame) return;
-    const block = { ...newScheduleBlock('shot', shotId), cast: frame.cast ?? [] };
+    const block = shotBlock(shotId);
+    if (!block) return;
     const next =
       minute === undefined || !Number.isFinite(minute)
         ? { ...draft, blocks: [...draft.blocks, block] }
@@ -669,6 +747,50 @@ export function ScheduleView({
     setSelection({ day: day.id, block: block.id });
     // The day may be off-screen: say where the shot went.
     setNotice(t('schedule.addedTo', { shot: labels.get(shotId) ?? '', day: dayName(target) }));
+  };
+  /**
+   * A scene of the queue as a whole, drawn or not (decision 0123, answer 4): one block with the
+   * cast of its frames, at the end of the selected day.
+   */
+  const addScene = (target: CalendarDay | null, from: string, sceneId: string) => {
+    if (!target || disabled || scheduled.has(`scene:${from}/${sceneId}`)) return;
+    if (target.stale) {
+      setError(t('schedule.staleBlocked', { day: dayName(target) }));
+      return;
+    }
+    const group = groups.find((g) => g.boardId === from && g.scene?.id === sceneId);
+    if (!group?.scene) return;
+    const cast = [
+      ...new Map(
+        group.frames.flatMap((f) => f.cast ?? []).map((n) => [n.trim().toLocaleLowerCase(), n.trim()]),
+      ).values(),
+    ].slice(0, 100);
+    const block = withLabels(
+      {
+        ...newScheduleBlock('scene'),
+        sceneId,
+        ...(from !== boardId ? { sceneBoardId: from } : {}),
+        duration: Math.min(1440, Math.max(30, group.frames.length * 30)),
+        cast,
+      },
+      sources,
+    );
+    commit([{ day: target.day, next: { ...target.draft, blocks: [...target.draft.blocks, block] } }]);
+    setSelection({ day: target.day.id, block: block.id });
+    setNotice(t('schedule.addedTo', { shot: blockTitle(block), day: dayName(target) }));
+  };
+  /** A frame dragged from the queue: its storyboard among those read, and its id. */
+  const droppedShot = (payload: string): string | null => {
+    for (const source of sources.list) {
+      const id = resolveDroppedShot(
+        payload,
+        source.boardId,
+        frames.filter((f) => sources.boardOf.get(f.id) === source.boardId).map((f) => f.id),
+        disabled,
+      );
+      if (id) return id;
+    }
+    return null;
   };
   const dropOnFreeDay = (
     date: string,
@@ -680,27 +802,15 @@ export function ScheduleView({
   ) => {
     if (disabled || shootingDates.has(date)) return;
     const from = fromId ? findEntry(fromId) : null;
-    const shotId = payload
-      ? resolveDroppedShot(
-          payload,
-          boardId,
-          frames.map((frame) => frame.id),
-          disabled,
-        )
-      : null;
+    const shotId = payload ? droppedShot(payload) : null;
     const block = from
       ? from.draft.blocks.find((item) => item.id === blockId)
-      : shotId && !scheduled.has(shotId)
-        ? {
-            ...newScheduleBlock('shot', shotId),
-            cast: frames.find((frame) => frame.id === shotId)?.cast ?? [],
-          }
+      : shotId && !scheduled.has(frameKey(shotId))
+        ? shotBlock(shotId)
         : null;
     if (!block || from?.stale) return;
     createDay(date, minute, fixed, block, from ?? null);
-    setNotice(
-      t('schedule.addedTo', { shot: block.title || shotTitle(block.shotId ?? ''), day: date }),
-    );
+    setNotice(t('schedule.addedTo', { shot: blockTitle(block), day: date }));
   };
   /**
    * A shooting day created by a drop or a drawn block on a free date, called when the block
@@ -806,7 +916,7 @@ export function ScheduleView({
     const block = entry?.draft.blocks.find((item) => item.id === blockId);
     if (!entry || !block || readOnly) return;
     // An empty block carries nothing to lose: drop it without asking.
-    if (ask && (block.title.trim() || block.shotId)) {
+    if (ask && (block.title.trim() || blockTarget(block, boardId))) {
       setPendingDelete({ kind: 'block', day: dayId, id: blockId });
       return;
     }
@@ -851,14 +961,6 @@ export function ScheduleView({
     setNotice(t('schedule.movedTo', { day: dayName(to) }));
   };
 
-  const frameOf = (id: string | null) => (id ? frames.find((f) => f.id === id) : undefined);
-  const shotTitle = (shotId: string) => {
-    const frame = frameOf(shotId);
-    const label = labels.get(shotId) ?? t('schedule.missingShot');
-    return frame?.action ? `${label} · ${frame.action}` : label;
-  };
-  const sceneOf = (shotId: string | null) =>
-    groups.find((g) => g.frames.some((f) => f.id === shotId))?.scene ?? null;
   const callSheetShots = new Map(
     groups.flatMap(({ scene, frames: items }) =>
       items.map((frame) => [
@@ -873,8 +975,8 @@ export function ScheduleView({
     ),
   );
   // Character cards of the board and names already in the storyboard or the plan, offered
-  // while typing the cast of a block.
-  const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  // while typing the cast of a block. On the Production board, of every storyboard read.
+  const snap = sources;
   // The setups of the set plans each shot belongs to (decision 0104).
   const setups = useMemo(() => shotSetups([...snap.byId.values()], t), [snap, t]);
   // "Group by: Setup", this person's grouping of shots, shared with the shot list (decision
@@ -901,7 +1003,7 @@ export function ScheduleView({
               {setup && <Icon name="map" size={11} />}
               <span>{setup ? setup.name : t('film.list.noSetup')}</span>
             </h4>
-            {list.map(({ id, block }) => (
+            {list.map(({ block }) => (
               <button
                 key={block.id}
                 type="button"
@@ -909,7 +1011,7 @@ export function ScheduleView({
                 onClick={() => openBlock(entry.day.id, block.id, null)}
               >
                 {/* As the calendar names it: its label and action, else "Missing shot". */}
-                {shotTitle(id)}
+                {blockTitle(block)}
               </button>
             ))}
           </section>
@@ -930,14 +1032,15 @@ export function ScheduleView({
   ].sort((a, b) => a.localeCompare(b));
   const neededOf = (day: ShootingDayInput) => neededForDay(day, snap.byId.values());
   const boardAspect = useBoardAspect(store.doc);
+  /** The aspect of the storyboard an element is read from. */
+  const aspectOf = (id: string) => {
+    const from = sources.list.find((s) => s.boardId === sources.boardOf.get(id));
+    return from ? (getBoardAspect(from.store.doc) ?? boardAspect) : boardAspect;
+  };
   /** The scenes a day shoots, in order, with their frames and set plan (#335 round 6, i). */
   const scenesOf = (day: ShootingDayInput): SheetScene[] => {
-    const ids: string[] = [];
-    for (const block of day.blocks) {
-      const frame = block.shotId ? snap.byId.get(block.shotId) : undefined;
-      if (frame?.type === 'frame' && frame.parent && !ids.includes(frame.parent))
-        ids.push(frame.parent);
-    }
+    // Its shot blocks' scenes and its scene blocks', each read from its own storyboard.
+    const ids = sceneIdsOf(day, snap.byId);
     return ids.flatMap((id) => {
       const scene = snap.byId.get(id);
       if (scene?.type !== 'scene') return [];
@@ -960,7 +1063,7 @@ export function ScheduleView({
                 palette: CHARACTER_COLOURS,
               })
             : plan,
-          boardAspect,
+          boardAspect: aspectOf(id),
         },
       ];
     });
@@ -1008,7 +1111,7 @@ export function ScheduleView({
     else if (rect) setPopover({ day: dayId, block: blockId, rect });
   };
 
-  const unscheduled = frames.filter((frame) => !scheduled.has(frame.id));
+  const unscheduled = frames.filter((frame) => !scheduled.has(frameKey(frame.id)));
   const statusText = staleCount
     ? t('schedule.statusConflict')
     : failedAny
@@ -1039,11 +1142,9 @@ export function ScheduleView({
       conflicts={conflicts}
       readOnly={readOnly}
       castSuggestions={castSuggestions}
-      shotTitle={shotTitle}
-      frameOf={frameOf}
-      sceneOf={sceneOf}
+      blockTitle={blockTitle}
+      look={look}
       slugline={slugline}
-      boardAspect={boardAspect}
       dayName={dayName}
       onChange={(next, key) => commit([{ day: entry.day, next }], key)}
       onMove={(toId) => moveToDay(entry.day.id, blockId, toId)}
@@ -1092,7 +1193,7 @@ export function ScheduleView({
           readOnly={readOnly}
           blockLabel={(blockId) => {
             const block = selectedEntry.draft.blocks.find((b) => b.id === blockId);
-            return (block?.shotId && labels.get(block.shotId)) || block?.title || '';
+            return (block && look(block)?.label) || block?.title || '';
           }}
           onChange={(next, key) => commit([{ day: selectedEntry.day, next }], key)}
           onOpenTroupe={onOpenTroupe}
@@ -1105,7 +1206,16 @@ export function ScheduleView({
           userId={userId}
           readOnly={readOnly}
           phone={phone}
-          onChange={(row, patch) => updateNeededRow(store.doc, row, patch, LOCAL)}
+          onChange={(row, patch) => {
+            // Each item is ticked on its own storyboard, where the person may edit it.
+            for (const source of sources.list) {
+              const items = row.items.filter(
+                (item) => (sources.boardOf.get(item.elementId) ?? boardId) === source.boardId,
+              );
+              if (items.length && !source.readOnly)
+                updateNeededRow(source.store.doc, { ...row, items }, patch, LOCAL);
+            }
+          }}
         />
       }
       block={(id) => editorFor(selectedEntry, id, 'panel')}
@@ -1130,7 +1240,8 @@ export function ScheduleView({
       scheduled={scheduled}
       totalFrames={frames.length}
       boardId={boardId}
-      boardAspect={boardAspect}
+      sources={across ? sources.list : undefined}
+      aspectOf={aspectOf}
       slugline={slugline}
       plansOf={(id) => plansOfScene(snap.byId.values(), id)}
       setupsOf={(id) => setups.get(id)}
@@ -1154,6 +1265,14 @@ export function ScheduleView({
         addShot(selectedEntry, shotId);
         if (phone) setSheet(null);
       }}
+      onAddScene={
+        across
+          ? (from, sceneId) => {
+              addScene(selectedEntry, from, sceneId);
+              if (phone) setSheet(null);
+            }
+          : undefined
+      }
     />
   );
   const phoneDates = phone
@@ -1167,6 +1286,7 @@ export function ScheduleView({
       aria-label={t('nav.schedule')}
       data-tour="schedule"
     >
+      {docs}
       <div className="story__bar schedule__bar" data-chrome>
         {phone ? (
           <>
@@ -1413,9 +1533,8 @@ export function ScheduleView({
               selectedDay={selection.day}
               selectedBlock={selection.block}
               readOnly={readOnly}
-              shotTitle={shotTitle}
-              frameOf={frameOf}
-              boardAspect={boardAspect}
+              blockTitle={blockTitle}
+              look={look}
               sunOf={sunOf}
               onOpenDay={openDay}
               onOpenBlock={openBlock}
@@ -1428,12 +1547,7 @@ export function ScheduleView({
               onMoveDay={moveDayTo}
               onDayTarget={setDayTarget}
               onDropShot={(entry, payload, minute) => {
-                const id = resolveDroppedShot(
-                  payload,
-                  boardId,
-                  frames.map((frame) => frame.id),
-                  disabled,
-                );
+                const id = droppedShot(payload);
                 if (id) addShot(entry, id, minute);
               }}
             />
@@ -1548,6 +1662,9 @@ export function ScheduleView({
       {callSheetOpen && (
         <CallSheetModal
           store={store}
+          elements={across ? sources.byId : undefined}
+          look={look}
+          blockTitle={blockTitle}
           days={days}
           shots={callSheetShots}
           needed={neededOf}

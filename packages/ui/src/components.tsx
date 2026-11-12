@@ -318,7 +318,8 @@ export function Avatar({
   );
 }
 
-const glyphColor = {
+/** The project identity palette: the stroke of each colour a project or board icon can have. */
+export const glyphColor = {
   blue: 'var(--ink-tag-blue)',
   orange: 'var(--ink-tag-orange)',
   purple: 'var(--ink-tag-purple)',

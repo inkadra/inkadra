@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { FrameElement } from '@inkadra/canvas-core';
-import type { AspectRatio } from '@inkadra/doc-schema';
 import type { ScheduleBlock, ShootingDay, ShootingDayInput } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
 import {
@@ -37,6 +35,7 @@ import {
 import { locationsOfDay, plannedWrap } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { clockLabel, clockMinutes, scheduleTimes } from './schedule.ts';
+import { type BlockLook, SourceDot } from './schedule-sources.tsx';
 
 export interface CalendarDay {
   day: ShootingDay;
@@ -125,8 +124,6 @@ const NEW_TYPES = ['shot', 'setup', 'break', 'move', 'note'] as const;
 /** About the height of the type menu, to open it above the block near the bottom. */
 const MENU_HEIGHT = 200;
 
-const blockName = (block: ScheduleBlock, shotTitle: (id: string) => string, fallback: string) =>
-  block.shotId ? shotTitle(block.shotId) : block.title || fallback;
 
 export function ScheduleCalendar({
   view,
@@ -140,9 +137,8 @@ export function ScheduleCalendar({
   selectedDay,
   selectedBlock,
   readOnly,
-  shotTitle,
-  frameOf,
-  boardAspect,
+  blockTitle,
+  look,
   sunOf,
   onOpenDay,
   onOpenBlock,
@@ -168,9 +164,10 @@ export function ScheduleCalendar({
   selectedDay: string | null;
   selectedBlock: string | null;
   readOnly: boolean;
-  shotTitle: (id: string) => string;
-  frameOf: (id: string | null) => FrameElement | undefined;
-  boardAspect: AspectRatio;
+  /** The name of a block: its frame or scene, read from its own storyboard, else its title. */
+  blockTitle: (block: ScheduleBlock) => string;
+  /** The frame or scene a block plans, with the dot of its storyboard (decision 0123). */
+  look: (block: ScheduleBlock) => BlockLook | null;
   sunOf: (draft: ShootingDayInput) => Sun;
   onOpenDay: (entry: CalendarDay | null, date: string) => void;
   onOpenBlock: (dayId: string, blockId: string, rect: DOMRect | null) => void;
@@ -272,7 +269,7 @@ export function ScheduleCalendar({
     if (!slot) return;
     onAnnounce(
       t('schedule.announce', {
-        block: blockName(slot.block, shotTitle, typeName(slot.block.type)),
+        block: blockTitle(slot.block),
         start: clockLabel(slot.start),
         end: clockLabel(slot.end),
         day: dateLabel(draft.date, { weekday: 'long', day: 'numeric' }),
@@ -869,7 +866,7 @@ export function ScheduleCalendar({
         const previous = slots[index - 1];
         const after = previous
           ? t('schedule.after', {
-              block: blockName(previous.block, shotTitle, typeName(previous.block.type)).split(
+              block: blockTitle(previous.block).split(
                 ' · ',
               )[0],
             })
@@ -1109,7 +1106,7 @@ export function ScheduleCalendar({
                                 {clockLabel(start)} – {clockLabel(start + block.duration)}
                               </span>
                               <span className="schedule__block-title">
-                                {blockName(block, shotTitle, typeName(block.type))}
+                                {blockTitle(block)}
                               </span>
                             </span>
                           </div>
@@ -1231,8 +1228,9 @@ export function ScheduleCalendar({
                       : (lanes.get(block.id) ?? { lane: 0, lanes: 1 });
                   const height = Math.max(MIN_HEIGHT, (end - start) * MINUTE_PX);
                   const dragging = drag?.active && drag.blockId === block.id;
-                  const frame = frameOf(block.shotId);
-                  const name = blockName(block, shotTitle, typeName(block.type));
+                  const seen = look(block);
+                  const frame = seen?.frame;
+                  const name = blockTitle(block);
                   const time = `${clockLabel(start)} – ${clockLabel(end)}`;
                   const tall = height >= TWO_LINES;
                   const roomy = view === 'day' && height >= 56;
@@ -1256,6 +1254,7 @@ export function ScheduleCalendar({
                         aria-pressed={selectedBlock === block.id}
                         aria-label={[
                           name,
+                          seen?.dot?.name ?? '',
                           time,
                           typeName(block.type),
                           block.start !== null ? t('schedule.fixed') : '',
@@ -1283,7 +1282,7 @@ export function ScheduleCalendar({
                             <FramePicture
                               assetId={frame.assetId}
                               aspect={frame.aspect}
-                              boardAspect={boardAspect}
+                              boardAspect={seen?.aspect ?? '16:9'}
                               strokes={frame.strokes}
                               shapes={frame.shapes}
                               referenceOpacity={frame.referenceOpacity}
@@ -1296,7 +1295,12 @@ export function ScheduleCalendar({
                             {block.start !== null && <Icon name="pin" size={11} />}
                             {tall ? time : clockLabel(start)}
                           </span>
-                          <span className="schedule__block-title">{name}</span>
+                          <span className="schedule__block-title">
+                            {seen?.dot && (
+                              <SourceDot color={seen.dot.color} name={seen.dot.name} />
+                            )}
+                            {name}
+                          </span>
                           {roomy && (
                             <span className="schedule__block-meta">
                               {[

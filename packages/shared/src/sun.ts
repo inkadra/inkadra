@@ -175,14 +175,22 @@ type Day = Pick<ShootingDay, 'id' | 'date' | 'blocks'>;
 /**
  * The days the sun's date can be (decision 0119): the shooting days of the board's schedule,
  * numbered as ScheduleView numbers them (by date, from 1). When `shots` (the frames of the plan's
- * scenes) is not empty, only the days that shoot one of them; all of them when it is, or when no
- * day shoots them yet.
+ * scenes) or `scenes` (a scene block plans one of them, decision 0123) is not empty, only the
+ * days that shoot one of them; all of them when both are, or when no day shoots them yet.
  */
-export function sunDays(days: readonly Day[], shots: ReadonlySet<string>): SunDay[] {
+export function sunDays(
+  days: readonly Day[],
+  shots: ReadonlySet<string>,
+  scenes: ReadonlySet<string> = new Set(),
+): SunDay[] {
   const all = [...days]
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((d, i) => ({ id: d.id, n: i + 1, date: d.date, blocks: d.blocks }));
-  const ofScenes = all.filter((d) => d.blocks.some((b) => b.shotId && shots.has(b.shotId)));
+  const ofScenes = all.filter((d) =>
+    d.blocks.some(
+      (b) => (b.shotId && shots.has(b.shotId)) || (b.sceneId && scenes.has(b.sceneId)),
+    ),
+  );
   return (ofScenes.length ? ofScenes : all).map(({ id, n, date }) => ({ id, n, date }));
 }
 

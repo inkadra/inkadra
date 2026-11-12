@@ -94,8 +94,10 @@ export function parseBoardDocName(name: string): string | null {
 /**
  * Root types of a board document. Nothing else may be stored at the root.
  * `meta` holds `schemaVersion`, `boardId`, from version 2 `aspect` (the AspectRatio of a
- * storyboard's frames), from version 9 `animaticAudio` (the sound track of its animatic) and
- * `restores`, written by the server only (decision 0109).
+ * storyboard's frames), from version 9 `animaticAudio` (the sound track of its animatic),
+ * `restores`, written by the server only (decision 0109), and on a project's root board
+ * `productionCard`, the id of the Production board whose card its clients placed once (decision
+ * 0123; optional, older clients ignore it).
  */
 export function roots(doc: Y.Doc) {
   return {

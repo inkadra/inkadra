@@ -122,7 +122,8 @@
     "toShoot_other": "{{left}} di {{count}} inquadrature ancora da girare",
     "items_one": "{{count}} elemento nella board",
     "items_other": "{{count}} elementi nella board",
-    "addMoodboard": "Aggiungi moodboard"
+    "addMoodboard": "Aggiungi moodboard",
+    "addProduction": "Aggiungi Produzione"
   },
   "home": {
     "greeting": {
@@ -297,8 +298,10 @@
       "desc": {
         "board": "Spazio libero per note, immagini e file.",
         "moodboard": "Riferimenti in gruppi, con palette.",
-        "storyboard": "Scene e inquadrature, con Shot list."
-      }
+        "storyboard": "Scene e inquadrature, con Shot list.",
+        "production": "Piano riprese + Troupe"
+      },
+      "present": "Già nel progetto"
     },
     "toolGroups": {
       "navigate": "Naviga e collega",
@@ -2001,7 +2004,8 @@
       "schedule": "Piano riprese",
       "review": "Revisione",
       "moodboard": "Moodboard",
-      "troupe": "Troupe"
+      "troupe": "Troupe",
+      "production": "Produzione"
     },
     "aspect": {
       "label": "Formato",
@@ -3155,7 +3159,8 @@
       "shot": "Ripresa",
       "break": "Pausa",
       "move": "Spostamento",
-      "note": "Nota"
+      "note": "Nota",
+      "scene": "Scena intera"
     },
     "days_one": "{{count}} giorno di riprese",
     "days_other": "{{count}} giorni di riprese",
@@ -3289,7 +3294,16 @@
     "dayMoved": "Giorno spostato da {{from}} a {{to}}.",
     "daysSwapped": "{{from}} e {{to}} scambiati.",
     "blockNotes": "Nota in evidenza",
-    "blockNotesPlaceholder": "Stampata sul foglio, es. LUMINARIE E VETRINE ACCESE"
+    "blockNotesPlaceholder": "Stampata sul foglio, es. LUMINARIE E VETRINE ACCESE",
+    "unavailable": "Storyboard non disponibile",
+    "missingScene": "Scena rimossa",
+    "noStoryboardShots": "Nessuno storyboard con scene o inquadrature. Le scene e le inquadrature degli storyboard del progetto arrivano qui.",
+    "filterStoryboard": "Filtra per storyboard",
+    "storyboardFilterLabel": "Storyboard",
+    "wholeScene": "Pianifica la scena intera",
+    "wholeSceneHint_one": "{{count}} inquadratura, in un solo blocco",
+    "wholeSceneHint_other": "{{count}} inquadrature, in un solo blocco",
+    "sceneNoFrames": "Ancora senza inquadrature: pianificala in un blocco"
   },
   "moodboard": {
     "count_one": "{{count}} riferimento",
@@ -4307,7 +4321,8 @@
       "fraunces": "serif",
       "space-grotesk": "grotesk",
       "ibm-plex-mono": "mono"
-    }
+    },
+    "whatCallsheets": "Fogli di convocazione"
   },
   "screenplay": {
     "open": "Importa sceneggiatura…",
@@ -5091,7 +5106,7 @@
           },
           "2": {
             "title": "Nuove board",
-            "text": "Canvas crea board, moodboard e storyboard, e importa un copione."
+            "text": "Canvas crea board, moodboard, storyboard e la Produzione del progetto (una sola: con Piano riprese e Troupe), e importa un copione."
           },
           "3": {
             "title": "Seleziona una card",
@@ -5197,15 +5212,15 @@
         "steps": {
           "0": {
             "title": "Il calendario delle riprese",
-            "text": "Giorno o settimana, come un calendario: i blocchi si accodano da soli. Trascina un’inquadratura all’orario giusto, o fai clic per metterla in fondo. Con le piante del set, «Raggruppa per: Setup» mette le inquadrature di ogni scena e giornata sotto il loro setup."
+            "text": "Sulla board Produzione, un calendario per tutto il progetto: la coda raccoglie le inquadrature e le scene di ogni storyboard. Giorno o settimana, come un calendario: i blocchi si accodano da soli. Trascina un’inquadratura all’orario giusto, o fai clic per metterla in fondo. Con le piante del set, «Raggruppa per: Setup» mette le inquadrature di ogni scena e giornata sotto il loro setup."
           },
           "1": {
-            "title": "Sposta e allunga",
-            "text": "Trascina per riordinare, Alt per fissare l’orario, il bordo inferiore per la durata. Su un giorno libero crei il giorno di riprese; Ctrl+Z annulla tutto il gesto."
+            "title": "Storyboard e pallini",
+            "text": "Il filtro Storyboard mostra le inquadrature di uno solo; il pallino colorato dice da quale storyboard arriva ogni blocco. «Pianifica la scena intera» mette una scena in un blocco, anche prima di disegnarla. Un pallino grigio: storyboard non disponibile, resta l’etichetta."
           },
           "2": {
-            "title": "Disegna un blocco",
-            "text": "Trascina sul vuoto per disegnare un blocco a scatti di 5 minuti, poi scegline il tipo (tasti 1–5). Da tastiera: Nella vista Giorno c’è anche «Blocco» nella barra. Da tastiera: N aggiunge un blocco dopo quello selezionato, o in fondo al giorno."
+            "title": "Sposta e allunga",
+            "text": "Trascina per riordinare, Alt per fissare l’orario, il bordo inferiore per la durata. Su un giorno libero crei il giorno di riprese; Ctrl+Z annulla tutto il gesto. Trascina sul vuoto per disegnare un blocco a scatti di 5 minuti, poi scegline il tipo (tasti 1–5). Da tastiera: Nella vista Giorno c’è anche «Blocco» nella barra. Da tastiera: N aggiunge un blocco dopo quello selezionato, o in fondo al giorno."
           },
           "3": {
             "title": "Sposta un giorno intero",
@@ -5555,7 +5570,7 @@
         "steps": {
           "0": {
             "title": "La troupe del progetto",
-            "text": "Raggruppa le persone per reparto. I contatti restano privati al team. Una persona finita su due righe? Menu ⋯ della riga, «Unisci con…»."
+            "text": "La troupe sta nella board Produzione, accanto al piano riprese. Raggruppa le persone per reparto. I contatti restano privati al team. Una persona finita su due righe? Menu ⋯ della riga, «Unisci con…»."
           },
           "1": {
             "title": "Modifica una persona",
@@ -6299,5 +6314,9 @@
       "storyboard": "{{scenes}} sulla board. Con Storyboard diventano inquadrature."
     },
     "offLine": "Modulo {{name}} spento: puoi leggere questa board."
+  },
+  "production": {
+    "storyboardLink_one": "Giornate di ripresa: {{count}} · Apri Produzione",
+    "storyboardLink_other": "Giornate di ripresa: {{count}} · Apri Produzione"
   }
 }

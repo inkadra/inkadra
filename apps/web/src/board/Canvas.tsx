@@ -52,6 +52,7 @@ import {
   type Rect,
   type ResizeCorner,
   type ResizeOptions,
+  placeProductionCard,
   rectFromPoints,
   refreshArrows,
   resizeFromCorner,
@@ -107,7 +108,7 @@ import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
 import { addActions, type PaletteAction, useRegisterActions } from '../commands/actions.ts';
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
-import { api } from '../lib/api.ts';
+import { api, RequestError } from '../lib/api.ts';
 import { setModule, takeModuleNotice, useModules } from '../lib/modules.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { getPreferences, updatePreferences, usePreferences } from '../lib/preferences.ts';
@@ -121,6 +122,7 @@ import { BOARD_CARD_SIZE, showsPreview } from './BoardCardPreview.tsx';
 import {
   canRenameBoard,
   createBoard,
+  productionOf,
   refreshBoards,
   setBoardCover,
   setBoardIcon,
@@ -1041,6 +1043,17 @@ export function Canvas({
           kind,
         );
         store.undo.stopCapturing();
+        if (kind === 'production') {
+          // The one Production board, new or back from the trash (decision 0123): its card has
+          // the id every client gives it, so the root's own placing never adds a second.
+          placeProductionCard(doc, board.id, BOARD_CARD_SIZE, { userId, origin: LOCAL }, pos);
+          store.undo.stopCapturing();
+          const card = store
+            .getSnapshot()
+            .canvas.find((el) => el.type === 'board' && el.boardId === board.id);
+          if (card) select([card.id]);
+          return;
+        }
         const card = createElement(
           doc,
           'board',
@@ -1051,12 +1064,42 @@ export function Canvas({
         store.undo.stopCapturing();
         select([card.id]);
         setEditing(card.id);
-      } catch {
+      } catch (err) {
+        // Another person made it a moment ago: open theirs.
+        const other =
+          err instanceof RequestError &&
+          err.status === 409 &&
+          typeof err.details === 'object' &&
+          err.details !== null &&
+          'boardId' in err.details &&
+          typeof err.details.boardId === 'string'
+            ? err.details.boardId
+            : null;
+        if (other) {
+          void refreshBoards(projectId);
+          onOpenBoard(other);
+          return;
+        }
         setToast({ text: t('board.errors.boardCreate'), undo: false, error: true });
       }
     },
-    [readOnly, center, place, t, projectId, boardId, userId, store, doc, select, setEditing],
+    [
+      readOnly,
+      center,
+      place,
+      t,
+      projectId,
+      boardId,
+      userId,
+      store,
+      doc,
+      select,
+      setEditing,
+      onOpenBoard,
+    ],
   );
+  // The project's live Production board: the Canvas menu opens it instead (decision 0123).
+  const production = productionOf(boards);
 
   const [importingScript, setImportingScript] = useState(false);
   const [detectedScripts, setDetectedScripts] = useState<
@@ -4348,6 +4391,7 @@ export function Canvas({
               onTool={setTool}
               onAdd={(type) => void add(type)}
               onCanvas={(kind) => void insertCanvas(kind)}
+              onProduction={production ? () => onOpenBoard(production.id) : undefined}
               onScreenplay={() => setImportingScript(true)}
               onModuleOn={turnOnModule}
               onVoiceNote={canRecord() ? () => setRecording(center()) : undefined}

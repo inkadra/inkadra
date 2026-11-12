@@ -145,6 +145,17 @@ describe('sunDays', () => {
     expect(sunDays(days, new Set())).toEqual(all);
     expect(sunDays(days, new Set(['elsewherexxx']))).toEqual(all);
   });
+
+  it("counts a scene block as shooting the plan's scene (decision 0123)", () => {
+    const planned = [
+      ...days,
+      { id: 'd15', date: '2026-03-15', blocks: [{ ...block(null), sceneId: 'scene3xxxxxx' }] },
+    ];
+    expect(sunDays(planned, new Set(['frame2Axxxxx']), new Set(['scene3xxxxxx']))).toEqual([
+      { id: 'd14', n: 3, date: '2026-03-14' },
+      { id: 'd15', n: 4, date: '2026-03-15' },
+    ]);
+  });
 });
 
 describe('northWay', () => {

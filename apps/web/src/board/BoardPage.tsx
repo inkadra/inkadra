@@ -1,4 +1,9 @@
-import { listElements, type Rect, storyboardOf as sceneGroups } from '@inkadra/canvas-core';
+import {
+  listElements,
+  placeProductionCard,
+  type Rect,
+  storyboardOf as sceneGroups,
+} from '@inkadra/canvas-core';
 import {
   atLeast,
   type Board,
@@ -44,9 +49,11 @@ import {
   fetchBoard,
   renameBoard,
   setBoardIcon,
+  productionOf,
   setBoardViews,
   useProjectBoards,
 } from './boards.ts';
+import { BOARD_CARD_SIZE } from './BoardCardPreview.tsx';
 import { Canvas } from './Canvas.tsx';
 import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
 import { ContextMenu, type MenuItem, Toast } from './chrome.tsx';
@@ -57,7 +64,9 @@ import type { ExportWhat } from './export/engine.ts';
 import type { ExportSource } from './export/settings.ts';
 import { ClientReviewView } from './film/ClientReviewView.tsx';
 import { MoodboardView } from './film/MoodboardView.tsx';
+import { useDaysPointingAt } from './film/production-days.ts';
 import { ScheduleView } from './film/ScheduleView.tsx';
+import type { ScheduleSources } from './film/schedule-sources.tsx';
 import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
@@ -111,10 +120,12 @@ export { type BoardView, VIEWS } from './views.ts';
 export function useBoardView(
   board: Pick<Board, 'kind' | 'views'> | undefined,
   counts: Parameters<typeof openView>[2],
+  production?: boolean,
 ): [BoardView, (v: BoardView, motion?: ViewSwitchMotion) => void] {
   const [params, setParams] = useSearchParams();
   const kind = board?.kind;
-  const view: BoardView = openView(params.get('view'), board, counts) ?? defaultView(kind);
+  const view: BoardView =
+    openView(params.get('view'), board, counts, production) ?? defaultView(kind);
   const setView = useCallback(
     (v: BoardView, motion?: ViewSwitchMotion) =>
       setParams(
@@ -250,9 +261,10 @@ function viewItems(
   toggle: (view: BoardOptionalView) => void,
   t: (key: string) => string,
   off: readonly string[],
+  production: boolean,
 ): MenuItem[] {
-  const on = viewsOn(board, counts);
-  const optional = offeredViews(board, counts, off);
+  const on = viewsOn(board, counts, production);
+  const optional = offeredViews(board, counts, off, production);
   return [
     { heading: t('board.views.title') },
     ...boardViews({ kind: board.kind, views: [] }, counts).map(
@@ -386,8 +398,19 @@ function BoardScreen({
   const offModule = kind ? moduleOf('kinds', kind) : null;
   const moduleOff = offModule && !isOn(offModule) ? offModule : null;
   const counts = boardCounts.get(boardId);
-  const [view, setView] = useBoardView(board, counts);
+  // The project's Production board (decision 0123), when the person can see it.
+  const production = productionOf(boards);
+  const hasProduction = !!production;
+  const [view, setView] = useBoardView(board, counts, hasProduction);
   const [openedFilmViews, setOpenedFilmViews] = useState({ schedule: false, troupe: false });
+  // On the Production board the calendar stays open behind Troupe too: its Export reads the
+  // storyboards the calendar opened (decision 0123).
+  const [scheduleSources, setScheduleSources] = useState<ScheduleSources | null>(null);
+  // A storyboard's ⋯ menu leads to the Production board that plans it.
+  const pointing = useDaysPointingAt(
+    boardId,
+    kind === 'storyboard' ? production?.id : undefined,
+  );
   useEffect(() => {
     if (view === 'schedule' || view === 'troupe')
       setOpenedFilmViews((opened) => (opened[view] ? opened : { ...opened, [view]: true }));
@@ -412,9 +435,10 @@ function BoardScreen({
   const visibleRef = useRef<(() => Rect | null) | null>(null);
   // Selection and visible area are read when the dialog opens, not followed afterwards.
   const openExport = useCallback((source: ExportSource, what?: ExportWhat, pdfEntry?: boolean) => {
+    const content = what ?? (source === 'production' ? 'callsheets' : undefined);
     setExporting({
       source,
-      ...(what ? { what } : {}),
+      ...(content ? { what: content } : {}),
       ...(pdfEntry ? { pdfEntry } : {}),
       selection: liveSelection.current,
       visible: visibleRef.current?.() ?? null,
@@ -461,6 +485,8 @@ function BoardScreen({
     [previewStore],
   );
   const editable = !!conn && !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
+  // The Production board's document holds nothing: no versions to offer (decision 0123).
+  const versionable = editable && kind !== 'production';
   // Every view is one of the open board's: choosing one changes the address of this board only.
   const chooseView = useCallback(
     (next: BoardView) => setView(next, beginViewSwitch(view, next)),
@@ -478,10 +504,10 @@ function BoardScreen({
 
   // The counts change with every edit: the tabs depend on what they decide, so the palette's
   // actions below are not registered again each time.
-  const tabKey = headerViews(board, counts, view).join();
+  const tabKey = headerViews(board, counts, view, hasProduction).join();
   const tabs = useMemo(() => (tabKey ? (tabKey.split(',') as BoardView[]) : []), [tabKey]);
   // Optional views on and off, for the ⋯ menu; editors only (decision 0121).
-  const viewsKey = board ? viewsOn(board, counts).join() : '';
+  const viewsKey = board ? viewsOn(board, counts, hasProduction).join() : '';
   const toggleView = useCallback(
     (v: BoardOptionalView) => {
       if (!board) return;
@@ -527,7 +553,7 @@ function BoardScreen({
             label: t(viewLabelKey(target, kind)),
             run: () => chooseView(target),
           })),
-          ...(editable
+          ...(versionable
             ? [{ id: 'versions', label: t('versions.title'), run: () => setVersionsOpen(true) }]
             : []),
           ...(detail ? [{ id: 'share', label: t('share.open'), run: () => setSharing(true) }] : []),
@@ -597,6 +623,24 @@ function BoardScreen({
     },
     [navigate, projectId, rootBoardId, boards],
   );
+  // The card of a Production board made under the root without one (the move of an existing
+  // project, the project ⋯ menu): placed once by the first editor who opens the root board
+  // (decision 0123, answer 2).
+  const placeCard =
+    conn?.status === 'synced' &&
+    editable &&
+    !preview &&
+    boardId === rootBoardId &&
+    production?.parentBoardId === rootBoardId
+      ? production.id
+      : null;
+  useEffect(() => {
+    if (!conn || !placeCard) return;
+    placeProductionCard(conn.store.doc, placeCard, BOARD_CARD_SIZE, {
+      userId: user?.id ?? null,
+      origin: LOCAL,
+    });
+  }, [conn, placeCard, user]);
   useBoardReviews(boardId, conn, detail?.myRole ?? projectRole, {
     preview: !!preview,
     canvas: view === 'canvas',
@@ -679,6 +723,7 @@ function BoardScreen({
 
   const missing =
     conn?.status === 'denied' && missingOwnedBoard(projectRole, boards, boardsError, boardId);
+  const productionLink = kind === 'storyboard' && !!production && (pointing ?? 0) > 0;
   const header = useMemo(
     () => ({
       start: (
@@ -727,7 +772,7 @@ function BoardScreen({
           {tabs.length > 1 && (
             <ViewTabs id={tabsId} kind={kind} tabs={tabs} view={view} onChoose={chooseView} />
           )}
-          {(editable || outside > 0) && (
+          {(editable || outside > 0 || productionLink) && (
             <div className="board-header-menu" ref={headerMenuAnchor}>
               <IconButton
                 id="board-header-menu"
@@ -744,7 +789,20 @@ function BoardScreen({
                   anchor={headerMenuAnchor}
                   items={[
                     ...(editable && board
-                      ? viewItems(board, counts, toggleView, t, modulesOff)
+                      ? viewItems(board, counts, toggleView, t, modulesOff, hasProduction)
+                      : []),
+                    // "Shooting days: 3 · Open Production" (decision 0123).
+                    ...(productionLink && production
+                      ? [
+                          {
+                            label: t('production.storyboardLink', { count: pointing ?? 0 }),
+                            icon: 'film' as const,
+                            kind: 'production' as const,
+                            action: () =>
+                              navigate(viewHref(projectId, production, 'schedule', rootBoardId)),
+                          },
+                          { divider: true as const },
+                        ]
                       : []),
                     ...(outside > 0
                       ? [
@@ -789,9 +847,11 @@ function BoardScreen({
                               ]
                             : []),
                           {
-                            label: t('board.export.action'),
+                            label: t(
+                              kind === 'production' ? 'export.whatCallsheets' : 'board.export.action',
+                            ),
                             icon: 'download' as const,
-                            action: () => openExport(exportSourceOf(view)),
+                            action: () => openExport(exportSourceOf(view, kind)),
                           },
                           ...(canPresent
                             ? [
@@ -802,11 +862,15 @@ function BoardScreen({
                                 },
                               ]
                             : []),
-                          {
-                            label: t('versions.title'),
-                            icon: 'clock' as const,
-                            action: () => setVersionsOpen(true),
-                          },
+                          ...(versionable
+                            ? [
+                                {
+                                  label: t('versions.title'),
+                                  icon: 'clock' as const,
+                                  action: () => setVersionsOpen(true),
+                                },
+                              ]
+                            : []),
                           ...(reportingOn
                             ? [
                                 { divider: true as const },
@@ -834,16 +898,20 @@ function BoardScreen({
           {conn && !missing && <BoardPresence conn={conn} selfId={selfId} />}
           {editable && (
             <>
-              <IconButton
-                icon="clock"
-                label={t('versions.title')}
-                onClick={() => setVersionsOpen(true)}
-              />
+              {versionable && (
+                <IconButton
+                  icon="clock"
+                  label={t('versions.title')}
+                  onClick={() => setVersionsOpen(true)}
+                />
+              )}
               <IconButton
                 icon="download"
                 className="board-header-export"
-                label={t('board.export.action')}
-                onClick={() => openExport(exportSourceOf(view))}
+                label={t(
+                  kind === 'production' ? 'export.whatCallsheets' : 'board.export.action',
+                )}
+                onClick={() => openExport(exportSourceOf(view, kind))}
               />
               {/* The Storyboard view has its own Presenta button, with the same name. */}
               {canPresent && view !== 'storyboard' && (
@@ -911,6 +979,12 @@ function BoardScreen({
       modulesOff,
       outside,
       openOutside,
+      hasProduction,
+      versionable,
+      productionLink,
+      production,
+      pointing,
+      navigate,
     ],
   );
   useHeaderContent(header);
@@ -930,7 +1004,7 @@ function BoardScreen({
     // same denial for missing and inaccessible boards; no existence probe is added.
     return missing ? <NotFound /> : <DeniedState />;
   }
-  const versions = editable && (
+  const versions = versionable && (
     <VersionsDialog
       open={versionsOpen}
       provider={conn.provider}
@@ -1049,7 +1123,7 @@ function BoardScreen({
       )}
       {versions}
       {/* Keep drafts and their saves alive while another view is selected. */}
-      {(openedFilmViews.schedule || view === 'schedule') && (
+      {(openedFilmViews.schedule || view === 'schedule' || kind === 'production') && (
         <div
           style={{ display: view === 'schedule' ? 'contents' : 'none' }}
           inert={view !== 'schedule'}
@@ -1068,8 +1142,13 @@ function BoardScreen({
             boardId={boardId}
             userId={user.id}
             readOnly={!!preview || !editable}
-            onOpenScene={(sceneId) =>
-              navigate(`?view=storyboard&scene=${encodeURIComponent(sceneId)}`)
+            boards={boards}
+            across={kind === 'production'}
+            onSources={kind === 'production' ? setScheduleSources : undefined}
+            onOpenScene={(sceneId, from) =>
+              navigate(
+                `${from === boardId ? '' : boardPath(projectId, from, rootBoardId)}?view=storyboard&scene=${encodeURIComponent(sceneId)}`,
+              )
             }
             onOpenTroupe={() => navigate('?view=troupe')}
           />
@@ -1149,6 +1228,7 @@ function BoardScreen({
           selection={exporting.selection}
           visible={exporting.visible}
           role={detail?.myRole ?? projectRole}
+          across={kind === 'production' ? (scheduleSources ?? undefined) : undefined}
           onClose={() => setExporting(null)}
         />
       )}
@@ -1163,8 +1243,12 @@ function BoardScreen({
 }
 
 /** The canvas with the other people on the board. */
-/** The export dialog follows the open view; other views export the board's cards. */
-function exportSourceOf(view: string): ExportSource {
+/**
+ * The export dialog follows the open view; other views export the board's cards. The
+ * Production board exports its call sheets (decision 0123).
+ */
+function exportSourceOf(view: string, kind?: Board['kind']): ExportSource {
+  if (kind === 'production') return 'production';
   return view === 'storyboard' || view === 'shotlist' || view === 'schedule' ? view : 'canvas';
 }
 

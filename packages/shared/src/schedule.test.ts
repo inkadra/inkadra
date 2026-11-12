@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
-import { DayCall, ShootingDayInput } from './schedule.ts';
+import { blockTarget, DayCall, daysForBoard, ShootingDayInput, targetKey } from './schedule.ts';
 
 const block = {
   id: '00000000-0000-4000-8000-000000000001',
@@ -60,5 +60,65 @@ describe('day calls and block notes (decision 0092)', () => {
       ShootingDayInput.safeParse({ ...day, blocks: [{ ...block, notes: 'x'.repeat(2001) }] })
         .success,
     ).toBe(false);
+  });
+});
+
+describe('blocks across storyboards (decision 0123)', () => {
+  const shot = (shotId: string | null, shotBoardId?: string) => ({
+    type: 'shot' as const,
+    shotId,
+    ...(shotBoardId ? { shotBoardId } : {}),
+  });
+  const scene = (sceneId: string, sceneBoardId?: string) => ({
+    type: 'scene' as const,
+    shotId: null,
+    sceneId,
+    ...(sceneBoardId ? { sceneBoardId } : {}),
+  });
+
+  it("reads a block without a board as one of the day's own board", () => {
+    expect(blockTarget(shot('f1'), 'prod')).toEqual({ kind: 'shot', boardId: 'prod', id: 'f1' });
+    expect(blockTarget(shot('f1', 'sbA'), 'prod')).toEqual({
+      kind: 'shot',
+      boardId: 'sbA',
+      id: 'f1',
+    });
+    expect(blockTarget(scene('s1', 'sbB'), 'prod')).toEqual({
+      kind: 'scene',
+      boardId: 'sbB',
+      id: 's1',
+    });
+    expect(blockTarget({ type: 'break', shotId: null }, 'prod')).toBeNull();
+    // The same element id on two storyboards is two keys.
+    expect(targetKey('sbA', 'f1')).not.toBe(targetKey('sbB', 'f1'));
+  });
+
+  it("keeps every day and every block's place, and only this storyboard's frames and scenes", () => {
+    const days = [
+      {
+        id: 'd1',
+        boardId: 'prod',
+        blocks: [shot('f1', 'sbA'), { type: 'setup' as const, shotId: null }, shot('f1', 'sbB')],
+      },
+      { id: 'd2', boardId: 'prod', blocks: [scene('s1', 'sbB'), scene('s2', 'sbA')] },
+      { id: 'd3', boardId: 'sbA', blocks: [shot('f9')] },
+    ];
+    const [d1, d2, d3] = daysForBoard(days, 'sbA');
+    expect(d1?.blocks.map((b) => b.shotId)).toEqual(['f1', null, null]);
+    expect(d1?.blocks.map((b) => b.type)).toEqual(['shot', 'setup', 'shot']);
+    expect(d2?.blocks.map((b) => ('sceneId' in b ? b.sceneId : undefined))).toEqual([
+      undefined,
+      's2',
+    ]);
+    // A day of the storyboard itself, from before the Production board, stays as it is.
+    expect(d3).toBe(days[2]);
+    expect(daysForBoard(days, 'sbC').flatMap((d) => d.blocks.map((b) => b.shotId))).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
   });
 });

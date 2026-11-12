@@ -101,7 +101,7 @@ const mod = () => (isMac() ? '⌘' : 'Ctrl+');
 const PHONE_BAR = ['note', 'image', 'todo'] as const;
 
 /** The kinds of board the Canvas menu creates, with the module each belongs to (0121). */
-const NEW_BOARDS = ['board', 'moodboard', 'storyboard'] as const;
+const NEW_BOARDS = ['board', 'moodboard', 'storyboard', 'production'] as const;
 type NewBoardKind = (typeof NEW_BOARDS)[number];
 
 /**
@@ -178,6 +178,7 @@ export function Toolbar({
   onScreenplay,
   onVoiceNote,
   onModuleOn,
+  onProduction,
   phone = false,
 }: {
   tool: CanvasTool;
@@ -191,6 +192,11 @@ export function Toolbar({
   onVoiceNote?: (() => void) | undefined;
   /** Turns on a module that is off, from a dimmed entry of the Canvas menu. */
   onModuleOn?: (id: ModuleId) => void;
+  /**
+   * Opens the project's live Production board: the Canvas menu then offers it dimmed, "Already
+   * in the project" (decision 0123). Missing while the project has none.
+   */
+  onProduction?: (() => void) | undefined;
   /** Select, note, photo and to-do on the bar; every other tool waits in the "More" menu. */
   phone?: boolean;
 }) {
@@ -303,6 +309,7 @@ export function Toolbar({
           onCanvas={onCanvas}
           onScreenplay={onScreenplay}
           onModuleOn={turnOn}
+          onProduction={onProduction}
         />
       </fieldset>
     </div>
@@ -416,13 +423,28 @@ function MoreButton({
   );
 }
 
-/** The small picture of a kind in the Canvas menu, as in the mockup of 0121. */
-function KindCard({ kind, off }: { kind: NewBoardKind; off: boolean }) {
+/**
+ * The small picture of a kind in the Canvas menu, as in the mockup of 0121. `present`: the one
+ * Production board of the project is already there (decision 0123).
+ */
+function KindCard({
+  kind,
+  off,
+  present = false,
+}: {
+  kind: NewBoardKind;
+  off: boolean;
+  present?: boolean;
+}) {
   const { t } = useTranslation();
   return (
-    <span className={`new-board${off ? ' is-off' : ''}`} style={kindStyle(kind)}>
+    <span
+      className={`new-board${off || present ? ' is-off' : ''}`}
+      style={kindStyle(kind)}
+      data-tour={kind === 'production' ? 'canvas-production' : undefined}
+    >
       <span className={`new-board__preview new-board__preview--${kind}`} aria-hidden="true">
-        {Array.from({ length: kind === 'board' ? 5 : 3 }, (_, i) => (
+        {Array.from({ length: kind === 'board' ? 5 : kind === 'production' ? 6 : 3 }, (_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: shapes of a drawing, without identity
           <i key={i} />
         ))}
@@ -432,7 +454,9 @@ function KindCard({ kind, off }: { kind: NewBoardKind; off: boolean }) {
         {t(kind === 'board' ? 'board.types.board' : `film.views.${kind}`)}
       </span>
       <span className="new-board__desc">
-        {t(off ? 'modules.off' : `board.canvasMenu.desc.${kind}`)}
+        {t(
+          off ? 'modules.off' : present ? 'board.canvasMenu.present' : `board.canvasMenu.desc.${kind}`,
+        )}
       </span>
       {off && <span className="new-board__tag">{t('modules.turnOn')}</span>}
     </span>
@@ -452,6 +476,7 @@ function CanvasMenuButton({
   onCanvas,
   onScreenplay,
   onModuleOn,
+  onProduction,
 }: {
   phone: boolean;
   /** The tools of More, for the phone. */
@@ -461,6 +486,7 @@ function CanvasMenuButton({
   onCanvas: (kind?: Exclude<NewBoardKind, 'board'>) => void;
   onScreenplay?: (() => void) | undefined;
   onModuleOn: (id: ModuleId) => void;
+  onProduction?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const { offers } = useModules();
@@ -472,13 +498,24 @@ function CanvasMenuButton({
   const kinds = NEW_BOARDS.map((kind) => {
     const owner = moduleOf('kinds', kind);
     const off = !offers('kinds', kind);
+    // One Production board per project: with one, the card opens it (decision 0123).
+    const present = kind === 'production' && !off && !!onProduction;
     const name = t(kind === 'board' ? 'board.types.board' : `film.views.${kind}`);
     return {
-      label: off ? t('modules.kindOff', { name }) : name,
+      label: off
+        ? t('modules.kindOff', { name })
+        : present
+          ? `${name} · ${t('board.canvasMenu.present')}`
+          : name,
       kind,
       off,
+      present,
       action: () =>
-        off && owner ? onModuleOn(owner) : onCanvas(kind === 'board' ? undefined : kind),
+        off && owner
+          ? onModuleOn(owner)
+          : present
+            ? onProduction?.()
+            : onCanvas(kind === 'board' ? undefined : kind),
     };
   });
   const script: MenuItem | null = onScreenplay
@@ -527,9 +564,12 @@ function CanvasMenuButton({
             icon: kindIcon(k.kind),
             kind: k.kind,
             content: (
-              <span className={`new-board__script${k.off ? ' is-off' : ''}`}>
+              <span className={`new-board__script${k.off || k.present ? ' is-off' : ''}`}>
                 {t(k.kind === 'board' ? 'board.types.board' : `film.views.${k.kind}`)}
                 {k.off && <span className="new-board__tag">{t('modules.turnOn')}</span>}
+                {k.present && (
+                  <span className="new-board__note">{t('board.canvasMenu.present')}</span>
+                )}
               </span>
             ),
             action: k.action,
@@ -542,7 +582,7 @@ function CanvasMenuButton({
         ...kinds.map(
           (k): MenuItem => ({
             label: k.label,
-            content: <KindCard kind={k.kind} off={k.off} />,
+            content: <KindCard kind={k.kind} off={k.off} present={k.present} />,
             action: k.action,
           }),
         ),

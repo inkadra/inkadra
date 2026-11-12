@@ -8,7 +8,6 @@ import {
   type ExportImageFit,
   type ExportSettings,
   type ProjectRole,
-  type Schedule,
   type ShootingDay,
   THEME_FONTS,
   type ThemeFont,
@@ -37,7 +36,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../lib/api.ts';
 import { refreshClassifications } from '../../lib/classifications.ts';
 import { useModules } from '../../lib/modules.ts';
 import { useIsPhone } from '../../lib/phone.ts';
@@ -45,6 +43,8 @@ import { ColorPicker } from '../ColorPicker.tsx';
 import { swatchColors } from '../colors.ts';
 import { formatBytes } from '../file-kinds.ts';
 import { sceneIdsOf } from '../film/needed.ts';
+import { productionOf } from '../boards.ts';
+import { loadBoardDays } from '../film/production-days.ts';
 import { getReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
 import { headingFamily, loadHeadingFont } from '../theme.ts';
@@ -117,6 +117,8 @@ export interface ExportDialogProps {
   visible: Rect | null;
   /** The reader's role on this board: viewers do not download originals (decision 0011). */
   role?: ProjectRole | null | undefined;
+  /** On the Production board: the cards and labels of every storyboard it read (0123). */
+  across?: ExportEnv['across'];
   onClose: () => void;
 }
 
@@ -152,13 +154,18 @@ export function ExportDialog(props: ExportDialogProps) {
   );
   // The contents of a module that is off are not offered (decision 0121); the saved choice stays.
   const { offers } = useModules();
+  // The Production board exports its call sheets, for the team, as a PDF (decision 0123); a
+  // storyboard of a project that has one no longer adds them.
+  const production = source === 'production';
+  const callSheets = offers('exports', 'callSheet') && !production && !productionOf(props.boards);
   const req = useMemo(
     () => ({
       ...picked,
-      callSheet: picked.callSheet && offers('exports', 'callSheet'),
+      ...(production ? { format: 'pdf' as const, audience: 'team' as const } : {}),
+      callSheet: picked.callSheet && callSheets,
       approvedOnly: picked.approvedOnly && offers('exports', 'approvedOnly'),
     }),
-    [picked, offers],
+    [picked, offers, production, callSheets],
   );
   const [image, setImage] = useState<ImageOptions>(() => initialImage(null, imageEntry));
   const [imageIndex, setImageIndex] = useState(0);
@@ -282,6 +289,7 @@ export function ExportDialog(props: ExportDialogProps) {
     boards: props.boards,
     scope: { projectId, boardId },
     timeZone: props.timeZone,
+    across: props.across,
     threads: getReviews().threads,
     reviews: getReviews().reviews,
     t,
@@ -297,14 +305,14 @@ export function ExportDialog(props: ExportDialogProps) {
   useEffect(() => {
     if (!sheets || days) return;
     let live = true;
-    api.get<Schedule>(`/boards/${boardId}/schedule`).then(
-      (r) => live && setDays([...(r.items ?? [])].sort((a, b) => a.date.localeCompare(b.date))),
+    loadBoardDays(boardId, props.boards).then(
+      (items) => live && setDays(items),
       () => live && setDays([]),
     );
     return () => {
       live = false;
     };
-  }, [sheets, days, boardId]);
+  }, [sheets, days, boardId, props.boards]);
   const pickedScenes = sheets
     ? selectedSceneIds(selection, store.getSnapshot().byId)
     : new Set<string>();
@@ -441,7 +449,9 @@ export function ExportDialog(props: ExportDialogProps) {
     }
   }
 
-  const allWhat: ExportWhat[] = film
+  const allWhat: ExportWhat[] = production
+    ? ['callsheets']
+    : film
     ? [
         'storyboard',
         'shotlist',
@@ -683,7 +693,7 @@ export function ExportDialog(props: ExportDialogProps) {
               </p>
             ) : (
               <>
-                {!fileMode && (
+                {!fileMode && !production && (
                   <Segmented
                     label={t('export.format')}
                     value={req.format}
@@ -802,7 +812,7 @@ export function ExportDialog(props: ExportDialogProps) {
                     {scenesField}
                     {framesField}
                     {pageField}
-                    {audienceField}
+                    {!production && audienceField}
                     <div className="export__field" data-tour="export-heading">
                       <Field label={t('export.heading')}>
                         {(id) => (
@@ -849,7 +859,7 @@ export function ExportDialog(props: ExportDialogProps) {
                       >
                         {t('export.comments')}
                       </Check>
-                      {offers('exports', 'callSheet') && (
+                      {callSheets && (
                         <Check
                           checked={req.callSheet && teamPdf(req)}
                           disabled={client}

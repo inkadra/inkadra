@@ -32,7 +32,7 @@ import { ellipsize, textBlock, wrapText } from './text.ts';
 type Frame = Extract<Element, { type: 'frame' }>;
 
 /** Board kinds with a colour of their own (packages/ui kind-color.ts); others stay neutral. */
-export type ExportKind = 'board' | 'storyboard' | 'shotlist' | 'scenesheets';
+export type ExportKind = 'board' | 'storyboard' | 'shotlist' | 'scenesheets' | 'callsheets';
 
 export interface DocInfo {
   projectName: string;
@@ -96,6 +96,7 @@ const KIND_COLORS: Record<ExportKind, { fg: keyof Colors; bg: keyof Colors } | n
   shotlist: { fg: 'tag-green', bg: 'tag-green-bg' },
   board: null,
   scenesheets: null,
+  callsheets: null,
 };
 
 function text(
