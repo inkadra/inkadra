@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  fitPlanView,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
+  type PlanArea,
+  type PlanInsets,
   type Point,
+  panPlanBy,
+  pinchPlanView,
+  planZoomPercent,
   type Rect,
+  stepPlanZoom,
   type Viewport,
+  zoomPlanAround,
 } from '@inkadra/canvas-core';
 import { IconButton } from '@inkadra/ui';
 import {

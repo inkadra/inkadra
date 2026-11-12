@@ -391,7 +391,7 @@ function simplify(points: Point[], tolerance: number): Point[] {
  * `reach` lets the points lie that far beyond the picture on every side (a set plan, 0117).
  */
 export function encodeStroke(points: Point[], reach = 0): number[] {
-  const keep = (n: number) => Math.max(-reach, Math.min(1 + reach, n));
+  const keep = (n: number) => Math.max(0 - reach, Math.min(1 + reach, n));
   const grid = points.map((p) => ({
     x: Math.round(keep(p.x) * STROKE_GRID),
     y: Math.round(keep(p.y) * STROKE_GRID),

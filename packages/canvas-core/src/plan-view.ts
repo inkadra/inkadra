@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 import { PLAN_ASPECT } from '@inkadra/doc-schema';
+import type { Point, Rect, Viewport } from './geometry.ts';
 import type { PlanElement } from './plan.ts';
 import { itemBox, PLAN_VIEW_H, PLAN_VIEW_W, planItems } from './plan.ts';
-import type { Point, Rect, Viewport } from './geometry.ts';
 import { backgroundBox } from './plan-start.ts';
 import { wallBounds } from './plan-walls.ts';
 
@@ -82,7 +82,10 @@ export function stepPlanZoom(v: Viewport, area: PlanArea, dir: 1 | -1): Viewport
     dir > 0
       ? (PLAN_ZOOM_STEPS.find((s) => s > now + 0.5) ?? MAX_PERCENT)
       : ([...PLAN_ZOOM_STEPS].reverse().find((s) => s < now - 0.5) ?? MIN_PERCENT);
-  return zoomPlanAround(v, area, (planBaseZoom(area) * next) / 100, { x: area.w / 2, y: area.h / 2 });
+  return zoomPlanAround(v, area, (planBaseZoom(area) * next) / 100, {
+    x: area.w / 2,
+    y: area.h / 2,
+  });
 }
 
 /** The view panned by (dx, dy) px, bounded. */
@@ -114,7 +117,11 @@ export function pinchPlanView(
  * The view that frames `box` (view units) in the middle of what `insets` leave of the area,
  * no closer than FIT_MAX_PERCENT; the whole drawing without a box.
  */
-export function fitPlanView(box: Rect | null, area: PlanArea, insets: PlanInsets = NO_INSETS): Viewport {
+export function fitPlanView(
+  box: Rect | null,
+  area: PlanArea,
+  insets: PlanInsets = NO_INSETS,
+): Viewport {
   const b = box && box.w > 0 && box.h > 0 ? box : { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H };
   const free = {
     w: Math.max(1, area.w - insets.left - insets.right - 2 * MARGIN),

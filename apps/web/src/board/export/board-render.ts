@@ -19,6 +19,7 @@ import {
   linkedPlan,
   measureEnds,
   openingLines,
+  PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanStackEntry,
   pieceOutline,

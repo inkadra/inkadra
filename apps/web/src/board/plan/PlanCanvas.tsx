@@ -31,6 +31,7 @@ import {
   type PlanItem,
   type PlanItemRef,
   type Point,
+  planContentBox,
   planItem,
   planItemAt,
   planItems,
@@ -51,7 +52,6 @@ import {
   withAttached,
   withGroups,
   withReachAt,
-  planContentBox,
 } from '@inkadra/canvas-core';
 import {
   type FrameShape,
@@ -902,7 +902,12 @@ export function PlanCanvas({
     }
     setLiveShape(null);
     if (g.shape === 'scale') {
-      const length = gridLength(toPlanGrid(g.a.x), toPlanGrid(g.a.y), toPlanGrid(g.b.x), toPlanGrid(g.b.y));
+      const length = gridLength(
+        toPlanGrid(g.a.x),
+        toPlanGrid(g.a.y),
+        toPlanGrid(g.b.x),
+        toPlanGrid(g.b.y),
+      );
       ed.setTool('select');
       if (length > 10) setScaleDraft({ length, metres: '' });
       return;

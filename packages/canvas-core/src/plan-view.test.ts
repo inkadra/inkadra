@@ -133,7 +133,7 @@ describe('the view of the plan surface', () => {
     expect(planContentBox({ background: { assetId: 'pic', hidden: true } })).toBeNull();
   });
 
-  it('frames what is drawn in the plan\'s shape, beyond the old extent too', () => {
+  it("frames what is drawn in the plan's shape, beyond the old extent too", () => {
     expect(planFrame({})).toEqual({ x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H });
     const far = { id: 'aAAAAAAAAAAAA', kind: 'table', color: '#1C1C1E', x: -2048, y: 6000 };
     const near = { ...far, id: 'bAAAAAAAAAAAA', x: 2048, y: 2048 };

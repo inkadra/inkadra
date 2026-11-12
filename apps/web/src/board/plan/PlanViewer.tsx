@@ -8,8 +8,8 @@ import {
   layerOf,
   linkedLocation,
   type PlanElement,
-  variantView,
   planContentBox,
+  variantView,
 } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton } from '@inkadra/ui';

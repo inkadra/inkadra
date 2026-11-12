@@ -7,6 +7,8 @@ import {
   type PlanIcon,
   type PlanShape,
   roots,
+  PLAN_COORD_MAX,
+  PLAN_COORD_MIN,
   STROKE_GRID,
 } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
@@ -122,10 +124,17 @@ describe('set plan icons', () => {
     expect(rotateItem({ ...rect, rotation: 270 }, 90)).toEqual(rect);
   });
 
-  it('moves items inside the drawing only', () => {
+  it('moves items beyond the old extent, within the plan\'s reach (decision 0117)', () => {
     const icon = { ...camera, id: 'iconAAAAAAAAA' };
     expect(moveItem(icon, { x: PLAN_VIEW_W / 4, y: 0 }).x).toBe(3072);
-    expect(moveItem(icon, { x: 5000, y: -5000 })).toMatchObject({ x: STROKE_GRID, y: 0 });
+    expect(moveItem(icon, { x: PLAN_VIEW_W, y: -PLAN_VIEW_H })).toMatchObject({
+      x: 2048 + STROKE_GRID,
+      y: 2048 - STROKE_GRID,
+    });
+    expect(moveItem(icon, { x: 1e6, y: -1e6 })).toMatchObject({
+      x: PLAN_COORD_MAX,
+      y: PLAN_COORD_MIN,
+    });
   });
 
   it('snaps to the plan grid, the same step across and down', () => {
