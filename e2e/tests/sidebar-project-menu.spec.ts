@@ -179,7 +179,7 @@ test('a scene of a new storyboard gets a set plan without a canvas', async ({ pa
   const project = await setup(page, origin);
   const story = await addStoryboard(page.request, origin, project, ['shotlist']);
   await page.goto(`/p/${project.id}/b/${story.id}`);
-  await page.getByRole('button', { name: 'Nuova scena', exact: true }).click();
+  await page.locator('.board-state').getByRole('button', { name: 'Nuova scena' }).click();
   const scene = page.locator('[data-story-scene]').first();
   const newPlan = scene.getByRole('button', { name: 'Nuova pianta del set', exact: true });
   await expect(newPlan).toBeVisible();
