@@ -88,7 +88,12 @@ describe.skipIf(!url)('moving existing projects to a Production board (needs DAT
     const made = await created(as, '/projects', { name });
     return { id: made.id as string, root: made.rootBoardId as string };
   };
-  const addBoard = async (as: string, p: { id: string; root: string }, title: string, kind: string) =>
+  const addBoard = async (
+    as: string,
+    p: { id: string; root: string },
+    title: string,
+    kind: string,
+  ) =>
     (await created(as, `/projects/${p.id}/boards`, { parentBoardId: p.root, title, kind }))
       .id as string;
   const plan = async (as: string, boardId: string, date: string, blocks = [block()]) =>
@@ -264,7 +269,10 @@ describe.skipIf(!url)('moving existing projects to a Production board (needs DAT
         if (s.id !== production?.id) expect(s.position < (production?.position ?? '')).toBe(true);
     }
     // The archived project stays archived.
-    const [archived] = await db.select().from(project).where(eq(project.id, p.archived?.id ?? ''));
+    const [archived] = await db
+      .select()
+      .from(project)
+      .where(eq(project.id, p.archived?.id ?? ''));
     expect(archived?.archivedAt).not.toBeNull();
   });
 
@@ -357,7 +365,10 @@ describe.skipIf(!url)('moving existing projects to a Production board (needs DAT
       })
       .where(eq(shootingDay.id, d.b1 ?? ''));
     await db.execute(rollback(p.multi?.id ?? ''));
-    const rows = await db.select().from(shootingDay).where(eq(shootingDay.projectId, p.multi?.id ?? ''));
+    const rows = await db
+      .select()
+      .from(shootingDay)
+      .where(eq(shootingDay.projectId, p.multi?.id ?? ''));
     const where = Object.fromEntries(rows.map((row) => [row.id, row.boardId]));
     expect(where).toMatchObject({
       [d.a1 as string]: b.sa,
