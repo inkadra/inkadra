@@ -40,13 +40,13 @@ it('counts the kit of a plan by type and power, and nothing else', () => {
       icon('dolly'),
     ],
   };
-  expect(lines(kitList(plan, t))).toEqual([
+  expect(lines(kitList(plan, t, 'en'))).toEqual([
     { name: 'Fresnel 1,2K', count: 1 },
     { name: 'C-stand', count: 3 },
     { name: 'Fresnel 650', count: 1 },
     { name: 'Dolly', count: 1 },
   ]);
-  expect(lines(kitList({ ...plan, hiddenLayers: ['lights'] }, t))).toEqual([
+  expect(lines(kitList({ ...plan, hiddenLayers: ['lights'] }, t, 'en'))).toEqual([
     { name: 'Dolly', count: 1 },
   ]);
   // With a scale, a track says how long it is.
@@ -67,7 +67,7 @@ it('counts watts, modifiers, gels and the stands named on lights (decision 0104)
       icon('crew'),
     ],
   };
-  expect(lines(kitList(plan, t))).toEqual([
+  expect(lines(kitList(plan, t, 'en'))).toEqual([
     { name: 'LED COB 300 W', count: 1 },
     { name: 'LED panel', count: 1 },
     { name: 'C-stand', count: 1 },
@@ -89,6 +89,7 @@ it('sorts each line into its section, with the watts of a light each', () => {
       ],
     },
     t,
+    'en',
   );
   expect(shown(kit)).toEqual([
     { name: 'Fresnel 2K', count: 1, group: 'lights', watts: 2000 },
@@ -178,7 +179,7 @@ it('leaves the sun and the other sources that are no kit out of the kit and the 
       icon('floorlamp'),
     ],
   };
-  expect(lines(kitList(plan, t)).map((l) => l.name)).toEqual([
+  expect(lines(kitList(plan, t, 'en')).map((l) => l.name)).toEqual([
     'Table lamp 60 W',
     'Ceiling lamp',
     'Floor lamp',

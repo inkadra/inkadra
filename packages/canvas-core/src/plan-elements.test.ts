@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { PlanIcon } from '@inkadra/doc-schema';
-import { describe, expect, it } from 'vitest';
-import { elementSections, foldIcons, itemSummary, supportText } from './plan-elements.ts';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  elementSections,
+  foldIcons,
+  itemSummary,
+  legendLine,
+  supportText,
+} from './plan-elements.ts';
 import { english as t } from './plan-words.fixture.ts';
 
 const icon = (id: string, kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
@@ -55,6 +61,22 @@ it('sums up a light, a camera and a person in one line', () => {
     '32 mm · Dolly · 2 positions',
   );
   expect(itemSummary(plan.icons[3] as PlanIcon, plan.icons, t, en)).toBe('Seated');
+});
+
+it('writes the watts of the PDF legend in the app language, not the machine one', () => {
+  // The machine writes numbers in English; the sheet is in Italian.
+  const own = Number.prototype.toLocaleString;
+  const spy = vi
+    .spyOn(Number.prototype, 'toLocaleString')
+    .mockImplementation(function (this: number, locale, options) {
+      return own.call(this, locale ?? 'en-US', options);
+    });
+  try {
+    const light = icon('key', 'cob', { label: 'Key', watts: 1200 });
+    expect(legendLine(light, [light], t, 'it')).toBe('Key · LED COB 1,2K');
+  } finally {
+    spy.mockRestore();
+  }
 });
 
 describe('rows as the mockup lists them (decision 0117)', () => {
