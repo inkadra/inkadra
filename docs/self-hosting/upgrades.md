@@ -34,6 +34,50 @@ also carries data across an upgrade.
 The sections below list what to do for each version, newest first. Read every one between
 your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
 
+## Upgrading to 0.10
+
+- **Shooting days move to a Production board.** The schedule becomes the project's
+  ([decision 0123](../decisions/0123-production-board.md)): when the new version starts, every
+  project (archived ones included) whose boards have shooting days, or whose Troupe has people,
+  gets a board called "Production" (in its creator's language) at the end of its root board, and
+  the days of its boards move there, as they are. Days on boards in the trash stay where they
+  are. A project that already has a Production board, even one in the trash, is left alone.
+  It is one query, then one short transaction per project; a project that fails is logged
+  ("Production board not made") and tried again at the next start. Afterwards new days can be
+  made only on the Production board.
+- **Back up first,** as for any release with migrations. The way back for the instance is that
+  backup, restored with the older version.
+- **To hold the move back,** set `PRODUCTION_BOARD_MOVE=false` in `.env` before upgrading: the
+  server starts without moving anything, and the next start with `true` (the default) does it.
+  Only `true` and `false` are accepted: any other value stops the server at start. Importing a
+  project archive of format 1 with days still makes its Production board, also with the move off.
+- **Putting one project back by hand.** Days keep the board they came from in `moved_from`, so
+  with the project's id as `$1`, this statement puts them back in a form the older version
+  accepts (a scene block becomes a note with the scene's label):
+
+  ```sql
+  update shooting_day
+  set board_id = moved_from, moved_from = null,
+      blocks = (select coalesce(jsonb_agg(
+                  (case when b.v ->> 'type' = 'scene'
+                     then b.v || jsonb_build_object('type', 'note', 'title',
+                       coalesce(nullif(b.v ->> 'title', ''), 'Scene ' || coalesce(b.v ->> 'sceneLabel', '')))
+                     else b.v end)
+                  - 'shotBoardId' - 'shotLabel' - 'sceneId' - 'sceneBoardId' - 'sceneLabel'
+                  order by b.i), '[]')
+                from jsonb_array_elements(blocks) with ordinality as b(v, i))
+  where project_id = $1 and moved_from is not null;
+  ```
+
+  then move the project's Production board to the trash:
+
+  ```sql
+  update board set deleted_at = now()
+  where project_id = $1 and kind = 'production' and deleted_at is null;
+  ```
+
+  Days created on the Production board after the move stay on it, in the trash with the board.
+
 ## Upgrading to 0.9
 
 - **Reports go to the Inkadra developers by default,** also on an instance where they were off, unless

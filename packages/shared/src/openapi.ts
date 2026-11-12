@@ -531,6 +531,13 @@ registry.registerPath({
   responses: { 200: { description: 'My tasks', ...json(MyTasks) }, 401: errors[401] },
 });
 
+/** Days belong to the Production board once a project has one (decision 0123). */
+const productionDays = {
+  description:
+    "A new day on a board other than the project's live Production board: details.reason " +
+    "'production_board' and details.boardId, the Production board's id.",
+  ...json(ApiError),
+};
 registry.registerPath({
   method: 'get',
   path: schedulePath,
@@ -554,7 +561,11 @@ registry.registerPath({
     params: idParam('boardId'),
     body: json(ShootingDayInput),
   },
-  responses: { 201: { description: 'Created', ...json(ShootingDay) }, ...errors },
+  responses: {
+    201: { description: 'Created', ...json(ShootingDay) },
+    ...errors,
+    409: productionDays,
+  },
 });
 registry.registerPath({
   method: 'post',
@@ -569,6 +580,12 @@ registry.registerPath({
       ...json(z.object({ items: z.array(ShootingDay), deleted: z.array(Id) })),
     },
     ...errors,
+    409: {
+      description:
+        "Stale revision or removed day; or a new day on a board other than the project's live " +
+        "Production board (details.reason 'production_board', details.boardId).",
+      ...json(ApiError),
+    },
   },
 });
 registry.registerPath({

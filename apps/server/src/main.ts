@@ -111,7 +111,10 @@ async function main() {
   }
 
   if (command === 'migrate' || command === 'web' || command === 'all') {
-    await runMigrations(config.DATABASE_URL, migrationsFolder);
+    await runMigrations(config.DATABASE_URL, migrationsFolder, {
+      productionBoards: config.PRODUCTION_BOARD_MOVE,
+      log,
+    });
     log.info('database migrations applied');
     if (command === 'migrate') return;
   }

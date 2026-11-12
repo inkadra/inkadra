@@ -316,6 +316,13 @@
       "when": 1794502224350,
       "tag": "0044_production_board",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794509643318,
+      "tag": "0045_shooting_day_project",
+      "breakpoints": true
     }
   ]
 }
