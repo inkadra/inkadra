@@ -3840,7 +3840,26 @@
     },
     "reports": {
       "copyHere": "A copy always stays below, in “Reports received”.",
-      "rules": "Rules"
+      "rules": "Rules",
+      "relayHelp": "Reports reach the Inkadra team, in the private repository <repo>inkadra/inkadra-feedback</repo>.",
+      "facts": {
+        "route": {
+          "title": "The route",
+          "body": "They pass through a relay on Cloudflare, which sees this server’s IP address."
+        },
+        "content": {
+          "title": "What leaves",
+          "body": "Selected text, screenshots, videos, files and logs. We add no name, email or instance URL."
+        },
+        "metadata": {
+          "title": "Metadata",
+          "body": "We remove GPS and other metadata from photos and videos from the device. PDFs leave whole, with their metadata. Check the preview."
+        },
+        "kept": {
+          "title": "How long they stay",
+          "body": "On GitHub until the team removes them: local retention does not delete them."
+        }
+      }
     },
     "backups": {
       "ok": "Last backup succeeded",

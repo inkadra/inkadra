@@ -786,3 +786,24 @@ button.settings-home__item {
 html[data-feedback-capturing] *:not([data-feedback-exclude], [data-feedback-exclude] *) {
   scrollbar-width: none !important;
 }
+/* The relay's four facts under "Destination": two columns, one on a phone. */
+.feedback-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+  padding: 12px 14px 14px;
+  list-style: none;
+  border-top: 1px solid var(--ink-border-muted);
+}
+.feedback-facts__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+@media (width < 768px) {
+  .feedback-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
