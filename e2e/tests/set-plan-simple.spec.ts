@@ -719,8 +719,9 @@ test('on a phone a selection can be dragged, and a tap still takes an item out o
       await end();
     };
 
-    // A long press and a drag pick the two lamps.
-    const a = await pointOf(stage, 170, 110);
+    // A long press and a drag pick the two lamps. The press starts clear of the kit pill at the
+    // top left (the mockup's place): a touch near a button is taken by the button.
+    const a = await pointOf(stage, 170, 130);
     const b = await pointOf(stage, 730, 190);
     await touch('touchStart', a);
     await expect(full.locator('.plan-canvas__toast')).toContainText('Tieni premuto', {
