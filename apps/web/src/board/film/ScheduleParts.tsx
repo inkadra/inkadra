@@ -832,6 +832,50 @@ export function BlockEditor({
   );
 }
 
+/**
+ * A day changed elsewhere while it was edited here: which version to keep. In the day panel, and
+ * in the week view as a banner over the calendar (the approved mockup's states).
+ */
+export function StaleChoice({
+  entry,
+  busy,
+  banner = false,
+  onReload,
+  onKeep,
+}: {
+  entry: CalendarDay;
+  busy: boolean;
+  banner?: boolean;
+  onReload: () => void;
+  onKeep: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  return (
+    <div role="alert" className={`schedule__stale${banner ? ' is-banner' : ''}`}>
+      <p>
+        {entry.day.updatedBy
+          ? t('schedule.staleBy', {
+              name: entry.day.updatedBy.name,
+              day: new Intl.DateTimeFormat(i18n.language, {
+                weekday: 'short',
+                day: 'numeric',
+                timeZone: 'UTC',
+              }).format(Date.parse(`${entry.day.date}T00:00:00Z`)),
+            })
+          : t('schedule.staleBody')}
+      </p>
+      <div className="schedule__actions">
+        <Button disabled={busy} onClick={onReload}>
+          {t('schedule.staleReload')}
+        </Button>
+        <Button variant="primary" disabled={busy} onClick={onKeep}>
+          {t('schedule.staleKeep')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // --- The day panel ------------------------------------------------------------------------------
 
 export function DayPanel({
@@ -946,28 +990,7 @@ export function DayPanel({
   const dayFields = (
     <>
       {stale && !readOnly && (
-        <div role="alert" className="schedule__stale">
-          <p>
-            {entry.day.updatedBy
-              ? t('schedule.staleBy', {
-                  name: entry.day.updatedBy.name,
-                  day: new Intl.DateTimeFormat(i18n.language, {
-                    weekday: 'short',
-                    day: 'numeric',
-                    timeZone: 'UTC',
-                  }).format(Date.parse(`${entry.day.date}T00:00:00Z`)),
-                })
-              : t('schedule.staleBody')}
-          </p>
-          <div className="schedule__actions">
-            <Button disabled={busy} onClick={onReload}>
-              {t('schedule.staleReload')}
-            </Button>
-            <Button variant="primary" disabled={busy} onClick={onKeep}>
-              {t('schedule.staleKeep')}
-            </Button>
-          </div>
-        </div>
+        <StaleChoice entry={entry} busy={busy} onReload={onReload} onKeep={onKeep} />
       )}
       <fieldset disabled={disabled}>
         <legend className="ink-sr-only">{t('schedule.day', { date: draft.date })}</legend>

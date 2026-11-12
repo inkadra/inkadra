@@ -61,8 +61,16 @@
   color: var(--ink-status-ok);
 }
 .schedule__status.is-alert {
-  color: var(--ink-danger-fg);
-  font-weight: 500;
+  color: var(--ink-status-danger);
+  font-weight: 600;
+}
+.schedule__status.is-warn {
+  color: var(--ink-status-warn);
+  font-weight: 600;
+}
+/* The phone's queue: a pill, as in the mockup. */
+.schedule__queue-pill.ink-btn {
+  border-radius: var(--ink-radius-full);
 }
 .schedule__count {
   min-width: 18px;
@@ -111,6 +119,24 @@
   margin: 0;
   line-height: 1.45;
 }
+/* In the week view the choice floats over the bottom of the calendar (the mockup's states). */
+.schedule__stale-banners {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 7;
+  display: grid;
+  gap: 8px;
+}
+.schedule__stale.is-banner {
+  gap: 6px;
+  padding: 8px 10px;
+  border-color: var(--ink-border-default);
+  background: var(--ink-surface-1);
+  box-shadow: var(--ink-shadow-menu);
+  color: var(--ink-text-primary);
+}
 .schedule__actions {
   display: flex;
   flex-wrap: wrap;
@@ -147,7 +173,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 240px;
+  width: 260px;
   overflow: auto;
   padding: 12px 10px;
   border-right: 1px solid var(--ink-border-subtle);
@@ -182,12 +208,13 @@
   gap: 8px;
   margin: 0 4px 6px;
   font-size: 13px;
+  white-space: nowrap;
 }
 .schedule__month-head b::first-letter {
   text-transform: uppercase;
 }
 .schedule__month-head span {
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
   font-size: 11px;
 }
 .schedule__month-grid {
@@ -276,8 +303,14 @@
   min-width: 0;
   width: auto;
   max-width: 100%;
-  height: 28px;
+  height: 26px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-full);
+  background-color: var(--ink-surface-1);
   font-size: 12px;
+}
+.schedule__filters .ink-select:hover:not(:disabled) {
+  border-color: var(--ink-border-strong);
 }
 .schedule__scene {
   display: grid;
@@ -288,9 +321,9 @@
   align-items: center;
   gap: 6px;
   margin: 6px 4px 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--ink-text-secondary);
+  color: var(--ink-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -410,7 +443,7 @@
 /* The calendar ---------------------------------------------------------------------------- */
 
 .schedule__calendar {
-  --schedule-gutter: 76px;
+  --schedule-gutter: 56px;
   /* A card sits inside its slot, starts stay on their minute: back-to-back cards never touch. */
   --schedule-inset-top: 1px;
   --schedule-inset-bottom: 2px;
@@ -454,12 +487,21 @@
 }
 .schedule__gutter {
   position: relative;
+  /* Sticky: it follows the sideways scroll of the days (set on the calendar), above the cards. */
+  z-index: 6;
   border-right: 1px solid var(--ink-border-muted);
+  background: var(--ink-surface-1);
+  transform: translateX(var(--schedule-scroll-x, 0px));
+}
+.schedule__heads > .schedule__gutter {
+  background: var(--ink-bg-panel);
 }
 .schedule__hour {
   position: absolute;
   right: 8px;
-  color: var(--ink-text-muted);
+  /* Centred on its hour line. */
+  translate: 0 -50%;
+  color: var(--ink-text-secondary);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -492,6 +534,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+.schedule__head-top > * {
+  flex: none;
 }
 .schedule__head-weekday {
   color: var(--ink-text-secondary);
@@ -500,13 +546,17 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+.schedule__head.is-free {
+  opacity: 0.75;
+}
 .schedule__head-number {
-  min-width: 30px;
-  height: 30px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 4px;
   border-radius: var(--ink-radius-full);
   font-size: 20px;
   font-weight: 600;
-  line-height: 30px;
+  line-height: 28px;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -514,28 +564,41 @@
   background: var(--ink-accent-button);
   color: var(--ink-on-accent);
 }
-.schedule__head-meta {
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-.schedule__head-title {
+.schedule__head-title,
+.schedule__head-meta,
+.schedule__sun-text {
+  /* One line each, as in the mockup: a duration never breaks in two. */
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.schedule__head-title.is-muted,
-.schedule__head-meta {
+.schedule__head-title {
+  font-weight: 500;
+}
+.schedule__head-title.is-muted {
   color: var(--ink-text-muted);
   font-size: 11px;
 }
+.schedule__head-meta {
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+}
 .schedule__tag {
-  padding: 1px 7px;
+  padding: 2px 8px;
   border-radius: var(--ink-radius-full);
   background: var(--ink-tag-purple-bg);
   color: var(--ink-tag-purple);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
+}
+/* A narrow column cuts its tags rather than letting them cover the next day. */
+.schedule__head-top > .schedule__tag {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .schedule__tag.is-danger {
   background: var(--ink-danger-bg);
@@ -545,23 +608,21 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   color: var(--ink-tag-orange);
+  font-weight: 500;
 }
 .schedule__sun > svg {
   flex: none;
-}
-.schedule__sun-text {
-  min-width: 0;
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
 .schedule__column {
   position: relative;
   min-width: 0;
   border-left: 1px solid var(--ink-border-muted);
+  background-color: var(--ink-surface-1);
   background-image: repeating-linear-gradient(
     to bottom,
-    var(--ink-border-subtle) 0 1px,
+    var(--ink-border-muted) 0 1px,
     transparent 1px calc(60px * 1)
   );
 }
@@ -572,29 +633,42 @@
   outline: 2px solid var(--ink-status-warn);
   outline-offset: -2px;
 }
-/* Before the call and after the wrap the column is dimmed: nothing is planned there. */
+/* Before the call and after the wrap the column is dimmed: nothing is planned there; a day
+   without shooting is dimmed all day. */
 .schedule__off {
   position: absolute;
   left: 0;
   right: 0;
-  background: var(--ink-surface-2);
-  opacity: 0.6;
+  background: var(--ink-bg-panel);
   pointer-events: none;
+}
+.schedule__column.is-free {
+  background-color: var(--ink-bg-panel);
 }
 .schedule__free {
   position: absolute;
   left: 12px;
   right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   margin: 0;
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
   font-size: 12px;
   text-align: center;
+}
+.schedule__free > b {
+  font-weight: 400;
+}
+.schedule__free > span {
+  max-width: 150px;
 }
 .schedule__mark {
   position: absolute;
   left: 0;
   right: 0;
-  border-top: 1px solid var(--ink-text-muted);
+  border-top: 1px solid var(--ink-text-secondary);
   pointer-events: none;
 }
 .schedule__mark > span {
@@ -603,6 +677,7 @@
   bottom: 2px;
   color: var(--ink-text-secondary);
   font-size: 11px;
+  font-weight: 500;
 }
 .schedule__mark.is-wrap > span {
   top: 2px;
@@ -739,8 +814,9 @@
   min-width: 0;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 4px 8px;
+  gap: 10px;
+  /* Room on the right for the conflict icon. */
+  padding: 5px 22px 5px 8px;
   border: 0;
   border-radius: var(--ink-radius-sm);
   background: var(--block-bg);
@@ -790,13 +866,14 @@
 .schedule__block-text {
   display: flex;
   flex-direction: column;
+  gap: 1px;
   min-width: 0;
   /* Time, title and details fit a 45-minute block, 14 px text on a phone included. */
   line-height: 1.2;
 }
 .schedule__block.is-short .schedule__block-select {
   align-items: center;
-  padding-block: 0;
+  padding: 0 8px;
 }
 .schedule__block.is-short .schedule__block-text {
   flex-direction: row;
@@ -806,23 +883,27 @@
 .schedule__block-time {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   color: var(--block-fg);
   font-size: 11px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .schedule__block-title {
   overflow: hidden;
+  font-size: 12.5px;
   font-weight: 600;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.schedule--day .schedule__block-title {
-  white-space: nowrap;
-}
-.schedule__block.is-short .schedule__block-title {
-  white-space: nowrap;
+/* From 62 px the title takes two lines. */
+.schedule__block.is-wrap .schedule__block-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
 }
 .schedule__block-meta {
   overflow: hidden;
@@ -833,19 +914,20 @@
 }
 .schedule__block-pic {
   flex: none;
-  width: 72px;
+  width: 80px;
 }
 .schedule__block-warn {
   position: absolute;
-  top: 3px;
-  right: 4px;
+  top: 5px;
+  right: 5px;
+  display: flex;
   color: var(--ink-status-danger);
 }
 /* How far a block shifts while another one is dragged: inside it, on the right. */
 .schedule__block-delta {
   position: absolute;
-  top: 3px;
-  right: 4px;
+  top: 5px;
+  right: 5px;
   padding: 0 6px;
   border: 1px solid var(--ink-accent-primary);
   border-radius: var(--ink-radius-full);
@@ -858,7 +940,7 @@
   pointer-events: none;
 }
 .schedule__block-delta.has-conflict {
-  right: 22px;
+  right: 24px;
 }
 .schedule__resize {
   position: absolute;
@@ -960,12 +1042,12 @@
 .schedule__popover {
   position: fixed;
   z-index: 30;
-  width: 320px;
+  width: 344px;
   max-height: calc(100dvh - 16px);
   overflow-y: auto;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid var(--ink-border-strong);
-  border-radius: var(--ink-radius-md);
+  border-radius: var(--ink-radius-lg);
   background: var(--ink-surface-float);
   box-shadow: var(--shadow-float);
 }
@@ -1015,7 +1097,7 @@
 }
 .schedule__editor-shot {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-columns: 96px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
 }
@@ -1030,7 +1112,7 @@
   font-size: 12px;
 }
 .schedule__editor-shot-text b {
-  font-size: 14px;
+  font-size: 15px;
 }
 .schedule__editor-shot-text span {
   color: var(--ink-text-secondary);
@@ -1190,7 +1272,7 @@ fieldset.schedule__field > legend {
 
 .schedule__inspector {
   flex: none;
-  width: 340px;
+  width: 360px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1205,8 +1287,9 @@ fieldset.schedule__field > legend {
 }
 .schedule__inspector-head h2 {
   margin: 4px 0 2px;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .schedule__summary {
   margin: 0;
@@ -1237,7 +1320,7 @@ fieldset.schedule__field > legend {
   gap: 4px;
   min-width: 0;
   color: var(--ink-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 .schedule__inspector .schedule__check {
   flex-direction: row;
@@ -1314,7 +1397,7 @@ fieldset.schedule__field > legend {
     display: none;
   }
   .schedule__calendar {
-    --schedule-gutter: 76px;
+    --schedule-gutter: 52px;
     --schedule-column: minmax(0, 1fr);
     --schedule-inset-top: 2px;
     overflow-x: hidden;
@@ -1323,7 +1406,8 @@ fieldset.schedule__field > legend {
     min-height: 28px;
     box-shadow: 0 0 0 6px var(--ink-bg-panel);
   }
-  .schedule__block-select {
+  .schedule__block-select,
+  .schedule__block-title {
     font-size: 14px;
   }
   .schedule__block-time {
@@ -1334,7 +1418,7 @@ fieldset.schedule__field > legend {
   }
   .schedule__picker {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
     margin: 0;
     padding: 12px 12px 8px;
@@ -1348,9 +1432,10 @@ fieldset.schedule__field > legend {
     display: flex;
     flex-direction: column;
     align-items: center;
-    flex: 1 0 60px;
+    /* A whole week fits at 390 px, Saturday and Sunday included; more weeks scroll. */
+    flex: 1 0 46px;
     min-height: 56px;
-    padding: 6px 8px 10px;
+    padding: 6px 2px 10px;
     border: 1px solid var(--ink-border-default);
     border-radius: var(--ink-radius-md);
     background: var(--ink-surface-1);
@@ -1482,12 +1567,6 @@ fieldset.schedule__field > legend {
 .schedule__edge-button:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
-}
-
-@media (768px <= width < 1400px) {
-  .schedule__queue {
-    width: 220px;
-  }
 }
 
 /* Phase 2: a new block drawn on empty time, then its type from a small menu. */

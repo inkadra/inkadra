@@ -86,6 +86,24 @@ export function layoutLanes(slots: readonly Slot[]): Map<string, { lane: number;
   return out;
 }
 
+/**
+ * What a block card shows at its height, as in the approved mockups. On a computer: the
+ * "cast · duration" line from 60 px in the week, from 52 px in the day view (which leads with
+ * the type), the title on two lines from 62 px, and in the day view the frame from 44 px. On a
+ * phone: the line from 56 px, one line of title, no frame. A block that shares its time with
+ * another (a lane) shows only its start time.
+ */
+export function blockDetail(view: 'day' | 'week', height: number, phone: boolean, lanes: number) {
+  const day = view === 'day' && !phone;
+  return {
+    meta: height >= (phone ? 56 : day ? 52 : 60),
+    type: day,
+    wrap: !phone && height >= 62,
+    picture: day && height >= 44,
+    range: lanes < 2,
+  };
+}
+
 /** Free time a fixed start leaves before its block, as "1h 30 libera". */
 export function gapsBeforeFixed(day: Pick<ShootingDayInput, 'callTime' | 'blocks'>) {
   const gaps: Array<{ before: string; start: number; end: number }> = [];

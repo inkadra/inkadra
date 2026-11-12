@@ -66,6 +66,7 @@ import {
   type DayTab,
   MoveDayDialog,
   ScheduleQueue,
+  StaleChoice,
   SunLine,
 } from './ScheduleParts.tsx';
 import { castConflicts, clockLabel, newScheduleBlock, nowOnDay, whileVisible } from './schedule.ts';
@@ -1308,7 +1309,12 @@ export function ScheduleView({
       <div className="story__bar schedule__bar" data-chrome>
         {phone ? (
           <>
-            <Button icon="list" data-tour="schedule-queue" onClick={() => setSheet('queue')}>
+            <Button
+              icon="list"
+              className="schedule__queue-pill"
+              data-tour="schedule-queue"
+              onClick={() => setSheet('queue')}
+            >
               {t('schedule.queueShort')}
               <span className="schedule__count">{unscheduled.length}</span>
             </Button>
@@ -1360,11 +1366,12 @@ export function ScheduleView({
             {statusText && (
               <span
                 role="status"
-                className={`schedule__status${staleCount || failedAny ? ' is-alert' : ''}`}
+                className={`schedule__status${staleCount ? ' is-warn' : failedAny ? ' is-alert' : ''}`}
               >
                 {!staleCount && !failedAny && !savingAny && !unsaved && (
                   <Icon name="check" size={14} />
                 )}
+                {!staleCount && failedAny && <span aria-hidden="true">●</span>}
                 {statusText}
               </span>
             )}
@@ -1406,13 +1413,9 @@ export function ScheduleView({
                 {t('schedule.addBlockShort')}
               </Button>
             )}
-            {!readOnly && (
-              <Button
-                variant="primary"
-                icon="plus"
-                disabled={busy || loading || loadError}
-                onClick={addDay}
-              >
+            {/* Hidden while the plan loads or could not load: it could not work then. */}
+            {!readOnly && !loading && !loadError && (
+              <Button variant="primary" icon="plus" disabled={busy} onClick={addDay}>
                 {t('schedule.addDayShort')}
               </Button>
             )}
@@ -1569,6 +1572,22 @@ export function ScheduleView({
                 if (id) addShot(entry, id, minute);
               }}
             />
+          )}
+          {!phone && !readOnly && view === 'week' && staleCount > 0 && (
+            <div className="schedule__stale-banners">
+              {drafted
+                .filter((entry) => entry.stale)
+                .map((entry) => (
+                  <StaleChoice
+                    key={entry.day.id}
+                    entry={entry}
+                    busy={busy}
+                    banner
+                    onReload={() => dropDraft(entry.day)}
+                    onKeep={() => keepDraft(entry.day)}
+                  />
+                ))}
+            </div>
           )}
           {phone && !loading && !loadError && days.length > 0 && !readOnly && (
             <div className="schedule__phone-foot">

@@ -2,6 +2,7 @@ import type { ScheduleBlock, ShootingDayInput } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  blockDetail,
   clockString,
   drawnRange,
   duplicateBlock,
@@ -282,4 +283,21 @@ it('compares JSONB drafts independently of object key order, preserving array or
   expect(sameScheduleInput(input, { ...input, calls: [] })).toBe(true);
   const call = { crewMemberId: '00000000-0000-4000-8000-000000000001', call: null, pickup: 'Bar' };
   expect(sameScheduleInput(input, { ...input, calls: [call] })).toBe(false);
+});
+
+it('shows on each card what the approved mockup shows at its height', () => {
+  // The week: "cast · duration" from 60 px, the title on two lines from 62 px, no frame.
+  expect(blockDetail('week', 59, false, 1)).toMatchObject({ meta: false, wrap: false });
+  expect(blockDetail('week', 60, false, 1)).toMatchObject({ meta: true, type: false, wrap: false });
+  expect(blockDetail('week', 62, false, 1)).toMatchObject({ wrap: true, picture: false });
+  // The day view: the line, led by the type, from 52 px, and the frame from 44 px.
+  expect(blockDetail('day', 51, false, 1)).toMatchObject({ meta: false, picture: true });
+  expect(blockDetail('day', 52, false, 1)).toMatchObject({ meta: true, type: true });
+  expect(blockDetail('day', 43, false, 1).picture).toBe(false);
+  // A phone: the line from 56 px, one line of title, no frame.
+  expect(blockDetail('day', 55, true, 1).meta).toBe(false);
+  expect(blockDetail('day', 90, true, 1)).toMatchObject({ meta: true, type: false, wrap: false, picture: false });
+  // Side by side, a card shows only its start time.
+  expect(blockDetail('week', 90, false, 1).range).toBe(true);
+  expect(blockDetail('week', 90, false, 2).range).toBe(false);
 });
