@@ -310,6 +310,8 @@ export interface SampleProject {
   rushes: { id: string };
   /** Crew contacts, budget, maps and the script; hidden from guests. */
   production: { id: string };
+  /** The Production board (decision 0123): the shooting days and the crew. */
+  schedule: { id: string };
   /** Asset ids of the stills, by name. */
   asset: Record<string, string>;
   /** The client's share link of the project, with review decisions. */

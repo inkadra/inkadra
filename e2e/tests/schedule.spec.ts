@@ -48,12 +48,16 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   await expect(schedule.getByRole('heading', { level: 2 }).first()).toContainText('2 novembre');
   const day = schedule.locator('.schedule__day');
   await expect(day).toHaveCount(1);
-  const shot = schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)').first();
+  const shot = schedule
+    .locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)')
+    .first();
   await expect(shot).toContainText('1A');
   await shot.dragTo(day, { targetPosition: { x: 60, y: 9 * 60 + 40 } });
   const block = day.locator('.schedule__block');
   await expect(block).toContainText('1A');
-  await expect(schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)')).toHaveCount(0);
+  await expect(
+    schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)'),
+  ).toHaveCount(0);
   await expect(saved).toHaveText(/Salvato alle/);
 
   // The bottom edge makes it longer, by five-minute steps.
@@ -141,7 +145,9 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   await schedule.locator('.schedule__block-select').focus();
   await page.keyboard.press('Delete');
   await page.getByRole('dialog').getByRole('button', { name: 'Elimina', exact: true }).click();
-  await expect(schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)')).toHaveCount(1);
+  await expect(
+    schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)'),
+  ).toHaveCount(1);
   await expect(saved).toHaveText(/Salvato alle/);
   const queued = schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)');
   const freeDate = schedule.locator('.schedule__column.is-free').first();
@@ -151,7 +157,9 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   await expect(saved).toHaveText(/Salvato alle/);
   await page.keyboard.press('Control+z');
   await expect(schedule.locator('.schedule__day')).toHaveCount(2);
-  await expect(schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)')).toHaveCount(1);
+  await expect(
+    schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)'),
+  ).toHaveCount(1);
   await expect(saved).toHaveText(/Salvato alle/);
   // A wrapped overnight notice fits entirely in its column; phone notices have their own row.
   const night = await page.request.post(`/api/v1/boards/${production.id}/schedule`, {

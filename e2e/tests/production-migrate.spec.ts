@@ -83,7 +83,9 @@ async function seed(page: Page, baseURL: string, name: string, titles: string[])
 }
 
 async function productionOf(page: Page, projectId: string) {
-  const boards = (await (await page.request.get(`/api/v1/projects/${projectId}/boards`)).json()) as {
+  const boards = (await (
+    await page.request.get(`/api/v1/projects/${projectId}/boards`)
+  ).json()) as {
     items: Array<{ id: string; kind: string; parentBoardId: string | null }>;
   };
   return boards.items.filter((b) => b.kind === 'production');

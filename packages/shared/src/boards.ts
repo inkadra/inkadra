@@ -223,17 +223,25 @@ export const BoardPreview = z
         description:
           'Review decisions as the team sees them: frames, or cards when there are none.',
       }),
-    dayCount: z.int().nonnegative().optional().openapi({
-      description:
-        'Shooting days: of a Production board, its own. Of a storyboard (decision 0123), only ' +
-        "for members of a project without a live Production board: the project's days that " +
-        'adding one would show (on live boards or on the trashed Production board).',
-    }),
-    crewCount: z.int().nonnegative().optional().openapi({
-      description:
-        "People of the project's troupe; only for members of the project. On a storyboard, " +
-        'only while the project has no live Production board, like `dayCount`.',
-    }),
+    dayCount: z
+      .int()
+      .nonnegative()
+      .optional()
+      .openapi({
+        description:
+          'Shooting days: of a Production board, its own. Of a storyboard (decision 0123), only ' +
+          "for members of a project without a live Production board: the project's days that " +
+          'adding one would show (on live boards or on the trashed Production board).',
+      }),
+    crewCount: z
+      .int()
+      .nonnegative()
+      .optional()
+      .openapi({
+        description:
+          "People of the project's troupe; only for members of the project. On a storyboard, " +
+          'only while the project has no live Production board, like `dayCount`.',
+      }),
     nextDay: PreviewDay.optional().openapi({
       description:
         'Production board (decision 0123): the next shooting day, the first on or after today ' +

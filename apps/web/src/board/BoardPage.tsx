@@ -39,11 +39,12 @@ import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
 import { moveTabFocus } from '../lib/tabs.ts';
 import { useProjects } from '../routes/AppLayout.tsx';
+import { addBoard } from '../routes/add-storyboard.ts';
 import { NotFound } from '../routes/NotFound.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
-import { addBoard } from '../routes/add-storyboard.ts';
 import { renameProject } from '../routes/projects.ts';
 import { BOARD_CARD_SIZE } from './BoardCardPreview.tsx';
+import { useBoardPreview } from './board-previews.ts';
 import {
   boardPath,
   canRenameBoard,
@@ -65,7 +66,6 @@ import type { ExportWhat } from './export/engine.ts';
 import type { ExportSource } from './export/settings.ts';
 import { ClientReviewView } from './film/ClientReviewView.tsx';
 import { MoodboardView } from './film/MoodboardView.tsx';
-import { useBoardPreview } from './board-previews.ts';
 import { useDaysPointingAt } from './film/production-days.ts';
 import { ScheduleView } from './film/ScheduleView.tsx';
 import { ShotList } from './film/ShotList.tsx';
@@ -1021,7 +1021,6 @@ function BoardScreen({
       modulesOff,
       outside,
       openOutside,
-      hasProduction,
       versionable,
       productionLink,
       production,

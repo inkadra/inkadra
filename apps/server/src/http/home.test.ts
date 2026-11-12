@@ -414,7 +414,9 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
     // A picture of another project never reaches the card.
     expect(owner.frames[1].assetId).toBeUndefined();
     expect(owner.review).toEqual({ approved: 1, changes: 1, total: 3 });
-    expect(owner.dayCount).toBe(1);
+    // Without a Production board, the project's days on live boards (decision 0123): this one
+    // and those of the other boards of the project.
+    expect(owner.dayCount).toBe(3);
     expect(owner.crewCount).toBe(1);
     // A grant on the board shows what the board shows, not the project's contacts.
     const granted = await request('granted', 'GET', `/boards/${filmId}/preview`);

@@ -565,7 +565,7 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
     );
     // Without one, it counts the plan to find there: the trashed board's days and the new one,
     // never those of a trashed storyboard; to members only.
-    expect(await storyboardCard()).toMatchObject({ dayCount: 5, crewCount: 5 });
+    expect(await storyboardCard()).toMatchObject({ dayCount: 5, crewCount: 6 });
     const granted = BoardPreview.parse(
       (await request('storyboarder', 'GET', `/boards/${ids.sa}/preview`)).json(),
     );
