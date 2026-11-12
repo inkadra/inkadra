@@ -4,11 +4,12 @@
  * The words of a set plan that every client writes the same (decision 0116): the names of the
  * icons with their search words, the library's tiles, groups and categories, the plan colours'
  * names, and the words the shared functions (kit, power, legend, card, setups, sun, a
- * selection's mix, the summary of a plan's walls) ask for. English, the source; the keys are
- * those of the web catalogues (`board.plan.*`), so a client loads this object as its English
- * catalogue. The other languages have the same keys, one file each
+ * selection's mix, the summary of a plan's walls) and the printed sheet ask for. English, the
+ * source; the keys are those of the web catalogues (`board.plan.*`), so a client loads this
+ * object as its English catalogue. The other languages have the same keys, one file each
  * (`@inkadra/canvas-core/plan-words/it`, `es`, `de`, `fr`, `pt`), so a client imports only those
- * it ships. The web's catalogues must say the same (a web test compares them).
+ * it ships, with that language's `SHEET_WORDS_*`. The web's catalogues must say the same (a web
+ * test compares them).
  */
 
 /**
@@ -30,6 +31,7 @@ export const PLAN_WORDS_EN = {
       positions_one: '{{count}} position',
       positions_other: '{{count}} positions',
       roomOverall: '{{size}} overall',
+      scaleGrid: '1 square = {{grid}} m',
       walls: {
         summaryWalls_one: '{{count}} wall',
         summaryWalls_other: '{{count}} walls',
@@ -503,9 +505,18 @@ export const PLAN_WORDS_EN = {
         grip: 'Grip',
         cast: 'Cast',
         setup: 'Setup',
+        shots: 'Shots',
+        scale: 'Scale',
+        room: 'Room',
+        more_one: '+{{count}} more',
+        more_other: '+{{count}} more',
+        notes: 'Notes',
+        foot: 'Made with Inkadra · page {{n}} of {{total}}',
+        day: 'Day {{n}}',
       },
       links: {
         circuitLine: '{{name}} · {{amps}} A',
+        scene: 'Scene {{number}}',
         from: {
           north: 'From the north',
           northEast: 'From the north-east',
@@ -529,3 +540,33 @@ export const PLAN_WORDS_EN = {
 
 /** The shape of every language's words: the keys of `PLAN_WORDS_EN`, each a string. */
 export type PlanWords = typeof PLAN_WORDS_EN;
+
+/**
+ * The words a set plan's sheet asks for outside `board.plan` (decision 0116): a scene's setting
+ * and time in its slugline, and the PDF's subject. English, the source; the other languages are
+ * `SHEET_WORDS_*` in the same files as their `PLAN_WORDS_*`. Kept apart so `PLAN_WORDS` stays the
+ * set plan's own keys.
+ */
+export const SHEET_WORDS_EN = {
+  film: {
+    scene: {
+      settings: {
+        int: 'INT.',
+        ext: 'EXT.',
+        'int-ext': 'INT./EXT.',
+      },
+      times: {
+        day: 'DAY',
+        night: 'NIGHT',
+        dawn: 'DAWN',
+        dusk: 'DUSK',
+      },
+    },
+  },
+  export: {
+    kindBoard: 'Board',
+  },
+};
+
+/** The shape of every language's sheet words: the keys of `SHEET_WORDS_EN`, each a string. */
+export type SheetWords = typeof SHEET_WORDS_EN;

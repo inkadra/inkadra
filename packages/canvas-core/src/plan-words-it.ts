@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { PlanWords } from './plan-words.ts';
+import type { PlanWords, SheetWords } from './plan-words.ts';
 
 /**
  * The words of a set plan in Italian: the keys of `PLAN_WORDS_EN` (decision 0116), as the web's
@@ -19,6 +19,7 @@ export const PLAN_WORDS_IT: PlanWords = {
       positions_one: '{{count}} posizione',
       positions_other: '{{count}} posizioni',
       roomOverall: '{{size}} in tutto',
+      scaleGrid: '1 quadretto = {{grid}} m',
       walls: {
         summaryWalls_one: '{{count}} muro',
         summaryWalls_other: '{{count}} muri',
@@ -492,9 +493,18 @@ export const PLAN_WORDS_IT: PlanWords = {
         grip: 'Grip',
         cast: 'Cast',
         setup: 'Setup',
+        shots: 'Inquadrature',
+        scale: 'Scala',
+        room: 'Stanza',
+        more_one: '+{{count}} altro',
+        more_other: '+{{count}} altri',
+        notes: 'Note',
+        foot: 'Fatto con Inkadra · pagina {{n}} di {{total}}',
+        day: 'Giorno {{n}}',
       },
       links: {
         circuitLine: '{{name}} · {{amps}} A',
+        scene: 'Scena {{number}}',
         from: {
           north: 'Da nord',
           northEast: 'Da nord-est',
@@ -513,5 +523,27 @@ export const PLAN_WORDS_IT: PlanWords = {
         },
       },
     },
+  },
+};
+
+/** The sheet's words outside `board.plan` in Italian: the keys of `SHEET_WORDS_EN`. */
+export const SHEET_WORDS_IT: SheetWords = {
+  film: {
+    scene: {
+      settings: {
+        int: 'INT.',
+        ext: 'EST.',
+        'int-ext': 'INT./EST.',
+      },
+      times: {
+        day: 'GIORNO',
+        night: 'NOTTE',
+        dawn: 'ALBA',
+        dusk: 'TRAMONTO',
+      },
+    },
+  },
+  export: {
+    kindBoard: 'Board',
   },
 };

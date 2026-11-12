@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { PlanWords } from './plan-words.ts';
+import type { PlanWords, SheetWords } from './plan-words.ts';
 
 /**
  * The words of a set plan in German: the keys of `PLAN_WORDS_EN` (decision 0116), as the web's
@@ -19,6 +19,7 @@ export const PLAN_WORDS_DE: PlanWords = {
       positions_one: '{{count}} Position',
       positions_other: '{{count}} Positionen',
       roomOverall: '{{size}} gesamt',
+      scaleGrid: '1 Kästchen = {{grid}} m',
       walls: {
         summaryWalls_one: '{{count}} Wand',
         summaryWalls_other: '{{count}} Wände',
@@ -492,9 +493,18 @@ export const PLAN_WORDS_DE: PlanWords = {
         grip: 'Grip',
         cast: 'Besetzung',
         setup: 'Setup',
+        shots: 'Einstellungen',
+        scale: 'Maßstab',
+        room: 'Raum',
+        more_one: '+{{count}} weiteres',
+        more_other: '+{{count}} weitere',
+        notes: 'Notizen',
+        foot: 'Erstellt mit Inkadra · Seite {{n}} von {{total}}',
+        day: 'Tag {{n}}',
       },
       links: {
         circuitLine: '{{name}} · {{amps}} A',
+        scene: 'Szene {{number}}',
         from: {
           north: 'Von Norden',
           northEast: 'Von Nordosten',
@@ -513,5 +523,27 @@ export const PLAN_WORDS_DE: PlanWords = {
         },
       },
     },
+  },
+};
+
+/** The sheet's words outside `board.plan` in German: the keys of `SHEET_WORDS_EN`. */
+export const SHEET_WORDS_DE: SheetWords = {
+  film: {
+    scene: {
+      settings: {
+        int: 'INT.',
+        ext: 'EXT.',
+        'int-ext': 'INT./EXT.',
+      },
+      times: {
+        day: 'TAG',
+        night: 'NACHT',
+        dawn: 'MORGENGRAUEN',
+        dusk: 'DÄMMERUNG',
+      },
+    },
+  },
+  export: {
+    kindBoard: 'Board',
   },
 };

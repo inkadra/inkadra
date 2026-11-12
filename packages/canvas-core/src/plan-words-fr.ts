@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { PlanWords } from './plan-words.ts';
+import type { PlanWords, SheetWords } from './plan-words.ts';
 
 /**
  * The words of a set plan in French: the keys of `PLAN_WORDS_EN` (decision 0116), as the web's
@@ -19,6 +19,7 @@ export const PLAN_WORDS_FR: PlanWords = {
       positions_one: '{{count}} position',
       positions_other: '{{count}} positions',
       roomOverall: '{{size}} hors tout',
+      scaleGrid: '1 carreau = {{grid}} m',
       walls: {
         summaryWalls_one: '{{count}} mur',
         summaryWalls_other: '{{count}} murs',
@@ -492,9 +493,18 @@ export const PLAN_WORDS_FR: PlanWords = {
         grip: 'Machinerie',
         cast: 'Distribution',
         setup: 'Setup',
+        shots: 'Plans',
+        scale: 'Échelle',
+        room: 'Pièce',
+        more_one: '+{{count}} autre',
+        more_other: '+{{count}} autres',
+        notes: 'Notes',
+        foot: 'Fait avec Inkadra · page {{n}} sur {{total}}',
+        day: 'Jour {{n}}',
       },
       links: {
         circuitLine: '{{name}} · {{amps}} A',
+        scene: 'Scène {{number}}',
         from: {
           north: 'Du nord',
           northEast: 'Du nord-est',
@@ -513,5 +523,27 @@ export const PLAN_WORDS_FR: PlanWords = {
         },
       },
     },
+  },
+};
+
+/** The sheet's words outside `board.plan` in French: the keys of `SHEET_WORDS_EN`. */
+export const SHEET_WORDS_FR: SheetWords = {
+  film: {
+    scene: {
+      settings: {
+        int: 'INT.',
+        ext: 'EXT.',
+        'int-ext': 'INT./EXT.',
+      },
+      times: {
+        day: 'JOUR',
+        night: 'NUIT',
+        dawn: 'AUBE',
+        dusk: 'CRÉPUSCULE',
+      },
+    },
+  },
+  export: {
+    kindBoard: 'Tableau',
   },
 };

@@ -252,6 +252,16 @@ the decoded pixels. The web's `render-pdf.ts` wraps it with the browser's `greyB
 callers did not change; a package test writes a JPEG and a provider's greys in Node and compares
 the drawing operators, and the sheet's PDF goldens did not change.
 
+Then the sheet's words: what `planSheetPages` and `planSheetInput` ask for under `board.plan`
+(`sheet.shots`, `scale`, `room`, `more`, `notes`, `foot`, `day`, `scaleGrid`, `links.scene`)
+joined `PLAN_WORDS_EN` and the other five languages; the slugline's setting and time
+(`film.scene.settings.*`, `film.scene.times.*`) and the PDF's subject (`export.kindBoard`) are
+`SHEET_WORDS_EN` and `SHEET_WORDS_IT`, `_ES`, `_DE`, `_FR`, `_PT`, in the same files and on the
+same paths as the plan's words, so `PLAN_WORDS` keeps only the set plan's keys. `sheet.day` is
+there although the sheet prints no "Day N" yet. Tested both ways as the plan's words are, and a
+package test prints the sheet in all six languages with these words alone, failing on any key
+they lack.
+
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
 touch many rules; do it when the board stylesheet is next reworked).
