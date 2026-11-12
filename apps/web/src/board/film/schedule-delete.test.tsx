@@ -167,13 +167,15 @@ it('asks before removing a block with content but drops empty blocks directly', 
   expect(articles()).toHaveLength(0);
 });
 
-it('fits a fifteen minute block before the next one and keeps week instructions out of free days', async () => {
+it("fits a fifteen minute block before the next one and keeps the day view's instructions out of the week", async () => {
   const { store } = board();
   const day = shootingDay([block({ title: 'Walk', duration: 15 }), block({ title: 'Next' })]);
   vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
   const host = await mount(<ScheduleView store={store} boardId="board" />);
-  expect(host.textContent).not.toContain('schedule.freeDrop');
-  expect(host.textContent).not.toContain('schedule.noShoot');
+  // A free day of the week says so in the mockup's two short lines, not the day view's long one.
+  const lines = [...host.querySelectorAll('.schedule__free > *')].map((el) => el.textContent);
+  expect(lines).toContain('schedule.freeDropWeek');
+  expect(lines).not.toContain('schedule.freeDrop');
   await openDayView(host);
   const blocks = [...host.querySelectorAll<HTMLElement>('.schedule__block')];
   expect(blocks).toHaveLength(2);

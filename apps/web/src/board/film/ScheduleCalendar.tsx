@@ -18,6 +18,7 @@ import { ContextMenu } from '../chrome.tsx';
 import { insideDialog, isMac, isTyping } from '../shortcuts.ts';
 import {
   addDays,
+  blockDetail,
   drawnRange,
   gapsBeforeFixed,
   layoutLanes,
@@ -259,7 +260,8 @@ export function ScheduleCalendar({
   useLayoutEffect(() => {
     const el = grid.current;
     if (!el) return;
-    el.scrollTop = Math.max(0, (firstCall - 30) * MINUTE_PX);
+    // Half a label above the first line: an hour's label is centred on its line.
+    el.scrollTop = Math.max(0, (firstCall - 30) * MINUTE_PX - 10);
     setViewport({ top: el.scrollTop, height: el.clientHeight });
   }, [shownKey]);
 
@@ -964,6 +966,13 @@ export function ScheduleCalendar({
       onPointerMove={move}
       onPointerUp={finish}
       onPointerCancel={cancel}
+      // The hours stay in view while the days scroll sideways: the grid scrolls only up and down.
+      onScroll={(event) =>
+        event.currentTarget.style.setProperty(
+          '--schedule-scroll-x',
+          `${event.currentTarget.scrollLeft}px`,
+        )
+      }
       data-tour="schedule-days"
       style={{ '--schedule-columns': columns.length } as CSSProperties}
     >
@@ -1072,13 +1081,14 @@ export function ScheduleCalendar({
                     );
                   }}
                 >
-                  {view === 'day' && (
-                    <p className="schedule__free" style={{ top: (firstCall + 240) * MINUTE_PX }}>
-                      <b>{t('schedule.noShoot')}</b>
-                      <br />
-                      {t('schedule.freeDrop')}
-                    </p>
-                  )}
+                  <p className="schedule__free" style={{ top: (firstCall + 240) * MINUTE_PX }}>
+                    <b>{t('schedule.noShoot')}</b>
+                    {!readOnly && (
+                      <span>
+                        {t(view === 'day' ? 'schedule.freeDrop' : 'schedule.freeDropWeek')}
+                      </span>
+                    )}
+                  </p>
                   {drag?.active &&
                     drag.kind === 'move' &&
                     drag.target === date &&
@@ -1228,13 +1238,13 @@ export function ScheduleCalendar({
                   const name = blockTitle(block);
                   const time = `${clockLabel(start)} – ${clockLabel(end)}`;
                   const tall = height >= TWO_LINES;
-                  const roomy = view === 'day' && height >= 56;
+                  const detail = blockDetail(view, height, phone, lane.lanes);
                   const conflict = conflicts.has(block.id);
                   const delta = before && !dragging ? start - (before.get(block.id) ?? start) : 0;
                   return (
                     <div
                       key={block.id}
-                      className={`schedule__block schedule__block--${block.type}${conflict ? ' has-conflict' : ''}${selectedBlock === block.id ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${tall ? '' : ' is-short'}`}
+                      className={`schedule__block schedule__block--${block.type}${conflict ? ' has-conflict' : ''}${selectedBlock === block.id ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${tall ? '' : ' is-short'}${detail.wrap ? ' is-wrap' : ''}`}
                       style={{
                         top: start * MINUTE_PX,
                         height,
@@ -1276,7 +1286,7 @@ export function ScheduleCalendar({
                         }}
                         onKeyDown={(event) => onKey(event, entry, block)}
                       >
-                        {roomy && frame && (
+                        {detail.picture && frame && (
                           <span className="schedule__block-pic" aria-hidden="true">
                             <FramePicture
                               assetId={frame.assetId}
@@ -1291,17 +1301,17 @@ export function ScheduleCalendar({
                         )}
                         <span className="schedule__block-text">
                           <span className="schedule__block-time">
+                            {tall && detail.range ? time : clockLabel(start)}
                             {block.start !== null && <Icon name="pin" size={11} />}
-                            {tall ? time : clockLabel(start)}
                           </span>
                           <span className="schedule__block-title">
                             {seen?.dot && <SourceDot color={seen.dot.color} name={seen.dot.name} />}
                             {name}
                           </span>
-                          {roomy && (
+                          {detail.meta && (
                             <span className="schedule__block-meta">
                               {[
-                                typeName(block.type),
+                                detail.type ? typeName(block.type) : '',
                                 block.cast.join(', '),
                                 minutesLabel(block.duration),
                               ]
@@ -1312,7 +1322,7 @@ export function ScheduleCalendar({
                         </span>
                         {conflict && (
                           <span className="schedule__block-warn">
-                            <Icon name="warning" size={12} />
+                            <Icon name="warning" size={14} />
                           </span>
                         )}
                       </button>
@@ -1550,7 +1560,7 @@ function DayHead({
   return (
     <button
       type="button"
-      className={`schedule__head${selected ? ' is-selected' : ''}${entry?.stale ? ' is-stale' : ''}${moving ? ' is-moving' : ''}${dropTarget ? ' is-drop' : ''}`}
+      className={`schedule__head${entry ? '' : ' is-free'}${selected ? ' is-selected' : ''}${entry?.stale ? ' is-stale' : ''}${moving ? ' is-moving' : ''}${dropTarget ? ' is-drop' : ''}`}
       aria-label={[
         part({ weekday: 'long', day: 'numeric', month: 'long' }),
         entry ? t('schedule.dayNumber', { n: entry.index + 1 }) : t('schedule.noShoot'),
@@ -1618,7 +1628,10 @@ function DayHead({
           )}
         </>
       ) : (
-        <span className="schedule__head-title is-muted">{t('schedule.freeDay')}</span>
+        <>
+          <span className="schedule__head-title is-muted">{t('schedule.freeDay')}</span>
+          {!readOnly && <span className="schedule__head-meta">{t('schedule.freeHeadHint')}</span>}
+        </>
       )}
     </button>
   );
