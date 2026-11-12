@@ -1228,11 +1228,7 @@ export function ScheduleCalendar({
                   ) : (
                     <p className="schedule__free" style={{ top: (firstCall + 240) * scale }}>
                       <b>{t('schedule.noShoot')}</b>
-                      {!readOnly && (
-                        <span>
-                          {t('schedule.freeDrop')}
-                        </span>
-                      )}
+                      {!readOnly && <span>{t('schedule.freeDrop')}</span>}
                     </p>
                   )}
                   {drag?.active &&
