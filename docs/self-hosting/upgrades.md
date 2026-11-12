@@ -214,6 +214,17 @@ stays in the layout of 16 (`/var/lib/postgresql/data`): you keep adding
 `deploy/compose.postgres-old-layout.yaml`, with `POSTGRES_MAJOR=18`, and can move to the new
 layout later with a dump and restore.
 
+**Not from PostgreSQL 16.16 yet.** `postgres:16-alpine` has been 16.16 since 12 November 2026,
+and the current `pgautoupgrade/pgautoupgrade:18-alpine` (PostgreSQL 18.6) cannot upgrade a
+cluster of 16.16: it stops at "Restoring database schemas in the new cluster", and its
+`pg_upgrade_dump_*.log` says `unrecognized parameter "pg_attver"`. If
+`docker compose exec postgres postgres --version` says 16.16 or newer, take the
+[dump and restore](#dump-and-restore) until pgautoupgrade publishes an image of 18.7 or newer
+(`docker run --rm --entrypoint postgres pgautoupgrade/pgautoupgrade:18-alpine --version`). If an
+upgrade already stopped there, the volume is no longer usable as it is: empty it and unpack
+`postgres-data-16.tgz` from step 1 into it, as in [Going back](#going-back). 16.15 and older
+upgrade as below.
+
 1. **Stop everything and copy the volume.** For a host folder, copy the folder instead
    (`cp -a`, keeping owners).
 
