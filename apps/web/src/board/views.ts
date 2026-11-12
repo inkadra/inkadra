@@ -46,6 +46,9 @@ const ALWAYS: Record<BoardKind, BoardView> = {
   board: 'canvas',
   moodboard: 'moodboard',
   storyboard: 'storyboard',
+  // shortcut: the web does not show the Production board yet (decision 0123, step 4); until
+  // then it opens as an empty ordinary board, as in an older tab.
+  production: 'canvas',
 };
 
 export function isBoardView(value: string | null): value is BoardView {

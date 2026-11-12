@@ -5,10 +5,12 @@ import { Id, z } from './common.ts';
 
 export const ScheduleTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const TextList = z.array(z.string().trim().min(1).max(120)).max(100);
+/** The label of a frame or scene as last seen, shown when its storyboard cannot be read. */
+const SeenLabel = z.string().max(40);
 export const ScheduleBlock = z
   .object({
     id: Id,
-    type: z.enum(['setup', 'shot', 'break', 'move', 'note']),
+    type: z.enum(['setup', 'shot', 'break', 'move', 'note', 'scene']),
     title: z.string().max(500),
     start: ScheduleTime.nullable().describe('Local clock time; null follows the previous block.'),
     duration: z
@@ -18,6 +20,19 @@ export const ScheduleBlock = z
       .max(1440)
       .describe('Estimated minutes, not shot screen duration.'),
     shotId: ElementRef.nullable(),
+    shotBoardId: Id.optional().describe(
+      "The board whose document holds `shotId` (decision 0123). Missing: the day's own board.",
+    ),
+    shotLabel: SeenLabel.optional().describe(
+      'The frame label as last seen ("12A"), for readers who cannot open its storyboard.',
+    ),
+    sceneId: ElementRef.optional().describe(
+      'A `scene` block: the scene it plans as a whole, drawn or not (decision 0123).',
+    ),
+    sceneBoardId: Id.optional().describe(
+      "The board whose document holds `sceneId`. Missing: the day's own board.",
+    ),
+    sceneLabel: SeenLabel.optional().describe('The scene label as last seen ("12").'),
     cast: TextList,
     departments: TextList,
     notes: z

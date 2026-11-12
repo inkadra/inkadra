@@ -52,6 +52,13 @@ import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import { idempotentCreation } from './idempotency.ts';
+import {
+  adoptDays,
+  lockProduction,
+  nextShootingDay,
+  productionBoardOf,
+  todayIn,
+} from '../production.ts';
 import { teamReviews } from './reviews-routes.ts';
 
 interface Deps {
@@ -151,6 +158,54 @@ async function lastChildPosition(db: Pick<Database, 'select'>, parentBoardId: st
   return last?.position ?? null;
 }
 
+/** The Production board has no canvas to hold the cards of boards under it (decision 0123). */
+const underProduction = () =>
+  new HttpError('bad_request', 'A board cannot go under the Production board.', {
+    reason: 'production_parent',
+  });
+
+/**
+ * Creates the project's Production board (decision 0123): one per project, so a live one is a
+ * 409 naming it, and a trashed one comes back under the chosen parent with its days instead of
+ * a second one being made. Either way the days of the project's other live boards move to it.
+ */
+async function createProduction(
+  tx: Parameters<Parameters<Database['transaction']>[0]>[0],
+  projectId: string,
+  input: CreateBoard,
+  createdBy: string,
+) {
+  await lockProduction(tx, projectId);
+  const existing = await productionBoardOf(tx, projectId);
+  if (existing && existing.deletedAt === null)
+    throw new HttpError('conflict', 'The project already has a Production board.', {
+      reason: 'production_exists',
+      boardId: existing.id,
+    });
+  const position = generateKeyBetween(await lastChildPosition(tx, input.parentBoardId), null);
+  const [row] = existing
+    ? await tx
+        .update(board)
+        .set({ deletedAt: null, parentBoardId: input.parentBoardId, position })
+        .where(eq(board.id, existing.id))
+        .returning()
+    : await tx
+        .insert(board)
+        .values({
+          projectId,
+          parentBoardId: input.parentBoardId,
+          kind: 'production',
+          views: NEW_BOARD_VIEWS.production,
+          title: input.title,
+          position,
+          createdBy,
+        })
+        .returning();
+  if (!row) throw new Error('Production board write returned nothing');
+  await adoptDays(tx, projectId, row.id);
+  return row;
+}
+
 export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
@@ -202,6 +257,43 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
           .from(crewMember)
           .where(eq(crewMember.projectId, access.board.projectId));
         body.crewCount = crew?.n ?? 0;
+      }
+    }
+    if (metadata?.kind === 'production') {
+      // Its days are its content: whoever opens the board reads them (decision 0123, §4).
+      const [days, [where]] = await Promise.all([
+        db
+          .select({
+            date: shootingDay.date,
+            callTime: shootingDay.callTime,
+            location: shootingDay.location,
+            blocks: shootingDay.blocks,
+          })
+          .from(shootingDay)
+          .where(eq(shootingDay.boardId, boardId))
+          .orderBy(asc(shootingDay.date), asc(shootingDay.id)),
+        db
+          .select({ timeZone: project.timeZone })
+          .from(project)
+          .where(eq(project.id, access.board.projectId)),
+      ]);
+      body.dayCount = days.length;
+      const next = nextShootingDay(days, todayIn(where?.timeZone ?? null));
+      if (next) body.nextDay = next;
+      // The troupe stays the members' (decision 0091): a grant on the board shows no one.
+      if (await projectRole(db, actor, access.board.projectId)) {
+        const where = eq(crewMember.projectId, access.board.projectId);
+        const [[crew], people] = await Promise.all([
+          db.select({ n: count() }).from(crewMember).where(where),
+          db
+            .select({ name: crewMember.name, role: crewMember.role })
+            .from(crewMember)
+            .where(where)
+            .orderBy(asc(crewMember.position), asc(crewMember.id))
+            .limit(4),
+        ]);
+        body.crewCount = crew?.n ?? 0;
+        body.crew = people.map((p) => ({ name: p.name.slice(0, 120), role: p.role.slice(0, 120) }));
       }
     }
     const etag = `"${createHash('sha256').update(JSON.stringify(body)).digest('hex')}"`;
@@ -431,6 +523,7 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     const parent = await requireBoardRole(db, actor, input.parentBoardId, 'editor');
     if (parent.board.projectId !== projectId)
       throw new HttpError('bad_request', 'The parent board is not in this project.');
+    if (parent.board.kind === 'production') throw underProduction();
     const result = await idempotentCreation(
       db,
       req,
@@ -456,6 +549,7 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
               },
             );
         }
+        if (input.kind === 'production') return createProduction(tx, projectId, input, actor.id);
         const position = generateKeyBetween(await lastChildPosition(tx, input.parentBoardId), null);
         const [created] = await tx
           .insert(board)
@@ -542,6 +636,7 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
         throw new HttpError('bad_request', 'The parent board is not in this project.');
       if ((await subtreeIds(db, boardId)).includes(patch.parentBoardId))
         throw new HttpError('bad_request', 'A board cannot move inside itself.');
+      if (target.board.kind === 'production') throw underProduction();
       set.parentBoardId = patch.parentBoardId;
       if (patch.position === undefined)
         set.position = generateKeyBetween(await lastChildPosition(db, patch.parentBoardId), null);

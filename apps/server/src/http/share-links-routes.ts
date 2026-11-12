@@ -132,6 +132,11 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
     const { boardId } = BoardParams.parse(req.params);
     const input = CreateShareLink.parse(req.body ?? {});
     const access = await requireBoardRole(db, actor, boardId, CAPABILITY_ROLE.share);
+    // It holds nothing a guest may read: the plan and the crew are the team's (decision 0123).
+    if (access.board.kind === 'production')
+      throw new HttpError('bad_request', 'The Production board cannot be shared by link.', {
+        reason: 'production_board',
+      });
     const token = newSecret('', 32);
     const passwordHash = input.password ? await hashPassword(input.password) : null;
     const [row] = await db.transaction(async (tx) => {

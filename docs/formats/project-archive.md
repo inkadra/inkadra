@@ -1,4 +1,4 @@
-# Project archive format (version 1)
+# Project archive format (version 2)
 
 An Inkadra project archive is a zip file (`.zip`, deflate or stored entries, no encryption)
 with the layout below. The schemas of every JSON entry are in
@@ -68,6 +68,14 @@ Importers refuse a `formatVersion` they do not know and documents with a schema 
 their own. From 1.0 every later version keeps reading version 1. Entries and keys not listed
 here are ignored (dropped while reading), so additions readers can ignore keep the version;
 anything a version 1 reader would get wrong bumps it.
+
+**Version 2** (decision 0123): the shooting days belong to the project's Production board (kind
+`production`, at most one, with no board under it). A block names the board of its frame with
+`shotBoardId` and its label as last seen with `shotLabel`; a `scene` block names its scene with
+`sceneId`, `sceneBoardId` and `sceneLabel`. A block without the board id belongs to the day's
+board. An import maps the board ids to the new ones and drops one that is not in the archive,
+keeping the label. A version 1 archive with days gets a Production board on import, and its days
+move there as on a running server. A version 1 server refuses version 2 as unsupported.
 
 An Inkadra import checks the archive before writing anything: limits in
 `PROJECT_ARCHIVE_LIMITS`, no duplicate, encrypted or symbolic-link entries, the tree and
