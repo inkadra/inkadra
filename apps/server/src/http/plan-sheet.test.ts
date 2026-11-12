@@ -322,6 +322,7 @@ describe('the pictures and the fonts of the PDF', () => {
           width: 2048,
           height: 1365,
           channels: 3,
+          background: '#808080',
           noise: { type: 'gaussian', mean: 128, sigma: 40 },
         },
       })
