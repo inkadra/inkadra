@@ -1,5 +1,5 @@
 import { linkedLocation, linkedPlan } from '@inkadra/canvas-core';
-import { type Element, readElement, roots } from '@inkadra/doc-schema';
+import { compareZ, type Element, readElement, roots } from '@inkadra/doc-schema';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
@@ -70,7 +70,7 @@ export function autoFrameLabels(elements: readonly Element[]): Map<string, strin
   }
   const labels = new Map<string, string>();
   for (const [sceneId, frames] of byScene) {
-    frames.sort((a, b) => (a.z < b.z ? -1 : a.z > b.z ? 1 : a.id < b.id ? -1 : 1));
+    frames.sort(compareZ);
     frames.forEach((f, i) => {
       labels.set(f.id, `${scenes.get(sceneId)}${letter(i)}`);
     });
