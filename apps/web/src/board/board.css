@@ -5336,18 +5336,14 @@ button.card__play {
 
 /*
  * A board of a module this person turned off (decision 0121): one thin line under the header's
- * title says they can read it, with Turn on. Their role still decides what they can edit.
+ * title says they can read it, with Turn on. Their role still decides what they can edit. On a
+ * view in its own surface the surface moves down to make room for it; over a canvas it floats.
  */
 .board-module-off {
-  position: fixed;
-  z-index: 29;
-  top: calc(var(--ink-float-gap) * 2 + var(--ink-header-height));
-  left: var(--ink-shell-left, 12px);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  max-width: calc(100vw - var(--ink-shell-left, 12px) - var(--ink-float-gap));
   margin: 0;
   padding: 4px 4px 4px 10px;
   border: 1px solid var(--ink-border-default);
@@ -5365,11 +5361,21 @@ button.card__play {
   padding: 0 10px;
   font-size: 12px;
 }
+@media (width >= 768px) {
+  .board-module-off {
+    position: fixed;
+    z-index: 29;
+    top: calc(var(--ink-float-gap) * 2 + var(--ink-header-height));
+    left: var(--ink-shell-left, 12px);
+    max-width: calc(100vw - var(--ink-shell-left, 12px) - var(--ink-float-gap));
+  }
+  .ink-shell:has(.board-module-off) > .ink-main:not(.ink-main--canvas) {
+    top: calc(var(--ink-float-gap) * 3 + var(--ink-header-height) + 36px);
+  }
+}
 @media (width < 768px) {
   .board-module-off {
-    top: calc(env(safe-area-inset-top, 0px) + 60px);
-    left: 12px;
-    max-width: calc(100vw - 24px);
+    margin: 8px 12px;
   }
 }
 .board-update-notice {
