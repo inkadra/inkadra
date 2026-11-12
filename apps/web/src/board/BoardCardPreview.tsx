@@ -115,6 +115,11 @@ export function BoardCardPreview({
 }
 
 /** The count on the right of the name, for the chosen view. */
+/** The frames the client has not decided on yet. */
+export function pendingReview(review: { total: number; approved: number; changes: number }) {
+  return Math.max(0, review.total - review.approved - review.changes);
+}
+
 function metaOf(
   t: TFunction,
   view: BoardView,
@@ -134,7 +139,10 @@ function metaOf(
         ? ''
         : t('board.board.people', { count: preview.crewCount });
     case 'review':
-      return preview?.review ? t('board.board.toReview', { count: preview.review.total }) : '';
+      // What still waits for the client: the bar below says how many are approved.
+      return preview?.review
+        ? t('board.board.toReview', { count: pendingReview(preview.review) })
+        : '';
     case 'moodboard':
       return counts?.referenceCount === undefined
         ? ''
