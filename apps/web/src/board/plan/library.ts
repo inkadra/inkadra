@@ -49,7 +49,7 @@ export interface LibraryHit {
 
 /**
  * The library searched by name, by the other names people use (synonyms) and by category and
- * group, in the language of the app, accents and case ignored (decision 0116). Names that start
+ * group, in the language of the app, accents and case ignored (decision 0117). Names that start
  * with the query come first, the shorter first ("soft": Softbox, then Soft light), then names
  * that hold it, then synonyms, each in the order of the catalogue; a category or group matches
  * only when the query is its whole name ("lights"), so a word of it ("soft") finds no lights.

@@ -83,7 +83,7 @@ export function foldIcons(
 
 /**
  * The items of a plan for the Elements tab, by group (planGroupOf), as the mockup lists them
- * (decision 0116): modifiers with their light, the stands and supports that carry something
+ * (decision 0117): modifiers with their light, the stands and supports that carry something
  * with what they carry ("Dolly on 4 m track"), identical icons folded into one row, filtered by
  * group and tag colour.
  */
@@ -167,7 +167,11 @@ export function itemSummary(
   icon: PlanIcon,
   icons: readonly PlanIcon[],
   t: TFunction,
-  { scale, locale }: { scale?: number | undefined; locale?: string | undefined } = {},
+  {
+    lens = true,
+    scale,
+    locale,
+  }: { lens?: boolean; scale?: number | undefined; locale?: string | undefined } = {},
 ): string {
   const kind = catalogueKind(icon.kind);
   const typeName = t(`board.plan.icons.${icon.kind}`);
@@ -197,7 +201,7 @@ export function itemSummary(
   }
   if (kind === 'camera')
     return [
-      `${icon.lens ?? 35} mm`,
+      lens ? `${icon.lens ?? 35} mm` : '',
       base
         ? supportText(base, icons, t, scale, locale)
         : icon.support
@@ -239,7 +243,7 @@ export const SEAT_SURFACES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * The seats at a table or a counter ("4 stools", decision 0116): the seats attached to it, or
+ * The seats at a table or a counter ("4 stools", decision 0117): the seats attached to it, or
  * standing against it, in its turned frame.
  */
 export function seatsAround(prop: PlanIcon, icons: readonly PlanIcon[]): number {

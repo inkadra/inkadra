@@ -25,7 +25,7 @@ import { formatClock } from '../../lib/datetime.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import { CHARACTER_COLOURS } from '../plan/PlanDrawing.tsx';
 import { plansOfScene } from '../plan/scenes.tsx';
-import { shotSetups } from '../plan/setups.ts';
+import { dayBySetup, shotSetups } from '../plan/setups.ts';
 import { isMac, isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
@@ -48,6 +48,7 @@ import {
 import { locationsOfDay, plannedWrap } from './call-sheet.ts';
 import { DayCallsPanel } from './DayCallsPanel.tsx';
 import { dayCrew, useCrew } from './day-calls.ts';
+import { useShotGroupBy } from './group-by.ts';
 import { NeededItems } from './NeededItems.tsx';
 import { neededForDay, updateNeededRow } from './needed.ts';
 import {
@@ -876,6 +877,46 @@ export function ScheduleView({
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
   // The setups of the set plans each shot belongs to (decision 0104).
   const setups = useMemo(() => shotSetups([...snap.byId.values()], t), [snap, t]);
+  // "Group by: Setup", this person's grouping of shots, shared with the shot list (decision
+  // 0115). A board with no setups offers nothing and groups nothing.
+  const [groupBy, setGroupBy] = useShotGroupBy();
+  const bySetup = groupBy === 'setup' && setups.size > 0;
+  const chooseBySetup = (on: boolean) => setGroupBy(on ? 'setup' : 'scene');
+  /** A day's shots under their setups, in the day's order; omitted scenes left out (0082). */
+  const daySetups = (entry: CalendarDay) => {
+    const groups = dayBySetup(entry.draft.blocks, snap.byId, setups);
+    if (!groups.length) return null;
+    return (
+      <div className="schedule__day-setups">
+        {groups.map(({ setup, shots: list }) => (
+          <section
+            key={setup?.planId ?? 'none'}
+            className="schedule__setup"
+            aria-label={setup ? setup.name : t('film.list.noSetup')}
+          >
+            <h4
+              className="schedule__setup-title"
+              title={setup ? `${setup.plan} · ${setup.name}` : undefined}
+            >
+              {setup && <Icon name="map" size={11} />}
+              <span>{setup ? setup.name : t('film.list.noSetup')}</span>
+            </h4>
+            {list.map(({ id, block }) => (
+              <button
+                key={block.id}
+                type="button"
+                className="schedule__day-shot"
+                onClick={() => openBlock(entry.day.id, block.id, null)}
+              >
+                {/* As the calendar names it: its label and action, else "Missing shot". */}
+                {shotTitle(id)}
+              </button>
+            ))}
+          </section>
+        ))}
+      </div>
+    );
+  };
   const castSuggestions = [
     ...new Map(
       [
@@ -1068,6 +1109,7 @@ export function ScheduleView({
         />
       }
       block={(id) => editorFor(selectedEntry, id, 'panel')}
+      setups={bySetup ? daySetups(selectedEntry) : null}
       onChange={(next, key) => {
         commit([{ day: selectedEntry.day, next }], key);
         // A new date moves the calendar with the day.
@@ -1092,6 +1134,9 @@ export function ScheduleView({
       slugline={slugline}
       plansOf={(id) => plansOfScene(snap.byId.values(), id)}
       setupsOf={(id) => setups.get(id)}
+      setups={setups}
+      bySetup={bySetup}
+      onBySetup={chooseBySetup}
       readOnly={readOnly}
       disabled={disabled || !selectedEntry}
       loading={loading}

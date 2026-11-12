@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { Author, Comment, CommentThread, UserSummary } from '@inkadra/shared';
+import {
+  type Author,
+  type Comment,
+  type CommentThread,
+  commentParts,
+  type UserSummary,
+} from '@inkadra/shared';
+
+export { type BodyPart, commentParts } from '@inkadra/shared';
 
 export interface Page<T> {
   items: T[];
@@ -43,24 +51,6 @@ export function guestTag(
   if (author?.kind !== 'guest') return null;
   const label = author.shareLinkLabel?.trim();
   return label ? t('comments.guestOfLink', { label }) : t('comments.guest');
-}
-
-export type BodyPart = { text: string } | { mention: string };
-
-/** Splits a body into text and mentions. Only ids listed in `mentions` become mentions. */
-export function commentParts(comment: Pick<Comment, 'body' | 'mentions'>): BodyPart[] {
-  const names = new Map(comment.mentions.map((p) => [p.id.toLowerCase(), p.name]));
-  const parts: BodyPart[] = [];
-  let last = 0;
-  for (const m of comment.body.matchAll(/@\{([0-9a-f-]{36})\}/gi)) {
-    const name = names.get((m[1] as string).toLowerCase());
-    if (!name) continue;
-    if (m.index > last) parts.push({ text: comment.body.slice(last, m.index) });
-    parts.push({ mention: name });
-    last = m.index + m[0].length;
-  }
-  if (last < comment.body.length) parts.push({ text: comment.body.slice(last) });
-  return parts;
 }
 
 /** The body as the writer edits it: mentions as `@Name`. */

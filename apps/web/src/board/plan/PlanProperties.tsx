@@ -429,7 +429,7 @@ export function PlanProperties({
         <span>
           {t('board.plan.onBase', { name: base.label || t(`board.plan.icons.${base.kind}`) })}
         </span>
-        {/* The base is listed with what it carries (decision 0116): this picks it. */}
+        {/* The base is listed with what it carries (decision 0117): this picks it. */}
         <Button variant="ghost" onClick={() => ed.setSelection([{ kind: 'icons', id: base.id }])}>
           {t('board.plan.selectBase')}
         </Button>

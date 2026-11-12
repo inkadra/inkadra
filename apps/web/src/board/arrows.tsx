@@ -8,6 +8,7 @@ import {
   updateElement,
   updateElements,
 } from '@inkadra/canvas-core';
+import { card } from '@inkadra/ui/tokens';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
@@ -79,7 +80,7 @@ export const ArrowLayer = memo(function ArrowLayer({
               <path
                 d={d}
                 className={`arrows__line${selected ? ' is-selected' : ''}`}
-                strokeDasharray={arrow.line === 'dashed' ? '8 6' : undefined}
+                strokeDasharray={arrow.line === 'dashed' ? card.arrow.dash.join(' ') : undefined}
                 markerEnd={heads !== 'none' ? head : undefined}
                 markerStart={heads === 'both' ? head : undefined}
               />

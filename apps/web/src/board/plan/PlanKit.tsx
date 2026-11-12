@@ -48,7 +48,7 @@ export function setupKit(
 }
 
 /**
- * How many items all the setups of a plan need together (decision 0116): per kit line, the most
+ * How many items all the setups of a plan need together (decision 0117): per kit line, the most
  * any one setup needs, since the same lamp moves from setup to setup.
  */
 export function familyKitCount(family: readonly PlanElement[], t: TFunction, lang: string): number {
@@ -70,7 +70,7 @@ export function foldNames(names: readonly string[]): string {
 
 /**
  * The name of a setup: "1 · Master", the base first. The base is "Base" until it is renamed like
- * any other setup (decision 0116).
+ * any other setup (decision 0117).
  */
 export function setupName(p: PlanElement, family: readonly PlanElement[], t: TFunction): string {
   const n =
@@ -99,7 +99,7 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
   const power = planPower(drawn);
   const familyItems = familyKitCount(family, t, lang);
   const [editing, setEditing] = useState<string | null>(null);
-  // The base's circuits, shared by its setups (decision 0116), then any a setup kept of its own.
+  // The base's circuits, shared by its setups (decision 0117), then any a setup kept of its own.
   const circuits = drawn.circuits ?? [];
   const ownerOf = (c: PlanCircuit) =>
     ed.base?.circuits?.some((b) => b.id === c.id) ? ed.base.id : plan.id;

@@ -69,12 +69,16 @@ import {
   glyphOf,
   groupOf,
   iconGlyph,
+  isKitLight,
+  isLight,
   isSized,
   kindLayer,
   kindTier,
   NOMINAL_SCALE,
+  NOT_KIT_LIGHTS,
   PLAN_CATEGORIES,
 } from './plan-icons.ts';
+import { projectKit } from './plan-kit.ts';
 import {
   keptOnDelete,
   lensMillimetres,
@@ -619,6 +623,22 @@ describe('power', () => {
     expect(p.circuits[2]?.lights).toEqual(['p1AAAAAAAAAAA']);
     expect(planPower({ ...plan, voltage: 120 }).circuits[0]?.status).toBe('over');
     expect(planPower({ ...plan, hiddenLayers: ['lights'] }).watts).toBe(0);
+  });
+
+  it('leaves the sun, the moon, a fire and the other sources that are no kit out', () => {
+    const icons = [
+      at('sun', 0, 0, { id: 'sunAAAAAAAAAA', watts: 5000 }),
+      at('fire', 0, 0, { id: 'fireAAAAAAAAA' }),
+      at('streetlight', 0, 0, { id: 'streetAAAAAAA', watts: 150 }),
+      at('floorlamp', 0, 0, { id: 'floorAAAAAAAA', watts: 60 }),
+    ];
+    expect([...NOT_KIT_LIGHTS].every((k) => isLight(k) && !isKitLight(k))).toBe(true);
+    expect(isKitLight('practical')).toBe(true);
+    const p = planPower({ icons });
+    expect(p.watts).toBe(60);
+    expect(p.circuits.map((c) => c.lights)).toEqual([['floorAAAAAAAA']]);
+    // Nor in the project kit, however set up.
+    expect(projectKit([{ icons }]).map((e) => e.icon.kind)).toEqual(['floorlamp']);
   });
 });
 
@@ -1269,7 +1289,7 @@ describe('review of snapping (pull request 603)', () => {
   });
 });
 
-describe('circuits of the setups (decision 0116)', () => {
+describe('circuits of the setups (decision 0117)', () => {
   const planOf = (doc: Y.Doc, id: string) =>
     listElements(doc).find((e) => e.id === id) as PlanElement;
 

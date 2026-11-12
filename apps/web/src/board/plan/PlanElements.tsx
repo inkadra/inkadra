@@ -25,7 +25,7 @@ import { PLAN_COLORS, PlanGlyph, planCss } from './PlanDrawing.tsx';
 import { OPENING_ICONS, setSummary as wallSummary } from './PlanWalls.tsx';
 
 /**
- * The Elements tab (decisions 0104, 0114 and 0116): what is on the plan, by group with counts
+ * The Elements tab (decisions 0104, 0114 and 0117): what is on the plan, by group with counts
  * (the layers, and Grip and crew), filtered by group and by the tag colours in use; each group
  * shown or hidden and locked from its heading (a layer's lock for a layer, every item's own lock
  * for Grip and crew); identical items on one row ("Practical ×3"), the Set as one line of counts

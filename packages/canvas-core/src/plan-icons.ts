@@ -498,6 +498,27 @@ export function isLight(kind: PlanIconKind): boolean {
 }
 
 /**
+ * Sources of the "Natural and practical" group that are no equipment to bring: the sun, the
+ * moon, a fire, a candle, a screen's glow, neon, headlights and a street light. They stay in the
+ * legend, never in the kit or the power. Table, ceiling and floor lamps are practicals: kit.
+ */
+export const NOT_KIT_LIGHTS: ReadonlySet<PlanIconKind> = new Set([
+  'sun',
+  'moon',
+  'fire',
+  'candle',
+  'screen',
+  'neon',
+  'headlights',
+  'streetlight',
+]);
+
+/** Lights the crew brings and powers: every light but the sources of `NOT_KIT_LIGHTS`. */
+export function isKitLight(kind: PlanIconKind): boolean {
+  return isLight(kind) && !NOT_KIT_LIGHTS.has(catalogueKind(kind));
+}
+
+/**
  * Angle each glyph faces in its drawing, in degrees clockwise from right: an icon's `rotation` is
  * where it faces, so the glyph turns by the difference. Every glyph of the catalogue faces right.
  */

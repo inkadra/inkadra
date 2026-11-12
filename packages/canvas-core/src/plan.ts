@@ -1060,7 +1060,7 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
     // Walls and their openings are the Set: the base's (decision 0104).
     walls: base.walls,
     openings: base.openings,
-    // So are the electrics of the location (decision 0116): the base's circuits and voltage,
+    // So are the electrics of the location (decision 0117): the base's circuits and voltage,
     // then any circuit a setup was given by an earlier build, so none of its lights loses its own.
     circuits: [...baseCircuits, ...own.filter((c) => !baseCircuits.some((b) => b.id === c.id))],
     voltage: shared.voltage,
@@ -1144,7 +1144,7 @@ export function addVariant(
     copy.set('strokes', Y.Array.from(strokes));
     copy.set('shapes', Y.Array.from(shapes));
     copy.set('icons', Y.Array.from(icons.map((i) => new Y.Map<unknown>(Object.entries(i)))));
-    // Circuits are the base's, shared by its setups (decision 0116): the setup's own list stays
+    // Circuits are the base's, shared by its setups (decision 0117): the setup's own list stays
     // empty, as the card's shape expects.
     copy.set('circuits', new Y.Array());
     roots(doc).elements.set(id, copy);

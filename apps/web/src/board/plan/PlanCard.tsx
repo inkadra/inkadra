@@ -1,19 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import {
-  catalogueKind,
-  isLight,
-  layerOf,
-  linkedLocation,
-  type PlanElement,
-  planPower,
-  variantFamily,
-  variantView,
-} from '@inkadra/canvas-core';
+import { linkedLocation, type PlanElement, variantFamily, variantView } from '@inkadra/canvas-core';
 import type { TFunction } from 'i18next';
 import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useInRouterContext } from 'react-router';
 import { useBoard } from '../context.ts';
+import { planCounts } from './kit.ts';
 import { PlanDrawing } from './PlanDrawing.tsx';
 import { SceneBadges, scenesOfPlan, usePlanNav } from './scenes.tsx';
 import './plan.css';
@@ -51,12 +43,9 @@ export function PlanCard({ element }: { element: PlanElement }) {
   const plan = base ? variantView(element, base) : element;
   const scenes = scenesOfPlan(element.sceneIds ? element : (base ?? element), byId);
   const family = variantFamily(byId.values(), element);
-  const icons = (plan.icons ?? []).filter((i) => !plan.hiddenLayers?.includes(layerOf(i)));
-  const cameras = icons.filter((i) => catalogueKind(i.kind) === 'camera').length;
-  const lights = icons.filter((i) => isLight(i.kind) && !i.on).length;
-  const watts = planPower(plan).watts;
+  const { cameras, lights, watts } = planCounts(plan);
   const place = linkedLocation(base ?? element, byId)?.name;
-  // The title is the base's, shown by every setup (decision 0116).
+  // The title is the base's, shown by every setup (decision 0117).
   const name = base?.title || element.title || place || t('board.plan.name');
   const kw =
     watts >= 1000

@@ -1085,7 +1085,7 @@ button.plan__badge:hover {
   gap: 2px 4px;
 }
 .plan-editor--v2 .plan-lib__tile {
-  /* The mockup's 56 px, a name of one line or two (tileName in the catalogues, decision 0116). */
+  /* The mockup's 56 px, a name of one line or two (tileName in the catalogues, decision 0117). */
   height: 56px;
   align-content: center;
   gap: 1px;

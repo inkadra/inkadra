@@ -5092,7 +5092,7 @@
         "steps": {
           "0": {
             "title": "Il calendario delle riprese",
-            "text": "Giorno o settimana, come un calendario: i blocchi si accodano da soli. Trascina un’inquadratura all’orario giusto, o fai clic per metterla in fondo."
+            "text": "Giorno o settimana, come un calendario: i blocchi si accodano da soli. Trascina un’inquadratura all’orario giusto, o fai clic per metterla in fondo. Con le piante del set, «Raggruppa per: Setup» mette le inquadrature di ogni scena e giornata sotto il loro setup."
           },
           "1": {
             "title": "Sposta e allunga",
@@ -5488,7 +5488,7 @@
         "steps": {
           "0": {
             "title": "Esporta",
-            "text": "PDF, PNG o JPEG di questo setup o di tutti, con legenda, materiale, potenza e note."
+            "text": "PDF, PNG o JPEG di questo setup o di tutti, con legenda, materiale, potenza e note. Sul telefono è nel menu del setup."
           },
           "1": {
             "title": "Il foglio",

@@ -15,7 +15,7 @@ import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } f
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ExportCache } from '../export/cache.ts';
-import { PLAN_SHEET_INCLUDE } from '../export/plan-sheet.ts';
+import { sheetInclude } from '../export/plan-sheet.ts';
 import type { BoardStore } from '../store.ts';
 import { foldIcons, itemSummary } from './elements.ts';
 import { kitList, powerLines } from './kit.ts';
@@ -61,12 +61,8 @@ function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
                 const lens = catalogueKind(icon.kind) === 'camera' ? `${icon.lens ?? 35} mm` : '';
                 const kelvin = icon.kelvin ? `${icon.kelvin} K` : '';
                 // The lens is in the name: the summary goes on with the support and the moves.
-                const shown = { scale: plan.scale, locale: i18n.language };
-                const summary = route
-                  ? route
-                  : lens
-                    ? itemSummary(icon, icons, t, shown).replace(/^\d+ mm( · )?/, '')
-                    : itemSummary(icon, icons, t, shown);
+                const shown = { lens: !lens, scale: plan.scale, locale: i18n.language };
+                const summary = route || itemSummary(icon, icons, t, shown);
                 const sub = [summary, kelvin].filter(Boolean).join(' · ');
                 return (
                   <li key={icon.id} className="plan-view__item">
@@ -201,7 +197,7 @@ export function PlanViewer({
     setBusy(true);
     try {
       await downloadPlanSheet(
-        planSheetRequest('pdf', [plan.id], null, PLAN_SHEET_INCLUDE, guest),
+        planSheetRequest('pdf', [plan.id], null, sheetInclude(shown), guest),
         planSheetEnv(store, plan, t, i18n.language, cache),
       );
     } finally {

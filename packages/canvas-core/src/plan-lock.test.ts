@@ -288,7 +288,7 @@ describe('the project kit across boards (decision 0114)', () => {
     expect(here[1]?.lenses).toEqual([50]);
   });
 
-  it('leaves out a table lamp with only its watts, and keeps one set up (decision 0116)', () => {
+  it('leaves out a table lamp with only its watts, and keeps one set up (decision 0117)', () => {
     const kit = projectKit([
       {
         icons: [

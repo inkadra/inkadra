@@ -139,9 +139,11 @@ the drawing.
   it carries, and the Set is one line of counts that opens on a click. A layer's eye and lock hide and
   lock the layer; those of Grip and crew hide its flags, stands and crew for you and lock each
   of them. **Kit** counts the kit of the setup and its power per circuit at 120 or 230 V:
-  a circuit turns orange above 80 % of its breaker and red above it. The circuits and the mains
-  voltage belong to the first setup and serve every setup; the pencil on a circuit edits it.
-  **Copy list** copies it; the call sheet prints the kit of the plans of its scenes.
+  a circuit turns orange above 80 % of its breaker and red above it. The sun, the moon, fire,
+  candles, screens, neon, headlights and street lights are in the legend but not in the kit or the
+  power. The circuits and the mains voltage belong to the first setup and serve every setup; the
+  pencil on a circuit edits it. **Copy list** copies it; the call sheet prints the kit of the
+  plans of its scenes.
 - **Setups** are the tabs at the top; **+** copies the current one. Double-click a tab (or `F2`)
   to rename it, the first one too. The title of the plan is the same on every setup. Under the
   tabs a setup says what changed from the first one, which can be shown faintly behind it.
@@ -149,7 +151,8 @@ the drawing.
   label, and on a plan without a scale Inkadra offers to use that line as the scale.
 
 On a phone the plan is on top, the selection in a sheet under it and the tools at the bottom; the
-library, Elements and Kit open as sheets. People who cannot edit a plan, guests first, can open it
+library, Elements and Kit open as sheets, and **Export** is in the setup menu. In the schedule,
+**Group by: Setup** lists the shots of each scene and day under their setups. People who cannot edit a plan, guests first, can open it
 to look and zoom.
 
 <picture>

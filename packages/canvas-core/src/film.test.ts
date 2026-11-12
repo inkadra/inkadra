@@ -16,6 +16,7 @@ import {
   formatDuration,
   frameLabels,
   frameLetter,
+  isDrawn,
   moveFrames,
   removeShapes,
   removeStrokes,
@@ -212,5 +213,15 @@ describe('frame shapes', () => {
     const text = { ...shape('text', 'Treno'), width: 40 };
     expect(shapeHit(text, { x: 0.25, y: 0.19 }, 0.005)).toBe(true);
     expect(shapeHit(text, { x: 0.25, y: 0.3 }, 0.005)).toBe(false);
+  });
+});
+
+describe('isDrawn', () => {
+  it('counts a frame with a picture, strokes or shapes as drawn', () => {
+    expect(isDrawn({})).toBe(false);
+    expect(isDrawn({ assetId: '', strokes: [], shapes: [] })).toBe(false);
+    expect(isDrawn({ assetId: 'asset' })).toBe(true);
+    expect(isDrawn({ strokes: [{} as never] })).toBe(true);
+    expect(isDrawn({ shapes: [{} as never] })).toBe(true);
   });
 });

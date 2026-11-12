@@ -4,7 +4,7 @@ import type { PlanElement } from '@inkadra/canvas-core';
 import { type PlanIcon, type PlanShape, STROKE_GRID } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { kitList, measureValue, powerLines } from './kit.ts';
+import { kitList, measureValue, planCounts, powerLines } from './kit.ts';
 import { measureText } from './PlanDrawing.tsx';
 import { familyKitCount, foldNames } from './PlanKit.tsx';
 
@@ -161,7 +161,7 @@ it('puts the modifiers of a light on one line, every gel on one, video under cam
   ]);
 });
 
-it('counts all setups as the most any one needs, not their sum (decision 0116)', () => {
+it('counts all setups as the most any one needs, not their sum (decision 0117)', () => {
   const base = {
     id: 'baseAAAAAAAAA',
     type: 'plan',
@@ -180,4 +180,41 @@ it('counts all setups as the most any one needs, not their sum (decision 0116)',
   expect(foldNames(['Key', 'Practical', 'Hair', 'Practical', 'Practical'])).toBe(
     'Key, Practical ×3, Hair',
   );
+});
+
+it('leaves the sun and the other sources that are no kit out of the kit and the power', () => {
+  const plan = {
+    icons: [
+      icon('sun', { watts: 5000 }),
+      icon('moon'),
+      icon('fire'),
+      icon('candle'),
+      icon('screen'),
+      icon('neon'),
+      icon('headlights'),
+      icon('streetlight'),
+      // Practicals are kit: a table, a ceiling and a floor lamp.
+      icon('practical', { watts: 60 }),
+      icon('pendant'),
+      icon('floorlamp'),
+    ],
+  };
+  expect(lines(kitList(plan, t)).map((l) => l.name)).toEqual([
+    'practical 60 W',
+    'pendant',
+    'floorlamp',
+  ]);
+  const power = powerLines(plan, t, 'en');
+  expect(power?.rows.map((r) => r.text)).toEqual(['noCircuit: practical, pendant, floorlamp']);
+  expect(powerLines({ icons: [icon('sun', { watts: 5000 })] }, t, 'en')).toBeNull();
+});
+
+it("counts the card's lights by the kit's rule: a sun is no light to bring", () => {
+  const fresnel = icon('fresnel', { watts: 2000 });
+  expect(planCounts({ icons: [icon('sun'), fresnel] })).toEqual({
+    cameras: 0,
+    lights: 1,
+    watts: 2000,
+  });
+  expect(planCounts({ icons: [icon('sun')] })).toMatchObject({ lights: 0, watts: 0 });
 });

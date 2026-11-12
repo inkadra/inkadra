@@ -26,3 +26,9 @@ it('opens the Server page in the simple view until an administrator picks the ad
   expect(readUserPreferences({ serverView: 'advanced' }).serverView).toBe('advanced');
   expect(readUserPreferences({ serverView: 'charts' }).serverView).toBe('simple');
 });
+
+it('groups shots by scene until this person picks another grouping', () => {
+  expect(readUserPreferences(null).shotGroupBy).toBe('scene');
+  expect(readUserPreferences({ shotGroupBy: 'setup' }).shotGroupBy).toBe('setup');
+  expect(readUserPreferences({ shotGroupBy: 'camera' }).shotGroupBy).toBe('scene');
+});

@@ -1,4 +1,4 @@
-# 0116 · Set plan: setups share the base's circuits, title and a renamable first setup
+# 0117 · Set plan: setups share the base's circuits, title and a renamable first setup
 
 Proposed, 2026-11. Extends decisions 0104 (set plan v2) and 0114 after the parity audit of the
 editor's panels against the approved mockup.

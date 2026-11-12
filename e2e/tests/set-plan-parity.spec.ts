@@ -185,7 +185,7 @@ test('an item locked on its own is not moved, edited or deleted until it is unlo
   // Elements shows the lock on the item.
   await editor.getByRole('tab', { name: 'Elementi' }).click();
   const elements = editor.getByRole('tabpanel', { name: 'Elementi' });
-  // The Set is one line of counts (decision 0116): it opens on a click.
+  // The Set is one line of counts (decision 0117): it opens on a click.
   await elements.locator('.plan-elements__toggle').click();
   await expect(elements.getByRole('button', { name: /Sedia Rosa.*Bloccato/ })).toBeVisible();
   await shoot(page, 'parity-1280-elements');

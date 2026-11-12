@@ -66,7 +66,7 @@ it('sums up a light, a camera and a person in one line', () => {
   expect(selectionMix(plan.icons.slice(0, 4), t)).toBe('2 lights, 1 camera, 1 actors');
 });
 
-describe('rows as the mockup lists them (decision 0116)', () => {
+describe('rows as the mockup lists them (decision 0117)', () => {
   const t2 = ((key: string, o?: Record<string, unknown>) =>
     o
       ? `${key.split('.').at(-1)}:${Object.values(o).join(',')}`

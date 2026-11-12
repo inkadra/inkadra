@@ -5091,12 +5091,12 @@
         "name": "Plan de rodaje",
         "steps": {
           "0": {
-            "title": "The shooting calendar",
-            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end."
+            "title": "El calendario de rodaje",
+            "text": "Día o semana, como un calendario: los bloques se ponen en fila solos. Arrastra un plano a la hora adecuada, o haz clic para añadirlo al final. Con plantas del set, «Agrupar por: Setup» pone los planos de cada escena y de cada jornada bajo su setup."
           },
           "1": {
-            "title": "Move and stretch",
-            "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
+            "title": "Mueve y alarga",
+            "text": "Arrastra para reordenar, con Alt para fijar la hora, desde el borde inferior para la duración. Suelta en una fecha libre para crear una jornada de rodaje; Ctrl+Z deshace todo el gesto."
           },
           "2": {
             "title": "Dibuja un bloque",
@@ -5107,8 +5107,8 @@
             "text": "Arrastra su cabecera a otra columna o a una fecha del mes: los bloques la siguen, y en una fecha ocupada los dos días se intercambian. Alt+←/→ o «Mover a otra fecha…» en el día."
           },
           "4": {
-            "title": "Saves by itself",
-            "text": "Every change is saved; Ctrl+Z undoes it, even across two days."
+            "title": "Se guarda solo",
+            "text": "Cada cambio se guarda; Ctrl+Z lo deshace, incluso entre dos días."
           },
           "5": {
             "title": "Citaciones",
@@ -5488,7 +5488,7 @@
         "steps": {
           "0": {
             "title": "Exportar",
-            "text": "PDF, PNG o JPEG de este setup o de todos, con leyenda, material, potencia y notas."
+            "text": "PDF, PNG o JPEG de este setup o de todos, con leyenda, material, potencia y notas. En el teléfono está en el menú del setup."
           },
           "1": {
             "title": "La hoja",

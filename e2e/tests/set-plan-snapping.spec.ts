@@ -161,7 +161,7 @@ test('icons snap together: seats, modifiers, stands; the base carries them; Alt 
   // The light dragged onto the stand stands on it; moving the stand carries light and modifiers.
   await drag(P.light, P.stand, true);
   await expect.poll(async () => (await find('cob'))[0]?.on).toBe('iconStandAAAA');
-  // A base covered by what is on it is listed with it (decision 0116) and picked from the
+  // A base covered by what is on it is listed with it (decision 0117) and picked from the
   // Properties of what it carries; moving it carries the rest along.
   const elements = editor.getByRole('tabpanel', { name: 'Elementi' });
   const pick = async (name: string) => {

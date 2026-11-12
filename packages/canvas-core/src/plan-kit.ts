@@ -2,7 +2,7 @@
 import type { PlanIcon, PlanIconKind } from '@inkadra/doc-schema';
 import type { PlanElement } from './plan.ts';
 import { modifiersOn } from './plan-attach.ts';
-import { catalogueKind, isLight } from './plan-icons.ts';
+import { catalogueKind, isKitLight } from './plan-icons.ts';
 
 /** Fields a configured light or camera of the project kit carries to a new copy. */
 const KEPT = [
@@ -33,7 +33,7 @@ export interface ProjectKitEntry {
   lenses: number[];
 }
 
-/** Lamps of the set: their watts alone are no setup, the bulb in a table lamp (decision 0116). */
+/** Lamps of the set: their watts alone are no setup, the bulb in a table lamp (decision 0117). */
 const PRACTICALS = new Set<PlanIconKind>(['practical', 'pendant', 'floorlamp', 'candle']);
 const configuredLight = (i: PlanIcon, mods: number) =>
   !!(i.make || i.gel || i.stand || i.kelvin || mods) ||
@@ -44,7 +44,7 @@ const configuredCamera = (i: PlanIcon) => !!(i.label || i.make);
  * The project kit (decision 0104): the distinct configured lights and cameras found in the given
  * plans, derived every time, never stored, so it cannot drift. A light counts when it has a make,
  * gel, stand, colour temperature or modifiers, or a power unless it is a practical (decision
- * 0116); a camera when it has a name or a make.
+ * 0117); a camera when it has a name or a make.
  * Lights are the same when every kept field and their modifiers match; cameras when their name
  * and make match, their lenses gathered.
  */
@@ -59,7 +59,7 @@ export function projectKit(plans: ReadonlyArray<Pick<PlanElement, 'icons'>>): Pr
       if (
         camera
           ? !configuredCamera(icon)
-          : !isLight(kind) || !configuredLight(icon, modifiers.length)
+          : !isKitLight(kind) || !configuredLight(icon, modifiers.length)
       )
         continue;
       const kept: Record<string, unknown> = { kind };

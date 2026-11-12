@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Panels of the set plan editor as the approved mockup (decision 0116): a setup made before the
+// Panels of the set plan editor as the approved mockup (decision 0117): a setup made before the
 // fix counts its lights on the base's circuits and shows the base's title; the first setup is
 // renamed on its tab like the others; Elements folds identical lamps into one row.
 // Runs after first-run.spec.ts in CI; alone, it signs up.
@@ -68,7 +68,7 @@ test('set plan panels: circuits on every setup, the base renamed, identical lamp
     },
     opts,
   );
-  // A setup as the builds before decision 0116 made it: no circuits of its own, no title, its
+  // A setup as the builds before decision 0117 made it: no circuits of its own, no title, its
   // light still on the base's circuit.
   createElement(
     doc,

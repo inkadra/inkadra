@@ -4,6 +4,8 @@ import {
   deleteElements,
   type FrameElement,
   frameLabels,
+  type Reference,
+  referenceGroups,
   type SceneGroup,
   storyboardOf,
   updateElements,
@@ -38,7 +40,7 @@ import { MediaViewer } from '../viewer.tsx';
 import { addFramesToBoard, framesFromReferences, placeFrames } from './send-to-storyboard.ts';
 import './film.css';
 
-export type Reference = Extract<Element, { type: 'image' | 'link' | 'color' }>;
+export { type Reference, referenceGroups } from '@inkadra/canvas-core';
 export type MediaReference = Exclude<Reference, { type: 'color' }>;
 type ImageElement = Extract<Element, { type: 'image' }>;
 
@@ -50,28 +52,6 @@ export function referencesOf(elements: readonly Element[], tag = ''): Reference[
         (!tag || (el.tags ?? []).some((value) => normaliseTag(value) === normaliseTag(tag))),
     )
     .sort((a, b) => a.z.localeCompare(b.z) || a.id.localeCompare(b.id));
-}
-
-/** The named groups by name and, last, the references without one (decision 0077). */
-export function referenceGroups(
-  references: readonly Reference[],
-): Array<{ name: string | null; items: Reference[] }> {
-  const named = new Map<string, { name: string; items: Reference[] }>();
-  const loose: Reference[] = [];
-  for (const el of references) {
-    if (!el.group) {
-      loose.push(el);
-      continue;
-    }
-    const key = normaliseTag(el.group);
-    const group = named.get(key) ?? { name: el.group, items: [] };
-    group.items.push(el);
-    named.set(key, group);
-  }
-  return [
-    ...[...named.values()].sort((a, b) => a.name.localeCompare(b.name)),
-    ...(loose.length ? [{ name: null, items: loose }] : []),
-  ];
 }
 
 /** Up to five colours: the strongest of each picture, then the next of each, without repeats. */

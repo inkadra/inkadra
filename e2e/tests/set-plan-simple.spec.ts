@@ -487,7 +487,7 @@ test('every library name fits its tile, in all six languages, at 1280 and 390 px
       if (i === 1)
         await library.screenshot({ path: join(out, `library-${label.replace(' ', '-')}.png`) });
       // A name is cut when a word of it is wider than the room the name has (a word is never
-      // broken, decision 0116), or when it needs more than the two lines the tile shows.
+      // broken, decision 0117), or when it needs more than the two lines the tile shows.
       const bad = await library.locator('.plan-lib__tile').evaluateAll((tiles) =>
         tiles.flatMap((tile) => {
           // The name, after the glyph.
