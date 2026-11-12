@@ -851,7 +851,11 @@ function InboxDetailContent({
             <span id={visibilityHint} className="ink-sr-only">
               {t('notifications.visibilityFromThread')}
             </span>
-            <Button variant="primary" type="submit" disabled={!replyText.trim() || replySending}>
+            <Button
+              variant="primary"
+              disabled={!replyText.trim() || replySending}
+              onClick={() => void handleSendReply()}
+            >
               {t('notifications.sendReply')}
             </Button>
           </div>
