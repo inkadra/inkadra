@@ -173,10 +173,7 @@ describe('the views a module that is off leaves out (decision 0121)', () => {
 describe('the Production board (decision 0123)', () => {
   it('always has Schedule and Crew, opens on Schedule and has no other view', () => {
     expect(boardViews(board('production', null), undefined)).toEqual(['schedule', 'troupe']);
-    expect(boardViews(board('production', ['review']), undefined)).toEqual([
-      'schedule',
-      'troupe',
-    ]);
+    expect(boardViews(board('production', ['review']), undefined)).toEqual(['schedule', 'troupe']);
     expect(defaultView('production')).toBe('schedule');
     expect(openView(null, board('production', null), undefined)).toBe('schedule');
     expect(openView('troupe', board('production', null), undefined)).toBe('troupe');
@@ -184,7 +181,7 @@ describe('the Production board (decision 0123)', () => {
     expect(kindIcon('production')).toBe('film');
   });
 
-  it("takes Schedule and Crew from the storyboards of its project, which keep them until then", () => {
+  it('takes Schedule and Crew from the storyboards of its project, which keep them until then', () => {
     const all = board('storyboard', ['shotlist', 'schedule', 'troupe']);
     expect(boardViews(all, undefined)).toEqual(['storyboard', 'shotlist', 'schedule', 'troupe']);
     expect(boardViews(all, undefined, true)).toEqual(['storyboard', 'shotlist']);

@@ -500,7 +500,7 @@ it('lists a scene block with the heading, place and cast of its scene (decision 
     block('whole', { type: 'scene', sceneId: 'scene012', cast: ['Leo'] }),
     // A frame of a storyboard this reader cannot open: its label as last seen.
     block('away', { type: 'shot', shotId: 'elsewhere', shotLabel: '7B' }),
-  ] as ShootingDay['blocks'];
+  ] as unknown as ShootingDay['blocks'];
   const sections = callSheetSections(day('2026-11-19', { blocks }), () => undefined, t, elements);
   const schedule = sections.find((s) => s.title === 'callSheet.schedule');
   const [whole, away] = schedule?.rows.slice(1) ?? [];

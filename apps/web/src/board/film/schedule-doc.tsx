@@ -17,4 +17,3 @@ export default function SourceDoc({
   useEffect(() => () => onConn(boardId, null), [boardId, onConn]);
   return null;
 }
-
