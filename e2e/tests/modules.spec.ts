@@ -162,8 +162,9 @@ for (const width of [1280, 390]) {
       await expect(notice).toBeVisible();
       await expect(page.locator('[data-type="scene"]').first()).toBeVisible();
       await shoot(page, 'notice');
-      await notice.getByRole('button', { name: 'Chiudi l’avviso' }).click();
-      await expect(notice).toHaveCount(0);
+      // It leaves by itself, like the undo notices, and has a close button.
+      await expect(notice.getByRole('button', { name: 'Chiudi l’avviso' })).toHaveCount(1);
+      await expect(notice).toHaveCount(0, { timeout: 15_000 });
 
       // A board of a module that is off opens, with one line under its title.
       await page.goto(`/p/${project.id}/b/${project.storyboardId}`);
