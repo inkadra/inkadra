@@ -26,12 +26,12 @@ planned.
 
 **A type is the set of views a board has.** Four types, chosen when the board is created:
 
-| Type       | Always                 | Can be turned on     |
-| ---------- | ---------------------- | -------------------- |
-| Board      | Board (canvas)         | Moodboard            |
-| Moodboard  | Moodboard              | none                 |
-| Storyboard | Storyboard             | Shot list, Review    |
-| Production | Schedule, Troupe       | none                 |
+| Type       | Always           | Can be turned on  |
+| ---------- | ---------------- | ----------------- |
+| Board      | Board (canvas)   | Moodboard         |
+| Moodboard  | Moodboard        | none              |
+| Storyboard | Storyboard       | Shot list, Review |
+| Production | Schedule, Troupe | none              |
 
 The project's root board is a Board. A board turns on only the views of its type, from "Views" in
 the board's ⋯ menu; a view that is off leaves the header, the sidebar and the card, and its data
@@ -61,13 +61,13 @@ one board, one per view, can come later on the same card.
 the personal settings, saved with the account's preferences (0055). Five modules, all on by
 default; Board (notes, images, links, files, to-dos, columns, comments) is always on.
 
-| Module         | What it owns                                                              |
-| -------------- | ------------------------------------------------------------------------- |
-| Storyboard     | Storyboard boards, Shot list, the Frame tool, screenplay import to scenes |
-| Production     | The Production board: Schedule, Troupe, call sheets, scene sheets         |
-| Moodboard      | Moodboard boards and the Moodboard view of a board                        |
-| Client review  | Guest review links, approvals and change requests                         |
-| Set plan       | The set plan tool and card                                                |
+| Module        | What it owns                                                              |
+| ------------- | ------------------------------------------------------------------------- |
+| Storyboard    | Storyboard boards, Shot list, the Frame tool, screenplay import to scenes |
+| Production    | The Production board: Schedule, Troupe, call sheets, scene sheets         |
+| Moodboard     | Moodboard boards and the Moodboard view of a board                        |
+| Client review | Guest review links, approvals and change requests                         |
+| Set plan      | The set plan tool and card                                                |
 
 - **Off hides the ways to create, never the data.** Menu entries, tools, settings sections, tours
   and notifications of the module disappear for that person. Content that exists stays visible
