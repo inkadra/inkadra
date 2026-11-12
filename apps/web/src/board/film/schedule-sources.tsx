@@ -23,41 +23,46 @@ import { treeOrder } from '../boards.ts';
 import type { BoardConnection } from '../connection.ts';
 import type { BoardStore, Snapshot } from '../store.ts';
 
-/** The identity palette in the order storyboards take it (decision 0123). */
+/**
+ * The identity palette storyboards take their dot from (decision 0123); the colour is the block
+ * type in the calendar, so the two the block types do not use come first.
+ */
 const DOTS: readonly GlyphColor[] = [
+  'red',
+  'pink',
   'blue',
   'orange',
   'purple',
   'green',
   'teal',
   'yellow',
-  'red',
-  'pink',
 ];
 /** The grey dot of a block whose storyboard cannot be read. */
 export const UNAVAILABLE_DOT = glyphColor.neutral;
 
+/** FNV-1a of the board id: the same colour on every client, whatever else is in the trash. */
+function hashOf(id: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+}
+
 /**
  * The dot of each storyboard (decision 0123): its icon's colour when it has one, else a colour
- * of the identity palette in order of creation among the project's storyboards.
- * shortcut: the web lists live boards only, so a storyboard in the trash no longer counts and
- * later ones can change colour; count trashed ones when the board list carries them.
+ * of the identity palette taken from its id, so it never shifts when another storyboard goes to
+ * the trash or comes back (the web lists live boards only). Two storyboards may share one; the
+ * dot always comes with the storyboard's name.
  */
 export function storyboardDots(boards: readonly Board[]): Map<string, string> {
-  const ordered = boards
-    .filter((b) => b.kind !== 'production' && b.parentBoardId !== null)
-    .sort(
-      (a, b) =>
-        Number(b.kind === 'storyboard') - Number(a.kind === 'storyboard') ||
-        a.createdAt.localeCompare(b.createdAt) ||
-        a.id.localeCompare(b.id),
-    );
   return new Map(
-    ordered.map((b, i) => [
-      b.id,
-      glyphColor[(b.icon?.color as GlyphColor | undefined) ?? DOTS[i % DOTS.length] ?? 'blue'] ??
-        glyphColor.neutral,
-    ]),
+    boards
+      .filter((b) => b.kind !== 'production' && b.parentBoardId !== null)
+      .map((b) => [
+        b.id,
+        glyphColor[
+          (b.icon?.color as GlyphColor | undefined) ?? DOTS[hashOf(b.id) % DOTS.length] ?? 'blue'
+        ] ?? glyphColor.neutral,
+      ]),
   );
 }
 

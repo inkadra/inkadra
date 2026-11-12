@@ -83,7 +83,7 @@ import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-st
 import { useLiveBoardCounts } from './live-counts.ts';
 import { RestoredToast } from './RestoredToast.tsx';
 import { isMac } from './shortcuts.ts';
-import { LOCAL } from './store.ts';
+import { LOCAL, REPAIR } from './store.ts';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import { beginViewSwitch, slideTabPill, type ViewSwitchMotion } from './view-switch.ts';
 import {
@@ -404,8 +404,12 @@ function BoardScreen({
   const [view, setView] = useBoardView(board, counts, hasProduction);
   const [openedFilmViews, setOpenedFilmViews] = useState({ schedule: false, troupe: false });
   // On the Production board the calendar stays open behind Troupe too: its Export reads the
-  // storyboards the calendar opened (decision 0123).
-  const [scheduleSources, setScheduleSources] = useState<ScheduleSources | null>(null);
+  // storyboards the calendar opened (decision 0123). A ref, read when the export runs: the
+  // calendar reports them on every edit of any storyboard, and the page must not re-render.
+  const scheduleSources = useRef<ScheduleSources | null>(null);
+  const setScheduleSources = useCallback((sources: ScheduleSources) => {
+    scheduleSources.current = sources;
+  }, []);
   // A storyboard's ⋯ menu leads to the Production board that plans it.
   const pointing = useDaysPointingAt(boardId, kind === 'storyboard' ? production?.id : undefined);
   useEffect(() => {
@@ -622,7 +626,8 @@ function BoardScreen({
   );
   // The card of a Production board made under the root without one (the move of an existing
   // project, the project ⋯ menu): placed once by the first editor who opens the root board
-  // (decision 0123, answer 2).
+  // (decision 0123, answer 2). Not the person's edit, so no step of their undo (REPAIR): an
+  // undo would remove the card while the mark stays, and it would never come back.
   const placeCard =
     conn?.status === 'synced' &&
     editable &&
@@ -635,7 +640,7 @@ function BoardScreen({
     if (!conn || !placeCard) return;
     placeProductionCard(conn.store.doc, placeCard, BOARD_CARD_SIZE, {
       userId: user?.id ?? null,
-      origin: LOCAL,
+      origin: REPAIR,
     });
   }, [conn, placeCard, user]);
   useBoardReviews(boardId, conn, detail?.myRole ?? projectRole, {
@@ -1226,10 +1231,12 @@ function BoardScreen({
           visible={exporting.visible}
           role={detail?.myRole ?? projectRole}
           across={
-            kind === 'production' && scheduleSources
+            kind === 'production' && scheduleSources.current
               ? {
-                  labels: scheduleSources.labels,
-                  elementsOf: (day) => dayElements(day, scheduleSources),
+                  get labels() {
+                    return (scheduleSources.current as ScheduleSources).labels;
+                  },
+                  elementsOf: (day) => dayElements(day, scheduleSources.current as ScheduleSources),
                 }
               : undefined
           }

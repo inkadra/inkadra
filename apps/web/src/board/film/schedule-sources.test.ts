@@ -135,15 +135,17 @@ describe('blocks across storyboards (decision 0123)', () => {
 describe('the dot of a storyboard (decision 0123)', () => {
   const at = (id: string, createdAt: string, icon?: Board['icon']) =>
     ({ id, kind: 'storyboard', parentBoardId: 'root', createdAt, icon }) as Board;
-  it('is its icon colour, else the identity palette in order of creation', () => {
-    const dots = storyboardDots([
-      at('second', '2026-02-01'),
-      at('first', '2026-01-01'),
-      at('own', '2026-03-01', { shape: 'circle', color: 'pink', emoji: null }),
-    ]);
-    expect(dots.get('first')).toBe(glyphColor.blue);
-    expect(dots.get('second')).toBe(glyphColor.orange);
+  it('is its icon colour, else a colour of the identity palette taken from its id', () => {
+    const own = at('own', '2026-03-01', { shape: 'circle', color: 'pink', emoji: null });
+    const first = at('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a20', '2026-01-01');
+    const second = at('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a21', '2026-02-01');
+    const dots = storyboardDots([second, first, own]);
     expect(dots.get('own')).toBe(glyphColor.pink);
+    const palette = new Set<string>(Object.values(glyphColor));
+    expect(palette.has(dots.get(first.id) ?? '')).toBe(true);
+    expect(dots.get(first.id)).not.toBe(glyphColor.neutral);
+    // An earlier storyboard going to the trash does not change the colour of a later one.
+    expect(storyboardDots([second]).get(second.id)).toBe(dots.get(second.id));
   });
 });
 

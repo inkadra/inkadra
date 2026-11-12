@@ -1007,8 +1007,11 @@
 }
 .schedule__editor-shot-text span {
   color: var(--ink-text-secondary);
-  text-transform: uppercase;
   font-size: 11px;
+}
+/* The scene's slugline only: a storyboard's name keeps its own case. */
+.schedule__editor-scene {
+  text-transform: uppercase;
 }
 .schedule__link {
   justify-self: start;
@@ -1650,6 +1653,8 @@ fieldset.schedule__field > legend {
   margin-right: 5px;
   border-radius: 50%;
   background: var(--dot);
+  /* A ring in the surface colour: the dot never melts into a block's tint of the same hue. */
+  box-shadow: 0 0 0 1px var(--ink-surface-1);
   vertical-align: 1px;
 }
 .schedule__source-title {

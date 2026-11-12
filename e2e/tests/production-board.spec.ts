@@ -1,4 +1,6 @@
+import { readFile } from 'node:fs/promises';
 import { expect, type Page, test } from '@playwright/test';
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { chooseSelect } from '../helpers/select.ts';
 
 /**
@@ -8,7 +10,7 @@ import { chooseSelect } from '../helpers/select.ts';
  */
 test('plans frames of two storyboards and a scene without frames on the Production board', async ({
   page,
-}) => {
+}, info) => {
   test.setTimeout(120_000);
   await page.goto('/login');
   await page.getByLabel('Email').fill('giulia@example.com');
@@ -34,8 +36,8 @@ test('plans frames of two storyboards and a scene without frames on the Producti
   const teaser = await storyboard('Teaser');
   const film = await storyboard('Film');
   // Teaser: scene 1 with frame 1A. Film: scene 1 with frame 1A, and scene 2 not drawn yet.
-  await drawScenes(page, project.id, teaser, [1]);
-  await drawScenes(page, project.id, film, [1, 0]);
+  await drawScenes(page, project.id, teaser, [['Il treno entra']]);
+  await drawScenes(page, project.id, film, [['Marta sale'], []]);
 
   // Canvas → Production makes the one Production board, with its card on the root board.
   await page.goto(`/p/${project.id}`);
@@ -99,7 +101,19 @@ test('plans frames of two storyboards and a scene without frames on the Producti
   const dialog = page.getByRole('dialog');
   await expect(dialog.locator('.export__paper')).toHaveAttribute('data-status', 'ready');
   await expect(dialog.locator('.export__preview figcaption')).toHaveText(/\d+ pagin/);
-  await page.keyboard.press('Escape');
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
+  ]);
+  const path = info.outputPath('call-sheets.pdf');
+  await download.saveAs(path);
+  const sheet = await pdfText(path);
+  // The frames of both storyboards, each with its own action, and the scene planned whole.
+  expect(sheet).toContain('Il treno entra');
+  expect(sheet).toContain('Marta sale');
+  expect(sheet).toContain('Sc. 2');
+  if (await dialog.isVisible()) await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
 
   // A storyboard of the project lost Schedule and Crew, and leads to the Production board.
   await page.goto(`/p/${project.id}/b/${film}`);
@@ -123,20 +137,68 @@ test('plans frames of two storyboards and a scene without frames on the Producti
   // Its frames left the queue: Film's are all planned, so nothing waits.
   await expect(queue.locator('.schedule__source-title')).toHaveCount(0);
   await expect(queue).toContainText('Tutte le inquadrature sono in un giorno di riprese');
+
+  // Its card removed and the board in the trash, Canvas → Production brings the board back
+  // with its days, and its card where asked (answer 3), although the root's mark is set.
+  await page.goto(`/p/${project.id}`);
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  const card = page.locator(`[data-el="production-${production.id}"]`);
+  await card.click();
+  await page.keyboard.press('Delete');
+  await expect(card).toHaveCount(0);
+  const binned = await page.request.delete(`/api/v1/boards/${production.id}`, { headers });
+  expect(binned.ok()).toBe(true);
+  await page.reload();
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await expect(card).toHaveCount(0);
+  await page.getByRole('button', { name: 'Canvas', exact: true }).click();
+  const back = page.waitForResponse(
+    (r) => r.request().method() === 'POST' && r.url().endsWith(`/projects/${project.id}/boards`),
+  );
+  await page.getByRole('menuitem', { name: 'Produzione', exact: true }).click();
+  expect((await back).ok()).toBe(true);
+  await expect(card).toBeVisible();
+  const days = (await (
+    await page.request.get(`/api/v1/boards/${production.id}/schedule`)
+  ).json()) as { items: unknown[] };
+  expect(days.items).toHaveLength(1);
+  // One step of undo: it goes, and the menu adds it again.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(card).toHaveCount(0);
+  await page.getByRole('button', { name: 'Canvas', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Produzione', exact: true }).click();
+  await expect(card).toBeVisible();
 });
 
-/** Opens a storyboard and draws its scenes, each with this many frames. */
-async function drawScenes(page: Page, projectId: string, boardId: string, frames: number[]) {
+/** The text of every page of a PDF. */
+async function pdfText(path: string) {
+  const pdf = await getDocument({ data: new Uint8Array(await readFile(path)) }).promise;
+  const pages: string[] = [];
+  for (let n = 1; n <= pdf.numPages; n++) {
+    const content = await (await pdf.getPage(n)).getTextContent();
+    pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '));
+  }
+  return pages.join(' ');
+}
+
+/** Opens a storyboard and draws its scenes, each with a frame of each action. */
+async function drawScenes(page: Page, projectId: string, boardId: string, scenes: string[][]) {
   await page.goto(`/p/${projectId}/b/${boardId}`);
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
-  for (const [i, count] of frames.entries()) {
+  for (const [i, actions] of scenes.entries()) {
     await page.getByRole('button', { name: 'Nuova scena', exact: true }).last().click();
     const scene = page.getByRole('region', { name: `Scena ${i + 1}`, exact: true });
     await expect(scene).toBeVisible();
-    for (let n = 0; n < count; n++) {
+    for (const action of actions) {
       await scene.getByRole('button', { name: 'Nuova inquadratura', exact: true }).last().click();
+      const field = page
+        .getByRole('complementary', { name: 'Dettagli' })
+        .getByLabel('Azione', { exact: true });
+      await field.fill(action);
+      await field.press('Tab');
       await page.keyboard.press('Escape');
     }
-    await expect(scene.locator('.story__tile')).toHaveCount(count);
+    await expect(scene.locator('.story__tile')).toHaveCount(actions.length);
   }
 }

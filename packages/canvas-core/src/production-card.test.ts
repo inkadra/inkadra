@@ -42,4 +42,18 @@ describe("the Production board's card on the root board (decision 0123, answer 2
     expect(listElements(doc).filter((el) => el.type === 'board')).toHaveLength(1);
     expect(roots(doc).meta.get(PRODUCTION_CARD_MARK)).toBe(PRODUCTION);
   });
+
+  it('adds the card where the person asks for it, also after the mark', () => {
+    const doc = createBoardDoc(ROOT);
+    placeProductionCard(doc, PRODUCTION, size, opts);
+    deleteElements(doc, [productionCardId(PRODUCTION)]);
+    // The board came back from the trash, "Canvas → Produzione" adds its card here.
+    expect(placeProductionCard(doc, PRODUCTION, size, opts, { x: 500, y: 80 })).toBe(true);
+    expect(listElements(doc).filter((el) => el.type === 'board')).toEqual([
+      expect.objectContaining({ id: productionCardId(PRODUCTION), x: 500, y: 80 }),
+    ]);
+    // Never a second one.
+    expect(placeProductionCard(doc, PRODUCTION, size, opts, { x: 0, y: 0 })).toBe(false);
+    expect(listElements(doc).filter((el) => el.type === 'board')).toHaveLength(1);
+  });
 });

@@ -653,7 +653,7 @@ export function BlockEditor({
             {block.shotId && <SetupChips setups={setupsOf?.(block.shotId)} />}
             {seen.dot && <span>{seen.dot.name}</span>}
             {scene && block.type !== 'scene' && (
-              <span>
+              <span className="schedule__editor-scene">
                 {[t('schedule.sceneShort', { number: scene.number }), slugline(scene)]
                   .filter(Boolean)
                   .join(' · ')}

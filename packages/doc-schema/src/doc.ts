@@ -20,7 +20,7 @@ import {
 import { fastCheckOf, UNSURE } from './fast-items.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 26;
+export const CURRENT_SCHEMA_VERSION = 27;
 
 /**
  * For each document schema since decision 0102, the oldest client schema proven safe to write a
@@ -34,6 +34,9 @@ export const WRITER_SCHEMAS: Readonly<Record<number, { min: number; proof?: stri
   24: { min: 24 },
   25: { min: 25 },
   26: { min: 26 },
+  // The proof to lower it to 26 exists (older-client.test.ts, "schema 27 from 26: …"); kept at
+  // 27 until the maintainer lowers a minimum for the first time.
+  27: { min: 27 },
 };
 
 /**
@@ -95,9 +98,9 @@ export function parseBoardDocName(name: string): string | null {
  * Root types of a board document. Nothing else may be stored at the root.
  * `meta` holds `schemaVersion`, `boardId`, from version 2 `aspect` (the AspectRatio of a
  * storyboard's frames), from version 9 `animaticAudio` (the sound track of its animatic),
- * `restores`, written by the server only (decision 0109), and on a project's root board
- * `productionCard`, the id of the Production board whose card its clients placed once (decision
- * 0123; optional, older clients ignore it).
+ * `restores`, written by the server only (decision 0109), and from version 27, on a project's
+ * root board, `productionCard`: the id of the Production board whose card its clients placed
+ * once (decision 0123).
  */
 export function roots(doc: Y.Doc) {
   return {
@@ -257,6 +260,10 @@ const migrations: Record<number, Migration> = {
       }
     }
   },
+  // 27: optional `productionCard` in a project root's `meta`, the Production board whose card its
+  // clients placed once (decision 0123, answer 2). Nothing is written by the migration. No card
+  // edit of an older client touches `meta` (P11); older clients stay read-only all the same.
+  26: () => {},
 };
 
 /**

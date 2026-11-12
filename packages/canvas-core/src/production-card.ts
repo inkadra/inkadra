@@ -14,7 +14,10 @@ export const productionCardId = (boardId: string) => `production-${boardId}`;
  * once, by the client of the first editor who opens the root board, with an id derived from the
  * board's and at a place read from the document, so two clients write the same card; then a
  * mark in the root's `meta`, so a card someone removed does not come back. A card of the board
- * already on the canvas gets the mark only. Returns whether it placed the card.
+ * already on the canvas gets the mark only. The mark stops only that automatic placing: a place
+ * given (`at`, "add it here" from the Canvas menu) always adds the card when it is not on the
+ * canvas, also after a removal or a Production board brought back from the trash. Returns
+ * whether it placed the card.
  */
 export function placeProductionCard(
   doc: Y.Doc,
@@ -25,7 +28,7 @@ export function placeProductionCard(
   at?: { x: number; y: number },
 ): boolean {
   const { meta } = roots(doc);
-  if (meta.get(PRODUCTION_CARD_MARK) === boardId) return false;
+  if (!at && meta.get(PRODUCTION_CARD_MARK) === boardId) return false;
   const elements = currentElements(doc);
   const placed = elements.some((el) => el.type === 'board' && el.boardId === boardId);
   const onCanvas = canvasElements(elements);

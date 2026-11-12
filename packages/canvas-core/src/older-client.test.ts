@@ -24,6 +24,7 @@ import {
   listElements,
   PasteRefusedError,
   pasteElements,
+  updateElement,
 } from './board.ts';
 import { addPlanIcon, addVariant, type PlanElement } from './plan.ts';
 
@@ -271,5 +272,27 @@ describe('an older client on a newer document (P11)', () => {
       ],
     });
     expect(checkCard(mapOf(b.doc, b.known))).toEqual({ status: 'known' });
+  });
+
+  it("schema 27 from 26: keeps the root's productionCard mark through its edits", () => {
+    const b = newerBoard();
+    const production = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a12';
+    const { meta } = roots(b.doc);
+    // What schema 27 adds: the mark of the Production board's card, in the root's `meta`.
+    meta.set('productionCard', production);
+    const card = createElement(
+      b.doc,
+      'board',
+      { x: 900, y: 0 },
+      { boardId: production, w: 320, h: 260 },
+      opts,
+    ).id;
+    const data = through(copyElements(b.doc, [b.note, b.known, card]));
+    pasteElements(b.doc, data, { x: 40, y: 40 }, opts);
+    duplicateElements(b.doc, [b.column, b.scene, card], { x: 20, y: 20 }, opts);
+    updateElement(b.doc, b.known, { x: 300 });
+    deleteElements(b.doc, [b.column, b.plan, card]);
+    expect(meta.get('productionCard')).toBe(production);
+    expect([...meta.keys()].sort()).toEqual(['boardId', 'productionCard', 'schemaVersion']);
   });
 });
