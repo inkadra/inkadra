@@ -80,10 +80,10 @@ export interface CallSheetShot {
 export interface CallSheetModalProps {
   store?: BoardStore | undefined;
   /**
-   * The cards the sheet reads, when not the board's own: on the Production board, those of the
-   * day's storyboards, the first in tree order winning on a shared name (decision 0123).
+   * The cards a day's sheet reads, when not the board's own: on the Production board, those of
+   * the day's storyboards, the first in tree order winning on a shared name (decision 0123).
    */
-  elements?: ReadonlyMap<string, Element> | undefined;
+  elementsOf?: ((day: ShootingDayInput) => ReadonlyMap<string, Element>) | undefined;
   /** What a block plans, read from its own storyboard, and its name as the calendar says it. */
   look?: ((block: ScheduleBlock) => BlockLook | null) | undefined;
   blockTitle?: ((block: ScheduleBlock) => string) | undefined;
@@ -152,7 +152,7 @@ function useDateLabel(style: 'short' | 'long' | 'phone') {
 
 export function CallSheetModal({
   store,
-  elements: across,
+  elementsOf,
   look,
   blockTitle,
   days,
@@ -179,7 +179,6 @@ export function CallSheetModal({
     store?.subscribe ?? noSubscribe,
     store?.getSnapshot ?? emptySnapshot,
   );
-  const elements = across ?? snapshot.byId;
   const slugline = useSlugline();
   const boardAspect = store ? (getBoardAspect(store.doc) ?? '16:9') : '16:9';
   const shortDate = useDateLabel('short');
@@ -220,6 +219,7 @@ export function CallSheetModal({
     ordered.findIndex((item) => item.id === dayId),
   );
   const day = ordered[index];
+  const elements = day && elementsOf ? elementsOf(day) : snapshot.byId;
   const slots = day ? scheduleTimes(day) : [];
   const entries = day ? dayCrew(day, crew, elements, characters) : [];
   const calls = day ? castRows(day, entries) : [];

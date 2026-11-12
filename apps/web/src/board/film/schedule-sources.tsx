@@ -174,6 +174,22 @@ export function withLabels<B extends ScheduleBlock>(block: B, sources: ScheduleS
       : { ...block, sceneLabel: label };
 }
 
+/**
+ * The cards a day's call sheet reads (decision 0123): those of the storyboards its blocks plan,
+ * the first in tree order winning on a shared id or name, as `byId` keeps them; a storyboard's
+ * own cards on a storyboard.
+ */
+export function dayElements(
+  day: { blocks: ReadonlyArray<Parameters<typeof blockTarget>[0]> },
+  sources: Pick<ScheduleSources, 'across' | 'byId' | 'boardOf' | 'dayBoardId'>,
+): ReadonlyMap<string, Element> {
+  if (!sources.across) return sources.byId;
+  const boards = new Set(
+    day.blocks.flatMap((b) => blockTarget(b, sources.dayBoardId)?.boardId ?? []),
+  );
+  return new Map([...sources.byId].filter(([id]) => boards.has(sources.boardOf.get(id) ?? '')));
+}
+
 /** One key per frame or scene that blocks plan, by board: frames scheduled leave the queue. */
 export function plannedKeys(
   blocks: Iterable<

@@ -36,18 +36,14 @@ export function sceneName(scene: SceneElement): string {
 }
 
 /** INT. KITCHEN – NIGHT, from the scene fields. */
-export function sluglineOf(scene: SceneElement, t: (key: string) => string): string {
-  return [
-    scene.setting && t(`film.scene.settings.${scene.setting}`),
-    scene.location?.toUpperCase(),
-    scene.time && `– ${t(`film.scene.times.${scene.time}`)}`,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
-
-/** `sluglineOf` in the reader's language. */
 export function useSlugline() {
   const { t } = useTranslation();
-  return (scene: SceneElement) => sluglineOf(scene, t);
+  return (scene: SceneElement) =>
+    [
+      scene.setting && t(`film.scene.settings.${scene.setting}`),
+      scene.location?.toUpperCase(),
+      scene.time && `– ${t(`film.scene.times.${scene.time}`)}`,
+    ]
+      .filter(Boolean)
+      .join(' ');
 }

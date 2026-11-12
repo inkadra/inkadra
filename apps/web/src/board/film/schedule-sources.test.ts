@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { BoardStore } from '../store.ts';
 import { newScheduleBlock } from './schedule.ts';
 import {
+  dayElements,
   lookOf,
   plannedKeys,
   type ScheduleSources,
@@ -133,5 +134,19 @@ describe('the dot of a storyboard (decision 0123)', () => {
     expect(dots.get('first')).toBe(glyphColor.blue);
     expect(dots.get('second')).toBe(glyphColor.orange);
     expect(dots.get('own')).toBe(glyphColor.pink);
+  });
+});
+
+describe("a day's cards on the Production board (decision 0123)", () => {
+  it("are those of the storyboards the day plans, the first in tree order winning", () => {
+    const a = storyboard(A);
+    const b = storyboard(B);
+    const read = sources({ id: A, store: a.store }, { id: B, store: b.store });
+    const only = dayElements({ blocks: [{ type: 'shot', shotId: b.frame.id, shotBoardId: B }] }, read);
+    expect(only.has(b.frame.id)).toBe(true);
+    expect(only.has(a.frame.id)).toBe(false);
+    expect(dayElements({ blocks: [] }, read).size).toBe(0);
+    // A storyboard's own schedule reads all of its cards.
+    expect(dayElements({ blocks: [] }, { ...read, across: false })).toBe(read.byId);
   });
 });

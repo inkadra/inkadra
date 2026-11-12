@@ -8,7 +8,14 @@ import {
 } from '@inkadra/canvas-core';
 import { aspectValue, type Element, getBoardAspect, hiddenFromGuests } from '@inkadra/doc-schema';
 import { planSheetInput, slugline as sceneSlugline } from '@inkadra/print';
-import type { Asset, AssetTrack, Board, CommentThread, ShotCatalogKey } from '@inkadra/shared';
+import type {
+  Asset,
+  AssetTrack,
+  Board,
+  CommentThread,
+  ShootingDay,
+  ShotCatalogKey,
+} from '@inkadra/shared';
 import { light } from '@inkadra/ui/tokens';
 import type { TFunction } from 'i18next';
 import { getClassifications, shotText } from '../../lib/classifications.ts';
@@ -164,7 +171,13 @@ export interface ExportEnv {
    * The cards and frame labels of every storyboard the Production board read (decision 0123):
    * its call sheets read each block's frame from its own storyboard.
    */
-  across?: { byId: ReadonlyMap<string, Element>; labels: ReadonlyMap<string, string> } | undefined;
+  across?:
+    | {
+        labels: ReadonlyMap<string, string>;
+        /** The cards of the storyboards a day plans, the first in tree order winning. */
+        elementsOf: (day: ShootingDay) => ReadonlyMap<string, Element>;
+      }
+    | undefined;
   threads: readonly CommentThread[];
   /** Review status of the cards (decision 0013), for "approved frames only". */
   reviews?: ReadonlyMap<string, { status: string }> | undefined;
@@ -685,7 +698,7 @@ export async function buildPages(
             day,
             (id) => (env.across?.labels ?? labels).get(id),
             t,
-            env.across?.byId ?? snapshot.byId,
+            env.across?.elementsOf(day) ?? snapshot.byId,
             crew,
             {
               characters,

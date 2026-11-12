@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Element } from '@inkadra/doc-schema';
+import { slugline } from '@inkadra/print';
 import {
   type Board,
   type CrewCharacter,
@@ -32,7 +33,6 @@ import {
 import { neededForDay } from '../film/needed.ts';
 import { loadBoardDays } from '../film/production-days.ts';
 import { clockLabel, clockMinutes, scheduleTimes } from '../film/schedule.ts';
-import { sluglineOf } from '../film/storyboard-data.ts';
 import { type CardContext, framePicture } from './board-render.ts';
 import type { Section, sectionPages } from './compose.ts';
 import { contentBox, pageSize, paginateRows } from './layout.ts';
@@ -191,7 +191,7 @@ export function callSheetSections(
         // A scene planned as a whole: its heading, its place and its cast (decision 0123).
         const whole = block.type === 'scene' && !block.shotId;
         const heading = scene
-          ? [t('schedule.sceneShort', { number: scene.number }), sluglineOf(scene, t)]
+          ? [t('schedule.sceneShort', { number: scene.number }), slugline(scene, t)]
               .filter(Boolean)
               .join(' · ')
           : block.sceneLabel

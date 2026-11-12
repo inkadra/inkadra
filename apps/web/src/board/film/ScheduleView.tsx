@@ -71,6 +71,7 @@ import {
 import { castConflicts, clockLabel, newScheduleBlock, nowOnDay, whileVisible } from './schedule.ts';
 import {
   type BlockLook,
+  dayElements,
   lookOf,
   plannedKeys,
   type ScheduleSources,
@@ -1189,7 +1190,12 @@ export function ScheduleView({
       neededCount={neededRows.length}
       callsCount={
         crew.items
-          ? dayCrew(selectedEntry.draft, crew.items, snap.byId, crew.characters).filter(
+          ? dayCrew(
+              selectedEntry.draft,
+              crew.items,
+              dayElements(selectedEntry.draft, sources),
+              crew.characters,
+            ).filter(
               (e) => e.called,
             ).length
           : undefined
@@ -1198,7 +1204,7 @@ export function ScheduleView({
         <DayCallsPanel
           entry={selectedEntry}
           crew={crew}
-          elements={snap.byId}
+          elements={dayElements(selectedEntry.draft, sources)}
           readOnly={readOnly}
           blockLabel={(blockId) => {
             const block = selectedEntry.draft.blocks.find((b) => b.id === blockId);
@@ -1671,7 +1677,7 @@ export function ScheduleView({
       {callSheetOpen && (
         <CallSheetModal
           store={store}
-          elements={across ? sources.byId : undefined}
+          elementsOf={across ? (day) => dayElements(day, sources) : undefined}
           look={look}
           blockTitle={blockTitle}
           days={days}

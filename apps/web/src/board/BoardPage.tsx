@@ -68,7 +68,7 @@ import { useDaysPointingAt } from './film/production-days.ts';
 import { ScheduleView } from './film/ScheduleView.tsx';
 import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
-import type { ScheduleSources } from './film/schedule-sources.tsx';
+import { dayElements, type ScheduleSources } from './film/schedule-sources.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
 import { applyImport, type ImportPlan } from './film/screenplay/plan.ts';
 import { applyRevision, revisionCounts } from './film/screenplay/revision.ts';
@@ -1225,7 +1225,14 @@ function BoardScreen({
           selection={exporting.selection}
           visible={exporting.visible}
           role={detail?.myRole ?? projectRole}
-          across={kind === 'production' ? (scheduleSources ?? undefined) : undefined}
+          across={
+            kind === 'production' && scheduleSources
+              ? {
+                  labels: scheduleSources.labels,
+                  elementsOf: (day) => dayElements(day, scheduleSources),
+                }
+              : undefined
+          }
           onClose={() => setExporting(null)}
         />
       )}
