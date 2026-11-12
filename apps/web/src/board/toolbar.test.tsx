@@ -184,6 +184,21 @@ it('lists the other tools in More, each added with a click or put in the bar', a
   }
 });
 
+it('leaves presses on the page alone while More is closed', async () => {
+  const { cleanup } = await renderToolbar();
+  const page = document.createElement('div');
+  document.body.append(page);
+  const reached = vi.fn();
+  page.addEventListener('pointerdown', reached);
+  try {
+    page.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    expect(reached).toHaveBeenCalledOnce();
+  } finally {
+    page.remove();
+    await cleanup();
+  }
+});
+
 it('leaves the tools of a module that is off out of More', async () => {
   await updatePreferences({ modulesOff: ['storyboard'] });
   const { host, cleanup } = await renderToolbar();

@@ -140,13 +140,18 @@ function placeAbove(button: HTMLElement | null) {
   };
 }
 
-/** A popup closes on a press outside it; its own button is left to toggle it. */
+/**
+ * A popup closes on a press outside it; its own button is left to toggle it. Only while it is
+ * `open`: a closed one must leave every press to the page.
+ */
 function useOutsidePress(
   ref: RefObject<HTMLElement | null>,
   anchor: RefObject<HTMLElement | null> | undefined,
   onClose: (reason: 'outside') => void,
+  open = true,
 ) {
   useEffect(() => {
+    if (!open) return;
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
       if (ref.current?.contains(target) || anchor?.current?.contains(target)) return;
@@ -155,7 +160,7 @@ function useOutsidePress(
     };
     document.addEventListener('pointerdown', away, true);
     return () => document.removeEventListener('pointerdown', away, true);
-  }, [ref, anchor, onClose]);
+  }, [ref, anchor, onClose, open]);
 }
 
 /**
@@ -319,7 +324,7 @@ function MoreButton({
   const panel = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
   const close = useCallback(() => setAt(null), []);
-  useOutsidePress(panel, button, close);
+  useOutsidePress(panel, button, close, !!at);
   useEffect(() => {
     if (at) panel.current?.querySelector<HTMLElement>('.more-tools__add')?.focus();
   }, [at]);
