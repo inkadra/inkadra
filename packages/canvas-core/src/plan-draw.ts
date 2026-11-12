@@ -1,13 +1,67 @@
 // SPDX-License-Identifier: MPL-2.0
-import { type PlanIcon, type PlanShape, STROKE_GRID } from '@inkadra/doc-schema';
+import { type PlanIcon, type PlanIconKind, type PlanShape, STROKE_GRID } from '@inkadra/doc-schema';
 import type { Point, Rect } from './geometry.ts';
 import { iconPoint, iconTransform, PLAN_VIEW_H, PLAN_VIEW_W } from './plan.ts';
-import { DEFAULT_GLYPH_STROKE, type FlatPart, flattenGlyph, iconGlyph } from './plan-icons.ts';
+import {
+  categoryOf,
+  DEFAULT_GLYPH_STROKE,
+  type FlatPart,
+  flattenGlyph,
+  iconGlyph,
+  type PlanFamily,
+} from './plan-icons.ts';
 
 /**
  * What a client needs to draw a set plan's icons and shapes as the board draws them (decision
- * 0116), in view units (the plan is PLAN_VIEW_W wide): no colours, fonts or device calls.
+ * 0116), in view units (the plan is PLAN_VIEW_W wide), and its colours as stored hex codes with
+ * the theme token each is drawn with: no CSS, fonts or device calls.
  */
+
+/**
+ * The colours of a plan (decision 0062). Each is stored as a hex code, like a frame drawing's,
+ * and drawn with the theme's token, so a wall in ink stays readable on a dark card and the
+ * pastel accents of the dark theme turn darker on paper. `name` is the colour's word,
+ * `board.plan.colors.<name>`.
+ */
+export const PLAN_COLORS = [
+  { hex: '#1C1C1E', token: 'text-secondary', name: 'ink' },
+  { hex: '#9DB8F2', token: 'tag-blue', name: 'blue' },
+  { hex: '#60D8EB', token: 'tag-teal', name: 'teal' },
+  { hex: '#7AD689', token: 'tag-green', name: 'green' },
+  { hex: '#EDD963', token: 'tag-yellow', name: 'yellow' },
+  { hex: '#F79B54', token: 'tag-orange', name: 'orange' },
+  { hex: '#F68186', token: 'tag-red', name: 'red' },
+  { hex: '#FF91CC', token: 'tag-pink', name: 'pink' },
+  { hex: '#B897F0', token: 'tag-purple', name: 'purple' },
+] as const;
+export type PlanColor = (typeof PLAN_COLORS)[number];
+export const PLAN_INK = PLAN_COLORS[0].hex;
+/** The colours a linked actor takes from its character, one per character (decision 0104). */
+export const CHARACTER_COLOURS: readonly string[] = PLAN_COLORS.slice(1).map((c) => c.hex);
+
+/**
+ * The colour a family starts in: lights yellow, cameras blue, video and sound teal, people
+ * purple, the rest ink.
+ */
+const FAMILY_COLORS: Record<PlanFamily, string> = {
+  light: '#EDD963',
+  camera: '#9DB8F2',
+  video: '#60D8EB',
+  person: '#B897F0',
+  ink: PLAN_INK,
+};
+/** Annotations (arrows, texts, measures, zones) start green, as in the library. */
+export const NOTE_COLOR = '#7AD689';
+
+/** The colour a new icon of `kind` starts in. */
+export function iconColor(kind: PlanIconKind): string {
+  return FAMILY_COLORS[categoryOf(kind).family];
+}
+
+/** Token of a stored colour, or null for a colour outside the palette (drawn as it is). */
+export function planToken(hex: string): string | null {
+  return PLAN_COLORS.find((c) => c.hex === hex)?.token ?? null;
+}
 
 /** Font sizes of a plan's texts, S, M and L, in view units. */
 export const PLAN_TEXT_SIZES = { S: 14, M: 18, L: 26 } as const;

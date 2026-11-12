@@ -6,6 +6,7 @@ import {
   categoryOf,
   circuitOf,
   DEFAULT_LENS,
+  GELS,
   detachIcon,
   iconCentre,
   iconCone,
@@ -14,6 +15,9 @@ import {
   isSized,
   itemFrame,
   itemLocked,
+  KELVIN_RANGE,
+  KELVINS,
+  LENSES,
   layerOf,
   linkedCharacter,
   linkedLabel,
@@ -27,7 +31,10 @@ import {
   type PlanAlign,
   type PlanGroupName,
   type PlanItem,
+  SEAT_SURFACES,
   SEATS,
+  seatsLine,
+  selectionMix,
   SYMBOL_PERCENT,
   shownAngle,
   symbolPercent,
@@ -50,7 +57,7 @@ import { type CSSProperties, type ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { type Ed, isIcon, MAX_UNITS } from './editing.ts';
-import { itemName, SEAT_SURFACES, seatsLine, selectionMix, supportText } from './elements.ts';
+import { itemName, supportText } from './elements.ts';
 import { wattsText } from './kit.ts';
 import { NumberField } from './NumberField.tsx';
 import { selectionMenu } from './PlanCanvas.tsx';
@@ -58,15 +65,9 @@ import { measureText, PLAN_COLORS, PlanGlyph, planCss, TEXT_SIZES } from './Plan
 import { CharacterLink, LocationLink, needsSun, ShotLink, SunSection } from './PlanLinks.tsx';
 import { PlanWallProperties } from './PlanWallProperties.tsx';
 
-/** Lens presets of a camera, as on the mockup; Other takes any focal length. */
-const LENSES = [24, 35, 50, 85];
-/** Colour temperature presets, and the slider's range. */
-const KELVINS = [3200, 4300, 5600];
-const KELVIN_RANGE = [2000, 10000] as const;
 /** The colour temperature track: warm to daylight to cool (decision 0104, slider "C"). */
 const KELVIN_TRACK =
   'linear-gradient(90deg, var(--ink-tag-orange), color-mix(in srgb, var(--ink-tag-orange) 30%, white) 35%, white 50%, var(--ink-tag-blue))';
-/** Gels most crews ask for; anything else is typed. */
 /** The colour of the track at `kelvin`: warm below daylight, cool above. */
 function kelvinColour(kelvin: number): string {
   if (kelvin <= 5600) {
@@ -76,18 +77,6 @@ function kelvinColour(kelvin: number): string {
   const cool = Math.round(Math.max(0, Math.min(1, (kelvin - 5600) / 4400)) * 100);
   return `color-mix(in srgb, var(--ink-tag-blue) ${cool}%, white)`;
 }
-const GELS = [
-  'CTO ¼',
-  'CTO ½',
-  'CTO full',
-  'CTB ¼',
-  'CTB ½',
-  'CTB full',
-  '216',
-  '250',
-  'Plus green',
-  'Minus green',
-];
 const LIGHT_KINDS = PLAN_CATEGORIES.find((c) => c.id === 'lights')?.kinds ?? [];
 const MODIFIER_KINDS =
   PLAN_CATEGORIES.flatMap((c) => c.groups).find((g) => g.id === 'modifiers')?.kinds ?? [];
