@@ -18,6 +18,7 @@ export * from './plan-icons.ts';
 export * from './plan-kit.ts';
 export * from './plan-kit-list.ts';
 export * from './plan-labels.ts';
+export * from './plan-library.ts';
 export * from './plan-links.ts';
 export * from './plan-power.ts';
 export * from './plan-setups.ts';

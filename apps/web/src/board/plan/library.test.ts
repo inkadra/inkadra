@@ -1,79 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { projectKit } from '@inkadra/canvas-core';
-import type { PlanIcon } from '@inkadra/doc-schema';
-import type { TFunction } from 'i18next';
-import { describe, expect, it } from 'vitest';
-import { projectKitDetail, searchLibrary } from './library.ts';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { PLAN_WORDS_IT } from '@inkadra/canvas-core/plan-words/it';
+import i18next from 'i18next';
+import { expect, it } from 'vitest';
+import { searchLibrary } from './library.ts';
 
-const NAMES: Record<string, string> = {
-  'board.plan.icons.softbox': 'Softbox',
-  'board.plan.icons.softlight': 'Soft light',
-  'board.plan.synonyms.lantern': 'china ball, soft ball',
-  'board.plan.icons.lantern': 'Lantern',
-  'board.plan.icons.cob': 'LED COB',
-  'board.plan.icons.grid': 'Grid',
-  'board.plan.stands.cstand': 'C-stand',
-  'board.plan.groups.soft': 'Soft and LED',
-};
-const t = ((key: string, o?: { defaultValue?: string; names?: string }) =>
-  key === 'board.plan.lib.alsoCalled'
-    ? `also ${o?.names}`
-    : (NAMES[key] ?? o?.defaultValue ?? key.split('.').at(-1))) as unknown as TFunction;
+/** `t` in Italian over one catalogue, set up as the app sets up its own. */
+async function italianWith(catalogue: object) {
+  const i18n = i18next.createInstance();
+  await i18n.init({
+    lng: 'it',
+    resources: { it: { translation: catalogue } },
+    interpolation: { escapeValue: false },
+    returnNull: false,
+  });
+  return i18n.t;
+}
 
-describe('searchLibrary', () => {
-  it('finds names first, then other names, ignoring case and accents', () => {
-    const hits = searchLibrary(t, 'SÖFT');
-    // Names that start with it first, the shorter first, as the mockup's Softbox then Soft light.
-    expect(hits.slice(0, 2).map((h) => h.item)).toEqual(['softbox', 'softlight']);
-    expect(hits[0]?.detail).toBe('modifiers');
-    const lantern = hits.find((h) => h.item === 'lantern');
-    expect(lantern?.by).toBe('synonym');
-    expect(lantern?.detail).toBe('also china ball, soft ball');
-  });
-  it('finds by category and returns nothing for an empty query', () => {
-    expect(searchLibrary(t, 'notes').map((h) => h.item)).toEqual([
-      'arrow',
-      'text',
-      'measure',
-      'zone',
-    ]);
-    expect(searchLibrary(t, '  ')).toEqual([]);
-  });
-  it('matches a group only by its whole name, not by one of its words', () => {
-    expect(searchLibrary(t, 'soft').map((h) => h.item)).not.toContain('cob');
-    expect(searchLibrary(t, 'soft and led').map((h) => h.item)).toContain('cob');
-  });
-});
-
-const icon = (id: string, kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
-  id: id.padEnd(13, 'A'),
-  kind,
-  color: '#EDD963',
-  x: 100,
-  y: 100,
-  ...extra,
-});
-
-describe('projectKit', () => {
-  it('keeps each configured light and camera once, with modifiers and lenses', () => {
-    const key = icon('key', 'cob', { label: 'Key', watts: 300, stand: 'cstand' });
-    const plans = [
-      { icons: [key, icon('grid', 'grid', { on: key.id }), icon('bare', 'fresnel')] },
-      {
-        icons: [
-          { ...key, id: 'key2AAAAAAAAA', x: 900 },
-          icon('grid2', 'grid', { on: 'key2AAAAAAAAA' }),
-          icon('cam', 'camera', { label: 'A cam', lens: 50 }),
-        ],
-      },
-      { icons: [icon('cam2', 'camera', { label: 'A cam', lens: 32 }), icon('cam3', 'camera')] },
-    ];
-    const kit = projectKit(plans);
-    expect(kit).toHaveLength(2);
-    expect(kit[0]?.modifiers).toEqual(['grid']);
-    expect(kit[0]?.icon).toMatchObject({ kind: 'cob', label: 'Key', watts: 300 });
-    expect(kit[1]?.lenses).toEqual([32, 50]);
-    expect(projectKitDetail(kit[0] as never, t, 'S35')).toBe('LED COB 300 W · Grid · C-stand');
-    expect(projectKitDetail(kit[1] as never, t, 'S35')).toBe('S35 · 32, 50 mm');
-  });
+it('finds the same in Italian with the web catalogue as with the shared words (decision 0116)', async () => {
+  // The mobile app searches with the package's words: its results must be the web's.
+  const web = await italianWith(
+    JSON.parse(readFileSync(join(__dirname, '../../i18n/it.json'), 'utf8')),
+  );
+  const shared = await italianWith(PLAN_WORDS_IT);
+  for (const query of ['kino', 'morbida', 'luce', 'Luci', 'faro', 'Annotazioni', 'sedia', 'xyz'])
+    expect(searchLibrary(shared, query), query).toEqual(searchLibrary(web, query));
+  expect(searchLibrary(web, 'kino')[0]?.detail).toBe('Detto anche: kino, kinoflo, banco');
 });
