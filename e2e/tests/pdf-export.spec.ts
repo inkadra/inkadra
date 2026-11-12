@@ -511,6 +511,7 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   expect(bookPdf.pages.join(' ')).not.toContain('Shared with the client');
 
   // 3. The storyboard for the team with every comment, no call sheet.
+  await page.getByRole('tab', { name: 'Storyboard' }).click();
   await page.locator('.board-header-export').click();
   await expect(dialog.getByRole('radio', { name: 'Il team' })).toBeChecked();
   await dialog.getByRole('radio', { name: 'Orizzontale' }).click();

@@ -8,7 +8,7 @@ import {
 } from '@inkadra/shared';
 import { useEffect, useState } from 'react';
 import { api, RequestError } from '../../lib/api.ts';
-import { productionOf } from '../boards.ts';
+import { boardsWith, productionOf } from '../boards.ts';
 
 /**
  * The board whose days a board reads (decision 0123): the Production board's, when the project
@@ -22,12 +22,13 @@ export function scheduleBoardFor(boardId: string, boards: readonly Board[] | nul
 /**
  * The days a board reads, by date: the Production board's with only this board's frames and
  * scenes left in the blocks, or its own while the project has none. Out of reach, there are none.
+ * Without `boards` (a set plan's sheet), the project's loaded boards tell.
  */
 export async function loadBoardDays(
   boardId: string,
   boards: readonly Board[] | null | undefined,
 ): Promise<ShootingDay[]> {
-  const from = scheduleBoardFor(boardId, boards);
+  const from = scheduleBoardFor(boardId, boards ?? boardsWith(boardId));
   const items = await api.get<Schedule>(`/boards/${from}/schedule`).then(
     (r) => r.items,
     (error) => {
