@@ -62,8 +62,8 @@ surfaces of the app behave alike:
   can be panned to and framed, and the view never drifts where nothing can be;
 - panning writes the transform without a render, so a plan of 300 icons pans at the screen's
   rate; a change of zoom renders once a frame.
-A picked closed room shows its size outside its walls ("8.0 m" over the top, "6.3 m" down the
-left), as the mockup draws it, next to the length of each side.
+  A picked closed room shows its size outside its walls ("8.0 m" over the top, "6.3 m" down the
+  left), as the mockup draws it, next to the length of each side.
 
 **What a click picks** (`planItemsAt`, `nextPlanItemAt`):
 - the item drawn on top, except that a light comes before the modifiers on its front, so a click
