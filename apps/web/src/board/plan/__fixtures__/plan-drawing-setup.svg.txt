@@ -117,10 +117,6 @@
 <path d="M952.148438 65.104167L805.664063 48.828125M843.383008 35.513428L805.664063 48.828125L839.540295 70.097842" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
 </path>
 </g>
-<g style="color: var(--ink-tag-green);" transform="rotate(60 122.070313 187.174479)">
-<path d="M73.242188 162.760417L170.898438 211.588542M154.899928 211.370187L170.898438 211.588542L161.124648 198.920747" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-</path>
-</g>
 <g style="color: var(--ink-tag-green);">
 <rect x="97.65625" y="211.588542" width="146.484375" height="65.104167" style="fill: currentColor; fill-opacity: 0.1; stroke: currentColor; stroke-width: 4; stroke-dasharray: 12 10;">
 </rect>

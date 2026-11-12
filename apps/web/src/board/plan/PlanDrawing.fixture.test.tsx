@@ -98,7 +98,10 @@ describe('a set plan on the board', () => {
   });
 
   it('draws a setup over its base’s Set layer', async () => {
-    expectFixture(await svg(variantView(SETUP, PLAN)), fixture('plan-drawing-setup.svg.txt'));
+    expectFixture(
+      await svg(level(variantView(SETUP, PLAN))),
+      fixture('plan-drawing-setup.svg.txt'),
+    );
   });
 
   it('draws turned lines, arrows and measures where main’s rotate() put them', async () => {

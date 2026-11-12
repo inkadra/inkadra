@@ -28,7 +28,7 @@ const styleOf = (el: Element, name: string) =>
 function boardStrokes(icon: PlanIcon): Array<{ width: number; dash?: number[] }> {
   const host = document.createElement('div');
   host.innerHTML = renderToStaticMarkup(
-    <svg>
+    <svg aria-hidden="true">
       <PlanIconView icon={icon} noCone />
     </svg>,
   );
