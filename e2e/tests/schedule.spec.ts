@@ -92,6 +92,8 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   await expect(page.locator('.schedule .film-shell__badge')).toHaveCount(0);
   // Free text durations validate locally and normalize on blur.
   await schedule.getByRole('radio', { name: 'Settimana', exact: true }).check();
+  // The reload found nothing waiting: the month and queue start folded; the rail opens them.
+  await schedule.getByRole('button', { name: 'Mostra mese e coda', exact: true }).click();
   await schedule.locator('.schedule__block-select').click();
   const duration = page.getByLabel('Durata', { exact: true });
   await duration.fill('1h 30');
