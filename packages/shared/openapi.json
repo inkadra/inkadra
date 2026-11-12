@@ -13295,6 +13295,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "A new day on a board other than the project's live Production board: details.reason 'production_board' and details.boardId, the Production board's id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -13397,6 +13407,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or removed day; or a new day on a board other than the project's live Production board (details.reason 'production_board', details.boardId).",
             "content": {
               "application/json": {
                 "schema": {
