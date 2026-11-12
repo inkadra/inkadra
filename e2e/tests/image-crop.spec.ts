@@ -7,6 +7,7 @@ import { deflateSync } from 'node:zlib';
 import { createElement } from '@inkadra/canvas-core';
 import { initBoardDoc, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
+import { setViewsAs } from '../helpers/views.ts';
 import * as Y from 'yjs';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
@@ -141,6 +142,8 @@ test.beforeAll(async ({ baseURL }) => {
   const project = await post<{ id: string; rootBoardId: string }>('/projects', {
     name: 'Notturno Scalo Est',
   });
+  // Its Moodboard view is on (decision 0121).
+  await setViewsAs(base, cookie, project.rootBoardId, ['moodboard']);
 
   const asset1 = await uploadFile(base, cookie, project.id, {
     body: fictionalFramePng(480, 320, 'platform'),

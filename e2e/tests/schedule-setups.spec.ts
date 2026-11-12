@@ -5,6 +5,7 @@
 import { addFrame, createElement } from '@inkadra/canvas-core';
 import { createBoardDoc, type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
+import { addStoryboard } from '../helpers/views.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
 const account = {
@@ -45,7 +46,8 @@ test('the schedule groups by setup, saved on the account and shared with the sho
     data: { name: 'Raggruppa per setup' },
   });
   const project = await created.json();
-  const root = project.rootBoardId as string;
+  // Scenes, frames and plans live on a storyboard, whose views show them (decision 0121).
+  const root = (await addStoryboard(page.request, baseURL!, project, ['shotlist', 'schedule'])).id;
   const doc = createBoardDoc(root);
   const scene = createElement(
     doc,

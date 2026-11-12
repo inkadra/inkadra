@@ -612,11 +612,8 @@ test('card comments keep their audience explicit and resolved conversations reac
   await expect(panel.locator('.comment-thread')).toBeFocused();
   await expect(panel.getByText('Possiamo schiarire il cielo?')).toBeVisible();
   await panel.getByRole('button', { name: 'Riapri' }).click();
+  // The Review view belongs to storyboards: a board's cards are reviewed on the canvas (0121).
   await page.goto(`/p/${project.id}?view=review`);
-  const review = page.locator('.client-review');
-  await expect(review.getByRole('button', { name: 'Cambia stato' })).toBeVisible();
-  await expect(review.locator('.comment-thread').first()).toHaveCSS('border-top-width', '0px');
-  await review.getByRole('button', { name: 'Rispondi' }).first().click();
-  await expect(review.getByText('Anche gli ospiti leggono questa risposta.')).toBeVisible();
-  await captureComments(page, 'review-view');
+  await expect(page.getByTestId('canvas')).toBeVisible();
+  await expect(page.locator('.client-review')).toHaveCount(0);
 });

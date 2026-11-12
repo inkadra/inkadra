@@ -4,6 +4,7 @@ import { deflateSync } from 'node:zlib';
 import { addFrame, addScene, createElement, updateElement } from '@inkadra/canvas-core';
 import { initBoardDoc, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
+import { setViewsAs } from '../helpers/views.ts';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as Y from 'yjs';
 import { chooseSelect } from '../helpers/select.ts';
@@ -113,6 +114,7 @@ test.beforeAll(async ({ baseURL }) => {
     kind: 'storyboard',
     title: 'Night platform',
   });
+  await setViewsAs(base, cookie, storyboard.id, ['shotlist', 'schedule']);
 
   const longBoard = await post<{ id: string }>(`/projects/${project.id}/boards`, {
     parentBoardId: project.rootBoardId,

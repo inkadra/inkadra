@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Runs after first-run.spec.ts in CI (the administrator exists); alone, it creates one.
-// The animated switch between a project's views: it only runs on a tab change, the last click
+// The animated switch between a board's views: it only runs on a tab change, the last click
 // wins, and the live views underneath stay usable. The rest of the suite runs with reduced motion.
+// Each board shows its own views (decision 0121): the root board its canvas and moodboard, the
+// storyboard its storyboard, shot list, schedule and review.
 import { expect, type Page, test } from '@playwright/test';
 import { chooseSelect } from '../helpers/select.ts';
 import { perfUser, signIn } from './perf/seed.ts';
@@ -23,6 +25,13 @@ async function openProject(page: Page, baseURL: string, name: string) {
     data: { parentBoardId: project.rootBoardId, title: 'Storyboard', kind: 'storyboard' },
   });
   expect(board.ok()).toBe(true);
+  const storyboard = (await board.json()) as { id: string };
+  const views = async (id: string, on: string[]) =>
+    expect(
+      (await page.request.patch(`/api/v1/boards/${id}`, { headers, data: { views: on } })).ok(),
+    ).toBe(true);
+  await views(project.rootBoardId, ['moodboard']);
+  await views(storyboard.id, ['shotlist', 'schedule', 'review']);
   // Counts every transition the page starts, from the first script on.
   await page.addInitScript(() => {
     const start = document.startViewTransition?.bind(document);
@@ -35,7 +44,7 @@ async function openProject(page: Page, baseURL: string, name: string) {
   });
   await page.goto(`/p/${project.id}`);
   await expect(page.getByTestId('canvas')).toBeVisible();
-  return project;
+  return { ...project, storyboardId: storyboard.id };
 }
 
 const transitions = (page: Page) =>
@@ -71,7 +80,7 @@ test.describe('with motion', () => {
     page,
     baseURL,
   }) => {
-    await openProject(page, baseURL!, `View tabs ${Date.now()}`);
+    const project = await openProject(page, baseURL!, `View tabs ${Date.now()}`);
     expect(await transitions(page)).toBe(0);
 
     await page.reload();
@@ -86,14 +95,20 @@ test.describe('with motion', () => {
     );
     await expectSettled(page);
 
-    // Through all six, without waiting; a storyboard's own tabs do not offer the moodboard.
+    // Without waiting; a storyboard's own tabs do not offer the moodboard, nor a canvas.
     await tab(page, 'Lavagna').click();
     await tab(page, 'Moodboard').click();
-    await tab(page, 'Storyboard').click();
+    await tab(page, 'Lavagna').click();
+    await expect(tab(page, 'Lavagna')).toHaveAttribute('aria-selected', 'true');
+    await expectSettled(page);
+    await page.goto(`/p/${project.id}/b/${project.storyboardId}`);
+    await expect(tab(page, 'Storyboard')).toHaveAttribute('aria-selected', 'true');
+    await expect(tab(page, 'Lavagna')).toHaveCount(0);
+    await expect(tab(page, 'Moodboard')).toHaveCount(0);
     await tab(page, 'Shot list').click();
     await tab(page, 'Piano riprese').click();
     await tab(page, 'Revisione').click();
-    await tab(page, 'Lavagna').click();
+    await tab(page, 'Storyboard').click();
     await tab(page, 'Piano riprese').click();
     await expect(tab(page, 'Piano riprese')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('section.schedule')).toBeVisible();
@@ -125,8 +140,8 @@ test.describe('with motion', () => {
     page,
     baseURL,
   }) => {
-    await openProject(page, baseURL!, `View tabs live ${Date.now()}`);
-    await tab(page, 'Storyboard').click();
+    const project = await openProject(page, baseURL!, `View tabs live ${Date.now()}`);
+    await page.goto(`/p/${project.id}/b/${project.storyboardId}`);
     await expect(tab(page, 'Storyboard')).toHaveAttribute('aria-selected', 'true');
     await expectSettled(page);
 

@@ -6,6 +6,7 @@ import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/pro
 import { createElement } from '@inkadra/canvas-core';
 import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
 import { type Browser, expect, type Locator, type Page, test } from '@playwright/test';
+import { setViews } from '../helpers/views.ts';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { cardAction } from '../helpers/phone-board.ts';
@@ -184,6 +185,7 @@ test.beforeAll(async ({ browser, baseURL }) => {
       data: { parentBoardId: project.rootBoardId, kind: 'storyboard', title: 'Storyboard' },
     })
   ).json();
+  await setViews(page.request, headers.origin, storyboard.id, ['shotlist', 'review']);
   const pictureA = await upload(page, baseURL!, project.id, 'neon-caldo.png', png([201, 134, 58]));
   const pictureB = await upload(page, baseURL!, project.id, 'neon-freddo.png', png([53, 120, 214]));
   const frameIds: string[] = [];

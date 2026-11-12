@@ -50,6 +50,23 @@ vi.mock('../connection.ts', () => ({ collabUrl: () => '' }));
 vi.mock('../chrome.tsx', () => ({
   UploadPanel: () => null,
   Toast: ({ text }: { text: string }) => <output className="toast">{text}</output>,
+  ContextMenu: ({ items }: { items: Array<{ label?: string; action?: () => void }> }) => (
+    <div role="menu">
+      {items
+        .filter((item) => item.label)
+        .map((item) => (
+          <button key={item.label} type="button" role="menuitem" onClick={item.action}>
+            {item.label}
+          </button>
+        ))}
+    </div>
+  ),
+}));
+const addFramesToBoard = vi.fn(async () => {});
+vi.mock('./send-to-storyboard.ts', async (original) => ({
+  ...(await original<typeof import('./send-to-storyboard.ts')>()),
+  addFramesToBoard: (...args: unknown[]) =>
+    (addFramesToBoard as (...a: unknown[]) => unknown)(...args),
 }));
 const startUpload = vi.fn();
 vi.mock('../uploads.ts', () => ({
@@ -84,7 +101,11 @@ function board() {
   ) => createElement(doc, type, { x: 0, y: 0 }, fields, { userId: null });
   return { doc, store, add };
 }
-async function mount(store: BoardStore, readOnly = true) {
+async function mount(
+  store: BoardStore,
+  readOnly = true,
+  storyboards?: Array<{ id: string; title: string }>,
+) {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
@@ -96,6 +117,7 @@ async function mount(store: BoardStore, readOnly = true) {
         userId="reader"
         readOnly={readOnly}
         boardTitle="Last Train"
+        storyboards={storyboards}
       />,
     ),
   );
@@ -415,6 +437,25 @@ it('sends pictures to the storyboard as frames, keeps the references and skips c
   });
   expect(store.getSnapshot().byId.has(picture.id)).toBe(true);
   expect(host.querySelector('.toast')?.textContent).toBe('moodboard.sent');
+});
+
+it('asks which storyboard when the project has several, and sends there (decision 0121)', async () => {
+  const { store, add } = board();
+  add('image', { assetId: 'one' });
+  const storyboards = [
+    { id: 'film', title: 'Film' },
+    { id: 'teaser', title: 'Teaser' },
+  ];
+  const host = await mount(store, false, storyboards);
+  await click(checks(host)[0] ?? null);
+  await click(inBar(host, 'moodboard.sendToStoryboard'));
+  const items = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+  expect(items.map((item) => item.textContent)).toEqual(['Film', 'Teaser']);
+  expect(addFramesToBoard).not.toHaveBeenCalled();
+  await click(items[1] ?? null);
+  expect(addFramesToBoard).toHaveBeenCalledWith('teaser', expect.any(Array), 'reader');
+  // Nothing lands on the moodboard itself.
+  expect([...store.getSnapshot().byId.values()].some((el) => el.type === 'frame')).toBe(false);
 });
 
 it('keeps slides to the pictures, with the note and the group', () => {

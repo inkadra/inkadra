@@ -24,24 +24,32 @@ export { scenesOfPlan } from '@inkadra/canvas-core';
 
 /**
  * Links between plans and scenes travel in the address: `?plan=<id>` opens a plan in its editor
- * over the view that is open (the canvas, or on a storyboard the plan alone, decision 0121),
- * `?view=storyboard&scene=<id>` shows a scene in the storyboard.
+ * over the view that is open (the canvas, or on a storyboard the plan alone), and a scene opens
+ * as any card does, `?el=<id>` in the board's first view: a storyboard brings it into view, a
+ * board's canvas selects it (decision 0121).
  */
 export function usePlanNav() {
   const [, setParams] = useSearchParams();
-  const go = useCallback(
-    (view: string | null, key: string, id: string) =>
-      setParams((p) => {
-        const next = new URLSearchParams(p);
-        if (view) next.set('view', view);
-        next.set(key, id);
-        return next;
-      }),
-    [setParams],
-  );
   return {
-    openPlan: useCallback((id: string) => go(null, 'plan', id), [go]),
-    openScene: useCallback((id: string) => go('storyboard', 'scene', id), [go]),
+    openPlan: useCallback(
+      (id: string) =>
+        setParams((p) => {
+          const next = new URLSearchParams(p);
+          next.set('plan', id);
+          return next;
+        }),
+      [setParams],
+    ),
+    openScene: useCallback(
+      (id: string) =>
+        setParams((p) => {
+          const next = new URLSearchParams(p);
+          next.delete('view');
+          next.set('el', id);
+          return next;
+        }),
+      [setParams],
+    ),
   };
 }
 
