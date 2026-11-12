@@ -195,8 +195,18 @@ the page sizes, margins and grids (`layout.ts`: `pageSize`, `contentBox`, `story
 to canvas-core's `image-crop.ts`: `isIdentityCrop`, `hasImageTransform` and
 `normalizeImageRotation` (`(-180, 180]`; the web still calls it `normalizeRotation`, a name
 canvas-core already gives a set plan item's rotation in `[0, 360)`). The web's
-`export/pages.ts`, `text.ts` and `layout.ts` re-export the moved names. The sheet's drawing and
-layout, the PDF writer and the fonts follow, each in its own change.
+`export/pages.ts`, `text.ts` and `layout.ts` re-export the moved names.
+
+Then the set plan's printed drawing (`plan-ops.ts`, from the web's `export/board-render.ts`):
+`planOps`, `framedPlanOps` and what they draw with (`planShapeOps`, `strokeOp`, `head`,
+`drawArrow`, `dashes`, `mix`, `GLOW_RINGS`, `FLOOR_TINT`, `transformOps`), with the printed
+theme's colours as `Palette`. A plan's drawing reads only a `PlanDrawContext` (`measure`,
+`colors`, `roomSize`, `language`, `cards`); the web's `CardContext` extends it, so the compiler
+holds the drawing away from the rest of a board export. Its colours come from canvas-core
+(`PLAN_INK`, `CHARACTER_COLOURS`, `planToken`). The web's `board-render.ts` re-exports
+`planOps`, `framedPlanOps`, `transformOps` and `Palette`, and its fixtures and the plan sheet's
+goldens did not change. The sheet's layout, the PDF writer and the fonts follow, each in its own
+change.
 
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
@@ -218,8 +228,8 @@ Stays in the web or the server for now; each moves when a second client needs it
 - The rest of a plan's drawing that is not yet in canvas-core: the blocking moves (the board
   draws a quadratic curve with open wings stopped 26 short, exports a polyline with a filled
   head), the position numbers' places, a label's halo and the light's second line under it, the
-  ticks of the rooms' sizes, the beam's gradient and the glow's falloff. Move with a plan drawn
-  on another client.
+  ticks of the rooms' sizes, the beam's gradient and the glow's falloff, as the board draws
+  them (the printed ones are in `packages/print`). Move with a plan drawn on another client.
 
 Exports and the board draw a plan alike but not the same, and the move kept both as they were:
 exports stroke glyphs thinner (a part without a width of its own at 1 / 1.7 of the board's, one

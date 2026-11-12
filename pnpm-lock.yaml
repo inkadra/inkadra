@@ -544,6 +544,9 @@ importers:
       '@inkadra/canvas-core':
         specifier: workspace:*
         version: link:../canvas-core
+      '@inkadra/doc-schema':
+        specifier: workspace:*
+        version: link:../doc-schema
     devDependencies:
       typescript:
         specifier: ^7.0.2
