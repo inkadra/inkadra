@@ -490,7 +490,8 @@ test('every library name fits its tile, in all six languages, at 1280 and 390 px
       // broken, decision 0116), or when it needs more than the two lines the tile shows.
       const bad = await library.locator('.plan-lib__tile').evaluateAll((tiles) =>
         tiles.flatMap((tile) => {
-          const span = tile.querySelector('span') as HTMLElement;
+          // The name, after the glyph.
+          const span = tile.lastElementChild as HTMLElement;
           const value = span.textContent ?? '';
           const probe = document.createElement('span');
           probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap';

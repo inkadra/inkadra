@@ -282,6 +282,31 @@ export function PlanEditor(props: PlanEditorProps) {
       onClose={() => setPicking(null)}
     />
   );
+  /** The name of the setup being renamed, on its tab (or the phone's header): Enter keeps it. */
+  const renameField = (
+    <input
+      className="plan-field"
+      aria-label={t('board.plan.setupName')}
+      maxLength={60}
+      defaultValue={plan.variant ?? ''}
+      placeholder={t(base ? 'board.plan.variant' : 'board.plan.base')}
+      // biome-ignore lint/a11y/noAutofocus: Rename asks to type the name.
+      autoFocus
+      onBlur={(e) => {
+        const variant = e.target.value.trim() || undefined;
+        if (variant !== plan.variant) ed.editPlan({ variant });
+        setRenaming(false);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.key === 'Escape') e.currentTarget.value = plan.variant ?? '';
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
   const setupTabs = (
     <div
       className="plan-setups"
@@ -333,31 +358,6 @@ export function PlanEditor(props: PlanEditorProps) {
     </div>
   );
   const baseName = base ? setupName(base, family, t) : '';
-  /** The name of the setup being renamed, on its tab (or the phone's header): Enter keeps it. */
-  const renameField = (
-    <input
-      className="plan-field"
-      aria-label={t('board.plan.setupName')}
-      maxLength={60}
-      defaultValue={plan.variant ?? ''}
-      placeholder={t(base ? 'board.plan.variant' : 'board.plan.base')}
-      // biome-ignore lint/a11y/noAutofocus: Rename asks to type the name.
-      autoFocus
-      onBlur={(e) => {
-        const variant = e.target.value.trim() || undefined;
-        if (variant !== plan.variant) ed.editPlan({ variant });
-        setRenaming(false);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === 'Escape') {
-          e.preventDefault();
-          e.stopPropagation();
-          if (e.key === 'Escape') e.currentTarget.value = plan.variant ?? '';
-          e.currentTarget.blur();
-        }
-      }}
-    />
-  );
   // The bare name of the base, for "Show Master as a ghost".
   const baseBare = base ? base.variant || t('board.plan.base') : '';
   /** What this setup changed from its base: a strip under the setup tabs, never on the plan. */
