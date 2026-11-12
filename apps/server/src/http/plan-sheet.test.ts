@@ -715,7 +715,7 @@ describe.skipIf(!url)('the sheet routes (needs DATABASE_URL)', () => {
     expect(refused.json().error.code).toBe('rate_limited');
     expect(Number(refused.headers['retry-after'])).toBeGreaterThan(0);
     // Others are not counted with it.
-    expect((await request('GET', path, 'viewer')).statusCode).toBe(200);
+    expect((await request('GET', path, 'owner')).statusCode).toBe(200);
   });
 
   it('renders 2 sheets at once and tells a third to come back', async () => {
