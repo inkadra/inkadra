@@ -74,7 +74,7 @@ export const MODULES: Record<ModuleId, ModuleParts> = {
     kinds: [],
     views: [],
     tools: ['plan'],
-    menus: [],
+    menus: ['newScenePlan'],
     tours: ['setplan', 'setplanLinks', 'setplanOutputs'],
     notifications: [],
     exports: [],
