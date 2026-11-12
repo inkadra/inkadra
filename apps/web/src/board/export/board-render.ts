@@ -45,7 +45,9 @@ import { croppedRotatedSize } from '../image-crop.ts';
 import {
   CHARACTER_COLOURS,
   iconLabel,
+  iconSubLabel,
   LABEL_SIZE,
+  SUB_LABEL_SIZE,
   measureText,
   PLAN_INK,
   planToken,
@@ -1239,6 +1241,18 @@ export function planOps(
         },
         { kind: 'text', x, y, text: label, size, weight: 500, color },
       );
+      // A named light's colour temperature and level, dim, under its label (audit M4).
+      const sub = iconSubLabel(icon);
+      if (sub) {
+        const small = SUB_LABEL_SIZE * k;
+        const sw = ctx.measure(sub, small, 400);
+        const sx = box.x + a.x * k - sw / 2;
+        const sy = y + (LABEL_SIZE + 2) * k;
+        labels.push(
+          { kind: 'rect', x: sx - 2 * k, y: sy - small, w: sw + 4 * k, h: small * 1.3, fill: c['surface-1'] },
+          { kind: 'text', x: sx, y: sy, text: sub, size: small, weight: 400, color: c['text-secondary'] },
+        );
+      }
     }
     return out;
   }

@@ -302,6 +302,7 @@ export function PlanCanvas({
     content,
     insets: phone ? PHONE_INSETS : DESKTOP_INSETS,
     grid: step,
+    fitWidth: phone,
   });
   const stage = surf.stage;
   const zoom = surf.percent;

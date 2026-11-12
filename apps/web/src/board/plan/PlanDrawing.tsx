@@ -134,7 +134,9 @@ export const PLAN_PEN = 4;
 /** Font sizes of texts, S, M and L, in thousandths of the width. */
 export const TEXT_SIZES = { S: 14, M: 18, L: 26 } as const;
 /** Font size of icon labels, in thousandths of the width. */
-export const LABEL_SIZE = 16;
+/** Sizes of an icon's label and of a light's second line, view units, as the mockup's plan. */
+export const LABEL_SIZE = 12;
+export const SUB_LABEL_SIZE = 11;
 export const PLAN_TEXT = TEXT_SIZES.M;
 
 /** The paper of a plan: what opaque fills mix into and holes show (decision 0104). */
@@ -269,7 +271,7 @@ export const PlanLabel = memo(function PlanLabel({
           x={at.x}
           y={y + LABEL_SIZE + 2}
           textAnchor="middle"
-          fontSize={LABEL_SIZE - 2}
+          fontSize={SUB_LABEL_SIZE}
           fontFamily="inherit"
         >
           {sub}

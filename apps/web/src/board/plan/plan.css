@@ -2252,15 +2252,21 @@ span.plan-pill {
   container-type: inline-size;
 }
 @container (max-width: 1000px) {
+  /* Centred in what the zoom control leaves, with its words (audit row 4). */
+  .plan-canvas__tools {
+    left: calc((100% - 180px) / 2);
+  }
+  .plan-canvas__scalebar {
+    bottom: 72px;
+  }
+}
+@container (max-width: 799px) {
   .plan-canvas__tools {
     left: 16px;
     translate: none;
   }
   .plan-canvas__tools .plan-tool span {
     display: none;
-  }
-  .plan-canvas__scalebar {
-    bottom: 72px;
   }
 }
 .plan-background .ink-slider {

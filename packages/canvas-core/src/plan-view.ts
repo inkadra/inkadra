@@ -122,6 +122,8 @@ export function fitPlanView(
   box: Rect | null,
   area: PlanArea,
   insets: PlanInsets = NO_INSETS,
+  /** Fills the width and lets the height run over, as a phone shows a room. */
+  byWidth = false,
 ): Viewport {
   const b = box && box.w > 0 && box.h > 0 ? box : { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H };
   const free = {
@@ -129,7 +131,11 @@ export function fitPlanView(
     h: Math.max(1, area.h - insets.top - insets.bottom - 2 * MARGIN),
   };
   const zoom = clampZoom(
-    Math.min(free.w / b.w, free.h / b.h, (planBaseZoom(area) * FIT_MAX_PERCENT) / 100),
+    Math.min(
+      free.w / b.w,
+      byWidth ? Number.POSITIVE_INFINITY : free.h / b.h,
+      (planBaseZoom(area) * FIT_MAX_PERCENT) / 100,
+    ),
     area,
   );
   const cx = insets.left + (area.w - insets.left - insets.right) / 2;

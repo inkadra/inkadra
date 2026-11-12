@@ -52,6 +52,7 @@ export function usePlanSurface({
   content,
   insets,
   grid,
+  fitWidth = false,
 }: {
   /** What Fit frames, in view units; null for the whole extent. */
   content: Rect | null;
@@ -59,6 +60,8 @@ export function usePlanSurface({
   insets: PlanInsets;
   /** Spacing of the dots, in view units; none without. */
   grid?: number | undefined;
+  /** Fit fills the width and lets the height run over (a phone, as the mockup shows a room). */
+  fitWidth?: boolean;
 }) {
   const surface = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -72,8 +75,8 @@ export function usePlanSurface({
   const pinch = useRef<Pinch | null>(null);
   const pan = useRef<{ last: Point; moved: number } | null>(null);
   const gridRef = useRef(grid);
-  const fitArgs = useRef({ content, insets });
-  fitArgs.current = { content, insets };
+  const fitArgs = useRef({ content, insets, fitWidth });
+  fitArgs.current = { content, insets, fitWidth };
 
   /** Writes the view to the stage and the grid, and renders on the next frame. */
   const apply = useCallback((v: Viewport, render = true) => {
@@ -104,7 +107,8 @@ export function usePlanSurface({
 
   const fit = useCallback(() => {
     if (!area.current.w) return;
-    apply(fitPlanView(fitArgs.current.content, area.current, fitArgs.current.insets));
+    const { content: box, insets: free, fitWidth: byWidth } = fitArgs.current;
+    apply(fitPlanView(box, area.current, free, byWidth));
   }, [apply]);
 
   // The area's size: the first one fits the plan's content, later ones keep the view.
@@ -114,9 +118,11 @@ export function usePlanSurface({
     const measure = () => {
       const r = el.getBoundingClientRect();
       if (!r.width || !r.height) return;
+      const widthChanged = r.width !== area.current.w;
       area.current = { w: r.width, h: r.height };
       const v = viewRef.current;
-      if (!v || !touched.current) fit();
+      // A sheet opening under the plan changes only the height: the view stays.
+      if (!v || (!touched.current && widthChanged)) fit();
       else apply(panPlanBy(v, area.current, 0, 0));
     };
     measure();
