@@ -9,6 +9,8 @@ function generatedKeys(): string[] {
   // Cards added on top, sent to the back (keys before `a0`), then slotted in between.
   for (let i = 0; i < 80; i += 1) keys.push(generateKeyBetween(keys.at(-1) ?? null, null));
   for (let i = 0; i < 80; i += 1) keys.unshift(generateKeyBetween(null, keys[0] ?? null));
+  const a0 = keys.indexOf('a0');
+  keys.splice(a0 + 1, 0, ...generateNKeysBetween('a0', keys[a0 + 1] ?? null, 8));
   for (let i = keys.length - 2; i >= 0; i -= 7)
     keys.splice(i + 1, 0, ...generateNKeysBetween(keys[i] ?? null, keys[i + 1] ?? null, 5));
   return keys;
@@ -36,7 +38,12 @@ it('breaks equal generated keys by id, whatever the input order', () => {
   ];
   const expected = ['B', 'b', 'Bb', 'a'];
   expect([...els].sort(compareZ).map((e) => e.id)).toEqual(expected);
-  expect([...els].reverse().sort(compareZ).map((e) => e.id)).toEqual(expected);
+  expect(
+    [...els]
+      .reverse()
+      .sort(compareZ)
+      .map((e) => e.id),
+  ).toEqual(expected);
 });
 
 /**
@@ -45,14 +52,13 @@ it('breaks equal generated keys by id, whatever the input order', () => {
  */
 it('shows that localeCompare orders generated keys differently', () => {
   const keys = generatedKeys();
-  const disagree: [string, string][] = [];
-  for (const a of keys)
-    for (const b of keys)
-      if (a < b && a.localeCompare(b) > 0 && disagree.length < 1000) disagree.push([a, b]);
+  const disagree = (a: string, b: string) => a < b && a.localeCompare(b) > 0;
   // A card sent to the back (`Zz`) came after the first one (`a0`).
-  expect(disagree).toContainEqual(['Zz', 'a0']);
+  expect(keys).toContain('Zz');
+  expect(disagree('Zz', 'a0')).toBe(true);
   // Cards slotted in between `a0` and `a1`: an upper-case digit such as `V` (before `l` by code
   // unit) collates as `v`, after `l`.
-  expect(disagree.some(([a, b]) => a.slice(0, 2) === 'a0' && b.slice(0, 2) === 'a0')).toBe(true);
+  const slotted = keys.filter((k) => k.startsWith('a0') && k.length > 2);
+  expect(slotted.some((a) => slotted.some((b) => disagree(a, b)))).toBe(true);
   expect([...keys].sort((a, b) => a.localeCompare(b))).not.toEqual(keys);
 });

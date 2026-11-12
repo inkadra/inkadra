@@ -44,7 +44,6 @@ export interface SceneGroup {
 export const isDrawn = (f: Pick<FrameElement, 'assetId' | 'strokes' | 'shapes'>) =>
   !!f.assetId || (f.strokes?.length ?? 0) > 0 || (f.shapes?.length ?? 0) > 0;
 
-
 /** Scenes in order, each with its frames in shooting order; loose frames come last. */
 export function storyboardOf(elements: readonly Element[]): SceneGroup[] {
   const all = [...elements];

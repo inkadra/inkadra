@@ -141,7 +141,6 @@ export function currentElements(doc: Y.Doc): Element[] {
   return views.get(doc)?.() ?? listElements(doc);
 }
 
-
 /** Elements placed directly on the canvas, in drawing order. */
 export function canvasElements(elements: Element[]): Element[] {
   return elements.filter((e) => e.parent === null).sort(compareZ);

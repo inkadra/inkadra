@@ -7,8 +7,9 @@ const order = (els: { z: string; id: string }[]) =>
   [...els].sort(compareZ).map((e) => `${e.z}/${e.id}`);
 
 it('orders keys by code unit: upper case, then lower case, digits first, shorter first', () => {
-  expect(order([el('a1', 'x'), el('a0v', 'x'), el('Zz', 'x'), el('a0V', 'x'), el('a0', 'x')]))
-    .toEqual(['Zz/x', 'a0/x', 'a0V/x', 'a0v/x', 'a1/x']);
+  expect(
+    order([el('a1', 'x'), el('a0v', 'x'), el('Zz', 'x'), el('a0V', 'x'), el('a0', 'x')]),
+  ).toEqual(['Zz/x', 'a0/x', 'a0V/x', 'a0v/x', 'a1/x']);
   expect(order([el('aA', 'x'), el('a9', 'x'), el('a', 'x')])).toEqual(['a/x', 'a9/x', 'aA/x']);
 });
 
@@ -22,7 +23,7 @@ it('is a consistent comparator', () => {
   for (const a of els) {
     expect(compareZ(a, a)).toBe(0);
     for (const b of els) {
-      expect(Math.sign(compareZ(a, b))).toBe(-Math.sign(compareZ(b, a)));
+      expect(Math.sign(compareZ(a, b)) + Math.sign(compareZ(b, a))).toBe(0);
       for (const c of els)
         if (compareZ(a, b) < 0 && compareZ(b, c) < 0) expect(compareZ(a, c)).toBeLessThan(0);
     }
