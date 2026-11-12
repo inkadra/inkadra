@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { expect, it } from 'vitest';
-import { readUserPreferences } from './preferences.ts';
+import { addPlanRecents, readUserPreferences, togglePlanFavorite } from './preferences.ts';
 
 it('keeps the valid icons of a list with a bad entry, once each and within the limit', () => {
   const read = readUserPreferences({
@@ -59,4 +59,36 @@ it("keeps the set plan editor's choices: defaults, types, the hidden groups once
   ).toHaveLength(10);
   expect(readUserPreferences({ planShelf: 'x'.repeat(41) }).planShelf).toBe('lights');
   expect(readUserPreferences({ planShelf: '' }).planShelf).toBe('lights');
+});
+
+it('puts the set plan icons just placed first in the recents, once each and capped', () => {
+  expect(addPlanRecents(['fresnel', 'flag'], ['softbox'])).toEqual(['softbox', 'fresnel', 'flag']);
+  // Placed again: moved to the front, not listed twice.
+  expect(addPlanRecents(['fresnel', 'flag', 'softbox'], ['softbox'])).toEqual([
+    'softbox',
+    'fresnel',
+    'flag',
+  ]);
+  // A burst, newest first, merged with the stored list; a kind this build does not know stays.
+  expect(addPlanRecents(['hologram', 'flag'], ['cob', 'flag'])).toEqual([
+    'cob',
+    'flag',
+    'hologram',
+  ]);
+  const full = Array.from({ length: 8 }, (_, i) => `kind${i}`);
+  expect(addPlanRecents(full, ['new'])).toEqual(['new', ...full.slice(0, 7)]);
+  expect(addPlanRecents([], [])).toEqual([]);
+});
+
+it('stars a set plan icon last, or unstars it, keeping kinds this build does not know', () => {
+  expect(togglePlanFavorite(['fresnel', 'hologram'], 'softbox')).toEqual([
+    'fresnel',
+    'hologram',
+    'softbox',
+  ]);
+  expect(togglePlanFavorite(['fresnel', 'hologram', 'softbox'], 'fresnel')).toEqual([
+    'hologram',
+    'softbox',
+  ]);
+  expect(togglePlanFavorite([], 'arrow')).toEqual(['arrow']);
 });

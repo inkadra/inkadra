@@ -66,6 +66,18 @@ one file each imported by path (`@inkadra/shared/shot-words/it`), tested both wa
 words are. The catalogs' cache, refresh and hooks, and adding a value from where it is used, stay
 in the web (`lib/classifications.ts`: state, React and the server's endpoint).
 
+For the native set plan editor to offer the same library, these moved too (the library's search
+stayed in the web until then). In `packages/canvas-core` (`plan-library.ts`): what the library
+offers (`LIBRARY_CATEGORIES`, `LibraryItem`, `LibraryCategoryId`, `isNoteTool`), its search
+(`searchLibrary` with `LibraryHit`: by name, other names, category and group, ranked prefix,
+name, synonym, category, the shorter name first among prefixes, then the catalogue's order;
+`foldSearch`, how text is compared, case and accents ignored), the names it writes (`tileName`,
+`placeOf`, `projectKitDetail`) and `knownLibraryItems` (the ids of a stored list a build knows).
+The words they ask for are in `PLAN_WORDS_EN` and the five languages (`board.plan.lib.alsoCalled`
+was added). In `packages/shared`, beside the preferences they write: `addPlanRecents` (newest
+first, each once, at most the 8 the account keeps) and `togglePlanFavorite` (a new star last),
+both on the stored list, so ids a build does not know are kept.
+
 One behaviour changed with the move, on purpose: the kit, the names on a circuit and the count
 across setups went by the translated name, so two kinds a language writes alike (or two specs
 that read alike) were one line in that language and two in English. They now go by what the item
@@ -75,9 +87,10 @@ every client, even when two lines read the same.
 
 Stays in the web: the Kit tab, the view and the card as React; the PDF sheet's layout and
 drawing; the clipboard copy of the kit; `measureValue`, `selectionMix` and the seats of the
-Properties (editing); the library's search (`library.ts`, editing); reading the schedule and the
-project kit from the server (`useScheduleDays`, `useOtherKits`: the derivation of the project kit
-was already in canvas-core).
+Properties (editing); the library panel, its rail, tiles, drag and drop, and the timer that
+saves the recents (`PlanLibrary.tsx`); reading the schedule and the project kit from the server
+(`useScheduleDays`, `useOtherKits`: the derivation of the project kit was already in
+canvas-core).
 
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would

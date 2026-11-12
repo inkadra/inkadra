@@ -126,6 +126,24 @@ export type UpdateUserPreferences = z.infer<typeof UpdateUserPreferences>;
 /** Lists of ids (set plan icons, tutorials) and their limits, read entry by entry. */
 const ID_LISTS = { planFavorites: 60, planRecents: 8, planHidden: 10, tutorialsSeen: 100 } as const;
 
+/**
+ * The set plan recents after placing `used` (newest first): those first, then the stored ones
+ * not among them, each once, at most as many as the account keeps. Ids a client does not know
+ * stay where they are, so a newer build's kinds are not lost by an older one (decision 0062).
+ */
+export function addPlanRecents(stored: readonly string[], used: readonly string[]): string[] {
+  return [...new Set([...used, ...stored])].slice(0, ID_LISTS.planRecents);
+}
+
+/**
+ * The set plan favourites with `item` starred, or unstarred if it was: a new star goes last,
+ * each id once. Pass the stored list, not the ones shown, so stars on kinds a client does not
+ * know are kept.
+ */
+export function togglePlanFavorite(stored: readonly string[], item: string): string[] {
+  return stored.includes(item) ? stored.filter((k) => k !== item) : [...new Set([...stored, item])];
+}
+
 /** What a person who never changed anything gets. */
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   releaseNews: false,
