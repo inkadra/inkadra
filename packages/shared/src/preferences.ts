@@ -65,7 +65,8 @@ const fields = {
     .openapi({
       description:
         'Layers and groups of a set plan this person hides for themselves while editing, on every ' +
-        'plan (decision 0119). Open list: clients skip names they do not know.',
+        'plan (decision 0119): group names (`set`, `lights`, `camera`, `actors`, `notes`, `grip`), ' +
+        'never plan ids. Open list: clients skip names they do not know.',
     }),
   planShelf: z.string().min(1).max(40).openapi({
     description: 'The set plan library category this person looked at last.',
@@ -160,7 +161,9 @@ export function readUserPreferences(stored: unknown): UserPreferences {
   const out: Record<string, unknown> = { ...DEFAULT_USER_PREFERENCES };
   for (const [key, schema] of Object.entries(fields)) {
     const parsed = schema.safeParse(record[key]);
-    if (parsed.success && record[key] !== undefined) out[key] = parsed.data;
+    if (parsed.success && record[key] !== undefined)
+      // A list of ids keeps each once, even when the list is valid as a whole.
+      out[key] = key in ID_LISTS ? [...new Set(parsed.data as string[])] : parsed.data;
     else if (key in ID_LISTS && Array.isArray(record[key]))
       // One bad entry does not cost the person the whole list: keep the valid ones.
       out[key] = [

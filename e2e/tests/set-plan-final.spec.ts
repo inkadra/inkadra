@@ -99,6 +99,7 @@ async function seed(page: Page, baseURL: string) {
   );
   await pushBoardDoc(baseURL, cookie, root, doc);
   // Three shooting days; the third shoots the scene's shot.
+  const days: Array<{ id: string; revision: number; date: string }> = [];
   for (const [date, shot] of [
     ['2026-03-12', null],
     ['2026-03-13', null],
@@ -129,6 +130,7 @@ async function seed(page: Page, baseURL: string) {
       },
     });
     expect(day.status()).toBe(201);
+    days.push(await day.json());
   }
   const saved = async () => {
     const stored = await readBoard(baseURL, cookie, root);
@@ -136,7 +138,7 @@ async function seed(page: Page, baseURL: string) {
       .map((m) => readElement(m))
       .find((e): e is Plan => e?.id === plan.id) as Plan;
   };
-  return { project, planId: plan.id, saved };
+  return { project, root, planId: plan.id, saved, days };
 }
 
 test('the plan opens at 100 % with its room sizes, stools counted, the sun on a shooting day, choices kept', async ({
@@ -147,7 +149,7 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
   test.setTimeout(180_000);
   mkdirSync(out, { recursive: true });
   await page.setViewportSize({ width: 1280, height: 800 });
-  const { project, planId, saved } = await seed(page, baseURL!);
+  const { project, root, planId, saved, days } = await seed(page, baseURL!);
   const prefs = async () =>
     (await (await page.request.get('/api/v1/me/preferences')).json()) as Record<string, unknown>;
   try {
@@ -166,6 +168,11 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
     await expect(editor.locator('[data-room-dims] text')).toHaveText(['8,0 m', '6,3 m']);
     await editor.getByRole('button', { name: 'Ingrandisci' }).click();
     await expect(percent).toHaveText('150%');
+    // The number moves only with the zoom: a narrower window keeps 150 % (decision 0119).
+    await page.setViewportSize({ width: 1180, height: 760 });
+    await page.waitForTimeout(300);
+    await expect(percent).toHaveText('150%');
+    await page.setViewportSize({ width: 1280, height: 800 });
     await page.keyboard.press('0');
     await expect(percent).toHaveText('100%');
 
@@ -186,8 +193,47 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
     await expect(props.locator('.plan-num__lead')).toHaveText('In alto,');
     await props.getByRole('combobox', { name: 'Data' }).click();
     await page.getByRole('option', { name: /Giorno 3 delle riprese/ }).click();
-    await expect.poll(async () => (await saved()).sun?.date).toBe('2026-03-14');
+    // A link to the day, not a copy of its date (decision 0119).
+    const day3 = days[2] as { id: string; revision: number };
+    await expect
+      .poll(async () => {
+        const sun = (await saved()).sun;
+        return [sun?.day, sun?.date];
+      })
+      .toEqual([day3.id, '2026-03-14']);
     await page.screenshot({ path: join(out, 'final-1280-sun.png') });
+    // The day moves to the 20th: the sun's date follows it, still "Day 3".
+    const moved = await page.request.put(`/api/v1/boards/${root}/schedule/${day3.id}`, {
+      headers: { origin: baseURL! },
+      data: {
+        date: '2026-03-20',
+        callTime: '08:00',
+        wrap: null,
+        location: 'Da Rosa',
+        notes: '',
+        blocks: [],
+        revision: day3.revision,
+      },
+    });
+    expect(moved.ok()).toBe(true);
+    const movedDay = (await moved.json()) as { revision: number };
+    await page.reload();
+    await page.locator(`[data-el="${planId}"]`).dblclick();
+    await pick(/^Sole/);
+    await expect(props.getByRole('combobox', { name: 'Data' })).toContainText(
+      'Giorno 3 delle riprese',
+    );
+    // Deleted: the plan keeps its last date as a plain date and says so.
+    const gone = await page.request.delete(`/api/v1/boards/${root}/schedule/${day3.id}`, {
+      headers: { origin: baseURL! },
+      data: { revision: movedDay.revision },
+    });
+    expect(gone.ok()).toBe(true);
+    await page.reload();
+    await page.locator(`[data-el="${planId}"]`).dblclick();
+    await pick(/^Sole/);
+    await expect(props.getByRole('status').filter({ hasText: 'tolto' })).toBeVisible();
+    await expect(props.getByLabel('Data')).toHaveValue('2026-03-14');
 
     // Personal choices live in the account: snap to the grid off (G), Lights hidden for me.
     const area = (await editor.locator('.plan-main__canvas').boundingBox())!;
@@ -205,6 +251,14 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
     await page.locator(`[data-el="${planId}"]`).dblclick();
     await editor.getByRole('tab', { name: 'Elementi' }).click();
     await expect(elements.getByRole('button', { name: 'Mostra Luci' })).toBeVisible();
+    // A hidden item's row stays reachable by keyboard and shows the way back (decision 0119).
+    const sunRow = elements.getByRole('button', { name: /^Sole/ }).first();
+    await sunRow.focus();
+    await page.keyboard.press('Enter');
+    await editor.getByRole('tab', { name: 'Proprietà' }).click();
+    await expect(props.getByRole('status')).toContainText('Nascosto: Luci');
+    await props.getByRole('button', { name: 'Mostra Luci' }).click();
+    await expect.poll(async () => (await prefs()).planHidden).toEqual([]);
 
     // A phone fits the room by its width.
     const phone = await browser.newContext({

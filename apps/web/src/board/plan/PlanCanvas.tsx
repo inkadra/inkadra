@@ -1497,7 +1497,7 @@ export function PlanCanvas({
         onClick={() => {
           const next = { ...movingIcon };
           delete next.steps;
-          delete next.note;
+          delete next.stepNote;
           delete next.dashed;
           ed.write(next);
         }}

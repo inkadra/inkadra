@@ -170,6 +170,11 @@ export function usePlanEditing(props: PlanEditorProps) {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [penColor, setPenColor] = useState<string | null>(null);
   const [lockedItem, setLockedItem] = useState<PlanItem | null>(null);
+  /** An item picked in Elements on a layer or group that is hidden (decision 0119). */
+  const [hiddenItem, setHiddenItem] = useState<{
+    item: PlanItem | PlanWall | PlanOpening;
+    group: PlanGroupName;
+  } | null>(null);
   const [tab, setTab] = useState<PanelTab>('properties');
   const [sheet, setSheet] = useState<PhoneSheet>(null);
   /** The item being moved or turned, shown in place until the gesture ends. */
@@ -625,6 +630,8 @@ export function usePlanEditing(props: PlanEditorProps) {
     setDropTarget,
     penColor,
     lockedItem,
+    hiddenItem,
+    setHiddenItem,
     setLockedItem,
     tab,
     setTab,

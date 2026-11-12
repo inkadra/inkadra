@@ -1244,6 +1244,8 @@
       "setScale": "Imposta la scala",
       "scaleHint": "Traccia una linea su qualcosa di cui conosci la misura",
       "rulers": "Righelli",
+      "roomSizes": "Misure delle stanze",
+      "roomOverall": "{{size}} in tutto",
       "clearScale": "Togli la scala",
       "cancel": "Annulla",
       "lineIs": "La linea che hai tracciato è lunga",
@@ -1255,14 +1257,7 @@
       "lockLayer": "Blocca {{layer}}",
       "unlockLayer": "Sblocca {{layer}}",
       "layersHint": "Il livello attivo ({{layer}}) riceve le icone, i tratti e le forme nuove. Cosa nascondi qui è solo tuo; cosa nascondi in una variante vale per tutti.",
-      "hiddenAs": {
-        "set": "Set nascosto",
-        "lights": "Luci nascoste",
-        "camera": "Camera nascosta",
-        "actors": "Attori nascosti",
-        "notes": "Note nascoste",
-        "grip": "Grip e troupe nascosti"
-      },
+      "hiddenAs": "Nascosto: {{layer}}",
       "lockedAs": {
         "set": "Set bloccato",
         "lights": "Luci bloccate",
@@ -1546,6 +1541,7 @@
         "today": "Oggi",
         "shootDay": "Giorno {{n}} delle riprese",
         "otherDate": "Un’altra data…",
+        "dayGone": "Il giorno di ripresa è stato tolto dal piano di lavorazione: la pianta tiene la sua ultima data.",
         "from": {
           "north": "Da nord",
           "northEast": "Da nord-est",

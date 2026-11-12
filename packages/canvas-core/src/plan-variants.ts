@@ -47,6 +47,7 @@ export interface PlanBase {
   scale?: number | undefined;
   grid?: Plan['grid'];
   rulers?: boolean | undefined;
+  roomSizes?: boolean | undefined;
   circuits?: PlanCircuit[];
   voltage?: Plan['voltage'];
   background?: Plan['background'];
@@ -136,6 +137,7 @@ export function planBaseOf(base: Y.Map<unknown>): PlanBase {
     ...(typeof scale === 'number' && scale
       ? { scale, grid: base.get('grid') as Plan['grid'], rulers: base.get('rulers') as boolean }
       : {}),
+    ...(base.get('roomSizes') === false ? { roomSizes: false } : {}),
   };
 }
 
@@ -156,7 +158,7 @@ export function adoptBase(variant: Y.Map<unknown>, base: PlanBase): void {
         : items,
     );
   }
-  for (const key of ['scale', 'grid', 'rulers'] as const)
+  for (const key of ['scale', 'grid', 'rulers', 'roomSizes'] as const)
     if (base[key] !== undefined && variant.get(key) === undefined) variant.set(key, base[key]);
   const ownList = variant.get('circuits');
   const own = {

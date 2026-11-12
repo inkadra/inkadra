@@ -1,28 +1,73 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { ShootingDay } from '@inkadra/shared';
+import type { Schedule, ShootingDay } from '@inkadra/shared';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '../../lib/api.ts';
+import { whileVisible } from '../film/schedule.ts';
 
-/** A shooting day offered as the sun's date: its number in the shoot and its date. */
+/** A shooting day the sun's date can follow: its id, its number in the shoot and its date. */
 export interface SunDay {
+  id: string;
   n: number;
   date: string;
 }
 
+type Day = Pick<ShootingDay, 'id' | 'date' | 'blocks'>;
+
 /**
- * The days the sun's date can be (decision 0119): the shooting days of the board's schedule, the
- * same `GET /boards/:id/schedule` ScheduleView reads, numbered as it numbers them (by date, from
- * 1). When the plan serves scenes, only the days that shoot one of their shots; all of them when it
- * serves none or no day shoots them yet.
+ * The days the sun's date can be (decision 0119): the shooting days of the board's schedule,
+ * numbered as ScheduleView numbers them (by date, from 1). When `shots` (the frames of the plan's
+ * scenes) is not empty, only the days that shoot one of them; all of them when it is, or when no
+ * day shoots them yet.
  */
-export function sunDays(
-  days: readonly Pick<ShootingDay, 'date' | 'blocks'>[],
-  /** The frames of the plan's scenes; empty when the plan serves no scene. */
-  shots: ReadonlySet<string>,
-): SunDay[] {
+export function sunDays(days: readonly Day[], shots: ReadonlySet<string>): SunDay[] {
   const all = [...days]
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((d, i) => ({ n: i + 1, date: d.date, blocks: d.blocks }));
+    .map((d, i) => ({ id: d.id, n: i + 1, date: d.date, blocks: d.blocks }));
   const ofScenes = all.filter((d) => d.blocks.some((b) => b.shotId && shots.has(b.shotId)));
-  return (ofScenes.length ? ofScenes : all).map(({ n, date }) => ({ n, date }));
+  return (ofScenes.length ? ofScenes : all).map(({ id, n, date }) => ({ id, n, date }));
+}
+
+/**
+ * The board's shooting days for the sun (decision 0119): read once per board from the endpoint
+ * ScheduleView reads, and again the way it refreshes them (`whileVisible`: when the tab comes back
+ * and every minute while it is in view), never on an edit of the board. Null until they arrive,
+ * and for a guest or offline, who keep the date picker.
+ */
+export function useScheduleDays(boardId: string | undefined): readonly Day[] | null {
+  const [days, setDays] = useState<readonly Day[] | null>(null);
+  useEffect(() => {
+    setDays(null);
+    if (!boardId) return;
+    let alive = true;
+    const read = () =>
+      api.get<Schedule>(`/boards/${boardId}/schedule`).then(
+        (r) => alive && setDays(r.items),
+        () => {},
+      );
+    void read();
+    const stop = whileVisible(() => void read());
+    return () => {
+      alive = false;
+      stop();
+    };
+  }, [boardId]);
+  return days;
+}
+
+/**
+ * The days offered for a plan, and every day numbered (to find a linked day the plan's scenes no
+ * longer shoot): derived from the days read and the plan's shots, a key that only changes when
+ * the shots do, not on every edit of the board.
+ */
+export function useSunDays(
+  days: readonly Day[] | null,
+  shotKey: string,
+): { offered: SunDay[]; all: SunDay[] | null } {
+  return useMemo(() => {
+    if (!days) return { offered: [], all: null };
+    const shots = new Set(shotKey.split(' ').filter(Boolean));
+    return { offered: sunDays(days, shots), all: sunDays(days, new Set()) };
+  }, [days, shotKey]);
 }
 
 /** Eight ways north can point, from the top of the drawing clockwise, for "Up, 0°". */

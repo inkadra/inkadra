@@ -231,8 +231,11 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
       stroke: c['border-default'],
       lineWidth: 0.75,
     });
-    // What the editor showed, or what is drawn on the plan (decision 0118).
-    const area = input.area ?? planFrame(plan, include.background);
+    // What the editor showed, or what is drawn on the plan in the frame's own shape, so it
+    // fills the frame with the card's small margin (decisions 0118 and 0119).
+    const area =
+      input.area ??
+      planFrame(plan, include.background, [], (frame.w - 16) / Math.max(1, frame.h - 16));
     const k = Math.min((frame.w - 16) / area.w, (frame.h - 16) / area.h);
     const shown = { w: area.w * k, h: area.h * k };
     const view = {

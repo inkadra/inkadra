@@ -23,7 +23,9 @@ import {
   PLAN_CATEGORIES,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
+  PLAN_GRIP,
   type PlanAlign,
+  type PlanGroupName,
   type PlanItem,
   SEATS,
   SYMBOL_PERCENT,
@@ -151,6 +153,8 @@ export function PlanProperties({
   compact?: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  const groupName = (g: PlanGroupName) =>
+    g === PLAN_GRIP ? t('board.plan.gripGroup') : t(`board.plan.layers.${g}`);
   const [otherLens, setOtherLens] = useState(false);
   const [otherGel, setOtherGel] = useState(false);
   const [palette, setPalette] = useState<CSSProperties | null>(null);
@@ -468,7 +472,8 @@ export function PlanProperties({
                 aria-label={t('board.plan.stepNote', { number: i + 1 })}
                 placeholder={t('board.plan.stepPlaceholder')}
                 maxLength={200}
-                value={(stepAt ? stepAt.note : icon.note) ?? ''}
+                // The last position has a note of its own, apart from the item's (0119).
+                value={(stepAt ? stepAt.note : icon.stepNote) ?? ''}
                 {...fieldEvents}
                 onChange={(e) => {
                   const text = e.target.value;
@@ -477,8 +482,8 @@ export function PlanProperties({
                     const edited: PlanStep = { ...stepAt, note: text };
                     if (!text) delete edited.note;
                     (next.steps as PlanStep[])[i] = edited;
-                  } else if (text) next.note = text;
-                  else delete next.note;
+                  } else if (text) next.stepNote = text;
+                  else delete next.stepNote;
                   ed.writeItems([next]);
                 }}
               />
@@ -1038,7 +1043,7 @@ export function PlanProperties({
         </div>
         {positions(icon, t('board.plan.movement'))}
         {/* With positions, the last one's note is the item's note (decision 0104): one field. */}
-        {!icon.steps?.length && note(icon)}
+        {note(icon)}
         {actions(icon)}
       </>
     );
@@ -1113,7 +1118,7 @@ export function PlanProperties({
           )}
         {positions(icon, t('board.plan.movement'))}
         {/* With positions, the last one's note is the item's note (decision 0104): one field. */}
-        {!icon.steps?.length && note(icon)}
+        {note(icon)}
         {actions(icon)}
       </>
     );
@@ -1286,6 +1291,21 @@ export function PlanProperties({
             }}
           >
             {t('board.plan.unlock')}
+          </Button>
+        </div>
+      ) : ed.hiddenItem && ed.hiddenLayers.has(ed.hiddenItem.group) ? (
+        // Picked in Elements on a hidden layer or group: out of reach on the plan, shown here
+        // with the way back (decision 0119).
+        <div className="plan-props__locked" role="status">
+          <Icon name="eyeOff" size={16} />
+          <span>{t('board.plan.hiddenAs', { layer: groupName(ed.hiddenItem.group) })}</span>
+          <Button
+            onClick={() => {
+              ed.toggleHidden((ed.hiddenItem as { group: PlanGroupName }).group);
+              ed.setHiddenItem(null);
+            }}
+          >
+            {t('board.plan.showLayer', { layer: groupName(ed.hiddenItem.group) })}
           </Button>
         </div>
       ) : ed.lockedItem ? (

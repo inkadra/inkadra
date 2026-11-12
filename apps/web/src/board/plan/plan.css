@@ -1817,9 +1817,8 @@ span.plan-pill {
   padding-left: 30px;
   color: var(--ink-text-secondary);
 }
-.plan-elements__item:disabled {
+.plan-elements__item[data-hidden] {
   opacity: 0.5;
-  cursor: default;
 }
 .plan-kit__section ul {
   margin: 4px 0 0;

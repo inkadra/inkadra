@@ -1244,6 +1244,8 @@
       "setScale": "Definir la escala",
       "scaleHint": "Traza una línea sobre algo cuya medida conozcas",
       "rulers": "Reglas",
+      "roomSizes": "Medidas de las habitaciones",
+      "roomOverall": "{{size}} en total",
       "clearScale": "Quitar la escala",
       "cancel": "Cancelar",
       "lineIs": "La línea que trazaste mide",
@@ -1255,14 +1257,7 @@
       "lockLayer": "Bloquear {{layer}}",
       "unlockLayer": "Desbloquear {{layer}}",
       "layersHint": "La capa activa ({{layer}}) recibe los iconos, trazos y formas nuevos. Lo que ocultas aquí es solo para ti; lo que ocultas en una variante vale para todos.",
-      "hiddenAs": {
-        "set": "Set oculto",
-        "lights": "Luces ocultas",
-        "camera": "Cámara oculta",
-        "actors": "Actores ocultos",
-        "notes": "Notas ocultas",
-        "grip": "Grip y equipo ocultos"
-      },
+      "hiddenAs": "Oculto: {{layer}}",
       "lockedAs": {
         "set": "Set bloqueado",
         "lights": "Luces bloqueadas",
@@ -1546,6 +1541,7 @@
         "today": "Hoy",
         "shootDay": "Día {{n}} de rodaje",
         "otherDate": "Otra fecha…",
+        "dayGone": "El día de rodaje se quitó del plan de rodaje: el plano conserva su última fecha.",
         "from": {
           "north": "Desde el norte",
           "northEast": "Desde el noreste",

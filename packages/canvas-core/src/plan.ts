@@ -376,7 +376,8 @@ export function addBlockingStep(icon: PlanIcon, to: Point): PlanIcon {
     x: icon.x,
     y: icon.y,
     ...(icon.rotation ? { rotation: icon.rotation } : {}),
-    ...(icon.note ? { note: icon.note } : {}),
+    // The note of the position it leaves goes with it; the item's own note stays (0119).
+    ...(icon.stepNote ? { note: icon.stepNote } : {}),
   };
   const next: PlanIcon = {
     ...icon,
@@ -384,7 +385,7 @@ export function addBlockingStep(icon: PlanIcon, to: Point): PlanIcon {
     y: clampGrid(to.y * STROKE_GRID),
     steps: [...(icon.steps ?? []), step].slice(-30),
   };
-  delete next.note;
+  delete next.stepNote;
   if (categoryOf(icon.kind).family === 'person') {
     const facing = normalizeRotation((Math.atan2(at.y - from.y, at.x - from.x) * 180) / Math.PI);
     if (facing) next.rotation = facing;
@@ -1095,6 +1096,7 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
         | 'scale'
         | 'grid'
         | 'rulers'
+        | 'roomSizes'
         | 'walls'
         | 'openings'
         | 'circuits'
@@ -1107,7 +1109,7 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
   if (!base) return plan;
   // The Set is the base's, and so is its scale: walls measured once, metres in every variant.
   const shared = base as Partial<
-    Pick<PlanElement, 'scale' | 'grid' | 'rulers' | 'circuits' | 'voltage'>
+    Pick<PlanElement, 'scale' | 'grid' | 'rulers' | 'roomSizes' | 'circuits' | 'voltage'>
   >;
   const own = (plan as Partial<Pick<PlanElement, 'circuits'>>).circuits ?? [];
   const baseCircuits = shared.circuits ?? [];
@@ -1116,6 +1118,8 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
     scale: shared.scale,
     grid: shared.grid,
     rulers: shared.rulers,
+    // The rooms are the base's, and so is whether their sizes show (decision 0119).
+    roomSizes: shared.roomSizes,
     strokes: [...onlySet(base.strokes), ...(plan.strokes ?? [])],
     shapes: [...onlySet(base.shapes), ...(plan.shapes ?? [])],
     icons: [...onlySet(base.icons), ...(plan.icons ?? [])],

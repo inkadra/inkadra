@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
-import { iconCone, labelAnchor, PLAN_VIEW_H, PLAN_VIEW_W } from './plan.ts';
+import { iconCone, labelAnchor, PLAN_VIEW_H, PLAN_VIEW_W, variantView } from './plan.ts';
 import { PLAN_LABEL_SIZE } from './plan-labels.ts';
 import {
   boundPlanView,
@@ -17,7 +17,7 @@ import {
   stepPlanZoom,
   zoomPlanAround,
 } from './plan-view.ts';
-import { planRoomDims, roomDims, roomMetres } from './plan-walls.ts';
+import { planRoomDims, planRooms, roomDims, roomMetres } from './plan-walls.ts';
 
 const area = { w: 876, h: 848 };
 const toScreen = (v: { x: number; y: number; zoom: number }, p: { x: number; y: number }) => ({
@@ -275,7 +275,104 @@ describe('zoom, room sizes and the room a phone fits (decision 0119)', () => {
     expect(top?.a.y).toBeLessThan(100);
     expect(left?.a.x).toBeLessThan(160);
     expect(roomMetres(560, 70, 'en')).toBe('8.0 m');
-    expect(roomDims({ ...room, points: room.points.slice(0, 4) })).toEqual([]);
+    expect(
+      roomDims({
+        points: [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+        ],
+        thickness: 9,
+        walls: [],
+      }),
+    ).toEqual([]);
+    // The plan's own switch hides them (version 26).
+    expect(planRoomDims({ walls: [room], scale: 70, roomSizes: false })).toEqual([]);
+  });
+
+  const wall = (id: string, pts: Array<[number, number]>, closed = false) => ({
+    id: `wall${id}`.padEnd(13, 'A'),
+    points: pts.flatMap(([x, y]) => [g(x), gy(y)]),
+    thickness: 9,
+    ...(closed ? { closed: true } : {}),
+  });
+  const box = (id: string, x0: number, y0: number, x1: number, y1: number) =>
+    wall(
+      id,
+      [
+        [x0, y0],
+        [x1, y0],
+        [x1, y1],
+        [x0, y1],
+      ],
+      true,
+    );
+
+  it('writes the sizes of a room on its free sides, clear of the room beside or above it', () => {
+    // Side by side: the right room's depth would cross the left room, so it goes on its right.
+    const left = box('L', 100, 100, 300, 300);
+    const right = box('R', 320, 100, 520, 300);
+    const dims = planRoomDims({ walls: [left, right], scale: 70 });
+    expect(dims).toHaveLength(4);
+    expect(dims[3]?.a.x).toBeGreaterThan(520);
+    // One below another: the lower room's width goes under it, not across the upper room.
+    const upper = box('U', 100, 100, 400, 200);
+    const lower = box('D', 100, 220, 400, 320);
+    expect(planRoomDims({ walls: [upper, lower], scale: 70 })[2]?.a.y).toBeGreaterThan(320);
+    // Alone, a room keeps the mockup's sides: over the top and down the left.
+    const [top, side] = planRoomDims({ walls: [left], scale: 70 });
+    expect(top?.a.y).toBeLessThan(100);
+    expect(side?.a.x).toBeLessThan(100);
+  });
+
+  it('gives an L room its overall size, and makes a room of open walls that close a loop', () => {
+    const l = wall(
+      'L',
+      [
+        [100, 100],
+        [300, 100],
+        [300, 200],
+        [200, 200],
+        [200, 300],
+        [100, 300],
+      ],
+      true,
+    );
+    expect(planRoomDims({ walls: [l], scale: 70 }).map((d) => d.overall)).toEqual([true, true]);
+    expect(planRoomDims({ walls: [room], scale: 70 }).map((d) => d.overall)).toEqual([
+      false,
+      false,
+    ]);
+    // Four walls drawn one by one, two of them backwards, meet in a loop: one room.
+    const sides = [
+      wall('1', [
+        [100, 100],
+        [300, 100],
+      ]),
+      wall('2', [
+        [300, 300],
+        [300, 100],
+      ]),
+      wall('3', [
+        [300, 300],
+        [100, 300],
+      ]),
+      wall('4', [
+        [100, 100],
+        [100, 300],
+      ]),
+    ];
+    const rooms = planRooms(sides);
+    expect(rooms).toHaveLength(1);
+    expect(rooms[0]?.walls).toHaveLength(4);
+    const [w, d] = planRoomDims({ walls: sides, scale: 70 });
+    expect(w?.length).toBeCloseTo(200, 0);
+    expect(d?.length).toBeCloseTo(200, 0);
+    expect(w?.overall).toBe(false);
+    // Three walls that do not close: no room, no sizes.
+    expect(planRoomDims({ walls: sides.slice(0, 3), scale: 70 })).toEqual([]);
+    // Worked out once per list of walls.
+    const walls = [l];
+    expect(planRoomDims({ walls, scale: 70 })).toBe(planRoomDims({ walls, scale: 70 }));
   });
 
   it('frames the room sizes with what is drawn', () => {
@@ -290,5 +387,29 @@ describe('zoom, room sizes and the room a phone fits (decision 0119)', () => {
     expect(box.w).toBeCloseTo(560 + 9, 0);
     expect(planRoomBox({ walls: [{ ...room, closed: false }] })).toBeNull();
     expect(planRoomBox({ walls: [room] }, ['set'])).toBeNull();
+  });
+});
+
+describe('the frame of a sheet (decision 0119)', () => {
+  it('takes the shape of the frame it fills, so a near-square sheet frame is filled', () => {
+    const icons = [
+      { id: 'iconAAAAAAAAA', kind: 'cob', color: '#EDD963', x: 1000, y: 1000 },
+      { id: 'iconBBBBBBBBB', kind: 'cob', color: '#EDD963', x: 3000, y: 3000 },
+    ] as PlanIcon[];
+    const square = planFrame({ icons }, true, [], 1);
+    expect(square.w / square.h).toBeCloseTo(1, 5);
+    const plain = planFrame({ icons });
+    expect(plain.w / plain.h).toBeCloseTo(1.5, 5);
+    // The same content, a frame no larger than it needs on its long side.
+    expect(square.h).toBeLessThanOrEqual(plain.h * 1.5 + 1);
+  });
+});
+
+describe("a setup's room sizes (decision 0119)", () => {
+  it("follow the base's switch, as its walls do", () => {
+    const base = { strokes: [], shapes: [], icons: [], scale: 70, roomSizes: false };
+    const setup = { strokes: [], shapes: [], icons: [], roomSizes: true };
+    expect(variantView(setup, base).roomSizes).toBe(false);
+    expect(variantView(setup, { ...base, roomSizes: undefined }).roomSizes).toBeUndefined();
   });
 });

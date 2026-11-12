@@ -18,6 +18,7 @@ import {
   type Point,
   planWallAt,
   pointAlongWall,
+  planRooms,
   roomDims,
   sideAngle,
   snapWallEnd,
@@ -43,7 +44,7 @@ import { useTranslation } from 'react-i18next';
 import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
 import { measureValue } from './kit.ts';
-import { RoomDimView } from './PlanDrawing.tsx';
+import { RoomDimView, roomSizeText } from './PlanDrawing.tsx';
 
 /** The icon of each kind of opening, in the palette and the properties. */
 export const OPENING_ICONS: Record<PlanOpeningKind, IconName> = {
@@ -173,9 +174,8 @@ function OpeningDims({
  * one change of the document, one undo step.
  */
 export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom: number }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const metres = useMetres(ed);
-  const roomMetres = useMetres(ed, 1);
   const { tool, shown } = ed;
   const [angles, setAngles] = useState<WallAngles>('90');
   const [thickness, setThickness] = useState<number>(DEFAULT_WALL_METRES);
@@ -471,6 +471,8 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
   // width and distances.
   const picked = ed.wallSel;
   const pickedWall = picked?.kind === 'walls' ? walls.find((w) => w.id === picked.id) : undefined;
+  // The room the picked wall is part of: a closed wall, or open walls closing a loop (0119).
+  const pickedRoom = pickedWall && planRooms(walls).find((r) => r.walls.includes(pickedWall.id));
   const pickedOpening =
     picked?.kind === 'openings' ? shown.openings?.find((o) => o.id === picked.id) : undefined;
   const openingWall = pickedOpening && walls.find((w) => w.id === pickedOpening.wall);
@@ -496,10 +498,14 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
             ));
           })()}
           {/* A picked room's size: the drawing leaves its own out while a wall is picked. */}
-          {pickedWall.closed && (
+          {pickedRoom && (
             <g className="plan-walls__room" data-room-dims="">
-              {roomDims(pickedWall).map((d) => (
-                <RoomDimView key={`${d.a.x},${d.a.y}`} dim={d} text={roomMetres(d.length)} />
+              {roomDims(pickedRoom, walls).map((d) => (
+                <RoomDimView
+                  key={`${d.a.x},${d.a.y}`}
+                  dim={d}
+                  text={roomSizeText(d.length, ed.wallScale, d.overall, t, i18n.language)}
+                />
               ))}
             </g>
           )}

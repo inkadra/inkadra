@@ -236,3 +236,27 @@ it('crops the preview to the drawing: the frame fills the preview, sharp at the 
   expect(sheet.from.x + sheet.size.w).toBeLessThanOrEqual(sheet.page.w);
   expect(sheet.from.y + sheet.size.h).toBeLessThanOrEqual(sheet.page.h);
 });
+
+it('fills the drawing frame with what is drawn, in the frame’s own shape (decision 0119)', () => {
+  const [page] = planSheetPages(
+    {
+      setups: [{ plan, name: 'Setup 1', shots: [] }],
+      scene: '',
+      place: '',
+      area: null,
+      include: PLAN_SHEET_INCLUDE,
+      t,
+      locale: 'en',
+    },
+    ctx,
+  );
+  const ops = page?.ops ?? [];
+  // The frame is the rounded rect; the drawing is the clip inside it.
+  const frame = ops.find((o) => o.kind === 'rect' && o.radius === 6) as Extract<
+    Op,
+    { kind: 'rect' }
+  >;
+  const drawing = ops.find((o) => o.kind === 'clip') as Extract<Op, { kind: 'clip' }>;
+  expect(drawing.w).toBeCloseTo(frame.w - 16, 0);
+  expect(drawing.h).toBeCloseTo(frame.h - 16, 0);
+});

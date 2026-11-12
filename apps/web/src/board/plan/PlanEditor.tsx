@@ -506,6 +506,16 @@ export function PlanEditor(props: PlanEditorProps) {
                 action: () =>
                   ed.editPlan({ rulers: drawn.rulers ? undefined : true }, ed.scaleOwner),
               },
+              // The rooms' sizes, shown unless the plan turns them off (decision 0119).
+              {
+                label: t('board.plan.roomSizes'),
+                checked: drawn.roomSizes !== false,
+                action: () =>
+                  ed.editPlan(
+                    { roomSizes: drawn.roomSizes === false ? undefined : false },
+                    ed.scaleOwner,
+                  ),
+              },
               {
                 label: t('board.plan.clearScale'),
                 action: () =>

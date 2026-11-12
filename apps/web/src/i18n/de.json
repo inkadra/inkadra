@@ -1244,6 +1244,8 @@
       "setScale": "Maßstab festlegen",
       "scaleHint": "Zieh eine Linie entlang von etwas, dessen Länge du kennst",
       "rulers": "Lineale",
+      "roomSizes": "Raumgrößen",
+      "roomOverall": "{{size}} gesamt",
       "clearScale": "Maßstab entfernen",
       "cancel": "Abbrechen",
       "lineIs": "Die gezogene Linie misst",
@@ -1255,14 +1257,7 @@
       "lockLayer": "{{layer}} sperren",
       "unlockLayer": "{{layer}} entsperren",
       "layersHint": "Die aktive Ebene ({{layer}}) nimmt neue Symbole, Striche und Formen auf. Was du hier ausblendest, gilt nur für dich; was du in einer Variante ausblendest, gilt für alle.",
-      "hiddenAs": {
-        "set": "Set ausgeblendet",
-        "lights": "Licht ausgeblendet",
-        "camera": "Kamera ausgeblendet",
-        "actors": "Darsteller ausgeblendet",
-        "notes": "Notizen ausgeblendet",
-        "grip": "Grip und Crew ausgeblendet"
-      },
+      "hiddenAs": "Ausgeblendet: {{layer}}",
       "lockedAs": {
         "set": "Set gesperrt",
         "lights": "Licht gesperrt",
@@ -1546,6 +1541,7 @@
         "today": "Heute",
         "shootDay": "Drehtag {{n}}",
         "otherDate": "Anderes Datum…",
+        "dayGone": "Der Drehtag wurde aus dem Drehplan entfernt: der Plan behält sein letztes Datum.",
         "from": {
           "north": "Von Norden",
           "northEast": "Von Nordosten",

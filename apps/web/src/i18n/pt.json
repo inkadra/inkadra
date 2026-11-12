@@ -1244,6 +1244,8 @@
       "setScale": "Definir a escala",
       "scaleHint": "Trace uma linha sobre algo cuja medida você conhece",
       "rulers": "Réguas",
+      "roomSizes": "Medidas das divisões",
+      "roomOverall": "{{size}} no total",
       "clearScale": "Remover a escala",
       "cancel": "Cancelar",
       "lineIs": "A linha que você traçou mede",
@@ -1255,14 +1257,7 @@
       "lockLayer": "Bloquear {{layer}}",
       "unlockLayer": "Desbloquear {{layer}}",
       "layersHint": "A camada ativa ({{layer}}) recebe os novos ícones, traços e formas. O que você oculta aqui só vale para você; o que oculta em uma variante vale para todos.",
-      "hiddenAs": {
-        "set": "Set oculto",
-        "lights": "Luzes ocultas",
-        "camera": "Câmera oculta",
-        "actors": "Atores ocultos",
-        "notes": "Notas ocultas",
-        "grip": "Maquinaria e equipe ocultas"
-      },
+      "hiddenAs": "Oculto: {{layer}}",
       "lockedAs": {
         "set": "Set bloqueado",
         "lights": "Luzes bloqueadas",
@@ -1546,6 +1541,7 @@
         "today": "Hoje",
         "shootDay": "Dia {{n}} de filmagem",
         "otherDate": "Outra data…",
+        "dayGone": "O dia de filmagem foi retirado do plano de rodagem: a planta mantém a sua última data.",
         "from": {
           "north": "De norte",
           "northEast": "De nordeste",

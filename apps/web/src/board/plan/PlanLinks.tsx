@@ -11,11 +11,10 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import type { Element, PlanIcon } from '@inkadra/doc-schema';
-import { castNameKey, type Schedule } from '@inkadra/shared';
+import { castNameKey } from '@inkadra/shared';
 import { Button, Icon, Select, Slider } from '@inkadra/ui';
-import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../lib/api.ts';
 import { pickVariant, useAsset } from '../assets.ts';
 import { FramePicture } from '../film/FramePicture.tsx';
 import { usePresetText } from '../film/fields.tsx';
@@ -24,7 +23,7 @@ import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
 import { NumberField } from './NumberField.tsx';
 import { PlanGlyph, planCss } from './PlanDrawing.tsx';
-import { northWay, type SunDay, sunDays } from './sun-days.ts';
+import { northWay, useScheduleDays, useSunDays } from './sun-days.ts';
 import './links.css';
 
 type Character = Extract<Element, { type: 'character' }>;
@@ -542,7 +541,24 @@ export function SunSection({ ed }: { ed: Ed }) {
   const owner = ed.base ?? ed.plan;
   const north = owner.north ?? 0;
   const time = ed.plan.sun?.time ?? DEFAULT_SUN;
-  const date = ed.plan.sun?.date;
+  // The sun follows a shooting day by its id (version 26, decision 0119): its live date; the
+  // stored date is the last one it had, kept for when the day is gone.
+  const dayId = ed.plan.sun?.day;
+  const scheduled = useScheduleDays(ed.boardId);
+  const sceneKey = sceneIdsOf(ed).join(' ');
+  const shotKey = useMemo(() => {
+    const scenes = new Set(sceneKey.split(' ').filter(Boolean));
+    return [...ed.cards.values()]
+      .filter((c) => c.type === 'frame' && !!c.sceneId && scenes.has(c.sceneId))
+      .map((c) => c.id)
+      .sort()
+      .join(' ');
+  }, [ed.cards, sceneKey]);
+  const { offered, all } = useSunDays(scheduled, shotKey);
+  const linked = dayId ? all?.find((d) => d.id === dayId) : undefined;
+  /** The day it followed is no longer in the schedule: the plan keeps its last date. */
+  const dayGone = !!dayId && !!all && !linked;
+  const date = linked?.date ?? ed.plan.sun?.date;
   const location = ed.cards.get(owner.locationId ?? '') as Location | undefined;
   const coords =
     location?.type === 'location'
@@ -563,14 +579,23 @@ export function SunSection({ ed }: { ed: Ed }) {
           ? 'mid'
           : 'high';
   const suns = ed.icons.filter((i) => catalogueKind(i.kind) === 'sun');
-  const days = useSunDays(ed);
   const [otherDate, setOtherDate] = useState(false);
-  const day = days.find((d) => d.date === date);
-  const picking = days.length > 0 && !otherDate && (!date || !!day);
-  /** Writes the time, the date or north, and turns the sun icons with them. */
-  const write = (next: { time?: number; date?: string | undefined; north?: number }) => {
+  // A day of the shoot is picked from the list; a date typed by hand stays a date.
+  const days = linked && !offered.some((d) => d.id === linked.id) ? [...offered, linked] : offered;
+  const picking = days.length > 0 && !otherDate && (!ed.plan.sun?.date || !!linked);
+  /**
+   * Writes the time, the date (with the shooting day it follows, or none) or north, and turns
+   * the sun icons with them.
+   */
+  const write = (next: {
+    time?: number;
+    date?: string | undefined;
+    day?: string | undefined;
+    north?: number;
+  }) => {
     const t2 = next.time ?? time;
     const d2 = 'date' in next ? next.date : date;
+    const day2 = 'date' in next ? next.day : dayId;
     const n2 = next.north ?? north;
     const p = coords ? sunPosition(d2 ?? today, t2, coords.lat, coords.lng) : null;
     const rotation = sunRotation(p?.azimuth ?? sunBearingByClock(t2), n2);
@@ -581,7 +606,7 @@ export function SunSection({ ed }: { ed: Ed }) {
         updateElement(
           ed.doc,
           ed.plan.id,
-          { sun: { time: t2, ...(d2 ? { date: d2 } : {}) } },
+          { sun: { time: t2, ...(day2 ? { day: day2 } : {}), ...(d2 ? { date: d2 } : {}) } },
           LOCAL,
         );
       ed.writeItems(suns.filter((s) => s.rotation !== rotation).map((s) => ({ ...s, rotation })));
@@ -623,15 +648,18 @@ export function SunSection({ ed }: { ed: Ed }) {
             // The shooting days of the plan's scenes, as the schedule numbers them (0119).
             <Select
               aria-label={t('board.plan.links.date')}
-              value={date ?? ''}
+              value={linked?.id ?? ''}
               onChange={(v) => {
                 if (v === 'other') setOtherDate(true);
-                else set({ date: v || undefined });
+                else {
+                  const day = days.find((d) => d.id === v);
+                  set({ date: day?.date, day: day?.id });
+                }
               }}
               options={[
                 { value: '', label: t('board.plan.links.today') },
                 ...days.map((d) => ({
-                  value: d.date,
+                  value: d.id,
                   label: t('board.plan.links.shootDay', { n: d.n }),
                   description: new Date(`${d.date}T12:00:00`).toLocaleDateString(i18n.language, {
                     weekday: 'short',
@@ -647,7 +675,7 @@ export function SunSection({ ed }: { ed: Ed }) {
               className="plan-field"
               type="date"
               value={date ?? ''}
-              onChange={(e) => set({ date: e.target.value || undefined })}
+              onChange={(e) => set({ date: e.target.value || undefined, day: undefined })}
             />
           )}
         </label>
@@ -665,6 +693,11 @@ export function SunSection({ ed }: { ed: Ed }) {
           />
         </label>
       </div>
+      {dayGone && (
+        <p className="plan-props__hint" role="status">
+          {t('board.plan.links.dayGone')}
+        </p>
+      )}
       <div className="plan-props__card plan-links__card">
         <span className="plan-links__sunglyph" aria-hidden="true">
           <PlanGlyph kind="sun" size={30} />
@@ -683,34 +716,6 @@ export function SunSection({ ed }: { ed: Ed }) {
       </div>
     </section>
   );
-}
-
-/**
- * The shooting days the sun's date offers (decision 0119): the board's schedule, read once over
- * the endpoint ScheduleView reads; none for a guest, offline or before it arrives.
- */
-function useSunDays(ed: Ed): SunDay[] {
-  const [days, setDays] = useState<SunDay[]>([]);
-  const sceneIds = sceneIdsOf(ed).join(' ');
-  const { boardId, cards } = ed;
-  useEffect(() => {
-    if (!boardId) return;
-    let alive = true;
-    const scenes = new Set(sceneIds.split(' ').filter(Boolean));
-    const shots = new Set(
-      [...cards.values()]
-        .filter((c) => c.type === 'frame' && c.sceneId && scenes.has(c.sceneId))
-        .map((c) => c.id),
-    );
-    api.get<Schedule>(`/boards/${boardId}/schedule`).then(
-      (r) => alive && setDays(sunDays(r.items, shots)),
-      () => {},
-    );
-    return () => {
-      alive = false;
-    };
-  }, [boardId, sceneIds, cards]);
-  return days;
 }
 
 /** "Scene 2 · INT · Night" (decision 0104): a scene of the plan, read from its card. */

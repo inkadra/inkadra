@@ -1244,6 +1244,8 @@
       "setScale": "Définir l’échelle",
       "scaleHint": "Tracez une ligne sur quelque chose dont vous connaissez la longueur",
       "rulers": "Règles",
+      "roomSizes": "Dimensions des pièces",
+      "roomOverall": "{{size}} hors tout",
       "clearScale": "Retirer l’échelle",
       "cancel": "Annuler",
       "lineIs": "La ligne que vous avez tracée mesure",
@@ -1255,14 +1257,7 @@
       "lockLayer": "Verrouiller {{layer}}",
       "unlockLayer": "Déverrouiller {{layer}}",
       "layersHint": "Le calque actif ({{layer}}) reçoit les nouvelles icônes, traits et formes. Ce que vous masquez ici ne concerne que vous ; ce que vous masquez dans une variante vaut pour tout le monde.",
-      "hiddenAs": {
-        "set": "Décor masqué",
-        "lights": "Lumières masquées",
-        "camera": "Caméra masquée",
-        "actors": "Acteurs masqués",
-        "notes": "Notes masquées",
-        "grip": "Machinerie et équipe masquées"
-      },
+      "hiddenAs": "Masqué : {{layer}}",
       "lockedAs": {
         "set": "Décor verrouillé",
         "lights": "Lumières verrouillées",
@@ -1546,6 +1541,7 @@
         "today": "Aujourd’hui",
         "shootDay": "Jour {{n}} du tournage",
         "otherDate": "Une autre date…",
+        "dayGone": "Le jour de tournage a été retiré du plan de travail : le plan garde sa dernière date.",
         "from": {
           "north": "Du nord",
           "northEast": "Du nord-est",

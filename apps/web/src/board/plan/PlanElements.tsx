@@ -195,8 +195,14 @@ export function PlanElements({
                   type="button"
                   className="plan-elements__item"
                   aria-pressed={ed.wallSel?.id === item.id}
-                  disabled={hidden}
+                  data-hidden={hidden || undefined}
                   onClick={() => {
+                    // Hidden here: out of reach on the plan, but its row says how to show it.
+                    if (hidden) {
+                      ed.selectWall(null);
+                      ed.setHiddenItem({ item, group: layer });
+                      return;
+                    }
                     if (locked) {
                       ed.selectWall(null);
                       ed.setLockedWall(true);
@@ -243,8 +249,17 @@ export function PlanElements({
                     type="button"
                     className={`plan-elements__item${sub ? ' plan-elements__item--sub' : ''}`}
                     aria-pressed={refs.every((r) => picked.has(r.id))}
-                    disabled={hidden || ed.hiddenLayers.has(layerOf(item))}
+                    data-hidden={hidden || ed.hiddenLayers.has(layerOf(item)) || undefined}
                     onClick={(e) => {
+                      // A hidden item is out of reach on the plan (decision 0119): its row stays
+                      // focusable and says how to show it, by pointer, touch and keyboard.
+                      if (hidden || ed.hiddenLayers.has(layerOf(item))) {
+                        ed.setLockedItem(null);
+                        ed.setSelection([]);
+                        ed.setHiddenItem({ item, group: hidden ? layer : layerOf(item) });
+                        return;
+                      }
+                      ed.setHiddenItem(null);
                       if (layerLocked) {
                         ed.setLockedItem(item);
                         ed.setSelection([]);

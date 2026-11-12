@@ -772,49 +772,182 @@ export function removePlanCircuits(
 export const ROOM_DIM_GAP = 30;
 
 /**
- * One line of a room's size (decision 0119): from `a` to `b`, the room's box side moved `off`
- * view units outwards (to the left of a → b), with `length` view units written on it.
+ * One line of a room's size (decision 0119): from `a` to `b`, already moved out past the wall,
+ * with `length` view units written on it; `overall` when the room is not a rectangle, so the
+ * line gives its overall width or depth and says so.
  */
 export interface RoomDim {
   a: Point;
   b: Point;
   length: number;
+  overall: boolean;
 }
 
+/** A room: a closed wall, or open walls that meet end to end in a loop. */
+export interface PlanRoom {
+  points: Point[];
+  thickness: number;
+  /** The walls it is made of. */
+  walls: string[];
+}
+
+/** Ends of two walls this close (view units) meet. */
+const MEET = 2;
+const meet = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y) <= MEET;
+
 /**
- * The size of a closed room, as the mockup draws it outside its walls ("8.0 m" over the top,
- * "6.3 m" down the left): the box of its corners, one line above and one on the left, already
- * moved out past the wall.
+ * The rooms of a plan (decision 0119): each closed wall, and each loop of open walls whose ends
+ * meet, followed end to end whichever way each was drawn.
  */
-export function roomDims(wall: Pick<PlanWall, 'points' | 'thickness'>): RoomDim[] {
-  const pts = wallPoints(wall);
+export function planRooms(walls: readonly PlanWall[]): PlanRoom[] {
+  const rooms: PlanRoom[] = walls
+    .filter((w) => w.closed && w.points.length >= 6)
+    .map((w) => ({ points: wallPoints(w), thickness: w.thickness, walls: [w.id] }));
+  const open = walls.filter((w) => !w.closed && w.points.length >= 4);
+  const used = new Set<string>();
+  for (const start of open) {
+    if (used.has(start.id)) continue;
+    const chain = [start];
+    const taken = new Set([start.id]);
+    let pts = wallPoints(start);
+    let looped = false;
+    while (!looped) {
+      if (pts.length >= 4 && meet(pts.at(-1) as Point, pts[0] as Point)) {
+        looped = true;
+        break;
+      }
+      const end = pts.at(-1) as Point;
+      const next = open.find((w) => {
+        if (taken.has(w.id) || used.has(w.id)) return false;
+        const p = wallPoints(w);
+        return meet(p[0] as Point, end) || meet(p.at(-1) as Point, end);
+      });
+      if (!next) break;
+      const p = wallPoints(next);
+      const along = meet(p[0] as Point, end) ? p : [...p].reverse();
+      pts = [...pts, ...along.slice(1)];
+      chain.push(next);
+      taken.add(next.id);
+    }
+    if (!looped) continue;
+    for (const w of chain) used.add(w.id);
+    rooms.push({
+      points: pts.slice(0, -1),
+      thickness: Math.max(...chain.map((w) => w.thickness)),
+      walls: chain.map((w) => w.id),
+    });
+  }
+  return rooms;
+}
+
+/** Whether the segment a–b crosses or lies in the box. */
+function segmentInBox(a: Point, b: Point, r: { x0: number; y0: number; x1: number; y1: number }) {
+  // Clip the segment to the box (Liang–Barsky): it touches the box if anything is left.
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  for (const [p, q] of [
+    [-dx, a.x - r.x0],
+    [dx, r.x1 - a.x],
+    [-dy, a.y - r.y0],
+    [dy, r.y1 - a.y],
+  ] as const) {
+    if (p === 0) {
+      if (q < 0) return false;
+    } else {
+      const t = q / p;
+      if (p < 0) t0 = Math.max(t0, t);
+      else t1 = Math.min(t1, t);
+      if (t0 > t1) return false;
+    }
+  }
+  return true;
+}
+
+/** How far a size's text reaches either side of its line, view units. */
+const DIM_BAND = 16;
+
+/**
+ * The size of a room as the mockup draws it outside its walls ("8.0 m" over the top, "6.3 m"
+ * down the left), each line on the free side (decision 0119): over the top unless another wall
+ * lies there, then under the bottom; on the left, else on the right. A room that is not a
+ * rectangle gets its overall width and depth (`overall`).
+ */
+export function roomDims(room: PlanRoom, walls: readonly PlanWall[] = []): RoomDim[] {
+  const pts = room.points;
   if (pts.length < 3) return [];
   const x0 = Math.min(...pts.map((p) => p.x));
   const x1 = Math.max(...pts.map((p) => p.x));
   const y0 = Math.min(...pts.map((p) => p.y));
   const y1 = Math.max(...pts.map((p) => p.y));
-  const off = wall.thickness / 2 + ROOM_DIM_GAP;
+  const corner = (p: Point) =>
+    (Math.abs(p.x - x0) <= MEET || Math.abs(p.x - x1) <= MEET) &&
+    (Math.abs(p.y - y0) <= MEET || Math.abs(p.y - y1) <= MEET);
+  const overall = !(pts.length === 4 && pts.every(corner));
+  const off = room.thickness / 2 + ROOM_DIM_GAP;
+  // The other walls, as segments: a size must not cross them.
+  const others: Array<[Point, Point]> = [];
+  for (const w of walls) {
+    if (room.walls.includes(w.id)) continue;
+    const p = wallPoints(w);
+    for (let i = 0; i + 1 < p.length; i++) others.push([p[i] as Point, p[i + 1] as Point]);
+    if (w.closed && p.length > 2) others.push([p.at(-1) as Point, p[0] as Point]);
+  }
+  const free = (r: { x0: number; y0: number; x1: number; y1: number }) =>
+    !others.some(([a, b]) => segmentInBox(a, b, r));
+  const top = y0 - off;
+  const bottom = y1 + off;
+  const y = free({ x0, x1, y0: top - DIM_BAND, y1: top + DIM_BAND }) ? top : bottom;
+  const left = x0 - off;
+  const right = x1 + off;
+  const x = free({ x0: left - DIM_BAND, x1: left + DIM_BAND, y0, y1 }) ? left : right;
   return [
-    { a: { x: x0, y: y0 - off }, b: { x: x1, y: y0 - off }, length: x1 - x0 },
-    { a: { x: x0 - off, y: y1 }, b: { x: x0 - off, y: y0 }, length: y1 - y0 },
+    {
+      ...(y === top
+        ? { a: { x: x0, y }, b: { x: x1, y } }
+        : { a: { x: x1, y }, b: { x: x0, y } }),
+      length: x1 - x0,
+      overall,
+    },
+    {
+      ...(x === left
+        ? { a: { x, y: y1 }, b: { x, y: y0 } }
+        : { a: { x, y: y0 }, b: { x, y: y1 } }),
+      length: y1 - y0,
+      overall,
+    },
   ];
 }
 
+/** The sizes worked out for a list of walls, kept while the walls do not change. */
+const roomDimsCache = new WeakMap<readonly PlanWall[], RoomDim[]>();
+
 /**
- * The room sizes a plan draws (decision 0119): those of its closed rooms when it has a scale (a
- * size needs metres) and its Set is shown. They are part of the drawing, as in the mockup.
+ * The room sizes a plan draws (decision 0119): those of its rooms when it has a scale (a size
+ * needs metres), its `roomSizes` switch is not off and its Set is shown. Computed once per list
+ * of walls.
  */
 export function planRoomDims(
-  plan: Partial<Pick<PlanElement, 'walls' | 'scale' | 'hiddenLayers'>>,
+  plan: Partial<Pick<PlanElement, 'walls' | 'scale' | 'hiddenLayers' | 'roomSizes'>>,
   hidden: readonly string[] = [],
 ): RoomDim[] {
-  if (!plan.scale) return [];
+  if (!plan.scale || plan.roomSizes === false || !plan.walls?.length) return [];
   if (plan.hiddenLayers?.includes('set') || hidden.includes('set')) return [];
-  return (plan.walls ?? []).filter((w) => w.closed).flatMap(roomDims);
+  const walls = plan.walls;
+  let dims = roomDimsCache.get(walls);
+  if (!dims) {
+    dims = planRooms(walls).flatMap((room) => roomDims(room, walls));
+    roomDimsCache.set(walls, dims);
+  }
+  return dims;
 }
 
-/** "8.0 m": a room's side in metres at the plan's scale, one digit. */
-export function roomMetres(length: number, scale: number, locale?: string): string {
+/**
+ * "8.0 m" ("8,0 m" in Italian): a room's side in metres at the plan's scale, one digit, in the
+ * app's language, the one formatter of the editor, the card and the exports (decision 0119).
+ */
+export function roomMetres(length: number, scale: number, locale: string): string {
   return `${(length / scale).toLocaleString(locale, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,

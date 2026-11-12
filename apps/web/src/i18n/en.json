@@ -1244,6 +1244,8 @@
       "setScale": "Set the scale",
       "scaleHint": "Draw a line along something whose length you know",
       "rulers": "Rulers",
+      "roomSizes": "Room sizes",
+      "roomOverall": "{{size}} overall",
       "clearScale": "Remove the scale",
       "cancel": "Cancel",
       "lineIs": "The line you drew is",
@@ -1255,14 +1257,7 @@
       "lockLayer": "Lock {{layer}}",
       "unlockLayer": "Unlock {{layer}}",
       "layersHint": "The active layer ({{layer}}) takes new icons, strokes and shapes. What you hide here is yours alone; what you hide in a variant is for everyone.",
-      "hiddenAs": {
-        "set": "Set hidden",
-        "lights": "Lights hidden",
-        "camera": "Camera hidden",
-        "actors": "Actors hidden",
-        "notes": "Notes hidden",
-        "grip": "Grip and crew hidden"
-      },
+      "hiddenAs": "Hidden: {{layer}}",
       "lockedAs": {
         "set": "Set locked",
         "lights": "Lights locked",
@@ -1546,6 +1541,7 @@
         "today": "Today",
         "shootDay": "Day {{n}} of the shoot",
         "otherDate": "Another date…",
+        "dayGone": "The shooting day was removed from the schedule: the plan keeps its last date.",
         "from": {
           "north": "From the north",
           "northEast": "From the north-east",

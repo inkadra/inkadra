@@ -18,7 +18,7 @@ import {
 } from './plan.ts';
 import { iconLabel, iconSubLabel, PLAN_LABEL_SIZE, PLAN_SUB_LABEL_SIZE } from './plan-labels.ts';
 import { backgroundBox } from './plan-start.ts';
-import { planRoomDims, wallBounds } from './plan-walls.ts';
+import { planRoomDims, planRooms, wallBounds } from './plan-walls.ts';
 
 /**
  * The view of a plan's drawing surface (decision 0118): a surface without edges that fills the
@@ -193,7 +193,7 @@ export function fitPlanView(
 type Framed = Partial<
   Pick<
     PlanElement,
-    'strokes' | 'shapes' | 'icons' | 'walls' | 'background' | 'hiddenLayers' | 'sensor' | 'scale'
+    'strokes' | 'shapes' | 'icons' | 'walls' | 'background' | 'hiddenLayers' | 'sensor' | 'scale' | 'roomSizes'
   >
 >;
 
@@ -311,7 +311,10 @@ export function planRoomBox(
   hidden: readonly string[] = [],
 ): Rect | null {
   if (plan.hiddenLayers?.includes('set') || hidden.includes('set')) return null;
-  return union((plan.walls ?? []).filter((w) => w.closed).map(wallBounds));
+  const walls = plan.walls ?? [];
+  // Every room, open walls meeting in a loop too (decision 0119), with its walls' thickness.
+  const ids = new Set(planRooms(walls).flatMap((r) => r.walls));
+  return union(walls.filter((w) => ids.has(w.id)).map(wallBounds));
 }
 
 /** Margin round what is drawn when it is framed, view units, plus a share of its size. */
@@ -322,16 +325,22 @@ const FRAME_MIN_W = 400;
 
 /**
  * Where a plan is shown on its card, its slides, sheets and exports (decision 0118): what is
- * drawn on it, with a margin for labels, widened to the plan's 3:2 shape and never narrower than
- * FRAME_MIN_W; the whole extent for an empty plan. View units.
+ * drawn on it, with a margin for labels, widened to the shape of where it is shown (`aspect`,
+ * width over height: the plan's 3:2 unless a sheet's frame says otherwise, decision 0119) and
+ * never narrower than FRAME_MIN_W; the whole extent for an empty plan. View units.
  */
-export function planFrame(plan: Framed, background = true, hidden: readonly string[] = []): Rect {
+export function planFrame(
+  plan: Framed,
+  background = true,
+  hidden: readonly string[] = [],
+  aspect: number = PLAN_ASPECT,
+): Rect {
   const box = planContentBox(plan, background, hidden);
   if (!box) return { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H };
   const m = FRAME_MARGIN + FRAME_SHARE * Math.max(box.w, box.h * PLAN_ASPECT);
   let w = Math.max(FRAME_MIN_W, box.w + 2 * m);
   let h = box.h + 2 * m;
-  if (w / h > PLAN_ASPECT) h = w / PLAN_ASPECT;
-  else w = h * PLAN_ASPECT;
+  if (w / h > aspect) h = w / aspect;
+  else w = h * aspect;
   return { x: box.x + box.w / 2 - w / 2, y: box.y + box.h / 2 - h / 2, w, h };
 }

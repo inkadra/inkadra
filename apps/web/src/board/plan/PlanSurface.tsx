@@ -106,10 +106,17 @@ export function usePlanSurface({
       });
   }, []);
 
+  /**
+   * What 100 % means (decision 0119): the zoom of the plan fitted, pinned when the view is fitted,
+   * so a panel opening or the window resizing never moves the number unless the zoom moves.
+   */
+  const home = useRef(0);
   const fit = useCallback(() => {
     if (!area.current.w) return;
     const { content: box, insets: free, fitWidth: byWidth } = fitArgs.current;
-    apply(fitPlanView(box, area.current, free, byWidth));
+    const v = fitPlanView(box, area.current, free, byWidth);
+    home.current = v.zoom;
+    apply(v);
   }, [apply]);
 
   // The area's size: the first one fits the plan's content, later ones keep the view.
@@ -186,15 +193,13 @@ export function usePlanSurface({
     return a && b ? [a, b] : null;
   };
 
-  const { content: box, insets: free, fitWidth: byWidth } = fitArgs.current;
-  /** The zoom of the plan fitted: 100 % (decision 0119). */
-  const home = area.current.w ? fitPlanView(box, area.current, free, byWidth).zoom : 1;
+  const pinned = home.current || 1;
   return {
     surface,
     stage,
     view,
     /** The zoom as the control shows it, 100 % being the plan fitted. */
-    percent: view && area.current.w ? planZoomPercent(view, area.current, home) : 100,
+    percent: view && area.current.w ? planZoomPercent(view, area.current, pinned) : 100,
     /** Whether the zoom can go further in or out. */
     canZoomIn: !!view && !!area.current.w && canZoomPlan(view, area.current, 1),
     canZoomOut: !!view && !!area.current.w && canZoomPlan(view, area.current, -1),
@@ -204,7 +209,7 @@ export function usePlanSurface({
       touched.current = true;
       fit();
     },
-    zoomBy: (dir: 1 | -1) => move((v) => stepPlanZoom(v, area.current, dir, home)),
+    zoomBy: (dir: 1 | -1) => move((v) => stepPlanZoom(v, area.current, dir, pinned)),
     panBy: (dx: number, dy: number) => move((v) => panPlanBy(v, area.current, dx, dy)),
     /**
      * A pointer pressed on the surface. A second finger starts a pinch: true, and the caller

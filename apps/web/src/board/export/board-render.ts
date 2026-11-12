@@ -118,6 +118,11 @@ export interface CardContext {
    * The words of a plan's card as the board shows them under its drawing (decision 0119): its
    * name, its scenes ("Scene 2") and its counts ("3 setups", "2 cameras").
    */
+  /**
+   * A room's size as the app writes it, in its language (decision 0119): "8.0 m", or "8.0 m
+   * overall" for a room that is not a rectangle. The engine gives it; without it, English.
+   */
+  roomSize?(length: number, scale: number, overall: boolean): string;
   planCard?(el: Extract<Element, { type: 'plan' }>): {
     title: string;
     scenes: string;
@@ -1098,7 +1103,9 @@ export function planOps(
           }),
         ),
       );
-      const text = roomMetres(d.length, el.scale as number);
+      const text =
+        ctx.roomSize?.(d.length, el.scale as number, d.overall) ??
+        roomMetres(d.length, el.scale as number, 'en');
       const size = 12 * k;
       const tw = ctx.measure(text, size, 400);
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
