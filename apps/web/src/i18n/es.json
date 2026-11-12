@@ -1533,6 +1533,19 @@
         "timeOfDay": "Hora del día",
         "date": "Fecha",
         "north": "El norte está a",
+        "northWay": {
+          "up": "Arriba,",
+          "upRight": "Arriba a la derecha,",
+          "right": "Derecha,",
+          "downRight": "Abajo a la derecha,",
+          "down": "Abajo,",
+          "downLeft": "Abajo a la izquierda,",
+          "left": "Izquierda,",
+          "upLeft": "Arriba a la izquierda,"
+        },
+        "today": "Hoy",
+        "shootDay": "Día {{n}} de rodaje",
+        "otherDate": "Otra fecha…",
         "from": {
           "north": "Desde el norte",
           "northEast": "Desde el noreste",
@@ -1604,6 +1617,7 @@
         "more_other": "+{{count}} más",
         "cameras": "Cámaras",
         "lights": "Luces",
+        "grip": "Grip",
         "cast": "Reparto",
         "notes": "Notas",
         "foot": "Hecho con Inkadra · página {{n}} de {{total}}",
@@ -1732,6 +1746,20 @@
       "onTrackLength": "{{name}} en vía de {{metres}} m",
       "seatsAround_one": "{{count}} plaza",
       "seatsAround_other": "{{count}} plazas",
+      "seatsOf": {
+        "stool_one": "{{count}} taburete",
+        "stool_other": "{{count}} taburetes",
+        "chair_one": "{{count}} silla",
+        "chair_other": "{{count}} sillas",
+        "armchair_one": "{{count}} sillón",
+        "armchair_other": "{{count}} sillones",
+        "dirchair_one": "{{count}} silla de director",
+        "dirchair_other": "{{count}} sillas de director",
+        "sofa_one": "{{count}} sofá",
+        "sofa_other": "{{count}} sofás",
+        "bench_one": "{{count}} banco",
+        "bench_other": "{{count}} bancos"
+      },
       "allSetupsOfScene_one": "Todos los setups de la escena {{scene}}: {{count}} elemento",
       "allSetupsOfScene_other": "Todos los setups de la escena {{scene}}: {{count}} elementos",
       "editCircuit": "Editar {{name}}",
@@ -1755,7 +1783,6 @@
         "streetlight": "Farola",
         "trackingcar": "Coche de cámara"
       },
-      "selectBase": "Seleccionar",
       "selectNamed": "Seleccionar {{name}}"
     },
     "contextual": {
@@ -5142,7 +5169,7 @@
           },
           "4": {
             "title": "Paredes y aberturas",
-            "text": "Paredes: haz clic esquina por esquina, escribe una longitud e Intro, haz clic en la primera esquina para cerrar la habitación. Aberturas: puertas y ventanas van en una pared."
+            "text": "Paredes: haz clic esquina por esquina, escribe una longitud e Intro, haz clic en la primera esquina para cerrar la habitación. Aberturas: puertas y ventanas van en una pared. Con una escala, la habitación muestra sus medidas fuera de las paredes."
           },
           "5": {
             "title": "Fondo",
@@ -5150,7 +5177,7 @@
           },
           "6": {
             "title": "Moverse por el plano",
-            "text": "Espacio y arrastrar, la rueda o dos dedos mueven el plano; Ctrl y la rueda o un pellizco hacen zoom. Sin selección, las flechas lo mueven, 0 lo ajusta, + y − cambian el zoom."
+            "text": "Espacio y arrastrar, la rueda o dos dedos mueven el plano; Ctrl y la rueda o un pellizco hacen zoom. Sin selección, las flechas lo mueven, 0 lo ajusta, al 100 %, + y − cambian el zoom."
           }
         }
       },
@@ -5480,7 +5507,7 @@
           },
           "2": {
             "title": "El sol, para exteriores",
-            "text": "Fija la hora y la fecha: los iconos del sol giran con ellas. El norte se fija a mano."
+            "text": "Fija la hora y la fecha o un día de rodaje: los iconos del sol giran con ellas. El norte se fija a mano."
           },
           "3": {
             "title": "Setups en la lista de planos",

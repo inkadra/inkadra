@@ -26,9 +26,13 @@ import {
   type PlanFamily,
   type PlanNoteTool,
   type PlanStackEntry,
+  type Point,
   pieceOutline,
   planFrame,
+  planRoomDims,
   planStack,
+  type RoomDim,
+  roomMetres,
   shownOpenings,
   wallPieces,
   wallPoints,
@@ -358,6 +362,54 @@ export const PlanBeamView = memo(function PlanBeamView({
     </g>
   );
 });
+
+/** Half the length of the ticks at the ends of a dimension line, view units. */
+const DIM_TICK = 5;
+
+/** A room's size (decision 0119): a thin line with ticks, its length in metres over it. */
+export function RoomDimView({ dim, text }: { dim: RoomDim; text: string }) {
+  const { a, b } = dim;
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  if (len < 1) return null;
+  const n = { x: (b.y - a.y) / len, y: -(b.x - a.x) / len };
+  const tick = (p: Point) =>
+    `M${p.x - n.x * DIM_TICK} ${p.y - n.y * DIM_TICK}L${p.x + n.x * DIM_TICK} ${p.y + n.y * DIM_TICK}`;
+  const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  let angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+  if (angle > 90) angle -= 180;
+  if (angle < -90) angle += 180;
+  return (
+    <g className="plan-walls__dim">
+      <path d={`M${a.x} ${a.y}L${b.x} ${b.y}${tick(a)}${tick(b)}`} />
+      <text
+        className="plan-walls__dimtext"
+        transform={`translate(${m.x} ${m.y}) rotate(${angle})`}
+        y={-5}
+        textAnchor="middle"
+      >
+        {text}
+      </text>
+    </g>
+  );
+}
+
+/** The sizes of a plan's closed rooms, drawn when it has a scale (decision 0119). */
+function RoomSizes({ plan, hidden }: { plan: PlanLike; hidden: readonly string[] }) {
+  const dims = planRoomDims(plan, hidden);
+  if (dims.length === 0 || !plan.scale) return null;
+  const scale = plan.scale;
+  return (
+    <g className="plan-walls__room" data-room-dims="">
+      {dims.map((d) => (
+        <RoomDimView
+          key={`${d.a.x},${d.a.y},${d.b.x},${d.b.y}`}
+          dim={d}
+          text={roomMetres(d.length, scale)}
+        />
+      ))}
+    </g>
+  );
+}
 
 /** Width of the lines of doors and windows, in view units. */
 const OPENING_LINE = 1.6;
@@ -746,6 +798,7 @@ const PlanDrawingView = memo(function PlanDrawingView({
       )}
       {grid && <GridDots step={grid} />}
       {!off.includes('set') && <PlanWallsView plan={plan} />}
+      <RoomSizes plan={plan} hidden={off} />
       {stack
         .filter((e) => e.tier < 2)
         .map((e) => (

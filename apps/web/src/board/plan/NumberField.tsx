@@ -13,6 +13,8 @@ export function NumberField({
   step = 1,
   nudge = step,
   unit,
+  digits = 0,
+  lead,
   label,
   onCommit,
 }: {
@@ -23,6 +25,10 @@ export function NumberField({
   /** What an arrow key adds or takes away; the step of the field unless a finer one is typed. */
   nudge?: number;
   unit?: string;
+  /** Decimals always shown: 1 writes "8.0 m", as the start dialog of the mockup. */
+  digits?: number;
+  /** Words before the number, "Up," in "Up, 0°". */
+  lead?: string | undefined;
   label: string;
   onCommit: (value: number) => void;
 }) {
@@ -30,7 +36,8 @@ export function NumberField({
   const show = (v: number) =>
     // "5600 K", as the mockup: no thousands separator in a short field.
     v.toLocaleString(i18n.language, {
-      maximumFractionDigits: step < 1 ? 2 : 0,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: Math.max(digits, step < 1 ? 2 : 0),
       useGrouping: false,
     });
   const [draft, setDraft] = useState(show(value));
@@ -46,6 +53,7 @@ export function NumberField({
   return (
     // "60%", "45°": these units sit against the number.
     <span className={`plan-num${unit === '%' || unit === '°' ? ' plan-num--tight' : ''}`}>
+      {lead && <span className="plan-num__lead">{lead}</span>}
       <input
         inputMode="decimal"
         aria-label={label}

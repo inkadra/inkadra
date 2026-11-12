@@ -1533,6 +1533,19 @@
         "timeOfDay": "Hora do dia",
         "date": "Data",
         "north": "O norte está a",
+        "northWay": {
+          "up": "Em cima,",
+          "upRight": "Em cima à direita,",
+          "right": "À direita,",
+          "downRight": "Em baixo à direita,",
+          "down": "Em baixo,",
+          "downLeft": "Em baixo à esquerda,",
+          "left": "À esquerda,",
+          "upLeft": "Em cima à esquerda,"
+        },
+        "today": "Hoje",
+        "shootDay": "Dia {{n}} de filmagem",
+        "otherDate": "Outra data…",
         "from": {
           "north": "De norte",
           "northEast": "De nordeste",
@@ -1604,6 +1617,7 @@
         "more_other": "+{{count}} mais",
         "cameras": "Câmaras",
         "lights": "Luzes",
+        "grip": "Maquinaria",
         "cast": "Elenco",
         "notes": "Notas",
         "foot": "Feito com Inkadra · página {{n}} de {{total}}",
@@ -1732,6 +1746,20 @@
       "onTrackLength": "{{name}} em trilho de {{metres}} m",
       "seatsAround_one": "{{count}} lugar",
       "seatsAround_other": "{{count}} lugares",
+      "seatsOf": {
+        "stool_one": "{{count}} banqueta",
+        "stool_other": "{{count}} banquetas",
+        "chair_one": "{{count}} cadeira",
+        "chair_other": "{{count}} cadeiras",
+        "armchair_one": "{{count}} poltrona",
+        "armchair_other": "{{count}} poltronas",
+        "dirchair_one": "{{count}} cadeira de diretor",
+        "dirchair_other": "{{count}} cadeiras de diretor",
+        "sofa_one": "{{count}} sofá",
+        "sofa_other": "{{count}} sofás",
+        "bench_one": "{{count}} banco",
+        "bench_other": "{{count}} bancos"
+      },
       "allSetupsOfScene_one": "Todos os setups da cena {{scene}}: {{count}} item",
       "allSetupsOfScene_other": "Todos os setups da cena {{scene}}: {{count}} itens",
       "editCircuit": "Editar {{name}}",
@@ -1755,7 +1783,6 @@
         "streetlight": "Poste de luz",
         "trackingcar": "Carro de câmera"
       },
-      "selectBase": "Selecionar",
       "selectNamed": "Selecionar {{name}}"
     },
     "contextual": {
@@ -5142,7 +5169,7 @@
           },
           "4": {
             "title": "Paredes e aberturas",
-            "text": "Paredes: clique canto a canto, escreva um comprimento e Enter, clique no primeiro canto para fechar a divisão. Aberturas: portas e janelas vão numa parede."
+            "text": "Paredes: clique canto a canto, escreva um comprimento e Enter, clique no primeiro canto para fechar a divisão. Aberturas: portas e janelas vão numa parede. Com uma escala, a divisão mostra as suas medidas fora das paredes."
           },
           "5": {
             "title": "Fundo",
@@ -5150,7 +5177,7 @@
           },
           "6": {
             "title": "Mover-se na planta",
-            "text": "Espaço e arrastar, a roda ou dois dedos movem a planta; Ctrl e a roda ou um belisco fazem zoom. Sem seleção, as setas movem-na, 0 ajusta-a, + e − mudam o zoom."
+            "text": "Espaço e arrastar, a roda ou dois dedos movem a planta; Ctrl e a roda ou um belisco fazem zoom. Sem seleção, as setas movem-na, 0 ajusta-a, a 100 %, + e − mudam o zoom."
           }
         }
       },
@@ -5480,7 +5507,7 @@
           },
           "2": {
             "title": "O sol, para exteriores",
-            "text": "Defina a hora e a data: os ícones do sol rodam com elas. O norte define-se à mão."
+            "text": "Defina a hora e a data ou um dia de filmagem: os ícones do sol rodam com elas. O norte define-se à mão."
           },
           "3": {
             "title": "Setups na lista de planos",

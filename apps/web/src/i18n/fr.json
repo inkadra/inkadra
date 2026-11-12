@@ -1533,6 +1533,19 @@
         "timeOfDay": "Heure",
         "date": "Date",
         "north": "Le nord est à",
+        "northWay": {
+          "up": "En haut,",
+          "upRight": "En haut à droite,",
+          "right": "À droite,",
+          "downRight": "En bas à droite,",
+          "down": "En bas,",
+          "downLeft": "En bas à gauche,",
+          "left": "À gauche,",
+          "upLeft": "En haut à gauche,"
+        },
+        "today": "Aujourd’hui",
+        "shootDay": "Jour {{n}} du tournage",
+        "otherDate": "Une autre date…",
         "from": {
           "north": "Du nord",
           "northEast": "Du nord-est",
@@ -1604,6 +1617,7 @@
         "more_other": "+{{count}} autres",
         "cameras": "Caméras",
         "lights": "Lumières",
+        "grip": "Machinerie",
         "cast": "Distribution",
         "notes": "Notes",
         "foot": "Fait avec Inkadra · page {{n}} sur {{total}}",
@@ -1732,6 +1746,20 @@
       "onTrackLength": "{{name}} sur {{metres}} m de rails",
       "seatsAround_one": "{{count}} place",
       "seatsAround_other": "{{count}} places",
+      "seatsOf": {
+        "stool_one": "{{count}} tabouret",
+        "stool_other": "{{count}} tabourets",
+        "chair_one": "{{count}} chaise",
+        "chair_other": "{{count}} chaises",
+        "armchair_one": "{{count}} fauteuil",
+        "armchair_other": "{{count}} fauteuils",
+        "dirchair_one": "{{count}} chaise de réalisateur",
+        "dirchair_other": "{{count}} chaises de réalisateur",
+        "sofa_one": "{{count}} canapé",
+        "sofa_other": "{{count}} canapés",
+        "bench_one": "{{count}} banc",
+        "bench_other": "{{count}} bancs"
+      },
       "allSetupsOfScene_one": "Tous les setups de la scène {{scene}} : {{count}} élément",
       "allSetupsOfScene_other": "Tous les setups de la scène {{scene}} : {{count}} éléments",
       "editCircuit": "Modifier {{name}}",
@@ -1755,7 +1783,6 @@
         "streetlight": "Lampadaire de rue",
         "trackingcar": "Voiture travelling"
       },
-      "selectBase": "Sélectionner",
       "selectNamed": "Sélectionner {{name}}"
     },
     "contextual": {
@@ -5142,7 +5169,7 @@
           },
           "4": {
             "title": "Murs et ouvertures",
-            "text": "Murs : cliquez angle par angle, tapez une longueur et Entrée, cliquez le premier angle pour fermer la pièce. Ouvertures : portes et fenêtres se posent sur un mur."
+            "text": "Murs : cliquez angle par angle, tapez une longueur et Entrée, cliquez le premier angle pour fermer la pièce. Ouvertures : portes et fenêtres se posent sur un mur. Avec une échelle, la pièce affiche ses dimensions hors de ses murs."
           },
           "5": {
             "title": "Fond",
@@ -5150,7 +5177,7 @@
           },
           "6": {
             "title": "Se déplacer dans le plan",
-            "text": "Espace et glisser, la molette ou deux doigts déplacent le plan ; Ctrl et la molette ou un pincement zooment. Sans sélection, les flèches le déplacent, 0 l’ajuste, + et − zooment."
+            "text": "Espace et glisser, la molette ou deux doigts déplacent le plan ; Ctrl et la molette ou un pincement zooment. Sans sélection, les flèches le déplacent, 0 l’ajuste, à 100 %, + et − zooment."
           }
         }
       },
@@ -5480,7 +5507,7 @@
           },
           "2": {
             "title": "Le soleil, pour les extérieurs",
-            "text": "Réglez l’heure et la date : les icônes du soleil tournent avec. Le nord se règle à la main."
+            "text": "Réglez l’heure et la date ou un jour de tournage : les icônes du soleil tournent avec. Le nord se règle à la main."
           },
           "3": {
             "title": "Les setups dans la liste des plans",

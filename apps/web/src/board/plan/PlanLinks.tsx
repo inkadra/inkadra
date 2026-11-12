@@ -11,10 +11,11 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import type { Element, PlanIcon } from '@inkadra/doc-schema';
-import { castNameKey } from '@inkadra/shared';
-import { Button, Icon, Slider } from '@inkadra/ui';
+import { castNameKey, type Schedule } from '@inkadra/shared';
+import { Button, Icon, Select, Slider } from '@inkadra/ui';
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { api } from '../../lib/api.ts';
 import { pickVariant, useAsset } from '../assets.ts';
 import { FramePicture } from '../film/FramePicture.tsx';
 import { usePresetText } from '../film/fields.tsx';
@@ -23,6 +24,7 @@ import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
 import { NumberField } from './NumberField.tsx';
 import { PlanGlyph, planCss } from './PlanDrawing.tsx';
+import { northWay, type SunDay, sunDays } from './sun-days.ts';
 import './links.css';
 
 type Character = Extract<Element, { type: 'character' }>;
@@ -561,6 +563,10 @@ export function SunSection({ ed }: { ed: Ed }) {
           ? 'mid'
           : 'high';
   const suns = ed.icons.filter((i) => catalogueKind(i.kind) === 'sun');
+  const days = useSunDays(ed);
+  const [otherDate, setOtherDate] = useState(false);
+  const day = days.find((d) => d.date === date);
+  const picking = days.length > 0 && !otherDate && (!date || !!day);
   /** Writes the time, the date or north, and turns the sun icons with them. */
   const write = (next: { time?: number; date?: string | undefined; north?: number }) => {
     const t2 = next.time ?? time;
@@ -613,12 +619,37 @@ export function SunSection({ ed }: { ed: Ed }) {
         {/* biome-ignore lint/a11y/noLabelWithoutControl: the control is the child. */}
         <label className="plan-prop">
           <span className="plan-prop__label">{t('board.plan.links.date')}</span>
-          <input
-            className="plan-field"
-            type="date"
-            value={date ?? ''}
-            onChange={(e) => set({ date: e.target.value || undefined })}
-          />
+          {picking ? (
+            // The shooting days of the plan's scenes, as the schedule numbers them (0119).
+            <Select
+              aria-label={t('board.plan.links.date')}
+              value={date ?? ''}
+              onChange={(v) => {
+                if (v === 'other') setOtherDate(true);
+                else set({ date: v || undefined });
+              }}
+              options={[
+                { value: '', label: t('board.plan.links.today') },
+                ...days.map((d) => ({
+                  value: d.date,
+                  label: t('board.plan.links.shootDay', { n: d.n }),
+                  description: new Date(`${d.date}T12:00:00`).toLocaleDateString(i18n.language, {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                  }),
+                })),
+                { value: 'other', label: t('board.plan.links.otherDate') },
+              ]}
+            />
+          ) : (
+            <input
+              className="plan-field"
+              type="date"
+              value={date ?? ''}
+              onChange={(e) => set({ date: e.target.value || undefined })}
+            />
+          )}
         </label>
         {/* biome-ignore lint/a11y/noLabelWithoutControl: the control is the child. */}
         <label className="plan-prop">
@@ -628,6 +659,7 @@ export function SunSection({ ed }: { ed: Ed }) {
             min={0}
             max={359}
             unit="°"
+            lead={t(`board.plan.links.northWay.${northWay(north)}`)}
             label={t('board.plan.links.north')}
             onCommit={(v) => set({ north: ((Math.round(v) % 360) + 360) % 360 })}
           />
@@ -651,6 +683,34 @@ export function SunSection({ ed }: { ed: Ed }) {
       </div>
     </section>
   );
+}
+
+/**
+ * The shooting days the sun's date offers (decision 0119): the board's schedule, read once over
+ * the endpoint ScheduleView reads; none for a guest, offline or before it arrives.
+ */
+function useSunDays(ed: Ed): SunDay[] {
+  const [days, setDays] = useState<SunDay[]>([]);
+  const sceneIds = sceneIdsOf(ed).join(' ');
+  const { boardId, cards } = ed;
+  useEffect(() => {
+    if (!boardId) return;
+    let alive = true;
+    const scenes = new Set(sceneIds.split(' ').filter(Boolean));
+    const shots = new Set(
+      [...cards.values()]
+        .filter((c) => c.type === 'frame' && c.sceneId && scenes.has(c.sceneId))
+        .map((c) => c.id),
+    );
+    api.get<Schedule>(`/boards/${boardId}/schedule`).then(
+      (r) => alive && setDays(sunDays(r.items, shots)),
+      () => {},
+    );
+    return () => {
+      alive = false;
+    };
+  }, [boardId, sceneIds, cards]);
+  return days;
 }
 
 /** "Scene 2 · INT · Night" (decision 0104): a scene of the plan, read from its card. */

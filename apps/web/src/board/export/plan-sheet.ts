@@ -16,7 +16,7 @@ import {
 } from '@inkadra/canvas-core';
 import { type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
-import { itemSummary } from '../plan/elements.ts';
+import { foldIcons, itemSummary } from '../plan/elements.ts';
 import { KIT_GROUPS, kitList, powerLines } from '../plan/kit.ts';
 import { type CardContext, planOps } from './board-render.ts';
 import { pageSize } from './layout.ts';
@@ -290,7 +290,7 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
           width: 0.3,
         });
     }
-    inside.push(...planOps(plan, whole, ctx, true, true, view));
+    inside.push(...planOps(plan, whole, ctx, true, true, view, include.scale));
     ops.push({ kind: 'clip', ...view, ops: inside });
 
     // The side column.
@@ -377,18 +377,24 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
       const cast = icons.filter(
         (i) => categoryOf(i.kind).id === 'people' && attachRole(i.kind) === 'seated',
       );
+      // Flags, frames and stands standing on their own, as the mockup's "Neg fill, flag 4×4".
+      const grip = icons.filter((i) => !i.on && categoryOf(i.kind).id === 'grip');
       for (const [title, list] of [
         [t('board.plan.sheet.cameras'), cameras],
         [t('board.plan.sheet.lights'), lights],
+        [t('board.plan.sheet.grip'), grip],
       ] as const) {
         if (!list.length || !section(title)) continue;
+        // Identical icons as one row, "Practical ×3", as Elements and the view list them.
+        const rows = foldIcons(list, icons);
         let drawn = 0;
-        for (const icon of list) {
+        for (const { icon, count } of rows) {
           if (!fits(ROW * 2)) break;
-          row(line(icon, icons, t), value(icon), icon);
+          const name = line(icon, icons, t);
+          row(count > 1 ? `${name} ×${count}` : name, value(icon), icon);
           drawn += 1;
         }
-        more(list.length - drawn);
+        more(rows.length - drawn);
         y += 6;
       }
       if (cast.length && section(t('board.plan.sheet.cast'))) {

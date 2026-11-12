@@ -767,3 +767,56 @@ export function removePlanCircuits(
       if (doomed.has(idOf(list.get(i)) as string)) list.delete(i, 1);
   }, origin);
 }
+
+/** How far outside its walls a room's size is written, view units past half the thickness. */
+export const ROOM_DIM_GAP = 30;
+
+/**
+ * One line of a room's size (decision 0119): from `a` to `b`, the room's box side moved `off`
+ * view units outwards (to the left of a → b), with `length` view units written on it.
+ */
+export interface RoomDim {
+  a: Point;
+  b: Point;
+  length: number;
+}
+
+/**
+ * The size of a closed room, as the mockup draws it outside its walls ("8.0 m" over the top,
+ * "6.3 m" down the left): the box of its corners, one line above and one on the left, already
+ * moved out past the wall.
+ */
+export function roomDims(wall: Pick<PlanWall, 'points' | 'thickness'>): RoomDim[] {
+  const pts = wallPoints(wall);
+  if (pts.length < 3) return [];
+  const x0 = Math.min(...pts.map((p) => p.x));
+  const x1 = Math.max(...pts.map((p) => p.x));
+  const y0 = Math.min(...pts.map((p) => p.y));
+  const y1 = Math.max(...pts.map((p) => p.y));
+  const off = wall.thickness / 2 + ROOM_DIM_GAP;
+  return [
+    { a: { x: x0, y: y0 - off }, b: { x: x1, y: y0 - off }, length: x1 - x0 },
+    { a: { x: x0 - off, y: y1 }, b: { x: x0 - off, y: y0 }, length: y1 - y0 },
+  ];
+}
+
+/**
+ * The room sizes a plan draws (decision 0119): those of its closed rooms when it has a scale (a
+ * size needs metres) and its Set is shown. They are part of the drawing, as in the mockup.
+ */
+export function planRoomDims(
+  plan: Partial<Pick<PlanElement, 'walls' | 'scale' | 'hiddenLayers'>>,
+  hidden: readonly string[] = [],
+): RoomDim[] {
+  if (!plan.scale) return [];
+  if (plan.hiddenLayers?.includes('set') || hidden.includes('set')) return [];
+  return (plan.walls ?? []).filter((w) => w.closed).flatMap(roomDims);
+}
+
+/** "8.0 m": a room's side in metres at the plan's scale, one digit. */
+export function roomMetres(length: number, scale: number, locale?: string): string {
+  return `${(length / scale).toLocaleString(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} m`;
+}

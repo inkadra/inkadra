@@ -1533,6 +1533,19 @@
         "timeOfDay": "Tageszeit",
         "date": "Datum",
         "north": "Norden liegt bei",
+        "northWay": {
+          "up": "Oben,",
+          "upRight": "Oben rechts,",
+          "right": "Rechts,",
+          "downRight": "Unten rechts,",
+          "down": "Unten,",
+          "downLeft": "Unten links,",
+          "left": "Links,",
+          "upLeft": "Oben links,"
+        },
+        "today": "Heute",
+        "shootDay": "Drehtag {{n}}",
+        "otherDate": "Anderes Datum…",
         "from": {
           "north": "Von Norden",
           "northEast": "Von Nordosten",
@@ -1604,6 +1617,7 @@
         "more_other": "+{{count}} weitere",
         "cameras": "Kameras",
         "lights": "Lichter",
+        "grip": "Grip",
         "cast": "Besetzung",
         "notes": "Notizen",
         "foot": "Erstellt mit Inkadra · Seite {{n}} von {{total}}",
@@ -1732,6 +1746,20 @@
       "onTrackLength": "{{name}} auf {{metres}} m Schiene",
       "seatsAround_one": "{{count}} Platz",
       "seatsAround_other": "{{count}} Plätze",
+      "seatsOf": {
+        "stool_one": "{{count}} Hocker",
+        "stool_other": "{{count}} Hocker",
+        "chair_one": "{{count}} Stuhl",
+        "chair_other": "{{count}} Stühle",
+        "armchair_one": "{{count}} Sessel",
+        "armchair_other": "{{count}} Sessel",
+        "dirchair_one": "{{count}} Regiestuhl",
+        "dirchair_other": "{{count}} Regiestühle",
+        "sofa_one": "{{count}} Sofa",
+        "sofa_other": "{{count}} Sofas",
+        "bench_one": "{{count}} Bank",
+        "bench_other": "{{count}} Bänke"
+      },
       "allSetupsOfScene_one": "Alle Setups von Szene {{scene}}: {{count}} Teil",
       "allSetupsOfScene_other": "Alle Setups von Szene {{scene}}: {{count}} Teile",
       "editCircuit": "{{name}} bearbeiten",
@@ -1755,7 +1783,6 @@
         "streetlight": "Straßen-Laterne",
         "trackingcar": "Kamera-Wagen"
       },
-      "selectBase": "Auswählen",
       "selectNamed": "{{name}} auswählen"
     },
     "contextual": {
@@ -5142,7 +5169,7 @@
           },
           "4": {
             "title": "Wände und Öffnungen",
-            "text": "Wände: Ecke für Ecke klicken, eine Länge eingeben und Enter, die erste Ecke klicken, um den Raum zu schließen. Öffnungen: Türen und Fenster sitzen in einer Wand."
+            "text": "Wände: Ecke für Ecke klicken, eine Länge eingeben und Enter, die erste Ecke klicken, um den Raum zu schließen. Öffnungen: Türen und Fenster sitzen in einer Wand. Mit einem Maßstab steht die Größe des Raums außen an seinen Wänden."
           },
           "5": {
             "title": "Hintergrund",
@@ -5150,7 +5177,7 @@
           },
           "6": {
             "title": "Im Plan bewegen",
-            "text": "Leertaste und Ziehen, das Mausrad oder zwei Finger verschieben den Plan; Strg und Mausrad oder Kneifen zoomen. Ohne Auswahl verschieben ihn die Pfeiltasten, 0 passt ihn ein, + und − zoomen."
+            "text": "Leertaste und Ziehen, das Mausrad oder zwei Finger verschieben den Plan; Strg und Mausrad oder Kneifen zoomen. Ohne Auswahl verschieben ihn die Pfeiltasten, 0 passt ihn ein, auf 100 %, + und − zoomen."
           }
         }
       },
@@ -5480,7 +5507,7 @@
           },
           "2": {
             "title": "Die Sonne, für Außenaufnahmen",
-            "text": "Stelle Uhrzeit und Datum ein: die Sonnensymbole drehen sich mit. Norden stellst du von Hand ein."
+            "text": "Stelle die Uhrzeit und das Datum oder einen Drehtag ein: die Sonnensymbole drehen sich mit. Norden stellst du von Hand ein."
           },
           "3": {
             "title": "Setups in der Shotliste",

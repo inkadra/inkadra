@@ -28,6 +28,7 @@ describe('the words of the plan (decision 0118)', () => {
   it('gives a named light a second line with its colour temperature and level', () => {
     expect(iconSubLabel(icon({ label: 'Key', kelvin: 5600, intensity: 0.6 }))).toBe('5600 K · 60%');
     expect(iconSubLabel(icon({ label: 'Key', kelvin: 2100 }))).toBe('2100 K');
+    expect(iconSubLabel(icon({ label: 'Sodium', kelvin: 2100, intensity: 1 }))).toBe('2100 K');
     // Unnamed lights and other icons have none.
     expect(iconSubLabel(icon({ kelvin: 5600 }))).toBe('');
     expect(iconSubLabel(icon({ kind: 'camera', label: 'A', kelvin: 5600 }))).toBe('');

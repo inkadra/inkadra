@@ -38,7 +38,10 @@ export function iconSubLabel(icon: PlanIcon): string {
   if (!icon.label || !isLight(icon.kind)) return '';
   return [
     icon.kelvin ? `${icon.kelvin} K` : '',
-    icon.intensity !== undefined ? `${Math.round(icon.intensity * 100)}%` : '',
+    // Full power goes without saying, as the mockup's "Sodium · 2K / 2100 K" (decision 0119).
+    icon.intensity !== undefined && icon.intensity < 1
+      ? `${Math.round(icon.intensity * 100)}%`
+      : '',
   ]
     .filter(Boolean)
     .join(' · ');

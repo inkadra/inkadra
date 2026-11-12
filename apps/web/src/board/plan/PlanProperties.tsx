@@ -48,7 +48,7 @@ import { type CSSProperties, type ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { type Ed, isIcon, MAX_UNITS } from './editing.ts';
-import { itemName, SEAT_SURFACES, seatsAround, selectionMix, supportText } from './elements.ts';
+import { itemName, SEAT_SURFACES, seatsLine, selectionMix, supportText } from './elements.ts';
 import { wattsText } from './kit.ts';
 import { NumberField } from './NumberField.tsx';
 import { selectionMenu } from './PlanCanvas.tsx';
@@ -430,10 +430,6 @@ export function PlanProperties({
         <span>
           {t('board.plan.onBase', { name: base.label || t(`board.plan.icons.${base.kind}`) })}
         </span>
-        {/* The base is listed with what it carries (decision 0117): this picks it. */}
-        <Button variant="ghost" onClick={() => ed.setSelection([{ kind: 'icons', id: base.id }])}>
-          {t('board.plan.selectBase')}
-        </Button>
         <Button variant="ghost" onClick={() => ed.write(detachIcon(icons, icon.id))}>
           {t('board.plan.detach')}
         </Button>
@@ -1085,7 +1081,12 @@ export function PlanProperties({
           {SEAT_SURFACES.has(catalogueKind(icon.kind)) && (
             <Field label={t('board.plan.seats')}>
               <span className="plan-field plan-field--static">
-                {t('board.plan.seatsAround', { count: seatsAround(icon, icons) })}
+                {(() => {
+                  const line = seatsLine(icon, icons);
+                  return line.kind
+                    ? t(`board.plan.seatsOf.${line.kind}`, { count: line.count })
+                    : t('board.plan.seatsAround', { count: line.count });
+                })()}
               </span>
             </Field>
           )}

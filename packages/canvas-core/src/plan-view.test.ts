@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { PlanIcon } from '@inkadra/doc-schema';
+import { type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import { iconCone, labelAnchor, PLAN_VIEW_H, PLAN_VIEW_W } from './plan.ts';
 import { PLAN_LABEL_SIZE } from './plan-labels.ts';
 import {
   boundPlanView,
+  canZoomPlan,
   fitPlanView,
   panPlanBy,
   pinchPlanView,
   planBaseZoom,
   planContentBox,
   planFrame,
+  planRoomBox,
   planZoomPercent,
   stepPlanZoom,
   zoomPlanAround,
 } from './plan-view.ts';
+import { planRoomDims, roomDims, roomMetres } from './plan-walls.ts';
 
 const area = { w: 876, h: 848 };
 const toScreen = (v: { x: number; y: number; zoom: number }, p: { x: number; y: number }) => ({
@@ -233,5 +236,59 @@ describe('the view of the plan surface', () => {
     const moved = planContentBox({ icons: [walker] }) as { x: number; y: number };
     expect(moved.x).toBeLessThan(0);
     expect(moved.y).toBeLessThan(0);
+  });
+});
+
+describe('zoom, room sizes and the room a phone fits (decision 0119)', () => {
+  const g = (v: number) => Math.round((v / PLAN_VIEW_W) * STROKE_GRID);
+  const gy = (v: number) => Math.round((v / PLAN_VIEW_H) * STROKE_GRID);
+  const room = {
+    id: 'wallRoomAAAAA',
+    points: [g(160), gy(100), g(720), gy(100), g(720), gy(540), g(160), gy(540)],
+    thickness: 9,
+    closed: true,
+  };
+
+  it('reads 100 % on the plan fitted, and steps from there', () => {
+    const box = { x: 160, y: 100, w: 560, h: 440 };
+    const fitted = fitPlanView(box, area);
+    const home = fitted.zoom;
+    expect(planZoomPercent(fitted, area, home)).toBe(100);
+    expect(planZoomPercent(fitted, area)).toBeGreaterThan(100);
+    const inOnce = stepPlanZoom(fitted, area, 1, home);
+    expect(planZoomPercent(inOnce, area, home)).toBe(150);
+    expect(planZoomPercent(stepPlanZoom(inOnce, area, -1, home), area, home)).toBe(100);
+    expect(canZoomPlan(fitted, area, 1)).toBe(true);
+    const most = zoomPlanAround(fitted, area, fitted.zoom * 1000, { x: 0, y: 0 });
+    expect(canZoomPlan(most, area, 1)).toBe(false);
+    expect(canZoomPlan(most, area, -1)).toBe(true);
+  });
+
+  it('draws a closed room’s sizes with a scale, outside its walls', () => {
+    expect(planRoomDims({ walls: [room] })).toEqual([]);
+    expect(planRoomDims({ walls: [{ ...room, closed: false }], scale: 70 })).toEqual([]);
+    expect(planRoomDims({ walls: [room], scale: 70 }, ['set'])).toEqual([]);
+    expect(planRoomDims({ walls: [room], scale: 70, hiddenLayers: ['set'] })).toEqual([]);
+    const [top, left] = planRoomDims({ walls: [room], scale: 70 });
+    expect(top?.length).toBeCloseTo(560, 0);
+    expect(left?.length).toBeCloseTo(440, 0);
+    expect(top?.a.y).toBeLessThan(100);
+    expect(left?.a.x).toBeLessThan(160);
+    expect(roomMetres(560, 70, 'en')).toBe('8.0 m');
+    expect(roomDims({ ...room, points: room.points.slice(0, 4) })).toEqual([]);
+  });
+
+  it('frames the room sizes with what is drawn', () => {
+    const bare = planContentBox({ walls: [room] }) as { y: number };
+    const sized = planContentBox({ walls: [room], scale: 70 }) as { y: number };
+    expect(sized.y).toBeLessThan(bare.y);
+  });
+
+  it('gives a phone the box of the rooms, none without a closed wall or with the Set hidden', () => {
+    const box = planRoomBox({ walls: [room] }) as { x: number; w: number };
+    expect(box.x).toBeCloseTo(160 - 4.5, 0);
+    expect(box.w).toBeCloseTo(560 + 9, 0);
+    expect(planRoomBox({ walls: [{ ...room, closed: false }] })).toBeNull();
+    expect(planRoomBox({ walls: [room] }, ['set'])).toBeNull();
   });
 });

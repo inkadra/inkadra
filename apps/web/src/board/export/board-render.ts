@@ -24,8 +24,10 @@ import {
   type PlanStackEntry,
   pieceOutline,
   planFrame,
+  planRoomDims,
   planStack,
   type Rect,
+  roomMetres,
   shownOpenings,
   variantView,
   wallPieces,
@@ -978,6 +980,9 @@ export function framedPlanOps(
   return planOps(stored, whole, ctx, moves, true, box);
 }
 
+/** The discs of a printed glow, as shares of its radius, outermost first. */
+const GLOW_RINGS = [1, 0.75, 0.5, 0.28];
+
 /** How much of the ink tints the floor of a closed room over the paper (audit L1). */
 const FLOOR_TINT = 0.04;
 
@@ -992,10 +997,12 @@ export function planOps(
   box: Rect,
   ctx: CardContext,
   moves = true,
-  /** Beams and cones; a legend's glyph leaves them out. */
+  /** Beams, cones and labels; a legend's glyph leaves them out (its row writes the name). */
   beams = true,
   /** Where the drawing is cut; `box` (the plan's extent) without one. */
   clipTo?: Rect,
+  /** The rooms' sizes, with a scale (decision 0119); a sheet without "Scale and sizes" leaves them out. */
+  sizes = true,
 ): Op[] {
   // Links read from the cards the audience may see; without them, the text the icons hold.
   const el = ctx.cards ? linkedPlan(stored, ctx.cards, { palette: CHARACTER_COLOURS }) : stored;
@@ -1032,6 +1039,44 @@ export function planOps(
           points: flat(pieceOutline(piece, wall.thickness)),
           fill: wallInk,
         });
+    // The rooms' sizes outside their walls, "8.0 m" over the top and "6.3 m" on the left.
+    for (const d of sizes && el.scale ? planRoomDims(el) : []) {
+      const a = at(d.a.x, d.a.y);
+      const b = at(d.b.x, d.b.y);
+      const color = c['text-muted'];
+      const w = 0.75;
+      const t = 5 * k;
+      const across = a.y === b.y ? { x: 0, y: t } : { x: t, y: 0 };
+      labels.push(
+        { kind: 'line', x1: a.x, y1: a.y, x2: b.x, y2: b.y, color, width: w },
+        ...[a, b].map(
+          (p): Op => ({
+            kind: 'line',
+            x1: p.x - across.x,
+            y1: p.y - across.y,
+            x2: p.x + across.x,
+            y2: p.y + across.y,
+            color,
+            width: w,
+          }),
+        ),
+      );
+      const text = roomMetres(d.length, el.scale as number);
+      const size = 12 * k;
+      const tw = ctx.measure(text, size, 400);
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      // shortcut: the left side's size is written level, not turned as on screen; turn it when
+      // the export ops can rotate text.
+      labels.push({
+        kind: 'text',
+        x: a.y === b.y ? mid.x - tw / 2 : mid.x - tw - 5 * k,
+        y: a.y === b.y ? mid.y - 5 * k : mid.y + size * 0.35,
+        text,
+        size,
+        weight: 400,
+        color: c['text-secondary'],
+      });
+    }
     for (const o of openings) {
       const wall = walls.get(o.wall);
       if (!wall) continue;
@@ -1127,7 +1172,7 @@ export function planOps(
     });
   }
   for (const e of stack) if (e.tier >= 2) inside.push(...itemOps(e));
-  inside.push(...numbers, ...labels);
+  inside.push(...numbers, ...(beams ? labels : []));
   return [{ kind: 'clip', ...(clipTo ?? box), ops: inside }];
 
   /**
@@ -1141,16 +1186,20 @@ export function planOps(
     const color = warmth === null ? ink(icon.color) : mix(c['tag-orange'], c['tag-blue'], warmth);
     const shade = 0.06 + 0.16 * (icon.intensity ?? 0.8);
     if (glow) {
-      const ring: number[] = [];
-      for (let j = 0; j < 32; j++) {
-        const a = (j / 32) * Math.PI * 2;
-        const p = at(
-          glow.centre.x + glow.radius * Math.cos(a),
-          glow.centre.y + glow.radius * Math.sin(a),
-        );
-        ring.push(p.x, p.y);
-      }
-      return [{ kind: 'polygon', points: ring, fill: color, opacity: shade }];
+      // A soft glow, as the screen's radial one (audit SH3): discs stacked from the rim inwards,
+      // each faint, so the shade falls off towards the edge.
+      return GLOW_RINGS.map((share): Op => {
+        const ring: number[] = [];
+        for (let j = 0; j < 32; j++) {
+          const a = (j / 32) * Math.PI * 2;
+          const p = at(
+            glow.centre.x + glow.radius * share * Math.cos(a),
+            glow.centre.y + glow.radius * share * Math.sin(a),
+          );
+          ring.push(p.x, p.y);
+        }
+        return { kind: 'polygon', points: ring, fill: color, opacity: shade / 2.5 };
+      });
     }
     if (!cone) return [];
     const pts = cone.points.map((p) => at(p.x, p.y));

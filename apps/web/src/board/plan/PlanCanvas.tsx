@@ -36,6 +36,7 @@ import {
   planItemAt,
   planItems,
   planItemsAt,
+  planRoomBox,
   pulledAway,
   type ResizeHandle,
   ROTATE_STEP,
@@ -299,10 +300,13 @@ export function PlanCanvas({
   const selected = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
   const item = ed.item;
   const shown = ed.shown;
-  // Fit frames what this person sees drawn: their own hidden layers left out too.
+  // Fit frames what this person sees drawn: their own hidden layers left out too. A phone fits
+  // the room by its width, as the mockup shows it, when the plan has one (decision 0119).
   const content = useMemo(
-    () => planContentBox(shown, true, [...ed.myHidden]),
-    [shown, ed.myHidden],
+    () =>
+      (phone && planRoomBox(shown, [...ed.myHidden])) ||
+      planContentBox(shown, true, [...ed.myHidden]),
+    [shown, ed.myHidden, phone],
   );
   const surf = usePlanSurface({
     content,

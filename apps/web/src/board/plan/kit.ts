@@ -155,6 +155,13 @@ export interface PowerLines {
   rows: Array<{ text: string; amps: string; status: CircuitStatus }>;
 }
 
+/** "Key, Hair, Practical ×3": names in order, each repeated one once with how many. */
+export function foldNames(names: readonly string[]): string {
+  const counts = new Map<string, number>();
+  for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1);
+  return [...counts].map(([n, c]) => (c > 1 ? `${n} ×${c}` : n)).join(', ');
+}
+
 /**
  * The power per circuit of a plan for the call sheet, the scene sheets, the PDF sheet and the
  * read-only view: computed from the lights every time, never stored. Null without lights that
@@ -178,11 +185,13 @@ export function powerLines(
     rows: power.circuits
       .filter((c) => c.breaker !== null || c.watts > 0)
       .map((c) => {
-        const names = c.lights
-          .map((id) => byId.get(id))
-          .map((i) => (i ? i.label || t(`board.plan.icons.${i.kind}`) : ''))
-          .filter(Boolean)
-          .join(', ');
+        // "Key, Hair, Practical ×3", as the Kit tab writes a circuit.
+        const names = foldNames(
+          c.lights
+            .map((id) => byId.get(id))
+            .map((i) => (i ? i.label || t(`board.plan.icons.${i.kind}`) : ''))
+            .filter(Boolean),
+        );
         const head =
           c.breaker !== null
             ? t('board.plan.links.circuitLine', { name: c.name, amps: n(c.breaker, 1) })

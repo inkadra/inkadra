@@ -270,7 +270,7 @@ export function PlanViewer({
             <IconButton
               icon="minus"
               label={t('board.plan.zoomOut')}
-              disabled={surface.percent <= 25}
+              disabled={!surface.canZoomOut}
               onClick={() => surface.zoomBy(-1)}
             />
             <button
@@ -285,7 +285,7 @@ export function PlanViewer({
             <IconButton
               icon="plus"
               label={t('board.plan.zoomIn')}
-              disabled={surface.percent >= 800}
+              disabled={!surface.canZoomIn}
               onClick={() => surface.zoomBy(1)}
             />
             {!phone && <span className="plan-view__hint">{t('board.plan.view.hint')}</span>}
