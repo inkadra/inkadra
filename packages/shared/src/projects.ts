@@ -22,7 +22,12 @@ function graphemeCount(value: string): number {
   let flagHalf = false;
   for (const char of value) {
     const regional = /\p{Regional_Indicator}/u.test(char);
-    if (joined || (regional && flagHalf) || /[\uFE0E\uFE0F\u20E3\u200D\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u.test(char)) {
+    if (
+      joined ||
+      (regional && flagHalf) ||
+      char === '\u200D' ||
+      /[\uFE0E\uFE0F\u20E3\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u.test(char)
+    ) {
       joined = char === '\u200D';
       flagHalf = false;
       continue;

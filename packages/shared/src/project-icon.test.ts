@@ -29,7 +29,8 @@ describe('a project emoji on Hermes, without Intl.Segmenter', () => {
   });
   const one = ['🎬', '❤️', '👍🏽', '👨‍👩‍👧', '🇮🇹', '1️⃣', '🏴󠁧󠁢󠁳󠁣󠁴󠁿', '🏳️‍🌈'];
   const many = ['🎬🎥', '🇮🇹🇫🇷', 'ab', '👍x', '🎬 '];
-  const ok = (emoji: string) => ProjectIcon.safeParse({ shape: 'star', color: 'pink', emoji }).success;
+  const ok = (emoji: string) =>
+    ProjectIcon.safeParse({ shape: 'star', color: 'pink', emoji }).success;
 
   it('reads one emoji as Intl.Segmenter does, where the old code threw', () => {
     const segmented = [...one, ...many].map(ok);
