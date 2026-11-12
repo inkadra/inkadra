@@ -13,10 +13,10 @@ FROM base AS build
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 RUN pnpm turbo run build --filter=@inkadra/server --filter=@inkadra/web
-# The server's own dependencies may not include a patched package (patches/), which pnpm deploy
-# would otherwise refuse.
+# The server writes the set plan's sheet with the patched fontkit (decisions 0038, 0122): every
+# patch in patches/ must apply here, so an unused one fails the build.
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm --filter @inkadra/server deploy --prod --legacy --config.allow-unused-patches=true /out
+    pnpm --filter @inkadra/server deploy --prod --legacy /out
 
 FROM node:${NODE_VERSION}-trixie-slim AS runtime
 ARG VERSION=0.0.0-dev

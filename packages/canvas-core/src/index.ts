@@ -34,3 +34,4 @@ export * from './resize.ts';
 export * from './snap.ts';
 export * from './table.ts';
 export * from './tags.ts';
+export * from './words.ts';

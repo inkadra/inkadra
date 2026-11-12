@@ -88,15 +88,19 @@ export interface PlanSheetRequest {
  * The input of the sheet from the cards its audience may see and the shot labels of the whole
  * board (computed before anything is left out, as guests see them). Everything is read from
  * `cards` (decisions 0013, 0044, 0111): a plan, a base, a scene, a character, a frame or a
- * location left out of them is not read.
+ * location left out of them is not read. A sheet for `client` (a guest's) prints no day, whatever
+ * `days` holds: the schedule is the team's (decision 0122).
  */
 export function planSheetInputOf(
   request: PlanSheetRequest & {
     cards: ReadonlyMap<string, Element>;
     labels: ReadonlyMap<string, string>;
+    /** Who the sheet is for; left out, the team. */
+    audience?: Audience;
   },
 ): PlanSheetInput {
   const { cards, labels, t } = request;
+  const days = request.audience === 'client' ? [] : request.days;
   const see = (id: string) => cards.get(id);
   const plans = request.planIds.flatMap((id) => {
     const el = see(id);
@@ -113,7 +117,7 @@ export function planSheetInputOf(
   const location = owner ? linkedLocation(owner, cards) : null;
   const day =
     scene?.type === 'scene' && request.include.dateScene
-      ? sceneDay(request.days, scene.id, cards)
+      ? sceneDay(days, scene.id, cards)
       : null;
   return {
     setups: plans.map((p) => {
@@ -163,6 +167,8 @@ export function planSheetInput(
   const cards = audienceCards(request.elements, (id) => byId.get(id), request.filter);
   const labels = frameLabels(storyboardOf(request.elements));
   // Guests cannot read the schedule (decision 0111): no day on their sheet, whatever is given.
-  const days = request.filter.audience === 'client' ? [] : request.days;
-  return { input: planSheetInputOf({ ...request, days, cards, labels }), cards };
+  return {
+    input: planSheetInputOf({ ...request, audience: request.filter.audience, cards, labels }),
+    cards,
+  };
 }

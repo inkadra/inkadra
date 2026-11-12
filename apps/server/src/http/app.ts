@@ -47,6 +47,7 @@ import { registerLinkPreviews } from './link-previews.ts';
 import { registerMapPreviews } from './map-previews.ts';
 import { registerMapTiles } from './map-tiles.ts';
 import { registerNotificationRoutes } from './notifications-routes.ts';
+import { createPlanSheets, registerPlanSheetRoutes } from './plan-sheet-routes.ts';
 import { containsNul } from './nul-char.ts';
 import { registerProjectRoutes } from './projects-routes.ts';
 import { registerReviewRoutes } from './reviews-routes.ts';
@@ -220,8 +221,11 @@ export async function createApp(deps: AppDeps) {
   await registerClipRoutes(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
   // Share links and their guests (decision 0013) decode stored documents through one cache.
   const docs = new DocViews();
+  // The set plan's sheet (decision 0122): members and guests share its limits.
+  const sheets = createPlanSheets(deps);
   registerShareLinkRoutes(app, { ...deps, docs });
-  await registerGuestRoutes(app, { ...deps, docs });
+  await registerGuestRoutes(app, { ...deps, docs, sheets });
+  registerPlanSheetRoutes(app, sheets);
 
   const webDist = config.WEB_DIST ? resolve(config.WEB_DIST) : undefined;
   if (webDist && existsSync(join(webDist, 'index.html'))) {

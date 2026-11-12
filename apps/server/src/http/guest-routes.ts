@@ -81,6 +81,7 @@ import {
 import { registerGuestReviewRoutes } from './guest-review.ts';
 import { RateLimiter } from './link-previews.ts';
 import { createTileServer } from './map-tiles.ts';
+import type { PlanSheets } from './plan-sheet-routes.ts';
 
 interface Deps {
   config: Config;
@@ -89,12 +90,14 @@ interface Deps {
   storage: Storage;
   docs: DocViews;
   notices?: BoardNotifier;
+  sheets: PlanSheets;
 }
 
 const TokenParams = z.object({ token: z.string().min(16).max(128) });
 const LinkParams = z.object({ linkId: Id });
 const BoardParams = z.object({ linkId: Id, boardId: Id });
 const ElementParams = BoardParams.extend({ elementId: ElementRef });
+const PlanParams = BoardParams.extend({ planId: ElementRef });
 const AssetParams = z.object({ linkId: Id, assetId: Id });
 const VariantParams = AssetParams.extend({ size: ThumbnailSize });
 
@@ -695,6 +698,14 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       if (matchesEtag(req.headers['if-none-match'], version)) return reply.status(304).send();
       const full: GuestBoardSnapshot = { ...body, version, generatedAt: new Date().toISOString() };
       return full;
+    });
+
+    // The set plan's sheet as a PDF, the client copy (decision 0122).
+    scope.get(v1('/guest/links/:linkId/boards/:boardId/plans/:planId/sheet'), async (req, reply) => {
+      const { linkId, boardId } = PlanParams.parse(req.params);
+      const ctx = await guests.requireGuest(req, reply, linkId);
+      guests.requireBoard(ctx, boardId);
+      return deps.sheets.guest(req, reply, ctx, boardId);
     });
 
     scope.get(v1('/guest/links/:linkId/assets/:assetId/variants/:size'), async (req, reply) => {

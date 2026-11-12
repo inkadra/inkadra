@@ -27,7 +27,7 @@ route: installed apps talk to servers of different ages, so an option added late
 an older server answer 400. Clients find newer options through capabilities, never by trying.
 
 - `setups`: `this` (only this plan) or `all` (default: its family, base first, as the web
-  dialog). More than 20 setups with `setups=all` answers 400 `invalid_request`, with a message
+  dialog). More than 20 setups with `setups=all` answers 400 `bad_request`, with a message
   that says to export with `setups=this`. The handler checks it after reading the document; the
   schema cannot.
 - `include`: comma list (spaces around names ignored, empty items skipped) of `legend`, `kit`, `power`, `notes`, `scale`, `background`,
@@ -83,7 +83,7 @@ after an edit: a sheet asked right after an edit may not have it yet. Accepted.
 - Guests: the guest session of the link. No session: 401; a password needed again or a link
   expired, revoked or suspended: 403 with `GuestDenied`; board not on the link, no such plan or
   a plan hidden from guests: 404.
-- 400 `invalid_request` for an unknown part or language, or more than 20 setups with
+- 400 `bad_request` for an unknown part or language, or more than 20 setups with
   `setups=all`.
 - 429 `rate_limited` with `Retry-After`: more than 10 sheets a minute by one account or guest,
   or, with `details: { reason: "busy" }`, the server is already rendering its 2 sheets. Busy
