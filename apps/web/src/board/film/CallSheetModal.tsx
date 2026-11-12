@@ -152,7 +152,7 @@ function useDateLabel(style: 'short' | 'long' | 'phone') {
 
 export function CallSheetModal({
   store,
-  elements: cards,
+  elements: across,
   look,
   blockTitle,
   days,
@@ -179,7 +179,7 @@ export function CallSheetModal({
     store?.subscribe ?? noSubscribe,
     store?.getSnapshot ?? emptySnapshot,
   );
-  const elements = cards ?? snapshot.byId;
+  const elements = across ?? snapshot.byId;
   const slugline = useSlugline();
   const boardAspect = store ? (getBoardAspect(store.doc) ?? '16:9') : '16:9';
   const shortDate = useDateLabel('short');
