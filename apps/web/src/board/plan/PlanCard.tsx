@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { linkedLocation, type PlanElement, variantFamily, variantView } from '@inkadra/canvas-core';
+import type { Element } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,16 +31,16 @@ export function planTitle(
 }
 
 /**
- * A set plan on the board (#335, decision 0111): its drawing without the grid, then its name
- * (the title, else the linked location) with the chips of its scenes, and the counts of its
- * setups, cameras and lights with the power they draw. Double click (or Enter) edits it; a guest
- * opens the read-only view.
+ * The words of a plan's card (decision 0111): its name (the base's title, else the linked
+ * location), its scenes, and the counts of its setups, cameras and lights with their power. The
+ * card on the board and board exports (decision 0119) write the same.
  */
-export function PlanCard({ element }: { element: PlanElement }) {
-  const { t, i18n } = useTranslation();
-  const { store } = useBoard();
-  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  const byId = snapshot.byId;
+export function planCardWords(
+  element: PlanElement,
+  byId: ReadonlyMap<string, Element>,
+  t: TFunction,
+  locale: string,
+) {
   // The base of a variant is another card: follow it, so a wall moved there moves here.
   const baseEl = element.variantOf ? byId.get(element.variantOf) : undefined;
   const base = baseEl?.type === 'plan' ? baseEl : undefined;
@@ -52,7 +53,7 @@ export function PlanCard({ element }: { element: PlanElement }) {
   const name = (base ? base.title : element.title) || place || t('board.plan.name');
   const kw =
     watts >= 1000
-      ? `${(watts / 1000).toLocaleString(i18n.language, { maximumFractionDigits: 1 })} kW`
+      ? `${(watts / 1000).toLocaleString(locale, { maximumFractionDigits: 1 })} kW`
       : `${watts} W`;
   const chips = [
     family.length > 1 ? t('board.plan.card.setups', { count: family.length }) : '',
@@ -63,6 +64,25 @@ export function PlanCard({ element }: { element: PlanElement }) {
           .join(' · ')
       : '',
   ].filter(Boolean);
+  return {
+    plan,
+    scenes,
+    title: element.variantOf && element.variant ? `${name} · ${element.variant}` : name,
+    chips,
+  };
+}
+
+/**
+ * A set plan on the board (#335, decision 0111): its drawing without the grid, then its name
+ * (the title, else the linked location) with the chips of its scenes, and the counts of its
+ * setups, cameras and lights with the power they draw. Double click (or Enter) edits it; a guest
+ * opens the read-only view.
+ */
+export function PlanCard({ element }: { element: PlanElement }) {
+  const { t, i18n } = useTranslation();
+  const { store } = useBoard();
+  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const { plan, scenes, title, chips } = planCardWords(element, snapshot.byId, t, i18n.language);
   return (
     <div className="plan plan--card">
       <div className="plan__body card__media">
@@ -70,9 +90,7 @@ export function PlanCard({ element }: { element: PlanElement }) {
       </div>
       <div className="plan__foot">
         <div className="plan__head">
-          <span className="plan__title">
-            {element.variantOf && element.variant ? `${name} · ${element.variant}` : name}
-          </span>
+          <span className="plan__title">{title}</span>
           {useInRouterContext() ? (
             <LinkedScenes scenes={scenes} />
           ) : (

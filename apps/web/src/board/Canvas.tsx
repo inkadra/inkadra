@@ -4091,6 +4091,7 @@ export function Canvas({
             onNewVariant={() => editedPlan && newVariant(editedPlan, true)}
             onOpenScene={openScene}
             projectId={guest || preview ? undefined : projectId}
+            boardId={guest || preview ? undefined : boardId}
             boardAspect={boardAspect}
             onOpenCard={(id) => {
               const card = snap.byId.get(id);

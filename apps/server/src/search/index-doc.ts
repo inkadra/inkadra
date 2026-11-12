@@ -132,9 +132,16 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
       };
     case 'plan': {
       // Labels of icons and the texts written on the plan, as on the card; makes and notes of
-      // icons and labels of walls and openings (decision 0104).
+      // icons and labels of walls and openings (decision 0104); the notes of blocking positions,
+      // the last one's in `stepNote` since version 26 (decision 0119).
       const words = [
-        ...(el.icons ?? []).flatMap((i) => [i.label, i.make, i.note]),
+        ...(el.icons ?? []).flatMap((i) => [
+          i.label,
+          i.make,
+          i.note,
+          i.stepNote,
+          ...(i.steps ?? []).map((step) => step.note),
+        ]),
         ...(el.shapes ?? []).map((s) => s.text),
         ...(el.walls ?? []).map((w) => w.label),
         ...(el.openings ?? []).map((o) => o.label),

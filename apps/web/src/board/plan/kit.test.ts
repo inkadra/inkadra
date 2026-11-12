@@ -4,9 +4,9 @@ import type { PlanElement } from '@inkadra/canvas-core';
 import { type PlanIcon, type PlanShape, STROKE_GRID } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { kitList, measureValue, planCounts, powerLines } from './kit.ts';
+import { foldNames, kitList, measureValue, planCounts, powerLines } from './kit.ts';
 import { measureText } from './PlanDrawing.tsx';
-import { familyKitCount, foldNames } from './PlanKit.tsx';
+import { familyKitCount } from './PlanKit.tsx';
 
 const t = ((key: string) => key.split('.').at(-1)) as unknown as TFunction;
 /** The name and count of each line, what these tests are about. */

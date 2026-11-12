@@ -32,3 +32,31 @@ it('groups shots by scene until this person picks another grouping', () => {
   expect(readUserPreferences({ shotGroupBy: 'setup' }).shotGroupBy).toBe('setup');
   expect(readUserPreferences({ shotGroupBy: 'camera' }).shotGroupBy).toBe('scene');
 });
+
+it("keeps the set plan editor's choices: defaults, types, the hidden groups once each and capped", () => {
+  expect(readUserPreferences(null)).toMatchObject({
+    planSnap: true,
+    planAttach: true,
+    planGhosts: true,
+    planHidden: [],
+    planShelf: 'lights',
+  });
+  const read = readUserPreferences({
+    planSnap: false,
+    planAttach: 'no',
+    planGhosts: 0,
+    planHidden: ['camera', 'grip', 'camera', 'x'.repeat(41), 7, ''],
+    planShelf: 'people',
+  });
+  expect(read).toMatchObject({ planSnap: false, planAttach: true, planGhosts: true });
+  // Group names, once each; a name too long or not a string is dropped, not the whole list.
+  expect(read.planHidden).toEqual(['camera', 'grip']);
+  expect(read.planShelf).toBe('people');
+  // A list that is valid as a whole loses its repeats too.
+  expect(readUserPreferences({ planHidden: ['set', 'set'] }).planHidden).toEqual(['set']);
+  expect(
+    readUserPreferences({ planHidden: Array.from({ length: 14 }, (_, i) => `g${i}`) }).planHidden,
+  ).toHaveLength(10);
+  expect(readUserPreferences({ planShelf: 'x'.repeat(41) }).planShelf).toBe('lights');
+  expect(readUserPreferences({ planShelf: '' }).planShelf).toBe('lights');
+});

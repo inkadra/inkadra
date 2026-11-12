@@ -18,7 +18,7 @@ import { type Ed, usePlanEditing } from './editing.ts';
 import type { useBackgroundPicker } from './PlanBackground.tsx';
 import { PlanStart } from './PlanStart.tsx';
 import { PlanWallProperties } from './PlanWallProperties.tsx';
-import { useWallTools, type WallTools } from './PlanWalls.tsx';
+import { outside, useWallTools, type WallTools } from './PlanWalls.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
@@ -230,4 +230,13 @@ it('leaves a locked wall and a locked opening as they are, until unlocked', asyn
   expect(planOf(doc, plan.id).walls?.[0]?.points).toEqual(room.points);
   await act(async () => m.ed.remove());
   expect(planOf(doc, plan.id).walls).toHaveLength(1);
+});
+
+it('writes the sizes of a closed room outside it, whichever way its corners were drawn', () => {
+  const square = [0, 0, 1000, 0, 1000, 1000, 0, 1000];
+  const back = [0, 0, 0, 1000, 1000, 1000, 1000, 0];
+  // The top side runs to the right: its normal points up, out of a room drawn clockwise.
+  expect(outside({ points: square, closed: true })).toBe(1);
+  expect(outside({ points: back, closed: true })).toBe(-1);
+  expect(outside({ points: square, closed: false })).toBe(-1);
 });

@@ -18,12 +18,13 @@ import {
 } from './plan.ts';
 import { iconLabel, iconSubLabel, PLAN_LABEL_SIZE, PLAN_SUB_LABEL_SIZE } from './plan-labels.ts';
 import { backgroundBox } from './plan-start.ts';
-import { wallBounds } from './plan-walls.ts';
+import { planRoomDims, planRooms, wallBounds } from './plan-walls.ts';
 
 /**
  * The view of a plan's drawing surface (decision 0118): a surface without edges that fills the
  * area between the panels, panned and zoomed; the plan's old 3:2 extent is the unit its
- * coordinates count in, and 100 % fits it to the area. A view is the board's
+ * coordinates count in. The zoom control reads 100 % on the plan fitted (Fit, the view it opens
+ * with; decision 0119), as the mockup does. A view is the board's
  * `Viewport`: screen px = (view units - x, y) × zoom, zoom being px per view unit.
  */
 
@@ -42,7 +43,7 @@ const NO_INSETS: PlanInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 
 /** Space kept round what is fitted, px. */
 const MARGIN = 24;
-/** Steps of the zoom buttons, in percent of the whole drawing fitted to its area. */
+/** Steps of the zoom buttons, in percent of the plan fitted (`home`, decision 0119). */
 export const PLAN_ZOOM_STEPS = [25, 50, 75, 100, 150, 200, 300, 400, 600, 800];
 const MIN_PERCENT = 25;
 const MAX_PERCENT = 800;
@@ -58,7 +59,10 @@ const REACH = {
   h: (1 + 2 * PLAN_REACH_UNITS) * PLAN_VIEW_H,
 };
 
-/** The zoom at which the drawing's whole extent fits the area: 100 %. */
+/**
+ * The zoom at which the drawing's whole extent fits the area: the unit of the zoom's limits
+ * (25 to 800 % of it), and 100 % when nothing is drawn.
+ */
 export function planBaseZoom(area: PlanArea): number {
   return Math.max(
     0.01,
@@ -66,9 +70,18 @@ export function planBaseZoom(area: PlanArea): number {
   );
 }
 
-/** The zoom as the percent shown in the zoom control. */
-export function planZoomPercent(v: Viewport, area: PlanArea): number {
-  return Math.round((v.zoom / planBaseZoom(area)) * 100);
+/**
+ * The zoom as the percent shown in the zoom control: of `home`, the zoom of the plan fitted
+ * (`fitPlanView(...).zoom`, decision 0119), else of the extent fitted.
+ */
+export function planZoomPercent(v: Viewport, area: PlanArea, home = planBaseZoom(area)): number {
+  return Math.round((v.zoom / home) * 100);
+}
+
+/** Whether the zoom can go further in (1) or out (-1) within its limits. */
+export function canZoomPlan(v: Viewport, area: PlanArea, dir: 1 | -1): boolean {
+  const next = clampZoom(v.zoom * (dir > 0 ? 1.01 : 0.99), area);
+  return dir > 0 ? next > v.zoom : next < v.zoom;
 }
 
 const clampZoom = (zoom: number, area: PlanArea) => {
@@ -100,14 +113,22 @@ export function zoomPlanAround(v: Viewport, area: PlanArea, zoom: number, anchor
   );
 }
 
-/** One step of the zoom buttons (or keys) in or out, round the middle of the area. */
-export function stepPlanZoom(v: Viewport, area: PlanArea, dir: 1 | -1): Viewport {
-  const now = (v.zoom / planBaseZoom(area)) * 100;
+/**
+ * One step of the zoom buttons (or keys) in or out, round the middle of the area: to the next
+ * of PLAN_ZOOM_STEPS in percent of `home` (the plan fitted), within the zoom's limits.
+ */
+export function stepPlanZoom(
+  v: Viewport,
+  area: PlanArea,
+  dir: 1 | -1,
+  home = planBaseZoom(area),
+): Viewport {
+  const now = (v.zoom / home) * 100;
   const next =
     dir > 0
       ? (PLAN_ZOOM_STEPS.find((s) => s > now + 0.5) ?? MAX_PERCENT)
       : ([...PLAN_ZOOM_STEPS].reverse().find((s) => s < now - 0.5) ?? MIN_PERCENT);
-  return zoomPlanAround(v, area, (planBaseZoom(area) * next) / 100, {
+  return zoomPlanAround(v, area, (home * next) / 100, {
     x: area.w / 2,
     y: area.h / 2,
   });
@@ -172,7 +193,15 @@ export function fitPlanView(
 type Framed = Partial<
   Pick<
     PlanElement,
-    'strokes' | 'shapes' | 'icons' | 'walls' | 'background' | 'hiddenLayers' | 'sensor' | 'scale'
+    | 'strokes'
+    | 'shapes'
+    | 'icons'
+    | 'walls'
+    | 'background'
+    | 'hiddenLayers'
+    | 'sensor'
+    | 'scale'
+    | 'roomSizes'
   >
 >;
 
@@ -189,6 +218,9 @@ const union = (boxes: readonly Rect[]): Rect | null => {
 };
 const around = (points: readonly Point[], pad = 0): Rect =>
   union(points.map((p) => ({ x: p.x - pad, y: p.y - pad, w: 2 * pad, h: 2 * pad }))) as Rect;
+
+/** Room sizes' text, view units round their line (decision 0119). */
+const ROOM_DIM_TEXT = 18;
 
 /** Radius of a blocking position's number and how far it sits from the position. */
 const STEP_REACH = 24 + 11;
@@ -273,8 +305,24 @@ export function planContentBox(
     for (const wall of plan.walls ?? []) boxes.push(wallBounds(wall));
     if (background && plan.background && !plan.background.hidden)
       boxes.push(backgroundBox(plan.background));
+    for (const d of planRoomDims(plan, hidden)) boxes.push(around([d.a, d.b], ROOM_DIM_TEXT));
   }
   return union(boxes);
+}
+
+/**
+ * The box of the plan's closed rooms (walls on the Set, shown), view units; null without one. A
+ * phone fits it by width, as the mockup shows a room filling the screen (decision 0119).
+ */
+export function planRoomBox(
+  plan: Partial<Pick<PlanElement, 'walls' | 'hiddenLayers'>>,
+  hidden: readonly string[] = [],
+): Rect | null {
+  if (plan.hiddenLayers?.includes('set') || hidden.includes('set')) return null;
+  const walls = plan.walls ?? [];
+  // Every room, open walls meeting in a loop too (decision 0119), with its walls' thickness.
+  const ids = new Set(planRooms(walls).flatMap((r) => r.walls));
+  return union(walls.filter((w) => ids.has(w.id)).map(wallBounds));
 }
 
 /** Margin round what is drawn when it is framed, view units, plus a share of its size. */
@@ -285,16 +333,22 @@ const FRAME_MIN_W = 400;
 
 /**
  * Where a plan is shown on its card, its slides, sheets and exports (decision 0118): what is
- * drawn on it, with a margin for labels, widened to the plan's 3:2 shape and never narrower than
- * FRAME_MIN_W; the whole extent for an empty plan. View units.
+ * drawn on it, with a margin for labels, widened to the shape of where it is shown (`aspect`,
+ * width over height: the plan's 3:2 unless a sheet's frame says otherwise, decision 0119) and
+ * never narrower than FRAME_MIN_W; the whole extent for an empty plan. View units.
  */
-export function planFrame(plan: Framed, background = true, hidden: readonly string[] = []): Rect {
+export function planFrame(
+  plan: Framed,
+  background = true,
+  hidden: readonly string[] = [],
+  aspect: number = PLAN_ASPECT,
+): Rect {
   const box = planContentBox(plan, background, hidden);
   if (!box) return { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H };
   const m = FRAME_MARGIN + FRAME_SHARE * Math.max(box.w, box.h * PLAN_ASPECT);
   let w = Math.max(FRAME_MIN_W, box.w + 2 * m);
   let h = box.h + 2 * m;
-  if (w / h > PLAN_ASPECT) h = w / PLAN_ASPECT;
-  else w = h * PLAN_ASPECT;
+  if (w / h > aspect) h = w / aspect;
+  else w = h * aspect;
   return { x: box.x + box.w / 2 - w / 2, y: box.y + box.h / 2 - h / 2, w, h };
 }

@@ -888,6 +888,8 @@ function clipboardBase(base: unknown): PlanBase | null {
     'scale',
     'grid',
     'rulers',
+    // Since version 26 (decision 0119): whether the rooms' sizes show.
+    'roomSizes',
     // What a setup reads from its base, since decision 0117; a base copied earlier has none.
     'circuits',
     'voltage',
@@ -915,6 +917,8 @@ export function pasteElements(
   const { clips, skipped } = readClipboard(doc, data, opts.instance);
   const all = listElements(doc);
   const here = new Set(all.map((e) => e.id));
+  // Links to what lives outside the document (a plan's shooting day) hold on its own board only.
+  const sameBoard = data.source?.boardId === roots(doc).meta.get('boardId');
   const fresh = new Map<string, string>();
   for (const clip of clips) fresh.set(clip.id, newElementId());
   const pasted = new Set(fresh.values());
@@ -943,8 +947,11 @@ export function pasteElements(
     if (onCanvas) out.push(id);
     const fields = { id, x, y, z, parent: copiedParent ?? null };
     return 'stored' in clip
-      ? { id, stored: storedCopy(clip, fields, here, pasted, fresh, baseFor, opts.userId) }
-      : elementCopy(clip, fields, here, pasted, fresh, baseFor, opts.userId);
+      ? {
+          id,
+          stored: storedCopy(clip, fields, here, pasted, fresh, baseFor, opts.userId, sameBoard),
+        }
+      : elementCopy(clip, fields, here, pasted, fresh, baseFor, opts.userId, sameBoard);
   });
   doc.transact(() => {
     for (const write of writes) {
@@ -980,6 +987,7 @@ function elementCopy(
   fresh: Map<string, string>,
   baseFor: (id: string) => PlanBase | undefined,
   userId: string | null,
+  sameBoard: boolean,
 ): { element: Element; body: Y.XmlFragment | null } {
   const e = clip.element;
   const { x, y } = fields;
@@ -1016,6 +1024,12 @@ function elementCopy(
           if (value === undefined) delete (copy as Record<string, unknown>)[key];
           else (copy as Record<string, unknown>)[key] = value;
       }
+    }
+    // The sun's shooting day is a day of the board's schedule (decision 0119): on another board
+    // it goes, the date it had staying as a plain date.
+    if (!sameBoard && copy.sun?.day) {
+      const { day: _day, ...sun } = copy.sun;
+      copy.sun = sun;
     }
     // Scenes: the copies of scenes pasted with it, or those of this board; others go.
     const scenes = (copy.sceneIds ?? [])
@@ -1068,6 +1082,7 @@ function storedCopy(
   fresh: Map<string, string>,
   baseFor: (id: string) => PlanBase | undefined,
   userId: string | null,
+  sameBoard: boolean,
 ): Y.Map<unknown> {
   const source = clip.stored;
   const copy = cloneMap(source);
@@ -1107,6 +1122,12 @@ function storedCopy(
       const base = baseFor(clip.id);
       if (base) adoptBase(copy, base);
       else copy.delete('variantOf');
+    }
+    // On another board the sun's shooting day goes; its date stays (decision 0119).
+    const sun = copy.get('sun');
+    if (!sameBoard && sun && typeof sun === 'object' && 'day' in sun) {
+      const { day: _day, ...rest } = sun as Record<string, unknown>;
+      copy.set('sun', rest);
     }
     const sceneIds = copy.get('sceneIds');
     const scenes = (Array.isArray(sceneIds) ? sceneIds : [])

@@ -107,7 +107,8 @@ export function PlanStart({
       : '';
   const title = place || (scene?.type === 'scene' && scene.location) || plan.title;
   const sourceName = (p: PlanElement) => {
-    const parts = [linkedLocation(p, cards)?.name, p.title].filter(Boolean);
+    // A plan named after its location is named once: "Rosa's diner", not twice.
+    const parts = [...new Set([linkedLocation(p, cards)?.name, p.title].filter(Boolean))];
     return parts.join(', ') || t('board.plan.name');
   };
 
@@ -268,6 +269,7 @@ export function PlanStart({
               max={ROOM_MAX_METRES}
               step={0.1}
               unit="m"
+              digits={1}
               label={t('board.plan.width')}
               onCommit={(v) => {
                 setWidth(v);
@@ -281,6 +283,7 @@ export function PlanStart({
               max={ROOM_MAX_METRES}
               step={0.1}
               unit="m"
+              digits={1}
               label={t('board.plan.depth')}
               onCommit={(v) => {
                 setDepth(v);
@@ -296,7 +299,7 @@ export function PlanStart({
         )}
       </fieldset>
       <div className="plan-start__actions">
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="secondary" onClick={onClose}>
           {t('board.plan.start.empty')}
         </Button>
         <Button variant="primary" disabled={busy || tooBig || choice === 'scan'} onClick={go}>

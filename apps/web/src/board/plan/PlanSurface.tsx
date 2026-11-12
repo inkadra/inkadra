@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  canZoomPlan,
   fitPlanView,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
@@ -45,7 +46,7 @@ interface Pinch {
  * (the stage, the unit of its coordinates), is panned and zoomed in it as the board is
  * (Canvas.tsx): Space, the middle button, a scroll or two fingers pan; Ctrl/⌘ + wheel, a trackpad
  * pinch or two fingers zoom round the pointer; the zoom control steps round the middle and Fit
- * frames what is drawn. Panning writes the stage's transform at once, without a render, so a
+ * frames what is drawn, which the control reads as 100 % (decision 0119). Panning writes the stage's transform at once, without a render, so a
  * plan of 300 icons pans at the screen's rate; a change of zoom renders once a frame.
  */
 export function usePlanSurface({
@@ -105,10 +106,17 @@ export function usePlanSurface({
       });
   }, []);
 
+  /**
+   * What 100 % means (decision 0119): the zoom of the plan fitted, pinned when the view is fitted,
+   * so a panel opening or the window resizing never moves the number unless the zoom moves.
+   */
+  const home = useRef(0);
   const fit = useCallback(() => {
     if (!area.current.w) return;
     const { content: box, insets: free, fitWidth: byWidth } = fitArgs.current;
-    apply(fitPlanView(box, area.current, free, byWidth));
+    const v = fitPlanView(box, area.current, free, byWidth);
+    home.current = v.zoom;
+    apply(v);
   }, [apply]);
 
   // The area's size: the first one fits the plan's content, later ones keep the view.
@@ -185,19 +193,23 @@ export function usePlanSurface({
     return a && b ? [a, b] : null;
   };
 
+  const pinned = home.current || 1;
   return {
     surface,
     stage,
     view,
-    /** The zoom as the control shows it. */
-    percent: view && area.current.w ? planZoomPercent(view, area.current) : 100,
+    /** The zoom as the control shows it, 100 % being the plan fitted. */
+    percent: view && area.current.w ? planZoomPercent(view, area.current, pinned) : 100,
+    /** Whether the zoom can go further in or out. */
+    canZoomIn: !!view && !!area.current.w && canZoomPlan(view, area.current, 1),
+    canZoomOut: !!view && !!area.current.w && canZoomPlan(view, area.current, -1),
     /** A view unit on screen, px. */
     unit: view?.zoom ?? 0,
     fit: () => {
       touched.current = true;
       fit();
     },
-    zoomBy: (dir: 1 | -1) => move((v) => stepPlanZoom(v, area.current, dir)),
+    zoomBy: (dir: 1 | -1) => move((v) => stepPlanZoom(v, area.current, dir, pinned)),
     panBy: (dx: number, dy: number) => move((v) => panPlanBy(v, area.current, dx, dy)),
     /**
      * A pointer pressed on the surface. A second finger starts a pinch: true, and the caller
@@ -286,7 +298,7 @@ export function ZoomControl({
       <IconButton
         icon="minus"
         label={t('board.plan.zoomOut')}
-        disabled={surface.percent <= 25}
+        disabled={!surface.canZoomOut}
         onClick={() => surface.zoomBy(-1)}
       />
       <span className="plan-canvas__percent" aria-live="polite">
@@ -295,7 +307,7 @@ export function ZoomControl({
       <IconButton
         icon="plus"
         label={t('board.plan.zoomIn')}
-        disabled={surface.percent >= 800}
+        disabled={!surface.canZoomIn}
         onClick={() => surface.zoomBy(1)}
       />
       <IconButton icon="fit" label={t('board.plan.zoomFit')} onClick={surface.fit} />

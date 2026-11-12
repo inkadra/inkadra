@@ -3,6 +3,7 @@ import {
   type UpdateUserPreferences,
   type UserPreferences,
 } from '@inkadra/shared';
+import { API_PREFIX } from '@inkadra/shared/constants';
 import { useSyncExternalStore } from 'react';
 import { api } from './api.ts';
 
@@ -68,5 +69,24 @@ export async function updatePreferences(patch: UpdateUserPreferences) {
   } catch (err) {
     set(previous);
     throw err;
+  }
+}
+
+/**
+ * Saves a change while the page goes away (`pagehide`): a request that outlives the page
+ * (`keepalive`), with nothing to wait for or roll back. The cache keeps the value for this device.
+ */
+export function savePreferencesOnLeave(patch: UpdateUserPreferences) {
+  set({ ...current, ...patch });
+  try {
+    void fetch(`${API_PREFIX}/me/preferences`, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      keepalive: true,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    }).catch(() => {});
+  } catch {
+    // No fetch while the page unloads: the choice stays in this device's cache.
   }
 }

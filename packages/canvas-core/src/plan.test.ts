@@ -277,7 +277,8 @@ describe('blocking', () => {
       color: '#B897F0',
       x: 1000,
       y: 1000,
-      note: 'Porta, entra',
+      stepNote: 'Porta, entra',
+      note: 'Cappotto addosso',
     };
     const two = addBlockingStep(actor, { x: 0.5, y: 0.25 });
     expect(two).toMatchObject({
@@ -285,7 +286,9 @@ describe('blocking', () => {
       y: 1024,
       steps: [{ x: 1000, y: 1000, note: 'Porta, entra' }],
     });
-    expect(two).not.toHaveProperty('note');
+    // The position's note goes with the position; the item's note stays (decision 0119).
+    expect(two).not.toHaveProperty('stepNote');
+    expect(two.note).toBe('Cappotto addosso');
     // People face the way they walk: here to the right and a little down.
     expect(two.rotation).toBeGreaterThan(0);
     expect(two.rotation).toBeLessThan(10);

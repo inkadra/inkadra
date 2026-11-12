@@ -178,7 +178,9 @@ for (const theme of ['dark', 'light'] as const) {
     await expect(props).toContainText('Seleziona qualcosa sulla pianta');
     await shot('open');
 
-    // Place from the library by click: the tile arms, a click on the plan places.
+    // Place from the library by click: the tile arms, a click on the plan places. The library
+    // opens on the category last looked at, kept in the account (decision 0119).
+    await rail.getByRole('button', { name: 'Luci', exact: true }).click();
     await library.getByRole('button', { name: 'LED COB', exact: true }).click();
     await expect(editor.locator('.plan-canvas__toast')).toContainText('LED COB');
     await clickAt([820, 520]);

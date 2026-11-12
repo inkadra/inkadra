@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
 import { itemName } from './elements.ts';
-import { KIT_GROUPS, type KitLine, kitList } from './kit.ts';
+import { foldNames, KIT_GROUPS, type KitLine, kitList } from './kit.ts';
 import { NumberField } from './NumberField.tsx';
 
 /** "2.5 kW · 10.8 A": a power and the amperes it draws, in the way of this language. */
@@ -59,13 +59,6 @@ export function familyKitCount(family: readonly PlanElement[], t: TFunction, lan
       most.set(l.name, Math.max(most.get(l.name) ?? 0, l.count));
   }
   return [...most.values()].reduce((n, c) => n + c, 0);
-}
-
-/** "Key, Hair, Practical ×3": names in order, each repeated one once with how many. */
-export function foldNames(names: readonly string[]): string {
-  const counts = new Map<string, number>();
-  for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1);
-  return [...counts].map(([n, c]) => (c > 1 ? `${n} ×${c}` : n)).join(', ');
 }
 
 /**

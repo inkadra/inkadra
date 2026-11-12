@@ -767,3 +767,356 @@ export function removePlanCircuits(
       if (doomed.has(idOf(list.get(i)) as string)) list.delete(i, 1);
   }, origin);
 }
+
+/** How far outside its walls a room's size is written, view units past half the thickness. */
+export const ROOM_DIM_GAP = 30;
+
+/**
+ * One line of a room's size (decision 0119): from `a` to `b`, already moved out past the wall,
+ * with `length` view units written on it; `overall` when the room is not a rectangle, so the
+ * line gives its overall width or depth and says so.
+ */
+export interface RoomDim {
+  a: Point;
+  b: Point;
+  length: number;
+  overall: boolean;
+}
+
+/**
+ * A room: an area the walls close all round (decision 0119), whether by one closed wall, by open
+ * walls meeting end to end, or by a dividing wall that makes two rooms of one.
+ */
+export interface PlanRoom {
+  points: Point[];
+  thickness: number;
+  /** The walls that bound it; a dividing wall bounds two rooms. */
+  walls: string[];
+}
+
+/** Ends and junctions of walls this close (view units) meet. */
+const MEET = 2;
+/** Past this many wall sides, junctions in the middle of a side are not looked for: plans that
+ * large keep the rooms their walls close by their ends, at a cost that stays small. */
+const MAX_SIDES = 800;
+
+type Side = { a: Point; b: Point; wall: string };
+
+/** Where along a–b (0 to 1, ends excluded) the point p lies on it, within MEET; else null. */
+function along(p: Point, a: Point, b: Point): number | null {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (!len2) return null;
+  const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+  if (t <= 0 || t >= 1) return null;
+  return Math.hypot(a.x + t * dx - p.x, a.y + t * dy - p.y) <= MEET ? t : null;
+}
+
+/** Where two sides cross inside both (0 to 1 along each), or null. */
+function crossing(s: Side, o: Side): [number, number] | null {
+  const r = { x: s.b.x - s.a.x, y: s.b.y - s.a.y };
+  const q = { x: o.b.x - o.a.x, y: o.b.y - o.a.y };
+  const den = r.x * q.y - r.y * q.x;
+  if (Math.abs(den) < 1e-9) return null;
+  const t = ((o.a.x - s.a.x) * q.y - (o.a.y - s.a.y) * q.x) / den;
+  const u = ((o.a.x - s.a.x) * r.y - (o.a.y - s.a.y) * r.x) / den;
+  const inside = (v: number) => v > 1e-6 && v < 1 - 1e-6;
+  return inside(t) && inside(u) ? [t, u] : null;
+}
+
+/** The corners of a room without the points that lie on a straight run of its walls. */
+function corners(points: Point[]): Point[] {
+  return points.filter((p, i) => {
+    const a = points[(i - 1 + points.length) % points.length] as Point;
+    const b = points[(i + 1) % points.length] as Point;
+    const cross = (p.x - a.x) * (b.y - p.y) - (p.y - a.y) * (b.x - p.x);
+    return Math.abs(cross) > MEET * Math.hypot(b.x - a.x, b.y - a.y);
+  });
+}
+
+/**
+ * The rooms of a plan (decision 0119): the faces of the graph of its walls. Each side of every
+ * wall is cut where another wall's end meets it (a T junction), where two sides cross and where
+ * ends meet within MEET; sides that lead nowhere are left out; each closed loop of what is left is
+ * a room, so a dividing wall bounds the two rooms on either side of it. The cost is bounded:
+ * beyond MAX_SIDES sides only meeting ends join walls.
+ */
+export function planRooms(walls: readonly PlanWall[]): PlanRoom[] {
+  const sides: Side[] = [];
+  for (const w of walls) {
+    const p = wallPoints(w);
+    for (let i = 0; i + 1 < p.length; i++)
+      sides.push({ a: p[i] as Point, b: p[i + 1] as Point, wall: w.id });
+    if (w.closed && p.length > 2)
+      sides.push({ a: p.at(-1) as Point, b: p[0] as Point, wall: w.id });
+  }
+  const cuts: number[][] = sides.map(() => []);
+  if (sides.length <= MAX_SIDES)
+    for (let i = 0; i < sides.length; i++) {
+      const s = sides[i] as Side;
+      for (let j = 0; j < sides.length; j++) {
+        if (i === j) continue;
+        const o = sides[j] as Side;
+        for (const end of [o.a, o.b]) {
+          const t = along(end, s.a, s.b);
+          if (t !== null) cuts[i]?.push(t);
+        }
+        if (j > i) {
+          const x = crossing(s, o);
+          if (x) {
+            cuts[i]?.push(x[0]);
+            cuts[j]?.push(x[1]);
+          }
+        }
+      }
+    }
+  // Corners, joined within MEET: a grid of cells of that size finds a near one at once.
+  const verts: Point[] = [];
+  const grid = new Map<string, number[]>();
+  const vertex = (p: Point) => {
+    const cx = Math.floor(p.x / MEET);
+    const cy = Math.floor(p.y / MEET);
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dy = -1; dy <= 1; dy++)
+        for (const k of grid.get(`${cx + dx},${cy + dy}`) ?? []) {
+          const v = verts[k] as Point;
+          if (Math.hypot(v.x - p.x, v.y - p.y) <= MEET) return k;
+        }
+    verts.push(p);
+    const key = `${cx},${cy}`;
+    grid.set(key, [...(grid.get(key) ?? []), verts.length - 1]);
+    return verts.length - 1;
+  };
+  const edges = new Map<string, { u: number; v: number; walls: Set<string> }>();
+  sides.forEach((s, i) => {
+    let prev = vertex(s.a);
+    for (const t of [...(cuts[i] ?? []).sort((x, y) => x - y), 1]) {
+      const v = vertex({ x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t });
+      if (v !== prev) {
+        const key = prev < v ? `${prev},${v}` : `${v},${prev}`;
+        const e = edges.get(key) ?? { u: prev, v, walls: new Set<string>() };
+        e.walls.add(s.wall);
+        edges.set(key, e);
+      }
+      prev = v;
+    }
+  });
+  const neighbours = () => {
+    const m = new Map<number, number[]>();
+    for (const e of edges.values()) {
+      m.set(e.u, [...(m.get(e.u) ?? []), e.v]);
+      m.set(e.v, [...(m.get(e.v) ?? []), e.u]);
+    }
+    return m;
+  };
+  // Sides that lead nowhere (a wall's free end) close no room.
+  for (let pruned = true; pruned; ) {
+    pruned = false;
+    const m = neighbours();
+    for (const [key, e] of edges)
+      if ((m.get(e.u)?.length ?? 0) < 2 || (m.get(e.v)?.length ?? 0) < 2) {
+        edges.delete(key);
+        pruned = true;
+      }
+  }
+  const m = neighbours();
+  const angle = (from: number, to: number) =>
+    Math.atan2(
+      (verts[to] as Point).y - (verts[from] as Point).y,
+      (verts[to] as Point).x - (verts[from] as Point).x,
+    );
+  for (const [v, ns] of m) ns.sort((a, b) => angle(v, a) - angle(v, b));
+  const wallsOf = (u: number, v: number) =>
+    edges.get(u < v ? `${u},${v}` : `${v},${u}`)?.walls ?? new Set<string>();
+  const thickness = new Map(walls.map((w) => [w.id, w.thickness]));
+  const seen = new Set<string>();
+  const rooms: PlanRoom[] = [];
+  for (const e of edges.values())
+    for (const [start, next] of [
+      [e.u, e.v],
+      [e.v, e.u],
+    ] as const) {
+      if (seen.has(`${start}>${next}`)) continue;
+      const loop: number[] = [];
+      const bounding = new Set<string>();
+      let u = start;
+      let v = next;
+      while (!seen.has(`${u}>${v}`)) {
+        seen.add(`${u}>${v}`);
+        loop.push(u);
+        for (const w of wallsOf(u, v)) bounding.add(w);
+        const ns = m.get(v) as number[];
+        const w = ns[(ns.indexOf(u) - 1 + ns.length) % ns.length] as number;
+        u = v;
+        v = w;
+      }
+      const points = loop.map((k) => verts[k] as Point);
+      let area = 0;
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i] as Point;
+        const q = points[(i + 1) % points.length] as Point;
+        area += p.x * q.y - q.x * p.y;
+      }
+      // Walked this way, a room turns one way and the outline round a group of rooms the other.
+      if (area <= MEET * MEET || points.length < 3) continue;
+      const ids = [...bounding];
+      rooms.push({
+        points: corners(points),
+        thickness: Math.max(...ids.map((id) => thickness.get(id) ?? 0)),
+        walls: ids,
+      });
+    }
+  return rooms;
+}
+
+/** Whether the segment a–b crosses or lies in the box. */
+function segmentInBox(a: Point, b: Point, r: { x0: number; y0: number; x1: number; y1: number }) {
+  // Clip the segment to the box (Liang–Barsky): it touches the box if anything is left.
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  for (const [p, q] of [
+    [-dx, a.x - r.x0],
+    [dx, r.x1 - a.x],
+    [-dy, a.y - r.y0],
+    [dy, r.y1 - a.y],
+  ] as const) {
+    if (p === 0) {
+      if (q < 0) return false;
+    } else {
+      const t = q / p;
+      if (p < 0) t0 = Math.max(t0, t);
+      else t1 = Math.min(t1, t);
+      if (t0 > t1) return false;
+    }
+  }
+  return true;
+}
+
+/** How far a size's text reaches either side of its line, view units. */
+const DIM_BAND = 16;
+/** How much further a wall must come, or go, before a size changes side (view units). */
+const SIDE_HYSTERESIS = 8;
+/** The sides each room's sizes took last, by its walls: a size changes side only past a margin. */
+const lastSides = new Map<string, { bottom: boolean; right: boolean }>();
+
+/**
+ * The size of a room as the mockup draws it outside its walls ("8.0 m" over the top, "6.3 m"
+ * down the left), each line on the free side (decision 0119): over the top unless another wall
+ * lies there, then under the bottom; on the left, else on the right. A room that is not a
+ * rectangle gets its overall width and depth (`overall`).
+ */
+export function roomDims(
+  room: PlanRoom,
+  walls: readonly PlanWall[] = [],
+  /** The plan's other rooms: a size must not sit inside one either. */
+  rooms: readonly PlanRoom[] = [],
+): RoomDim[] {
+  const pts = room.points;
+  if (pts.length < 3) return [];
+  const x0 = Math.min(...pts.map((p) => p.x));
+  const x1 = Math.max(...pts.map((p) => p.x));
+  const y0 = Math.min(...pts.map((p) => p.y));
+  const y1 = Math.max(...pts.map((p) => p.y));
+  const corner = (p: Point) =>
+    (Math.abs(p.x - x0) <= MEET || Math.abs(p.x - x1) <= MEET) &&
+    (Math.abs(p.y - y0) <= MEET || Math.abs(p.y - y1) <= MEET);
+  const overall = !(pts.length === 4 && pts.every(corner));
+  const off = room.thickness / 2 + ROOM_DIM_GAP;
+  // Every wall, as segments, the room's own too (a wall it shares with the room beside runs on
+  // past its corner): a size must not cross them.
+  const others: Array<[Point, Point]> = [];
+  for (const w of walls) {
+    const p = wallPoints(w);
+    for (let i = 0; i + 1 < p.length; i++) others.push([p[i] as Point, p[i + 1] as Point]);
+    if (w.closed && p.length > 2) others.push([p.at(-1) as Point, p[0] as Point]);
+  }
+  const boxes = rooms
+    .filter((r) => r !== room)
+    .map((r) => ({
+      x0: Math.min(...r.points.map((p) => p.x)),
+      x1: Math.max(...r.points.map((p) => p.x)),
+      y0: Math.min(...r.points.map((p) => p.y)),
+      y1: Math.max(...r.points.map((p) => p.y)),
+    }));
+  const free = (r: { x0: number; y0: number; x1: number; y1: number }) =>
+    !others.some(([a, b]) => segmentInBox(a, b, r)) &&
+    !boxes.some((b) => b.x0 < r.x1 && r.x0 < b.x1 && b.y0 < r.y1 && r.y0 < b.y1);
+  // The side the room had keeps its size until a wall comes well into it, and the preferred side
+  // takes it back only once it is well clear: no flip-flop while a wall is dragged near it.
+  const key = [...room.walls].sort().join(' ');
+  const last = lastSides.get(key);
+  const top = y0 - off;
+  const bottom = y1 + off;
+  const topBand = (extra: number) => ({
+    x0,
+    x1,
+    y0: top - DIM_BAND - extra,
+    y1: top + DIM_BAND + extra,
+  });
+  const y = (last?.bottom ? free(topBand(SIDE_HYSTERESIS)) : free(topBand(-SIDE_HYSTERESIS)))
+    ? top
+    : bottom;
+  const left = x0 - off;
+  const right = x1 + off;
+  const leftBand = (extra: number) => ({
+    x0: left - DIM_BAND - extra,
+    x1: left + DIM_BAND + extra,
+    y0,
+    y1,
+  });
+  const x = (last?.right ? free(leftBand(SIDE_HYSTERESIS)) : free(leftBand(-SIDE_HYSTERESIS)))
+    ? left
+    : right;
+  if (lastSides.size > 500) lastSides.clear();
+  lastSides.set(key, { bottom: y === bottom, right: x === right });
+  return [
+    {
+      ...(y === top ? { a: { x: x0, y }, b: { x: x1, y } } : { a: { x: x1, y }, b: { x: x0, y } }),
+      length: x1 - x0,
+      overall,
+    },
+    {
+      ...(x === left ? { a: { x, y: y1 }, b: { x, y: y0 } } : { a: { x, y: y0 }, b: { x, y: y1 } }),
+      length: y1 - y0,
+      overall,
+    },
+  ];
+}
+
+/** The sizes worked out for a list of walls, kept while the walls do not change. */
+const roomDimsCache = new WeakMap<readonly PlanWall[], RoomDim[]>();
+
+/**
+ * The room sizes a plan draws (decision 0119): those of its rooms when it has a scale (a size
+ * needs metres), its `roomSizes` switch is not off and its Set is shown. Computed once per list
+ * of walls.
+ */
+export function planRoomDims(
+  plan: Partial<Pick<PlanElement, 'walls' | 'scale' | 'hiddenLayers' | 'roomSizes'>>,
+  hidden: readonly string[] = [],
+): RoomDim[] {
+  if (!plan.scale || plan.roomSizes === false || !plan.walls?.length) return [];
+  if (plan.hiddenLayers?.includes('set') || hidden.includes('set')) return [];
+  const walls = plan.walls;
+  let dims = roomDimsCache.get(walls);
+  if (!dims) {
+    const rooms = planRooms(walls);
+    dims = rooms.flatMap((room) => roomDims(room, walls, rooms));
+    roomDimsCache.set(walls, dims);
+  }
+  return dims;
+}
+
+/**
+ * "8.0 m" ("8,0 m" in Italian): a room's side in metres at the plan's scale, one digit, in the
+ * app's language, the one formatter of the editor, the card and the exports (decision 0119).
+ */
+export function roomMetres(length: number, scale: number, locale: string): string {
+  return `${(length / scale).toLocaleString(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} m`;
+}

@@ -21,9 +21,11 @@ import {
   modifiersOn,
   normalizeRotation,
   PLAN_CATEGORIES,
+  PLAN_GRIP,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanAlign,
+  type PlanGroupName,
   type PlanItem,
   SEATS,
   SYMBOL_PERCENT,
@@ -48,7 +50,7 @@ import { type CSSProperties, type ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { type Ed, isIcon, MAX_UNITS } from './editing.ts';
-import { itemName, SEAT_SURFACES, seatsAround, selectionMix, supportText } from './elements.ts';
+import { itemName, SEAT_SURFACES, seatsLine, selectionMix, supportText } from './elements.ts';
 import { wattsText } from './kit.ts';
 import { NumberField } from './NumberField.tsx';
 import { selectionMenu } from './PlanCanvas.tsx';
@@ -151,6 +153,8 @@ export function PlanProperties({
   compact?: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  const groupName = (g: PlanGroupName) =>
+    g === PLAN_GRIP ? t('board.plan.gripGroup') : t(`board.plan.layers.${g}`);
   const [otherLens, setOtherLens] = useState(false);
   const [otherGel, setOtherGel] = useState(false);
   const [palette, setPalette] = useState<CSSProperties | null>(null);
@@ -430,10 +434,6 @@ export function PlanProperties({
         <span>
           {t('board.plan.onBase', { name: base.label || t(`board.plan.icons.${base.kind}`) })}
         </span>
-        {/* The base is listed with what it carries (decision 0117): this picks it. */}
-        <Button variant="ghost" onClick={() => ed.setSelection([{ kind: 'icons', id: base.id }])}>
-          {t('board.plan.selectBase')}
-        </Button>
         <Button variant="ghost" onClick={() => ed.write(detachIcon(icons, icon.id))}>
           {t('board.plan.detach')}
         </Button>
@@ -472,7 +472,8 @@ export function PlanProperties({
                 aria-label={t('board.plan.stepNote', { number: i + 1 })}
                 placeholder={t('board.plan.stepPlaceholder')}
                 maxLength={200}
-                value={(stepAt ? stepAt.note : icon.note) ?? ''}
+                // The last position has a note of its own, apart from the item's (0119).
+                value={(stepAt ? stepAt.note : icon.stepNote) ?? ''}
                 {...fieldEvents}
                 onChange={(e) => {
                   const text = e.target.value;
@@ -481,8 +482,8 @@ export function PlanProperties({
                     const edited: PlanStep = { ...stepAt, note: text };
                     if (!text) delete edited.note;
                     (next.steps as PlanStep[])[i] = edited;
-                  } else if (text) next.note = text;
-                  else delete next.note;
+                  } else if (text) next.stepNote = text;
+                  else delete next.stepNote;
                   ed.writeItems([next]);
                 }}
               />
@@ -1042,7 +1043,7 @@ export function PlanProperties({
         </div>
         {positions(icon, t('board.plan.movement'))}
         {/* With positions, the last one's note is the item's note (decision 0104): one field. */}
-        {!icon.steps?.length && note(icon)}
+        {note(icon)}
         {actions(icon)}
       </>
     );
@@ -1085,7 +1086,12 @@ export function PlanProperties({
           {SEAT_SURFACES.has(catalogueKind(icon.kind)) && (
             <Field label={t('board.plan.seats')}>
               <span className="plan-field plan-field--static">
-                {t('board.plan.seatsAround', { count: seatsAround(icon, icons) })}
+                {(() => {
+                  const line = seatsLine(icon, icons);
+                  return line.kind
+                    ? t(`board.plan.seatsOf.${line.kind}`, { count: line.count })
+                    : t('board.plan.seatsAround', { count: line.count });
+                })()}
               </span>
             </Field>
           )}
@@ -1112,7 +1118,7 @@ export function PlanProperties({
           )}
         {positions(icon, t('board.plan.movement'))}
         {/* With positions, the last one's note is the item's note (decision 0104): one field. */}
-        {!icon.steps?.length && note(icon)}
+        {note(icon)}
         {actions(icon)}
       </>
     );
@@ -1285,6 +1291,21 @@ export function PlanProperties({
             }}
           >
             {t('board.plan.unlock')}
+          </Button>
+        </div>
+      ) : ed.hiddenItem && ed.hiddenLayers.has(ed.hiddenItem.group) ? (
+        // Picked in Elements on a hidden layer or group: out of reach on the plan, shown here
+        // with the way back (decision 0119).
+        <div className="plan-props__locked" role="status">
+          <Icon name="eyeOff" size={16} />
+          <span>{t('board.plan.hiddenItem', { layer: groupName(ed.hiddenItem.group) })}</span>
+          <Button
+            onClick={() => {
+              ed.toggleHidden((ed.hiddenItem as { group: PlanGroupName }).group);
+              ed.setHiddenItem(null);
+            }}
+          >
+            {t('board.plan.showLayer', { layer: groupName(ed.hiddenItem.group) })}
           </Button>
         </div>
       ) : ed.lockedItem ? (

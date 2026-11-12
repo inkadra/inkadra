@@ -8530,6 +8530,34 @@
             "maxItems": 8,
             "description": "The last set plan icons this person placed, newest first."
           },
+          "planSnap": {
+            "type": "boolean",
+            "description": "The set plan editor snaps to the grid (G); on by default (decision 0119)."
+          },
+          "planAttach": {
+            "type": "boolean",
+            "description": "Set plan icons dropped on a base attach to it (the Snap toggle of the phone); on by default."
+          },
+          "planGhosts": {
+            "type": "boolean",
+            "description": "The set plan editor shows the earlier positions of what moves, veiled."
+          },
+          "planHidden": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 10,
+            "description": "Layers and groups of a set plan this person hides for themselves while editing, on every plan (decision 0119): group names (`set`, `lights`, `camera`, `actors`, `notes`, `grip`), never plan ids. Open list: clients skip names they do not know."
+          },
+          "planShelf": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "description": "The set plan library category this person looked at last."
+          },
           "shotGroupBy": {
             "type": "string",
             "enum": [
@@ -8604,6 +8632,11 @@
           "keepAroundContent",
           "planFavorites",
           "planRecents",
+          "planSnap",
+          "planAttach",
+          "planGhosts",
+          "planHidden",
+          "planShelf",
           "shotGroupBy",
           "toolbar",
           "tutorialsSeen",
@@ -8678,6 +8711,34 @@
             },
             "maxItems": 8,
             "description": "The last set plan icons this person placed, newest first."
+          },
+          "planSnap": {
+            "type": "boolean",
+            "description": "The set plan editor snaps to the grid (G); on by default (decision 0119)."
+          },
+          "planAttach": {
+            "type": "boolean",
+            "description": "Set plan icons dropped on a base attach to it (the Snap toggle of the phone); on by default."
+          },
+          "planGhosts": {
+            "type": "boolean",
+            "description": "The set plan editor shows the earlier positions of what moves, veiled."
+          },
+          "planHidden": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 10,
+            "description": "Layers and groups of a set plan this person hides for themselves while editing, on every plan (decision 0119): group names (`set`, `lights`, `camera`, `actors`, `notes`, `grip`), never plan ids. Open list: clients skip names they do not know."
+          },
+          "planShelf": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "description": "The set plan library category this person looked at last."
           },
           "shotGroupBy": {
             "type": "string",

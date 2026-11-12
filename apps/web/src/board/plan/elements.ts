@@ -274,8 +274,34 @@ export const SEAT_SURFACES: ReadonlySet<string> = new Set([
  * standing against it, in its turned frame.
  */
 export function seatsAround(prop: PlanIcon, icons: readonly PlanIcon[]): number {
+  return seatsAt(prop, icons).length;
+}
+
+/** Seat kinds the Properties name in the plural ("4 stools"); other seats count as "seats". */
+export const NAMED_SEATS = ['stool', 'chair', 'armchair', 'dirchair', 'sofa', 'bench'] as const;
+
+/**
+ * How the Properties of a table or counter write its seats: "4 stools" when they are all of one
+ * named kind (`kind`), else "4 seats" (`kind` null).
+ */
+export function seatsLine(
+  prop: PlanIcon,
+  icons: readonly PlanIcon[],
+): { count: number; kind: (typeof NAMED_SEATS)[number] | null } {
+  const seats = seatsAt(prop, icons);
+  const kinds = new Set(seats.map((i) => catalogueKind(i.kind)));
+  const [only] = [...kinds];
+  const named = kinds.size === 1 && (NAMED_SEATS as readonly string[]).includes(only as string);
+  return {
+    count: seats.length,
+    kind: named ? (only as (typeof NAMED_SEATS)[number]) : null,
+  };
+}
+
+/** The seats at a table or a counter: attached to it, or standing against it. */
+function seatsAt(prop: PlanIcon, icons: readonly PlanIcon[]): PlanIcon[] {
   const frame = itemFrame(prop);
-  if (!frame) return 0;
+  if (!frame) return [];
   const a = (-frame.angle * Math.PI) / 180;
   return icons.filter((i) => {
     if (i.id === prop.id || SEATS[catalogueKind(i.kind)] === undefined) return false;
@@ -289,5 +315,5 @@ export function seatsAround(prop: PlanIcon, icons: readonly PlanIcon[]): number 
     const ly = dx * Math.sin(a) + dy * Math.cos(a);
     const reach = Math.max(size.w, size.h) / 2;
     return Math.abs(lx) <= frame.w / 2 + reach && Math.abs(ly) <= frame.h / 2 + reach;
-  }).length;
+  });
 }

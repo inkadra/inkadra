@@ -27,7 +27,8 @@ import { loadCrew } from '../film/day-calls.ts';
 import { getFrameStatus, isApproved } from '../film/film-status.ts';
 import { croppedRotatedSize } from '../image-crop.ts';
 import { kitList, powerLines } from '../plan/kit.ts';
-import { CHARACTER_COLOURS } from '../plan/PlanDrawing.tsx';
+import { planCardWords } from '../plan/PlanCard.tsx';
+import { CHARACTER_COLOURS, roomSizeText } from '../plan/PlanDrawing.tsx';
 import { setupName } from '../plan/PlanKit.tsx';
 import type { BoardStore } from '../store.ts';
 import { paperAccent, type Theme } from '../theme.ts';
@@ -358,6 +359,18 @@ export async function buildPages(
         .join(' · ');
     },
     words: { board: t('export.board'), file: t('export.file'), plan: t('board.plan.name') },
+    roomSize: (length, scale, overall) => roomSizeText(length, scale, overall, t, env.language),
+    // A plan's card in a board export writes what the board's card writes (decision 0119).
+    planCard: (el) => {
+      const w = planCardWords(el, snapshot.byId, t, env.language);
+      return {
+        title: w.title,
+        scenes: w.scenes
+          .map((s) => t('board.plan.links.scene', { number: s.number || '—' }))
+          .join(' · '),
+        chips: w.chips,
+      };
+    },
   };
 
   const dateFormat = new Intl.DateTimeFormat(env.language, { dateStyle: 'long' });

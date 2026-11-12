@@ -15,6 +15,7 @@ import {
   searchLibrary,
 } from './library.ts';
 import { PlanGlyph } from './PlanDrawing.tsx';
+import { usePlanPref } from './plan-prefs.ts';
 import type { KitScope } from './project-kit.ts';
 
 export type { LibraryItem } from './library.ts';
@@ -58,6 +59,12 @@ export function rememberRecent(item: LibraryItem) {
 /** What is being dragged out of the library: a type, or an entry of the project kit. */
 export type Dragged = { item: LibraryItem } | { kit: ProjectKitEntry };
 type At = { clientX: number; clientY: number };
+
+// The six categories: arrows, texts and measures are the toolbar's (they stay in the search).
+const SHELVES: readonly Shelf[] = [
+  'mine',
+  ...LIBRARY_CATEGORIES.filter((c) => c.id !== 'notes').map((c) => c.id),
+];
 
 /** The name of a match with what was searched marked. */
 function Marked({ text, query }: { text: string; query: string }) {
@@ -108,7 +115,11 @@ export function PlanLibrary({
   const { t } = useTranslation();
   const prefs = usePreferences();
   const [query, setQuery] = useState('');
-  const [shelf, setShelf] = useState<Shelf>('lights');
+  // The category last looked at, kept in the account (decision 0119); an unknown one reads Lights.
+  const [savedShelf, setShelf] = usePlanPref('planShelf');
+  const shelf: Shelf = (SHELVES as readonly string[]).includes(savedShelf)
+    ? (savedShelf as Shelf)
+    : 'lights';
   const [tall, setTall] = useState(false);
   const [ghost, setGhost] = useState<{ what: Dragged; x: number; y: number } | null>(null);
   const drag = useRef<{ what: Dragged; x: number; y: number; moved: boolean } | null>(null);
@@ -344,11 +355,7 @@ export function PlanLibrary({
       {!phone && !query && <kbd>/</kbd>}
     </label>
   );
-  // The six categories: arrows, texts and measures are the toolbar's (they stay in the search).
-  const shelves: Shelf[] = [
-    'mine',
-    ...LIBRARY_CATEGORIES.filter((c) => c.id !== 'notes').map((c) => c.id),
-  ];
+  const shelves = SHELVES;
   const shelfName = (s: Shelf) =>
     s === 'mine' ? t('board.plan.lib.mine') : t(`board.plan.categories.${s}`);
   const ghostView =

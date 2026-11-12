@@ -356,6 +356,15 @@ for (const theme of ['dark', 'light'] as const) {
       .click();
     await props.getByLabel('Nota della posizione 1').fill('Porta, entra');
     await expect.poll(async () => (await annaNow())?.steps?.[0]?.note).toBe('Porta, entra');
+    // The last position has a note of its own, apart from Anna's note (decision 0119).
+    await props.getByLabel('Nota della posizione 3').fill('Si siede');
+    await props.getByRole('textbox', { name: 'Nota', exact: true }).fill('Cappotto addosso');
+    await expect
+      .poll(async () => {
+        const a = await annaNow();
+        return [a?.stepNote, a?.note];
+      })
+      .toEqual(['Si siede', 'Cappotto addosso']);
     await page.keyboard.press('Escape');
 
     // Resize and rotate: furniture takes any size from a corner, and an angle.

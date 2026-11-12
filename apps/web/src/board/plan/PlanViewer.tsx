@@ -63,7 +63,7 @@ function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
                 // An actor's way through the scene: the notes of its positions, in order.
                 const route =
                   categoryOf(icon.kind).id === 'people' && icon.steps?.length
-                    ? [...icon.steps.map((s) => s.note), icon.note].filter(Boolean).join(' → ')
+                    ? [...icon.steps.map((s) => s.note), icon.stepNote].filter(Boolean).join(' → ')
                     : '';
                 const lens = catalogueKind(icon.kind) === 'camera' ? `${icon.lens ?? 35} mm` : '';
                 const kelvin = icon.kelvin ? `${icon.kelvin} K` : '';
@@ -270,7 +270,7 @@ export function PlanViewer({
             <IconButton
               icon="minus"
               label={t('board.plan.zoomOut')}
-              disabled={surface.percent <= 25}
+              disabled={!surface.canZoomOut}
               onClick={() => surface.zoomBy(-1)}
             />
             <button
@@ -285,7 +285,7 @@ export function PlanViewer({
             <IconButton
               icon="plus"
               label={t('board.plan.zoomIn')}
-              disabled={surface.percent >= 800}
+              disabled={!surface.canZoomIn}
               onClick={() => surface.zoomBy(1)}
             />
             {!phone && <span className="plan-view__hint">{t('board.plan.view.hint')}</span>}

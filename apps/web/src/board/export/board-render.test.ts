@@ -101,7 +101,7 @@ describe('board elements in exports', () => {
 });
 
 describe('set plans in exports', () => {
-  it('draws the title, the drawing in theme colours and the icon labels, without a grid', () => {
+  it('draws the drawing in theme colours with its labels, then the card’s words, no grid', () => {
     const plan = card({
       type: 'plan',
       title: 'Cucina',
@@ -120,17 +120,20 @@ describe('set plans in exports', () => {
         },
       ],
     });
-    const [, clip] = drawBoard([{ ...plan, h: 34 + 640 / 1.5 }], {
+    const [, clip] = drawBoard([{ ...plan, h: 640 / 1.5 + 48 }], {
       ...ctx,
       words: { board: '', file: '', plan: 'Pianta del set' },
+      planCard: () => ({ title: 'Cucina', scenes: 'Scena 2', chips: ['2 setup', '1 camera'] }),
     });
     const face = (clip as Extract<typeof clip, { kind: 'clip' }>).ops;
-    expect(face[0]).toMatchObject({ kind: 'text', text: 'Pianta del set · Cucina' });
+    // The card's foot under the drawing, as on the board (decision 0119).
+    const texts = face.filter((o) => o.kind === 'text').map((o) => o.text);
+    expect(texts).toEqual(['Cucina', 'Scena 2', '2 setup · 1 camera']);
     const drawing = face.find((o) => o.kind === 'clip') as Extract<
       (typeof face)[number],
       { kind: 'clip' }
     >;
-    expect(drawing).toMatchObject({ x: 0, y: 34, w: 640 });
+    expect(drawing).toMatchObject({ x: 0, y: 0, w: 640 });
     // Ink and palette colours print with the theme's tokens.
     expect(drawing.ops[0]).toMatchObject({ kind: 'polyline', color: '#text-secondary' });
     const polygons = drawing.ops.filter((o) => o.kind === 'polygon');
@@ -138,10 +141,10 @@ describe('set plans in exports', () => {
     expect(polygons).toHaveLength(3);
     expect(polygons[0]).toMatchObject({ opacity: 0.14 });
     expect(polygons[1]).not.toHaveProperty('opacity');
-    // Turned 90°: the cone points down from the centre (320, 34 + 213).
+    // Turned 90°: the cone points down from the centre (320, 213).
     const cone = polygons[0] as Extract<(typeof polygons)[number], { kind: 'polygon' }>;
     const ys = cone.points.filter((_, i) => i % 2 === 1);
-    expect(Math.min(...ys)).toBeGreaterThan(34 + 213);
+    expect(Math.min(...ys)).toBeGreaterThan(213);
     expect(drawing.ops.at(-1)).toMatchObject({ kind: 'text', text: 'A cam', color: '#tag-blue' });
   });
 });

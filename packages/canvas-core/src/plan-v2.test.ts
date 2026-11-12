@@ -1384,7 +1384,7 @@ describe('circuits of the setups (decision 0117)', () => {
       doc,
       'plan',
       { x: 0, y: 0 },
-      { title: 'Diner', locationId: place.id, north: 90, voltage: 120 },
+      { title: 'Diner', locationId: place.id, north: 90, voltage: 120, roomSizes: false },
       { userId: null },
     );
     const a = addPlanCircuit(doc, base.id, { name: 'A', amps: 20 }) as string;
@@ -1409,6 +1409,7 @@ describe('circuits of the setups (decision 0117)', () => {
     locationId: p.locationId,
     north: p.north,
     title: p.title,
+    roomSizes: p.roomSizes,
   });
 
   it('keeps the base circuits, voltage, location, north and title in a setup left alone', () => {
@@ -1422,6 +1423,8 @@ describe('circuits of the setups (decision 0117)', () => {
       locationId: f.place,
       north: 90,
       title: 'Diner',
+      // The rooms' sizes the person hid stay hidden (decision 0119).
+      roomSizes: false,
     });
     // The light stays on circuit A, at 120 V.
     expect(planPower(setup).circuits.map((c) => [c.name, c.amps])).toEqual([['A', 10]]);
@@ -1446,7 +1449,36 @@ describe('circuits of the setups (decision 0117)', () => {
       locationId: undefined,
       north: 90,
       title: 'Diner',
+      // The rooms' sizes the person hid stay hidden (decision 0119).
+      roomSizes: false,
     });
+  });
+
+  it("drops the sun's shooting day when the plan is pasted on another board, keeping its date", () => {
+    const f = family();
+    const day = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
+    roots(f.doc).elements.get(f.base)?.set('sun', { time: 600, day, date: '2026-03-14' });
+    // On another board the day is of another schedule: the date stays, as a plain date.
+    const other = createBoardDoc('0193f0a4-6c1e-7b9a-9c51-000000000002');
+    const [there] = pasteElements(
+      other,
+      copyElements(f.doc, [f.base]),
+      { x: 0, y: 0 },
+      {
+        userId: null,
+      },
+    ).ids;
+    expect(planOf(other, there as string).sun).toEqual({ time: 600, date: '2026-03-14' });
+    // On the same board it keeps following the day.
+    const [here] = pasteElements(
+      f.doc,
+      copyElements(f.doc, [f.base]),
+      { x: 0, y: 0 },
+      {
+        userId: null,
+      },
+    ).ids;
+    expect(planOf(f.doc, here as string).sun).toEqual({ time: 600, day, date: '2026-03-14' });
   });
 
   it('gives a new setup no title of its own: the base owns it', () => {

@@ -1244,6 +1244,8 @@
       "setScale": "Imposta la scala",
       "scaleHint": "Traccia una linea su qualcosa di cui conosci la misura",
       "rulers": "Righelli",
+      "roomSizes": "Misure delle stanze",
+      "roomOverall": "{{size}} in tutto",
       "clearScale": "Togli la scala",
       "cancel": "Annulla",
       "lineIs": "La linea che hai tracciato è lunga",
@@ -1263,6 +1265,7 @@
         "notes": "Note nascoste",
         "grip": "Grip e troupe nascosti"
       },
+      "hiddenItem": "Nascosto: {{layer}}",
       "lockedAs": {
         "set": "Set bloccato",
         "lights": "Luci bloccate",
@@ -1533,6 +1536,20 @@
         "timeOfDay": "Ora del giorno",
         "date": "Data",
         "north": "Il nord è a",
+        "northWay": {
+          "up": "In alto,",
+          "upRight": "In alto a destra,",
+          "right": "A destra,",
+          "downRight": "In basso a destra,",
+          "down": "In basso,",
+          "downLeft": "In basso a sinistra,",
+          "left": "A sinistra,",
+          "upLeft": "In alto a sinistra,"
+        },
+        "today": "Oggi",
+        "shootDay": "Giorno {{n}} delle riprese",
+        "otherDate": "Un’altra data…",
+        "dayGone": "Il giorno di ripresa è stato tolto dal piano di lavorazione: la pianta tiene la sua ultima data.",
         "from": {
           "north": "Da nord",
           "northEast": "Da nord-est",
@@ -1604,6 +1621,7 @@
         "more_other": "+{{count}} altri",
         "cameras": "Camere",
         "lights": "Luci",
+        "grip": "Grip",
         "cast": "Cast",
         "notes": "Note",
         "foot": "Fatto con Inkadra · pagina {{n}} di {{total}}",
@@ -1732,6 +1750,20 @@
       "onTrackLength": "{{name}} su binario di {{metres}} m",
       "seatsAround_one": "{{count}} posto",
       "seatsAround_other": "{{count}} posti",
+      "seatsOf": {
+        "stool_one": "{{count}} sgabello",
+        "stool_other": "{{count}} sgabelli",
+        "chair_one": "{{count}} sedia",
+        "chair_other": "{{count}} sedie",
+        "armchair_one": "{{count}} poltrona",
+        "armchair_other": "{{count}} poltrone",
+        "dirchair_one": "{{count}} sedia da regista",
+        "dirchair_other": "{{count}} sedie da regista",
+        "sofa_one": "{{count}} divano",
+        "sofa_other": "{{count}} divani",
+        "bench_one": "{{count}} panca",
+        "bench_other": "{{count}} panche"
+      },
       "allSetupsOfScene_one": "Tutti i setup della scena {{scene}}: {{count}} elemento",
       "allSetupsOfScene_other": "Tutti i setup della scena {{scene}}: {{count}} elementi",
       "editCircuit": "Modifica {{name}}",
@@ -1755,7 +1787,6 @@
         "streetlight": "Lampione",
         "trackingcar": "Camera car"
       },
-      "selectBase": "Seleziona",
       "selectNamed": "Seleziona {{name}}"
     },
     "contextual": {
@@ -5142,7 +5173,7 @@
           },
           "4": {
             "title": "Muri e aperture",
-            "text": "Muri: clicca angolo per angolo, scrivi una lunghezza e Invio, clicca il primo angolo per chiudere la stanza. Aperture: porte e finestre si posano su un muro."
+            "text": "Muri: clicca angolo per angolo, scrivi una lunghezza e Invio, clicca il primo angolo per chiudere la stanza. Aperture: porte e finestre si posano su un muro. Con una scala, la stanza mostra le sue misure fuori dai muri."
           },
           "5": {
             "title": "Sfondo",
@@ -5150,7 +5181,7 @@
           },
           "6": {
             "title": "Muoversi nella pianta",
-            "text": "Spazio e trascina, la rotella o due dita spostano la pianta; Ctrl e la rotella o un pizzico la ingrandiscono. Senza selezione le frecce la spostano, 0 la adatta, + e − cambiano lo zoom."
+            "text": "Spazio e trascina, la rotella o due dita spostano la pianta; Ctrl e la rotella o un pizzico la ingrandiscono. Senza selezione le frecce la spostano, 0 la adatta, al 100 %, + e − cambiano lo zoom."
           }
         }
       },
@@ -5480,7 +5511,7 @@
           },
           "2": {
             "title": "Il sole, per gli esterni",
-            "text": "Imposta ora e data: le icone del sole girano con loro. Il nord si imposta a mano."
+            "text": "Imposta l’ora e la data o un giorno di riprese: le icone del sole girano con loro. Il nord si imposta a mano."
           },
           "3": {
             "title": "I setup nella shot list",

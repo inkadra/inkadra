@@ -20,7 +20,7 @@ import {
 import { fastCheckOf, UNSURE } from './fast-items.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 25;
+export const CURRENT_SCHEMA_VERSION = 26;
 
 /**
  * For each document schema since decision 0102, the oldest client schema proven safe to write a
@@ -33,6 +33,7 @@ export const WRITER_SCHEMAS: Readonly<Record<number, { min: number; proof?: stri
   23: { min: 23 },
   24: { min: 24 },
   25: { min: 25 },
+  26: { min: 26 },
 };
 
 /**
@@ -219,6 +220,41 @@ const migrations: Record<number, Migration> = {
   // what it meant; older clients stay read-only, since their check would drop an item that lies
   // beyond the extent.
   24: () => {},
+  // 26: set plan parity (decision 0119): optional `stepNote` on plan icons, the note of the last
+  // blocking position, apart from the item's `note`; optional `roomSizes` on plans; optional
+  // `sun.day`, the shooting day the sun's date follows. An icon with blocking kept its last
+  // position's note in `note`: it moves to `stepNote`, so the note means what it meant. Older
+  // clients stay read-only: they would drop `stepNote` and the day when they copy a plan.
+  25: (doc) => {
+    for (const el of roots(doc).elements.values()) {
+      if (el.get('type') !== 'plan') continue;
+      const icons = el.get('icons');
+      const moved = (icon: Record<string, unknown>) =>
+        Array.isArray(icon.steps) &&
+        icon.steps.length > 0 &&
+        typeof icon.note === 'string' &&
+        icon.stepNote === undefined;
+      if (icons instanceof Y.Array) {
+        for (const icon of icons.toArray()) {
+          if (!(icon instanceof Y.Map) || !moved(icon.toJSON())) continue;
+          icon.set('stepNote', icon.get('note'));
+          icon.delete('note');
+        }
+      } else if (
+        Array.isArray(icons) &&
+        icons.some((i) => i && typeof i === 'object' && moved(i))
+      ) {
+        el.set(
+          'icons',
+          icons.map((i) => {
+            if (!i || typeof i !== 'object' || !moved(i)) return i;
+            const { note, ...rest } = i as Record<string, unknown>;
+            return { ...rest, stepNote: note };
+          }),
+        );
+      }
+    }
+  },
 };
 
 /**

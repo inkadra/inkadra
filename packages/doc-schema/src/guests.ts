@@ -145,6 +145,7 @@ export const GUEST_ELEMENT_FIELDS = {
     'scale',
     'grid',
     'rulers',
+    'roomSizes',
     'sensor',
     'presentation',
     'walls',

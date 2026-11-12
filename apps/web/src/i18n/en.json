@@ -1244,6 +1244,8 @@
       "setScale": "Set the scale",
       "scaleHint": "Draw a line along something whose length you know",
       "rulers": "Rulers",
+      "roomSizes": "Room sizes",
+      "roomOverall": "{{size}} overall",
       "clearScale": "Remove the scale",
       "cancel": "Cancel",
       "lineIs": "The line you drew is",
@@ -1263,6 +1265,7 @@
         "notes": "Notes hidden",
         "grip": "Grip and crew hidden"
       },
+      "hiddenItem": "Hidden: {{layer}}",
       "lockedAs": {
         "set": "Set locked",
         "lights": "Lights locked",
@@ -1533,6 +1536,20 @@
         "timeOfDay": "Time of day",
         "date": "Date",
         "north": "North is",
+        "northWay": {
+          "up": "Up,",
+          "upRight": "Up right,",
+          "right": "Right,",
+          "downRight": "Down right,",
+          "down": "Down,",
+          "downLeft": "Down left,",
+          "left": "Left,",
+          "upLeft": "Up left,"
+        },
+        "today": "Today",
+        "shootDay": "Day {{n}} of the shoot",
+        "otherDate": "Another date…",
+        "dayGone": "The shooting day was removed from the schedule: the plan keeps its last date.",
         "from": {
           "north": "From the north",
           "northEast": "From the north-east",
@@ -1604,6 +1621,7 @@
         "more_other": "+{{count}} more",
         "cameras": "Cameras",
         "lights": "Lights",
+        "grip": "Grip",
         "cast": "Cast",
         "notes": "Notes",
         "foot": "Made with Inkadra · page {{n}} of {{total}}",
@@ -1732,6 +1750,20 @@
       "onTrackLength": "{{name}} on {{metres}} m track",
       "seatsAround_one": "{{count}} seat",
       "seatsAround_other": "{{count}} seats",
+      "seatsOf": {
+        "stool_one": "{{count}} stool",
+        "stool_other": "{{count}} stools",
+        "chair_one": "{{count}} chair",
+        "chair_other": "{{count}} chairs",
+        "armchair_one": "{{count}} armchair",
+        "armchair_other": "{{count}} armchairs",
+        "dirchair_one": "{{count}} director's chair",
+        "dirchair_other": "{{count}} director's chairs",
+        "sofa_one": "{{count}} sofa",
+        "sofa_other": "{{count}} sofas",
+        "bench_one": "{{count}} bench",
+        "bench_other": "{{count}} benches"
+      },
       "allSetupsOfScene_one": "All setups of scene {{scene}}: {{count}} item",
       "allSetupsOfScene_other": "All setups of scene {{scene}}: {{count}} items",
       "editCircuit": "Edit {{name}}",
@@ -1755,7 +1787,6 @@
         "streetlight": "Street light",
         "trackingcar": "Camera car"
       },
-      "selectBase": "Select",
       "selectNamed": "Select {{name}}"
     },
     "contextual": {
@@ -5142,7 +5173,7 @@
           },
           "4": {
             "title": "Walls and openings",
-            "text": "Walls: click corner by corner, type a length and Enter, click the first corner to close the room. Openings: doors and windows go on a wall."
+            "text": "Walls: click corner by corner, type a length and Enter, click the first corner to close the room. Openings: doors and windows go on a wall. With a scale, a room shows its size outside its walls."
           },
           "5": {
             "title": "Background",
@@ -5150,7 +5181,7 @@
           },
           "6": {
             "title": "Move around the plan",
-            "text": "Space and drag, the wheel or two fingers move the plan; Ctrl and the wheel or a pinch zoom it. With nothing selected the arrows move it, 0 fits it, + and − zoom."
+            "text": "Space and drag, the wheel or two fingers move the plan; Ctrl and the wheel or a pinch zoom it. With nothing selected the arrows move it, 0 fits it, at 100 %, + and − zoom."
           }
         }
       },
@@ -5480,7 +5511,7 @@
           },
           "2": {
             "title": "The sun, for exteriors",
-            "text": "Set the time and the date: the sun icons turn with them. North is set by hand."
+            "text": "Set the time, and the date or a day of the shoot: the sun icons turn with them. North is set by hand."
           },
           "3": {
             "title": "Setups in the shot list",

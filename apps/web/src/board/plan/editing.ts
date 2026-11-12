@@ -47,6 +47,7 @@ import {
 import {
   type AspectRatio,
   MAX_PLAN_ICONS,
+  PLAN_LAYERS,
   type PlanIcon,
   type PlanIconKind,
   type PlanLayer,
@@ -59,6 +60,7 @@ import { type BoardStore, LOCAL } from '../store.ts';
 import type { LibraryItem } from './library.ts';
 import { CHARACTER_COLOURS, iconColor } from './PlanDrawing.tsx';
 import { rememberRecent } from './PlanLibrary.tsx';
+import { usePlanPref } from './plan-prefs.ts';
 import type { KitScope } from './project-kit.ts';
 
 export type DragKind = 'line' | 'arrow' | 'rect' | 'ellipse' | 'zone' | 'measure' | 'scale';
@@ -117,12 +119,17 @@ export interface PlanEditorProps {
   onOpenScene: (id: string) => void;
   /** The project, for uploading a background picture; none where nothing is uploaded. */
   projectId?: string | undefined;
+  /** The board, whose shooting days the sun's date offers; none for a guest or a preview. */
+  boardId?: string | undefined;
   /** Opens a linked character, frame or location card (decision 0104), leaving the editor. */
   onOpenCard?: ((id: string) => void) | undefined;
   /** The board's frame aspect, for the picture of a linked frame. */
   boardAspect?: AspectRatio | undefined;
   onClose: () => void;
 }
+
+/** The names a person may hide for themselves: the layers and the Grip and crew group. */
+const PLAN_GROUP_NAMES: ReadonlySet<string> = new Set([...PLAN_LAYERS, 'grip']);
 
 const replaceIn = <T extends { id: string }>(
   list: T[] | undefined,
@@ -141,15 +148,21 @@ export function usePlanEditing(props: PlanEditorProps) {
   const [tool, setTool] = useState<Tool>('select');
   const [armed, setArmed] = useState<LibraryItem | null>(null);
   const [selection, setSelection] = useState<PlanItemRef[]>([]);
+  // This person's choices, kept in their account on the server (decision 0119).
   /** Snap to the grid (G). */
-  const [snap, setSnap] = useState(true);
+  const [snap, setSnap] = usePlanPref('planSnap');
   /** Snap icons together (Alt while dropping, the Snap toggle on a phone). */
-  const [attach, setAttach] = useState(true);
-  /** Layers, and the Grip and crew group, this person hides while editing. */
-  const [myHidden, setMyHidden] = useState<ReadonlySet<PlanGroupName>>(new Set());
-  const [activeLayer, setActiveLayer] = useState<PlanLayer | null>(null);
+  const [attach, setAttach] = usePlanPref('planAttach');
+  /** Layers, and the Grip and crew group, this person hides while editing, on every plan. */
+  const [hiddenPref, setHiddenPref] = usePlanPref('planHidden');
+  const myHidden = useMemo<ReadonlySet<PlanGroupName>>(
+    () => new Set(hiddenPref.filter((g): g is PlanGroupName => PLAN_GROUP_NAMES.has(g))),
+    [hiddenPref],
+  );
   // Earlier positions show, veiled, as the mockup draws them (audit M5).
-  const [ghosts, setGhosts] = useState(true);
+  const [ghosts, setGhosts] = usePlanPref('planGhosts');
+  // Per session: what is being worked on now.
+  const [activeLayer, setActiveLayer] = useState<PlanLayer | null>(null);
   /** The base setup drawn faintly behind a setup. */
   const [ghostBase, setGhostBase] = useState(false);
   const [moving, setMoving] = useState<string | null>(null);
@@ -157,6 +170,11 @@ export function usePlanEditing(props: PlanEditorProps) {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [penColor, setPenColor] = useState<string | null>(null);
   const [lockedItem, setLockedItem] = useState<PlanItem | null>(null);
+  /** An item picked in Elements on a layer or group that is hidden (decision 0119). */
+  const [hiddenItem, setHiddenItem] = useState<{
+    item: PlanItem | PlanWall | PlanOpening;
+    group: PlanGroupName;
+  } | null>(null);
   const [tab, setTab] = useState<PanelTab>('properties');
   const [sheet, setSheet] = useState<PhoneSheet>(null);
   /** The item being moved or turned, shown in place until the gesture ends. */
@@ -465,12 +483,9 @@ export function usePlanEditing(props: PlanEditorProps) {
         : [...(plan.hiddenLayers ?? []), layer];
       editPlan({ hiddenLayers: next.length ? next : undefined });
     } else
-      setMyHidden((s) => {
-        const next = new Set(s);
-        if (next.has(layer)) next.delete(layer);
-        else next.add(layer);
-        return next;
-      });
+      setHiddenPref((now) =>
+        now.includes(layer) ? now.filter((g) => g !== layer) : [...now, layer],
+      );
   };
   const toggleLocked = (layer: PlanLayer) => {
     const next = locked.has(layer) ? [...locked].filter((l) => l !== layer) : [...locked, layer];
@@ -615,6 +630,8 @@ export function usePlanEditing(props: PlanEditorProps) {
     setDropTarget,
     penColor,
     lockedItem,
+    hiddenItem,
+    setHiddenItem,
     setLockedItem,
     tab,
     setTab,

@@ -49,6 +49,28 @@ const fields = {
     .array(z.string().min(1).max(40))
     .max(8)
     .openapi({ description: 'The last set plan icons this person placed, newest first.' }),
+  planSnap: z.boolean().openapi({
+    description: 'The set plan editor snaps to the grid (G); on by default (decision 0119).',
+  }),
+  planAttach: z.boolean().openapi({
+    description:
+      'Set plan icons dropped on a base attach to it (the Snap toggle of the phone); on by default.',
+  }),
+  planGhosts: z.boolean().openapi({
+    description: 'The set plan editor shows the earlier positions of what moves, veiled.',
+  }),
+  planHidden: z
+    .array(z.string().min(1).max(40))
+    .max(10)
+    .openapi({
+      description:
+        'Layers and groups of a set plan this person hides for themselves while editing, on every ' +
+        'plan (decision 0119): group names (`set`, `lights`, `camera`, `actors`, `notes`, `grip`), ' +
+        'never plan ids. Open list: clients skip names they do not know.',
+    }),
+  planShelf: z.string().min(1).max(40).openapi({
+    description: 'The set plan library category this person looked at last.',
+  }),
   shotGroupBy: z.enum(['scene', 'location', 'status', 'setup', 'none']).openapi({
     description:
       'How this person groups shots, in the shot list and in the schedule (decision 0115). The ' +
@@ -102,7 +124,7 @@ export const UpdateUserPreferences = z
 export type UpdateUserPreferences = z.infer<typeof UpdateUserPreferences>;
 
 /** Lists of ids (set plan icons, tutorials) and their limits, read entry by entry. */
-const ID_LISTS = { planFavorites: 60, planRecents: 8, tutorialsSeen: 100 } as const;
+const ID_LISTS = { planFavorites: 60, planRecents: 8, planHidden: 10, tutorialsSeen: 100 } as const;
 
 /** What a person who never changed anything gets. */
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
@@ -116,6 +138,11 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   keepAroundContent: true,
   planFavorites: [],
   planRecents: [],
+  planSnap: true,
+  planAttach: true,
+  planGhosts: true,
+  planHidden: [],
+  planShelf: 'lights',
   shotGroupBy: 'scene',
   toolbar: null,
   tutorialsSeen: [],
@@ -134,7 +161,9 @@ export function readUserPreferences(stored: unknown): UserPreferences {
   const out: Record<string, unknown> = { ...DEFAULT_USER_PREFERENCES };
   for (const [key, schema] of Object.entries(fields)) {
     const parsed = schema.safeParse(record[key]);
-    if (parsed.success && record[key] !== undefined) out[key] = parsed.data;
+    if (parsed.success && record[key] !== undefined)
+      // A list of ids keeps each once, even when the list is valid as a whole.
+      out[key] = key in ID_LISTS ? [...new Set(parsed.data as string[])] : parsed.data;
     else if (key in ID_LISTS && Array.isArray(record[key]))
       // One bad entry does not cost the person the whole list: keep the valid ones.
       out[key] = [

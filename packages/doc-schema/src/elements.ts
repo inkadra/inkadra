@@ -790,7 +790,17 @@ export const PlanIcon = z.object({
     .string()
     .max(200)
     .optional()
-    .describe('Blocking: what happens at the last position; any other icon: its note.'),
+    .describe(
+      "The item's note. Before version 26, an icon with blocking kept its last position's note here.",
+    ),
+  stepNote: z
+    .string()
+    .max(200)
+    .optional()
+    .describe(
+      'Blocking (since version 26, decision 0119): what happens at the last position, where the ' +
+        'icon stands; the earlier ones keep theirs on their step.',
+    ),
   dashed: z.boolean().optional().describe('Blocking: moves drawn dashed (the camera, say).'),
   // Since version 23 (decision 0104).
   on: ElementId.optional().describe(
@@ -1018,9 +1028,23 @@ export const PlanElement = Base.extend({
     .max(359)
     .optional()
     .describe('Where north is, degrees clockwise from the top of the drawing. Omitted = not set.'),
+  roomSizes: z
+    .boolean()
+    .optional()
+    .describe(
+      "False hides the rooms' sizes on the drawing, the card and the outputs (since version 26). " +
+        'Omitted = shown.',
+    ),
   sun: z
     .object({
       time: z.int().min(0).max(1439).describe('Minutes after midnight, on the clock of the set.'),
+      day: z
+        .uuid()
+        .optional()
+        .describe(
+          "A shooting day of the board's schedule, by id (since version 26, decision 0119): the " +
+            'date follows the day; `date` keeps the last date it had, for when the day is gone.',
+        ),
       date: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)

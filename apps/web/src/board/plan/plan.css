@@ -1817,9 +1817,8 @@ span.plan-pill {
   padding-left: 30px;
   color: var(--ink-text-secondary);
 }
-.plan-elements__item:disabled {
+.plan-elements__item[data-hidden] {
   opacity: 0.5;
-  cursor: default;
 }
 .plan-kit__section ul {
   margin: 4px 0 0;
@@ -2000,8 +1999,9 @@ span.plan-pill {
 /* The phone's Kit sheet: Add to the call sheet stays at its foot, full width. */
 .plan-sheet__body .plan-kit .plan-props__actions {
   position: sticky;
-  bottom: 0;
-  padding: 8px 0 4px;
+  /* Down over the sheet's own bottom padding, so nothing scrolls by under it. */
+  bottom: calc(-16px - env(safe-area-inset-bottom));
+  padding: 8px 0 calc(16px + env(safe-area-inset-bottom));
   background: var(--ink-bg-panel);
 }
 .plan-sheet__body {
@@ -2421,4 +2421,19 @@ span.plan-pill {
 }
 .plan-background .ink-slider {
   width: 100%;
+}
+
+/* "Up," in "Up, 0°": the way north points, before its degrees (decision 0119). */
+.plan-num__lead {
+  min-width: 0;
+  margin-right: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The phone's Snap toggle on, as the mockup lights it (decision 0119). */
+.plan-top [aria-pressed="true"] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
 }

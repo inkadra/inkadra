@@ -36,6 +36,7 @@ import {
   planItemAt,
   planItems,
   planItemsAt,
+  planRoomBox,
   pulledAway,
   type ResizeHandle,
   ROTATE_STEP,
@@ -299,10 +300,13 @@ export function PlanCanvas({
   const selected = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
   const item = ed.item;
   const shown = ed.shown;
-  // Fit frames what this person sees drawn: their own hidden layers left out too.
+  // Fit frames what this person sees drawn: their own hidden layers left out too. A phone fits
+  // the room by its width, as the mockup shows it, when the plan has one (decision 0119).
   const content = useMemo(
-    () => planContentBox(shown, true, [...ed.myHidden]),
-    [shown, ed.myHidden],
+    () =>
+      (phone && planRoomBox(shown, [...ed.myHidden])) ||
+      planContentBox(shown, true, [...ed.myHidden]),
+    [shown, ed.myHidden, phone],
   );
   const surf = usePlanSurface({
     content,
@@ -1493,7 +1497,7 @@ export function PlanCanvas({
         onClick={() => {
           const next = { ...movingIcon };
           delete next.steps;
-          delete next.note;
+          delete next.stepNote;
           delete next.dashed;
           ed.write(next);
         }}
@@ -1742,6 +1746,8 @@ export function PlanCanvas({
             }
             background
             extent
+            // A picked wall or opening writes its own lengths where the room's size would be.
+            roomSizes={!ed.wallSel}
             // The surface draws the dots; over a picture the drawing draws them again.
             grid={shown.background && !shown.background.hidden ? step : undefined}
             ghosts={ed.ghosts}

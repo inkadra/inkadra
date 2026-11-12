@@ -16,8 +16,10 @@ import {
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type Point,
+  planRooms,
   planWallAt,
   pointAlongWall,
+  roomDims,
   sideAngle,
   snapWallEnd,
   toWallPoints,
@@ -42,6 +44,7 @@ import { useTranslation } from 'react-i18next';
 import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
 import { measureValue } from './kit.ts';
+import { RoomDimView, roomSizeText } from './PlanDrawing.tsx';
 
 /** The icon of each kind of opening, in the palette and the properties. */
 export const OPENING_ICONS: Record<PlanOpeningKind, IconName> = {
@@ -122,25 +125,21 @@ function Dim({
 }
 
 /**
- * The size of a closed room, as the mockup writes it outside its walls ("8.0 m" over the top,
- * "6.3 m" down the left): the box of its corners, a line above and one on the left.
+ * Which side of a wall its dimensions go, as the sign of a `Dim` offset: outside a closed room,
+ * as the mockup draws them (decision 0119), whichever way its corners were drawn; an open wall
+ * keeps the side it had.
  */
-function RoomDims({ wall, metres }: { wall: PlanWall; metres: (v: number) => string }) {
+export function outside(wall: Pick<PlanWall, 'points' | 'closed'>): 1 | -1 {
+  if (!wall.closed) return -1;
   const pts = wallPoints(wall);
-  const x0 = Math.min(...pts.map((p) => p.x));
-  const x1 = Math.max(...pts.map((p) => p.x));
-  const y0 = Math.min(...pts.map((p) => p.y));
-  const y1 = Math.max(...pts.map((p) => p.y));
-  const off = wall.thickness / 2 + ROOM_DIM_GAP;
-  return (
-    <g className="plan-walls__room" data-room-dims="">
-      <Dim a={{ x: x0, y: y0 }} b={{ x: x1, y: y0 }} off={off} text={metres(x1 - x0)} />
-      <Dim a={{ x: x0, y: y1 }} b={{ x: x0, y: y0 }} off={off} text={metres(y1 - y0)} />
-    </g>
-  );
+  let area = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i] as Point;
+    const b = pts[(i + 1) % pts.length] as Point;
+    area += a.x * b.y - b.x * a.y;
+  }
+  return area > 0 ? 1 : -1;
 }
-/** How far outside its walls a room's size is written, view units. */
-const ROOM_DIM_GAP = 30;
 
 /** The dimensions of an opening: its width, strong, and its distances to the corners of its side. */
 function OpeningDims({
@@ -158,7 +157,7 @@ function OpeningDims({
   const b = pointAlongWall(wall, span.to).point;
   const start = pointAlongWall(wall, span.from - corners.before).point;
   const end = pointAlongWall(wall, span.to + corners.after).point;
-  const off = -(wall.thickness / 2 + 22);
+  const off = outside(wall) * (wall.thickness / 2 + 22);
   return (
     <g>
       {corners.before > 0.5 && <Dim a={start} b={a} off={off} text={metres(corners.before)} />}
@@ -175,9 +174,8 @@ function OpeningDims({
  * one change of the document, one undo step.
  */
 export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom: number }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const metres = useMetres(ed);
-  const roomMetres = useMetres(ed, 1);
   const { tool, shown } = ed;
   const [angles, setAngles] = useState<WallAngles>('90');
   const [thickness, setThickness] = useState<number>(DEFAULT_WALL_METRES);
@@ -473,6 +471,9 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
   // width and distances.
   const picked = ed.wallSel;
   const pickedWall = picked?.kind === 'walls' ? walls.find((w) => w.id === picked.id) : undefined;
+  // The room the picked wall is part of: a closed wall, or open walls closing a loop (0119).
+  const rooms = pickedWall ? planRooms(walls) : [];
+  const pickedRoom = pickedWall && rooms.find((r) => r.walls.includes(pickedWall.id));
   const pickedOpening =
     picked?.kind === 'openings' ? shown.openings?.find((o) => o.id === picked.id) : undefined;
   const openingWall = pickedOpening && walls.find((w) => w.id === pickedOpening.wall);
@@ -492,12 +493,23 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
                 key={i}
                 a={a}
                 b={b}
-                off={-(pickedWall.thickness / 2 + 18)}
+                off={outside(pickedWall) * (pickedWall.thickness / 2 + 18)}
                 text={metres(Math.hypot(b.x - a.x, b.y - a.y))}
               />
             ));
           })()}
-          {pickedWall.closed && <RoomDims wall={pickedWall} metres={roomMetres} />}
+          {/* A picked room's size: the drawing leaves its own out while a wall is picked. */}
+          {pickedRoom && (
+            <g className="plan-walls__room" data-room-dims="">
+              {roomDims(pickedRoom, walls, rooms).map((d) => (
+                <RoomDimView
+                  key={`${d.a.x},${d.a.y}`}
+                  dim={d}
+                  text={roomSizeText(d.length, ed.wallScale, d.overall, t, i18n.language)}
+                />
+              ))}
+            </g>
+          )}
           {!itemLocked(pickedWall) &&
             wallPoints(pickedWall).map((q, i) => (
               <rect
