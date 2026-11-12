@@ -630,7 +630,8 @@ describe('power', () => {
       at('sun', 0, 0, { id: 'sunAAAAAAAAAA', watts: 5000 }),
       at('fire', 0, 0, { id: 'fireAAAAAAAAA' }),
       at('streetlight', 0, 0, { id: 'streetAAAAAAA', watts: 150 }),
-      at('floorlamp', 0, 0, { id: 'floorAAAAAAAA', watts: 60 }),
+      // A practical set up (its watts alone are no setup, decision 0117).
+      at('floorlamp', 0, 0, { id: 'floorAAAAAAAA', watts: 60, make: 'Arco' }),
     ];
     expect([...NOT_KIT_LIGHTS].every((k) => isLight(k) && !isKitLight(k))).toBe(true);
     expect(isKitLight('practical')).toBe(true);
