@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+import { BoardKind } from './boards.ts';
 import { Id, z } from './common.ts';
 import { ProjectRole } from './projects.ts';
 
@@ -53,7 +54,7 @@ export const SearchHit = z
     projectName: z.string(),
     boardId: Id.nullable(),
     boardTitle: z.string().nullable(),
-    boardKind: z.enum(['board', 'storyboard']).nullable(),
+    boardKind: BoardKind.nullable(),
     elementId: z.string().nullable(),
     elementType: z
       .string()

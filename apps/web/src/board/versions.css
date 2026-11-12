@@ -91,6 +91,14 @@
   top: 36px;
   z-index: 20;
 }
+/* On a desktop the menu opens rightwards from the board's name: a board with one view has no
+   tabs, and a menu aligned to its right edge would run under the sidebar (decision 0121). */
+@media (width >= 768px) {
+  .board-header-menu .menu {
+    right: auto;
+    left: 0;
+  }
+}
 .guest-visibility {
   color: var(--ink-text-muted);
   display: inline-flex;

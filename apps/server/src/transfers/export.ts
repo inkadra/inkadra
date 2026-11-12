@@ -353,6 +353,7 @@ export async function exportProject(
         id: b.id,
         parentId: b.parentBoardId,
         kind: b.kind,
+        views: b.views ?? null,
         title: b.title,
         position: b.position,
         coverAssetId: b.coverAssetId && assetIds.has(b.coverAssetId) ? b.coverAssetId : null,

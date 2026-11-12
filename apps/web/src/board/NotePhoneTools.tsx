@@ -183,7 +183,7 @@ export function NotePhoneTools({
         run: () => {
           const href =
             projectId && boardId
-              ? `${window.location.origin}/p/${projectId}/b/${boardId}?el=${encodeURIComponent(frame.id)}&view=canvas`
+              ? `${window.location.origin}/p/${projectId}/b/${boardId}?el=${encodeURIComponent(frame.id)}`
               : null;
           editor
             .chain()

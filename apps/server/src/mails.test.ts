@@ -81,7 +81,7 @@ describe('notification emails', () => {
     expect(m.text).toContain('“Il terzo shot è troppo stretto”');
     expect(m.text).toContain('Oggi, 18:39 CET');
     expect(m.text).toContain(
-      'Rispondi al commento: https://ink.example.com/p/p1/b/b1?el=card&view=canvas&thread=c1',
+      'Rispondi al commento: https://ink.example.com/p/p1/b/b1?el=card&thread=c1',
     );
     // The preheader is the excerpt.
     expect(m.html).toMatch(/display:none[^>]*>Il terzo shot è troppo stretto</);
@@ -126,11 +126,9 @@ describe('notification emails', () => {
     );
     expect(text.match(/Storyboard · Spot Estate/g)).toHaveLength(1);
     expect(text).toContain('Ieri, 18:39 CET');
-    expect(text).toContain(
-      'https://ink.example.com/p/p1/b/b2?el=card&view=canvas&thread=t9&comment=r9',
-    );
+    expect(text).toContain('https://ink.example.com/p/p1/b/b2?el=card&thread=t9&comment=r9');
     expect(m.html).toContain(
-      'href="https://ink.example.com/p/p1/b/b2?el=card&#38;view=canvas&#38;thread=t9&#38;comment=r9"',
+      'href="https://ink.example.com/p/p1/b/b2?el=card&#38;thread=t9&#38;comment=r9"',
     );
     expect(text).toContain('Marco Riva ha cambiato la revisione: modifiche richieste');
     // Status colours: green approved, orange changes requested, from the tokens.

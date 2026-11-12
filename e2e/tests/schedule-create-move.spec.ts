@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { setViews } from '../helpers/views.ts';
 
 // Decision 0089, phases 2 and 3: a block drawn on empty time and a whole day moved by its
 // heading. Uses the account created by first-run.spec.ts, with its own project and storyboard.
@@ -31,6 +32,7 @@ async function openSchedule(page: Page, name: string) {
       data: { parentBoardId: project.rootBoardId, title: 'Schedule', kind: 'storyboard' },
     })
   ).json();
+  await setViews(page.request, headers.origin, board.id, ['shotlist', 'schedule']);
   const day = async (date: string, blocks: object[]) => {
     const response = await page.request.post(`/api/v1/boards/${board.id}/schedule`, {
       headers,

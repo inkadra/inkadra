@@ -206,10 +206,9 @@ export function SearchDialog({
       navigate(`${path}?view=${view}`);
       return;
     }
-    // Cards open on the canvas, selected; storyboards would open on the storyboard view.
-    const params = new URLSearchParams({ el: hit.elementId ?? '' });
-    if (hit.boardKind === 'storyboard') params.set('view', 'canvas');
-    navigate(`${path}?${params}`);
+    // Cards open selected in the board's first view: the canvas, or the storyboard at its frame
+    // or scene, which sends any other card to the cards outside it (decision 0121).
+    navigate(`${path}?${new URLSearchParams({ el: hit.elementId ?? '' })}`);
   }
 
   return (

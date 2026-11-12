@@ -2053,6 +2053,13 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   font-weight: 600;
   color: var(--ink-text-muted);
 }
+.menu__note {
+  margin: 4px 8px;
+  max-width: 240px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink-text-muted);
+}
 .menu__item > .needed-kind {
   margin-left: -2px;
 }
@@ -2060,6 +2067,11 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   display: inline-flex;
   margin-left: auto;
   color: var(--ink-accent-soft-fg);
+}
+.menu__switch {
+  margin-left: auto;
+  padding-left: 12px;
+  box-sizing: content-box;
 }
 .menu__key {
   margin-left: auto;
@@ -2856,11 +2868,14 @@ button.crumb--editable:focus-visible {
 .board-state {
   display: grid;
   place-items: center;
+  /* 360px, or less on a phone: a fixed width ran past the right edge at 390px. */
+  grid-template-columns: minmax(0, 360px);
+  justify-content: center;
   height: 100%;
   padding: 32px;
 }
 .board-state > * {
-  width: 360px;
+  width: 100%;
   background: var(--ink-bg-panel);
 }
 

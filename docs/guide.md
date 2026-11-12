@@ -35,6 +35,23 @@ Draw on a picture. **Done**, `Esc` or a click elsewhere closes it.
   </picture>
 </p>
 
+## Kinds of board and their views
+
+A project starts with one board. **Add storyboard** and **Add moodboard** in the project's ⋯ menu,
+and **Moodboard** under **+ ▾**, add more, as many as you need. Each kind has its own views:
+
+| Kind       | Always            | Can be turned on                     |
+| ---------- | ----------------- | ------------------------------------ |
+| Board      | the canvas        | Moodboard and Review                 |
+| Moodboard  | the moodboard     | nothing                              |
+| Storyboard | scenes and frames | Shot list, Schedule, Crew and Review |
+
+The header shows the views of the open board only, and **Views of this board** in its ⋯ menu turns
+them on and off: a view that is off leaves the header and the sidebar, and its data stays. In the
+sidebar every board is a row with the icon of its kind, with its views under it when it has more
+than one. A storyboard has no canvas: one made before it had other cards keeps them, and
+**Cards outside the storyboard** in its ⋯ menu opens them.
+
 ## Videos in their card
 
 An uploaded video plays inside its card: press play and it runs there, with its controls, without
@@ -49,8 +66,8 @@ playable copy, and a video gets a poster and its details.
 
 ## Storyboards, frames and Draw
 
-A storyboard is made of scenes and frames, and it has more views of the same data: the shot list, the
-schedule and the review. Double-click a frame to open its panel: action, shot size, angle, movement,
+A storyboard is made of scenes and frames, and its other views show the same data: the shot list,
+the schedule and the review, when they are on. Double-click a frame to open its panel: action, shot size, angle, movement,
 lens, cast and status. The panel follows your selection, and closes when you pick
 something else.
 

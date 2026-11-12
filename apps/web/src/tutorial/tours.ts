@@ -133,6 +133,8 @@ export const TOURS: Tour[] = [
       { anchor: 'dock', media: 'drag', side: 'top' },
       { anchor: 'dock-more', media: 'types', side: 'top' },
       { anchor: 'card', media: 'toolbar', side: 'right' },
+      // The views of a board are turned on from its ⋯ menu (decision 0121).
+      { anchor: 'board-menu', media: 'morph', side: 'bottom' },
     ],
   },
   {

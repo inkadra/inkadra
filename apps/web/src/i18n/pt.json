@@ -93,10 +93,8 @@
     "navigation": "Navegação",
     "home": "Início",
     "board": "Quadros",
-    "storyboard": "Storyboard",
     "shotlist": "Decupagem",
     "schedule": "Cronograma",
-    "clients": "Revisão",
     "inbox": "Entrada",
     "search": "Buscar",
     "settings": "Configurações",
@@ -117,14 +115,14 @@
     "collapse": "Recolher a navegação",
     "expand": "Expandir a navegação",
     "boards": "Quadros",
-    "addStoryboard": "Adicionar storyboard…",
+    "addStoryboard": "Adicionar storyboard",
     "shots_one": "{{count}} plano",
     "shots_other": "{{count}} planos",
     "toShoot_one": "{{left}} de {{count}} plano ainda por filmar",
     "toShoot_other": "{{left}} de {{count}} planos ainda por filmar",
     "items_one": "{{count}} item no quadro",
     "items_other": "{{count}} itens no quadro",
-    "troupe": "Equipa"
+    "addMoodboard": "Adicionar moodboard"
   },
   "home": {
     "greeting": {
@@ -373,7 +371,8 @@
       "section": "Título de seção",
       "table": "Tabela",
       "map": "Mapa",
-      "plan": "Planta do set"
+      "plan": "Planta do set",
+      "moodboard": "Moodboard"
     },
     "tools": {
       "select": "Selecionar",
@@ -1276,6 +1275,7 @@
       "variants": "Variantes",
       "variant": "Variante",
       "base": "Base",
+      "newForScene": "Nova planta do set",
       "newVariant": "Nova variante",
       "variantMenu": "Duplicar como variante",
       "variantName": "Variante {{n}}",
@@ -1851,6 +1851,17 @@
       "showGuests": "Mostrar ao cliente",
       "toStoryboard": "Adicionar ao Storyboard",
       "replyTo": "Responder a {{name}}…"
+    },
+    "outside": {
+      "title": "Cartões fora do storyboard",
+      "menu_one": "Cartões fora do storyboard ({{count}})",
+      "menu_other": "Cartões fora do storyboard ({{count}})"
+    },
+    "views": {
+      "title": "Vistas deste quadro",
+      "always": "sempre",
+      "none": "Este tipo não tem outras vistas",
+      "note": "Uma vista desligada sai da barra e da árvore. Os dados ficam."
     }
   },
   "tags": {
@@ -3280,7 +3291,8 @@
     "sent_other": "{{count}} planos adicionados ao storyboard",
     "sendFailed": "Não foi possível adicioná-las ao storyboard. Verifique a ligação e as permissões e tente novamente.",
     "lockedSkipped_one": "{{count}} referência está bloqueada e não mudou.",
-    "lockedSkipped_other": "{{count}} referências estão bloqueadas e não mudaram."
+    "lockedSkipped_other": "{{count}} referências estão bloqueadas e não mudaram.",
+    "whichStoryboard": "Em que storyboard?"
   },
   "callSheet": {
     "day": "Diária",
@@ -4954,8 +4966,8 @@
             "text": "As ferramentas do cartão aparecem logo acima dele."
           },
           "4": {
-            "title": "Uma história, várias vistas",
-            "text": "Storyboard, lista de planos e plano de rodagem usam os mesmos dados."
+            "title": "Cada quadro, as suas vistas",
+            "text": "Um storyboard tem também decupagem e revisão: ligue-as no menu ⋯."
           },
           "5": {
             "title": "Trabalhe em equipa",
@@ -5022,11 +5034,15 @@
           },
           "1": {
             "title": "Todo o resto",
-            "text": "+ adiciona storyboards e shot lists; a barra muda-se nas Configurações."
+            "text": "+ adiciona quadros e moodboards; a barra muda-se nas Configurações."
           },
           "2": {
             "title": "Selecione um cartão",
             "text": "As ferramentas dele aparecem logo acima."
+          },
+          "3": {
+            "title": "As vistas do quadro",
+            "text": "No menu ⋯ ligue a moodboard deste quadro. Uma vista desligada mantém os seus dados."
           }
         }
       },
@@ -5035,7 +5051,7 @@
         "steps": {
           "0": {
             "title": "Referências em grelha",
-            "text": "Imagens, ligações e cores do projeto, juntas."
+            "text": "Imagens, ligações e cores do quadro, juntas."
           },
           "1": {
             "title": "Filtre",

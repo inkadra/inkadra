@@ -333,7 +333,14 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       if (!p) throw new Error('Project insert returned nothing');
       const [root] = await tx
         .insert(board)
-        .values({ projectId: p.id, title: input.name, position: 'a0', createdBy: actor.id })
+        .values({
+          projectId: p.id,
+          title: input.name,
+          position: 'a0',
+          // A new board shows only its own view (decision 0121).
+          views: [],
+          createdBy: actor.id,
+        })
         .returning({ id: board.id });
       if (!root) throw new Error('Board insert returned nothing');
       await tx.insert(projectMember).values({ projectId: p.id, userId: actor.id, role: 'owner' });

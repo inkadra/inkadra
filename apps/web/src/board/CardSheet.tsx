@@ -196,6 +196,10 @@ export function CardSheet({
               <p key={item.heading} className="card-sheet__heading">
                 {item.heading}
               </p>
+            ) : item.note !== undefined ? (
+              <p key={item.note} className="card-sheet__heading">
+                {item.note}
+              </p>
             ) : (
               <Row
                 key={item.label}

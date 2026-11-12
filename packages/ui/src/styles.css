@@ -1564,6 +1564,11 @@ select {
   height: 18px;
   border-radius: var(--ink-radius-full);
 }
+/* A switch drawn without its input, where an item of a menu carries the role and the state. */
+.ink-switch:not(.ink-choice) {
+  display: inline-flex;
+  flex: none;
+}
 .ink-switch__track {
   position: relative;
   box-sizing: border-box;
@@ -1586,11 +1591,13 @@ select {
   background: var(--ink-text-secondary);
   transition: transform 120ms;
 }
-.ink-switch > input:checked + .ink-switch__track {
+.ink-switch > input:checked + .ink-switch__track,
+.ink-switch.is-on > .ink-switch__track {
   border-color: var(--ink-accent-button);
   background: var(--ink-accent-button);
 }
-.ink-switch > input:checked + .ink-switch__track::after {
+.ink-switch > input:checked + .ink-switch__track::after,
+.ink-switch.is-on > .ink-switch__track::after {
   background: var(--ink-on-accent);
   transform: translateX(12px);
 }

@@ -128,10 +128,8 @@ export function notificationPath(
   const path = item.boardId ? `/p/${item.projectId}/b/${item.boardId}` : `/p/${item.projectId}`;
   if (!item.boardId) return path;
   const params = new URLSearchParams();
-  if (item.elementId) {
-    params.set('el', item.elementId);
-    params.set('view', 'canvas');
-  }
+  // The board's first view finds the card: a storyboard opens at its frame (decision 0121).
+  if (item.elementId) params.set('el', item.elementId);
   if (item.commentId) {
     // The thread's start; for a thread start it is the comment itself, so no comment param.
     const thread = item.threadId ?? item.commentId;

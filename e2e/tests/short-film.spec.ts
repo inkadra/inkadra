@@ -4,6 +4,7 @@ import { deflateSync } from 'node:zlib';
 import { expect, type Page, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { chooseSelect } from '../helpers/select.ts';
+import { turnOn } from '../helpers/views.ts';
 
 /**
  * Gate 0.3: a short film of 3 scenes and 30 shots is prepared entirely in Inkadra, from the
@@ -331,7 +332,8 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await expect(canvas.locator('[data-type="link"]')).toContainText('example.org');
     await synced(page);
 
-    // The Moodboard view collects pictures, link and palette.
+    // The Moodboard view collects pictures, link and palette: a new board turns it on from ⋯.
+    await turnOn(page, 'Moodboard');
     await page.getByRole('tab', { name: 'Moodboard' }).click();
     const gallery = page.getByRole('region', { name: 'Moodboard', exact: true });
     await expect(
@@ -534,6 +536,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
   });
 
   await test.step('5. schedule: two shooting days and the call sheet', async () => {
+    await turnOn(page, 'Piano riprese');
     await page.getByRole('tab', { name: 'Piano riprese', exact: true }).click();
     const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
     const days = schedule.locator('.schedule__day');
@@ -669,6 +672,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     const comments = page.getByRole('complementary', { name: 'Commenti' });
     await expect(comments.getByText('più luce sul volto')).toBeVisible();
     await expect(comments.getByText('Ospite del link “Cliente”')).toBeVisible();
+    await turnOn(page, 'Revisione');
     await page.getByRole('tab', { name: 'Revisione', exact: true }).click();
     await expect(
       page

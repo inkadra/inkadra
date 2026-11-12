@@ -749,7 +749,22 @@ describe('column colours and section headings', () => {
       boardCount: 1,
       fileCount: 1,
       cardCount: 3,
+      referenceCount: 1,
+      looseCount: 4,
     });
+  });
+
+  it('counts references, and the cards a storyboard holds besides its scenes', () => {
+    const counts = contentCounts([
+      { type: 'scene' },
+      { type: 'frame' },
+      { type: 'plan', sceneIds: ['s1'] },
+      { type: 'plan' },
+      { type: 'link' },
+      { type: 'color' },
+    ]);
+    expect(counts.referenceCount).toBe(2);
+    expect(counts.looseCount).toBe(3);
   });
 });
 

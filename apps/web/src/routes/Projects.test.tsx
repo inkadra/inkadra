@@ -105,6 +105,7 @@ it('shows the Home card with the actions in its menu', async () => {
     'appearance.title',
     'projectsPage.pin',
     'nav.addStoryboard',
+    'nav.addMoodboard',
     'projectsPage.details',
     'transfer.exportMenu',
     'projectsPage.archive',

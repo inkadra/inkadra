@@ -94,13 +94,14 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
     expect(items.map((i) => i.textContent)).toEqual([
       'board.types.board',
+      'board.types.moodboard',
       'board.types.character',
       'board.types.location',
     ]);
     // No shortcut hints in the menu (B and S still work on the canvas).
     expect(menu.querySelector('.menu__key')).toBeNull();
     expect(items.map((i) => i.querySelector('.menu__tile svg')?.innerHTML)).toEqual(
-      ['page', 'user', 'pin'].map(
+      ['page', 'image', 'user', 'pin'].map(
         (name) =>
           renderToStaticMarkup(<Icon name={name as IconName} />).match(
             /<svg[^>]*>(.*)<\/svg>/,
@@ -110,7 +111,9 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     // Each canvas type carries its content-kind colour; Board stays neutral.
     const tiles = items.map((i) => i.querySelector('.menu__tile')?.getAttribute('style') ?? '');
     expect(tiles[0]).toContain('--kind-fg: var(--ink-text-secondary)');
-    for (const tile of tiles) expect(tile).toContain('--kind-fg: var(--ink-text-secondary)');
+    expect(tiles[1]).toContain('--kind-fg: var(--ink-tag-orange)');
+    for (const tile of [tiles[0], ...tiles.slice(2)])
+      expect(tile).toContain('--kind-fg: var(--ink-text-secondary)');
     expect(document.activeElement).toBe(items[0]);
     const key = (k: string) =>
       act(async () => {
@@ -121,7 +124,7 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[1]);
     await key('End');
-    expect(document.activeElement).toBe(items[2]);
+    expect(document.activeElement).toBe(items[3]);
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[0]);
     await key('Escape');
@@ -136,6 +139,10 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
 
     await act(async () => button.click());
     await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[1]?.click());
+    expect(onCanvas).toHaveBeenCalledWith('moodboard');
+
+    await act(async () => button.click());
+    await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[2]?.click());
     expect(onAdd).toHaveBeenCalledWith('character');
   } finally {
     await cleanup();

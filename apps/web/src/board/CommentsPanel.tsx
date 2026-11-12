@@ -333,7 +333,8 @@ function CommentsPanel() {
       setParams((p) => {
         const next = new URLSearchParams(p);
         next.set('el', id);
-        next.set('view', 'canvas');
+        // The board's first view finds the card; a canvas already open keeps it (decision 0121).
+        if (next.get('view') !== 'canvas') next.delete('view');
         return next;
       }),
     [setParams],

@@ -215,4 +215,44 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('bad_request');
   });
+
+  it('starts each kind of board with its views and turns on only the ones it allows', async () => {
+    const headers = { cookie, origin: config.PUBLIC_URL };
+    const project = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers,
+      payload: { name: 'Teaser' },
+    });
+    const { id, rootBoardId } = project.json();
+    const root = await app.inject({ url: `/api/v1/boards/${rootBoardId}`, headers });
+    expect(root.json()).toMatchObject({ kind: 'board', views: [] });
+    const make = (kind: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${id}/boards`,
+        headers,
+        payload: { parentBoardId: rootBoardId, title: kind, kind },
+      });
+    const story = (await make('storyboard')).json();
+    const second = (await make('storyboard')).json();
+    const mood = (await make('moodboard')).json();
+    // A project holds several storyboards; a new one starts with its shot list (decision 0121).
+    expect(second.id).not.toBe(story.id);
+    expect(story.views).toEqual(['shotlist']);
+    expect(mood).toMatchObject({ kind: 'moodboard', views: [] });
+    const patch = (boardId: string, views: string[]) =>
+      app.inject({
+        method: 'PATCH',
+        url: `/api/v1/boards/${boardId}`,
+        headers,
+        payload: { views },
+      });
+    const on = await patch(story.id, ['review', 'shotlist']);
+    expect(on.json().views).toEqual(['shotlist', 'review']);
+    expect((await patch(mood.id, ['shotlist'])).statusCode).toBe(400);
+    expect((await patch(mood.id, ['review'])).statusCode).toBe(400);
+    expect((await patch(rootBoardId, ['review'])).json().views).toEqual(['review']);
+    expect((await patch(rootBoardId, ['moodboard'])).json().views).toEqual(['moodboard']);
+  });
 });

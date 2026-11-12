@@ -8,6 +8,7 @@ import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { chooseSelect } from '../helpers/select.ts';
+import { addStoryboard } from '../helpers/views.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
 const shots = process.env.E2E_SHOTS;
@@ -76,13 +77,15 @@ test('frames keep their values while admins change the storyboard lists', async 
     body: JSON.stringify({ name: `Classificazioni ${Date.now()}`, type: 'short_film' }),
   });
   const project = (await created.json()) as { id: string; rootBoardId: string };
-  const doc = createBoardDoc(project.rootBoardId);
+  // The frames live on a storyboard, whose views show them (decision 0121).
+  const storyboard = await addStoryboard(page.request, base, project, ['shotlist']);
+  const doc = createBoardDoc(storyboard.id);
   const scene = addScene(doc, { number: '1', title: 'Ponte' }, opts);
   addFrame(doc, scene.id, null, { action: 'Rinominata', shot: 'ms' }, opts);
   addFrame(doc, scene.id, null, { action: 'Archiviata', shot: 'cu', angle: 'dutch' }, opts);
   addFrame(doc, scene.id, null, { action: 'Libera', movement: FREE_TEXT }, opts);
   addFrame(doc, scene.id, null, { action: 'Nuova' }, opts);
-  await pushBoardDoc(base, cookie, project.rootBoardId, doc);
+  await pushBoardDoc(base, cookie, storyboard.id, doc);
 
   const added = `Totale ${Date.now().toString(36)}`;
   const initial = (await (
@@ -135,7 +138,7 @@ test('frames keep their values while admins change the storyboard lists', async 
     expect(saved.shotSizes.find((o) => o.id === 'cu')?.archived).toBe(true);
 
     // Shot list: each frame reads its value, and the menu offers only the active ones.
-    await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=shotlist`);
+    await page.goto(`/p/${project.id}/b/${storyboard.id}?view=shotlist`);
     const row = (text: string) => page.locator('tr', { hasText: text }).first();
     await expect(row('Rinominata')).toContainText('Piano americano');
     await expect(row('Archiviata')).toContainText('Primo piano');
@@ -180,7 +183,7 @@ test('frames keep their values while admins change the storyboard lists', async 
     }
 
     // Export: the same names on paper.
-    await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=storyboard`);
+    await page.goto(`/p/${project.id}/b/${storyboard.id}?view=storyboard`);
     await page.getByRole('button', { name: 'Esporta PDF' }).click();
     const exporter = page.getByRole('dialog', { name: /Esporta/ });
     // No frame is approved here: every frame goes on paper.
@@ -198,7 +201,7 @@ test('frames keep their values while admins change the storyboard lists', async 
     expect(text).toContain(FREE_TEXT);
 
     // Guests: the names come with the link, and no account endpoint is called.
-    const link = await fetch(`${base}/api/v1/boards/${project.rootBoardId}/share-links`, {
+    const link = await fetch(`${base}/api/v1/boards/${storyboard.id}/share-links`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ role: 'guest_approve', label: 'Regia' }),

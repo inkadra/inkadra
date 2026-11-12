@@ -18,7 +18,7 @@ describe('notificationPath', () => {
   it('opens the board on the card and the thread', () => {
     expect(
       notificationPath({ projectId: 'p', boardId: 'b', elementId: 'card', commentId: 'c' }),
-    ).toBe('/p/p/b/b?el=card&view=canvas&thread=c');
+    ).toBe('/p/p/b/b?el=card&thread=c');
     expect(
       notificationPath({ projectId: 'p', boardId: 'b', elementId: null, commentId: 'c' }),
     ).toBe('/p/p/b/b?thread=c');
@@ -33,7 +33,7 @@ describe('notificationPath', () => {
         commentId: 'r',
         threadId: 't',
       }),
-    ).toBe('/p/p/b/b?el=card&view=canvas&thread=t&comment=r');
+    ).toBe('/p/p/b/b?el=card&thread=t&comment=r');
     expect(
       notificationPath({
         projectId: 'p',

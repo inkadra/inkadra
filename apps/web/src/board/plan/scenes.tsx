@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type PlanElement, type SceneElement, updateElement } from '@inkadra/canvas-core';
+import {
+  createElement,
+  type PlanElement,
+  type SceneElement,
+  updateElement,
+} from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Button, Checkbox, Icon } from '@inkadra/ui';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
@@ -19,28 +24,54 @@ export function plansOfScene(elements: Iterable<Element>, sceneId: string): Plan
     .sort((a, b) => a.createdAt - b.createdAt);
 }
 
+/**
+ * A new set plan for a scene, the same card a plan made on the canvas and linked to the scene
+ * is, placed under the scene: a storyboard has no canvas to draw it on (decision 0121).
+ */
+export function addScenePlan(store: BoardStore, scene: SceneElement, userId: string): string {
+  store.undo.stopCapturing();
+  const plan = createElement(
+    store.doc,
+    'plan',
+    { x: scene.x, y: scene.y + (scene.h ?? 0) + 40 },
+    { sceneIds: [scene.id] },
+    { userId, origin: LOCAL },
+  );
+  store.undo.stopCapturing();
+  return plan.id;
+}
+
 /** The scenes a plan serves live in canvas-core (decision 0116). */
 export { scenesOfPlan } from '@inkadra/canvas-core';
 
 /**
- * Links between plans and scenes travel in the address: `?view=canvas&plan=<id>` opens a plan
- * in its editor, `?view=storyboard&scene=<id>` shows a scene in the storyboard.
+ * Links between plans and scenes travel in the address: `?plan=<id>` opens a plan in its editor
+ * over the view that is open (the canvas, or on a storyboard the plan alone), and a scene opens
+ * as any card does, `?el=<id>` in the board's first view: a storyboard brings it into view, a
+ * board's canvas selects it (decision 0121).
  */
 export function usePlanNav() {
   const [, setParams] = useSearchParams();
-  const go = useCallback(
-    (view: string, key: string, id: string) =>
-      setParams((p) => {
-        const next = new URLSearchParams(p);
-        next.set('view', view);
-        next.set(key, id);
-        return next;
-      }),
-    [setParams],
-  );
   return {
-    openPlan: useCallback((id: string) => go('canvas', 'plan', id), [go]),
-    openScene: useCallback((id: string) => go('storyboard', 'scene', id), [go]),
+    openPlan: useCallback(
+      (id: string) =>
+        setParams((p) => {
+          const next = new URLSearchParams(p);
+          next.set('plan', id);
+          return next;
+        }),
+      [setParams],
+    ),
+    openScene: useCallback(
+      (id: string) =>
+        setParams((p) => {
+          const next = new URLSearchParams(p);
+          next.delete('view');
+          next.set('el', id);
+          return next;
+        }),
+      [setParams],
+    ),
   };
 }
 
@@ -183,21 +214,28 @@ export function ScenePicker({
 }
 
 /**
- * "Pianta del set" on a scene: opens its plan, or a menu when the scene has several. Nothing
- * when it has none.
+ * "Pianta del set" on a scene: opens its plan, or a menu when the scene has several. When it has
+ * none, "New set plan" for an editor (`onNew` makes it and gives its id), otherwise nothing.
  */
 export function ScenePlanButton({
   plans,
   compact,
+  onNew,
 }: {
   plans: readonly PlanElement[];
   /** The short chip of the schedule. */
   compact?: boolean;
+  onNew?: (() => string) | undefined;
 }) {
   const { t } = useTranslation();
   const { openPlan } = usePlanNav();
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  if (plans.length === 0) return null;
+  if (plans.length === 0)
+    return onNew ? (
+      <Button icon="map" onClick={() => openPlan(onNew())}>
+        {t('board.plan.newForScene')}
+      </Button>
+    ) : null;
   const name = (p: PlanElement) =>
     p.title ? `${t('board.plan.name')} · ${p.title}` : t('board.plan.name');
   return (

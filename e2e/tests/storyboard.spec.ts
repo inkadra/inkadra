@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { chooseSelect } from '../helpers/select.ts';
 import { addSceneWithFrames } from '../helpers/storyboard.ts';
+import { turnOn } from '../helpers/views.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator and the project exist.
 test.describe.configure({ mode: 'serial' });
@@ -95,10 +96,11 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await expect(row.getByLabel('Campo', { exact: true })).toHaveAttribute('data-value', 'cu');
   await expect(page.locator('.shots__scene')).toContainText('EST. STAZIONE – NOTTE');
 
-  // The same frame is a card on the canvas view of the board.
-  await page.getByRole('tab', { name: 'Lavagna' }).click();
-  await expect(page.locator('[data-type="scene"]')).toContainText('EST. STAZIONE');
-  await expect(page.locator('[data-type="frame"]').filter({ hasText: '1D' })).toHaveCount(1);
+  // A storyboard is not a board to draw on: no canvas, and nothing outside it (decision 0121).
+  await expect(page.getByRole('tab', { name: 'Lavagna' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Menu della board' }).click();
+  await expect(page.getByRole('menuitem', { name: /^Card fuori dallo storyboard/ })).toHaveCount(0);
+  await page.keyboard.press('Escape');
 });
 
 test('search finds the frame and opens it where it is', async ({ page }) => {
@@ -111,8 +113,9 @@ test('search finds the frame and opens it where it is', async ({ page }) => {
     await expect(dialog.getByRole('option', { name: /1D/ })).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
   await page.getByRole('option', { name: /1D/ }).click();
-  await expect(page).toHaveURL(/view=canvas/);
-  await expect(page.locator('[data-type="frame"].is-selected')).toBeVisible();
+  // The frame opens in the Storyboard view, selected with its panel open.
+  await expect(page.getByRole('complementary', { name: 'Dettagli' }).getByText('1D')).toBeVisible();
+  await expect(page).not.toHaveURL(/view=|el=/);
 });
 
 test('the board menu presents from another view and renames in place', async ({ page }) => {
@@ -196,6 +199,8 @@ test('opening a note edits its real document and preserves the canvas editor', a
 test('shell views use real shots and the call sheet traps and restores focus', async ({ page }) => {
   await openProject(page);
   await page.locator('[data-type="board"]', { hasText: 'Binario 21' }).dblclick();
+  await turnOn(page, 'Piano riprese');
+  await turnOn(page, 'Revisione');
   await page.getByRole('tab', { name: 'Piano riprese' }).click();
   const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
   await expect(schedule).toContainText('Il treno entra');

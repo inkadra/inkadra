@@ -3,8 +3,31 @@ import { FractionalIndex, Id, Timestamp, z } from './common.ts';
 import { CLIP_BOARD_HISTORY_LIMIT } from './constants.ts';
 import { ProjectIcon, ProjectRole } from './projects.ts';
 
-export const BoardKind = z.enum(['board', 'storyboard']);
+/** What a board is, chosen when it is made: the set of views it has (decision 0121). */
+export const BoardKind = z.enum(['board', 'moodboard', 'storyboard']);
 export type BoardKind = z.infer<typeof BoardKind>;
+
+/** The views a board can turn on or off; the others always come with its kind. */
+export const BoardOptionalView = z.enum(['moodboard', 'shotlist', 'schedule', 'troupe', 'review']);
+export type BoardOptionalView = z.infer<typeof BoardOptionalView>;
+
+/**
+ * The views each kind may turn on (decision 0121): a board its moodboard and review (a guest
+ * review link can be made on any board), a storyboard its shot list and review. shortcut: Schedule and Troupe stay on the storyboard until the Production
+ * board of 0121 holds them; move them there in that step.
+ */
+export const OPTIONAL_VIEWS: Record<BoardKind, readonly BoardOptionalView[]> = {
+  board: ['moodboard', 'review'],
+  moodboard: [],
+  storyboard: ['shotlist', 'schedule', 'troupe', 'review'],
+};
+
+/** The optional views a new board of this kind starts with: a storyboard has its shot list. */
+export const NEW_BOARD_VIEWS: Record<BoardKind, BoardOptionalView[]> = {
+  board: [],
+  moodboard: [],
+  storyboard: ['shotlist'],
+};
 
 export const Board = z
   .object({
@@ -21,6 +44,17 @@ export const Board = z
         description:
           'Symbol or emoji and colour of the board, picked like the project ones and shown on ' +
           'board cards. Null or omitted = the default board icon.',
+      }),
+    views: z
+      .array(BoardOptionalView)
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          'The optional views that are on (decision 0121). Null or omitted on boards from ' +
+          'before it: a storyboard then has all of its views, an ordinary board its moodboard ' +
+          'when it holds images, links or colours (`referenceCount`) and its review while a ' +
+          'guest review link is live (`clientReview`).',
       }),
     docSchemaVersion: z.int().min(1).openapi({
       description:
@@ -59,6 +93,9 @@ export const UpdateBoard = z
     position: FractionalIndex,
     coverAssetId: Id.nullable(),
     icon: ProjectIcon.nullable(),
+    views: z.array(BoardOptionalView).max(5).openapi({
+      description: 'The optional views to turn on; each must be one the board kind allows.',
+    }),
   })
   .partial()
   .openapi('UpdateBoard');
@@ -138,6 +175,18 @@ export const BoardCount = z
     }),
     fileCount: z.int().nonnegative().optional().openapi({ description: 'File cards.' }),
     boardCount: z.int().nonnegative().optional().openapi({ description: 'Board cards.' }),
+    referenceCount: z.int().nonnegative().optional().openapi({
+      description: 'Images, links and colours: what a moodboard shows.',
+    }),
+    looseCount: z
+      .int()
+      .nonnegative()
+      .optional()
+      .openapi({
+        description:
+          'Cards other than scenes, frames and the set plans of a scene; arrows, columns and ' +
+          'headings excluded. On a storyboard they are the cards outside the storyboard.',
+      }),
     clientReview: z.boolean().optional().openapi({
       description:
         'A share link that lets guests set the review status of cards (`guest_approve`) is live on this board: not revoked, not expired.',
