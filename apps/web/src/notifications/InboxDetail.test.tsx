@@ -34,6 +34,7 @@ const reply = (id: string, createdAt = '2026-10-25T11:00:00Z') =>
   ({
     id,
     body: `message ${id}`,
+    mentions: [],
     createdAt,
     visibility: 'everyone',
   }) as Comment;
@@ -238,6 +239,32 @@ it('surfaces failed loads and mutations with retry, and refreshes the detail', a
   body = 'updated';
   await act(async () => button('notifications.refresh')?.click());
   expect(host.querySelector('.inbox-detail__thread-messages')?.textContent).toContain('updated');
+});
+
+it('writes mentions as names in the conversation and in the other comments', async () => {
+  const id = '55e8696c-b170-436a-8710-40f50121c369';
+  const mentioned = {
+    body: `@{${id}} is it in the frame?`,
+    mentions: [{ id, name: 'Tommaso' }],
+  } as Partial<CommentThread>;
+  vi.mocked(api.get).mockImplementation((path) =>
+    Promise.resolve(
+      path === '/boards/b'
+        ? { myRole: 'editor' }
+        : {
+            items: [
+              thread('a', { ...mentioned, replyCount: 1, replies: [{ ...reply('r'), ...mentioned }] }),
+              thread('b', mentioned),
+            ],
+            nextCursor: null,
+          },
+    ),
+  );
+  await render('a', 'el');
+  const texts = [
+    ...host.querySelectorAll('.inbox-detail__message-body, .inbox-detail__other-excerpt'),
+  ].map((p) => p.textContent);
+  expect(texts).toEqual(Array(3).fill('@Tommaso is it in the frame?'));
 });
 
 it('hides "other comments" when the notification is not tied to a frame', async () => {
