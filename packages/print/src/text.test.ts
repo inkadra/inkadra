@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
-import type { Measure } from './pages.ts';
+import type { Measure } from './ops.ts';
 import { ellipsize, missingGlyphs, textBlock, wrapText } from './text.ts';
 
 // Every character is half the font size wide.

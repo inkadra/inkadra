@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { rotatedBounds, sanitizeCrop } from '@inkadra/canvas-core';
+import { isIdentityCrop, rotatedBounds, sanitizeCrop } from '@inkadra/canvas-core';
 import type { ImageCrop, ImageCropAspect } from '@inkadra/doc-schema';
 
 export {
   croppedRotatedSize,
   FULL_CROP,
+  hasImageTransform,
+  isIdentityCrop,
+  normalizeImageRotation as normalizeRotation,
   rotatedBounds,
   sanitizeCrop,
 } from '@inkadra/canvas-core';
@@ -14,19 +17,9 @@ export type CropHandle = (typeof CROP_HANDLES)[number];
 
 /** Smallest crop the editor lets a hand drag to; documents may hold smaller ones. */
 const MIN_CROP_SIZE = 0.05;
-const EPS = 1e-4;
 
 export function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
-}
-
-/** Normalizes a rotation angle in degrees into `(-180, 180]`, with `0` for multiples of 360. */
-export function normalizeRotation(deg = 0): number {
-  if (!Number.isFinite(deg)) return 0;
-  let r = ((deg % 360) + 360) % 360;
-  if (r > 180) r -= 360;
-  const rounded = Math.round(r * 100) / 100;
-  return Object.is(rounded, -0) ? 0 : rounded;
 }
 
 /** Splits any rotation angle into the nearest 90° step (`0 | 90 | 180 | 270`) and fine angle (`[-45, 45]`). */
@@ -39,27 +32,6 @@ export function splitRotation(rotation = 0): { base: 0 | 90 | 180 | 270; fine: n
   if (fine <= -180) fine += 360;
   const roundedFine = Math.round(fine * 10) / 10;
   return { base, fine: Object.is(roundedFine, -0) ? 0 : roundedFine };
-}
-
-/** True when the crop covers the full `[0, 1] x [0, 1]` frame. */
-export function isIdentityCrop(crop?: ImageCrop | null): boolean {
-  if (!crop) return true;
-  return (
-    Math.abs(crop.x) < EPS &&
-    Math.abs(crop.y) < EPS &&
-    Math.abs(crop.w - 1) < EPS &&
-    Math.abs(crop.h - 1) < EPS &&
-    (!crop.aspect || crop.aspect === 'free')
-  );
-}
-
-/** True when an image element has a non-identity crop or non-zero rotation. */
-export function hasImageTransform(el: {
-  crop?: ImageCrop | undefined;
-  rotation?: number | undefined;
-}): boolean {
-  if (!isIdentityCrop(el.crop)) return true;
-  return Math.abs(normalizeRotation(el.rotation)) >= EPS;
 }
 
 /** Numeric width/height ratio for a preset, or null for `'free'`. */

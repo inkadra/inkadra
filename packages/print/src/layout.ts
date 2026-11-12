@@ -1,0 +1,208 @@
+// SPDX-License-Identifier: MPL-2.0
+/** Page sizes, margins and grids of an export, in PDF points. Pure maths, unit tested. */
+
+export type PaperSize = 'a4' | 'letter' | 'slide';
+export type Orientation = 'portrait' | 'landscape';
+export type FramesPerPage = 1 | 2 | 4 | 6;
+export const FRAMES_PER_PAGE: readonly FramesPerPage[] = [1, 2, 4, 6];
+
+export interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+const PAPER: Record<PaperSize, { w: number; h: number }> = {
+  // 210 × 297 mm and 8.5 × 11 in.
+  a4: { w: 595.28, h: 841.89 },
+  letter: { w: 612, h: 792 },
+  // 16:9, 13.33 × 7.5 in like a widescreen slide; always landscape.
+  slide: { w: 540, h: 960 },
+};
+
+export function pageSize(paper: PaperSize, orientation: Orientation) {
+  const { w, h } = PAPER[paper];
+  if (paper === 'slide') return { width: h, height: w };
+  return orientation === 'portrait' ? { width: w, height: h } : { width: h, height: w };
+}
+
+export const MARGIN = 36;
+export const HEADER = 30;
+export const FOOTER = 24;
+
+/** Area between the running header and footer of a page. */
+export function contentBox(width: number, height: number): Box {
+  return {
+    x: MARGIN,
+    y: MARGIN + HEADER,
+    w: width - MARGIN * 2,
+    h: height - MARGIN * 2 - HEADER - FOOTER,
+  };
+}
+
+/** Columns and rows of a storyboard page: wide pages put more frames side by side. */
+export function storyboardGrid(perPage: FramesPerPage, orientation: Orientation) {
+  const landscape = orientation === 'landscape';
+  switch (perPage) {
+    case 1:
+      return { cols: 1, rows: 1 };
+    case 2:
+      return landscape ? { cols: 2, rows: 1 } : { cols: 1, rows: 2 };
+    case 4:
+      return { cols: 2, rows: 2 };
+    case 6:
+      return landscape ? { cols: 3, rows: 2 } : { cols: 2, rows: 3 };
+  }
+}
+
+export const GUTTER = 18;
+
+/** Boxes of the cells of a grid inside `box`, row by row. */
+export function gridCells(box: Box, cols: number, rows: number, gutter = GUTTER): Box[] {
+  const w = (box.w - gutter * (cols - 1)) / cols;
+  const h = (box.h - gutter * (rows - 1)) / rows;
+  const cells: Box[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      cells.push({ x: box.x + c * (w + gutter), y: box.y + r * (h + gutter), w, h });
+    }
+  }
+  return cells;
+}
+
+/**
+ * Cells of a storyboard page. Every picture fills the width of its column; columns narrow
+ * (all by the same amount) when the pictures and the `text` space under them would not fit the
+ * height, and the grid is then centred across the page. `aspect` is the narrowest picture
+ * (width / height) of the page, so no picture overflows its cell.
+ */
+export function storyboardCells(
+  box: Box,
+  cols: number,
+  rows: number,
+  aspect: number,
+  text: number,
+  gutter = GUTTER,
+): Box[] {
+  const widest = (box.w - gutter * (cols - 1)) / cols;
+  const rowRoom = (box.h - gutter * (rows - 1)) / rows;
+  const w = Math.max(1, Math.min(widest, (rowRoom - text) * aspect));
+  const h = w / aspect + text;
+  const gridW = cols * w + gutter * (cols - 1);
+  const x0 = box.x + (box.w - gridW) / 2;
+  const cells: Box[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      cells.push({ x: x0 + c * (w + gutter), y: box.y + r * (h + gutter), w, h });
+    }
+  }
+  return cells;
+}
+
+/**
+ * The one cell of a 16:9 storyboard slide: the picture as large as the page allows above the
+ * caption it needs, the two centred in `box` with at least `gap` above and below, clear of the
+ * header rule. `caption(w)` is the height of the text under a picture `w` wide; it grows as the
+ * picture narrows, so it is measured again until the width settles. A caption longer than half
+ * the room is cut there rather than shrink the picture further.
+ */
+export function slideCell(
+  box: Box,
+  aspect: number,
+  caption: (width: number) => number,
+  gap = GUTTER,
+): Box {
+  const room = box.h - gap * 2;
+  const text = (w: number) => Math.min(Math.max(0, caption(w)), room / 2);
+  const widthFor = (t: number) => Math.max(1, Math.min(box.w, (room - t) * aspect));
+  let w = widthFor(text(box.w));
+  for (let i = 0; i < 4; i++) {
+    const next = widthFor(text(w));
+    if (next >= w - 0.5) break;
+    w = next;
+  }
+  const h = Math.min(room, w / aspect + text(w));
+  return { x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w, h };
+}
+
+/** Items in consecutive pages of `perPage`; an empty list still makes one (empty) page. */
+export function chunk<T>(items: readonly T[], perPage: number): T[][] {
+  if (perPage < 1) throw new RangeError('perPage must be at least 1');
+  if (items.length === 0) return [[]];
+  const pages: T[][] = [];
+  for (let i = 0; i < items.length; i += perPage) pages.push(items.slice(i, i + perPage));
+  return pages;
+}
+
+/**
+ * Splits rows of known heights into pages of at most `available` points. A row taller than a
+ * page gets a page of its own (the caller clips it). A row marked in `keepWithNext`, such as a
+ * section title, moves to the next page when the row after it would not fit under it.
+ */
+export function paginateRows(
+  heights: readonly number[],
+  available: number,
+  keepWithNext: readonly boolean[] = [],
+): number[][] {
+  const pages: number[][] = [];
+  let current: number[] = [];
+  let used = 0;
+  heights.forEach((h, i) => {
+    let chain = h;
+    for (let j = i; keepWithNext[j] && j + 1 < heights.length; j++) chain += heights[j + 1] ?? 0;
+    // A chain taller than a page cannot stay together: it breaks where its rows stop fitting.
+    const together = chain > available ? h : chain;
+    if (current.length > 0 && used + together > available) {
+      pages.push(current);
+      current = [];
+      used = 0;
+    }
+    current.push(i);
+    used += h;
+  });
+  if (current.length > 0 || pages.length === 0) pages.push(current);
+  return pages;
+}
+
+/** Scale and offset that fit a region of the board, centred, inside a box. */
+export function fitRegion(region: Box, into: Box, maxScale = 1.5) {
+  const scale = Math.min(into.w / region.w, into.h / region.h, maxScale);
+  return {
+    scale,
+    dx: into.x + (into.w - region.w * scale) / 2 - region.x * scale,
+    dy: into.y + (into.h - region.h * scale) / 2 - region.y * scale,
+  };
+}
+
+/**
+ * Pixels per point of a PNG: the longer side of the page lands at `target` pixels, at most
+ * 4 (288 dpi), and the canvas stays within what browsers draw (16384 px a side, 64 megapixels).
+ */
+export function pixelRatio(width: number, height: number, target = 4096): number {
+  const byTarget = Math.min(4, target / Math.max(width, height));
+  const bySide = 16384 / Math.max(width, height);
+  const byArea = Math.sqrt(64_000_000 / (width * height));
+  return Math.max(0.1, Math.min(byTarget, bySide, byArea));
+}
+
+/** Longer side, in pixels, of each page of a multi-page PNG export: 200 dpi on A4, readable text. */
+const PNG_PAGE_TARGET = 2400;
+/** Pixels all the pages of one PNG export may add up to; beyond this the pages are drawn smaller. */
+export const PNG_TOTAL_PIXELS = 400_000_000;
+
+/**
+ * Pixels per point of every page of a PNG export (one image per page). A single page may reach
+ * 4096 px; with several, each stays readable at `PNG_PAGE_TARGET` and, when the sequence is so
+ * long that the images would not fit in memory, all shrink together (`reduced`).
+ */
+export function pngScales(pages: readonly { width: number; height: number }[]) {
+  const target = pages.length > 1 ? PNG_PAGE_TARGET : 4096;
+  const scales = pages.map((p) => pixelRatio(p.width, p.height, target));
+  const total = pages.reduce(
+    (sum, p, i) => sum + p.width * p.height * (scales[i] as number) ** 2,
+    0,
+  );
+  const shrink = Math.min(1, Math.sqrt(PNG_TOTAL_PIXELS / total));
+  return { scales: scales.map((s) => s * shrink), reduced: shrink < 1 };
+}
