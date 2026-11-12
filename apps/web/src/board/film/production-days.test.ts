@@ -44,8 +44,12 @@ describe("a storyboard's days (decision 0123)", () => {
 
   it("reads the project's loaded boards when the caller has none (a set plan's sheet)", async () => {
     const boards = [board('root', 'board'), board('prod', 'production')];
-    const get = vi.spyOn(api, 'get').mockImplementation((async (path: string) =>
-      path === '/projects/p1/boards' ? { items: boards } : { items: days, nextCursor: null }) as never);
+    const get = vi
+      .spyOn(api, 'get')
+      .mockImplementation((async (path: string) =>
+        path === '/projects/p1/boards'
+          ? { items: boards }
+          : { items: days, nextCursor: null }) as never);
     await loadBoards('p1');
     await loadBoardDays('root', null);
     expect(get).toHaveBeenLastCalledWith('/boards/prod/schedule');
