@@ -3585,6 +3585,7 @@ export function Canvas({
     newVariant,
     detectedScripts,
     openDetectedScript,
+    offers,
   ]);
 
   /** The phone card sheet's own actions (#110), beside the menu's: only with the menu open. */

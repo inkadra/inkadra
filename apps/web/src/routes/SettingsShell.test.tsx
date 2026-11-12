@@ -44,7 +44,7 @@ it('groups permitted pages, marks the current one and flags incomplete setup', a
     'admin.workspace',
     'settingsUi.groups.instance',
   ]);
-  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(14);
+  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(15);
   const iconOf = (section: string) =>
     host.querySelector(`a[href="/settings?section=${section}"] svg`)?.innerHTML;
   expect(new Set([iconOf('preferences'), iconOf('tutorials'), iconOf('instance')]).size).toBe(3);
@@ -69,7 +69,7 @@ it('hides admin pages from members', async () => {
       </MemoryRouter>,
     ),
   );
-  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(5);
+  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(6);
   expect(host.querySelector('a[href="/settings?section=classifications"]')).toBeNull();
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('admin.account');
 });
