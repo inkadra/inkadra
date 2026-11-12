@@ -342,7 +342,8 @@ for (const theme of ['dark', 'light'] as const) {
       if (!phone) await expect(shots).toHaveCount(0);
       await dialog.getByRole('button', { name: 'Importa', exact: true }).click();
       await expect(page.locator('.card--board')).toHaveCount(before + 1);
-      await expect(page.locator('.card--board').last()).toContainText('5 card');
+      // A new card previews the storyboard: its count of frames next to the name (decision 0121).
+      await expect(page.locator('.card--board').last()).toContainText('5 inquadrature');
       // The new storyboard is the project's first: the sidebar counts its frames now, without
       // waiting for the server to store the board.
       if (!phone)

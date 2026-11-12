@@ -7,7 +7,6 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { exportFile } from './engine.ts';
 import type { LoadedImage } from './images.ts';
 import { pageSize } from './layout.ts';
-import type { FontWeight } from './pages.ts';
 import {
   FLOOR_PLAN_JPEG,
   fileFetch,
@@ -68,12 +67,12 @@ async function pdfText(bytes: Uint8Array): Promise<string[]> {
 }
 
 /** The PDF as `exportFile` writes it, with the background picture given as bytes. */
-async function sheetPdf(audience: SheetAudience, fonts?: Record<FontWeight, Uint8Array>) {
+async function sheetPdf(audience: SheetAudience) {
   const fixture = planSheetFixture();
   const { built, env } = await sheetOf(fixture, audience, 'en');
   const images = new Map<string, LoadedImage>(built.images);
   images.set(fixture.backgroundId, { width: 48, height: 32, bytes: FLOOR_PLAN_JPEG, type: 'jpeg' });
-  const bytes = await renderPdf(built.pages, fonts ?? built.fonts.bytes, images, {
+  const bytes = await renderPdf(built.pages, built.fonts.bytes, images, {
     title: env.boardTitle || env.projectName,
     author: env.projectName,
     subject: env.t('export.kindBoard'),
@@ -93,7 +92,7 @@ describe('the PDF written in Node', () => {
     expect(pdf.getTitle()).toBe('Set plan · Bancone');
 
     // Four weights of Inter, each a subset: a font name with pdf-lib's random tag, a font program
-    // much smaller than the whole Latin file.
+    // much smaller than the whole file.
     const fonts = pdf.context
       .enumerateIndirectObjects()
       .flatMap(([, obj]) =>
@@ -107,7 +106,7 @@ describe('the PDF written in Node', () => {
       const program = font.lookup(PDFName.of('FontFile2')) ?? font.lookup(PDFName.of('FontFile3'));
       expect(program).toBeInstanceOf(PDFRawStream);
       expect((program as PDFRawStream).getContentsSize()).toBeLessThan(
-        packageFile('@fontsource/inter/files/inter-latin-400-normal.woff').length,
+        packageFile('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf').length,
       );
     }
     // The background picture, once, as the JPEG it was given.
@@ -134,29 +133,9 @@ describe('the PDF written in Node', () => {
       'Bandiera 4×4',
     ])
       expect(all).toContain(words);
-    // Accented Latin is in Inter's Latin subset.
-    for (const word of fixture.notes.accented.split(/[\s,:]+/)) expect(all).toContain(word);
-    // Polish ł and Cyrillic are not (decision 0038): the sheet reports them and they are left out
-    // of the text, today as in the browser.
-    expect(built.missing).toEqual(expect.arrayContaining(['ł', 'С']));
-    expect(all).not.toMatch(/[łśСвет]/);
-  });
-
-  it('prints Polish and Cyrillic in Node when the fonts have them', async () => {
-    // Not Inter: Liberation Sans, which pdf.js ships, has Latin Extended and Cyrillic. It proves
-    // the writer, fontkit's subsetting and the text it maps back work for them; Inter's subsets
-    // come with the fonts' own change.
-    const regular = packageFile('pdfjs-dist/standard_fonts/LiberationSans-Regular.ttf');
-    const bold = packageFile('pdfjs-dist/standard_fonts/LiberationSans-Bold.ttf');
-    const { fixture, bytes } = await sheetPdf('team', {
-      400: regular,
-      500: regular,
-      600: bold,
-      700: bold,
-      heading: bold,
-    });
-    const all = (await pdfText(bytes)).join('\n');
-    for (const note of [fixture.notes.polish, fixture.notes.cyrillic])
+    // Accented Latin, Polish and Cyrillic are all in Inter (decision 0038): nothing is missing.
+    expect(built.missing).toEqual([]);
+    for (const note of [fixture.notes.accented, fixture.notes.polish, fixture.notes.cyrillic])
       for (const word of note.split(/[\s,:]+/)) expect(all).toContain(word);
   });
 

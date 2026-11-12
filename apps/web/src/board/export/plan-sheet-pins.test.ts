@@ -64,11 +64,17 @@ afterAll(() => {
   vi.unstubAllGlobals();
 });
 
-/** Inter as `fonts.ts` loads it, from `@fontsource/inter` on disk. */
+/** Inter as `fonts.ts` loads it, from `@expo-google-fonts/inter` on disk. */
 function inter(): Record<FontWeight, Uint8Array> {
-  const file = (w: number) => packageFile(`@fontsource/inter/files/inter-latin-${w}-normal.woff`);
-  const semibold = file(600);
-  return { 400: file(400), 500: file(500), 600: semibold, 700: file(700), heading: semibold };
+  const file = (name: string) => packageFile(`@expo-google-fonts/inter/${name}/Inter_${name}.ttf`);
+  const semibold = file('600SemiBold');
+  return {
+    400: file('400Regular'),
+    500: file('500Medium'),
+    600: semibold,
+    700: file('700Bold'),
+    heading: semibold,
+  };
 }
 
 /**

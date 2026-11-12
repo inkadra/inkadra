@@ -83,6 +83,7 @@ import {
   defaultView,
   hasOutsideCards,
   headerViews,
+  isBoardView,
   kindIcon,
   offeredViews,
   openView,
@@ -583,9 +584,18 @@ function BoardScreen({
     };
   }, [boardId, accessVersion]);
 
+  // The card of a sub-board opens the view it shows (decision 0121); the board page falls back
+  // to the board's first view when that one is off.
   const openBoard = useCallback(
-    (id: string) => navigate(boardPath(projectId, id, rootBoardId)),
-    [navigate, projectId, rootBoardId],
+    (id: string, view?: string) => {
+      const target = boards?.find((b) => b.id === id);
+      navigate(
+        target && view && isBoardView(view)
+          ? viewHref(projectId, target, view, rootBoardId)
+          : boardPath(projectId, id, rootBoardId),
+      );
+    },
+    [navigate, projectId, rootBoardId, boards],
   );
   useBoardReviews(boardId, conn, detail?.myRole ?? projectRole, {
     preview: !!preview,

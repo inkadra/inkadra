@@ -117,6 +117,7 @@ import { accessNotices } from './access-notices.ts';
 import { addedSummary } from './added-summary.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
 import { getCachedAsset } from './assets.ts';
+import { BOARD_CARD_SIZE, showsPreview } from './BoardCardPreview.tsx';
 import {
   canRenameBoard,
   createBoard,
@@ -126,7 +127,13 @@ import {
 } from './boards.ts';
 import { CardSheet } from './CardSheet.tsx';
 import { ColorPicker } from './ColorPicker.tsx';
-import { loadBoardGrid, loadTidyGap, saveBoardGrid, saveTidyGap } from './canvas-prefs.ts';
+import {
+  loadBoardGrid,
+  loadCardView,
+  loadTidyGap,
+  saveBoardGrid,
+  saveTidyGap,
+} from './canvas-prefs.ts';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import {
   type ArrangeCommand,
@@ -410,7 +417,8 @@ export interface CanvasProps {
   preview?: boolean;
   initialSelection?: ReadonlySet<string>;
   peers: Peer[];
-  onOpenBoard: (boardId: string) => void;
+  /** Opens a sub-board, on the view its card shows when there is one (decision 0121). */
+  onOpenBoard: (boardId: string, view?: string) => void;
   /** Told whenever the selection changes. */
   onSelectionChange?: (ids: ReadonlySet<string>) => void;
   /** Opens an image, file or frame in a view of the page's own; return false for the default. */
@@ -1024,7 +1032,7 @@ export function Canvas({
   const insertCanvas = useCallback(
     async (kind: BoardKind = 'board', at?: Point) => {
       if (readOnly) return;
-      const pos = place(at ?? center(DEFAULT_WIDTH.board, NEW_SHORT.board));
+      const pos = place(at ?? center(BOARD_CARD_SIZE.w, BOARD_CARD_SIZE.h));
       try {
         const board = await createBoard(
           projectId,
@@ -1037,7 +1045,7 @@ export function Canvas({
           doc,
           'board',
           pos,
-          { boardId: board.id },
+          { boardId: board.id, ...BOARD_CARD_SIZE },
           { userId, origin: LOCAL },
         );
         store.undo.stopCapturing();
@@ -1111,8 +1119,8 @@ export function Canvas({
       const card = createElement(
         doc,
         'board',
-        place(center(DEFAULT_WIDTH.board, NEW_SHORT.board)),
-        { boardId: board.id },
+        place(center(BOARD_CARD_SIZE.w, BOARD_CARD_SIZE.h)),
+        { boardId: board.id, ...BOARD_CARD_SIZE },
         { userId, origin: LOCAL },
       );
       store.undo.stopCapturing();
@@ -1693,7 +1701,8 @@ export function Canvas({
 
   const openElement = useCallback(
     (el: Element) => {
-      if (el.type === 'board') onOpenBoard(el.boardId);
+      if (el.type === 'board')
+        onOpenBoard(el.boardId, (showsPreview(el) && loadCardView(userId, el.id)) || undefined);
       else if (onOpen?.(el)) return;
       else if (el.type === 'link') {
         if (isVideoLink(el.url)) {
@@ -1726,7 +1735,7 @@ export function Canvas({
         setEditing(el.id);
       }
     },
-    [onOpenBoard, onOpen, readOnly, select, setEditing, mapTiles],
+    [onOpenBoard, onOpen, readOnly, select, setEditing, mapTiles, userId],
   );
 
   // Pointer gestures ----------------------------------------------------------
@@ -3405,6 +3414,23 @@ export function Canvas({
                 },
               ]
             : []),
+          // A board card shows its preview or only its name (decision 0121); old cards stay small.
+          ...(single?.type === 'board' && !readOnly && !single.locked
+            ? [
+                {
+                  label: t(showsPreview(single) ? 'board.board.compact' : 'board.board.preview'),
+                  action: () =>
+                    updateElement(
+                      doc,
+                      single.id,
+                      showsPreview(single)
+                        ? { w: DEFAULT_WIDTH.board, h: undefined }
+                        : { w: Math.max(single.w, BOARD_CARD_SIZE.w), h: BOARD_CARD_SIZE.h },
+                      LOCAL,
+                    ),
+                },
+              ]
+            : []),
           ...(single?.type === 'color' && !readOnly && !single.locked
             ? [{ label: t('board.color.edit'), action: () => setEditing(single.id) }]
             : []),
@@ -4167,6 +4193,7 @@ export function Canvas({
             phone={isPhone}
             guest={!!guest}
             store={store}
+            scope={guest || preview ? undefined : { projectId, boardId }}
             onSwitch={setViewedPlanId}
             onClose={() => setViewedPlanId(null)}
           />

@@ -20,6 +20,7 @@ import {
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ExportCache } from '../export/cache.ts';
+import type { ExportEnv } from '../export/engine.ts';
 import { sheetInclude } from '../export/plan-sheet.ts';
 import type { BoardStore } from '../store.ts';
 import { foldIcons } from './elements.ts';
@@ -125,6 +126,7 @@ export function PlanViewer({
   phone,
   guest = false,
   store,
+  scope,
   onSwitch,
   onClose,
 }: {
@@ -135,6 +137,8 @@ export function PlanViewer({
   phone: boolean;
   guest?: boolean;
   store?: BoardStore;
+  /** The project and board, for the sheet's "Day N"; none for a guest or a preview. */
+  scope?: ExportEnv['scope'];
   onSwitch?: (id: string) => void;
   onClose: () => void;
 }) {
@@ -170,7 +174,7 @@ export function PlanViewer({
     try {
       await downloadPlanSheet(
         planSheetRequest('pdf', [plan.id], null, sheetInclude(shown), guest),
-        planSheetEnv(store, shown, t, i18n.language, cache),
+        planSheetEnv(store, shown, t, i18n.language, cache, scope),
       );
     } finally {
       setBusy(false);

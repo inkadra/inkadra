@@ -11010,6 +11010,115 @@
               ]
             },
             "maxItems": 32
+          },
+          "colors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^#[0-9A-F]{6}$/i"
+            },
+            "maxItems": 6,
+            "description": "Hex of the first colour cards: the palette of a moodboard."
+          },
+          "frames": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "maxLength": 12
+                },
+                "shot": {
+                  "type": "string",
+                  "maxLength": 60,
+                  "description": "Shot size as stored: a catalog id or free text."
+                },
+                "lens": {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                "ratio": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 10,
+                  "description": "Width over height."
+                },
+                "assetId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+                  "description": "Ready picture of the same project."
+                },
+                "drawing": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "maxLength": 5000
+                      },
+                      "color": {
+                        "type": "string",
+                        "pattern": "^#[0-9A-F]{6}$/i"
+                      },
+                      "width": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "maximum": 820
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "color",
+                      "width"
+                    ]
+                  },
+                  "maxItems": 12
+                }
+              },
+              "required": [
+                "label",
+                "ratio",
+                "drawing"
+              ]
+            },
+            "maxItems": 5,
+            "description": "The first storyboard frames in shooting order (decision 0121, board cards); the first three carry their picture."
+          },
+          "review": {
+            "type": "object",
+            "properties": {
+              "approved": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "changes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "approved",
+              "changes",
+              "total"
+            ],
+            "description": "Review decisions as the team sees them: frames, or cards when there are none."
+          },
+          "dayCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Shooting days."
+          },
+          "crewCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "People of the project's troupe; only for members of the project."
           }
         },
         "required": [
@@ -22583,6 +22692,221 @@
         }
       }
     },
+    "/api/v1/boards/{boardId}/plans/{planId}/sheet": {
+      "get": {
+        "tags": [
+          "Boards"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The set plan sheet as a PDF, as the web exports it.",
+        "description": "For the viewer role or above. `audience=team` (the default) prints every card and \"Day N\" from the schedule; `client` prints the client copy. Unknown query parameters are ignored. Rendered from the stored board, which may be up to 10 s behind the live one. Only on servers that advertise the capability `plan-sheet-pdf`; older ones answer 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "planId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "this",
+                "all"
+              ],
+              "default": "all",
+              "description": "`this`: only this plan. `all`: its family of setups, base first. A family of more than 20 setups answers 400 with `all`; export it with `this`."
+            },
+            "required": false,
+            "description": "`this`: only this plan. `all`: its family of setups, base first. A family of more than 20 setups answers 400 with `all`; export it with `this`.",
+            "name": "setups",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated parts to print (spaces around names are ignored): legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
+              "example": "legend,kit,power,scale"
+            },
+            "required": false,
+            "description": "Comma-separated parts to print (spaces around names are ignored): legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
+            "name": "include",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "it",
+                "es",
+                "de",
+                "fr",
+                "pt"
+              ],
+              "description": "Language of the words on the sheet. Absent: the account language, then `Accept-Language`, then `en` (guests skip the account)."
+            },
+            "required": false,
+            "description": "Language of the words on the sheet. Absent: the account language, then `Accept-Language`, then `en` (guests skip the account).",
+            "name": "lang",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "team",
+                "client"
+              ],
+              "default": "team",
+              "description": "`team`: every card, and \"Day N\" from the schedule. `client`: the client copy, without cards hidden from guests and without \"Day N\"."
+            },
+            "required": false,
+            "description": "`team`: every card, and \"Day N\" from the schedule. `client`: the client copy, without cards hidden from guests and without \"Day N\".",
+            "name": "audience",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The last ETag received."
+            },
+            "required": false,
+            "description": "The last ETag received.",
+            "name": "If-None-Match",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The sheet, one A4 landscape page per setup",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "Send it back as `If-None-Match` to get 304."
+                },
+                "required": true,
+                "description": "Send it back as `If-None-Match` to get 304."
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string",
+                  "description": "Always `attachment`, with the file name the web export uses."
+                },
+                "required": true,
+                "description": "Always `attachment`, with the file name the web export uses."
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-cache"
+                },
+                "required": true
+              }
+            },
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "Send it back as `If-None-Match` to get 304."
+                },
+                "required": true,
+                "description": "Send it back as `If-None-Match` to get 304."
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-cache"
+                },
+                "required": true
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query (unknown part or language), or more than 20 setups with `setups=all` (checked after reading the board; the message says to export with `setups=this`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No role on the board, no such plan, or not a set plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "More than 10 sheets a minute by this person or guest, or the server is busy with other sheets (`rate_limited` with `details.reason: \"busy\"`). Wait `Retry-After` seconds.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "example": "5"
+                },
+                "required": true
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/boards/{boardId}/comments": {
       "get": {
         "tags": [
@@ -26355,6 +26679,223 @@
           },
           "404": {
             "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/boards/{boardId}/plans/{planId}/sheet": {
+      "get": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "The set plan sheet of a board of the link as a PDF: always the client copy.",
+        "description": "Only cards visible to guests of the link, never \"Day N\"; no `audience` parameter. Unknown query parameters are ignored. Rendered from the stored board, which may be up to 10 s behind the live one. Only on servers that advertise the capability `plan-sheet-pdf`; older ones answer 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "planId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "this",
+                "all"
+              ],
+              "default": "all",
+              "description": "`this`: only this plan. `all`: its family of setups, base first. A family of more than 20 setups answers 400 with `all`; export it with `this`."
+            },
+            "required": false,
+            "description": "`this`: only this plan. `all`: its family of setups, base first. A family of more than 20 setups answers 400 with `all`; export it with `this`.",
+            "name": "setups",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated parts to print (spaces around names are ignored): legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
+              "example": "legend,kit,power,scale"
+            },
+            "required": false,
+            "description": "Comma-separated parts to print (spaces around names are ignored): legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
+            "name": "include",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "it",
+                "es",
+                "de",
+                "fr",
+                "pt"
+              ],
+              "description": "Language of the words on the sheet. Absent: the account language, then `Accept-Language`, then `en` (guests skip the account)."
+            },
+            "required": false,
+            "description": "Language of the words on the sheet. Absent: the account language, then `Accept-Language`, then `en` (guests skip the account).",
+            "name": "lang",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The last ETag received."
+            },
+            "required": false,
+            "description": "The last ETag received.",
+            "name": "If-None-Match",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The sheet, one A4 landscape page per setup",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "Send it back as `If-None-Match` to get 304."
+                },
+                "required": true,
+                "description": "Send it back as `If-None-Match` to get 304."
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string",
+                  "description": "Always `attachment`, with the file name the web export uses."
+                },
+                "required": true,
+                "description": "Always `attachment`, with the file name the web export uses."
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-cache"
+                },
+                "required": true
+              }
+            },
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "Send it back as `If-None-Match` to get 304."
+                },
+                "required": true,
+                "description": "Send it back as `If-None-Match` to get 304."
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-cache"
+                },
+                "required": true
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query (unknown part or language), or more than 20 setups with `setups=all` (checked after reading the board; the message says to export with `setups=this`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A password is needed again, or the link expired, was revoked or is suspended (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such board or plan on the link, or the plan is hidden from guests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "More than 10 sheets a minute by this person or guest, or the server is busy with other sheets (`rate_limited` with `details.reason: \"busy\"`). Wait `Retry-After` seconds.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string",
+                  "example": "5"
+                },
+                "required": true
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {

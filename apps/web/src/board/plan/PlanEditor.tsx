@@ -652,6 +652,11 @@ export function PlanEditor(props: PlanEditorProps) {
       family={family}
       scene={scenesOf(props.cards, plan.sceneIds ?? base?.sceneIds)}
       area={exporting.area}
+      scope={
+        props.projectId && props.boardId
+          ? { projectId: props.projectId, boardId: props.boardId }
+          : undefined
+      }
       onCallSheet={callSheet}
       onClose={() => setExporting(null)}
     />

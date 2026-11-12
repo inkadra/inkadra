@@ -49,3 +49,14 @@ export function loadTidyGap(userId: string): TidyGap {
 export function saveTidyGap(userId: string, gap: TidyGap) {
   write(own(GAP_KEY, userId), gap);
 }
+
+const CARD_VIEW_KEY = 'inkadra.canvas.cardView';
+
+/** The view the card of a sub-board shows (decision 0121), chosen from its tabs; null: its first. */
+export function loadCardView(userId: string, elementId: string): string | null {
+  return read(`${own(CARD_VIEW_KEY, userId)}.${elementId}`);
+}
+
+export function saveCardView(userId: string, elementId: string, view: string) {
+  write(`${own(CARD_VIEW_KEY, userId)}.${elementId}`, view);
+}
