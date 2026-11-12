@@ -5,6 +5,8 @@ import {
   Dialog,
   DialogActions,
   type DialogHandle,
+  Icon,
+  type IconName,
   NavItem,
   ProjectGlyph,
   swallowOutsidePress,
@@ -53,6 +55,7 @@ export const canEditProjectAppearance = (project: Pick<Project, 'myRole'>) =>
 export interface ProjectMenuItem {
   label: string;
   action: () => void;
+  icon?: IconName;
   disabled?: boolean;
   /** Goes after Export project…, at the end of the menu (Archive). */
   trailing?: boolean;
@@ -134,6 +137,7 @@ export function useMenu(label: string, items: ProjectMenuItem[]) {
         disabled={item.disabled}
         onClick={choose(item)}
       >
+        {item.icon && <Icon name={item.icon} size={14} />}
         {item.label}
       </button>
     );
