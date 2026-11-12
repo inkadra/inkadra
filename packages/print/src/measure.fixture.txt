@@ -1,0 +1,203 @@
+{"text":"ł","size":10,"weight":400,"width":6.5625}
+{"text":"ł","size":10,"weight":500,"width":6.5625}
+{"text":"ł","size":10,"weight":600,"width":6.5625}
+{"text":"ł","size":10,"weight":700,"width":6.5625}
+{"text":"ś","size":10,"weight":400,"width":6.5625}
+{"text":"ś","size":10,"weight":500,"width":6.5625}
+{"text":"ś","size":10,"weight":600,"width":6.5625}
+{"text":"ś","size":10,"weight":700,"width":6.5625}
+{"text":"С","size":10,"weight":400,"width":6.5625}
+{"text":"С","size":10,"weight":500,"width":6.5625}
+{"text":"С","size":10,"weight":600,"width":6.5625}
+{"text":"С","size":10,"weight":700,"width":6.5625}
+{"text":"в","size":10,"weight":400,"width":6.5625}
+{"text":"в","size":10,"weight":500,"width":6.5625}
+{"text":"в","size":10,"weight":600,"width":6.5625}
+{"text":"в","size":10,"weight":700,"width":6.5625}
+{"text":"е","size":10,"weight":400,"width":6.5625}
+{"text":"е","size":10,"weight":500,"width":6.5625}
+{"text":"е","size":10,"weight":600,"width":6.5625}
+{"text":"е","size":10,"weight":700,"width":6.5625}
+{"text":"т","size":10,"weight":400,"width":6.5625}
+{"text":"т","size":10,"weight":500,"width":6.5625}
+{"text":"т","size":10,"weight":600,"width":6.5625}
+{"text":"т","size":10,"weight":700,"width":6.5625}
+{"text":"SET PLAN · SCENE 2 · INT. TAVOLA CALDA – NIGHT","size":8.25,"weight":600,"width":207.1845703125}
+{"text":"Setup 1 · Base","size":18,"weight":700,"width":121.376953125}
+{"text":"ROOM","size":8.25,"weight":600,"width":25.6724853515625}
+{"text":"7.0 × 5.0 m","size":10.5,"weight":600,"width":57.4833984375}
+{"text":"SCALE","size":8.25,"weight":600,"width":27.1065673828125}
+{"text":"1 square = 0.5 m","size":10.5,"weight":600,"width":83.400146484375}
+{"text":"SHOTS","size":8.25,"weight":600,"width":28.6695556640625}
+{"text":"2A, 2B","size":10.5,"weight":600,"width":33.637939453125}
+{"text":"1","size":5.236,"weight":600,"width":2.21405078125}
+{"text":"2","size":5.236,"weight":600,"width":3.2622734374999998}
+{"text":"7.0 m","size":4.833,"weight":400,"width":12.76922021484375}
+{"text":"5.0 m","size":4.833,"weight":400,"width":12.901372558593751}
+{"text":"Bancone","size":4.833,"weight":500,"width":20.2806650390625}
+{"text":"Booth","size":4.833,"weight":500,"width":13.564494140625001}
+{"text":"B cam","size":4.833,"weight":500,"width":14.288972167968751}
+{"text":"2K","size":4.833,"weight":500,"width":6.3008349609375}
+{"text":"5600 K","size":4.431,"weight":400,"width":15.19045458984375}
+{"text":"Tubo · 50 W","size":4.833,"weight":500,"width":28.1814873046875}
+{"text":"Pratica · 60 W","size":4.833,"weight":500,"width":32.45283984375}
+{"text":"Bandiera 4×4","size":4.833,"weight":500,"width":31.341344238281252}
+{"text":"Key · 1K","size":4.833,"weight":500,"width":18.3125390625}
+{"text":"3200 K","size":4.431,"weight":400,"width":15.2531982421875}
+{"text":"A cam · 32 mm","size":4.833,"weight":500,"width":34.46580322265625}
+{"text":"Leo","size":4.833,"weight":500,"width":8.490788085937501}
+{"text":"Marta","size":4.833,"weight":500,"width":13.413462890625}
+{"text":"CAMERAS","size":8.25,"weight":600,"width":41.435302734375}
+{"text":"A cam · Dolly on track","size":9.75,"weight":400,"width":100.7801513671875}
+{"text":"32 mm","size":9.75,"weight":600,"width":32.2921142578125}
+{"text":"B cam","size":9.75,"weight":400,"width":28.707275390625}
+{"text":"50 mm","size":9.75,"weight":600,"width":32.4158935546875}
+{"text":"LIGHTS","size":8.25,"weight":600,"width":30.091552734375}
+{"text":"2K · Fresnel 2K","size":9.75,"weight":400,"width":70.0924072265625}
+{"text":"5600 K","size":9.75,"weight":600,"width":34.382080078125}
+{"text":"Tubo · Tube 50 W","size":9.75,"weight":400,"width":82.9083251953125}
+{"text":"Pratica · Table lamp 60 W ×3","size":9.75,"weight":400,"width":133.6387939453125}
+{"text":"GRIP","size":8.25,"weight":600,"width":19.166748046875}
+{"text":"C-stand","size":9.75,"weight":400,"width":37.1480712890625}
+{"text":"Bandiera 4×4 · Flag","size":9.75,"weight":400,"width":90.4302978515625}
+{"text":"CAST","size":8.25,"weight":600,"width":22.8929443359375}
+{"text":"Marta","size":9.75,"weight":400,"width":26.6173095703125}
+{"text":"Leo","size":9.75,"weight":400,"width":17.04345703125}
+{"text":"Lead","size":9.75,"weight":400,"width":22.64208984375}
+{"text":"MODIFIERS, GRIP AND STANDS","size":8.25,"weight":600,"width":125.7279052734375}
+{"text":"×1","size":9.75,"weight":600,"width":10.68310546875}
+{"text":"Flag","size":9.75,"weight":400,"width":19.5714111328125}
+{"text":"Softbox, Grid","size":9.75,"weight":400,"width":60.8660888671875}
+{"text":"Gel: CTO ½","size":9.75,"weight":400,"width":52.7442626953125}
+{"text":"POWER AT 230 V","size":8.25,"weight":600,"width":69.971923828125}
+{"text":"3.2 kW · 14 A","size":9.75,"weight":600,"width":61.52783203125}
+{"text":"A · 16 A: Key, 2K","size":9.75,"weight":400,"width":75.8148193359375}
+{"text":"13 A","size":9.75,"weight":600,"width":19.8760986328125}
+{"text":"B · 10 A: Tubo, Pratica ×3","size":9.75,"weight":400,"width":116.419189453125}
+{"text":"1 A","size":9.75,"weight":600,"width":13.6728515625}
+{"text":"NOTES","size":8.25,"weight":600,"width":28.4117431640625}
+{"text":"Key: Più calda, già filtrata: è lì · 2K: Przez okno, łagodne","size":9.75,"weight":400,"width":260.2554931640625}
+{"text":"światło · Tubo: Свет из окна, мягкий","size":9.75,"weight":400,"width":188.7777099609375}
+{"text":"Tavola calda Rosa","size":8.25,"weight":400,"width":71.083740234375}
+{"text":"Made with Inkadra · page 1 of 3","size":8.25,"weight":400,"width":121.937255859375}
+{"text":"Setup 2 · Controcampo","size":18,"weight":700,"width":202.166015625}
+{"text":"2B","size":10.5,"weight":600,"width":13.46337890625}
+{"text":"1","size":5.11,"weight":600,"width":2.160771484375}
+{"text":"2","size":5.11,"weight":600,"width":3.1837695312500003}
+{"text":"7.0 m","size":4.717,"weight":400,"width":12.462737792968749}
+{"text":"5.0 m","size":4.717,"weight":400,"width":12.591718261718748}
+{"text":"Bancone","size":4.717,"weight":500,"width":19.793895507812497}
+{"text":"Booth","size":4.717,"weight":500,"width":13.238923828125}
+{"text":"A cam · 50 mm","size":4.717,"weight":500,"width":33.663902343749996}
+{"text":"B cam","size":4.717,"weight":500,"width":13.946013183593749}
+{"text":"Key · 1K","size":4.717,"weight":500,"width":17.8730078125}
+{"text":"3200 K","size":4.324,"weight":400,"width":14.884863281249999}
+{"text":"2K","size":4.717,"weight":500,"width":6.1496044921875}
+{"text":"5600 K","size":4.324,"weight":400,"width":14.823634765625}
+{"text":"Tubo · 50 W","size":4.717,"weight":500,"width":27.5050849609375}
+{"text":"Pratica · 60 W","size":4.717,"weight":500,"width":31.673917968749997}
+{"text":"Bandiera 4×4","size":4.717,"weight":500,"width":30.589100097656246}
+{"text":"Leo","size":4.717,"weight":500,"width":8.2869951171875}
+{"text":"Marta","size":4.717,"weight":500,"width":13.091517578124998}
+{"text":"A cam","size":9.75,"weight":400,"width":29.0548095703125}
+{"text":"Softbox","size":9.75,"weight":400,"width":36.038818359375}
+{"text":"Grid","size":9.75,"weight":400,"width":19.2762451171875}
+{"text":"Made with Inkadra · page 2 of 3","size":8.25,"weight":400,"width":123.613037109375}
+{"text":"Setup 3 · Dettaglio","size":18,"weight":700,"width":161.595703125}
+{"text":"2A, 2C","size":10.5,"weight":600,"width":34.453125}
+{"text":"85 mm","size":9.75,"weight":600,"width":32.2254638671875}
+{"text":"Made with Inkadra · page 3 of 3","size":8.25,"weight":400,"width":123.677490234375}
+{"text":"PIANTA DEL SET · SCENA 2 · INT. TAVOLA CALDA – NOTTE","size":8.25,"weight":600,"width":237.123046875}
+{"text":"STANZA","size":8.25,"weight":600,"width":34.4622802734375}
+{"text":"7,0 × 5,0 m","size":10.5,"weight":600,"width":57.4833984375}
+{"text":"SCALA","size":8.25,"weight":600,"width":28.1136474609375}
+{"text":"1 quadretto = 0,5 m","size":10.5,"weight":600,"width":97.991455078125}
+{"text":"INQUADRATURE","size":8.25,"weight":600,"width":66.233642578125}
+{"text":"7,0 m","size":4.833,"weight":400,"width":12.76922021484375}
+{"text":"5,0 m","size":4.833,"weight":400,"width":12.901372558593751}
+{"text":"CAMERE","size":8.25,"weight":600,"width":35.0625}
+{"text":"A cam · Dolly su binario","size":9.75,"weight":400,"width":108.2735595703125}
+{"text":"LUCI","size":8.25,"weight":600,"width":19.0982666015625}
+{"text":"Tubo · Tubo 50 W","size":9.75,"weight":400,"width":83.0701904296875}
+{"text":"Pratica · Lampada da tavolo 60 W ×3","size":9.75,"weight":400,"width":170.310791015625}
+{"text":"Bandiera 4×4 · Bandiera","size":9.75,"weight":400,"width":111.6346435546875}
+{"text":"Protagonista","size":9.75,"weight":400,"width":58.166748046875}
+{"text":"MODIFICATORI, MACCHINISTICA E STATIVI","size":8.25,"weight":600,"width":175.481689453125}
+{"text":"Bandiera","size":9.75,"weight":400,"width":40.7757568359375}
+{"text":"Softbox, Griglia","size":9.75,"weight":400,"width":71.0731201171875}
+{"text":"Gelatina: CTO ½","size":9.75,"weight":400,"width":75.0054931640625}
+{"text":"POTENZA A 230 V","size":8.25,"weight":600,"width":73.822998046875}
+{"text":"3,2 kW · 14 A","size":9.75,"weight":600,"width":61.52783203125}
+{"text":"NOTE","size":8.25,"weight":600,"width":23.0460205078125}
+{"text":"Fatto con Inkadra · pagina 1 di 3","size":8.25,"weight":400,"width":123.790283203125}
+{"text":"7,0 m","size":4.717,"weight":400,"width":12.462737792968749}
+{"text":"5,0 m","size":4.717,"weight":400,"width":12.591718261718748}
+{"text":"Griglia","size":9.75,"weight":400,"width":29.4832763671875}
+{"text":"Fatto con Inkadra · pagina 2 di 3","size":8.25,"weight":400,"width":125.466064453125}
+{"text":"Fatto con Inkadra · pagina 3 di 3","size":8.25,"weight":400,"width":125.530517578125}
+{"text":"Uscita di sicurezza","size":9.682,"weight":500,"width":87.61075390625}
+{"text":"lasciare libera","size":9.682,"weight":500,"width":64.4836328125}
+{"text":"sempre","size":9.682,"weight":500,"width":34.917603515625004}
+{"text":"1","size":6.993,"weight":600,"width":2.9570009765625}
+{"text":"2","size":6.993,"weight":600,"width":4.3569667968750005}
+{"text":"7.0 m","size":6.455,"weight":400,"width":17.05468994140625}
+{"text":"5.0 m","size":6.455,"weight":400,"width":17.23119384765625}
+{"text":"Bancone","size":6.455,"weight":500,"width":27.087045898437502}
+{"text":"Booth","size":6.455,"weight":500,"width":18.116865234375002}
+{"text":"Carrello","size":6.455,"weight":500,"width":24.33547607421875}
+{"text":"B cam","size":6.455,"weight":500,"width":19.08448486328125}
+{"text":"2K","size":6.455,"weight":500,"width":8.4154541015625}
+{"text":"5600 K","size":5.917,"weight":400,"width":20.28479345703125}
+{"text":"Tubo · 50 W","size":6.455,"weight":500,"width":37.6394580078125}
+{"text":"Pratica · 60 W","size":6.455,"weight":500,"width":43.34431640625}
+{"text":"Bandiera 4×4","size":6.455,"weight":500,"width":41.85979248046875}
+{"text":"Key · 1K","size":6.455,"weight":500,"width":24.4583984375}
+{"text":"3200 K","size":5.917,"weight":400,"width":20.3685791015625}
+{"text":"A cam · 32 mm","size":6.455,"weight":500,"width":46.03284912109375}
+{"text":"Leo","size":6.455,"weight":500,"width":11.3403759765625}
+{"text":"Vittoria Segreta","size":6.455,"weight":500,"width":48.1162255859375}
+{"text":"Marta","size":6.455,"weight":500,"width":17.915146484375}
+{"text":"Vittoria Segreta","size":9.75,"weight":400,"width":71.5015869140625}
+{"text":"1","size":6.244,"weight":600,"width":2.64028515625}
+{"text":"2","size":6.244,"weight":600,"width":3.8903046875}
+{"text":"7.0 m","size":5.764,"weight":400,"width":15.229005859375}
+{"text":"5.0 m","size":5.764,"weight":400,"width":15.386615234375}
+{"text":"Bancone","size":5.764,"weight":500,"width":24.18741015625}
+{"text":"Booth","size":5.764,"weight":500,"width":16.1774765625}
+{"text":"Carrello","size":5.764,"weight":500,"width":21.730392578125002}
+{"text":"A cam · 50 mm","size":5.764,"weight":500,"width":41.136046875}
+{"text":"B cam","size":5.764,"weight":500,"width":17.041513671875002}
+{"text":"Key · 1K","size":5.764,"weight":500,"width":21.84015625}
+{"text":"3200 K","size":5.284,"weight":400,"width":18.18955078125}
+{"text":"2K","size":5.764,"weight":500,"width":7.5145898437500005}
+{"text":"5600 K","size":5.284,"weight":400,"width":18.114728515625}
+{"text":"Tubo · 50 W","size":5.764,"weight":500,"width":33.610199218750004}
+{"text":"Pratica · 60 W","size":5.764,"weight":500,"width":38.704359375}
+{"text":"Bandiera 4×4","size":5.764,"weight":500,"width":37.378751953125004}
+{"text":"Leo","size":5.764,"weight":500,"width":10.12640234375}
+{"text":"Vittoria Segreta","size":5.764,"weight":500,"width":42.96544140625}
+{"text":"Marta","size":5.764,"weight":500,"width":15.9973515625}
+{"text":"1","size":7.007,"weight":600,"width":2.9629208984375}
+{"text":"2","size":7.007,"weight":600,"width":4.3656894531249995}
+{"text":"7.0 m","size":6.468,"weight":400,"width":17.089037109375}
+{"text":"5.0 m","size":6.468,"weight":400,"width":17.265896484375}
+{"text":"Bancone","size":6.468,"weight":500,"width":27.14159765625}
+{"text":"Booth","size":6.468,"weight":500,"width":18.1533515625}
+{"text":"Carrello","size":6.468,"weight":500,"width":24.384486328125}
+{"text":"A cam · 32 mm","size":6.468,"weight":500,"width":46.125556640625}
+{"text":"B cam","size":6.468,"weight":500,"width":19.122919921875}
+{"text":"Key · 1K","size":6.468,"weight":500,"width":24.50765625}
+{"text":"3200 K","size":5.929,"weight":400,"width":20.409887695312502}
+{"text":"2K","size":6.468,"weight":500,"width":8.43240234375}
+{"text":"5600 K","size":5.929,"weight":400,"width":20.325932128906253}
+{"text":"Tubo · 50 W","size":6.468,"weight":500,"width":37.71526171875}
+{"text":"Pratica · 60 W","size":6.468,"weight":500,"width":43.431609375}
+{"text":"Bandiera 4×4","size":6.468,"weight":500,"width":41.944095703125}
+{"text":"Leo","size":6.468,"weight":500,"width":11.36321484375}
+{"text":"Vittoria Segreta","size":6.468,"weight":500,"width":48.21312890625}
+{"text":"Marta","size":6.468,"weight":500,"width":17.9512265625}
+{"text":"Vittoria Segreta","size":4.833,"weight":500,"width":36.025672851562504}
+{"text":"Vittoria Segreta","size":4.717,"weight":500,"width":35.1609970703125}
+{"text":"Setup 1 · Base","size":18,"weight":"heading","width":120.6474609375}
+{"text":"Свет","size":18,"weight":"heading","width":47.25}
+{"text":"","size":18,"weight":"heading","width":0}

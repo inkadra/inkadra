@@ -170,7 +170,7 @@ pnpm dev     # API on :3000, web app on http://localhost:5173
 | `packages/doc-schema`  | Versioned schema of the collaborative board documents (Yjs)             |
 | `packages/canvas-core` | Canvas math and board rules shared by web and mobile                    |
 | `packages/ui`          | Design tokens, card measures and interface components                   |
-| `packages/print`       | Printed pages as drawing operations: page model, text and layout        |
+| `packages/print`       | Printed pages as drawing operations: page model, text, measure, layout  |
 | `e2e`                  | End-to-end tests (Playwright)                                           |
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and

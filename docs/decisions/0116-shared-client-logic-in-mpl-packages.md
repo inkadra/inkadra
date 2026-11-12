@@ -229,6 +229,16 @@ its environment has no shooting schedule (a later change). The web's `board-mode
 the filter; a web test proves a guest's input from `audienceCards` equals one from the server's
 guest cards, without the hidden character's name.
 
+Then the text measure (`measure.ts`, from the web's `export/fonts.ts`): `measureFrom`, the width
+of a text from each glyph's advance without kerning, as the PDF places it, with a heading the
+heading font cannot draw measured in Inter 600; and `fontCoverage`, whether a font can draw a
+character. Both take the font files' bytes from the caller (`Record<FontWeight, Uint8Array>`):
+the package ships no font files and reads them with `@pdf-lib/fontkit` (MIT, the web's version),
+exported on its own path, `@inkadra/print/measure`, so a client of the page model does not load
+the font reader. The web's `fonts.ts` keeps fetching Inter and the theme's heading font and calls
+them; a package test proves `measureFrom` gives the web's widths of the sheet's texts from
+`@fontsource/inter`'s files (a test-only dependency), and the sheet's goldens did not change.
+
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
 touch many rules; do it when the board stylesheet is next reworked).
