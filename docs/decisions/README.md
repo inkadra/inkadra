@@ -125,6 +125,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0118](0118-set-plan-drawing-surface.md) | Set plan: coordinates reach beyond the 3:2 extent (schema 25), outputs frame what is drawn, the editor and view pan and zoom a surface without edges; a click picks a light before its modifiers, a click again what lies under |
 | [0119](0119-set-plan-final-parity.md) | Set plan, schema 26: 100 % is the plan fitted; a room with a scale shows its size everywhere; a phone fits the room; the sun's date offers the shooting days; the editor's personal choices live in the account |
 | [0120](0120-board-writers.md) | The server maps each Yjs client id of a board to the account that first wrote under it, for 30 days; viewers look up who also changed a field (`board-writers`); a shared id names nobody |
+| [0121](0121-board-types.md) | A board shows the views of its type (Board, Moodboard, Storyboard, Production); several storyboards and one Production board per project; personal modules a person can turn off; a shorter toolbar and a Canvas menu of board types |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071, 0104): they were accepted in parallel,
 and accepted records are not renumbered.
