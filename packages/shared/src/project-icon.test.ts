@@ -25,7 +25,7 @@ it('rejects unknown API identities and preserves deterministic defaults', () => 
 describe('a project emoji on Hermes, without Intl.Segmenter', () => {
   const Segmenter = Intl.Segmenter;
   afterEach(() => {
-    Intl.Segmenter = Segmenter;
+    Object.assign(Intl, { Segmenter });
   });
   const one = ['🎬', '❤️', '👍🏽', '👨‍👩‍👧', '🇮🇹', '1️⃣', '🏴󠁧󠁢󠁳󠁣󠁴󠁿', '🏳️‍🌈'];
   const many = ['🎬🎥', '🇮🇹🇫🇷', 'ab', '👍x', '🎬 '];

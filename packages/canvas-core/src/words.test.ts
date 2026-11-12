@@ -51,7 +51,7 @@ describe('wordsFrom (decision 0122)', () => {
 describe('wordsFrom on Hermes, without Intl.PluralRules', () => {
   const PluralRules = Intl.PluralRules;
   afterEach(() => {
-    Intl.PluralRules = PluralRules;
+    Object.assign(Intl, { PluralRules });
   });
 
   it('says one for 1 and other else, where the old `new Intl.PluralRules` threw', () => {
