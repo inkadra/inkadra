@@ -7,15 +7,22 @@ export const FULL_CROP: ImageCrop = { x: 0, y: 0, w: 1, h: 1 };
 /** Smallest crop any renderer keeps: the rounding step, so every positive schema value survives. */
 const MIN_STORED_SIZE = 1e-4;
 
-const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+// 'worklet' lets the React Native app call the crop geometry on the UI thread (Reanimated copies
+// FULL_CROP and MIN_STORED_SIZE into the worklet); elsewhere it is a no-op string.
+function clamp(n: number, min: number, max: number): number {
+  'worklet';
+  return Math.min(max, Math.max(min, n));
+}
 
 function round4(n: number): number {
+  'worklet';
   const r = Math.round(n * 10000) / 10000;
   return Object.is(r, -0) ? 0 : r;
 }
 
 /** Clamps and rounds a crop rectangle so it always satisfies `ImageCrop` schema bounds. */
 export function sanitizeCrop(crop?: Partial<ImageCrop> | null): ImageCrop {
+  'worklet';
   if (!crop) return { ...FULL_CROP };
   const w = round4(clamp(Number.isFinite(crop.w) ? (crop.w as number) : 1, MIN_STORED_SIZE, 1));
   const h = round4(clamp(Number.isFinite(crop.h) ? (crop.h as number) : 1, MIN_STORED_SIZE, 1));
@@ -36,6 +43,7 @@ export function rotatedBounds(
   height: number,
   rotation = 0,
 ): { width: number; height: number } {
+  'worklet';
   const w = width > 0 ? width : 4;
   const h = height > 0 ? height : 3;
   const rad = (rotation * Math.PI) / 180;
@@ -54,6 +62,7 @@ export function croppedRotatedSize(
   crop?: ImageCrop | null,
   rotation = 0,
 ): { width: number; height: number } {
+  'worklet';
   const rot = rotatedBounds(width, height, rotation);
   const c = sanitizeCrop(crop);
   return {

@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { PLAN_CATEGORIES, PLAN_NOTE_TOOLS, type ProjectKitEntry } from '@inkadra/canvas-core';
-import { PLAN_ICON_KINDS, type PlanIconKind } from '@inkadra/doc-schema';
+import {
+  knownLibraryItems,
+  PLAN_CATEGORIES,
+  type ProjectKitEntry,
+  tileName,
+} from '@inkadra/canvas-core';
+import type { PlanIconKind } from '@inkadra/doc-schema';
+import { addPlanRecents, togglePlanFavorite } from '@inkadra/shared';
 import { Icon, IconButton } from '@inkadra/ui';
 import { type PointerEvent, type ReactNode, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -20,9 +26,6 @@ import type { KitScope } from './project-kit.ts';
 
 export type { LibraryItem } from './library.ts';
 
-const KNOWN = new Set<string>([...PLAN_ICON_KINDS, ...PLAN_NOTE_TOOLS]);
-/** How many recent icons the library keeps for a person (decision 0062). */
-const RECENTS = 8;
 /** A pointer that moves less than this (screen pixels) from a tile taps it. */
 const TAP_SLOP = 6;
 /** The glyph each category shows on the rail, as on the mockup. */
@@ -46,13 +49,13 @@ let recentsTimer: ReturnType<typeof setTimeout> | undefined;
  * tab or device is kept and kinds this build does not know stay.
  */
 export function rememberRecent(item: LibraryItem) {
-  pendingRecents = [item, ...pendingRecents.filter((k) => k !== item)];
+  pendingRecents = addPlanRecents(pendingRecents, [item]) as LibraryItem[];
   clearTimeout(recentsTimer);
   recentsTimer = setTimeout(() => {
     const fresh = pendingRecents;
     pendingRecents = [];
-    const rest = getPreferences().planRecents.filter((k) => !fresh.includes(k as LibraryItem));
-    void updatePreferences({ planRecents: [...fresh, ...rest].slice(0, RECENTS) }).catch(() => {});
+    const planRecents = addPlanRecents(getPreferences().planRecents, fresh);
+    void updatePreferences({ planRecents }).catch(() => {});
   }, 400);
 }
 
@@ -123,9 +126,8 @@ export function PlanLibrary({
   const [tall, setTall] = useState(false);
   const [ghost, setGhost] = useState<{ what: Dragged; x: number; y: number } | null>(null);
   const drag = useRef<{ what: Dragged; x: number; y: number; moved: boolean } | null>(null);
-  const known = (list: readonly string[]) => list.filter((k) => KNOWN.has(k)) as LibraryItem[];
-  const recents = known(prefs.planRecents);
-  const favourites = known(prefs.planFavorites);
+  const recents = knownLibraryItems(prefs.planRecents);
+  const favourites = knownLibraryItems(prefs.planFavorites);
   const starred = new Set(favourites);
   const hits = useMemo(() => searchLibrary(t, query), [t, query]);
   const kitHits = query.trim()
@@ -139,9 +141,8 @@ export function PlanLibrary({
 
   const toggleStar = (item: LibraryItem) => {
     // From the stored list, so stars on kinds a newer build added are kept.
-    const all = getPreferences().planFavorites;
-    const next = all.includes(item) ? all.filter((k) => k !== item) : [...new Set([...all, item])];
-    void updatePreferences({ planFavorites: next }).catch(() => {});
+    const planFavorites = togglePlanFavorite(getPreferences().planFavorites, item);
+    void updatePreferences({ planFavorites }).catch(() => {});
   };
 
   const handlers = (what: Dragged, tap: () => void) => ({
@@ -195,9 +196,7 @@ export function PlanLibrary({
         {...handlers({ item }, tapItem(item))}
       >
         <PlanGlyph kind={item} size={phone ? 30 : 30} />
-        <span aria-hidden="true">
-          {t(`board.plan.tileNames.${item}`, { defaultValue: t(`board.plan.icons.${item}`) })}
-        </span>
+        <span aria-hidden="true">{tileName(t, item)}</span>
       </button>
       {!phone && (
         <button
