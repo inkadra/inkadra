@@ -115,6 +115,7 @@ import { accessNotices } from './access-notices.ts';
 import { addedSummary } from './added-summary.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
 import { getCachedAsset } from './assets.ts';
+import { BOARD_CARD_SIZE, showsPreview } from './BoardCardPreview.tsx';
 import {
   canRenameBoard,
   createBoard,
@@ -131,7 +132,6 @@ import {
   saveBoardGrid,
   saveTidyGap,
 } from './canvas-prefs.ts';
-import { BOARD_CARD_SIZE, showsPreview } from './BoardCardPreview.tsx';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import {
   type ArrangeCommand,

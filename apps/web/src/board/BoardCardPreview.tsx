@@ -126,9 +126,13 @@ function metaOf(
     case 'shotlist':
       return t('board.board.frames', { count: frameTotal(counts, preview) });
     case 'schedule':
-      return preview?.dayCount === undefined ? '' : t('board.board.days', { count: preview.dayCount });
+      return preview?.dayCount === undefined
+        ? ''
+        : t('board.board.days', { count: preview.dayCount });
     case 'troupe':
-      return preview?.crewCount === undefined ? '' : t('board.board.people', { count: preview.crewCount });
+      return preview?.crewCount === undefined
+        ? ''
+        : t('board.board.people', { count: preview.crewCount });
     case 'review':
       return preview?.review ? t('board.board.toReview', { count: preview.review.total }) : '';
     case 'moodboard':
@@ -136,7 +140,9 @@ function metaOf(
         ? ''
         : t('board.board.references', { count: counts.referenceCount });
     default:
-      return counts ? t('board.count.cards', { count: counts.cardCount ?? counts.elementCount }) : '';
+      return counts
+        ? t('board.count.cards', { count: counts.cardCount ?? counts.elementCount })
+        : '';
   }
 }
 
@@ -205,7 +211,9 @@ function Picture({ id, width }: { id: string; width: number }) {
   const { scale } = useBoard();
   const asset = useAsset(id);
   const src =
-    asset && asset !== 'missing' ? pickVariant(asset, width * scale * (window.devicePixelRatio || 1)) : '';
+    asset && asset !== 'missing'
+      ? pickVariant(asset, width * scale * (window.devicePixelRatio || 1))
+      : '';
   return src ? (
     <img src={src} alt="" loading="lazy" decoding="async" draggable={false} />
   ) : (
@@ -302,7 +310,9 @@ function StoryboardPreview({ preview, total }: { preview: BoardPreview; total: n
         ))}
       </div>
       {total > frames.length && (
-        <p className="board-card__more">{t('board.board.more', { count: total - frames.length })}</p>
+        <p className="board-card__more">
+          {t('board.board.more', { count: total - frames.length })}
+        </p>
       )}
     </>
   );

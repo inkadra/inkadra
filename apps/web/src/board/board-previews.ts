@@ -31,20 +31,29 @@ function set(boardId: string, entry: PreviewEntry) {
 function load(boardId: string, version: string) {
   const known = cache.get(boardId);
   const fresh = Date.now() - (loadedAt.get(boardId) ?? 0) < FRESH_MS;
-  if (known && known.version === version && (known.status === 'loading' || (fresh && known.status !== 'error'))) return;
+  if (
+    known &&
+    known.version === version &&
+    (known.status === 'loading' || (fresh && known.status !== 'error'))
+  )
+    return;
   loadedAt.set(boardId, Date.now());
   const kept = known && 'preview' in known ? known.preview : undefined;
   set(boardId, { status: 'loading', version, ...(kept ? { preview: kept } : {}) });
   api.get<BoardPreview>(`/boards/${boardId}/preview`).then(
     (preview) => {
-      if (cache.get(boardId)?.version === version) set(boardId, { status: 'ready', version, preview });
+      if (cache.get(boardId)?.version === version)
+        set(boardId, { status: 'ready', version, preview });
     },
     (error: unknown) => {
       if (cache.get(boardId)?.version !== version) return;
-      const denied = error instanceof RequestError && (error.status === 403 || error.status === 404);
+      const denied =
+        error instanceof RequestError && (error.status === 403 || error.status === 404);
       set(
         boardId,
-        denied ? { status: 'denied', version } : { status: 'error', version, ...(kept ? { preview: kept } : {}) },
+        denied
+          ? { status: 'denied', version }
+          : { status: 'error', version, ...(kept ? { preview: kept } : {}) },
       );
     },
   );

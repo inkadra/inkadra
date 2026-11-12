@@ -48,11 +48,11 @@ import {
   shareLink,
   shootingDay,
 } from '../db/schema.ts';
-import { teamReviews } from './reviews-routes.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import { idempotentCreation } from './idempotency.ts';
+import { teamReviews } from './reviews-routes.ts';
 
 interface Deps {
   db: Database;

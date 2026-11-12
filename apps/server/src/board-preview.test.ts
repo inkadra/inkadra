@@ -100,7 +100,9 @@ describe('the preview of a board card (decision 0121)', () => {
         { id: 'stroke01', tool: 'pencil', color: '#112233', width: 2, points: [0, 0, 4096, 4096] },
       ]),
     );
-    roots(doc).elements.get(ids[1] ?? '')?.set('assetId', 'asset-1b');
+    roots(doc)
+      .elements.get(ids[1] ?? '')
+      ?.set('assetId', 'asset-1b');
     const { preview, reviewable } = projectBoard(Y.encodeStateAsUpdate(doc));
     // Scenes follow their order on the storyboard, not their numbers or places.
     expect(preview.frames?.map((f) => f.label)).toEqual(['2-X', '2B', '1A', '1B', '1C']);

@@ -84,22 +84,27 @@ describe('the card of a sub-board (decision 0121)', () => {
     host.remove();
   });
 
+  let doc = createBoardDoc('boardAAAAAAAA');
+  let id = '';
   async function show(
     b: Board,
     size: { w: number; h?: number },
-    guest = false,
+    { guest = false, again = false } = {},
   ): Promise<HTMLElement> {
-    const doc = createBoardDoc('boardAAAAAAAA');
-    const el = createElement(doc, 'board', { x: 0, y: 0 }, { boardId: FILM, ...size }, {
-      userId: null,
-    });
+    // `again` draws the same card: what this person chose is kept per card.
+    if (!again) {
+      doc = createBoardDoc('boardAAAAAAAA');
+      id = createElement(doc, 'board', { x: 0, y: 0 }, { boardId: FILM, ...size }, { userId: null }).id;
+    }
     const context = {
       store: new BoardStore(doc),
       readOnly: false,
       projectId: 'p',
       userId: 'me',
       boards: [b],
-      boardCounts: new Map([[FILM, { boardId: FILM, elementCount: 9, frameCount: 6, framesToShoot: 6 }]]),
+      boardCounts: new Map([
+        [FILM, { boardId: FILM, elementCount: 9, frameCount: 6, framesToShoot: 6 }],
+      ]),
       editing: null,
       setEditing: vi.fn(),
       scale: 1,
@@ -108,7 +113,10 @@ describe('the card of a sub-board (decision 0121)', () => {
       root.render(
         <GuestModeContext.Provider value={guest}>
           <BoardContext.Provider value={context}>
-            <Card element={readElement(roots(doc).elements.get(el.id)!) as Element} selected={false} />
+            <Card
+              element={readElement(roots(doc).elements.get(id)!) as Element}
+              selected={false}
+            />
           </BoardContext.Provider>
         </GuestModeContext.Provider>,
       ),
@@ -142,7 +150,7 @@ describe('the card of a sub-board (decision 0121)', () => {
     // Another visit on this device opens on the same view.
     await act(async () => root.unmount());
     root = createRoot(host);
-    await show(film, { w: 320, h: 260 });
+    await show(film, { w: 320, h: 260 }, { again: true });
     expect(card.querySelector('[aria-selected=true]')?.textContent).toBe('film.views.shotlist');
     await act(async () => card.querySelectorAll<HTMLButtonElement>('[role=tab]')[2]?.click());
     expect(card.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')).toBe('2');
@@ -167,7 +175,7 @@ describe('the card of a sub-board (decision 0121)', () => {
   it('keeps old cards and guests on the name only, without asking for a preview', async () => {
     const film = board('storyboard', ['shotlist']);
     expect((await show(film, { w: 180 })).querySelector('.card__board')).not.toBeNull();
-    expect((await show(film, { w: 320, h: 260 }, true)).querySelector('.board-card')).toBeNull();
+    expect((await show(film, { w: 320, h: 260 }, { guest: true })).querySelector('.board-card')).toBeNull();
     expect(get).not.toHaveBeenCalledWith(`/boards/${FILM}/preview`);
   });
 });

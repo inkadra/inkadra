@@ -60,7 +60,7 @@ export async function signIn(base: string, account: Account): Promise<string> {
 }
 
 /** A small solid-colour PNG, different for each seed. */
-function png(seed: number, w = 96, h = 64): Buffer {
+export function png(seed: number, w = 96, h = 64): Buffer {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
     let c = n;
     for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;

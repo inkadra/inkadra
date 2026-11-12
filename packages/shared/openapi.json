@@ -10968,6 +10968,115 @@
               ]
             },
             "maxItems": 32
+          },
+          "colors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^#[0-9A-F]{6}$/i"
+            },
+            "maxItems": 6,
+            "description": "Hex of the first colour cards: the palette of a moodboard."
+          },
+          "frames": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "maxLength": 12
+                },
+                "shot": {
+                  "type": "string",
+                  "maxLength": 60,
+                  "description": "Shot size as stored: a catalog id or free text."
+                },
+                "lens": {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                "ratio": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 10,
+                  "description": "Width over height."
+                },
+                "assetId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+                  "description": "Ready picture of the same project."
+                },
+                "drawing": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "maxLength": 5000
+                      },
+                      "color": {
+                        "type": "string",
+                        "pattern": "^#[0-9A-F]{6}$/i"
+                      },
+                      "width": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "maximum": 820
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "color",
+                      "width"
+                    ]
+                  },
+                  "maxItems": 12
+                }
+              },
+              "required": [
+                "label",
+                "ratio",
+                "drawing"
+              ]
+            },
+            "maxItems": 5,
+            "description": "The first storyboard frames in shooting order (decision 0121, board cards); the first three carry their picture."
+          },
+          "review": {
+            "type": "object",
+            "properties": {
+              "approved": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "changes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "approved",
+              "changes",
+              "total"
+            ],
+            "description": "Review decisions as the team sees them: frames, or cards when there are none."
+          },
+          "dayCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Shooting days."
+          },
+          "crewCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "People of the project's troupe; only for members of the project."
           }
         },
         "required": [
