@@ -21,6 +21,7 @@ import {
   blockBox,
   blockDetail,
   drawnRange,
+  freeDayUnder,
   gapsBeforeFixed,
   layoutLanes,
   minutesLabel,
@@ -30,7 +31,6 @@ import {
   resizeBlock,
   SHOT_DRAG_TYPE,
   SNAP,
-  freeDayUnder,
   shiftBlock,
   snap,
 } from './calendar.ts';

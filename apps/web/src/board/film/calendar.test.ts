@@ -6,6 +6,7 @@ import {
   clockString,
   drawnRange,
   duplicateBlock,
+  freeDayUnder,
   gapsBeforeFixed,
   insertDrawnBlock,
   layoutLanes,
@@ -18,7 +19,6 @@ import {
   resizeBlock,
   sameScheduleInput,
   shiftBlock,
-  freeDayUnder,
   weekDates,
 } from './calendar.ts';
 import { clockLabel, scheduleTimes } from './schedule.ts';
