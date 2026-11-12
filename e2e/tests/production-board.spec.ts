@@ -120,7 +120,9 @@ test('plans frames of two storyboards and a scene without frames on the Producti
   await expect(
     blocks.nth(0).locator('.schedule__dot[aria-label="Storyboard non disponibile"]'),
   ).toBeVisible();
-  await expect(queue.locator('.schedule__source-title')).toHaveText(['Film']);
+  // Its frames left the queue: Film's are all planned, so nothing waits.
+  await expect(queue.locator('.schedule__source-title')).toHaveCount(0);
+  await expect(queue).toContainText('Tutte le inquadrature sono in un giorno di riprese');
 });
 
 /** Opens a storyboard and draws its scenes, each with this many frames. */
