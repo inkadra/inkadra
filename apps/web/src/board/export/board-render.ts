@@ -1336,7 +1336,7 @@ export function planOps(
           width: w,
         });
     }
-    const label = iconLabel(icon);
+    const label = iconLabel(icon, ctx.language);
     if (label && full) {
       // Labels go last, on a patch of the card's colour: the halo of the board.
       const a = labelAnchor(icon);

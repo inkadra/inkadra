@@ -11,15 +11,18 @@ import { isLight } from './plan-icons.ts';
 export const PLAN_LABEL_SIZE = 12;
 export const PLAN_SUB_LABEL_SIZE = 11;
 
-/** "300 W", "2K", "1.2K": a light's watts as the mockup writes them, in the reader's language. */
-export function wattsText(watts: number, locale?: string): string {
+/**
+ * "300 W", "2K", "1.2K": a light's watts as the mockup writes them, in the app's language
+ * ("1,2K" in Italian). The locale is required: the host's (browser, device) is not the app's.
+ */
+export function wattsText(watts: number, locale: string): string {
   return watts >= 1000
     ? `${(watts / 1000).toLocaleString(locale, { maximumFractionDigits: 1 })}K`
     : `${watts.toLocaleString(locale, { maximumFractionDigits: 0 })} W`;
 }
 
-/** "A cam · 35 mm", "Key · 300 W": the label of an icon on the plan. */
-export function iconLabel(icon: PlanIcon, locale?: string): string {
+/** "A cam · 35 mm", "Key · 300 W": the label of an icon on the plan, in the app's language. */
+export function iconLabel(icon: PlanIcon, locale: string): string {
   const mm = icon.lens ?? 35;
   // "A cam 35mm" already says it: no "· 35 mm" again.
   const said = new RegExp(`\\b${mm}\\s?mm\\b`, 'i').test(icon.label ?? '');

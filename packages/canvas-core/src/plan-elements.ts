@@ -193,7 +193,7 @@ export function itemSummary(
     lens = true,
     scale,
     locale,
-  }: { lens?: boolean; scale?: number | undefined; locale?: string | undefined } = {},
+  }: { lens?: boolean; scale?: number | undefined; locale: string },
 ): string {
   const kind = catalogueKind(icon.kind);
   const typeName = t(`board.plan.icons.${icon.kind}`);
