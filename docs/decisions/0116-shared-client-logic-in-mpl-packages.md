@@ -205,7 +205,15 @@ theme's colours as `Palette`. A plan's drawing reads only a `PlanDrawContext` (`
 holds the drawing away from the rest of a board export. Its colours come from canvas-core
 (`PLAN_INK`, `CHARACTER_COLOURS`, `planToken`). The web's `board-render.ts` re-exports
 `planOps`, `framedPlanOps`, `transformOps` and `Palette`, and its fixtures and the plan sheet's
-goldens did not change. The sheet's layout, the PDF writer and the fonts follow, each in its own
+goldens did not change.
+
+Then the set plan sheet's layout (`plan-sheet.ts`, from the web's `export/plan-sheet.ts`):
+`planSheetPages`, `PlanSheetInclude`, `PLAN_SHEET_INCLUDE`, `sheetInclude`, `PlanSheetSetup`,
+`PlanSheetInput` and `PLAN_SHEET_FRAME` with the sheet's measures. It reads a
+`PlanDrawContext`, not the web's `CardContext`, and its words through canvas-core's `Words`, not
+i18next's `TFunction`; capitals and numbers take the locale it is given. The export dialog's
+preview (`previewCrop`) stays in the web, whose `plan-sheet.ts` re-exports the moved names; the
+sheet's goldens and pins did not change. The PDF writer and the fonts follow, each in its own
 change.
 
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
