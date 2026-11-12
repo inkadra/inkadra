@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { chooseSelect } from '../test/select.ts';
-import { Team } from './Team.tsx';
+import { projectCreationOptions, projectCreationValue, Team } from './Team.tsx';
 
 const { t } = vi.hoisted(() => ({ t: (key: string) => key }));
 vi.mock('../lib/session.tsx', () => ({ useSession: vi.fn() }));
@@ -264,4 +264,44 @@ it('sets a per-person exception to project creation; the instance rule is on Acc
     chooseSelect(select, 'default');
   });
   expect(api.patch).toHaveBeenCalledWith('/instance/members/member', { canCreateProjects: null });
+});
+
+it('shows «Creates projects» as a short value; the menu explains each choice', async () => {
+  expect([true, false, null, undefined].map(projectCreationValue)).toEqual([
+    'yes',
+    'no',
+    'default',
+    'default',
+  ]);
+  const text = (allows: boolean) => {
+    const options = projectCreationOptions(t, allows);
+    const div = document.createElement('div');
+    const node = createRoot(div);
+    act(() => node.render(<>{options[0]?.label}</>));
+    const label = div.textContent;
+    act(() => node.unmount());
+    return [label, ...options.map((o) => [o.value, o.description])];
+  };
+  expect(text(true)).toEqual([
+    'projectCreation.default · projectCreation.currentYes',
+    ['default', 'projectCreation.defaultHintYes'],
+    ['yes', 'projectCreation.yesHint'],
+    ['no', 'projectCreation.noHint'],
+  ]);
+  expect(text(false)[0]).toBe('projectCreation.default · projectCreation.currentNo');
+  expect(text(false)[1]).toEqual(['default', 'projectCreation.defaultHintNo']);
+  // Admins have no choice: the plain «Always», no select.
+  await render();
+  const adminRow = host.querySelector('.team-member');
+  expect(adminRow?.querySelector('.team-create')?.textContent).toContain('projectCreation.always');
+  expect(adminRow?.querySelector('.ink-select.team-create')).toBeNull();
+  // The column headers name each value of a real table, for screen readers too.
+  expect([...host.querySelectorAll('table th')].map((h) => h.textContent)).toEqual([
+    'settingsUi.members.person',
+    'settingsUi.members.space',
+    'admin.role',
+    'projectCreation.column',
+    'settingsUi.members.actions',
+  ]);
+  expect(host.querySelectorAll('table tbody tr.team-member')).toHaveLength(2);
 });

@@ -3770,7 +3770,10 @@
       "allStatuses": "Todos los estados",
       "invitations": "Invitaciones pendientes",
       "projects_one": "{{count}} proyecto",
-      "projects_other": "{{count}} proyectos"
+      "projects_other": "{{count}} proyectos",
+      "person": "Persona",
+      "space": "Espacio",
+      "actions": "Acciones"
     },
     "storage": {
       "used": "Espacio usado",
@@ -4631,10 +4634,15 @@
     "column": "Crea proyectos",
     "always": "Siempre",
     "for": "Puede crear proyectos: {{name}}",
-    "defaultYes": "Como la instancia (sí)",
-    "defaultNo": "Como la instancia (no)",
     "yes": "Sí",
-    "no": "No"
+    "no": "No",
+    "default": "Predeterminado",
+    "currentYes": "sí",
+    "currentNo": "no",
+    "defaultHintYes": "Como la instancia: ahora sí",
+    "defaultHintNo": "Como la instancia: ahora no",
+    "yesHint": "Siempre, aunque cambie la instancia",
+    "noHint": "Solo proyectos con invitación"
   },
   "story": {
     "close": "Cerrar la tarjeta",

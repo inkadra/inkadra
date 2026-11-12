@@ -801,51 +801,96 @@
 .team-tools .team-filter {
   width: auto;
 }
-/* One row per person (decision 0124): who and their figures, then role, right, ⋯. */
-.team-member.is-inactive > .ink-avatar,
+/*
+ * One row per person (decision 0124) in aligned columns: who, space, role, right to create, ⋯.
+ * Head, body and rows are subgrids of the table, so a column is as wide as its widest cell.
+ */
+.team-table {
+  display: grid;
+  /* Space wraps "/ 1 MB · own" under the size rather than take room from who the person is. */
+  grid-template-columns: minmax(0, 1fr) fit-content(96px) auto auto auto;
+  column-gap: 12px;
+  width: 100%;
+  border-collapse: collapse;
+}
+.team-table > thead,
+.team-table > tbody,
+.team-table tr {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
+}
+.team-table th,
+.team-table td {
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+.team-head tr {
+  padding: 10px 14px 8px;
+}
+.team-head th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+}
+.team-col--who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.team-member.is-inactive .ink-avatar,
 .team-member.is-inactive .team-member__name {
   opacity: 0.6;
 }
-.team-member__name {
+.team-member .settings-row__text,
+.team-member .settings-row__label {
+  flex-wrap: nowrap;
   min-width: 0;
-  overflow-wrap: break-word;
 }
-/* Words break only when one alone is wider than the line, never while there is room. */
+/* Name and the line under it end with an ellipsis; the whole text is in their tooltip. */
+.team-member__name,
 .team-member__meta {
-  display: block;
-  overflow-wrap: break-word;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.team-member .space-mini {
-  margin-top: 4px;
+.team-member__name {
+  flex: 0 1 auto;
+}
+.team-member .settings-row__label > :not(.team-member__name) {
+  flex: none;
 }
 /* "251,66 MB / 1 MB": the limit goes to the next line whole, never split. */
 .team-member .space-mini em {
   white-space: nowrap;
 }
-/*
- * Who the person is keeps a readable width; role, right to create and ⋯ sit at the end of the
- * row and drop, right-aligned, to a line of their own when there is not room for both.
- */
-.team-member {
-  flex-wrap: wrap;
-}
-.team-member .settings-row__text {
-  flex: 1 1 240px;
-}
-.team-member .settings-row__control {
-  flex: 0 1 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  max-width: none;
-  margin-left: auto;
-}
 .team-member .team-role {
-  width: auto;
-  max-width: 100%;
+  width: 100%;
   padding-block: 4px;
 }
 .team-create.settings-muted {
-  font-size: 12px;
+  padding-inline: 10px;
+}
+/* The menu explains the default in a line of its own; the button alone shows "· yes". */
+.ink-select__option .team-create__current {
+  display: none;
+}
+/*
+ * Its menu is wider than the short button, so a description fits on one line.
+ * shortcut: the Select places the menu by the button's width, so near the right edge of a
+ * narrow window it may stick out by up to 88px; upgrade with a menu width option on Select.
+ */
+.ink-select__layer:has(.team-create__current) {
+  min-width: 248px;
+}
+.team-create__current {
+  color: var(--ink-text-secondary);
 }
 
 /* Phone settings home (RM-Profile) */
@@ -1025,15 +1070,49 @@
     max-width: none;
     flex-basis: 100%;
   }
-  /* On a phone the ⋯ of a person stays on the name's line; role and right go under. */
-  .team-member {
-    position: relative;
-    padding-right: 52px;
+  /*
+   * On a phone the ⋯ of a person stays on the name's line; space, role and right to create
+   * wrap under the name. The column header is left to screen readers.
+   */
+  .team-table,
+  .team-table > tbody {
+    display: block;
   }
-  .team-member .settings-row__control {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    margin-left: 0;
+  .team-head {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .team-table .team-member {
+    display: grid;
+    grid-template-columns: 32px auto minmax(0, 1fr);
+    gap: 6px 12px;
+    position: relative;
+  }
+  .team-table .team-col--who {
+    grid-column: 1 / -1;
+    padding-right: 40px;
+  }
+  .team-table .team-col--space {
+    grid-column: 2 / -1;
+  }
+  .team-table .team-col--space:empty {
+    display: none;
+  }
+  .team-table .team-col--role {
+    grid-column: 2;
+  }
+  .team-table .team-col--create {
+    grid-column: 3;
+    justify-self: start;
+  }
+  .team-member .team-role {
+    width: auto;
+    max-width: 100%;
   }
   .team-member .team-col--actions {
     position: absolute;

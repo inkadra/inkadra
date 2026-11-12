@@ -3770,7 +3770,10 @@
       "allStatuses": "All statuses",
       "invitations": "Pending invitations",
       "projects_one": "{{count}} project",
-      "projects_other": "{{count}} projects"
+      "projects_other": "{{count}} projects",
+      "person": "Person",
+      "space": "Space",
+      "actions": "Actions"
     },
     "storage": {
       "used": "Space used",
@@ -4631,10 +4634,15 @@
     "column": "Creates projects",
     "always": "Always",
     "for": "Can create projects: {{name}}",
-    "defaultYes": "As the instance (yes)",
-    "defaultNo": "As the instance (no)",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "default": "Default",
+    "currentYes": "yes",
+    "currentNo": "no",
+    "defaultHintYes": "Follows the instance: yes for now",
+    "defaultHintNo": "Follows the instance: no for now",
+    "yesHint": "Always, even if the instance changes",
+    "noHint": "Only projects they are invited to"
   },
   "story": {
     "close": "Close the card",
