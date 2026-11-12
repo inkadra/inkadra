@@ -113,15 +113,27 @@ export function StoryboardView({
   // "Go to the card" of a comment, a search hit or a notification (decision 0121): a frame opens
   // selected and a scene comes into view; any other card is outside the storyboard, on its canvas.
   const [elParam, takeElParam] = useTakeParam('el');
-  const [, setParams] = useSearchParams();
+  const [params, setParams] = useSearchParams();
+  const sentToCanvas = params.get('view') === 'canvas';
   useEffect(() => {
     if (!elParam || !ready) return;
     const el = store.getSnapshot().byId.get(elParam);
     if (el && el.type !== 'frame' && el.type !== 'scene') {
+      // A scene's plan opens in its editor; the canvas keeps `el` to select the card. Either
+      // way the address changes once, so the effect does not run again on the same card.
+      const scenePlan = el.type === 'plan' && !!el.sceneIds?.length;
+      // Still here after asking for the canvas: this storyboard has none to open. Drop the card.
+      if (!scenePlan && sentToCanvas) {
+        takeElParam();
+        return;
+      }
       setParams(
         (p) => {
           const next = new URLSearchParams(p);
-          next.set('view', 'canvas');
+          if (scenePlan) {
+            next.delete('el');
+            next.set('plan', el.id);
+          } else next.set('view', 'canvas');
           return next;
         },
         { replace: true },
@@ -134,7 +146,7 @@ export function StoryboardView({
     document
       .querySelector(`[data-story-${el.type}="${CSS.escape(el.id)}"]`)
       ?.scrollIntoView({ block: 'center' });
-  }, [elParam, ready, store, setParams, takeElParam]);
+  }, [elParam, ready, store, setParams, takeElParam, sentToCanvas]);
   const [present, setPresent] = useState(false);
   // The board menu links to ?present=1 from any view: start once, when there is something to show.
   const [presentParam, takePresentParam] = useTakeParam('present');

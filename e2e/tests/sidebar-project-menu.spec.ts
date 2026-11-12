@@ -197,6 +197,14 @@ test('a scene of a new storyboard gets a set plan without a canvas', async ({ pa
   await expect(newPlan).toHaveCount(0);
   await scene.getByRole('button', { name: 'Pianta del set', exact: true }).click();
   await expect(editor).toBeVisible();
+  // "Go to the card" of a comment or a search hit on that plan (`?el=`) opens the editor too:
+  // this storyboard has no canvas to send it to.
+  const planId = new URL(page.url()).searchParams.get('plan');
+  expect(planId).toBeTruthy();
+  await page.goto(`/p/${project.id}/b/${story.id}?el=${planId}`);
+  await expect(editor).toBeVisible();
+  await expect(page).toHaveURL(/[?&]plan=/);
+  await expect(page).not.toHaveURL(/[?&](el|view)=/);
 });
 
 test.describe('on a phone', () => {
