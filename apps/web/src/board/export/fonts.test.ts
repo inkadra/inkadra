@@ -12,7 +12,7 @@ import { fileFetch } from './plan-sheet-node.fixture.ts';
  * Recorded from `main` with `WRITE_PLAN_FIXTURES=1` before the measure moved to the package.
  */
 
-const FIXTURE = `${import.meta.dirname}/../../../../../packages/print/src/measure.fixture.json`;
+const FIXTURE = `${import.meta.dirname}/../../../../../packages/print/src/measure.fixture.txt`;
 const GOLDEN = `${import.meta.dirname}/golden`;
 
 interface Sample {
@@ -52,7 +52,7 @@ describe("the web's measure", () => {
     const { measure } = await loadFonts();
     const widths = samples().map((s) => ({ ...s, width: measure(s.text, s.size, s.weight) }));
     expect(widths.length).toBeGreaterThan(50);
-    const text = `${JSON.stringify(widths, null, 1)}\n`;
+    const text = `${widths.map((w) => JSON.stringify(w)).join('\n')}\n`;
     if (process.env.WRITE_PLAN_FIXTURES) writeFileSync(FIXTURE, text);
     expect(text).toBe(readFileSync(FIXTURE, 'utf8'));
   });
