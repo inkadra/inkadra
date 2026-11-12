@@ -25,11 +25,16 @@ const require = createRequire(import.meta.url);
 /** A file of a package, read from disk. */
 export const packageFile = (path: string): Uint8Array => readFileSync(require.resolve(path));
 
+/** The board the team's sheet reads the shooting schedule of, and the days it answers. */
+const SCOPE = { projectId: 'project-fixture', boardId: 'board-fixture' };
+let scheduled: PlanSheetFixture['days'] = [];
+
 /**
  * `fetch` as the sheet asks it: the Inter files `fonts.ts` imports with Vite's `?url` are read
- * from `@expo-google-fonts/inter` on disk; the asset API answers 404, so the background picture is not
- * loaded (its decoder, `createImageBitmap` and `OffscreenCanvas`, exists only in a browser) and a
- * test gives its bytes to the writer itself.
+ * from `@expo-google-fonts/inter` on disk; the schedule answers the fixture's shooting days; the
+ * asset API answers 404, so the background picture is not loaded (its decoder,
+ * `createImageBitmap` and `OffscreenCanvas`, exists only in a browser) and a test gives its bytes
+ * to the writer itself.
  */
 export const fileFetch: typeof fetch = async (input) => {
   const url = input instanceof Request ? input.url : String(input);
@@ -39,6 +44,8 @@ export const fileFetch: typeof fetch = async (input) => {
       packageFile(`@expo-google-fonts/inter/${font}/Inter_${font}.ttf`) as BlobPart,
       { status: 200 },
     );
+  if (url.endsWith(`/boards/${SCOPE.boardId}/schedule`))
+    return Response.json({ items: scheduled, nextCursor: null });
   return new Response(null, { status: 404 });
 };
 
@@ -57,9 +64,13 @@ async function words(lng: 'en' | 'it'): Promise<TFunction> {
 
 export type SheetAudience = 'team' | 'guest';
 
-/** The request and environment of the read-only view's "PDF" for the fixture's three setups. */
+/**
+ * The request and environment of the read-only view's "PDF" for the fixture's three setups. The
+ * team's reads the fixture's shooting days, when it has them, as a member's view does; a guest's
+ * has no board to read them from.
+ */
 export async function sheetRequest(
-  fixture: Pick<PlanSheetFixture, 'doc' | 'planIds'>,
+  fixture: Pick<PlanSheetFixture, 'doc' | 'planIds'> & Partial<Pick<PlanSheetFixture, 'days'>>,
   audience: SheetAudience,
   lng: 'en' | 'it',
 ) {
@@ -73,12 +84,17 @@ export async function sheetRequest(
     sheetInclude(base),
     audience === 'guest',
   );
-  return { req, env: planSheetEnv(store, base, t, lng, new ExportCache()) };
+  const team = audience === 'team' && fixture.days;
+  if (team) scheduled = fixture.days ?? [];
+  return {
+    req,
+    env: planSheetEnv(store, base, t, lng, new ExportCache(), team ? SCOPE : undefined),
+  };
 }
 
 /** The pages of the fixture's three setups as the read-only view's "PDF" makes them. */
 export async function sheetOf(
-  fixture: Pick<PlanSheetFixture, 'doc' | 'planIds'>,
+  fixture: Pick<PlanSheetFixture, 'doc' | 'planIds'> & Partial<Pick<PlanSheetFixture, 'days'>>,
   audience: SheetAudience,
   lng: 'en' | 'it',
 ) {

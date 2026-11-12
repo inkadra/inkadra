@@ -4115,6 +4115,7 @@ export function Canvas({
             phone={isPhone}
             guest={!!guest}
             store={store}
+            scope={guest || preview ? undefined : { projectId, boardId }}
             onSwitch={setViewedPlanId}
             onClose={() => setViewedPlanId(null)}
           />

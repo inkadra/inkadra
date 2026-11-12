@@ -6,6 +6,7 @@ import {
   groupBySetup,
   planTitle,
   type ShotSetup,
+  sceneDay,
   setupChanges,
   shotSetups,
 } from './plan-setups.ts';
@@ -117,6 +118,28 @@ it("puts a day's shot blocks under their setups, leaving out omitted scenes and 
     { setup, shots: [{ id: 'f1', block: { shotId: 'f1' } }] },
   ]);
   expect(dayBySetup([{ shotId: 'f2' }], byId, new Map())).toEqual([]);
+});
+
+it("numbers a scene's shooting day by date: its first day when on several, none when on none", () => {
+  const card = { x: 0, y: 0, w: 100, z: 'a0', createdBy: null, createdAt: 1 };
+  const byId = new Map<string, Element>([
+    ['s1', { ...card, id: 's1', type: 'scene', parent: null, number: '1' } as Element],
+    ['s2', { ...card, id: 's2', type: 'scene', parent: null, number: '2' } as Element],
+    ['f1', { ...card, id: 'f1', type: 'frame', parent: 's1' } as Element],
+    ['f2', { ...card, id: 'f2', type: 'frame', parent: 's1' } as Element],
+  ]);
+  // Out of date order, as a caller may give them: numbered as the schedule numbers them.
+  const days = [
+    { date: '2026-03-09', blocks: [{ shotId: 'f1' }] },
+    { date: '2026-03-04', blocks: [{ shotId: null }, { shotId: 'gone' }] },
+    { date: '2026-03-05', blocks: [{ shotId: 'f2' }] },
+  ];
+  expect(sceneDay(days, 's1', byId)).toBe(2);
+  expect(sceneDay(days, 's2', byId)).toBeNull();
+  expect(sceneDay([], 's1', byId)).toBeNull();
+  // A frame left out of `byId` (hidden from the export's audience) does not count.
+  byId.delete('f2');
+  expect(sceneDay(days, 's1', byId)).toBe(3);
 });
 
 it('pairs each icon with the nearest of its kind, named ones first, on plans of 300 icons', () => {

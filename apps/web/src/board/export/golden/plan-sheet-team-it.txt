@@ -372,7 +372,7 @@ page 1 {"width":841.89,"height":595.28}
   {"kind":"text","x":525,"y":442,"text":"NOTE","size":8.25,"weight":600,"color":"#6C6C68"}
   {"kind":"text","x":525,"y":457.925,"text":"Key: Più calda, già filtrata: è lì · 2K: Przez okno, łagodne światło","size":9.75,"weight":400,"color":"#161616"}
   {"kind":"text","x":525,"y":471.925,"text":"· Tubo: Свет из окна, мягкий","size":9.75,"weight":400,"color":"#161616"}
-  {"kind":"text","x":24,"y":575.28,"text":"Tavola calda Rosa","size":8.25,"weight":400,"color":"#5E5E5A"}
+  {"kind":"text","x":24,"y":575.28,"text":"Tavola calda Rosa · Giorno 2","size":8.25,"weight":400,"color":"#5E5E5A"}
   {"kind":"text","x":694.1,"y":575.28,"text":"Fatto con Inkadra · pagina 1 di 3","size":8.25,"weight":400,"color":"#5E5E5A"}
 page 2 {"width":841.89,"height":595.28}
   {"kind":"text","x":24,"y":32,"text":"PIANTA DEL SET · SCENA 2 · INT. TAVOLA CALDA – NOTTE","size":8.25,"weight":600,"color":"#6C6C68"}
@@ -752,7 +752,7 @@ page 2 {"width":841.89,"height":595.28}
   {"kind":"text","x":525,"y":457,"text":"NOTE","size":8.25,"weight":600,"color":"#6C6C68"}
   {"kind":"text","x":525,"y":472.925,"text":"Key: Più calda, già filtrata: è lì · 2K: Przez okno, łagodne światło","size":9.75,"weight":400,"color":"#161616"}
   {"kind":"text","x":525,"y":486.925,"text":"· Tubo: Свет из окна, мягкий","size":9.75,"weight":400,"color":"#161616"}
-  {"kind":"text","x":24,"y":575.28,"text":"Tavola calda Rosa","size":8.25,"weight":400,"color":"#5E5E5A"}
+  {"kind":"text","x":24,"y":575.28,"text":"Tavola calda Rosa · Giorno 2","size":8.25,"weight":400,"color":"#5E5E5A"}
   {"kind":"text","x":692.424,"y":575.28,"text":"Fatto con Inkadra · pagina 2 di 3","size":8.25,"weight":400,"color":"#5E5E5A"}
 page 3 {"width":841.89,"height":595.28}
   {"kind":"text","x":24,"y":32,"text":"PIANTA DEL SET · SCENA 2 · INT. TAVOLA CALDA – NOTTE","size":8.25,"weight":600,"color":"#6C6C68"}
@@ -1132,5 +1132,5 @@ page 3 {"width":841.89,"height":595.28}
   {"kind":"text","x":525,"y":457,"text":"NOTE","size":8.25,"weight":600,"color":"#6C6C68"}
   {"kind":"text","x":525,"y":472.925,"text":"Key: Più calda, già filtrata: è lì · 2K: Przez okno, łagodne światło","size":9.75,"weight":400,"color":"#161616"}
   {"kind":"text","x":525,"y":486.925,"text":"· Tubo: Свет из окна, мягкий","size":9.75,"weight":400,"color":"#161616"}
-  {"kind":"text","x":24,"y":575.28,"text":"Tavola calda Rosa","size":8.25,"weight":400,"color":"#5E5E5A"}
+  {"kind":"text","x":24,"y":575.28,"text":"Tavola calda Rosa · Giorno 2","size":8.25,"weight":400,"color":"#5E5E5A"}
   {"kind":"text","x":692.359,"y":575.28,"text":"Fatto con Inkadra · pagina 3 di 3","size":8.25,"weight":400,"color":"#5E5E5A"}

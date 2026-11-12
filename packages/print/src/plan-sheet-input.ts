@@ -5,6 +5,8 @@ import {
   linkedLocation,
   linkedPlan,
   type PlanElement,
+  type ScheduledDay,
+  sceneDay,
   setupFrames,
   setupName,
   storyboardOf,
@@ -74,6 +76,12 @@ export interface PlanSheetRequest {
   include: PlanSheetInclude;
   t: Words;
   locale: string;
+  /**
+   * The board's shooting days, for the "Day N" of the plan's scene at the foot (`sceneDay`); none
+   * where the schedule cannot be read. A guest's sheet prints no day (decision 0111): the
+   * schedule is the team's, and `planSheetInput` leaves the days out for clients.
+   */
+  days: readonly ScheduledDay[];
 }
 
 /**
@@ -103,6 +111,10 @@ export function planSheetInputOf(
   const sceneIds = first?.sceneIds ?? owner?.sceneIds ?? [];
   const scene = sceneIds.map(see).find((el) => el?.type === 'scene');
   const location = owner ? linkedLocation(owner, cards) : null;
+  const day =
+    scene?.type === 'scene' && request.include.dateScene
+      ? sceneDay(request.days, scene.id, cards)
+      : null;
   return {
     setups: plans.map((p) => {
       const base = baseOf(p);
@@ -125,8 +137,13 @@ export function planSheetInputOf(
             .filter(Boolean)
             .join(' · ')
         : '',
-    // No "Day N" yet: the sheet has no shooting schedule to read it from.
-    place: location?.name ?? (scene?.type === 'scene' ? scene.location : '') ?? '',
+    // "Rosa's diner · Day 3".
+    place: [
+      location?.name ?? (scene?.type === 'scene' ? scene.location : '') ?? '',
+      day ? t('board.plan.sheet.day', { n: day }) : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
     area: request.area,
     include: request.include,
     t,
@@ -145,5 +162,7 @@ export function planSheetInput(
   const byId = new Map(request.elements.map((el) => [el.id, el]));
   const cards = audienceCards(request.elements, (id) => byId.get(id), request.filter);
   const labels = frameLabels(storyboardOf(request.elements));
-  return { input: planSheetInputOf({ ...request, cards, labels }), cards };
+  // Guests cannot read the schedule (decision 0111): no day on their sheet, whatever is given.
+  const days = request.filter.audience === 'client' ? [] : request.days;
+  return { input: planSheetInputOf({ ...request, days, cards, labels }), cards };
 }

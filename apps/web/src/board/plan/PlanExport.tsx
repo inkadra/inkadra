@@ -72,9 +72,12 @@ export function planSheetEnv(
   t: ExportEnv['t'],
   language: string,
   cache: ExportCache,
+  /** The project and board, whose shooting days give the sheet its "Day N"; none for a guest. */
+  scope?: ExportEnv['scope'],
 ): ExportEnv {
   return {
     store,
+    scope,
     selection: new Set(),
     visible: null,
     projectName: '',
@@ -106,6 +109,7 @@ export function PlanExport({
   family,
   scene,
   area,
+  scope,
   onCallSheet,
   onClose,
 }: {
@@ -117,6 +121,8 @@ export function PlanExport({
   scene: string | null;
   /** What the editor shows now, in view units. */
   area: Area | null;
+  /** The project and board, whose shooting days give the sheet its "Day N"; none for a preview. */
+  scope?: ExportEnv['scope'];
   onCallSheet: (at: DOMRect) => void;
   onClose: () => void;
 }) {
@@ -138,7 +144,14 @@ export function PlanExport({
   const req = planSheetRequest(format, planIds, where === 'view' ? area : null, include, false);
   // Named as the plan is shown: a setup with its base's title (decision 0117).
   const base = family.find((f) => f.id === plan.variantOf);
-  const env = planSheetEnv(store, base ? variantView(plan, base) : plan, t, i18n.language, cache);
+  const env = planSheetEnv(
+    store,
+    base ? variantView(plan, base) : plan,
+    t,
+    i18n.language,
+    cache,
+    scope,
+  );
   const envRef = useRef(env);
   envRef.current = env;
   const key = JSON.stringify(req);

@@ -81,6 +81,7 @@ export function ScenePlan({
         family={family}
         phone={phone}
         store={store}
+        scope={{ projectId, boardId }}
         onSwitch={setOpenId}
         onClose={close}
       />

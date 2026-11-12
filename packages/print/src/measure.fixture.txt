@@ -134,6 +134,7 @@
 {"text":"Vittoria Segreta","size":6.455,"weight":500,"width":48.1162255859375}
 {"text":"Marta","size":6.455,"weight":500,"width":17.915146484375}
 {"text":"Vittoria Segreta","size":9.75,"weight":400,"width":71.5015869140625}
+{"text":"Tavola calda Rosa · Day 2","size":8.25,"weight":400,"width":100.67578125}
 {"text":"1","size":6.244,"weight":600,"width":2.64028515625}
 {"text":"2","size":6.244,"weight":600,"width":3.8903046875}
 {"text":"7.0 m","size":5.764,"weight":400,"width":15.229005859375}
@@ -174,6 +175,7 @@
 {"text":"Marta","size":6.468,"weight":500,"width":17.9512265625}
 {"text":"Vittoria Segreta","size":4.833,"weight":500,"width":36.025672851562504}
 {"text":"Vittoria Segreta","size":4.717,"weight":500,"width":35.1609970703125}
+{"text":"Tavola calda Rosa · Giorno 2","size":8.25,"weight":400,"width":111.479736328125}
 {"text":"Setup 1 · Base","size":18,"weight":"heading","width":120.6474609375}
 {"text":"Свет","size":18,"weight":"heading","width":43.1279296875}
 {"text":"","size":18,"weight":"heading","width":0}

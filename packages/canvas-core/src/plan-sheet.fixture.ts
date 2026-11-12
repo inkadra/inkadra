@@ -12,6 +12,7 @@ import {
   updatePlanItems,
 } from './plan.ts';
 import { attachIcon } from './plan-attach.ts';
+import type { ScheduledDay } from './plan-setups.ts';
 import { roomWalls } from './plan-start.ts';
 import { addPlanCircuit, addPlanOpening, addPlanWall, updatePlanWalls } from './plan-walls.ts';
 
@@ -31,6 +32,11 @@ export interface PlanSheetFixture {
   hiddenName: string;
   /** Notes in accented Latin, Polish and Cyrillic, as the sheet prints them. */
   notes: { accented: string; polish: string; cyrillic: string };
+  /**
+   * The board's shooting schedule, out of date order as a caller may give it: the scene's frames
+   * are first shot on the second day by date (and again on the third), so the sheet prints "Day 2".
+   */
+  days: Array<ScheduledDay & { id: string }>;
 }
 
 const opts = { userId: null };
@@ -332,5 +338,14 @@ function build(fill: number): PlanSheetFixture {
     backgroundId: BACKGROUND,
     hiddenName,
     notes: { accented, polish, cyrillic },
+    days: [
+      { id: 'day-fixture-3', date: '2026-03-09', blocks: [{ shotId: insert.id }] },
+      { id: 'day-fixture-1', date: '2026-03-04', blocks: [{ shotId: null }] },
+      {
+        id: 'day-fixture-2',
+        date: '2026-03-05',
+        blocks: [{ shotId: reverse.id }, { shotId: master.id }],
+      },
+    ],
   };
 }
