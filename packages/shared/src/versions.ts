@@ -156,3 +156,86 @@ export const BoardRestores = z
   })
   .openapi('BoardRestores');
 export type BoardRestores = z.infer<typeof BoardRestores>;
+
+/**
+ * Who wrote under a Yjs client id of a board (decision 0120), so a client that finds a field
+ * changed by someone else while it was offline can name them. The server maps the ids it
+ * receives on authenticated sockets to accounts; the board document itself carries no author.
+ */
+
+/** Capability on `GET /instance/version` of servers that answer `POST /boards/{id}/writers`. */
+export const BOARD_WRITERS_CAPABILITY = 'board-writers';
+
+/** Yjs client ids are unsigned 32-bit integers. */
+const YjsClientId = z.int().min(0).max(4294967295);
+
+export const BoardWritersQuery = z
+  .object({
+    items: z
+      .array(
+        z.object({
+          client: YjsClientId.openapi({
+            description: 'The Yjs client id that wrote the item (`item.id.client`).',
+          }),
+          clock: z
+            .int()
+            .min(0)
+            .optional()
+            .openapi({
+              description:
+                'The item’s clock (`item.id.clock`): `changedAt` is then the time that write ' +
+                'reached the server. Without it, `changedAt` is the last time the id wrote.',
+            }),
+        }),
+      )
+      .min(1)
+      .max(50)
+      .openapi({ description: '1 to 50 lookups; the answer has one item per lookup, in order.' }),
+  })
+  .openapi('BoardWritersQuery');
+export type BoardWritersQuery = z.infer<typeof BoardWritersQuery>;
+
+export const BoardWriterKind = z
+  .enum(['user', 'server', 'deleted', 'unknown', 'contested'])
+  .openapi({
+    description:
+      '`user`: an account wrote under this id, named in `user` (also when they are no longer ' +
+      'a member). `server`: the server itself (a restore, a clip, a migration). `deleted`: the ' +
+      'account was deleted since. `unknown`: no record, because the write is older than 30 ' +
+      'days, older than this feature, came from an archive, was only a deletion, or reached the ' +
+      'server in the last few seconds; retry for a few seconds, then show the change without a ' +
+      'name. `contested`: more than one account wrote under this id, so nobody is named. Open: ' +
+      'clients treat a kind they do not know like `unknown`.',
+  });
+export type BoardWriterKind = z.infer<typeof BoardWriterKind>;
+
+export const BoardWriter = z
+  .object({
+    client: YjsClientId,
+    kind: BoardWriterKind,
+    user: UserSummary.nullable().openapi({
+      description: 'Set only for `user`; never an email.',
+    }),
+    changedAt: Timestamp.nullable().openapi({
+      description:
+        'About to the minute: when the write with the asked clock reached the server (the ' +
+        'first mark at or after that clock), else `lastSeenAt`. Null for `unknown`.',
+    }),
+    lastSeenAt: Timestamp.nullable().openapi({
+      description: 'The last time the server stored a write under this id. Null for `unknown`.',
+    }),
+  })
+  .openapi('BoardWriter');
+export type BoardWriter = z.infer<typeof BoardWriter>;
+
+export const BoardWriters = z
+  .object({
+    items: z.array(BoardWriter).openapi({
+      description:
+        'One per lookup, in the order asked. A client may cache an answer per (boardId, ' +
+        'client, clock) for the session: an answer other than `unknown` never changes, and ' +
+        '`unknown` may later become known, so cache everything but `unknown`.',
+    }),
+  })
+  .openapi('BoardWriters');
+export type BoardWriters = z.infer<typeof BoardWriters>;

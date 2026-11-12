@@ -10629,6 +10629,110 @@
           "version"
         ]
       },
+      "BoardWriters": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardWriter"
+            },
+            "description": "One per lookup, in the order asked. A client may cache an answer per (boardId, client, clock) for the session: an answer other than `unknown` never changes, and `unknown` may later become known, so cache everything but `unknown`."
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "BoardWriter": {
+        "type": "object",
+        "properties": {
+          "client": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "server",
+              "deleted",
+              "unknown",
+              "contested"
+            ],
+            "description": "`user`: an account wrote under this id, named in `user` (also when they are no longer a member). `server`: the server itself (a restore, a clip, a migration). `deleted`: the account was deleted since. `unknown`: no record, because the write is older than 30 days, older than this feature, came from an archive, was only a deletion, or reached the server in the last few seconds; retry for a few seconds, then show the change without a name. `contested`: more than one account wrote under this id, so nobody is named. Open: clients treat a kind they do not know like `unknown`."
+          },
+          "user": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserSummary"
+              },
+              {
+                "description": "Set only for `user`; never an email."
+              }
+            ]
+          },
+          "changedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "About to the minute: when the write with the asked clock reached the server (the first mark at or after that clock), else `lastSeenAt`. Null for `unknown`."
+          },
+          "lastSeenAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "The last time the server stored a write under this id. Null for `unknown`."
+          }
+        },
+        "required": [
+          "client",
+          "kind",
+          "user",
+          "changedAt",
+          "lastSeenAt"
+        ]
+      },
+      "BoardWritersQuery": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "client": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295,
+                  "description": "The Yjs client id that wrote the item (`item.id.client`)."
+                },
+                "clock": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "The item’s clock (`item.id.clock`): `changedAt` is then the time that write reached the server. Without it, `changedAt` is the last time the id wrote."
+                }
+              },
+              "required": [
+                "client"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 50,
+            "description": "1 to 50 lookups; the answer has one item per lookup, in order."
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "ClipResult": {
         "type": "object",
         "properties": {
@@ -28317,6 +28421,107 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/writers": {
+      "post": {
+        "tags": [
+          "Versions"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Who wrote under some Yjs client ids of a board. Needs viewer.",
+        "description": "For a client that finds a field changed by someone else while it edited offline: the winning item’s `id.client` and `id.clock` name the account and about when (decision 0120). The server records the id per authenticated socket when it stores the board, so a write of the last few seconds reads as `unknown` until then; retry for a few seconds. Removed members are named; deleted accounts read `deleted`. Guests and share links have no route. Servers that answer advertise `board-writers` on `GET /instance/version`: check it before calling, and without it show the change without a name. An older server answers 404 with error code `not_found`, the same as for a board the caller has no role on, so only the capability tells “not supported” apart; 5xx and network errors mean the lookup failed, try again later. At most 60 requests a minute per account.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoardWritersQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One answer per lookup, in order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardWriters"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request: 0 or more than 50 items, or an id out of range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No role on the board, or it does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
