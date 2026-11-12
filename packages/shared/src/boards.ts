@@ -2,9 +2,10 @@
 import { FractionalIndex, Id, Timestamp, z } from './common.ts';
 import { CLIP_BOARD_HISTORY_LIMIT } from './constants.ts';
 import { ProjectIcon, ProjectRole } from './projects.ts';
+import { ScheduleBlock, ScheduleTime } from './schedule.ts';
 
 /** What a board is, chosen when it is made: the set of views it has (decision 0121). */
-export const BoardKind = z.enum(['board', 'moodboard', 'storyboard']);
+export const BoardKind = z.enum(['board', 'moodboard', 'storyboard', 'production']);
 export type BoardKind = z.infer<typeof BoardKind>;
 
 /** The views a board can turn on or off; the others always come with its kind. */
@@ -20,6 +21,8 @@ export const OPTIONAL_VIEWS: Record<BoardKind, readonly BoardOptionalView[]> = {
   board: ['moodboard', 'review'],
   moodboard: [],
   storyboard: ['shotlist', 'schedule', 'troupe', 'review'],
+  // Schedule and Troupe always come with it (decision 0123): nothing to turn on.
+  production: [],
 };
 
 /** The optional views a new board of this kind starts with: a storyboard has its shot list. */
@@ -27,6 +30,7 @@ export const NEW_BOARD_VIEWS: Record<BoardKind, BoardOptionalView[]> = {
   board: [],
   moodboard: [],
   storyboard: ['shotlist'],
+  production: [],
 };
 
 export const Board = z
@@ -148,6 +152,30 @@ const PreviewPath = z.object({
   width: z.number().positive().max(820),
 });
 
+/** A shooting day on the card of a Production board (decision 0123). */
+const PreviewDay = z.object({
+  number: z.int().min(1).openapi({ description: 'Day N: its place among the days, by date.' }),
+  date: z.iso.date(),
+  callTime: ScheduleTime,
+  location: z.string().max(160).openapi({ description: 'The first line of the location.' }),
+  blocks: z
+    .array(
+      z.object({
+        start: ScheduleTime.openapi({ description: 'When the block starts, on the clock.' }),
+        type: ScheduleBlock.shape.type,
+        title: z.string().max(160),
+        boardId: Id.nullable().openapi({
+          description: 'The storyboard of a shot or scene block (its dot); null for the others.',
+        }),
+        label: z.string().max(40).nullable().openapi({
+          description: 'The frame or scene label as last seen (`shotLabel`, `sceneLabel`).',
+        }),
+      }),
+    )
+    .max(5)
+    .openapi({ description: 'Its first five blocks.' }),
+});
+
 /** Bounded projection of the last persisted document, never a full canvas download. */
 export const BoardPreview = z
   .object({
@@ -195,6 +223,20 @@ export const BoardPreview = z
     crewCount: z.int().nonnegative().optional().openapi({
       description: "People of the project's troupe; only for members of the project.",
     }),
+    nextDay: PreviewDay.optional().openapi({
+      description:
+        'Production board (decision 0123): the next shooting day, the first on or after today ' +
+        "in the project's time zone, else the last; absent without days.",
+    }),
+    crew: z
+      .array(z.object({ name: z.string().max(120), role: z.string().max(120) }))
+      .max(4)
+      .optional()
+      .openapi({
+        description:
+          'Production board: the first people of the troupe in roster order; only for members ' +
+          'of the project.',
+      }),
   })
   .openapi('BoardPreview');
 export type BoardPreview = z.infer<typeof BoardPreview>;

@@ -209,11 +209,13 @@ export const TOURS: Tour[] = [
     kind: 'schedule',
     offer: 'schedule',
     steps: [
+      // The Production board's calendar, for every storyboard of the project (decision 0123).
       { anchor: 'schedule-queue', media: 'drag', side: 'right' },
-      // Includes drag-created dates: the whole gesture is one undo step.
-      { anchor: 'schedule-days', media: 'calendar', side: 'left', keys: ['Alt'] },
-      // Phase 2 (0089): a block drawn on empty time, its type from a menu.
-      { anchor: 'schedule-days', media: 'drag', side: 'left', keys: ['N', '1–5'] },
+      // The Storyboard filter, the dots and whole scenes; only on the Production board.
+      { anchor: 'schedule-storyboards', media: 'tags', side: 'right' },
+      // Includes drag-created dates: the whole gesture is one undo step. Phase 2 (0089): a
+      // block drawn on empty time, its type from a menu.
+      { anchor: 'schedule-days', media: 'calendar', side: 'left', keys: ['Alt', 'N', '1–5'] },
       // Phase 3: a whole day dragged by its heading; a taken date swaps the two days.
       { anchor: 'schedule-day-head', media: 'calendar', side: 'bottom', keys: ['Alt', '←', '→'] },
       {

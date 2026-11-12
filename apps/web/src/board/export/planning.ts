@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Element } from '@inkadra/doc-schema';
+import { slugline } from '@inkadra/print';
 import {
+  type Board,
   type CrewCharacter,
   type CrewMember,
   castNameKey,
-  type Schedule,
   type ShootingDay,
 } from '@inkadra/shared';
 import type { TFunction } from 'i18next';
 import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
-import { api, RequestError } from '../../lib/api.ts';
 import {
+  asideBlock,
+  blockCast,
   dayAddress,
   departmentNotes,
   hasSceneNumbers,
@@ -29,6 +31,7 @@ import {
   troupeRows,
 } from '../film/day-calls.ts';
 import { neededForDay } from '../film/needed.ts';
+import { loadBoardDays } from '../film/production-days.ts';
 import { clockLabel, clockMinutes, scheduleTimes } from '../film/schedule.ts';
 import { type CardContext, framePicture } from './board-render.ts';
 import type { Section, sectionPages } from './compose.ts';
@@ -41,16 +44,15 @@ export interface Planning {
   days: ShootingDay[];
 }
 
-/** Shooting days of the board; out of reach, there are none. */
-export async function loadPlanning(boardId: string): Promise<Planning> {
-  const days = await api.get<Schedule>(`/boards/${boardId}/schedule`).then(
-    (r) => r.items,
-    (error) => {
-      if (error instanceof RequestError && [403, 404].includes(error.status)) return [];
-      throw error;
-    },
-  );
-  return { days: [...days].sort((a, b) => a.date.localeCompare(b.date)) };
+/**
+ * Shooting days the board reads, by date: the Production board's, keeping this storyboard's
+ * frames and scenes, or its own (decision 0123). Out of reach, there are none.
+ */
+export async function loadPlanning(
+  boardId: string,
+  boards: readonly Board[] | null = null,
+): Promise<Planning> {
+  return { days: await loadBoardDays(boardId, boards) };
 }
 
 /** A `YYYY-MM-DD` date in the reader's language, read as a calendar date. */
@@ -164,8 +166,7 @@ export function callSheetSections(
   };
   location.links = [...(address ? [address] : []), ...locations].map((loc) => loc.mapUrl);
   // Breaks, moves, set-ups and the closing times read across the table after their time.
-  const aside = (block: { type: string; shotId: string | null }) =>
-    block.type !== 'shot' && !block.shotId;
+  const aside = asideBlock;
   const schedule: CallSheetSection = {
     title: t('callSheet.schedule'),
     header: true,
@@ -186,7 +187,16 @@ export function callSheetSections(
             time,
             [t(`schedule.types.${block.type}`), block.title.trim()].filter(Boolean).join(' · '),
           ];
-        const { frame, scene } = sheetShot(block.shotId, elements);
+        const { frame, scene } = sheetShot(block, elements);
+        // A scene planned as a whole: its heading, its place and its cast (decision 0123).
+        const whole = block.type === 'scene' && !block.shotId;
+        const heading = scene
+          ? [t('schedule.sceneShort', { number: scene.number }), slugline(scene, t)]
+              .filter(Boolean)
+              .join(' · ')
+          : block.sceneLabel
+            ? t('schedule.sceneShort', { number: block.sceneLabel })
+            : t('schedule.missingScene');
         const loc = locations.findIndex(
           (loc) =>
             loc.name.trim().toLocaleLowerCase() === scene?.location?.trim().toLocaleLowerCase(),
@@ -194,21 +204,27 @@ export function callSheetSections(
         return [
           time,
           ...(numbered ? [scene?.number ?? ''] : []),
-          block.shotId ? (shotLabel(block.shotId) ?? t('schedule.missingShot')) : '',
+          whole
+            ? t('schedule.types.scene')
+            : block.shotId
+              ? (shotLabel(block.shotId) ?? (block.shotLabel || t('schedule.missingShot')))
+              : '',
           [
-            frame?.action || block.title.trim() || t(`schedule.types.${block.type}`),
+            whole
+              ? [heading, block.title.trim()].filter(Boolean).join('\n')
+              : frame?.action || block.title.trim() || t(`schedule.types.${block.type}`),
             serve.has(block.id) ? t('callSheet.serve', { items: serve.get(block.id) }) : '',
           ]
             .filter(Boolean)
             .join('\n'),
-          block.cast.join(', '),
+          blockCast(block, elements).join(', '),
           ...(locations.length > 1
             ? [loc >= 0 ? t('callSheet.locationNumber', { n: loc + 1 }) : '']
             : []),
         ];
       }),
     ],
-    pictures: [undefined, ...slots.map(({ block }) => sheetShot(block.shotId, elements).frame)],
+    pictures: [undefined, ...slots.map(({ block }) => sheetShot(block, elements).frame)],
     notes: [undefined, ...slots.map(({ block }) => block.notes?.trim() || undefined)],
     pictureColumn: numbered ? 2 : 1,
     descriptionColumn: numbered ? 3 : 2,

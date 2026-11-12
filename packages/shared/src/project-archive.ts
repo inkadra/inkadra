@@ -35,8 +35,12 @@ import { ShootingDayInput } from './schedule.ts';
  * drop keys these schemas do not name, so later minor additions never break version 1.
  */
 export const PROJECT_ARCHIVE_FORMAT = 'inkadra-project';
-/** Bump on any change readers of the previous version would get wrong. */
-export const PROJECT_ARCHIVE_VERSION = 1;
+/**
+ * Bump on any change readers of the previous version would get wrong. 2 (decision 0123): the
+ * days are the Production board's, and a block names the board of its frame or scene
+ * (`shotBoardId`, `sceneBoardId`), which an older server would misread as the day's board.
+ */
+export const PROJECT_ARCHIVE_VERSION = 2;
 
 /**
  * Limits an importer applies before reading anything (bytes are uncompressed). The whole
@@ -317,7 +321,9 @@ export type ArchiveClassifications = z.infer<typeof ArchiveClassifications>;
 
 /** What `checkArchiveStructure` needs: the parsed entries, ids only. */
 export interface ArchiveStructure {
-  boards: Array<Pick<ArchiveBoard, 'id' | 'parentId' | 'coverAssetId'>>;
+  boards: Array<
+    Pick<ArchiveBoard, 'id' | 'parentId' | 'coverAssetId'> & Partial<Pick<ArchiveBoard, 'kind'>>
+  >;
   /** The export logo, from `export-settings.json`. */
   logoAssetId?: string | null;
   assets: Array<Pick<ArchiveAsset, 'id'>>;
@@ -337,7 +343,8 @@ export interface ArchiveStructure {
 
 /**
  * The rules schemas cannot express, checked before an import writes anything: exactly one
- * root, every parent present and no cycle, unique ids, and every reference (cover, thread,
+ * root, at most one Production board and nothing under it, every parent present and no cycle,
+ * unique ids, and every reference (cover, thread,
  * version, review, shooting day) to something in the archive. A reply's thread start is on
  * the same board and is itself a thread start. Guest links are on boards of the archive, their
  * guests on listed links, and guest rows name a listed guest, board and file. Returns the
@@ -386,6 +393,12 @@ export function checkArchiveStructure(a: ArchiveStructure): string | null {
       at = boards.get(at)?.parentId ?? null;
     }
   }
+  // One Production board, with no board under it (decision 0123).
+  const productions = a.boards.filter((b) => b.kind === 'production');
+  if (productions.length > 1) return `${productions.length} production boards`;
+  for (const b of a.boards)
+    if (b.parentId !== null && boards.get(b.parentId)?.kind === 'production')
+      return `board ${b.id}: under the production board`;
   const assets = new Set(a.assets.map((x) => x.id));
   for (const b of a.boards)
     if (b.coverAssetId !== null && !assets.has(b.coverAssetId))

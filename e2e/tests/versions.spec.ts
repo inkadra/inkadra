@@ -1,7 +1,9 @@
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { createElement, moveIntoParent } from '@inkadra/canvas-core';
 import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { addSceneWithFrames } from '../helpers/storyboard.ts';
@@ -85,10 +87,23 @@ async function openVersions(page: Page) {
 
 async function saveVersion(page: Page, name: string) {
   const dialog = await openVersions(page);
-  await dialog.getByRole('textbox', { name: 'Nome della versione' }).fill(name);
+  await dialog.getByRole('textbox', { name: 'Salva lo stato attuale come versione' }).fill(name);
   await dialog.getByRole('button', { name: 'Salva versione', exact: true }).click();
   await expect(dialog.getByText(name, { exact: true })).toBeVisible();
   return dialog;
+}
+
+/** Rename in the row: ⋯, Rinomina, then the field that takes the title's place. */
+async function renameVersion(page: Page, row: Locator, name: string) {
+  const more = row.getByRole('button', { name: /^Altre azioni per / });
+  await more.click();
+  await page.getByRole('menuitem', { name: 'Rinomina', exact: true }).click();
+  const field = page.getByRole('textbox', { name: 'Nome della versione', exact: true });
+  await expect(field).toBeFocused();
+  await field.fill(name);
+  await field.press('Enter');
+  await expect(page.getByText(name, { exact: true })).toBeVisible();
+  await expect(field).toHaveCount(0);
 }
 
 test('named versions preview an isolated read-only canvas and restore every open client', async ({
@@ -139,11 +154,7 @@ test('named versions preview an isolated read-only canvas and restore every open
     const dialog = await saveVersion(page, 'Primo montaggio');
     const saved = dialog.locator('li').filter({ hasText: 'Primo montaggio' });
     await expect(saved).toContainText('4 elementi');
-    await saved.getByRole('button', { name: 'Rinomina', exact: true }).click();
-    await dialog
-      .getByRole('textbox', { name: 'Nuovo nome della versione', exact: true })
-      .fill('Taglio approvato');
-    await dialog.getByRole('button', { name: 'Salva il nuovo nome', exact: true }).click();
+    await renameVersion(page, saved, 'Taglio approvato');
     await expect(dialog.getByText('Taglio approvato', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Chiudi', exact: true }).click();
     await page.getByTestId('canvas').dblclick({ position: { x: 1190, y: 548 } });
@@ -208,7 +219,8 @@ test('named versions preview an isolated read-only canvas and restore every open
     const versions = await openVersions(page);
     await expect(versions.getByText('Prima del ripristino', { exact: true }).first()).toBeVisible();
     const named = versions.locator('li').filter({ hasText: 'Taglio approvato' });
-    await named.getByRole('button', { name: 'Elimina', exact: true }).click();
+    await named.getByRole('button', { name: /^Altre azioni per / }).click();
+    await page.getByRole('menuitem', { name: 'Elimina', exact: true }).click();
     await page
       .getByRole('dialog', { name: 'Eliminare questa versione?' })
       .getByRole('button', { name: 'Elimina', exact: true })
@@ -393,7 +405,9 @@ test('version failures explain rate limits and let the editor recover', async ({
     await saveHeld;
     await route.fallback();
   });
-  await dialog.getByRole('textbox', { name: 'Nome della versione' }).fill('Held save');
+  await dialog
+    .getByRole('textbox', { name: 'Salva lo stato attuale come versione' })
+    .fill('Held save');
   await dialog.getByRole('button', { name: 'Salva versione', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Chiudi', exact: true })).toBeDisabled();
   await page.keyboard.press('Escape');
@@ -496,7 +510,9 @@ test('refreshing versions preserves uncertain save warnings without retrying', a
     await route.fulfill({ response, json: body });
   });
   for (let i = 1; i <= reasons.length; i++) {
-    await dialog.getByRole('textbox', { name: 'Nome della versione' }).fill(`Uncertain ${i}`);
+    await dialog
+      .getByRole('textbox', { name: 'Salva lo stato attuale come versione' })
+      .fill(`Uncertain ${i}`);
     await dialog.getByRole('button', { name: 'Salva versione', exact: true }).click();
     await expect(dialog.getByText(`Refreshed ${i}`, { exact: true })).toBeVisible();
     await expect(dialog.getByRole('alert')).toContainText('prima di riprovare');
@@ -523,22 +539,21 @@ test('the versions panel follows other editors, and leaving a preview keeps the 
     const dialog = await saveVersion(page, 'Da un altro editor');
     await expect(otherList.getByText('Da un altro editor', { exact: true })).toBeVisible();
     const saved = dialog.locator('li').filter({ hasText: 'Da un altro editor' });
-    await saved.getByRole('button', { name: 'Rinomina', exact: true }).click();
-    await dialog
-      .getByRole('textbox', { name: 'Nuovo nome della versione', exact: true })
-      .fill('Rinominata altrove');
-    await dialog.getByRole('button', { name: 'Salva il nuovo nome', exact: true }).click();
+    await renameVersion(page, saved, 'Rinominata altrove');
     await expect(otherList.getByText('Rinominata altrove', { exact: true })).toBeVisible();
     await expect(otherList.getByText('Da un altro editor', { exact: true })).toHaveCount(0);
-    await dialog.getByRole('textbox', { name: 'Nome della versione' }).fill('Da eliminare');
+    await dialog
+      .getByRole('textbox', { name: 'Salva lo stato attuale come versione' })
+      .fill('Da eliminare');
     await dialog.getByRole('button', { name: 'Salva versione', exact: true }).click();
     const extra = dialog;
     await expect(otherList.getByText('Da eliminare', { exact: true })).toBeVisible();
     await extra
       .locator('li')
       .filter({ hasText: 'Da eliminare' })
-      .getByRole('button', { name: 'Elimina', exact: true })
+      .getByRole('button', { name: /^Altre azioni per / })
       .click();
+    await page.getByRole('menuitem', { name: 'Elimina', exact: true }).click();
     await page
       .getByRole('dialog', { name: 'Eliminare questa versione?' })
       .getByRole('button', { name: 'Elimina', exact: true })
@@ -730,4 +745,89 @@ test('visible header icon button opens the versions dialog', async ({ page, base
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Chiudi', exact: true }).click();
   await expect(dialog).toBeHidden();
+});
+
+const shots = process.env.E2E_SHOTS;
+
+/** Each state in both themes; no leftover hover. */
+async function shoot(page: Page, name: string) {
+  if (!shots) return;
+  mkdirSync(shots, { recursive: true });
+  for (const theme of ['dark', 'light']) {
+    await page.evaluate((t) => {
+      document.documentElement.dataset.theme = t;
+    }, theme);
+    await page.waitForTimeout(150);
+    await page.screenshot({ path: join(shots, `${name}-${theme}.png`), animations: 'disabled' });
+  }
+}
+
+test('captures the states of the versions dialog', async ({ page, baseURL }) => {
+  test.skip(!shots, 'Only for the screenshots (E2E_SHOTS).');
+  const { project } = await seed(page, baseURL!);
+  const day = 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const at = (daysAgo: number, hours: number, minutes: number) =>
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo, hours, minutes).getTime();
+  const author = {
+    id: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11',
+    name: 'Giulia Bianchi',
+    image: null,
+  };
+  const version = (id: number, kind: string, created: number, count: number, extra = {}) => ({
+    id: `0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a${String(id).padStart(2, '0')}`,
+    boardId: project.rootBoardId,
+    kind,
+    name: null,
+    createdBy: kind === 'auto' ? null : author,
+    createdAt: new Date(created).toISOString(),
+    size: 1000,
+    elementCount: count,
+    docSchemaVersion: CURRENT_SCHEMA_VERSION,
+    expiresAt: kind === 'named' ? null : new Date(created + 30 * day).toISOString(),
+    ...extra,
+  });
+  const items = [
+    version(20, 'auto', Math.min(at(0, 10, 43), Date.now() - 60_000), 3),
+    version(21, 'restore', Math.min(at(0, 9, 12), Date.now() - 120_000), 3),
+    version(22, 'auto', at(1, 0, 36), 3),
+    version(23, 'named', at(2, 23, 45), 3, { name: 'Prima stesura lavagna' }),
+    version(24, 'auto', at(2, 23, 34), 1),
+    version(25, 'auto', at(28, 18, 2), 2, {
+      expiresAt: new Date(Date.now() + 2 * day + 3_600_000).toISOString(),
+    }),
+  ];
+  await page.route('**/api/v1/boards/*/versions', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({ json: { items, nextCursor: null } })
+      : route.fallback(),
+  );
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  const dialog = await openVersions(page);
+  await expect(dialog.getByText('Prima stesura lavagna', { exact: true })).toBeVisible();
+  await page.mouse.move(1, 1);
+  await shoot(page, 'desktop');
+  const named = dialog.locator('li').filter({ hasText: 'Prima stesura lavagna' });
+  await named.getByRole('button', { name: /^Altre azioni per / }).click();
+  await expect(page.getByRole('menu')).toBeVisible();
+  await shoot(page, 'desktop-menu-named');
+  await page.keyboard.press('Escape');
+  const auto = dialog.locator('li').filter({ hasText: '1 elemento' });
+  await auto.getByRole('button', { name: /^Altre azioni per / }).click();
+  await shoot(page, 'desktop-menu-auto');
+  await page.getByRole('menuitem', { name: 'Dai un nome', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: 'Nome della versione', exact: true })
+    .fill('Dopo il sopralluogo');
+  await shoot(page, 'desktop-edit');
+  await page.keyboard.press('Escape');
+  await dialog.getByRole('radio', { name: 'Cestino' }).check();
+  await shoot(page, 'desktop-trash');
+  await dialog.getByRole('radio', { name: 'Versioni' }).check();
+  await page.setViewportSize({ width: 390, height: 1600 });
+  await page.mouse.move(1, 1);
+  await shoot(page, 'phone');
+  await auto.getByRole('button', { name: /^Altre azioni per / }).click();
+  await page.getByRole('menuitem', { name: 'Dai un nome', exact: true }).click();
+  await shoot(page, 'phone-edit');
 });

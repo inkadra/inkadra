@@ -41,15 +41,30 @@ it('fails when the boards cannot be loaded, and is offered to editors only', asy
   await expect(addBoard(project, 'storyboard', t)).rejects.toThrow();
   const menu = (myRole: Project['myRole']) =>
     addBoardItems({ ...project, myRole } as Project, t, vi.fn(), []);
-  expect(menu('editor')).toHaveLength(2);
-  expect(menu('owner')).toHaveLength(2);
+  expect(menu('editor')).toHaveLength(3);
+  expect(menu('owner')).toHaveLength(3);
   expect(menu('viewer')).toHaveLength(0);
 });
 
 it('offers only the kinds of modules that are on (decision 0121)', () => {
   const labels = (off: string[]) =>
     addBoardItems({ ...project, myRole: 'owner' } as Project, t, vi.fn(), off).map((i) => i.label);
-  expect(labels(['storyboard'])).toEqual(['nav.addMoodboard']);
-  expect(labels(['moodboard', 'storyboard'])).toEqual([]);
-  expect(labels(['plan', 'later'])).toHaveLength(2);
+  expect(labels(['storyboard', 'production'])).toEqual(['nav.addMoodboard']);
+  expect(labels(['moodboard', 'storyboard', 'production'])).toEqual([]);
+  expect(labels(['plan', 'later'])).toHaveLength(3);
+});
+
+it('makes the one Production board, or opens the one the project has (decision 0123)', async () => {
+  vi.mocked(loadBoards).mockResolvedValue([board('s', 'storyboard')]);
+  vi.mocked(createBoard).mockResolvedValue(board('p', 'production'));
+  await expect(addBoard(project, 'production', t)).resolves.toBe('/p/p1/b/p');
+  expect(createBoard).toHaveBeenCalledWith('p1', 'root', 'film.views.production', 'production');
+  vi.mocked(createBoard).mockClear();
+  vi.mocked(loadBoards).mockResolvedValue([board('s', 'storyboard'), board('p', 'production')]);
+  await expect(addBoard(project, 'production', t)).resolves.toBe('/p/p1/b/p');
+  expect(createBoard).not.toHaveBeenCalled();
+  const owner = { ...project, myRole: 'owner' } as Project;
+  expect(
+    addBoardItems(owner, t, vi.fn(), [], undefined, [board('p', 'production')]).at(-1)?.label,
+  ).toBe('film.views.production · board.canvasMenu.present');
 });

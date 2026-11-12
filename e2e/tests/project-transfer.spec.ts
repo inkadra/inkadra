@@ -188,7 +188,7 @@ test('a project exports from its menu to a zip with a manifest', async ({ page }
 
   const entries = new Map(readZip(archive).map((e) => [e.name, e.data]));
   const manifest = JSON.parse(entries.get('manifest.json')?.toString() ?? 'null');
-  expect(manifest).toMatchObject({ format: 'inkadra-project', formatVersion: 1 });
+  expect(manifest).toMatchObject({ format: 'inkadra-project', formatVersion: 2 });
   for (const name of ['project.json', 'boards.json', 'comments.json', 'export-settings.json']) {
     expect(entries.has(name), name).toBe(true);
   }

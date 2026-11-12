@@ -305,6 +305,12 @@
 .schedule__filters .schedule__group-by {
   flex-basis: 100%;
 }
+/* The Storyboard filter of the Production board takes its own row (decision 0123). */
+.schedule__filter {
+  display: flex;
+  flex-basis: 100%;
+  min-width: 0;
+}
 /* "Group by: Setup": a scene's shots under their setups (decision 0115). */
 .schedule__setup {
   display: grid;
@@ -722,6 +728,11 @@
   --block-bg: var(--ink-tag-yellow-bg);
   --block-fg: var(--ink-tag-yellow);
 }
+/* A scene planned as a whole (decision 0123). */
+.schedule__block--scene {
+  --block-bg: var(--ink-tag-teal-bg);
+  --block-fg: var(--ink-tag-teal);
+}
 .schedule__block-select {
   position: relative;
   flex: 1;
@@ -998,11 +1009,19 @@
   --block-bg: var(--ink-tag-yellow-bg);
   --block-fg: var(--ink-tag-yellow);
 }
+.schedule__type--scene {
+  --block-bg: var(--ink-tag-teal-bg);
+  --block-fg: var(--ink-tag-teal);
+}
 .schedule__editor-shot {
   display: grid;
   grid-template-columns: 88px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
+}
+/* A storyboard that cannot be read shows no picture (decision 0123). */
+.schedule__editor-shot:not(:has(.schedule__editor-pic)) {
+  grid-template-columns: minmax(0, 1fr);
 }
 .schedule__editor-shot-text {
   display: grid;
@@ -1015,8 +1034,11 @@
 }
 .schedule__editor-shot-text span {
   color: var(--ink-text-secondary);
-  text-transform: uppercase;
   font-size: 11px;
+}
+/* The scene's slugline only: a storyboard's name keeps its own case. */
+.schedule__editor-scene {
+  text-transform: uppercase;
 }
 .schedule__link {
   justify-self: start;
@@ -1645,4 +1667,44 @@ fieldset.schedule__field > legend {
   .schedule__inspector .day-calls__row .ink-input {
     height: 44px;
   }
+}
+
+/* The dot of a storyboard on the Production board (decision 0123): its colour, named by it. */
+.schedule__dot {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--dot);
+  /* A ring in the surface colour: the dot never melts into a block's tint of the same hue. */
+  box-shadow: 0 0 0 1px var(--ink-surface-1);
+  vertical-align: 1px;
+}
+.schedule__source-title {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 12px 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-text-primary);
+}
+.schedule__shot--scene .schedule__shot-pic {
+  display: grid;
+  place-items: center;
+  color: var(--ink-tag-teal);
+  background: var(--ink-tag-teal-bg);
+}
+.schedule__shot--scene .schedule__shot-pic > *,
+.schedule__editor-pic > svg {
+  width: 16px;
+  height: 16px;
+}
+.schedule__editor-pic:has(> svg) {
+  display: grid;
+  place-items: center;
+  color: var(--ink-tag-teal);
+  background: var(--ink-tag-teal-bg);
 }

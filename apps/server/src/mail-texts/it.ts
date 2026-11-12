@@ -99,6 +99,8 @@ export const it = {
   resetAction: 'Scegli una nuova password',
   resetFooter: 'Non l’hai chiesto tu? Ignora questa email: la password resta quella di prima.',
 
+  /** The title of a Production board the server makes (decision 0123), not an email. */
+  productionBoard: 'Produzione',
   someone: 'Qualcuno',
   guestName: (name: string) => `${name} (ospite)`,
   today: 'Oggi',

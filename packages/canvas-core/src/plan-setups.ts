@@ -274,15 +274,19 @@ export function dayBySetup<B extends { shotId: string | null }>(
   return shots.length ? groupBySetup(shots, setups) : [];
 }
 
-/** What `sceneDay` reads of a shooting day: its date and the shots of its blocks. */
+/**
+ * What `sceneDay` reads of a shooting day: its date and the shots of its blocks, and the scene
+ * of a `scene` block (decision 0123). The caller keeps only the blocks of the board it reads.
+ */
 export interface ScheduledDay {
   date: string;
-  blocks: ReadonlyArray<{ shotId: string | null }>;
+  blocks: ReadonlyArray<{ shotId: string | null; sceneId?: string }>;
 }
 
 /**
  * The shooting day of a scene, numbered as the schedule numbers its days (by date, from 1): the
- * first day whose blocks shoot one of the scene's frames in `byId`, as the scene sheets read it;
+ * first day whose blocks shoot one of the scene's frames in `byId`, or plan the scene as a whole
+ * (a `scene` block, decision 0123), as the scene sheets read it;
  * a scene shot over several days gives its first. Null when no day shoots it. The set plan's
  * sheet prints it as "Day N" (decision 0111).
  */
@@ -296,6 +300,8 @@ export function sceneDay(
     if (el.type === 'frame' && el.parent === sceneId) frames.add(el.id);
   const at = [...days]
     .sort((a, b) => a.date.localeCompare(b.date))
-    .findIndex((d) => d.blocks.some((b) => b.shotId && frames.has(b.shotId)));
+    .findIndex((d) =>
+      d.blocks.some((b) => (b.shotId && frames.has(b.shotId)) || b.sceneId === sceneId),
+    );
   return at >= 0 ? at + 1 : null;
 }

@@ -141,6 +141,9 @@ describe.skipIf(!url)('storage limits on uploads (needs DATABASE_URL)', () => {
     const created = await start(300);
     expect(created.status).toBe(201);
     expect((await finish(String(created.headers.get('inkadra-asset-id')), 300)).status).toBe(204);
+    // A finished upload counts once its job starts (status 'processing'): the job runs in the
+    // background, so the answer to the last PATCH can arrive before it.
+    await deps.jobs.idle();
     const mine = (await call('member', 'GET', '/api/v1/me/storage')).json();
     expect(mine).toMatchObject({ originalBytes: 300, limit: null, instanceFull: false });
     const settings = (await call('admin', 'GET', '/api/v1/instance/storage-limits')).json();

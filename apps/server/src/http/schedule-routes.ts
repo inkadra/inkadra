@@ -6,6 +6,7 @@ import {
   Id,
   MyScheduleQuery,
   type PlannedShootingDay,
+  type ScheduleBlock,
   SetCastLink,
   SetDayAttendance,
   ShootingDayInput,
@@ -68,18 +69,63 @@ const ownInput = <T extends ShootingDayInput>(input: T, team: boolean): T => {
 const isTeam = async (db: Database, actor: Actor, projectId: string) =>
   (await projectRole(db, actor, projectId)) !== null;
 
+/** The keys of a block that point at another board's frame or scene (decision 0123). */
+const SHOT_KEYS = ['shotBoardId', 'shotLabel'] as const;
+const SCENE_KEYS = ['sceneId', 'sceneBoardId', 'sceneLabel'] as const;
+
 /**
- * A client from before block notes sends blocks without them: a block it kept keeps its note.
- * A newer client sends `notes` (empty to clear it), so only a missing key is filled in.
+ * A client from before block notes, or from before the Production board (decision 0123), sends
+ * blocks without some keys: a block it kept keeps them, by block id. A newer client sends
+ * `notes` (empty to clear it), so only a missing key is filled in. The board and label of a
+ * frame are kept while the block still names that frame, those of a scene while it is a scene
+ * block that names that scene or none.
  */
-export function keepBlockNotes(
+export function keepBlockKeys(
   before: ShootingDayInput['blocks'],
   after: ShootingDayInput['blocks'],
 ): ShootingDayInput['blocks'] {
-  const notes = new Map(before.flatMap((b) => (b.notes === undefined ? [] : [[b.id, b.notes]])));
-  return after.map((block) =>
-    'notes' in block || !notes.has(block.id) ? block : { ...block, notes: notes.get(block.id) },
-  );
+  const stored = new Map(before.map((b) => [b.id, b]));
+  return after.map((block) => {
+    const was = stored.get(block.id);
+    if (!was) return block;
+    const kept: ScheduleBlock = { ...block };
+    if (!('notes' in block) && was.notes !== undefined) kept.notes = was.notes;
+    const fill = (
+      keys: ReadonlyArray<(typeof SHOT_KEYS)[number] | (typeof SCENE_KEYS)[number]>,
+    ) => {
+      for (const key of keys)
+        if (!(key in block) && was[key] !== undefined) Object.assign(kept, { [key]: was[key] });
+    };
+    if (block.shotId === was.shotId) fill(SHOT_KEYS);
+    // Only while it is still a scene block: a block turned into another type lets its scene go.
+    if (block.type === 'scene' && (block.sceneId ?? was.sceneId) === was.sceneId) fill(SCENE_KEYS);
+    return kept;
+  });
+}
+
+/**
+ * A new or changed board reference of a block must name a board of the day's project (decision
+ * 0123); one the stored block already had is kept, even to a board trashed since.
+ */
+async function checkBlockBoards(
+  tx: Pick<Database, 'select'>,
+  projectId: string,
+  stored: ShootingDayInput['blocks'],
+  blocks: ShootingDayInput['blocks'],
+) {
+  const refs = (b: ScheduleBlock) =>
+    [b.shotBoardId, b.sceneBoardId].filter((id): id is string => id !== undefined);
+  const had = new Set(stored.flatMap((b) => refs(b).map((id) => `${b.id}:${id}`)));
+  const wanted = [
+    ...new Set(blocks.flatMap((b) => refs(b).filter((id) => !had.has(`${b.id}:${id}`)))),
+  ];
+  if (!wanted.length) return;
+  const found = await tx
+    .select({ id: board.id })
+    .from(board)
+    .where(and(eq(board.projectId, projectId), inArray(board.id, wanted)));
+  if (found.length !== wanted.length)
+    throw new HttpError('bad_request', 'A block points at a board outside this project.');
 }
 
 /** When each linked person is first called on a day, in minutes from the shooting date. */
@@ -213,6 +259,7 @@ export function registerScheduleRoutes(
       parsed,
       async (tx) => {
         const [input] = await cleanInputs(tx, [parsed], team, access.board.projectId);
+        await checkBlockBoards(tx, access.board.projectId, [], parsed.blocks);
         const [created] = await tx
           .insert(shootingDay)
           .values({ ...(input ?? parsed), boardId, projectId: access.board.projectId, updatedBy })
@@ -336,12 +383,14 @@ export function registerScheduleRoutes(
       .for('update');
     if (!before)
       throw new HttpError('conflict', 'The day changed or was removed. Reload the schedule.');
+    const blocks = keepBlockKeys(before.blocks, input.blocks);
+    await checkBlockBoards(tx, projectId, before.blocks, blocks);
     // Calls missing from the input are left as stored (older clients, people outside the project).
     const [updated] = await tx
       .update(shootingDay)
       .set({
         ...input,
-        blocks: keepBlockNotes(before.blocks, input.blocks),
+        blocks,
         updatedBy,
         revision: sql`${shootingDay.revision} + 1`,
       })
@@ -447,7 +496,7 @@ export function registerScheduleRoutes(
         .for('update');
       const notes = locked.flatMap((day) => day.blocks);
       for (const [original, clean] of cleaned) {
-        cleaned.set(original, { ...clean, blocks: keepBlockNotes(notes, clean.blocks) });
+        cleaned.set(original, { ...clean, blocks: keepBlockKeys(notes, clean.blocks) });
       }
       for (const change of sorted) {
         if (change.revision === 0) {
@@ -455,10 +504,13 @@ export function registerScheduleRoutes(
             deleted.push(change.id);
             continue;
           }
+          const input = cleaned.get(change.input) ?? change.input;
+          // A block moved here from another day of the request keeps its references.
+          await checkBlockBoards(tx, access.board.projectId, notes, input.blocks);
           const [row] = await tx
             .insert(shootingDay)
             .values({
-              ...(cleaned.get(change.input) ?? change.input),
+              ...input,
               id: change.id,
               boardId,
               projectId: access.board.projectId,

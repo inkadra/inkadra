@@ -23,7 +23,10 @@ export interface NeededRow {
   items: Array<{ elementId: string; itemId: string }>;
 }
 
-/** The scenes a day shoots, by element id, in the order of its shot blocks. */
+/**
+ * The scenes a day shoots, by element id, in the order of its shot blocks and of its scene
+ * blocks, which shoot a scene as a whole (decision 0123).
+ */
 export function sceneIdsOf(
   day: Pick<ShootingDayInput, 'blocks'>,
   byId: ReadonlyMap<string, Element>,
@@ -31,7 +34,12 @@ export function sceneIdsOf(
   const ids: string[] = [];
   for (const block of day.blocks) {
     const frame = block.shotId ? byId.get(block.shotId) : undefined;
-    const scene = frame?.parent ? byId.get(frame.parent) : undefined;
+    const scene =
+      block.type === 'scene' && block.sceneId
+        ? byId.get(block.sceneId)
+        : frame?.parent
+          ? byId.get(frame.parent)
+          : undefined;
     if (scene?.type === 'scene' && !ids.includes(scene.id)) ids.push(scene.id);
   }
   return ids;

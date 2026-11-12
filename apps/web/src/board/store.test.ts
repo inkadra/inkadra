@@ -5,7 +5,7 @@ import { addElement, roots, UNSORTED } from '@inkadra/doc-schema';
 import { generateReferenceBoard } from '@inkadra/doc-schema/reference-board';
 import { expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
-import { BoardStore, LOCAL } from './store.ts';
+import { BoardStore, LOCAL, REPAIR } from './store.ts';
 
 const opts = { userId: null, origin: LOCAL };
 const sorted = (doc: Y.Doc) =>
@@ -920,3 +920,30 @@ function findBench(doc: Y.Doc) {
   const table = all.find((el) => el.type === 'table')!;
   return { frameId: frame.id, tableId: table.id };
 }
+
+it('keeps the automatic Production card out of undo, and lets the explicit one be undone and added again', () => {
+  const PRODUCTION = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
+  const doc = new Y.Doc();
+  roots(doc).meta.set('schemaVersion', schema.CURRENT_SCHEMA_VERSION);
+  const store = new BoardStore(doc);
+  const size = { w: 320, h: 260 };
+  const cards = () => listElements(doc).filter((el) => el.type === 'board');
+  // The root opens: the card is placed by itself, as BoardPage does (decision 0123, answer 2).
+  core.placeProductionCard(doc, PRODUCTION, size, { userId: null, origin: REPAIR });
+  expect(cards()).toHaveLength(1);
+  store.undo.undo();
+  expect(cards()).toHaveLength(1);
+  // Removed by the person: it does not come back by itself.
+  core.deleteElements(doc, [core.productionCardId(PRODUCTION)], LOCAL);
+  core.placeProductionCard(doc, PRODUCTION, size, { userId: null, origin: REPAIR });
+  expect(cards()).toHaveLength(0);
+  // Added from the Canvas menu: one undo step, and it can be added again after the undo.
+  store.undo.stopCapturing();
+  core.placeProductionCard(doc, PRODUCTION, size, { userId: null, origin: LOCAL }, { x: 0, y: 0 });
+  expect(cards()).toHaveLength(1);
+  store.undo.stopCapturing();
+  store.undo.undo();
+  expect(cards()).toHaveLength(0);
+  core.placeProductionCard(doc, PRODUCTION, size, { userId: null, origin: LOCAL }, { x: 0, y: 0 });
+  expect(cards()).toHaveLength(1);
+});

@@ -118,13 +118,20 @@ and adds keys, so a project can be put back by hand:
 ```sql
 update shooting_day
 set board_id = moved_from, moved_from = null,
-    blocks = (select coalesce(jsonb_agg(b.v - 'shotBoardId' - 'shotLabel' order by b.i), '[]')
+    blocks = (select coalesce(jsonb_agg(
+                (case when b.v ->> 'type' = 'scene'
+                   then b.v || jsonb_build_object('type', 'note', 'title',
+                     coalesce(nullif(b.v ->> 'title', ''), 'Scene ' || coalesce(b.v ->> 'sceneLabel', '')))
+                   else b.v end)
+                - 'shotBoardId' - 'shotLabel' - 'sceneId' - 'sceneBoardId' - 'sceneLabel'
+                order by b.i), '[]')
               from jsonb_array_elements(blocks) with ordinality as b(v, i))
 where project_id = $1 and moved_from is not null;
 ```
 
-then the Production board is trashed. The keys go because an older server refuses unknown block
-keys (`ScheduleBlock` is strict). Days created on the Production board after the move stay on it.
+then the Production board is trashed. The keys go, and a scene block becomes a note that keeps
+its title or the scene's label, because an older server refuses unknown block keys and types
+(`ScheduleBlock` is strict). Days created on the Production board after the move stay on it.
 This statement is tested in the pull request of step 6 against the migration's fixture; no
 command is shipped for it.
 
@@ -197,9 +204,11 @@ keeps the draft (0089). From step 6, creating a day on any other board is refuse
   Frames already scheduled are keyed by board and frame. `shortcut:` every readable storyboard
   opens at once; open them on demand when a project has more than about ten.
 - **The dot** is the storyboard's icon colour when it has one, else a colour of the identity
-  palette in order of creation among the project's storyboards, trashed ones counted so colours
-  never shift. It marks queue items, blocks, the day panel and the card, always, with the
-  storyboard's name as its label.
+  palette taken from the board's id (a stable hash), so colours never shift when a storyboard
+  goes to the trash or comes back; two storyboards may share one. Red and pink, which no block
+  type uses, come first in the scale, and the dot has a 1 px ring in the surface colour, so it
+  stays readable on a block of the same hue. It marks queue items, blocks, the day panel and the
+  card, always, with the storyboard's name as its label.
 - **Call sheets** open from a day, as now, and from the Production board's Export ("Call
   sheets"). Each block's frame is read from its own board; location and character cards are
   matched across that day's storyboards, the first in tree order winning on a shared name.
@@ -273,7 +282,9 @@ days.
    gets a grant there; no grant is added by the migration and no day is filtered by storyboard.
 2. **The card of a migrated Production board:** it appears by itself. The first editor who opens
    the root board gets its card placed by their client, once, with an id derived from the board's
-   and a mark in the root's `meta`, so a card someone removed does not come back.
+   and a mark in the root's `meta` (`productionCard`, board document schema 27, decision 0102),
+   so a card someone removed does not come back. That placing is no step of the person's undo;
+   the mark stops only it, never "Canvas → Production", which always adds the card where asked.
 3. **Deleting the Production board:** it goes to the trash with its days, and "Add → Production"
    brings that board back with them, never a second one.
 4. **Scenes without frames:** a block can point at a scene (§1), so a day can be planned before

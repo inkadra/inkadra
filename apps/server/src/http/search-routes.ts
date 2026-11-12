@@ -324,16 +324,21 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
         });
       }
       // People of the crew by name, role or department. The roster is the project members'
-      // (decision 0091): a grant on one board never finds it. They open the Troupe view.
+      // (decision 0091): a grant on one board never finds it. They open the Troupe view, on the
+      // Production board while the project has a live one (decision 0123), else from the root.
+      // shortcut: the root fallback is the interim of 0121; drop it with step 6 of 0123.
       const crew = await db.execute<Row>(sql`
         select c.id, c.name, c.role, c.department, p.id as project_id, p.name as project_name,
-               r.id as root_id, r.title as root_title
+               coalesce(pb.id, r.id) as root_id, coalesce(pb.title, r.title) as root_title,
+               coalesce(pb.kind, r.kind) as root_kind
         from crew_member c
         join project p on p.id = c.project_id
         join project_member m on m.project_id = c.project_id and m.user_id = ${actor.id}
           and ${live('m')}
         join board r on r.project_id = c.project_id and r.parent_board_id is null
-        where r.id = any(${boardIn})
+        left join board pb on pb.project_id = c.project_id and pb.kind = 'production'
+          and pb.deleted_at is null
+        where coalesce(pb.id, r.id) = any(${boardIn})
           and (c.name ilike ${like} or c.role ilike ${like} or c.department ilike ${like})
         order by word_similarity(${q}, c.name) desc, c.name
         limit ${query.limit}`);
@@ -344,7 +349,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
           projectName: r.project_name as string,
           boardId: r.root_id as string,
           boardTitle: r.root_title as string,
-          boardKind: 'board',
+          boardKind: r.root_kind as BoardKind,
           elementId: r.id as string,
           elementType: 'crew',
           title: r.name as string,

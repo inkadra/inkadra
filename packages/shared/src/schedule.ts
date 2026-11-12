@@ -5,10 +5,12 @@ import { Id, z } from './common.ts';
 
 export const ScheduleTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const TextList = z.array(z.string().trim().min(1).max(120)).max(100);
+/** The label of a frame or scene as last seen, shown when its storyboard cannot be read. */
+const SeenLabel = z.string().max(40);
 export const ScheduleBlock = z
   .object({
     id: Id,
-    type: z.enum(['setup', 'shot', 'break', 'move', 'note']),
+    type: z.enum(['setup', 'shot', 'break', 'move', 'note', 'scene']),
     title: z.string().max(500),
     start: ScheduleTime.nullable().describe('Local clock time; null follows the previous block.'),
     duration: z
@@ -18,6 +20,19 @@ export const ScheduleBlock = z
       .max(1440)
       .describe('Estimated minutes, not shot screen duration.'),
     shotId: ElementRef.nullable(),
+    shotBoardId: Id.optional().describe(
+      "The board whose document holds `shotId` (decision 0123). Missing: the day's own board.",
+    ),
+    shotLabel: SeenLabel.optional().describe(
+      'The frame label as last seen ("12A"), for readers who cannot open its storyboard.',
+    ),
+    sceneId: ElementRef.optional().describe(
+      'A `scene` block: the scene it plans as a whole, drawn or not (decision 0123).',
+    ),
+    sceneBoardId: Id.optional().describe(
+      "The board whose document holds `sceneId`. Missing: the day's own board.",
+    ),
+    sceneLabel: SeenLabel.optional().describe('The scene label as last seen ("12").'),
     cast: TextList,
     departments: TextList,
     notes: z
@@ -162,6 +177,52 @@ export function scheduleTimes(day: Pick<ShootingDayInput, 'callTime' | 'blocks'>
     const end = start + block.duration;
     cursor = end;
     return { block, start, end };
+  });
+}
+
+type BlockRefs = Pick<
+  ScheduleBlock,
+  'type' | 'shotId' | 'shotBoardId' | 'sceneId' | 'sceneBoardId'
+>;
+
+/**
+ * What a block plans and the board whose document holds it (decision 0123): a shot block its
+ * frame, a scene block its scene. A block without a board id belongs to the day's own board
+ * (days from before). Null when it names nothing.
+ */
+export function blockTarget(
+  block: Partial<BlockRefs>,
+  dayBoardId: string,
+): { kind: 'shot' | 'scene'; boardId: string; id: string } | null {
+  if (block.shotId)
+    return { kind: 'shot', boardId: block.shotBoardId ?? dayBoardId, id: block.shotId };
+  if (block.type === 'scene' && block.sceneId)
+    return { kind: 'scene', boardId: block.sceneBoardId ?? dayBoardId, id: block.sceneId };
+  return null;
+}
+
+/** One key for a frame or a scene of a board: element ids are unique only inside a document. */
+export const targetKey = (boardId: string, id: string) => `${boardId}/${id}`;
+
+/**
+ * The days as one board reads them (decision 0123): every day, so days keep their numbers and
+ * their times, with the frames and scenes of other boards taken out of the blocks. A storyboard
+ * reads the Production board's days this way, or its own days while the project has none.
+ */
+export function daysForBoard<
+  D extends { boardId: string; blocks: ReadonlyArray<Partial<BlockRefs>> },
+>(days: readonly D[], boardId: string): D[] {
+  return days.map((day) => {
+    if (day.blocks.every((b) => (blockTarget(b, day.boardId)?.boardId ?? boardId) === boardId))
+      return day;
+    return {
+      ...day,
+      blocks: day.blocks.map((b) => {
+        if ((blockTarget(b, day.boardId)?.boardId ?? boardId) === boardId) return b;
+        const { sceneId: _, ...rest } = b;
+        return { ...rest, shotId: null };
+      }),
+    };
   });
 }
 

@@ -1100,7 +1100,8 @@
               "shot",
               "break",
               "move",
-              "note"
+              "note",
+              "scene"
             ]
           },
           "title": {
@@ -1129,6 +1130,34 @@
             "pattern": "^[A-Za-z0-9_-]{8,64}$",
             "description": "Element id in the board document.",
             "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "shotBoardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "The board whose document holds `shotId` (decision 0123). Missing: the day's own board."
+          },
+          "shotLabel": {
+            "type": "string",
+            "maxLength": 40,
+            "description": "The frame label as last seen (\"12A\"), for readers who cannot open its storyboard."
+          },
+          "sceneId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "description": "A `scene` block: the scene it plans as a whole, drawn or not (decision 0123).",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "sceneBoardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "The board whose document holds `sceneId`. Missing: the day's own board."
+          },
+          "sceneLabel": {
+            "type": "string",
+            "maxLength": 40,
+            "description": "The scene label as last seen (\"12\")."
           },
           "cast": {
             "type": "array",
@@ -6062,7 +6091,8 @@
             "enum": [
               "board",
               "moodboard",
-              "storyboard"
+              "storyboard",
+              "production"
             ]
           },
           "title": {
@@ -6211,7 +6241,8 @@
             "enum": [
               "board",
               "moodboard",
-              "storyboard"
+              "storyboard",
+              "production"
             ],
             "default": "board"
           },
@@ -7315,6 +7346,7 @@
               "board",
               "moodboard",
               "storyboard",
+              "production",
               null
             ]
           },
@@ -9694,7 +9726,8 @@
             "enum": [
               "board",
               "moodboard",
-              "storyboard"
+              "storyboard",
+              "production"
             ]
           },
           "title": {
@@ -11119,6 +11152,113 @@
             "type": "integer",
             "minimum": 0,
             "description": "People of the project's troupe; only for members of the project."
+          },
+          "nextDay": {
+            "type": "object",
+            "properties": {
+              "number": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Day N: its place among the days, by date."
+              },
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "callTime": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              "location": {
+                "type": "string",
+                "maxLength": 160,
+                "description": "The first line of the location."
+              },
+              "blocks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "start": {
+                      "type": "string",
+                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                      "description": "When the block starts, on the clock."
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "setup",
+                        "shot",
+                        "break",
+                        "move",
+                        "note",
+                        "scene"
+                      ]
+                    },
+                    "title": {
+                      "type": "string",
+                      "maxLength": 160
+                    },
+                    "boardId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uuid",
+                      "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+                      "description": "The storyboard of a shot or scene block (its dot); null for the others."
+                    },
+                    "label": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 40,
+                      "description": "The frame or scene label as last seen (`shotLabel`, `sceneLabel`)."
+                    }
+                  },
+                  "required": [
+                    "start",
+                    "type",
+                    "title",
+                    "boardId",
+                    "label"
+                  ]
+                },
+                "maxItems": 5,
+                "description": "Its first five blocks."
+              }
+            },
+            "required": [
+              "number",
+              "date",
+              "callTime",
+              "location",
+              "blocks"
+            ],
+            "description": "Production board (decision 0123): the next shooting day, the first on or after today in the project's time zone, else the last; absent without days."
+          },
+          "crew": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "role": {
+                  "type": "string",
+                  "maxLength": 120
+                }
+              },
+              "required": [
+                "name",
+                "role"
+              ]
+            },
+            "maxItems": 4,
+            "description": "Production board: the first people of the troupe in roster order; only for members of the project."
           }
         },
         "required": [

@@ -7,6 +7,7 @@ import {
   castNameKey,
   isMapLink,
   plannedWrap,
+  type ScheduleBlock,
   type ShootingDayInput,
 } from '@inkadra/shared';
 import { neededForDay } from './needed.ts';
@@ -55,7 +56,8 @@ export function departmentNotes(day: ShootingDayInput): DepartmentNote[] {
 /** Times use the same overnight offsets as the schedule, never new saved fields. */
 export function keyTimes(day: ShootingDayInput) {
   const slots = scheduleTimes(day);
-  const shots = slots.filter(({ block }) => block.type === 'shot' || !!block.shotId);
+  // A scene block shoots its scene as a whole (decision 0123).
+  const shots = slots.filter(({ block }) => !asideBlock(block));
   // Sunrise and sunset need a location's coordinates: see sunOfDay in day-calls.ts.
   return [
     { key: 'call', time: clockMinutes(day.callTime) },
@@ -72,9 +74,25 @@ export interface DayLocation {
   mapUrl?: string | undefined;
 }
 
-/** Resolve by element identity, including scenes without numbers and loose frames. */
-export function sheetShot(shotId: string | null, elements: ReadonlyMap<string, Element>) {
-  const frame = shotId ? elements.get(shotId) : undefined;
+/**
+ * A block that reads as one quiet line across the sheet: a break, a move, a set-up or a note,
+ * not a shot or a scene.
+ */
+export const asideBlock = (block: Pick<ScheduleBlock, 'type' | 'shotId'>) =>
+  block.type !== 'shot' && block.type !== 'scene' && !block.shotId;
+
+type Planned = Pick<ScheduleBlock, 'type' | 'shotId'> & { sceneId?: string | undefined };
+
+/**
+ * Resolve by element identity, including scenes without numbers and loose frames: a shot
+ * block's frame and its scene, a scene block's scene (decision 0123).
+ */
+export function sheetShot(block: Planned, elements: ReadonlyMap<string, Element>) {
+  if (block.type === 'scene' && !block.shotId) {
+    const scene = block.sceneId ? elements.get(block.sceneId) : undefined;
+    return { frame: undefined, scene: scene?.type === 'scene' ? scene : undefined };
+  }
+  const frame = block.shotId ? elements.get(block.shotId) : undefined;
   const parent = frame?.type === 'frame' && frame.parent ? elements.get(frame.parent) : undefined;
   return {
     frame: frame?.type === 'frame' ? frame : undefined,
@@ -83,14 +101,29 @@ export function sheetShot(shotId: string | null, elements: ReadonlyMap<string, E
 }
 
 export function hasSceneNumbers(day: ShootingDayInput, elements: ReadonlyMap<string, Element>) {
-  return day.blocks.some((block) => !!sheetShot(block.shotId, elements).scene?.number?.trim());
+  return day.blocks.some((block) => !!sheetShot(block, elements).scene?.number?.trim());
+}
+
+/**
+ * The cast a sheet prints for a block: its own list, and for a scene block also the cast of the
+ * scene's frames, if it has any (decision 0123). Each name once.
+ */
+export function blockCast(
+  block: Planned & Pick<ScheduleBlock, 'cast'>,
+  elements: ReadonlyMap<string, Element>,
+): string[] {
+  const names = [...block.cast];
+  if (block.type === 'scene' && block.sceneId)
+    for (const el of elements.values())
+      if (el.type === 'frame' && el.parent === block.sceneId) names.push(...(el.cast ?? []));
+  return [...new Map(names.map((n) => [castNameKey(n), n.trim()])).values()].filter(Boolean);
 }
 
 /** The scene locations of the day, in shooting order, each once. */
 function sceneLocations(day: ShootingDayInput, elements: ReadonlyMap<string, Element>): string[] {
   const names: string[] = [];
   for (const { block } of scheduleTimes(day)) {
-    const name = sheetShot(block.shotId, elements).scene?.location?.trim();
+    const name = sheetShot(block, elements).scene?.location?.trim();
     if (name && !names.some((value) => castNameKey(value) === castNameKey(name))) names.push(name);
   }
   return names;
@@ -169,7 +202,7 @@ export function serveLines(
   const seen = new Set<string>();
   const lines = new Map<string, string>();
   for (const { block } of scheduleTimes(day)) {
-    const scene = sheetShot(block.shotId, elements).scene;
+    const scene = sheetShot(block, elements).scene;
     if (!scene || seen.has(scene.id)) continue;
     seen.add(scene.id);
     const needed = neededForDay({ ...day, blocks: [block] }, elements.values());
