@@ -1450,7 +1450,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .board-card__label b,
 .board-card__id {
   color: var(--ink-text-primary);
-  font-weight: 700;
+  font-weight: 600;
 }
 .board-card__lens {
   color: var(--ink-text-muted);
