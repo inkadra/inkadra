@@ -462,8 +462,8 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
     const el = { w: 100, z: 'a0', createdBy: 'someone', createdAt: 1, x: 0, y: 0 };
     const doc = createBoardDoc(ids.root);
     for (const [id, boardId] of [
-      ['card-sa', ids.sa],
-      ['card-prod', ids.production],
+      ['card-storyboard', ids.sa],
+      ['card-production', ids.production],
     ])
       addElement(doc, { ...el, id, type: 'board', boardId, parent: null } as Element);
     const state = Y.encodeStateAsUpdate(doc);
@@ -569,7 +569,7 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
       (await request('owner', 'GET', `/boards/${ids.production}/schedule`)).json(),
     );
     expect(listed.items).toHaveLength(5);
-    expect(await dayRow(days.a3.id)).toMatchObject({ boardId: ids.production, movedFrom: ids.sa });
+    expect(await dayRow(days.a3?.id as string)).toMatchObject({ boardId: ids.production, movedFrom: ids.sa });
   });
 
   const archive = async (projectId: string) => {
