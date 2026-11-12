@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { addStoryboard } from '../helpers/views.ts';
 
 // Uses the account created by first-run.spec.ts, and creates it when run on its own.
 const admin = {
@@ -171,6 +172,30 @@ test('the sidebar tree of a project, and Add storyboard and Add moodboard in its
     'aria-selected',
     'true',
   );
+});
+
+test('a scene of a new storyboard gets a set plan without a canvas', async ({ page, baseURL }) => {
+  const origin = baseURL ?? '';
+  const project = await setup(page, origin);
+  const story = await addStoryboard(page.request, origin, project, ['shotlist']);
+  await page.goto(`/p/${project.id}/b/${story.id}`);
+  await page.getByRole('button', { name: 'Nuova scena', exact: true }).click();
+  const scene = page.locator('[data-story-scene]').first();
+  const newPlan = scene.getByRole('button', { name: 'Nuova pianta del set', exact: true });
+  await expect(newPlan).toBeVisible();
+  await page.mouse.move(0, 0);
+  await blur(page);
+  await shoot(page, 'scene-new-plan');
+  await newPlan.click();
+  // It opens in the plan editor on its own, and the scene now opens it.
+  const editor = page.getByRole('dialog', { name: /Pianta del set/ });
+  await expect(editor).toBeVisible();
+  await expect(page.getByTestId('canvas')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(editor).toHaveCount(0);
+  await expect(newPlan).toHaveCount(0);
+  await scene.getByRole('button', { name: 'Pianta del set', exact: true }).click();
+  await expect(editor).toBeVisible();
 });
 
 test.describe('on a phone', () => {
