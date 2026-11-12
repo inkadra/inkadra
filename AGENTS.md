@@ -44,6 +44,26 @@ export contents follow the switch; a feature that fits none either belongs to Bo
 or needs a decision for a new module. Off hides the ways to create, never existing data. Where
 an off module would change the result of what the person just did, say so once, with Turn on.
 
+## Changes that reach the mobile app
+
+The Android app (a separate client, MPL-2.0) uses `packages/*` through a pinned copy of this
+repository and talks to the server's `/api/v1`. It never copies code from `apps/web` or
+`apps/server`. A change inside `apps/web` alone does not reach it. These do:
+
+1. **`packages/*`** (`canvas-core`, `shared`, `doc-schema`, `print`): any name added, renamed or
+   removed, and any change of behaviour, including texts in the shared word catalogues.
+2. **Server API**: stays compatible with app versions already installed. Add new behaviour behind
+   a capability in `GET /api/v1/instance/version`; don't change or remove existing fields, error
+   codes or behaviour without agreeing it with the app's coordinator first.
+3. **Board document schema**: only under the existing compatibility rules (strict per-card check,
+   unknown fields kept, minimum writer version).
+4. **Logic moved from `apps/web` into a package** (decision 0116): the app will import it instead
+   of keeping its own version.
+
+When your change touches any of these, end your report with one line for the app's coordinator:
+`#<PR> merged: <sha>. <what changed> — for the app: <nothing | what to adapt>`, and write
+**BREAKING** when existing callers must change.
+
 ## Keep the tutorials up to date
 
 Any change that adds, moves, renames or removes interface must update the tour of that feature in
