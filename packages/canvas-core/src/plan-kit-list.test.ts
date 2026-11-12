@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import type { PlanIcon } from '@inkadra/doc-schema';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import type { PlanElement } from './plan.ts';
 import {
   circuitNames,
@@ -117,6 +117,27 @@ it('prints the power per circuit, computed from the lights', () => {
     ],
   });
   expect(powerLines({ icons: [icon('chair')] }, t, 'en')).toBeNull();
+});
+
+it('prints the power in the app language, not the machine one', () => {
+  // The machine writes numbers in English; the app is in Italian.
+  const own = Number.prototype.toLocaleString;
+  const spy = vi.spyOn(Number.prototype, 'toLocaleString').mockImplementation(function (
+    this: number,
+    locale,
+    options,
+  ) {
+    return own.call(this, locale ?? 'en-US', options);
+  });
+  try {
+    const plan = { icons: [icon('fresnel', { watts: 2000 }), icon('cob', { watts: 300 })] };
+    expect(powerLines(plan, t, 'it')?.total).toBe('2,3 kW · 10 A');
+    // The locale is required: the host's is not the app's (the Android app runs on Hermes).
+    // @ts-expect-error no locale
+    powerLines(plan, t);
+  } finally {
+    spy.mockRestore();
+  }
 });
 
 it('puts the modifiers of a light on one line, every gel on one, video under camera', () => {
