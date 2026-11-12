@@ -295,13 +295,13 @@ it('shows «Creates projects» as a short value; the menu explains each choice',
   const adminRow = host.querySelector('.team-member');
   expect(adminRow?.querySelector('.team-create')?.textContent).toContain('projectCreation.always');
   expect(adminRow?.querySelector('.ink-select.team-create')).toBeNull();
-  // The column headers name each value; the table keeps its rows and cells for screen readers.
-  expect([...host.querySelectorAll('[role=columnheader]')].map((h) => h.textContent)).toEqual([
+  // The column headers name each value of a real table, for screen readers too.
+  expect([...host.querySelectorAll('table th')].map((h) => h.textContent)).toEqual([
     'settingsUi.members.person',
     'settingsUi.members.space',
     'admin.role',
     'projectCreation.column',
     'settingsUi.members.actions',
   ]);
-  expect(host.querySelectorAll('[role=table] .team-member[role=row]')).toHaveLength(2);
+  expect(host.querySelectorAll('table tbody tr.team-member')).toHaveLength(2);
 });

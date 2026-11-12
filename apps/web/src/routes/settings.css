@@ -803,22 +803,33 @@
 }
 /*
  * One row per person (decision 0124) in aligned columns: who, space, role, right to create, ⋯.
- * Rows are subgrids of the table, so each column is as wide as its widest cell on every row.
+ * Head, body and rows are subgrids of the table, so a column is as wide as its widest cell.
  */
 .team-table {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   column-gap: 12px;
+  width: 100%;
+  border-collapse: collapse;
 }
-.team-head,
-.team-member {
+.team-table > thead,
+.team-table > tbody,
+.team-table tr {
   display: grid;
   grid-template-columns: subgrid;
   grid-column: 1 / -1;
   align-items: center;
 }
-.team-head {
+.team-table th,
+.team-table td {
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+.team-head tr {
   padding: 10px 14px 8px;
+}
+.team-head th {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -835,6 +846,7 @@
 .team-member.is-inactive .team-member__name {
   opacity: 0.6;
 }
+.team-member .settings-row__text,
 .team-member .settings-row__label {
   flex-wrap: nowrap;
   min-width: 0;
@@ -1056,37 +1068,37 @@
    * On a phone the ⋯ of a person stays on the name's line; space, role and right to create
    * wrap under the name. The column header is left to screen readers.
    */
-  .team-table {
+  .team-table,
+  .team-table > tbody {
     display: block;
   }
   .team-head {
     position: absolute;
     width: 1px;
     height: 1px;
-    padding: 0;
     margin: -1px;
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  .team-member {
+  .team-table .team-member {
     display: flex;
     flex-wrap: wrap;
     gap: 8px 12px;
     position: relative;
     padding-right: 52px;
   }
-  .team-col--who {
+  .team-table .team-col--who {
     flex: 1 0 100%;
   }
-  .team-col--space {
+  .team-table .team-col--space {
     flex: 1 0 100%;
     padding-left: 44px;
   }
-  .team-col--space:empty {
+  .team-table .team-col--space:empty {
     display: none;
   }
-  .team-col--role {
+  .team-table .team-col--role {
     margin-left: 44px;
   }
   .team-member .team-role {

@@ -14,18 +14,17 @@ const admin = {
 };
 const stamp = Date.now();
 const KB = 1000;
-const [near, long, idle] = [
-  'Marta Rossi',
-  'Maria Alessandra Lucrezia Bevilacqua-Fontanarossa',
-  'Luca Verdi',
-].map((name, i) => ({
+const person = (name: string, email: string) => ({
   name,
-  email:
-    i === 1
-      ? `maria.alessandra.bevilacqua.fontanarossa-${stamp}@produzioni-esempio.example.com`
-      : `members-layout-${i}-${stamp}@example.com`,
+  email,
   password: 'correct-horse-battery',
-}));
+});
+const near = person('Marta Rossi', `members-layout-0-${stamp}@example.com`);
+const long = person(
+  'Maria Alessandra Lucrezia Bevilacqua-Fontanarossa',
+  `maria.alessandra.bevilacqua.fontanarossa-${stamp}@produzioni-esempio.example.com`,
+);
+const idle = person('Luca Verdi', `members-layout-2-${stamp}@example.com`);
 
 async function shoot(page: Page, name: string) {
   if (!shots) return;

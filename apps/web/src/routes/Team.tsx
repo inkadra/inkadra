@@ -215,20 +215,22 @@ export function Team() {
           {filtered !== undefined && filtered.length > 0 && (
             // Aligned columns with a header (decision 0124); on a phone each row wraps under
             // the name and the header is read only by screen readers.
-            <div
-              role="table"
+            <table
               className="team-table"
               aria-label={t('admin.membersCount', { count: members.length })}
             >
-              <div role="row" className="team-head">
-                <span role="columnheader">{t('settingsUi.members.person')}</span>
-                <span role="columnheader">{t('settingsUi.members.space')}</span>
-                <span role="columnheader">{t('admin.role')}</span>
-                <span role="columnheader">{t('projectCreation.column')}</span>
-                <span role="columnheader">
-                  <span className="ink-sr-only">{t('settingsUi.members.actions')}</span>
-                </span>
-              </div>
+              <thead className="team-head">
+                <tr>
+                  <th scope="col">{t('settingsUi.members.person')}</th>
+                  <th scope="col">{t('settingsUi.members.space')}</th>
+                  <th scope="col">{t('admin.role')}</th>
+                  <th scope="col">{t('projectCreation.column')}</th>
+                  <th scope="col">
+                    <span className="ink-sr-only">{t('settingsUi.members.actions')}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
               {filtered.map((m) => {
                 const last = m.role === 'admin' && !m.deactivatedAt && admins <= 1;
                 const meta = [
@@ -237,14 +239,13 @@ export function Team() {
                   m.lastActiveAt ? relative(m.lastActiveAt, i18n.language) : t('admin.never'),
                 ].join(' · ');
                 return (
-                  <div
-                    role="row"
+                  <tr
                     key={m.id}
                     className={
                       m.deactivatedAt ? 'settings-row team-member is-inactive' : 'settings-row team-member'
                     }
                   >
-                    <div role="cell" className="team-col--who">
+                    <td className="team-col--who">
                       <Avatar name={m.name} image={m.image} size={32} />
                       <span className="settings-row__text">
                         <span className="settings-row__label">
@@ -268,11 +269,11 @@ export function Team() {
                           )}
                         </span>
                       </span>
-                    </div>
-                    <div role="cell" className="team-col--space">
+                    </td>
+                    <td className="team-col--space">
                       <MemberSpace member={m} warnPercent={limits?.warnPercent ?? 80} />
-                    </div>
-                    <div role="cell" className="team-col--role">
+                    </td>
+                    <td className="team-col--role">
                       <Select
                         variant="quiet"
                         className="team-role"
@@ -285,11 +286,10 @@ export function Team() {
                         <option value="admin">{t('admin.roles.admin')}</option>
                         <option value="member">{t('admin.roles.member')}</option>
                       </Select>
-                    </div>
-                    <div role="cell" className="team-col--create">
+                    </td>
+                    <td className="team-col--create">
                       {m.role === 'admin' ? (
                         <span className="settings-muted team-create">
-                          <span className="ink-sr-only">{t('projectCreation.column')}: </span>
                           {t('projectCreation.always')}
                         </span>
                       ) : (
@@ -310,8 +310,8 @@ export function Team() {
                           }
                         />
                       )}
-                    </div>
-                    <div role="cell" className="team-col--actions">
+                    </td>
+                    <td className="team-col--actions">
                       <MemberMenu
                         member={m}
                         disabled={busy}
@@ -322,11 +322,12 @@ export function Team() {
                           m.deactivatedAt ? void update(m.id, { active: true }) : setDeactivating(m)
                         }
                       />
-                    </div>
-                  </div>
+                    </td>
+                  </tr>
                 );
               })}
-            </div>
+              </tbody>
+            </table>
           )}
           {filtered?.length === 0 && <p className="settings-card__empty">{t('admin.noMembers')}</p>}
         </Card>
