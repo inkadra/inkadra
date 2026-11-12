@@ -1,5 +1,5 @@
 import type { StorageUsage } from '@inkadra/shared';
-import { Avatar, Icon, glyphColor } from '@inkadra/ui';
+import { Avatar, glyphColor, Icon } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
