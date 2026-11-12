@@ -15,15 +15,18 @@ function LinkedScenes({ scenes }: { scenes: Parameters<typeof SceneBadges>[0]['s
   return <SceneBadges scenes={scenes} onOpen={usePlanNav().openScene} />;
 }
 
-/** "Set plan · Kitchen, day 2": the header of a plan, on the board and in the editor. */
+/**
+ * "Set plan · Kitchen, day 2": the name of a plan in the editor, the view and the export; a setup
+ * adds its own, "Set plan · Kitchen, day 2 · Evening" (its title is its base's, decision 0117).
+ * The base's setup name stays on its tab.
+ */
 export function planTitle(
   t: TFunction,
   plan: Pick<PlanElement, 'title' | 'variant' | 'variantOf'>,
 ): string {
-  // A variant reads "Kitchen · Evening", as its tab does; the base's setup name stays on its tab.
-  if (plan.variantOf && plan.variant)
-    return `${plan.title || t('board.plan.name')} · ${plan.variant}`;
-  return plan.title ? `${t('board.plan.name')} · ${plan.title}` : t('board.plan.name');
+  return [t('board.plan.name'), plan.title, plan.variantOf ? plan.variant : '']
+    .filter(Boolean)
+    .join(' · ');
 }
 
 /**

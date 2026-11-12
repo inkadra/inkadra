@@ -2,6 +2,7 @@
 import type { Element, PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { expect, it } from 'vitest';
+import { planTitle } from './PlanCard.tsx';
 import { dayBySetup, groupBySetup, type ShotSetup, setupChanges, shotSetups } from './setups.ts';
 
 const icon = (id: string, kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
@@ -132,4 +133,14 @@ it('pairs each icon with the nearest of its kind, named ones first, on plans of 
   );
   const copy = big.map((i) => ({ ...i, id: `${i.id.slice(0, 12)}C` }));
   expect(setupChanges(big, copy)).toEqual([]);
+});
+
+it('names a setup as a set plan with its base title and its own name (decision 0117)', () => {
+  const t = ((key: string) => key) as unknown as TFunction;
+  expect(planTitle(t, { title: 'Diner' })).toBe('board.plan.name · Diner');
+  expect(planTitle(t, { title: 'Diner', variant: 'Night', variantOf: 'baseAAAAAAAAA' })).toBe(
+    'board.plan.name · Diner · Night',
+  );
+  // A base renamed "Master" keeps that name on its tab, not in its title.
+  expect(planTitle(t, { variant: 'Master' })).toBe('board.plan.name');
 });
