@@ -172,6 +172,17 @@ temperature slider's track and thumb (`KELVIN_TRACK`, `kelvinColour`, CSS gradie
 theme's tokens) and the Properties as React. A gel's preset is its own name in every language
 ("Plus green"), as it was.
 
+For the mobile app to draw a board seen from far as the web does, the far look moved into
+`packages/canvas-core` (`far-look.ts`): `farLook(el, ctx)` says how a card is drawn below
+`FAR_ZOOM` (`normal`, `picture`, `swatch`, `tint`, `block`, `surface` or `hidden`, the block's
+fill the theme token `FAR_BLOCK`), and `farPicture` what pictures a card. The rule is the web's,
+read from its stylesheet: only cards on the board change; a column or a scene keeps its
+surface when a child shows a picture, else it is a block, and its children show only their
+pictures; arrows are drawn as at any zoom. The web keeps drawing it in CSS
+(`canvas__world--far`); a web test renders every kind of card in the far world and fails when
+the stylesheet and `farLook` disagree. Which links play in their card (`videoEmbedUrl`) and
+whether an asset can be shown yet stay with the client and are passed in.
+
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
 touch many rules; do it when the board stylesheet is next reworked).
