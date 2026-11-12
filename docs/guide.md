@@ -80,6 +80,11 @@ its ⋯ menu prints the call sheet of every day, each frame read from its own st
 storyboard's ⋯ menu shows **Shooting days: N · Open Production** when the Production board plans
 some of its frames; its scene sheets and set plans read their days there.
 
+Its card shows the next shooting day (the first from today on, else the last): its number and
+date, place and call, its first five blocks with their time, dot and label, and how many other
+days there are. On **Crew** it shows the first four people with their role, to members of the
+project only. The storyboards' cards no longer count days and people once the project has one.
+
 ## Modules
 
 **Settings → Modules** turns off the parts of Inkadra you do not use, for you alone: Storyboard,
