@@ -1,18 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import {
-  castAppearances,
-  frameLabels,
-  linkedLocation,
-  linkedPlan,
-  listElements,
-  type PlanElement,
-  type Rect,
-  setupFrames,
-  storyboardOf,
-  variantFamily,
-  variantView,
-} from '@inkadra/canvas-core';
+import { castAppearances, frameLabels, listElements, type Rect, storyboardOf } from '@inkadra/canvas-core';
 import { aspectValue, type Element, getBoardAspect, hiddenFromGuests } from '@inkadra/doc-schema';
+import { planSheetInput, slugline as sceneSlugline } from '@inkadra/print';
 import type { Asset, AssetTrack, Board, CommentThread, ShotCatalogKey } from '@inkadra/shared';
 import { light } from '@inkadra/ui/tokens';
 import type { TFunction } from 'i18next';
@@ -28,8 +17,7 @@ import { getFrameStatus, isApproved } from '../film/film-status.ts';
 import { croppedRotatedSize } from '../image-crop.ts';
 import { kitList, powerLines } from '../plan/kit.ts';
 import { planCardWords } from '../plan/PlanCard.tsx';
-import { CHARACTER_COLOURS, roomSizeText } from '../plan/PlanDrawing.tsx';
-import { setupName } from '../plan/PlanKit.tsx';
+import { roomSizeText } from '../plan/PlanDrawing.tsx';
 import type { BoardStore } from '../store.ts';
 import { paperAccent, type Theme } from '../theme.ts';
 import {
@@ -305,14 +293,7 @@ export async function buildPages(
   const labels = frameLabels(groupsAll);
   const preset = (catalog: ShotCatalogKey, value: string | undefined) =>
     shotText(getClassifications(), catalog, value, t);
-  const slugline = (scene: Extract<Element, { type: 'scene' }>) =>
-    [
-      scene.setting && t(`film.scene.settings.${scene.setting}`),
-      scene.location?.toUpperCase(),
-      scene.time && `– ${t(`film.scene.times.${scene.time}`)}`,
-    ]
-      .filter(Boolean)
-      .join(' ');
+  const slugline = (scene: Extract<Element, { type: 'scene' }>) => sceneSlugline(scene, t);
   const pixels = thumbnailPixels(req, preview);
   // What set plans' links resolve against: the cards this audience may see (decision 0111).
   const cards = audienceCards(all, lookup, filter);
@@ -419,73 +400,16 @@ export async function buildPages(
   if (req.what === 'setplan' && req.setPlan) {
     // A sheet of its own per setup, with its own title block and foot (decision 0111).
     bare = true;
-    const sheet = req.setPlan;
-    // Everything from the cards this audience may see (decisions 0013, 0044, 0111): a plan, a
-    // base, a scene, a character, a frame or a location hidden from guests is not read for them.
-    const see = (id: string) => cards.get(id);
-    const plans = sheet.planIds.flatMap((id) => {
-      const el = see(id);
-      return el?.type === 'plan' ? [el] : [];
+    const sheet = planSheetInput({
+      elements: all,
+      filter,
+      planIds: req.setPlan.planIds,
+      area: req.setPlan.area,
+      include: req.setPlan.include,
+      t,
+      locale: env.language,
     });
-    const first = plans[0];
-    const baseOf = (p: PlanElement) => {
-      const base = p.variantOf ? see(p.variantOf) : undefined;
-      return base?.type === 'plan' ? base : undefined;
-    };
-    const owner = first ? (baseOf(first) ?? first) : undefined;
-    const sceneIds = first?.sceneIds ?? owner?.sceneIds ?? [];
-    const scene = sceneIds.map(see).find((el) => el?.type === 'scene');
-    const location = owner ? linkedLocation(owner, cards) : null;
-    // The shooting day of the scene, when the schedule has one of its frames (team only).
-    let day = '';
-    if (scene?.type === 'scene' && team && sheet.include.dateScene) {
-      const frames = new Set(
-        groupsAll.find((g) => g.scene?.id === scene.id)?.frames.map((f) => f.id),
-      );
-      try {
-        const { days } = await planningOnce();
-        const at = days.findIndex((d) => d.blocks.some((b) => b.shotId && frames.has(b.shotId)));
-        if (at >= 0) day = t('board.plan.sheet.day', { n: at + 1 });
-      } catch (err) {
-        if (signal?.aborted) throw err;
-      }
-    }
-    content = planSheetPages(
-      {
-        setups: plans.map((p) => {
-          const base = baseOf(p);
-          return {
-            plan: linkedPlan(base ? variantView(p, base) : p, cards, {
-              palette: CHARACTER_COLOURS,
-            }),
-            name: `${t('board.plan.sheet.setup')} ${setupName(p, variantFamily(cards.values(), p), t)}`,
-            // The storyboard's number of each shot, else the frame's own label; none, left out.
-            shots: setupFrames(p, cards).flatMap((id) => {
-              const frame = cards.get(id);
-              const label = labels.get(id) || (frame?.type === 'frame' ? frame.label : '');
-              return label ? [label] : [];
-            }),
-          };
-        }),
-        scene:
-          scene?.type === 'scene'
-            ? [t('board.plan.links.scene', { number: scene.number }), slugline(scene)]
-                .filter(Boolean)
-                .join(' · ')
-            : '',
-        place: [
-          location?.name ?? (scene?.type === 'scene' ? scene.location : '') ?? '',
-          sheet.include.dateScene ? day : '',
-        ]
-          .filter(Boolean)
-          .join(' · '),
-        area: sheet.area,
-        include: sheet.include,
-        t,
-        locale: env.language,
-      },
-      ctx,
-    );
+    content = planSheetPages(sheet.input, { ...ctx, cards: sheet.cards });
     summary = t('board.plan.name');
   } else if (kind === 'board') {
     const scope: ExportScope =

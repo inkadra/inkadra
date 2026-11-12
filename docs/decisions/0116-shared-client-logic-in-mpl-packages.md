@@ -216,6 +216,19 @@ preview (`previewCrop`) stays in the web, whose `plan-sheet.ts` re-exports the m
 sheet's goldens and pins did not change. The PDF writer and the fonts follow, each in its own
 change.
 
+Then what the sheet prints and for whom (`plan-sheet-input.ts`, from the setplan branch of the
+web's `buildPages` and `export/board-model.ts`): the audience filter of exports (`Audience`,
+`ExportFilter`, `exportable`, `audienceCards`: a card hidden from guests, or inside one, is left
+out, and a client's card keeps only its guest fields, failing closed when it no longer parses),
+`slugline`, and `planSheetInput`, which builds the `PlanSheetInput` and the cards its drawing
+resolves against from all the board's elements, an `ExportFilter`, the setups, the area, the
+boxes, the words and the locale. Shot labels are counted on the whole board before anything is
+left out, as the server's guest view does; `planSheetInputOf` takes cards and labels already
+made, for a caller that has them (the server's guest cards). The sheet still prints no "Day N":
+its environment has no shooting schedule (a later change). The web's `board-model.ts` re-exports
+the filter; a web test proves a guest's input from `audienceCards` equals one from the server's
+guest cards, without the hidden character's name.
+
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
 touch many rules; do it when the board stylesheet is next reworked).
