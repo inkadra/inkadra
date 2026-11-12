@@ -3256,7 +3256,7 @@
     "noShoot": "Nessuna ripresa",
     "openDay": "apri il giorno",
     "openStoryboard": "Apri nello storyboard",
-    "phoneHint": "Tieni premuto un blocco per spostarlo; il bordo in basso cambia la durata.",
+    "phoneHint": "Tocca un blocco per aprirlo: lì cambi ordine, durata e giorno.",
     "queueShort": "Coda",
     "quickDuration": "Durate rapide",
     "remove": "Rimuovi",
@@ -3298,7 +3298,6 @@
     "invalidDuration": "Inserisci una durata da 1 a 1440 minuti (es. 1h 30).",
     "staleBy": "{{name}} ha cambiato {{day}} mentre lo modificavi",
     "freeDrop": "Trascina qui un blocco, o disegnane uno, per creare un giorno di riprese",
-    "freeDropWeek": "Trascina qui un blocco o un giorno per occuparlo",
     "freeHeadHint": "Trascina un giorno qui per spostarlo",
     "moreAbove_one": "{{count}} blocco",
     "moreAbove_other": "{{count}} blocchi",
@@ -3329,7 +3328,20 @@
     "wholeScene": "Pianifica la scena intera",
     "wholeSceneHint_one": "{{count}} inquadratura, in un solo blocco",
     "wholeSceneHint_other": "{{count}} inquadrature, in un solo blocco",
-    "sceneNoFrames": "Ancora senza inquadrature: pianificala in un blocco"
+    "sceneNoFrames": "Ancora senza inquadrature: pianificala in un blocco",
+    "conflictNote_one": "{{names}} è in due blocchi alle {{time}}: «{{a}}» e «{{b}}».",
+    "conflictNote_other": "{{names}} sono in due blocchi alle {{time}}: «{{a}}» e «{{b}}».",
+    "freeShort": "libero",
+    "earlier": "Sposta prima",
+    "later": "Sposta dopo",
+    "hideSide": "Nascondi mese e coda",
+    "showSide": "Mostra mese e coda",
+    "month": "Mese",
+    "queueCount_one": "Da pianificare: {{count}}",
+    "queueCount_other": "Da pianificare: {{count}}",
+    "densityLabel": "Densità",
+    "densityCompact": "Compatto",
+    "densityComfy": "Comodo"
   },
   "moodboard": {
     "count_one": "{{count}} riferimento",
@@ -5290,11 +5302,11 @@
         "steps": {
           "0": {
             "title": "Il calendario delle riprese",
-            "text": "Sulla board Produzione, un calendario per tutto il progetto: la coda raccoglie le inquadrature e le scene di ogni storyboard. Giorno o settimana, come un calendario: i blocchi si accodano da soli. Trascina un’inquadratura all’orario giusto, o fai clic per metterla in fondo. Con le piante del set, «Raggruppa per: Setup» mette le inquadrature di ogni scena e giornata sotto il loro setup."
+            "text": "Sulla board Produzione, un calendario per tutto il progetto: la coda raccoglie le inquadrature e le scene di ogni storyboard. Giorno o settimana, come un calendario: i blocchi si accodano da soli. Trascina un’inquadratura all’orario giusto, o fai clic per metterla in fondo. Con le piante del set, «Raggruppa per: Setup» mette le inquadrature di ogni scena e giornata sotto il loro setup. La freccia accanto al mese richiude mese e coda; «Compatto» e «Comodo» cambiano l’altezza delle ore."
           },
           "1": {
-            "title": "Storyboard e pallini",
-            "text": "Il filtro Storyboard mostra le inquadrature di uno solo; il pallino colorato dice da quale storyboard arriva ogni blocco. «Pianifica la scena intera» mette una scena in un blocco, anche prima di disegnarla. Un pallino grigio: storyboard non disponibile, resta l’etichetta."
+            "title": "Storyboard e barrette",
+            "text": "Il filtro Storyboard mostra le inquadrature di uno solo; la barretta colorata a sinistra di ogni blocco dice da quale storyboard arriva. «Pianifica la scena intera» mette una scena in un blocco, anche prima di disegnarla. Una barretta grigia: storyboard non disponibile, resta l’etichetta."
           },
           "2": {
             "title": "Sposta e allunga",

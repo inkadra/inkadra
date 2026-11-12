@@ -11,8 +11,47 @@ import { clockMinutes, scheduleTimes } from './schedule.ts';
 /** What a shot from the queue carries while it is dragged. */
 export const SHOT_DRAG_TYPE = 'application/x-inkadra-schedule-shot';
 
-/** Grid scale: one pixel per minute. */
+/** Grid scale: one pixel per minute ("Compatto", the default). */
 export const MINUTE_PX = 1;
+/** The grid's pixels per minute at each density; "Comodo" is the mockup's 1.6×. */
+export const DENSITY = { compact: MINUTE_PX, comfy: 1.6 } as const;
+export type Density = keyof typeof DENSITY;
+
+/** Where a block sits in the hour grid at `scale` px per minute: on its minute, inside its slot. */
+export function blockBox(start: number, end: number, scale: number) {
+  return { top: start * scale, height: Math.max(1, (end - start) * scale) };
+}
+
+/**
+ * A choice remembered in this browser only (the column, the density). Storage may be missing or
+ * blocked (private windows, previews): then the choice lasts for the page.
+ */
+export function readChoice(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+export function saveChoice(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Kept for the page only.
+  }
+}
+export const SIDE_KEY = 'inkadra.schedule.side';
+export const DENSITY_KEY = 'inkadra.schedule.density';
+
+/**
+ * Whether the month and queue column is open: the person's own choice wins; otherwise it opens
+ * when something waits in the queue and folds to its rail when nothing does.
+ */
+export function sideOpen(stored: string | null, waiting: number): boolean {
+  if (stored === 'open') return true;
+  if (stored === 'closed') return false;
+  return waiting > 0;
+}
 /** Drags and resizes snap to five minutes; Shift gives single minutes. */
 export const SNAP = 5;
 
@@ -181,13 +220,27 @@ export function moveBlockToDay(
 
 /** One place up or down in the order (Alt+arrows); the block queues up again. */
 export function shiftBlock(day: ShootingDayInput, id: string, offset: -1 | 1): ShootingDayInput {
-  const index = day.blocks.findIndex((block) => block.id === id);
-  const target = index + offset;
-  if (index === -1 || target < 0 || target >= day.blocks.length) return day;
+  // Next to its neighbour in time, the order on screen: a block with a fixed time may be stored
+  // anywhere in the list.
+  const order = timeOrder(day);
+  const neighbour = order[order.indexOf(id) + offset];
+  if (!order.includes(id) || !neighbour) return day;
   const blocks = [...day.blocks];
-  const [moved] = blocks.splice(index, 1);
+  const [moved] = blocks.splice(
+    blocks.findIndex((block) => block.id === id),
+    1,
+  );
+  const target = blocks.findIndex((block) => block.id === neighbour) + (offset === 1 ? 1 : 0);
   if (moved) blocks.splice(target, 0, { ...moved, start: null });
   return { ...day, blocks };
+}
+
+/** The blocks' ids as the day shows them, by start time. */
+export function timeOrder(day: ShootingDayInput): string[] {
+  return scheduleTimes(day)
+    .slice()
+    .sort((a, b) => a.start - b.start)
+    .map((slot) => slot.block.id);
 }
 
 /** A new length, within the schema's 1 to 1440 minutes. */

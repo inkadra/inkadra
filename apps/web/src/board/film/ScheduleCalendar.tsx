@@ -18,11 +18,11 @@ import { ContextMenu } from '../chrome.tsx';
 import { insideDialog, isMac, isTyping } from '../shortcuts.ts';
 import {
   addDays,
+  blockBox,
   blockDetail,
   drawnRange,
   gapsBeforeFixed,
   layoutLanes,
-  MINUTE_PX,
   minutesLabel,
   moveBlock,
   moveBlockToDay,
@@ -36,7 +36,7 @@ import {
 import { locationsOfDay, plannedWrap } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { clockLabel, clockMinutes, scheduleTimes } from './schedule.ts';
-import { type BlockLook, SourceDot } from './schedule-sources.tsx';
+import type { BlockLook } from './schedule-sources.tsx';
 
 export interface CalendarDay {
   day: ShootingDay;
@@ -128,6 +128,10 @@ const MENU_HEIGHT = 200;
 export function ScheduleCalendar({
   view,
   phone,
+  scale,
+  hotDay,
+  notesOf,
+  onHotDay,
   columns,
   days,
   today,
@@ -154,6 +158,13 @@ export function ScheduleCalendar({
 }: {
   view: 'week' | 'day';
   phone: boolean;
+  /** Pixels per minute of the hour grid: the density the person chose. */
+  scale: number;
+  /** The day whose conflicts are shown, after a press on its "N conflicts". */
+  hotDay: string | null;
+  /** One line per double booking of a day, for the note under its "N conflicts". */
+  notesOf: (entry: CalendarDay) => string[];
+  onHotDay: (dayId: string | null) => void;
   columns: CalendarColumn[];
   /** Every shooting day, for moving a block to the next one with the keys. */
   days: CalendarDay[];
@@ -216,7 +227,39 @@ export function ScheduleCalendar({
   const dayDragRef = useRef<DayDrag | null>(null);
 
   const entries = columns.flatMap((c) => (c.entry ? [c.entry] : []));
+  /** A free day of the week is a narrow column (option 1); the Day view keeps it whole. */
+  const narrow = (column: CalendarColumn) => view === 'week' && !column.entry;
+  const template = columns
+    .map((column) => (narrow(column) ? 'var(--schedule-narrow)' : 'var(--schedule-column)'))
+    .join(' ');
+  /** Scrolls the first double-booked block of a day into view, with room for its note above. */
+  const revealConflicts = (entry: CalendarDay) => {
+    const first = scheduleTimes(entry.draft).find((slot) => conflicts.has(slot.block.id));
+    const el = grid.current;
+    if (!first || !el) return;
+    const y = first.start * scale;
+    if (y - 90 < el.scrollTop || y + 40 > el.scrollTop + el.clientHeight)
+      el.scrollTop = Math.max(0, y - 120);
+  };
   const typeName = (type: ScheduleBlock['type']) => t(`schedule.types.${type}`);
+  /** A block's accessible name, also its tooltip: title, storyboard, whole range, type, flags. */
+  const blockLabel = (
+    block: ScheduleBlock,
+    start: number,
+    end: number,
+    conflict: boolean,
+    seen: BlockLook | null,
+  ) =>
+    [
+      blockTitle(block),
+      seen?.dot?.name ?? '',
+      `${clockLabel(start)} – ${clockLabel(end)}`,
+      typeName(block.type),
+      block.start !== null ? t('schedule.fixed') : '',
+      conflict ? t('schedule.castFlag') : '',
+    ]
+      .filter(Boolean)
+      .join(', ');
   const dateLabel = (date: string, options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(i18n.language, { ...options, timeZone: 'UTC' }).format(
       Date.parse(`${date}T00:00:00Z`),
@@ -255,13 +298,14 @@ export function ScheduleCalendar({
     ? Math.min(...entries.map((e) => clockMinutes(e.draft.callTime)))
     : 8 * 60;
   // Open on the earliest call of what is on screen, once per week or day shown.
-  const shownKey = columns.map((c) => c.date).join();
+  // A new density keeps the same morning in view.
+  const shownKey = `${columns.map((c) => c.date).join()}|${scale}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when the dates change.
   useLayoutEffect(() => {
     const el = grid.current;
     if (!el) return;
     // Half a label above the first line: an hour's label is centred on its line.
-    el.scrollTop = Math.max(0, (firstCall - 30) * MINUTE_PX - 10);
+    el.scrollTop = Math.max(0, (firstCall - 30) * scale - 10);
     setViewport({ top: el.scrollTop, height: el.clientHeight });
   }, [shownKey]);
 
@@ -304,7 +348,7 @@ export function ScheduleCalendar({
     if (!column) return;
     const touch = event.pointerType === 'touch';
     if (!touch) event.preventDefault();
-    const pointerMinute = (event.clientY - column.top) / MINUTE_PX;
+    const pointerMinute = (event.clientY - column.top) / scale;
     const next: Drag = {
       kind,
       pointerId: event.pointerId,
@@ -358,7 +402,7 @@ export function ScheduleCalendar({
       }
       autoScroll(event.clientY);
       const top = column.getBoundingClientRect().top;
-      updateDraw({ ...drawing, active: true, to: (event.clientY - top) / MINUTE_PX });
+      updateDraw({ ...drawing, active: true, to: (event.clientY - top) / scale });
       return;
     }
     const moving = dayDragRef.current;
@@ -400,7 +444,7 @@ export function ScheduleCalendar({
     autoScroll(event.clientY);
     if (current.kind === 'resize') {
       const step = event.shiftKey ? 1 : SNAP;
-      const duration = Math.min(1440, Math.max(1, snap(current.base + dy / MINUTE_PX, step)));
+      const duration = Math.min(1440, Math.max(1, snap(current.base + dy / scale, step)));
       update({ ...current, active: true, duration });
       return;
     }
@@ -408,7 +452,7 @@ export function ScheduleCalendar({
       id: current.dayId,
       top: columnRefs.current.get(current.dayId)?.getBoundingClientRect().top ?? 0,
     };
-    const minute = snap((event.clientY - column.top) / MINUTE_PX - current.grab);
+    const minute = snap((event.clientY - column.top) / scale - current.grab);
     update({
       ...current,
       active: true,
@@ -438,8 +482,8 @@ export function ScheduleCalendar({
         end,
         {
           left: column.left + 12,
-          top: column.top + start * MINUTE_PX,
-          bottom: column.top + end * MINUTE_PX,
+          top: column.top + start * scale,
+          bottom: column.top + end * scale,
         },
         null,
       );
@@ -565,7 +609,7 @@ export function ScheduleCalendar({
     if (event.pointerType === 'touch') return;
     if ((event.target as Element).closest('.schedule__block, button')) return;
     const top = event.currentTarget.getBoundingClientRect().top;
-    const minute = (event.clientY - top) / MINUTE_PX;
+    const minute = (event.clientY - top) / scale;
     event.preventDefault();
     setCreating(null);
     updateDraw({
@@ -586,6 +630,8 @@ export function ScheduleCalendar({
     rect: { left: number; top: number; bottom: number },
     origin: HTMLElement | null,
   ) => {
+    // The phone's list adds blocks with its "+ Block" button.
+    if (phone) return;
     const below = rect.bottom + 6;
     const top =
       below + MENU_HEIGHT > window.innerHeight - 8
@@ -625,7 +671,7 @@ export function ScheduleCalendar({
   const reveal = (minute: number) => {
     const el = grid.current;
     if (!el) return;
-    const y = minute * MINUTE_PX;
+    const y = minute * scale;
     if (y < el.scrollTop || y > el.scrollTop + el.clientHeight - 60)
       el.scrollTop = Math.max(0, y - 60);
   };
@@ -763,7 +809,7 @@ export function ScheduleCalendar({
 
   const focusBlock = (id: string) =>
     requestAnimationFrame(() =>
-      grid.current?.querySelector<HTMLElement>(`[data-block="${CSS.escape(id)}"]`)?.focus(),
+      root.current?.querySelector<HTMLElement>(`[data-block="${CSS.escape(id)}"]`)?.focus(),
     );
   const onKey = (event: KeyboardEvent, entry: CalendarDay, block: ScheduleBlock) => {
     const mod = isMac() ? event.metaKey : event.ctrlKey;
@@ -838,13 +884,13 @@ export function ScheduleCalendar({
 
   const dropMinute = (event: DragEvent, entry: CalendarDay) => {
     const top = columnRefs.current.get(entry.day.id)?.getBoundingClientRect().top ?? 0;
-    return snap((event.clientY - top) / MINUTE_PX - 15);
+    return snap((event.clientY - top) / scale - 15);
   };
 
   const hours = Array.from({ length: rangeEnd / 60 + 1 }, (_, h) => h * 60);
   const nowMinute = now.getHours() * 60 + now.getMinutes();
   const yesterday = addDays(today, -1);
-  const bottom = (viewport.top + viewport.height) / MINUTE_PX;
+  const bottom = (viewport.top + viewport.height) / scale;
   const annotations = (() => {
     const bounds = grid.current?.getBoundingClientRect();
     const moving = drag?.active ? drag : null;
@@ -886,9 +932,9 @@ export function ScheduleCalendar({
           primary,
           rect: {
             left: column.left + (column.width * lane.lane) / lane.lanes + 4,
-            top: column.top + slot.start,
+            top: column.top + slot.start * scale,
             width: column.width / lane.lanes - 8,
-            height: Math.max(MIN_HEIGHT, slot.end - slot.start),
+            height: Math.max(MIN_HEIGHT, (slot.end - slot.start) * scale),
           },
         };
       });
@@ -910,9 +956,9 @@ export function ScheduleCalendar({
           text: `${dateLabel(moving.target, { weekday: 'short', day: 'numeric' })} · ${clockLabel(start)} – ${clockLabel(start + block.duration)}`,
           rect: {
             left: column.left + 4,
-            top: column.top + start,
+            top: column.top + start * scale,
             width: column.width - 8,
-            height: Math.max(40, block.duration),
+            height: Math.max(40, block.duration * scale),
           },
         });
       }
@@ -929,9 +975,9 @@ export function ScheduleCalendar({
           text: `${clockLabel(start)} – ${clockLabel(end)}`,
           rect: {
             left: column.left + 4,
-            top: column.top + start * MINUTE_PX,
+            top: column.top + start * scale,
             width: column.width - 8,
-            height: Math.max(MIN_HEIGHT, (end - start) * MINUTE_PX),
+            height: Math.max(MIN_HEIGHT, (end - start) * scale),
           },
         });
     }
@@ -958,6 +1004,89 @@ export function ScheduleCalendar({
       });
   })();
 
+  // On a phone the day is a list in time order (mockup option 8): every block readable, each
+  // opens its sheet, which moves it earlier, later or to another day.
+  if (phone) {
+    const column = columns[0];
+    const entry = column?.entry;
+    const draft = entry ? shown(entry) : null;
+    const wrap = draft ? plannedWrap(draft) : null;
+    const slots = draft ? scheduleTimes(draft).sort((a, b) => a.start - b.start) : [];
+    return (
+      <section
+        ref={root}
+        aria-label={t('schedule.calendarLabel')}
+        className="schedule__calendar schedule__list"
+        data-scroll
+        data-tour="schedule-days"
+      >
+        {entry && draft ? (
+          <>
+            {hotDay === entry.day.id && (
+              <ConflictNote dayId={entry.day.id} lines={notesOf(entry)} />
+            )}
+            <p className="schedule__list-mark">
+              {t('schedule.callAt', { time: formatClock(draft.callTime) })}
+            </p>
+            <ol className="schedule__rows">
+              {slots.map(({ block, start, end }) => {
+                const seen = look(block);
+                const conflict = conflicts.has(block.id);
+                const label = blockLabel(block, start, end, conflict, seen);
+                return (
+                  <li key={block.id}>
+                    <button
+                      type="button"
+                      data-block={block.id}
+                      className={`schedule__row schedule__block--${block.type}${seen?.dot ? ' has-source' : ''}${conflict ? ' has-conflict' : ''}${conflict && hotDay === entry.day.id ? ' is-hot' : ''}`}
+                      style={
+                        seen?.dot ? ({ '--source': seen.dot.color } as CSSProperties) : undefined
+                      }
+                      aria-pressed={selectedBlock === block.id}
+                      aria-label={label}
+                      aria-keyshortcuts="Enter Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Shift+ArrowUp Shift+ArrowDown Delete"
+                      onClick={(event) =>
+                        onOpenBlock(
+                          entry.day.id,
+                          block.id,
+                          event.currentTarget.getBoundingClientRect(),
+                        )
+                      }
+                      onKeyDown={(event) => onKey(event, entry, block)}
+                    >
+                      <span className="schedule__block-time">
+                        {clockLabel(start)}
+                        {block.start !== null && <Icon name="pin" size={11} />}
+                      </span>
+                      <span className="schedule__row-title">{blockTitle(block)}</span>
+                      <span className="schedule__block-meta">
+                        {[block.cast.join(', '), minutesLabel(block.duration)]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                      {conflict && (
+                        <span className="schedule__row-warn" aria-hidden="true">
+                          <Icon name="warning" size={14} />
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+            {wrap !== null && (
+              <p className="schedule__list-mark">
+                {t('schedule.wrapAt', { time: clockLabel(wrap) })}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="schedule__list-free">{t('schedule.noShoot')}</p>
+        )}
+      </section>
+    );
+  }
+
   return (
     <section
       ref={root}
@@ -974,7 +1103,12 @@ export function ScheduleCalendar({
         )
       }
       data-tour="schedule-days"
-      style={{ '--schedule-columns': columns.length } as CSSProperties}
+      style={
+        {
+          '--schedule-template': template,
+          '--schedule-hour': `${60 * scale}px`,
+        } as CSSProperties
+      }
     >
       <div className="schedule__heads">
         <span className="schedule__gutter" aria-hidden="true" />
@@ -988,11 +1122,17 @@ export function ScheduleCalendar({
               today={today}
               view={view}
               phone={phone}
+              narrow={narrow(column)}
               readOnly={readOnly}
               selected={!!entry && entry.day.id === selectedDay}
               moving={!!movingEntry && movingEntry.day.id === entry?.day.id}
               dropTarget={dayTarget === date}
               conflicts={entry ? entry.draft.blocks.filter((b) => conflicts.has(b.id)).length : 0}
+              hot={!!entry && hotDay === entry.day.id}
+              onHot={(open) => {
+                onHotDay(open && entry ? entry.day.id : null);
+                if (open && entry) revealConflicts(entry);
+              }}
               sun={entry ? sunOf(entry.draft) : null}
               onOpen={() => {
                 if (!suppressClick.current) onOpenDay(entry, date);
@@ -1014,10 +1154,10 @@ export function ScheduleCalendar({
           })
         }
       >
-        <div className="schedule__canvas" style={{ height: rangeEnd * MINUTE_PX }}>
+        <div className="schedule__canvas" style={{ height: rangeEnd * scale }}>
           <div className="schedule__gutter" aria-hidden="true">
             {hours.map((minute) => (
-              <span key={minute} className="schedule__hour" style={{ top: minute * MINUTE_PX }}>
+              <span key={minute} className="schedule__hour" style={{ top: minute * scale }}>
                 {minute > 0 && minute < rangeEnd
                   ? `${clockLabel(minute % 1440)}${minute === 1440 ? ' (+1)' : ''}`
                   : ''}
@@ -1034,8 +1174,8 @@ export function ScheduleCalendar({
                   <span
                     className="schedule__placeholder is-new"
                     style={{
-                      top: fresh.start * MINUTE_PX,
-                      height: (fresh.end - fresh.start) * MINUTE_PX,
+                      top: fresh.start * scale,
+                      height: (fresh.end - fresh.start) * scale,
                     }}
                   />
                 )}
@@ -1044,8 +1184,8 @@ export function ScheduleCalendar({
                     key={`ghost-${slot.block.id}`}
                     className="schedule__placeholder"
                     style={{
-                      top: slot.start * MINUTE_PX,
-                      height: Math.max(MIN_HEIGHT, (slot.end - slot.start) * MINUTE_PX),
+                      top: slot.start * scale,
+                      height: Math.max(MIN_HEIGHT, (slot.end - slot.start) * scale),
                     }}
                   />
                 ))}
@@ -1056,7 +1196,7 @@ export function ScheduleCalendar({
                 <section
                   key={date}
                   aria-label={t('schedule.day', { date })}
-                  className={`schedule__column is-free${dayTarget === date ? ' is-drop' : ''}`}
+                  className={`schedule__column is-free${narrow(column) ? ' is-narrow' : ''}${dayTarget === date ? ' is-drop' : ''}`}
                   data-day-drop={date}
                   onPointerDown={(event) => beginDraw(event, column)}
                   ref={(el) => {
@@ -1073,7 +1213,7 @@ export function ScheduleCalendar({
                     const top = event.currentTarget.getBoundingClientRect().top;
                     onDropFree(
                       date,
-                      snap((event.clientY - top) / MINUTE_PX),
+                      snap((event.clientY - top) / scale),
                       event.altKey,
                       null,
                       null,
@@ -1081,14 +1221,16 @@ export function ScheduleCalendar({
                     );
                   }}
                 >
-                  <p className="schedule__free" style={{ top: (firstCall + 240) * MINUTE_PX }}>
-                    <b>{t('schedule.noShoot')}</b>
-                    {!readOnly && (
-                      <span>
-                        {t(view === 'day' ? 'schedule.freeDrop' : 'schedule.freeDropWeek')}
-                      </span>
-                    )}
-                  </p>
+                  {narrow(column) ? (
+                    <span className="schedule__vertical" aria-hidden="true">
+                      {t('schedule.freeShort')}
+                    </span>
+                  ) : (
+                    <p className="schedule__free" style={{ top: (firstCall + 240) * scale }}>
+                      <b>{t('schedule.noShoot')}</b>
+                      {!readOnly && <span>{t('schedule.freeDrop')}</span>}
+                    </p>
+                  )}
                   {drag?.active &&
                     drag.kind === 'move' &&
                     drag.target === date &&
@@ -1101,8 +1243,8 @@ export function ScheduleCalendar({
                         <div
                           className={`schedule__block schedule__block--${block.type} is-dragging`}
                           style={{
-                            top: start,
-                            height: Math.max(40, block.duration),
+                            top: start * scale,
+                            height: Math.max(40, block.duration * scale),
                             left: 4,
                             right: 6,
                           }}
@@ -1119,7 +1261,7 @@ export function ScheduleCalendar({
                       );
                     })()}
                   {extras}
-                  {date === today && <NowLine minute={nowMinute} />}
+                  {date === today && <NowLine minute={nowMinute} scale={scale} />}
                 </section>
               );
             const draft = shown(entry);
@@ -1136,8 +1278,8 @@ export function ScheduleCalendar({
               date === today || date === yesterday
                 ? (nowIn(entry) ?? (date === today ? nowMinute : null))
                 : null;
-            const above = slots.filter((s) => s.end <= viewport.top / MINUTE_PX);
-            const below = slots.filter((s) => s.start * MINUTE_PX >= bottom * MINUTE_PX - 4);
+            const above = slots.filter((s) => s.end <= viewport.top / scale);
+            const below = slots.filter((s) => s.start * scale >= bottom * scale - 4);
             const isTarget = drag?.active && drag.kind === 'move' && drag.target === entry.day.id;
             const before = drag?.active
               ? new Map(scheduleTimes(entry.draft).map((s) => [s.block.id, s.start]))
@@ -1174,33 +1316,41 @@ export function ScheduleCalendar({
               >
                 <span
                   className="schedule__off"
-                  style={{ top: 0, height: call * MINUTE_PX }}
+                  style={{ top: 0, height: call * scale }}
                   aria-hidden="true"
                 />
                 {wrap !== null && (
                   <span
                     className="schedule__off"
-                    style={{ top: wrap * MINUTE_PX, height: (rangeEnd - wrap) * MINUTE_PX }}
+                    style={{ top: wrap * scale, height: (rangeEnd - wrap) * scale }}
                     aria-hidden="true"
                   />
                 )}
-                <span className="schedule__mark" style={{ top: call * MINUTE_PX }}>
+                <span className="schedule__mark" style={{ top: call * scale }}>
                   <span>{t('schedule.callAt', { time: formatClock(draft.callTime) })}</span>
                 </span>
                 {wrap !== null && (
-                  <span className="schedule__mark is-wrap" style={{ top: wrap * MINUTE_PX }}>
+                  <span className="schedule__mark is-wrap" style={{ top: wrap * scale }}>
                     <span>{t('schedule.wrapAt', { time: clockLabel(wrap) })}</span>
                   </span>
                 )}
                 {sun?.sunrise != null && (
-                  <span className="schedule__sunline" style={{ top: sun.sunrise * MINUTE_PX }}>
+                  <span
+                    className="schedule__sunline"
+                    style={{ top: sun.sunrise * scale }}
+                    data-ink-tooltip={t('schedule.sunrise', { time: clockLabel(sun.sunrise) })}
+                  >
                     {view === 'day' && (
                       <span>{t('schedule.sunrise', { time: clockLabel(sun.sunrise) })}</span>
                     )}
                   </span>
                 )}
                 {sun?.sunset != null && (
-                  <span className="schedule__sunline" style={{ top: sun.sunset * MINUTE_PX }}>
+                  <span
+                    className="schedule__sunline"
+                    style={{ top: sun.sunset * scale }}
+                    data-ink-tooltip={t('schedule.sunset', { time: clockLabel(sun.sunset) })}
+                  >
                     {view === 'day' && (
                       <span>{t('schedule.sunset', { time: clockLabel(sun.sunset) })}</span>
                     )}
@@ -1211,8 +1361,8 @@ export function ScheduleCalendar({
                     key={`gap-${gap.before}`}
                     className="schedule__gap"
                     style={{
-                      top: gap.start * MINUTE_PX,
-                      height: (gap.end - gap.start) * MINUTE_PX,
+                      top: gap.start * scale,
+                      height: (gap.end - gap.start) * scale,
                     }}
                   >
                     {gap.end - gap.start >= 20 && (
@@ -1223,7 +1373,7 @@ export function ScheduleCalendar({
                 {dropAt?.day === entry.day.id && (
                   <span
                     className="schedule__placeholder"
-                    style={{ top: dropAt.minute * MINUTE_PX, height: 30 * MINUTE_PX }}
+                    style={{ top: dropAt.minute * scale, height: 30 * scale }}
                   />
                 )}
                 {slots.map(({ block, start, end }) => {
@@ -1231,7 +1381,7 @@ export function ScheduleCalendar({
                     drag?.active && drag.blockId === block.id
                       ? { lane: 0, lanes: 1 }
                       : (lanes.get(block.id) ?? { lane: 0, lanes: 1 });
-                  const height = Math.max(MIN_HEIGHT, (end - start) * MINUTE_PX);
+                  const { top, height } = blockBox(start, end, scale);
                   const dragging = drag?.active && drag.blockId === block.id;
                   const seen = look(block);
                   const frame = seen?.frame;
@@ -1241,12 +1391,30 @@ export function ScheduleCalendar({
                   const detail = blockDetail(view, height, phone, lane.lanes);
                   const conflict = conflicts.has(block.id);
                   const delta = before && !dragging ? start - (before.get(block.id) ?? start) : 0;
+                  const label = blockLabel(block, start, end, conflict, seen);
+                  const castAndLength = [block.cast.join(', '), minutesLabel(block.duration)]
+                    .filter(Boolean)
+                    .join(' · ');
+                  // The week as in its mockup (option 3): start and title on one line, then
+                  // cast and duration; side by side, the title first. The card is 3 px shorter
+                  // than its slot; from 56 px its title may take two lines.
+                  const week = view === 'week';
+                  const wrapTitle = week
+                    ? tall && (lane.lanes > 1 || height - 3 >= 56)
+                    : detail.wrap;
+                  const startTime = (
+                    <span className="schedule__block-time">
+                      {week || !tall || !detail.range ? clockLabel(start) : time}
+                      {block.start !== null && <Icon name="pin" size={11} />}
+                    </span>
+                  );
+                  const title = <span className="schedule__block-title">{name}</span>;
                   return (
                     <div
                       key={block.id}
-                      className={`schedule__block schedule__block--${block.type}${conflict ? ' has-conflict' : ''}${selectedBlock === block.id ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${tall ? '' : ' is-short'}${detail.wrap ? ' is-wrap' : ''}`}
+                      className={`schedule__block schedule__block--${block.type}${conflict ? ' has-conflict' : ''}${conflict && hotDay === entry.day.id ? ' is-hot' : ''}${selectedBlock === block.id ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}${tall ? '' : ' is-short'}${wrapTitle ? ' is-wrap' : ''}`}
                       style={{
-                        top: start * MINUTE_PX,
+                        top,
                         height,
                         // 4 px from the left edge, 6 px from the right one, 2 px between lanes.
                         left: lane.lane ? `calc(${(lane.lane / lane.lanes) * 100}% + 1px)` : 4,
@@ -1259,18 +1427,15 @@ export function ScheduleCalendar({
                       <button
                         type="button"
                         data-block={block.id}
-                        className="schedule__block-select"
+                        className={`schedule__block-select${seen?.dot ? ' has-source' : ''}`}
+                        // The storyboard's bar on the left edge (decision 0123); its name is in
+                        // the label, which the tooltip shows whole.
+                        style={
+                          seen?.dot ? ({ '--source': seen.dot.color } as CSSProperties) : undefined
+                        }
                         aria-pressed={selectedBlock === block.id}
-                        aria-label={[
-                          name,
-                          seen?.dot?.name ?? '',
-                          time,
-                          typeName(block.type),
-                          block.start !== null ? t('schedule.fixed') : '',
-                          conflict ? t('schedule.castFlag') : '',
-                        ]
-                          .filter(Boolean)
-                          .join(', ')}
+                        aria-label={label}
+                        data-ink-tooltip={label}
                         aria-keyshortcuts="Enter Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Shift+ArrowUp Shift+ArrowDown Delete N"
                         onPointerDown={(event) => begin(event, 'move', entry, block, start)}
                         onContextMenu={(event) => {
@@ -1299,27 +1464,46 @@ export function ScheduleCalendar({
                             />
                           </span>
                         )}
-                        <span className="schedule__block-text">
-                          <span className="schedule__block-time">
-                            {tall && detail.range ? time : clockLabel(start)}
-                            {block.start !== null && <Icon name="pin" size={11} />}
+                        {week && tall ? (
+                          <span className="schedule__block-text">
+                            {lane.lanes > 1 ? (
+                              <>
+                                {title}
+                                <span className="schedule__block-meta">
+                                  <span className="schedule__block-time">
+                                    {clockLabel(start)}
+                                    {block.start !== null && <Icon name="pin" size={11} />}
+                                  </span>
+                                  {castAndLength && ` · ${castAndLength}`}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="schedule__block-line">
+                                  {startTime}
+                                  {title}
+                                </span>
+                                <span className="schedule__block-meta">{castAndLength}</span>
+                              </>
+                            )}
                           </span>
-                          <span className="schedule__block-title">
-                            {seen?.dot && <SourceDot color={seen.dot.color} name={seen.dot.name} />}
-                            {name}
+                        ) : (
+                          <span className="schedule__block-text">
+                            {startTime}
+                            {title}
+                            {!week && detail.meta && (
+                              <span className="schedule__block-meta">
+                                {[
+                                  detail.type ? typeName(block.type) : '',
+                                  block.cast.join(', '),
+                                  minutesLabel(block.duration),
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              </span>
+                            )}
                           </span>
-                          {detail.meta && (
-                            <span className="schedule__block-meta">
-                              {[
-                                detail.type ? typeName(block.type) : '',
-                                block.cast.join(', '),
-                                minutesLabel(block.duration),
-                              ]
-                                .filter(Boolean)
-                                .join(' · ')}
-                            </span>
-                          )}
-                        </span>
+                        )}
                         {conflict && (
                           <span className="schedule__block-warn">
                             <Icon name="warning" size={14} />
@@ -1345,7 +1529,26 @@ export function ScheduleCalendar({
                   );
                 })}
                 {extras}
-                {nowAt !== null && <NowLine minute={nowAt} />}
+                {hotDay === entry.day.id &&
+                  (() => {
+                    const first = slots.find((slot) => conflicts.has(slot.block.id));
+                    if (!first) return null;
+                    // Above the first double-booked block, or under it near the top of the day.
+                    const y = first.start * scale;
+                    const onTop = y >= 90;
+                    return (
+                      <ConflictNote
+                        dayId={entry.day.id}
+                        lines={notesOf(entry)}
+                        style={
+                          onTop
+                            ? { top: y - 6, transform: 'translateY(-100%)' }
+                            : { top: first.end * scale + 6 }
+                        }
+                      />
+                    );
+                  })()}
+                {nowAt !== null && <NowLine minute={nowAt} scale={scale} />}
                 {above.length > 0 && !phone && !drag?.active && !dayDrag?.active && (
                   <button
                     type="button"
@@ -1354,7 +1557,7 @@ export function ScheduleCalendar({
                     onClick={() => {
                       const last = above.at(-1);
                       if (last && grid.current)
-                        grid.current.scrollTop = Math.max(0, last.start - 30);
+                        grid.current.scrollTop = Math.max(0, (last.start - 30) * scale);
                     }}
                   >
                     <Icon name="chevronDown" className="schedule__up" size={12} />
@@ -1365,11 +1568,11 @@ export function ScheduleCalendar({
                   <button
                     type="button"
                     className="schedule__more"
-                    style={{ top: (bottom - 4) * MINUTE_PX, transform: 'translateY(-100%)' }}
+                    style={{ top: (bottom - 4) * scale, transform: 'translateY(-100%)' }}
                     onClick={() => {
                       const first = below[0];
                       if (first && grid.current)
-                        grid.current.scrollTop = (first.start - 60) * MINUTE_PX;
+                        grid.current.scrollTop = (first.start - 60) * scale;
                     }}
                   >
                     <Icon name="chevronDown" size={12} />
@@ -1385,10 +1588,7 @@ export function ScheduleCalendar({
         </div>
       </div>
       {annotations.some((note) => !note.position) && (
-        <div
-          className="schedule__annotation-band"
-          style={{ '--schedule-columns': columns.length } as CSSProperties}
-        >
+        <div className="schedule__annotation-band">
           <span />
           {columns.map(({ date, entry }) => (
             <div key={date} className="schedule__annotation-cell">
@@ -1457,58 +1657,81 @@ export function ScheduleCalendar({
           }}
         />
       )}
-      {phone &&
-        !drag?.active &&
-        entries.map((entry) => {
-          const slots = scheduleTimes(shown(entry));
-          const above = slots.filter((slot) => slot.end <= viewport.top / MINUTE_PX);
-          const below = slots.filter((slot) => slot.start >= bottom - 4);
-          if (!above.length && !below.length) return null;
-          return (
-            <div key={entry.day.id} className="schedule__edge-notices">
-              {above.length > 0 && (
-                <button
-                  type="button"
-                  className="schedule__edge-button"
-                  onClick={() => {
-                    const last = above.at(-1);
-                    if (last && grid.current) grid.current.scrollTop = Math.max(0, last.start - 30);
-                  }}
-                >
-                  <Icon name="chevronDown" className="schedule__up" size={12} />
-                  {t('schedule.moreAbove', { count: above.length })}
-                </button>
-              )}
-              {below.length > 0 && (
-                <button
-                  type="button"
-                  className="schedule__edge-button"
-                  onClick={() => {
-                    const first = below[0];
-                    if (first && grid.current)
-                      grid.current.scrollTop = Math.max(0, first.start - 30);
-                  }}
-                >
-                  <Icon name="chevronDown" size={12} />
-                  {t('schedule.moreBelow', {
-                    count: below.length,
-                    time: clockLabel(Math.max(...slots.map((slot) => slot.end))),
-                  })}
-                </button>
-              )}
-            </div>
-          );
-        })}
     </section>
   );
 }
 
-function NowLine({ minute }: { minute: number }) {
+function NowLine({ minute, scale }: { minute: number; scale: number }) {
   const { t } = useTranslation();
   return (
-    <span className="schedule__now" style={{ top: minute * MINUTE_PX }}>
+    <span className="schedule__now" style={{ top: minute * scale }}>
       <span className="ink-sr-only">{t('schedule.now', { time: clockLabel(minute % 1440) })}</span>
     </span>
+  );
+}
+
+/** The id of the note a day's "N conflicts" shows. */
+export const conflictNoteId = (dayId: string) => `schedule-conflicts-${dayId}`;
+
+/**
+ * "N conflicts" as a button (mockup option 7): it shows who is double-booked under it and marks
+ * those blocks; a second press or Escape closes it. Read-only members can use it too.
+ */
+export function ConflictTag({
+  dayId,
+  count,
+  open,
+  onToggle,
+}: {
+  dayId: string;
+  count: number;
+  open: boolean;
+  onToggle: (open: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || insideDialog(event.target)) return;
+      onToggle(false);
+      ref.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onToggle]);
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className="schedule__tag is-danger schedule__conflict-tag"
+      aria-expanded={open}
+      aria-controls={open ? conflictNoteId(dayId) : undefined}
+      onClick={() => onToggle(!open)}
+      // The heading under it moves the day; this press only opens the note.
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      {t('schedule.conflictTag', { count })}
+    </button>
+  );
+}
+
+/** Who is double-booked on a day, one line per pair of blocks. */
+export function ConflictNote({
+  dayId,
+  lines,
+  style,
+}: {
+  dayId: string;
+  lines: readonly string[];
+  style?: CSSProperties;
+}) {
+  return (
+    <div id={conflictNoteId(dayId)} className="schedule__conflict-note" role="note" style={style}>
+      {lines.map((line) => (
+        <p key={line}>{line}</p>
+      ))}
+    </div>
   );
 }
 
@@ -1518,11 +1741,14 @@ function DayHead({
   today,
   view,
   phone,
+  narrow,
   readOnly,
   selected,
   moving,
   dropTarget,
   conflicts,
+  hot,
+  onHot,
   sun,
   onOpen,
   onPointerDown,
@@ -1533,6 +1759,8 @@ function DayHead({
   today: string;
   view: 'week' | 'day';
   phone: boolean;
+  /** A free day of the week, drawn as a narrow column: weekday and number only. */
+  narrow: boolean;
   readOnly: boolean;
   selected: boolean;
   /** Its day is being dragged to another date. */
@@ -1540,6 +1768,9 @@ function DayHead({
   /** A dragged day would land here. */
   dropTarget: boolean;
   conflicts: number;
+  /** Its conflicts are shown. */
+  hot: boolean;
+  onHot: (open: boolean) => void;
   sun: Sun;
   onOpen: () => void;
   onPointerDown: (event: PointerEvent<HTMLElement>) => void;
@@ -1557,43 +1788,70 @@ function DayHead({
   const night = wrap !== null && wrap > 1440;
   const shots = draft?.blocks.filter((b) => b.type === 'shot').length ?? 0;
   const call = draft ? clockMinutes(draft.callTime) : 0;
+  const sunText =
+    sun && (sun.sunrise !== null || sun.sunset !== null)
+      ? [
+          sun.sunrise !== null && t('schedule.sunrise', { time: clockLabel(sun.sunrise) }),
+          sun.sunset !== null && t('schedule.sunset', { time: clockLabel(sun.sunset) }),
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : '';
+  // The week leaves sunrise and sunset to the dashed line and to this tooltip (option 4).
+  const sunInHead = view === 'day' && sunText;
   return (
-    <button
-      type="button"
-      className={`schedule__head${entry ? '' : ' is-free'}${selected ? ' is-selected' : ''}${entry?.stale ? ' is-stale' : ''}${moving ? ' is-moving' : ''}${dropTarget ? ' is-drop' : ''}`}
-      aria-label={[
-        part({ weekday: 'long', day: 'numeric', month: 'long' }),
-        entry ? t('schedule.dayNumber', { n: entry.index + 1 }) : t('schedule.noShoot'),
-        view === 'week' && entry ? t('schedule.openDay') : '',
-      ]
-        .filter(Boolean)
-        .join(' · ')}
-      aria-pressed={view === 'day' ? undefined : selected}
-      aria-keyshortcuts={readOnly ? undefined : entry ? 'Alt+ArrowLeft Alt+ArrowRight N' : 'N'}
-      data-day-drop={date}
-      data-day-head={entry?.day.id}
+    // The whole heading is one button underneath; "N conflicts" is a second one above it.
+    <div
+      className={`schedule__head${entry ? '' : ' is-free'}${narrow ? ' is-narrow' : ''}${selected ? ' is-selected' : ''}${entry?.stale ? ' is-stale' : ''}${moving ? ' is-moving' : ''}${dropTarget ? ' is-drop' : ''}`}
       data-tour="schedule-day-head"
-      onClick={onOpen}
-      onPointerDown={onPointerDown}
-      onKeyDown={onKeyDown}
     >
+      <button
+        type="button"
+        className="schedule__head-hit"
+        aria-label={[
+          part({ weekday: 'long', day: 'numeric', month: 'long' }),
+          entry ? t('schedule.dayNumber', { n: entry.index + 1 }) : t('schedule.freeDay'),
+          view === 'week' && entry ? t('schedule.openDay') : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        data-ink-tooltip={view === 'week' && sunText ? sunText : undefined}
+        aria-pressed={view === 'day' ? undefined : selected}
+        aria-keyshortcuts={readOnly ? undefined : entry ? 'Alt+ArrowLeft Alt+ArrowRight N' : 'N'}
+        data-day-head={entry?.day.id}
+        data-day-drop={date}
+        onClick={onOpen}
+        onPointerDown={onPointerDown}
+        onKeyDown={onKeyDown}
+      />
       <span className="schedule__head-top">
-        <span className="schedule__head-weekday">{part({ weekday: 'short' })}</span>
-        <span className={`schedule__head-number${date === today ? ' is-today' : ''}`}>
+        <span className="schedule__head-weekday" aria-hidden="true">
+          {part({ weekday: 'short' })}
+        </span>
+        <span
+          className={`schedule__head-number${date === today ? ' is-today' : ''}`}
+          aria-hidden="true"
+        >
           {part({ day: 'numeric' })}
         </span>
-        <span className="ink-header__spacer" />
-        {night && <span className="schedule__tag">{t('schedule.night')}</span>}
-        {conflicts > 0 && (
-          <span className="schedule__tag is-danger">
-            {t('schedule.conflictTag', { count: conflicts })}
+        {!narrow && <span className="ink-header__spacer" />}
+        {night && (
+          <span className="schedule__tag" aria-hidden="true">
+            {t('schedule.night')}
           </span>
         )}
-        {entry?.stale && <span className="schedule__tag is-danger">{t('schedule.staleFlag')}</span>}
+        {entry && conflicts > 0 && (
+          <ConflictTag dayId={entry.day.id} count={conflicts} open={hot} onToggle={onHot} />
+        )}
+        {entry?.stale && (
+          <span className="schedule__tag is-danger" aria-hidden="true">
+            {t('schedule.staleFlag')}
+          </span>
+        )}
       </span>
-      {entry && draft ? (
+      {narrow ? null : entry && draft ? (
         <>
-          <span className="schedule__head-title schedule__day-sub">
+          <span className="schedule__head-title schedule__day-sub" aria-hidden="true">
             {[
               t('schedule.dayShort', { n: entry.index + 1 }),
               // The place's name: its map link opens from the call sheet, not from here.
@@ -1602,7 +1860,7 @@ function DayHead({
               .filter(Boolean)
               .join(' · ')}
           </span>
-          <span className="schedule__head-meta">
+          <span className="schedule__head-meta" aria-hidden="true">
             {[
               wrap === null
                 ? formatClock(draft.callTime)
@@ -1613,26 +1871,25 @@ function DayHead({
               .filter(Boolean)
               .join(' · ')}
           </span>
-          {sun && (sun.sunrise !== null || sun.sunset !== null) && (
-            <span className="schedule__head-meta schedule__sun">
+          {sunInHead && (
+            <span className="schedule__head-meta schedule__sun" aria-hidden="true">
               <Icon name="sun" size={12} />
-              <span className="schedule__sun-text">
-                {[
-                  sun.sunrise !== null && t('schedule.sunrise', { time: clockLabel(sun.sunrise) }),
-                  sun.sunset !== null && t('schedule.sunset', { time: clockLabel(sun.sunset) }),
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
+              <span className="schedule__sun-text">{sunText}</span>
             </span>
           )}
         </>
       ) : (
         <>
-          <span className="schedule__head-title is-muted">{t('schedule.freeDay')}</span>
-          {!readOnly && <span className="schedule__head-meta">{t('schedule.freeHeadHint')}</span>}
+          <span className="schedule__head-title is-muted" aria-hidden="true">
+            {t('schedule.freeDay')}
+          </span>
+          {!readOnly && (
+            <span className="schedule__head-meta" aria-hidden="true">
+              {t('schedule.freeHeadHint')}
+            </span>
+          )}
         </>
       )}
-    </button>
+    </div>
   );
 }

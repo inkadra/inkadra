@@ -57,7 +57,7 @@ async function openSchedule(page: Page, name: string) {
  * `bottom` px above the next one (the approved mockup), so back-to-back cards never touch.
  * A 15-minute card stays inside its slot too.
  */
-async function expectSeams(day: Locator, top: number, bottom: number) {
+async function expectSeams(day: Locator, top: number, bottom: number, scale = 1) {
   const slots = day.locator('.schedule__block');
   await expect(slots).toHaveCount(blocks.length);
   const column = (await day.boundingBox())!;
@@ -66,8 +66,8 @@ async function expectSeams(day: Locator, top: number, bottom: number) {
   for (const [i, [, , duration]] of blocks.entries()) {
     const slot = (await slots.nth(i).boundingBox())!;
     const card = (await slots.nth(i).locator('.schedule__block-select').boundingBox())!;
-    expect(slot.y - column.y).toBeCloseTo(minute, 0);
-    expect(slot.height).toBeCloseTo(duration, 0);
+    expect(slot.y - column.y).toBeCloseTo(minute * scale, 0);
+    expect(slot.height).toBeCloseTo(duration * scale, 0);
     expect(card.y - slot.y).toBeCloseTo(top, 0);
     expect(slot.y + slot.height - (card.y + card.height)).toBeCloseTo(bottom, 0);
     if (i > 0) expect(card.y - previous).toBeCloseTo(top + bottom, 0);
@@ -110,16 +110,42 @@ test('consecutive blocks leave the same space between their cards', async ({ pag
   await expectSeams(day, 1, 2);
   await view('Settimana');
   await expectSeams(day, 1, 2);
+
+  // "Comodo" (option 5): 1.6 px a minute, the same seams; the choice stays in this browser.
+  const density = schedule.getByRole('group', { name: 'Densità', exact: true });
+  await expect(density.getByRole('radio', { name: 'Compatto', exact: true })).toBeChecked();
+  await density.getByRole('radio', { name: 'Comodo', exact: true }).check();
+  await expectSeams(day, 1, 2, 1.6);
+  const hour = schedule.locator('.schedule__grid .schedule__hour', { hasText: /^09:00$/ });
+  const canvas = (await schedule.locator('.schedule__canvas').boundingBox())!;
+  expect(
+    (await hour.boundingBox())!.y + (await hour.boundingBox())!.height / 2 - canvas.y,
+  ).toBeCloseTo(9 * 60 * 1.6, 0);
+  await capture(page, day, 'week-1280-comfy');
+  await page.reload();
+  await expect(density.getByRole('radio', { name: 'Comodo', exact: true })).toBeChecked();
+  await expectSeams(day, 1, 2, 1.6);
+  await view('Giorno');
+  await expectSeams(day, 1, 2, 1.6);
+  await density.getByRole('radio', { name: 'Compatto', exact: true }).check();
+  await expectSeams(day, 1, 2);
 });
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test('consecutive blocks leave the same space between their cards', async ({ page }) => {
+  test('lists the day in time order, rows apart, with no density choice', async ({ page }) => {
     test.setTimeout(60_000);
     const schedule = await openSchedule(page, 'Schedule block gap phone');
-    const day = schedule.locator('.schedule__day');
-    await capture(page, day, 'phone-390');
-    await expectSeams(day, 2, 2);
+    const rows = schedule.locator('.schedule__list .schedule__row');
+    await expect(rows.locator('.schedule__row-title')).toHaveText(blocks.map(([, title]) => title));
+    await expect(schedule.getByRole('group', { name: 'Densità', exact: true })).toHaveCount(0);
+    let previous = 0;
+    for (const row of await rows.all()) {
+      const { y, height } = (await row.boundingBox())!;
+      expect(height).toBeGreaterThanOrEqual(44);
+      if (previous) expect(y - previous).toBeCloseTo(4, 0);
+      previous = y + height;
+    }
   });
 });

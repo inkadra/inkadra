@@ -31,13 +31,14 @@
 .schedule__range::first-letter {
   text-transform: uppercase;
 }
-/* The Day view's bar also holds Block: the call sheet button folds to its icon before the date
-   is cut, so "Domenica 22 novembre 2026" stays whole at 1280 px beside the sidebar. */
-.schedule--day .schedule__bar {
+/* The bar also holds the density and, in the Day view, Block: the call sheet and Block buttons
+   fold to their icons before the date is cut, so "Domenica 22 novembre 2026" stays whole at
+   1280 px beside the sidebar. */
+.schedule__bar {
   container: schedule-bar / inline-size;
 }
 @container schedule-bar (width < 1120px) {
-  .schedule__callsheet-label {
+  .schedule__fold-label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -45,7 +46,8 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  .schedule__callsheet.ink-btn {
+  .schedule__callsheet.ink-btn,
+  .schedule__add-block.ink-btn {
     padding-inline: 8px;
   }
 }
@@ -179,6 +181,65 @@
   padding: 12px 10px;
   border-right: 1px solid var(--ink-border-subtle);
   background: var(--ink-bg-panel);
+}
+.schedule__rail {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 36px;
+  padding: 10px 0;
+  border-right: 1px solid var(--ink-border-subtle);
+  background: var(--ink-bg-panel);
+}
+.schedule__rail-queue {
+  position: relative;
+}
+.schedule__rail-count {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  font-size: 10px;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.schedule__month-head .schedule__collapse {
+  align-self: center;
+  margin: -6px -6px -6px 0;
+}
+.schedule__month-head > span {
+  margin-left: auto;
+}
+/* With the column folded the period's title opens the month. */
+.schedule__range-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.schedule__range-button:hover {
+  background: var(--ink-surface-2);
+}
+.schedule__range-button:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 1px;
+}
+.schedule__popover .schedule__month {
+  width: 220px;
 }
 .schedule__queue .story__sidebar-title {
   display: flex;
@@ -450,6 +511,8 @@
   --schedule-inset-bottom: 2px;
   /* Five days fit at 1280 px with the navigation open; seven may scroll sideways. */
   --schedule-column: minmax(128px, 1fr);
+  /* A free day of the week (mockup option 1). */
+  --schedule-narrow: 48px;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -462,10 +525,8 @@
 .schedule__heads,
 .schedule__canvas {
   display: grid;
-  grid-template-columns: var(--schedule-gutter) repeat(
-      var(--schedule-columns),
-      var(--schedule-column)
-    );
+  /* Set on the calendar: a column per day, narrow for a free day of the week. */
+  grid-template-columns: var(--schedule-gutter) var(--schedule-template);
   min-width: min-content;
 }
 .schedule__heads {
@@ -508,6 +569,7 @@
   white-space: nowrap;
 }
 .schedule__head {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -524,6 +586,53 @@
 }
 .schedule__head:hover {
   background: var(--ink-surface-2);
+}
+/* The heading's button covers it; its text shows through, "N conflicts" sits above it. */
+.schedule__head-hit {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.schedule__head-hit:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
+}
+.schedule__head > :not(.schedule__head-hit) {
+  position: relative;
+  pointer-events: none;
+}
+.schedule__conflict-tag {
+  border: 0;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.schedule__conflict-tag:hover,
+.schedule__conflict-tag[aria-expanded="true"] {
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.schedule__conflict-tag:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 1px;
+}
+/* A free day of the week: weekday and number, centred. */
+.schedule__head.is-narrow {
+  align-items: center;
+  padding: 8px 2px;
+}
+.schedule__head.is-narrow .schedule__head-top {
+  flex-direction: column;
+  gap: 2px;
+}
+.schedule__head.is-narrow .schedule__head-number {
+  min-width: 0;
+  height: auto;
+  font-size: 16px;
+  line-height: 1.2;
 }
 .schedule__head.is-selected {
   box-shadow: inset 0 -2px 0 var(--ink-accent-primary);
@@ -624,7 +733,7 @@
   background-image: repeating-linear-gradient(
     to bottom,
     var(--ink-border-muted) 0 1px,
-    transparent 1px calc(60px * 1)
+    transparent 1px var(--schedule-hour, 60px)
   );
 }
 .schedule__column.is-drop {
@@ -645,6 +754,31 @@
 }
 .schedule__column.is-free {
   background-color: var(--ink-bg-panel);
+}
+.schedule__column.is-narrow {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--ink-bg-panel) 0 6px,
+    var(--ink-surface-1) 6px 12px
+  );
+}
+.schedule__column.is-narrow.is-drop {
+  background-image: none;
+  background-color: var(--ink-accent-soft-bg);
+}
+.schedule__vertical {
+  position: sticky;
+  top: 40%;
+  display: block;
+  width: max-content;
+  margin: 0 auto;
+  writing-mode: vertical-rl;
+  rotate: 180deg;
+  color: var(--ink-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
 }
 .schedule__free {
   position: absolute;
@@ -689,7 +823,15 @@
   left: 0;
   right: 0;
   border-top: 1px dashed var(--ink-tag-orange);
-  pointer-events: none;
+}
+/* Room for the pointer: the time shows in a tooltip (option 4). */
+.schedule__sunline::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -5px;
+  height: 9px;
 }
 .schedule__sunline > span {
   position: absolute;
@@ -830,6 +972,11 @@
   user-select: none;
   -webkit-touch-callout: none;
 }
+/* The storyboard's colour as a bar on the left edge (option 6). */
+.schedule__block-select.has-source {
+  border-left: 3px solid var(--source);
+  padding-left: 5px;
+}
 /* States are rings, not borders, so every card keeps its size. */
 .schedule__block-select:hover {
   box-shadow: inset 0 0 0 1px var(--ink-border-strong);
@@ -857,6 +1004,36 @@
 }
 .schedule__block.is-dragging {
   z-index: 5;
+}
+/* The blocks a conflict note names (option 7). */
+.schedule__block.is-hot {
+  z-index: 3;
+}
+.schedule__block.is-hot .schedule__block-select,
+.schedule__row.is-hot {
+  box-shadow:
+    inset 0 0 0 2.5px var(--ink-status-danger),
+    var(--ink-shadow-menu);
+}
+.schedule__conflict-note {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  z-index: 5;
+  padding: 6px 8px;
+  border: 1px solid var(--ink-status-danger);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-float);
+  box-shadow: var(--ink-shadow-menu);
+  color: var(--ink-text-primary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.schedule__conflict-note > p {
+  margin: 0;
+}
+.schedule__conflict-note > p + p {
+  margin-top: 4px;
 }
 .schedule__block.is-dragging .schedule__block-select {
   box-shadow:
@@ -890,6 +1067,21 @@
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+/* Week: start time and title on one line (option 3). */
+.schedule__block-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.schedule__block-line > .schedule__block-title {
+  flex: 1;
+  min-width: 0;
+}
+.schedule__block-meta > .schedule__block-time {
+  display: inline;
+  font-size: inherit;
 }
 .schedule__block-title {
   overflow: hidden;
@@ -997,10 +1189,7 @@
 }
 .schedule__annotation-band {
   display: grid;
-  grid-template-columns: var(--schedule-gutter) repeat(
-      var(--schedule-columns),
-      var(--schedule-column)
-    );
+  grid-template-columns: var(--schedule-gutter) var(--schedule-template);
   flex: none;
   max-height: 96px;
   overflow: auto;
@@ -1473,7 +1662,7 @@ fieldset.schedule__field > legend {
     background: var(--ink-on-accent);
   }
   .schedule__picker-day:focus-visible,
-  .schedule__summary-card:focus-visible {
+  .schedule__summary-main:focus-visible {
     outline: 2px solid var(--ink-accent-primary);
     outline-offset: 2px;
   }
@@ -1489,9 +1678,26 @@ fieldset.schedule__field > legend {
     color: var(--ink-text-primary);
     font: inherit;
     text-align: left;
+  }
+  .schedule__summary-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
     cursor: pointer;
   }
-  .schedule__summary-card > span:first-child {
+  .schedule__summary-card .schedule__conflict-tag {
+    flex: none;
+    min-height: 32px;
+  }
+  .schedule__summary-main > span:first-child {
     flex: 1;
     min-width: 0;
     display: grid;
@@ -1529,6 +1735,88 @@ fieldset.schedule__field > legend {
   }
   .schedule__loading {
     grid-template-columns: 1fr;
+  }
+  /* The day as a list in time order (option 8). */
+  .schedule__list {
+    display: block;
+    overflow-y: auto;
+    padding: 4px 12px 12px;
+  }
+  .schedule__list .schedule__conflict-note {
+    position: static;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .schedule__list-mark,
+  .schedule__list-free {
+    margin: 4px 0;
+    color: var(--ink-text-muted);
+    font-size: 12px;
+    text-align: center;
+  }
+  .schedule__list-free {
+    margin-top: 24px;
+  }
+  .schedule__rows {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .schedule__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--ink-radius-sm);
+    background: var(--block-bg);
+    color: var(--ink-text-primary);
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .schedule__row.has-source {
+    border-left: 3px solid var(--source);
+    padding-left: 7px;
+  }
+  .schedule__row.has-conflict:not(.is-hot) {
+    box-shadow: inset 0 0 0 1.5px var(--ink-status-danger);
+  }
+  .schedule__row[aria-pressed="true"] {
+    outline: 2px solid var(--ink-accent-primary);
+    outline-offset: 1px;
+  }
+  .schedule__row:focus-visible {
+    outline: 2px solid var(--ink-accent-primary);
+    outline-offset: 2px;
+  }
+  .schedule__row > .schedule__block-time {
+    flex: none;
+    min-width: 42px;
+  }
+  .schedule__row-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .schedule__row > .schedule__block-meta {
+    flex: none;
+    max-width: 40%;
+    font-size: 12px;
+  }
+  .schedule__row-warn {
+    display: flex;
+    flex: none;
+    color: var(--ink-status-danger);
   }
 }
 

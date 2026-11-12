@@ -3256,7 +3256,7 @@
     "noShoot": "Sin rodaje",
     "openDay": "open the day",
     "openStoryboard": "Open in the storyboard",
-    "phoneHint": "Press and hold a block to move it; its bottom edge changes the length.",
+    "phoneHint": "Toca un bloque para abrirlo: allí cambias su orden, duración y día.",
     "queueShort": "Queue",
     "quickDuration": "Quick lengths",
     "remove": "Remove",
@@ -3298,7 +3298,6 @@
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
     "freeDrop": "Arrastra aquí un bloque, o dibuja uno, para crear un día de rodaje",
-    "freeDropWeek": "Arrastra aquí un bloque o un día para ocuparlo",
     "freeHeadHint": "Arrastra un día aquí para moverlo",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",
@@ -3329,7 +3328,20 @@
     "wholeScene": "Planificar la escena completa",
     "wholeSceneHint_one": "{{count}} plano, en un solo bloque",
     "wholeSceneHint_other": "{{count}} planos, en un solo bloque",
-    "sceneNoFrames": "Aún sin planos: planifícala en un bloque"
+    "sceneNoFrames": "Aún sin planos: planifícala en un bloque",
+    "conflictNote_one": "{{names}} está en dos bloques a las {{time}}: «{{a}}» y «{{b}}».",
+    "conflictNote_other": "{{names}} están en dos bloques a las {{time}}: «{{a}}» y «{{b}}».",
+    "freeShort": "libre",
+    "earlier": "Mover antes",
+    "later": "Mover después",
+    "hideSide": "Ocultar mes y cola",
+    "showSide": "Mostrar mes y cola",
+    "month": "Mes",
+    "queueCount_one": "Por planificar: {{count}}",
+    "queueCount_other": "Por planificar: {{count}}",
+    "densityLabel": "Densidad",
+    "densityCompact": "Compacto",
+    "densityComfy": "Cómodo"
   },
   "moodboard": {
     "count_one": "{{count}} referencia",
@@ -5290,11 +5302,11 @@
         "steps": {
           "0": {
             "title": "El calendario de rodaje",
-            "text": "En el tablero Producción, un calendario para todo el proyecto: la cola reúne los planos y las escenas de cada storyboard. Día o semana, como un calendario: los bloques se ponen en fila solos. Arrastra un plano a la hora adecuada, o haz clic para añadirlo al final. Con plantas del set, «Agrupar por: Setup» pone los planos de cada escena y de cada jornada bajo su setup."
+            "text": "En el tablero Producción, un calendario para todo el proyecto: la cola reúne los planos y las escenas de cada storyboard. Día o semana, como un calendario: los bloques se ponen en fila solos. Arrastra un plano a la hora adecuada, o haz clic para añadirlo al final. Con plantas del set, «Agrupar por: Setup» pone los planos de cada escena y de cada jornada bajo su setup. La flecha junto al mes pliega el mes y la cola; «Compacto» y «Cómodo» cambian la altura de las horas."
           },
           "1": {
-            "title": "Storyboards y puntos",
-            "text": "El filtro Storyboard muestra los planos de uno solo; el punto de color indica de qué storyboard viene cada bloque. «Planificar la escena completa» pone una escena en un bloque, incluso antes de dibujarla. Un punto gris: storyboard no disponible, queda su etiqueta."
+            "title": "Storyboards y barras",
+            "text": "El filtro Storyboard muestra los planos de uno solo; la barra de color a la izquierda de cada bloque indica de qué storyboard viene. «Planificar la escena completa» pone una escena en un bloque, incluso antes de dibujarla. Una barra gris: storyboard no disponible, queda su etiqueta."
           },
           "2": {
             "title": "Mueve y alarga",

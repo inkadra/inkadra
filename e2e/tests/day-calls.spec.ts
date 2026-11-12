@@ -64,6 +64,8 @@ test('a call set in the Convocazioni tab is printed on the call sheet', async ({
   await page.getByRole('tab', { name: 'Piano riprese', exact: true }).click();
   const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
   await schedule.getByRole('radio', { name: 'Giorno', exact: true }).check();
+  // The month column starts closed when nothing waits in the queue.
+  await schedule.getByRole('button', { name: 'Mostra mese e coda', exact: true }).click();
   // Without a day today, the calendar opens on the next shooting day.
   await expect(schedule.getByText('1 giorno di riprese')).toBeVisible();
   const inspector = schedule.getByRole('complementary', { name: 'Dettagli del giorno di riprese' });

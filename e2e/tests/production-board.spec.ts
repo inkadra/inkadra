@@ -80,8 +80,9 @@ test('plans frames of two storyboards and a scene without frames on the Producti
   await queue.locator('.schedule__shot--scene', { hasText: 'Ancora senza inquadrature' }).click();
   const blocks = schedule.locator('.schedule__day .schedule__block');
   await expect(blocks).toHaveCount(3);
-  await expect(blocks.nth(0).locator('.schedule__dot[aria-label="Teaser"]')).toBeVisible();
-  await expect(blocks.nth(1).locator('.schedule__dot[aria-label="Film"]')).toBeVisible();
+  // Each block has its storyboard's bar on the left, named in its label (option 6).
+  await expect(blocks.nth(0).locator('.has-source[aria-label*="Teaser"]')).toBeVisible();
+  await expect(blocks.nth(1).locator('.has-source[aria-label*="Film"]')).toBeVisible();
   await expect(blocks.nth(2)).toContainText('Sc. 2');
   await expect(schedule.locator('.schedule__status')).toHaveText(/Salvato alle/);
 
@@ -125,16 +126,20 @@ test('plans frames of two storyboards and a scene without frames on the Producti
     .click();
   await expect(page).toHaveURL(new RegExp(`/b/${production.id}`));
 
-  // The Teaser goes to the trash: its block keeps its label, with the grey dot.
+  // The Teaser goes to the trash: its block keeps its label, with the grey bar.
   const trashed = await page.request.delete(`/api/v1/boards/${teaser}`, { headers });
   expect(trashed.ok()).toBe(true);
   await page.reload();
   await expect(blocks).toHaveCount(3);
   await expect(blocks.nth(0)).toContainText('1A');
   await expect(
-    blocks.nth(0).locator('.schedule__dot[aria-label="Storyboard non disponibile"]'),
+    blocks.nth(0).locator('.has-source[aria-label*="Storyboard non disponibile"]'),
   ).toBeVisible();
-  // Its frames left the queue: Film's are all planned, so nothing waits.
+  // Its frames left the queue: Film's are all planned, so nothing waits and the month and
+  // queue open folded to their rail (option 2); the rail opens them.
+  const rail = schedule.locator('.schedule__rail');
+  await rail.getByRole('button', { name: 'Da pianificare: 0', exact: true }).click();
+  await expect(rail).toHaveCount(0);
   await expect(queue.locator('.schedule__source-title')).toHaveCount(0);
   await expect(queue).toContainText('Tutte le inquadrature sono in un giorno di riprese');
 

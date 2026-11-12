@@ -57,8 +57,8 @@ const monday: ShootingDay = {
   location: '',
   notes: '',
   blocks: [
-    block('Short', 59),
-    block('Meta', 60),
+    block('Short', 30),
+    block('Meta', 58),
     block('Two lines', 62),
     block('Left', 60, '12:00'),
     block('Right', 60, '12:00'),
@@ -70,22 +70,27 @@ const card = (host: HTMLElement, title: string) =>
     (el) => el.querySelector('.schedule__block-title')?.textContent === title,
   );
 
-it('shows the meta from 60 px, two lines from 62 px and only the start time in a lane', async () => {
+it('puts start and title on one line, then cast and duration; in a lane the title first', async () => {
   vi.spyOn(api, 'get').mockResolvedValue({ items: [monday, wednesday], nextCursor: null });
   const host = await mount();
+  // Under 40 px: one line, no meta.
+  expect(card(host, 'Short')?.classList.contains('is-short')).toBe(true);
   expect(card(host, 'Short')?.querySelector('.schedule__block-meta')).toBeNull();
-  expect(card(host, 'Meta')?.querySelector('.schedule__block-meta')?.textContent).toBe(
-    'Elena · 1h',
-  );
-  expect(card(host, 'Meta')?.classList.contains('is-wrap')).toBe(false);
-  expect(card(host, 'Two lines')?.classList.contains('is-wrap')).toBe(true);
-  expect(card(host, 'Two lines')?.querySelector('.schedule__block-time')?.textContent).toBe(
-    '09:59 – 11:01',
-  );
-  // Side by side, 2 px apart: each shows its start only.
+  // From 40 px: "start title" on the first line, "cast · duration" under it.
+  const meta = card(host, 'Meta');
+  expect(meta?.querySelector('.schedule__block-line')?.textContent).toBe('08:30Meta');
+  expect(meta?.querySelector('.schedule__block-meta')?.textContent).toBe('Elena · 58 min');
+  expect(meta?.classList.contains('is-wrap')).toBe(false);
+  // From a 56 px card the title may take two lines; the full range stays in the name.
+  const two = card(host, 'Two lines');
+  expect(two?.classList.contains('is-wrap')).toBe(true);
+  expect(two?.querySelector('.schedule__block-time')?.textContent).toBe('09:28');
+  expect(two?.querySelector('button')?.getAttribute('aria-label')).toContain('09:28 – 10:30');
+  // Side by side, 2 px apart: the title first, then "start · cast · duration".
   const left = card(host, 'Left');
   const right = card(host, 'Right');
-  expect(left?.querySelector('.schedule__block-time')?.textContent).toBe('12:00');
+  expect(left?.querySelector('.schedule__block-text > :first-child')?.textContent).toBe('Left');
+  expect(left?.querySelector('.schedule__block-meta')?.textContent).toBe('12:00 · Elena · 1h');
   expect(right?.querySelector('.schedule__block-time')?.textContent).toBe('12:00');
   expect(left?.style.right).toBe('calc(50% + 1px)');
   expect(right?.style.left).toBe('calc(50% + 1px)');
@@ -94,11 +99,15 @@ it('shows the meta from 60 px, two lines from 62 px and only the start time in a
 it('marks a free day of the week and keeps the hours in view when the days scroll sideways', async () => {
   vi.spyOn(api, 'get').mockResolvedValue({ items: [monday, wednesday], nextCursor: null });
   const host = await mount();
+  // A narrow column, still named and reachable from its heading.
   const free = host.querySelector('.schedule__column.is-free');
-  expect(free?.textContent).toBe('schedule.noShootschedule.freeDropWeek');
-  expect(host.querySelector('.schedule__head.is-free')?.textContent).toContain(
-    'schedule.freeHeadHint',
-  );
+  expect(free?.classList.contains('is-narrow')).toBe(true);
+  expect(free?.textContent).toBe('schedule.freeShort');
+  const head = host.querySelector('.schedule__head.is-free');
+  expect(head?.classList.contains('is-narrow')).toBe(true);
+  expect(head?.textContent).not.toContain('schedule.freeHeadHint');
+  expect(head?.querySelector('button')?.getAttribute('aria-label')).toContain('schedule.freeDay');
+  expect(head?.querySelector('button')?.getAttribute('data-day-drop')).toBe('2026-11-03');
   const calendar = host.querySelector<HTMLElement>('.schedule__calendar');
   if (!calendar) throw new Error('no calendar');
   calendar.scrollLeft = 200;

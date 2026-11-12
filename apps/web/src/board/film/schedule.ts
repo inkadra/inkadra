@@ -1,4 +1,9 @@
-import { clockMinutes, type ScheduleBlock, type ShootingDayInput } from '@inkadra/shared';
+import {
+  clockMinutes,
+  type ScheduleBlock,
+  type ShootingDayInput,
+  scheduleTimes,
+} from '@inkadra/shared';
 import { formatClock } from '../../lib/datetime.ts';
 
 export { castConflicts, clockMinutes, scheduleTimes } from '@inkadra/shared';
@@ -69,4 +74,69 @@ export function whileVisible(refresh: () => void): () => void {
     document.removeEventListener('visibilitychange', onVisible);
     clearInterval(timer);
   };
+}
+
+/** Two blocks that call the same people at the same time, for the note under "N conflicts". */
+export interface ConflictPair {
+  /** The people in both blocks, as written in the first one. */
+  names: string[];
+  /** When they start to overlap, in minutes from the date of `day`. */
+  at: number;
+  a: ScheduleBlock;
+  b: ScheduleBlock;
+}
+
+/**
+ * The double bookings that touch `day`, in time order: the same pairs `castConflicts` marks, on
+ * every day given (a night shoot may run into the next morning).
+ */
+export function conflictPairs(days: readonly ShootingDayInput[], day: string): ConflictPair[] {
+  const base = Date.parse(`${day}T00:00:00Z`) / 60000;
+  const slots = days.flatMap((d) => {
+    const date = Date.parse(`${d.date}T00:00:00Z`) / 60000;
+    return scheduleTimes(d).map((slot) => ({
+      block: slot.block,
+      mine: d.date === day,
+      start: date + slot.start,
+      end: date + slot.end,
+    }));
+  });
+  const key = (name: string) => name.trim().toLocaleLowerCase();
+  const pairs: ConflictPair[] = [];
+  for (const [i, a] of slots.entries()) {
+    const cast = new Set(a.block.cast.map(key));
+    for (const b of slots.slice(i + 1)) {
+      if (!(a.mine || b.mine) || !(a.start < b.end && b.start < a.end)) continue;
+      const shared = new Set(b.block.cast.map(key));
+      const names = a.block.cast.filter((name) => cast.has(key(name)) && shared.has(key(name)));
+      if (!names.length) continue;
+      const [first, second] = a.start <= b.start ? [a, b] : [b, a];
+      pairs.push({
+        names: [...new Set(names)],
+        at: second.start - base,
+        a: first.block,
+        b: second.block,
+      });
+    }
+  }
+  return pairs.sort((x, y) => x.at - y.at);
+}
+
+/** One line per double booking: "Elena è in due blocchi alle 14:00: «A» e «B»." */
+export function conflictNotes(
+  pairs: readonly ConflictPair[],
+  title: (block: ScheduleBlock) => string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+  language: string,
+): string[] {
+  const list = new Intl.ListFormat(language, { type: 'conjunction' });
+  return pairs.map((pair) =>
+    t('schedule.conflictNote', {
+      count: pair.names.length,
+      names: list.format(pair.names),
+      time: clockLabel(pair.at),
+      a: title(pair.a),
+      b: title(pair.b),
+    }),
+  );
 }

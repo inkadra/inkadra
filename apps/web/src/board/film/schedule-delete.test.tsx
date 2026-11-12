@@ -172,10 +172,9 @@ it("fits a fifteen minute block before the next one and keeps the day view's ins
   const day = shootingDay([block({ title: 'Walk', duration: 15 }), block({ title: 'Next' })]);
   vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
   const host = await mount(<ScheduleView store={store} boardId="board" />);
-  // A free day of the week says so in the mockup's two short lines, not the day view's long one.
-  const lines = [...host.querySelectorAll('.schedule__free > *')].map((el) => el.textContent);
-  expect(lines).toContain('schedule.freeDropWeek');
-  expect(lines).not.toContain('schedule.freeDrop');
+  // A free day of the week is a narrow column: no instructions, only its vertical label.
+  expect(host.querySelector('.schedule__free')).toBeNull();
+  expect(host.querySelector('.schedule__vertical')?.textContent).toBe('schedule.freeShort');
   await openDayView(host);
   const blocks = [...host.querySelectorAll<HTMLElement>('.schedule__block')];
   expect(blocks).toHaveLength(2);

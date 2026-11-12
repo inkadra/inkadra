@@ -222,8 +222,8 @@ test('the startup step moves the days of two storyboards to a Production board',
   await schedule.getByRole('radio', { name: 'Settimana', exact: true }).check();
   const blocks = schedule.locator('.schedule__day .schedule__block');
   await expect(blocks).toHaveCount(2);
-  await expect(blocks.locator('.schedule__dot[aria-label="Teaser"]')).toHaveCount(1);
-  await expect(blocks.locator('.schedule__dot[aria-label="Film"]')).toHaveCount(1);
+  await expect(blocks.locator('.has-source[aria-label*="Teaser"]')).toHaveCount(1);
+  await expect(blocks.locator('.has-source[aria-label*="Film"]')).toHaveCount(1);
   await expect(blocks.filter({ hasText: '1A' })).toHaveCount(2);
 
   // The storyboards have no Schedule tab, and their ⋯ menu leads to the Production board.

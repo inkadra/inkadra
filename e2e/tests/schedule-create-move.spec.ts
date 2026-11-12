@@ -120,7 +120,7 @@ test('draws a block on empty time and moves or swaps whole days', async ({ page 
 
   // Phase 3: Monday's heading onto Wednesday's swaps the two days, in one request.
   const mondayHead = schedule.locator(`[data-day-head="${monday}"]`);
-  const target = schedule.locator('.schedule__head[data-day-drop="2027-03-03"]');
+  const target = schedule.locator('.schedule__head:has([data-day-drop="2027-03-03"])');
   const from = await mondayHead.boundingBox();
   const to = await target.boundingBox();
   if (!from || !to) throw new Error('no headings');
@@ -162,6 +162,30 @@ test('draws a block on empty time and moves or swaps whole days', async ({ page 
   await page.mouse.up();
   await expect(schedule.getByRole('radio', { name: 'Settimana', exact: true })).toBeChecked();
   await expect(mondayHead).toHaveAttribute('data-day-drop', '2027-03-01');
+
+  // Nothing waits in the queue, so the month and the queue start folded to their rail; the
+  // period's title opens the month as a popover (option 2).
+  const rail = schedule.locator('.schedule__rail');
+  await expect(rail).toBeVisible();
+  await expect(rail.getByRole('button', { name: 'Da pianificare: 0', exact: true })).toBeVisible();
+  await expect(schedule.locator('.schedule__month')).toHaveCount(0);
+  const title = schedule.getByRole('button', { name: /· Mese$/ });
+  await title.click();
+  const popover = page.getByRole('dialog', { name: 'Mese', exact: true });
+  await expect(popover.locator('.schedule__month-day[data-day-drop="2027-03-10"]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
+  // The rail opens the column; the choice is remembered after a reload, and folds back.
+  await rail.getByRole('button', { name: 'Mostra mese e coda', exact: true }).click();
+  await expect(rail).toHaveCount(0);
+  await page.reload();
+  await expect(schedule.locator('.schedule__month')).toBeVisible();
+  await schedule.getByRole('button', { name: 'Nascondi mese e coda', exact: true }).click();
+  await expect(rail).toBeVisible();
+  await page.reload();
+  await expect(rail).toBeVisible();
+  await rail.getByRole('button', { name: 'Mese', exact: true }).click();
+  await expect(schedule.locator('.schedule__month-day[aria-pressed="true"]')).toBeFocused();
 
   // Onto a free date of the month in the queue: the day moves with its blocks.
   const fifth = schedule.locator('.schedule__month-day[data-day-drop="2027-03-05"]');

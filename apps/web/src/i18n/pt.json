@@ -3256,7 +3256,7 @@
     "noShoot": "Sem filmagem",
     "openDay": "open the day",
     "openStoryboard": "Open in the storyboard",
-    "phoneHint": "Press and hold a block to move it; its bottom edge changes the length.",
+    "phoneHint": "Toca num bloco para o abrir: aí mudas a ordem, a duração e o dia.",
     "queueShort": "Queue",
     "quickDuration": "Quick lengths",
     "remove": "Remove",
@@ -3298,7 +3298,6 @@
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
     "freeDrop": "Arraste um bloco para aqui, ou desenhe um, para criar um dia de filmagem",
-    "freeDropWeek": "Arraste para aqui um bloco ou um dia para o ocupar",
     "freeHeadHint": "Arraste um dia para aqui para o mover",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",
@@ -3329,7 +3328,20 @@
     "wholeScene": "Planear a cena inteira",
     "wholeSceneHint_one": "{{count}} plano, num só bloco",
     "wholeSceneHint_other": "{{count}} planos, num só bloco",
-    "sceneNoFrames": "Ainda sem planos: planeie-a num bloco"
+    "sceneNoFrames": "Ainda sem planos: planeie-a num bloco",
+    "conflictNote_one": "{{names}} está em dois blocos às {{time}}: «{{a}}» e «{{b}}».",
+    "conflictNote_other": "{{names}} estão em dois blocos às {{time}}: «{{a}}» e «{{b}}».",
+    "freeShort": "livre",
+    "earlier": "Mover para antes",
+    "later": "Mover para depois",
+    "hideSide": "Ocultar mês e fila",
+    "showSide": "Mostrar mês e fila",
+    "month": "Mês",
+    "queueCount_one": "Por planear: {{count}}",
+    "queueCount_other": "Por planear: {{count}}",
+    "densityLabel": "Densidade",
+    "densityCompact": "Compacto",
+    "densityComfy": "Confortável"
   },
   "moodboard": {
     "count_one": "{{count}} referência",
@@ -5290,11 +5302,11 @@
         "steps": {
           "0": {
             "title": "O calendário de rodagem",
-            "text": "No quadro Produção, um calendário para todo o projeto: a fila reúne os planos e as cenas de cada storyboard. Dia ou semana, como num calendário: os blocos põem-se em fila sozinhos. Arraste um plano para a hora certa, ou clique nele para o pôr no fim. Com plantas do set, «Agrupar por: Setup» põe os planos de cada cena e de cada dia sob o seu setup."
+            "text": "No quadro Produção, um calendário para todo o projeto: a fila reúne os planos e as cenas de cada storyboard. Dia ou semana, como num calendário: os blocos põem-se em fila sozinhos. Arraste um plano para a hora certa, ou clique nele para o pôr no fim. Com plantas do set, «Agrupar por: Setup» põe os planos de cada cena e de cada dia sob o seu setup. A seta junto ao mês recolhe o mês e a fila; «Compacto» e «Confortável» mudam a altura das horas."
           },
           "1": {
-            "title": "Storyboards e pontos",
-            "text": "O filtro Storyboard mostra os planos de um só; o ponto colorido diz de que storyboard vem cada bloco. «Planear a cena inteira» põe uma cena num bloco, mesmo antes de ser desenhada. Um ponto cinzento: storyboard indisponível, fica a etiqueta."
+            "title": "Storyboards e barras",
+            "text": "O filtro Storyboard mostra os planos de um só; a barra colorida à esquerda de cada bloco diz de que storyboard vem. «Planear a cena inteira» põe uma cena num bloco, mesmo antes de a desenhar. Uma barra cinzenta: storyboard indisponível, fica a etiqueta."
           },
           "2": {
             "title": "Mova e estique",

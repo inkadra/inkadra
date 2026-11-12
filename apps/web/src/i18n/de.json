@@ -3256,7 +3256,7 @@
     "noShoot": "Kein Dreh",
     "openDay": "open the day",
     "openStoryboard": "Open in the storyboard",
-    "phoneHint": "Press and hold a block to move it; its bottom edge changes the length.",
+    "phoneHint": "Tippe auf einen Block, um ihn zu öffnen: Dort änderst du Reihenfolge, Dauer und Tag.",
     "queueShort": "Queue",
     "quickDuration": "Quick lengths",
     "remove": "Remove",
@@ -3298,7 +3298,6 @@
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
     "freeDrop": "Zieh einen Block hierher oder zeichne einen, um einen Drehtag anzulegen",
-    "freeDropWeek": "Zieh einen Block oder einen Tag hierher, um ihn zu belegen",
     "freeHeadHint": "Zieh einen Tag hierher, um ihn zu verschieben",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",
@@ -3329,7 +3328,20 @@
     "wholeScene": "Ganze Szene planen",
     "wholeSceneHint_one": "{{count}} Shot, als ein Block",
     "wholeSceneHint_other": "{{count}} Shots, als ein Block",
-    "sceneNoFrames": "Noch keine Shots: als einen Block planen"
+    "sceneNoFrames": "Noch keine Shots: als einen Block planen",
+    "conflictNote_one": "{{names}} ist um {{time}} in zwei Blöcken: „{{a}}“ und „{{b}}“.",
+    "conflictNote_other": "{{names}} sind um {{time}} in zwei Blöcken: „{{a}}“ und „{{b}}“.",
+    "freeShort": "frei",
+    "earlier": "Früher",
+    "later": "Später",
+    "hideSide": "Monat und Warteschlange ausblenden",
+    "showSide": "Monat und Warteschlange einblenden",
+    "month": "Monat",
+    "queueCount_one": "Zu planen: {{count}}",
+    "queueCount_other": "Zu planen: {{count}}",
+    "densityLabel": "Dichte",
+    "densityCompact": "Kompakt",
+    "densityComfy": "Bequem"
   },
   "moodboard": {
     "count_one": "{{count}} Referenz",
@@ -5290,11 +5302,11 @@
         "steps": {
           "0": {
             "title": "Der Drehkalender",
-            "text": "Auf dem Board Produktion ein Kalender für das ganze Projekt: Die Warteschlange sammelt die Shots und Szenen aller Storyboards. Tag oder Woche, wie in einem Kalender: Die Blöcke reihen sich von selbst aneinander. Zieh eine Einstellung auf die richtige Uhrzeit oder klick sie an, um sie ans Ende zu setzen. Mit Setplänen ordnet „Gruppieren nach: Setup“ die Einstellungen jeder Szene und jedes Drehtags ihrem Setup zu."
+            "text": "Auf dem Board Produktion ein Kalender für das ganze Projekt: Die Warteschlange sammelt die Shots und Szenen aller Storyboards. Tag oder Woche, wie in einem Kalender: Die Blöcke reihen sich von selbst aneinander. Zieh eine Einstellung auf die richtige Uhrzeit oder klick sie an, um sie ans Ende zu setzen. Mit Setplänen ordnet „Gruppieren nach: Setup“ die Einstellungen jeder Szene und jedes Drehtags ihrem Setup zu. Der Pfeil neben dem Monat klappt Monat und Warteschlange ein; „Kompakt“ und „Bequem“ ändern die Höhe der Stunden."
           },
           "1": {
-            "title": "Storyboards und Punkte",
-            "text": "Der Filter Storyboard zeigt die Shots eines einzigen; der farbige Punkt sagt, aus welchem Storyboard jeder Block kommt. „Ganze Szene planen“ legt eine Szene in einen Block, auch bevor sie gezeichnet ist. Ein grauer Punkt: Storyboard nicht verfügbar, die Bezeichnung bleibt."
+            "title": "Storyboards und Balken",
+            "text": "Der Filter Storyboard zeigt die Einstellungen eines einzigen; der farbige Balken links an jedem Block zeigt, aus welchem Storyboard er stammt. „Ganze Szene planen“ setzt eine Szene in einen Block, auch bevor sie gezeichnet ist. Ein grauer Balken: Storyboard nicht verfügbar, die Beschriftung bleibt."
           },
           "2": {
             "title": "Verschieben und dehnen",

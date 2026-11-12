@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The shooting schedule as in its approved mockup, on a Production board that plans the frames
-// of two storyboards and a scene (decision 0123): the hours column stays in view while the days
-// scroll sideways, a version conflict is resolved from the week, and a phone's day strip shows a
-// whole week. Uses the account created by first-run.spec.ts. Set E2E_SHOTS to a folder to
+// of two storyboards and a scene (decision 0123): the week fits at 1280 px with its free day
+// narrow and the month folded, "N conflitti" names who is double-booked, a version conflict is
+// resolved from the week, and a phone lists the day under a strip that shows a whole week. Uses the account created by first-run.spec.ts. Set E2E_SHOTS to a folder to
 // capture every state, light and dark.
 import { type Browser, expect, type Locator, type Page, test } from '@playwright/test';
 
@@ -173,8 +173,10 @@ async function capture(page: Page, name: string) {
 }
 
 /** The week opens on the first call; the morning blocks of Monday are in view. */
-async function openWeek(page: Page, url: string) {
+async function openWeek(page: Page, url: string, side: 'open' | 'closed' = 'closed') {
   await page.goto(url);
+  await page.evaluate((value) => localStorage.setItem('inkadra.schedule.side', value), side);
+  await page.reload();
   const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
   await expect(schedule.locator('.schedule__day')).toHaveCount(5);
   await page.mouse.move(0, 0);
@@ -214,13 +216,16 @@ test('the schedule calendar matches its mockup on the Production board', async (
 
   // Every state is captured before the first check, so a failing run still shows them.
   await capture(page, 'week-1280');
-  await calendar.evaluate((el) => {
-    el.scrollLeft = el.scrollWidth;
-  });
-  await capture(page, 'week-1280-scrolled');
-  await calendar.evaluate((el) => {
-    el.scrollLeft = 0;
-  });
+  const thursday = schedule.locator('.schedule__head', { hasText: 'G3' });
+  await thursday.getByRole('button', { name: '2 conflitti', exact: true }).click();
+  await capture(page, 'week-1280-conflicts');
+  await page.keyboard.press('Escape');
+  const density = schedule.getByRole('group', { name: 'Densità', exact: true });
+  await density.getByRole('radio', { name: 'Comodo', exact: true }).check();
+  await capture(page, 'week-1280-comfy');
+  await density.getByRole('radio', { name: 'Compatto', exact: true }).check();
+  await schedule.getByRole('button', { name: 'Mostra mese e coda', exact: true }).click();
+  await capture(page, 'week-1280-open');
   const sceneCard = schedule.locator('.schedule__block--scene .schedule__block-select');
   await page.keyboard.press('Tab');
   await sceneCard.focus();
@@ -233,8 +238,6 @@ test('the schedule calendar matches its mockup on the Production board', async (
   await expect(schedule.locator('.schedule__inspector')).toBeVisible();
   await capture(page, 'day-1280');
   await schedule.getByRole('radio', { name: 'Settimana', exact: true }).check();
-  const queue = schedule.locator('.schedule__queue');
-  if (shots) await queue.screenshot({ path: `${shots}/queue-1280-light.png` });
 
   // A colleague saves Monday while it is edited here: the week asks which version to keep.
   const days = (
@@ -268,6 +271,11 @@ test('the schedule calendar matches its mockup on the Production board', async (
   await capture(small.page, 'phone-390');
   await small.page.locator('.schedule__picker-day').nth(3).click();
   await capture(small.page, 'phone-390-thursday');
+  await small.page
+    .locator('.schedule__summary-card')
+    .getByRole('button', { name: '2 conflitti', exact: true })
+    .click();
+  await capture(small.page, 'phone-390-conflicts');
 
   // Checks. The conflict, resolved from the week: "Tieni la mia" saves this version over it.
   const banner = schedule.getByRole('alert').filter({ hasText: 'Tieni la mia' });
@@ -276,21 +284,56 @@ test('the schedule calendar matches its mockup on the Production board', async (
   await expect(schedule.locator('.schedule__status')).toHaveText(/Salvato alle/);
   await expect(banner).toHaveCount(0);
 
-  // In the week, a block of 60 px or more shows its cast and duration.
-  await expect(schedule.locator('.schedule__block--scene .schedule__block-meta')).toHaveText(
-    'Elena, Marco · 1h 30',
+  // In the week: start and title on one line, then cast and duration (option 3); the
+  // storyboard is a bar on the left edge, named in the label (option 6).
+  const scene = schedule.locator('.schedule__block--scene');
+  await expect(scene.locator('.schedule__block-meta')).toHaveText('Elena, Marco · 1h 30');
+  await expect(scene.locator('.schedule__block-line .schedule__block-time')).toHaveText(
+    /^\d\d:\d\d$/,
+  );
+  await expect(scene.locator('.schedule__block-select')).toHaveAttribute(
+    'aria-label',
+    /, Ultimo treno, \d\d:\d\d – \d\d:\d\d, Scena intera/,
+  );
+  await expect(scene.locator('.schedule__block-select')).toHaveCSS('border-left-width', '3px');
+
+  // At 1280 px with the column folded and Tuesday narrow, the whole week fits: no sideways
+  // scroll and Saturday's column is whole (option 1).
+  schedule = await openWeek(page, url);
+  await expect(schedule.locator('.schedule__rail')).toBeVisible();
+  expect(await calendar.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+  const tuesday = schedule.locator('.schedule__column.is-free');
+  expect((await box(tuesday)).width).toBeCloseTo(48, 0);
+  await expect(
+    schedule.getByRole('button', { name: /^martedì 2 marzo · Giorno libero/ }),
+  ).toBeVisible();
+  const saturday = schedule.locator('.schedule__day').last();
+  expect((await box(saturday)).x + (await box(saturday)).width).toBeLessThanOrEqual(
+    (await box(calendar)).x + (await box(calendar)).width + 0.5,
+  );
+  // Sunrise leaves the week's heading; its dashed line in the grid keeps the time on hover.
+  await expect(schedule.locator('.schedule__heads .schedule__sun')).toHaveCount(0);
+  await expect(schedule.locator('.schedule__sunline').first()).toHaveAttribute(
+    'data-ink-tooltip',
+    /^Alba \d\d:\d\d$/,
   );
 
-  // The days scroll sideways at 1280 px; the hours column stays at the left edge.
-  schedule = await openWeek(page, url);
-  const scrolled = await calendar.evaluate((el) => {
-    el.scrollLeft = el.scrollWidth;
-    return el.scrollLeft;
-  });
-  expect(scrolled).toBeGreaterThan(0);
-  const gutter = schedule.locator('.schedule__grid .schedule__gutter');
-  await expect.poll(async () => (await box(gutter)).x - (await box(calendar)).x).toBeCloseTo(0, 0);
-  await expect(gutter.getByText('10:00', { exact: true })).toBeVisible();
+  // "2 conflitti" names who is double-booked and marks the two blocks; Escape closes it.
+  const tag = schedule
+    .locator('.schedule__head', { hasText: 'G3' })
+    .getByRole('button', { name: '2 conflitti', exact: true });
+  await tag.click();
+  await expect(tag).toHaveAttribute('aria-expanded', 'true');
+  await expect(schedule.locator('.schedule__conflict-note')).toHaveText(
+    'Elena è in due blocchi alle 14:00: «Elena al telefono» e «Inserti tazzine».',
+  );
+  await expect(schedule.locator('.schedule__block.is-hot')).toHaveCount(2);
+  await page.keyboard.press('Escape');
+  await expect(schedule.locator('.schedule__conflict-note')).toHaveCount(0);
+  await expect(tag).toBeFocused();
+  await tag.click();
+  await tag.click();
+  await expect(schedule.locator('.schedule__block.is-hot')).toHaveCount(0);
 
   // The phone's strip shows the whole week, Saturday included, no chip cut off.
   const edges = await box(strip);
@@ -299,5 +342,22 @@ test('the schedule calendar matches its mockup on the Production board', async (
     expect(x).toBeGreaterThanOrEqual(edges.x);
     expect(x + width).toBeLessThanOrEqual(edges.x + edges.width);
   }
+  // The phone lists the day: call, blocks in time order with cast and duration, wrap; the
+  // day's card carries "2 conflitti" (option 8).
+  const list = small.page.locator('.schedule__list');
+  await expect(list.locator('.schedule__list-mark')).toHaveText([
+    'Convocazione 08:00',
+    'Fine riprese 15:50',
+  ]);
+  await expect(list.locator('.schedule__row.has-conflict')).toHaveCount(2);
+  await expect(small.page.locator('.schedule__conflict-note')).toContainText(
+    'Elena è in due blocchi',
+  );
+  await list.locator('.schedule__row').first().click();
+  await expect(small.page.getByRole('dialog', { name: 'Blocco' })).toBeVisible();
+  await expect(
+    small.page.getByRole('button', { name: 'Sposta prima', exact: true }),
+  ).toBeDisabled();
+  await expect(small.page.getByRole('button', { name: 'Sposta dopo', exact: true })).toBeEnabled();
   await small.context.close();
 });

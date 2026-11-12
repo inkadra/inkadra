@@ -92,6 +92,8 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   await expect(page.locator('.schedule .film-shell__badge')).toHaveCount(0);
   // Free text durations validate locally and normalize on blur.
   await schedule.getByRole('radio', { name: 'Settimana', exact: true }).check();
+  // The reload found nothing waiting: the month and queue start folded; the rail opens them.
+  await schedule.getByRole('button', { name: 'Mostra mese e coda', exact: true }).click();
   await schedule.locator('.schedule__block-select').click();
   const duration = page.getByLabel('Durata', { exact: true });
   await duration.fill('1h 30');
@@ -151,7 +153,8 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   await expect(saved).toHaveText(/Salvato alle/);
   const queued = schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)');
   const freeDate = schedule.locator('.schedule__column.is-free').first();
-  await queued.dragTo(freeDate, { targetPosition: { x: 60, y: 9 * 60 + 40 } });
+  // A free day of the week is a 48 px column: still a drop target.
+  await queued.dragTo(freeDate, { targetPosition: { x: 24, y: 9 * 60 + 40 } });
   await expect(schedule.locator('.schedule__day')).toHaveCount(3);
   await expect(schedule.locator('.schedule__block')).toHaveCount(1);
   await expect(saved).toHaveText(/Salvato alle/);
@@ -161,7 +164,7 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
     schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)'),
   ).toHaveCount(1);
   await expect(saved).toHaveText(/Salvato alle/);
-  // A wrapped overnight notice fits entirely in its column; phone notices have their own row.
+  // A wrapped overnight notice fits entirely in its column; a phone lists the whole night.
   const night = await page.request.post(`/api/v1/boards/${production.id}/schedule`, {
     headers: { origin: new URL(page.url()).origin },
     data: {
@@ -214,10 +217,18 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   expect(pillRect.y + pillRect.height).toBeLessThanOrEqual(gridRect.y + gridRect.height);
   await page.setViewportSize({ width: 390, height: 844 });
   await schedule.getByRole('button', { name: /^giovedì 5 novembre/ }).click();
-  const notice = schedule.locator('.schedule__edge-notices');
-  await expect(notice).toBeVisible();
-  const noticeRect = await notice.boundingBox();
+  const list = schedule.locator('.schedule__list');
+  await expect(list.locator('.schedule__row-title')).toHaveText([
+    'Night setup',
+    'After midnight',
+    'Before wrap',
+  ]);
+  await expect(list.locator('.schedule__list-mark')).toHaveText([
+    'Convocazione 18:30',
+    'Fine riprese 04:00 (+1)',
+  ]);
+  const listRect = await list.boundingBox();
   const footerRect = await schedule.locator('.schedule__phone-foot').boundingBox();
-  if (!noticeRect || !footerRect) throw new Error('phone overflow notice missing');
-  expect(noticeRect.y + noticeRect.height).toBeLessThanOrEqual(footerRect.y);
+  if (!listRect || !footerRect) throw new Error('phone list missing');
+  expect(listRect.y + listRect.height).toBeLessThanOrEqual(footerRect.y + 0.5);
 });

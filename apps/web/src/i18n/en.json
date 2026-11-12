@@ -3256,7 +3256,7 @@
     "noShoot": "No shooting",
     "openDay": "open the day",
     "openStoryboard": "Open in the storyboard",
-    "phoneHint": "Press and hold a block to move it; its bottom edge changes the length.",
+    "phoneHint": "Tap a block to open it: there you change its order, length and day.",
     "queueShort": "Queue",
     "quickDuration": "Quick lengths",
     "remove": "Remove",
@@ -3298,7 +3298,6 @@
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
     "freeDrop": "Drag a block here, or draw one, to create a shooting day",
-    "freeDropWeek": "Drag a block or a day here to fill it",
     "freeHeadHint": "Drag a day here to move it",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",
@@ -3329,7 +3328,20 @@
     "wholeScene": "Plan the whole scene",
     "wholeSceneHint_one": "{{count}} frame, as one block",
     "wholeSceneHint_other": "{{count}} frames, as one block",
-    "sceneNoFrames": "No frames yet: plan it as one block"
+    "sceneNoFrames": "No frames yet: plan it as one block",
+    "conflictNote_one": "{{names}} is in two blocks at {{time}}: “{{a}}” and “{{b}}”.",
+    "conflictNote_other": "{{names}} are in two blocks at {{time}}: “{{a}}” and “{{b}}”.",
+    "freeShort": "free",
+    "earlier": "Move earlier",
+    "later": "Move later",
+    "hideSide": "Hide month and queue",
+    "showSide": "Show month and queue",
+    "month": "Month",
+    "queueCount_one": "To schedule: {{count}}",
+    "queueCount_other": "To schedule: {{count}}",
+    "densityLabel": "Density",
+    "densityCompact": "Compact",
+    "densityComfy": "Comfortable"
   },
   "moodboard": {
     "count_one": "{{count}} reference",
@@ -5290,11 +5302,11 @@
         "steps": {
           "0": {
             "title": "The shooting calendar",
-            "text": "On the Production board, one calendar for the whole project: the queue holds the frames and scenes of every storyboard. Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end. With set plans, “Group by: Setup” puts the shots of each scene and day under their setup."
+            "text": "On the Production board, one calendar for the whole project: the queue holds the frames and scenes of every storyboard. Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end. With set plans, “Group by: Setup” puts the shots of each scene and day under their setup. The arrow beside the month folds the month and the queue; “Compact” and “Comfortable” change the height of the hours."
           },
           "1": {
-            "title": "Storyboards and dots",
-            "text": "The Storyboard filter shows the frames of one; the coloured dot says which storyboard each block comes from. “Plan the whole scene” puts a scene in one block, even before it is drawn. A grey dot: the storyboard is not available, its label stays."
+            "title": "Storyboards and bars",
+            "text": "The Storyboard filter shows the frames of one only; the coloured bar on the left of each block tells which storyboard it comes from. “Plan the whole scene” puts a scene in one block, even before it is drawn. A grey bar: the storyboard is not available, the label stays."
           },
           "2": {
             "title": "Move and stretch",

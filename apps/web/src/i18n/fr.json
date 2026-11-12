@@ -3256,7 +3256,7 @@
     "noShoot": "Pas de tournage",
     "openDay": "open the day",
     "openStoryboard": "Open in the storyboard",
-    "phoneHint": "Press and hold a block to move it; its bottom edge changes the length.",
+    "phoneHint": "Touchez un bloc pour l’ouvrir : vous y changez son ordre, sa durée et son jour.",
     "queueShort": "Queue",
     "quickDuration": "Quick lengths",
     "remove": "Remove",
@@ -3298,7 +3298,6 @@
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
     "freeDrop": "Glissez un bloc ici, ou dessinez-en un, pour créer une journée de tournage",
-    "freeDropWeek": "Glissez ici un bloc ou une journée pour l’occuper",
     "freeHeadHint": "Glissez une journée ici pour la déplacer",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",
@@ -3329,7 +3328,20 @@
     "wholeScene": "Planifier la scène entière",
     "wholeSceneHint_one": "{{count}} plan, en un seul bloc",
     "wholeSceneHint_other": "{{count}} plans, en un seul bloc",
-    "sceneNoFrames": "Pas encore de plans : planifiez-la en un bloc"
+    "sceneNoFrames": "Pas encore de plans : planifiez-la en un bloc",
+    "conflictNote_one": "{{names}} est dans deux blocs à {{time}} : « {{a}} » et « {{b}} ».",
+    "conflictNote_other": "{{names}} sont dans deux blocs à {{time}} : « {{a}} » et « {{b}} ».",
+    "freeShort": "libre",
+    "earlier": "Avancer",
+    "later": "Reculer",
+    "hideSide": "Masquer le mois et la file",
+    "showSide": "Afficher le mois et la file",
+    "month": "Mois",
+    "queueCount_one": "À planifier : {{count}}",
+    "queueCount_other": "À planifier : {{count}}",
+    "densityLabel": "Densité",
+    "densityCompact": "Compact",
+    "densityComfy": "Confortable"
   },
   "moodboard": {
     "count_one": "{{count}} référence",
@@ -5290,11 +5302,11 @@
         "steps": {
           "0": {
             "title": "Le calendrier de tournage",
-            "text": "Sur le tableau Production, un calendrier pour tout le projet : la file réunit les plans et les scènes de chaque storyboard. Jour ou semaine, comme un agenda : les blocs se mettent à la suite tout seuls. Glissez un plan à la bonne heure, ou cliquez dessus pour l’ajouter à la fin. Avec des plans au sol, « Grouper par : Setup » range les plans de chaque scène et de chaque journée sous leur setup."
+            "text": "Sur le tableau Production, un calendrier pour tout le projet : la file réunit les plans et les scènes de chaque storyboard. Jour ou semaine, comme un agenda : les blocs se mettent à la suite tout seuls. Glissez un plan à la bonne heure, ou cliquez dessus pour l’ajouter à la fin. Avec des plans au sol, « Grouper par : Setup » range les plans de chaque scène et de chaque journée sous leur setup. La flèche à côté du mois replie le mois et la file ; « Compact » et « Confortable » changent la hauteur des heures."
           },
           "1": {
-            "title": "Storyboards et pastilles",
-            "text": "Le filtre Storyboard montre les plans d’un seul ; la pastille de couleur dit de quel storyboard vient chaque bloc. « Planifier la scène entière » met une scène dans un bloc, même avant de la dessiner. Une pastille grise : storyboard non disponible, son libellé reste."
+            "title": "Storyboards et barres",
+            "text": "Le filtre Storyboard montre les plans d’un seul ; la barre de couleur à gauche de chaque bloc indique de quel storyboard il vient. « Planifier la scène entière » met une scène dans un bloc, même avant de la dessiner. Une barre grise : storyboard indisponible, l’étiquette reste."
           },
           "2": {
             "title": "Déplacer et allonger",
