@@ -1200,9 +1200,7 @@ export function ScheduleView({
               crew.items,
               dayElements(selectedEntry.draft, sources),
               crew.characters,
-            ).filter(
-              (e) => e.called,
-            ).length
+            ).filter((e) => e.called).length
           : undefined
       }
       calls={

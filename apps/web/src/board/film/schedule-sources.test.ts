@@ -148,11 +148,14 @@ describe('the dot of a storyboard (decision 0123)', () => {
 });
 
 describe("a day's cards on the Production board (decision 0123)", () => {
-  it("are those of the storyboards the day plans, the first in tree order winning", () => {
+  it('are those of the storyboards the day plans, the first in tree order winning', () => {
     const a = storyboard(A);
     const b = storyboard(B);
     const read = sources({ id: A, store: a.store }, { id: B, store: b.store });
-    const only = dayElements({ blocks: [{ type: 'shot', shotId: b.frame.id, shotBoardId: B }] }, read);
+    const only = dayElements(
+      { blocks: [{ type: 'shot', shotId: b.frame.id, shotBoardId: B }] },
+      read,
+    );
     expect(only.has(b.frame.id)).toBe(true);
     expect(only.has(a.frame.id)).toBe(false);
     expect(dayElements({ blocks: [] }, read).size).toBe(0);
