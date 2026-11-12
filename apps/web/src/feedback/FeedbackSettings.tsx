@@ -6,7 +6,7 @@ import {
 } from '@inkadra/shared';
 import { Button, Dialog, DialogActions, Icon, IconButton, Select, Switch } from '@inkadra/ui';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { formatDateTime } from '../lib/datetime.ts';
 import { useIsPhone } from '../lib/phone.ts';
@@ -15,6 +15,13 @@ import { openFeedback, STATUS_CHANGED, useFeedbackStatus } from './state.ts';
 
 const WHEN = { dateStyle: 'medium', timeStyle: 'short' } as const;
 const RELOAD_MS = 10000;
+/** What the relay sends and keeps, always shown under its destination (mockup A). */
+const RELAY_FACTS = [
+  ['route', 'arrow'],
+  ['content', 'file'],
+  ['metadata', 'eyeOff'],
+  ['kept', 'clock'],
+] as const;
 const TONE = {
   delivered: 'ok',
   pending: 'warn',
@@ -322,7 +329,16 @@ export function FeedbackSettings() {
           )}
           <Row
             label={t('feedback.destination')}
-            help={t(relay ? 'feedback.privacyRelay' : 'settingsUi.reports.copyHere')}
+            help={
+              relay ? (
+                <Trans
+                  i18nKey="settingsUi.reports.relayHelp"
+                  components={{ repo: <code className="settings-env" /> }}
+                />
+              ) : (
+                t('settingsUi.reports.copyHere')
+              )
+            }
           >
             <Select
               aria-label={t('feedback.destination')}
@@ -336,6 +352,23 @@ export function FeedbackSettings() {
               }))}
             />
           </Row>
+          {relay && (
+            <ul className="feedback-facts">
+              {RELAY_FACTS.map(([key, icon]) => (
+                <li key={key} className="feedback-facts__item">
+                  <Tile icon={icon} />
+                  <span className="settings-row__text">
+                    <span className="settings-row__label">
+                      {t(`settingsUi.reports.facts.${key}.title`)}
+                    </span>
+                    <span className="settings-row__help">
+                      {t(`settingsUi.reports.facts.${key}.body`)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="settings-rows">
             {github && (
               <Row

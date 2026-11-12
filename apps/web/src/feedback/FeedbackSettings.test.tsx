@@ -9,6 +9,7 @@ import { FeedbackInbox, FeedbackSettings } from './FeedbackSettings.tsx';
 const { t } = vi.hoisted(() => ({ t: (key: string) => key }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t, i18n: { language: 'en' } }),
+  Trans: ({ i18nKey }: { i18nKey: string }) => i18nKey,
 }));
 vi.mock('../lib/api.ts', async (actual) => ({
   ...(await actual<typeof import('../lib/api.ts')>()),
@@ -110,4 +111,24 @@ it('offers no deletion in the copy of the list that a notification opens', async
   expect(host.textContent).toContain('First');
   expect(host.querySelector('.feedback-reports__delete')).toBeNull();
   await act(async () => root.unmount());
+});
+
+it('shows the relay in one sentence and four facts, and other destinations without them', async () => {
+  const settings = { destination: 'relay', repository: null, guests: false, retentionDays: 90 };
+  vi.mocked(api.get).mockImplementation(async (path: string) =>
+    path === '/feedback/reports' ? { items: [] } : settings,
+  );
+  const relay = await open();
+  expect(relay.host.textContent).toContain('settingsUi.reports.relayHelp');
+  expect(relay.host.textContent).not.toContain('feedback.privacyRelay');
+  expect(relay.host.querySelectorAll('.feedback-facts li')).toHaveLength(4);
+  await act(async () => relay.root.unmount());
+  relay.host.remove();
+
+  settings.destination = 'inbox';
+  const inbox = await open();
+  expect(inbox.host.textContent).toContain('settingsUi.reports.copyHere');
+  expect(inbox.host.querySelector('.feedback-facts')).toBeNull();
+  await act(async () => inbox.root.unmount());
+  inbox.host.remove();
 });

@@ -3852,7 +3852,26 @@
     },
     "reports": {
       "copyHere": "Eine Kopie bleibt immer unten unter „Eingegangene Meldungen“.",
-      "rules": "Regeln"
+      "rules": "Regeln",
+      "relayHelp": "Meldungen gehen an das Inkadra-Team, in das private Repository <repo>inkadra/inkadra-feedback</repo>.",
+      "facts": {
+        "route": {
+          "title": "Der Weg",
+          "body": "Sie laufen über ein Relay auf Cloudflare, das die IP-Adresse dieses Servers sieht."
+        },
+        "content": {
+          "title": "Was gesendet wird",
+          "body": "Ausgewählter Text, Screenshots, Videos, Dateien und Logs. Wir fügen weder Name noch E-Mail oder URL der Instanz hinzu."
+        },
+        "metadata": {
+          "title": "Metadaten",
+          "body": "Aus Fotos und Videos vom Gerät entfernen wir GPS und andere Metadaten. PDFs werden vollständig mit ihren Metadaten gesendet. Prüfe die Vorschau."
+        },
+        "kept": {
+          "title": "Wie lange sie bleiben",
+          "body": "Auf GitHub, bis das Team sie entfernt: Die lokale Aufbewahrung löscht sie nicht."
+        }
+      }
     },
     "backups": {
       "ok": "Letzte Sicherung erfolgreich",
