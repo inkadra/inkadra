@@ -15,10 +15,10 @@ import {
   roomSize,
 } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
+import { exportRoomSize } from '@inkadra/print';
 import type { TFunction } from 'i18next';
 import { foldIcons } from '../plan/elements.ts';
 import { KIT_GROUPS, kitList, powerLines } from '../plan/kit.ts';
-import { exportRoomSize } from '@inkadra/print';
 import { type CardContext, planOps } from './board-render.ts';
 import { pageSize } from './layout.ts';
 import type { Op, Page } from './pages.ts';
