@@ -4,7 +4,14 @@ import type { BoardVersion } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { RequestError } from '../lib/api.ts';
-import { groupVersions, mergeVersions, versionError, versionStore } from './versions.ts';
+import {
+  daysAgo,
+  expiryDays,
+  groupVersions,
+  mergeVersions,
+  versionError,
+  versionStore,
+} from './versions.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 describe('version previews', () => {
@@ -96,4 +103,21 @@ it('reads the reason of conflicts and unconfirmed changes, and stays careful wit
   }
   expect(versionError(failed(500, unknown), 'rename')).toBe('unconfirmed');
   expect(versionError(failed(500), 'delete')).toBe('generic');
+});
+
+it('counts calendar days for the Today and Yesterday headings', () => {
+  const now = new Date(2026, 10, 12, 0, 30);
+  expect(daysAgo(new Date(2026, 10, 12, 23, 59), now)).toBe(0);
+  expect(daysAgo(new Date(2026, 10, 11, 23, 59), now)).toBe(1);
+  expect(daysAgo(new Date(2026, 9, 15, 18, 2), now)).toBe(28);
+});
+
+it('warns about automatic cleanup only in the last week', () => {
+  const now = Date.parse('2026-11-12T10:00:00.000Z');
+  expect(expiryDays(null, now)).toBeNull();
+  expect(expiryDays('2026-11-20T10:00:00.000Z', now)).toBeNull();
+  expect(expiryDays('2026-11-19T10:00:00.000Z', now)).toBe(7);
+  expect(expiryDays('2026-11-14T12:00:00.000Z', now)).toBe(2);
+  expect(expiryDays('2026-11-12T20:00:00.000Z', now)).toBe(0);
+  expect(expiryDays('2026-11-12T09:00:00.000Z', now)).toBe(0);
 });
