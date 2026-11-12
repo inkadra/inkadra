@@ -1,8 +1,9 @@
-import type {
-  CreateProjectGroup,
-  Project,
-  ProjectGroup,
-  UpdateProjectGroup,
+import {
+  type CreateProjectGroup,
+  comparePosition,
+  type Project,
+  type ProjectGroup,
+  type UpdateProjectGroup,
 } from '@inkadra/shared';
 import { useEffect, useSyncExternalStore } from 'react';
 import { api } from '../lib/api.ts';
@@ -119,19 +120,17 @@ export function groupProjects<T>(
   };
   return {
     loose: items.filter((item) => !inGroup(item)),
-    groups: [...groups]
-      .sort((a, b) => byPosition(a.position, b.position) || byPosition(a.id, b.id))
-      .map((group) => {
-        const mine = items.filter((item) => inGroup(item) === group.id);
-        return {
-          group,
-          items: keepOrder
-            ? mine
-            : mine.sort((a, b) =>
-                byPosition(projectOf(a).group?.position ?? '', projectOf(b).group?.position ?? ''),
-              ),
-        };
-      }),
+    groups: [...groups].sort(comparePosition).map((group) => {
+      const mine = items.filter((item) => inGroup(item) === group.id);
+      return {
+        group,
+        items: keepOrder
+          ? mine
+          : mine.sort((a, b) =>
+              byPosition(projectOf(a).group?.position ?? '', projectOf(b).group?.position ?? ''),
+            ),
+      };
+    }),
   };
 }
 
