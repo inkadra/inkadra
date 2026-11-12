@@ -690,7 +690,7 @@ export function body(p: Placed, ctx: CardContext): Op[] {
           text: words.scenes,
           size: 11,
           weight: 600,
-          color: c['accent-primary'],
+          color: c['tag-blue'],
         });
       if (words.chips.length)
         ops.push({

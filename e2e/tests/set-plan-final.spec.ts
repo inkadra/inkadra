@@ -58,7 +58,14 @@ async function seed(page: Page, baseURL: string) {
   );
   const frame = addFrame(doc, scene.id, null, { action: 'Campo largo', lens: '32mm' }, opts);
   const icon = (id: string, kind: PlanIcon['kind'], x: number, y: number, extra = {}) =>
-    ({ id: `icon${id}`.padEnd(13, 'A'), kind, color: INK, x: gx(x), y: gy(y), ...extra }) as PlanIcon;
+    ({
+      id: `icon${id}`.padEnd(13, 'A'),
+      kind,
+      color: INK,
+      x: gx(x),
+      y: gy(y),
+      ...extra,
+    }) as PlanIcon;
   const plan = createElement(
     doc,
     'plan',
@@ -226,7 +233,13 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
     // The account is shared with the specs after this one: its choices go back to the defaults.
     await page.request.patch('/api/v1/me/preferences', {
       headers: { origin: baseURL! },
-      data: { planSnap: true, planAttach: true, planGhosts: true, planHidden: [], planShelf: 'lights' },
+      data: {
+        planSnap: true,
+        planAttach: true,
+        planGhosts: true,
+        planHidden: [],
+        planShelf: 'lights',
+      },
     });
   }
 });
