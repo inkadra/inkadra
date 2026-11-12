@@ -111,7 +111,9 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   const initial = await moving.boundingBox();
   const free = schedule.locator('.schedule__column.is-free').first();
   const empty = await free.boundingBox();
-  if (!initial || !empty) throw new Error('calendar columns missing');
+  const after = schedule.locator('.schedule__column.is-free').nth(1);
+  const beyond = await after.boundingBox();
+  if (!initial || !empty || !beyond) throw new Error('calendar columns missing');
   await page.mouse.move(initial.x + 30, initial.y + 10);
   await page.mouse.down();
   await page.keyboard.down('Alt');
@@ -122,14 +124,17 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
     ),
   ).toBeLessThan(1);
   expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toBe('');
-  // The free day widens under the drag so the block reads at full width there, and narrows
-  // again when the pointer leaves without dropping.
+  // A free day widens once the drag rests on it, so the block reads at full width there, and
+  // narrows again when the pointer leaves without dropping. Crossing one does not widen it.
   const freeWidth = async () => (await free.boundingBox())?.width ?? 0;
+  const afterWidth = async () => (await after.boundingBox())?.width ?? 0;
   expect(empty.width).toBeCloseTo(48, 0);
-  await page.mouse.move(empty.x + empty.width / 2, initial.y + 20, { steps: 6 });
-  await expect.poll(freeWidth).toBeGreaterThan(100);
+  await page.mouse.move(beyond.x + beyond.width / 2, initial.y + 20, { steps: 6 });
+  expect(await freeWidth()).toBeLessThan(49);
+  await expect.poll(afterWidth).toBeGreaterThan(100);
   await page.mouse.move(initial.x + 30, initial.y + 20, { steps: 6 });
-  await expect.poll(freeWidth).toBeLessThan(49);
+  expect(await freeWidth()).toBeLessThan(49);
+  await expect.poll(afterWidth).toBeLessThan(49);
   await page.mouse.move(empty.x + empty.width / 2, initial.y + 20, { steps: 6 });
   await expect.poll(freeWidth).toBeGreaterThan(100);
   const landing = free.locator('.schedule__block.is-dragging');

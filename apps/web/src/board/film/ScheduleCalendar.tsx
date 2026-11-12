@@ -30,9 +30,9 @@ import {
   resizeBlock,
   SHOT_DRAG_TYPE,
   SNAP,
+  freeDayUnder,
   shiftBlock,
   snap,
-  widenedFreeDay,
 } from './calendar.ts';
 import { locationsOfDay, plannedWrap } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
@@ -64,6 +64,8 @@ const MIN_HEIGHT = 1;
 const TWO_LINES = 40;
 /** A long press that picks a block up on a touch screen. */
 const LONG_PRESS = 400;
+/** How long a drag rests on a free day of the week before that day widens. */
+const WIDEN_DELAY = 300;
 
 interface Drag {
   kind: 'move' | 'resize';
@@ -758,17 +760,26 @@ export function ScheduleCalendar({
   const dayTarget =
     movingEntry && dayDrag?.target !== movingEntry.draft.date ? (dayDrag?.target ?? null) : null;
   /**
-   * The free day under a drag takes the width of a shooting day, so what lands there reads.
-   * Hit-testing cannot flicker: only that column's track changes, from 48 px to a share of the
-   * same row, so its narrow box lies inside its wide one. A pointer inside the narrow column is
-   * inside the wide one, and a pointer that leaves the wide one is outside the narrow one too.
-   * The width switches at once: a px track and a fr track do not interpolate.
+   * A free day under a dragged block or queued shot takes the width of a shooting day, so what
+   * lands there reads — once the pointer rests on it for WIDEN_DELAY. Widening shifts the columns
+   * after it, so widening a free day the pointer only crosses would slide the real target away
+   * from under it. While it stays widened the pointer cannot flicker out of it: only its own track
+   * changes, so its narrow box lies inside its wide one. The width switches at once: a px track
+   * and a fr track do not interpolate. A whole day dragged by its heading never widens a column.
    */
-  const widened = widenedFreeDay(view, columns, [
-    drag?.active && drag.kind === 'move' ? drag.target : null,
-    dropAt?.day,
-    dayTarget,
-  ]);
+  const under = freeDayUnder(view, columns, {
+    block: drag?.active && drag.kind === 'move' ? drag.target : null,
+    shot: dropAt?.day,
+  });
+  const [rested, setRested] = useState<string | null>(null);
+  useEffect(() => {
+    // A new date (or the end of the drag) starts over: only a pause on one free day widens it.
+    setRested(null);
+    if (!under) return;
+    const timer = window.setTimeout(() => setRested(under), WIDEN_DELAY);
+    return () => window.clearTimeout(timer);
+  }, [under]);
+  const widened = under !== null && under === rested ? under : null;
   /** A free day of the week is a narrow column (option 1); the Day view keeps it whole. */
   const narrow = (column: CalendarColumn) =>
     view === 'week' && !column.entry && column.date !== widened;
@@ -1214,7 +1225,7 @@ export function ScheduleCalendar({
                 <section
                   key={date}
                   aria-label={t('schedule.day', { date })}
-                  className={`schedule__column is-free${narrow(column) ? ' is-narrow' : ''}${dayTarget === date || widened === date ? ' is-drop' : ''}`}
+                  className={`schedule__column is-free${narrow(column) ? ' is-narrow' : ''}${dayTarget === date || under === date ? ' is-drop' : ''}`}
                   data-day-drop={date}
                   onPointerDown={(event) => beginDraw(event, column)}
                   ref={(el) => {
