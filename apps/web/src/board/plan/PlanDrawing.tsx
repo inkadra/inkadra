@@ -14,12 +14,12 @@ import {
   iconLabel,
   iconSubLabel,
   iconTransform,
-  PLAN_LABEL_SIZE,
-  PLAN_SUB_LABEL_SIZE,
   labelAnchor,
   linkedPlan,
   measureEnds,
   openingLines,
+  PLAN_LABEL_SIZE,
+  PLAN_SUB_LABEL_SIZE,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
@@ -208,9 +208,6 @@ export function PlanGlyph({
     </svg>
   );
 }
-
-
-
 
 /**
  * The label of an icon, over everything else of the plan, with a halo of the card's colour so

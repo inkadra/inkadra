@@ -86,7 +86,7 @@ describe('the view of the plan surface', () => {
     expect(m.y).toBeCloseTo(area.h / 2);
   });
 
-  it('pans by pixels and never past the plan\'s reach', () => {
+  it("pans by pixels and never past the plan's reach", () => {
     const v = fitPlanView(null, area);
     const moved = panPlanBy(v, area, 100, -40);
     expect(toScreen(moved, { x: 0, y: 0 }).x).toBeCloseTo(toScreen(v, { x: 0, y: 0 }).x + 100);
@@ -168,7 +168,7 @@ describe('the view of the plan surface', () => {
     expect(toScreen(v, { x: room.x, y: room.y }).y).toBeCloseTo(48 + 24);
   });
 
-  it('lets everything within the plan\'s reach be seen: Fit and panning are not held to the extent', () => {
+  it("lets everything within the plan's reach be seen: Fit and panning are not held to the extent", () => {
     // An item far out, as the reach allows (review of #615, 1).
     const far = { x: 2500, y: 1500, w: 40, h: 40 };
     const v = fitPlanView(far, area);
@@ -182,7 +182,7 @@ describe('the view of the plan surface', () => {
     expect(toScreen(there, { x: 2500, y: 1500 }).y).toBeLessThan(area.h);
   });
 
-  it('frames only what is drawn: hidden layers and a caller\'s hidden list are left out', () => {
+  it("frames only what is drawn: hidden layers and a caller's hidden list are left out", () => {
     // Review of #615, 2: a hidden item far away must not shrink the rest into a corner.
     const seen = { id: 'aAAAAAAAAAAAA', kind: 'table', color: '#1C1C1E', x: 2048, y: 2048 };
     const away = { id: 'bAAAAAAAAAAAA', kind: 'cob', color: '#EDD963', x: 20000, y: 20000 };
@@ -199,7 +199,7 @@ describe('the view of the plan surface', () => {
     });
   });
 
-  it('frames what is drawn for an item: labels, a light\'s second line, beams, blocking', () => {
+  it("frames what is drawn for an item: labels, a light's second line, beams, blocking", () => {
     // Review of #615, 3: nothing drawn may be cut at the edge of the card or the sheet.
     const key = {
       id: 'aAAAAAAAAAAAA',

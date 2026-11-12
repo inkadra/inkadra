@@ -206,7 +206,9 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
       const zoom = viewer.getByRole('button', { name: /^\d+% · Adatta la pianta$/ });
       const percent = async () => Number((await zoom.innerText()).replace('%', ''));
       const before = await percent();
-      await expect(viewer.getByRole('button', { name: `${before}% · Adatta la pianta` })).toBeVisible();
+      await expect(
+        viewer.getByRole('button', { name: `${before}% · Adatta la pianta` }),
+      ).toBeVisible();
       await view.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await view.keyboard.down('Control');
       await view.mouse.wheel(0, -200);

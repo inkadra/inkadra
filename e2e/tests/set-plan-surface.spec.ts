@@ -160,7 +160,9 @@ test('the surface fills the editor, pans, zooms round the pointer and fits the p
   // A plain scroll pans.
   const scrolled = (await stage.boundingBox())!;
   await page.mouse.wheel(0, 80);
-  await expect.poll(async () => Math.round((await stage.boundingBox())!.y)).toBe(Math.round(scrolled.y - 80));
+  await expect
+    .poll(async () => Math.round((await stage.boundingBox())!.y))
+    .toBe(Math.round(scrolled.y - 80));
 
   // Space and a drag on empty space pan; they pick nothing and move nothing.
   const key = (await find('Key')).x;
@@ -191,9 +193,13 @@ test('the surface fills the editor, pans, zooms round the pointer and fits the p
   // By keys, with nothing picked: the arrows pan, 0 fits, + zooms.
   await page.keyboard.press('Escape');
   await page.keyboard.press('ArrowLeft');
-  await expect.poll(async () => Math.round((await stage.boundingBox())!.x)).toBe(Math.round(panned.x + 40));
+  await expect
+    .poll(async () => Math.round((await stage.boundingBox())!.x))
+    .toBe(Math.round(panned.x + 40));
   await page.keyboard.press('0');
-  await expect.poll(async () => Math.round((await stage.boundingBox())!.x)).toBe(Math.round(fitted.x));
+  await expect
+    .poll(async () => Math.round((await stage.boundingBox())!.x))
+    .toBe(Math.round(fitted.x));
   await page.keyboard.press('+');
   await expect.poll(shown).toBeGreaterThan(before);
   await page.mouse.move(pointer.x, pointer.y);
