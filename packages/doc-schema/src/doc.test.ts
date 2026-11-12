@@ -916,7 +916,9 @@ describe('set plans', () => {
     roots(doc).meta.set('schemaVersion', 13);
     addElement(doc, { ...base(), type: 'todo' as const, items: [], list: 'props' as const });
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([
+      14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+    ]);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
   });

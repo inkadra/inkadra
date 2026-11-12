@@ -193,7 +193,15 @@ export function fitPlanView(
 type Framed = Partial<
   Pick<
     PlanElement,
-    'strokes' | 'shapes' | 'icons' | 'walls' | 'background' | 'hiddenLayers' | 'sensor' | 'scale' | 'roomSizes'
+    | 'strokes'
+    | 'shapes'
+    | 'icons'
+    | 'walls'
+    | 'background'
+    | 'hiddenLayers'
+    | 'sensor'
+    | 'scale'
+    | 'roomSizes'
   >
 >;
 

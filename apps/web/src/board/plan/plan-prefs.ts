@@ -70,7 +70,9 @@ export function usePlanPref<K extends PlanPref>(
     | undefined;
   const choose = useCallback(
     (next: UserPreferences[K] | ((now: UserPreferences[K]) => UserPreferences[K])) => {
-      const now = (session.has(key) ? session.get(key) : getPreferences()[key]) as UserPreferences[K];
+      const now = (
+        session.has(key) ? session.get(key) : getPreferences()[key]
+      ) as UserPreferences[K];
       const value =
         typeof next === 'function'
           ? (next as (now: UserPreferences[K]) => UserPreferences[K])(now)

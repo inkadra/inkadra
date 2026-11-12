@@ -8550,7 +8550,7 @@
               "maxLength": 40
             },
             "maxItems": 10,
-            "description": "Layers and groups of a set plan this person hides for themselves while editing, on every plan (decision 0119). Open list: clients skip names they do not know."
+            "description": "Layers and groups of a set plan this person hides for themselves while editing, on every plan (decision 0119): group names (`set`, `lights`, `camera`, `actors`, `notes`, `grip`), never plan ids. Open list: clients skip names they do not know."
           },
           "planShelf": {
             "type": "string",
@@ -8732,7 +8732,7 @@
               "maxLength": 40
             },
             "maxItems": 10,
-            "description": "Layers and groups of a set plan this person hides for themselves while editing, on every plan (decision 0119). Open list: clients skip names they do not know."
+            "description": "Layers and groups of a set plan this person hides for themselves while editing, on every plan (decision 0119): group names (`set`, `lights`, `camera`, `actors`, `notes`, `grip`), never plan ids. Open list: clients skip names they do not know."
           },
           "planShelf": {
             "type": "string",

@@ -240,7 +240,10 @@ const migrations: Record<number, Migration> = {
           icon.set('stepNote', icon.get('note'));
           icon.delete('note');
         }
-      } else if (Array.isArray(icons) && icons.some((i) => i && typeof i === 'object' && moved(i))) {
+      } else if (
+        Array.isArray(icons) &&
+        icons.some((i) => i && typeof i === 'object' && moved(i))
+      ) {
         el.set(
           'icons',
           icons.map((i) => {

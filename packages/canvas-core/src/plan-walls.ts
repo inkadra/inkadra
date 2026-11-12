@@ -904,16 +904,12 @@ export function roomDims(room: PlanRoom, walls: readonly PlanWall[] = []): RoomD
   const x = free({ x0: left - DIM_BAND, x1: left + DIM_BAND, y0, y1 }) ? left : right;
   return [
     {
-      ...(y === top
-        ? { a: { x: x0, y }, b: { x: x1, y } }
-        : { a: { x: x1, y }, b: { x: x0, y } }),
+      ...(y === top ? { a: { x: x0, y }, b: { x: x1, y } } : { a: { x: x1, y }, b: { x: x0, y } }),
       length: x1 - x0,
       overall,
     },
     {
-      ...(x === left
-        ? { a: { x, y: y1 }, b: { x, y: y0 } }
-        : { a: { x, y: y0 }, b: { x, y: y1 } }),
+      ...(x === left ? { a: { x, y: y1 }, b: { x, y: y0 } } : { a: { x, y: y0 }, b: { x, y: y1 } }),
       length: y1 - y0,
       overall,
     },
