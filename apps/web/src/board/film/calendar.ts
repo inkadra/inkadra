@@ -220,13 +220,27 @@ export function moveBlockToDay(
 
 /** One place up or down in the order (Alt+arrows); the block queues up again. */
 export function shiftBlock(day: ShootingDayInput, id: string, offset: -1 | 1): ShootingDayInput {
-  const index = day.blocks.findIndex((block) => block.id === id);
-  const target = index + offset;
-  if (index === -1 || target < 0 || target >= day.blocks.length) return day;
+  // Next to its neighbour in time, the order on screen: a block with a fixed time may be stored
+  // anywhere in the list.
+  const order = timeOrder(day);
+  const neighbour = order[order.indexOf(id) + offset];
+  if (!order.includes(id) || !neighbour) return day;
   const blocks = [...day.blocks];
-  const [moved] = blocks.splice(index, 1);
+  const [moved] = blocks.splice(
+    blocks.findIndex((block) => block.id === id),
+    1,
+  );
+  const target = blocks.findIndex((block) => block.id === neighbour) + (offset === 1 ? 1 : 0);
   if (moved) blocks.splice(target, 0, { ...moved, start: null });
   return { ...day, blocks };
+}
+
+/** The blocks' ids as the day shows them, by start time. */
+export function timeOrder(day: ShootingDayInput): string[] {
+  return scheduleTimes(day)
+    .slice()
+    .sort((a, b) => a.start - b.start)
+    .map((slot) => slot.block.id);
 }
 
 /** A new length, within the schema's 1 to 1440 minutes. */

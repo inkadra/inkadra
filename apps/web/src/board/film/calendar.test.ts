@@ -129,6 +129,11 @@ describe('moving blocks', () => {
   it('moves up and down one place with the keys, and resizes within the schema', () => {
     expect(shiftBlock(plan(), 'b', -1).blocks.map((b) => b.id)).toEqual(['b', 'a', 'c', 'd']);
     expect(shiftBlock(plan(), 'a', -1)).toEqual(plan());
+    // A fixed block stored last but shown in the middle moves past its neighbours in time.
+    const mixed = day([block('a', 60), block('b', 30, '14:00'), block('c', 30, '11:00')]);
+    expect(shiftBlock(mixed, 'c', 1).blocks.map((b) => b.id)).toEqual(['a', 'b', 'c']);
+    expect(shiftBlock(mixed, 'c', -1).blocks.map((b) => b.id)).toEqual(['c', 'a', 'b']);
+    expect(shiftBlock(mixed, 'b', 1)).toEqual(mixed);
     expect(times(resizeBlock(plan(), 'a', 35)).slice(0, 2)).toEqual([
       'a 07:00–07:35',
       'b 07:35–08:20',

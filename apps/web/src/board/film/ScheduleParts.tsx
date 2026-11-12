@@ -29,6 +29,7 @@ import {
   parseDuration,
   SHOT_DRAG_TYPE,
   shiftBlock,
+  timeOrder,
 } from './calendar.ts';
 import { plannedWrap } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
@@ -493,6 +494,8 @@ export function QueueRail({
         className="ink-iconbtn schedule__rail-queue"
         aria-label={queue}
         data-ink-tooltip={queue}
+        // The tour's storyboard step points here while the column is folded.
+        data-tour="schedule-storyboards"
         onClick={() => onOpen('queue')}
       >
         <Icon name="list" />
@@ -643,6 +646,8 @@ export function BlockEditor({
   const block = draft.blocks[index];
   const slot = slots[index];
   if (!block || !slot) return null;
+  const order = timeOrder(draft);
+  const place = order.indexOf(blockId);
   const locked = readOnly || entry.stale;
   const previous = draft.blocks[index - 1];
   const seen = look(block);
@@ -873,13 +878,13 @@ export function BlockEditor({
             <>
               {/* The phone's list has no drag: the order changes here (mockup option 8). */}
               <Button
-                disabled={index === 0}
+                disabled={place === 0}
                 onClick={() => onChange(shiftBlock(draft, block.id, -1))}
               >
                 {t('schedule.earlier')}
               </Button>
               <Button
-                disabled={index === draft.blocks.length - 1}
+                disabled={place === order.length - 1}
                 onClick={() => onChange(shiftBlock(draft, block.id, 1))}
               >
                 {t('schedule.later')}

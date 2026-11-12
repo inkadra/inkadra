@@ -1172,6 +1172,11 @@ export function ScheduleView({
     const value = open ? 'open' : 'closed';
     setSideChoice(value);
     saveChoice(SIDE_KEY, value);
+    // The button that folded the column is gone: the focus goes to the one that opens it.
+    if (!open)
+      requestAnimationFrame(() =>
+        document.querySelector<HTMLElement>('.schedule__rail button')?.focus(),
+      );
   };
   const openSide = (on: 'side' | 'month' | 'queue') => {
     chooseSide(true);
