@@ -32,6 +32,7 @@ import {
   SNAP,
   shiftBlock,
   snap,
+  widenedFreeDay,
 } from './calendar.ts';
 import { locationsOfDay, plannedWrap } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
@@ -227,11 +228,6 @@ export function ScheduleCalendar({
   const dayDragRef = useRef<DayDrag | null>(null);
 
   const entries = columns.flatMap((c) => (c.entry ? [c.entry] : []));
-  /** A free day of the week is a narrow column (option 1); the Day view keeps it whole. */
-  const narrow = (column: CalendarColumn) => view === 'week' && !column.entry;
-  const template = columns
-    .map((column) => (narrow(column) ? 'var(--schedule-narrow)' : 'var(--schedule-column)'))
-    .join(' ');
   /** Scrolls the first double-booked block of a day into view, with room for its note above. */
   const revealConflicts = (entry: CalendarDay) => {
     const first = scheduleTimes(entry.draft).find((slot) => conflicts.has(slot.block.id));
@@ -761,6 +757,24 @@ export function ScheduleCalendar({
   const movingEntry = dayDrag?.active ? days.find((d) => d.day.id === dayDrag.id) : undefined;
   const dayTarget =
     movingEntry && dayDrag?.target !== movingEntry.draft.date ? (dayDrag?.target ?? null) : null;
+  /**
+   * The free day under a drag takes the width of a shooting day, so what lands there reads.
+   * Hit-testing cannot flicker: only that column's track changes, from 48 px to a share of the
+   * same row, so its narrow box lies inside its wide one. A pointer inside the narrow column is
+   * inside the wide one, and a pointer that leaves the wide one is outside the narrow one too.
+   * The width switches at once: a px track and a fr track do not interpolate.
+   */
+  const widened = widenedFreeDay(view, columns, [
+    drag?.active && drag.kind === 'move' ? drag.target : null,
+    dropAt?.day,
+    dayTarget,
+  ]);
+  /** A free day of the week is a narrow column (option 1); the Day view keeps it whole. */
+  const narrow = (column: CalendarColumn) =>
+    view === 'week' && !column.entry && column.date !== widened;
+  const template = columns
+    .map((column) => (narrow(column) ? 'var(--schedule-narrow)' : 'var(--schedule-column)'))
+    .join(' ');
   /** Where the blocks of the moved day, or of the day it swaps with, would land. */
   const ghosts = (column: CalendarColumn) => {
     if (!movingEntry || !dayTarget) return [];
@@ -1122,7 +1136,9 @@ export function ScheduleCalendar({
               today={today}
               view={view}
               phone={phone}
-              narrow={narrow(column)}
+              // Widened under a drag, the heading keeps its two short lines: the row of
+              // headings keeps its height.
+              narrow={narrow(column) || column.date === widened}
               readOnly={readOnly}
               selected={!!entry && entry.day.id === selectedDay}
               moving={!!movingEntry && movingEntry.day.id === entry?.day.id}
@@ -1198,7 +1214,7 @@ export function ScheduleCalendar({
                 <section
                   key={date}
                   aria-label={t('schedule.day', { date })}
-                  className={`schedule__column is-free${narrow(column) ? ' is-narrow' : ''}${dayTarget === date ? ' is-drop' : ''}`}
+                  className={`schedule__column is-free${narrow(column) ? ' is-narrow' : ''}${dayTarget === date || widened === date ? ' is-drop' : ''}`}
                   data-day-drop={date}
                   onPointerDown={(event) => beginDraw(event, column)}
                   ref={(el) => {
@@ -1206,11 +1222,20 @@ export function ScheduleCalendar({
                     else columnRefs.current.delete(date);
                   }}
                   onDragOver={(event) => {
-                    if (!readOnly && event.dataTransfer.types.includes(SHOT_DRAG_TYPE))
-                      event.preventDefault();
+                    if (readOnly || !event.dataTransfer.types.includes(SHOT_DRAG_TYPE)) return;
+                    event.preventDefault();
+                    const top = event.currentTarget.getBoundingClientRect().top;
+                    const minute = snap((event.clientY - top) / scale);
+                    if (dropAt?.day !== date || dropAt.minute !== minute)
+                      setDropAt({ day: date, minute });
+                  }}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                      setDropAt(null);
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
+                    setDropAt(null);
                     if (readOnly) return;
                     const top = event.currentTarget.getBoundingClientRect().top;
                     onDropFree(
@@ -1262,6 +1287,12 @@ export function ScheduleCalendar({
                         </div>
                       );
                     })()}
+                  {dropAt?.day === date && widened === date && (
+                    <span
+                      className="schedule__placeholder"
+                      style={{ top: dropAt.minute * scale, height: 30 * scale }}
+                    />
+                  )}
                   {extras}
                   {date === today && <NowLine minute={nowMinute} scale={scale} />}
                 </section>

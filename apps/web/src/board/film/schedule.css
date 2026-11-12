@@ -767,7 +767,8 @@
     var(--ink-surface-1) 6px 12px
   );
 }
-.schedule__column.is-narrow.is-drop {
+/* Under a drag the free day is widened, no longer narrow: the same tint marks it. */
+.schedule__column.is-free.is-drop {
   background-image: none;
   background-color: var(--ink-accent-soft-bg);
 }

@@ -122,7 +122,20 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
     ),
   ).toBeLessThan(1);
   expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toBe('');
+  // The free day widens under the drag so the block reads at full width there, and narrows
+  // again when the pointer leaves without dropping.
+  const freeWidth = async () => (await free.boundingBox())?.width ?? 0;
+  expect(empty.width).toBeCloseTo(48, 0);
   await page.mouse.move(empty.x + empty.width / 2, initial.y + 20, { steps: 6 });
+  await expect.poll(freeWidth).toBeGreaterThan(100);
+  await page.mouse.move(initial.x + 30, initial.y + 20, { steps: 6 });
+  await expect.poll(freeWidth).toBeLessThan(49);
+  await page.mouse.move(empty.x + empty.width / 2, initial.y + 20, { steps: 6 });
+  await expect.poll(freeWidth).toBeGreaterThan(100);
+  const landing = free.locator('.schedule__block.is-dragging');
+  expect((await landing.boundingBox())?.width ?? 0).toBeGreaterThan(100);
+  // Ten pixels lower at one pixel a minute: the block lands ten minutes later, as shown.
+  await expect(landing.locator('.schedule__block-time')).toHaveText('09:10 – 10:10');
   const moved = page.waitForResponse(
     (response) =>
       response.url().endsWith('/schedule/edit') && response.request().method() === 'POST',
@@ -132,6 +145,10 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   expect((await moved).status()).toBe(200);
   await expect(schedule.locator('.schedule__day')).toHaveCount(2);
   await expect(schedule.locator('.schedule__block')).toHaveCount(1);
+  await expect(schedule.locator('.schedule__block-select')).toHaveAttribute(
+    'aria-label',
+    /09:10 – 10:10/,
+  );
   const undone = page.waitForResponse(
     (response) =>
       response.url().endsWith('/schedule/edit') && response.request().method() === 'POST',
@@ -153,7 +170,7 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   await expect(saved).toHaveText(/Salvato alle/);
   const queued = schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)');
   const freeDate = schedule.locator('.schedule__column.is-free').first();
-  // A free day of the week is a 48 px column: still a drop target.
+  // A free day of the week is a 48 px column: still a drop target, widened while dragged over.
   await queued.dragTo(freeDate, { targetPosition: { x: 24, y: 9 * 60 + 40 } });
   await expect(schedule.locator('.schedule__day')).toHaveCount(3);
   await expect(schedule.locator('.schedule__block')).toHaveCount(1);

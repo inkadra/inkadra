@@ -19,6 +19,7 @@ import {
   sameScheduleInput,
   shiftBlock,
   weekDates,
+  widenedFreeDay,
 } from './calendar.ts';
 import { clockLabel, scheduleTimes } from './schedule.ts';
 
@@ -310,4 +311,23 @@ it('shows on each card what the approved mockup shows at its height', () => {
   // Side by side, a card shows only its start time.
   expect(blockDetail('week', 90, false, 1).range).toBe(true);
   expect(blockDetail('week', 90, false, 2).range).toBe(false);
+});
+
+describe('widenedFreeDay', () => {
+  const columns = [
+    { date: '2026-03-01', entry: { day: { id: 'd1' } } },
+    { date: '2026-03-02', entry: null },
+    { date: '2026-03-03', entry: null },
+  ];
+  it('widens the free day a block, a queued shot or a whole day is dragged over', () => {
+    expect(widenedFreeDay('week', columns, ['2026-03-02', null, null])).toBe('2026-03-02');
+    expect(widenedFreeDay('week', columns, [null, '2026-03-03', null])).toBe('2026-03-03');
+    expect(widenedFreeDay('week', columns, [null, undefined, '2026-03-02'])).toBe('2026-03-02');
+  });
+  it('leaves shooting days, other dates and the Day view alone', () => {
+    expect(widenedFreeDay('week', columns, ['d1', null, '2026-03-01'])).toBeNull();
+    expect(widenedFreeDay('week', columns, ['2026-04-01', null, null])).toBeNull();
+    expect(widenedFreeDay('week', columns, [null, null, null])).toBeNull();
+    expect(widenedFreeDay('day', columns, ['2026-03-02', null, null])).toBeNull();
+  });
 });

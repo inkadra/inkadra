@@ -377,3 +377,17 @@ export function moveDay<T extends { day: { id: string }; draft: ShootingDayInput
       .map((entry) => ({ entry, next: { ...entry.draft, date: from } })),
   ];
 }
+
+/**
+ * The free day of the week drawn at full width while something is dragged over it: a block
+ * (its drag target), a queued shot (the column under it) or a whole day (its target date). Each
+ * is a column key, which for a free day is its date. The Day view never narrows a column.
+ */
+export function widenedFreeDay(
+  view: 'day' | 'week',
+  columns: readonly { date: string; entry: unknown }[],
+  targets: readonly (string | null | undefined)[],
+): string | null {
+  if (view !== 'week') return null;
+  return columns.find((column) => !column.entry && targets.includes(column.date))?.date ?? null;
+}
