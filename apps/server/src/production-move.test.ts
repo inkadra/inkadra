@@ -6,7 +6,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from './auth.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
-import { board, crewMember, project, shootingDay, user } from './db/schema.ts';
+import {
+  board,
+  crewMember,
+  project,
+  shootingDay,
+  shootingDayAttendance,
+  user,
+} from './db/schema.ts';
 import { createApp } from './http/app.ts';
 import { moveToProductionBoards } from './production.ts';
 import { testDeps } from './test-deps.ts';
@@ -72,7 +79,12 @@ describe.skipIf(!url)('moving existing projects to a Production board (needs DAT
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   let app: Awaited<ReturnType<typeof createApp>>;
   const people: Record<string, { cookie: string; id: string }> = {};
-  const request = (as: string, method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown) =>
+  const request = (
+    as: string,
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    path: string,
+    body?: unknown,
+  ) =>
     app.inject({
       method,
       url: `/api/v1${path}`,
@@ -123,6 +135,9 @@ describe.skipIf(!url)('moving existing projects to a Production board (needs DAT
   const p: Record<string, { id: string; root: string }> = {};
   const b: Record<string, string> = {};
   const d: Record<string, string> = {};
+  // The calls and attendance answers of day a3, as they were before the move.
+  let calls: ShootingDayInput['calls'] = [];
+  let attendance: (typeof shootingDayAttendance.$inferSelect)[] = [];
 
   beforeAll(async () => {
     await runMigrations(config.DATABASE_URL, migrations);
@@ -166,7 +181,17 @@ describe.skipIf(!url)('moving existing projects to a Production board (needs DAT
     d.o1 = await plan('owner', b.ordinary, '2026-11-04', [block({ shotId: 'frame-o1' })]);
     d.cut = await plan('owner', b.cut, '2026-11-06', [block({ shotId: 'frame-c1' })]);
     expect((await request('owner', 'DELETE', `/boards/${b.cut}`)).statusCode).toBe(204);
-    await addCrew(p.multi.id, 'Anna');
+    const [anna] = await addCrew(p.multi.id, 'Anna').returning({ id: crewMember.id });
+    // A scene of Act one without its board, per-person calls and an answer about being on set.
+    d.a3 = await plan('owner', b.sa, '2026-11-03', [
+      block({ type: 'scene', shotId: null, sceneId: 'scene-03' }),
+    ]);
+    calls = [{ crewMemberId: anna?.id as string, call: '06:30', pickup: null }];
+    await db.update(shootingDay).set({ calls }).where(eq(shootingDay.id, d.a3));
+    attendance = await db
+      .insert(shootingDayAttendance)
+      .values({ dayId: d.a3, userId: people.owner?.id as string, status: 'confirmed' })
+      .returning();
 
     // A crew and nothing else, made by someone writing in German.
     p.crew = await newProject('dana', 'Crew only');
@@ -239,6 +264,11 @@ describe.skipIf(!url)('moving existing projects to a Production board (needs DAT
       info: () => {},
       warn: (obj: object) => warned.push((obj as { projectId: string }).projectId),
     };
+    const dayIds = async () =>
+      (await db.select({ id: shootingDay.id }).from(shootingDay).orderBy(asc(shootingDay.id))).map(
+        (row) => row.id,
+      );
+    const before = await dayIds();
     const runs = await Promise.all([
       moveToProductionBoards(db, watch),
       moveToProductionBoards(db, watch),
@@ -246,6 +276,10 @@ describe.skipIf(!url)('moving existing projects to a Production board (needs DAT
     expect(runs[0] + runs[1]).toBe(3);
     // Only the broken project fails, once per run, and nothing else is in the way.
     expect(warned).toEqual([p.broken?.id, p.broken?.id]);
+    // One Production board each, and every day once: moved, not copied.
+    for (const key of ['multi', 'crew', 'archived'])
+      expect(await productionOf(p[key]?.id ?? '')).toHaveLength(1);
+    expect(await dayIds()).toEqual(before);
   });
 
   it('puts the board under the root, after its last child, in the creator language', async () => {
@@ -297,6 +331,20 @@ describe.skipIf(!url)('moving existing projects to a Production board (needs DAT
       .where(eq(shootingDay.id, d.a1 ?? ''));
     expect(a1?.blocks[1]).not.toHaveProperty('shotBoardId');
     expect(a1?.blocks[0]?.notes).toBe('Rain');
+    // A scene gets its board as a frame does; calls and answers stay with the same day.
+    const [a3] = await db
+      .select()
+      .from(shootingDay)
+      .where(eq(shootingDay.id, d.a3 ?? ''));
+    expect(a3).toMatchObject({ boardId: production?.id, movedFrom: b.sa, calls });
+    expect(a3?.blocks[0]).toMatchObject({ type: 'scene', sceneId: 'scene-03', sceneBoardId: b.sa });
+    expect(a3?.blocks[0]).not.toHaveProperty('shotBoardId');
+    expect(
+      await db
+        .select()
+        .from(shootingDayAttendance)
+        .where(eq(shootingDayAttendance.dayId, d.a3 ?? '')),
+    ).toEqual(attendance);
     const [archivedProduction] = await productionOf(p.archived?.id ?? '');
     const left = await db
       .select()
@@ -348,6 +396,29 @@ describe.skipIf(!url)('moving existing projects to a Production board (needs DAT
     await plan('owner', b.bp ?? '', '2026-11-13');
   });
 
+  it('refuses an older client saving a moved day through the storyboard', async () => {
+    const day = async () =>
+      (
+        await db
+          .select()
+          .from(shootingDay)
+          .where(eq(shootingDay.id, d.a2 ?? ''))
+      )[0];
+    const before = await day();
+    const saved = await request('owner', 'PUT', `/boards/${b.sa}/schedule/${d.a2}`, {
+      ...dayInput('2026-11-05', [block({ shotId: 'frame-a2', title: 'Late' })]),
+      revision: 1,
+    });
+    expect(saved.statusCode).toBe(409);
+    expect(saved.json().error.code).toBe('conflict');
+    const edit = await request('owner', 'POST', `/boards/${b.sa}/schedule/edit`, {
+      changes: [{ id: d.a2, revision: 1, input: dayInput('2026-11-06', []) }],
+    });
+    expect(edit.statusCode).toBe(409);
+    expect(edit.json().error.code).toBe('conflict');
+    expect(await day()).toEqual(before);
+  });
+
   it('can be put back by hand with the rollback statement of the record', async () => {
     const [production] = await productionOf(p.multi?.id ?? '');
     // A scene planned after the move: an older server knows neither the type nor its keys.
@@ -373,6 +444,7 @@ describe.skipIf(!url)('moving existing projects to a Production board (needs DAT
     expect(where).toMatchObject({
       [d.a1 as string]: b.sa,
       [d.a2 as string]: b.sa,
+      [d.a3 as string]: b.sa,
       [d.b1 as string]: b.sb,
       [d.o1 as string]: b.ordinary,
       [d.cut as string]: b.cut,

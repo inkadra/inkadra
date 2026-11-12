@@ -1192,7 +1192,11 @@ export const shootingDay = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index('shooting_day_board_date_idx').on(t.boardId, t.date)],
+  (t) => [
+    index('shooting_day_board_date_idx').on(t.boardId, t.date),
+    // The startup move and `adoptDays` read a project's days (decision 0123).
+    index('shooting_day_project_idx').on(t.projectId),
+  ],
 );
 
 /**

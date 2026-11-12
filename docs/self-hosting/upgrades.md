@@ -49,6 +49,8 @@ your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
   backup, restored with the older version.
 - **To hold the move back,** set `PRODUCTION_BOARD_MOVE=false` in `.env` before upgrading: the
   server starts without moving anything, and the next start with `true` (the default) does it.
+  Only `true` and `false` are accepted: any other value stops the server at start. Importing a
+  project archive of format 1 with days still makes its Production board, also with the move off.
 - **Putting one project back by hand.** Days keep the board they came from in `moved_from`, so
   with the project's id as `$1`, this statement puts them back in a form the older version
   accepts (a scene block becomes a note with the scene's label):
@@ -67,8 +69,14 @@ your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
   where project_id = $1 and moved_from is not null;
   ```
 
-  then move the Production board to the trash. Days made on the Production board after the
-  upgrade stay on it.
+  then move the project's Production board to the trash:
+
+  ```sql
+  update board set deleted_at = now()
+  where project_id = $1 and kind = 'production' and deleted_at is null;
+  ```
+
+  Days created on the Production board after the move stay on it, in the trash with the board.
 
 ## Upgrading to 0.9
 

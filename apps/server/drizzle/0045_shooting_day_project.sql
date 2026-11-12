@@ -1,0 +1,1 @@
+CREATE INDEX "shooting_day_project_idx" ON "shooting_day" USING btree ("project_id");
