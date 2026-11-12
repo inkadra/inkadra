@@ -441,16 +441,15 @@ export function ExportDialog(props: ExportDialogProps) {
     }
   }
 
-  const whatOptions: ExportWhat[] = (
-    film
-      ? [
-          'storyboard',
-          'shotlist',
-          'scenesheets',
-          ...(asImage && props.selection.size ? ['selection' as const] : []),
-        ]
-      : (['board', 'selection', 'visible'] as const)
-  ).filter((w) => w === req.what || offers('exports', w));
+  const allWhat: ExportWhat[] = film
+    ? [
+        'storyboard',
+        'shotlist',
+        'scenesheets',
+        ...(asImage && props.selection.size ? ['selection' as const] : []),
+      ]
+    : ['board', 'selection', 'visible'];
+  const whatOptions = allWhat.filter((w) => w === req.what || offers('exports', w));
   const whatLabel = (w: ExportWhat) => {
     if (w !== 'selection') return t(`export.what${w[0]?.toUpperCase()}${w.slice(1)}`);
     const name = props.selection.size === 1 ? singleName(store, props.selection, t) : null;
