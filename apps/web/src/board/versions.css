@@ -55,6 +55,10 @@
   flex: 1;
   min-width: 140px;
 }
+/* The label reads across the card, above the button too. */
+.versions__save .ink-field__label {
+  white-space: nowrap;
+}
 .versions__list {
   max-height: 52vh;
   overflow: auto;
@@ -217,6 +221,9 @@
   margin-top: 1px;
 }
 @media (width >= 768px) {
+  .versions__save-short {
+    display: none;
+  }
   .versions .ink-dialog__actions {
     padding-top: 14px;
     border-top: 1px solid var(--ink-border-default);
@@ -227,16 +234,22 @@
   .versions__body {
     flex-wrap: wrap;
   }
-  /* Touch-sized buttons with less padding, so ⋯ stays on the row; longer words wrap. */
+  /* Touch-high buttons with the desktop text size, so ⋯ stays on the row; longer words wrap. */
   .versions__actions {
     flex-wrap: wrap;
     width: 100%;
   }
-  .versions__actions .ink-btn {
-    padding: 0 12px;
+  .versions__actions .ink-btn,
+  .versions__edit .ink-btn {
+    padding: 0 10px;
+    font-size: 12px;
   }
-  .versions__actions .ink-btn--ghost {
-    padding: 0 8px;
+  .versions__actions .ink-btn--ghost,
+  .versions__edit .ink-btn--ghost {
+    padding: 0 6px;
+  }
+  .versions__save-long {
+    display: none;
   }
   .versions__now-board {
     display: none;

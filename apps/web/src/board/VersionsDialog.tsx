@@ -300,7 +300,9 @@ export function VersionsDialog({
                       onChange={(e) => setName(e.target.value)}
                     />
                     <Button type="submit" variant="primary" disabled={busy || !name.trim()}>
-                      {t('versions.save')}
+                      {/* Phones show the short word, as the approved mockup does. */}
+                      <span className="versions__save-long">{t('versions.save')}</span>
+                      <span className="versions__save-short">{t('versions.submitName')}</span>
                     </Button>
                   </div>
                 </form>
