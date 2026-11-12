@@ -105,6 +105,8 @@ export interface ShotSetup {
   name: string;
   /** "Set plan · Diner". */
   plan: string;
+  /** Its place among the setups of the board: the plans' order, the base of a family first. */
+  order: number;
 }
 
 /**
@@ -116,14 +118,60 @@ export function shotSetups(elements: readonly Element[], t: TFunction): Map<stri
   const byId = new Map(elements.map((e) => [e.id, e]));
   const out = new Map<string, ShotSetup[]>();
   const plans = elements.filter((e): e is PlanElement => e.type === 'plan');
+  let order = 0;
   for (const base of plans.filter((p) => !p.variantOf || !byId.has(p.variantOf))) {
     const family = variantFamily(plans, base);
-    for (const p of family)
+    for (const p of family) {
       for (const frameId of setupFrames(p, byId)) {
         const list = out.get(frameId) ?? [];
-        list.push({ planId: p.id, name: setupName(p, family, t), plan: planTitle(t, base) });
+        list.push({ planId: p.id, name: setupName(p, family, t), plan: planTitle(t, base), order });
         out.set(frameId, list);
       }
+      order++;
+    }
   }
   return out;
+}
+
+/**
+ * Shots grouped under their setups ("Group by: Setup" of the shot list and the schedule): the
+ * setups in the order of the plans, then the shots of no setup (`setup: null`). A shot of two
+ * setups is under each, so callers count, select and key it once by its id (decision 0111).
+ */
+export function groupBySetup<T extends { id: string }>(
+  shots: readonly T[],
+  setups: ReadonlyMap<string, readonly ShotSetup[]>,
+): Array<{ setup: ShotSetup | null; shots: T[] }> {
+  const groups = new Map<string, { setup: ShotSetup | null; shots: T[] }>();
+  const loose: T[] = [];
+  for (const shot of shots) {
+    const of = setups.get(shot.id);
+    if (!of?.length) loose.push(shot);
+    for (const s of of ?? []) {
+      const group = groups.get(s.planId) ?? { setup: s, shots: [] };
+      group.shots.push(shot);
+      groups.set(s.planId, group);
+    }
+  }
+  const out = [...groups.values()].sort((a, b) => (a.setup?.order ?? 0) - (b.setup?.order ?? 0));
+  return loose.length ? [...out, { setup: null, shots: loose }] : out;
+}
+
+/**
+ * The shot blocks of a shooting day under their setups, in the day's order (the schedule's
+ * Block tab, decision 0115). Blocks of no frame, of a frame that is gone and of an omitted scene
+ * (decision 0082) are left out.
+ */
+export function dayBySetup<B extends { shotId: string | null }>(
+  blocks: readonly B[],
+  byId: ReadonlyMap<string, Element>,
+  setups: ReadonlyMap<string, readonly ShotSetup[]>,
+): Array<{ setup: ShotSetup | null; shots: Array<{ id: string; block: B }> }> {
+  const shots = blocks.flatMap((block) => {
+    const frame = block.shotId ? byId.get(block.shotId) : undefined;
+    const scene = frame?.parent ? byId.get(frame.parent) : undefined;
+    if (frame?.type !== 'frame' || (scene?.type === 'scene' && scene.omitted)) return [];
+    return [{ id: frame.id, block }];
+  });
+  return shots.length ? groupBySetup(shots, setups) : [];
 }

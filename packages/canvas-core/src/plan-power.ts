@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { PlanCircuit, PlanIcon } from '@inkadra/doc-schema';
 import { layerOf } from './plan.ts';
-import { isLight } from './plan-icons.ts';
+import { isKitLight, isLight } from './plan-icons.ts';
 
 /**
  * Power of a set (decision 0104): the watts of each light, summed per circuit and turned into
@@ -78,8 +78,9 @@ export function circuitStatus(drawn: number, breaker: number | null): CircuitSta
 }
 
 /**
- * The power of a plan per circuit. `hiddenLayers` left out, as the kit is. A light whose circuit
- * is gone counts on no circuit.
+ * The power of a plan per circuit. `hiddenLayers` left out, as the kit is, and so are the sun and
+ * the other sources that are no kit (`isKitLight`). A light whose circuit is gone counts on no
+ * circuit.
  */
 export function planPower(plan: {
   icons?: readonly PlanIcon[] | undefined;
@@ -91,7 +92,7 @@ export function planPower(plan: {
   const circuits = plan.circuits ?? [];
   const ids = new Set(circuits.map((c) => c.id));
   const lights = (plan.icons ?? []).filter(
-    (i) => isLight(i.kind) && !plan.hiddenLayers?.includes(layerOf(i)),
+    (i) => isKitLight(i.kind) && !plan.hiddenLayers?.includes(layerOf(i)),
   );
   const load = (
     id: string | null,

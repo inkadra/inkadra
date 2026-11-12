@@ -68,7 +68,12 @@ export function itemName(item: PlanItem, t: TFunction): string {
  * The line under an item: "LED COB 300 W · Softbox, grid · C-stand" for a light, "32 mm · Dolly ·
  * 2 positions" for a camera, "Seated, Stool · 2 positions" for a person; the type for the rest.
  */
-export function itemSummary(icon: PlanIcon, icons: readonly PlanIcon[], t: TFunction): string {
+export function itemSummary(
+  icon: PlanIcon,
+  icons: readonly PlanIcon[],
+  t: TFunction,
+  { lens = true }: { lens?: boolean } = {},
+): string {
   const kind = catalogueKind(icon.kind);
   const typeName = t(`board.plan.icons.${icon.kind}`);
   const base = icon.on ? icons.find((i) => i.id === icon.on) : undefined;
@@ -97,7 +102,7 @@ export function itemSummary(icon: PlanIcon, icons: readonly PlanIcon[], t: TFunc
   }
   if (kind === 'camera')
     return [
-      `${icon.lens ?? 35} mm`,
+      lens ? `${icon.lens ?? 35} mm` : '',
       base
         ? t(`board.plan.icons.${base.kind}`)
         : icon.support

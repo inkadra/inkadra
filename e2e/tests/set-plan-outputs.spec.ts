@@ -62,6 +62,14 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
     opts,
   );
   const frame = addFrame(doc, scene.id, null, { action: 'Master', lens: '32mm' }, opts);
+  // A shot hidden from guests: its lens reaches the plan for the team only (decision 0111).
+  const hiddenFrame = addFrame(
+    doc,
+    scene.id,
+    null,
+    { action: 'Riflesso', lens: '85mm', guestHidden: true },
+    opts,
+  );
   const leo = createElement(doc, 'character', { x: 640, y: 120 }, { name: 'Leo' }, opts);
   // A character hidden from guests: its name is for the team only (decision 0111).
   const secret = createElement(
@@ -90,6 +98,11 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
       circuits: [{ id: 'circuitAAAAAA', name: 'Circuito A', amps: 16 }],
       icons: [
         icon('Cam', 'camera', 0.5, 0.85, { label: 'A cam', frameId: frame.id, rotation: 270 }),
+        icon('CamB', 'camera', 0.8, 0.85, {
+          label: 'B cam',
+          frameId: hiddenFrame.id,
+          rotation: 270,
+        }),
         icon('Key', 'fresnel', 0.2, 0.3, {
           label: 'Chiave',
           watts: 2000,
@@ -115,7 +128,7 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
 
   await test.step('the card shows the counts of the mockup', async () => {
     const card = page.locator(`[data-el="${plan.id}"]`);
-    await expect(card.locator('.plan__count')).toHaveText(['2 setup', '1 camera', '1 luce · 2 kW']);
+    await expect(card.locator('.plan__count')).toHaveText(['2 setup', '2 camere', '1 luce · 2 kW']);
     await expect(card.getByRole('button', { name: 'Scena 2' })).toBeVisible();
   });
 
@@ -143,6 +156,9 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
       'Setup 2 · Primo piano',
       'A cam',
       '32 mm',
+      // The camera linked to the hidden shot takes its lens: the team sees it.
+      'B cam',
+      '85 mm',
       'Chiave',
       '3200 K',
       // The actors' live names, not the text they hold; the team sees the hidden one.
@@ -197,6 +213,9 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
         'aria-selected',
         'true',
       );
+      // The guest's PDF of the base setup, which holds the actor of the hidden character and the
+      // camera of the hidden shot: the team's PDF has both, the guest's neither.
+      await viewer.getByRole('tab', { name: '1 · Base' }).click();
       const [download] = await Promise.all([
         view.waitForEvent('download'),
         viewer.getByRole('button', { name: 'PDF' }).click(),
@@ -204,8 +223,10 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
       const file = join(tmpdir(), `guest-plan-${Date.now()}.pdf`);
       await download.saveAs(file);
       const guestText = (await pdfText(file)).text;
-      expect(guestText).toContain('Setup 2 · Primo piano');
+      for (const expected of ['Setup 1 · Base', 'A cam', '32 mm', 'B cam', 'Leo', 'Chiave'])
+        expect(guestText).toContain(expected);
       expect(guestText).not.toContain('Segreto');
+      expect(guestText).not.toContain('85 mm');
       await viewer.getByRole('button', { name: 'Chiudi' }).click();
       await expect(viewer).toHaveCount(0);
     } finally {

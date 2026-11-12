@@ -49,6 +49,11 @@ const fields = {
     .array(z.string().min(1).max(40))
     .max(8)
     .openapi({ description: 'The last set plan icons this person placed, newest first.' }),
+  shotGroupBy: z.enum(['scene', 'location', 'status', 'setup', 'none']).openapi({
+    description:
+      'How this person groups shots, in the shot list and in the schedule (decision 0115). The ' +
+      'schedule groups by setup when it is `setup` and by scene otherwise.',
+  }),
   toolbar: z
     .array(z.string().min(1).max(40))
     .max(40)
@@ -111,6 +116,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   keepAroundContent: true,
   planFavorites: [],
   planRecents: [],
+  shotGroupBy: 'scene',
   toolbar: null,
   tutorialsSeen: [],
   tutorialHints: true,

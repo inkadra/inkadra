@@ -2,7 +2,7 @@
 import type { Element, PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { expect, it } from 'vitest';
-import { setupChanges, shotSetups } from './setups.ts';
+import { dayBySetup, groupBySetup, type ShotSetup, setupChanges, shotSetups } from './setups.ts';
 
 const icon = (id: string, kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
   id: id.padEnd(13, 'A'),
@@ -56,7 +56,59 @@ it('lists the setups each shot belongs to, by the frames its cameras link to', (
   ];
   const t = ((key: string) => key) as unknown as TFunction;
   expect(shotSetups(elements, t).get('frameAAAAAAAA')).toEqual([
-    { planId: 'baseAAAAAAAAA', name: '1 · board.plan.base', plan: 'board.plan.name · Diner' },
-    { planId: 'closeAAAAAAAA', name: '2 · CU Anna', plan: 'board.plan.name · Diner' },
+    {
+      planId: 'baseAAAAAAAAA',
+      name: '1 · board.plan.base',
+      plan: 'board.plan.name · Diner',
+      order: 0,
+    },
+    {
+      planId: 'closeAAAAAAAA',
+      name: '2 · CU Anna',
+      plan: 'board.plan.name · Diner',
+      order: 1,
+    },
   ]);
+});
+
+it('groups shots under their setups in the order of the plans, shots in none last', () => {
+  const setup = (planId: string, order: number): ShotSetup => ({
+    planId,
+    name: planId,
+    plan: 'Plan',
+    order,
+  });
+  const a = setup('a', 0);
+  const b = setup('b', 1);
+  const setups = new Map([
+    ['s1', [b]],
+    ['s2', [a, b]],
+  ]);
+  const groups = groupBySetup([{ id: 'loose' }, { id: 's1' }, { id: 's2' }], setups);
+  expect(groups.map((g) => [g.setup?.planId ?? null, g.shots.map((s) => s.id)])).toEqual([
+    ['a', ['s2']],
+    ['b', ['s1', 's2']],
+    [null, ['loose']],
+  ]);
+  // No plans: no setup group, all shots under the plain heading.
+  expect(groupBySetup([{ id: 's1' }], new Map())).toEqual([{ setup: null, shots: [{ id: 's1' }] }]);
+});
+
+it("puts a day's shot blocks under their setups, leaving out omitted scenes and other blocks", () => {
+  const card = { x: 0, y: 0, w: 100, z: 'a0', createdBy: null, createdAt: 1 };
+  const byId = new Map<string, Element>([
+    ['s1', { ...card, id: 's1', type: 'scene', parent: null, number: '1' } as Element],
+    [
+      's2',
+      { ...card, id: 's2', type: 'scene', parent: null, number: '2', omitted: true } as Element,
+    ],
+    ['f1', { ...card, id: 'f1', type: 'frame', parent: 's1' } as Element],
+    ['f2', { ...card, id: 'f2', type: 'frame', parent: 's2' } as Element],
+  ]);
+  const setup: ShotSetup = { planId: 'p', name: '1', plan: 'Plan', order: 0 };
+  const blocks = [{ shotId: 'f2' }, { shotId: null }, { shotId: 'gone' }, { shotId: 'f1' }];
+  expect(dayBySetup(blocks, byId, new Map([['f1', [setup]]]))).toEqual([
+    { setup, shots: [{ id: 'f1', block: { shotId: 'f1' } }] },
+  ]);
+  expect(dayBySetup([{ shotId: 'f2' }], byId, new Map())).toEqual([]);
 });
