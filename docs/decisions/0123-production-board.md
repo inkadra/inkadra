@@ -1,6 +1,7 @@
 # 0123 · The Production board: one schedule per project, across storyboards
 
-Proposed, 2026-11-12. The design of step 4 of [0121](0121-board-types.md), which asked for "its
+Accepted, 2026-11-12, with the maintainer's answers at the end. The design of step 4 of
+[0121](0121-board-types.md), which asked for "its
 own design for moved, deleted and restored storyboards, archives and guest documents". Builds on
 0022 and 0089 (schedule), 0091 and 0092 (Troupe, day calls), 0083 (scene sheets), 0119 (the set
 plan's shooting days) and the mockup [0121/board-types.html](0121/board-types.html) ("Produzione").
@@ -66,6 +67,12 @@ Not checked: the e2e fixtures and the screenshot scripts that seed days.
   access, offline, still loading). Nothing else is copied: the picture, the action, the scene and
   the set plans come live from the storyboard; cast stays the block's own list, as today.
   Rejected: copying the frame (stale, and private to whoever cannot open that storyboard).
+- **A block can plan a scene** (answer 4): a new block type `scene` with `sceneId`,
+  `sceneBoardId` and `sceneLabel`, the same reference, check and fallback as a shot's. The queue
+  offers a scene as a whole, drawn or not; a scene block stays one when its frames are drawn
+  later, and a scene can have both a scene block and shot blocks. Call sheets list it with the
+  scene's heading, location and the cast of its frames if it has any; "a shooting day" in scene
+  sheets and the set plan's days count a scene block as shooting that scene.
 - **Checks at the boundary:** a new or changed `shotBoardId` must be a board of the day's project
   (400 otherwise); a reference the stored block already had is kept, even to a board trashed
   since. A client that sends blocks without the two keys keeps them, by block id, as
@@ -101,7 +108,8 @@ whose crew is not empty. It gets a Production board under the root, after its la
 
 **Its card** is not added by the migration: the server writes into documents only where they are
 live (0014), and nothing is live at start. The board is in the sidebar tree and the storyboard's
-⋯ menu leads to it (§5); question 2 asks whether the root canvas should get its card.
+⋯ menu leads to it (§5), and the root canvas gets its card from the first editor who opens it
+(answer 2).
 
 **Rolling back.** For the instance, as for any release with migrations: restore the backup taken
 before the upgrade (`upgrades.md`). For the data, the move only changes `board_id`, the revision
@@ -149,7 +157,7 @@ keeps the draft (0089). From step 6, creating a day on any other board is refuse
 - **The Production board goes to the trash:** days and calls stay in the table; Schedule and Troupe
   leave the project (0121); Home, the feed and search drop the days as for any trashed board.
   "Add → Production" brings that board back (`deleted_at` cleared, under the chosen parent) with
-  every day; the index never allows a second one. Question 3.
+  every day; the index never allows a second one (answer 3).
 - **A crew but no Production board:** rows kept, crew routes unchanged for API clients; the web
   shows no Troupe, and search returns crew results only while a Production board is live (they
   open its Troupe).
@@ -171,7 +179,7 @@ keeps the draft (0089). From step 6, creating a day on any other board is refuse
   `shotLabel`, with a grey dot named "Storyboard not available": no picture, no frame fields, no
   board title (the client knows only boards it can read).
 - A grant on a storyboard alone no longer shows a schedule: its scene sheets and set plans show no
-  day. Question 1.
+  day (answer 1).
 - The Production board is left out of a share link's board tree (`share-links.ts`), and a share
   link on it is refused (400): it holds nothing a guest may read.
 - The calendar feed stays members only; an event is titled "Production board · project".
@@ -222,7 +230,8 @@ keeps the draft (0089). From step 6, creating a day on any other board is refuse
 ### 6. Delivery
 
 1. **Contract** (label `contract`): `BoardKind` gains `production`; `ScheduleBlock` gains
-   `shotBoardId` and `shotLabel`; `BoardPreview` gains `nextDay` and `crew`; archive format 2;
+   `shotBoardId` and `shotLabel` and the `scene` type with its three fields; `BoardPreview` gains
+   `nextDay` and `crew`; archive format 2;
    migration with the unique index and `moved_from`; OpenAPI. The server keeps the two keys of a
    block by id. Tests: schemas, a second production board refused by the index, an older client's
    save keeps the keys. Safe: no production board can exist yet beyond the API, nothing reads the
@@ -238,7 +247,8 @@ keeps the draft (0089). From step 6, creating a day on any other board is refuse
    has none. Tests: unit tests of the filter and of `sceneDay` with board ids. Safe: same result
    in every project without a Production board.
 4. **Web, the Production board:** kind, icon, views, header, sidebar, Canvas menu, the calendar
-   across storyboards, Troupe, call sheet export, module registry, tours, texts in every catalogue.
+   across storyboards with scene blocks, Troupe, call sheet export, module registry, tours, texts in
+   every catalogue.
    While a project has no Production board its storyboards keep the interim views. Tests: unit,
    e2e (create it, plan frames of two storyboards, a block whose storyboard is trashed), tours
    test, screenshots light and dark, 1280 and 390 px.
@@ -252,30 +262,22 @@ keeps the draft (0089). From step 6, creating a day on any other board is refuse
 
 ### Not built
 
-Scene blocks (question 4), a route that brings a board back from the trash, moves between
+A route that brings a board back from the trash, moves between
 projects, a server projection of storyboards for the calendar, scene sheets of several
 storyboards from the Production board, a command that reverses the move, notifications about
 days.
 
-## Open questions for the maintainer
+## The maintainer's answers (2026-11-12)
 
-1. **A grant on a storyboard alone.** Today it shows that storyboard's days; after the move the
-   days are the Production board's. (a) Access follows the Production board: give a grant there to
-   whoever needs the plan; recommended, nothing is hidden from the team. (b) The migration gives a
-   viewer grant on the Production board to every grant on a storyboard that had days: they also
-   see the days of the other storyboards. (c) The server filters each day's blocks by the
-   storyboards the reader can open: a second access rule inside one board.
-2. **The card of a migrated Production board.** (a) The first editor who opens the root board
-   gets its card placed by their client, once, with an id derived from the board's (two clients
-   write the same card) and a mark in the root's `meta` so a card someone removed does not come
-   back; recommended, as in the mockup. (b) No card: the sidebar and the storyboard's link lead
-   there; a person can place it from the Canvas menu.
-3. **Deleting the Production board.** (a) It goes to the trash with its days; "Add → Production"
-   brings it back with them; recommended. (b) It cannot be deleted while it has days. (c) Add makes
-   a new empty one and the old days stay in the trash, unreachable.
-4. **Scenes without frames.** (a) Days plan frames, as today; a scene is planned through its
-   frames; recommended. (b) A block can point at a scene, so the queue offers scenes not yet drawn:
-   a new block reference, and the call and scene sheets learn it.
+1. **A grant on a storyboard alone:** access follows the Production board. Whoever needs the plan
+   gets a grant there; no grant is added by the migration and no day is filtered by storyboard.
+2. **The card of a migrated Production board:** it appears by itself. The first editor who opens
+   the root board gets its card placed by their client, once, with an id derived from the board's
+   and a mark in the root's `meta`, so a card someone removed does not come back.
+3. **Deleting the Production board:** it goes to the trash with its days, and "Add → Production"
+   brings that board back with them, never a second one.
+4. **Scenes without frames:** a block can point at a scene (§1), so a day can be planned before
+   the frames are drawn.
 
 ## Consequences
 
