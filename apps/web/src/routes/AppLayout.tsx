@@ -42,6 +42,7 @@ import {
   useOutlet,
   useSearchParams,
 } from 'react-router';
+import { resetBoardPreviews } from '../board/board-previews.ts';
 import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
 import { useBoardCounts } from '../board/live-counts.ts';
 import { isMac } from '../board/shortcuts.ts';
@@ -416,6 +417,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   async function signOut() {
     await authApi.signOut();
     setCachedProjects(null);
+    resetBoardPreviews();
     await refresh();
   }
 

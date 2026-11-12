@@ -141,21 +141,60 @@ export const UnsortedSummary = z
   .openapi('UnsortedSummary');
 export type UnsortedSummary = z.infer<typeof UnsortedSummary>;
 
+/** A line of a frame drawing in a preview, in the frame's STROKE_GRID units (0–4096 both ways). */
+const PreviewPath = z.object({
+  path: z.string().max(5000),
+  color: z.string().regex(/^#[0-9A-F]{6}$/i),
+  width: z.number().positive().max(820),
+});
+
 /** Bounded projection of the last persisted document, never a full canvas download. */
 export const BoardPreview = z
   .object({
     assetIds: z.array(Id).max(4),
     excerpts: z.array(z.string().max(160)).max(3),
     elementCount: z.int().nonnegative(),
-    drawing: z
+    drawing: z.array(PreviewPath).max(32),
+    colors: z
+      .array(z.string().regex(/^#[0-9A-F]{6}$/i))
+      .max(6)
+      .optional()
+      .openapi({ description: 'Hex of the first colour cards: the palette of a moodboard.' }),
+    frames: z
       .array(
         z.object({
-          path: z.string().max(5000),
-          color: z.string().regex(/^#[0-9A-F]{6}$/i),
-          width: z.number().positive().max(820),
+          label: z.string().max(12),
+          shot: z.string().max(60).optional().openapi({
+            description: 'Shot size as stored: a catalog id or free text.',
+          }),
+          lens: z.string().max(60).optional(),
+          ratio: z.number().positive().max(10).openapi({ description: 'Width over height.' }),
+          assetId: Id.optional().openapi({ description: 'Ready picture of the same project.' }),
+          drawing: z.array(PreviewPath).max(12),
         }),
       )
-      .max(32),
+      .max(5)
+      .optional()
+      .openapi({
+        description:
+          'The first storyboard frames in shooting order (decision 0121, board cards); the ' +
+          'first three carry their picture.',
+      }),
+    review: z
+      .object({
+        approved: z.int().nonnegative(),
+        changes: z.int().nonnegative(),
+        total: z.int().nonnegative(),
+      })
+      .optional()
+      .openapi({
+        description:
+          'Review decisions as the team sees them: frames, or cards when there are none.',
+      }),
+    dayCount: z.int().nonnegative().optional().openapi({ description: 'Shooting days.' }),
+    crewCount: z.int().nonnegative().optional().openapi({
+      description: "People of the project's troupe; only for members of the project.",
+    }),
   })
   .openapi('BoardPreview');
 export type BoardPreview = z.infer<typeof BoardPreview>;

@@ -3,7 +3,7 @@
  * Scene sheets (decision 0083): one sheet per scene for one department, made only of what the
  * board already holds. The data is gathered first (pure, tested), then laid out on light paper.
  */
-import { type SceneGroup, variantView } from '@inkadra/canvas-core';
+import { type SceneGroup, sceneDay, variantView } from '@inkadra/canvas-core';
 import { type Element, PLAN_ASPECT, TODO_LISTS } from '@inkadra/doc-schema';
 import { clockMinutes, type ShootingDay } from '@inkadra/shared';
 import { sceneIdsOf } from '../film/needed.ts';
@@ -92,6 +92,8 @@ export function sceneSheets(input: SheetInput): SceneSheet[] {
   const castByScene = new Map(order.map((g) => [g.scene?.id, castOf(g)]));
   const appears = (group: SceneGroup, name: string, numbers: readonly string[]) =>
     castByScene.get(group.scene?.id)?.has(name) || numbers.includes(group.scene?.number ?? '');
+  // Numbered as `sceneDay` numbers them: by date, from 1.
+  const byDate = [...days].sort((a, b) => a.date.localeCompare(b.date));
 
   return input.scenes.map((scene) => {
     const index = order.findIndex((g) => g.scene?.id === scene.id);
@@ -131,11 +133,10 @@ export function sceneSheets(input: SheetInput): SceneSheet[] {
       } satisfies SheetCharacter;
     });
 
-    // The first shooting day that shoots one of its frames.
-    const dayIndex = days.findIndex((d) =>
-      d.blocks.some((b) => b.shotId && frameIds.has(b.shotId)),
-    );
-    const day = days[dayIndex];
+    // The first shooting day that shoots one of its frames: only the frames this export shows,
+    // so a frame left out for the audience does not choose the day.
+    const dayNumber = sceneDay(byDate, scene.id, new Map(frames.map((f) => [f.id, f])));
+    const day = dayNumber ? byDate[dayNumber - 1] : undefined;
     const dayNumbers = day
       ? sceneIdsOf(day, byId).flatMap((id) => {
           const el = byId.get(id);
@@ -180,7 +181,7 @@ export function sceneSheets(input: SheetInput): SceneSheet[] {
 
     const slug = text.slugline(scene);
     return {
-      overline: [text.project, day ? text.day(dayIndex + 1, day.date) : '']
+      overline: [text.project, dayNumber && day ? text.day(dayNumber, day.date) : '']
         .filter(Boolean)
         .join(' · '),
       heading: [scene.number, slug || scene.title.trim()].filter(Boolean).join(' · '),
@@ -195,7 +196,7 @@ export function sceneSheets(input: SheetInput): SceneSheet[] {
       plans,
       characters: people,
       cast: people.map((p) => (p.actor ? `${p.name} (${p.actor})` : p.name)).join(', '),
-      day: day ? text.dayOf(dayIndex + 1, days.length, dayNumbers.join(', ')) : '',
+      day: dayNumber && day ? text.dayOf(dayNumber, days.length, dayNumbers.join(', ')) : '',
       needed: [...needed.values()]
         .sort((a, b) => a.list - b.list)
         .map((row) => (row.count > 1 ? `${row.text} ×${row.count}` : row.text)),

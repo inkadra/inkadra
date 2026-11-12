@@ -55,6 +55,26 @@ const peopleOf = (db: Database, viewer: Actor, rows: ReviewRow[]) =>
     rows.map((r) => r.changedByGuest),
   );
 
+/** The review status of each card of a board as the team sees it, cards without one left out. */
+export async function teamReviews(db: Pick<Database, 'selectDistinctOn'>, boardId: string) {
+  // Let Postgres compare full timestamp precision; the team wins an exact tie.
+  const latest = await db
+    .selectDistinctOn([elementReview.elementId])
+    .from(elementReview)
+    .where(
+      and(
+        eq(elementReview.boardId, boardId),
+        or(isNull(elementReview.shareLinkId), ne(elementReview.status, 'none')),
+      ),
+    )
+    .orderBy(
+      elementReview.elementId,
+      desc(elementReview.changedAt),
+      desc(isNull(elementReview.shareLinkId)),
+    );
+  return latest.filter((r) => r.status !== 'none');
+}
+
 export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth, boardReader } = deps;
   const notices = deps.notices ?? noNotices;
@@ -68,22 +88,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
     await requireBoardRole(db, actor, boardId, 'viewer');
-    // Let Postgres compare full timestamp precision; the team wins an exact tie.
-    const latest = await db
-      .selectDistinctOn([elementReview.elementId])
-      .from(elementReview)
-      .where(
-        and(
-          eq(elementReview.boardId, boardId),
-          or(isNull(elementReview.shareLinkId), ne(elementReview.status, 'none')),
-        ),
-      )
-      .orderBy(
-        elementReview.elementId,
-        desc(elementReview.changedAt),
-        desc(isNull(elementReview.shareLinkId)),
-      );
-    const rows = latest.filter((r) => r.status !== 'none');
+    const rows = await teamReviews(db, boardId);
     const people = await peopleOf(db, actor, rows);
     const body: BoardReviews = { items: rows.map((r) => toElementReview(r, people)) };
     return body;

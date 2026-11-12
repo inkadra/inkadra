@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createElement, FAR_BLOCK, FAR_ZOOM, farLook } from '@inkadra/canvas-core';
-import { createBoardDoc, type Element, type ElementType } from '@inkadra/doc-schema';
+import { createBoardDoc, ELEMENT_TYPES, type Element, type ElementType } from '@inkadra/doc-schema';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -233,6 +233,12 @@ describe('the far look of board.css and farLook', () => {
   it('reads three far rules from board.css: hide, show the pictures, fill with the block', () => {
     expect(far.rules).toHaveLength(3);
     expect([far.hide.length, far.show.length, far.fill.length]).toEqual([1, 1, 1]);
+  });
+
+  it('has a case for every kind of card, so a new one cannot skip the far look', () => {
+    // Arrows are drawn by the canvas, not as cards.
+    const cards = ELEMENT_TYPES.filter((type) => type !== 'arrow');
+    expect(cards.filter((type) => !cases.some((c) => c.type === type))).toEqual([]);
   });
 
   for (const c of cases) {

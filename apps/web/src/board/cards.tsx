@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
 import { api } from '../lib/api.ts';
 import { pickVariant, useAsset } from './assets.ts';
+import { BoardCardPreview, showsPreview } from './BoardCardPreview.tsx';
 import { canRenameBoard, renameBoard } from './boards.ts';
 import { CardCaption } from './CardCaption.tsx';
 import { CardReview } from './CardReview.tsx';
@@ -1020,11 +1021,38 @@ export function CopyHexButton({
 
 function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolean }) {
   const { boards, boardCounts, projectId, setEditing, readOnly } = useBoard();
+  const guest = useContext(GuestModeContext);
   const { t } = useTranslation();
   const board = boards?.find((b) => b.id === element.boardId);
   const title = board?.title ?? t('board.board.unknown');
   const counts = boardCounts?.get(element.boardId);
   const icon = board?.icon;
+  const name =
+    editing && board && !readOnly && !element.locked && canRenameBoard(board) ? (
+      <input
+        className="card__inline-input card__title"
+        defaultValue={board.title}
+        // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
+        autoFocus
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={(e) => {
+          const value = e.target.value.trim();
+          if (!isContextualFocus(e.relatedTarget)) setEditing(null);
+          if (value && value !== board.title)
+            void renameBoard(projectId, board.id, value).catch(() => {});
+        }}
+        // Escape leaves the field keeping what was typed, like every other card field: a new
+        // board is named by typing and pressing Escape.
+        onKeyDown={blurOnEnter}
+        maxLength={200}
+        aria-label={t('board.board.title')}
+      />
+    ) : (
+      <span className="card__title">{title}</span>
+    );
+  // A tall card previews the board (decision 0121); guests keep the name only, as before.
+  if (board && !guest && showsPreview(element))
+    return <BoardCardPreview element={element} board={board} counts={counts} title={name} />;
   // The board's own symbol on a tile of its colour, as the project appearance shows it (#322).
   const tile =
     icon && !icon.emoji && icon.color !== 'neutral'
@@ -1040,28 +1068,7 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
         )}
       </span>
       <span className="card__board-text">
-        {editing && board && !readOnly && !element.locked && canRenameBoard(board) ? (
-          <input
-            className="card__inline-input card__title"
-            defaultValue={board.title}
-            // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
-            autoFocus
-            onFocus={(e) => e.currentTarget.select()}
-            onBlur={(e) => {
-              const value = e.target.value.trim();
-              if (!isContextualFocus(e.relatedTarget)) setEditing(null);
-              if (value && value !== board.title)
-                void renameBoard(projectId, board.id, value).catch(() => {});
-            }}
-            // Escape leaves the field keeping what was typed, like every other card field: a new
-            // board is named by typing and pressing Escape.
-            onKeyDown={blurOnEnter}
-            maxLength={200}
-            aria-label={t('board.board.title')}
-          />
-        ) : (
-          <span className="card__title">{title}</span>
-        )}
+        {name}
         <span className="card__desc">
           {/* A storyboard or a moodboard keeps its kind before the count: "Storyboard · 12 cards". */}
           {[
