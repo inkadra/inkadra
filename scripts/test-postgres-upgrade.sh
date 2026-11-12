@@ -170,7 +170,12 @@ else
     -e PGDATA=/var/lib/postgresql/data -e PGAUTO_ONESHOT=yes \
     -v "${project}_postgres-data:/var/lib/postgresql/data" \
     pgautoupgrade/pgautoupgrade:18-alpine >"$work/autoupgrade.log" 2>&1 &&
-    pass "pgautoupgrade upgraded the volume" || fail "pgautoupgrade: $(tail -n10 "$work/autoupgrade.log")"
+    pass "pgautoupgrade upgraded the volume" || {
+    fail "pgautoupgrade: $(tail -n10 "$work/autoupgrade.log")"
+    # pg_upgrade keeps its logs in the volume only when it fails: show their ends.
+    docker run --rm -v "${project}_postgres-data:/d:ro" --entrypoint sh postgres:16-alpine -c \
+      'for f in /d/new/pg_upgrade_output.d/*/log/*.log /d/new/pg_upgrade_output.d/*/*.txt; do [ -f "$f" ] && echo "--- $f" && tail -n 30 "$f"; done' || true
+  }
   stack=now
   now up -d --quiet-pull --wait --wait-timeout 120 postgres
   [[ $(version) -ge 180000 ]] && pass "PostgreSQL 18 runs on the upgraded volume (POSTGRES_MAJOR=18)" ||
