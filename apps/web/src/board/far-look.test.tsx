@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 // SPDX-License-Identifier: AGPL-3.0-only
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createElement, FAR_BLOCK, FAR_ZOOM, farLook } from '@inkadra/canvas-core';
 import { createBoardDoc, type Element, type ElementType } from '@inkadra/doc-schema';
 import { act } from 'react';
@@ -54,7 +56,11 @@ vi.mock('./film/cast-appearances.ts', async (original) => ({
 
 /** The far rules of board.css, by what they declare. */
 const far = (() => {
-  const css = readFileSync(new URL('./board.css', import.meta.url), 'utf8').replace(
+  const css = readFileSync(
+    // happy-dom's URL reads no file: the path from the module's own address.
+    join(dirname(fileURLToPath(import.meta.url)), 'board.css'),
+    'utf8',
+  ).replace(
     /\/\*[\s\S]*?\*\//g,
     '',
   );
