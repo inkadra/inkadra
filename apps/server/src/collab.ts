@@ -129,6 +129,15 @@ export const DEMO_COLLAB_LIMITS: CollabLimits = {
   stateBytes: 2 * 1024 * 1024,
 };
 
+/** A board document written for a board row that no longer exists. */
+function boardGone(err: unknown): boolean {
+  for (let e = err; e; e = (e as { cause?: unknown }).cause) {
+    const { code, constraint_name } = e as { code?: string; constraint_name?: string };
+    if (code === '23503' && constraint_name === 'board_doc_board_id_board_id_fk') return true;
+  }
+  return false;
+}
+
 export function createCollabServer(deps: {
   db: Database;
   auth: Auth;
@@ -515,13 +524,21 @@ export function createCollabServer(deps: {
       }
       const schemaVersion = document.getMap('meta').get('schemaVersion') as number;
       const elementCount = document.getMap('elements').size;
-      await db
-        .insert(boardDoc)
-        .values({ boardId, state, schemaVersion, size: state.byteLength })
-        .onConflictDoUpdate({
-          target: boardDoc.boardId,
-          set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
-        });
+      try {
+        await db
+          .insert(boardDoc)
+          .values({ boardId, state, schemaVersion, size: state.byteLength })
+          .onConflictDoUpdate({
+            target: boardDoc.boardId,
+            set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
+          });
+      } catch (err) {
+        // The board was deleted for good (its project, or emptied from the trash) while open:
+        // there is nothing to keep it for. Returning lets Hocuspocus unload the document.
+        if (!boardGone(err)) throw err;
+        log.info({ boardId }, 'board deleted while open: document not stored');
+        return;
+      }
       // Best effort (decision 0120): a failure loses who wrote, never the document.
       const written = writers.get(document);
       writers.delete(document);

@@ -328,6 +328,21 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
     expect(after.headers.etag).not.toBe(before.headers.etag);
     doc.destroy();
   });
+  it('previews a board whose stored document is malformed as an empty one, not a 500', async () => {
+    const child = await request('owner', 'POST', `/projects/${ids.project}/boards`, {
+      parentBoardId: ids.root,
+      title: 'Corrupt',
+    });
+    expect(child.statusCode).toBe(201);
+    const corrupt = Buffer.from([255, 1, 2, 3]);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: child.json().id, state: corrupt, schemaVersion: 4, size: corrupt.length })
+      .onConflictDoUpdate({ target: boardDoc.boardId, set: { state: corrupt } });
+    const response = await request('owner', 'GET', `/boards/${child.json().id}/preview`);
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ assetIds: [], excerpts: [], elementCount: 0 });
+  });
   it('previews a storyboard card: frames, review progress, days, and the troupe for members only', async () => {
     const film = await request('owner', 'POST', `/projects/${ids.project}/boards`, {
       parentBoardId: ids.root,

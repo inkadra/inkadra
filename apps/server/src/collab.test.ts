@@ -201,6 +201,45 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       .toEqual(['Location']);
   });
 
+  it('drops the document of a board deleted while open, without an error, and unloads it', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name: 'Gone' },
+    });
+    const goneProject = created.json().id;
+    const goneBoard = created.json().rootBoardId;
+    const c = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, goneBoard);
+    await c.synced;
+    const errors = vi.spyOn(console, 'error');
+    const logged = vi.spyOn(log, 'error');
+    try {
+      const deleted = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/projects/${goneProject}`,
+        headers: as('owner'),
+      });
+      expect(deleted.statusCode).toBe(204);
+      // An edit made after the deletion reaches the server, which tries to store it.
+      addElement(c.doc, column('Too late'));
+      await expect
+        .poll(() => collab.hocuspocus.documents.has(boardDocName(goneBoard)), { timeout: 5000 })
+        .toBe(true);
+      c.close();
+      collab.hocuspocus.flushPendingStores();
+      await expect
+        .poll(() => collab.hocuspocus.documents.has(boardDocName(goneBoard)), { timeout: 5000 })
+        .toBe(false);
+      expect(errors).not.toHaveBeenCalled();
+      expect(logged).not.toHaveBeenCalled();
+      expect(await db.select().from(boardDoc).where(eq(boardDoc.boardId, goneBoard))).toEqual([]);
+    } finally {
+      errors.mockRestore();
+      logged.mockRestore();
+    }
+  });
+
   it.each([
     ['anonymous connections', {}, undefined],
     ['other origins', 'OWNER', 'https://evil.example.com'],
