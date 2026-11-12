@@ -84,7 +84,7 @@ describe('index entries', () => {
     );
   });
 
-  it('indexes the title, icon labels, makes, wall labels and texts of a set plan', () => {
+  it('indexes the title, icon labels, makes, notes, positions, wall labels and texts of a set plan', () => {
     const doc = createBoardDoc('board');
     const plan = {
       ...base(),
@@ -99,6 +99,16 @@ describe('index entries', () => {
           y: 9,
           label: 'A cam',
           make: 'Arri Alexa',
+        },
+        {
+          id: newElementId(),
+          kind: 'actor' as const,
+          color: '#7AD689',
+          x: 20,
+          y: 20,
+          steps: [{ x: 9, y: 9, note: 'entra dalla porta' }],
+          stepNote: 'siede al bancone',
+          note: 'cappotto addosso',
         },
       ],
       walls: [{ id: newElementId(), points: [0, 0, 99, 0], thickness: 9, label: 'muro nord' }],
@@ -122,7 +132,8 @@ describe('index entries', () => {
       expect.objectContaining({
         type: 'plan',
         title: 'Cucina',
-        text: 'Cucina A cam Arri Alexa finestra muro nord',
+        // The notes of the positions too, the last one's in stepNote (decision 0119).
+        text: 'Cucina A cam Arri Alexa cappotto addosso siede al bancone entra dalla porta finestra muro nord',
       }),
     ]);
   });

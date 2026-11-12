@@ -32,7 +32,7 @@ import { PlanElements } from './PlanElements.tsx';
 import { PlanExport, visibleArea } from './PlanExport.tsx';
 import { copyKit, PlanKit, powerText, setupName } from './PlanKit.tsx';
 import { type Dragged, PlanLibrary } from './PlanLibrary.tsx';
-import { SceneChips } from './PlanLinks.tsx';
+import { SceneChips, useSunDayRepair } from './PlanLinks.tsx';
 import { PlanProperties } from './PlanProperties.tsx';
 import { PlanStart } from './PlanStart.tsx';
 import { ScenePicker } from './scenes.tsx';
@@ -80,6 +80,8 @@ export function PlanEditor(props: PlanEditorProps) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const ed = usePlanEditing(props);
+  // The sun's date follows the shooting day it links, for everyone who reads the plan (0119).
+  useSunDayRepair(ed);
   const { plan, base, phone, drawn } = ed;
   const canvas = useRef<CanvasHandle>(null);
   const [picking, setPicking] = useState<{ x: number; y: number } | null>(null);

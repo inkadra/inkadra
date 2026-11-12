@@ -21,6 +21,11 @@ import * as Y from 'yjs';
 
 /** Transaction origin of edits made in this tab: the undo history tracks only these. */
 export const LOCAL = Symbol('local');
+/**
+ * A write this client derives from something outside the document (the schedule's dates for a
+ * plan's sun, decision 0119): synced like any edit, but no step of the person's undo.
+ */
+export const REPAIR = Symbol('repair');
 
 export interface Snapshot {
   byId: ReadonlyMap<string, Element>;

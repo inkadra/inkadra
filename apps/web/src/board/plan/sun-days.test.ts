@@ -62,6 +62,23 @@ describe('useScheduleDays', () => {
     expect(get).toHaveBeenLastCalledWith('/boards/boardB/schedule');
     await act(async () => root.unmount());
   });
+
+  it('shares one request between the parts of the editor that read the days', async () => {
+    get.mockReset();
+    get.mockResolvedValue({ items: [], nextCursor: null });
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    await act(async () =>
+      root.render(
+        createElement('div', null, [
+          createElement(Probe, { key: 'a', boardId: 'boardC', edit: 0 }),
+          createElement(Probe, { key: 'b', boardId: 'boardC', edit: 1 }),
+        ]),
+      ),
+    );
+    expect(get).toHaveBeenCalledTimes(1);
+    await act(async () => root.unmount());
+  });
 });
 
 describe('northWay', () => {

@@ -9,6 +9,7 @@ import {
   storyboardOf,
   unlinkCharacter,
   updateElement,
+  updatePlanItems,
 } from '@inkadra/canvas-core';
 import type { Element, PlanIcon } from '@inkadra/doc-schema';
 import { castNameKey } from '@inkadra/shared';
@@ -19,11 +20,11 @@ import { pickVariant, useAsset } from '../assets.ts';
 import { FramePicture } from '../film/FramePicture.tsx';
 import { usePresetText } from '../film/fields.tsx';
 import { locationCoords, sunBearingByClock, sunPosition } from '../film/sun.ts';
-import { LOCAL } from '../store.ts';
+import { LOCAL, REPAIR } from '../store.ts';
 import type { Ed } from './editing.ts';
 import { NumberField } from './NumberField.tsx';
 import { PlanGlyph, planCss } from './PlanDrawing.tsx';
-import { northWay, useScheduleDays, useSunDays } from './sun-days.ts';
+import { northWay, sunDays, useScheduleDays, useSunDays } from './sun-days.ts';
 import './links.css';
 
 type Character = Extract<Element, { type: 'character' }>;
@@ -716,6 +717,42 @@ export function SunSection({ ed }: { ed: Ed }) {
       </div>
     </section>
   );
+}
+
+/**
+ * Keeps each plan's sun on the shooting day it follows (decision 0119). The schedule is not in
+ * the board document, so the plan stores the day's date too: when someone who can read the
+ * schedule has the plan open and the day has moved, the stored date and the sun icons' direction
+ * follow it in one write, synced as any edit but no step of anyone's undo (REPAIR). Guests,
+ * exports and cards read the repaired date; a deleted day leaves the last date it had.
+ */
+export function useSunDayRepair(ed: Ed) {
+  const days = useScheduleDays(ed.boardId);
+  const { doc, family, plan, base, cards } = ed;
+  useEffect(() => {
+    if (!days) return;
+    const all = sunDays(days, new Set());
+    const owner = base ?? plan;
+    const location = cards.get(owner.locationId ?? '') as Location | undefined;
+    const coords =
+      location?.type === 'location'
+        ? locationCoords([location.mapUrl, location.address].filter(Boolean).join(' '))
+        : null;
+    for (const p of family?.length ? family : [plan]) {
+      const sun = p.sun;
+      const day = sun?.day ? all.find((d) => d.id === sun.day) : undefined;
+      if (!sun || !day || day.date === sun.date) continue;
+      const at = coords ? sunPosition(day.date, sun.time, coords.lat, coords.lng) : null;
+      const rotation = sunRotation(at?.azimuth ?? sunBearingByClock(sun.time), owner.north ?? 0);
+      const turned = (p.icons ?? [])
+        .filter((i) => catalogueKind(i.kind) === 'sun' && i.rotation !== rotation)
+        .map((i) => ({ ...i, rotation }));
+      doc.transact(() => {
+        updateElement(doc, p.id, { sun: { ...sun, date: day.date } }, REPAIR);
+        if (turned.length) updatePlanItems(doc, p.id, turned, REPAIR);
+      }, REPAIR);
+    }
+  }, [days, doc, family, plan, base, cards]);
 }
 
 /** "Scene 2 · INT · Night" (decision 0104): a scene of the plan, read from its card. */

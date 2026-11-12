@@ -27,31 +27,51 @@ export function sunDays(days: readonly Day[], shots: ReadonlySet<string>): SunDa
   return (ofScenes.length ? ofScenes : all).map(({ id, n, date }) => ({ id, n, date }));
 }
 
+/** The days read for each board, shared by every reader on the page, and who is reading. */
+const boards = new Map<
+  string,
+  { days: readonly Day[] | null; readers: Set<() => void>; stop: () => void }
+>();
+
 /**
- * The board's shooting days for the sun (decision 0119): read once per board from the endpoint
- * ScheduleView reads, and again the way it refreshes them (`whileVisible`: when the tab comes back
- * and every minute while it is in view), never on an edit of the board. Null until they arrive,
- * and for a guest or offline, who keep the date picker.
+ * The board's shooting days for the sun (decision 0119): read once per board, however many parts
+ * of the editor ask, from the endpoint ScheduleView reads, and again the way it refreshes them
+ * (`whileVisible`: when the tab comes back and every minute while it is in view), never on an
+ * edit of the board. Null until they arrive, and for a guest or offline, who keep the date
+ * picker.
  */
 export function useScheduleDays(boardId: string | undefined): readonly Day[] | null {
-  const [days, setDays] = useState<readonly Day[] | null>(null);
+  const [, rerender] = useState(0);
   useEffect(() => {
-    setDays(null);
     if (!boardId) return;
-    let alive = true;
-    const read = () =>
-      api.get<Schedule>(`/boards/${boardId}/schedule`).then(
-        (r) => alive && setDays(r.items),
-        () => {},
-      );
-    void read();
-    const stop = whileVisible(() => void read());
+    const update = () => rerender((n) => n + 1);
+    let entry = boards.get(boardId);
+    if (!entry) {
+      const fresh = { days: null as readonly Day[] | null, readers: new Set<() => void>(), stop: () => {} };
+      const read = () =>
+        api.get<Schedule>(`/boards/${boardId}/schedule`).then(
+          (r) => {
+            fresh.days = r.items;
+            for (const reader of fresh.readers) reader();
+          },
+          () => {},
+        );
+      void read();
+      fresh.stop = whileVisible(() => void read());
+      boards.set(boardId, fresh);
+      entry = fresh;
+    }
+    entry.readers.add(update);
+    const kept = entry;
     return () => {
-      alive = false;
-      stop();
+      kept.readers.delete(update);
+      if (kept.readers.size === 0) {
+        kept.stop();
+        boards.delete(boardId);
+      }
     };
   }, [boardId]);
-  return days;
+  return boardId ? (boards.get(boardId)?.days ?? null) : null;
 }
 
 /**

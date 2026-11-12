@@ -1548,7 +1548,19 @@ describe('set plan parity (version 26, decision 0119)', () => {
     expect(checkCard(roots(doc).elements.get(el.id)!)).toEqual({ status: 'known' });
   });
 
-  it('keeps clients of schema 25 read-only on a version 26 document', () => {
+  it("takes a shooting day only as the id it is, a UUID, in the schema and the card check", () => {
+    const bad = plan({ sun: { time: 600, day: 'day-three', date: '2026-03-14' } });
+    expect(Element.safeParse(bad).success).toBe(false);
+    const doc = createBoardDoc(boardId);
+    const map = new Y.Map<unknown>();
+    roots(doc).elements.set('planBADDAYxxx', map);
+    for (const [k, v] of Object.entries({ ...bad, id: 'planBADDAYxxx' })) map.set(k, v);
+    expect(checkCard(map).status).not.toBe('known');
+    const read = readElement(map) as { sun?: { day?: string } } | null;
+    expect(read?.sun?.day).not.toBe('day-three');
+  });
+
+    it('keeps clients of schema 25 read-only on a version 26 document', () => {
     expect(CURRENT_SCHEMA_VERSION).toBe(26);
     expect(WRITER_SCHEMAS[26]).toEqual({ min: 26 });
     expect(MIN_WRITER_SCHEMA).toBe(26);

@@ -75,12 +75,15 @@ export function standAlone(
   /** Circuits of the base to put first, in order. */
   circuits: PlanCircuit[];
   /** Fields to write; `title: undefined` deletes a stale copy. */
-  fields: Partial<Pick<PlanBase, (typeof OWNED)[number] | 'title'>> & { title: string | undefined };
+  fields: Partial<Pick<PlanBase, (typeof OWNED)[number] | 'title' | 'roomSizes'>> & {
+    title: string | undefined;
+  };
 } {
   const held = new Set((own.circuits ?? []).map((c) => c.id));
   const room = Math.max(0, MAX_PLAN_CIRCUITS - (own.circuits?.length ?? 0));
   const circuits = (base.circuits ?? []).filter((c) => !held.has(c.id)).slice(0, room);
-  const fields: Record<string, unknown> = { title: base.title };
+  // The title is the base's, and so is whether the rooms' sizes show: what the setup showed.
+  const fields: Record<string, unknown> = { title: base.title, roomSizes: base.roomSizes };
   for (const key of OWNED)
     if (own[key] === undefined && base[key] !== undefined) fields[key] = base[key];
   return { circuits, fields: fields as ReturnType<typeof standAlone>['fields'] };
@@ -158,7 +161,7 @@ export function adoptBase(variant: Y.Map<unknown>, base: PlanBase): void {
         : items,
     );
   }
-  for (const key of ['scale', 'grid', 'rulers', 'roomSizes'] as const)
+  for (const key of ['scale', 'grid', 'rulers'] as const)
     if (base[key] !== undefined && variant.get(key) === undefined) variant.set(key, base[key]);
   const ownList = variant.get('circuits');
   const own = {

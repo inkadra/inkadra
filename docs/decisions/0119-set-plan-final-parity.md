@@ -42,12 +42,18 @@ of the old extent fitted, so how close one can go does not depend on how much is
 buttons turn off at those limits. This replaces decision 0118's "100 % being the old extent
 fitted". Nothing stored changes.
 
-**Rooms and their sizes.** A room is a closed wall, or open walls that meet end to end in a loop,
-followed whichever way each was drawn (`planRooms`). With a scale, each room draws its width and
-depth outside its walls, on a free side: over the top unless another wall lies there, then under
-the bottom; down the left, else on the right (`roomDims`). A room that is not a rectangle (an L,
-a U) gets its overall width and depth, written "8.0 m overall". The sizes are worked out once per
-list of walls, not on every render.
+**Rooms and their sizes.** The rooms are the faces of the graph of the walls (`planRooms`). Each
+side of a wall is cut where another wall's end meets it (a T junction), where two sides cross,
+and where ends meet within 2 view units; sides that lead nowhere are left out. Each closed loop
+of what is left is a room, so a dividing wall bounds the two rooms on either side of it. Plans of
+more than 800 wall sides join walls by their ends only, to keep the cost small.
+
+With a scale, each room draws its width and depth outside its walls, on a free side: over the
+top unless a wall or another room lies there, then under the bottom; down the left, else on the
+right (`roomDims`). A size keeps the side it has until a wall comes 8 units further into it, and
+goes back only once the side is 8 units clear, so it does not jump while a wall is dragged near
+it. A room that is not a rectangle (an L, a U) gets its overall width and depth, written "8.0 m
+overall". The sizes are worked out once per list of walls, not on every render.
 
 They are drawn in the editor, the read-only view, the card on the board, board exports and the
 plan sheet, where "Scale and sizes" also turns them off. Without a scale there are no metres and
@@ -56,7 +62,9 @@ While a wall or an opening is picked, the drawing leaves the room's size out, so
 the picked part do not overlap it.
 
 `roomSizes` (version 26) is the plan's switch, on by default, in the scale menu next to Rulers. A
-setup follows its base's switch, as it follows its walls.
+setup follows its base's switch, as it follows its walls, and keeps it when it stands alone
+(its base deleted, or pasted on a board without it). `stepNote` travels with its icon on the
+same paths.
 
 One formatter writes the size everywhere (`roomSizeText`), in the app's language ("8,0 m" in
 Italian), in the editor, the view, the card and the exports. The mockup draws no rulers: rulers
@@ -81,9 +89,17 @@ the plan serves no scene ("Day 3 of the shoot", with its date beside it). It als
 and "Another date…", which opens the date picker. Choosing a day stores its id in `sun.day` and
 its date in `sun.date`.
 
-The plan shows and uses the day's live date and number, so a rescheduled day moves the sun with
-it. When the day is deleted, the plan keeps the last date it had as a plain date and says so. A
-date typed by hand is a date, with no day. Guests and previews read no schedule and keep the date
+The schedule is not in the board document, so the stored `sun.date` is the truth every reader
+uses: guests, cards and exports, which do not read the schedule. Someone who can read the
+schedule and has the plan open keeps it true: when the linked day's date differs from the stored
+one, the editor writes the new date and turns the sun icons with it in one transaction, synced
+like any edit but no step of anyone's undo (`REPAIR`). The days are read once per board for the
+whole editor.
+
+When the day is deleted, the plan keeps the last date the day had, as a plain date, and says so.
+A date typed by hand is a date, with no day. A plan pasted on another board loses its `sun.day`,
+an id of the first board's schedule, and keeps its date, as other links are dropped there.
+`sun.day` is checked as the UUID it is. Guests and previews read no schedule and keep the date
 picker. North reads "Up, 0°": the way it points, in eight words, before its degrees.
 
 **The editor's choices live in the account** (`UserPreferences`, additive in API v1, as
@@ -100,10 +116,18 @@ They follow the person to every device and through a reload. Quick changes are s
 settle (400 ms).
 
 Someone with no account read this session, such as a guest of a share link, sends nothing and
-keeps the choice for the page's session. So does someone whose save fails, offline for example:
-the app's other preferences roll back on a failed save and do not retry, and this decision
-invents no retry. The session's choices live outside the editor, so closing it or changing
-setup keeps them.
+keeps the choice for the page's session. The session's choices live outside the editor, so
+closing it or changing setup keeps them.
+
+They belong to the person who made them. Another person signing in on the tab, or a sign-out
+(`onSignedInChange`), empties them and cancels their pending saves. A save checks, just before it
+is sent, that the same person is still signed in; one person's choice is never sent under
+another's account nor shown to them.
+
+A save the server refuses (a 4xx: an invalid value, the session gone) drops the choice. A network
+failure keeps it for the session: the app's other preferences roll back on a failed save and do
+not retry, and this decision invents no retry. A choice still waiting when the page goes away
+(`pagehide`) is sent at once with a request that outlives the page.
 
 `planHidden` holds group names (`set`, `lights`, `camera`, `actors`, `notes`, `grip`), not plan
 ids. A hidden group is a way of working that holds on every plan, as the shot grouping holds on
@@ -154,3 +178,8 @@ need their "Select" for the base.
   a little wider to hold it.
 - An icon with blocking moves its last position's note to `stepNote` when the board migrates; its
   `note` is then free for the item.
+- Search indexes `stepNote` and the notes of the earlier positions too. No rebuild is needed: the
+  server migrates a board when it loads it and indexes it each time it stores it, so its index
+  follows with the first edit after the migration; until then the old index still holds those
+  notes, under `note`. To force a rebuild, `update board_doc set indexed_at = null` (as a backup restore does)
+  and the backfill job reindexes.

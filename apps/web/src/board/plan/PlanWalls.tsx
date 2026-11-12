@@ -472,7 +472,8 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
   const picked = ed.wallSel;
   const pickedWall = picked?.kind === 'walls' ? walls.find((w) => w.id === picked.id) : undefined;
   // The room the picked wall is part of: a closed wall, or open walls closing a loop (0119).
-  const pickedRoom = pickedWall && planRooms(walls).find((r) => r.walls.includes(pickedWall.id));
+  const rooms = pickedWall ? planRooms(walls) : [];
+  const pickedRoom = pickedWall && rooms.find((r) => r.walls.includes(pickedWall.id));
   const pickedOpening =
     picked?.kind === 'openings' ? shown.openings?.find((o) => o.id === picked.id) : undefined;
   const openingWall = pickedOpening && walls.find((w) => w.id === pickedOpening.wall);
@@ -500,7 +501,7 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
           {/* A picked room's size: the drawing leaves its own out while a wall is picked. */}
           {pickedRoom && (
             <g className="plan-walls__room" data-room-dims="">
-              {roomDims(pickedRoom, walls).map((d) => (
+              {roomDims(pickedRoom, walls, rooms).map((d) => (
                 <RoomDimView
                   key={`${d.a.x},${d.a.y}`}
                   dim={d}

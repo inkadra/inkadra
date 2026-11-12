@@ -413,3 +413,72 @@ describe("a setup's room sizes (decision 0119)", () => {
     expect(variantView(setup, { ...base, roomSizes: undefined }).roomSizes).toBeUndefined();
   });
 });
+
+describe('rooms of the wall graph (decision 0119)', () => {
+  const g = (v: number) => Math.round((v / PLAN_VIEW_W) * STROKE_GRID);
+  const gy = (v: number) => Math.round((v / PLAN_VIEW_H) * STROKE_GRID);
+  const wall = (id: string, pts: Array<[number, number]>, closed = false) => ({
+    id: `wall${id}`.padEnd(13, 'A'),
+    points: pts.flatMap(([x, y]) => [g(x), gy(y)]),
+    thickness: 9,
+    ...(closed ? { closed: true } : {}),
+  });
+  const outer = wall(
+    'O',
+    [
+      [100, 100],
+      [500, 100],
+      [500, 300],
+      [100, 300],
+    ],
+    true,
+  );
+
+  it('makes two rooms of one divided by a wall that meets the others in the middle (a T)', () => {
+    const divider = wall('D', [
+      [300, 100],
+      [300, 300],
+    ]);
+    const rooms = planRooms([outer, divider]);
+    expect(rooms).toHaveLength(2);
+    // The dividing wall bounds both; each room is a plain rectangle, not an "overall" size.
+    for (const r of rooms) {
+      expect(r.walls).toContain(divider.id);
+      expect(r.points).toHaveLength(4);
+    }
+    const dims = planRoomDims({ walls: [outer, divider], scale: 70 });
+    expect(dims).toHaveLength(4);
+    expect(dims.every((d) => !d.overall)).toBe(true);
+    expect(dims.map((d) => Math.round(d.length)).sort()).toEqual([200, 200, 200, 200]);
+    // The right room's depth does not sit in the left room: it goes on its right.
+    const depths = dims.filter((d) => d.a.x === d.b.x).map((d) => d.a.x);
+    expect(depths.some((x) => x > 500)).toBe(true);
+  });
+
+  it('keeps a size on its side while a wall is dragged near it, and moves it past a margin', () => {
+    const room = wall(
+      'R',
+      [
+        [100, 200],
+        [400, 200],
+        [400, 300],
+        [100, 300],
+      ],
+      true,
+    );
+    // The width line sits 34.5 units over the top (y 165.5), its text 16 either side.
+    const sideAt = (y: number) => {
+      const near = wall('N', [
+        [150, y],
+        [350, y],
+      ]);
+      const [width] = planRoomDims({ walls: [room, near], scale: 70 });
+      return (width?.a.y ?? 0) < 200 ? 'top' : 'bottom';
+    };
+    expect(sideAt(120)).toBe('top');
+    expect(sideAt(152)).toBe('top');
+    expect(sideAt(165)).toBe('bottom');
+    expect(sideAt(152)).toBe('bottom');
+    expect(sideAt(120)).toBe('top');
+  });
+});

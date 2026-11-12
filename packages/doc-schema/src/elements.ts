@@ -1039,9 +1039,7 @@ export const PlanElement = Base.extend({
     .object({
       time: z.int().min(0).max(1439).describe('Minutes after midnight, on the clock of the set.'),
       day: z
-        .string()
-        .min(1)
-        .max(64)
+        .uuid()
         .optional()
         .describe(
           "A shooting day of the board's schedule, by id (since version 26, decision 0119): the " +

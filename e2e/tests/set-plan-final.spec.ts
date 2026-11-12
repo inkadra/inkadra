@@ -223,6 +223,9 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
     await expect(props.getByRole('combobox', { name: 'Data' })).toContainText(
       'Giorno 3 delle riprese',
     );
+    // Opened by someone who reads the schedule, the plan stores the day's new date, so guests,
+    // cards and exports read it too (decision 0119).
+    await expect.poll(async () => (await saved()).sun?.date).toBe('2026-03-20');
     // Deleted: the plan keeps its last date as a plain date and says so.
     const gone = await page.request.delete(`/api/v1/boards/${root}/schedule/${day3.id}`, {
       headers: { origin: baseURL! },
@@ -233,7 +236,8 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
     await page.locator(`[data-el="${planId}"]`).dblclick();
     await pick(/^Sole/);
     await expect(props.getByRole('status').filter({ hasText: 'tolto' })).toBeVisible();
-    await expect(props.getByLabel('Data')).toHaveValue('2026-03-14');
+    // The last date the day had, not the one it had when it was picked.
+    await expect(props.getByLabel('Data')).toHaveValue('2026-03-20');
 
     // Personal choices live in the account: snap to the grid off (G), Lights hidden for me.
     const area = (await editor.locator('.plan-main__canvas').boundingBox())!;
