@@ -493,7 +493,8 @@ test('every library name fits its tile, in all six languages, at 1280 and 390 px
           // The name, after the glyph.
           const span = tile.lastElementChild as HTMLElement;
           const value = span.textContent ?? '';
-          const probe = document.createElement('span');
+          // A div: the tile's rule for its name's span must not size the probe.
+          const probe = document.createElement('div');
           probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap';
           tile.append(probe);
           const room = span.clientWidth;
