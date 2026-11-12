@@ -67,9 +67,7 @@ export function defaultView(kind: BoardKind | undefined): BoardView {
 }
 
 type ViewsOf = Pick<Board, 'kind' | 'views'>;
-type CountsOf =
-  | Pick<BoardCount, 'referenceCount' | 'looseCount' | 'clientReview'>
-  | undefined;
+type CountsOf = Pick<BoardCount, 'referenceCount' | 'looseCount' | 'clientReview'> | undefined;
 
 /**
  * The optional views that are on. Boards from before decision 0121 store none: a storyboard
