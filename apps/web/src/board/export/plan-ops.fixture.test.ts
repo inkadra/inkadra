@@ -92,7 +92,10 @@ describe('a set plan in exports', () => {
   });
 
   it('draws a setup over its base’s Set layer, and turned lines, arrows and measures', () => {
-    expectFixture(drawn(planOps(variantView(SETUP, PLAN), BOX, ctx)), fixture('plan-ops-setup.txt'));
+    expectFixture(
+      drawn(planOps(variantView(SETUP, PLAN), BOX, ctx)),
+      fixture('plan-ops-setup.txt'),
+    );
     expectFixture(drawn(planOps(TURNED, BOX, ctx)), fixture('plan-ops-turned.txt'));
   });
 });

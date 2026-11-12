@@ -201,7 +201,15 @@ export const PLAN = {
   strokes: STROKES,
   walls: WALLS,
   openings: OPENINGS,
-  background: { assetId: 'assetAAAAAAAA', x: -60, y: -40, w: 1100, h: 760, opacity: 0.4, grey: true },
+  background: {
+    assetId: 'assetAAAAAAAA',
+    x: -60,
+    y: -40,
+    w: 1100,
+    h: 760,
+    opacity: 0.4,
+    grey: true,
+  },
   scale: 80,
 } as unknown as Extract<Element, { type: 'plan' }>;
 
@@ -255,7 +263,15 @@ export const TURNED = {
   shapes: [
     shape('tline', { kind: 'line', x0: 200, y0: 2200, x1: 900, y1: 2900, width: 6, rotation: 25 }),
     shape('tarrow', { kind: 'arrow', x0: 300, y0: 1000, x1: 700, y1: 1300, rotation: 60 }),
-    shape('tarrowfat', { kind: 'arrow', x0: 3900, y0: 400, x1: 3300, y1: 300, width: 10, rotation: 300 }),
+    shape('tarrowfat', {
+      kind: 'arrow',
+      x0: 3900,
+      y0: 400,
+      x1: 3300,
+      y1: 300,
+      width: 10,
+      rotation: 300,
+    }),
     shape('tmeasure', { kind: 'measure', x0: 400, y0: 3900, x1: 1600, y1: 3700, rotation: 30 }),
     shape('tmesdash', {
       kind: 'measure',

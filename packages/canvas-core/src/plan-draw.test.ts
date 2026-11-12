@@ -182,9 +182,7 @@ describe('planShapeOutline', () => {
   });
 
   it('rings an ellipse in 32 points, turned', () => {
-    const o = outline(
-      shape({ kind: 'ellipse', x0: 0, y0: 0, x1: 2048, y1: 1024, rotation: 90 }),
-    );
+    const o = outline(shape({ kind: 'ellipse', x0: 0, y0: 0, x1: 2048, y1: 1024, rotation: 90 }));
     expect(o.lines[0]).toHaveLength(32);
     // Its first point, at the right end of the level ellipse, turns to the bottom.
     near(o.lines[0]?.[0] as Point, { x: o.centre.x, y: o.centre.y + 250 });
@@ -196,9 +194,7 @@ describe('planShapeOutline', () => {
   });
 
   it('draws an arrow as a shaft and a head of two wings through the tip', () => {
-    const thin = outline(
-      shape({ kind: 'arrow', x0: 0, y0: 0, x1: 4096, y1: 0, width: 2 }),
-    );
+    const thin = outline(shape({ kind: 'arrow', x0: 0, y0: 0, x1: 4096, y1: 0, width: 2 }));
     expect(thin.closed).toBe(false);
     const [shaft, head] = thin.lines as [Point[], Point[]];
     expect(shaft).toEqual([
@@ -209,9 +205,7 @@ describe('planShapeOutline', () => {
     // Heads are 4 line widths long, at least 12, at ±0.45 rad.
     near(head[0] as Point, { x: 1000 - 12 * Math.cos(0.45), y: 12 * Math.sin(0.45) });
     near(head[2] as Point, { x: 1000 - 12 * Math.cos(0.45), y: -12 * Math.sin(0.45) });
-    const fat = outline(
-      shape({ kind: 'arrow', x0: 0, y0: 0, x1: 4096, y1: 0, width: 10 }),
-    );
+    const fat = outline(shape({ kind: 'arrow', x0: 0, y0: 0, x1: 4096, y1: 0, width: 10 }));
     expect(1000 - (fat.lines[1]?.[0]?.x ?? 0)).toBeCloseTo(40 * Math.cos(0.45));
   });
 
@@ -275,11 +269,7 @@ describe('planShapeOutline', () => {
   });
 
   it('draws a measure with ticks across its ends and its length on a chip', () => {
-    const o = outline(
-      shape({ kind: 'measure', x0: 0, y0: 2048, x1: 4096, y1: 2048 }),
-      100,
-      'en',
-    );
+    const o = outline(shape({ kind: 'measure', x0: 0, y0: 2048, x1: 4096, y1: 2048 }), 100, 'en');
     expect(o.width).toBe(2);
     expect(o.dash).toBeUndefined();
     const [line, start, end] = o.lines as [Point[], Point[], Point[]];
@@ -301,11 +291,7 @@ describe('planShapeOutline', () => {
   });
 
   it('writes a measure’s written length, dashes it when asked, and leaves it bare without a scale', () => {
-    const written = outline(
-      shape({ kind: 'measure', text: '2.7', dashed: true }),
-      undefined,
-      'it',
-    );
+    const written = outline(shape({ kind: 'measure', text: '2.7', dashed: true }), undefined, 'it');
     expect(written.text?.lines[0]?.text).toBe('2,70 m');
     expect(written.dash).toEqual([8, 6]);
     const bare = outline(shape({ kind: 'measure' }));

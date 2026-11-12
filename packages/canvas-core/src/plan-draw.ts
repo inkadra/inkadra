@@ -272,7 +272,9 @@ export function planShapeOutline(
         ...(shape.text
           ? {
               text: {
-                lines: [{ at: { x: box.x + ZONE_TEXT.x, y: box.y + ZONE_TEXT.y }, text: shape.text }],
+                lines: [
+                  { at: { x: box.x + ZONE_TEXT.x, y: box.y + ZONE_TEXT.y }, text: shape.text },
+                ],
                 size: PLAN_TEXT_SIZES.S,
                 step: PLAN_TEXT_SIZES.S * LINE_STEP,
               },

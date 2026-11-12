@@ -178,7 +178,10 @@ function geometry(markup: string): Array<{ what: string; points: Array<[number, 
         .filter((a) => !GEOMETRY.has(a.name))
         .map((a) => `${a.name}=${a.value}`)
         .sort();
-      out.push({ what: `${el.tagName} ${attrs.join(' ')} ${el.textContent ?? ''}`, points: placed });
+      out.push({
+        what: `${el.tagName} ${attrs.join(' ')} ${el.textContent ?? ''}`,
+        points: placed,
+      });
     }
     for (const child of el.children) walk(child, here);
   };
