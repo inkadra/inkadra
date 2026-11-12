@@ -206,8 +206,8 @@ export function ScheduleQueue({
   /** How many frames a scene has, planned or not. */
   const drawn = (g: SourceGroup) =>
     groups.find((x) => groupKey(x) === groupKey(g))?.frames.length ?? 0;
-  const dotIcon = (source: ScheduleSource | undefined) =>
-    source && <SourceDot color={source.dot} name={source.title} />;
+  const dotIcon = (source: ScheduleSource | undefined, decorative = true) =>
+    source && <SourceDot color={source.dot} name={source.title} decorative={decorative} />;
   return (
     <aside
       className="schedule__queue"
@@ -359,7 +359,7 @@ export function ScheduleQueue({
                     </span>
                     <span className="schedule__shot-text">
                       <span className="schedule__shot-label">
-                        {dotIcon(sourceOf(group.boardId))}
+                        {dotIcon(sourceOf(group.boardId), false)}
                         {t('schedule.wholeScene')}
                       </span>
                       <span className="schedule__shot-action">
@@ -644,7 +644,7 @@ export function BlockEditor({
           </span>
           <span className="schedule__editor-shot-text">
             <b>
-              {seen.dot && <SourceDot color={seen.dot.color} name={seen.dot.name} />}
+              {seen.dot && <SourceDot color={seen.dot.color} name={seen.dot.name} decorative />}
               {blockTitle(block)}
             </b>
             {block.shotId && <SetupChips setups={setupsOf?.(block.shotId)} />}

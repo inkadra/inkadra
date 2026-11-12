@@ -309,14 +309,25 @@ export function useScheduleSources({
   return { sources, docs };
 }
 
-/** The dot of a storyboard, named by it (decision 0123). */
-export function SourceDot({ color, name }: { color: string; name: string }) {
+/**
+ * The dot of a storyboard, named by it (decision 0123); `decorative` beside its name, which then
+ * says it once.
+ */
+export function SourceDot({
+  color,
+  name,
+  decorative = false,
+}: {
+  color: string;
+  name: string;
+  decorative?: boolean;
+}) {
   return (
     <span
       className="schedule__dot"
-      role="img"
-      aria-label={name}
-      data-ink-tooltip={name}
+      {...(decorative
+        ? { 'aria-hidden': true }
+        : { role: 'img', 'aria-label': name, 'data-ink-tooltip': name })}
       style={{ ['--dot' as string]: color }}
     />
   );
