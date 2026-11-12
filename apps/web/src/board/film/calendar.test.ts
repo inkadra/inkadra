@@ -296,7 +296,12 @@ it('shows on each card what the approved mockup shows at its height', () => {
   expect(blockDetail('day', 43, false, 1).picture).toBe(false);
   // A phone: the line from 56 px, one line of title, no frame.
   expect(blockDetail('day', 55, true, 1).meta).toBe(false);
-  expect(blockDetail('day', 90, true, 1)).toMatchObject({ meta: true, type: false, wrap: false, picture: false });
+  expect(blockDetail('day', 90, true, 1)).toMatchObject({
+    meta: true,
+    type: false,
+    wrap: false,
+    picture: false,
+  });
   // Side by side, a card shows only its start time.
   expect(blockDetail('week', 90, false, 1).range).toBe(true);
   expect(blockDetail('week', 90, false, 2).range).toBe(false);

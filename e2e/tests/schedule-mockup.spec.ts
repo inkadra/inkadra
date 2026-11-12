@@ -250,7 +250,12 @@ test('the schedule calendar matches its mockup on the Production board', async (
     data: { date, callTime, wrap, location, blocks, notes: 'Binario 3 dalle 07:00', revision },
   });
   expect(elsewhere.ok(), await elsewhere.text()).toBe(true);
-  await schedule.locator('.schedule__day').first().locator('.schedule__block-select').first().focus();
+  await schedule
+    .locator('.schedule__day')
+    .first()
+    .locator('.schedule__block-select')
+    .first()
+    .focus();
   await page.keyboard.press('Shift+ArrowDown');
   await expect(schedule.locator('.schedule__status')).toHaveText(/Da risolvere/);
   await page.mouse.move(0, 0);
@@ -284,9 +289,7 @@ test('the schedule calendar matches its mockup on the Production board', async (
   });
   expect(scrolled).toBeGreaterThan(0);
   const gutter = schedule.locator('.schedule__grid .schedule__gutter');
-  await expect
-    .poll(async () => (await box(gutter)).x - (await box(calendar)).x)
-    .toBeCloseTo(0, 0);
+  await expect.poll(async () => (await box(gutter)).x - (await box(calendar)).x).toBeCloseTo(0, 0);
   await expect(gutter.getByText('10:00', { exact: true })).toBeVisible();
 
   // The phone's strip shows the whole week, Saturday included, no chip cut off.

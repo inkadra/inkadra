@@ -139,9 +139,10 @@ it('offers both versions of a day changed elsewhere in the week view', async () 
   const keep = [...(banner?.querySelectorAll('button') ?? [])].find(
     (b) => b.textContent === 'schedule.staleKeep',
   );
-  expect(
-    [...(banner?.querySelectorAll('button') ?? [])].map((b) => b.textContent),
-  ).toEqual(['schedule.staleReload', 'schedule.staleKeep']);
+  expect([...(banner?.querySelectorAll('button') ?? [])].map((b) => b.textContent)).toEqual([
+    'schedule.staleReload',
+    'schedule.staleKeep',
+  ]);
   await act(async () => keep?.click());
   expect(host.querySelector('.schedule__stale-banners')).toBeNull();
   await act(() => new Promise((resolve) => setTimeout(resolve, 700)));

@@ -1083,7 +1083,9 @@ export function ScheduleCalendar({
                   <p className="schedule__free" style={{ top: (firstCall + 240) * MINUTE_PX }}>
                     <b>{t('schedule.noShoot')}</b>
                     {!readOnly && (
-                      <span>{t(view === 'day' ? 'schedule.freeDrop' : 'schedule.freeDropWeek')}</span>
+                      <span>
+                        {t(view === 'day' ? 'schedule.freeDrop' : 'schedule.freeDropWeek')}
+                      </span>
                     )}
                   </p>
                   {drag?.active &&
