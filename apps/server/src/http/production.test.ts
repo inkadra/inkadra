@@ -552,13 +552,24 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
   });
 
   it('comes back from the trash with its days instead of a second one', async () => {
+    const storyboardCard = async () =>
+      BoardPreview.parse((await request('member', 'GET', `/boards/${ids.sb}/preview`)).json());
+    // With a live Production board a storyboard's card counts no days and no crew.
+    expect(await storyboardCard()).not.toHaveProperty('dayCount');
     expect((await request('owner', 'DELETE', `/boards/${ids.production}`)).statusCode).toBe(204);
-    // Meanwhile a day is planned on a storyboard, as the interim views allow.
+    // Meanwhile a day is planned on a storyboard, as a project without a live one allows.
     days.a3 = await created(
       'owner',
       `/boards/${ids.sa}/schedule`,
       dayInput('2026-11-08', [block({ shotId: 'frame-a3' })]),
     );
+    // Without one, it counts the plan to find there: the trashed board's days and the new one,
+    // never those of a trashed storyboard; to members only.
+    expect(await storyboardCard()).toMatchObject({ dayCount: 5, crewCount: 5 });
+    const granted = BoardPreview.parse(
+      (await request('storyboarder', 'GET', `/boards/${ids.sa}/preview`)).json(),
+    );
+    expect(granted).not.toHaveProperty('dayCount');
     const back = await request('member', 'POST', `/projects/${ids.project}/boards`, {
       parentBoardId: ids.root,
       title: 'Production again',

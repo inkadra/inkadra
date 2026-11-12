@@ -6327,6 +6327,7 @@
   },
   "production": {
     "storyboardLink_one": "Giornate di ripresa: {{count}} · Apri Produzione",
-    "storyboardLink_other": "Giornate di ripresa: {{count}} · Apri Produzione"
+    "storyboardLink_other": "Giornate di ripresa: {{count}} · Apri Produzione",
+    "storyboardMissing": "Piano riprese e Troupe ora sono in Produzione · Aggiungila"
   }
 }

@@ -421,6 +421,7 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
     expect(granted.statusCode).toBe(200);
     expect(granted.json().review).toEqual(owner.review);
     expect(granted.json().crewCount).toBeUndefined();
+    expect(granted.json().dayCount).toBeUndefined();
     expect((await request('stranger', 'GET', `/boards/${filmId}/preview`)).statusCode).toBe(404);
     doc.destroy();
   });

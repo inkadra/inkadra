@@ -43,14 +43,12 @@ Draw on a picture. **Done**, `Esc` or a click elsewhere closes it.
 A project starts with one board. **Add storyboard**, **Add moodboard** and **Add Production** in the
 project's ⋯ menu, and the cards of **Canvas** in the dock, add more. Each kind has its own views:
 
-| Kind                       | Always            | Can be turned on                     |
-| -------------------------- | ----------------- | ------------------------------------ |
-| Board                      | the canvas        | Moodboard and Review                 |
-| Moodboard                  | the moodboard     | nothing                              |
-| Storyboard                 | scenes and frames | Shot list, Schedule, Crew and Review |
-| Production (one a project) | Schedule and Crew | nothing                              |
-
-A storyboard has Schedule and Crew only while its project has no Production board.
+| Kind                       | Always            | Can be turned on     |
+| -------------------------- | ----------------- | -------------------- |
+| Board                      | the canvas        | Moodboard and Review |
+| Moodboard                  | the moodboard     | nothing              |
+| Storyboard                 | scenes and frames | Shot list and Review |
+| Production (one a project) | Schedule and Crew | nothing              |
 
 The header shows the views of the open board only, and **Views of this board** in its ⋯ menu turns
 them on and off: a view that is off leaves the header and the sidebar, and its data stays. In the
@@ -80,6 +78,13 @@ its ⋯ menu prints the call sheet of every day, each frame read from its own st
 storyboard's ⋯ menu shows **Shooting days: N · Open Production** when the Production board plans
 some of its frames; its scene sheets and set plans read their days there.
 
+Storyboards have no Schedule or Crew of their own: when Inkadra is updated, the shooting days and
+the crew of every project move to its Production board, made for it under the project's board. A
+link to a storyboard's schedule or crew opens the Production board's. If a project has shooting days
+or a crew but no Production board (its Production board is in the trash, or the server was told not
+to move them), its storyboards' ⋯ menu shows **Schedule and Crew now live in Production · Add it**
+to editors: it adds the board, or brings back the one in the trash, with every day.
+
 ## Modules
 
 **Settings → Modules** turns off the parts of Inkadra you do not use, for you alone: Storyboard,
@@ -105,8 +110,8 @@ playable copy, and a video gets a poster and its details.
 
 ## Storyboards, frames and Draw
 
-A storyboard is made of scenes and frames, and its other views show the same data: the shot list,
-the schedule and the review, when they are on. Double-click a frame to open its panel: action, shot size, angle, movement,
+A storyboard is made of scenes and frames, and its other views show the same data: the shot list
+and the review, when they are on; the Production board schedules its frames. Double-click a frame to open its panel: action, shot size, angle, movement,
 lens, cast and status. The panel follows your selection, and closes when you pick
 something else.
 

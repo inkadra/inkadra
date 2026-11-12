@@ -535,15 +535,24 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await gap(page, 'shotlist');
   });
 
+  // The storyboard, where steps 6 and 7 come back to.
+  let storyboardUrl = '';
   await test.step('5. schedule: two shooting days and the call sheet', async () => {
-    await turnOn(page, 'Piano riprese');
+    storyboardUrl = page.url();
+    // The schedule is the Production board's (decision 0123): added from the project's menu.
+    await page
+      .locator('.ink-shell > .ink-sidebar')
+      .getByRole('button', { name: 'Opzioni progetto: Ultimo Treno', exact: true })
+      .click();
+    await page.getByRole('menuitem', { name: 'Aggiungi Produzione', exact: true }).click();
+    await expect(page.getByRole('tab', { name: 'Troupe', exact: true })).toBeVisible();
     await page.getByRole('tab', { name: 'Piano riprese', exact: true }).click();
     const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
     const days = schedule.locator('.schedule__day');
     const inspector = schedule.getByRole('complementary', {
       name: 'Dettagli del giorno di riprese',
     });
-    const queue = schedule.locator('.schedule__queue .schedule__shot');
+    const queue = schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)');
     await expect(queue).toHaveCount(30);
     const plan = [
       { date: '2026-11-09', location: 'Stazione di Ponte Rotto', shots: 8 },
@@ -598,6 +607,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
   });
 
   await test.step('6. storyboard PDF for the team', async () => {
+    await page.goto(storyboardUrl);
     await page.getByRole('tab', { name: 'Storyboard', exact: true }).click();
     await page.getByRole('button', { name: 'Esporta PDF' }).click();
     const dialog = page.getByRole('dialog', { name: 'Esporta' });

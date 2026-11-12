@@ -6327,6 +6327,7 @@
   },
   "production": {
     "storyboardLink_one": "Drehtage: {{count}} · Produktion öffnen",
-    "storyboardLink_other": "Drehtage: {{count}} · Produktion öffnen"
+    "storyboardLink_other": "Drehtage: {{count}} · Produktion öffnen",
+    "storyboardMissing": "Drehplan und Team sind jetzt in der Produktion · Hinzufügen"
   }
 }

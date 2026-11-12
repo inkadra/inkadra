@@ -114,7 +114,7 @@ test.beforeAll(async ({ baseURL }) => {
     kind: 'storyboard',
     title: 'Night platform',
   });
-  await setViewsAs(base, cookie, storyboard.id, ['shotlist', 'schedule']);
+  await setViewsAs(base, cookie, storyboard.id, ['shotlist']);
 
   const longBoard = await post<{ id: string }>(`/projects/${project.id}/boards`, {
     parentBoardId: project.rootBoardId,
@@ -510,8 +510,7 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   expect(bookPdf.pages[2]).toContain('dolly track');
   expect(bookPdf.pages.join(' ')).not.toContain('Shared with the client');
 
-  // 3. From the schedule, the storyboard for the team with every comment, no call sheet.
-  await page.getByRole('tab', { name: 'Piano riprese' }).click();
+  // 3. The storyboard for the team with every comment, no call sheet.
   await page.locator('.board-header-export').click();
   await expect(dialog.getByRole('radio', { name: 'Il team' })).toBeChecked();
   await dialog.getByRole('radio', { name: 'Orizzontale' }).click();

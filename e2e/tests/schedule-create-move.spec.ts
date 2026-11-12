@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { setViews } from '../helpers/views.ts';
+import { addProduction } from '../helpers/views.ts';
 
 // Decision 0089, phases 2 and 3: a block drawn on empty time and a whole day moved by its
 // heading. Uses the account created by first-run.spec.ts, with its own project and storyboard.
@@ -26,13 +26,8 @@ async function openSchedule(page: Page, name: string) {
   const project = await (
     await page.request.post('/api/v1/projects', { headers, data: { name } })
   ).json();
-  const board = await (
-    await page.request.post(`/api/v1/projects/${project.id}/boards`, {
-      headers,
-      data: { parentBoardId: project.rootBoardId, title: 'Schedule', kind: 'storyboard' },
-    })
-  ).json();
-  await setViews(page.request, headers.origin, board.id, ['shotlist', 'schedule']);
+  // The schedule is the Production board's (decision 0123).
+  const board = await addProduction(page.request, headers.origin, project);
   const day = async (date: string, blocks: object[]) => {
     const response = await page.request.post(`/api/v1/boards/${board.id}/schedule`, {
       headers,
@@ -43,7 +38,7 @@ async function openSchedule(page: Page, name: string) {
   };
   const monday = await day('2027-03-01', [block('Luci', 60)]);
   const wednesday = await day('2027-03-03', [block('Trucco', 30)]);
-  await page.goto(`/p/${project.id}/b/${board.id}?view=schedule`);
+  await page.goto(`/p/${project.id}/b/${board.id}`);
   const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
   const dates = async () =>
     Object.fromEntries(

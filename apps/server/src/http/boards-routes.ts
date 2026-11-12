@@ -50,6 +50,7 @@ import {
 } from '../db/schema.ts';
 import {
   adoptDays,
+  liveProductionBoard,
   lockProduction,
   nextShootingDay,
   productionBoardOf,
@@ -252,20 +253,32 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       changes: reviews.filter((r) => r.status === 'changes_requested').length,
       total: reviewable.length,
     };
-    if (metadata?.kind === 'storyboard') {
-      const [days] = await db
-        .select({ n: count() })
-        .from(shootingDay)
-        .where(eq(shootingDay.boardId, boardId));
-      body.dayCount = days?.n ?? 0;
-      // The troupe is the project's contacts: a grant on one board does not show it (crew routes).
-      if (await projectRole(db, actor, access.board.projectId)) {
-        const [crew] = await db
+    // A storyboard's schedule is the Production board's (decision 0123). While the project has
+    // none live (the move switched off, or the board in the trash), the counts tell its members
+    // there is a plan to find there: the project's days, on live boards or on the trashed
+    // Production board that "Add → Production" brings back, and its crew. The troupe is the
+    // project's contacts: a grant on one board does not show it (crew routes), nor the days.
+    if (
+      metadata?.kind === 'storyboard' &&
+      (await projectRole(db, actor, access.board.projectId)) &&
+      !(await liveProductionBoard(db, access.board.projectId))
+    ) {
+      const projectId = access.board.projectId;
+      const [[days], [crew]] = await Promise.all([
+        db
           .select({ n: count() })
-          .from(crewMember)
-          .where(eq(crewMember.projectId, access.board.projectId));
-        body.crewCount = crew?.n ?? 0;
-      }
+          .from(shootingDay)
+          .innerJoin(board, eq(board.id, shootingDay.boardId))
+          .where(
+            and(
+              eq(shootingDay.projectId, projectId),
+              or(isNull(board.deletedAt), eq(board.kind, 'production')),
+            ),
+          ),
+        db.select({ n: count() }).from(crewMember).where(eq(crewMember.projectId, projectId)),
+      ]);
+      body.dayCount = days?.n ?? 0;
+      body.crewCount = crew?.n ?? 0;
     }
     if (metadata?.kind === 'production') {
       // Its days are its content: whoever opens the board reads them (decision 0123, §4).

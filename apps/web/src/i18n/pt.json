@@ -6327,6 +6327,7 @@
   },
   "production": {
     "storyboardLink_one": "Dias de filmagem: {{count}} · Abrir Produção",
-    "storyboardLink_other": "Dias de filmagem: {{count}} · Abrir Produção"
+    "storyboardLink_other": "Dias de filmagem: {{count}} · Abrir Produção",
+    "storyboardMissing": "Cronograma e Equipa agora estão na Produção · Adicionar"
   }
 }

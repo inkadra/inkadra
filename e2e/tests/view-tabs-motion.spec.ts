@@ -3,7 +3,7 @@
 // The animated switch between a board's views: it only runs on a tab change, the last click
 // wins, and the live views underneath stay usable. The rest of the suite runs with reduced motion.
 // Each board shows its own views (decision 0121): the root board its canvas and moodboard, the
-// storyboard its storyboard, shot list, schedule and review.
+// storyboard its storyboard, shot list and review.
 import { expect, type Page, test } from '@playwright/test';
 import { chooseSelect } from '../helpers/select.ts';
 import { perfUser, signIn } from './perf/seed.ts';
@@ -31,7 +31,7 @@ async function openProject(page: Page, baseURL: string, name: string) {
       (await page.request.patch(`/api/v1/boards/${id}`, { headers, data: { views: on } })).ok(),
     ).toBe(true);
   await views(project.rootBoardId, ['moodboard']);
-  await views(storyboard.id, ['shotlist', 'schedule', 'review']);
+  await views(storyboard.id, ['shotlist', 'review']);
   // Counts every transition the page starts, from the first script on.
   await page.addInitScript(() => {
     const start = document.startViewTransition?.bind(document);
@@ -106,13 +106,13 @@ test.describe('with motion', () => {
     await expect(tab(page, 'Lavagna')).toHaveCount(0);
     await expect(tab(page, 'Moodboard')).toHaveCount(0);
     await tab(page, 'Shot list').click();
-    await tab(page, 'Piano riprese').click();
     await tab(page, 'Revisione').click();
     await tab(page, 'Storyboard').click();
-    await tab(page, 'Piano riprese').click();
-    await expect(tab(page, 'Piano riprese')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('section.schedule')).toBeVisible();
-    await expect(page).toHaveURL(/view=schedule/);
+    await tab(page, 'Shot list').click();
+    await tab(page, 'Revisione').click();
+    await expect(tab(page, 'Revisione')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('section.client-review')).toBeVisible();
+    await expect(page).toHaveURL(/view=review/);
     await expect(page.getByTestId('canvas')).toHaveCount(0);
     await expectSettled(page);
 
@@ -149,7 +149,7 @@ test.describe('with motion', () => {
 
     // Hold the animations halfway, to look at the page in the middle of a switch.
     const during = await page.evaluate(async () => {
-      document.querySelector<HTMLElement>('[role="tab"][aria-label="Piano riprese"]')?.click();
+      document.querySelector<HTMLElement>('[role="tab"][aria-label="Revisione"]')?.click();
       const until = performance.now() + 3000;
       let held: Animation[] = [];
       while (performance.now() < until && held.length === 0) {
@@ -168,7 +168,7 @@ test.describe('with motion', () => {
         // The old view is gone from the page; its picture and the new view take no pointer yet.
         hitsOld: !!hit?.closest('.story'),
         oldViews: document.querySelectorAll('.story').length,
-        newViews: document.querySelectorAll('section.schedule').length,
+        newViews: document.querySelectorAll('section.client-review').length,
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       };
       for (const a of held) a.finish();
@@ -182,8 +182,8 @@ test.describe('with motion', () => {
     await expectSettled(page);
     // Right after, a click reaches the new view.
     await page
-      .locator('section.schedule .story__bar')
-      .getByRole('button')
+      .locator('section.client-review .story__bar')
+      .getByRole('radio')
       .first()
       .click({ trial: true });
     // Keyboard focus stays on the tab that was chosen.

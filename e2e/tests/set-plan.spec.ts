@@ -16,7 +16,7 @@ import {
 } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import * as Y from 'yjs';
-import { addStoryboard } from '../helpers/views.ts';
+import { addProduction, addStoryboard } from '../helpers/views.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
@@ -98,7 +98,7 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
   const project = await created.json();
   // Scenes, frames and their plan on a storyboard; the note makes its canvas, the cards outside
   // the storyboard, reachable (decision 0121).
-  const root = (await addStoryboard(page.request, baseURL, project, ['shotlist', 'schedule'])).id;
+  const root = (await addStoryboard(page.request, baseURL, project, ['shotlist'])).id;
 
   const doc = createBoardDoc(root);
   const note = createElement(doc, 'note', { x: 60, y: 120 }, { w: 220 }, opts);
@@ -201,7 +201,9 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
     },
   });
   expect(day.status()).toBe(201);
-  return { cookie, project, planId: plan.id, storyboardId: root };
+  // The day moves to the Production board, whose calendar opens the call sheet (decision 0123).
+  const production = await addProduction(page.request, baseURL, project);
+  return { cookie, project, planId: plan.id, storyboardId: root, productionId: production.id };
 }
 
 for (const theme of ['dark', 'light'] as const) {
@@ -209,7 +211,11 @@ for (const theme of ['dark', 'light'] as const) {
     test.setTimeout(150_000);
     mkdirSync(out, { recursive: true });
     await page.setViewportSize({ width: 1440, height: 900 });
-    const { cookie, project, planId, storyboardId } = await seed(page, baseURL!, theme);
+    const { cookie, project, planId, storyboardId, productionId } = await seed(
+      page,
+      baseURL!,
+      theme,
+    );
     const root = storyboardId;
     const saved = async () => {
       const doc = await readBoard(baseURL!, cookie, root);
@@ -591,7 +597,7 @@ for (const theme of ['dark', 'light'] as const) {
       await page.keyboard.press('Escape');
 
       // The call sheet: the scene with its frames, the plan and the kit list.
-      await page.goto(`/p/${project.id}/b/${root}?view=schedule`);
+      await page.goto(`/p/${project.id}/b/${productionId}`);
       await page.getByRole('button', { name: 'Foglio di lavorazione', exact: true }).click();
       const sheet = page.getByRole('article', { name: 'Anteprima foglio di lavorazione' });
       const scenes = sheet.locator('.sheet__section').filter({ hasText: 'Piante del set' });

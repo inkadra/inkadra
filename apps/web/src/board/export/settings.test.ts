@@ -76,7 +76,6 @@ describe('export settings on the client', () => {
       callSheet: true,
     });
     expect(initialExportState(saved, 'shotlist', 'scenesheets', 'it-IT').what).toBe('scenesheets');
-    expect(initialExportState(saved, 'schedule', undefined, 'it-IT').what).toBe('storyboard');
   });
 
   it('sends only what changed, and keeps a null paper when the default was kept', () => {

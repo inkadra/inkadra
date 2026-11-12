@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { setViews } from '../helpers/views.ts';
+import { addProduction } from '../helpers/views.ts';
 
 // Uses the account created by first-run.spec.ts, with its own project and storyboard.
 test('a shooting day saves itself, takes a dropped shot at a time and undoes', async ({ page }) => {
@@ -21,7 +21,8 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   });
   expect(boardResponse.status()).toBe(201);
   const board = await boardResponse.json();
-  await setViews(page.request, new URL(page.url()).origin, board.id, ['shotlist', 'schedule']);
+  // Its frames are scheduled on the Production board (decision 0123).
+  const production = await addProduction(page.request, new URL(page.url()).origin, project);
   await page.goto(`/p/${project.id}/b/${board.id}`);
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await page.getByRole('tab', { name: 'Storyboard', exact: true }).click();
@@ -31,7 +32,8 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
     .getByRole('complementary', { name: 'Dettagli' })
     .getByLabel('Azione', { exact: true })
     .fill('Schedule shot');
-  await page.getByRole('tab', { name: 'Piano riprese', exact: true }).click();
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await page.goto(`/p/${project.id}/b/${production.id}`);
   const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
   await schedule.getByRole('button', { name: 'Aggiungi giorno di riprese', exact: true }).click();
   // The day view has the day panel beside the calendar.
@@ -46,12 +48,12 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   await expect(schedule.getByRole('heading', { level: 2 }).first()).toContainText('2 novembre');
   const day = schedule.locator('.schedule__day');
   await expect(day).toHaveCount(1);
-  const shot = schedule.locator('.schedule__queue .schedule__shot').first();
+  const shot = schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)').first();
   await expect(shot).toContainText('1A');
   await shot.dragTo(day, { targetPosition: { x: 60, y: 9 * 60 + 40 } });
   const block = day.locator('.schedule__block');
   await expect(block).toContainText('1A');
-  await expect(schedule.locator('.schedule__queue .schedule__shot')).toHaveCount(0);
+  await expect(schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)')).toHaveCount(0);
   await expect(saved).toHaveText(/Salvato alle/);
 
   // The bottom edge makes it longer, by five-minute steps.
@@ -139,9 +141,9 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   await schedule.locator('.schedule__block-select').focus();
   await page.keyboard.press('Delete');
   await page.getByRole('dialog').getByRole('button', { name: 'Elimina', exact: true }).click();
-  await expect(schedule.locator('.schedule__queue .schedule__shot')).toHaveCount(1);
+  await expect(schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)')).toHaveCount(1);
   await expect(saved).toHaveText(/Salvato alle/);
-  const queued = schedule.locator('.schedule__queue .schedule__shot');
+  const queued = schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)');
   const freeDate = schedule.locator('.schedule__column.is-free').first();
   await queued.dragTo(freeDate, { targetPosition: { x: 60, y: 9 * 60 + 40 } });
   await expect(schedule.locator('.schedule__day')).toHaveCount(3);
@@ -149,10 +151,10 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   await expect(saved).toHaveText(/Salvato alle/);
   await page.keyboard.press('Control+z');
   await expect(schedule.locator('.schedule__day')).toHaveCount(2);
-  await expect(schedule.locator('.schedule__queue .schedule__shot')).toHaveCount(1);
+  await expect(schedule.locator('.schedule__queue .schedule__shot:not(.schedule__shot--scene)')).toHaveCount(1);
   await expect(saved).toHaveText(/Salvato alle/);
   // A wrapped overnight notice fits entirely in its column; phone notices have their own row.
-  const night = await page.request.post(`/api/v1/boards/${board.id}/schedule`, {
+  const night = await page.request.post(`/api/v1/boards/${production.id}/schedule`, {
     headers: { origin: new URL(page.url()).origin },
     data: {
       date: '2026-11-05',

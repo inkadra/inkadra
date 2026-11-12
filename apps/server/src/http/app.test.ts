@@ -251,6 +251,9 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
       });
     const on = await patch(story.id, ['review', 'shotlist']);
     expect(on.json().views).toEqual(['shotlist', 'review']);
+    // Schedule and Troupe are the Production board's (decision 0123).
+    expect((await patch(story.id, ['shotlist', 'schedule'])).statusCode).toBe(400);
+    expect((await patch(story.id, ['troupe'])).statusCode).toBe(400);
     expect((await patch(mood.id, ['shotlist'])).statusCode).toBe(400);
     expect((await patch(mood.id, ['review'])).statusCode).toBe(400);
     expect((await patch(rootBoardId, ['review'])).json().views).toEqual(['review']);

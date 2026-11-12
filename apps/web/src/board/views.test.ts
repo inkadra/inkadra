@@ -7,6 +7,7 @@ import {
   headerViews,
   isBoardView,
   kindIcon,
+  movedView,
   offeredViews,
   openView,
   VIEWS,
@@ -41,13 +42,8 @@ describe('the views of a board (decision 0121)', () => {
   });
 
   it('keeps the views of boards from before decision 0121', () => {
-    // A storyboard keeps everything it had.
-    expect(viewsOn(board('storyboard', null), undefined)).toEqual([
-      'shotlist',
-      'schedule',
-      'troupe',
-      'review',
-    ]);
+    // A storyboard keeps everything it had, but Schedule and Troupe (decision 0123).
+    expect(viewsOn(board('storyboard', null), undefined)).toEqual(['shotlist', 'review']);
     // An ordinary board keeps its moodboard only when it holds images, links or colours.
     expect(viewsOn(board('board', null), { referenceCount: 3 })).toEqual(['moodboard']);
     expect(viewsOn(board('board', null), { referenceCount: 0 })).toEqual([]);
@@ -153,17 +149,13 @@ describe('the views a module that is off leaves out (decision 0121)', () => {
   it('offers only the views of modules that are on, and keeps those already on', () => {
     expect(offeredViews(board('storyboard', ['shotlist']), undefined, [])).toEqual([
       'shotlist',
-      'schedule',
-      'troupe',
       'review',
     ]);
     // Off: not offered to turn on; a view that is on stays, to be turned off.
     expect(
-      offeredViews(board('storyboard', ['shotlist', 'schedule']), undefined, [
-        'production',
-        'review',
-      ]),
-    ).toEqual(['shotlist', 'schedule']);
+      offeredViews(board('storyboard', ['shotlist', 'review']), undefined, ['storyboard', 'review']),
+    ).toEqual(['shotlist', 'review']);
+    expect(offeredViews(board('storyboard', []), undefined, ['storyboard', 'review'])).toEqual([]);
     expect(offeredViews(board('board', []), undefined, ['moodboard'])).toEqual(['review']);
     // The header still shows a view that is on, whatever the modules.
     expect(boardViews(board('board', ['moodboard']), undefined)).toContain('moodboard');
@@ -181,17 +173,27 @@ describe('the Production board (decision 0123)', () => {
     expect(kindIcon('production')).toBe('film');
   });
 
-  it('takes Schedule and Crew from the storyboards of its project, which keep them until then', () => {
+  it('holds Schedule and Crew: a storyboard ignores them when stored', () => {
     const all = board('storyboard', ['shotlist', 'schedule', 'troupe']);
-    expect(boardViews(all, undefined)).toEqual(['storyboard', 'shotlist', 'schedule', 'troupe']);
-    expect(boardViews(all, undefined, true)).toEqual(['storyboard', 'shotlist']);
-    expect(boardViews(board('storyboard', null), undefined, true)).toEqual([
+    expect(boardViews(all, undefined)).toEqual(['storyboard', 'shotlist']);
+    expect(boardViews(board('storyboard', null), undefined)).toEqual([
       'storyboard',
       'shotlist',
       'review',
     ]);
-    expect(offeredViews(all, undefined, [], true)).toEqual(['shotlist', 'review']);
-    expect(openView('schedule', all, undefined, true)).toBe('storyboard');
-    expect(headerViews(all, undefined, 'storyboard', true)).toEqual(['storyboard', 'shotlist']);
+    expect(offeredViews(all, undefined, [])).toEqual(['shotlist', 'review']);
+    expect(openView('schedule', all, undefined)).toBe('storyboard');
+    expect(headerViews(all, undefined, 'storyboard')).toEqual(['storyboard', 'shotlist']);
+  });
+
+  it("sends a storyboard's old Schedule and Troupe addresses to the Production board", () => {
+    const story = board('storyboard', ['shotlist']);
+    expect(movedView('schedule', story, true)).toBe('schedule');
+    expect(movedView('troupe', story, true)).toBe('troupe');
+    // Without one the person can see, the storyboard opens its first view.
+    expect(movedView('schedule', story, false)).toBeNull();
+    expect(movedView('shotlist', story, true)).toBeNull();
+    expect(movedView('schedule', board('board', []), true)).toBeNull();
+    expect(movedView('schedule', undefined, true)).toBeNull();
   });
 });
