@@ -67,7 +67,9 @@ const render = async (id: string, elementId: string | null = null) =>
     ),
   );
 const button = (key: string) =>
-  [...host.querySelectorAll('button')].find((b) => b.textContent === key);
+  [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === key || b.getAttribute('aria-label') === key,
+  );
 beforeEach(() => {
   vi.resetAllMocks();
   host = document.createElement('div');
@@ -287,9 +289,11 @@ it('omits a generic card title and keeps inherited visibility inside the compose
     'notifications.cardFallback',
   );
   expect(host.textContent).not.toContain('opaque-card-id');
+  // The reply takes the thread's visibility: a label, not a control.
   expect(host.querySelector('.inbox-detail__composer')?.textContent).toContain(
     'notifications.visibleToClient',
   );
+  expect(host.querySelector('.inbox-detail__composer input')).toBeNull();
   // Still syncing the board: a placeholder, not a word.
   expect(host.querySelector('.inbox-detail__preview-fallback')).toBeNull();
   expect(host.querySelector('.inbox-detail__preview-skeleton')).not.toBeNull();

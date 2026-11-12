@@ -69,6 +69,7 @@ import { useIsPhone } from '../lib/phone.ts';
 import { usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
+import type { InboxFilter } from '../notifications/model.ts';
 import {
   NotificationBell,
   NotificationList,
@@ -93,6 +94,7 @@ import {
   setCachedProjects,
   subscribeProjects,
 } from './projects.ts';
+import { ProjectsContext } from './projects-context.ts';
 import { SearchDialog } from './SearchDialog.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import { SeedQueue } from './seed-queue.tsx';
@@ -100,36 +102,9 @@ import { isSettingsPath } from './settings-sections.ts';
 import { UpdatePopup } from './UpdatePopup.tsx';
 import './mobile-shell.css';
 
-interface ProjectsState {
-  projects: Project[] | null;
-  shared: Board[] | null;
-  /** Opens New project, optionally into a group. */
-  openNewProject: (groupId?: string) => void;
-  /** Opens Import project… (decision 0037). */
-  openImportProject: () => void;
-  /** False when an administrator keeps project creation to some people (decision 0041). */
-  canCreateProjects: boolean;
-  openSearch: () => void;
-  openInbox: () => void;
-  unread: number;
-  refreshUnread: () => Promise<void>;
-  /** Counts of the open project's boards, which choose the views of boards from before 0121. */
-  boardCounts: ReadonlyMap<string, BoardCount>;
-}
-
-const ProjectsContext = createContext<ProjectsState>({
-  projects: null,
-  shared: null,
-  openNewProject: () => {},
-  openImportProject: () => {},
-  canCreateProjects: true,
-  openSearch: () => {},
-  openInbox: () => {},
-  unread: 0,
-  refreshUnread: async () => {},
-  boardCounts: new Map(),
-});
-export const useProjects = () => useContext(ProjectsContext);
+// The shell's state lives in its own module, so a list rendered by the shell (the Inbox) does
+// not import the shell.
+export { useProjects } from './projects-context.ts';
 
 const InstanceSetupContext = createContext<ReturnType<typeof useInstanceSetup>>({
   checks: null,
@@ -279,11 +254,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const [headerContent, setHeaderContent] = useState<HeaderParts | null>(null);
   const [searching, setSearching] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>('all');
   // On a desktop the Inbox is a page of the shell; a phone keeps its own layout.
   const phone = useIsPhone();
   const inboxInPage = inboxOpen && !phone;
-  // Where the list puts its Mark all as read, in the top bar.
-  const [inboxActions, setInboxActions] = useState<HTMLElement | null>(null);
   const mobileInboxButton = useRef<HTMLButtonElement>(null);
   // The bell's "Open inbox" leaves the peek: closing the Inbox goes back to the bell.
   const inboxOpener = useRef<HTMLElement | null>(null);
@@ -588,6 +562,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           e.preventDefault();
           inboxOpener.current = e.currentTarget;
           setDrawerOpen(false);
+          setInboxFilter('all');
           setInboxOpen((o) => !o);
         }}
       />
@@ -693,27 +668,40 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     </Sidebar>
   );
 
-  // Home creates from the header only; search stays in the sidebar and on ⌘K.
-  const homeActions = (
-    <div className="home-header-actions">
+  // Home, Projects and the Inbox share one top bar: New project, feedback and the bell. Boards
+  // are made inside a project. Off for this person (decision 0041), it stays, explained.
+  const newProject = (
+    <>
       <Button
         variant="primary"
         icon="plus"
+        className="shell-new-project"
         data-tour="home-new"
-        disabled={writable.length === 0}
-        onClick={() => {
-          setBoardProject(undefined);
-          setCreatingBoard(true);
-        }}
+        disabled={!canCreate}
+        aria-describedby={canCreate ? undefined : 'new-project-off'}
+        onClick={() => setCreating(true)}
       >
-        {t('home.newBoard.action')}
+        {t('nav.newProject')}
       </Button>
-      {canCreate && (
-        <Button variant="secondary" onClick={() => setCreating(true)}>
-          {t('nav.newProject')}
-        </Button>
+      {/* Hidden: read as the button's description, not a second time in the page. */}
+      {!canCreate && (
+        <span id="new-project-off" hidden>
+          {t('projectCreation.off')}
+        </span>
       )}
-    </div>
+    </>
+  );
+  const bell = (
+    <NotificationBell
+      unread={unread}
+      onCount={refreshUnread}
+      feed={notifications}
+      onOpenInbox={(opener) => {
+        inboxOpener.current = opener;
+        setInboxFilter('all');
+        setInboxOpen(true);
+      }}
+    />
   );
 
   // The logo at the top left never moves (#333): open, it is the navigation's logo; collapsed,
@@ -769,12 +757,9 @@ export function AppLayout({ home }: { home?: ReactNode }) {
               </h2>
             </div>
             <div className="ink-header__group ink-header__end inbox-header">
-              <span ref={setInboxActions} style={{ display: 'contents' }} />
-              {canCreate && (
-                <Button variant="ghost" onClick={() => setCreating(true)}>
-                  {t('nav.newProject')}
-                </Button>
-              )}
+              {newProject}
+              <FeedbackEntry />
+              {bell}
             </div>
           </>
         )}
@@ -796,17 +781,11 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         </div>
         {instance?.demo && <DemoBar demo={instance.demo} />}
         <div className="ink-header__group ink-header__end">
-          {headerContent ? headerContent.end : pathname === '/' && homeActions}
+          {headerContent
+            ? headerContent.end
+            : (pathname === '/' || pathname === '/projects') && !inboxInPage && newProject}
           <FeedbackEntry />
-          <NotificationBell
-            unread={unread}
-            onCount={refreshUnread}
-            feed={notifications}
-            onOpenInbox={(opener) => {
-              inboxOpener.current = opener;
-              setInboxOpen(true);
-            }}
-          />
+          {bell}
         </div>
       </div>
       {projectId && openViews.length > 1 && (
@@ -846,7 +825,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           openImportProject: () => canCreate && setImporting(true),
           canCreateProjects: canCreate,
           openSearch: () => setSearching(true),
-          openInbox: () => setInboxOpen(true),
+          openInbox: (filter = 'all') => {
+            setInboxFilter(filter);
+            setInboxOpen(true);
+          },
           unread,
           refreshUnread,
           boardCounts: counts,
@@ -886,7 +868,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
               <NotificationList
                 fixed
                 bell={mobileInboxButton}
-                actionsIn={inboxActions}
+                initialFilter={inboxFilter}
                 onClose={() => {
                   setInboxOpen(false);
                   if (window.matchMedia('(width < 768px)').matches)
@@ -922,7 +904,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             setInboxOpen(false);
             setNewSheet(true);
           }}
-          onInbox={() => setInboxOpen((o) => !o)}
+          onInbox={() => {
+            setInboxFilter('all');
+            setInboxOpen((o) => !o);
+          }}
           onProfile={() => {
             setInboxOpen(false);
             navigate('/settings?section=account');
@@ -1011,7 +996,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
                 setCreatingBoard(true);
               },
               toggleTheme: toggle,
-              openInbox: () => setInboxOpen(true),
+              openInbox: () => {
+                setInboxFilter('all');
+                setInboxOpen(true);
+              },
             })}
           />
         )}

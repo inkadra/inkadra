@@ -140,7 +140,9 @@
       "shootingAt": "hoy se rueda en {{location}}, citación a las {{time}}",
       "shooting": "hoy se rueda, citación a las {{time}}",
       "unread_one": "{{count}} notificación sin leer",
-      "unread_other": "{{count}} notificaciones sin leer"
+      "unread_other": "{{count}} notificaciones sin leer",
+      "dueWeek_one": "{{count}} tarea que vence esta semana",
+      "dueWeek_other": "{{count}} tareas que vencen esta semana"
     },
     "today": {
       "title": "Hoy",
@@ -152,7 +154,7 @@
       "moreDays_other": "+{{count}} jornadas más hoy",
       "fewerDays": "Mostrar menos"
     },
-    "recentBoards": "Recientes",
+    "recentBoards": "Retomar",
     "continue": "Continuar",
     "recentBoardsHint": "por última edición",
     "noRecentBoards": "Aún no hay tableros. Crea uno.",
@@ -162,7 +164,7 @@
     "activity": {
       "title": "Actividad",
       "hint": "últimas 24 horas",
-      "openInbox": "Abrir bandeja →",
+      "openInbox": "Abrir bandeja",
       "empty": "Sin actividad en las últimas 24 horas."
     },
     "loadError": "No se pudo cargar esta sección. Recarga la página para reintentarlo.",
@@ -181,11 +183,12 @@
       "cards_one": "{{count}} elemento",
       "cards_other": "{{count}} elementos"
     },
-    "allProjects": "Todos los proyectos →",
+    "allProjects": "Todos los proyectos",
     "unsorted": {
       "waiting_one": "{{count}} elemento por ordenar",
       "waiting_other": "{{count}} elementos por ordenar"
-    }
+    },
+    "seeAll": "Ver todas"
   },
   "project": {
     "dialogTitle": "Nuevo proyecto",
@@ -516,6 +519,10 @@
       "frames_other": "{{count}} planos",
       "more_one": "+{{count}} plano",
       "more_other": "+{{count}} planos",
+      "moreDays_one": "+{{count}} día",
+      "moreDays_other": "+{{count}} días",
+      "morePeople_one": "+{{count}} persona",
+      "morePeople_other": "+{{count}} personas",
       "days_one": "{{count}} día de rodaje",
       "days_other": "{{count}} días de rodaje",
       "people_one": "{{count}} persona",
@@ -2885,7 +2892,8 @@
       "all": "Todo",
       "mentions": "Menciones",
       "approvals": "Aprobaciones",
-      "assigned": "Asignado a mí"
+      "assigned": "Asignado a mí",
+      "tasks": "Tareas"
     },
     "reviewStatus": "Revisión",
     "filter": "Filtro de la bandeja",
@@ -2915,7 +2923,14 @@
     "previewUnavailable": "Abre el tablero para ver esta tarjeta.",
     "swipeRead": "Leída",
     "swipeResolve": "Resolver",
-    "resolvedDone": "Conversación resuelta"
+    "resolvedDone": "Conversación resuelta",
+    "reports_one": "<b>{{count}} informe desde la app</b> recibido",
+    "reports_other": "<b>{{count}} informes desde la app</b> recibidos",
+    "showAll": "Mostrar todos",
+    "showFewer": "Mostrar menos",
+    "messages_one": "{{count}} mensaje",
+    "messages_other": "{{count}} mensajes",
+    "frameTitle": "Plano {{label}}"
   },
   "settings": {
     "sectionLead": {
@@ -3484,7 +3499,7 @@
     "breakdown": "{{changes}} con cambios · {{pending}} pendientes"
   },
   "projectsPage": {
-    "counts": "Activos: {{active}} · Archivados: {{archived}}",
+    "counts": "Activos: {{active}}, archivados: {{archived}}.",
     "search": "Buscar proyectos",
     "status": "Estado",
     "all": "Todos",
@@ -3510,7 +3525,6 @@
     "unpin": "Dejar de fijar",
     "archive": "Archivar",
     "unarchive": "Restaurar",
-    "noDates": "Fechas por confirmar",
     "boards_one": "{{count}} tablero",
     "boards_other": "{{count}} tableros",
     "pinned": "Fijado",
@@ -3518,7 +3532,8 @@
     "details": "Tipo y zona horaria",
     "timeZone": "Zona horaria",
     "timeZoneAuto": "Automática (zona del dispositivo: {{zone}})",
-    "timeZoneHint": "El amanecer y el atardecer de la hoja de citación usan esta zona horaria."
+    "timeZoneHint": "El amanecer y el atardecer de la hoja de citación usan esta zona horaria.",
+    "storageShort": "{{bytes}} de archivos originales en la instancia."
   },
   "projectDelete": {
     "menu": "Eliminar proyecto…",
@@ -4644,7 +4659,14 @@
       "today": "hoy",
       "tomorrow": "mañana"
     },
-    "hint": "Escribe @ para asignar · haz clic en la fecha para cambiarla"
+    "hint": "Escribe @ para asignar · haz clic en la fecha para cambiarla",
+    "open_one": "{{count}} abierta",
+    "open_other": "{{count}} abiertas",
+    "due": {
+      "today": "hoy",
+      "by": "para el {{date}}",
+      "late": "vencida el {{date}}"
+    }
   },
   "calendar": {
     "title": "Calendario",
@@ -5081,8 +5103,8 @@
             "text": "La actividad de tus proyectos, de la más reciente."
           },
           "2": {
-            "title": "Nuevo tablero",
-            "text": "Crea uno en cualquiera de tus proyectos."
+            "title": "Nuevo proyecto",
+            "text": "Los tableros nacen dentro de un proyecto: créalo aquí."
           }
         }
       },

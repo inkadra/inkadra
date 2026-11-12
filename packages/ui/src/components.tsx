@@ -2,6 +2,7 @@
 import {
   type ButtonHTMLAttributes,
   createContext,
+  type HTMLAttributes,
   type InputHTMLAttributes,
   type PointerEvent,
   type MouseEvent as ReactMouseEvent,
@@ -62,7 +63,8 @@ export function Wordmark({ size = 26 }: { size?: number }) {
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  /** `positive`: a quiet green for a step that closes something, such as Mark as resolved. */
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'positive';
   size?: 'md' | 'lg';
   block?: boolean;
   icon?: IconName;
@@ -489,6 +491,73 @@ export function EmptyState({
       {children && <div className="ink-muted">{children}</div>}
       {actions && <div className="ink-empty__actions">{actions}</div>}
     </div>
+  );
+}
+
+/**
+ * One line of a list (a task, a notification): a lead (dot, checkbox, avatar), who or what, an
+ * optional preview, where it is, and a trailing time or due date. The element around it (a link,
+ * a button) makes it pressable; `.ink-row` styles the hover and the selected state.
+ */
+export function ListRow({
+  lead,
+  title,
+  preview,
+  where,
+  trail,
+}: {
+  lead?: ReactNode;
+  title: ReactNode;
+  preview?: ReactNode;
+  where?: ReactNode;
+  trail?: ReactNode;
+}) {
+  return (
+    <>
+      {lead}
+      <span className="ink-row__text">
+        <span className="ink-row__title">{title}</span>
+        {preview && <span className="ink-row__preview">{preview}</span>}
+        {where && <span className="ink-row__where">{where}</span>}
+      </span>
+      {trail && <span className="ink-row__trail">{trail}</span>}
+    </>
+  );
+}
+
+/**
+ * A card with a cover over a name, one meta line and a footer (a board, a project). The cover
+ * holds the picture and its overlays; a link in `name` with `.ink-cover-card__link` covers the
+ * whole card, controls in `overlay` stay above it.
+ */
+export function CoverCard({
+  cover,
+  overlay,
+  name,
+  meta,
+  foot,
+  className,
+  children,
+  ...props
+}: Omit<HTMLAttributes<HTMLElement>, 'children'> & {
+  cover: ReactNode;
+  overlay?: ReactNode;
+  name: ReactNode;
+  meta?: ReactNode;
+  foot?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <article className={cx('ink-cover-card', className)} {...props}>
+      <div className="ink-cover-card__cover">{cover}</div>
+      {overlay}
+      <div className="ink-cover-card__body">
+        <div className="ink-cover-card__name">{name}</div>
+        {meta && <div className="ink-cover-card__meta">{meta}</div>}
+        {foot && <div className="ink-cover-card__foot">{foot}</div>}
+      </div>
+      {children}
+    </article>
   );
 }
 

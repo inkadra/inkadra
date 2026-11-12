@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Element } from '@inkadra/doc-schema';
 import type { Board, BoardCount, BoardPreview } from '@inkadra/shared';
-import { Icon, kindStyle, ProjectGlyph } from '@inkadra/ui';
+import { Avatar, Icon, kindStyle, ProjectGlyph } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import { type CSSProperties, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import { type PreviewEntry, useBoardPreview } from './board-previews.ts';
 import { loadCardView, saveCardView } from './canvas-prefs.ts';
 import { useBoard } from './context.ts';
 import { usePresetText } from './film/fields.tsx';
+import { SourceDot, storyboardDots, UNAVAILABLE_DOT } from './film/schedule-sources.tsx';
 import { type BoardView, boardViews, kindIcon, viewIcon, viewLabelKey } from './views.ts';
 
 /**
@@ -188,6 +189,9 @@ function ViewPreview({
     case 'moodboard':
       return <MoodboardPreview preview={preview} />;
     case 'schedule':
+      // A Production board's card shows its next day; a storyboard's interim view, a count.
+      if (preview.nextDay)
+        return <DayPreview day={preview.nextDay} more={(preview.dayCount ?? 1) - 1} />;
       return (
         <Empty>
           {preview.dayCount
@@ -196,6 +200,8 @@ function ViewPreview({
         </Empty>
       );
     case 'troupe':
+      if (preview.crew?.length)
+        return <TroupePreview crew={preview.crew} total={preview.crewCount ?? 0} />;
       return (
         <Empty>
           {preview.crewCount === undefined
@@ -378,5 +384,99 @@ function ReviewPreview({ preview }: { preview: BoardPreview }) {
         )}
       </span>
     </div>
+  );
+}
+
+/** First people of the troupe shown on a Production board's card (decision 0123). */
+const PEOPLE = 4;
+
+/**
+ * The next shooting day of a Production board (decision 0123): its first blocks with the
+ * storyboard's dot and stored label, never read from the storyboards' documents.
+ */
+function DayPreview({ day, more }: { day: NonNullable<BoardPreview['nextDay']>; more: number }) {
+  const { t, i18n } = useTranslation();
+  const { boards } = useBoard();
+  const dots = storyboardDots(boards ?? []);
+  const time = Date.parse(`${day.date}T00:00:00Z`);
+  const date = Number.isNaN(time)
+    ? day.date
+    : new Intl.DateTimeFormat(i18n.language, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        timeZone: 'UTC',
+      }).format(time);
+  return (
+    <>
+      <div className="board-card__day">
+        <b>{[t('schedule.dayNumber', { n: day.number }), date].join(' · ')}</b>
+        <span>
+          {[day.location, t('schedule.callAt', { time: day.callTime })].filter(Boolean).join(' · ')}
+        </span>
+      </div>
+      {day.blocks.length > 0 && (
+        <ul className="board-card__blocks">
+          {day.blocks.map((block, i) => {
+            const source = block.boardId ? boards?.find((b) => b.id === block.boardId) : undefined;
+            const label =
+              block.label &&
+              (block.type === 'scene'
+                ? t('schedule.sceneShort', { number: block.label })
+                : block.label);
+            return (
+              // Blocks carry no id in the preview: their order is their key.
+              // biome-ignore lint/suspicious/noArrayIndexKey: the bounded list is never reordered
+              <li key={i} className="board-card__block">
+                <span className="board-card__time">{block.start}</span>
+                {block.boardId && (
+                  <SourceDot
+                    color={(source && dots.get(source.id)) || UNAVAILABLE_DOT}
+                    name={source?.title ?? t('schedule.unavailable')}
+                  />
+                )}
+                <span className="board-card__what">
+                  {label && <b>{label}</b>}
+                  {label && block.title ? ' · ' : ''}
+                  {block.title || (label ? '' : t(`schedule.types.${block.type}`))}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {more > 0 && <p className="board-card__more">{t('board.board.moreDays', { count: more })}</p>}
+    </>
+  );
+}
+
+/** The first people of the troupe with their role, shown to the project's members only. */
+function TroupePreview({
+  crew,
+  total,
+}: {
+  crew: NonNullable<BoardPreview['crew']>;
+  total: number;
+}) {
+  const { t } = useTranslation();
+  const people = crew.slice(0, PEOPLE);
+  return (
+    <>
+      <ul className="board-card__crew">
+        {people.map((p, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: two people may share a name
+          <li key={i} className="board-card__person">
+            <Avatar name={p.name} size={20} />
+            <b>{p.name}</b>
+            <span className="board-card__role">{p.role}</span>
+          </li>
+        ))}
+      </ul>
+      {total > people.length && (
+        <p className="board-card__more">
+          {t('board.board.morePeople', { count: total - people.length })}
+        </p>
+      )}
+    </>
   );
 }

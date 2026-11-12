@@ -29,6 +29,8 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChange' | 'value' 
   placeholder?: string;
   emptyText?: string;
   variant?: 'default' | 'quiet';
+  /** A label shown inside the control, before the value ("Status  All"); also its name. */
+  prefix?: string;
 };
 /** A label's own words, without the controls it may wrap (the trigger, its list). */
 function labelText(label: HTMLLabelElement | undefined) {
@@ -49,6 +51,7 @@ export function Select({
   placeholder,
   emptyText,
   variant = 'default',
+  prefix,
   className = '',
   disabled,
   ...props
@@ -101,7 +104,7 @@ export function Select({
       labelText(button?.labels?.[0]) ||
         (props['aria-labelledby'] &&
           document.getElementById(props['aria-labelledby'])?.textContent?.trim()) ||
-        props['aria-label'] ||
+        (props['aria-label'] ?? prefix) ||
         '',
     );
     setActive(selected >= 0 && !items[selected]?.disabled ? selected : (enabled[0] ?? -1));
@@ -161,6 +164,7 @@ export function Select({
     <>
       {name && <input type="hidden" name={name} value={value} disabled={disabled} />}
       <button
+        aria-label={prefix}
         {...props}
         ref={trigger}
         id={props.id ?? `${id}-trigger`}
@@ -187,6 +191,11 @@ export function Select({
           }
         }}
       >
+        {prefix && (
+          <span className="ink-select__prefix" aria-hidden="true">
+            {prefix}
+          </span>
+        )}
         <span
           className={
             selected < 0 || (items[selected]?.disabled && items[selected]?.value === '')
@@ -223,7 +232,7 @@ export function Select({
               role="listbox"
               id={`${id}-list`}
               tabIndex={-1}
-              aria-label={props['aria-label']}
+              aria-label={props['aria-label'] ?? prefix}
               aria-labelledby={props['aria-labelledby'] ?? props.id ?? `${id}-trigger`}
               aria-activedescendant={active >= 0 ? `${id}-${active}` : undefined}
               className="ink-select__list"

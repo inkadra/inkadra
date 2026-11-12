@@ -16,6 +16,7 @@ import {
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+  Trans: ({ i18nKey }: { i18nKey: string }) => i18nKey,
 }));
 vi.mock('../board/connection.ts', () => ({ useBoardConnection: vi.fn(() => null) }));
 
@@ -260,19 +261,19 @@ it('walks the filter tabs with the keyboard and labels the list by the selected 
     await press('ArrowLeft');
     expect(focused()).toBe('notifications.tabs.all');
     await press('ArrowLeft');
-    expect(focused()).toBe('tasks.title');
+    expect(focused()).toBe('notifications.tabs.tasks');
     await press('ArrowRight');
     expect(focused()).toBe('notifications.tabs.all');
     await press('Home');
     expect(focused()).toBe('notifications.tabs.all');
     await press('End');
-    expect(focused()).toBe('tasks.title');
+    expect(focused()).toBe('notifications.tabs.tasks');
     // Walking the tabs chooses nothing, so it reads nothing.
     expect(selected().map((tab) => tab.textContent)).toEqual(['notifications.tabs.all']);
     expect(api.post).not.toHaveBeenCalled();
     // A button answers Enter and Space with a click.
     await act(async () => (document.activeElement as HTMLElement).click());
-    expectOn('tasks.title');
+    expectOn('notifications.tabs.tasks');
   } finally {
     await act(async () => root.unmount());
     host.remove();
@@ -937,7 +938,7 @@ it('does not auto-read hidden assignment notifications when opening My tasks', a
     );
     await act(async () =>
       [...host.querySelectorAll('button')]
-        .find((button) => button.textContent === 'tasks.title')
+        .find((button) => button.textContent === 'notifications.tabs.tasks')
         ?.click(),
     );
     expect(host.querySelector('.notifications--tasks')).not.toBeNull();
@@ -995,13 +996,15 @@ it('reads nothing when the Inbox opens, then only the notification clicked', asy
   }
 });
 
-it('puts Mark all as read in the top bar and stays open on a press outside, on a desktop', async () => {
+it('puts Mark all as read over the list and stays open on a press outside, on a desktop', async () => {
   const host = document.createElement('div');
-  const actions = document.createElement('div');
-  document.body.append(host, actions);
+  document.body.append(host);
   const root = createRoot(host);
   const onNavigate = vi.fn();
-  vi.mocked(api.get).mockResolvedValue({ items: [], nextCursor: null });
+  vi.mocked(api.get).mockResolvedValue({
+    items: [{ ...baseNotification, id: 'n1', type: 'comment', readAt: null }],
+    nextCursor: null,
+  });
   vi.mocked(api.post).mockResolvedValue({});
   try {
     await act(async () =>
@@ -1009,7 +1012,6 @@ it('puts Mark all as read in the top bar and stays open on a press outside, on a
         <MemoryRouter>
           <NotificationList
             fixed
-            actionsIn={actions}
             unread={2}
             onClose={vi.fn()}
             onNavigate={onNavigate}
@@ -1019,7 +1021,8 @@ it('puts Mark all as read in the top bar and stays open on a press outside, on a
       ),
     );
     expect(host.querySelector('.notifications__head')).toBeNull();
-    const readAll = actions.querySelector('button');
+    // It heads the list it reads, on the line of the first day.
+    const readAll = host.querySelector<HTMLButtonElement>('.notifications__day-head button');
     expect(readAll?.textContent).toBe('notifications.readAll');
     await act(async () => readAll?.click());
     expect(api.post).toHaveBeenCalledWith(
@@ -1031,7 +1034,6 @@ it('puts Mark all as read in the top bar and stays open on a press outside, on a
   } finally {
     await act(async () => root.unmount());
     host.remove();
-    actions.remove();
   }
 });
 
@@ -1077,4 +1079,58 @@ describe('relativeTime', () => {
     expect(relativeTime(new Date(2026, 10, 5, 9, 0).toISOString(), 'en')).toBe('yesterday');
     expect(relativeTime(new Date(2026, 10, 6, 15, 0).toISOString(), 'en')).toBe('2 hr. ago');
   });
+});
+
+it('folds the in-app reports of a day into one row that unfolds (decision 0124)', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const report = (id: string, createdAt: string) => ({
+    ...baseNotification,
+    id,
+    type: 'feedback_received',
+    projectId: null,
+    boardId: null,
+    elementId: null,
+    commentId: null,
+    threadId: null,
+    readAt: null,
+    createdAt,
+  });
+  vi.mocked(api.get).mockResolvedValue({
+    items: [
+      report('r1', '2026-10-25T11:30:00Z'),
+      { ...baseNotification, id: 'n1', type: 'comment' },
+      report('r2', '2026-10-25T10:00:00Z'),
+    ],
+    nextCursor: null,
+  });
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={2}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    const folded = host.querySelector<HTMLButtonElement>('.notification--reports > button');
+    expect(folded?.getAttribute('aria-expanded')).toBe('false');
+    expect(folded?.textContent).toContain('notifications.reports');
+    // Every notification stays: the reports are only out of sight.
+    expect(host.querySelector('[data-notification-id="r1"]')).toBeNull();
+    expect(host.querySelector('[data-notification-id="n1"]')).not.toBeNull();
+    await act(async () => folded?.click());
+    expect(folded?.getAttribute('aria-expanded')).toBe('true');
+    expect(host.querySelector('[data-notification-id="r1"]')).not.toBeNull();
+    expect(host.querySelector('[data-notification-id="r2"]')).not.toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
 });

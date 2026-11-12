@@ -8,7 +8,7 @@ import {
   type Notification,
   notificationPath,
 } from '@inkadra/shared';
-import { Button, Icon } from '@inkadra/ui';
+import { Button, Icon, IconButton, kindStyle, ProjectGlyph } from '@inkadra/ui';
 import {
   type FormEvent,
   useCallback,
@@ -34,6 +34,7 @@ import {
 import { canComment } from '../board/review-store.ts';
 import { FeedbackInbox } from '../feedback/FeedbackSettings.tsx';
 import { api } from '../lib/api.ts';
+import { useProjects } from '../routes/projects-context.ts';
 import {
   avatarBg,
   describeNotification,
@@ -83,7 +84,7 @@ export function InboxDetail(props: DetailProps) {
   );
 }
 
-/** Its own component so that only a frame asks for the storyboard lists. */
+/** Its own component so that only a frame asks for the storyboard lists: the shot as chips. */
 function FrameFacts({ frame }: { frame: Extract<Element, { type: 'frame' }> }) {
   const presetText = usePresetText();
   return [
@@ -91,10 +92,13 @@ function FrameFacts({ frame }: { frame: Extract<Element, { type: 'frame' }> }) {
     presetText('shotAngles', frame.angle),
     presetText('shotMovements', frame.movement),
     frame.lens,
-    frame.location,
   ].map((text, i) =>
-    // biome-ignore lint/suspicious/noArrayIndexKey: the five fields never move
-    text ? <span key={i}>{text}</span> : null,
+    text ? (
+      // biome-ignore lint/suspicious/noArrayIndexKey: the four fields never move
+      <span key={i} className="inbox-detail__chip">
+        {text}
+      </span>
+    ) : null,
   );
 }
 
@@ -180,6 +184,7 @@ function InboxDetailContent({
 }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { projects } = useProjects();
   const [boardDetail, setBoardDetail] = useState<BoardDetail | null>(null);
   const [threads, setThreads] = useState<CommentThread[]>([]);
   const [activeThread, setActiveThread] = useState<CommentThread | null>(null);
@@ -431,6 +436,11 @@ function InboxDetailContent({
   const hiddenReplies = activeThread ? Math.max(0, activeThread.replyCount - allReplies.length) : 0;
   const isResolved = Boolean(activeThread?.resolvedAt);
 
+  const project = projects?.find((item) => item.id === notification.projectId);
+  const kind = boardDetail?.kind;
+  const location = element?.type === 'frame' ? element.location?.trim() : undefined;
+  const messages = activeThread ? 1 + activeThread.replyCount : 0;
+
   return (
     <aside
       className="notifications__detail-pane inbox-detail"
@@ -438,18 +448,21 @@ function InboxDetailContent({
     >
       <header className="inbox-detail__head">
         <nav aria-label={t('notifications.breadcrumb')} className="inbox-detail__breadcrumb">
+          {project && <ProjectGlyph {...project.icon} />}
           {breadcrumbs.map((crumb, idx) => {
             const isLast = idx === breadcrumbs.length - 1;
             return (
-              <span
-                key={breadcrumbs.slice(0, idx + 1).join('/')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              >
-                {idx > 0 && <span className="inbox-detail__breadcrumb-sep">/</span>}
+              <span key={breadcrumbs.slice(0, idx + 1).join('/')} className="inbox-detail__crumb">
+                {idx > 0 && (
+                  <span className="inbox-detail__breadcrumb-sep" aria-hidden="true">
+                    /
+                  </span>
+                )}
                 <span
                   className={
                     isLast ? 'inbox-detail__breadcrumb-current' : 'inbox-detail__breadcrumb-item'
                   }
+                  data-feedback-secret
                 >
                   {crumb}
                 </span>
@@ -457,27 +470,38 @@ function InboxDetailContent({
             );
           })}
         </nav>
+        {activeThread && (
+          <span
+            className={`inbox-pill ${
+              activeThread.resolvedAt ? 'inbox-pill--resolved' : 'inbox-pill--open'
+            }`}
+          >
+            {t(
+              activeThread.resolvedAt ? 'notifications.statusResolved' : 'notifications.statusOpen',
+            )}
+          </span>
+        )}
         <div className="inbox-detail__actions">
-          <Button variant="ghost" onClick={() => onRefresh(activeThread?.id)}>
-            {t('notifications.refresh')}
-          </Button>
+          <IconButton
+            icon="repeat"
+            label={t('notifications.refresh')}
+            onClick={() => onRefresh(activeThread?.id)}
+          />
           {p && (
-            <Button variant="ghost" onClick={handleOpenInBoard}>
+            <Button icon="board" onClick={handleOpenInBoard}>
               {t('notifications.openInBoard')}
             </Button>
           )}
           {activeThread && writable && !activeThread.deletedAt && (
-            <button
-              type="button"
-              className={`ink-button inbox-detail__resolve-btn ${
-                isResolved ? 'is-resolved' : 'is-unresolved'
-              }`}
+            <Button
+              variant={isResolved ? 'secondary' : 'positive'}
+              icon={isResolved ? undefined : 'check'}
+              className={`inbox-detail__resolve-btn ${isResolved ? 'is-resolved' : 'is-unresolved'}`}
               disabled={actionBusy}
               onClick={() => void handleToggleResolve()}
             >
-              <Icon name="check" size={14} />
               {t(isResolved ? 'notifications.markReopen' : 'notifications.markResolved')}
-            </button>
+            </Button>
           )}
         </div>
       </header>
@@ -536,8 +560,30 @@ function InboxDetailContent({
               </div>
             )}
             <div className="inbox-detail__meta">
+              {kind && (
+                <span className="inbox-detail__kind" style={kindStyle(kind)}>
+                  {t(`board.types.${kind}`)}
+                </span>
+              )}
+              {cardTitle && (
+                <h3 className="inbox-detail__title" data-feedback-secret>
+                  {element?.type === 'frame' && elementLabel
+                    ? t('notifications.frameTitle', { label: elementLabel })
+                    : cardTitle}
+                </h3>
+              )}
+              {location && (
+                <p className="inbox-detail__location" data-feedback-secret>
+                  {location}
+                </p>
+              )}
+              {element?.type === 'frame' && (
+                <div className="inbox-detail__facts">
+                  <FrameFacts frame={element} />
+                </div>
+              )}
               {notification.reviewStatus && (
-                <span>
+                <span className="inbox-detail__line">
                   <span className="inbox-detail__meta-label">
                     {t('notifications.reviewStatus')}:
                   </span>
@@ -546,17 +592,8 @@ function InboxDetailContent({
                   </span>
                 </span>
               )}
-              {cardTitle && (
-                <span>
-                  <span className="inbox-detail__meta-label">
-                    {t('notifications.cardPreview')}:
-                  </span>
-                  {cardTitle}
-                </span>
-              )}
-              {element?.type === 'frame' && <FrameFacts frame={element} />}
               {notification.boardTitle && (
-                <span>
+                <span className="inbox-detail__line" data-feedback-secret>
                   <span className="inbox-detail__meta-label">{t('notifications.boardLabel')}:</span>
                   {notification.boardTitle}
                 </span>
@@ -666,22 +703,13 @@ function InboxDetailContent({
                     {activePinIndex + 1}
                   </span>
                 )}
-                <span>
+                <h3 className="ink-section-title">
                   {activePinIndex >= 0
                     ? t('notifications.pointComment', { number: activePinIndex + 1 })
                     : t('notifications.thread')}
-                </span>
-                <span
-                  className={`inbox-pill ${
-                    activeThread.resolvedAt ? 'inbox-pill--resolved' : 'inbox-pill--open'
-                  }`}
-                  style={{ marginLeft: 'auto' }}
-                >
-                  {t(
-                    activeThread.resolvedAt
-                      ? 'notifications.statusResolved'
-                      : 'notifications.statusOpen',
-                  )}
+                </h3>
+                <span className="ink-muted inbox-detail__count">
+                  {t('notifications.messages', { count: messages })}
                 </span>
               </div>
               <div className="inbox-detail__thread-messages">
@@ -750,42 +778,6 @@ function InboxDetailContent({
                   );
                 })}
               </div>
-              {writable && (
-                <form className="inbox-detail__composer" onSubmit={(e) => void handleSendReply(e)}>
-                  <textarea
-                    className="inbox-detail__composer-textarea"
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    aria-label={t('comments.reply')}
-                    placeholder={t('notifications.replyPlaceholder')}
-                    rows={2}
-                    onKeyDown={(e) => {
-                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                        e.preventDefault();
-                        void handleSendReply();
-                      }
-                    }}
-                  />
-                  <div className="inbox-detail__composer-footer">
-                    <p>
-                      {t(
-                        activeThread.visibility === 'everyone'
-                          ? 'notifications.visibleToClient'
-                          : 'notifications.internalNote',
-                      )}
-                    </p>
-
-                    <div style={{ flex: 1 }} />
-                    <Button
-                      variant="primary"
-                      disabled={!replyText.trim() || replySending}
-                      onClick={() => void handleSendReply()}
-                    >
-                      {t('notifications.sendReply')}
-                    </Button>
-                  </div>
-                </form>
-              )}
             </>
           ) : (
             <div className="inbox-detail__card-only">
@@ -827,6 +819,42 @@ function InboxDetailContent({
           )}
         </section>
       </div>
+      {loadState === 'ready' && activeThread && writable && (
+        // Always at hand at the bottom, whatever the length of the conversation.
+        <form className="inbox-detail__composer" onSubmit={(e) => void handleSendReply(e)}>
+          <textarea
+            className="inbox-detail__composer-textarea"
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            aria-label={t('comments.reply')}
+            placeholder={t('notifications.replyPlaceholder')}
+            rows={2}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                void handleSendReply();
+              }
+            }}
+          />
+          <div className="inbox-detail__composer-footer">
+            {/* A reply takes the visibility of its thread: said, not offered as a choice. */}
+            <p className="inbox-detail__visibility">
+              {t(
+                activeThread.visibility === 'everyone'
+                  ? 'notifications.visibleToClient'
+                  : 'notifications.internalNote',
+              )}
+            </p>
+            <Button
+              variant="primary"
+              disabled={!replyText.trim() || replySending}
+              onClick={() => void handleSendReply()}
+            >
+              {t('notifications.sendReply')}
+            </Button>
+          </div>
+        </form>
+      )}
     </aside>
   );
 }
