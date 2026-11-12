@@ -22,7 +22,7 @@ async function render(page: Page, theme: string, fixed = true) {
               <button class="notifications-filter-tab is-active">All</button>
             </div>
             <div class="notifications__list-container">
-              <div class="notification is-unread">
+              <div class="notification is-selected is-unread">
                 <button class="ink-row notification__open notification__open--drawer" aria-current="true">
                   <span class="ink-row__text">
                     <span class="ink-row__title"><span class="notification__line"><b>Alex</b> commented</span></span>

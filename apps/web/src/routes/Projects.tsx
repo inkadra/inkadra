@@ -231,8 +231,11 @@ export function Projects() {
               </Button>
             </>
           ) : (
-            // Decision 0041: New project in the top bar is off; this says why.
-            <span className="ink-muted projects-page__off">{t('projectCreation.off')}</span>
+            // Decision 0041: New project in the top bar is off; this says why. A screen reader
+            // already hears it as that button's description.
+            <span className="ink-muted projects-page__off" aria-hidden="true">
+              {t('projectCreation.off')}
+            </span>
           )}
           {/* Groups are personal: everyone sorts their own list (decision 0056). */}
           <Button onClick={() => setNewGroup(true)}>{t('groups.new')}</Button>

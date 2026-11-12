@@ -681,8 +681,9 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       >
         {t('nav.newProject')}
       </Button>
+      {/* Hidden: read as the button's description, not a second time in the page. */}
       {!canCreate && (
-        <span id="new-project-off" className="ink-sr-only">
+        <span id="new-project-off" hidden>
           {t('projectCreation.off')}
         </span>
       )}
