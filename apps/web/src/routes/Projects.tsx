@@ -306,7 +306,7 @@ export function Projects() {
           {(['grid', 'list'] as const).map((v) => (
             <IconButton
               key={v}
-              icon={v}
+              icon={v === 'grid' ? 'tiles' : 'list'}
               label={t(`projectsPage.${v}`)}
               aria-pressed={view === v}
               onClick={() => setView(v)}
