@@ -2,6 +2,7 @@
 // Fails when a production dependency has a licence that is not compatible with
 // distributing Inkadra under AGPL-3.0. Add exceptions only with a note in docs/decisions.
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const ALLOWED = new Set([
   '0BSD',
@@ -33,12 +34,6 @@ const REVIEWED = new Map([
   ['combine-errors', 'MIT'],
 ]);
 
-const raw = execFileSync('pnpm', ['licenses', 'list', '--prod', '--json'], {
-  encoding: 'utf8',
-  maxBuffer: 64 * 1024 * 1024,
-});
-const byLicense = JSON.parse(raw);
-
 function ok(expr) {
   // Accept SPDX expressions where every alternative of an OR, or every part of an AND, is allowed.
   const clean = expr.replace(/[()]/g, '').trim();
@@ -47,18 +42,35 @@ function ok(expr) {
   return ALLOWED.has(clean);
 }
 
-const problems = [];
-let count = 0;
-for (const [license, pkgs] of Object.entries(byLicense)) {
-  for (const pkg of pkgs) {
-    count += 1;
-    if (ok(license) || REVIEWED.has(pkg.name)) continue;
-    problems.push(`${pkg.name}@${pkg.versions.join(',')}: ${license}`);
+/** Returns how many packages `pnpm licenses list --json` gave and which ones need a review. */
+export function check(byLicense) {
+  const problems = [];
+  let count = 0;
+  for (const [license, pkgs] of Object.entries(byLicense)) {
+    for (const pkg of pkgs) {
+      count += 1;
+      if (ok(license) || REVIEWED.has(pkg.name)) continue;
+      problems.push(`${pkg.name}@${pkg.versions.join(',')}: ${license}`);
+    }
   }
+  return { count, problems };
 }
 
-if (problems.length > 0) {
-  console.error(`Licences to review (${problems.length}):\n  ${problems.join('\n  ')}`);
-  process.exit(1);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  // The root package has no dependencies of its own: without --recursive pnpm returns {} and
+  // the check passed with 0 packages. It now lists every workspace package's dependencies.
+  const raw = execFileSync('pnpm', ['licenses', 'list', '--recursive', '--prod', '--json'], {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  const { count, problems } = check(JSON.parse(raw));
+  if (count === 0) {
+    console.error('pnpm licenses list returned no production packages: nothing was checked.');
+    process.exit(1);
+  }
+  if (problems.length > 0) {
+    console.error(`Licences to review (${problems.length}):\n  ${problems.join('\n  ')}`);
+    process.exit(1);
+  }
+  console.log(`${count} production packages, all with allowed licences.`);
 }
-console.log(`${count} production packages, all with allowed licences.`);
