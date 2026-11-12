@@ -260,7 +260,8 @@ export function ScheduleCalendar({
   useLayoutEffect(() => {
     const el = grid.current;
     if (!el) return;
-    el.scrollTop = Math.max(0, (firstCall - 30) * MINUTE_PX);
+    // Half a label above the first line: an hour's label is centred on its line.
+    el.scrollTop = Math.max(0, (firstCall - 30) * MINUTE_PX - 10);
     setViewport({ top: el.scrollTop, height: el.clientHeight });
   }, [shownKey]);
 
