@@ -231,101 +231,107 @@ export function Team() {
                 </tr>
               </thead>
               <tbody>
-              {filtered.map((m) => {
-                const last = m.role === 'admin' && !m.deactivatedAt && admins <= 1;
-                const meta = [
-                  m.email,
-                  t('settingsUi.members.projects', { count: m.projectsCount }),
-                  m.lastActiveAt ? relative(m.lastActiveAt, i18n.language) : t('admin.never'),
-                ].join(' · ');
-                return (
-                  <tr
-                    key={m.id}
-                    className={
-                      m.deactivatedAt ? 'settings-row team-member is-inactive' : 'settings-row team-member'
-                    }
-                  >
-                    <td className="team-col--who">
-                      <Avatar name={m.name} image={m.image} size={32} />
-                      <span className="settings-row__text">
-                        <span className="settings-row__label">
-                          <span className="team-member__name" title={m.name}>
-                            {m.name}
+                {filtered.map((m) => {
+                  const last = m.role === 'admin' && !m.deactivatedAt && admins <= 1;
+                  const meta = [
+                    m.email,
+                    t('settingsUi.members.projects', { count: m.projectsCount }),
+                    m.lastActiveAt ? relative(m.lastActiveAt, i18n.language) : t('admin.never'),
+                  ].join(' · ');
+                  return (
+                    <tr
+                      key={m.id}
+                      className={
+                        m.deactivatedAt
+                          ? 'settings-row team-member is-inactive'
+                          : 'settings-row team-member'
+                      }
+                    >
+                      <td className="team-col--who">
+                        <Avatar name={m.name} image={m.image} size={32} />
+                        <span className="settings-row__text">
+                          <span className="settings-row__label">
+                            <span className="team-member__name" title={m.name}>
+                              {m.name}
+                            </span>
+                            {m.id === user?.id && (
+                              <span className="settings-muted">
+                                · {t('settingsUi.members.you')}
+                              </span>
+                            )}
+                            {m.deactivatedAt && <Badge>{t('admin.inactive')}</Badge>}
                           </span>
-                          {m.id === user?.id && (
-                            <span className="settings-muted">· {t('settingsUi.members.you')}</span>
-                          )}
-                          {m.deactivatedAt && <Badge>{t('admin.inactive')}</Badge>}
+                          <span className="settings-row__help team-member__meta" title={meta}>
+                            {m.email} ·{' '}
+                            {t('settingsUi.members.projects', { count: m.projectsCount })} ·{' '}
+                            {m.lastActiveAt ? (
+                              <time dateTime={m.lastActiveAt} title={date(m.lastActiveAt)}>
+                                {relative(m.lastActiveAt, i18n.language)}
+                              </time>
+                            ) : (
+                              t('admin.never')
+                            )}
+                          </span>
                         </span>
-                        <span className="settings-row__help team-member__meta" title={meta}>
-                          {m.email} · {t('settingsUi.members.projects', { count: m.projectsCount })}{' '}
-                          ·{' '}
-                          {m.lastActiveAt ? (
-                            <time dateTime={m.lastActiveAt} title={date(m.lastActiveAt)}>
-                              {relative(m.lastActiveAt, i18n.language)}
-                            </time>
-                          ) : (
-                            t('admin.never')
-                          )}
-                        </span>
-                      </span>
-                    </td>
-                    <td className="team-col--space">
-                      <MemberSpace member={m} warnPercent={limits?.warnPercent ?? 80} />
-                    </td>
-                    <td className="team-col--role">
-                      <Select
-                        variant="quiet"
-                        className="team-role"
-                        aria-label={t('admin.roleFor', { name: m.name })}
-                        value={m.role}
-                        disabled={busy || last}
-                        data-ink-tooltip={last ? t('admin.lastAdmin') : undefined}
-                        onChange={(e) => void update(m.id, { role: e })}
-                      >
-                        <option value="admin">{t('admin.roles.admin')}</option>
-                        <option value="member">{t('admin.roles.member')}</option>
-                      </Select>
-                    </td>
-                    <td className="team-col--create">
-                      {m.role === 'admin' ? (
-                        <span className="settings-muted team-create">
-                          {t('projectCreation.always')}
-                        </span>
-                      ) : (
+                      </td>
+                      <td className="team-col--space">
+                        <MemberSpace member={m} warnPercent={limits?.warnPercent ?? 80} />
+                      </td>
+                      <td className="team-col--role">
                         <Select
                           variant="quiet"
-                          className="team-role team-create"
-                          aria-label={t('projectCreation.for', { name: m.name })}
-                          value={projectCreationValue(m.canCreateProjectsOverride)}
-                          options={projectCreationOptions(
-                            t,
-                            settings?.membersCanCreateProjects !== false,
-                          )}
+                          className="team-role"
+                          aria-label={t('admin.roleFor', { name: m.name })}
+                          value={m.role}
+                          disabled={busy || last}
+                          data-ink-tooltip={last ? t('admin.lastAdmin') : undefined}
+                          onChange={(e) => void update(m.id, { role: e })}
+                        >
+                          <option value="admin">{t('admin.roles.admin')}</option>
+                          <option value="member">{t('admin.roles.member')}</option>
+                        </Select>
+                      </td>
+                      <td className="team-col--create">
+                        {m.role === 'admin' ? (
+                          <span className="settings-muted team-create">
+                            {t('projectCreation.always')}
+                          </span>
+                        ) : (
+                          <Select
+                            variant="quiet"
+                            className="team-role team-create"
+                            aria-label={t('projectCreation.for', { name: m.name })}
+                            value={projectCreationValue(m.canCreateProjectsOverride)}
+                            options={projectCreationOptions(
+                              t,
+                              settings?.membersCanCreateProjects !== false,
+                            )}
+                            disabled={busy}
+                            onChange={(e) =>
+                              void update(m.id, {
+                                canCreateProjects: e === 'default' ? null : e === 'yes',
+                              })
+                            }
+                          />
+                        )}
+                      </td>
+                      <td className="team-col--actions">
+                        <MemberMenu
+                          member={m}
                           disabled={busy}
-                          onChange={(e) =>
-                            void update(m.id, {
-                              canCreateProjects: e === 'default' ? null : e === 'yes',
-                            })
+                          last={last}
+                          onSpace={() => setSpaceOf(m)}
+                          onFiles={() => setFilesOf(m)}
+                          onActive={() =>
+                            m.deactivatedAt
+                              ? void update(m.id, { active: true })
+                              : setDeactivating(m)
                           }
                         />
-                      )}
-                    </td>
-                    <td className="team-col--actions">
-                      <MemberMenu
-                        member={m}
-                        disabled={busy}
-                        last={last}
-                        onSpace={() => setSpaceOf(m)}
-                        onFiles={() => setFilesOf(m)}
-                        onActive={() =>
-                          m.deactivatedAt ? void update(m.id, { active: true }) : setDeactivating(m)
-                        }
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

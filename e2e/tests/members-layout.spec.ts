@@ -59,8 +59,7 @@ test('each member is one row of aligned columns; on a phone the controls wrap un
   for (const person of [near, long, idle])
     cookies.push(await signUpViaInvite(base, cookie, project.id, 'editor', person));
   // 850 KB of a 1 MB limit of her own: past the warning share.
-  const nearId = ((await (await call(cookies[0] ?? '', 'GET', '/me')).json()) as { id: string })
-    .id;
+  const nearId = ((await (await call(cookies[0] ?? '', 'GET', '/me')).json()) as { id: string }).id;
   expect(
     await uploadFile(base, cookies[0] ?? '', project.id, {
       body: Buffer.alloc(850 * KB, 7),
@@ -68,7 +67,9 @@ test('each member is one row of aligned columns; on a phone the controls wrap un
       type: 'application/octet-stream',
     }),
   ).not.toBeNull();
-  expect((await call(cookie, 'PATCH', `/instance/members/${nearId}`, { storageLimit: 1000 * KB })).ok).toBe(true);
+  expect(
+    (await call(cookie, 'PATCH', `/instance/members/${nearId}`, { storageLimit: 1000 * KB })).ok,
+  ).toBe(true);
   // Never active: the session made by signing up is gone.
   await fetch(`${base}/api/auth/sign-out`, {
     method: 'POST',
@@ -117,7 +118,9 @@ test('each member is one row of aligned columns; on a phone the controls wrap un
         }),
       );
     const overflow = () =>
-      page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
     const cards = await measure();
     const first = cards[0];
     if (!first?.role || !first.action) throw new Error('missing control');
@@ -149,7 +152,8 @@ test('each member is one row of aligned columns; on a phone the controls wrap un
     const top = desktop[0];
     if (!top?.role || !top.create || !top.action) throw new Error('missing control');
     for (const c of desktop) {
-      if (!c.row || !c.text || !c.role || !c.create || !c.action) throw new Error('missing control');
+      if (!c.row || !c.text || !c.role || !c.create || !c.action)
+        throw new Error('missing control');
       expect(c.text.width).toBeGreaterThanOrEqual(200);
       expect(Math.abs(c.role.left - top.role.left)).toBeLessThan(1);
       expect(Math.abs(c.create.left - top.create.left)).toBeLessThan(1);
