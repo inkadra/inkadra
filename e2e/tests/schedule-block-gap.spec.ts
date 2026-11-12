@@ -118,10 +118,9 @@ test('consecutive blocks leave the same space between their cards', async ({ pag
   await expectSeams(day, 1, 2, 1.6);
   const hour = schedule.locator('.schedule__grid .schedule__hour', { hasText: /^09:00$/ });
   const canvas = (await schedule.locator('.schedule__canvas').boundingBox())!;
-  expect((await hour.boundingBox())!.y + (await hour.boundingBox())!.height / 2 - canvas.y).toBeCloseTo(
-    9 * 60 * 1.6,
-    0,
-  );
+  expect(
+    (await hour.boundingBox())!.y + (await hour.boundingBox())!.height / 2 - canvas.y,
+  ).toBeCloseTo(9 * 60 * 1.6, 0);
   await capture(page, day, 'week-1280-comfy');
   await page.reload();
   await expect(density.getByRole('radio', { name: 'Comodo', exact: true })).toBeChecked();

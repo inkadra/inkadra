@@ -111,7 +111,12 @@ export function conflictPairs(days: readonly ShootingDayInput[], day: string): C
       const names = a.block.cast.filter((name) => cast.has(key(name)) && shared.has(key(name)));
       if (!names.length) continue;
       const [first, second] = a.start <= b.start ? [a, b] : [b, a];
-      pairs.push({ names: [...new Set(names)], at: second.start - base, a: first.block, b: second.block });
+      pairs.push({
+        names: [...new Set(names)],
+        at: second.start - base,
+        a: first.block,
+        b: second.block,
+      });
     }
   }
   return pairs.sort((x, y) => x.at - y.at);

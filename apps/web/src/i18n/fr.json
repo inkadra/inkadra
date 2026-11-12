@@ -3298,7 +3298,6 @@
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
     "freeDrop": "Glissez un bloc ici, ou dessinez-en un, pour créer une journée de tournage",
-    "freeDropWeek": "Glissez ici un bloc ou une journée pour l’occuper",
     "freeHeadHint": "Glissez une journée ici pour la déplacer",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",

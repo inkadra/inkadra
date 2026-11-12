@@ -3298,7 +3298,6 @@
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
     "freeDrop": "Zieh einen Block hierher oder zeichne einen, um einen Drehtag anzulegen",
-    "freeDropWeek": "Zieh einen Block oder einen Tag hierher, um ihn zu belegen",
     "freeHeadHint": "Zieh einen Tag hierher, um ihn zu verschieben",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",

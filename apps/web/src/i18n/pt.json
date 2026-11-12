@@ -3298,7 +3298,6 @@
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
     "freeDrop": "Arraste um bloco para aqui, ou desenhe um, para criar um dia de filmagem",
-    "freeDropWeek": "Arraste para aqui um bloco ou um dia para o ocupar",
     "freeHeadHint": "Arraste um dia para aqui para o mover",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",

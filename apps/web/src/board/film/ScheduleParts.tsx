@@ -482,7 +482,11 @@ export function QueueRail({
   const queue = count === null ? t('schedule.toPlan') : t('schedule.queueCount', { count });
   return (
     <aside className="schedule__rail" aria-label={t('schedule.queue')} data-tour="schedule-queue">
-      <IconButton icon="chevronRight" label={t('schedule.showSide')} onClick={() => onOpen('side')} />
+      <IconButton
+        icon="chevronRight"
+        label={t('schedule.showSide')}
+        onClick={() => onOpen('side')}
+      />
       <IconButton icon="calendar" label={t('schedule.month')} onClick={() => onOpen('month')} />
       <button
         type="button"

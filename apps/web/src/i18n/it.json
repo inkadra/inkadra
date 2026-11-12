@@ -3298,7 +3298,6 @@
     "invalidDuration": "Inserisci una durata da 1 a 1440 minuti (es. 1h 30).",
     "staleBy": "{{name}} ha cambiato {{day}} mentre lo modificavi",
     "freeDrop": "Trascina qui un blocco, o disegnane uno, per creare un giorno di riprese",
-    "freeDropWeek": "Trascina qui un blocco o un giorno per occuparlo",
     "freeHeadHint": "Trascina un giorno qui per spostarlo",
     "moreAbove_one": "{{count}} blocco",
     "moreAbove_other": "{{count}} blocchi",

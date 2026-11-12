@@ -1560,7 +1560,12 @@ export function ScheduleView({
         {notice}
       </p>
       <div className="story__main schedule__main">
-        {!phone && (side ? queue : <QueueRail count={loading ? null : unscheduled.length} onOpen={openSide} />)}
+        {!phone &&
+          (side ? (
+            queue
+          ) : (
+            <QueueRail count={loading ? null : unscheduled.length} onOpen={openSide} />
+          ))}
         <div className="schedule__body">
           {phone && !loading && !loadError && (
             <PhoneDays
@@ -1576,26 +1581,26 @@ export function ScheduleView({
           )}
           {phone && selectedEntry && (
             <div className="schedule__summary-card">
-            <button
-              type="button"
-              className="schedule__summary-main"
-              onClick={() => setSheet('day')}
-            >
-              <span>
-                <b>
-                  {[
-                    t('schedule.dayShort', { n: selectedEntry.index + 1 }),
-                    // The place's name: its map link opens from the call sheet.
-                    locationsOfDay({ ...selectedEntry.draft, blocks: [] }, new Map())[0]?.name,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </b>
-                <span>{daySummary(selectedEntry.draft, t)}</span>
-                <SunLine sun={sunOf(selectedEntry.draft)} />
-              </span>
-              <span className="schedule__summary-link">{t('schedule.details')}</span>
-            </button>
+              <button
+                type="button"
+                className="schedule__summary-main"
+                onClick={() => setSheet('day')}
+              >
+                <span>
+                  <b>
+                    {[
+                      t('schedule.dayShort', { n: selectedEntry.index + 1 }),
+                      // The place's name: its map link opens from the call sheet.
+                      locationsOfDay({ ...selectedEntry.draft, blocks: [] }, new Map())[0]?.name,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </b>
+                  <span>{daySummary(selectedEntry.draft, t)}</span>
+                  <SunLine sun={sunOf(selectedEntry.draft)} />
+                </span>
+                <span className="schedule__summary-link">{t('schedule.details')}</span>
+              </button>
               {conflictCount(selectedEntry) > 0 && (
                 <ConflictTag
                   dayId={selectedEntry.day.id}

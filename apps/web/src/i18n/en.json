@@ -3298,7 +3298,6 @@
     "invalidDuration": "Enter 1–1440 minutes (e.g. 1h 30).",
     "staleBy": "{{name}} changed {{day}} while you were editing it",
     "freeDrop": "Drag a block here, or draw one, to create a shooting day",
-    "freeDropWeek": "Drag a block or a day here to fill it",
     "freeHeadHint": "Drag a day here to move it",
     "moreAbove_one": "{{count}} block",
     "moreAbove_other": "{{count}} blocks",

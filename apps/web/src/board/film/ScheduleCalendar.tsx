@@ -1046,7 +1046,11 @@ export function ScheduleCalendar({
                       aria-label={label}
                       aria-keyshortcuts="Enter Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Shift+ArrowUp Shift+ArrowDown Delete"
                       onClick={(event) =>
-                        onOpenBlock(entry.day.id, block.id, event.currentTarget.getBoundingClientRect())
+                        onOpenBlock(
+                          entry.day.id,
+                          block.id,
+                          event.currentTarget.getBoundingClientRect(),
+                        )
                       }
                       onKeyDown={(event) => onKey(event, entry, block)}
                     >
@@ -1226,7 +1230,7 @@ export function ScheduleCalendar({
                       <b>{t('schedule.noShoot')}</b>
                       {!readOnly && (
                         <span>
-                          {t(view === 'day' ? 'schedule.freeDrop' : 'schedule.freeDropWeek')}
+                          {t('schedule.freeDrop')}
                         </span>
                       )}
                     </p>
@@ -1399,7 +1403,9 @@ export function ScheduleCalendar({
                   // cast and duration; side by side, the title first. The card is 3 px shorter
                   // than its slot; from 56 px its title may take two lines.
                   const week = view === 'week';
-                  const wrapTitle = week ? tall && (lane.lanes > 1 || height - 3 >= 56) : detail.wrap;
+                  const wrapTitle = week
+                    ? tall && (lane.lanes > 1 || height - 3 >= 56)
+                    : detail.wrap;
                   const startTime = (
                     <span className="schedule__block-time">
                       {week || !tall || !detail.range ? clockLabel(start) : time}
@@ -1428,7 +1434,9 @@ export function ScheduleCalendar({
                         className={`schedule__block-select${seen?.dot ? ' has-source' : ''}`}
                         // The storyboard's bar on the left edge (decision 0123); its name is in
                         // the label, which the tooltip shows whole.
-                        style={seen?.dot ? ({ '--source': seen.dot.color } as CSSProperties) : undefined}
+                        style={
+                          seen?.dot ? ({ '--source': seen.dot.color } as CSSProperties) : undefined
+                        }
                         aria-pressed={selectedBlock === block.id}
                         aria-label={label}
                         data-ink-tooltip={label}
@@ -1484,21 +1492,21 @@ export function ScheduleCalendar({
                             )}
                           </span>
                         ) : (
-                        <span className="schedule__block-text">
-                          {startTime}
-                          {title}
-                          {!week && detail.meta && (
-                            <span className="schedule__block-meta">
-                              {[
-                                detail.type ? typeName(block.type) : '',
-                                block.cast.join(', '),
-                                minutesLabel(block.duration),
-                              ]
-                                .filter(Boolean)
-                                .join(' · ')}
-                            </span>
-                          )}
-                        </span>
+                          <span className="schedule__block-text">
+                            {startTime}
+                            {title}
+                            {!week && detail.meta && (
+                              <span className="schedule__block-meta">
+                                {[
+                                  detail.type ? typeName(block.type) : '',
+                                  block.cast.join(', '),
+                                  minutesLabel(block.duration),
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              </span>
+                            )}
+                          </span>
                         )}
                         {conflict && (
                           <span className="schedule__block-warn">
@@ -1584,9 +1592,7 @@ export function ScheduleCalendar({
         </div>
       </div>
       {annotations.some((note) => !note.position) && (
-        <div
-          className="schedule__annotation-band"
-        >
+        <div className="schedule__annotation-band">
           <span />
           {columns.map(({ date, entry }) => (
             <div key={date} className="schedule__annotation-cell">

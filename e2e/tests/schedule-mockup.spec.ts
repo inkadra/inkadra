@@ -288,7 +288,9 @@ test('the schedule calendar matches its mockup on the Production board', async (
   // storyboard is a bar on the left edge, named in the label (option 6).
   const scene = schedule.locator('.schedule__block--scene');
   await expect(scene.locator('.schedule__block-meta')).toHaveText('Elena, Marco · 1h 30');
-  await expect(scene.locator('.schedule__block-line .schedule__block-time')).toHaveText(/^\d\d:\d\d$/);
+  await expect(scene.locator('.schedule__block-line .schedule__block-time')).toHaveText(
+    /^\d\d:\d\d$/,
+  );
   await expect(scene.locator('.schedule__block-select')).toHaveAttribute(
     'aria-label',
     /, Ultimo treno, \d\d:\d\d – \d\d:\d\d, Scena intera/,
@@ -302,7 +304,9 @@ test('the schedule calendar matches its mockup on the Production board', async (
   expect(await calendar.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
   const tuesday = schedule.locator('.schedule__column.is-free');
   expect((await box(tuesday)).width).toBeCloseTo(48, 0);
-  await expect(schedule.getByRole('button', { name: /^martedì 2 marzo · Giorno libero/ })).toBeVisible();
+  await expect(
+    schedule.getByRole('button', { name: /^martedì 2 marzo · Giorno libero/ }),
+  ).toBeVisible();
   const saturday = schedule.locator('.schedule__day').last();
   expect((await box(saturday)).x + (await box(saturday)).width).toBeLessThanOrEqual(
     (await box(calendar)).x + (await box(calendar)).width + 0.5,
@@ -346,10 +350,14 @@ test('the schedule calendar matches its mockup on the Production board', async (
     'Fine riprese 15:50',
   ]);
   await expect(list.locator('.schedule__row.has-conflict')).toHaveCount(2);
-  await expect(small.page.locator('.schedule__conflict-note')).toContainText('Elena è in due blocchi');
+  await expect(small.page.locator('.schedule__conflict-note')).toContainText(
+    'Elena è in due blocchi',
+  );
   await list.locator('.schedule__row').first().click();
   await expect(small.page.getByRole('dialog', { name: 'Blocco' })).toBeVisible();
-  await expect(small.page.getByRole('button', { name: 'Sposta prima', exact: true })).toBeDisabled();
+  await expect(
+    small.page.getByRole('button', { name: 'Sposta prima', exact: true }),
+  ).toBeDisabled();
   await expect(small.page.getByRole('button', { name: 'Sposta dopo', exact: true })).toBeEnabled();
   await small.context.close();
 });

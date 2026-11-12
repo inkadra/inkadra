@@ -66,16 +66,23 @@ it('lists the blocks in time order between the call and the wrap, conflicts mark
   });
   const list = host.querySelector('.schedule__list');
   expect(host.querySelector('.schedule__grid')).toBeNull();
-  expect([...(list?.querySelectorAll('.schedule__row-title') ?? [])].map((el) => el.textContent))
-    .toEqual(['First', 'Second', 'Overlap', 'Late']);
-  const marks = [...(list?.querySelectorAll('.schedule__list-mark') ?? [])].map((el) => el.textContent);
+  expect(
+    [...(list?.querySelectorAll('.schedule__row-title') ?? [])].map((el) => el.textContent),
+  ).toEqual(['First', 'Second', 'Overlap', 'Late']);
+  const marks = [...(list?.querySelectorAll('.schedule__list-mark') ?? [])].map(
+    (el) => el.textContent,
+  );
   expect(marks).toEqual(['schedule.callAt 08:00', 'schedule.wrapAt 14:30']);
   expect(list?.querySelectorAll('.schedule__row.has-conflict')).toHaveLength(2);
   // The day card carries "N conflicts"; pressing it shows the note and marks the blocks.
-  const tag = host.querySelector<HTMLButtonElement>('.schedule__summary-card .schedule__conflict-tag');
+  const tag = host.querySelector<HTMLButtonElement>(
+    '.schedule__summary-card .schedule__conflict-tag',
+  );
   expect(tag?.getAttribute('aria-expanded')).toBe('false');
   await act(async () => tag?.click());
-  expect(host.querySelector('.schedule__conflict-note')?.textContent).toBe('schedule.conflictNote 14:00');
+  expect(host.querySelector('.schedule__conflict-note')?.textContent).toBe(
+    'schedule.conflictNote 14:00',
+  );
   expect(list?.querySelectorAll('.schedule__row.is-hot')).toHaveLength(2);
   await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
   expect(host.querySelector('.schedule__conflict-note')).toBeNull();
