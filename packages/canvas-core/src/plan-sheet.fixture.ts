@@ -2,7 +2,7 @@
 import { createBoardDoc, type PlanIcon, type PlanIconKind, STROKE_GRID } from '@inkadra/doc-schema';
 import type * as Y from 'yjs';
 import { createElement, listElements, updateElement } from './board.ts';
-import { addFrame } from './film.ts';
+import { addFrame, addShape } from './film.ts';
 import {
   addPlanIcon,
   addVariant,
@@ -13,7 +13,7 @@ import {
 } from './plan.ts';
 import { attachIcon } from './plan-attach.ts';
 import { roomWalls } from './plan-start.ts';
-import { addPlanCircuit, addPlanOpening, addPlanWall } from './plan-walls.ts';
+import { addPlanCircuit, addPlanOpening, addPlanWall, updatePlanWalls } from './plan-walls.ts';
 
 /**
  * For tests and benchmarks of the set plan's sheet (decision 0111): a board made with the
@@ -97,6 +97,51 @@ export function planSheetFixture(): PlanSheetFixture {
  */
 export function bigPlanFixture(count = 300): PlanSheetFixture {
   return build(count);
+}
+
+/**
+ * The sheet fixture with what its goldens did not cover (the server's PDF, step 2, slice 0):
+ * the background placed, at 0.6 and in greys; locked icons and a locked wall; a text of three
+ * lines; a piece of furniture wider than deep, turned 30°. Built on top of the same board, so
+ * `planSheetFixture()` and its goldens stay as they are.
+ */
+export function planSheetFixtureFull(): PlanSheetFixture {
+  const fixture = build(0);
+  const { doc } = fixture;
+  const planId = fixture.planIds[0];
+  // A placed box, not the whole drawing, wider than the picture's 3:2, in greys.
+  updateElement(doc, planId, {
+    background: { assetId: BACKGROUND, opacity: 0.6, grey: true, x: 120, y: 90, w: 720, h: 400 },
+  });
+  addIcon(doc, planId, {
+    kind: 'table',
+    color: '#EDD963',
+    ...at(680, 470),
+    w: 140,
+    h: 60,
+    rotation: 30,
+    label: 'Carrello',
+  });
+  updateIcon(doc, planId, 'Bancone', { locked: true });
+  updateIcon(doc, planId, 'Booth', { locked: true });
+  const walls = planOf(doc, planId).walls ?? [];
+  updatePlanWalls(
+    doc,
+    planId,
+    'walls',
+    walls.map((w) => ({ ...w, locked: true })),
+  );
+  addShape(doc, planId, {
+    kind: 'text',
+    color: '#1C1C1E',
+    width: 18,
+    x0: 1300,
+    y0: 3500,
+    x1: 2300,
+    y1: 3900,
+    text: 'Uscita di sicurezza\nlasciare libera\nsempre',
+  });
+  return fixture;
 }
 
 const BIG_KINDS: readonly PlanIconKind[] = [

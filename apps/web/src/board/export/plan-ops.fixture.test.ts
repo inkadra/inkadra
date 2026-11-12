@@ -1,4 +1,5 @@
 import { variantView } from '@inkadra/canvas-core';
+import { dark, light } from '@inkadra/ui/tokens';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   CATALOGUE,
@@ -97,5 +98,16 @@ describe('a set plan in exports', () => {
       fixture('plan-ops-setup.txt'),
     );
     expectFixture(drawn(planOps(TURNED, BOX, ctx)), fixture('plan-ops-turned.txt'));
+  });
+
+  it('draws the sample plan with the real light and dark tokens', () => {
+    for (const [name, palette] of [
+      ['light', light],
+      ['dark', dark],
+    ] as const)
+      expectFixture(
+        drawn(planOps(PLAN, BOX, { ...ctx, colors: palette })),
+        fixture(`plan-ops-${name}.txt`),
+      );
   });
 });
