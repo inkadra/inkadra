@@ -67,10 +67,10 @@ measures and wraps exactly as before.
   `loca` table, which stores each offset divided by two, so an odd length truncated every later
   offset and most letters printed blank. `patches/@pdf-lib__fontkit@1.1.1.patch` (pnpm
   `patchedDependencies` in `pnpm-workspace.yaml`) pads such a glyph by one byte; `pdf.test.ts` in
-  `@inkadra/print` decodes the embedded glyphs and fails without it. The server writes the set
-  plan's sheet with fontkit too (decision 0122): the Dockerfile's `pnpm deploy` of the server no
-  longer allows an unused patch, so the image cannot ship an unpatched fontkit. Upgrading fontkit
-  means checking whether the fix is still needed before dropping the patch.
+  `@inkadra/print` decodes the embedded glyphs and fails without it. The Dockerfile's
+  `pnpm deploy` of the server allows the patch to go unused there, as the server does not depend
+  on fontkit yet. Upgrading fontkit means checking whether the fix is still needed before
+  dropping the patch.
 - `@inkadra/print` measures and writes with these files, so a sheet made on the server from the
   same files stays identical to the web's.
 - No CJK: Inter has none, and a second font per text would change the page model.
