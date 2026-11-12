@@ -127,6 +127,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0120](0120-board-writers.md) | The server maps each Yjs client id of a board to the account that first wrote under it, for 30 days; viewers look up who also changed a field (`board-writers`); a shared id names nobody |
 | [0121](0121-board-types.md) | A board shows the views of its type (Board, Moodboard, Storyboard, Production); several storyboards and one Production board per project; personal modules a person can turn off; a shorter toolbar and a Canvas menu of board types |
 | [0122](0122-set-plan-sheet-from-the-server.md) | The server renders the set plan sheet as a PDF with the same MPL packages as the web: one route for members (team or client copy, "Day N" only for the team) and one for guests; ETag, 2 renders at once, 10 a minute (`plan-sheet-pdf`) |
+| [0123](0123-production-board.md) | One Production board per project holds the schedule and the Troupe; days move to it and point at frames of any storyboard by board and frame id, with a label for when it cannot be read; archives format 2; six pull requests |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071, 0104): they were accepted in parallel,
 and accepted records are not renumbered.
