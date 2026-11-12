@@ -101,7 +101,7 @@ async function signUp(app: App, name: string) {
 const call = (
   app: App,
   who: { cookie: string } | null,
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   payload?: unknown,
   headers: Record<string, string> = {},
@@ -193,6 +193,14 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       },
     );
     childId = child.json().id;
+    // The optional views that are on travel with the board (decision 0121).
+    expect(
+      (
+        await call(source.app, people.owner ?? null, 'PATCH', `/boards/${rootId}`, {
+          views: ['review'],
+        })
+      ).statusCode,
+    ).toBe(200);
 
     png = await sharp({ create: { width: 8, height: 8, channels: 3, background: '#335577' } })
       .png()
@@ -578,6 +586,8 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     expect(boardsB.map((b) => [b.title, b.kind, b.parentBoardId === null])).toEqual(
       boardsA.map((b) => [b.title, b.kind, b.parentBoardId === null]),
     );
+    expect(boardsB.map((b) => b.views)).toEqual(boardsA.map((b) => b.views));
+    expect(boardsB.find((b) => b.parentBoardId === null)?.views).toEqual(['review']);
     const rootB = boardsB.find((b) => b.parentBoardId === null)?.id as string;
     const childB = boardsB.find((b) => b.parentBoardId !== null)?.id as string;
     expect(boardsB.find((b) => b.id === childB)?.parentBoardId).toBe(rootB);
@@ -1028,6 +1038,12 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     });
     const result = await importProject(importDeps(), path, owner.id);
     expect(result.summary).toMatchObject({ boards: 1, files: 1 });
+    // An archive from before decision 0121 has no views: its board keeps them null.
+    const [imported] = await target.db
+      .select({ views: board.views })
+      .from(board)
+      .where(eq(board.projectId, result.projectId));
+    expect(imported).toEqual({ views: null });
     const unknown = await handmade({ data: png, extraRoot: 'unexpected' });
     await expect(importProject(importDeps(), unknown, owner.id)).rejects.toThrow(
       'Unknown root type',

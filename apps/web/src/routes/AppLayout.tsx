@@ -437,8 +437,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   };
   const writable = editableProjects(projects);
   const projectId = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
-  const boardId = pathname.split('/')[4];
   const current = projects?.find((p) => p.id === projectId);
+  // The root board is the project's own page, also when a link names it (`/p/:id/b/:root`).
+  const pathBoardId = pathname.split('/')[4];
+  const boardId = pathBoardId === current?.rootBoardId ? undefined : pathBoardId;
   // The same title as the guided setup page.
   const onboardingCrumb = onboardingTitle(projects);
   // Inside a project the bottom bar's New adds the board there, when the person may.

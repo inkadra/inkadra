@@ -217,7 +217,15 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, boardId));
     // Reauthorize every request. Browser revalidation avoids stale previews after edits or revocation.
     reply.header('cache-control', 'private, no-cache');
-    const { preview, reviewable } = projectBoard(row?.state);
+    let projection: ReturnType<typeof projectBoard>;
+    try {
+      projection = projectBoard(row?.state);
+    } catch (err) {
+      // A malformed stored document has nothing to preview: answer as for an empty board.
+      req.log.warn({ err, boardId }, 'board preview: stored document cannot be read');
+      projection = projectBoard();
+    }
+    const { preview, reviewable } = projection;
     const [metadata] = await db.select().from(board).where(eq(board.id, boardId));
     const candidates = [...new Set([metadata?.coverAssetId, ...preview.assetIds])].filter(
       (id): id is string => AssetId.safeParse(id).success,

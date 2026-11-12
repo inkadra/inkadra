@@ -10,6 +10,7 @@ import { api, RequestError } from '../lib/api.ts';
  * already knows of the board (when it was edited, its counts): when it changes, or when a card
  * of it is drawn a minute after the last answer (reviews do not edit the board), the preview is
  * asked again; the browser revalidates it and the server answers 304 when nothing changed.
+ * A card that stays drawn is refreshed when its preview goes stale, once per board.
  */
 export type PreviewEntry =
   | { status: 'loading'; version: string; preview?: BoardPreview }
@@ -22,6 +23,40 @@ const cache = new Map<string, PreviewEntry>();
 const loadedAt = new Map<string, number>();
 const FRESH_MS = 60_000;
 const listeners = new Map<string, Set<() => void>>();
+/** One timer per drawn board, not per card: its preview is asked again when it goes stale. */
+const timers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function stop(boardId: string) {
+  clearTimeout(timers.get(boardId));
+  timers.delete(boardId);
+}
+
+/** Reloads a board still drawn when its preview goes stale; nothing while the tab is hidden. */
+function refreshLater(boardId: string) {
+  stop(boardId);
+  timers.set(
+    boardId,
+    setTimeout(
+      () => {
+        timers.delete(boardId);
+        const version = cache.get(boardId)?.version;
+        // Hidden: the visibility listener below asks again when the tab comes back.
+        if (!listeners.has(boardId) || version === undefined || document.hidden) return;
+        load(boardId, version);
+      },
+      Math.max(0, FRESH_MS - (Date.now() - (loadedAt.get(boardId) ?? 0))),
+    ),
+  );
+}
+
+if (typeof document !== 'undefined')
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    for (const boardId of listeners.keys()) {
+      const version = cache.get(boardId)?.version;
+      if (version !== undefined) load(boardId, version);
+    }
+  });
 
 function set(boardId: string, entry: PreviewEntry) {
   cache.set(boardId, entry);
@@ -38,6 +73,7 @@ function load(boardId: string, version: string) {
   )
     return;
   loadedAt.set(boardId, Date.now());
+  if (listeners.has(boardId)) refreshLater(boardId);
   const kept = known && 'preview' in known ? known.preview : undefined;
   set(boardId, { status: 'loading', version, ...(kept ? { preview: kept } : {}) });
   api.get<BoardPreview>(`/boards/${boardId}/preview`).then(
@@ -67,9 +103,13 @@ function subscribe(boardId: string, version: string, listener: () => void) {
   }
   ids.add(listener);
   load(boardId, version);
+  // A card drawn again while the preview is fresh: refreshed when it goes stale.
+  if (!timers.has(boardId)) refreshLater(boardId);
   return () => {
     ids.delete(listener);
-    if (ids.size === 0) listeners.delete(boardId);
+    if (ids.size > 0) return;
+    listeners.delete(boardId);
+    stop(boardId);
   };
 }
 
@@ -88,4 +128,5 @@ export function useBoardPreview(boardId: string | null, version: string): Previe
 export function resetBoardPreviews() {
   cache.clear();
   loadedAt.clear();
+  for (const boardId of [...timers.keys()]) stop(boardId);
 }
