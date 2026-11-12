@@ -169,3 +169,32 @@ describe('the views a module that is off leaves out (decision 0121)', () => {
     expect(boardViews(board('board', ['moodboard']), undefined)).toContain('moodboard');
   });
 });
+
+describe('the Production board (decision 0123)', () => {
+  it('always has Schedule and Crew, opens on Schedule and has no other view', () => {
+    expect(boardViews(board('production', null), undefined)).toEqual(['schedule', 'troupe']);
+    expect(boardViews(board('production', ['review']), undefined)).toEqual([
+      'schedule',
+      'troupe',
+    ]);
+    expect(defaultView('production')).toBe('schedule');
+    expect(openView(null, board('production', null), undefined)).toBe('schedule');
+    expect(openView('troupe', board('production', null), undefined)).toBe('troupe');
+    expect(offeredViews(board('production', null), undefined, [])).toEqual([]);
+    expect(kindIcon('production')).toBe('film');
+  });
+
+  it("takes Schedule and Crew from the storyboards of its project, which keep them until then", () => {
+    const all = board('storyboard', ['shotlist', 'schedule', 'troupe']);
+    expect(boardViews(all, undefined)).toEqual(['storyboard', 'shotlist', 'schedule', 'troupe']);
+    expect(boardViews(all, undefined, true)).toEqual(['storyboard', 'shotlist']);
+    expect(boardViews(board('storyboard', null), undefined, true)).toEqual([
+      'storyboard',
+      'shotlist',
+      'review',
+    ]);
+    expect(offeredViews(all, undefined, [], true)).toEqual(['shotlist', 'review']);
+    expect(openView('schedule', all, undefined, true)).toBe('storyboard');
+    expect(headerViews(all, undefined, 'storyboard', true)).toEqual(['storyboard', 'shotlist']);
+  });
+});

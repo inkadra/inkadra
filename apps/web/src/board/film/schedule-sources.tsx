@@ -9,9 +9,18 @@ import {
 import { type AspectRatio, type Element, getBoardAspect } from '@inkadra/doc-schema';
 import { type Board, blockTarget, type ScheduleBlock, targetKey } from '@inkadra/shared';
 import { type GlyphColor, glyphColor } from '@inkadra/ui';
-import { type ReactNode, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import {
+  lazy,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import { treeOrder } from '../boards.ts';
-import { type BoardConnection, useBoardConnection } from '../connection.ts';
+import type { BoardConnection } from '../connection.ts';
 import type { BoardStore, Snapshot } from '../store.ts';
 
 /** The identity palette in the order storyboards take it (decision 0123). */
@@ -180,6 +189,9 @@ export function plannedKeys(
   return keys;
 }
 
+// The connections load with the Production board only: a storyboard's schedule opens none.
+const SourceDoc = lazy(() => import('./schedule-doc.tsx'));
+
 /** Follows every store and returns their snapshots: the same list until one of them changes. */
 function useSnapshots(stores: readonly BoardStore[]): readonly Snapshot[] {
   const [, bump] = useReducer((n: number) => n + 1, 0);
@@ -194,22 +206,6 @@ function useSnapshots(stores: readonly BoardStore[]): readonly Snapshot[] {
   if (now.length !== last.current.length || now.some((snap, i) => snap !== last.current[i]))
     last.current = now;
   return last.current;
-}
-
-/** Opens one board's document for the schedule, and says when it is open or refused. */
-function SourceDoc({
-  boardId,
-  onConn,
-}: {
-  boardId: string;
-  onConn: (boardId: string, conn: BoardConnection | null) => void;
-}) {
-  const conn = useBoardConnection(boardId, false);
-  useEffect(() => {
-    onConn(boardId, conn);
-  }, [boardId, conn, onConn]);
-  useEffect(() => () => onConn(boardId, null), [boardId, onConn]);
-  return null;
 }
 
 /**
