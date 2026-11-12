@@ -478,7 +478,9 @@ function InboxDetailContent({
               activeThread.resolvedAt ? 'inbox-pill--resolved' : 'inbox-pill--open'
             }`}
           >
-            {t(activeThread.resolvedAt ? 'notifications.statusResolved' : 'notifications.statusOpen')}
+            {t(
+              activeThread.resolvedAt ? 'notifications.statusResolved' : 'notifications.statusOpen',
+            )}
           </span>
         )}
         <div className="inbox-detail__actions">
@@ -849,11 +851,7 @@ function InboxDetailContent({
             <span id={visibilityHint} className="ink-sr-only">
               {t('notifications.visibilityFromThread')}
             </span>
-            <Button
-              variant="primary"
-              type="submit"
-              disabled={!replyText.trim() || replySending}
-            >
+            <Button variant="primary" type="submit" disabled={!replyText.trim() || replySending}>
               {t('notifications.sendReply')}
             </Button>
           </div>

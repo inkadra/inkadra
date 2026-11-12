@@ -382,7 +382,6 @@
   }
 }
 
-
 /* Fingers need 44 px targets. */
 @media (width < 768px) {
   .story__mode,

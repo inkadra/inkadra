@@ -69,6 +69,7 @@ import { useIsPhone } from '../lib/phone.ts';
 import { usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
+import type { InboxFilter } from '../notifications/model.ts';
 import {
   NotificationBell,
   NotificationList,
@@ -93,11 +94,10 @@ import {
   setCachedProjects,
   subscribeProjects,
 } from './projects.ts';
+import { ProjectsContext } from './projects-context.ts';
 import { SearchDialog } from './SearchDialog.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import { SeedQueue } from './seed-queue.tsx';
-import type { InboxFilter } from '../notifications/model.ts';
-import { ProjectsContext } from './projects-context.ts';
 import { isSettingsPath } from './settings-sections.ts';
 import { UpdatePopup } from './UpdatePopup.tsx';
 import './mobile-shell.css';

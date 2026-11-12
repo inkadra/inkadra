@@ -562,7 +562,11 @@ function ActivityItem({
           <span className={`ink-row__dot${item.readAt ? ' is-read' : ''}`}>
             {!item.readAt && <span className="ink-sr-only">{t('notifications.unread')}</span>}
           </span>
-          <span className="home__avatar" style={{ background: avatarBg(actor) }} data-feedback-secret>
+          <span
+            className="home__avatar"
+            style={{ background: avatarBg(actor) }}
+            data-feedback-secret
+          >
             <Avatar name={actor ?? 'Inkadra'} size={24} />
           </span>
         </>

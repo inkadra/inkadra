@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { api } from '../lib/api.ts';
 import { formatDateTime } from '../lib/datetime.ts';
-import { useProjects } from './projects-context.ts';
 import { localDate } from './home-data.ts';
+import { useProjects } from './projects-context.ts';
 
 export const TASK_GROUPS = ['overdue', 'today', 'week', 'later', 'undated'] as const;
 export type TaskGroup = (typeof TASK_GROUPS)[number];
