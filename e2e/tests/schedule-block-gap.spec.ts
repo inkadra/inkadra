@@ -68,16 +68,16 @@ async function expectSeams(day: Locator, top: number, bottom: number) {
   const column = (await day.boundingBox())!;
   let minute = CALL;
   let previous = 0;
-  for (let i = 0; i < blocks.length; i++) {
+  for (const [i, [, , duration]] of blocks.entries()) {
     const slot = (await slots.nth(i).boundingBox())!;
     const card = (await slots.nth(i).locator('.schedule__block-select').boundingBox())!;
     expect(slot.y - column.y).toBeCloseTo(minute, 0);
-    expect(slot.height).toBeCloseTo(blocks[i][2], 0);
+    expect(slot.height).toBeCloseTo(duration, 0);
     expect(card.y - slot.y).toBeCloseTo(top, 0);
     expect(slot.y + slot.height - (card.y + card.height)).toBeCloseTo(bottom, 0);
     if (i > 0) expect(card.y - previous).toBeCloseTo(top + bottom, 0);
     previous = card.y + card.height;
-    minute += blocks[i][2];
+    minute += duration;
   }
 }
 
