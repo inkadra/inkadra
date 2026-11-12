@@ -569,7 +569,10 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
       (await request('owner', 'GET', `/boards/${ids.production}/schedule`)).json(),
     );
     expect(listed.items).toHaveLength(5);
-    expect(await dayRow(days.a3?.id as string)).toMatchObject({ boardId: ids.production, movedFrom: ids.sa });
+    expect(await dayRow(days.a3?.id as string)).toMatchObject({
+      boardId: ids.production,
+      movedFrom: ids.sa,
+    });
   });
 
   const archive = async (projectId: string) => {
