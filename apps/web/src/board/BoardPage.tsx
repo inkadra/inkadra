@@ -39,10 +39,12 @@ import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
 import { moveTabFocus } from '../lib/tabs.ts';
 import { useProjects } from '../routes/AppLayout.tsx';
+import { addBoard } from '../routes/add-storyboard.ts';
 import { NotFound } from '../routes/NotFound.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
 import { renameProject } from '../routes/projects.ts';
 import { BOARD_CARD_SIZE } from './BoardCardPreview.tsx';
+import { useBoardPreview } from './board-previews.ts';
 import {
   boardPath,
   canRenameBoard,
@@ -94,6 +96,7 @@ import {
   headerViews,
   isBoardView,
   kindIcon,
+  movedView,
   offeredViews,
   openView,
   viewHref,
@@ -120,12 +123,10 @@ export { type BoardView, VIEWS } from './views.ts';
 export function useBoardView(
   board: Pick<Board, 'kind' | 'views'> | undefined,
   counts: Parameters<typeof openView>[2],
-  production?: boolean,
 ): [BoardView, (v: BoardView, motion?: ViewSwitchMotion) => void] {
   const [params, setParams] = useSearchParams();
   const kind = board?.kind;
-  const view: BoardView =
-    openView(params.get('view'), board, counts, production) ?? defaultView(kind);
+  const view: BoardView = openView(params.get('view'), board, counts) ?? defaultView(kind);
   const setView = useCallback(
     (v: BoardView, motion?: ViewSwitchMotion) =>
       setParams(
@@ -261,10 +262,9 @@ function viewItems(
   toggle: (view: BoardOptionalView) => void,
   t: (key: string) => string,
   off: readonly string[],
-  production: boolean,
 ): MenuItem[] {
-  const on = viewsOn(board, counts, production);
-  const optional = offeredViews(board, counts, off, production);
+  const on = viewsOn(board, counts);
+  const optional = offeredViews(board, counts, off);
   return [
     { heading: t('board.views.title') },
     ...boardViews({ kind: board.kind, views: [] }, counts).map(
@@ -400,8 +400,14 @@ function BoardScreen({
   const counts = boardCounts.get(boardId);
   // The project's Production board (decision 0123), when the person can see it.
   const production = productionOf(boards);
-  const hasProduction = !!production;
-  const [view, setView] = useBoardView(board, counts, hasProduction);
+  const [view, setView] = useBoardView(board, counts);
+  // A storyboard's Schedule and Troupe are the Production board's now: old links follow them.
+  const [params] = useSearchParams();
+  const moved = movedView(params.get('view'), board, !!production);
+  useEffect(() => {
+    if (moved && production)
+      navigate(viewHref(projectId, production, moved, rootBoardId), { replace: true });
+  }, [moved, production, projectId, rootBoardId, navigate]);
   const [openedFilmViews, setOpenedFilmViews] = useState({ schedule: false, troupe: false });
   // On the Production board the calendar stays open behind Troupe too: its Export reads the
   // storyboards the calendar opened (decision 0123). A ref, read when the export runs: the
@@ -412,6 +418,17 @@ function BoardScreen({
   }, []);
   // A storyboard's ⋯ menu leads to the Production board that plans it.
   const pointing = useDaysPointingAt(boardId, kind === 'storyboard' ? production?.id : undefined);
+  // Without a live one, a member of a project that has days or a crew, which its card counts
+  // then (decision 0123), is told where they are: the move switched off, a project it skipped,
+  // or the board in the trash, which comes back with its days. Editors can add it; the entry
+  // shows with the Production module off too, since it leads to data that exists (0121).
+  const mayMissProduction =
+    kind === 'storyboard' && !!boards && !production && !!rootBoardId && !!projectRole;
+  const waiting = useBoardPreview(mayMissProduction ? boardId : null, 'production');
+  const waitingPreview = waiting && 'preview' in waiting ? waiting.preview : undefined;
+  const productionMissing =
+    mayMissProduction && (waitingPreview?.dayCount ?? 0) + (waitingPreview?.crewCount ?? 0) > 0;
+  const addsProduction = productionMissing && !!projectRole && atLeast(projectRole, 'editor');
   useEffect(() => {
     if (view === 'schedule' || view === 'troupe')
       setOpenedFilmViews((opened) => (opened[view] ? opened : { ...opened, [view]: true }));
@@ -505,10 +522,10 @@ function BoardScreen({
 
   // The counts change with every edit: the tabs depend on what they decide, so the palette's
   // actions below are not registered again each time.
-  const tabKey = headerViews(board, counts, view, hasProduction).join();
+  const tabKey = headerViews(board, counts, view).join();
   const tabs = useMemo(() => (tabKey ? (tabKey.split(',') as BoardView[]) : []), [tabKey]);
   // Optional views on and off, for the ⋯ menu; editors only (decision 0121).
-  const viewsKey = board ? viewsOn(board, counts, hasProduction).join() : '';
+  const viewsKey = board ? viewsOn(board, counts).join() : '';
   const toggleView = useCallback(
     (v: BoardOptionalView) => {
       if (!board) return;
@@ -726,6 +743,13 @@ function BoardScreen({
   const missing =
     conn?.status === 'denied' && missingOwnedBoard(projectRole, boards, boardsError, boardId);
   const productionLink = kind === 'storyboard' && !!production && (pointing ?? 0) > 0;
+  const addProduction = useCallback(() => {
+    if (!rootBoardId) return;
+    void addBoard({ id: projectId, rootBoardId }, 'production', t).then(
+      (to) => navigate(to),
+      () => setScriptToast(t('board.errors.boardCreate')),
+    );
+  }, [projectId, rootBoardId, t, navigate]);
   const header = useMemo(
     () => ({
       start: (
@@ -774,7 +798,7 @@ function BoardScreen({
           {tabs.length > 1 && (
             <ViewTabs id={tabsId} kind={kind} tabs={tabs} view={view} onChoose={chooseView} />
           )}
-          {(editable || outside > 0 || productionLink) && (
+          {(editable || outside > 0 || productionLink || productionMissing) && (
             <div className="board-header-menu" ref={headerMenuAnchor}>
               <IconButton
                 id="board-header-menu"
@@ -791,7 +815,7 @@ function BoardScreen({
                   anchor={headerMenuAnchor}
                   items={[
                     ...(editable && board
-                      ? viewItems(board, counts, toggleView, t, modulesOff, hasProduction)
+                      ? viewItems(board, counts, toggleView, t, modulesOff)
                       : []),
                     // "Shooting days: 3 · Open Production" (decision 0123).
                     ...(productionLink && production
@@ -803,6 +827,28 @@ function BoardScreen({
                             action: () =>
                               navigate(viewHref(projectId, production, 'schedule', rootBoardId)),
                           },
+                          { divider: true as const },
+                        ]
+                      : []),
+                    // Days or a crew but no live Production board: where they are now.
+                    ...(productionMissing
+                      ? [
+                          addsProduction && editable
+                            ? {
+                                label: t('production.storyboardMissing'),
+                                icon: 'film' as const,
+                                kind: 'production' as const,
+                                action: () => {
+                                  if (!isOn('production')) void setModule('production', true);
+                                  addProduction();
+                                },
+                              }
+                            : {
+                                label: t('production.storyboardWaiting'),
+                                icon: 'film' as const,
+                                kind: 'production' as const,
+                                disabled: true,
+                              },
                           { divider: true as const },
                         ]
                       : []),
@@ -981,11 +1027,14 @@ function BoardScreen({
       modulesOff,
       outside,
       openOutside,
-      hasProduction,
       versionable,
       productionLink,
       production,
       pointing,
+      productionMissing,
+      addsProduction,
+      isOn,
+      addProduction,
       navigate,
     ],
   );
@@ -1260,7 +1309,7 @@ function BoardScreen({
  */
 function exportSourceOf(view: string, kind?: Board['kind']): ExportSource {
   if (kind === 'production') return 'production';
-  return view === 'storyboard' || view === 'shotlist' || view === 'schedule' ? view : 'canvas';
+  return view === 'storyboard' || view === 'shotlist' ? view : 'canvas';
 }
 
 function BoardCanvas(props: Omit<Parameters<typeof Canvas>[0], 'peers'>) {

@@ -251,6 +251,13 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
       });
     const on = await patch(story.id, ['review', 'shotlist']);
     expect(on.json().views).toEqual(['shotlist', 'review']);
+    // Schedule and Troupe are the Production board's (decision 0123).
+    // An older web tab still sends them: they are dropped, the rest is saved.
+    const older = await patch(story.id, ['shotlist', 'schedule', 'troupe']);
+    expect(older.statusCode).toBe(200);
+    expect(older.json().views).toEqual(['shotlist']);
+    expect((await patch(story.id, ['troupe'])).json().views).toEqual([]);
+    expect((await patch(story.id, ['moodboard'])).statusCode).toBe(400);
     expect((await patch(mood.id, ['shotlist'])).statusCode).toBe(400);
     expect((await patch(mood.id, ['review'])).statusCode).toBe(400);
     expect((await patch(rootBoardId, ['review'])).json().views).toEqual(['review']);

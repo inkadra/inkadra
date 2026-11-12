@@ -310,6 +310,8 @@ export interface SampleProject {
   rushes: { id: string };
   /** Crew contacts, budget, maps and the script; hidden from guests. */
   production: { id: string };
+  /** The Production board (decision 0123): the shooting days and the crew. */
+  schedule: { id: string };
   /** Asset ids of the stills, by name. */
   asset: Record<string, string>;
   /** The client's share link of the project, with review decisions. */
@@ -363,7 +365,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     people[who] = await joinTeam(base, cookie, project.id, team[who]);
   const by = (who: Member) => ({ userId: people[who].id });
 
-  const board = (title: string, kind: 'board' | 'storyboard' = 'board') =>
+  const board = (title: string, kind: 'board' | 'storyboard' | 'production' = 'board') =>
     api<{ id: string }>(base, cookie, `/projects/${project.id}/boards`, {
       parentBoardId: project.rootBoardId,
       kind,
@@ -373,7 +375,9 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
   const casting = await board('Casting');
   const setPlan = await board('Set plan');
   const rushes = await board('Rushes');
-  const production = await board('Production');
+  // The production office: a board of tables and maps (the Production board comes with the
+  // shooting days, below).
+  const production = await board('Office');
 
   const asset: Record<string, string> = {};
   const upload = async (
@@ -1268,6 +1272,9 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
       block('shot', 'The signal turns green', 45, { shot: '3B' }),
     ],
   });
+  // The days move to the project's Production board, made as "Add → Production" does (0123):
+  // its Schedule and Crew.
+  const schedule = await board('Production', 'production');
 
   // The crew at work: comments with replies, a pin on a detail and a resolved thread, mentions
   // that reach Giulia's inbox, reactions, and the team's review of the frames.
@@ -1440,6 +1447,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     planId,
     rushes,
     production,
+    schedule,
     asset,
     guestUrl,
     next,

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addStoryboard } from '../helpers/views.ts';
+import { addProduction } from '../helpers/views.ts';
 
 test('crew add, autosave and sheet paste persist across reload', async ({ page }) => {
   await page.goto('/login');
@@ -12,7 +12,8 @@ test('crew add, autosave and sheet paste persist across reload', async ({ page }
     data: { name: 'Troupe test' },
   });
   const project = await response.json();
-  const board = await addStoryboard(page.request, new URL(page.url()).origin, project, ['troupe']);
+  // The crew is on the Production board, beside the schedule (decision 0123).
+  const board = await addProduction(page.request, new URL(page.url()).origin, project);
   await page.goto(`/p/${project.id}/b/${board.id}?view=troupe`);
   await expect(page.getByText('Nessuno in troupe.')).toBeVisible();
   await page.getByRole('button', { name: 'Aggiungi persona', exact: true }).click();

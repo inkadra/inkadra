@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { setViews } from '../helpers/views.ts';
+import { addProduction } from '../helpers/views.ts';
 
 // Decision 0092: a person's own call, set in the day's Calls tab, reaches the call sheet.
 // Uses the account created by first-run.spec.ts, with a project of its own.
@@ -20,7 +20,6 @@ test('a call set in the Convocazioni tab is printed on the call sheet', async ({
       data: { parentBoardId: project.rootBoardId, title: 'Spot', kind: 'storyboard' },
     })
   ).json();
-  await setViews(page.request, headers.origin, board.id, ['shotlist', 'schedule']);
   const crew = await page.request.post(`/api/v1/projects/${project.id}/crew/bulk`, {
     headers,
     data: {
@@ -58,8 +57,10 @@ test('a call set in the Convocazioni tab is printed on the call sheet', async ({
     },
   });
   expect(day.status()).toBe(201);
+  // The Production board takes the storyboard's day (decision 0123).
+  const production = await addProduction(page.request, headers.origin, project);
 
-  await page.goto(`/p/${project.id}/b/${board.id}`);
+  await page.goto(`/p/${project.id}/b/${production.id}`);
   await page.getByRole('tab', { name: 'Piano riprese', exact: true }).click();
   const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
   await schedule.getByRole('radio', { name: 'Giorno', exact: true }).check();

@@ -11146,12 +11146,12 @@
           "dayCount": {
             "type": "integer",
             "minimum": 0,
-            "description": "Shooting days."
+            "description": "Shooting days: of a Production board, its own. Of a storyboard (decision 0123), only for members of a project without a live Production board: the project's days that adding one would show (on live boards or on the trashed Production board)."
           },
           "crewCount": {
             "type": "integer",
             "minimum": 0,
-            "description": "People of the project's troupe; only for members of the project."
+            "description": "People of the project's troupe; only for members of the project. On a storyboard, only while the project has no live Production board, like `dayCount`."
           },
           "nextDay": {
             "type": "object",

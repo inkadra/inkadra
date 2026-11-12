@@ -324,21 +324,18 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
         });
       }
       // People of the crew by name, role or department. The roster is the project members'
-      // (decision 0091): a grant on one board never finds it. They open the Troupe view, on the
-      // Production board while the project has a live one (decision 0123), else from the root.
-      // shortcut: the root fallback is the interim of 0121; drop it with step 6 of 0123.
+      // (decision 0091): a grant on one board never finds it. They open the Troupe view of the
+      // Production board, so only while the project has a live one (decision 0123).
       const crew = await db.execute<Row>(sql`
         select c.id, c.name, c.role, c.department, p.id as project_id, p.name as project_name,
-               coalesce(pb.id, r.id) as root_id, coalesce(pb.title, r.title) as root_title,
-               coalesce(pb.kind, r.kind) as root_kind
+               pb.id as root_id, pb.title as root_title, pb.kind as root_kind
         from crew_member c
         join project p on p.id = c.project_id
         join project_member m on m.project_id = c.project_id and m.user_id = ${actor.id}
           and ${live('m')}
-        join board r on r.project_id = c.project_id and r.parent_board_id is null
-        left join board pb on pb.project_id = c.project_id and pb.kind = 'production'
+        join board pb on pb.project_id = c.project_id and pb.kind = 'production'
           and pb.deleted_at is null
-        where coalesce(pb.id, r.id) = any(${boardIn})
+        where pb.id = any(${boardIn})
           and (c.name ilike ${like} or c.role ilike ${like} or c.department ilike ${like})
         order by word_similarity(${q}, c.name) desc, c.name
         limit ${query.limit}`);
@@ -359,12 +356,13 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
           myRole: readable.roles.get(r.root_id as string),
         });
       }
-      // The location of a shooting day, on the boards whose schedule the person can open.
+      // The location of a shooting day, on the Production boards whose schedule the person can
+      // open: only they show a schedule (decision 0123).
       const days = await db.execute<Row>(sql`
         select d.id, d.date, d.location, b.id as board_id, b.title as board_title,
                b.kind as board_kind, p.id as project_id, p.name
         from shooting_day d
-        join board b on b.id = d.board_id
+        join board b on b.id = d.board_id and b.kind = 'production'
         join project p on p.id = d.project_id
         where d.board_id = any(${boardIn}) and d.location ilike ${like}
         order by d.date, d.id

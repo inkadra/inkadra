@@ -2,6 +2,7 @@ import { sceneDay } from '@inkadra/canvas-core';
 import type { Board, ShootingDay } from '@inkadra/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../../lib/api.ts';
+import { loadBoards } from '../boards.ts';
 import { daysPointingAt, loadBoardDays, scheduleBoardFor } from './production-days.ts';
 
 const board = (id: string, kind: Board['kind']) => ({ id, kind }) as Board;
@@ -39,6 +40,19 @@ describe("a storyboard's days (decision 0123)", () => {
     expect(scheduleBoardFor('sbA', [board('sbA', 'storyboard')])).toBe('sbA');
     await loadBoardDays('sbA', [board('sbA', 'storyboard')]);
     expect(get).toHaveBeenCalledWith('/boards/sbA/schedule');
+  });
+
+  it("reads the project's loaded boards when the caller has none (a set plan's sheet)", async () => {
+    const boards = [board('root', 'board'), board('prod', 'production')];
+    const get = vi
+      .spyOn(api, 'get')
+      .mockImplementation((async (path: string) =>
+        path === '/projects/p1/boards'
+          ? { items: boards }
+          : { items: days, nextCursor: null }) as never);
+    await loadBoards('p1');
+    await loadBoardDays('root', null);
+    expect(get).toHaveBeenLastCalledWith('/boards/prod/schedule');
   });
 
   it('counts the days that plan a frame or a scene of a storyboard', () => {

@@ -84,7 +84,7 @@ export async function seedLowTide(browser: Browser, base: string): Promise<LowTi
   const cookie = lia.cookie;
   const by = { userId: lia.id };
 
-  const board = (title: string, kind: 'board' | 'storyboard' = 'board') =>
+  const board = (title: string, kind: 'board' | 'storyboard' | 'production' = 'board') =>
     api<{ id: string }>(base, cookie, `/projects/${project.id}/boards`, {
       parentBoardId: project.rootBoardId,
       kind,
@@ -418,6 +418,8 @@ export async function seedLowTide(browser: Browser, base: string): Promise<LowTi
       block('shot', 'Pick-ups at the shore', 45, { shot: '3C', cast: ['Ivo'] }),
     ],
   });
+  // The day moves to the project's Production board, made as "Add → Production" does (0123).
+  await board('Production', 'production');
 
   // The selects: Lia's note and the 24 pictures, six to a row, in the order they were shot.
   const sel = new Y.Doc();

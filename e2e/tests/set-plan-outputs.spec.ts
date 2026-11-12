@@ -10,6 +10,7 @@ import { addFrame, createElement } from '@inkadra/canvas-core';
 import { createBoardDoc, type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { addProduction } from '../helpers/views.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
 const account = {
@@ -149,6 +150,8 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
     },
   });
   expect(day.status()).toBe(201);
+  // The day moves to the Production board, where the sheet reads it (decision 0123).
+  await addProduction(page.request, baseURL!, project);
   await page.goto(`/p/${project.id}/b/${root}?view=canvas`);
 
   await test.step('the card shows the counts of the mockup', async () => {

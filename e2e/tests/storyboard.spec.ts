@@ -199,9 +199,16 @@ test('opening a note edits its real document and preserves the canvas editor', a
 test('shell views use real shots and the call sheet traps and restores focus', async ({ page }) => {
   await openProject(page);
   await page.locator('[data-type="board"]', { hasText: 'Binario 21' }).dblclick();
-  await turnOn(page, 'Piano riprese');
   await turnOn(page, 'Revisione');
-  await page.getByRole('tab', { name: 'Piano riprese' }).click();
+  const storyboardUrl = page.url();
+  // The storyboard's shots are scheduled on the Production board (decision 0123).
+  await page
+    .locator('.ink-shell > .ink-sidebar')
+    .getByRole('button', { name: 'Opzioni progetto: Ultima corsa', exact: true })
+    .first()
+    .click();
+  await page.getByRole('menuitem', { name: 'Aggiungi Produzione', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'Troupe', exact: true })).toBeVisible();
   const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
   await expect(schedule).toContainText('Il treno entra');
   // The call sheet is generated from the saved shooting days.
@@ -245,6 +252,7 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
   await expect(openSheet).toBeFocused();
+  await page.goto(storyboardUrl);
   await page.getByRole('tab', { name: 'Revisione', exact: true }).click();
   const review = page.getByRole('region', { name: 'Revisione', exact: true });
   // Review rounds do not exist yet, so the view shows no submit action for them.

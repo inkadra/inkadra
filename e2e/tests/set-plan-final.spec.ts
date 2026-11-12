@@ -17,6 +17,7 @@ import {
   STROKE_GRID,
 } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
+import { addProduction } from '../helpers/views.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
@@ -132,13 +133,22 @@ async function seed(page: Page, baseURL: string) {
     expect(day.status()).toBe(201);
     days.push(await day.json());
   }
+  // The days move to the Production board, with a new revision (decision 0123).
+  const production = await addProduction(page.request, baseURL, project);
+  const moved = (await (
+    await page.request.get(`/api/v1/boards/${production.id}/schedule`)
+  ).json()) as { items: Array<{ id: string; revision: number; date: string }> };
+  for (const day of days) {
+    const now = moved.items.find((d) => d.id === day.id);
+    if (now) day.revision = now.revision;
+  }
   const saved = async () => {
     const stored = await readBoard(baseURL, cookie, root);
     return [...roots(stored).elements.values()]
       .map((m) => readElement(m))
       .find((e): e is Plan => e?.id === plan.id) as Plan;
   };
-  return { project, root, planId: plan.id, saved, days };
+  return { project, root, planId: plan.id, saved, days, schedule: production.id };
 }
 
 test('the plan opens at 100 % with its room sizes, stools counted, the sun on a shooting day, choices kept', async ({
@@ -149,7 +159,7 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
   test.setTimeout(180_000);
   mkdirSync(out, { recursive: true });
   await page.setViewportSize({ width: 1280, height: 800 });
-  const { project, root, planId, saved, days } = await seed(page, baseURL!);
+  const { project, planId, saved, days, schedule } = await seed(page, baseURL!);
   const prefs = async () =>
     (await (await page.request.get('/api/v1/me/preferences')).json()) as Record<string, unknown>;
   try {
@@ -203,7 +213,7 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
       .toEqual([day3.id, '2026-03-14']);
     await page.screenshot({ path: join(out, 'final-1280-sun.png') });
     // The day moves to the 20th: the sun's date follows it, still "Day 3".
-    const moved = await page.request.put(`/api/v1/boards/${root}/schedule/${day3.id}`, {
+    const moved = await page.request.put(`/api/v1/boards/${schedule}/schedule/${day3.id}`, {
       headers: { origin: baseURL! },
       data: {
         date: '2026-03-20',
@@ -227,7 +237,7 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
     // cards and exports read it too (decision 0119).
     await expect.poll(async () => (await saved()).sun?.date).toBe('2026-03-20');
     // Deleted: the plan keeps its last date as a plain date and says so.
-    const gone = await page.request.delete(`/api/v1/boards/${root}/schedule/${day3.id}`, {
+    const gone = await page.request.delete(`/api/v1/boards/${schedule}/schedule/${day3.id}`, {
       headers: { origin: baseURL! },
       data: { revision: movedDay.revision },
     });

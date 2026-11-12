@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import { chooseSelect } from '../helpers/select.ts';
+import { addProduction } from '../helpers/views.ts';
 
 // Uses the account created by first-run.spec.ts, and creates it when run on its own.
 const admin = {
@@ -54,6 +55,8 @@ test('home shows today’s shooting day and creates empty projects and boards', 
     },
   });
   expect(day.status()).toBe(201);
+  // The day moves to the Production board, where Home opens it (decision 0123).
+  const production = await addProduction(page.request, origin, project);
 
   await page.reload();
   const main = page.getByRole('main');
@@ -107,6 +110,8 @@ test('home shows today’s shooting day and creates empty projects and boards', 
       .getByRole('region', { name: 'Riprendi', exact: true })
       .getByRole('link', { name: /Empty board/ }),
   ).toBeVisible();
-  await todayCard.locator(`a[href="/p/${project.id}?view=schedule"]`).click();
-  await expect(page).toHaveURL(new RegExp(`/p/${project.id}\\?view=schedule$`));
+  const schedule = `/p/${project.id}/b/${production.id}?view=schedule`;
+  await todayCard.locator(`a[href="${schedule}"]`).click();
+  await expect(page).toHaveURL(new RegExp(`/b/${production.id}\\?view=schedule$`));
+  await expect(page.getByRole('region', { name: 'Piano riprese', exact: true })).toBeVisible();
 });

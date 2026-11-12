@@ -365,6 +365,13 @@ test.beforeAll(async ({ baseURL }) => {
       notes: '',
       blocks,
     });
+  // The days move to the Production board; the sheets read the blocks of this storyboard there
+  // (decision 0123).
+  await post(`/projects/${project.id}/boards`, {
+    parentBoardId: project.rootBoardId,
+    title: 'Produzione',
+    kind: 'production',
+  });
   url = `/p/${project.id}/b/${board.id}`;
 });
 

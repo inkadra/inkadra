@@ -1201,17 +1201,12 @@ test('beside the report button the view tabs stay whole and every click lands', 
     })
   ).json();
   // Every view a storyboard can turn on (decision 0121).
-  await setViews(page.request, headers.origin, board.id, [
-    'shotlist',
-    'schedule',
-    'troupe',
-    'review',
-  ]);
+  await setViews(page.request, headers.origin, board.id, ['shotlist', 'review']);
   await page.goto(`/p/${project.id}/b/${board.id}`);
   await ready(page);
   const strip = page.getByRole('tablist', { name: 'Vista' });
   const tabs = strip.getByRole('tab');
-  await expect(tabs).toHaveCount(5);
+  await expect(tabs).toHaveCount(3);
   // At 1440 nothing is cut off.
   const box = await strip.boundingBox();
   const last = await tabs.last().boundingBox();
@@ -1221,7 +1216,7 @@ test('beside the report button the view tabs stay whole and every click lands', 
   // Narrower, the strip may scroll, and a click on a tab it cuts off still has to land.
   for (const width of [1440, 1000]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const name of ['Piano riprese', 'Revisione', 'Shot list', 'Storyboard']) {
+    for (const name of ['Revisione', 'Shot list', 'Storyboard']) {
       const tab = strip.getByRole('tab', { name, exact: true });
       await tab.click();
       await expect(tab).toHaveAttribute('aria-selected', 'true');

@@ -6349,6 +6349,8 @@
   },
   "production": {
     "storyboardLink_one": "Shooting days: {{count}} · Open Production",
-    "storyboardLink_other": "Shooting days: {{count}} · Open Production"
+    "storyboardLink_other": "Shooting days: {{count}} · Open Production",
+    "storyboardMissing": "Schedule and Crew now live in Production · Add it",
+    "storyboardWaiting": "Schedule and Crew now live in Production · Ask an editor of the project to add it"
   }
 }

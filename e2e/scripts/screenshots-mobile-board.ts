@@ -139,18 +139,18 @@ const shots: Shot[] = [
     },
   ],
   ['13-shotlist', (page, seed) => board(page, seed, seed.storyboard.id, 'shotlist')],
-  ['14-schedule', (page, seed) => board(page, seed, seed.storyboard.id, 'schedule')],
+  ['14-schedule', (page, seed) => board(page, seed, seed.schedule.id, 'schedule')],
   [
     '15-schedule-day',
     async (page, seed) => {
-      await board(page, seed, seed.storyboard.id, 'schedule');
+      await board(page, seed, seed.schedule.id, 'schedule');
       await page.locator('.schedule__summary-card').click();
     },
   ],
   [
     '16-call-sheet',
     async (page, seed) => {
-      await board(page, seed, seed.storyboard.id, 'schedule');
+      await board(page, seed, seed.schedule.id, 'schedule');
       await page.getByRole('button', { name: 'Foglio di lavorazione' }).first().click();
     },
   ],
