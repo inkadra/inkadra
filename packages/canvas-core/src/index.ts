@@ -5,6 +5,7 @@ export * from './board.ts';
 export * from './bounds.ts';
 export * from './card-size.ts';
 export * from './column.ts';
+export * from './far-look.ts';
 export * from './film.ts';
 export * from './geometry.ts';
 export * from './image-crop.ts';
