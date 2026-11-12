@@ -5,6 +5,7 @@ import type { BoardVersion } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { api } from '../lib/api.ts';
 import type { BoardStore } from './store.ts';
 import { VersionsDialog } from './VersionsDialog.tsx';
 
@@ -18,7 +19,7 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('../lib/api.ts', () => ({
-  api: { get: vi.fn(async () => ({ items: [], nextCursor: null })) },
+  api: { get: vi.fn(async () => ({ items: [], nextCursor: null })), patch: vi.fn() },
 }));
 
 const version = {
@@ -33,6 +34,12 @@ const version = {
   docSchemaVersion: 4,
   expiresAt: null,
 } as unknown as BoardVersion;
+
+const snapshot = { byId: new Map() };
+const liveStore = {
+  subscribe: () => () => {},
+  getSnapshot: () => snapshot,
+} as unknown as BoardStore;
 
 let host: HTMLDivElement;
 let root: Root;
@@ -55,7 +62,7 @@ async function render(open: boolean) {
     root.render(
       <VersionsDialog
         open={open}
-        store={{} as BoardStore}
+        store={liveStore}
         editable={true}
         boardId="board-1"
         provider={{ on: vi.fn(), off: vi.fn() } as unknown as HocuspocusProvider}
@@ -99,4 +106,24 @@ it('lets a confirmation opened from the banner take Escape instead of the previe
   expect([...host.querySelectorAll('dialog')].some((dialog) => dialog.open)).toBe(true);
   await act(async () => pressEscape());
   expect(onPreview).not.toHaveBeenCalled();
+});
+
+it('names a version in its row: Escape leaves the edit, not the dialog', async () => {
+  const auto = { ...version, id: 'version-2', kind: 'auto', name: null } as BoardVersion;
+  vi.mocked(api.get).mockResolvedValueOnce({ items: [auto], nextCursor: null });
+  await render(true);
+  const more = host.querySelector<HTMLButtonElement>('button[aria-label="versions.actionsFor"]');
+  await act(async () => more?.click());
+  const keep = [...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+    (item) => item.textContent === 'versions.keep',
+  );
+  await act(async () => keep?.click());
+  const field = host.querySelector<HTMLInputElement>('input[aria-label="versions.name"]');
+  expect(document.activeElement).toBe(field);
+  const key = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  await act(async () => field?.dispatchEvent(key));
+  expect(key.defaultPrevented).toBe(true);
+  expect(host.querySelector('input[aria-label="versions.name"]')).toBeNull();
+  expect(host.querySelector('dialog')?.open).toBe(true);
+  expect(api.patch).not.toHaveBeenCalled();
 });

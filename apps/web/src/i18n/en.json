@@ -122,7 +122,8 @@
     "toShoot_other": "{{left}} of {{count}} shots still to shoot",
     "items_one": "{{count}} item on the board",
     "items_other": "{{count}} items on the board",
-    "addMoodboard": "Add moodboard"
+    "addMoodboard": "Add moodboard",
+    "addProduction": "Add Production"
   },
   "home": {
     "greeting": {
@@ -297,8 +298,10 @@
       "desc": {
         "board": "Free space for notes, images and files.",
         "moodboard": "References in groups, with a palette.",
-        "storyboard": "Scenes and frames, with a shot list."
-      }
+        "storyboard": "Scenes and frames, with a shot list.",
+        "production": "Schedule + Crew"
+      },
+      "present": "Already in the project"
     },
     "toolGroups": {
       "navigate": "Navigate and connect",
@@ -2001,7 +2004,8 @@
       "schedule": "Schedule",
       "review": "Review",
       "moodboard": "Moodboard",
-      "troupe": "Crew"
+      "troupe": "Crew",
+      "production": "Production"
     },
     "aspect": {
       "label": "Aspect ratio",
@@ -3038,14 +3042,18 @@
   },
   "versions": {
     "title": "Board versions",
+    "view": "View",
+    "now": "Now",
+    "currentBoard": "Current board",
     "boardMenu": "Board menu",
-    "description": "Automatic versions are kept for 30 days. Named versions stay until you delete them.",
     "name": "Version name",
+    "saveLabel": "Save the current state as a version",
+    "placeholder": "E.g. Before the client review",
     "save": "Save version",
     "rename": "Rename",
-    "renameField": "New version name",
-    "renameSubmit": "Save new name",
     "keep": "Give a name",
+    "submitName": "Save",
+    "nameHint": "With a name it stays until you delete it",
     "cancel": "Cancel",
     "reload": "Reload list",
     "loading": "Loading versions…",
@@ -3055,12 +3063,18 @@
     "delete": "Delete",
     "close": "Close",
     "more": "Load more versions",
-    "automaticAuthor": "System",
+    "kept": "Kept",
+    "expiresIn_one": "deleted in {{count}} day",
+    "expiresIn_other": "deleted in {{count}} days",
+    "expiresSoon": "deleted within a day",
+    "actionsFor": "More actions for {{name}} ({{date}})",
+    "retention": "Automatic saves are deleted after 30 days. Give a name to the ones you want to keep.",
+    "today": "Today",
+    "yesterday": "Yesterday",
     "elements_one": "{{count}} element",
     "elements_other": "{{count}} elements",
     "kind": {
-      "auto": "Automatic",
-      "named": "Named",
+      "auto": "Automatic save",
       "restore": "Before restore"
     },
     "banner": "Preview of the version from {{date}}",
@@ -3155,7 +3169,8 @@
       "shot": "Shot",
       "break": "Break",
       "move": "Move",
-      "note": "Note"
+      "note": "Note",
+      "scene": "Whole scene"
     },
     "days_one": "{{count}} shooting day",
     "days_other": "{{count}} shooting days",
@@ -3289,7 +3304,16 @@
     "dayMoved": "Day moved from {{from}} to {{to}}.",
     "daysSwapped": "{{from}} and {{to}} swapped.",
     "blockNotes": "Highlighted note",
-    "blockNotesPlaceholder": "Printed on the call sheet, e.g. LIGHTS AND WINDOWS ON"
+    "blockNotesPlaceholder": "Printed on the call sheet, e.g. LIGHTS AND WINDOWS ON",
+    "unavailable": "Storyboard not available",
+    "missingScene": "Missing scene",
+    "noStoryboardShots": "No storyboard with scenes or frames yet. The scenes and frames of the project’s storyboards come here.",
+    "filterStoryboard": "Filter by storyboard",
+    "storyboardFilterLabel": "Storyboard",
+    "wholeScene": "Plan the whole scene",
+    "wholeSceneHint_one": "{{count}} frame, as one block",
+    "wholeSceneHint_other": "{{count}} frames, as one block",
+    "sceneNoFrames": "No frames yet: plan it as one block"
   },
   "moodboard": {
     "count_one": "{{count}} reference",
@@ -4307,7 +4331,8 @@
       "fraunces": "serif",
       "space-grotesk": "grotesk",
       "ibm-plex-mono": "mono"
-    }
+    },
+    "whatCallsheets": "Call sheets"
   },
   "screenplay": {
     "open": "Import screenplay…",
@@ -5091,7 +5116,7 @@
           },
           "2": {
             "title": "New boards",
-            "text": "Canvas creates boards, moodboards and storyboards, and imports a screenplay."
+            "text": "Canvas creates boards, moodboards, storyboards and the project’s one Production board (Schedule and Crew), and imports a screenplay."
           },
           "3": {
             "title": "Select a card",
@@ -5197,15 +5222,15 @@
         "steps": {
           "0": {
             "title": "The shooting calendar",
-            "text": "Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end. With set plans, “Group by: Setup” puts the shots of each scene and day under their setup."
+            "text": "On the Production board, one calendar for the whole project: the queue holds the frames and scenes of every storyboard. Day or week, like a calendar: blocks queue up by themselves. Drag a shot to the right time, or click it to add it at the end. With set plans, “Group by: Setup” puts the shots of each scene and day under their setup."
           },
           "1": {
-            "title": "Move and stretch",
-            "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture."
+            "title": "Storyboards and dots",
+            "text": "The Storyboard filter shows the frames of one; the coloured dot says which storyboard each block comes from. “Plan the whole scene” puts a scene in one block, even before it is drawn. A grey dot: the storyboard is not available, its label stays."
           },
           "2": {
-            "title": "Draw a block",
-            "text": "Drag on empty time to draw a block in 5-minute steps, then pick its type (keys 1–5). The Day view also has “Block” in the bar. With the keyboard, N adds a block after the selected one, or at the end of the day."
+            "title": "Move and stretch",
+            "text": "Drag to reorder, Alt for a fixed time, the bottom edge for the length. Drop on a free date to create a shooting day; Ctrl+Z undoes the whole gesture. Drag on empty time to draw a block in 5-minute steps, then pick its type (keys 1–5). The Day view also has “Block” in the bar. With the keyboard, N adds a block after the selected one, or at the end of the day."
           },
           "3": {
             "title": "Move a whole day",
@@ -5555,7 +5580,7 @@
         "steps": {
           "0": {
             "title": "Project crew",
-            "text": "Group people by department. Contacts stay private to the project team. Same person on two rows? Use “Merge with…” in the row’s ⋯ menu."
+            "text": "The crew lives on the Production board, beside the schedule. Group people by department. Contacts stay private to the project team. Same person on two rows? Use “Merge with…” in the row’s ⋯ menu."
           },
           "1": {
             "title": "Edit a person",
@@ -6299,5 +6324,9 @@
       "storyboard": "{{scenes}} on the board. With Storyboard they become frames."
     },
     "offLine": "{{name}} module off: you can read this board."
+  },
+  "production": {
+    "storyboardLink_one": "Shooting days: {{count}} · Open Production",
+    "storyboardLink_other": "Shooting days: {{count}} · Open Production"
   }
 }

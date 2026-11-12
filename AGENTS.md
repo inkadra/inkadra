@@ -44,6 +44,30 @@ export contents follow the switch; a feature that fits none either belongs to Bo
 or needs a decision for a new module. Off hides the ways to create, never existing data. Where
 an off module would change the result of what the person just did, say so once, with Turn on.
 
+## Changes that reach the mobile app
+
+The mobile app (MPL-2.0, currently Android) uses `packages/*` through a pinned revision of
+this repository and talks to the server's `/api/v1`. It never copies code from `apps/web` or
+`apps/server` (decisions 0008, 0116). Changes confined to `apps/web` or `apps/server` alone
+do not reach it. These do:
+
+1. **`packages/*`** (`canvas-core`, `doc-schema`, `print`, `shared`, `ui`): any exported name
+   added, renamed or removed, and any change of behaviour, types or shared word catalogues.
+2. **Server API**: stay compatible with installed app versions. Gate new behaviour behind
+   a capability in `GET /api/v1/instance/version` (decisions 0120, 0122); keep changes additive
+   within v1. Never remove or rename fields, error codes or endpoints without a new version or
+   deprecation period (see CONTRIBUTING.md).
+3. **Board document schema**: follow CONTRIBUTING.md and decision 0102. Every schema change
+   bumps `CURRENT_SCHEMA_VERSION` in `packages/doc-schema` with a migration. Lowering `min` in
+   `WRITER_SCHEMAS` requires a proof test in `canvas-core` that older writers lose nothing;
+   keep unknown fields and preserve the strict per-card check.
+4. **Logic moved from `apps/web` into a package** (decision 0116): move shared product logic
+   into an MPL package first so the mobile app imports it rather than duplicating AGPL code.
+
+When your change touches any of these, end your PR report with one line for the maintainers:
+`#<PR> merged: <sha>. <what changed> — for the app: <nothing | what to adapt>`, and write
+**BREAKING** when existing callers must change.
+
 ## Keep the tutorials up to date
 
 Any change that adds, moves, renames or removes interface must update the tour of that feature in

@@ -8,6 +8,7 @@ describe('the module registry (decision 0121)', () => {
     expect(moduleOf('kinds', 'storyboard')).toBe('storyboard');
     expect(moduleOf('kinds', 'moodboard')).toBe('moodboard');
     expect(moduleOf('kinds', 'board')).toBeNull();
+    expect(moduleOf('kinds', 'production')).toBe('production');
     expect(moduleOf('views', 'schedule')).toBe('production');
     expect(moduleOf('views', 'review')).toBe('review');
     expect(moduleOf('tools', 'plan')).toBe('plan');

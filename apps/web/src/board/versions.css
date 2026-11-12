@@ -1,54 +1,263 @@
 .ink-dialog:has(.versions) {
   width: min(720px, calc(100vw - 32px));
 }
+/* The Versions / Trash switch sits on the title's row, and goes under it when it does not fit. */
+.ink-dialog[open]:has(> .versions) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 12px;
+}
+.ink-dialog:has(> .versions) > .ink-dialog__title {
+  flex: 1 1 auto;
+  margin: 0;
+}
 .versions {
+  flex: 1 1 100%;
   min-width: 0;
+}
+.versions > section > p:first-child {
+  margin-top: 0;
+}
+.versions__now {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+}
+.versions__now-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+.versions__now-head strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.versions__live {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-status-ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-status-ok) 20%, transparent);
 }
 .versions__save {
   display: flex;
   align-items: end;
   gap: 8px;
-  margin: 20px 0;
   flex-wrap: wrap;
 }
 .versions__save .ink-field {
   flex: 1;
-  min-width: 180px;
+  min-width: 140px;
+}
+/* The label reads across the card, above the button too. */
+.versions__save .ink-field__label {
+  white-space: nowrap;
 }
 .versions__list {
   max-height: 52vh;
   overflow: auto;
 }
-.versions__list h3 {
+.versions__day {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 20px 0 4px;
   font-size: 12px;
+  font-weight: 400;
   color: var(--ink-text-muted);
-  font-weight: 500;
-  margin: 20px 0 8px;
+}
+.versions__day strong {
+  font-weight: 600;
+  color: var(--ink-text-primary);
 }
 .versions__list ul {
   list-style: none;
   padding: 0;
   margin: 0;
 }
-.versions__item {
-  padding: 14px 0;
-  border-bottom: 1px solid var(--ink-border-default);
-}
-.versions__meta {
+/* A timeline: time, then a rail with a dot (filled for versions kept by name), then the text. */
+.versions__row {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
 }
-.versions__meta strong {
+.versions__time {
+  flex: none;
+  min-width: 44px;
+  text-align: right;
   font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.versions__rail {
+  position: relative;
+  flex: none;
+  align-self: stretch;
+  width: 9px;
+}
+.versions__rail::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: -10px;
+  bottom: -10px;
+  width: 1px;
+  background: var(--ink-border-default);
+}
+.versions__row:first-child .versions__rail::before {
+  top: 6px;
+}
+.versions__row:last-child .versions__rail::before {
+  bottom: auto;
+  height: 16px;
+}
+.versions__row:only-child .versions__rail::before {
+  display: none;
+}
+.versions__rail::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--ink-text-muted);
+  border-radius: 50%;
+  background: var(--ink-surface-float);
+}
+.versions__row.is-named .versions__rail::after {
+  border-color: var(--ink-accent-primary);
+  background: var(--ink-accent-primary);
+}
+.versions__body {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px 12px;
+  flex: 1;
+  min-width: 0;
+}
+.versions__text {
+  flex: 1;
+  min-width: 0;
+}
+.versions__name {
+  display: block;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ink-text-secondary);
   overflow-wrap: anywhere;
 }
-.versions__actions {
+.versions__row.is-named .versions__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-text-primary);
+}
+.versions__info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-text-muted);
+}
+.versions__kept {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px 1px 6px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+  font-size: 11px;
+  font-weight: 500;
+}
+.versions__expiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-status-warn);
+}
+.versions__edit {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 10px;
+}
+.versions__edit .ink-input {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+.versions__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+.versions .ink-dialog__actions {
+  align-items: center;
+  gap: 12px;
+}
+.versions__retention {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 auto 0 0;
+  font-size: 12px;
+  color: var(--ink-text-muted);
+}
+.versions__retention svg {
+  flex: none;
+  margin-top: 1px;
+}
+@media (width >= 768px) {
+  .versions__save-short {
+    display: none;
+  }
+  .versions .ink-dialog__actions {
+    padding-top: 14px;
+    border-top: 1px solid var(--ink-border-default);
+  }
+}
+/* Phones: the actions go under the text, and Close takes the whole width under the note. */
+@media (width < 768px) {
+  .versions__body {
+    flex-wrap: wrap;
+  }
+  /* Touch-high buttons with the desktop text size, so ⋯ stays on the row; longer words wrap. */
+  .versions__actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .versions__actions .ink-btn,
+  .versions__edit .ink-btn {
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .versions__actions .ink-btn--ghost,
+  .versions__edit .ink-btn--ghost {
+    padding: 0 6px;
+  }
+  .versions__save-long {
+    display: none;
+  }
+  .versions__now-board {
+    display: none;
+  }
+  .versions .ink-dialog__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 .version-banner {
   display: flex;
@@ -121,20 +330,25 @@
 .card > .guest-visibility + .card__lock {
   right: 28px;
 }
-.versions__tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.versions__tabs [aria-selected="true"] {
-  background: var(--ink-surface-1);
-  border-color: var(--ink-text-muted);
-}
 .versions__trash-list {
   list-style: none;
   padding: 0;
   max-height: 52vh;
   overflow: auto;
+}
+.versions__item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--ink-border-default);
+}
+.versions__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.versions__meta strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
 }
 .versions__trash-list .versions__item {
   display: flex;

@@ -1110,6 +1110,25 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     bruno = (await open(linkA, { name: 'Bruno' })).cookie;
   });
 
+  it('never serves the team preview of a board to a guest session or a share-link token', async () => {
+    const path = `/api/v1/boards/${B.A}/preview`;
+    expect((await call('editor', 'GET', path)).status).toBe(200);
+    const guest = await call({ cookie: carla }, 'GET', path);
+    expect(guest.status).toBe(401);
+    expect(guest.body).not.toHaveProperty('elementCount');
+    for (const extra of [
+      { authorization: `Bearer ${linkC.token}` },
+      { authorization: `Bearer ${linkC.id}` },
+    ]) {
+      const res = await call(null, 'GET', path, undefined, extra);
+      expect(res.status).toBe(401);
+      expect(res.body).not.toHaveProperty('elementCount');
+    }
+    const query = await call(null, 'GET', `${path}?token=${linkC.token}`);
+    expect(query.status).toBe(401);
+    expect(query.body).not.toHaveProperty('elementCount');
+  });
+
   it('reuses the guest of an earlier visit and replaces the cookie token', async () => {
     const first = await open(linkV, { name: 'Vera' });
     const again = await open(linkV, { cookie: first.cookie });

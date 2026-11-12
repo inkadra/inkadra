@@ -122,7 +122,8 @@
     "toShoot_other": "{{left}} de {{count}} planos ainda por filmar",
     "items_one": "{{count}} item no quadro",
     "items_other": "{{count}} itens no quadro",
-    "addMoodboard": "Adicionar moodboard"
+    "addMoodboard": "Adicionar moodboard",
+    "addProduction": "Adicionar Produção"
   },
   "home": {
     "greeting": {
@@ -297,8 +298,10 @@
       "desc": {
         "board": "Espaço livre para notas, imagens e ficheiros.",
         "moodboard": "Referências em grupos, com paleta.",
-        "storyboard": "Cenas e frames, com lista de planos."
-      }
+        "storyboard": "Cenas e frames, com lista de planos.",
+        "production": "Cronograma + Equipa"
+      },
+      "present": "Já está no projeto"
     },
     "toolGroups": {
       "navigate": "Navegar e conectar",
@@ -2001,7 +2004,8 @@
       "schedule": "Cronograma",
       "review": "Revisão",
       "moodboard": "Moodboard",
-      "troupe": "Equipa"
+      "troupe": "Equipa",
+      "production": "Produção"
     },
     "aspect": {
       "label": "Proporção",
@@ -3038,14 +3042,18 @@
   },
   "versions": {
     "title": "Versões do quadro",
+    "view": "Visualização",
+    "now": "Agora",
+    "currentBoard": "Quadro atual",
     "boardMenu": "Menu do quadro",
-    "description": "As versões automáticas ficam guardadas por 30 dias. As versões com nome ficam até você excluí-las.",
     "name": "Nome da versão",
+    "saveLabel": "Salvar o estado atual como versão",
+    "placeholder": "Ex.: Antes da revisão com o cliente",
     "save": "Salvar versão",
     "rename": "Renomear",
-    "renameField": "Novo nome da versão",
-    "renameSubmit": "Salvar o novo nome",
     "keep": "Dar um nome",
+    "submitName": "Salvar",
+    "nameHint": "Com um nome, fica até você excluí-la",
     "cancel": "Cancelar",
     "reload": "Recarregar lista",
     "loading": "Carregando versões…",
@@ -3055,12 +3063,18 @@
     "delete": "Excluir",
     "close": "Fechar",
     "more": "Carregar mais versões",
-    "automaticAuthor": "Sistema",
+    "kept": "Guardada",
+    "expiresIn_one": "será excluída em {{count}} dia",
+    "expiresIn_other": "será excluída em {{count}} dias",
+    "expiresSoon": "será excluída em menos de um dia",
+    "actionsFor": "Mais ações para {{name}} ({{date}})",
+    "retention": "Os salvamentos automáticos são excluídos após 30 dias. Dê um nome aos que você quer guardar.",
+    "today": "Hoje",
+    "yesterday": "Ontem",
     "elements_one": "{{count}} item",
     "elements_other": "{{count}} itens",
     "kind": {
-      "auto": "Automática",
-      "named": "Com nome",
+      "auto": "Salvamento automático",
       "restore": "Antes da restauração"
     },
     "banner": "Prévia da versão de {{date}}",
@@ -3155,7 +3169,8 @@
       "shot": "Filmagem",
       "break": "Pausa",
       "move": "Deslocamento",
-      "note": "Nota"
+      "note": "Nota",
+      "scene": "Cena inteira"
     },
     "days_one": "{{count}} diária",
     "days_other": "{{count}} diárias",
@@ -3289,7 +3304,16 @@
     "dayMoved": "Dia movido de {{from}} para {{to}}.",
     "daysSwapped": "{{from}} e {{to}} trocados.",
     "blockNotes": "Nota em destaque",
-    "blockNotesPlaceholder": "Impressa na folha, p. ex. LUZES E MONTRAS ACESAS"
+    "blockNotesPlaceholder": "Impressa na folha, p. ex. LUZES E MONTRAS ACESAS",
+    "unavailable": "Storyboard indisponível",
+    "missingScene": "Cena removida",
+    "noStoryboardShots": "Ainda não há storyboards com cenas ou planos. As cenas e os planos dos storyboards do projeto aparecem aqui.",
+    "filterStoryboard": "Filtrar por storyboard",
+    "storyboardFilterLabel": "Storyboard",
+    "wholeScene": "Planear a cena inteira",
+    "wholeSceneHint_one": "{{count}} plano, num só bloco",
+    "wholeSceneHint_other": "{{count}} planos, num só bloco",
+    "sceneNoFrames": "Ainda sem planos: planeie-a num bloco"
   },
   "moodboard": {
     "count_one": "{{count}} referência",
@@ -4307,7 +4331,8 @@
       "fraunces": "serifada",
       "space-grotesk": "grotesca",
       "ibm-plex-mono": "mono"
-    }
+    },
+    "whatCallsheets": "Folhas de serviço"
   },
   "screenplay": {
     "open": "Importar roteiro…",
@@ -5091,7 +5116,7 @@
           },
           "2": {
             "title": "Novos quadros",
-            "text": "Canvas cria quadros, moodboards e storyboards, e importa um roteiro."
+            "text": "Canvas cria quadros, moodboards, storyboards e o único quadro Produção do projeto (Cronograma e Equipa), e importa um guião."
           },
           "3": {
             "title": "Selecione um cartão",
@@ -5197,15 +5222,15 @@
         "steps": {
           "0": {
             "title": "O calendário de rodagem",
-            "text": "Dia ou semana, como num calendário: os blocos põem-se em fila sozinhos. Arraste um plano para a hora certa, ou clique nele para o pôr no fim. Com plantas do set, «Agrupar por: Setup» põe os planos de cada cena e de cada dia sob o seu setup."
+            "text": "No quadro Produção, um calendário para todo o projeto: a fila reúne os planos e as cenas de cada storyboard. Dia ou semana, como num calendário: os blocos põem-se em fila sozinhos. Arraste um plano para a hora certa, ou clique nele para o pôr no fim. Com plantas do set, «Agrupar por: Setup» põe os planos de cada cena e de cada dia sob o seu setup."
           },
           "1": {
-            "title": "Mova e estique",
-            "text": "Arraste para reordenar, com Alt para fixar a hora, pela margem inferior para a duração. Largue numa data livre para criar um dia de rodagem; Ctrl+Z desfaz o gesto inteiro."
+            "title": "Storyboards e pontos",
+            "text": "O filtro Storyboard mostra os planos de um só; o ponto colorido diz de que storyboard vem cada bloco. «Planear a cena inteira» põe uma cena num bloco, mesmo antes de ser desenhada. Um ponto cinzento: storyboard indisponível, fica a etiqueta."
           },
           "2": {
-            "title": "Desenhe um bloco",
-            "text": "Arraste sobre tempo livre para desenhar um bloco em passos de 5 minutos e escolha o tipo (teclas 1–5). A vista Day também tem «Block» na barra. Com o teclado, N adiciona um bloco depois do selecionado, ou no fim do dia."
+            "title": "Mova e estique",
+            "text": "Arraste para reordenar, com Alt para fixar a hora, pela margem inferior para a duração. Largue numa data livre para criar um dia de rodagem; Ctrl+Z desfaz o gesto inteiro. Arraste sobre tempo livre para desenhar um bloco em passos de 5 minutos e escolha o tipo (teclas 1–5). A vista Day também tem «Block» na barra. Com o teclado, N adiciona um bloco depois do selecionado, ou no fim do dia."
           },
           "3": {
             "title": "Mova um dia inteiro",
@@ -5555,7 +5580,7 @@
         "steps": {
           "0": {
             "title": "Equipa do projeto",
-            "text": "Agrupe as pessoas por departamento. Os contactos ficam privados para a equipa do projeto. A mesma pessoa em duas linhas? Menu ⋯ da linha, «Juntar com…»."
+            "text": "A equipa está no quadro Produção, ao lado do cronograma. Agrupe as pessoas por departamento. Os contactos ficam privados para a equipa do projeto. A mesma pessoa em duas linhas? Menu ⋯ da linha, «Juntar com…»."
           },
           "1": {
             "title": "Edite uma pessoa",
@@ -6299,5 +6324,9 @@
       "storyboard": "{{scenes}} no quadro. Com Storyboard tornam-se frames."
     },
     "offLine": "Módulo {{name}} desligado: pode ler este quadro."
+  },
+  "production": {
+    "storyboardLink_one": "Dias de filmagem: {{count}} · Abrir Produção",
+    "storyboardLink_other": "Dias de filmagem: {{count}} · Abrir Produção"
   }
 }

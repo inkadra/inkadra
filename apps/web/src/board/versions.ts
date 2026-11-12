@@ -33,6 +33,25 @@ export function groupVersions(items: BoardVersion[]): Array<{ day: Date; items: 
   return [...groups.values()];
 }
 
+const DAY = 24 * 60 * 60 * 1000;
+
+/** Calendar days from `day` to `now`, in local time: 0 today, 1 yesterday. */
+export function daysAgo(day: Date, now: Date = new Date()): number {
+  const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  // Rounded: a day with a daylight saving change is 23 or 25 hours long.
+  return Math.round((start(now) - start(day)) / DAY);
+}
+
+/**
+ * Whole days left before an automatic cleanup removes a version, only when it is a week or less
+ * away (0: less than a day); null for versions kept until deleted or further away.
+ */
+export function expiryDays(expiresAt: string | null, now: number = Date.now()): number | null {
+  if (!expiresAt) return null;
+  const left = Date.parse(expiresAt) - now;
+  return left <= 7 * DAY ? Math.max(0, Math.floor(left / DAY)) : null;
+}
+
 /**
  * Applies a local change to the pages already loaded, in the server's order (newest first, then
  * id), so a save, rename or delete never drops the versions loaded with "load more".

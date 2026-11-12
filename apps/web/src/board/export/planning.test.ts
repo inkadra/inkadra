@@ -480,3 +480,36 @@ describe('call sheet layout', () => {
       }
   });
 });
+
+it('lists a scene block with the heading, place and cast of its scene (decision 0123)', () => {
+  const elements = new Map<string, Element>([
+    ['scene012', { id: 'scene012', type: 'scene', number: '12', location: 'Binario 4' } as Element],
+    ['frame12a', { id: 'frame12a', type: 'frame', parent: 'scene012', cast: ['Mara'] } as Element],
+  ]);
+  const block = (id: string, extra: object) => ({
+    id,
+    title: '',
+    duration: 60,
+    start: null,
+    cast: [],
+    departments: [],
+    shotId: null,
+    ...extra,
+  });
+  const blocks = [
+    block('whole', { type: 'scene', sceneId: 'scene012', cast: ['Leo'] }),
+    // A frame of a storyboard this reader cannot open: its label as last seen.
+    block('away', { type: 'shot', shotId: 'elsewhere', shotLabel: '7B' }),
+  ] as unknown as ShootingDay['blocks'];
+  const sections = callSheetSections(day('2026-11-19', { blocks }), () => undefined, t, elements);
+  const schedule = sections.find((s) => s.title === 'callSheet.schedule');
+  const [whole, away] = schedule?.rows.slice(1) ?? [];
+  expect(whole).toEqual([
+    expect.any(String),
+    '12',
+    'schedule.types.scene',
+    expect.stringContaining('schedule.sceneShort{"number":"12"}'),
+    'Leo, Mara',
+  ]);
+  expect(away?.[2]).toBe('7B');
+});

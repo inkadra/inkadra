@@ -28,9 +28,13 @@ vi.mock('../lib/session.tsx', () => ({
 vi.mock('../lib/theme.ts', () => ({ useTheme: () => ({ theme: 'light', toggle: vi.fn() }) }));
 vi.mock('../lib/api.ts', () => ({
   api: { get: vi.fn(async () => ({ items: [], nextCursor: null })), post: vi.fn() },
-  authApi: {},
+  authApi: { signOut: vi.fn(async () => {}) },
   RequestError: class extends Error {},
 }));
+vi.mock('../board/board-previews.ts', async (actual) => {
+  const real = await actual<typeof import('../board/board-previews.ts')>();
+  return { ...real, resetBoardPreviews: vi.fn(real.resetBoardPreviews) };
+});
 vi.mock('./InstanceSetup.tsx', () => ({
   useInstanceSetup: () => ({ checks: null, error: false }),
 }));
@@ -181,6 +185,7 @@ async function mount(path: string) {
               <Route index element={<output data-index />} />
               <Route path="projects" element={<Page />} />
               <Route path="settings" element={<Where />} />
+              <Route path="p/*" element={<Page />} />
             </Route>
           </Routes>
         </MemoryRouter>
@@ -443,5 +448,48 @@ it.each([
   } finally {
     await unmount();
     spy.mockRestore();
+  }
+});
+
+it.each([
+  ['/p/first', 'page'],
+  // Notification links and search hits name the root board: still the project's own row.
+  ['/p/first/b/b1', 'page'],
+  ['/p/first/b/other', null],
+])('marks the project row current at %s', async (path, current) => {
+  const { api } = await import('../lib/api.ts');
+  const { setCachedProjects } = await import('./projects.ts');
+  const first = { id: 'first', name: 'First', rootBoardId: 'b1' } as never;
+  const original = vi.mocked(api.get).getMockImplementation();
+  vi.mocked(api.get).mockImplementation((async (url: string) =>
+    url === '/projects'
+      ? { items: [first], nextCursor: null }
+      : { items: [], nextCursor: null }) as never);
+  setCachedProjects([first]);
+  const { host, unmount } = await mount(path);
+  try {
+    const row = [...host.querySelectorAll<HTMLElement>('.ink-sidebar .ink-nav')].find((b) =>
+      b.textContent?.includes('First'),
+    );
+    expect(row).toBeTruthy();
+    expect(row?.getAttribute('aria-current')).toBe(current);
+  } finally {
+    await unmount();
+    setCachedProjects(null);
+    vi.mocked(api.get).mockImplementation(original as never);
+  }
+});
+
+it('forgets the cached board previews on sign-out', async () => {
+  const { resetBoardPreviews } = await import('../board/board-previews.ts');
+  const { authApi } = await import('../lib/api.ts');
+  vi.mocked(resetBoardPreviews).mockClear();
+  const { button, unmount } = await mount('/projects');
+  try {
+    await act(async () => button('auth.signOut')?.click());
+    expect(authApi.signOut).toHaveBeenCalled();
+    expect(resetBoardPreviews).toHaveBeenCalledTimes(1);
+  } finally {
+    await unmount();
   }
 });

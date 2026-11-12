@@ -122,7 +122,8 @@
     "toShoot_other": "{{left}} von {{count}} Shots noch zu drehen",
     "items_one": "{{count}} Element im Board",
     "items_other": "{{count}} Elemente im Board",
-    "addMoodboard": "Moodboard hinzufügen"
+    "addMoodboard": "Moodboard hinzufügen",
+    "addProduction": "Produktion hinzufügen"
   },
   "home": {
     "greeting": {
@@ -297,8 +298,10 @@
       "desc": {
         "board": "Freie Fläche für Notizen, Bilder und Dateien.",
         "moodboard": "Referenzen in Gruppen, mit Palette.",
-        "storyboard": "Szenen und Frames, mit Shotlist."
-      }
+        "storyboard": "Szenen und Frames, mit Shotlist.",
+        "production": "Drehplan + Team"
+      },
+      "present": "Schon im Projekt"
     },
     "toolGroups": {
       "navigate": "Navigieren und verbinden",
@@ -2001,7 +2004,8 @@
       "schedule": "Drehplan",
       "review": "Review",
       "moodboard": "Moodboard",
-      "troupe": "Team"
+      "troupe": "Team",
+      "production": "Produktion"
     },
     "aspect": {
       "label": "Seitenverhältnis",
@@ -3038,14 +3042,18 @@
   },
   "versions": {
     "title": "Board-Versionen",
+    "view": "Ansicht",
+    "now": "Jetzt",
+    "currentBoard": "Aktuelles Board",
     "boardMenu": "Board-Menü",
-    "description": "Automatische Versionen werden 30 Tage aufbewahrt. Benannte Versionen bleiben, bis du sie löschst.",
     "name": "Name der Version",
+    "saveLabel": "Aktuellen Stand als Version speichern",
+    "placeholder": "z. B. Vor der Abnahme mit dem Kunden",
     "save": "Version speichern",
     "rename": "Umbenennen",
-    "renameField": "Neuer Name der Version",
-    "renameSubmit": "Neuen Namen speichern",
     "keep": "Benennen",
+    "submitName": "Speichern",
+    "nameHint": "Mit einem Namen bleibt sie, bis du sie löschst",
     "cancel": "Abbrechen",
     "reload": "Liste neu laden",
     "loading": "Versionen werden geladen…",
@@ -3055,12 +3063,18 @@
     "delete": "Löschen",
     "close": "Schließen",
     "more": "Weitere Versionen laden",
-    "automaticAuthor": "System",
+    "kept": "Behalten",
+    "expiresIn_one": "wird in {{count}} Tag gelöscht",
+    "expiresIn_other": "wird in {{count}} Tagen gelöscht",
+    "expiresSoon": "wird innerhalb eines Tages gelöscht",
+    "actionsFor": "Weitere Aktionen für {{name}} ({{date}})",
+    "retention": "Automatische Sicherungen werden nach 30 Tagen gelöscht. Benenne die, die du behalten willst.",
+    "today": "Heute",
+    "yesterday": "Gestern",
     "elements_one": "{{count}} Element",
     "elements_other": "{{count}} Elemente",
     "kind": {
-      "auto": "Automatisch",
-      "named": "Benannt",
+      "auto": "Automatische Sicherung",
       "restore": "Vor Wiederherstellung"
     },
     "banner": "Vorschau der Version vom {{date}}",
@@ -3155,7 +3169,8 @@
       "shot": "Dreh",
       "break": "Pause",
       "move": "Umzug",
-      "note": "Notiz"
+      "note": "Notiz",
+      "scene": "Ganze Szene"
     },
     "days_one": "{{count}} Drehtag",
     "days_other": "{{count}} Drehtage",
@@ -3289,7 +3304,16 @@
     "dayMoved": "Tag von {{from}} auf {{to}} verschoben.",
     "daysSwapped": "{{from}} und {{to}} getauscht.",
     "blockNotes": "Hervorgehobene Notiz",
-    "blockNotesPlaceholder": "Wird auf die Dispo gedruckt, z. B. LICHTERKETTEN UND SCHAUFENSTER AN"
+    "blockNotesPlaceholder": "Wird auf die Dispo gedruckt, z. B. LICHTERKETTEN UND SCHAUFENSTER AN",
+    "unavailable": "Storyboard nicht verfügbar",
+    "missingScene": "Fehlende Szene",
+    "noStoryboardShots": "Noch kein Storyboard mit Szenen oder Shots. Die Szenen und Shots der Storyboards des Projekts erscheinen hier.",
+    "filterStoryboard": "Nach Storyboard filtern",
+    "storyboardFilterLabel": "Storyboard",
+    "wholeScene": "Ganze Szene planen",
+    "wholeSceneHint_one": "{{count}} Shot, als ein Block",
+    "wholeSceneHint_other": "{{count}} Shots, als ein Block",
+    "sceneNoFrames": "Noch keine Shots: als einen Block planen"
   },
   "moodboard": {
     "count_one": "{{count}} Referenz",
@@ -4307,7 +4331,8 @@
       "fraunces": "Serif",
       "space-grotesk": "Grotesk",
       "ibm-plex-mono": "Mono"
-    }
+    },
+    "whatCallsheets": "Dispos"
   },
   "screenplay": {
     "open": "Drehbuch importieren…",
@@ -5091,7 +5116,7 @@
           },
           "2": {
             "title": "Neue Boards",
-            "text": "Canvas erstellt Boards, Moodboards und Storyboards und importiert ein Drehbuch."
+            "text": "Canvas erstellt Boards, Moodboards, Storyboards und das eine Board Produktion des Projekts (Drehplan und Team) und importiert ein Drehbuch."
           },
           "3": {
             "title": "Eine Karte auswählen",
@@ -5197,15 +5222,15 @@
         "steps": {
           "0": {
             "title": "Der Drehkalender",
-            "text": "Tag oder Woche, wie in einem Kalender: Die Blöcke reihen sich von selbst aneinander. Zieh eine Einstellung auf die richtige Uhrzeit oder klick sie an, um sie ans Ende zu setzen. Mit Setplänen ordnet „Gruppieren nach: Setup“ die Einstellungen jeder Szene und jedes Drehtags ihrem Setup zu."
+            "text": "Auf dem Board Produktion ein Kalender für das ganze Projekt: Die Warteschlange sammelt die Shots und Szenen aller Storyboards. Tag oder Woche, wie in einem Kalender: Die Blöcke reihen sich von selbst aneinander. Zieh eine Einstellung auf die richtige Uhrzeit oder klick sie an, um sie ans Ende zu setzen. Mit Setplänen ordnet „Gruppieren nach: Setup“ die Einstellungen jeder Szene und jedes Drehtags ihrem Setup zu."
           },
           "1": {
-            "title": "Verschieben und dehnen",
-            "text": "Zieh zum Umsortieren, mit Alt für eine feste Uhrzeit, an der Unterkante für die Dauer. Auf einem freien Datum legst du einen Drehtag an; Strg+Z macht die ganze Geste rückgängig."
+            "title": "Storyboards und Punkte",
+            "text": "Der Filter Storyboard zeigt die Shots eines einzigen; der farbige Punkt sagt, aus welchem Storyboard jeder Block kommt. „Ganze Szene planen“ legt eine Szene in einen Block, auch bevor sie gezeichnet ist. Ein grauer Punkt: Storyboard nicht verfügbar, die Bezeichnung bleibt."
           },
           "2": {
-            "title": "Einen Block zeichnen",
-            "text": "Zieh über freie Zeit, um einen Block in 5-Minuten-Schritten zu zeichnen, und wähle dann die Art (Tasten 1–5). Die Ansicht Day hat auch „Block“ in der Leiste. Mit der Tastatur fügt N einen Block nach dem gewählten ein, oder am Ende des Tages."
+            "title": "Verschieben und dehnen",
+            "text": "Zieh zum Umsortieren, mit Alt für eine feste Uhrzeit, an der Unterkante für die Dauer. Auf einem freien Datum legst du einen Drehtag an; Strg+Z macht die ganze Geste rückgängig. Zieh über freie Zeit, um einen Block in 5-Minuten-Schritten zu zeichnen, und wähle dann die Art (Tasten 1–5). Die Ansicht Day hat auch „Block“ in der Leiste. Mit der Tastatur fügt N einen Block nach dem gewählten ein, oder am Ende des Tages."
           },
           "3": {
             "title": "Einen ganzen Tag verschieben",
@@ -5555,7 +5580,7 @@
         "steps": {
           "0": {
             "title": "Team des Projekts",
-            "text": "Ordne die Leute nach Abteilung. Kontakte bleiben im Projektteam. Dieselbe Person in zwei Zeilen? Im ⋯-Menü der Zeile „Zusammenführen mit…“."
+            "text": "Das Team liegt auf dem Board Produktion, neben dem Drehplan. Ordne die Leute nach Abteilung. Kontakte bleiben im Projektteam. Dieselbe Person in zwei Zeilen? Im ⋯-Menü der Zeile „Zusammenführen mit…“."
           },
           "1": {
             "title": "Eine Person bearbeiten",
@@ -6299,5 +6324,9 @@
       "storyboard": "{{scenes}} auf dem Board. Mit Storyboard werden daraus Frames."
     },
     "offLine": "Modul {{name}} aus: du kannst dieses Board lesen."
+  },
+  "production": {
+    "storyboardLink_one": "Drehtage: {{count}} · Produktion öffnen",
+    "storyboardLink_other": "Drehtage: {{count}} · Produktion öffnen"
   }
 }

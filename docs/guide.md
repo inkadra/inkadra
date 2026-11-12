@@ -40,14 +40,17 @@ Draw on a picture. **Done**, `Esc` or a click elsewhere closes it.
 
 ## Kinds of board and their views
 
-A project starts with one board. **Add storyboard** and **Add moodboard** in the project's ⋯ menu,
-and the cards of **Canvas** in the dock, add more, as many as you need. Each kind has its own views:
+A project starts with one board. **Add storyboard**, **Add moodboard** and **Add Production** in the
+project's ⋯ menu, and the cards of **Canvas** in the dock, add more. Each kind has its own views:
 
-| Kind       | Always            | Can be turned on                     |
-| ---------- | ----------------- | ------------------------------------ |
-| Board      | the canvas        | Moodboard and Review                 |
-| Moodboard  | the moodboard     | nothing                              |
-| Storyboard | scenes and frames | Shot list, Schedule, Crew and Review |
+| Kind                       | Always            | Can be turned on                     |
+| -------------------------- | ----------------- | ------------------------------------ |
+| Board                      | the canvas        | Moodboard and Review                 |
+| Moodboard                  | the moodboard     | nothing                              |
+| Storyboard                 | scenes and frames | Shot list, Schedule, Crew and Review |
+| Production (one a project) | Schedule and Crew | nothing                              |
+
+A storyboard has Schedule and Crew only while its project has no Production board.
 
 The header shows the views of the open board only, and **Views of this board** in its ⋯ menu turns
 them on and off: a view that is off leaves the header and the sidebar, and its data stays. In the
@@ -63,6 +66,19 @@ choice on this device, and opening it opens that view. The card shows only what 
 opening the board. Cards made before the preview stay small: **Show preview** in the card's bar
 makes one larger, and **Compact** puts it back to its name only. Guests of a share link and exports
 show the board's name, as before.
+
+## The Production board
+
+A project has one **Production** board, with **Schedule** and **Crew**: one calendar for every
+storyboard. In **Canvas** its card says "Already in the project" once there is one, and opens it;
+one in the trash comes back with its days. Its queue groups the frames of the storyboards you can
+read by storyboard, then scene, with the filters **Storyboard**, **Scene** and **Cast**; each frame
+and block has the coloured dot of its storyboard. **Plan the whole scene** puts a scene in one
+block, even before its frames are drawn. A block whose storyboard is in the trash or that you
+cannot open keeps its label, with a grey dot named "Storyboard not available". **Call sheets** in
+its ⋯ menu prints the call sheet of every day, each frame read from its own storyboard. A
+storyboard's ⋯ menu shows **Shooting days: N · Open Production** when the Production board plans
+some of its frames; its scene sheets and set plans read their days there.
 
 ## Modules
 

@@ -43,7 +43,7 @@ import {
   useSearchParams,
 } from 'react-router';
 import { resetBoardPreviews } from '../board/board-previews.ts';
-import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
+import { childBoards, productionOf, useProjectBoards, useSharedBoards } from '../board/boards.ts';
 import { useBoardCounts } from '../board/live-counts.ts';
 import { isMac } from '../board/shortcuts.ts';
 import { beginViewSwitch, type ViewSwitchMotion } from '../board/view-switch.ts';
@@ -437,8 +437,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   };
   const writable = editableProjects(projects);
   const projectId = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
-  const boardId = pathname.split('/')[4];
   const current = projects?.find((p) => p.id === projectId);
+  // The root board is the project's own page, also when a link names it (`/p/:id/b/:root`).
+  const pathBoardId = pathname.split('/')[4];
+  const boardId = pathBoardId === current?.rootBoardId ? undefined : pathBoardId;
   // The same title as the guided setup page.
   const onboardingCrumb = onboardingTitle(projects);
   // Inside a project the bottom bar's New adds the board there, when the person may.
@@ -450,12 +452,15 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const openCounts = openBoardId ? counts.get(openBoardId) : undefined;
 
   // The views of the open board are the one rule of the sidebar, the header and the phone.
+  // A project with a Production board: its storyboards lose Schedule and Troupe (0123).
+  const hasProduction = !!productionOf(projectBoards);
   const currentView: BoardView | null = openView(
     new URLSearchParams(search).get('view'),
     openBoard,
     openCounts,
+    hasProduction,
   );
-  const openViews = headerViews(openBoard, openCounts, currentView);
+  const openViews = headerViews(openBoard, openCounts, currentView, hasProduction);
 
   // The header switcher, the sidebar and the phone open a view of the open board the same way.
   const showView = (v: BoardView, motion?: ViewSwitchMotion) => {
@@ -476,7 +481,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const setupPending = !!(setup.error || setup.checks?.some((c) => !c.ok));
   // The project row is the root board: current there, unless its views are listed under it.
   const rootBoard = projectBoards?.find((b) => b.id === current?.rootBoardId);
-  const rootViews = rootBoard ? boardViews(rootBoard, counts.get(rootBoard.id)) : [];
+  const rootViews = rootBoard ? boardViews(rootBoard, counts.get(rootBoard.id), hasProduction) : [];
 
   const renderProject = (p: Project, onDropProject?: (id: string, after: boolean) => void) => (
     <div key={p.id} className={p.id === projectId ? undefined : 'ink-sidebar__collapsible'}>
@@ -491,6 +496,8 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             navigate(to);
           },
           modulesOff,
+          undefined,
+          p.id === projectId ? projectBoards : undefined,
         )}
         active={!inboxOpen && p.id === projectId && !boardId && rootViews.length < 2}
         onClick={go(`/p/${p.id}`)}
@@ -1139,7 +1146,7 @@ function BoardTree({
     <>
       {children.map((b) => {
         const size = counts.get(b.id)?.elementCount || undefined;
-        const views = boardViews(b, counts.get(b.id));
+        const views = boardViews(b, counts.get(b.id), !!productionOf(items));
         const open = b.id === activeId;
         return (
           <div key={b.id}>

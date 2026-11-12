@@ -30,6 +30,7 @@ export * from './plan-view.ts';
 export * from './plan-wall-tools.ts';
 export * from './plan-walls.ts';
 export * from './plan-words.ts';
+export * from './production-card.ts';
 export * from './resize.ts';
 export * from './snap.ts';
 export * from './table.ts';

@@ -16,7 +16,7 @@ import {
   IconButton,
   Select,
 } from '@inkadra/ui';
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { moveTabFocus } from '../../lib/tabs.ts';
 import { SetupChips } from '../plan/SetupChips.tsx';
@@ -28,6 +28,13 @@ import { FramePicture } from './FramePicture.tsx';
 import { AutoTime, TokenField } from './fields.tsx';
 import type { CalendarDay } from './ScheduleCalendar.tsx';
 import { clockLabel, scheduleTimes } from './schedule.ts';
+import {
+  type BlockLook,
+  offersWhole,
+  type ScheduleSource,
+  SourceDot,
+  type SourceGroup,
+} from './schedule-sources.tsx';
 
 /**
  * The tabs of the day panel. A list, so a new tab is one entry here and one in DayPanel's
@@ -67,7 +74,8 @@ export function ScheduleQueue({
   scheduled,
   totalFrames,
   boardId,
-  boardAspect,
+  sources,
+  aspectOf,
   slugline,
   plansOf,
   setupsOf,
@@ -85,13 +93,21 @@ export function ScheduleQueue({
   dropDate,
   onPickDate,
   onAdd,
+  onAddScene,
 }: {
-  groups: readonly SceneGroup[];
-  labels: Map<string, string>;
-  scheduled: ReadonlySet<string | null>;
+  groups: readonly SourceGroup[];
+  labels: ReadonlyMap<string, string>;
+  /** Frames (`shot:board/id`) and scenes (`scene:board/id`) already planned. */
+  scheduled: ReadonlySet<string>;
   totalFrames: number;
   boardId: string;
-  boardAspect: AspectRatio;
+  /**
+   * The storyboards of the Production board (decision 0123): the queue groups frames by
+   * storyboard, then scene, with a Storyboard filter and their dots, and offers whole scenes.
+   */
+  sources?: readonly ScheduleSource[] | undefined;
+  /** The aspect of the storyboard a frame comes from. */
+  aspectOf: (frameId: string) => AspectRatio;
   slugline: (scene: SceneElement) => string;
   /** The set plans of a scene, for its chip. */
   plansOf: (sceneId: string) => readonly PlanElement[];
@@ -114,17 +130,29 @@ export function ScheduleQueue({
   dropDate: string | null;
   onPickDate: (date: string) => void;
   onAdd: (shotId: string) => void;
+  /** A scene as a whole, drawn or not (decision 0123, answer 4). */
+  onAddScene?: ((boardId: string, sceneId: string) => void) | undefined;
 }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
+  const [board, setBoard] = useState('');
   const [scene, setScene] = useState('');
   const [cast, setCast] = useState('');
+  const across = !!sources;
+  const sourceOf = (id: string) => sources?.find((s) => s.boardId === id);
+  const groupKey = (g: SourceGroup) => `${g.boardId}/${g.scene?.id ?? 'loose'}`;
   // A scene the script left out is not offered for shooting (decision 0082).
   const waiting = groups
     .filter((g) => !g.scene?.omitted)
-    .map((g) => ({ ...g, frames: g.frames.filter((f) => !scheduled.has(f.id)) }))
-    .filter((g) => g.frames.length);
-  const count = waiting.reduce((sum, g) => sum + g.frames.length, 0);
+    .map((g) => ({
+      ...g,
+      frames: g.frames.filter((f) => !scheduled.has(`shot:${g.boardId}/${f.id}`)),
+      // A scene is offered as a whole until a block plans it (decision 0123).
+      whole: !!onAddScene && offersWhole(g, scheduled),
+    }))
+    .filter((g) => g.frames.length || g.whole);
+  const count = waiting.reduce((sum, g) => sum + g.frames.length + (g.whole ? 1 : 0), 0);
+  const total = totalFrames + (onAddScene ? groups.filter((g) => g.scene).length : 0);
   const castNames = [
     ...new Map(
       waiting
@@ -133,36 +161,37 @@ export function ScheduleQueue({
     ).values(),
   ].sort((a, b) => a.localeCompare(b));
   const words = query.trim().toLocaleLowerCase();
+  const sceneText = (g: SourceGroup) =>
+    [g.scene?.number, g.scene?.title, g.scene && slugline(g.scene), sourceOf(g.boardId)?.title]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase();
   const shown = waiting
-    .filter((g) => !scene || (g.scene?.id ?? 'loose') === scene)
+    .filter((g) => !board || g.boardId === board)
+    .filter((g) => !scene || groupKey(g) === scene)
     .map((g) => ({
       ...g,
       frames: g.frames.filter((f) => {
         if (cast && !(f.cast ?? []).some((n) => n.trim().toLocaleLowerCase() === cast))
           return false;
         if (!words) return true;
-        const text = [
-          labels.get(f.id),
-          f.action,
-          ...(f.cast ?? []),
-          g.scene?.number,
-          g.scene?.title,
-          g.scene && slugline(g.scene),
-        ]
+        const text = [labels.get(f.id), f.action, ...(f.cast ?? []), sceneText(g)]
           .filter(Boolean)
           .join(' ')
           .toLocaleLowerCase();
         return text.includes(words);
       }),
+      whole: g.whole && !cast && (!words || sceneText(g).includes(words)),
     }))
-    .filter((g) => g.frames.length);
-  const queueShot = (frame: FrameElement) => (
+    .filter((g) => g.frames.length || g.whole);
+  const queueShot = (g: SourceGroup) => (frame: FrameElement) => (
     <QueueShot
       key={frame.id}
       frame={frame}
       label={labels.get(frame.id) ?? ''}
-      boardId={boardId}
-      boardAspect={boardAspect}
+      boardId={g.boardId}
+      boardAspect={aspectOf(frame.id)}
+      dot={sourceOf(g.boardId)}
       disabled={disabled}
       setups={setupsOf?.(frame.id)}
       onAdd={() => onAdd(frame.id)}
@@ -174,6 +203,11 @@ export function ScheduleQueue({
           .filter(Boolean)
           .join(' · ')
       : t('film.loose');
+  /** How many frames a scene has, planned or not. */
+  const drawn = (g: SourceGroup) =>
+    groups.find((x) => groupKey(x) === groupKey(g))?.frames.length ?? 0;
+  const dotIcon = (source: ScheduleSource | undefined, decorative = true) =>
+    source && <SourceDot color={source.dot} name={source.title} decorative={decorative} />;
   return (
     <aside
       className="schedule__queue"
@@ -200,8 +234,10 @@ export function ScheduleQueue({
         </div>
       ) : failed ? (
         <p className="schedule__hint">—</p>
-      ) : !totalFrames ? (
-        <p className="schedule__hint">{t('shells.noShots')}</p>
+      ) : !total ? (
+        <p className="schedule__hint">
+          {t(across ? 'schedule.noStoryboardShots' : 'shells.noShots')}
+        </p>
       ) : !count ? (
         <p className="schedule__hint">{t('schedule.allScheduled')}</p>
       ) : (
@@ -218,6 +254,23 @@ export function ScheduleQueue({
             />
           </label>
           <div className="schedule__filters">
+            {sources && sources.length > 0 && (
+              <span className="schedule__filter" data-tour="schedule-storyboards">
+                <Select
+                  variant="quiet"
+                  aria-label={t('schedule.filterStoryboard')}
+                  value={board}
+                  onChange={(value) => {
+                    setBoard(value);
+                    setScene('');
+                  }}
+                  options={[
+                    { value: '', label: t('schedule.storyboardFilterLabel') },
+                    ...sources.map((s) => ({ value: s.boardId, label: s.title, icon: dotIcon(s) })),
+                  ]}
+                />
+              </span>
+            )}
             <Select
               variant="quiet"
               aria-label={t('schedule.filterScene')}
@@ -225,7 +278,15 @@ export function ScheduleQueue({
               onChange={setScene}
               options={[
                 { value: '', label: t('schedule.sceneFilterLabel') },
-                ...waiting.map((g) => ({ value: g.scene?.id ?? 'loose', label: sceneName(g) })),
+                ...waiting
+                  .filter((g) => !board || g.boardId === board)
+                  .map((g) => ({
+                    value: groupKey(g),
+                    // Prefixed by its storyboard on the Production board.
+                    label: across
+                      ? `${sourceOf(g.boardId)?.title ?? ''} · ${sceneName(g)}`
+                      : sceneName(g),
+                  })),
               ]}
             />
             {!!setups?.size && onBySetup && (
@@ -272,31 +333,63 @@ export function ScheduleQueue({
             )}
           </p>
           {!shown.length && <p className="schedule__hint">{t('schedule.noMatches')}</p>}
-          {shown.map((group) => (
-            <section key={group.scene?.id ?? 'loose'} className="schedule__scene">
-              <h3 className="schedule__scene-title">
-                <span>{sceneName(group)}</span>
-                {group.scene && <ScenePlanButton compact plans={plansOf(group.scene.id)} />}
-              </h3>
-              {bySetup && setups?.size
-                ? groupBySetup(group.frames, setups).map(({ setup, shots }) => (
-                    <section
-                      key={setup?.planId ?? 'none'}
-                      className="schedule__setup"
-                      aria-label={setup ? setup.name : t('film.list.noSetup')}
-                    >
-                      <h4
-                        className="schedule__setup-title"
-                        title={setup ? `${setup.plan} · ${setup.name}` : undefined}
+          {shown.map((group, i) => (
+            <Fragment key={groupKey(group)}>
+              {/* On the Production board the scenes come under their storyboard. */}
+              {across && shown[i - 1]?.boardId !== group.boardId && (
+                <h3 className="schedule__source-title">
+                  {dotIcon(sourceOf(group.boardId))}
+                  <span>{sourceOf(group.boardId)?.title}</span>
+                </h3>
+              )}
+              <section className="schedule__scene">
+                <h3 className="schedule__scene-title">
+                  <span>{sceneName(group)}</span>
+                  {group.scene && <ScenePlanButton compact plans={plansOf(group.scene.id)} />}
+                </h3>
+                {group.whole && group.scene && (
+                  <button
+                    type="button"
+                    className="schedule__shot schedule__shot--scene"
+                    disabled={disabled}
+                    onClick={() => group.scene && onAddScene?.(group.boardId, group.scene.id)}
+                  >
+                    <span className="schedule__shot-pic" aria-hidden="true">
+                      <Icon name="film" size={16} />
+                    </span>
+                    <span className="schedule__shot-text">
+                      <span className="schedule__shot-label">
+                        {dotIcon(sourceOf(group.boardId), false)}
+                        {t('schedule.wholeScene')}
+                      </span>
+                      <span className="schedule__shot-action">
+                        {drawn(group)
+                          ? t('schedule.wholeSceneHint', { count: drawn(group) })
+                          : t('schedule.sceneNoFrames')}
+                      </span>
+                    </span>
+                  </button>
+                )}
+                {bySetup && setups?.size
+                  ? groupBySetup(group.frames, setups).map(({ setup, shots }) => (
+                      <section
+                        key={setup?.planId ?? 'none'}
+                        className="schedule__setup"
+                        aria-label={setup ? setup.name : t('film.list.noSetup')}
                       >
-                        {setup && <Icon name="map" size={11} />}
-                        <span>{setup ? setup.name : t('film.list.noSetup')}</span>
-                      </h4>
-                      {shots.map(queueShot)}
-                    </section>
-                  ))
-                : group.frames.map(queueShot)}
-            </section>
+                        <h4
+                          className="schedule__setup-title"
+                          title={setup ? `${setup.plan} · ${setup.name}` : undefined}
+                        >
+                          {setup && <Icon name="map" size={11} />}
+                          <span>{setup ? setup.name : t('film.list.noSetup')}</span>
+                        </h4>
+                        {shots.map(queueShot(group))}
+                      </section>
+                    ))
+                  : group.frames.map(queueShot(group))}
+              </section>
+            </Fragment>
           ))}
         </>
       )}
@@ -310,6 +403,7 @@ function QueueShot({
   label,
   boardId,
   boardAspect,
+  dot,
   disabled,
   setups,
   onAdd,
@@ -318,6 +412,8 @@ function QueueShot({
   label: string;
   boardId: string;
   boardAspect: AspectRatio;
+  /** Its storyboard on the Production board. */
+  dot?: ScheduleSource | undefined;
   disabled: boolean;
   setups?: readonly ShotSetup[] | undefined;
   onAdd: () => void;
@@ -349,7 +445,10 @@ function QueueShot({
         />
       </span>
       <span className="schedule__shot-text">
-        <span className="schedule__shot-label">{label}</span>
+        <span className="schedule__shot-label">
+          {dot && <SourceDot color={dot.dot} name={dot.title} />}
+          {label}
+        </span>
         {frame.action && <span className="schedule__shot-action">{frame.action}</span>}
         <SetupChips setups={setups} />
       </span>
@@ -439,11 +538,9 @@ export function BlockEditor({
   conflicts,
   readOnly,
   castSuggestions,
-  shotTitle,
-  frameOf,
-  sceneOf,
+  blockTitle,
+  look,
   slugline,
-  boardAspect,
   dayName,
   onChange,
   onMove,
@@ -461,17 +558,17 @@ export function BlockEditor({
   conflicts: Set<string>;
   readOnly: boolean;
   castSuggestions: string[];
-  shotTitle: (id: string) => string;
-  frameOf: (id: string | null) => FrameElement | undefined;
-  sceneOf: (id: string | null) => SceneElement | null;
+  /** The name of a block as the calendar shows it. */
+  blockTitle: (block: ScheduleBlock) => string;
+  /** The frame or scene a block plans, read from its own storyboard (decision 0123). */
+  look: (block: ScheduleBlock) => BlockLook | null;
   slugline: (scene: SceneElement) => string;
-  boardAspect: AspectRatio;
   dayName: (entry: CalendarDay) => string;
   onChange: (next: ShootingDayInput, key?: string) => void;
   onMove: (dayId: string) => void;
   onDuplicate: () => void;
   onRemove: () => void;
-  onOpenScene: ((sceneId: string) => void) | undefined;
+  onOpenScene: ((sceneId: string, boardId: string) => void) | undefined;
   onDetails: () => void;
   onClose: () => void;
   /** The setups of the set plans a shot belongs to (decision 0104). */
@@ -487,8 +584,10 @@ export function BlockEditor({
   if (!block || !slot) return null;
   const locked = readOnly || entry.stale;
   const previous = draft.blocks[index - 1];
-  const frame = frameOf(block.shotId);
-  const scene = sceneOf(block.shotId);
+  const seen = look(block);
+  // A storyboard that cannot be read shows the stored label only: no picture, no frame fields.
+  const frame = seen?.frame;
+  const scene = seen?.scene;
   const update = (patch: Partial<ScheduleBlock>, key?: string) =>
     onChange(
       { ...draft, blocks: draft.blocks.map((b) => (b.id === block.id ? { ...b, ...patch } : b)) },
@@ -496,7 +595,7 @@ export function BlockEditor({
     );
   const typeName = (type: ScheduleBlock['type']) => t(`schedule.types.${type}`);
   const name = (b: ScheduleBlock) =>
-    b.shotId ? shotTitle(b.shotId).split(' · ')[0] : b.title || typeName(b.type);
+    look(b) ? blockTitle(b).split(' · ')[0] : b.title || typeName(b.type);
   const after = previous ? t('schedule.after', { block: name(previous) }) : t('schedule.afterCall');
   const others = days.filter((d) => d.day.id !== entry.day.id);
   const full = variant === 'panel';
@@ -510,7 +609,10 @@ export function BlockEditor({
           disabled={locked}
           value={block.type}
           onChange={(type) => update({ type: type as ScheduleBlock['type'] })}
-          options={TYPES.map((type) => ({ value: type, label: typeName(type) }))}
+          // A scene block keeps its type: only the queue makes one (decision 0123).
+          options={[...TYPES, ...(block.type === 'scene' ? (['scene'] as const) : [])].map(
+            (type) => ({ value: type, label: typeName(type) }),
+          )}
         />
         <span className="ink-header__spacer" />
         {variant === 'popover' && !locked && (
@@ -523,36 +625,45 @@ export function BlockEditor({
           <IconButton icon="close" label={t('shells.close')} onClick={onClose} />
         )}
       </div>
-      {block.shotId ? (
+      {seen ? (
         <div className="schedule__editor-shot">
-          <span className="schedule__editor-pic" aria-hidden="true">
-            {frame && (
-              <FramePicture
-                assetId={frame.assetId}
-                aspect={frame.aspect}
-                boardAspect={boardAspect}
-                strokes={frame.strokes}
-                shapes={frame.shapes}
-                referenceOpacity={frame.referenceOpacity}
-                pixels={200}
-              />
-            )}
-          </span>
+          {/* No picture of a storyboard that cannot be read (decision 0123). */}
+          {(frame || seen.source) && (
+            <span className="schedule__editor-pic" aria-hidden="true">
+              {frame ? (
+                <FramePicture
+                  assetId={frame.assetId}
+                  aspect={frame.aspect}
+                  boardAspect={seen.aspect}
+                  strokes={frame.strokes}
+                  shapes={frame.shapes}
+                  referenceOpacity={frame.referenceOpacity}
+                  pixels={200}
+                />
+              ) : (
+                block.type === 'scene' && <Icon name="film" size={20} />
+              )}
+            </span>
+          )}
           <span className="schedule__editor-shot-text">
-            <b>{shotTitle(block.shotId)}</b>
-            <SetupChips setups={setupsOf?.(block.shotId)} />
-            {scene && (
-              <span>
+            <b>
+              {seen.dot && <SourceDot color={seen.dot.color} name={seen.dot.name} decorative />}
+              {blockTitle(block)}
+            </b>
+            {block.shotId && <SetupChips setups={setupsOf?.(block.shotId)} />}
+            {seen.dot && <span>{seen.dot.name}</span>}
+            {scene && block.type !== 'scene' && (
+              <span className="schedule__editor-scene">
                 {[t('schedule.sceneShort', { number: scene.number }), slugline(scene)]
                   .filter(Boolean)
                   .join(' · ')}
               </span>
             )}
-            {scene && onOpenScene && (
+            {scene && seen.source && onOpenScene && (
               <button
                 type="button"
                 className="schedule__link"
-                onClick={() => onOpenScene(scene.id)}
+                onClick={() => seen.source && onOpenScene(scene.id, seen.source.boardId)}
               >
                 {t('schedule.openStoryboard')}
               </button>
@@ -562,7 +673,7 @@ export function BlockEditor({
       ) : null}
       <fieldset className="schedule__editor-fields" disabled={locked}>
         <legend className="ink-sr-only">{t('schedule.block')}</legend>
-        {(!block.shotId || full) && (
+        {(!seen || full) && (
           <label className="schedule__field">
             {t('schedule.title')}
             <input
