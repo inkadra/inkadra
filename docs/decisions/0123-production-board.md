@@ -48,8 +48,9 @@ Not checked: the e2e fixtures and the screenshot scripts that seed days.
   stored storyboards list them, but no kind allows them once the interim goes (step 6).
 - **One per project, in the database:** a partial unique index on `board (project_id)` where the
   kind is `production`, trashed rows included, so a deleted Production board is brought back with
-  its days rather than a second schedule starting beside it (§3). Rejected: a check in the route only
-  (two requests at once pass it); an index that skips trashed rows (two schedules, one unreachable).
+  its days rather than a second schedule starting beside it (§3). Rejected: a check in the route
+  only (two requests at once pass it); an index that skips trashed rows (two schedules, one
+  unreachable).
 - **No sub-boards in it:** creating or moving a board under a Production board is refused (400);
   it has no canvas to hold their cards.
 - **A day belongs to the Production board:** `shooting_day.board_id` is its id; `project_id`
@@ -115,9 +116,9 @@ where project_id = $1 and moved_from is not null;
 ```
 
 then the Production board is trashed. The keys go because an older server refuses unknown block
-keys (`ScheduleBlock` is strict).
-Days created on the Production board after the move stay on it. This statement is tested in the
-pull request of step 6 against the migration's fixture; no command is shipped for it.
+keys (`ScheduleBlock` is strict). Days created on the Production board after the move stay on it.
+This statement is tested in the pull request of step 6 against the migration's fixture; no
+command is shipped for it.
 
 **Archives** become format 2. Export writes the Production board and its days with the two keys;
 import maps `shotBoardId` through the new board ids (an id not in the archive drops the key and
@@ -156,12 +157,12 @@ keeps the draft (0089). From step 6, creating a day on any other board is refuse
 
 ### 4. Access
 
-| Who                           | Days                    | Calls, block notes | Crew           |
-| ----------------------------- | ----------------------- | ------------------ | -------------- |
-| Project member                | by board role           | yes                | read; editors write |
-| Grant on the Production board | by grant role           | no                 | no             |
-| Grant on a storyboard only    | no                      | no                 | no             |
-| Guest, share link             | no                      | no                 | no             |
+| Who                           | Days          | Calls, block notes | Crew                |
+| ----------------------------- | ------------- | ------------------ | ------------------- |
+| Project member                | by board role | yes                | read; editors write |
+| Grant on the Production board | by grant role | no                 | no                  |
+| Grant on a storyboard only    | no            | no                 | no                  |
+| Guest, share link             | no            | no                 | no                  |
 
 - Days follow the Production board's role, inherited or granted, like any board's content. Calls
   and block notes stay for project members (0092), the crew for members and project editors
