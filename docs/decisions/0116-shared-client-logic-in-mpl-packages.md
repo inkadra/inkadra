@@ -95,6 +95,15 @@ one file each imported by path (`@inkadra/shared/shot-words/it`), tested both wa
 words are. The catalogs' cache, refresh and hooks, and adding a value from where it is used, stay
 in the web (`lib/classifications.ts`: state, React and the server's endpoint).
 
+The messages of a project's export and import that the mobile app shows too are
+`TRANSFER_WORDS_EN` in `packages/shared` (`transfer.exportLead`, `includedList`, `excludedList`,
+`notifyNote`, `exportForbidden`, `startError` and every `transfer.failure.*`, one per
+`TRANSFER_FAILURES` code), with `TRANSFER_WORDS_IT`, `_ES`, `_DE`, `_FR`, `_PT` imported by path
+(`@inkadra/shared/transfer-words/it`), tested both ways. Titles, buttons and the import dialog's
+own sentences stay in the web catalogues until another client imports. Beside `FractionalIndex`,
+`comparePosition` is the saved order of siblings (boards under a board, project groups): by
+`position` as code units, then by `id`, never by locale.
+
 One behaviour changed with the move, on purpose: the kit, the names on a circuit and the count
 across setups went by the translated name, so two kinds a language writes alike (or two specs
 that read alike) were one line in that language and two in English. They now go by what the item

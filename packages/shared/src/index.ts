@@ -33,6 +33,7 @@ export * from './sharing.ts';
 export * from './shot-words.ts';
 export * from './sun.ts';
 export * from './tasks.ts';
+export * from './transfer-words.ts';
 export * from './transfers.ts';
 export * from './users.ts';
 export * from './versions.ts';
