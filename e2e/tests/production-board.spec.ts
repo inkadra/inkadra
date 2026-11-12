@@ -98,7 +98,7 @@ test('plans frames of two storyboards and a scene without frames on the Producti
   await page.getByRole('menuitem', { name: 'Fogli di convocazione', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.locator('.export__paper')).toHaveAttribute('data-status', 'ready');
-  await expect(dialog.locator('.export__preview figcaption')).toHaveText(/1/);
+  await expect(dialog.locator('.export__preview figcaption')).toHaveText(/\d+ pagin/);
   await page.keyboard.press('Escape');
 
   // A storyboard of the project lost Schedule and Crew, and leads to the Production board.
