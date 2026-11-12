@@ -1,6 +1,7 @@
 import { CURRENT_SCHEMA_VERSION, MIN_WRITER_SCHEMA } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
+  BOARD_WRITERS_CAPABILITY,
   COLLAB_PATH,
   type Health,
   type Instance,
@@ -140,6 +141,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'board-restore-marker',
         'board-restore-history',
         'token-proof',
+        BOARD_WRITERS_CAPABILITY,
       ],
     } satisfies InstanceVersion;
   });

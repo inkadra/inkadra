@@ -354,7 +354,7 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
         let drawn = 0;
         for (const { icon, count } of rows) {
           if (!fits(ROW * 2)) break;
-          const name = legendLine(icon, icons, t);
+          const name = legendLine(icon, icons, t, locale);
           row(count > 1 ? `${name} ×${count}` : name, legendValue(icon), icon);
           drawn += 1;
         }

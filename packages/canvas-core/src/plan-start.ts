@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { PlanWall } from '@inkadra/doc-schema';
 import type * as Y from 'yjs';
+import { updateElement } from './board.ts';
 import type { Point } from './geometry.ts';
 import {
   duplicatePlanItems,
@@ -12,8 +13,15 @@ import {
   planItems,
 } from './plan.ts';
 import { NOMINAL_SCALE } from './plan-icons.ts';
-import type { CardsById } from './plan-links.ts';
-import { copyPlanWalls, DEFAULT_WALL_METRES, metresToView, toWallPoints } from './plan-walls.ts';
+import { type CardsById, linkedLocation } from './plan-links.ts';
+import {
+  addPlanWall,
+  copyPlanWalls,
+  DEFAULT_WALL_METRES,
+  metresToView,
+  toWallPoints,
+} from './plan-walls.ts';
+import type { Words } from './plan-words.ts';
 
 /**
  * Starting a set plan (decision 0110): the ready rooms of the start dialog, the plans whose Set
@@ -185,6 +193,107 @@ export function copySetLayer(
     target: targetId,
     attached: false,
   });
+}
+
+// The start dialog ----------------------------------------------------------------------------
+
+/**
+ * How a plan starts: from the Set of another plan, by drawing its walls, by tracing a picture,
+ * by scanning the room (with the phone app), or from a ready room.
+ */
+export type PlanStartChoice = 'reuse' | 'draw' | 'trace' | 'scan' | `room:${RoomPreset}`;
+
+/**
+ * The choice the start dialog proposes: reusing a Set when the plan has one to reuse
+ * (`setSources`), else a rectangular room. Reuse is offered only then.
+ */
+export function defaultStartChoice(sources: readonly PlanElement[]): PlanStartChoice {
+  return sources.length ? 'reuse' : 'room:rect';
+}
+
+/**
+ * What the start dialog is titled after: the plan's location, else the location written on its
+ * first scene, else its title. Undefined for none.
+ */
+export function startTitle(
+  plan: Pick<PlanElement, 'locationId' | 'sceneIds' | 'title'>,
+  cards: CardsById,
+): string | undefined {
+  const scene = (plan.sceneIds ?? []).map((s) => cards.get(s)).find((c) => c?.type === 'scene');
+  return (
+    linkedLocation(plan, cards)?.name ||
+    (scene?.type === 'scene' && scene.location) ||
+    plan.title ||
+    undefined
+  );
+}
+
+/**
+ * A plan offered to reuse, by name: its location and its title, a title that repeats the
+ * location's name written once ("Rosa's diner", not twice); "Set plan" for neither.
+ */
+export function setSourceName(
+  plan: Pick<PlanElement, 'locationId' | 'title'>,
+  cards: CardsById,
+  t: Words,
+): string {
+  const parts = [...new Set([linkedLocation(plan, cards)?.name, plan.title].filter(Boolean))];
+  return parts.join(', ') || t('board.plan.name');
+}
+
+/**
+ * Starts plan `target` as the start dialog's `choice` says (decision 0110), in one transaction
+ * (one undo step). Reusing copies the Set layer of `source` (`copySetLayer`); a plan without a
+ * scale also takes the source's, with its grid, as its walls were measured at it. A ready room
+ * `widthM` by `depthM` gives a plan without a scale the room's (`roomScale`) before its walls.
+ * Drawing and tracing write nothing: the client opens the Walls tool or the picture picker.
+ *
+ * Returns what the client does next: `written` when the plan was written, `draw` or `trace`,
+ * or null when there is nothing to do (scanning, no source, a room too big for the plan's
+ * scale).
+ */
+export function startPlan(
+  doc: Y.Doc,
+  choice: PlanStartChoice,
+  target: {
+    /** The plan its Set layer is written to: the plan, or its base for a setup. */
+    setOwner: string;
+    /** The plan that holds the scale: the plan, or its base for a setup. */
+    scaleOwner: string;
+    /** The plan's scale, if it has one. */
+    scale?: number | undefined;
+  },
+  opts: { source?: PlanElement | undefined; widthM?: number; depthM?: number },
+  origin?: unknown,
+): 'written' | 'draw' | 'trace' | null {
+  if (choice === 'draw' || choice === 'trace') return choice;
+  if (choice === 'reuse') {
+    const source = opts.source;
+    if (!source) return null;
+    doc.transact(() => {
+      copySetLayer(doc, source, target.setOwner, origin);
+      if (!target.scale && source.scale)
+        updateElement(
+          doc,
+          target.scaleOwner,
+          { scale: source.scale, grid: source.grid ?? '0.5' },
+          origin,
+        );
+    }, origin);
+    return 'written';
+  }
+  if (choice === 'scan') return null;
+  const room = choice.slice(5) as RoomPreset;
+  const widthM = opts.widthM ?? 0;
+  const depthM = opts.depthM ?? 0;
+  const scale = roomScale(widthM, depthM, target.scale);
+  if (!scale) return null;
+  doc.transact(() => {
+    if (!target.scale) updateElement(doc, target.scaleOwner, { scale, grid: '0.5' }, origin);
+    for (const wall of roomWalls(room, widthM, depthM, scale))
+      addPlanWall(doc, target.setOwner, wall, origin);
+  }, origin);
+  return 'written';
 }
 
 // The background picture ----------------------------------------------------------------------

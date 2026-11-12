@@ -189,11 +189,7 @@ export function itemSummary(
   icon: PlanIcon,
   icons: readonly PlanIcon[],
   t: Words,
-  {
-    lens = true,
-    scale,
-    locale,
-  }: { lens?: boolean; scale?: number | undefined; locale?: string | undefined } = {},
+  { lens = true, scale, locale }: { lens?: boolean; scale?: number | undefined; locale: string },
 ): string {
   const kind = catalogueKind(icon.kind);
   const typeName = t(`board.plan.icons.${icon.kind}`);
@@ -282,7 +278,7 @@ export function legendRow(
   count: number,
   icons: readonly PlanIcon[],
   t: Words,
-  { scale, locale }: { scale?: number | undefined; locale?: string | undefined } = {},
+  { scale, locale }: { scale?: number | undefined; locale: string },
 ): { name: string; sub: string } {
   const name = (icon.label || t(`board.plan.icons.${icon.kind}`)) + (count > 1 ? ` ×${count}` : '');
   // An actor's way through the scene: the notes of its positions, in order.
@@ -300,11 +296,19 @@ export function legendRow(
   };
 }
 
-/** The PDF sheet's legend line of a camera, a light or a person: the item's summary, as in Elements. */
-export function legendLine(icon: PlanIcon, icons: readonly PlanIcon[], t: Words): string {
+/**
+ * The PDF sheet's legend line of a camera, a light or a person: the item's summary, as in
+ * Elements, its watts in the app's language (`locale`).
+ */
+export function legendLine(
+  icon: PlanIcon,
+  icons: readonly PlanIcon[],
+  t: Words,
+  locale: string,
+): string {
   const name = icon.label || t(`board.plan.icons.${icon.kind}`);
   // A camera's lens is the row's value at the right: not in the line too.
-  const summary = itemSummary(icon, icons, t, { lens: false });
+  const summary = itemSummary(icon, icons, t, { lens: false, locale });
   return summary ? `${name} · ${summary}` : name;
 }
 

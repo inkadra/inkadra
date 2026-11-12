@@ -121,8 +121,16 @@ export function searchLibrary(t: Words, query: string): LibraryHit[] {
     .map(({ h }) => h);
 }
 
-/** "LED COB 300 W · Softbox, grid", "Super 35 · 32, 50, 85 mm": the line under a kit entry. */
-export function projectKitDetail(entry: ProjectKitEntry, t: Words, sensor: string): string {
+/**
+ * "LED COB 300 W · Softbox, grid", "Super 35 · 32, 50, 85 mm": the line under a kit entry, its
+ * watts in the app's language (`locale`).
+ */
+export function projectKitDetail(
+  entry: ProjectKitEntry,
+  t: Words,
+  sensor: string,
+  locale: string,
+): string {
   const { icon } = entry;
   if (catalogueKind(icon.kind) === 'camera') {
     const lenses = entry.lenses.length ? `${entry.lenses.join(', ')} mm` : '';
@@ -130,7 +138,7 @@ export function projectKitDetail(entry: ProjectKitEntry, t: Words, sensor: strin
   }
   const watts = iconWatts(icon);
   return [
-    [t(`board.plan.icons.${icon.kind}`), icon.power || (watts ? wattsText(watts) : '')]
+    [t(`board.plan.icons.${icon.kind}`), icon.power || (watts ? wattsText(watts, locale) : '')]
       .filter(Boolean)
       .join(' '),
     icon.make,

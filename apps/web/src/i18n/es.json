@@ -3914,8 +3914,8 @@
     "includedList": "Tableros y subtableros, archivos originales, comentarios, revisiones, jornadas de rodaje, versiones con nombre",
     "excluded": "No incluido",
     "excludedList": "Miembros, enlaces compartidos e invitados, tableros en la papelera, versiones automáticas",
-    "preparing": "Preparando el archivo",
-    "exportReady": "El archivo está listo",
+    "preparing": "Preparando el paquete",
+    "exportReady": "El paquete está listo",
     "availableUntil": "disponible hasta {{time}}",
     "notifyNote": "Puedes cerrar esta ventana: una notificación te avisará cuando termine.",
     "export": "Exportar",
@@ -3927,11 +3927,11 @@
     "exportForbidden": "Solo los propietarios y editores del proyecto pueden exportarlo.",
     "startError": "No se pudo iniciar la exportación. Inténtalo de nuevo.",
     "importTitle": "Importar proyecto",
-    "importLead": "Crea un proyecto nuevo a partir de un archivo de Inkadra. Serás su único miembro; los comentarios conservan los nombres de sus autores.",
-    "drop": "Arrastra aquí el archivo o elige uno",
+    "importLead": "Crea un proyecto nuevo a partir de un paquete de Inkadra. Serás su único miembro; los comentarios conservan los nombres de sus autores.",
+    "drop": "Arrastra aquí el paquete o elige un archivo",
     "dropHint": "Un .zip exportado desde Inkadra",
     "change": "elegir otro",
-    "notZip": "Elige un archivo .zip exportado desde Inkadra.",
+    "notZip": "Elige un paquete .zip exportado desde Inkadra.",
     "uploading": "Subiendo",
     "importing": "Importando",
     "importReady": "«{{name}}» está listo",
@@ -3949,7 +3949,7 @@
     "openProject": "Abrir proyecto",
     "chooseAnother": "Elegir otro archivo",
     "import": "Importar",
-    "uploadError": "No se pudo enviar el archivo. Comprueba la conexión e inténtalo de nuevo.",
+    "uploadError": "No se pudo enviar el paquete. Comprueba la conexión e inténtalo de nuevo.",
     "busy": "Otra importación tuya sigue en curso. Espera a que termine.",
     "failure": {
       "too_large": "El paquete es más grande de lo que acepta este servidor.",
@@ -3963,7 +3963,7 @@
       "internal": "Algo salió mal. Inténtalo de nuevo.",
       "storage_full": "Los archivos del paquete no caben en el espacio que queda. Libera espacio o pide ayuda a un administrador."
     },
-    "importArchive": "Importar un archivo…"
+    "importArchive": "Importar paquete…"
   },
   "backups": {
     "title": "Copias de seguridad",

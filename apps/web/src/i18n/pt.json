@@ -3914,8 +3914,8 @@
     "includedList": "Quadros e subquadros, arquivos originais, comentários, revisões, diárias, versões com nome",
     "excluded": "Não incluído",
     "excludedList": "Membros, links de compartilhamento e convidados, quadros na lixeira, versões automáticas",
-    "preparing": "Preparando o arquivo",
-    "exportReady": "O arquivo está pronto",
+    "preparing": "Preparando o pacote",
+    "exportReady": "O pacote está pronto",
     "availableUntil": "disponível até {{time}}",
     "notifyNote": "Você pode fechar esta janela: uma notificação avisará quando terminar.",
     "export": "Exportar",
@@ -3927,11 +3927,11 @@
     "exportForbidden": "Só proprietários e editores do projeto podem exportá-lo.",
     "startError": "Não foi possível iniciar a exportação. Tente novamente.",
     "importTitle": "Importar projeto",
-    "importLead": "Cria um novo projeto a partir de um arquivo do Inkadra. Você será o único membro; os comentários mantêm os nomes dos autores.",
-    "drop": "Solte o arquivo aqui ou escolha um",
+    "importLead": "Cria um novo projeto a partir de um pacote do Inkadra. Você será o único membro; os comentários mantêm os nomes dos autores.",
+    "drop": "Solte o pacote aqui ou escolha um arquivo",
     "dropHint": "Um .zip exportado do Inkadra",
     "change": "escolher outro",
-    "notZip": "Escolha um arquivo .zip exportado do Inkadra.",
+    "notZip": "Escolha um pacote .zip exportado do Inkadra.",
     "uploading": "Enviando",
     "importing": "Importando",
     "importReady": "“{{name}}” está pronto",
@@ -3949,7 +3949,7 @@
     "openProject": "Abrir projeto",
     "chooseAnother": "Escolher outro arquivo",
     "import": "Importar",
-    "uploadError": "Não foi possível enviar o arquivo. Verifique a conexão e tente novamente.",
+    "uploadError": "Não foi possível enviar o pacote. Verifique a conexão e tente novamente.",
     "busy": "Outra importação sua ainda está em andamento. Aguarde terminar.",
     "failure": {
       "too_large": "O pacote é maior do que este servidor aceita.",
@@ -3963,7 +3963,7 @@
       "internal": "Algo deu errado. Tente novamente.",
       "storage_full": "Os arquivos do pacote não cabem no espaço restante. Libere espaço ou peça a um administrador."
     },
-    "importArchive": "Importar um arquivo…"
+    "importArchive": "Importar pacote…"
   },
   "backups": {
     "title": "Backups",

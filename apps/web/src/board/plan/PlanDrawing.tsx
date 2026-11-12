@@ -200,7 +200,9 @@ export const PlanLabel = memo(function PlanLabel({
   icon: PlanIcon;
   lifted?: boolean | undefined;
 }) {
-  const label = iconLabel(icon);
+  const { i18n } = useTranslation();
+  // The watts in the app's language, not the browser's ("1,2K" in Italian).
+  const label = iconLabel(icon, i18n.language);
   if (!label) return null;
   const at = labelAnchor(icon);
   const sub = iconSubLabel(icon);

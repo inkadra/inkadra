@@ -52,6 +52,16 @@ layers (`PLAN_DRAW_ORDER`), which the board's SVG and the exports both call. In
 `sunDays`, `northWay`, `sunRotation`, and `sunFrom`, `sunHeight`, `sunDate`, taken out of the
 web's sun section).
 
+For the mobile app to draw walls, place openings and start a plan as the web does, these moved
+too, into `packages/canvas-core`: the rules of the Walls and Openings tools (`plan-wall-tools.ts`:
+`CLOSE_SLOP`, `WALL_SLOP`, `canCloseWall`, `closesWall`, `wallSideEnd`, `typedTowards`,
+`wallStep` with `WallDraft` and `WallStep`, `draftCorners`, `wallThickness`, `wallCentimetres`,
+`viewToMetres`, `wallSideCount`, `openingAt`, `newOpeningWidth`, `dragOpening`,
+`openingMetres`, `openingMaxMetres`, `resizeOpening`, `flipOpening`, `swingOpening`,
+`changeOpeningKind`, `outside`, `setSummary`), and starting a plan (`plan-start.ts`: `startPlan`,
+`PlanStartChoice`, `defaultStartChoice`, `startTitle`, `setSourceName`). The tools take the
+length typed as a number of metres, read with `measureValue` (below).
+
 Functions that write words take `t` as a `Words` function, i18next's shape, and ask for the
 web's keys. The English words they ask for, with the names, search words, tiles, groups and
 categories of the icons, are `PLAN_WORDS_EN` in canvas-core, keyed as the web catalogues
@@ -140,11 +150,12 @@ is (`KitLine.key`: the kind and its power or length; a named light by its name),
 only written from it: the same plan gives the same lines and totals in every language and on
 every client, even when two lines read the same.
 
-Stays in the web: the Kit tab, the view and the card as React; the PDF sheet's layout and
-drawing; the clipboard copy of the kit; the library panel, its rail, tiles, drag and drop, and the
-timer that saves the recents (`PlanLibrary.tsx`); reading the schedule and the project kit from
-the server (`useScheduleDays`, `useOtherKits`: the derivation of the project kit was already in
-canvas-core).
+Stays in the web: the Kit tab, the view and the card as React; the pointer and keyboard
+gestures, the state and the bars of the Walls and Openings tools, the start dialog and its
+pictures; the PDF sheet's layout and drawing; the clipboard copy of the kit; the library panel,
+its rail, tiles, drag and drop, and the timer that saves the recents (`PlanLibrary.tsx`); reading
+the schedule and the project kit from the server (`useScheduleDays`, `useOtherKits`: the
+derivation of the project kit was already in canvas-core).
 
 For the mobile app to show a set plan in the web's colours and offer the same Properties
 choices, these moved to `packages/canvas-core`. In `plan-draw.ts`, the colours as stored hex
@@ -160,6 +171,17 @@ other five languages. Stays in the web: turning a token into CSS (`planCss`), th
 temperature slider's track and thumb (`KELVIN_TRACK`, `kelvinColour`, CSS gradients over the
 theme's tokens) and the Properties as React. A gel's preset is its own name in every language
 ("Plus green"), as it was.
+
+For the mobile app to draw a board seen from far as the web does, the far look moved into
+`packages/canvas-core` (`far-look.ts`): `farLook(el, ctx)` says how a card is drawn below
+`FAR_ZOOM` (`normal`, `picture`, `swatch`, `tint`, `block`, `surface` or `hidden`, the block's
+fill the theme token `FAR_BLOCK`), and `farPicture` what pictures a card. The rule is the web's,
+read from its stylesheet: only cards on the board change; a column or a scene keeps its
+surface when a child shows a picture, else it is a block, and its children show only their
+pictures; arrows are drawn as at any zoom. The web keeps drawing it in CSS
+(`canvas__world--far`); a web test renders every kind of card in the far world and fails when
+the stylesheet and `farLook` disagree. Which links play in their card (`videoEmbedUrl`) and
+whether an asset can be shown yet stay with the client and are passed in.
 
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would

@@ -67,7 +67,7 @@ export function kitList(
     scale?: number | undefined;
   },
   t: Words,
-  locale?: string,
+  locale: string,
 ): KitLine[] {
   // Lines are counted by what they are (decision 0116), never by how a language writes them.
   const counts = new Map<string, KitLine>();

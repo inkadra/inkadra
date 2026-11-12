@@ -115,7 +115,7 @@ export function PlanLibrary({
   onDrag?: (what: Dragged | null, at?: At) => void;
   onClose?: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const prefs = usePreferences();
   const [query, setQuery] = useState('');
   // The category last looked at, kept in the account (decision 0119); an unknown one reads Lights.
@@ -132,7 +132,7 @@ export function PlanLibrary({
   const hits = useMemo(() => searchLibrary(t, query), [t, query]);
   const kitHits = query.trim()
     ? kit.filter((k) =>
-        fold(`${k.icon.label ?? ''} ${projectKitDetail(k, t, sensor)}`).includes(
+        fold(`${k.icon.label ?? ''} ${projectKitDetail(k, t, sensor, i18n.language)}`).includes(
           fold(query.trim()),
         ),
       )
@@ -230,7 +230,7 @@ export function PlanLibrary({
           />
         </span>
         <small>
-          <Marked text={projectKitDetail(entry, t, sensor)} query={marked} />
+          <Marked text={projectKitDetail(entry, t, sensor, i18n.language)} query={marked} />
         </small>
       </span>
     </button>

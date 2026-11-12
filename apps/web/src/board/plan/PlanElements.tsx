@@ -6,6 +6,7 @@ import {
   type PlanGroupName,
   planItems,
   shownOpenings,
+  setSummary as wallSummary,
   withGroups,
 } from '@inkadra/canvas-core';
 import type { PlanLayer } from '@inkadra/doc-schema';
@@ -22,7 +23,7 @@ import {
   itemSummary,
 } from './elements.ts';
 import { PLAN_COLORS, PlanGlyph, planCss } from './PlanDrawing.tsx';
-import { OPENING_ICONS, setSummary as wallSummary } from './PlanWalls.tsx';
+import { OPENING_ICONS } from './PlanWalls.tsx';
 
 /**
  * The Elements tab (decisions 0104, 0114 and 0117): what is on the plan, by group with counts

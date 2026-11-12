@@ -101,13 +101,16 @@ it('lists the legend as the view and the PDF sheet print it', () => {
   expect(planLegend(base).cast.map((i) => i.label)).toEqual(['Anna']);
 
   const [cam, , key] = icons as [PlanIcon, PlanIcon, PlanIcon];
-  expect(legendRow(cam, 1, icons, english)).toEqual({ name: 'A cam · 50 mm', sub: '' });
-  expect(legendRow(key, 2, icons, english)).toEqual({
+  expect(legendRow(cam, 1, icons, english, { locale: 'en' })).toEqual({
+    name: 'A cam · 50 mm',
+    sub: '',
+  });
+  expect(legendRow(key, 2, icons, english, { locale: 'en' })).toEqual({
     name: 'Key ×2',
     sub: 'Fresnel 1K · 5600 K',
   });
-  expect(legendLine(cam, icons, english)).toBe('A cam');
-  expect(legendLine(key, icons, english)).toBe('Key · Fresnel 1K');
+  expect(legendLine(cam, icons, english, 'en')).toBe('A cam');
+  expect(legendLine(key, icons, english, 'en')).toBe('Key · Fresnel 1K');
   expect(legendValue(cam)).toBe('50 mm');
   expect(legendValue(key)).toBe('5600 K · 60%');
   expect(roomSizeText(800, 100, true, english, 'en')).toBe('8.0 m overall');
@@ -175,9 +178,9 @@ it('carries every word the shared functions ask for: one plan with one of everyt
     itemName(plan.strokes?.[0] as never, english);
     for (const i of all) {
       itemSummary(i, all, english, { scale: 70, locale: 'en' });
-      itemSummary(i, all, english);
+      itemSummary(i, all, english, { locale: 'en' });
       legendRow(i, 2, all, english, { scale: 70, locale: 'en' });
-      legendLine(i, all, english);
+      legendLine(i, all, english, 'en');
     }
     roomSizeText(800, 70, true, english, 'en');
   }).not.toThrow();

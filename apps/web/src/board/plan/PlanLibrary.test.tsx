@@ -6,7 +6,7 @@ import { expect, it, vi } from 'vitest';
 import { PlanLibrary } from './PlanLibrary.tsx';
 
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }));
 
 it('switches categories on the rail, arms a tile and places the first search result', async () => {
