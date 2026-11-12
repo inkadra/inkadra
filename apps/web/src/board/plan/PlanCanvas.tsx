@@ -1746,6 +1746,8 @@ export function PlanCanvas({
             }
             background
             extent
+            // A picked wall or opening writes its own lengths where the room's size would be.
+            roomSizes={!ed.wallSel}
             // The surface draws the dots; over a picture the drawing draws them again.
             grid={shown.background && !shown.background.hidden ? step : undefined}
             ghosts={ed.ghosts}

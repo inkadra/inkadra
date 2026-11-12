@@ -16,7 +16,6 @@ import {
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type Point,
-  planRoomDims,
   planWallAt,
   pointAlongWall,
   roomDims,
@@ -496,12 +495,14 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
               />
             ));
           })()}
-          {/* A room's size at the nominal scale; with a scale the plan draws it (decision 0119). */}
-          {pickedWall.closed &&
-            planRoomDims(shown).length === 0 &&
-            roomDims(pickedWall).map((d) => (
-              <RoomDimView key={`${d.a.x},${d.a.y}`} dim={d} text={roomMetres(d.length)} />
-            ))}
+          {/* A picked room's size: the drawing leaves its own out while a wall is picked. */}
+          {pickedWall.closed && (
+            <g className="plan-walls__room" data-room-dims="">
+              {roomDims(pickedWall).map((d) => (
+                <RoomDimView key={`${d.a.x},${d.a.y}`} dim={d} text={roomMetres(d.length)} />
+              ))}
+            </g>
+          )}
           {!itemLocked(pickedWall) &&
             wallPoints(pickedWall).map((q, i) => (
               <rect

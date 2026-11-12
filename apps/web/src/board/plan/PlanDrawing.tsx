@@ -750,6 +750,7 @@ const PlanDrawingView = memo(function PlanDrawingView({
   label,
   background = false,
   extent = false,
+  roomSizes = true,
   children,
 }: {
   plan: PlanLike;
@@ -764,6 +765,8 @@ const PlanDrawingView = memo(function PlanDrawingView({
    * out of the slides and sheets, as of exports, unless they ask for it.
    */
   background?: boolean;
+  /** The rooms' sizes (decision 0119); the editor leaves them out while a wall is picked. */
+  roomSizes?: boolean;
   /** Names the drawing for the editor, where it holds a control; elsewhere it stays hidden. */
   label?: string;
   /** Blocking as the editor draws it: a line through numbered points. */
@@ -798,7 +801,7 @@ const PlanDrawingView = memo(function PlanDrawingView({
       )}
       {grid && <GridDots step={grid} />}
       {!off.includes('set') && <PlanWallsView plan={plan} />}
-      <RoomSizes plan={plan} hidden={off} />
+      {roomSizes && <RoomSizes plan={plan} hidden={off} />}
       {stack
         .filter((e) => e.tier < 2)
         .map((e) => (
