@@ -3,8 +3,9 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
-import { SaveStatus, SettingsNav, SettingsShell } from './SettingsShell.tsx';
+import { SaveStatus, SettingsNav, SettingsShell, setupAttention } from './SettingsShell.tsx';
 import { trackSave } from './settings-save.ts';
+import { CHECK_PAGES } from './settings-sections.ts';
 
 const session = vi.hoisted(() => ({
   user: { role: 'admin' },
@@ -141,4 +142,19 @@ it('reports autosave progress and failures in the header, and resets per page', 
   });
   expect(status()?.getAttribute('role')).toBe('alert');
   expect(status()?.textContent).toBe('settingsUi.autosave.error');
+});
+
+it('flags the page that fixes each failing check, the one Configure in General opens', () => {
+  const failing = (id: string) => ({ checks: [{ id, ok: false }], error: false });
+  const flagged = (setup: Parameters<typeof setupAttention>[0]) =>
+    ['access', 'workspace', 'server', 'instance'].filter((page) => setupAttention(setup, page));
+  expect(flagged(failing('smtp'))).toEqual(['access']);
+  expect(flagged(failing('providers'))).toEqual(['access']);
+  expect(flagged(failing('storage'))).toEqual(['workspace']);
+  expect(flagged(failing('domain'))).toEqual(['server']);
+  for (const id of ['smtp', 'providers', 'storage', 'domain'])
+    expect(flagged(failing(id))).toEqual([CHECK_PAGES[id]]);
+  // Checks that could not be read: General, which shows that error, is flagged instead.
+  expect(flagged({ checks: null, error: true })).toEqual(['instance']);
+  expect(flagged({ checks: [{ id: 'smtp', ok: true }], error: false })).toEqual([]);
 });

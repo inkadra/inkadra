@@ -5566,7 +5566,7 @@
         }
       },
       "server": {
-        "name": "Servidor",
+        "name": "Estado del servidor",
         "steps": {
           "0": {
             "title": "De un vistazo",

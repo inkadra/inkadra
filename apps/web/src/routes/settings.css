@@ -800,11 +800,12 @@
 }
 .team-member__name {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
+/* Words break only when one alone is wider than the line, never while there is room. */
 .team-member__meta {
   display: block;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .team-member .space-mini {
   margin-top: 4px;
@@ -813,10 +814,22 @@
 .team-member .space-mini em {
   white-space: nowrap;
 }
-/* Role, right to create and ⋯ on one line at the end of the row, sized by their labels. */
+/*
+ * Who the person is keeps a readable width; role, right to create and ⋯ sit at the end of the
+ * row and drop, right-aligned, to a line of their own when there is not room for both.
+ */
+.team-member {
+  flex-wrap: wrap;
+}
+.team-member .settings-row__text {
+  flex: 1 1 240px;
+}
 .team-member .settings-row__control {
-  flex-wrap: nowrap;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   max-width: none;
+  margin-left: auto;
 }
 .team-member .team-role {
   width: auto;
@@ -1011,6 +1024,8 @@
   }
   .team-member .settings-row__control {
     flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-left: 0;
   }
   .team-member .team-col--actions {
     position: absolute;

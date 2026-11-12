@@ -5566,7 +5566,7 @@
         }
       },
       "server": {
-        "name": "Server",
+        "name": "Stato del server",
         "steps": {
           "0": {
             "title": "A colpo d’occhio",

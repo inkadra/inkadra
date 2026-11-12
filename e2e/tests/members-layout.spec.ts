@@ -91,12 +91,16 @@ test('each member is one row: on a phone the controls line up under the name, â‹
   await page.locator('.team-tools').evaluate((el) => el.scrollIntoView({ block: 'start' }));
   await shoot(page, 'members-phone');
 
-  // On a desktop the controls sit on the right of the same row.
-  await page.setViewportSize({ width: 1440, height: 900 });
-  for (const c of await measure()) {
-    if (!c.text || !c.role) throw new Error('missing control');
-    expect(c.role.left).toBeGreaterThanOrEqual(c.text.right - 1);
-    expect(c.role.top).toBeLessThan(c.text.bottom);
+  // On a desktop who the person is keeps a readable width; the controls end the row, or drop
+  // right-aligned to a line of their own when both do not fit.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const desktop = await measure();
+  for (const c of desktop) {
+    if (!c.row || !c.text || !c.role || !c.action) throw new Error('missing control');
+    expect(c.text.width).toBeGreaterThanOrEqual(230);
+    expect(c.action.right).toBeLessThanOrEqual(c.row.right);
+    expect(Math.abs(c.action.right - (desktop[0]?.action?.right ?? 0))).toBeLessThan(1);
+    if (c.role.top < c.text.bottom) expect(c.role.left).toBeGreaterThanOrEqual(c.text.right - 1);
   }
   await shoot(page, 'members-desktop');
 });

@@ -5566,7 +5566,7 @@
         }
       },
       "server": {
-        "name": "Server",
+        "name": "Serverstatus",
         "steps": {
           "0": {
             "title": "Auf einen Blick",
