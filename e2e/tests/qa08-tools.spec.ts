@@ -95,7 +95,7 @@ for (const width of [1280, 390]) {
                     .state,
               ),
             ).toBe('prompt');
-            await page.getByRole('button', { name: 'Nota vocale', exact: true }).click();
+            await addFromBar(page, 'Nota vocale');
             await expect
               .poll(() =>
                 page.evaluate(() => (window as unknown as Record<string, unknown>).micRequested),

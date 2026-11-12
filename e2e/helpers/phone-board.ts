@@ -9,10 +9,19 @@ export function cardAction(page: Page, name: string | RegExp, exact = typeof nam
     .or(page.locator('.card-sheet').getByRole('button', { name, exact }));
 }
 
-/** Adds a card from the bar, or from its "More" menu on a phone, where most tools wait (#110). */
+/**
+ * Adds a card from the bar, or from More (⋯) when the tool is not in it (decision 0121), or from
+ * the "More" menu on a phone, where most tools wait (#110).
+ */
 export async function addFromBar(page: Page, name: string) {
   if ((page.viewportSize()?.width ?? 1280) >= 768) {
-    await page.getByRole('button', { name, exact: true }).click();
+    const inBar = page.locator('.canvas .toolbar').getByRole('button', { name, exact: true });
+    if (await inBar.count()) {
+      await inBar.click();
+      return;
+    }
+    await page.getByRole('button', { name: 'Altri strumenti', exact: true }).click();
+    await page.locator('.more-tools').getByRole('button', { name, exact: true }).click();
     return;
   }
   const toolbar = page.locator('.canvas .toolbar');

@@ -290,8 +290,15 @@
     "typedValue": "{{label}}: valor",
     "canvasMenu": {
       "label": "Lienzo",
-      "hint": "Insertar un lienzo",
-      "more": "Más"
+      "hint": "Crear un tablero",
+      "more": "Más",
+      "newBoard": "Nuevo tablero",
+      "screenplay": "Importar un guion…",
+      "desc": {
+        "board": "Espacio libre para notas, imágenes y archivos.",
+        "moodboard": "Referencias en grupos, con paleta.",
+        "storyboard": "Escenas y planos, con lista de planos."
+      }
     },
     "toolGroups": {
       "navigate": "Navegar y conectar",
@@ -1862,6 +1869,12 @@
       "always": "siempre",
       "none": "Este tipo no tiene otras vistas",
       "note": "Una vista apagada sale de la barra y del árbol. Sus datos se quedan."
+    },
+    "more": {
+      "title": "Más herramientas",
+      "pin": "Poner en la barra",
+      "pinned": "En la barra",
+      "pinFor": "Poner {{name}} en la barra"
     }
   },
   "tags": {
@@ -3557,7 +3570,8 @@
       "toolbar": "Barra de herramientas",
       "tutorials": "Tutoriales",
       "server": "Servidor",
-      "updates": "Actualizaciones"
+      "updates": "Actualizaciones",
+      "modules": "Módulos"
     },
     "leads": {
       "account": "Tu perfil y cómo inicias sesión.",
@@ -3568,10 +3582,11 @@
       "registration": "Quién puede crear una cuenta nueva.",
       "about": "Nombre, dirección, versión y estado de configuración de la instancia.",
       "backups": "Copias nocturnas de la base de datos, para restaurar el servidor tras un fallo.",
-      "toolbar": "Elige qué ves en la barra inferior. Las herramientas ocultas siguen en \"+ ▾\" y en la paleta de comandos.",
+      "toolbar": "Elige qué herramientas de «Más herramientas» ves en la barra inferior. Las demás siguen en ⋯ y en la paleta de comandos.",
       "tutorials": "Vuelve a ver los recorridos guiados y elige si proponerlos.",
       "server": "Cómo está el servidor: recursos, servicios, trabajos, problemas y avisos.",
-      "updates": "La versión en uso, las novedades y un aviso cuando sale una nueva. Inkadra no se actualiza solo: la actualización la haces tú, en el servidor."
+      "updates": "La versión en uso, las novedades y un aviso cuando sale una nueva. Inkadra no se actualiza solo: la actualización la haces tú, en el servidor.",
+      "modules": "Elige las partes de Inkadra que usas. Un módulo apagado desaparece de tus menús, de la barra, de las notificaciones y de los tutoriales. Vale solo para ti y no borra nada: lo que existe sigue visible, y si lo vuelves a encender lo encuentras todo."
     },
     "autosave": {
       "idle": "Guardado automático",
@@ -3697,17 +3712,20 @@
       "registration": "Cuentas nuevas, Registro abierto, Solo con invitación, Registro cerrado, Exigir verificación en dos pasos a los administradores",
       "instance": "Nombre de la instancia, Dirección pública, Versión, Diagnóstico, Estado de la instancia, Novedades de Inkadra, Informes, Enviar a los desarrolladores de Inkadra, Destino, Repositorio, Token de GitHub, Los invitados pueden informar, Conservación de adjuntos, Informes recibidos",
       "backups": "Copias de seguridad, Hacer copia ahora, Restauración, Conservación, Copia nocturna",
-      "toolbar": "Barra de herramientas, Herramientas, Nota, Imagen, Enlace, Tareas, Color, Flecha, Plano, Storyboard, Restablecer la barra predeterminada",
+      "toolbar": "Barra de herramientas, Herramientas, Más herramientas, Columna, Título de sección, Color, Tabla, Nota de voz, Mapa, Plano, Plano del set, Restablecer la barra predeterminada",
       "tutorials": "Recorrido de bienvenida, Sugerencias la primera vez, Empezar de nuevo",
       "server": "Procesador, Memoria, Espacio, Servicios, Problemas, Avisos, Diagnóstico, Vídeo",
-      "updates": "Versión, Comprobar ahora, Avisarme cuando salga una nueva versión, Qué versiones, Versiones preliminares, Versiones anteriores"
+      "updates": "Versión, Comprobar ahora, Avisarme cuando salga una nueva versión, Qué versiones, Versiones preliminares, Versiones anteriores",
+      "modules": "Módulos, Storyboard, Producción, Moodboard, Revisión del cliente, Plano del set, Apagar, Encender"
     },
     "close": "Cerrar ajustes",
     "dangerZone": "Zona de peligro",
     "toolbar": {
       "preview": "Vista previa",
       "reset": "Restablecer la barra predeterminada",
-      "synced": "Sincronizada con tu cuenta"
+      "synced": "Sincronizada con tu cuenta",
+      "always": "Siempre en la barra",
+      "more": "De «Más herramientas»: poner en la barra"
     }
   },
   "admin": {
@@ -4261,7 +4279,6 @@
   "screenplay": {
     "open": "Importar guion…",
     "openShort": "Importar guion",
-    "fromScreenplay": "Storyboard desde guion…",
     "title": "Importar un guion",
     "drop": "Arrastra aquí un guion o elige un archivo",
     "choose": "Elegir un archivo",
@@ -4379,7 +4396,10 @@
       "summaryPhone": "<b>{{updated}}, {{added}}, {{omitted}}.</b> Antes se guarda una versión.",
       "submit": "Actualizar storyboard",
       "done": "Storyboard actualizado: {{updated}}, {{added}}, {{omitted}}."
-    }
+    },
+    "scenesFromFile": "Importar las escenas de este guion…",
+    "buildScenes": "Importar escenas…",
+    "importedScenes": "{{scenes}} importadas."
   },
   "frameGrab": {
     "grab": "Capturar fotograma",
@@ -5033,14 +5053,18 @@
             "text": "Notas, fotos, enlaces, listas: elige y haz clic en el lienzo."
           },
           "1": {
-            "title": "Todo lo demás",
-            "text": "+ añade tableros y moodboards; la barra se cambia en Ajustes."
+            "title": "Más herramientas",
+            "text": "Columnas, tablas, mapas y lo demás están en ⋯: «Poner en la barra» deja a mano las que usas."
           },
           "2": {
+            "title": "Nuevos tableros",
+            "text": "Lienzo crea tableros, moodboards y storyboards, e importa un guion."
+          },
+          "3": {
             "title": "Selecciona una tarjeta",
             "text": "Sus herramientas aparecen encima de ella."
           },
-          "3": {
+          "4": {
             "title": "Las vistas del tablero",
             "text": "Desde el menú ⋯ activas el moodboard de este tablero. Una vista apagada conserva sus datos."
           }
@@ -5549,6 +5573,19 @@
           "2": {
             "title": "Quien no puede editar",
             "text": "Invitados y lectores abren el plano en una vista con desplazamiento y zoom, los setups, la leyenda y el PDF."
+          }
+        }
+      },
+      "modules": {
+        "name": "Módulos",
+        "steps": {
+          "0": {
+            "title": "Solo lo que usas",
+            "text": "Apaga Storyboard, Producción, Moodboard, Revisión del cliente o Plano del set: salen de tus menús y de la barra."
+          },
+          "1": {
+            "title": "No se pierde nada",
+            "text": "Lo que existe sigue visible y se abre. Vuelve a encender el módulo y está todo."
           }
         }
       }
@@ -6193,5 +6230,41 @@
     "castOnlyScheduled": "solo quien está en el plan",
     "notCalled_one": "No citado hoy · {{names}}",
     "notCalled_other": "No citados hoy · {{names}}"
+  },
+  "modules": {
+    "names": {
+      "board": "Tablero",
+      "storyboard": "Storyboard",
+      "production": "Producción",
+      "moodboard": "Moodboard",
+      "review": "Revisión del cliente",
+      "plan": "Plano del set"
+    },
+    "desc": {
+      "board": "Notas, imágenes, enlaces, archivos, tareas, columnas y comentarios.",
+      "storyboard": "Tableros storyboard, lista de planos, la herramienta Plano, importación del guion en escenas.",
+      "production": "Plan de rodaje, equipo, órdenes de trabajo y hojas por escena.",
+      "moodboard": "Tableros moodboard y la vista Moodboard de un tablero: grupos, notas, paletas.",
+      "review": "Enlaces para clientes sin cuenta, aprobaciones y solicitudes de cambio.",
+      "plan": "Planos con luces, cámaras, actores y paredes, vinculados a escenas y planos."
+    },
+    "keep": {
+      "storyboard": "Los planos que existen se quedan donde están.",
+      "production": "Las jornadas y las personas siguen guardadas.",
+      "moodboard": "Imágenes, enlaces y colores siguen en los tableros.",
+      "review": "Los enlaces ya enviados siguen funcionando.",
+      "plan": "Los planos ya dibujados siguen visibles."
+    },
+    "offKeep": "Apagado · {{text}}",
+    "always": "Siempre encendido",
+    "turnOn": "Encender",
+    "turnedOn": "{{name}} está encendido: lo encuentras en Lienzo y en la barra.",
+    "failed": "El módulo no cambió. Inténtalo de nuevo.",
+    "off": "Módulo apagado.",
+    "kindOff": "{{name}}: módulo apagado, encender",
+    "notice": {
+      "storyboard": "{{scenes}} en el tablero. Con Storyboard se convierten en planos."
+    },
+    "offLine": "Módulo {{name}} apagado: puedes leer este tablero."
   }
 }

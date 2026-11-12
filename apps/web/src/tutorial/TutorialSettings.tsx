@@ -16,7 +16,7 @@ export function TutorialSettings() {
   const admin = user?.role === 'admin';
   const prefs = usePreferences();
   const hintsId = useId();
-  const tours = toursFor(admin, !!instance?.demo);
+  const tours = toursFor(admin, !!instance?.demo, prefs.modulesOff);
   const seen = new Set(prefs.tutorialsSeen);
   const total = tours.length + 1;
   const count = [WELCOME, ...tours].filter((tour) => seen.has(tour.id)).length;

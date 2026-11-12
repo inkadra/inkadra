@@ -290,8 +290,15 @@
     "typedValue": "{{label}}: value",
     "canvasMenu": {
       "label": "Canvas",
-      "hint": "Insert a canvas",
-      "more": "More"
+      "hint": "Create a board",
+      "more": "More",
+      "newBoard": "New board",
+      "screenplay": "Import a screenplay…",
+      "desc": {
+        "board": "Free space for notes, images and files.",
+        "moodboard": "References in groups, with a palette.",
+        "storyboard": "Scenes and frames, with a shot list."
+      }
     },
     "toolGroups": {
       "navigate": "Navigate and connect",
@@ -1862,6 +1869,12 @@
       "always": "always",
       "none": "This type has no other views",
       "note": "A view that is off leaves the bar and the tree. Its data stays."
+    },
+    "more": {
+      "title": "More tools",
+      "pin": "Put in the bar",
+      "pinned": "In the bar",
+      "pinFor": "Put {{name}} in the bar"
     }
   },
   "tags": {
@@ -3557,7 +3570,8 @@
       "toolbar": "Toolbar",
       "tutorials": "Tutorials",
       "server": "Server",
-      "updates": "Updates"
+      "updates": "Updates",
+      "modules": "Modules"
     },
     "leads": {
       "account": "Your profile and how you sign in.",
@@ -3568,10 +3582,11 @@
       "registration": "Who can create a new account.",
       "about": "Instance name, address, version and setup status.",
       "backups": "Nightly copies of the database, to restore the server after a failure.",
-      "toolbar": "Choose what you see in the bottom bar. Hidden tools stay in \"+ ▾\" and in the command palette.",
+      "toolbar": "Choose which tools of More you see in the bottom bar. The others stay in More (⋯) and in the command palette.",
       "tutorials": "Watch the guided tours again and choose whether to offer them.",
       "server": "How the server is doing: resources, services, jobs, problems and alerts.",
-      "updates": "The version in use, what’s new and a notice when a new one is out. Inkadra doesn’t update itself: you update it, on the server."
+      "updates": "The version in use, what’s new and a notice when a new one is out. Inkadra doesn’t update itself: you update it, on the server.",
+      "modules": "Choose the parts of Inkadra you use. A module that is off leaves your menus, the bar, notifications and tutorials. It applies to you only and deletes nothing: what exists stays visible, and turning it back on brings everything back."
     },
     "autosave": {
       "idle": "Autosave on",
@@ -3697,17 +3712,20 @@
       "registration": "New accounts, Open registration, Invitation only, Closed registration, Require two-step verification for administrators",
       "instance": "Instance name, Public address, Version, Diagnostics, Instance status, Inkadra news, Reports, Send to the Inkadra developers, Destination, Repository, GitHub token, Guests can report, Attachment retention, Reports received",
       "backups": "Backups, Back up now, Restore, Retention, Nightly backup",
-      "toolbar": "Toolbar, Tools, Note, Image, Link, To-do, Colour, Arrow, Frame, Storyboard, Reset to default toolbar",
+      "toolbar": "Toolbar, Tools, More, Column, Section heading, Colour, Table, Voice note, Map, Frame, Set plan, Reset to default toolbar",
       "tutorials": "Welcome tour, Hints the first time, Start over",
       "server": "Processor, Memory, Space, Services, Problems, Alerts, Diagnostics, Video",
-      "updates": "Version, Check now, Tell me when a new version is out, Which versions, Previews, Earlier versions"
+      "updates": "Version, Check now, Tell me when a new version is out, Which versions, Previews, Earlier versions",
+      "modules": "Modules, Storyboard, Production, Moodboard, Client review, Set plan, Turn off, Turn on"
     },
     "close": "Close settings",
     "dangerZone": "Danger zone",
     "toolbar": {
       "preview": "Preview",
       "reset": "Reset to default toolbar",
-      "synced": "Synced with your account"
+      "synced": "Synced with your account",
+      "always": "Always in the bar",
+      "more": "From More: put in the bar"
     }
   },
   "admin": {
@@ -4261,7 +4279,6 @@
   "screenplay": {
     "open": "Import screenplay…",
     "openShort": "Import screenplay",
-    "fromScreenplay": "Storyboard from screenplay…",
     "title": "Import a screenplay",
     "drop": "Drop a screenplay here or choose a file",
     "choose": "Choose a file",
@@ -4379,7 +4396,10 @@
       "summaryPhone": "<b>{{updated}}, {{added}}, {{omitted}}.</b> A version is saved first.",
       "submit": "Update storyboard",
       "done": "Storyboard updated: {{updated}}, {{added}}, {{omitted}}."
-    }
+    },
+    "scenesFromFile": "Import the scenes of this script…",
+    "buildScenes": "Import scenes…",
+    "importedScenes": "Imported {{scenes}}."
   },
   "frameGrab": {
     "grab": "Grab frame",
@@ -5033,14 +5053,18 @@
             "text": "Notes, photos, links, lists: pick one and click the canvas."
           },
           "1": {
-            "title": "Everything else",
-            "text": "+ adds boards and moodboards; change the bar in Settings."
+            "title": "More tools",
+            "text": "Columns, tables, maps and the rest are in ⋯: “Put in the bar” keeps the ones you use at hand."
           },
           "2": {
+            "title": "New boards",
+            "text": "Canvas creates boards, moodboards and storyboards, and imports a screenplay."
+          },
+          "3": {
             "title": "Select a card",
             "text": "Its tools appear right above it."
           },
-          "3": {
+          "4": {
             "title": "The board’s views",
             "text": "Turn on this board’s moodboard from the ⋯ menu. A view that is off keeps its data."
           }
@@ -5549,6 +5573,19 @@
           "2": {
             "title": "Who cannot edit",
             "text": "Guests and readers open the plan in a view with pan and zoom, the setups, the legend and the PDF."
+          }
+        }
+      },
+      "modules": {
+        "name": "Modules",
+        "steps": {
+          "0": {
+            "title": "Only what you use",
+            "text": "Turn off Storyboard, Production, Moodboard, Client review or Set plan: they leave your menus and the bar."
+          },
+          "1": {
+            "title": "Nothing is lost",
+            "text": "What exists stays visible and opens. Turn the module back on and everything is there."
           }
         }
       }
@@ -6193,5 +6230,41 @@
     "castOnlyScheduled": "only people in the schedule",
     "notCalled_one": "Not called today · {{names}}",
     "notCalled_other": "Not called today · {{names}}"
+  },
+  "modules": {
+    "names": {
+      "board": "Board",
+      "storyboard": "Storyboard",
+      "production": "Production",
+      "moodboard": "Moodboard",
+      "review": "Client review",
+      "plan": "Set plan"
+    },
+    "desc": {
+      "board": "Notes, images, links, files, to-dos, columns and comments.",
+      "storyboard": "Storyboard boards, Shot list, the Frame tool, screenplay import into scenes.",
+      "production": "Schedule, Crew, call sheets and scene sheets.",
+      "moodboard": "Moodboard boards and the Moodboard view of a board: groups, notes, palettes.",
+      "review": "Links for clients without an account, approvals and change requests.",
+      "plan": "Floor plans with lights, cameras, actors and walls, linked to scenes and frames."
+    },
+    "keep": {
+      "storyboard": "Frames that exist stay where they are.",
+      "production": "Shooting days and people stay saved.",
+      "moodboard": "Images, links and colours stay on the boards.",
+      "review": "Links already sent keep working.",
+      "plan": "Plans already drawn stay visible."
+    },
+    "offKeep": "Off · {{text}}",
+    "always": "Always on",
+    "turnOn": "Turn on",
+    "turnedOn": "{{name}} is on: find it in Canvas and in the bar.",
+    "failed": "The module did not change. Try again.",
+    "off": "Module off.",
+    "kindOff": "{{name}}: module off, turn on",
+    "notice": {
+      "storyboard": "{{scenes}} on the board. With Storyboard they become frames."
+    },
+    "offLine": "{{name}} module off: you can read this board."
   }
 }

@@ -83,7 +83,25 @@ const fields = {
     .openapi({
       description:
         'Tools in the bottom bar of the board, in order; null for the default bar. Open list: ' +
-        'clients skip the tools they do not know, and hidden tools stay in the + menu.',
+        'clients skip the tools they do not know, and the others stay in the More menu ' +
+        '(decision 0121). Select, Hand, Arrow, Note, Image, Link and To-do are always shown.',
+    }),
+  modulesOff: z
+    .array(z.string().min(1).max(40))
+    .max(20)
+    .openapi({
+      description:
+        'Modules this person turned off for themselves (decision 0121): `storyboard`, ' +
+        '`production`, `moodboard`, `review`, `plan`. Empty: all on. Open list: clients keep ' +
+        'names they do not know.',
+    }),
+  moduleNotices: z
+    .array(z.string().min(1).max(40))
+    .max(20)
+    .openapi({
+      description:
+        'Modules whose one short notice this person already saw (decision 0121), so it shows ' +
+        'once per module.',
     }),
   tutorialsSeen: z
     .array(z.string().min(1).max(40))
@@ -124,7 +142,14 @@ export const UpdateUserPreferences = z
 export type UpdateUserPreferences = z.infer<typeof UpdateUserPreferences>;
 
 /** Lists of ids (set plan icons, tutorials) and their limits, read entry by entry. */
-const ID_LISTS = { planFavorites: 60, planRecents: 8, planHidden: 10, tutorialsSeen: 100 } as const;
+const ID_LISTS = {
+  planFavorites: 60,
+  planRecents: 8,
+  planHidden: 10,
+  tutorialsSeen: 100,
+  modulesOff: 20,
+  moduleNotices: 20,
+} as const;
 
 /**
  * The set plan recents after placing `used` (newest first): those first, then the stored ones
@@ -163,6 +188,8 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   planShelf: 'lights',
   shotGroupBy: 'scene',
   toolbar: null,
+  modulesOff: [],
+  moduleNotices: [],
   tutorialsSeen: [],
   tutorialHints: true,
   serverView: 'simple',

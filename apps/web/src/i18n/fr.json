@@ -290,8 +290,15 @@
     "typedValue": "{{label}} : valeur",
     "canvasMenu": {
       "label": "Canevas",
-      "hint": "Insérer un canevas",
-      "more": "Plus"
+      "hint": "Créer un tableau",
+      "more": "Plus",
+      "newBoard": "Nouveau tableau",
+      "screenplay": "Importer un scénario…",
+      "desc": {
+        "board": "Espace libre pour notes, images et fichiers.",
+        "moodboard": "Références en groupes, avec une palette.",
+        "storyboard": "Scènes et plans, avec la liste des plans."
+      }
     },
     "toolGroups": {
       "navigate": "Naviguer et relier",
@@ -1862,6 +1869,12 @@
       "always": "toujours",
       "none": "Ce type n’a pas d’autres vues",
       "note": "Une vue désactivée quitte la barre et l’arbre. Ses données restent."
+    },
+    "more": {
+      "title": "Autres outils",
+      "pin": "Mettre dans la barre",
+      "pinned": "Dans la barre",
+      "pinFor": "Mettre {{name}} dans la barre"
     }
   },
   "tags": {
@@ -3557,7 +3570,8 @@
       "toolbar": "Barre d’outils",
       "tutorials": "Tutoriels",
       "server": "Serveur",
-      "updates": "Mises à jour"
+      "updates": "Mises à jour",
+      "modules": "Modules"
     },
     "leads": {
       "account": "Votre profil et votre mode de connexion.",
@@ -3568,10 +3582,11 @@
       "registration": "Qui peut créer un nouveau compte.",
       "about": "Nom, adresse, version et état de configuration de l’instance.",
       "backups": "Copies nocturnes de la base de données, pour restaurer le serveur après une panne.",
-      "toolbar": "Choisissez ce que vous voyez dans la barre du bas. Les outils masqués restent dans « + ▾ » et dans la palette de commandes.",
+      "toolbar": "Choisissez les outils de « Autres outils » que vous voyez dans la barre du bas. Les autres restent dans ⋯ et dans la palette de commandes.",
       "tutorials": "Revoyez les visites guidées et choisissez de les proposer ou non.",
       "server": "Comment va le serveur : ressources, services, tâches, problèmes et alertes.",
-      "updates": "La version utilisée, les nouveautés et un avis quand une nouvelle sort. Inkadra ne se met pas à jour tout seul : c’est toi qui le mets à jour, sur le serveur."
+      "updates": "La version utilisée, les nouveautés et un avis quand une nouvelle sort. Inkadra ne se met pas à jour tout seul : c’est toi qui le mets à jour, sur le serveur.",
+      "modules": "Choisissez les parties d’Inkadra que vous utilisez. Un module désactivé disparaît de vos menus, de la barre, des notifications et des tutoriels. Cela ne vaut que pour vous et ne supprime rien : ce qui existe reste visible, et en le réactivant vous retrouvez tout."
     },
     "autosave": {
       "idle": "Enregistrement automatique",
@@ -3697,17 +3712,20 @@
       "registration": "Nouveaux comptes, Inscriptions ouvertes, Sur invitation uniquement, Inscriptions fermées, Exiger la validation en deux étapes des administrateurs",
       "instance": "Nom de l’instance, Adresse publique, Version, Diagnostic, État de l’instance, Actualités d’Inkadra, Signalements, Envoyer aux développeurs d’Inkadra, Destination, Dépôt, Jeton GitHub, Les invités peuvent signaler, Conservation des pièces jointes, Signalements reçus",
       "backups": "Sauvegardes, Sauvegarder maintenant, Restauration, Conservation, Sauvegarde nocturne",
-      "toolbar": "Barre d’outils, Outils, Note, Image, Lien, À faire, Couleur, Flèche, Plan, Storyboard, Rétablir la barre par défaut",
+      "toolbar": "Barre d’outils, Outils, Autres outils, Colonne, Titre de section, Couleur, Tableau, Note vocale, Carte, Plan, Plan de plateau, Rétablir la barre par défaut",
       "tutorials": "Visite de bienvenue, Suggestions à la première ouverture, Recommencer",
       "server": "Processeur, Mémoire, Espace, Services, Problèmes, Alertes, Diagnostic, Vidéo",
-      "updates": "Version, Vérifier maintenant, Me prévenir quand une nouvelle version sort, Quelles versions, Préversions, Versions précédentes"
+      "updates": "Version, Vérifier maintenant, Me prévenir quand une nouvelle version sort, Quelles versions, Préversions, Versions précédentes",
+      "modules": "Modules, Storyboard, Production, Moodboard, Validation client, Plan de plateau, Désactiver, Activer"
     },
     "close": "Fermer les paramètres",
     "dangerZone": "Zone sensible",
     "toolbar": {
       "preview": "Aperçu",
       "reset": "Rétablir la barre par défaut",
-      "synced": "Synchronisée avec votre compte"
+      "synced": "Synchronisée avec votre compte",
+      "always": "Toujours dans la barre",
+      "more": "Depuis « Autres outils » : mettre dans la barre"
     }
   },
   "admin": {
@@ -4261,7 +4279,6 @@
   "screenplay": {
     "open": "Importer un scénario…",
     "openShort": "Importer un scénario",
-    "fromScreenplay": "Storyboard depuis un scénario…",
     "title": "Importer un scénario",
     "drop": "Déposez un scénario ici ou choisissez un fichier",
     "choose": "Choisir un fichier",
@@ -4379,7 +4396,10 @@
       "summaryPhone": "<b>{{updated}}, {{added}}, {{omitted}}.</b> Une version est enregistrée d’abord.",
       "submit": "Mettre à jour le storyboard",
       "done": "Storyboard mis à jour : {{updated}}, {{added}}, {{omitted}}."
-    }
+    },
+    "scenesFromFile": "Importer les scènes de ce scénario…",
+    "buildScenes": "Importer les scènes…",
+    "importedScenes": "{{scenes}} importées."
   },
   "frameGrab": {
     "grab": "Capturer un photogramme",
@@ -5033,14 +5053,18 @@
             "text": "Notes, photos, liens, listes : choisissez et cliquez sur le canevas."
           },
           "1": {
-            "title": "Tout le reste",
-            "text": "+ ajoute tableaux et moodboards ; la barre se change dans les Réglages."
+            "title": "Autres outils",
+            "text": "Colonnes, tableaux, cartes et le reste sont dans ⋯ : « Mettre dans la barre » garde à portée ceux que vous utilisez."
           },
           "2": {
+            "title": "Nouveaux tableaux",
+            "text": "Canevas crée des tableaux, des moodboards et des storyboards, et importe un scénario."
+          },
+          "3": {
             "title": "Sélectionner une carte",
             "text": "Ses outils apparaissent juste au-dessus."
           },
-          "3": {
+          "4": {
             "title": "Les vues du tableau",
             "text": "Depuis le menu ⋯, activez le moodboard de ce tableau. Une vue désactivée garde ses données."
           }
@@ -5549,6 +5573,19 @@
           "2": {
             "title": "Qui ne peut pas modifier",
             "text": "Invités et lecteurs ouvrent le plan dans une vue avec déplacement et zoom, les setups, la légende et le PDF."
+          }
+        }
+      },
+      "modules": {
+        "name": "Modules",
+        "steps": {
+          "0": {
+            "title": "Seulement ce que vous utilisez",
+            "text": "Désactivez Storyboard, Production, Moodboard, Validation client ou Plan de plateau : ils quittent vos menus et la barre."
+          },
+          "1": {
+            "title": "Rien ne se perd",
+            "text": "Ce qui existe reste visible et s’ouvre. Réactivez le module et tout est là."
           }
         }
       }
@@ -6193,5 +6230,41 @@
     "castOnlyScheduled": "seulement les personnes du plan",
     "notCalled_one": "Non convoqué aujourd'hui · {{names}}",
     "notCalled_other": "Non convoqués aujourd'hui · {{names}}"
+  },
+  "modules": {
+    "names": {
+      "board": "Tableau",
+      "storyboard": "Storyboard",
+      "production": "Production",
+      "moodboard": "Moodboard",
+      "review": "Validation client",
+      "plan": "Plan de plateau"
+    },
+    "desc": {
+      "board": "Notes, images, liens, fichiers, tâches, colonnes et commentaires.",
+      "storyboard": "Tableaux storyboard, liste des plans, l’outil Plan, import du scénario en scènes.",
+      "production": "Plan de tournage, équipe, feuilles de service et fiches par scène.",
+      "moodboard": "Tableaux moodboard et la vue Moodboard d’un tableau : groupes, notes, palettes.",
+      "review": "Liens pour les clients sans compte, validations et demandes de modification.",
+      "plan": "Plans avec lumières, caméras, acteurs et murs, liés aux scènes et aux plans."
+    },
+    "keep": {
+      "storyboard": "Les plans existants restent où ils sont.",
+      "production": "Les jours de tournage et les personnes restent enregistrés.",
+      "moodboard": "Images, liens et couleurs restent sur les tableaux.",
+      "review": "Les liens déjà envoyés continuent de fonctionner.",
+      "plan": "Les plans déjà dessinés restent visibles."
+    },
+    "offKeep": "Désactivé · {{text}}",
+    "always": "Toujours activé",
+    "turnOn": "Activer",
+    "turnedOn": "{{name}} est activé : vous le trouvez dans Canevas et dans la barre.",
+    "failed": "Le module n’a pas changé. Réessayez.",
+    "off": "Module désactivé.",
+    "kindOff": "{{name}} : module désactivé, activer",
+    "notice": {
+      "storyboard": "{{scenes}} sur le tableau. Avec Storyboard, elles deviennent des plans."
+    },
+    "offLine": "Module {{name}} désactivé : vous pouvez lire ce tableau."
   }
 }

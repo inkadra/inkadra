@@ -7,6 +7,7 @@ import {
   headerViews,
   isBoardView,
   kindIcon,
+  offeredViews,
   openView,
   VIEWS,
   viewHref,
@@ -145,5 +146,23 @@ describe('the header, the sidebar and the phone', () => {
     ]);
     expect(viewIcon('review')).toBe('people');
     expect(viewIcon('canvas')).toBe('board');
+  });
+});
+
+describe('the views a module that is off leaves out (decision 0121)', () => {
+  it('offers only the views of modules that are on, and keeps those already on', () => {
+    expect(offeredViews(board('storyboard', ['shotlist']), undefined, [])).toEqual([
+      'shotlist',
+      'schedule',
+      'troupe',
+      'review',
+    ]);
+    // Off: not offered to turn on; a view that is on stays, to be turned off.
+    expect(
+      offeredViews(board('storyboard', ['shotlist', 'schedule']), undefined, ['production', 'review']),
+    ).toEqual(['shotlist', 'schedule']);
+    expect(offeredViews(board('board', []), undefined, ['moodboard'])).toEqual(['review']);
+    // The header still shows a view that is on, whatever the modules.
+    expect(boardViews(board('board', ['moodboard']), undefined)).toContain('moodboard');
   });
 });

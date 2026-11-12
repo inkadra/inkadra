@@ -2110,6 +2110,169 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   height: 26px;
   margin-right: 10px;
 }
+/* The Canvas menu (decision 0121): one card per kind of board, two to a row, with a preview. */
+.menu--new-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: min(430px, calc(100vw - 16px));
+  padding: 10px;
+}
+.menu--new-board > .menu__heading,
+.menu--new-board > .menu__divider,
+.menu--new-board > .menu__item:not(:has(.new-board)) {
+  grid-column: 1 / -1;
+}
+.menu--new-board > .menu__heading {
+  margin: 2px 4px 0;
+}
+.menu--new-board > .menu__divider {
+  margin: 0;
+}
+.menu--new-board > .menu__item:has(.new-board) {
+  height: auto;
+  padding: 0;
+  border-radius: var(--ink-radius-md);
+}
+.new-board {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+  text-align: left;
+  color: var(--ink-text-primary);
+}
+.menu__item:hover .new-board,
+.menu__item:focus-visible .new-board {
+  border-color: var(--ink-border-strong);
+}
+.new-board.is-off {
+  border-style: dashed;
+  background: none;
+}
+.new-board.is-off > :not(.new-board__tag) {
+  opacity: 0.55;
+}
+.new-board__preview {
+  display: grid;
+  gap: 4px;
+  height: 62px;
+  margin-bottom: 5px;
+  padding: 7px;
+  overflow: hidden;
+  border-radius: var(--ink-radius-sm);
+  background: var(--kind-bg);
+  color: var(--kind-fg);
+}
+.new-board__preview i {
+  display: block;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.55;
+}
+.new-board__preview--board {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 1fr 1fr;
+}
+.new-board__preview--board i:nth-child(2) {
+  grid-row: span 2;
+}
+.new-board__preview--moodboard {
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+.new-board__preview--moodboard i:first-child {
+  grid-row: span 2;
+}
+.new-board__preview--storyboard {
+  grid-template-columns: repeat(3, 1fr);
+}
+.new-board__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.new-board__name svg {
+  color: var(--kind-fg);
+}
+.new-board__desc {
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: normal;
+  color: var(--ink-text-muted);
+}
+.new-board__tag {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+.new-board__script {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.new-board__script .new-board__tag {
+  position: static;
+  margin-left: auto;
+}
+.new-board__script.is-off,
+.menu__item:has(.new-board__script.is-off) > .menu__tile {
+  color: var(--ink-text-muted);
+}
+/* More (⋯) of the toolbar: each tool, and a chip that puts it in the bar or takes it out. */
+.more-tools {
+  position: fixed;
+  width: min(300px, calc(100vw - 16px));
+  margin: 0;
+}
+.more-tools__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.more-tools__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.more-tools__row > .more-tools__add {
+  flex: 1;
+  min-width: 0;
+}
+.more-tools__pin {
+  flex: none;
+  margin-right: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-full);
+  background: none;
+  color: var(--ink-text-muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.more-tools__pin:hover {
+  color: var(--ink-text-primary);
+  border-color: var(--ink-border-strong);
+}
+.more-tools__pin.is-on {
+  border-color: transparent;
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
 /* The selection bar's Arrange menu (#320): the gap of the tidy-up commands as S, M, L chips. */
 .arrange-menu {
   width: 232px;
@@ -5168,6 +5331,44 @@ button.card__play {
   border-color: var(--ink-accent-primary);
 }
 
+/*
+ * A board of a module this person turned off (decision 0121): one thin line under the header's
+ * title says they can read it, with Turn on. Their role still decides what they can edit.
+ */
+.board-module-off {
+  position: fixed;
+  z-index: 29;
+  top: calc(var(--ink-float-gap) * 2 + var(--ink-header-height));
+  left: var(--ink-shell-left, 12px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - var(--ink-shell-left, 12px) - var(--ink-float-gap));
+  margin: 0;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.board-module-off > span {
+  display: grid;
+  color: var(--kind-fg);
+}
+.board-module-off .ink-btn {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+@media (width < 768px) {
+  .board-module-off {
+    top: calc(env(safe-area-inset-top, 0px) + 60px);
+    left: 12px;
+    max-width: calc(100vw - 24px);
+  }
+}
 .board-update-notice {
   position: fixed;
   top: 72px;

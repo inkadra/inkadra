@@ -69,6 +69,7 @@ export function ScreenplayImportDialog({
   initialFile,
   confirmLabel,
   storyboard,
+  scenesOnly = false,
   onImport,
   onClose,
 }: {
@@ -78,6 +79,8 @@ export function ScreenplayImportDialog({
   confirmLabel?: string;
   /** The open storyboard, for `revise`: its title and its scenes with their frames. */
   storyboard?: { title: string; groups: readonly SceneGroup[] };
+  /** Scenes without frames, as cards of an ordinary board: Storyboard is off (decision 0121). */
+  scenesOnly?: boolean;
   onImport: (
     plan: ImportPlan,
     target: ImportTarget,
@@ -88,8 +91,10 @@ export function ScreenplayImportDialog({
   const { t } = useTranslation();
   const phone = useIsPhone();
   const [file, setFile] = useState<{ name: string; script: Script } | null>(initialFile ?? null);
+  const optionsFor = (script: Script): ImportOptions =>
+    scenesOnly ? { ...defaultOptions(script), frames: 'none' } : defaultOptions(script);
   const [options, setOptions] = useState<ImportOptions | null>(
-    initialFile ? defaultOptions(initialFile.script) : null,
+    initialFile ? optionsFor(initialFile.script) : null,
   );
   // A draft whose title is the storyboard's is most likely a revision of it.
   const targetFor = (script: Script | undefined): ImportTarget =>
@@ -163,7 +168,7 @@ export function ScreenplayImportDialog({
     try {
       const script = await readScreenplay(picked);
       setFile({ name: picked.name, script });
-      setOptions(defaultOptions(script));
+      setOptions(optionsFor(script));
       setOverrides(new Map());
       setTarget(targetFor(script));
     } catch (e) {
@@ -440,6 +445,7 @@ export function ScreenplayImportDialog({
                   </ul>
                 </fieldset>
                 <div className="script-import__options">
+                  {!scenesOnly && (
                   <Segmented
                     label={t('screenplay.frames')}
                     value={options.frames}
@@ -451,6 +457,7 @@ export function ScreenplayImportDialog({
                     onChange={(v) => set('frames', v as FramesMode)}
                     hint={t(`screenplay.framesHint.${options.frames}`)}
                   />
+                  )}
                   {options.frames === 'action' && (
                     <Field label={t('screenplay.maxFrames')}>
                       {(id) => (

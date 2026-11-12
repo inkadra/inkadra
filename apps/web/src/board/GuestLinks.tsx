@@ -21,6 +21,7 @@ import {
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
+import { useModules } from '../lib/modules.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import { useMenu } from '../routes/ProjectAppearance.tsx';
@@ -98,6 +99,8 @@ export function GuestLinks({
   subBoards: number;
 }) {
   const { t } = useTranslation();
+  // Client review off (decision 0121): no new link; the ones that exist stay listed.
+  const { offers } = useModules();
   const [links, setLinks] = useState<ShareLink[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<ShareLink | null>(null);
@@ -138,6 +141,7 @@ export function GuestLinks({
       <p className="share__lead ink-muted">
         <Trans i18nKey="guestLinks.lead" components={{ b: <b /> }} />
       </p>
+      {offers('menus', 'reviewLink') && (
       <CreateForm
         boardId={board.id}
         subBoards={subBoards}
@@ -149,6 +153,7 @@ export function GuestLinks({
           refreshBoardCounts();
         }}
       />
+      )}
       {error && (
         <p className="share__error" role="alert">
           {error}

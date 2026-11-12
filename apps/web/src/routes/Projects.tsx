@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
+import { usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
@@ -441,6 +442,7 @@ function ProjectCard({
   const { typeLabel } = useClassifications();
   const { t, i18n } = useTranslation();
   const { user } = useSession();
+  const { modulesOff } = usePreferences();
   const navigate = useNavigate();
   const [typing, setTyping] = useState(false);
   const p = row.project;
@@ -456,7 +458,7 @@ function ProjectCard({
         disabled: busy,
         action: () => void mutate(p, 'pin'),
       },
-      ...(user ? addBoardItems(p, t, navigate, onError) : []),
+      ...(user ? addBoardItems(p, t, navigate, modulesOff, onError) : []),
       ...(editor
         ? [{ label: t('projectsPage.details'), disabled: busy, action: () => setTyping(true) }]
         : []),

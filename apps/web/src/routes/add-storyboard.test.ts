@@ -40,8 +40,16 @@ it('fails when the boards cannot be loaded, and is offered to editors only', asy
   vi.mocked(loadBoards).mockResolvedValue(null);
   await expect(addBoard(project, 'storyboard', t)).rejects.toThrow();
   const menu = (myRole: Project['myRole']) =>
-    addBoardItems({ ...project, myRole } as Project, t, vi.fn());
+    addBoardItems({ ...project, myRole } as Project, t, vi.fn(), []);
   expect(menu('editor')).toHaveLength(2);
   expect(menu('owner')).toHaveLength(2);
   expect(menu('viewer')).toHaveLength(0);
+});
+
+it('offers only the kinds of modules that are on (decision 0121)', () => {
+  const labels = (off: string[]) =>
+    addBoardItems({ ...project, myRole: 'owner' } as Project, t, vi.fn(), off).map((i) => i.label);
+  expect(labels(['storyboard'])).toEqual(['nav.addMoodboard']);
+  expect(labels(['moodboard', 'storyboard'])).toEqual([]);
+  expect(labels(['plan', 'later'])).toHaveLength(2);
 });

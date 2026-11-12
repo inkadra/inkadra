@@ -13,11 +13,14 @@ or start over. Guests of a review link get two steps, and **?** in their header 
 
 ## The board
 
-A board is an infinite canvas. The **dock** at the bottom holds the tools that add cards: notes,
-pictures, links, to-do lists, colours, tables, voice notes, columns, sections, maps and more.
-**+ ▾** at its end opens everything, and **Settings → Toolbar** chooses which tools stay in the dock.
-Panels never cover it: it moves over when one opens. On a phone the dock shows the first few tools
-above the navigation bar, and the rest are under **+**.
+A board is an infinite canvas. The **dock** at the bottom always holds Select, Hand and Arrow, then
+notes, pictures, links and to-do lists. **⋯** (More) lists the other tools (columns, section titles,
+colours, tables, voice notes, maps, characters, places, frames and set plans), each with
+**Put in the bar**; columns and section titles start there. **Canvas** at the end of the dock creates
+boards: a board, a moodboard or a storyboard, each shown with a small preview, or one made from a
+screenplay. **Settings → Toolbar** chooses the same. Panels never cover the dock: it moves over when
+one opens. On a phone it shows the first few tools above the navigation bar, and the rest are under
+**More**.
 
 Select a card and a **toolbar** appears above it, with what that card can do: a note's text style,
 lists, links and colours while you type, a section's size and colour, a link's info and preview, or
@@ -38,7 +41,7 @@ Draw on a picture. **Done**, `Esc` or a click elsewhere closes it.
 ## Kinds of board and their views
 
 A project starts with one board. **Add storyboard** and **Add moodboard** in the project's ⋯ menu,
-and **Moodboard** under **+ ▾**, add more, as many as you need. Each kind has its own views:
+and the cards of **Canvas** in the dock, add more, as many as you need. Each kind has its own views:
 
 | Kind       | Always            | Can be turned on                     |
 | ---------- | ----------------- | ------------------------------------ |
@@ -51,6 +54,17 @@ them on and off: a view that is off leaves the header and the sidebar, and its d
 sidebar every board is a row with the icon of its kind, with its views under it when it has more
 than one. A storyboard has no canvas: one made before it had other cards keeps them, and
 **Cards outside the storyboard** in its ⋯ menu opens them.
+
+## Modules
+
+**Settings → Modules** turns off the parts of Inkadra you do not use, for you alone: Storyboard,
+Production, Moodboard, Client review and Set plan. The board itself (notes, images, links, files,
+to-dos, columns and comments) is always on. A module that is off leaves your menus, the dock, its
+settings, notifications, tutorials and export options; nothing is deleted. What exists stays
+visible and opens: a storyboard made by a colleague shows one line under its title, "Storyboard
+module off: you can read this board", with **Turn on**. In **Canvas**, a kind of board of a module
+that is off stays, dimmed, with **Turn on**. A screenplay dropped on a board while Storyboard is off
+brings its scenes as cards, and once a short notice says what Storyboard would do with them.
 
 ## Videos in their card
 

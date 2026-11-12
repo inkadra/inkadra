@@ -34,6 +34,7 @@ import { uploadBoardId } from '../frame-grab.ts';
 import { croppedRotatedSize, hasImageTransform } from '../image-crop.ts';
 import { fillLinkPreview, webUrl } from '../links.ts';
 import { PresentationView } from '../PresentationView.tsx';
+import { useModules } from '../../lib/modules.ts';
 import { isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { normaliseTag } from '../tags.tsx';
@@ -494,6 +495,7 @@ export function MoodboardView({
 }) {
   const { tagLabel, tagOption } = useClassifications();
   const { t } = useTranslation();
+  const { offers } = useModules();
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [tag, setTag] = useState('');
   const [kind, setKind] = useState<Kind | ''>('');
@@ -969,6 +971,7 @@ export function MoodboardView({
                 {t('moodboard.note')}
               </Button>
             )}
+            {offers('menus', 'sendToStoryboard') && (
             <Button
               disabled={sending || chosenMedia.length === 0}
               aria-haspopup={storyboards.length > 1 ? 'menu' : undefined}
@@ -986,6 +989,7 @@ export function MoodboardView({
             >
               {t('moodboard.sendToStoryboard')}
             </Button>
+            )}
             {pickingStoryboard &&
               createPortal(
                 <ContextMenu

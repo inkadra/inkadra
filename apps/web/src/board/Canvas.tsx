@@ -84,6 +84,7 @@ import {
   type BoardKind,
   defaultProjectIcon,
   isMapLink,
+  type ModuleId,
 } from '@inkadra/shared';
 import { Button, Icon, kindStyle } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
@@ -108,6 +109,7 @@ import { addActions, type PaletteAction, useRegisterActions } from '../commands/
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { api } from '../lib/api.ts';
 import { useIsPhone } from '../lib/phone.ts';
+import { setModule, takeModuleNotice, useModules } from '../lib/modules.ts';
 import { getPreferences, updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
@@ -165,7 +167,7 @@ import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
 import { StoryCardPanel } from './film/StoryCardPanel.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
 import { detectScreenplay } from './film/screenplay/parse.ts';
-import type { ImportPlan } from './film/screenplay/plan.ts';
+import { applyImport, type ImportPlan } from './film/screenplay/plan.ts';
 import { ScreenplayImportDialog } from './film/screenplay/ScreenplayImportDialog.tsx';
 import type { Script } from './film/screenplay/script.ts';
 import { viewableInOrder } from './gallery.ts';
@@ -520,6 +522,7 @@ export function Canvas({
   const [appearance, setAppearance] = useState<string | null>(null);
   const [tool, setTool] = useState<CanvasTool>('select');
   const prefs = usePreferences();
+  const { offers } = useModules();
   /** Snap to grid (#296): this person's preference (#302), so the magnet follows them. */
   const magnet = prefs.snapToGrid;
   const magnetRef = useRef(magnet);
@@ -586,8 +589,24 @@ export function Canvas({
     show?: readonly string[];
     ok?: boolean;
     error?: boolean;
+    /** The one short notice of a module that is off offers to turn it on (decision 0121). */
+    turnOn?: ModuleId;
   } | null>(null);
   const closeToast = useCallback(() => setToast(null), []);
+  /** Turn on, from a dimmed entry of the Canvas menu or a module's notice. */
+  const turnOnModule = useCallback(
+    (id: ModuleId) =>
+      void setModule(id, true)
+        .then(() =>
+          setToast({
+            text: t('modules.turnedOn', { name: t(`modules.names.${id}`) }),
+            undo: false,
+            ok: true,
+          }),
+        )
+        .catch(() => setToast({ text: t('modules.failed'), undo: false, error: true })),
+    [t],
+  );
   /** A short confirmation from a card, such as a copied colour (#308). */
   const notify = useCallback((text: string) => setToast({ text, undo: false, ok: true }), []);
   // A new toast starts its count and its Undo afresh.
@@ -1049,6 +1068,34 @@ export function Canvas({
   );
   /** Where the voice note being recorded will go (#327), while the recorder is open. */
   const [recording, setRecording] = useState<Point | null>(null);
+  /**
+   * Storyboard off (decision 0121): the scenes arrive on this board as cards, and once per
+   * person one line says what Storyboard would do, with Turn on.
+   */
+  const insertScenes = useCallback(
+    (plan: ImportPlan) => {
+      if (readOnly) return;
+      store.undo.stopCapturing();
+      const created = applyImport(doc, plan, { userId, origin: LOCAL });
+      store.undo.stopCapturing();
+      const scenes = t('screenplay.scenes', { count: plan.scenes.length });
+      if (takeModuleNotice('storyboard')) {
+        setToast({
+          text: t('modules.notice.storyboard', { scenes }),
+          undo: false,
+          turnOn: 'storyboard',
+        });
+        return;
+      }
+      setToast({
+        text: t('screenplay.importedScenes', { scenes }),
+        undo: true,
+        show: created.map((scene) => scene.id),
+        ok: true,
+      });
+    },
+    [readOnly, store, doc, userId, t],
+  );
   /** A storyboard card from a screenplay: the board is filled in the background. */
   const insertScreenplay = useCallback(
     async (plan: ImportPlan) => {
@@ -1395,7 +1442,7 @@ export function Canvas({
       selectedFrame:
         onlySelected && snap.byId.get(onlySelected)?.type === 'frame' ? onlySelected : null,
       add: addActions(
-        TOOLS,
+        TOOLS.filter((tl) => offers('tools', tl.type)),
         (type) => t('board.palette.add', { type: t(`board.types.${type}`) }),
         (type) => {
           void add(type);
@@ -2529,7 +2576,7 @@ export function Canvas({
         setTool(cmd.tool);
         break;
       case 'add':
-        if (readOnly) return;
+        if (readOnly || !offers('tools', cmd.type)) return;
         void add(cmd.type);
         break;
       case 'palette':
@@ -3249,7 +3296,11 @@ export function Canvas({
           ...(single?.type === 'file' && !readOnly && detectedScripts[single.id]
             ? [
                 {
-                  label: t('screenplay.buildFromFile'),
+                  label: t(
+                    offers('kinds', 'storyboard')
+                      ? 'screenplay.buildFromFile'
+                      : 'screenplay.scenesFromFile',
+                  ),
                   icon: 'storyboard' as const,
                   action: () => openDetectedScript(single.id),
                 },
@@ -3854,7 +3905,7 @@ export function Canvas({
                   variant="ghost"
                   onClick={() => openDetectedScript(scriptHint)}
                 >
-                  {t('screenplay.build')}
+                  {t(offers('kinds', 'storyboard') ? 'screenplay.build' : 'screenplay.buildScenes')}
                 </Button>
                 <Button
                   variant="ghost"
@@ -4269,6 +4320,7 @@ export function Canvas({
               onAdd={(type) => void add(type)}
               onCanvas={(kind) => void insertCanvas(kind)}
               onScreenplay={() => setImportingScript(true)}
+              onModuleOn={turnOnModule}
               onVoiceNote={canRecord() ? () => setRecording(center()) : undefined}
               phone={isPhone}
             />
@@ -4302,9 +4354,10 @@ export function Canvas({
         {importingScript &&
           createPortal(
             <ScreenplayImportDialog
-              targets={['new']}
+              targets={offers('kinds', 'storyboard') ? ['new'] : ['append']}
+              scenesOnly={!offers('kinds', 'storyboard')}
               initialFile={initialScript}
-              onImport={insertScreenplay}
+              onImport={offers('kinds', 'storyboard') ? insertScreenplay : insertScenes}
               onClose={() => {
                 setImportingScript(false);
                 setInitialScript(undefined);
@@ -4376,7 +4429,16 @@ export function Canvas({
             text={toast.text}
             ok={toast.ok}
             error={toast.error}
-            onShow={toast.show ? () => showCards(toast.show ?? []) : undefined}
+            onShow={
+              toast.turnOn
+                ? () => {
+                    if (toast.turnOn) turnOnModule(toast.turnOn);
+                  }
+                : toast.show
+                  ? () => showCards(toast.show ?? [])
+                  : undefined
+            }
+            showLabel={toast.turnOn ? t('modules.turnOn') : undefined}
             onUndo={
               toast.undo === true ? () => store.undo.undo() : toast.undo ? toast.undo : undefined
             }

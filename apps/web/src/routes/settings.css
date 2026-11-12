@@ -1024,6 +1024,9 @@
   box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
   color: var(--ink-text-primary);
 }
+.toolbar-settings__tile:has(input:disabled) {
+  cursor: default;
+}
 .toolbar-settings__tile:has(input:focus-visible) {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
@@ -1194,4 +1197,25 @@
   left: 50%;
   translate: -50% 0;
   white-space: nowrap;
+}
+
+/* Modules page (decision 0121): one row per module, its icon in the module's colour. */
+.module-settings .settings-row {
+  align-items: flex-start;
+}
+.module-settings__glyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--ink-radius-sm);
+  background: var(--kind-bg);
+  color: var(--kind-fg);
+}
+.module-settings__keep {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--ink-text-muted);
 }

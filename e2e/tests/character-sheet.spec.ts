@@ -4,6 +4,7 @@ import { mkdirSync } from 'node:fs';
 import { createElement, type NewElement } from '@inkadra/canvas-core';
 import { createBoardDoc, readElement, roots } from '@inkadra/doc-schema';
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { addFromBar } from '../helpers/phone-board.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
@@ -421,8 +422,7 @@ for (const [device, width, height, theme] of matrix) {
       await expect(sheet.getByText('Scheda bloccata')).toBeVisible();
       await shot('locked');
       await sheet.getByRole('button', { name: 'Chiudi la scheda' }).click();
-      await page.getByRole('button', { name: 'Canvas', exact: true }).click();
-      await page.getByRole('menuitem', { name: 'Personaggio' }).click();
+      await addFromBar(page, 'Personaggio');
       await expect(sheet.getByLabel('Nome', { exact: true })).toBeFocused();
       await expect(sheet.locator('summary', { hasText: 'Identità' })).toContainText('vuota');
       await shot('empty');

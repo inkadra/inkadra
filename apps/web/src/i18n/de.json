@@ -290,8 +290,15 @@
     "typedValue": "{{label}}: Wert",
     "canvasMenu": {
       "label": "Canvas",
-      "hint": "Canvas einfügen",
-      "more": "Mehr"
+      "hint": "Board erstellen",
+      "more": "Mehr",
+      "newBoard": "Neues Board",
+      "screenplay": "Drehbuch importieren…",
+      "desc": {
+        "board": "Freie Fläche für Notizen, Bilder und Dateien.",
+        "moodboard": "Referenzen in Gruppen, mit Palette.",
+        "storyboard": "Szenen und Frames, mit Shotlist."
+      }
     },
     "toolGroups": {
       "navigate": "Navigieren und verbinden",
@@ -1862,6 +1869,12 @@
       "always": "immer",
       "none": "Dieser Typ hat keine weiteren Ansichten",
       "note": "Eine ausgeschaltete Ansicht verschwindet aus der Leiste und dem Baum. Die Daten bleiben."
+    },
+    "more": {
+      "title": "Weitere Werkzeuge",
+      "pin": "In die Leiste",
+      "pinned": "In der Leiste",
+      "pinFor": "{{name}} in die Leiste legen"
     }
   },
   "tags": {
@@ -3557,7 +3570,8 @@
       "toolbar": "Werkzeugleiste",
       "tutorials": "Tutorials",
       "server": "Server",
-      "updates": "Updates"
+      "updates": "Updates",
+      "modules": "Module"
     },
     "leads": {
       "account": "Dein Profil und deine Anmeldung.",
@@ -3568,10 +3582,11 @@
       "registration": "Wer ein neues Konto erstellen darf.",
       "about": "Name, Adresse, Version und Einrichtungsstatus der Instanz.",
       "backups": "Nächtliche Kopien der Datenbank, um den Server nach einem Ausfall wiederherzustellen.",
-      "toolbar": "Wähle, was du in der unteren Leiste siehst. Ausgeblendete Werkzeuge bleiben in „+ ▾“ und in der Befehlspalette.",
+      "toolbar": "Wähle, welche Werkzeuge aus „Weitere“ du in der unteren Leiste siehst. Die anderen bleiben in ⋯ und in der Befehlspalette.",
       "tutorials": "Sieh dir die geführten Touren erneut an und wähle, ob sie angeboten werden.",
       "server": "Wie es dem Server geht: Ressourcen, Dienste, Aufträge, Probleme und Warnungen.",
-      "updates": "Die laufende Version, die Neuerungen und ein Hinweis, wenn eine neue erscheint. Inkadra aktualisiert sich nicht selbst: Das Update machst du, auf dem Server."
+      "updates": "Die laufende Version, die Neuerungen und ein Hinweis, wenn eine neue erscheint. Inkadra aktualisiert sich nicht selbst: Das Update machst du, auf dem Server.",
+      "modules": "Wähle die Teile von Inkadra, die du nutzt. Ein ausgeschaltetes Modul verschwindet aus deinen Menüs, der Leiste, den Benachrichtigungen und den Tutorials. Es gilt nur für dich und löscht nichts: Was existiert, bleibt sichtbar, und wenn du es wieder einschaltest, ist alles wieder da."
     },
     "autosave": {
       "idle": "Automatisches Speichern",
@@ -3697,17 +3712,20 @@
       "registration": "Neue Konten, Offene Registrierung, Nur auf Einladung, Geschlossene Registrierung, Zwei-Faktor-Anmeldung für Admins verlangen",
       "instance": "Name der Instanz, Öffentliche Adresse, Version, Diagnose, Instanz-Status, Inkadra-Neuigkeiten, Meldungen, An die Inkadra-Entwickler senden, Ziel, Repository, GitHub-Token, Gäste dürfen melden, Aufbewahrung der Anhänge, Eingegangene Meldungen",
       "backups": "Backups, Jetzt sichern, Wiederherstellung, Aufbewahrung, Nächtliches Backup",
-      "toolbar": "Werkzeugleiste, Werkzeuge, Notiz, Bild, Link, To-do, Farbe, Pfeil, Frame, Storyboard, Standardleiste wiederherstellen",
+      "toolbar": "Werkzeugleiste, Werkzeuge, Weitere, Spalte, Abschnittstitel, Farbe, Tabelle, Sprachnotiz, Karte, Frame, Setplan, Standardleiste wiederherstellen",
       "tutorials": "Willkommenstour, Hinweise beim ersten Öffnen, Von vorn beginnen",
       "server": "Prozessor, Arbeitsspeicher, Speicherplatz, Dienste, Probleme, Warnungen, Diagnose, Video",
-      "updates": "Version, Jetzt prüfen, Bei neuer Version benachrichtigen, Welche Versionen, Vorabversionen, Frühere Versionen"
+      "updates": "Version, Jetzt prüfen, Bei neuer Version benachrichtigen, Welche Versionen, Vorabversionen, Frühere Versionen",
+      "modules": "Module, Storyboard, Produktion, Moodboard, Kundenfreigabe, Setplan, Ausschalten, Einschalten"
     },
     "close": "Einstellungen schließen",
     "dangerZone": "Gefahrenzone",
     "toolbar": {
       "preview": "Vorschau",
       "reset": "Standardleiste wiederherstellen",
-      "synced": "Mit deinem Konto synchronisiert"
+      "synced": "Mit deinem Konto synchronisiert",
+      "always": "Immer in der Leiste",
+      "more": "Aus „Weitere“: in die Leiste"
     }
   },
   "admin": {
@@ -4261,7 +4279,6 @@
   "screenplay": {
     "open": "Drehbuch importieren…",
     "openShort": "Drehbuch importieren",
-    "fromScreenplay": "Storyboard aus Drehbuch…",
     "title": "Drehbuch importieren",
     "drop": "Drehbuch hier ablegen oder Datei wählen",
     "choose": "Datei wählen",
@@ -4379,7 +4396,10 @@
       "summaryPhone": "<b>{{updated}}, {{added}}, {{omitted}}.</b> Vorher wird eine Version gespeichert.",
       "submit": "Storyboard aktualisieren",
       "done": "Storyboard aktualisiert: {{updated}}, {{added}}, {{omitted}}."
-    }
+    },
+    "scenesFromFile": "Szenen aus diesem Drehbuch importieren…",
+    "buildScenes": "Szenen importieren…",
+    "importedScenes": "{{scenes}} importiert."
   },
   "frameGrab": {
     "grab": "Standbild erfassen",
@@ -5033,14 +5053,18 @@
             "text": "Notizen, Fotos, Links, Listen: wählen und auf die Leinwand klicken."
           },
           "1": {
-            "title": "Alles andere",
-            "text": "+ fügt Boards und Moodboards hinzu; die Leiste änderst du in den Einstellungen."
+            "title": "Weitere Werkzeuge",
+            "text": "Spalten, Tabellen, Karten und der Rest liegen in ⋯: „In die Leiste“ hält die griffbereit, die du nutzt."
           },
           "2": {
+            "title": "Neue Boards",
+            "text": "Canvas erstellt Boards, Moodboards und Storyboards und importiert ein Drehbuch."
+          },
+          "3": {
             "title": "Eine Karte auswählen",
             "text": "Ihre Werkzeuge erscheinen direkt darüber."
           },
-          "3": {
+          "4": {
             "title": "Die Ansichten des Boards",
             "text": "Im Menü ⋯ schaltest du das Moodboard dieses Boards ein. Eine ausgeschaltete Ansicht behält ihre Daten."
           }
@@ -5549,6 +5573,19 @@
           "2": {
             "title": "Wer nicht bearbeiten kann",
             "text": "Gäste und Leser öffnen den Plan in einer Ansicht mit Verschieben und Zoom, den Setups, der Legende und dem PDF."
+          }
+        }
+      },
+      "modules": {
+        "name": "Module",
+        "steps": {
+          "0": {
+            "title": "Nur, was du nutzt",
+            "text": "Schalte Storyboard, Produktion, Moodboard, Kundenfreigabe oder Setplan aus: Sie verschwinden aus deinen Menüs und der Leiste."
+          },
+          "1": {
+            "title": "Nichts geht verloren",
+            "text": "Was existiert, bleibt sichtbar und lässt sich öffnen. Schalte das Modul wieder ein, und alles ist da."
           }
         }
       }
@@ -6193,5 +6230,41 @@
     "castOnlyScheduled": "nur wer im Ablauf steht",
     "notCalled_one": "Heute nicht bestellt · {{names}}",
     "notCalled_other": "Heute nicht bestellt · {{names}}"
+  },
+  "modules": {
+    "names": {
+      "board": "Board",
+      "storyboard": "Storyboard",
+      "production": "Produktion",
+      "moodboard": "Moodboard",
+      "review": "Kundenfreigabe",
+      "plan": "Setplan"
+    },
+    "desc": {
+      "board": "Notizen, Bilder, Links, Dateien, To-dos, Spalten und Kommentare.",
+      "storyboard": "Storyboard-Boards, Shotlist, das Werkzeug Frame, Drehbuchimport in Szenen.",
+      "production": "Drehplan, Crew, Dispos und Szenenblätter.",
+      "moodboard": "Moodboard-Boards und die Moodboard-Ansicht eines Boards: Gruppen, Notizen, Paletten.",
+      "review": "Links für Kunden ohne Konto, Freigaben und Änderungswünsche.",
+      "plan": "Pläne mit Licht, Kameras, Darstellern und Wänden, verknüpft mit Szenen und Frames."
+    },
+    "keep": {
+      "storyboard": "Vorhandene Frames bleiben, wo sie sind.",
+      "production": "Drehtage und Personen bleiben gespeichert.",
+      "moodboard": "Bilder, Links und Farben bleiben auf den Boards.",
+      "review": "Bereits verschickte Links funktionieren weiter.",
+      "plan": "Bereits gezeichnete Pläne bleiben sichtbar."
+    },
+    "offKeep": "Aus · {{text}}",
+    "always": "Immer an",
+    "turnOn": "Einschalten",
+    "turnedOn": "{{name}} ist an: du findest es in Canvas und in der Leiste.",
+    "failed": "Das Modul wurde nicht geändert. Versuche es noch einmal.",
+    "off": "Modul aus.",
+    "kindOff": "{{name}}: Modul aus, einschalten",
+    "notice": {
+      "storyboard": "{{scenes}} auf dem Board. Mit Storyboard werden daraus Frames."
+    },
+    "offLine": "Modul {{name}} aus: du kannst dieses Board lesen."
   }
 }

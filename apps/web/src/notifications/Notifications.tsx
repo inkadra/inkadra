@@ -1,3 +1,4 @@
+import { useModules } from '../lib/modules.ts';
 import { updatePreferences, usePreferences } from '../lib/preferences.ts';
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -834,6 +835,7 @@ export function EmailNotifications({
   releaseNewsAvailable?: boolean;
 }) {
   const personal = usePreferences();
+  const { offers } = useModules();
   const { t } = useTranslation();
   const [prefs, setPrefs] = useState<Required<NotificationPreferences> | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -866,10 +868,11 @@ export function EmailNotifications({
   }
 
   if (loadError) return <p role="alert">{t('notifications.preferencesError')}</p>;
-  const types = NotificationChannelType.options;
+  // A module that is off (decision 0121) leaves out its rows.
+  const types = NotificationChannelType.options.filter((type) => offers('notifications', type));
   const inbox = (type: NotificationChannelType) => !prefs?.inboxOff.includes(type);
   // "Never" (an older choice) shows every email off; changing one keeps the others off.
-  const emailOff = prefs?.email === 'off' ? [...types] : (prefs?.emailOff ?? []);
+  const emailOff = prefs?.email === 'off' ? [...NotificationChannelType.options] : (prefs?.emailOff ?? []);
   const fromOff = prefs?.email === 'off' ? { email: 'immediate' as const } : {};
   return (
     <>
