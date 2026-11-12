@@ -32,8 +32,8 @@ import {
   roots,
   SchemaTooNewError,
   STROKE_GRID,
-  setAnimaticAudio,
   Stroke,
+  setAnimaticAudio,
   setBoardAspect,
   UNSORTED,
   validateBoardDoc,
@@ -1414,7 +1414,9 @@ describe('plans beyond their extent (version 25, decision 0117)', () => {
     roots(doc).meta.set('schemaVersion', 24);
     addElement(
       doc,
-      Element.parse(plan({ icons: [{ id: 'iconAAAAAAAAA', kind: 'cob', color: '#EDD963', x: 1, y: 4096 }] })),
+      Element.parse(
+        plan({ icons: [{ id: 'iconAAAAAAAAA', kind: 'cob', color: '#EDD963', x: 1, y: 4096 }] }),
+      ),
     );
     const before = roots(doc).elements.toJSON();
     expect(migrateBoardDoc(doc, boardId)).toEqual([25]);
@@ -1436,10 +1438,25 @@ describe('plans beyond their extent (version 25, decision 0117)', () => {
           },
         ],
         strokes: [
-          { id: 'strokeAAAAAAA', tool: 'pencil', color: '#EDEDED', width: 2, points: [far, 0, 9000, 10] },
+          {
+            id: 'strokeAAAAAAA',
+            tool: 'pencil',
+            color: '#EDEDED',
+            width: 2,
+            points: [far, 0, 9000, 10],
+          },
         ],
         shapes: [
-          { id: 'shapeAAAAAAAA', kind: 'rect', color: '#EDEDED', width: 2, x0: -5, y0: -5, x1: 5000, y1: 5000 },
+          {
+            id: 'shapeAAAAAAAA',
+            kind: 'rect',
+            color: '#EDEDED',
+            width: 2,
+            x0: -5,
+            y0: -5,
+            x1: 5000,
+            y1: 5000,
+          },
         ],
         walls: [{ id: 'wallAAAAAAAAA', points: [-100, 0, 5000, 0], thickness: 9 }],
       }),
@@ -1461,7 +1478,15 @@ describe('plans beyond their extent (version 25, decision 0117)', () => {
     );
     expect(beyond.type === 'plan' && beyond.icons).toEqual([]);
     // A frame's drawing keeps its own bounds.
-    expect(Stroke.safeParse({ id: 'strokeAAAAAAA', tool: 'pencil', color: '#EDEDED', width: 2, points: [-1, 0] }).success).toBe(false);
+    expect(
+      Stroke.safeParse({
+        id: 'strokeAAAAAAA',
+        tool: 'pencil',
+        color: '#EDEDED',
+        width: 2,
+        points: [-1, 0],
+      }).success,
+    ).toBe(false);
   });
 
   it('keeps clients of schema 24 read-only on a version 25 document', () => {

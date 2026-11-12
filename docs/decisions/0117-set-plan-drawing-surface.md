@@ -62,8 +62,8 @@ over it, no frame and no scroll bars.
   person on it; a press there that moves drags the picked item, so a picked base is dragged with
   what it carries;
 - Alt + click picks the item under the top one at once.
-With a finger, a tap on the picked item picks the next one under it when there is one; when there
-is none, the tap takes it out of the selection, as before.
+  With a finger, a tap on the picked item picks the next one under it when there is one; when there
+  is none, the tap takes it out of the selection, as before.
 
 **Shift + click** adds an item to the selection and takes a selected one out, as before (the
 audit's failures came from a test tool that does not hold Shift during a mouse click).

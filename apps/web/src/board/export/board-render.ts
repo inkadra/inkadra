@@ -47,10 +47,10 @@ import {
   iconLabel,
   iconSubLabel,
   LABEL_SIZE,
-  SUB_LABEL_SIZE,
   measureText,
   PLAN_INK,
   planToken,
+  SUB_LABEL_SIZE,
 } from '../plan/PlanDrawing.tsx';
 import { videoEmbedUrl } from '../youtube.ts';
 import type { Placed } from './board-model.ts';
@@ -1249,8 +1249,23 @@ export function planOps(
         const sx = box.x + a.x * k - sw / 2;
         const sy = y + (LABEL_SIZE + 2) * k;
         labels.push(
-          { kind: 'rect', x: sx - 2 * k, y: sy - small, w: sw + 4 * k, h: small * 1.3, fill: c['surface-1'] },
-          { kind: 'text', x: sx, y: sy, text: sub, size: small, weight: 400, color: c['text-secondary'] },
+          {
+            kind: 'rect',
+            x: sx - 2 * k,
+            y: sy - small,
+            w: sw + 4 * k,
+            h: small * 1.3,
+            fill: c['surface-1'],
+          },
+          {
+            kind: 'text',
+            x: sx,
+            y: sy,
+            text: sub,
+            size: small,
+            weight: 400,
+            color: c['text-secondary'],
+          },
         );
       }
     }
