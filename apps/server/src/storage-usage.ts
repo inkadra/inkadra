@@ -25,6 +25,7 @@ export interface UsageGroup {
   visible: boolean;
   userId: string | null;
   userName: string | null;
+  userImage: string | null;
   derivedBytes: number;
 }
 
@@ -32,14 +33,17 @@ export interface UsageGroup {
 export function storageUsage(
   groups: UsageGroup[],
   /** Everyone to list, with no files too. */
-  people: { id: string; name: string }[] = [],
+  people: { id: string; name: string; image: string | null }[] = [],
 ): StorageUsage {
   const types: StorageUsage['byType'] = ['images', 'videos', 'audio', 'documents', 'other'].map(
     (type) => ({ type: type as StorageUsage['byType'][number]['type'], bytes: 0 }),
   );
   const projects = new Map<string, StorageUsage['byProject'][number]>();
   const users = new Map<string | null, NonNullable<StorageUsage['byUser']>[number]>(
-    people.map((p) => [p.id, { userId: p.id, name: p.name, bytes: 0, derivedBytes: 0 }]),
+    people.map((p) => [
+      p.id,
+      { userId: p.id, name: p.name, image: p.image, bytes: 0, derivedBytes: 0 },
+    ]),
   );
   let originalBytes = 0;
   let derivedBytes = 0;
@@ -65,6 +69,7 @@ export function storageUsage(
     const uploader = users.get(row.userId) ?? {
       userId: row.userId,
       name: row.userName,
+      image: row.userImage,
       bytes: 0,
       derivedBytes: 0,
     };

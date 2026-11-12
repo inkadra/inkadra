@@ -149,3 +149,46 @@ it('colours each project with its icon colour, and the rest neutral', () => {
     'var(--ink-text-muted)',
   );
 });
+
+it('shows each person as an avatar ringed in their colour, and files with no account neutral', async () => {
+  const usage: StorageUsage = {
+    originalBytes: 4000,
+    byType: [{ type: 'images', bytes: 4000 }],
+    byProject: [{ projectId: 'p', name: 'Shoot', scope: 'project', bytes: 4000 }],
+    byUser: [
+      { userId: 'u', name: 'Paola Rossi', image: 'https://example.com/paola.webp', bytes: 2000 },
+      { userId: 'v', name: 'Luca Neri', bytes: 1500 },
+      { userId: null, name: null, bytes: 500 },
+    ],
+  };
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <StorageCharts usage={usage} />
+      </MemoryRouter>,
+    ),
+  );
+  await show('user');
+  const rows = [...host.querySelectorAll('tbody tr')];
+  const ring = (row: Element) => row.querySelector<HTMLElement>('.storage-chart__ring')?.style.color;
+  const track = (row: Element) =>
+    row.querySelector<HTMLElement>('.storage-chart__track > span')?.style.background;
+  const [paola, luca, none] = rows as [Element, Element, Element];
+  expect(paola.querySelector('img')?.getAttribute('src')).toBe('https://example.com/paola.webp');
+  expect(ring(paola)).toBe('var(--ink-accent-primary)');
+  expect(track(paola)).toBe('var(--ink-accent-primary)');
+  // No photo, or an older server: initials, in the next colour.
+  expect(luca.querySelector('img')).toBeNull();
+  expect(luca.querySelector('.ink-avatar')?.textContent).toBe('LN');
+  expect(ring(luca)).toBe('var(--ink-tag-blue)');
+  expect(track(luca)).toBe('var(--ink-tag-blue)');
+  expect(none.querySelector('.ink-avatar svg')).not.toBeNull();
+  expect(ring(none)).toBe('var(--ink-border-strong)');
+  expect(track(none)).toBe('var(--ink-border-strong)');
+  const stack = [...host.querySelectorAll<HTMLElement>('.storage-chart__stack > span')];
+  expect(stack.map((s) => s.style.background)).toEqual([
+    'var(--ink-accent-primary)',
+    'var(--ink-tag-blue)',
+    'var(--ink-border-strong)',
+  ]);
+});

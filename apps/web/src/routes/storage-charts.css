@@ -61,6 +61,27 @@
   flex: none;
   border-radius: 50%;
 }
+.storage-chart__person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.storage-chart__person > :last-child {
+  flex: 1;
+  min-width: 0;
+}
+/* The person's colour as a 2px ring, apart from the avatar by a gap of card background. */
+.storage-chart__ring {
+  display: flex;
+  flex: none;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px var(--ink-surface-1),
+    0 0 0 4px currentColor;
+}
+.storage-chart__person .storage-chart__track {
+  margin-left: 0;
+}
 .storage-chart__track {
   display: block;
   height: 3px;

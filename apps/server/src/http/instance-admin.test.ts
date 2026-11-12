@@ -247,6 +247,8 @@ describe.skipIf(!url)('instance administration', () => {
         assetId: image!.id,
       },
     ]);
+    const avatar = `http://localhost/api/v1/users/${people.second!.id}/avatar/00000000-0000-4000-8000-000000000000`;
+    await db.update(user).set({ image: avatar }).where(eq(user.id, people.second!.id));
     const response = await request('admin', 'GET', '/instance/storage');
     expect(response.statusCode).toBe(200);
     expect(response.headers['cache-control']).toBe('private, no-store');
@@ -266,9 +268,9 @@ describe.skipIf(!url)('instance administration', () => {
     ]);
     expect(result.derivedBytes).toBe(250);
     expect(result.byUser?.filter((row) => row.bytes > 0)).toEqual([
-      { userId: people.second!.id, name: 'second', bytes: 3000, derivedBytes: 0 },
-      { userId: people.admin!.id, name: 'admin', bytes: 1000, derivedBytes: 250 },
-      { userId: null, name: null, bytes: 500, derivedBytes: 0 },
+      { userId: people.second!.id, name: 'second', image: avatar, bytes: 3000, derivedBytes: 0 },
+      { userId: people.admin!.id, name: 'admin', image: null, bytes: 1000, derivedBytes: 250 },
+      { userId: null, name: null, image: null, bytes: 500, derivedBytes: 0 },
     ]);
     // Someone who has uploaded nothing is listed too.
     expect(result.byUser?.find((row) => row.userId === people.member!.id)?.bytes).toBe(0);
