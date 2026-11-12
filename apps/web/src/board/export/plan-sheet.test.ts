@@ -29,6 +29,7 @@ const ctx: CardContext = {
   characterLine: () => '',
   storyMeta: () => '',
   words: { board: 'Board', file: 'File', plan: 'Set plan' },
+  language: 'en',
 };
 const t = ((key: string, o?: Record<string, unknown>) =>
   o

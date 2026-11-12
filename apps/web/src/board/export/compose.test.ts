@@ -29,6 +29,7 @@ const ctx: CardContext = {
   characterLine: (el) => el.role ?? '',
   storyMeta: (el) => (el.type === 'character' ? (el.actor ?? '') : 'INT.'),
   words: { board: 'Board', file: 'File' },
+  language: 'en',
 };
 
 const words: Words = {

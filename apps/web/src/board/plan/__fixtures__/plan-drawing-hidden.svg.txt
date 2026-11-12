@@ -1,0 +1,311 @@
+<svg class="plan__svg" viewBox="0 0 1000 666.666667" style="aspect-ratio: 1.5 / 1;" aria-hidden="true">
+<g style="color: var(--ink-tag-blue);">
+<polygon points="157.484375,501.780774 238.67663,199.809054 378.403429,280.480359" style="fill: currentColor; fill-opacity: 0.14; stroke: currentColor; stroke-opacity: 0.5; stroke-width: 1.5;">
+</polygon>
+</g>
+<g>
+<defs>
+<radialGradient id="plan-beam-r1o" gradientUnits="userSpaceOnUse" cx="308.525099" cy="113.212599" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.312">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.052">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="308.525099,113.212599 528.52766,233.65625 428.96875,333.21516" style="fill: url(#plan-beam-r1o); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r1p" gradientUnits="userSpaceOnUse" cx="863.349901" cy="129.488641" r="300">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="863.349901,129.488641 742.82317,405.763399 587.075143,250.015372" style="fill: url(#plan-beam-r1p); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r1q">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="500" cy="146.484375" r="66" fill="url(#plan-beam-r1q)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r1r">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="732.421875" cy="244.140625" r="99" fill="url(#plan-beam-r1r)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r1s">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="805.664063" cy="537.109375" r="66" fill="url(#plan-beam-r1s)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-red);">
+<defs>
+<radialGradient id="plan-beam-r1t" gradientUnits="userSpaceOnUse" cx="345.5377" cy="236.616182" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="345.5377,236.616182 95.24598,220.434263 143.401581,88.127834" style="fill: url(#plan-beam-r1t); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-blue);" data-blocking="iconcamAAAAAA">
+<path d="M73.242188 585.9375Q91.552734 569.661458 90.430639 570.658876M85.707033 583.837934L90.430639 570.658876L76.78867 573.804775" style="fill: none; stroke: currentColor; stroke-width: 2.5; stroke-dasharray: 10 8; stroke-linecap: round; stroke-linejoin: round;">
+</path>
+<path d="M109.863281 553.385417Q75.024721 477.31663 124.277908 507.310286M110.29336 506.652694L124.277908 507.310286L117.275369 495.187397" style="fill: none; stroke: currentColor; stroke-width: 2.5; stroke-dasharray: 10 8; stroke-linecap: round; stroke-linejoin: round;">
+</path>
+<g style="color: var(--ink-tag-blue); opacity: 0.4;" stroke-linecap="round" stroke-linejoin="round" data-icon="iconcamAAAAAA">
+<g transform="translate(73.242188 585.9375) rotate(330) scale(1.333333 1.333333) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.1675;">
+<rect x="-13" y="-7.5" width="17" height="15" rx="2.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-17" y="-5" width="4" height="10" rx="1">
+</rect>
+<rect x="4" y="-4.5" width="6" height="9">
+</rect>
+<path d="M10-5.5l6-3.5v18l-6-3.5z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-8 0h8" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue); opacity: 0.4;" stroke-linecap="round" stroke-linejoin="round" data-icon="iconcamAAAAAA">
+<g transform="translate(109.863281 553.385417) rotate(0) scale(1.333333 1.333333) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.1675;">
+<rect x="-13" y="-7.5" width="17" height="15" rx="2.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-17" y="-5" width="4" height="10" rx="1">
+</rect>
+<rect x="4" y="-4.5" width="6" height="9">
+</rect>
+<path d="M10-5.5l6-3.5v18l-6-3.5z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-8 0h8" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" data-blocking="iconactorAAAA">
+<path d="M439.453125 618.489583Q476.074219 594.075521 491.062005 584.083663M484.562429 596.483483L491.062005 584.083663L477.116181 585.31411" style="fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;">
+</path>
+<g style="color: var(--ink-tag-purple); opacity: 0.4;" stroke-linecap="round" stroke-linejoin="round" data-icon="iconactorAAAA">
+<g transform="translate(439.453125 618.489583) rotate(0) scale(1.833333 1.833333) translate(-2 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<rect x="-8" y="-12" width="8" height="24" rx="4" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="0" y="-10" width="12" height="6" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="0" y="4" width="12" height="6" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-2" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconcamAAAAAA">
+<g transform="translate(146.484375 520.833333) rotate(300) scale(1.333333 1.333333) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.1675;">
+<rect x="-13" y="-7.5" width="17" height="15" rx="2.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-17" y="-5" width="4" height="10" rx="1">
+</rect>
+<rect x="4" y="-4.5" width="6" height="9">
+</rect>
+<path d="M10-5.5l6-3.5v18l-6-3.5z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-8 0h8" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconfresnelAA">
+<g transform="translate(292.96875 97.65625) rotate(45) scale(1.294118 1.294118) translate(2 0)" style="fill: none; stroke: currentColor; stroke-width: 2.233182;">
+<rect x="-13" y="-8" width="18" height="16" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M5-8q7 8 0 16M7-9l8-6M7 9l8 6">
+</path>
+<circle cx="-17" cy="0" r="2">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconhmiAAAAAA">
+<g transform="translate(878.90625 113.932292) rotate(135) scale(1.571429 1.571429) translate(3 0)" style="fill: none; stroke: currentColor; stroke-width: 1.839091;">
+<rect x="-8" y="-10" width="15" height="20" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M7-10q8 10 0 20M-11 0h3">
+</path>
+<rect x="-17" y="-5" width="6" height="10" rx="1">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconlanternAA">
+<g transform="translate(500 146.484375) rotate(0) scale(1.833333 1.833333) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<circle cx="0" cy="0" r="12" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M-12 0h24M0-12v24" style="stroke-opacity: 0.5;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconfloorAAAA">
+<g transform="translate(732.421875 244.140625) rotate(0) scale(2.538462 2.538462) translate(-3 0)" style="fill: none; stroke: currentColor; stroke-width: 1.138485;">
+<circle cx="0" cy="0" r="10" style="stroke-dasharray: 3 3;">
+</circle>
+<circle cx="0" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M10 0h6">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconstreetAAA">
+<g transform="translate(805.664063 537.109375) rotate(90) scale(1.517241 1.517241) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.904773;">
+<circle cx="-12" cy="0" r="3">
+</circle>
+<path d="M-9 0h13">
+</path>
+<ellipse cx="9" cy="0" rx="5" ry="4" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</ellipse>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconringAAAAA">
+<g transform="translate(366.210938 244.140625) rotate(200) scale(1.692308 1.692308) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<circle cx="0" cy="0" r="13" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<circle cx="0" cy="0" r="7" style="fill: var(--plan-paper, var(--ink-surface-1));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="icongelAAAAAA">
+<g transform="translate(415.039063 113.932292) rotate(45) scale(1.692308 1.692308) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<rect x="-2.5" y="-13" width="5" height="26" rx="1" style="stroke: var(--ink-tag-orange); fill: var(--ink-tag-orange); fill-opacity: 0.7;">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconbutterfly">
+<g transform="translate(610.351563 406.901042) rotate(0) scale(2.206897 2.206897) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.309531;">
+<rect x="-12" y="-12" width="24" height="24" style="stroke-dasharray: 3 3; fill: currentColor; fill-opacity: 0.1;">
+</rect>
+<circle cx="-12" cy="-12" r="2.5">
+</circle>
+<circle cx="12" cy="-12" r="2.5">
+</circle>
+<circle cx="-12" cy="12" r="2.5">
+</circle>
+<circle cx="12" cy="12" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconcucoAAAAA">
+<g transform="translate(659.179688 97.65625) rotate(15) scale(1.375 1.375) translate(5.75 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<path d="M0-16v7M0-5v4M0 3v6M0 13v3" style="stroke-width: 4; stroke-linecap: butt;">
+</path>
+<circle cx="-9" cy="10" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconframeAAAA">
+<g transform="translate(219.726563 292.96875) rotate(0) scale(1.777778 1.777778) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.625625;">
+<path d="M0-14v28" style="stroke-dasharray: 3 3;">
+</path>
+<circle cx="0" cy="-16" r="2">
+</circle>
+<circle cx="0" cy="16" r="2">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="icondrapeAAAA">
+<g transform="translate(927.734375 325.520833) rotate(270) scale(3.226667 3.226667) translate(0 3)" style="fill: none; stroke: currentColor; stroke-width: 0.895661;">
+<path d="M-15-3q3.75 8 7.5 0t7.5 0t7.5 0t7.5 0" style="stroke-width: 3.2;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconmonitorAA">
+<g transform="translate(97.65625 65.104167) rotate(10) scale(2 2) translate(-4.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-4" y="-11" width="5" height="22" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M1 0h7">
+</path>
+<circle cx="10.5" cy="0" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: #123456;" stroke-linecap="round" stroke-linejoin="round" data-icon="iconcustomAAA">
+<g transform="translate(244.140625 423.177083) rotate(77) scale(1.375 1.375) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<rect x="-2.5" y="-16" width="5" height="32" rx="1" style="fill: color-mix(in srgb, currentColor 85%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconactorAAAA">
+<g transform="translate(512.695313 569.661458) rotate(180) scale(1.833333 1.833333) translate(-2 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<rect x="-8" y="-12" width="8" height="24" rx="4" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="0" y="-10" width="12" height="6" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="0" y="4" width="12" height="6" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-2" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconlyingAAAA">
+<g transform="translate(854.492188 618.489583) rotate(0) scale(1 1) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<rect x="-16" y="-6" width="22" height="12" rx="6" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="11" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<g class="plan__step" transform="translate(49.242188 561.9375)">
+<circle r="11" style="fill: currentColor;">
+</circle>
+<text text-anchor="middle" y="4.5" font-size="13" font-weight="600">1</text>
+</g>
+<g class="plan__step" transform="translate(85.863281 529.385417)">
+<circle r="11" style="fill: currentColor;">
+</circle>
+<text text-anchor="middle" y="4.5" font-size="13" font-weight="600">2</text>
+</g>
+<g class="plan__step" transform="translate(122.484375 496.833333)">
+<circle r="11" style="fill: currentColor;">
+</circle>
+<text text-anchor="middle" y="4.5" font-size="13" font-weight="600">3</text>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);">
+<g class="plan__step" transform="translate(415.453125 594.489583)">
+<circle r="11" style="fill: currentColor;">
+</circle>
+<text text-anchor="middle" y="4.5" font-size="13" font-weight="600">1</text>
+</g>
+<g class="plan__step" transform="translate(488.695313 545.661458)">
+<circle r="11" style="fill: currentColor;">
+</circle>
+<text text-anchor="middle" y="4.5" font-size="13" font-weight="600">2</text>
+</g>
+</g>
+<text class="plan__label" x="146.484375" y="563.885892" text-anchor="middle" font-size="12" font-weight="500" font-family="inherit" style="color: var(--ink-tag-blue);">A cam · 50 mm</text>
+<text class="plan__label" x="292.96875" y="144.93879" text-anchor="middle" font-size="12" font-weight="500" font-family="inherit" style="color: var(--ink-tag-yellow);">Key · 1.2K</text>
+<text class="plan__label plan__label--dim" x="292.96875" y="158.93879" text-anchor="middle" font-size="11" font-family="inherit">3200 K · 60%</text>
+<text class="plan__label" x="512.695313" y="609.661458" text-anchor="middle" font-size="12" font-weight="500" font-family="inherit" style="color: var(--ink-tag-purple);">Anna</text>
+</svg>

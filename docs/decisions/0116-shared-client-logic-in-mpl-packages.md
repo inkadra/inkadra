@@ -38,7 +38,12 @@ rows of the Elements tab and the legend (`foldIcons`, `elementSections`, `itemNa
 `itemSummary`, `supportText`, and `planLegend`, `legendRow`, `legendLine`, `legendValue`, which
 were written inline in the read-only view and the PDF sheet); the card and the setups
 (`planTitle`, `planCardWords`, `scenesOfPlan`, `setupName`, `setupChanges`, `shotSetups`,
-`groupBySetup`, `dayBySetup`); the room's size (`roomSizeText`, `roomSize`). In
+`groupBySetup`, `dayBySetup`); the room's size (`roomSizeText`, `roomSize`); the geometry the
+board draws an icon and a shape with, in view units (`placedGlyph` with `glyphStroke`,
+`glyphStrokeFactor`; `planShapeOutline` with `measureText`, which takes the app's language as the
+rooms' sizes do, and
+`PLAN_TEXT_SIZES`), the beam's opacities (`beamStrength`, `beamOpacity`) and the order of a plan's
+layers (`PLAN_DRAW_ORDER`), which the board's SVG and the exports both call. In
 `packages/shared`: the sun (`sunPosition`, `sunBearingByClock`, `sunTimes`, `locationCoords`,
 `sunDays`, `northWay`, `sunRotation`, and `sunFrom`, `sunHeight`, `sunDate`, taken out of the
 web's sun section).
@@ -107,6 +112,23 @@ own sentences stay in the web catalogues until another client imports. Beside `F
 `comparePosition` is the saved order of siblings (boards under a board, project groups): by
 `position` as code units, then by `id`, never by locale.
 
+The notification texts the mobile app shows too are `NOTIFICATION_WORDS_EN` in
+`packages/shared`: what every notification type says after the actor's name
+(`notifications.type.*`, one per `NotificationType`, a server alert by its kind), the events and
+email frequencies of the notification settings (`settingsUi.notifications.events.*`, one per
+`NotificationChannelType`; `help.*`, one per `EmailFrequency`; `reviewHelp`) and the sentences of
+the private calendar link on a phone (`calendar.helpPhone`, `privacyPhone`, `confirmBody`,
+`rotated`, `disabled`), with `NOTIFICATION_WORDS_IT`, `_ES`, `_DE`, `_FR`, `_PT` imported by path
+(`@inkadra/shared/notification-words/it`), tested both ways. How a notification is written from
+those words (`describeNotification`: the access dates, the alert's sizes, the review status from
+`review.status.*`) stays in the web for now: it formats with the web's date and size helpers.
+
+The shooting schedule's empty states, which the mobile app shows too, are `SCHEDULE_WORDS_EN` in
+`packages/shared` (`schedule.empty`, `emptyTitle`, `emptyBody`, `emptyReadOnly`, `noBlocks`,
+`noMatches`, `allScheduled`, `callSheet.noBlocks`), with `SCHEDULE_WORDS_IT`, `_ES`, `_DE`,
+`_FR`, `_PT` imported by path (`@inkadra/shared/schedule-words/it`), tested both ways. The
+schedule's editing messages (saving, conflicts, offline) and the sun's notes stay in the web.
+
 One behaviour changed with the move, on purpose: the kit, the names on a circuit and the count
 across setups went by the translated name, so two kinds a language writes alike (or two specs
 that read alike) were one line in that language and two in English. They now go by what the item
@@ -139,6 +161,23 @@ Stays in the web or the server for now; each moves when a second client needs it
 - `crewCastKeys` (server): repeats `castKeysOf` with the cards read from the boards. Moves when
   the server is changed to read the cards first and call `castKeysOf`.
 - The set plan colours: the set plan is being reworked.
+- The rest of a plan's drawing that is not yet in canvas-core: the blocking moves (the board
+  draws a quadratic curve with open wings stopped 26 short, exports a polyline with a filled
+  head), the position numbers' places, a label's halo and the light's second line under it, the
+  ticks of the rooms' sizes, the beam's gradient and the glow's falloff. Move with a plan drawn
+  on another client.
+
+Exports and the board draw a plan alike but not the same, and the move kept both as they were:
+exports stroke glyphs thinner (a part without a width of its own at 1 / 1.7 of the board's, one
+with its own at `glyphStrokeFactor` / 1.7 of it, dashes in widths of that stroke), print an
+arrow's head filled and shorter, write texts, a zone's name and a measure's length level and in
+their own sizes (a text's lines from the top of the first, 0.9 of a size above its baseline),
+leave a measure level, fill a beam flat where the board shades it, stack four discs for a glow
+the board fades, and print the rooms' sizes with the labels, after the numbers. The board writes
+a text's lines on one line (SVG folds the breaks). `placedGlyph` and `planShapeOutline` give the
+board's drawing, a text's lines each at its own baseline; the board and the exports draw from
+them, and a web test holds `placedGlyph`'s widths and dashes to the board's SVG for every kind.
+Making exports match the board is a change to what they print, for its own PR.
 
 Two things a later move must settle: `referencesOf` sorts by `z` with `localeCompare`, while
 canvas-core sorts `z` by code point, and the two can order the same keys differently; and the
