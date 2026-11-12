@@ -405,6 +405,8 @@
 
 .schedule__calendar {
   --schedule-gutter: 76px;
+  /* Above and below each card inside its slot: back-to-back blocks never touch, starts stay put. */
+  --schedule-block-inset: 1px;
   /* Five days fit at 1280 px with the navigation open; seven may scroll sideways. */
   --schedule-column: minmax(128px, 1fr);
   flex: 1;
@@ -635,9 +637,14 @@
   position: absolute;
   left: 4px;
   right: 4px;
+  pointer-events: none;
+}
+.schedule__placeholder::before {
+  content: "";
+  position: absolute;
+  inset: var(--schedule-block-inset) 0;
   border: 2px dashed var(--ink-accent-primary);
   border-radius: var(--ink-radius-sm);
-  pointer-events: none;
 }
 .schedule__now {
   position: absolute;
@@ -686,6 +693,7 @@
   position: absolute;
   z-index: 1;
   display: flex;
+  padding-block: var(--schedule-block-inset);
 }
 .schedule__block--shot {
   --block-bg: var(--ink-tag-blue-bg);
@@ -1441,7 +1449,7 @@ fieldset.schedule__field > legend {
 }
 
 /* Phase 2: a new block drawn on empty time, then its type from a small menu. */
-.schedule__placeholder.is-new {
+.schedule__placeholder.is-new::before {
   background: var(--ink-accent-soft-bg);
 }
 .menu.schedule__create-menu {
