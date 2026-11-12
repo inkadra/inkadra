@@ -177,6 +177,7 @@ export function Preferences() {
   const example = new Date(2026, 10, 14, 7, 30);
   const sample = (formats: Pick<UserPreferences, 'dateFormat' | 'timeFormat'>) =>
     formatDateTime(example, { day: 'numeric', month: 'numeric', year: 'numeric' }, formats);
+  const browserSample = sample({ dateFormat: 'auto', timeFormat: 'auto' });
   const browserClock = /\d\s?[AP]M|[ap]\.?\s?m\./i.test(
     formatDateTime(example, { timeStyle: 'short' }, { dateFormat: 'auto', timeFormat: 'auto' }),
   );
@@ -229,17 +230,27 @@ export function Preferences() {
               className="ink-input settings-input"
               value={prefs.dateFormat}
               onChange={(value) => save({ dateFormat: value as DateFormat })}
-            >
-              {(['auto', 'dmy', 'mdy', 'ymd'] as const).map((value) => (
-                <option key={value} value={value}>
-                  {value === 'auto'
-                    ? t('settingsUi.preferences.fromBrowser', {
-                        example: sample({ dateFormat: 'auto', timeFormat: 'auto' }),
-                      })
-                    : sample({ dateFormat: value, timeFormat: 'auto' })}
-                </option>
-              ))}
-            </Select>
+              options={[
+                {
+                  value: 'auto',
+                  // The closed control also shows the example; the open list says it below.
+                  label: (
+                    <>
+                      {t('settingsUi.preferences.browser')}
+                      <span className="settings-select-example"> · {browserSample}</span>
+                    </>
+                  ),
+                  description: t('settingsUi.preferences.followsLanguage', {
+                    example: browserSample,
+                  }),
+                },
+                ...(['dmy', 'mdy', 'ymd'] as const).map((value) => ({
+                  value,
+                  label: sample({ dateFormat: value, timeFormat: 'auto' }),
+                  description: t(`settingsUi.preferences.dateFormats.${value}`),
+                })),
+              ]}
+            />
           </Row>
           <Row
             label={t('settingsUi.preferences.timeFormat')}

@@ -665,11 +665,103 @@
 .tour-state.is-seen {
   color: var(--ink-text-secondary);
 }
-.tour-state__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
+
+/* Settings → Tutorial: the tours of a group are a grid of tiles, three a line where the page is
+   wide, one on a phone; the whole tile plays its tour. */
+.tour-meter {
+  max-width: 240px;
+}
+.tour-filter {
+  align-self: flex-start;
+}
+.tour-filter__count {
+  color: var(--ink-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tour-group {
+  container-type: inline-size;
+}
+.tour-group > .settings-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.tour-group > .settings-card > :first-child {
+  margin-top: 0;
+}
+@container (width < 560px) {
+  .tour-group > .settings-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (width < 400px) {
+  .tour-group > .settings-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.tour-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--ink-dur-fast) var(--ink-ease-out);
+}
+.tour-tile:hover {
+  background: var(--ink-surface-2);
+}
+.tour-tile.is-unseen {
+  border-color: color-mix(in srgb, var(--ink-accent-primary) 40%, var(--ink-border-default));
+}
+.tour-tile__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tour-tile__name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tour-tile .tour-state {
+  font-size: 12px;
+}
+.tour-tile__play {
+  display: grid;
+  flex: none;
+  color: var(--ink-text-secondary);
+  opacity: 0;
+  transition: opacity var(--ink-dur-fast) var(--ink-ease-out);
+}
+.tour-tile:hover .tour-tile__play,
+.tour-tile:focus-visible .tour-tile__play {
+  opacity: 1;
+}
+@media (hover: none) {
+  .tour-tile__play {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-tile,
+  .tour-tile__play {
+    transition: none;
+  }
 }
 
 /* ---------- mini scenes ---------- */

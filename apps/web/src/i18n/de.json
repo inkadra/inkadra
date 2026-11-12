@@ -3694,7 +3694,13 @@
       "canvas": "Canvas",
       "dateFormat": "Datumsformat",
       "dateFormatHelp": "Drehplan, Tagesdispo, PDF, Kommentare und Aktivität",
-      "fromBrowser": "Vom Browser · {{example}}",
+      "browser": "Vom Browser",
+      "followsLanguage": "Folgt der Sprache · {{example}}",
+      "dateFormats": {
+        "dmy": "Tag / Monat / Jahr",
+        "mdy": "Monat / Tag / Jahr",
+        "ymd": "Jahr-Monat-Tag (ISO)"
+      },
       "timeFormat": "Uhrzeitformat",
       "timeFormatHelp": "Für Call Times und den Drehplan",
       "clock": {
@@ -5068,7 +5074,12 @@
       "resetHelp": "Alle Touren als nicht gesehen markieren.",
       "resetAction": "Zurücksetzen",
       "adminOnly": "nur Admins",
-      "prefs": "Tutorial-Einstellungen"
+      "prefs": "Tutorial-Einstellungen",
+      "groupCount": "{{seen}} von {{total}}",
+      "filter": "Anzeigen",
+      "all": "Alle",
+      "allSeen": "Du hast alle Touren gesehen",
+      "allSeenHelp": "Unter „Alle“ kannst du sie jederzeit wieder ansehen."
     },
     "groups": {
       "start": "Erste Schritte",

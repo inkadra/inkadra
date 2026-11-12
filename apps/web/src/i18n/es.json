@@ -3694,7 +3694,13 @@
       "canvas": "Lienzo",
       "dateFormat": "Formato de fecha",
       "dateFormatHelp": "Plan de rodaje, orden de rodaje, PDF, comentarios y actividad",
-      "fromBrowser": "Del navegador · {{example}}",
+      "browser": "Del navegador",
+      "followsLanguage": "Sigue el idioma · {{example}}",
+      "dateFormats": {
+        "dmy": "Día / mes / año",
+        "mdy": "Mes / día / año",
+        "ymd": "Año-mes-día (ISO)"
+      },
       "timeFormat": "Formato de hora",
       "timeFormatHelp": "Para citaciones y plan de rodaje",
       "clock": {
@@ -5068,7 +5074,12 @@
       "resetHelp": "Marca todos los recorridos como por ver.",
       "resetAction": "Restablecer",
       "adminOnly": "solo administradores",
-      "prefs": "Preferencias de los tutoriales"
+      "prefs": "Preferencias de los tutoriales",
+      "groupCount": "{{seen}} de {{total}}",
+      "filter": "Mostrar",
+      "all": "Todos",
+      "allSeen": "Has visto todos los recorridos",
+      "allSeenHelp": "Puedes volver a verlos cuando quieras desde «Todos»."
     },
     "groups": {
       "start": "Para empezar",
