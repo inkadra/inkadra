@@ -208,5 +208,9 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto(`/p/${project.id}?view=canvas`);
     await expect(story.locator('.board-card__table tbody tr')).toHaveCount(5);
     await capture('phone-canvas');
+    // The whole canvas on the phone: every card fits.
+    await page.keyboard.press('Shift+Digit1');
+    await expect(story).toBeInViewport();
+    await capture('phone-fit');
   });
 }

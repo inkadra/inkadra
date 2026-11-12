@@ -1460,6 +1460,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .board-card__table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 .board-card__table th {
   padding: 2px 4px;
@@ -1468,19 +1469,21 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   font-weight: 400;
   text-align: left;
 }
+.board-card__table th:first-child {
+  width: 3.5em;
+}
+.board-card__table th:last-child {
+  width: 5em;
+}
+.board-card__table th,
+.board-card__table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .board-card__table td {
   padding: 4px;
   border-top: 1px solid var(--ink-border-subtle);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 0;
-}
-.board-card__table td:first-child {
-  width: 3.5em;
-}
-.board-card__table td:last-child {
-  width: 4.5em;
 }
 .board-card__review {
   display: flex;
