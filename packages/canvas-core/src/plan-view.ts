@@ -122,7 +122,7 @@ export function fitPlanView(
   box: Rect | null,
   area: PlanArea,
   insets: PlanInsets = NO_INSETS,
-  /** Fills the width and lets the height run over, as a phone shows a room. */
+  /** Fills the width from the top and lets the height run over, as a phone shows a room. */
   byWidth = false,
 ): Viewport {
   const b = box && box.w > 0 && box.h > 0 ? box : { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H };
@@ -140,7 +140,9 @@ export function fitPlanView(
   );
   const cx = insets.left + (area.w - insets.left - insets.right) / 2;
   const cy = insets.top + (area.h - insets.top - insets.bottom) / 2;
-  return boundPlanView({ zoom, x: b.x + b.w / 2 - cx / zoom, y: b.y + b.h / 2 - cy / zoom }, area);
+  // By width, the plan starts at the top, so a sheet opening below never covers it.
+  const y = byWidth ? b.y - (insets.top + MARGIN) / zoom : b.y + b.h / 2 - cy / zoom;
+  return boundPlanView({ zoom, x: b.x + b.w / 2 - cx / zoom, y }, area);
 }
 
 /**

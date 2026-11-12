@@ -154,4 +154,12 @@ describe('the view of the plan surface', () => {
     expect(planFrame({ icons: [near] as PlanIcon[], background: bg }, false)).toEqual(one);
     expect(planFrame({ icons: [near] as PlanIcon[], background: bg }).x).toBeLessThan(-900);
   });
+
+  it('fits a phone by its width, from the top', () => {
+    const phone = { w: 390, h: 728 };
+    const room = { x: 100, y: 100, w: 600, h: 500 };
+    const v = fitPlanView(room, phone, { top: 48, right: 0, bottom: 0, left: 0 }, true);
+    expect(v.zoom).toBeCloseTo((390 - 48) / 600);
+    expect(toScreen(v, { x: room.x, y: room.y }).y).toBeCloseTo(48 + 24);
+  });
 });
