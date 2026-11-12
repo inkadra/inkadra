@@ -96,8 +96,10 @@ test('the sidebar tree of a project, and Add storyboard and Add moodboard in its
   await expect(viewTabs(page)).toHaveText(['Storyboard', 'Shot list']);
   // Its row, and its two views under it.
   await expect(sidebar.getByRole('link', { name: /^Storyboard/ })).toHaveCount(2);
-  await expect(row('Shot list')).toBeVisible();
-  await row('Shot list').click();
+  // The Shot list row counts the frames, as the Storyboard row does: its name starts with it.
+  const shotList = sidebar.getByRole('link', { name: /^Shot list/ });
+  await expect(shotList).toBeVisible();
+  await shotList.click();
   await expect(page).toHaveURL(/view=shotlist/);
   await expect(page.getByRole('tab', { name: 'Shot list', exact: true })).toHaveAttribute(
     'aria-selected',
@@ -172,7 +174,7 @@ test.describe('on a phone', () => {
     // The drawer closes on the new board, as it does for a link.
     await expect(drawer).toBeHidden();
     await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
-    await expect(drawer.getByRole('link', { name: 'Shot list', exact: true })).toBeVisible();
+    await expect(drawer.getByRole('link', { name: /^Shot list/ })).toBeVisible();
     await shoot(page, 'phone-with-storyboard');
     await page.keyboard.press('Escape');
     await expect(drawer).toBeHidden();
