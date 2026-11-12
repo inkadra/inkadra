@@ -1,0 +1,30 @@
+diff --git a/dist/fontkit.es.js b/dist/fontkit.es.js
+index 2711b07413d1eb095487d4fddc7273f4afc1d82b..20e82386b6281b010031edd759cc91d50c7e3c74 100644
+--- a/dist/fontkit.es.js
++++ b/dist/fontkit.es.js	
+@@ -32768,6 +32768,10 @@ var TTFSubset = /*#__PURE__*/function (_Subset) {
+       buffer = this.glyphEncoder.encodeSimple(glyph.path, glyf.instructions);
+     }
+ 
++    // Inkadra patch: pad an odd-length glyph (unpadded TTFs such as Google Fonts' Inter) to an
++    // even length. A small subset gets the short loca, which stores offset / 2, so an odd length
++    // would truncate every later glyph's offset and break their outlines.
++    if (buffer.length % 2) buffer = buffer_1.concat([buffer, buffer_1.alloc(1)]);
+     this.glyf.push(buffer);
+     this.loca.offsets.push(this.offset);
+     this.hmtx.metrics.push({
+diff --git a/dist/fontkit.umd.js b/dist/fontkit.umd.js
+index c18af0e3cfce5893cc0012cc3a4e2b69c78d4c95..8bbcf3abd8343e5b99ccac41ec00e4fd16646c8c 100644
+--- a/dist/fontkit.umd.js
++++ b/dist/fontkit.umd.js	
+@@ -40918,6 +40918,10 @@
+ 	      buffer = this.glyphEncoder.encodeSimple(glyph.path, glyf.instructions);
+ 	    }
+ 
++	    // Inkadra patch: pad an odd-length glyph (unpadded TTFs such as Google Fonts' Inter) to an
++	    // even length. A small subset gets the short loca, which stores offset / 2, so an odd length
++	    // would truncate every later glyph's offset and break their outlines.
++	    if (buffer.length % 2) buffer = buffer_1.concat([buffer, buffer_1.alloc(1)]);
+ 	    this.glyf.push(buffer);
+ 	    this.loca.offsets.push(this.offset);
+ 	    this.hmtx.metrics.push({

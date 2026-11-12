@@ -59,9 +59,16 @@ Vietnamese, so the page model keeps one font per weight and pdf-lib still embeds
 a page uses. They are the same Inter build as `@fontsource/inter`'s subsets, so Latin text
 measures and wraps exactly as before.
 
-- TrueType, not WOFF2: fontkit reads WOFF2 but cannot subset it. The four files are about 335 KB
-  each instead of 31 KB, fetched only when an export is made and not kept by the service worker
-  (`.ttf`); the embedded subsets in a PDF grow only by the glyphs it uses.
+- TrueType, not WOFF2: fontkit reads WOFF2 but cannot subset it. The four files are about
+  335 KB each instead of 31 KB (about +1.25 MB in all), fetched only when an export is made and
+  not kept by the service worker (`.ttf`); a PDF's embedded subsets grow only by the glyphs it
+  uses.
+- Google Fonts' TTFs leave some glyphs at an odd length. fontkit gives a small subset the short
+  `loca` table, which stores each offset divided by two, so an odd length truncated every later
+  offset and most letters printed blank. `patches/@pdf-lib__fontkit@1.1.1.patch` (pnpm
+  `patchedDependencies` in `pnpm-workspace.yaml`) pads such a glyph by one byte; `pdf.test.ts` in
+  `@inkadra/print` decodes the embedded glyphs and fails without it. Upgrading fontkit means
+  checking whether the fix is still needed before dropping the patch.
 - `@inkadra/print` measures and writes with these files, so a sheet made on the server from the
   same files stays identical to the web's.
 - No CJK: Inter has none, and a second font per text would change the page model.
