@@ -19,19 +19,19 @@ export const TRANSFER_WORDS_ES: TransferWords = {
     exportForbidden: 'Solo los propietarios y editores del proyecto pueden exportarlo.',
     startError: 'No se pudo iniciar la exportación. Inténtalo de nuevo.',
     failure: {
-      too_large: 'El archivo es más grande de lo que acepta este servidor.',
-      invalid_archive: 'Este archivo no es un archivo válido de Inkadra.',
+      too_large: 'El paquete es más grande de lo que acepta este servidor.',
+      invalid_archive: 'Este archivo no es un paquete válido de Inkadra.',
       unsupported_version:
-        'El archivo procede de un Inkadra más reciente. Actualiza primero este servidor.',
+        'El paquete procede de un Inkadra más reciente. Actualiza primero este servidor.',
       too_new: 'Los tableros proceden de un Inkadra más reciente. Actualiza primero este servidor.',
       storage:
-        'No se pudieron guardar los archivos. Pide al administrador que revise el espacio libre.',
-      gone: 'Ya no puedes editar este proyecto, o se eliminó.',
+        'No se pudieron guardar los archivos. Pide a un administrador que revise el espacio libre.',
+      gone: 'Ya no puedes editar este proyecto, o se ha eliminado.',
       interrupted: 'El servidor se detuvo durante el trabajo. Inténtalo de nuevo.',
       cancelled: 'Cancelado.',
       internal: 'Algo salió mal. Inténtalo de nuevo.',
       storage_full:
-        'Los archivos del archivo no caben en el espacio que queda. Libera espacio o pide ayuda a un administrador.',
+        'Los archivos del paquete no caben en el espacio que queda. Libera espacio o pide ayuda a un administrador.',
     },
   },
 };
