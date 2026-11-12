@@ -106,4 +106,10 @@ screenshots of a UI change, check and fix:
 5. **Accessibility:** contrast (WCAG AA), labels and roles on controls, full keyboard use, focus
    visible, no duplicate accessible names.
 
+Screenshots of a pull request are never committed and never put in its description or in a
+branch: the repository is public. Save them outside the checkout (or in a folder Git ignores) and
+show them to the maintainer privately; the pull request says at most "screenshots shared
+privately". `docs/screenshots/` holds documentation images with demo data only, added when the
+documentation uses them.
+
 End your report with one or two lines: what you skipped or didn't check, and any risk.
