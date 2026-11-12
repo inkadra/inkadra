@@ -56,6 +56,24 @@ package disagree, and a package test fails when a language lacks a key English h
 other placeholders. All of these words were written by the project; before a word moves into the
 package, its author must be one who can license it under the MPL.
 
+For the mobile app to edit a set plan as the web does, the editing operations of the plan
+editor moved out of the web's `usePlanEditing` hook into `packages/canvas-core`
+(`plan-editing.ts`), as functions over the plan, its base and the items to write: `planEdit`
+(the plan as drawn and written, a setup with its base's Set), `planItemOwner` and
+`planLayerOwner` (the Set layer is the base's), `writePlanItems` (locks, then attachments, then
+only what changed, each item where it lives), `removeUnlockedItems`, `removeUnlockedWalls`,
+`lockWrites`, `rotateWrites`, `nudgeWrites`, `restackWrites`, `moveToPlanLayer` (to Set on a
+setup: into the base), `hiddenToggle` (on a setup the document, else this person's preference,
+which the client keeps), `lockedLayersToggle`, `ensurePlanScale`, `planIconsFull`,
+`freshPlanIcon` and `placePlanIcon` (the icon, its attachment and a project-kit light's
+modifiers in one transaction), `planSnapAt` (never to a hidden icon), and from the canvas's
+gestures `planDropTarget` (free with snapping off, Alt held, or a kind that never attaches) and
+`dropWrites` (pulled off a base: detached; let go on one: attached). Writers take the document
+and an origin; the client keeps the undo steps. The new icon's colour is a parameter until the
+plan colours move. Stays in the web: the hook's state (tool, armed tile, selection, tabs,
+preview, the person's preferences, undo grouping with `change`) and duplicating, which was
+already `duplicatePlanItems`.
+
 For the mobile app to name a frame's shot size, angle and movement as the web does, these moved
 to `packages/shared`, beside the catalogs in `classifications.ts`: `shotText` (a field's value is
 the id of a catalog value, archived too, or text the person typed; an id of a catalog not loaded
@@ -65,6 +83,26 @@ reads as nothing), `shotOptionLabel` (a default value is translated until rename
 one file each imported by path (`@inkadra/shared/shot-words/it`), tested both ways as the set plan
 words are. The catalogs' cache, refresh and hooks, and adding a value from where it is used, stay
 in the web (`lib/classifications.ts`: state, React and the server's endpoint).
+
+The messages of a project's export and import that the mobile app shows too are
+`TRANSFER_WORDS_EN` in `packages/shared` (`transfer.exportLead`, `includedList`, `excludedList`,
+`notifyNote`, `exportForbidden`, `startError` and every `transfer.failure.*`, one per
+`TRANSFER_FAILURES` code), with `TRANSFER_WORDS_IT`, `_ES`, `_DE`, `_FR`, `_PT` imported by path
+(`@inkadra/shared/transfer-words/it`), tested both ways. Titles, buttons and the import dialog's
+own sentences stay in the web catalogues until another client imports. Beside `FractionalIndex`,
+`comparePosition` is the saved order of siblings (boards under a board, project groups): by
+`position` as code units, then by `id`, never by locale.
+
+The notification texts the mobile app shows too are `NOTIFICATION_WORDS_EN` in
+`packages/shared`: what every notification type says after the actor's name
+(`notifications.type.*`, one per `NotificationType`, a server alert by its kind), the events and
+email frequencies of the notification settings (`settingsUi.notifications.events.*`, one per
+`NotificationChannelType`; `help.*`, one per `EmailFrequency`; `reviewHelp`) and the sentences of
+the private calendar link on a phone (`calendar.helpPhone`, `privacyPhone`, `confirmBody`,
+`rotated`, `disabled`), with `NOTIFICATION_WORDS_IT`, `_ES`, `_DE`, `_FR`, `_PT` imported by path
+(`@inkadra/shared/notification-words/it`), tested both ways. How a notification is written from
+those words (`describeNotification`: the access dates, the alert's sizes, the review status from
+`review.status.*`) stays in the web for now: it formats with the web's date and size helpers.
 
 The shooting schedule's empty states, which the mobile app shows too, are `SCHEDULE_WORDS_EN` in
 `packages/shared` (`schedule.empty`, `emptyTitle`, `emptyBody`, `emptyReadOnly`, `noBlocks`,

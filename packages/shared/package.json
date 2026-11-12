@@ -7,6 +7,11 @@
   "exports": {
     ".": "./src/index.ts",
     "./constants": "./src/constants.ts",
+    "./notification-words/it": "./src/notification-words-it.ts",
+    "./notification-words/es": "./src/notification-words-es.ts",
+    "./notification-words/de": "./src/notification-words-de.ts",
+    "./notification-words/fr": "./src/notification-words-fr.ts",
+    "./notification-words/pt": "./src/notification-words-pt.ts",
     "./schedule-words/it": "./src/schedule-words-it.ts",
     "./schedule-words/es": "./src/schedule-words-es.ts",
     "./schedule-words/de": "./src/schedule-words-de.ts",
@@ -17,6 +22,11 @@
     "./shot-words/de": "./src/shot-words-de.ts",
     "./shot-words/fr": "./src/shot-words-fr.ts",
     "./shot-words/pt": "./src/shot-words-pt.ts",
+    "./transfer-words/it": "./src/transfer-words-it.ts",
+    "./transfer-words/es": "./src/transfer-words-es.ts",
+    "./transfer-words/de": "./src/transfer-words-de.ts",
+    "./transfer-words/fr": "./src/transfer-words-fr.ts",
+    "./transfer-words/pt": "./src/transfer-words-pt.ts",
     "./openapi": "./src/openapi.ts",
     "./openapi.json": "./openapi.json"
   },

@@ -4,13 +4,11 @@ import {
   addShape,
   addStroke,
   attachedPlacement,
-  attachIcon,
-  attachRole,
   bendThrough,
   blockingCurve,
   blockingPositions,
   coneEnd,
-  detachIcon,
+  dropWrites,
   encodeStroke,
   gridLength,
   iconCentre,
@@ -506,7 +504,7 @@ export function PlanCanvas({
     }
     ed.setLockedItem(null);
     if (armed && !isNoteTool(armed)) {
-      const on = ed.attach && !e.altKey ? ed.snapAt({ kind: armed }, view(p)) : null;
+      const on = ed.dropAt({ kind: armed }, view(p), e.altKey);
       ed.placeIcon(armed, snapped(p), { keep: e.shiftKey, on: on?.id ?? null });
       return;
     }
@@ -761,8 +759,7 @@ export function PlanCanvas({
       }
       // Free, or pulled off its base: it may land on another, unless Alt or Snap off says free.
       g.pulled = !!base;
-      const free = !ed.attach || e.altKey || !attachRole(g.item.kind);
-      const target = free ? null : ed.snapAt(g.item, at);
+      const target = ed.dropAt(g.item, at, e.altKey);
       g.target = target?.id ?? null;
       setTarget(target);
       // What is on it moves with it.
@@ -892,7 +889,11 @@ export function PlanCanvas({
       ed.setPreview(null);
       setTarget(null);
       if (!next) return;
-      ed.write(withSnapping(g, next), 'items' in g ? g.items : [g.item]);
+      const drop =
+        g.kind === 'move' && isIcon(g.item)
+          ? { item: g.item, pulled: g.pulled, target: g.target }
+          : null;
+      ed.write(dropWrites(ed.icons, drop, next), 'items' in g ? g.items : [g.item]);
       return;
     }
     if (g.kind === 'draw') {
@@ -1120,26 +1121,6 @@ export function PlanCanvas({
   const moving = ed.moving;
   const litIcon = target ?? ed.icons.find((i) => i.id === ed.dropTarget) ?? null;
   const lit = litIcon ? itemBox(litIcon) : null;
-  /**
-   * What a gesture writes, with the snapping of decision 0104: an icon pulled off its base is
-   * detached, one let go on a base is attached. What sits on a resized base settles in
-   * ed.writeItems, as for every write.
-   */
-  const withSnapping = (g: Gesture, next: PlanItem[]): PlanItem[] => {
-    if (!('item' in g) || !isIcon(g.item)) return next;
-    const id = g.item.id;
-    const merge = (list: readonly PlanIcon[], by: readonly PlanItem[]) =>
-      list.map((i) => (by.find((n) => n.id === i.id) as PlanIcon | undefined) ?? i);
-    const out = new Map(next.map((i) => [i.id, i]));
-    let icons = merge(ed.icons, next);
-    const take = (changed: readonly PlanIcon[]) => {
-      for (const i of changed) out.set(i.id, i);
-      icons = merge(icons, changed);
-    };
-    if (g.kind === 'move' && g.pulled) take(detachIcon(icons, id));
-    if (g.kind === 'move' && g.target) take(attachIcon(icons, id, g.target));
-    return [...out.values()];
-  };
   const reachEnd = isIcon(current) && !moving && !frozen ? coneEnd(current, ed.plan.sensor) : null;
   const reachGrip = reachEnd && (
     <circle

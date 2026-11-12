@@ -1,4 +1,10 @@
-import type { Board, BoardDetail, BoardKind, UpdateBoard } from '@inkadra/shared';
+import {
+  type Board,
+  type BoardDetail,
+  type BoardKind,
+  comparePosition,
+  type UpdateBoard,
+} from '@inkadra/shared';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { api } from '../lib/api.ts';
 
@@ -128,9 +134,7 @@ export function fetchBoard(boardId: string): Promise<BoardDetail> {
 
 /** Children of a board, in their saved order. */
 export function childBoards(items: Board[] | null, parentId: string): Board[] {
-  return (items ?? [])
-    .filter((b) => b.parentBoardId === parentId)
-    .sort((a, b) => (a.position < b.position ? -1 : a.position > b.position ? 1 : 0));
+  return (items ?? []).filter((b) => b.parentBoardId === parentId).sort(comparePosition);
 }
 
 /**

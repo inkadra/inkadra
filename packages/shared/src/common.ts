@@ -27,6 +27,21 @@ export const FractionalIndex = z
   .max(64)
   .openapi({ description: 'Fractional index, compared as a plain string.', example: 'a0' });
 
+/**
+ * The saved order of siblings (boards under a board, project groups): by `position`, then by
+ * `id`. `position` is a fractional index, made so that plain code-unit comparison (`<` on
+ * strings) orders it; never compare it with `localeCompare` or `Intl.Collator`, which put `a0`
+ * before `Zz` and depend on the runtime's locale. Two siblings may share a position (two clients
+ * inserting at the same place at once): the id breaks the tie, so every client lists them alike.
+ */
+export function comparePosition(
+  a: { position: string; id: string },
+  b: { position: string; id: string },
+): number {
+  if (a.position !== b.position) return a.position < b.position ? -1 : 1;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
 export const Cursor = z.string().min(1).max(512);
 
 export function page<T extends z.ZodType>(item: T) {
