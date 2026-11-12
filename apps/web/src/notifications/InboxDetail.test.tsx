@@ -289,12 +289,11 @@ it('omits a generic card title and keeps inherited visibility inside the compose
     'notifications.cardFallback',
   );
   expect(host.textContent).not.toContain('opaque-card-id');
-  // The reply takes the thread's visibility: the switch shows it and cannot change it.
+  // The reply takes the thread's visibility: a label, not a control.
   expect(host.querySelector('.inbox-detail__composer')?.textContent).toContain(
-    'notifications.visibleToGuests',
+    'notifications.visibleToClient',
   );
-  const visibility = host.querySelector<HTMLInputElement>('.inbox-detail__composer input');
-  expect(visibility?.disabled).toBe(true);
+  expect(host.querySelector('.inbox-detail__composer input')).toBeNull();
   // Still syncing the board: a placeholder, not a word.
   expect(host.querySelector('.inbox-detail__preview-fallback')).toBeNull();
   expect(host.querySelector('.inbox-detail__preview-skeleton')).not.toBeNull();

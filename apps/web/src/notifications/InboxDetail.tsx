@@ -8,12 +8,11 @@ import {
   type Notification,
   notificationPath,
 } from '@inkadra/shared';
-import { Button, Icon, IconButton, kindStyle, ProjectGlyph, Switch } from '@inkadra/ui';
+import { Button, Icon, IconButton, kindStyle, ProjectGlyph } from '@inkadra/ui';
 import {
   type FormEvent,
   useCallback,
   useEffect,
-  useId,
   useRef,
   useState,
   useSyncExternalStore,
@@ -186,7 +185,6 @@ function InboxDetailContent({
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { projects } = useProjects();
-  const visibilityHint = useId();
   const [boardDetail, setBoardDetail] = useState<BoardDetail | null>(null);
   const [threads, setThreads] = useState<CommentThread[]>([]);
   const [activeThread, setActiveThread] = useState<CommentThread | null>(null);
@@ -839,18 +837,14 @@ function InboxDetailContent({
             }}
           />
           <div className="inbox-detail__composer-footer">
-            {/* A reply takes the visibility of its thread: the switch shows it, it cannot change it. */}
-            <label className="inbox-detail__visibility">
-              <Switch
-                checked={activeThread.visibility === 'everyone'}
-                disabled
-                aria-describedby={visibilityHint}
-              />
-              {t('notifications.visibleToGuests')}
-            </label>
-            <span id={visibilityHint} className="ink-sr-only">
-              {t('notifications.visibilityFromThread')}
-            </span>
+            {/* A reply takes the visibility of its thread: said, not offered as a choice. */}
+            <p className="inbox-detail__visibility">
+              {t(
+                activeThread.visibility === 'everyone'
+                  ? 'notifications.visibleToClient'
+                  : 'notifications.internalNote',
+              )}
+            </p>
             <Button
               variant="primary"
               disabled={!replyText.trim() || replySending}

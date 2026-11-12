@@ -2922,8 +2922,6 @@
     "showFewer": "Mostrar menos",
     "messages_one": "{{count}} mensaje",
     "messages_other": "{{count}} mensajes",
-    "visibleToGuests": "Visible también para invitados",
-    "visibilityFromThread": "Una respuesta tiene la misma visibilidad que el comentario al que responde.",
     "frameTitle": "Plano {{label}}"
   },
   "settings": {

@@ -37,7 +37,8 @@ board always belongs to one.
 
 ## Consequences
 
-- A reply keeps the visibility of its thread (API: `visibility` is ignored for replies). The
-  composer's "Visible to guests too" switch shows that visibility and cannot change it.
+- A reply keeps the visibility of its thread (API: `visibility` is ignored for replies), so the
+  composer says it in a label ("Also guests" or "Internal note") instead of the switch drawn in
+  the mockup: a switch that can never change would promise a choice that does not exist.
 - The Home's tour points its last step at New project in the top bar.
 - No API, schema or document change.
