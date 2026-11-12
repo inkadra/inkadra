@@ -5,6 +5,8 @@ import {
   type BoardRestores,
   type BoardVersion,
   BoardVersionQuery,
+  type BoardWriters,
+  BoardWritersQuery,
   CreateBoardVersion,
   Id,
   MAX_NAMED_VERSIONS,
@@ -18,6 +20,7 @@ import * as Y from 'yjs';
 import { atLeast, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
+import { findWriters } from '../board-writers.ts';
 import type { Database } from '../db/client.ts';
 import { boardRestore, boardVersion, user } from '../db/schema.ts';
 import { CardOutcomeUnknown } from '../queues.ts';
@@ -44,6 +47,8 @@ const VersionParams = z.object({ boardId: Id, versionId: Id });
 const SAVES_PER_HOUR = 20;
 /** Full-document restore backups are limited per board across all its editors. */
 const RESTORES_PER_HOUR = 10;
+/** Writer lookups a person may make in a minute (decision 0120). */
+const WRITER_LOOKUPS_PER_MINUTE = 60;
 /** A board past the demo's caps is read-only and has no new versions (decision 0084). */
 const tooLarge = () =>
   new HttpError('conflict', 'This board is past the caps of the demo.', { reason: 'demo_limit' });
@@ -123,6 +128,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const saves = new RateLimiter(SAVES_PER_HOUR, 60 * 60 * 1000);
   const restores = new RateLimiter(RESTORES_PER_HOUR, 60 * 60 * 1000);
+  const writerLookups = new RateLimiter(WRITER_LOOKUPS_PER_MINUTE, 60_000);
 
   /** One version of the board, or 404: the id must belong to the board of the path. */
   async function findVersion(boardId: string, versionId: string) {
@@ -299,6 +305,18 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
           : null,
       })),
     };
+    return body;
+  });
+
+  // Who wrote under some Yjs client ids (decision 0120): viewers already see editors by name in
+  // presence; removed members are named, deleted accounts are not.
+  app.post(v1('/boards/:boardId/writers'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { boardId } = BoardParams.parse(req.params);
+    await requireBoardRole(db, actor, boardId, 'viewer');
+    const { items } = BoardWritersQuery.parse(req.body);
+    writerLookups.require(actor.id, 'Too many writer lookups: wait a minute.');
+    const body: BoardWriters = { items: await findWriters(db, boardId, items) };
     return body;
   });
 

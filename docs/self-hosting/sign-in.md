@@ -210,6 +210,10 @@ board document in the restore's own transaction (decision 0109).
 restores of a board after that count, newest first: who restored it and to which version, with the
 version's name and time as they were at the restore. Viewers and commenters get only the counts
 and times (decision 0112).
+`board-writers` means `POST /boards/{boardId}/writers` names who wrote under some Yjs client ids
+of a board (decision 0120). The server records, for 30 days after the last write and at most
+2000 ids per board, which account wrote under each id and about when; viewers of the board may
+ask. Removed members are named; deleted accounts read `deleted`, never their email.
 Clients must ignore unknown capability names and tolerate missing fields on older servers.
 `minClient`, when present, maps platform names to minimum client versions; no minimum
 is currently imposed. Capabilities describe implemented protocols, not a user's permissions.

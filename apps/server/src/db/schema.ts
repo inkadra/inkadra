@@ -1125,6 +1125,36 @@ export const boardRestore = pgTable(
   ],
 );
 
+/**
+ * Who wrote under a Yjs client id of a board (decision 0120): the account of the first socket
+ * that delivered structs under it, or the server itself. Nothing about the person is copied.
+ */
+export const boardWriter = pgTable(
+  'board_writer',
+  {
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    /** Yjs client ids are unsigned 32-bit integers. */
+    clientId: bigint('client_id', { mode: 'number' }).notNull(),
+    /** Null for the server's own writes, and once the account is deleted. */
+    userId: uuid('user_id').references(() => user.id, { onDelete: 'set null' }),
+    kind: text('kind', { enum: ['user', 'server'] }).notNull(),
+    /** Another account (or the server) wrote under the id too: nobody is named. */
+    contested: boolean('contested').notNull().default(false),
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull(),
+    /** Up to 32 `[clock, epochSeconds]`, oldest first: when writes up to `clock` were stored. */
+    marks: jsonb('marks').$type<Array<[number, number]>>().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.boardId, t.clientId] }),
+    index('board_writer_last_seen_idx').on(t.lastSeenAt),
+    // Deleting an account sets its rows' user to null.
+    index('board_writer_user_idx').on(t.userId).where(sql`${t.userId} is not null`),
+  ],
+);
+
 // Production planning is separate from storyboard content (decision 0022).
 export const shootingDay = pgTable(
   'shooting_day',
