@@ -210,11 +210,11 @@ import {
 import {
   BoardRestoreQuery,
   BoardRestores,
-  BoardWriters,
-  BoardWritersQuery,
   BoardVersion,
   BoardVersionConflict,
   BoardVersionQuery,
+  BoardWriters,
+  BoardWritersQuery,
   CreateBoardVersion,
   RestoredBoardVersion,
   UpdateBoardVersion,
@@ -3041,7 +3041,10 @@ registry.registerPath({
   responses: {
     200: { description: 'One answer per lookup, in order', ...json(BoardWriters) },
     ...errors,
-    400: { description: 'Invalid request: 0 or more than 50 items, or an id out of range', ...json(ApiError) },
+    400: {
+      description: 'Invalid request: 0 or more than 50 items, or an id out of range',
+      ...json(ApiError),
+    },
     404: { description: 'No role on the board, or it does not exist', ...json(ApiError) },
     ...tooMany,
   },

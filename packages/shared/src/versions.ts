@@ -177,11 +177,15 @@ export const BoardWritersQuery = z
           client: YjsClientId.openapi({
             description: 'The Yjs client id that wrote the item (`item.id.client`).',
           }),
-          clock: z.int().min(0).optional().openapi({
-            description:
-              'The item’s clock (`item.id.clock`): `changedAt` is then the time that write ' +
-              'reached the server. Without it, `changedAt` is the last time the id wrote.',
-          }),
+          clock: z
+            .int()
+            .min(0)
+            .optional()
+            .openapi({
+              description:
+                'The item’s clock (`item.id.clock`): `changedAt` is then the time that write ' +
+                'reached the server. Without it, `changedAt` is the last time the id wrote.',
+            }),
         }),
       )
       .min(1)
