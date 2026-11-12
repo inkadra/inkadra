@@ -252,11 +252,13 @@ describe('projectKit', () => {
   it('writes the watts of a light in the app language, not the browser one', () => {
     // An English browser: numbers without a locale come out in English.
     const own = Number.prototype.toLocaleString;
-    const spy = vi
-      .spyOn(Number.prototype, 'toLocaleString')
-      .mockImplementation(function (this: number, locale, options) {
-        return own.call(this, locale ?? 'en-US', options);
-      });
+    const spy = vi.spyOn(Number.prototype, 'toLocaleString').mockImplementation(function (
+      this: number,
+      locale,
+      options,
+    ) {
+      return own.call(this, locale ?? 'en-US', options);
+    });
     try {
       const [entry] = projectKit([{ icons: [icon('key', 'cob', { label: 'Key', watts: 1200 })] }]);
       expect(projectKitDetail(entry as never, t, 'S35', 'it')).toBe('LED COB 1,2K');

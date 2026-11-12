@@ -66,11 +66,13 @@ it('sums up a light, a camera and a person in one line', () => {
 it('writes the watts of the PDF legend in the app language, not the machine one', () => {
   // The machine writes numbers in English; the sheet is in Italian.
   const own = Number.prototype.toLocaleString;
-  const spy = vi
-    .spyOn(Number.prototype, 'toLocaleString')
-    .mockImplementation(function (this: number, locale, options) {
-      return own.call(this, locale ?? 'en-US', options);
-    });
+  const spy = vi.spyOn(Number.prototype, 'toLocaleString').mockImplementation(function (
+    this: number,
+    locale,
+    options,
+  ) {
+    return own.call(this, locale ?? 'en-US', options);
+  });
   try {
     const light = icon('key', 'cob', { label: 'Key', watts: 1200 });
     expect(legendLine(light, [light], t, 'it')).toBe('Key · LED COB 1,2K');

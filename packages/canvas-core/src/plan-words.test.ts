@@ -101,7 +101,10 @@ it('lists the legend as the view and the PDF sheet print it', () => {
   expect(planLegend(base).cast.map((i) => i.label)).toEqual(['Anna']);
 
   const [cam, , key] = icons as [PlanIcon, PlanIcon, PlanIcon];
-  expect(legendRow(cam, 1, icons, english, { locale: 'en' })).toEqual({ name: 'A cam · 50 mm', sub: '' });
+  expect(legendRow(cam, 1, icons, english, { locale: 'en' })).toEqual({
+    name: 'A cam · 50 mm',
+    sub: '',
+  });
   expect(legendRow(key, 2, icons, english, { locale: 'en' })).toEqual({
     name: 'Key ×2',
     sub: 'Fresnel 1K · 5600 K',

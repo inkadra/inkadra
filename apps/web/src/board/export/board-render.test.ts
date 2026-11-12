@@ -151,11 +151,13 @@ describe('set plans in exports', () => {
   it('writes the watts of a label in the app language, not the machine one', () => {
     // The machine writes numbers in English; the export is in Italian.
     const own = Number.prototype.toLocaleString;
-    const spy = vi
-      .spyOn(Number.prototype, 'toLocaleString')
-      .mockImplementation(function (this: number, locale, options) {
-        return own.call(this, locale ?? 'en-US', options);
-      });
+    const spy = vi.spyOn(Number.prototype, 'toLocaleString').mockImplementation(function (
+      this: number,
+      locale,
+      options,
+    ) {
+      return own.call(this, locale ?? 'en-US', options);
+    });
     try {
       const key = { id: 'keyAAAAAAAAAA', kind: 'cob', color: '#EDD963', x: 2048, y: 2048 };
       const plan = card({ type: 'plan', icons: [{ ...key, label: 'Key', watts: 1200 }] })

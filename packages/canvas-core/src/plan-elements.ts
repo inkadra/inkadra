@@ -189,11 +189,7 @@ export function itemSummary(
   icon: PlanIcon,
   icons: readonly PlanIcon[],
   t: Words,
-  {
-    lens = true,
-    scale,
-    locale,
-  }: { lens?: boolean; scale?: number | undefined; locale: string },
+  { lens = true, scale, locale }: { lens?: boolean; scale?: number | undefined; locale: string },
 ): string {
   const kind = catalogueKind(icon.kind);
   const typeName = t(`board.plan.icons.${icon.kind}`);
