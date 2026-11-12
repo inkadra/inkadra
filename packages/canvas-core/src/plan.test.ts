@@ -3,12 +3,12 @@ import {
   createBoardDoc,
   type FrameShape,
   LEGACY_PLAN_ICON_KINDS,
+  PLAN_COORD_MAX,
+  PLAN_COORD_MIN,
   PLAN_ICON_KINDS,
   type PlanIcon,
   type PlanShape,
   roots,
-  PLAN_COORD_MAX,
-  PLAN_COORD_MIN,
   STROKE_GRID,
 } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
@@ -124,7 +124,7 @@ describe('set plan icons', () => {
     expect(rotateItem({ ...rect, rotation: 270 }, 90)).toEqual(rect);
   });
 
-  it('moves items beyond the old extent, within the plan\'s reach (decision 0117)', () => {
+  it("moves items beyond the old extent, within the plan's reach (decision 0117)", () => {
     const icon = { ...camera, id: 'iconAAAAAAAAA' };
     expect(moveItem(icon, { x: PLAN_VIEW_W / 4, y: 0 }).x).toBe(3072);
     expect(moveItem(icon, { x: PLAN_VIEW_W, y: -PLAN_VIEW_H })).toMatchObject({
