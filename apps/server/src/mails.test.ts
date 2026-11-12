@@ -126,9 +126,7 @@ describe('notification emails', () => {
     );
     expect(text.match(/Storyboard · Spot Estate/g)).toHaveLength(1);
     expect(text).toContain('Ieri, 18:39 CET');
-    expect(text).toContain(
-      'https://ink.example.com/p/p1/b/b2?el=card&thread=t9&comment=r9',
-    );
+    expect(text).toContain('https://ink.example.com/p/p1/b/b2?el=card&thread=t9&comment=r9');
     expect(m.html).toContain(
       'href="https://ink.example.com/p/p1/b/b2?el=card&#38;thread=t9&#38;comment=r9"',
     );

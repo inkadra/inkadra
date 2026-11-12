@@ -177,11 +177,15 @@ export const BoardCount = z
     referenceCount: z.int().nonnegative().optional().openapi({
       description: 'Images, links and colours: what a moodboard shows.',
     }),
-    looseCount: z.int().nonnegative().optional().openapi({
-      description:
-        'Cards other than scenes, frames and the set plans of a scene; arrows, columns and ' +
-        'headings excluded. On a storyboard they are the cards outside the storyboard.',
-    }),
+    looseCount: z
+      .int()
+      .nonnegative()
+      .optional()
+      .openapi({
+        description:
+          'Cards other than scenes, frames and the set plans of a scene; arrows, columns and ' +
+          'headings excluded. On a storyboard they are the cards outside the storyboard.',
+      }),
     clientReview: z.boolean().optional().openapi({
       description:
         'A share link that lets guests set the review status of cards (`guest_approve`) is live on this board: not revoked, not expired.',

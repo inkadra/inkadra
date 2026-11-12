@@ -40,11 +40,11 @@ Draw on a picture. **Done**, `Esc` or a click elsewhere closes it.
 A project starts with one board. **Add storyboard** and **Add moodboard** in the project's ⋯ menu,
 and **Moodboard** under **+ ▾**, add more, as many as you need. Each kind has its own views:
 
-| Kind       | Always             | Can be turned on                     |
-| ---------- | ------------------ | ------------------------------------ |
-| Board      | the canvas         | Moodboard                            |
-| Moodboard  | the moodboard      | nothing                              |
-| Storyboard | scenes and frames  | Shot list, Schedule, Crew and Review |
+| Kind       | Always            | Can be turned on                     |
+| ---------- | ----------------- | ------------------------------------ |
+| Board      | the canvas        | Moodboard                            |
+| Moodboard  | the moodboard     | nothing                              |
+| Storyboard | scenes and frames | Shot list, Schedule, Crew and Review |
 
 The header shows the views of the open board only, and **Views of this board** in its ⋯ menu turns
 them on and off: a view that is off leaves the header and the sidebar, and its data stays. In the

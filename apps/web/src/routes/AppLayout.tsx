@@ -42,11 +42,7 @@ import {
   useOutlet,
   useSearchParams,
 } from 'react-router';
-import {
-  childBoards,
-  useProjectBoards,
-  useSharedBoards,
-} from '../board/boards.ts';
+import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
 import { useBoardCounts } from '../board/live-counts.ts';
 import { isMac } from '../board/shortcuts.ts';
 import { beginViewSwitch, type ViewSwitchMotion } from '../board/view-switch.ts';

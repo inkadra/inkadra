@@ -497,8 +497,14 @@ function BoardScreen({
   );
   const newStoryboard = useCallback(
     async () =>
-      (await createBoard(projectId, rootBoardId ?? boardId, t('film.views.storyboard'), 'storyboard'))
-        .id,
+      (
+        await createBoard(
+          projectId,
+          rootBoardId ?? boardId,
+          t('film.views.storyboard'),
+          'storyboard',
+        )
+      ).id,
     [projectId, rootBoardId, boardId, t],
   );
 
@@ -734,64 +740,66 @@ function BoardScreen({
                     // Readers get only the way to the cards outside the storyboard.
                     ...(editable
                       ? ([
-                    ...(canRenameCurrent
-                      ? [
+                          ...(canRenameCurrent
+                            ? [
+                                {
+                                  label: t('board.menu.rename'),
+                                  icon: 'pen' as const,
+                                  action: () => setRenaming(true),
+                                },
+                              ]
+                            : []),
+                          ...(iconTarget
+                            ? [
+                                {
+                                  label: t('board.menu.boardIcon'),
+                                  icon: 'iconLibrary' as const,
+                                  action: () => setIconBoard(iconTarget),
+                                },
+                              ]
+                            : []),
+                          ...(canRenameCurrent || iconTarget ? [{ divider: true as const }] : []),
+                          ...(importable
+                            ? [
+                                {
+                                  label: t('screenplay.open'),
+                                  icon: 'upload' as const,
+                                  action: openScriptImport,
+                                },
+                              ]
+                            : []),
                           {
-                            label: t('board.menu.rename'),
-                            icon: 'pen' as const,
-                            action: () => setRenaming(true),
+                            label: t('board.export.action'),
+                            icon: 'download' as const,
+                            action: () => openExport(exportSourceOf(view)),
                           },
-                        ]
-                      : []),
-                    ...(iconTarget
-                      ? [
+                          ...(canPresent
+                            ? [
+                                {
+                                  label: t('board.present.action'),
+                                  icon: 'play' as const,
+                                  action: startPresentation,
+                                },
+                              ]
+                            : []),
                           {
-                            label: t('board.menu.boardIcon'),
-                            icon: 'iconLibrary' as const,
-                            action: () => setIconBoard(iconTarget),
+                            label: t('versions.title'),
+                            icon: 'clock' as const,
+                            action: () => setVersionsOpen(true),
                           },
-                        ]
-                      : []),
-                    ...(canRenameCurrent || iconTarget ? [{ divider: true as const }] : []),
-                    ...(importable
-                      ? [
-                          {
-                            label: t('screenplay.open'),
-                            icon: 'upload' as const,
-                            action: openScriptImport,
-                          },
-                        ]
-                      : []),
-                    {
-                      label: t('board.export.action'),
-                      icon: 'download' as const,
-                      action: () => openExport(exportSourceOf(view)),
-                    },
-                    ...(canPresent
-                      ? [
-                          {
-                            label: t('board.present.action'),
-                            icon: 'play' as const,
-                            action: startPresentation,
-                          },
-                        ]
-                      : []),
-                    {
-                      label: t('versions.title'),
-                      icon: 'clock' as const,
-                      action: () => setVersionsOpen(true),
-                    },
-                    ...(reportingOn
-                      ? [
-                          { divider: true as const },
-                          {
-                            label: t('feedback.title'),
-                            icon: 'report' as const,
-                            ...(isPhone ? {} : { shortcut: isMac() ? '⌘⇧B' : 'Ctrl+Shift+B' }),
-                            action: () => openFeedback(),
-                          },
-                        ]
-                      : []),
+                          ...(reportingOn
+                            ? [
+                                { divider: true as const },
+                                {
+                                  label: t('feedback.title'),
+                                  icon: 'report' as const,
+                                  ...(isPhone
+                                    ? {}
+                                    : { shortcut: isMac() ? '⌘⇧B' : 'Ctrl+Shift+B' }),
+                                  action: () => openFeedback(),
+                                },
+                              ]
+                            : []),
                         ] as MenuItem[])
                       : []),
                   ]}

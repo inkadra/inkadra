@@ -988,25 +988,25 @@ export function MoodboardView({
             </Button>
             {pickingStoryboard &&
               createPortal(
-              <ContextMenu
-                className="menu--canvas"
-                style={pickingStoryboard}
-                label={t('moodboard.whichStoryboard')}
-                anchor={sendButton}
-                items={[
-                  { heading: t('moodboard.whichStoryboard') },
-                  ...storyboards.map((b) => ({
-                    label: b.title,
-                    icon: 'storyboard' as const,
-                    kind: 'storyboard' as const,
-                    action: () => void sendToStoryboard(b.id),
-                  })),
-                ]}
-                onClose={(reason) => {
-                  setPickingStoryboard(null);
-                  if (reason === 'escape') sendButton.current?.focus();
-                }}
-              />,
+                <ContextMenu
+                  className="menu--canvas"
+                  style={pickingStoryboard}
+                  label={t('moodboard.whichStoryboard')}
+                  anchor={sendButton}
+                  items={[
+                    { heading: t('moodboard.whichStoryboard') },
+                    ...storyboards.map((b) => ({
+                      label: b.title,
+                      icon: 'storyboard' as const,
+                      kind: 'storyboard' as const,
+                      action: () => void sendToStoryboard(b.id),
+                    })),
+                  ]}
+                  onClose={(reason) => {
+                    setPickingStoryboard(null);
+                    if (reason === 'escape') sendButton.current?.focus();
+                  }}
+                />,
                 document.body,
               )}
             <IconButton

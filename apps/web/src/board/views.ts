@@ -107,7 +107,9 @@ export function openView(
   if (!board) return isBoardView(asked) ? asked : null;
   if (asked === 'canvas' && hasOutsideCards(board, counts)) return 'canvas';
   const views = boardViews(board, counts);
-  return isBoardView(asked) && views.includes(asked) ? asked : (views[0] ?? defaultView(board.kind));
+  return isBoardView(asked) && views.includes(asked)
+    ? asked
+    : (views[0] ?? defaultView(board.kind));
 }
 
 /**
