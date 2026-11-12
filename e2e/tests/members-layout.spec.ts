@@ -144,6 +144,7 @@ test('each member is one row of aligned columns; on a phone the controls wrap un
       await expect(page.getByRole('option', { name: /Sempre, anche se/ })).toBeVisible();
       await shoot(page, 'members-phone-create-menu');
       await page.keyboard.press('Escape');
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     }
 
     // On a desktop every column lines up on every row and each row is one line.
@@ -170,6 +171,7 @@ test('each member is one row of aligned columns; on a phone the controls wrap un
       await expect(page.getByRole('option', { name: /Sempre, anche se/ })).toBeVisible();
       await shoot(page, 'members-desktop-create-menu');
       await page.keyboard.press('Escape');
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     }
   } finally {
     await call(cookie, 'PATCH', `/instance/members/${nearId}`, { storageLimit: null });

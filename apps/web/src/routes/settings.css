@@ -881,6 +881,14 @@
 .ink-select__option .team-create__current {
   display: none;
 }
+/*
+ * Its menu is wider than the short button, so a description fits on one line.
+ * shortcut: the Select places the menu by the button's width, so near the right edge of a
+ * narrow window it may stick out by up to 88px; upgrade with a menu width option on Select.
+ */
+.ink-select__layer:has(.team-create__current) {
+  min-width: 248px;
+}
 .team-create__current {
   color: var(--ink-text-secondary);
 }
