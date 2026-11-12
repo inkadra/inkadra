@@ -85,9 +85,7 @@ it('gives a guest the same sheet from audienceCards as from the server’s guest
   const dangling = (input: PlanSheetInput) =>
     input.setups.flatMap((s) =>
       (s.plan.icons ?? []).flatMap((icon) =>
-        [icon.characterId, icon.frameId].filter(
-          (id): id is string => !!id && !guest.cards.has(id),
-        ),
+        [icon.characterId, icon.frameId].filter((id): id is string => !!id && !guest.cards.has(id)),
       ),
     );
   expect(new Set(dangling(guest.input))).toEqual(
@@ -118,9 +116,7 @@ it('gives a guest the same sheet from audienceCards as from the server’s guest
       language: 'en',
       cards,
     });
-  expect(pages(guest.input, guest.cards)).toEqual(
-    pages(server, serverGuestCards(all).cards),
-  );
+  expect(pages(guest.input, guest.cards)).toEqual(pages(server, serverGuestCards(all).cards));
   // The team's sheet prints the character hidden from guests; neither guest sheet does.
   expect(JSON.stringify(team.input)).toContain(fixture.hiddenName);
   expect(JSON.stringify(guest.input)).not.toContain(fixture.hiddenName);
