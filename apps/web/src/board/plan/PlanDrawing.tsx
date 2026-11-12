@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  beamOpacity,
+  beamStrength,
   beamWarmth,
   blockingCurve,
   blockingPositions,
   type CardsById,
   categoryOf,
-  DEFAULT_GLYPH_STROKE,
   type GlyphPart,
   glyphOf,
+  glyphStroke,
   iconCone,
   iconGlow,
   iconGlyph,
@@ -17,11 +19,15 @@ import {
   labelAnchor,
   linkedPlan,
   measureEnds,
+  measureText,
   openingLines,
+  PLAN_DRAW_ORDER,
   PLAN_LABEL_SIZE,
   PLAN_SUB_LABEL_SIZE,
+  PLAN_TEXT_SIZES,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
+  type PlanDrawLayer,
   type PlanElement,
   type PlanFamily,
   type PlanNoteTool,
@@ -30,6 +36,7 @@ import {
   pieceOutline,
   planFrame,
   planRoomDims,
+  planShapeOutline,
   planStack,
   type RoomDim,
   roomSizeText,
@@ -43,11 +50,11 @@ import {
   type PlanIconKind,
   type PlanShape,
   type PlanStroke as PlanStrokeItem,
-  STROKE_GRID,
 } from '@inkadra/doc-schema';
 import {
   type CSSProperties,
   createContext,
+  Fragment,
   memo,
   type ReactNode,
   useContext,
@@ -58,7 +65,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { BoardContext } from '../context.ts';
 import { StrokePath } from '../film/FramePicture.tsx';
-import { ShapeView } from '../film/shapes.tsx';
 import { PlanBackgroundView } from './PlanBackground.tsx';
 
 /**
@@ -139,8 +145,8 @@ export function planCss(hex: string): string {
 
 /** Line width of the pen and of shapes, in thousandths of the width. */
 export const PLAN_PEN = 4;
-/** Font sizes of texts, S, M and L, in thousandths of the width. */
-export const TEXT_SIZES = { S: 14, M: 18, L: 26 } as const;
+/** Font sizes of texts, S, M and L, in thousandths of the width (canvas-core, decision 0116). */
+export const TEXT_SIZES = PLAN_TEXT_SIZES;
 /** Font size of icon labels, in thousandths of the width. */
 /** Sizes of an icon's label and of a light's second line (canvas-core, decision 0118). */
 export const LABEL_SIZE = PLAN_LABEL_SIZE;
@@ -274,7 +280,6 @@ export const PlanIconView = memo(function PlanIconView({
   noCone?: boolean;
 }) {
   const t = iconTransform(icon);
-  const scale = Math.sqrt(t.sx * t.sy);
   return (
     <g
       style={{ color: planCss(icon.color), opacity: faded ? 0.4 : undefined }}
@@ -288,7 +293,7 @@ export const PlanIconView = memo(function PlanIconView({
         style={{
           fill: 'none',
           stroke: 'currentColor',
-          strokeWidth: DEFAULT_GLYPH_STROKE * Math.min(1.6, 1.7 / scale),
+          strokeWidth: glyphStroke(t),
         }}
       >
         <GlyphParts glyph={iconGlyph(icon)} />
@@ -320,7 +325,7 @@ export const PlanBeamView = memo(function PlanBeamView({
   const glow = cone ? null : iconGlow(icon);
   if (!cone && !glow) return null;
   const color = beamCss(icon);
-  const strength = 0.06 + 0.16 * (icon.intensity ?? 0.8);
+  const strength = beamStrength(icon);
   if (glow)
     return (
       <g style={{ color }}>
@@ -334,6 +339,7 @@ export const PlanBeamView = memo(function PlanBeamView({
       </g>
     );
   const [from] = cone?.points ?? [];
+  const opacity = beamOpacity(icon, cone?.beam ?? false);
   return (
     <g style={{ color: cone?.beam ? color : planCss(icon.color) }}>
       {cone?.beam && from && (
@@ -354,9 +360,9 @@ export const PlanBeamView = memo(function PlanBeamView({
         points={cone?.points.map((p) => `${p.x},${p.y}`).join(' ')}
         style={{
           fill: cone?.beam ? `url(#${id})` : 'currentColor',
-          fillOpacity: cone?.beam ? undefined : 0.14,
+          fillOpacity: cone?.beam ? undefined : opacity.fill,
           stroke: 'currentColor',
-          strokeOpacity: cone?.beam ? 0.35 : 0.5,
+          strokeOpacity: opacity.stroke,
           strokeWidth: 1.5,
         }}
       />
@@ -592,20 +598,17 @@ const BlockingNumbers = memo(function BlockingNumbers({
   );
 });
 
-/**
- * Length of a measure in metres, "2,70 m": what was written on it (in `text`, a plain number), or
- * else what the scale says; '' on a plan without a scale.
- */
-export function measureText(shape: PlanShape, scale: number | undefined, locale?: string): string {
-  const written = shape.text ? Number(shape.text) : 0;
-  if (!(written > 0) && !scale) return '';
-  const dx = ((shape.x1 - shape.x0) / STROKE_GRID) * PLAN_VIEW_W;
-  const dy = ((shape.y1 - shape.y0) / STROKE_GRID) * PLAN_VIEW_H;
-  const m = written > 0 ? written : Math.hypot(dx, dy) / (scale as number);
-  return `${m.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
-}
+// A measure's length as the plan writes it lives in canvas-core (decision 0116).
+export { measureText };
 
-/** A shape of a plan: a frame shape turned by its rotation, or a zone or a measure. */
+/** SVG path data of polylines. */
+const pathOf = (lines: readonly (readonly Point[])[]) =>
+  lines.map((l) => `M${l.map((p) => `${p.x} ${p.y}`).join('L')}`).join('');
+
+/**
+ * A shape of a plan, from its outline in canvas-core (decision 0116): rects, ellipses, texts and
+ * zones as SVG shapes turned by their rotation, lines, arrows and measures as their lines.
+ */
 export const PlanShapeView = memo(function PlanShapeView({
   shape,
   scale,
@@ -613,73 +616,111 @@ export const PlanShapeView = memo(function PlanShapeView({
   shape: PlanShape;
   scale?: number | undefined;
 }) {
-  const x0 = (shape.x0 / STROKE_GRID) * PLAN_VIEW_W;
-  const y0 = (shape.y0 / STROKE_GRID) * PLAN_VIEW_H;
-  const x1 = (shape.x1 / STROKE_GRID) * PLAN_VIEW_W;
-  const y1 = (shape.y1 / STROKE_GRID) * PLAN_VIEW_H;
-  const cx = (x0 + x1) / 2;
-  const cy = (y0 + y1) / 2;
-  const turn = shape.rotation ? `rotate(${shape.rotation} ${cx} ${cy})` : undefined;
+  const { i18n } = useTranslation();
+  // A measure's length in the app's language, as the rooms' sizes (decision 0119).
+  const o = planShapeOutline(shape, scale, i18n.language);
+  const turn = o.angle ? `rotate(${o.angle} ${o.centre.x} ${o.centre.y})` : undefined;
+  const line = {
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: o.width,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+  const { box, text } = o;
   let body: ReactNode;
-  if (shape.kind === 'zone') {
+  if (shape.kind === 'zone' && box) {
     body = (
       <>
         <rect
-          x={Math.min(x0, x1)}
-          y={Math.min(y0, y1)}
-          width={Math.abs(x1 - x0)}
-          height={Math.abs(y1 - y0)}
+          x={box.x}
+          y={box.y}
+          width={box.w}
+          height={box.h}
           style={{
             fill: 'currentColor',
-            fillOpacity: 0.1,
+            fillOpacity: o.fill,
             stroke: 'currentColor',
-            strokeWidth: shape.width,
-            strokeDasharray: `${shape.width * 3} ${shape.width * 2.5}`,
+            strokeWidth: o.width,
+            strokeDasharray: o.dash?.join(' '),
           }}
         />
-        {shape.text && (
+        {text?.lines.map((l) => (
           <text
-            x={Math.min(x0, x1) + 10}
-            y={Math.min(y0, y1) + PLAN_TEXT}
-            fontSize={TEXT_SIZES.S}
+            key={l.text}
+            x={l.at.x}
+            y={l.at.y}
+            fontSize={text.size}
             fill="currentColor"
             fontFamily="inherit"
           >
-            {shape.text}
+            {l.text}
           </text>
-        )}
+        ))}
       </>
     );
   } else if (shape.kind === 'measure') {
-    const label = measureText(shape, scale);
-    const a = Math.atan2(y1 - y0, x1 - x0);
-    const tick = (x: number, y: number) =>
-      `M${x - 9 * Math.sin(a)} ${y + 9 * Math.cos(a)}L${x + 9 * Math.sin(a)} ${y - 9 * Math.cos(a)}`;
-    const w = label.length * 11 + 16;
-    body = (
-      <>
+    const { chip } = o;
+    return (
+      <g style={{ color: planCss(shape.color) }}>
         <path
-          d={`M${x0} ${y0}L${x1} ${y1}${tick(x0, y0)}${tick(x1, y1)}`}
+          d={pathOf(o.lines)}
           style={{
             fill: 'none',
             stroke: 'currentColor',
-            strokeWidth: 2,
-            strokeDasharray: shape.dashed ? '8 6' : undefined,
+            strokeWidth: o.width,
+            strokeDasharray: o.dash?.join(' '),
           }}
         />
-        {label && (
-          <g className="plan__chip">
-            <rect x={cx - w / 2} y={cy - 15} width={w} height={30} rx={6} />
-            <text x={cx} y={cy + 7} textAnchor="middle" fontSize={TEXT_SIZES.S} fontWeight={600}>
-              {label}
-            </text>
+        {text && chip && (
+          <g className="plan__chip" transform={turn}>
+            <rect x={chip.x} y={chip.y} width={chip.w} height={chip.h} rx={chip.radius} />
+            {text.lines.map((l) => (
+              <text
+                key={l.text}
+                x={l.at.x}
+                y={l.at.y}
+                textAnchor="middle"
+                fontSize={text.size}
+                fontWeight={text.weight}
+              >
+                {l.text}
+              </text>
+            ))}
           </g>
         )}
-      </>
+      </g>
+    );
+  } else if (shape.kind === 'rect' && box) {
+    body = <rect x={box.x} y={box.y} width={box.w} height={box.h} {...line} />;
+  } else if (shape.kind === 'ellipse' && box) {
+    body = <ellipse cx={o.centre.x} cy={o.centre.y} rx={box.w / 2} ry={box.h / 2} {...line} />;
+  } else if (shape.kind === 'text' && text?.lines[0]) {
+    // shortcut: the board writes a text's lines as one SVG text from the first line's baseline,
+    // so SVG runs them into one line; exports and a second client step them by `text.step`. Draw
+    // each line at its own baseline when the board's texts are next changed.
+    body = (
+      <text
+        x={text.lines[0].at.x}
+        y={text.lines[0].at.y}
+        fill="currentColor"
+        fontSize={text.size}
+        fontFamily="inherit"
+      >
+        {text.lines.map((l) => l.text).join('\n')}
+      </text>
     );
   } else {
-    body = (
-      <ShapeView shape={{ ...shape, kind: shape.kind }} height={PLAN_VIEW_H} color="currentColor" />
+    // Lines and arrows: their lines are already turned.
+    const [a, b] = o.lines[0] ?? [];
+    return (
+      <g style={{ color: planCss(shape.color) }}>
+        {shape.kind === 'line' && a && b ? (
+          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} {...line} />
+        ) : (
+          <path d={pathOf(o.lines)} {...line} />
+        )}
+      </g>
     );
   }
   return (
@@ -793,6 +834,35 @@ const PlanDrawingView = memo(function PlanDrawingView({
   const frame = extent
     ? { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H }
     : planFrame(plan, background, hidden ?? []);
+  // The layers in canvas-core's order (decision 0116).
+  const layers: Record<PlanDrawLayer, ReactNode> = {
+    background: background && plan.background && !off.includes('set') && (
+      <PlanBackgroundView background={plan.background} />
+    ),
+    grid: grid && <GridDots step={grid} />,
+    walls: !off.includes('set') && <PlanWallsView plan={plan} />,
+    roomSizes: roomSizes && <RoomSizes plan={plan} hidden={off} />,
+    low: stack
+      .filter((e) => e.tier < 2)
+      .map((e) => <StackItem key={e.item.id} entry={e} plan={plan} />),
+    beams: icons.map((icon) => (
+      <PlanBeamView key={`c${icon.id}`} icon={icon} sensor={plan.sensor} />
+    )),
+    moves:
+      moves &&
+      icons.map((icon) => (
+        <BlockingView key={`b${icon.id}`} icon={icon} ghosts={ghosts} route={route} />
+      )),
+    high: stack
+      .filter((e) => e.tier >= 2)
+      .map((e) => <StackItem key={e.item.id} entry={e} plan={plan} />),
+    numbers:
+      moves &&
+      icons.map((icon) => <BlockingNumbers key={`n${icon.id}`} icon={icon} route={route} />),
+    labels: icons.map((icon) => (
+      <PlanLabel key={`l${icon.id}`} icon={icon} lifted={lifted?.has(icon.id)} />
+    )),
+  };
   return (
     // biome-ignore lint/a11y/noSvgWithoutTitle: named by aria-label in the editor, hidden elsewhere.
     <svg
@@ -801,33 +871,8 @@ const PlanDrawingView = memo(function PlanDrawingView({
       style={{ aspectRatio: String(PLAN_ASPECT) }}
       {...(label ? { role: 'group', 'aria-label': label } : { 'aria-hidden': true })}
     >
-      {background && plan.background && !off.includes('set') && (
-        <PlanBackgroundView background={plan.background} />
-      )}
-      {grid && <GridDots step={grid} />}
-      {!off.includes('set') && <PlanWallsView plan={plan} />}
-      {roomSizes && <RoomSizes plan={plan} hidden={off} />}
-      {stack
-        .filter((e) => e.tier < 2)
-        .map((e) => (
-          <StackItem key={e.item.id} entry={e} plan={plan} />
-        ))}
-      {icons.map((icon) => (
-        <PlanBeamView key={`c${icon.id}`} icon={icon} sensor={plan.sensor} />
-      ))}
-      {moves &&
-        icons.map((icon) => (
-          <BlockingView key={`b${icon.id}`} icon={icon} ghosts={ghosts} route={route} />
-        ))}
-      {stack
-        .filter((e) => e.tier >= 2)
-        .map((e) => (
-          <StackItem key={e.item.id} entry={e} plan={plan} />
-        ))}
-      {moves &&
-        icons.map((icon) => <BlockingNumbers key={`n${icon.id}`} icon={icon} route={route} />)}
-      {icons.map((icon) => (
-        <PlanLabel key={`l${icon.id}`} icon={icon} lifted={lifted?.has(icon.id)} />
+      {PLAN_DRAW_ORDER.map((layer) => (
+        <Fragment key={layer}>{layers[layer]}</Fragment>
       ))}
       {children}
     </svg>

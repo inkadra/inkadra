@@ -1,0 +1,32 @@
+<svg class="plan__svg" viewBox="0 0 1000 666.666667" style="aspect-ratio: 1.5 / 1;" aria-hidden="true">
+<g style="color: var(--ink-tag-green);" transform="rotate(25 134.277344 415.039063)">
+<line x1="48.828125" y1="358.072917" x2="219.726563" y2="472.005208" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+</line>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(60 122.070313 187.174479)">
+<path d="M73.242188 162.760417L170.898438 211.588542M154.899928 211.370187L170.898438 211.588542L161.124648 198.920747" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</path>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(300 878.90625 56.966146)">
+<path d="M952.148438 65.104167L805.664063 48.828125M843.383008 35.513428L805.664063 48.828125L839.540295 70.097842" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+</path>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(30 244.140625 618.489583)">
+<path d="M97.65625 634.765625L390.625 602.213542M98.650134 643.710579L96.662366 625.820671M391.618884 611.158495L389.631116 593.268588" style="fill: none; stroke: currentColor; stroke-width: 2;">
+</path>
+<g class="plan__chip">
+<rect x="203.140625" y="603.489583" width="82" height="30" rx="6">
+</rect>
+<text x="244.140625" y="625.489583" text-anchor="middle" font-size="14" font-weight="600">3.68 m</text>
+</g>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(200 903.320313 227.864583)">
+<path d="M927.734375 162.760417L878.90625 292.96875M919.307412 159.600306L936.161338 165.920528M870.479287 289.808639L887.333213 296.128861" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-dasharray: 8 6;">
+</path>
+<g class="plan__chip">
+<rect x="862.320313" y="212.864583" width="82" height="30" rx="6">
+</rect>
+<text x="903.320313" y="234.864583" text-anchor="middle" font-size="14" font-weight="600">2.7 m</text>
+</g>
+</g>
+</svg>
