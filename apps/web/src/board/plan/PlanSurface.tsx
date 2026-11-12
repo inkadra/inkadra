@@ -41,12 +41,12 @@ interface Pinch {
 
 /**
  * The drawing surface of a set plan (decision 0118), shared by the editor and the read-only
- * view: it fills its area with the dot grid, and the plan's 3:2 extent (the stage) lies in it,
- * panned and zoomed with the board's maths (canvas-core `zoomAt`, `pinchViewport`, the wheel's
- * `wheelZoomFactor`): a drag on empty space, the middle button or Space pans, the wheel and a
- * trackpad pinch zoom round the pointer (a sideways swipe pans), two fingers pan and zoom, the
- * zoom control steps round the middle and Fit frames what is on the plan. Panning writes the stage's transform at once, without a
- * render, so a plan of 300 icons pans at the screen's rate; a change of zoom renders once a frame.
+ * view: it fills its area with the dot grid; the plan, which reaches beyond its old 3:2 extent
+ * (the stage, the unit of its coordinates), is panned and zoomed in it as the board is
+ * (Canvas.tsx): Space, the middle button, a scroll or two fingers pan; Ctrl/⌘ + wheel, a trackpad
+ * pinch or two fingers zoom round the pointer; the zoom control steps round the middle and Fit
+ * frames what is drawn. Panning writes the stage's transform at once, without a render, so a
+ * plan of 300 icons pans at the screen's rate; a change of zoom renders once a frame.
  */
 export function usePlanSurface({
   content,
@@ -150,24 +150,24 @@ export function usePlanSurface({
     apply(next(v));
   };
 
-  // Wheel: zooms round the pointer, a notch a step as on the board, a trackpad pinch directly;
-  // Shift + wheel and a sideways swipe pan.
+  // Wheel as on the board (Canvas.tsx): a scroll pans (Shift turns it sideways); Ctrl/⌘ + wheel
+  // and a trackpad pinch zoom round the pointer, a notch a step.
   // biome-ignore lint/correctness/useExhaustiveDependencies: refs only; bound once.
   useEffect(() => {
     const el = surface.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const unit = e.deltaMode === 1 ? LINE : 1;
-      const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY);
-      if (e.shiftKey || (sideways && !e.ctrlKey && !e.metaKey)) {
-        const dx = (e.shiftKey ? e.deltaY || e.deltaX : e.deltaX) * unit;
-        move((v) => panPlanBy(v, area.current, -dx, 0));
+      if (e.ctrlKey || e.metaKey) {
+        const at = local(e);
+        const { factor } = wheelZoomFactor(e.deltaY, e.deltaMode);
+        move((v) => zoomPlanAround(v, area.current, v.zoom * factor, at));
         return;
       }
-      const at = local(e);
-      const { factor } = wheelZoomFactor(e.deltaY, e.deltaMode);
-      move((v) => zoomPlanAround(v, area.current, v.zoom * factor, at));
+      const unit = e.deltaMode === 1 ? LINE : 1;
+      const dx = (e.shiftKey ? e.deltaY : e.deltaX) * unit;
+      const dy = (e.shiftKey ? 0 : e.deltaY) * unit;
+      move((v) => panPlanBy(v, area.current, -dx, -dy));
     };
     // Older Safari zooms the page on a pinch even where touch-action is none.
     const noPageZoom = (e: Event) => e.preventDefault();

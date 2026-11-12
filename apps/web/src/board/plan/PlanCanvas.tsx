@@ -172,6 +172,8 @@ export interface CanvasHandle {
   zoomBy: (dir: 1 | -1) => void;
   /** Frames what is on the plan. */
   fit: () => void;
+  /** Moves the view by (dx, dy) px: the arrows with nothing picked. */
+  panBy: (dx: number, dy: number) => void;
   /** Space held: a drag pans, whatever the tool (decision 0118). */
   space: (down: boolean) => void;
   /** A key for the tool in use (the length typed for a wall); true when it took it. */
@@ -297,7 +299,11 @@ export function PlanCanvas({
   const selected = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
   const item = ed.item;
   const shown = ed.shown;
-  const content = useMemo(() => planContentBox(shown), [shown]);
+  // Fit frames what this person sees drawn: their own hidden layers left out too.
+  const content = useMemo(
+    () => planContentBox(shown, true, [...ed.myHidden]),
+    [shown, ed.myHidden],
+  );
   const surf = usePlanSurface({
     content,
     insets: phone ? PHONE_INSETS : DESKTOP_INSETS,
@@ -379,6 +385,7 @@ export function PlanCanvas({
     },
     zoomBy,
     fit: surf.fit,
+    panBy: surf.panBy,
     space: setSpaceDown,
     key: (e) => walls.key(e),
   }));
@@ -607,11 +614,12 @@ export function PlanCanvas({
       const beneath = planItemAt(drawn, p, { hidden: ed.hiddenLayers });
       const lockedOne = beneath && planItem(drawn, beneath);
       if (lockedOne) ed.setLockedItem(lockedOne);
-      // A drag on empty space pans (decision 0118); a click there lets go of the selection.
-      // Shift and a mouse draw a box that adds; a finger draws one after a long press.
+      // As on the board (decision 0118): a mouse dragged on empty space draws the selection box
+      // (with Shift it adds) and Space, the middle button or the wheel pan. A finger pans, and
+      // draws the box after a long press (decision 0071); a tap there lets go of the selection.
       const touch = e.pointerType === 'touch';
-      if (!e.shiftKey) surf.startPan(e);
-      if (!touch && !e.shiftKey) return;
+      if (touch && !e.shiftKey) surf.startPan(e);
+      if (!touch && !e.shiftKey) ed.setSelection([]);
       e.currentTarget.setPointerCapture(e.pointerId);
       const started = {
         kind: 'marquee' as const,

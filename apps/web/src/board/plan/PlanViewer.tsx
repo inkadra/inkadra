@@ -199,7 +199,7 @@ export function PlanViewer({
         if (e.key === 'Escape') onClose();
         else if (e.key === '+' || e.key === '=') surface.zoomBy(1);
         else if (e.key === '-') surface.zoomBy(-1);
-        else if (e.key === '0') surface.fit();
+        else if (e.key === '0' || (e.shiftKey && e.code === 'Digit1')) surface.fit();
         else if (e.key.startsWith('Arrow')) {
           const d = 40;
           surface.panBy(
@@ -276,7 +276,8 @@ export function PlanViewer({
             <button
               type="button"
               className="plan-editor__lens plan-viewer__zoom"
-              aria-label={t('board.plan.zoomFit')}
+              // The name holds the percent it shows (WCAG 2.5.3).
+              aria-label={t('board.plan.zoomFitAt', { percent: surface.percent })}
               onClick={surface.fit}
             >
               {surface.percent}%

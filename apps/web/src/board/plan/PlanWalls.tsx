@@ -63,13 +63,13 @@ type WallGesture =
   | { kind: 'corner'; wall: PlanWall; index: number; openings: PlanOpening[] }
   | { kind: 'opening'; wall: PlanWall; opening: PlanOpening };
 
-/** "3.00 m": a length in view units read in metres through the plan's scale. */
-export function useMetres(ed: Ed) {
+/** "3.00 m" (or "8.0 m" with one digit): a length in view units, in metres at the plan's scale. */
+export function useMetres(ed: Ed, digits = 2) {
   const { i18n } = useTranslation();
   return (units: number) =>
     `${(units / ed.wallScale).toLocaleString(i18n.language, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
     })} m`;
 }
 
@@ -121,6 +121,27 @@ function Dim({
   );
 }
 
+/**
+ * The size of a closed room, as the mockup writes it outside its walls ("8.0 m" over the top,
+ * "6.3 m" down the left): the box of its corners, a line above and one on the left.
+ */
+function RoomDims({ wall, metres }: { wall: PlanWall; metres: (v: number) => string }) {
+  const pts = wallPoints(wall);
+  const x0 = Math.min(...pts.map((p) => p.x));
+  const x1 = Math.max(...pts.map((p) => p.x));
+  const y0 = Math.min(...pts.map((p) => p.y));
+  const y1 = Math.max(...pts.map((p) => p.y));
+  const off = wall.thickness / 2 + ROOM_DIM_GAP;
+  return (
+    <g className="plan-walls__room" data-room-dims="">
+      <Dim a={{ x: x0, y: y0 }} b={{ x: x1, y: y0 }} off={off} text={metres(x1 - x0)} />
+      <Dim a={{ x: x0, y: y1 }} b={{ x: x0, y: y0 }} off={off} text={metres(y1 - y0)} />
+    </g>
+  );
+}
+/** How far outside its walls a room's size is written, view units. */
+const ROOM_DIM_GAP = 30;
+
 /** The dimensions of an opening: its width, strong, and its distances to the corners of its side. */
 function OpeningDims({
   wall,
@@ -156,6 +177,7 @@ function OpeningDims({
 export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom: number }) {
   const { t } = useTranslation();
   const metres = useMetres(ed);
+  const roomMetres = useMetres(ed, 1);
   const { tool, shown } = ed;
   const [angles, setAngles] = useState<WallAngles>('90');
   const [thickness, setThickness] = useState<number>(DEFAULT_WALL_METRES);
@@ -475,6 +497,7 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
               />
             ));
           })()}
+          {pickedWall.closed && <RoomDims wall={pickedWall} metres={roomMetres} />}
           {!itemLocked(pickedWall) &&
             wallPoints(pickedWall).map((q, i) => (
               <rect

@@ -459,8 +459,8 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(viewer.getByRole('toolbar', { name: 'Strumenti della pianta' })).toHaveCount(0);
       await expect(viewer.locator('.plan-editor__stage')).toHaveCount(0);
       // Opened fitted to what is drawn (decision 0118); the button zooms in.
-      const percent = async () =>
-        Number((await viewer.locator('.plan-viewer__zoom').innerText()).replace('%', ''));
+      const zoom = viewer.getByRole('button', { name: /^\d+% · Adatta la pianta$/ });
+      const percent = async () => Number((await zoom.innerText()).replace('%', ''));
       const opened = await percent();
       await viewer.getByRole('button', { name: 'Ingrandisci' }).click();
       await expect.poll(percent).toBeGreaterThan(opened);

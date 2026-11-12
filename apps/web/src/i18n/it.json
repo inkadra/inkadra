@@ -1459,6 +1459,7 @@
       "viewLength": "Lunghezza della vista",
       "zoom": "Zoom",
       "zoomFit": "Adatta la pianta",
+      "zoomFitAt": "{{percent}}% · Adatta la pianta",
       "stands": {
         "cstand": "C-stand",
         "combo": "Stativo combo",
@@ -1620,7 +1621,7 @@
       "view": {
         "only": "Sola lettura",
         "legend": "Legenda",
-        "hint": "Trascina per spostare, pizzica o scorri per lo zoom",
+        "hint": "Trascina per spostare, pizzica o Ctrl + rotella per lo zoom",
         "note": "Chi può aprire la board vede questa pianta, la legenda, il materiale e la potenza.",
         "guestNote": "Vedi la pianta come è condivisa con te: i setup, la legenda, il materiale e la potenza."
       },
@@ -5125,7 +5126,7 @@
         "steps": {
           "0": {
             "title": "Disegna il set",
-            "text": "Linee, forme, testi e misure dalla barra in basso. Trascina sul vuoto per spostarti, usa la rotella per lo zoom; clicca di nuovo per prendere ciò che sta sotto."
+            "text": "Linee, forme, testi e misure dalla barra in basso. Trascina sul vuoto per selezionare; clicca di nuovo per prendere ciò che sta sotto."
           },
           "1": {
             "title": "La libreria",
@@ -5146,6 +5147,10 @@
           "5": {
             "title": "Sfondo",
             "text": "Una pianta o una foto sotto il disegno da ricalcare: spostala, scalala, scegli opacità e grigi."
+          },
+          "6": {
+            "title": "Muoversi nella pianta",
+            "text": "Spazio e trascina, la rotella o due dita spostano la pianta; Ctrl e la rotella o un pizzico la ingrandiscono. Senza selezione le frecce la spostano, 0 la adatta, + e − cambiano lo zoom."
           }
         }
       },

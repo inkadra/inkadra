@@ -39,6 +39,9 @@ import { ScenePicker } from './scenes.tsx';
 import { type SetupChange, setupChanges } from './setups.ts';
 import './plan.css';
 
+/** Px an arrow key moves the view when nothing is picked; four times that with Shift. */
+const PAN_KEY_STEP = 40;
+
 const NOTE_TOOL = { arrow: 'arrow', text: 'text', measure: 'measure', zone: 'zone' } as const;
 
 /** The number of the first scene a plan serves, for "All 3 of scene 2". */
@@ -257,11 +260,20 @@ export function PlanEditor(props: PlanEditorProps) {
         x: e.key === 'ArrowLeft' ? -k : e.key === 'ArrowRight' ? k : 0,
         y: e.key === 'ArrowUp' ? -k : e.key === 'ArrowDown' ? k : 0,
       });
+    } else if (e.key.startsWith('Arrow') && !ed.wallSel) {
+      // Nothing picked: the arrows move the view, as in the read-only view (decision 0118).
+      const d = e.shiftKey ? PAN_KEY_STEP * 4 : PAN_KEY_STEP;
+      canvas.current?.panBy(
+        e.key === 'ArrowLeft' ? d : e.key === 'ArrowRight' ? -d : 0,
+        e.key === 'ArrowUp' ? d : e.key === 'ArrowDown' ? -d : 0,
+      );
     } else if (mod && key === 'z') e.shiftKey ? ed.store.undo.redo() : ed.store.undo.undo();
     else if (mod && key === 'y') ed.store.undo.redo();
     else if (mod && key === 'd' && selection.length) ed.duplicate();
-    else if (mod && (key === '=' || key === '+')) canvas.current?.zoomBy(1);
-    else if (mod && key === '-') canvas.current?.zoomBy(-1);
+    // Zoom by keys as on the board: + and −, with or without Ctrl/⌘; Shift+1 or 0 fits.
+    else if (key === '=' || key === '+') canvas.current?.zoomBy(1);
+    else if (key === '-') canvas.current?.zoomBy(-1);
+    else if ((e.shiftKey && e.code === 'Digit1') || (!mod && key === '0')) canvas.current?.fit();
     else if (!mod && key === 'r' && selection.length)
       ed.rotate(e.shiftKey ? -QUARTER_TURN : QUARTER_TURN);
     else if (!mod && e.key === ']' && selection.length) ed.restack(1);

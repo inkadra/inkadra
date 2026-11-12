@@ -1459,6 +1459,7 @@
       "viewLength": "Longueur de vue",
       "zoom": "Zoom",
       "zoomFit": "Ajuster le plan",
+      "zoomFitAt": "{{percent}} % · Ajuster le plan",
       "stands": {
         "cstand": "C-stand",
         "combo": "Pied combo",
@@ -1620,7 +1621,7 @@
       "view": {
         "only": "Lecture seule",
         "legend": "Légende",
-        "hint": "Glissez pour déplacer, pincez ou faites défiler pour zoomer",
+        "hint": "Glissez pour déplacer, pincez ou Ctrl + molette pour zoomer",
         "note": "Qui peut ouvrir le tableau voit ce plan, la légende, le matériel et la puissance.",
         "guestNote": "Vous voyez le plan tel qu’il est partagé avec vous : les setups, la légende, le matériel et la puissance."
       },
@@ -5125,7 +5126,7 @@
         "steps": {
           "0": {
             "title": "Dessiner le décor",
-            "text": "Lignes, formes, textes et mesures depuis la barre du bas. Faites glisser sur un espace vide pour vous déplacer, la molette pour zoomer ; cliquez à nouveau pour prendre ce qui est dessous."
+            "text": "Lignes, formes, textes et mesures depuis la barre du bas. Faites glisser sur un espace vide pour sélectionner ; cliquez à nouveau pour prendre ce qui est dessous."
           },
           "1": {
             "title": "La bibliothèque",
@@ -5146,6 +5147,10 @@
           "5": {
             "title": "Fond",
             "text": "Un plan ou une photo sous le dessin à décalquer : déplacez-la, redimensionnez-la, réglez opacité et gris."
+          },
+          "6": {
+            "title": "Se déplacer dans le plan",
+            "text": "Espace et glisser, la molette ou deux doigts déplacent le plan ; Ctrl et la molette ou un pincement zooment. Sans sélection, les flèches le déplacent, 0 l’ajuste, + et − zooment."
           }
         }
       },

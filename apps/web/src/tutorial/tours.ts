@@ -252,6 +252,8 @@ export const TOURS: Tour[] = [
       // The walls and openings tools and the background picture (decision 0110).
       { anchor: 'plan-walls', media: 'plan', side: 'top', keys: ['W', 'D'] },
       { anchor: 'plan-background', media: 'plan', side: 'bottom' },
+      // Moving round the plan, by pointer and by keys, as on the board (decision 0118).
+      { anchor: null, media: 'plan', keys: ['Space', '0', '+', '−'] },
     ],
   },
   {

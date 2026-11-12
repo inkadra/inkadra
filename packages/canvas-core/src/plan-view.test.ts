@@ -86,17 +86,21 @@ describe('the view of the plan surface', () => {
     expect(m.y).toBeCloseTo(area.h / 2);
   });
 
-  it('pans by pixels and never loses the drawing', () => {
+  it('pans by pixels and never past the plan\'s reach', () => {
     const v = fitPlanView(null, area);
     const moved = panPlanBy(v, area, 100, -40);
     expect(toScreen(moved, { x: 0, y: 0 }).x).toBeCloseTo(toScreen(v, { x: 0, y: 0 }).x + 100);
     expect(toScreen(moved, { x: 0, y: 0 }).y).toBeCloseTo(toScreen(v, { x: 0, y: 0 }).y - 40);
-    const far = panPlanBy(v, area, 100_000, 100_000);
-    // At least 64 px of the drawing still show at the far edge.
-    expect(toScreen(far, { x: 0, y: 0 }).x).toBeLessThanOrEqual(area.w - 64 + 0.001);
-    expect(toScreen(far, { x: 0, y: 0 }).y).toBeLessThanOrEqual(area.h - 64 + 0.001);
-    const back = boundPlanView({ ...v, x: -100_000, y: -100_000 }, area);
-    expect(toScreen(back, { x: PLAN_VIEW_W, y: PLAN_VIEW_H }).x).toBeGreaterThanOrEqual(63.999);
+    // The reach: four extents on every side of the old one.
+    const near = { x: -4 * PLAN_VIEW_W, y: -4 * PLAN_VIEW_H };
+    const farEnd = { x: 5 * PLAN_VIEW_W, y: 5 * PLAN_VIEW_H };
+    const far = panPlanBy(v, area, 1e7, 1e7);
+    // At least 64 px of the reach still show at the far edge.
+    expect(toScreen(far, near).x).toBeLessThanOrEqual(area.w - 64 + 0.001);
+    expect(toScreen(far, near).y).toBeLessThanOrEqual(area.h - 64 + 0.001);
+    const back = boundPlanView({ ...v, x: 1e7, y: 1e7 }, area);
+    expect(toScreen(back, farEnd).x).toBeGreaterThanOrEqual(63.999);
+    expect(toScreen(back, farEnd).y).toBeGreaterThanOrEqual(63.999);
   });
 
   it('pinches: the point under the fingers follows their middle, zoomed by their spread', () => {

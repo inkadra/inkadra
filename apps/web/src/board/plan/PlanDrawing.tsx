@@ -735,7 +735,7 @@ const PlanDrawingView = memo(function PlanDrawingView({
   const icons = stack.filter((e) => e.ref.kind === 'icons').map((e) => e.item as PlanIcon);
   const frame = extent
     ? { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H }
-    : planFrame(plan, background && !off.includes('set'));
+    : planFrame(plan, background, hidden ?? []);
   return (
     // biome-ignore lint/a11y/noSvgWithoutTitle: named by aria-label in the editor, hidden elsewhere.
     <svg

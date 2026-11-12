@@ -1459,6 +1459,7 @@
       "viewLength": "Longitud de la vista",
       "zoom": "Zoom",
       "zoomFit": "Ajustar el plano",
+      "zoomFitAt": "{{percent}}% · Ajustar el plano",
       "stands": {
         "cstand": "C-stand",
         "combo": "Soporte combo",
@@ -1620,7 +1621,7 @@
       "view": {
         "only": "Solo lectura",
         "legend": "Leyenda",
-        "hint": "Arrastra para mover, pellizca o desplaza para el zoom",
+        "hint": "Arrastra para mover, pellizca o Ctrl + rueda para el zoom",
         "note": "Quien puede abrir el tablero ve este plano, la leyenda, el material y la potencia.",
         "guestNote": "Ves el plano tal como se comparte contigo: los setups, la leyenda, el material y la potencia."
       },
@@ -5125,7 +5126,7 @@
         "steps": {
           "0": {
             "title": "Dibuja el set",
-            "text": "Líneas, formas, textos y medidas desde la barra de abajo. Arrastra en un espacio vacío para moverte, usa la rueda para el zoom; haz clic otra vez para elegir lo que hay debajo."
+            "text": "Líneas, formas, textos y medidas desde la barra de abajo. Arrastra en un espacio vacío para seleccionar; haz clic otra vez para elegir lo que hay debajo."
           },
           "1": {
             "title": "La biblioteca",
@@ -5146,6 +5147,10 @@
           "5": {
             "title": "Fondo",
             "text": "Un plano o una foto bajo el dibujo para calcar: muévela, escálala, elige opacidad y grises."
+          },
+          "6": {
+            "title": "Moverse por el plano",
+            "text": "Espacio y arrastrar, la rueda o dos dedos mueven el plano; Ctrl y la rueda o un pellizco hacen zoom. Sin selección, las flechas lo mueven, 0 lo ajusta, + y − cambian el zoom."
           }
         }
       },

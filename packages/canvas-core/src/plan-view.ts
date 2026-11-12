@@ -1,8 +1,22 @@
 // SPDX-License-Identifier: MPL-2.0
-import { PLAN_ASPECT } from '@inkadra/doc-schema';
+import { PLAN_ASPECT, type PlanIcon, type PlanShape } from '@inkadra/doc-schema';
 import type { Point, Rect, Viewport } from './geometry.ts';
-import type { PlanElement } from './plan.ts';
-import { itemBox, PLAN_VIEW_H, PLAN_VIEW_W, planItems } from './plan.ts';
+import {
+  blockingCurve,
+  blockingPositions,
+  iconBounds,
+  iconCone,
+  iconGlow,
+  itemBox,
+  labelAnchor,
+  PLAN_REACH_UNITS,
+  PLAN_VIEW_H,
+  PLAN_VIEW_W,
+  type PlanElement,
+  type PlanItem,
+  planStack,
+} from './plan.ts';
+import { iconLabel, iconSubLabel, PLAN_LABEL_SIZE, PLAN_SUB_LABEL_SIZE } from './plan-labels.ts';
 import { backgroundBox } from './plan-start.ts';
 import { wallBounds } from './plan-walls.ts';
 
@@ -34,8 +48,15 @@ const MIN_PERCENT = 25;
 const MAX_PERCENT = 800;
 /** Fit never comes closer than this, so one small icon does not fill the screen. */
 const FIT_MAX_PERCENT = 250;
-/** Px of the drawing's extent that always stay in view, so the plan cannot be lost. */
+/** Px of the plan's reach that always stay in view. */
 const KEEP = 64;
+/** Where anything can be placed (decision 0118): the extent and PLAN_REACH round it. */
+const REACH = {
+  x: -PLAN_REACH_UNITS * PLAN_VIEW_W,
+  y: -PLAN_REACH_UNITS * PLAN_VIEW_H,
+  w: (1 + 2 * PLAN_REACH_UNITS) * PLAN_VIEW_W,
+  h: (1 + 2 * PLAN_REACH_UNITS) * PLAN_VIEW_H,
+};
 
 /** The zoom at which the drawing's whole extent fits the area: 100 %. */
 export function planBaseZoom(area: PlanArea): number {
@@ -55,14 +76,17 @@ const clampZoom = (zoom: number, area: PlanArea) => {
   return Math.min((base * MAX_PERCENT) / 100, Math.max((base * MIN_PERCENT) / 100, zoom));
 };
 
-/** The view moved back so that at least KEEP px of the drawing's extent stay in the area. */
+/**
+ * The view moved back so that at least KEEP px of the plan's reach stay in the area: anything
+ * that can be placed can be panned to, and the view never drifts where nothing can be.
+ */
 export function boundPlanView(v: Viewport, area: PlanArea): Viewport {
   const keepX = Math.min(KEEP, area.w / 2) / v.zoom;
   const keepY = Math.min(KEEP, area.h / 2) / v.zoom;
   return {
     zoom: v.zoom,
-    x: Math.min(PLAN_VIEW_W - keepX, Math.max(keepX - area.w / v.zoom, v.x)),
-    y: Math.min(PLAN_VIEW_H - keepY, Math.max(keepY - area.h / v.zoom, v.y)),
+    x: Math.min(REACH.x + REACH.w - keepX, Math.max(REACH.x + keepX - area.w / v.zoom, v.x)),
+    y: Math.min(REACH.y + REACH.h - keepY, Math.max(REACH.y + keepY - area.h / v.zoom, v.y)),
   };
 }
 
@@ -145,19 +169,14 @@ export function fitPlanView(
   return boundPlanView({ zoom, x: b.x + b.w / 2 - cx / zoom, y }, area);
 }
 
-/**
- * What Fit frames: the box of everything on the plan (items, walls and, unless `background` is
- * false, the background picture), in view units; null on an empty plan.
- */
-export function planContentBox(
-  plan: Partial<Pick<PlanElement, 'strokes' | 'shapes' | 'icons' | 'walls' | 'background'>>,
-  background = true,
-): Rect | null {
-  const items = planItems({ strokes: plan.strokes, shapes: plan.shapes, icons: plan.icons });
-  const boxes: Rect[] = items.map((e) => itemBox(e.item));
-  for (const wall of plan.walls ?? []) boxes.push(wallBounds(wall));
-  if (background && plan.background && !plan.background.hidden)
-    boxes.push(backgroundBox(plan.background));
+type Framed = Partial<
+  Pick<
+    PlanElement,
+    'strokes' | 'shapes' | 'icons' | 'walls' | 'background' | 'hiddenLayers' | 'sensor' | 'scale'
+  >
+>;
+
+const union = (boxes: readonly Rect[]): Rect | null => {
   if (boxes.length === 0) return null;
   const x = Math.min(...boxes.map((b) => b.x));
   const y = Math.min(...boxes.map((b) => b.y));
@@ -167,10 +186,99 @@ export function planContentBox(
     w: Math.max(...boxes.map((b) => b.x + b.w)) - x,
     h: Math.max(...boxes.map((b) => b.y + b.h)) - y,
   };
+};
+const around = (points: readonly Point[], pad = 0): Rect =>
+  union(points.map((p) => ({ x: p.x - pad, y: p.y - pad, w: 2 * pad, h: 2 * pad }))) as Rect;
+
+/** Radius of a blocking position's number and how far it sits from the position. */
+const STEP_REACH = 24 + 11;
+/** A measure's chip, about "12,34 m" wide, view units. */
+const MEASURE_CHIP = { w: 96, h: 30 };
+
+/**
+ * Everything drawn for an item (decision 0118), view units: an icon's body, its label and a
+ * light's second line, its beam, cone or glow, its earlier positions with their numbers and the
+ * ways between them; a measure's chip; the box of the rest. Hit testing keeps `itemBox`.
+ */
+export function itemDrawnBox(item: PlanItem, sensor?: PlanElement['sensor']): Rect {
+  if (!('kind' in item) || !('x' in item)) {
+    const box = itemBox(item);
+    const shape = item as PlanShape;
+    if ('x0' in item && shape.kind === 'measure') {
+      const c = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+      return union([
+        box,
+        {
+          x: c.x - MEASURE_CHIP.w / 2,
+          y: c.y - MEASURE_CHIP.h / 2,
+          w: MEASURE_CHIP.w,
+          h: MEASURE_CHIP.h,
+        },
+      ]) as Rect;
+    }
+    return box;
+  }
+  const icon = item as PlanIcon;
+  const boxes: Rect[] = [iconBounds(icon)];
+  const label = iconLabel(icon);
+  if (label) {
+    const at = labelAnchor(icon);
+    // Text about 0.6 of its size wide per letter; the halo adds a few units round it.
+    const w = label.length * PLAN_LABEL_SIZE * 0.62 + 8;
+    const sub = iconSubLabel(icon);
+    const subW = sub.length * PLAN_SUB_LABEL_SIZE * 0.62 + 8;
+    const bottom = at.y + (sub ? PLAN_LABEL_SIZE + 2 + PLAN_SUB_LABEL_SIZE * 0.35 : 0) + 4;
+    boxes.push({
+      x: at.x - Math.max(w, subW) / 2,
+      y: at.y - PLAN_LABEL_SIZE - 2,
+      w: Math.max(w, subW),
+      h: bottom - (at.y - PLAN_LABEL_SIZE - 2),
+    });
+  }
+  const cone = iconCone(icon, sensor);
+  if (cone) boxes.push(around(cone.points));
+  const glow = cone ? null : iconGlow(icon);
+  if (glow) boxes.push(around([glow.centre], glow.radius));
+  const at = blockingPositions(icon);
+  if (at.length > 1) {
+    const size = iconBounds(icon);
+    const half = Math.max(size.w, size.h) / 2;
+    boxes.push(around(at, Math.max(half, STEP_REACH)));
+    for (let i = 0; i + 1 < at.length; i++)
+      boxes.push(
+        around([blockingCurve(at[i] as Point, at[i + 1] as Point, icon.steps?.[i]?.bend).control]),
+      );
+  }
+  return union(boxes) as Rect;
 }
 
-/** Margin round a plan's content when it is framed, view units, plus a share of its size. */
-const FRAME_MARGIN = 28;
+/**
+ * What Fit frames and outputs show (decision 0118): the box of everything drawn on the plan
+ * (`itemDrawnBox` of the items drawn, walls and, unless `background` is false, the background
+ * picture), leaving out the plan's hidden layers and the caller's `hidden` ones (a person's own,
+ * or a group as Grip and crew); view units, null when nothing is drawn.
+ */
+export function planContentBox(
+  plan: Framed,
+  background = true,
+  hidden: readonly string[] = [],
+): Rect | null {
+  const off = [...(plan.hiddenLayers ?? []), ...hidden];
+  const stack = planStack(
+    { strokes: plan.strokes ?? [], shapes: plan.shapes ?? [], icons: plan.icons ?? [] },
+    off,
+  );
+  const boxes: Rect[] = stack.map((e) => itemDrawnBox(e.item, plan.sensor));
+  if (!off.includes('set')) {
+    for (const wall of plan.walls ?? []) boxes.push(wallBounds(wall));
+    if (background && plan.background && !plan.background.hidden)
+      boxes.push(backgroundBox(plan.background));
+  }
+  return union(boxes);
+}
+
+/** Margin round what is drawn when it is framed, view units, plus a share of its size. */
+const FRAME_MARGIN = 16;
 const FRAME_SHARE = 0.06;
 /** A frame is never narrower than this (view units, about 4.5 m at the nominal scale). */
 const FRAME_MIN_W = 400;
@@ -180,11 +288,8 @@ const FRAME_MIN_W = 400;
  * drawn on it, with a margin for labels, widened to the plan's 3:2 shape and never narrower than
  * FRAME_MIN_W; the whole extent for an empty plan. View units.
  */
-export function planFrame(
-  plan: Partial<Pick<PlanElement, 'strokes' | 'shapes' | 'icons' | 'walls' | 'background'>>,
-  background = true,
-): Rect {
-  const box = planContentBox(plan, background);
+export function planFrame(plan: Framed, background = true, hidden: readonly string[] = []): Rect {
+  const box = planContentBox(plan, background, hidden);
   if (!box) return { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H };
   const m = FRAME_MARGIN + FRAME_SHARE * Math.max(box.w, box.h * PLAN_ASPECT);
   let w = Math.max(FRAME_MIN_W, box.w + 2 * m);

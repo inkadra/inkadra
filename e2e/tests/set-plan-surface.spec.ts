@@ -142,30 +142,61 @@ test('the surface fills the editor, pans, zooms round the pointer and fits the p
   const zoom = (await editor.getByRole('group', { name: 'Zoom' }).boundingBox())!;
   expect(tools.x + tools.width).toBeLessThanOrEqual(zoom.x);
 
-  // The wheel zooms round the pointer: the point under it stays under it.
+  // As on the board (decision 0118): Ctrl + wheel zooms round the pointer, the point under it
+  // staying under it.
   const pointer = await pointOf(stage, P.empty);
   await page.mouse.move(pointer.x, pointer.y);
   const percent = editor.locator('.plan-canvas__percent');
-  const before = Number((await percent.innerText()).replace('%', ''));
+  const shown = async () => Number((await percent.innerText()).replace('%', ''));
+  const before = await shown();
+  await page.keyboard.down('Control');
   await page.mouse.wheel(0, -300);
-  await expect
-    .poll(async () => Number((await percent.innerText()).replace('%', '')))
-    .toBeGreaterThan(before);
+  await page.keyboard.up('Control');
+  await expect.poll(shown).toBeGreaterThan(before);
   const after = await pointOf(stage, P.empty);
   expect(Math.abs(after.x - pointer.x)).toBeLessThan(2);
   expect(Math.abs(after.y - pointer.y)).toBeLessThan(2);
 
-  // A drag on empty space pans; it picks nothing and moves nothing.
+  // A plain scroll pans.
+  const scrolled = (await stage.boundingBox())!;
+  await page.mouse.wheel(0, 80);
+  await expect.poll(async () => Math.round((await stage.boundingBox())!.y)).toBe(Math.round(scrolled.y - 80));
+
+  // Space and a drag on empty space pan; they pick nothing and move nothing.
   const key = (await find('Key')).x;
   const from = (await stage.boundingBox())!;
+  await page.keyboard.down('Space');
   await page.mouse.move(pointer.x, pointer.y);
   await page.mouse.down();
   await page.mouse.move(pointer.x - 120, pointer.y + 60, { steps: 6 });
   await page.mouse.up();
+  await page.keyboard.up('Space');
   const panned = (await stage.boundingBox())!;
   expect(Math.round(panned.x - from.x)).toBe(-120);
   expect(Math.round(panned.y - from.y)).toBe(60);
   expect((await find('Key')).x).toBe(key);
+
+  // A plain drag on empty space draws the selection box, as on the board.
+  const a1 = await pointOf(stage, [250, 160]);
+  const b1 = await pointOf(stage, [720, 290]);
+  await page.mouse.move(a1.x, a1.y);
+  await page.mouse.down();
+  await page.mouse.move(b1.x, b1.y, { steps: 6 });
+  await page.mouse.up();
+  await expect(editor.getByRole('tabpanel', { name: 'Proprietà' })).toContainText(
+    /\d+ elementi selezionati/,
+  );
+  expect(Math.round((await stage.boundingBox())!.x)).toBe(Math.round(panned.x));
+
+  // By keys, with nothing picked: the arrows pan, 0 fits, + zooms.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(async () => Math.round((await stage.boundingBox())!.x)).toBe(Math.round(panned.x + 40));
+  await page.keyboard.press('0');
+  await expect.poll(async () => Math.round((await stage.boundingBox())!.x)).toBe(Math.round(fitted.x));
+  await page.keyboard.press('+');
+  await expect.poll(shown).toBeGreaterThan(before);
+  await page.mouse.move(pointer.x, pointer.y);
 
   // Fit frames the plan again.
   await editor.getByRole('button', { name: 'Adatta la pianta' }).click();
