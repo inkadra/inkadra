@@ -95,7 +95,12 @@ test('only allowed people create projects; exceptions per person', async ({ page
   await martaPage.goto('/projects');
   const create = martaPage.getByRole('button', { name: 'Nuovo progetto' });
   await expect(create).toBeDisabled();
-  await expect(martaPage.getByText(/i progetti li crea solo chi è autorizzato/)).toBeVisible();
+  // The reason, read once: as the button's description, shown under it on this page.
+  await expect(create).toHaveAccessibleDescription(/i progetti li crea solo chi è autorizzato/);
+  const reason = martaPage.getByRole('main').getByText(/i progetti li crea solo chi è autorizzato/);
+  await expect(reason).toBeVisible();
+  await expect(reason).toHaveAttribute('aria-hidden', 'true');
+  await expect(martaPage.locator('#new-project-off')).toBeHidden();
   await expect(martaPage.getByRole('button', { name: 'Importa progetto…' })).toHaveCount(0);
   // She still works in the project she was invited to.
   await expect(martaPage.getByRole('heading', { name: projectName })).toBeVisible();

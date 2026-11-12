@@ -170,12 +170,8 @@ it('shows New project off, with why, to people who cannot create projects', asyn
   await render([member('me', 'Giulia')]);
   const actions = host.querySelector('.projects-page__actions');
   const button = [...(actions?.querySelectorAll('button') ?? [])];
-  // New group stays on: groups are personal (decision 0056).
-  expect(button.map((b) => [b.textContent, b.disabled])).toEqual([
-    ['groups.new', false],
-    ['nav.newProject', true],
-  ]);
-  expect(button[1]?.getAttribute('aria-describedby')).toBe('projects-creation-off');
+  // New group stays on: groups are personal (decision 0056). New project, off, is in the top bar.
+  expect(button.map((b) => [b.textContent, b.disabled])).toEqual([['groups.new', false]]);
   expect(actions?.textContent).toContain('projectCreation.off');
   // No import and no guided setup either.
   expect(actions?.querySelector('a')).toBeNull();

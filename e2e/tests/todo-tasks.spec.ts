@@ -125,19 +125,15 @@ for (const theme of ['light', 'dark'] as const)
         : page.getByRole('button', { name: 'Inbox', exact: true });
       if (phone) await expect(inbox).toHaveAccessibleName('Inbox: 1 non letta');
       await inbox.click();
-      await page.getByRole('tab', { name: 'I miei compiti', exact: true }).click();
-      await expect(
-        page
-          .getByRole('region', { name: 'I miei compiti' })
-          .locator(`a[href*="/p/${project.id}/"]`)
-          .filter({ hasText: 'Permessi parcheggio' }),
-      ).toBeVisible();
-      await page.screenshot({ path: join(out, `${prefix}-inbox.png`) });
-      await page
-        .getByRole('region', { name: 'I miei compiti' })
+      await page.getByRole('tab', { name: 'Compiti', exact: true }).click();
+      // In the Inbox the tab names the list.
+      const tasksTab = page
+        .getByRole('tabpanel', { name: 'Compiti' })
         .locator(`a[href*="/p/${project.id}/"]`)
-        .filter({ hasText: 'Permessi parcheggio' })
-        .click();
+        .filter({ hasText: 'Permessi parcheggio' });
+      await expect(tasksTab).toBeVisible();
+      await page.screenshot({ path: join(out, `${prefix}-inbox.png`) });
+      await tasksTab.click();
       await expect(card).toBeVisible();
       await expect(card).toHaveClass(/is-selected/);
     });

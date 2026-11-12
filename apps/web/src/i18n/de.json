@@ -140,7 +140,9 @@
       "shootingAt": "heute Dreh in {{location}}, Call um {{time}}",
       "shooting": "heute Dreh, Call um {{time}}",
       "unread_one": "{{count}} ungelesene Benachrichtigung",
-      "unread_other": "{{count}} ungelesene Benachrichtigungen"
+      "unread_other": "{{count}} ungelesene Benachrichtigungen",
+      "dueWeek_one": "{{count}} Aufgabe diese Woche fällig",
+      "dueWeek_other": "{{count}} Aufgaben diese Woche fällig"
     },
     "today": {
       "title": "Heute",
@@ -152,7 +154,7 @@
       "moreDays_other": "+{{count}} weitere Drehtage heute",
       "fewerDays": "Weniger anzeigen"
     },
-    "recentBoards": "Letzte Boards",
+    "recentBoards": "Weitermachen",
     "continue": "Weiter",
     "recentBoardsHint": "nach letzter Änderung",
     "noRecentBoards": "Noch keine Boards. Erstelle eins.",
@@ -162,7 +164,7 @@
     "activity": {
       "title": "Aktivität",
       "hint": "letzte 24 Stunden",
-      "openInbox": "Inbox öffnen →",
+      "openInbox": "Inbox öffnen",
       "empty": "Keine Aktivität in den letzten 24 Stunden."
     },
     "loadError": "Dieser Bereich konnte nicht geladen werden. Lade die Seite neu, um es noch mal zu versuchen.",
@@ -181,11 +183,12 @@
       "cards_one": "{{count}} Element",
       "cards_other": "{{count}} Elemente"
     },
-    "allProjects": "Alle Projekte →",
+    "allProjects": "Alle Projekte",
     "unsorted": {
       "waiting_one": "{{count}} Element zu ordnen",
       "waiting_other": "{{count}} Elemente zu ordnen"
-    }
+    },
+    "seeAll": "Alle ansehen"
   },
   "project": {
     "dialogTitle": "Neues Projekt",
@@ -2889,7 +2892,8 @@
       "all": "Alle",
       "mentions": "Erwähnungen",
       "approvals": "Freigaben",
-      "assigned": "Mir zugewiesen"
+      "assigned": "Mir zugewiesen",
+      "tasks": "Aufgaben"
     },
     "reviewStatus": "Review",
     "filter": "Inbox-Filter",
@@ -2919,7 +2923,14 @@
     "previewUnavailable": "Öffne das Board, um diese Karte zu sehen.",
     "swipeRead": "Gelesen",
     "swipeResolve": "Erledigen",
-    "resolvedDone": "Diskussion erledigt"
+    "resolvedDone": "Diskussion erledigt",
+    "reports_one": "<b>{{count}} In-App-Meldung</b> erhalten",
+    "reports_other": "<b>{{count}} In-App-Meldungen</b> erhalten",
+    "showAll": "Alle zeigen",
+    "showFewer": "Weniger zeigen",
+    "messages_one": "{{count}} Nachricht",
+    "messages_other": "{{count}} Nachrichten",
+    "frameTitle": "Frame {{label}}"
   },
   "settings": {
     "sectionLead": {
@@ -3488,7 +3499,7 @@
     "breakdown": "{{changes}} mit Änderungen · {{pending}} ausstehend"
   },
   "projectsPage": {
-    "counts": "{{active}} aktiv · {{archived}} archiviert",
+    "counts": "{{active}} aktiv, {{archived}} archiviert.",
     "search": "Projekte suchen",
     "status": "Status",
     "all": "Alle",
@@ -3514,7 +3525,6 @@
     "unpin": "Lösen",
     "archive": "Archivieren",
     "unarchive": "Wiederherstellen",
-    "noDates": "Termine noch offen",
     "boards_one": "{{count}} Board",
     "boards_other": "{{count}} Boards",
     "pinned": "Angepinnt",
@@ -3522,7 +3532,8 @@
     "details": "Typ und Zeitzone",
     "timeZone": "Zeitzone",
     "timeZoneAuto": "Automatisch (Zeitzone des Geräts: {{zone}})",
-    "timeZoneHint": "Sonnenauf- und -untergang auf der Dispo nutzen diese Zeitzone."
+    "timeZoneHint": "Sonnenauf- und -untergang auf der Dispo nutzen diese Zeitzone.",
+    "storageShort": "{{bytes}} Originaldateien auf dieser Instanz."
   },
   "projectDelete": {
     "menu": "Projekt löschen…",
@@ -4648,7 +4659,14 @@
       "today": "heute",
       "tomorrow": "morgen"
     },
-    "hint": "@ zum Zuweisen · Klick aufs Datum zum Ändern"
+    "hint": "@ zum Zuweisen · Klick aufs Datum zum Ändern",
+    "open_one": "{{count}} offen",
+    "open_other": "{{count}} offen",
+    "due": {
+      "today": "heute",
+      "by": "bis {{date}}",
+      "late": "überfällig seit {{date}}"
+    }
   },
   "calendar": {
     "title": "Kalender",
@@ -5085,8 +5103,8 @@
             "text": "Die Aktivität deiner Projekte, neueste zuerst."
           },
           "2": {
-            "title": "Neues Board",
-            "text": "Erstelle eines in einem deiner Projekte."
+            "title": "Neues Projekt",
+            "text": "Boards entstehen in einem Projekt: Lege es hier an."
           }
         }
       },

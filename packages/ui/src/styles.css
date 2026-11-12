@@ -138,6 +138,13 @@ select {
 .ink-btn--ghost:hover:not(:disabled) {
   background: var(--ink-surface-1);
 }
+.ink-btn--positive {
+  background: var(--ink-tag-green-bg);
+  color: var(--ink-tag-green);
+}
+.ink-btn--positive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink-tag-green) 18%, var(--ink-tag-green-bg));
+}
 .ink-btn--danger {
   background: var(--ink-danger-bg);
   border-color: var(--ink-danger-border);
@@ -954,6 +961,198 @@ select {
   border-radius: var(--ink-radius-md);
 }
 
+/* A section's title on a page: sentence case, as in the text around it. */
+.ink-section-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-text-primary);
+}
+
+/* ListRow: a task, a notification. */
+.ink-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  text-decoration: none;
+}
+:is(a, button).ink-row:not(:disabled) {
+  cursor: pointer;
+}
+:is(a, button).ink-row:not(:disabled):hover {
+  background: var(--ink-surface-1);
+}
+.ink-row[aria-current="true"],
+.ink-row.is-selected {
+  background: var(--ink-surface-2);
+}
+.ink-row:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
+}
+.ink-row__text {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.ink-row__title {
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.ink-row__preview,
+.ink-row__where {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.ink-row__preview {
+  color: var(--ink-text-secondary);
+}
+.ink-row__where {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-text-muted);
+}
+.ink-row__where > svg {
+  flex: none;
+  width: 10px;
+  height: 10px;
+}
+.ink-row__where > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ink-row__trail {
+  flex: none;
+  color: var(--ink-text-muted);
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+/* The unread dot and the checkbox of a row, aligned with its first line. */
+.ink-row__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: var(--ink-accent-primary);
+}
+.ink-row__dot.is-read {
+  background: transparent;
+}
+.ink-row__check {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  border: 1.5px solid var(--ink-border-strong);
+  border-radius: var(--ink-radius-xs);
+}
+.ink-row-group {
+  margin: 12px 10px 4px;
+  color: var(--ink-text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* CoverCard: a board, a project. */
+.ink-cover-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-surface-2);
+  color: var(--ink-text-primary);
+  transition: border-color var(--ink-dur-fast) var(--ink-ease-out);
+}
+.ink-cover-card:hover {
+  border-color: var(--ink-border-strong);
+}
+.ink-cover-card:has(.ink-cover-card__link:focus-visible) {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.ink-cover-card__cover {
+  position: relative;
+  display: flex;
+  height: 138px;
+  flex: none;
+}
+.ink-cover-card__cover > * {
+  flex: 1;
+  min-width: 0;
+}
+.ink-cover-card__body {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px 12px;
+  min-width: 0;
+}
+.ink-cover-card__name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-weight: 600;
+}
+.ink-cover-card__name > svg {
+  flex: none;
+}
+.ink-cover-card__link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+  outline: none;
+}
+/* The whole card opens it; the controls of the overlay sit above. */
+.ink-cover-card__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.ink-cover-card__meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.ink-cover-card__foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-top: 6px;
+  color: var(--ink-text-muted);
+  font-size: 12px;
+}
+.ink-cover-card__foot > time,
+.ink-cover-card__foot > .ink-cover-card__end {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .ink-empty {
   border: 1px dashed var(--ink-border-strong);
   border-radius: var(--ink-radius-md);
@@ -1169,6 +1368,18 @@ select {
 .ink-select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.ink-select:has(.ink-select__prefix) {
+  justify-content: flex-start;
+  gap: 6px;
+}
+.ink-select > .ink-select__prefix {
+  flex: none;
+  color: var(--ink-text-secondary);
+}
+.ink-select__prefix + span {
+  flex: 1;
+  font-weight: 500;
 }
 .ink-select--quiet {
   border-color: transparent;
