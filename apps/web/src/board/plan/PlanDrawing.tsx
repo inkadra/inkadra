@@ -455,8 +455,9 @@ export const PlanWallsView = memo(function PlanWallsView({
 
 /** Radius of the number of a blocking position, in view units. */
 const STEP_DOT = 11;
-/** How far under a position the editor draws its number, view units. */
-const STEP_BELOW = 30;
+/** Where the editor draws a position's number: under it and to the left, clear of its label. */
+const STEP_BELOW = 20;
+const STEP_BESIDE = 26;
 
 /**
  * The blocking of an icon (round 6, d): its earlier positions as veiled copies, the moves
@@ -543,9 +544,11 @@ const BlockingNumbers = memo(function BlockingNumbers({
           // biome-ignore lint/suspicious/noArrayIndexKey: the number is the place in the order.
           key={i}
           className="plan__step"
-          // In the editor each position, the last too, is numbered under it (audit M5).
+          // In the editor each position, the last too, is numbered beside it (audit M5).
           transform={
-            route ? `translate(${p.x} ${p.y + STEP_BELOW})` : `translate(${p.x - 24} ${p.y - 24})`
+            route
+              ? `translate(${p.x - STEP_BESIDE} ${p.y + STEP_BELOW})`
+              : `translate(${p.x - 24} ${p.y - 24})`
           }
         >
           <circle r={STEP_DOT} style={{ fill: 'currentColor' }} />
