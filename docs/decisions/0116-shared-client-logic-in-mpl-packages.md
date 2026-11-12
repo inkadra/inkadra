@@ -67,6 +67,16 @@ package disagree, and a package test fails when a language lacks a key English h
 other placeholders. All of these words were written by the project; before a word moves into the
 package, its author must be one who can license it under the MPL.
 
+For the mobile app to name a frame's shot size, angle and movement as the web does, these moved
+to `packages/shared`, beside the catalogs in `classifications.ts`: `shotText` (a field's value is
+the id of a catalog value, archived too, or text the person typed; an id of a catalog not loaded
+reads as nothing), `shotOptionLabel` (a default value is translated until renamed) and
+`isRenamedDefault`. Their words are `SHOT_WORDS_EN` (`film.shot.*`, `film.angle.*`,
+`film.movement.*`, keyed as the web catalogues), and `SHOT_WORDS_IT`, `_ES`, `_DE`, `_FR`, `_PT`,
+one file each imported by path (`@inkadra/shared/shot-words/it`), tested both ways as the set plan
+words are. The catalogs' cache, refresh and hooks, and adding a value from where it is used, stay
+in the web (`lib/classifications.ts`: state, React and the server's endpoint).
+
 One behaviour changed with the move, on purpose: the kit, the names on a circuit and the count
 across setups went by the translated name, so two kinds a language writes alike (or two specs
 that read alike) were one line in that language and two in English. They now go by what the item

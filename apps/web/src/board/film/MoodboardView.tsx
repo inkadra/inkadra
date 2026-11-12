@@ -10,7 +10,7 @@ import {
   storyboardOf,
   updateElements,
 } from '@inkadra/canvas-core';
-import { ASPECT_RATIOS, aspectValue, type Element, MAX_TAGS } from '@inkadra/doc-schema';
+import { ASPECT_RATIOS, aspectValue, compareZ, type Element, MAX_TAGS } from '@inkadra/doc-schema';
 import { Button, Checkbox, EmptyState, Icon, IconButton, Segmented } from '@inkadra/ui';
 import {
   type ReactNode,
@@ -51,7 +51,7 @@ export function referencesOf(elements: readonly Element[], tag = ''): Reference[
         (el.type === 'image' || el.type === 'color' || (el.type === 'link' && !!el.imageAssetId)) &&
         (!tag || (el.tags ?? []).some((value) => normaliseTag(value) === normaliseTag(tag))),
     )
-    .sort((a, b) => a.z.localeCompare(b.z) || a.id.localeCompare(b.id));
+    .sort(compareZ);
 }
 
 /** Up to five colours: the strongest of each picture, then the next of each, without repeats. */

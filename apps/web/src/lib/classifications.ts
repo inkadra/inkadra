@@ -1,18 +1,18 @@
 import {
-  CATALOG_UUID,
   ClassificationCatalogs,
   type ClassificationOption,
   classificationLabel,
   classificationOption,
   DEFAULT_CLASSIFICATIONS,
-  DEFAULT_SHOT_CATALOGS,
   type ShotCatalogKey,
   type ShotCatalogs,
 } from '@inkadra/shared';
-import type { TFunction } from 'i18next';
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from './api.ts';
+
+/** What a shot field reads as is the same on every client (decision 0116). */
+export { isRenamedDefault, shotOptionLabel, shotText } from '@inkadra/shared';
 
 let cache = DEFAULT_CLASSIFICATIONS;
 let pending: Promise<void> | null = null;
@@ -85,35 +85,6 @@ const subscribe = (listener: () => void) => {
     if (listeners.size === 0) window.removeEventListener('focus', onFocus);
   };
 };
-const I18N_PREFIX: Record<ShotCatalogKey, string> = {
-  shotSizes: 'film.shot',
-  shotAngles: 'film.angle',
-  shotMovements: 'film.movement',
-};
-export function isRenamedDefault(key: ShotCatalogKey, option: ClassificationOption) {
-  const original = DEFAULT_SHOT_CATALOGS[key].find((o) => o.id === option.id);
-  return !!original && original.label !== option.label;
-}
-/** A default value is translated until it is renamed; any other value has its one name. */
-export function shotOptionLabel(key: ShotCatalogKey, option: ClassificationOption, t: TFunction) {
-  const isDefault = DEFAULT_SHOT_CATALOGS[key].some((o) => o.id === option.id);
-  return isDefault && !isRenamedDefault(key, option)
-    ? t(`${I18N_PREFIX[key]}.${option.id}`)
-    : option.label;
-}
-/** What a frame field reads as: the name of its catalog value, archived too, or its free text. */
-export function shotText(
-  catalogs: ShotCatalogs,
-  key: ShotCatalogKey,
-  value: string | undefined,
-  t: TFunction,
-) {
-  if (!value) return '';
-  const option = catalogs[key].find((o) => o.id === value);
-  if (option) return shotOptionLabel(key, option, t);
-  // A value of a catalog not loaded yet: never show its id.
-  return CATALOG_UUID.test(value) ? '' : value;
-}
 /**
  * The lists alone, for the many small things that read them (a card per frame): subscribing
  * costs nothing, and a burst of mounts asks the server once.

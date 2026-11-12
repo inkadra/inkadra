@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
-import { createElement, deleteElements, updateElement } from '@inkadra/canvas-core';
+import {
+  canvasElements,
+  createElement,
+  deleteElements,
+  sendToBack,
+  updateElement,
+} from '@inkadra/canvas-core';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -108,6 +114,17 @@ const key = async (value: string, target: EventTarget = window, shiftKey = false
   act(async () => {
     target.dispatchEvent(new KeyboardEvent('keydown', { key: value, bubbles: true, shiftKey }));
   });
+
+it('lists references in the order the board draws them, also after one is sent to the back', () => {
+  const { doc, store, add } = board();
+  const first = add('image', { assetId: 'one' });
+  const second = add('image', { assetId: 'two' });
+  // Sending a picture to the back gives it a key before `a0` (`Zz`): collation put it last.
+  sendToBack(doc, [second.id]);
+  const all = [...store.getSnapshot().byId.values()];
+  expect(canvasElements(all).map((el) => el.id)).toEqual([second.id, first.id]);
+  expect(referencesOf(all).map((el) => el.id)).toEqual([second.id, first.id]);
+});
 
 it('selects actual image, preview and color cards, including nested references, with case-insensitive tags', () => {
   const { store, add } = board();
