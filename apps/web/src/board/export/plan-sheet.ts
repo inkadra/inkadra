@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { roomSize } from '@inkadra/canvas-core';
-
 /** The room's size the sheet prints lives in canvas-core (decision 0116). */
-export { roomSize };
-
+export { roomSize } from '@inkadra/canvas-core';
 // The sheet's layout moved to @inkadra/print (decision 0116); the dialog's preview stays here.
 export type { PlanSheetInclude, PlanSheetInput, PlanSheetSetup } from '@inkadra/print';
 export {
