@@ -731,12 +731,15 @@
   gap: 2px;
   min-width: 0;
 }
+/* Long names ("Collegamenti del set plan") take a second line rather than an ellipsis. */
 .tour-tile__name {
+  display: -webkit-box;
   overflow: hidden;
   font-size: 13px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 .tour-tile .tour-state {
   font-size: 12px;
