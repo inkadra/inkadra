@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import {
   addElement,
+  compareZ,
   type Element,
   type FrameShape,
   MAX_SHAPES,
@@ -43,12 +44,11 @@ export interface SceneGroup {
 export const isDrawn = (f: Pick<FrameElement, 'assetId' | 'strokes' | 'shapes'>) =>
   !!f.assetId || (f.strokes?.length ?? 0) > 0 || (f.shapes?.length ?? 0) > 0;
 
-const byZ = (a: Element, b: Element) => (a.z < b.z ? -1 : a.z > b.z ? 1 : a.id < b.id ? -1 : 1);
 
 /** Scenes in order, each with its frames in shooting order; loose frames come last. */
 export function storyboardOf(elements: readonly Element[]): SceneGroup[] {
   const all = [...elements];
-  const scenes = all.filter((e): e is SceneElement => e.type === 'scene').sort(byZ);
+  const scenes = all.filter((e): e is SceneElement => e.type === 'scene').sort(compareZ);
   const groups: SceneGroup[] = scenes.map((scene) => ({
     scene,
     frames: childrenOf(all, scene.id).filter((e): e is FrameElement => e.type === 'frame'),
@@ -60,7 +60,7 @@ export function storyboardOf(elements: readonly Element[]): SceneGroup[] {
         e.type === 'frame' &&
         (e.parent === null || e.parent === UNSORTED || !sceneIds.has(e.parent)),
     )
-    .sort(byZ);
+    .sort(compareZ);
   if (loose.length > 0) groups.push({ scene: null, frames: loose });
   return groups;
 }
@@ -134,7 +134,7 @@ export function addScene(
   const all = currentElements(doc);
   const scenes = all.filter((e): e is SceneElement => e.type === 'scene');
   const right = scenes.reduce((m, s) => Math.max(m, s.x + s.w), -Infinity);
-  const last = scenes.sort(byZ).at(-1);
+  const last = scenes.sort(compareZ).at(-1);
   const lastNumber = Number.parseInt(last?.number ?? '0', 10);
   return createElement(
     doc,
@@ -163,7 +163,7 @@ export function addScenes(doc: Y.Doc, scenes: readonly NewScene[], opts: Opts): 
   const all = currentElements(doc);
   const existing = all.filter((e): e is SceneElement => e.type === 'scene');
   let right = existing.reduce((m, s) => Math.max(m, s.x + s.w), -Infinity);
-  let last = Number.parseInt(existing.sort(byZ).at(-1)?.number ?? '0', 10);
+  let last = Number.parseInt(existing.sort(compareZ).at(-1)?.number ?? '0', 10);
   if (!Number.isFinite(last)) last = existing.length;
   const sceneKeys = generateNKeysBetween(keyAtEnd(all, null), null, scenes.length);
   const created: SceneElement[] = [];

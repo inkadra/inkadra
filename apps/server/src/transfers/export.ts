@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import {
   CURRENT_SCHEMA_VERSION,
+  compareZ,
+  type Element,
   getAnimaticAudio,
   getBoardAspect,
   getSchemaVersion,
@@ -75,16 +77,17 @@ const COMPRESSIBLE = /^(text\/|application\/(json|xml|pdf|rtf)|image\/svg)/;
 export type ExportProgress = (done: number) => Promise<void> | void;
 
 /** Readable JSON of a document: doc-schema elements plus the plain text of notes. */
-export function readableElements(doc: Y.Doc) {
-  const elements: Record<string, unknown>[] = [];
+export function readableElements(doc: Y.Doc): Record<string, unknown>[] {
+  const elements: { el: Element; body: unknown }[] = [];
   for (const map of roots(doc).elements.values()) {
     const el = readElement(map);
-    if (!el) continue;
-    const body = map.get('body');
-    elements.push(body instanceof Y.XmlFragment ? { ...el, text: fragmentText(body) } : el);
+    if (el) elements.push({ el, body: map.get('body') });
   }
-  elements.sort((a, b) => String(a.z).localeCompare(String(b.z)));
-  return elements;
+  return elements
+    .sort((a, b) => compareZ(a.el, b.el))
+    .map(({ el, body }) =>
+      body instanceof Y.XmlFragment ? { ...el, text: fragmentText(body) } : el,
+    );
 }
 
 /** createdBy of every element: people the archive must name. */

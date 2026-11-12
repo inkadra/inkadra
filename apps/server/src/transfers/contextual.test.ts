@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { addElement, createBoardDoc, Element, readElement, roots } from '@inkadra/doc-schema';
+import {
+  addElement,
+  compareZ,
+  createBoardDoc,
+  Element,
+  readElement,
+  roots,
+} from '@inkadra/doc-schema';
 import { expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { readableElements } from './export.ts';
@@ -48,7 +55,8 @@ it('preserves contextual fields in readable exports and remapped archive documen
     },
   ].map((card) => Element.parse(card));
   for (const card of cards) addElement(doc, card);
-  expect(JSON.parse(JSON.stringify(readableElements(doc)))).toEqual(cards);
+  // Same key: the id breaks the tie, as on the board.
+  expect(JSON.parse(JSON.stringify(readableElements(doc)))).toEqual([...cards].sort(compareZ));
   const imported = new Y.Doc();
   Y.applyUpdate(imported, Y.encodeStateAsUpdate(doc));
   remapDoc(imported, board, {

@@ -5,6 +5,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   checkCard,
   checkElement,
+  compareZ,
   Element,
   type ElementType,
   getSchemaVersion,
@@ -140,16 +141,15 @@ export function currentElements(doc: Y.Doc): Element[] {
   return views.get(doc)?.() ?? listElements(doc);
 }
 
-const byZ = (a: Element, b: Element) => (a.z < b.z ? -1 : a.z > b.z ? 1 : a.id < b.id ? -1 : 1);
 
 /** Elements placed directly on the canvas, in drawing order. */
 export function canvasElements(elements: Element[]): Element[] {
-  return elements.filter((e) => e.parent === null).sort(byZ);
+  return elements.filter((e) => e.parent === null).sort(compareZ);
 }
 
 /** Children of a column, or of UNSORTED, from top to bottom. */
 export function childrenOf(elements: Element[], parent: string): Element[] {
-  return elements.filter((e) => e.parent === parent).sort(byZ);
+  return elements.filter((e) => e.parent === parent).sort(compareZ);
 }
 
 function isKey(z: unknown): z is string {
@@ -400,7 +400,7 @@ export function moveIntoParent(
     const ea = byId.get(a);
     const eb = byId.get(b);
     if (!ea || !eb) return 0;
-    return ea.parent === eb.parent ? byZ(ea, eb) : ea.y - eb.y || ea.x - eb.x;
+    return ea.parent === eb.parent ? compareZ(ea, eb) : ea.y - eb.y || ea.x - eb.x;
   });
   const keys = keysAt(staying, at, ordered.length);
   doc.transact(() => {
