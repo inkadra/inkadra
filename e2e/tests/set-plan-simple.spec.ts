@@ -486,31 +486,27 @@ test('every library name fits its tile, in all six languages, at 1280 and 390 px
       await categories.nth(i).click();
       if (i === 1)
         await library.screenshot({ path: join(out, `library-${label.replace(' ', '-')}.png`) });
-      // A name is cut when it overflows its tile, or when a piece of it between two places it may
-      // break (a space, a soft hyphen, a hyphen) is wider than the tile: the browser then breaks
-      // that piece where no hyphen shows.
+      // A name is cut when a word of it is wider than the room the name has (a word is never
+      // broken, decision 0116), or when it needs more than the two lines the tile shows.
       const bad = await library.locator('.plan-lib__tile').evaluateAll((tiles) =>
         tiles.flatMap((tile) => {
           const span = tile.querySelector('span') as HTMLElement;
           const value = span.textContent ?? '';
           const probe = document.createElement('span');
           probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap';
-          span.append(probe);
-          // The span is as wide as its text; what it may take is the tile's inner width.
-          const style = getComputedStyle(tile);
-          const room =
-            tile.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-          const wide = value.split(/[\s\u00AD-]/).filter((piece) => {
-            probe.textContent = `${piece}-`;
+          tile.append(probe);
+          const room = span.clientWidth;
+          const wide = value.split(/[\s-]/).filter((piece) => {
+            probe.textContent = piece;
             return probe.getBoundingClientRect().width > room + 0.5;
           });
           probe.remove();
           const s = span.getBoundingClientRect();
           const t = tile.getBoundingClientRect();
-          const over = s.width > room + 1 || s.bottom > t.bottom + 1;
+          const over = span.scrollHeight > span.clientHeight + 1 || s.bottom > t.bottom + 1;
           const why = [...wide.map((w) => `"${w}" too wide`), over ? 'overflows' : ''];
           const said = why.filter(Boolean).join(', ');
-          return said ? [`${value.replaceAll('\u00AD', '')} (${said})`] : [];
+          return said ? [`${value} (${said})`] : [];
         }),
       );
       cut.push(...bad.map((name) => `${label}: ${name}`));

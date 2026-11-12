@@ -111,6 +111,10 @@ test('set plan panels: circuits on every setup, the base renamed, identical lamp
 
   await test.step('the first setup is renamed on its tab', async () => {
     await tabs.getByRole('tab', { name: '1 · Base' }).click();
+    await expect(tabs.getByRole('tab', { name: '1 · Base' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     await tabs.getByRole('tab', { name: '1 · Base' }).dblclick();
     const name = editor.getByRole('textbox', { name: 'Nome del setup' });
     await name.fill('Master');
