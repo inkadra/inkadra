@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { castAppearances, frameLabels, listElements, type Rect, storyboardOf } from '@inkadra/canvas-core';
+import {
+  castAppearances,
+  frameLabels,
+  listElements,
+  type Rect,
+  storyboardOf,
+} from '@inkadra/canvas-core';
 import { aspectValue, type Element, getBoardAspect, hiddenFromGuests } from '@inkadra/doc-schema';
 import { planSheetInput, slugline as sceneSlugline } from '@inkadra/print';
 import type { Asset, AssetTrack, Board, CommentThread, ShotCatalogKey } from '@inkadra/shared';
