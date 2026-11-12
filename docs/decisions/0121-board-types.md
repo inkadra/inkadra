@@ -37,6 +37,18 @@ The project's root board is a Board. A board turns on only the views of its type
 the board's ⋯ menu; a view that is off leaves the header, the sidebar and the card, and its data
 stays. Changing the type of a board ("Convert to…") is a later decision.
 
+**A storyboard is not a board to draw on.** The board (canvas) is the centre of a project; a
+storyboard placed on it is a storyboard and nothing else, so it has no Board view (decided on
+2026-11-12, after the mockup). What pointed at a storyboard's canvas follows:
+
+- "Go to the card" of a comment, a search hit and the phone's frame links open the Storyboard
+  view at that frame or scene.
+- A set plan of a scene opens in the plan editor on its own, from the scene, without a canvas
+  around it.
+- An existing storyboard that holds other cards (notes, images, links, loose plans) keeps them:
+  its ⋯ menu shows "Cards outside the storyboard" with their count, which opens the old canvas.
+  Nothing is deleted or hidden for good. A new storyboard never has it.
+
 **Several storyboards per project.** Nothing in the navigation assumes one. Review stays per
 storyboard, with its own guest link.
 
