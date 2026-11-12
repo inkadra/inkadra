@@ -1457,19 +1457,27 @@ describe('circuits of the setups (decision 0117)', () => {
   it("drops the sun's shooting day when the plan is pasted on another board, keeping its date", () => {
     const f = family();
     const day = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
-    roots(f.doc)
-      .elements.get(f.base)
-      ?.set('sun', { time: 600, day, date: '2026-03-14' });
+    roots(f.doc).elements.get(f.base)?.set('sun', { time: 600, day, date: '2026-03-14' });
     // On another board the day is of another schedule: the date stays, as a plain date.
     const other = createBoardDoc('0193f0a4-6c1e-7b9a-9c51-000000000002');
-    const [there] = pasteElements(other, copyElements(f.doc, [f.base]), { x: 0, y: 0 }, {
-      userId: null,
-    }).ids;
+    const [there] = pasteElements(
+      other,
+      copyElements(f.doc, [f.base]),
+      { x: 0, y: 0 },
+      {
+        userId: null,
+      },
+    ).ids;
     expect(planOf(other, there as string).sun).toEqual({ time: 600, date: '2026-03-14' });
     // On the same board it keeps following the day.
-    const [here] = pasteElements(f.doc, copyElements(f.doc, [f.base]), { x: 0, y: 0 }, {
-      userId: null,
-    }).ids;
+    const [here] = pasteElements(
+      f.doc,
+      copyElements(f.doc, [f.base]),
+      { x: 0, y: 0 },
+      {
+        userId: null,
+      },
+    ).ids;
     expect(planOf(f.doc, here as string).sun).toEqual({ time: 600, day, date: '2026-03-14' });
   });
 

@@ -848,7 +848,8 @@ export function planRooms(walls: readonly PlanWall[]): PlanRoom[] {
     const p = wallPoints(w);
     for (let i = 0; i + 1 < p.length; i++)
       sides.push({ a: p[i] as Point, b: p[i + 1] as Point, wall: w.id });
-    if (w.closed && p.length > 2) sides.push({ a: p.at(-1) as Point, b: p[0] as Point, wall: w.id });
+    if (w.closed && p.length > 2)
+      sides.push({ a: p.at(-1) as Point, b: p[0] as Point, wall: w.id });
   }
   const cuts: number[][] = sides.map(() => []);
   if (sides.length <= MAX_SIDES)
@@ -921,7 +922,10 @@ export function planRooms(walls: readonly PlanWall[]): PlanRoom[] {
   }
   const m = neighbours();
   const angle = (from: number, to: number) =>
-    Math.atan2((verts[to] as Point).y - (verts[from] as Point).y, (verts[to] as Point).x - (verts[from] as Point).x);
+    Math.atan2(
+      (verts[to] as Point).y - (verts[from] as Point).y,
+      (verts[to] as Point).x - (verts[from] as Point).x,
+    );
   for (const [v, ns] of m) ns.sort((a, b) => angle(v, a) - angle(v, b));
   const wallsOf = (u: number, v: number) =>
     edges.get(u < v ? `${u},${v}` : `${v},${u}`)?.walls ?? new Set<string>();

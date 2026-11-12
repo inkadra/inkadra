@@ -3,8 +3,8 @@ import {
   type UpdateUserPreferences,
   type UserPreferences,
 } from '@inkadra/shared';
-import { useSyncExternalStore } from 'react';
 import { API_PREFIX } from '@inkadra/shared/constants';
+import { useSyncExternalStore } from 'react';
 import { api } from './api.ts';
 
 /**

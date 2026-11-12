@@ -47,7 +47,11 @@ export function useScheduleDays(boardId: string | undefined): readonly Day[] | n
     const update = () => rerender((n) => n + 1);
     let entry = boards.get(boardId);
     if (!entry) {
-      const fresh = { days: null as readonly Day[] | null, readers: new Set<() => void>(), stop: () => {} };
+      const fresh = {
+        days: null as readonly Day[] | null,
+        readers: new Set<() => void>(),
+        stop: () => {},
+      };
       const read = () =>
         api.get<Schedule>(`/boards/${boardId}/schedule`).then(
           (r) => {
