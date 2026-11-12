@@ -93,7 +93,7 @@ const cases: Case[] = [
   { name: 'note', type: 'note' },
   { name: 'tinted note', type: 'note', fields: { color: 'blue' } },
   { name: 'to-do', type: 'todo', fields: { items: [] } },
-  { name: 'table', type: 'table', fields: { columns: [{ id: 'c1' }], rows: [] } },
+  { name: 'table', type: 'table', fields: { columns: [{ id: 'column01' }], rows: [] } },
   { name: 'section', type: 'section', fields: { title: 'Act one', background: 'blue' } },
   { name: 'board card', type: 'board', fields: { boardId: uuid } },
   { name: 'colour', type: 'color', fields: { hex: '#336699', label: 'Sky' } },
