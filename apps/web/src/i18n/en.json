@@ -3507,8 +3507,7 @@
     "timeZone": "Time zone",
     "timeZoneAuto": "Automatic (device time zone: {{zone}})",
     "timeZoneHint": "Sunrise and sunset on the call sheet use this time zone.",
-    "storageShort": "{{bytes}} of original files on this instance.",
-    "view": "View"
+    "storageShort": "{{bytes}} of original files on this instance."
   },
   "projectDelete": {
     "menu": "Delete project…",

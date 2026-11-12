@@ -75,7 +75,6 @@ import {
   useNotificationFeed,
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
-import type { InboxFilter } from '../notifications/model.ts';
 import { TutorialHost } from '../tutorial/TutorialHost.tsx';
 import { addBoardItems } from './add-storyboard.ts';
 import { editableProjects } from './home-data.ts';
@@ -97,41 +96,15 @@ import {
 import { SearchDialog } from './SearchDialog.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import { SeedQueue } from './seed-queue.tsx';
+import type { InboxFilter } from '../notifications/model.ts';
+import { ProjectsContext } from './projects-context.ts';
 import { isSettingsPath } from './settings-sections.ts';
 import { UpdatePopup } from './UpdatePopup.tsx';
 import './mobile-shell.css';
 
-interface ProjectsState {
-  projects: Project[] | null;
-  shared: Board[] | null;
-  /** Opens New project, optionally into a group. */
-  openNewProject: (groupId?: string) => void;
-  /** Opens Import project… (decision 0037). */
-  openImportProject: () => void;
-  /** False when an administrator keeps project creation to some people (decision 0041). */
-  canCreateProjects: boolean;
-  openSearch: () => void;
-  /** Opens the Inbox, on one of its tabs (the Home's See all opens Tasks). */
-  openInbox: (filter?: InboxFilter) => void;
-  unread: number;
-  refreshUnread: () => Promise<void>;
-  /** Counts of the open project's boards, which choose the views of boards from before 0121. */
-  boardCounts: ReadonlyMap<string, BoardCount>;
-}
-
-const ProjectsContext = createContext<ProjectsState>({
-  projects: null,
-  shared: null,
-  openNewProject: () => {},
-  openImportProject: () => {},
-  canCreateProjects: true,
-  openSearch: () => {},
-  openInbox: () => {},
-  unread: 0,
-  refreshUnread: async () => {},
-  boardCounts: new Map(),
-});
-export const useProjects = () => useContext(ProjectsContext);
+// The shell's state lives in its own module, so a list rendered by the shell (the Inbox) does
+// not import the shell.
+export { useProjects } from './projects-context.ts';
 
 const InstanceSetupContext = createContext<ReturnType<typeof useInstanceSetup>>({
   checks: null,

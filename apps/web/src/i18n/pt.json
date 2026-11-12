@@ -3507,8 +3507,7 @@
     "timeZone": "Fuso horário",
     "timeZoneAuto": "Automático (fuso do dispositivo: {{zone}})",
     "timeZoneHint": "O nascer e o pôr do sol da folha de chamada usam este fuso.",
-    "storageShort": "{{bytes}} de arquivos originais nesta instância.",
-    "view": "Visualização"
+    "storageShort": "{{bytes}} de arquivos originais nesta instância."
   },
   "projectDelete": {
     "menu": "Excluir projeto…",

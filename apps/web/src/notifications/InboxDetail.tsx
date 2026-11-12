@@ -35,7 +35,7 @@ import {
 import { canComment } from '../board/review-store.ts';
 import { FeedbackInbox } from '../feedback/FeedbackSettings.tsx';
 import { api } from '../lib/api.ts';
-import { useProjects } from '../routes/AppLayout.tsx';
+import { useProjects } from '../routes/projects-context.ts';
 import {
   avatarBg,
   describeNotification,

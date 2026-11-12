@@ -3507,8 +3507,7 @@
     "timeZone": "Fuseau horaire",
     "timeZoneAuto": "Automatique (fuseau de l’appareil : {{zone}})",
     "timeZoneHint": "Le lever et le coucher du soleil de la feuille de service utilisent ce fuseau.",
-    "storageShort": "{{bytes}} de fichiers originaux sur cette instance.",
-    "view": "Affichage"
+    "storageShort": "{{bytes}} de fichiers originaux sur cette instance."
   },
   "projectDelete": {
     "menu": "Supprimer le projet…",

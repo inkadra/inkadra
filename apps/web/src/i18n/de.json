@@ -3507,8 +3507,7 @@
     "timeZone": "Zeitzone",
     "timeZoneAuto": "Automatisch (Zeitzone des Geräts: {{zone}})",
     "timeZoneHint": "Sonnenauf- und -untergang auf der Dispo nutzen diese Zeitzone.",
-    "storageShort": "{{bytes}} Originaldateien auf dieser Instanz.",
-    "view": "Ansicht"
+    "storageShort": "{{bytes}} Originaldateien auf dieser Instanz."
   },
   "projectDelete": {
     "menu": "Projekt löschen…",

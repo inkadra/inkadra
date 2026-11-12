@@ -180,7 +180,8 @@ it('shows today’s shooting day, recent boards and the last day of activity', a
   await render();
   const text = host.textContent ?? '';
   expect(api.get).toHaveBeenCalledWith('/me/shooting-days?from=2026-10-26&to=2026-10-26');
-  expect(text).toContain('home.summary.shootingAt {"location":"Central station","time":"18:30"}');
+  // The first part of the sentence starts with a capital letter.
+  expect(text).toContain('Home.summary.shootingAt {"location":"Central station","time":"18:30"}');
   expect(text).toContain('home.summary.unread {"count":2}');
   const today = host.querySelector('[aria-labelledby="home-today"]');
   expect(today?.textContent).toContain('18:30');
@@ -264,9 +265,10 @@ it('shows root boards among the four recent boards without guessing kinds from t
     ),
   });
   await render();
-  const cards = host.querySelectorAll('.home__boards > a');
+  const cards = host.querySelectorAll('.home__boards > .ink-cover-card');
   expect(cards).toHaveLength(4);
-  expect(cards[0]?.getAttribute('href')).toBe('/p/p1');
+  expect(cards[0]?.classList).toContain('home__card--hero');
+  expect(cards[0]?.querySelector('a')?.getAttribute('href')).toBe('/p/p1');
   expect(cards[0]?.querySelector('.home__kind')?.textContent).toBe('board.types.board');
   expect(cards[1]?.querySelector('.home__kind')?.getAttribute('data-kind')).toBe('storyboard');
   expect(host.querySelector('.home__preview')?.getAttribute('data-tint')).toBe('blue');

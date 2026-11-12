@@ -40,7 +40,7 @@ import { expiryDate } from '../lib/access.ts';
 import { api } from '../lib/api.ts';
 import { signedInId } from '../lib/me.ts';
 import { moveTabFocus } from '../lib/tabs.ts';
-import { useProjects } from '../routes/AppLayout.tsx';
+import { useProjects } from '../routes/projects-context.ts';
 import { MyTasksTab } from '../routes/MyTasks.tsx';
 import { formatStorage } from '../routes/StorageCharts.tsx';
 import { trackSave } from '../routes/settings-save.ts';

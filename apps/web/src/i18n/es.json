@@ -3507,8 +3507,7 @@
     "timeZone": "Zona horaria",
     "timeZoneAuto": "Automática (zona del dispositivo: {{zone}})",
     "timeZoneHint": "El amanecer y el atardecer de la hoja de citación usan esta zona horaria.",
-    "storageShort": "{{bytes}} de archivos originales en la instancia.",
-    "view": "Vista"
+    "storageShort": "{{bytes}} de archivos originales en la instancia."
   },
   "projectDelete": {
     "menu": "Eliminar proyecto…",

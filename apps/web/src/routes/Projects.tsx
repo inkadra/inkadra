@@ -206,9 +206,12 @@ export function Projects() {
                 archived: items.filter((r) => r.project.archivedAt).length,
               })}
               {/* What the instance keeps, for the administrator: once known, in the same line. */}
+              {user?.role === 'admin' && (usage !== null || usageError) && ' '}
               {user?.role === 'admin' && (usage !== null || usageError) && (
-                <span className="projects-page__storage" title={usage !== null ? storageNote : undefined}>
-                  {' '}
+                <span
+                  className="projects-page__storage"
+                  title={usage !== null ? storageNote : undefined}
+                >
                   {usage !== null
                     ? t('projectsPage.storageShort', { bytes: formatStorage(usage, i18n.language) })
                     : t('projectsPage.storageError')}
@@ -299,7 +302,7 @@ export function Projects() {
             </option>
           ))}
         </Select>
-        <div className="projects-page__view" role="group" aria-label={t('projectsPage.view')}>
+        <div className="projects-page__view">
           {(['grid', 'list'] as const).map((v) => (
             <IconButton
               key={v}
