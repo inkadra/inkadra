@@ -13,7 +13,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@inkadra/canvas-core": "workspace:*"
+    "@inkadra/canvas-core": "workspace:*",
+    "@inkadra/doc-schema": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
