@@ -67,7 +67,6 @@ const { buildPages } = await import('../src/board/export/engine.ts');
 const { renderPdf } = await import('../src/board/export/render-pdf.ts');
 const { BoardStore } = await import('../src/board/store.ts');
 const { PDFDocument, PDFDict, PDFName, PDFRawStream } = await import('pdf-lib');
-const fontkit = (await import('@pdf-lib/fontkit')).default;
 const Y = await import('yjs');
 const importMs = performance.now() - started;
 globalThis.fetch = fileFetch;
@@ -160,7 +159,7 @@ console.log(
 console.log(`  PDF: ${(cold.bytes / 1024).toFixed(1)} KB (background 48 × 32 px JPEG)`);
 
 if (icons === 0) {
-  // Fonts: what the sheet embeds today, and what Inter's Latin Extended and Cyrillic would add.
+  // Fonts: the files the web fetches and what the sheet embeds of them.
   const { built, env } = await (async () => {
     const r = await sheetRequest(fixture, 'team', 'en');
     return { ...r, built: await buildPages(r.req, r.env) };
@@ -179,42 +178,17 @@ if (icons === 0) {
     const program = obj.lookup(PDFName.of('FontFile2')) ?? obj.lookup(PDFName.of('FontFile3'));
     if (program instanceof PDFRawStream) embedded += program.getContentsSize();
   }
-  const file = (subset: string, weight: number) =>
-    packageFile(`@fontsource/inter/files/inter-${subset}-${weight}-normal.woff`).length;
-  const sum = (subset: string) => [400, 500, 600, 700].reduce((n, w) => n + file(subset, w), 0);
-  console.log('\nFonts (Inter, @fontsource/inter 5.3.0, OFL-1.1)');
-  console.table({
-    latin: { 'four weights (WOFF)': `${(sum('latin') / 1024).toFixed(1)} KB` },
-    'latin-ext': { 'four weights (WOFF)': `${(sum('latin-ext') / 1024).toFixed(1)} KB` },
-    cyrillic: { 'four weights (WOFF)': `${(sum('cyrillic') / 1024).toFixed(1)} KB` },
-  });
+  const sizes = Object.fromEntries(
+    ['400Regular', '500Medium', '600SemiBold', '700Bold'].map((name) => [
+      name,
+      {
+        TTF: `${(packageFile(`@expo-google-fonts/inter/${name}/Inter_${name}.ttf`).length / 1024).toFixed(1)} KB`,
+      },
+    ]),
+  );
+  console.log('\nFonts (Inter, @expo-google-fonts/inter 0.4.2, OFL-1.1)');
+  console.table(sizes);
   console.log(
     `  the fixture's PDF embeds ${(embedded / 1024).toFixed(1)} KB of Inter subsets (4 weights) in ${(plain.length / 1024).toFixed(1)} KB`,
-  );
-  // The notes in Polish and Cyrillic drawn with the two subsets beside the Latin one, as a writer
-  // that falls back per character would embed them (regular weight, as the notes are).
-  const extra = async (subsets: string[]) => {
-    const pdf = await PDFDocument.create();
-    pdf.registerFontkit(fontkit);
-    const page = pdf.addPage();
-    for (const subset of subsets) {
-      const font = await pdf.embedFont(
-        packageFile(`@fontsource/inter/files/inter-${subset}-400-normal.woff`),
-        { subset: true },
-      );
-      const face = fontkit.create(
-        packageFile(`@fontsource/inter/files/inter-${subset}-400-normal.woff`) as Buffer,
-      );
-      const text = [...`${fixture.notes.polish} ${fixture.notes.cyrillic}`]
-        .filter((ch) => face.hasGlyphForCodePoint(ch.codePointAt(0) ?? 32))
-        .join('');
-      page.drawText(text, { font, size: 9.75, x: 20, y: 400 });
-    }
-    return (await pdf.save()).length;
-  };
-  const latinOnly = await extra(['latin']);
-  const all = await extra(['latin', 'latin-ext', 'cyrillic']);
-  console.log(
-    `  Polish and Cyrillic notes with latin-ext and cyrillic subsets embedded too: +${((all - latinOnly) / 1024).toFixed(1)} KB per PDF`,
   );
 }

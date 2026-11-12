@@ -7,12 +7,18 @@ import type { FontWeight } from './ops.ts';
 
 const require = createRequire(import.meta.url);
 
-/** Inter as the web loads it, read from `@fontsource/inter` on disk (a test-only dependency). */
+/** Inter as the web loads it, read from `@expo-google-fonts/inter` on disk (test-only). */
 function inter(): Record<FontWeight, Uint8Array> {
-  const file = (w: number) =>
-    readFileSync(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff`));
-  const semibold = file(600);
-  return { 400: file(400), 500: file(500), 600: semibold, 700: file(700), heading: semibold };
+  const file = (name: string) =>
+    readFileSync(require.resolve(`@expo-google-fonts/inter/${name}/Inter_${name}.ttf`));
+  const semibold = file('600SemiBold');
+  return {
+    400: file('400Regular'),
+    500: file('500Medium'),
+    600: semibold,
+    700: file('700Bold'),
+    heading: semibold,
+  };
 }
 
 interface Width {
@@ -38,10 +44,9 @@ describe('measureFrom', () => {
 });
 
 describe('fontCoverage', () => {
-  it('covers Latin and white space, not Cyrillic, in Inter latin', () => {
+  it('covers Latin, Latin Extended, Cyrillic and white space in Inter, not CJK', () => {
     const covers = fontCoverage(inter()[400]);
-    expect(['a', 'É', '·', ' ', '\n'].every(covers)).toBe(true);
-    expect(covers('С')).toBe(false);
-    expect(covers('ł')).toBe(false);
+    expect(['a', 'É', '·', 'ł', 'ś', 'С', 'в', ' ', '\n'].every(covers)).toBe(true);
+    expect(covers('中')).toBe(false);
   });
 });

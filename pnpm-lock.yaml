@@ -337,6 +337,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@expo-google-fonts/inter':
+        specifier: 0.4.2
+        version: 0.4.2
       '@fontsource/fraunces':
         specifier: 5.3.0
         version: 5.3.0
@@ -554,9 +557,9 @@ importers:
         specifier: 1.17.1
         version: 1.17.1
     devDependencies:
-      '@fontsource/inter':
-        specifier: 5.3.0
-        version: 5.3.0
+      '@expo-google-fonts/inter':
+        specifier: 0.4.2
+        version: 0.4.2
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -1305,6 +1308,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@expo-google-fonts/inter@0.4.2':
+    resolution: {integrity: sha512-syfiImMaDmq7cFi0of+waE2M4uSCyd16zgyWxdPOY7fN2VBmSLKEzkfbZgeOjJq61kSqPBNNtXjggiQiSD6gMQ==}
 
   '@faker-js/faker@10.6.0':
     resolution: {integrity: sha512-3RQHgEtvL1Frl/d1cSreo7qhJ3Gk1OdNUai/CtZ8G+wYeRQnJih3s9xJ9/kgYekPQRdwgh0HXRPqMlzWGwivIQ==}
@@ -4570,6 +4576,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
+
+  '@expo-google-fonts/inter@0.4.2': {}
 
   '@faker-js/faker@10.6.0': {}
 

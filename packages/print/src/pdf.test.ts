@@ -16,12 +16,18 @@ import { type PdfImage, renderPdf } from './pdf.ts';
 
 const require = createRequire(import.meta.url);
 
-/** Inter as the web loads it, read from `@fontsource/inter` on disk (a test-only dependency). */
+/** Inter as the web loads it, read from `@expo-google-fonts/inter` on disk (test-only). */
 function inter(): Record<FontWeight, Uint8Array> {
-  const file = (w: number) =>
-    readFileSync(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff`));
-  const semibold = file(600);
-  return { 400: file(400), 500: file(500), 600: semibold, 700: file(700), heading: semibold };
+  const file = (name: string) =>
+    readFileSync(require.resolve(`@expo-google-fonts/inter/${name}/Inter_${name}.ttf`));
+  const semibold = file('600SemiBold');
+  return {
+    400: file('400Regular'),
+    500: file('500Medium'),
+    600: semibold,
+    700: file('700Bold'),
+    heading: semibold,
+  };
 }
 
 const bytesOf = (base64: string) => Uint8Array.from(Buffer.from(base64, 'base64'));

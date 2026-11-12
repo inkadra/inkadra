@@ -27,17 +27,18 @@ export const packageFile = (path: string): Uint8Array => readFileSync(require.re
 
 /**
  * `fetch` as the sheet asks it: the Inter files `fonts.ts` imports with Vite's `?url` are read
- * from `@fontsource/inter` on disk; the asset API answers 404, so the background picture is not
+ * from `@expo-google-fonts/inter` on disk; the asset API answers 404, so the background picture is not
  * loaded (its decoder, `createImageBitmap` and `OffscreenCanvas`, exists only in a browser) and a
  * test gives its bytes to the writer itself.
  */
 export const fileFetch: typeof fetch = async (input) => {
   const url = input instanceof Request ? input.url : String(input);
-  const font = /(inter-[a-z-]+-\d00-normal\.woff)(?:\?|$)/.exec(url)?.[1];
+  const font = /Inter_(\d00[A-Za-z]+)\.ttf(?:\?|$)/.exec(url)?.[1];
   if (font)
-    return new Response(packageFile(`@fontsource/inter/files/${font}`) as BlobPart, {
-      status: 200,
-    });
+    return new Response(
+      packageFile(`@expo-google-fonts/inter/${font}/Inter_${font}.ttf`) as BlobPart,
+      { status: 200 },
+    );
   return new Response(null, { status: 404 });
 };
 
@@ -94,7 +95,7 @@ const rounded = (_key: string, value: unknown) =>
  * file the browser's and Node's sheets are both compared with.
  */
 export function sheetText(pages: readonly Page[], missing: readonly string[]): string {
-  const lines = [`missing glyphs: ${missing.join(' ')}`];
+  const lines = missing.length ? [`missing glyphs: ${missing.join(' ')}`] : [];
   const walk = (ops: readonly Op[], indent: string) => {
     for (const op of ops) {
       if (op.kind === 'clip') {
