@@ -524,18 +524,26 @@ export function createCollabServer(deps: {
       }
       const schemaVersion = document.getMap('meta').get('schemaVersion') as number;
       const elementCount = document.getMap('elements').size;
+      // Written only while the board exists: deleted for good (its project, or emptied from the
+      // trash) while open, there is nothing to keep, and returning lets Hocuspocus unload it.
+      let stored = 0;
       try {
-        await db
-          .insert(boardDoc)
-          .values({ boardId, state, schemaVersion, size: state.byteLength })
-          .onConflictDoUpdate({
-            target: boardDoc.boardId,
-            set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
-          });
+        const bytes = Buffer.from(state.buffer, state.byteOffset, state.byteLength);
+        stored = (
+          await db.execute(sql`
+            insert into ${boardDoc} (board_id, state, schema_version, size)
+            select ${board.id}, ${bytes}::bytea, ${schemaVersion}::int, ${state.byteLength}::int
+            from ${board} where ${board.id} = ${boardId}
+            on conflict (board_id) do update set state = excluded.state,
+              schema_version = excluded.schema_version, size = excluded.size,
+              updated_at = ${new Date().toISOString()}::timestamptz
+            returning board_id`)
+        ).length;
       } catch (err) {
-        // The board was deleted for good (its project, or emptied from the trash) while open:
-        // there is nothing to keep it for. Returning lets Hocuspocus unload the document.
+        // Deleted between the check and the write.
         if (!boardGone(err)) throw err;
+      }
+      if (stored === 0) {
         log.info({ boardId }, 'board deleted while open: document not stored');
         return;
       }
