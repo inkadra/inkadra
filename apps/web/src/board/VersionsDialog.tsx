@@ -469,8 +469,11 @@ export function VersionsDialog({
                                           aria-expanded={menu.isOpen && menuFor?.id === v.id}
                                           disabled={busy}
                                           onClick={(e) => {
+                                            const button = e.currentTarget;
                                             setMenuFor(v);
-                                            menu.open(e.currentTarget, e.currentTarget);
+                                            // Right-aligned under ⋯, inside the dialog (min-width 220).
+                                            const { right } = button.getBoundingClientRect();
+                                            menu.open(button, button, right - 220);
                                           }}
                                         />
                                       </>
