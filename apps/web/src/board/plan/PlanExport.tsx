@@ -13,11 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ExportCache } from '../export/cache.ts';
 import type { ExportEnv, ExportFormat, ExportRequest } from '../export/engine.ts';
-import {
-  PLAN_SHEET_FRAME,
-  type PlanSheetInclude,
-  sheetInclude,
-} from '../export/plan-sheet.ts';
+import { PLAN_SHEET_FRAME, type PlanSheetInclude, sheetInclude } from '../export/plan-sheet.ts';
 import type { BoardStore } from '../store.ts';
 import { planTitle } from './PlanCard.tsx';
 import './outputs.css';

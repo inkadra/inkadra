@@ -793,28 +793,28 @@ export function PlanProperties({
             />
           </Field>
           <Field label={t('board.plan.circuit')}>
-          <Select
-            aria-label={t('board.plan.circuit')}
-            value={icon.circuit ?? ''}
-            onChange={(v) =>
-              ed.write(
-                v
-                  ? { ...icon, circuit: v }
-                  : (() => {
-                      const n = { ...icon };
-                      delete n.circuit;
-                      return n;
-                    })(),
-              )
-            }
-            options={[
-              { value: '', label: t('board.plan.noCircuit') },
-              ...(drawn.circuits ?? []).map((c) => ({
-                value: c.id,
-                label: `${c.name} · ${num(c.amps, 0)} A`,
-              })),
-            ]}
-          />
+            <Select
+              aria-label={t('board.plan.circuit')}
+              value={icon.circuit ?? ''}
+              onChange={(v) =>
+                ed.write(
+                  v
+                    ? { ...icon, circuit: v }
+                    : (() => {
+                        const n = { ...icon };
+                        delete n.circuit;
+                        return n;
+                      })(),
+                )
+              }
+              options={[
+                { value: '', label: t('board.plan.noCircuit') },
+                ...(drawn.circuits ?? []).map((c) => ({
+                  value: c.id,
+                  label: `${c.name} · ${num(c.amps, 0)} A`,
+                })),
+              ]}
+            />
           </Field>
         </div>
         {note(icon)}
