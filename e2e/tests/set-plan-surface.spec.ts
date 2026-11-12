@@ -178,20 +178,7 @@ test('the surface fills the editor, pans, zooms round the pointer and fits the p
   expect(Math.round(panned.y - from.y)).toBe(60);
   expect((await find('Key')).x).toBe(key);
 
-  // A plain drag on empty space draws the selection box, as on the board.
-  const a1 = await pointOf(stage, [250, 160]);
-  const b1 = await pointOf(stage, [720, 290]);
-  await page.mouse.move(a1.x, a1.y);
-  await page.mouse.down();
-  await page.mouse.move(b1.x, b1.y, { steps: 6 });
-  await page.mouse.up();
-  await expect(editor.getByRole('tabpanel', { name: 'Proprietà' })).toContainText(
-    /\d+ elementi selezionati/,
-  );
-  expect(Math.round((await stage.boundingBox())!.x)).toBe(Math.round(panned.x));
-
-  // By keys, with nothing picked: the arrows pan, 0 fits, + zooms.
-  await page.keyboard.press('Escape');
+  // By keys, with nothing picked: the arrows pan and 0 fits.
   await page.keyboard.press('ArrowLeft');
   await expect
     .poll(async () => Math.round((await stage.boundingBox())!.x))
@@ -200,6 +187,21 @@ test('the surface fills the editor, pans, zooms round the pointer and fits the p
   await expect
     .poll(async () => Math.round((await stage.boundingBox())!.x))
     .toBe(Math.round(fitted.x));
+
+  // A plain drag on empty space draws the selection box, as on the board, and moves nothing.
+  const a1 = await pointOf(stage, [250, 150]);
+  const b1 = await pointOf(stage, [720, 290]);
+  await page.mouse.move(a1.x, a1.y);
+  await page.mouse.down();
+  await page.mouse.move(b1.x, b1.y, { steps: 6 });
+  await page.mouse.up();
+  await expect(editor.getByRole('tabpanel', { name: 'Proprietà' })).toContainText(
+    /\d+ elementi selezionati/,
+  );
+  expect(Math.round((await stage.boundingBox())!.x)).toBe(Math.round(fitted.x));
+  await page.keyboard.press('Escape');
+
+  // + zooms.
   await page.keyboard.press('+');
   await expect.poll(shown).toBeGreaterThan(before);
   await page.mouse.move(pointer.x, pointer.y);
