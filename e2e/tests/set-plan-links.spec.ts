@@ -15,8 +15,8 @@ import {
   STROKE_GRID,
 } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
-import { readBoard } from './frame-grab.helpers.ts';
 import { addStoryboard } from '../helpers/views.ts';
+import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
 const out = process.env.SET_PLAN_SHOTS ?? join(tmpdir(), 'inkadra-set-plan');

@@ -6,10 +6,10 @@ import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/pro
 import { createElement } from '@inkadra/canvas-core';
 import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
 import { type Browser, expect, type Locator, type Page, test } from '@playwright/test';
-import { setViews } from '../helpers/views.ts';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { cardAction } from '../helpers/phone-board.ts';
+import { setViews } from '../helpers/views.ts';
 
 // #110, mockup screens 4 (full-screen note) and 9 (client review) on a phone. Runs after
 // first-run.spec.ts as the administrator, on a project of its own. NOTE_REVIEW_SHOTS=<dir>

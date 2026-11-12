@@ -16,8 +16,8 @@ import {
 } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import * as Y from 'yjs';
-import { readBoard } from './frame-grab.helpers.ts';
 import { addStoryboard } from '../helpers/views.ts';
+import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
 const out = process.env.SET_PLAN_SHOTS ?? join(tmpdir(), 'inkadra-set-plan');

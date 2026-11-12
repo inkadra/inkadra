@@ -1201,7 +1201,12 @@ test('beside the report button the view tabs stay whole and every click lands', 
     })
   ).json();
   // Every view a storyboard can turn on (decision 0121).
-  await setViews(page.request, headers.origin, board.id, ['shotlist', 'schedule', 'troupe', 'review']);
+  await setViews(page.request, headers.origin, board.id, [
+    'shotlist',
+    'schedule',
+    'troupe',
+    'review',
+  ]);
   await page.goto(`/p/${project.id}/b/${board.id}`);
   await ready(page);
   const strip = page.getByRole('tablist', { name: 'Vista' });

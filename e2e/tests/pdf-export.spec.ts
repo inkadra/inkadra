@@ -4,10 +4,10 @@ import { deflateSync } from 'node:zlib';
 import { addFrame, addScene, createElement, updateElement } from '@inkadra/canvas-core';
 import { initBoardDoc, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
-import { setViewsAs } from '../helpers/views.ts';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as Y from 'yjs';
 import { chooseSelect } from '../helpers/select.ts';
+import { setViewsAs } from '../helpers/views.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists.

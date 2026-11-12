@@ -4,9 +4,9 @@ import { join } from 'node:path';
 import { addFrame, addScene } from '@inkadra/canvas-core';
 import { initBoardDoc } from '@inkadra/doc-schema';
 import { type Browser, expect, type Locator, type Page, test } from '@playwright/test';
-import { setViewsAs } from '../helpers/views.ts';
 import * as Y from 'yjs';
 import { chooseSelect } from '../helpers/select.ts';
+import { setViewsAs } from '../helpers/views.ts';
 import { account as admin, api } from '../scripts/sample-project.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
