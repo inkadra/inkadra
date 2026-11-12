@@ -241,11 +241,14 @@ export const StorageFiles = z
         kind: StorageUsage.shape.byType.element.shape.type.optional().openapi({
           description: 'The category of StorageUsage.byType. Older servers omit it.',
         }),
-        thumbnailUrl: z.string().optional().openapi({
-          description:
-            'Same-origin path of the smallest thumbnail, `/api/v1/assets/{assetId}/variants/256`, ' +
-            'when the worker made one. Older servers omit it.',
-        }),
+        thumbnailUrl: z
+          .string()
+          .optional()
+          .openapi({
+            description:
+              'Same-origin path of the smallest thumbnail, `/api/v1/assets/{assetId}/variants/256`, ' +
+              'when the worker made one. Older servers omit it.',
+          }),
         boardId: Id.optional().openapi({
           description:
             'A board the viewer can open with a card showing this file; with `cardId` it opens ' +
@@ -261,11 +264,15 @@ export const StorageFiles = z
       description: 'Files in projects the viewer cannot open: counted, never named.',
     }),
     hiddenBytes: z.number().nonnegative(),
-    totalBytes: z.number().nonnegative().optional().openapi({
-      description:
-        'Everything the person uploaded, originals and copies, as MyStorage counts it: the ' +
-        'listed, hidden and smaller files together. Older servers omit it.',
-    }),
+    totalBytes: z
+      .number()
+      .nonnegative()
+      .optional()
+      .openapi({
+        description:
+          'Everything the person uploaded, originals and copies, as MyStorage counts it: the ' +
+          'listed, hidden and smaller files together. Older servers omit it.',
+      }),
   })
   .openapi('StorageFiles');
 export type StorageFiles = z.infer<typeof StorageFiles>;

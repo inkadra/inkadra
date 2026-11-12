@@ -1,13 +1,5 @@
 import type { MyStorage, StorageFiles } from '@inkadra/shared';
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  glyphColor,
-  Icon,
-  ListRow,
-  Segmented,
-} from '@inkadra/ui';
+import { Button, Dialog, DialogActions, glyphColor, Icon, ListRow, Segmented } from '@inkadra/ui';
 import { useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';

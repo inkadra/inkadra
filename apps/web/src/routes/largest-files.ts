@@ -15,8 +15,10 @@ export function filterCounts(items: readonly Pick<Item, 'kind'>[]): Record<FileF
   return counts;
 }
 
-export const filterFiles = <T extends Pick<Item, 'kind'>>(items: readonly T[], filter: FileFilter) =>
-  filter === 'all' ? [...items] : items.filter((item) => filterOf(item) === filter);
+export const filterFiles = <T extends Pick<Item, 'kind'>>(
+  items: readonly T[],
+  filter: FileFilter,
+) => (filter === 'all' ? [...items] : items.filter((item) => filterOf(item) === filter));
 
 export interface FilesSummary {
   /** The largest files (up to three) and what they take together. */
