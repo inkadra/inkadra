@@ -1,4 +1,5 @@
 import type { StorageUsage } from '@inkadra/shared';
+import { glyphColor } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -25,8 +26,13 @@ const SWATCHES = [
   'var(--ink-text-muted)',
 ];
 
+/** A project's own icon colour; restricted, unassigned and colourless (older server) rows stay neutral. */
+export function projectSwatch(row: StorageUsage['byProject'][number]): string {
+  return (row.scope === 'project' && row.color && glyphColor[row.color]) || glyphColor.neutral;
+}
+
 type View = 'project' | 'user' | 'type';
-type Rows = Array<{ id: string; label: string; bytes: number }>;
+type Rows = Array<{ id: string; label: string; bytes: number; color?: string }>;
 
 /** One breakdown: a stacked bar, then one row per category with its bar, size and share. */
 function Breakdown({ title, rows, total }: { title: string; rows: Rows; total: number }) {
@@ -39,7 +45,7 @@ function Breakdown({ title, rows, total }: { title: string; rows: Rows; total: n
         {sorted.map((row, i) => (
           <span
             key={row.id}
-            style={{ width: width(row.bytes), background: SWATCHES[i % SWATCHES.length] }}
+            style={{ width: width(row.bytes), background: row.color ?? SWATCHES[i % SWATCHES.length] }}
           />
         ))}
       </div>
@@ -59,7 +65,10 @@ function Breakdown({ title, rows, total }: { title: string; rows: Rows; total: n
             <tr key={row.id}>
               <th scope="row">
                 <span className="storage-chart__label">
-                  <i style={{ background: SWATCHES[i % SWATCHES.length] }} aria-hidden="true" />
+                  <i
+                    style={{ background: row.color ?? SWATCHES[i % SWATCHES.length] }}
+                    aria-hidden="true"
+                  />
                   {row.label}
                 </span>
                 <span className="storage-chart__track" aria-hidden="true">
@@ -96,6 +105,7 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
             ? (row.name ?? t('admin.storageCharts.unassigned'))
             : t(`admin.storageCharts.${row.scope}`),
         bytes: row.bytes,
+        color: projectSwatch(row),
       })),
     },
     ...(usage.byUser && {

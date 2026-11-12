@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { Id, Timestamp, z } from './common.ts';
+import { ProjectIcon } from './projects.ts';
 import { InstanceRole } from './users.ts';
 
 export const InstanceSettings = z
@@ -140,6 +141,10 @@ export const StorageUsage = z
         name: z.string().nullable(),
         scope: z.enum(['project', 'restricted', 'unassigned']),
         bytes: z.number().nonnegative(),
+        color: ProjectIcon.shape.color.optional().openapi({
+          description:
+            "The project's icon colour, on scope project rows only. Older servers omit it.",
+        }),
       }),
     ),
     byUser: z

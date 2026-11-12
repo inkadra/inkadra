@@ -256,7 +256,13 @@ describe.skipIf(!url)('instance administration', () => {
     expect(result.byProject.reduce((sum, row) => sum + row.bytes, 0)).toBe(4500);
     expect(result.byProject).toEqual([
       { projectId: null, name: null, scope: 'restricted', bytes: 3000 },
-      { projectId: own.id, name: 'Visible shoot', scope: 'project', bytes: 1500 },
+      {
+        projectId: own.id,
+        name: 'Visible shoot',
+        scope: 'project',
+        bytes: 1500,
+        color: own.icon.color,
+      },
     ]);
     expect(result.derivedBytes).toBe(250);
     expect(result.byUser?.filter((row) => row.bytes > 0)).toEqual([
@@ -278,6 +284,7 @@ describe.skipIf(!url)('instance administration', () => {
       name: 'Private shoot',
       scope: 'project',
       bytes: 3000,
+      color: hidden.icon.color,
     });
   });
 

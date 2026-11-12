@@ -21,6 +21,7 @@ export interface UsageGroup {
   bytes: number;
   projectId: string | null;
   projectName: string | null;
+  projectColor: StorageUsage['byProject'][number]['color'] | null;
   visible: boolean;
   userId: string | null;
   userName: string | null;
@@ -57,6 +58,7 @@ export function storageUsage(
           ? ('project' as const)
           : ('restricted' as const),
       bytes: 0,
+      ...(row.projectId && row.visible && row.projectColor && { color: row.projectColor }),
     };
     entry.bytes += row.bytes;
     projects.set(key, entry);
