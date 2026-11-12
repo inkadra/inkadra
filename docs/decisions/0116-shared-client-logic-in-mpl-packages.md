@@ -31,6 +31,39 @@ These moved: in `packages/shared`, the rules of the call sheet that say who is c
 exposes the colour maths. The web modules re-export the moved names, so their callers and tests
 did not change.
 
+For the mobile app to read a set plan as the web does, these moved too. In
+`packages/canvas-core`: the kit (`kitList`, `KIT_GROUPS`, `planCounts`, `foldNames`,
+`setupKit`, `familyKitCount`), the power per circuit as text (`powerLines`, `powerText`); the
+rows of the Elements tab and the legend (`foldIcons`, `elementSections`, `itemName`,
+`itemSummary`, `supportText`, and `planLegend`, `legendRow`, `legendLine`, `legendValue`, which
+were written inline in the read-only view and the PDF sheet); the card and the setups
+(`planTitle`, `planCardWords`, `scenesOfPlan`, `setupName`, `setupChanges`, `shotSetups`,
+`groupBySetup`, `dayBySetup`); the room's size (`roomSizeText`, `roomSize`). In
+`packages/shared`: the sun (`sunPosition`, `sunBearingByClock`, `sunTimes`, `locationCoords`,
+`sunDays`, `northWay`, `sunRotation`, and `sunFrom`, `sunHeight`, `sunDate`, taken out of the
+web's sun section).
+
+Functions that write words take `t` as a `Words` function, i18next's shape, and ask for the
+web's keys. The English words they ask for, with the names, search words, tiles, groups and
+categories of the icons, are `PLAN_WORDS_EN` in canvas-core, keyed as the web catalogues
+(`board.plan.*`); a web test fails when `en.json` says otherwise, and the package's tests read
+their words from it, so a missing or misspelt key fails there. The other five languages stay in
+the web catalogues for now: a second client translates the same keys (shortcut: their
+`board.plan.*` words move next to `PLAN_WORDS_EN` when a second client ships another language).
+
+One behaviour changed with the move, on purpose: the kit, the names on a circuit and the count
+across setups went by the translated name, so two kinds a language writes alike (or two specs
+that read alike) were one line in that language and two in English. They now go by what the item
+is (`KitLine.key`: the kind and its power or length; a named light by its name), and the name is
+only written from it: the same plan gives the same lines and totals in every language and on
+every client, even when two lines read the same.
+
+Stays in the web: the Kit tab, the view and the card as React; the PDF sheet's layout and
+drawing; the clipboard copy of the kit; `measureValue`, `selectionMix` and the seats of the
+Properties (editing); the library's search (`library.ts`, editing); reading the schedule and the
+project kit from the server (`useScheduleDays`, `useOtherKits`: the derivation of the project kit
+was already in canvas-core).
+
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
 touch many rules; do it when the board stylesheet is next reworked).

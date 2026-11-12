@@ -12,14 +12,22 @@ import {
   updatePlanItems,
 } from '@inkadra/canvas-core';
 import type { Element, PlanIcon } from '@inkadra/doc-schema';
-import { castNameKey } from '@inkadra/shared';
+import {
+  castNameKey,
+  locationCoords,
+  sunBearingByClock,
+  sunDate,
+  sunFrom,
+  sunHeight,
+  sunPosition,
+  sunRotation,
+} from '@inkadra/shared';
 import { Button, Icon, Select, Slider } from '@inkadra/ui';
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from '../assets.ts';
 import { FramePicture } from '../film/FramePicture.tsx';
 import { usePresetText } from '../film/fields.tsx';
-import { locationCoords, sunBearingByClock, sunPosition } from '../film/sun.ts';
 import { LOCAL, REPAIR } from '../store.ts';
 import type { Ed } from './editing.ts';
 import { NumberField } from './NumberField.tsx';
@@ -504,21 +512,9 @@ export function LocationLink({ ed }: { ed: Ed }) {
 const DAY_TRACK =
   'linear-gradient(90deg, var(--ink-tag-blue-bg), var(--ink-tag-orange) 28%, color-mix(in srgb, var(--ink-tag-yellow) 30%, white) 50%, var(--ink-tag-orange) 72%, var(--ink-tag-blue-bg))';
 const DEFAULT_SUN = 17 * 60 + 30;
-const COMPASS = [
-  'north',
-  'northEast',
-  'east',
-  'southEast',
-  'south',
-  'southWest',
-  'west',
-  'northWest',
-];
 
-/** The rotation of a sun icon that shines from `bearing` on a plan whose north is `north`. */
-export function sunRotation(bearing: number, north: number): number {
-  return Math.round((((north + bearing + 90) % 360) + 360) % 360);
-}
+/** The rotation of a sun icon lives in @inkadra/shared (decision 0116). */
+export { sunRotation };
 
 /** A plan that shows the sun: scenes outside, a sun icon, or a time already set. */
 export function needsSun(ed: Ed): boolean {
@@ -556,10 +552,8 @@ export function SunSection({ ed }: { ed: Ed }) {
       .join(' ');
   }, [ed.cards, sceneKey]);
   const { offered, all } = useSunDays(scheduled, shotKey);
-  const linked = dayId ? all?.find((d) => d.id === dayId) : undefined;
-  /** The day it followed is no longer in the schedule: the plan keeps its last date. */
-  const dayGone = !!dayId && !!all && !linked;
-  const date = linked?.date ?? ed.plan.sun?.date;
+  /** `dayGone`: the day it followed is no longer in the schedule; the plan keeps its last date. */
+  const { date, day: linked, gone: dayGone } = sunDate(ed.plan.sun, all);
   const location = ed.cards.get(owner.locationId ?? '') as Location | undefined;
   const coords =
     location?.type === 'location'
@@ -569,16 +563,8 @@ export function SunSection({ ed }: { ed: Ed }) {
   // shortcut: the device's time zone, not the project's, until the editor knows the project.
   const position = coords ? sunPosition(date ?? today, time, coords.lat, coords.lng) : null;
   const bearing = position?.azimuth ?? sunBearingByClock(time);
-  const from = t(`board.plan.links.from.${COMPASS[Math.round(bearing / 45) % 8]}`);
-  const height = !position
-    ? null
-    : position.elevation <= 0
-      ? 'down'
-      : position.elevation < 20
-        ? 'low'
-        : position.elevation < 50
-          ? 'mid'
-          : 'high';
+  const from = t(`board.plan.links.from.${sunFrom(bearing)}`);
+  const height = position ? sunHeight(position.elevation) : null;
   const suns = ed.icons.filter((i) => catalogueKind(i.kind) === 'sun');
   const [otherDate, setOtherDate] = useState(false);
   // A day of the shoot is picked from the list; a date typed by hand stays a date.

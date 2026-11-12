@@ -1,27 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
-  attachRole,
   backgroundBox,
-  catalogueKind,
-  categoryOf,
   gridStep,
   iconCentre,
   iconSize,
-  isLight,
   layerOf,
+  legendLine,
+  legendValue,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
   planFrame,
+  planLegend,
+  roomSize,
 } from '@inkadra/canvas-core';
-import { type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
+import type { PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
-import { foldIcons, itemSummary } from '../plan/elements.ts';
+import { foldIcons } from '../plan/elements.ts';
 import { KIT_GROUPS, kitList, powerLines } from '../plan/kit.ts';
 import { type CardContext, planOps } from './board-render.ts';
 import { pageSize } from './layout.ts';
 import type { Op, Page } from './pages.ts';
 import { ellipsize, textBlock, wrapText } from './text.ts';
+
+/** The room's size the sheet prints lives in canvas-core (decision 0116). */
+export { roomSize };
 
 /** What the sheet of a set plan prints, as the export dialog's boxes say (decision 0111). */
 export interface PlanSheetInclude {
@@ -119,43 +122,6 @@ export function previewCrop(
 }
 const TEXT = 9.75;
 const ROW = 15;
-
-/** The legend's line of a camera, a light or a person: the item's summary, as in Elements. */
-function line(icon: PlanIcon, icons: readonly PlanIcon[], t: TFunction): string {
-  const name = icon.label || t(`board.plan.icons.${icon.kind}`);
-  // A camera's lens is the row's value at the right: not in the line too.
-  const summary = itemSummary(icon, icons, t, { lens: false });
-  return summary ? `${name} · ${summary}` : name;
-}
-
-/** The value at the right of a legend line: a camera's lens, a light's temperature and level. */
-function value(icon: PlanIcon): string {
-  if (catalogueKind(icon.kind) === 'camera') return `${icon.lens ?? 35} mm`;
-  if (!isLight(icon.kind)) return '';
-  return [
-    icon.kelvin ? `${icon.kelvin} K` : '',
-    icon.intensity !== undefined ? `${Math.round(icon.intensity * 100)}%` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
-}
-
-/** Width and depth of the walls' outline in metres, "8.0 × 6.3 m"; null without walls or scale. */
-export function roomSize(plan: PlanElement, locale: string): string | null {
-  const points = (plan.walls ?? []).flatMap((w) => w.points);
-  if (!plan.scale || points.length < 4) return null;
-  const xs = points.filter((_, i) => i % 2 === 0);
-  const ys = points.filter((_, i) => i % 2 === 1);
-  // Wall points are in STROKE_GRID units of the drawing's width and height.
-  const w = ((Math.max(...xs) - Math.min(...xs)) / STROKE_GRID) * PLAN_VIEW_W;
-  const h = ((Math.max(...ys) - Math.min(...ys)) / STROKE_GRID) * PLAN_VIEW_H;
-  const m = (v: number) =>
-    (v / (plan.scale as number)).toLocaleString(locale, {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    });
-  return `${m(w)} × ${m(h)} m`;
-}
 
 /**
  * The PDF sheet of a set plan (decision 0111, the mockup's Sheet): A4 landscape in the light
@@ -375,13 +341,8 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
     };
 
     if (include.legend) {
-      const cameras = icons.filter((i) => catalogueKind(i.kind) === 'camera');
-      const lights = icons.filter((i) => isLight(i.kind) && !i.on);
-      const cast = icons.filter(
-        (i) => categoryOf(i.kind).id === 'people' && attachRole(i.kind) === 'seated',
-      );
       // Flags, frames and stands standing on their own, as the mockup's "Neg fill, flag 4×4".
-      const grip = icons.filter((i) => !i.on && categoryOf(i.kind).id === 'grip');
+      const { cameras, lights, grip, cast } = planLegend(plan);
       for (const [title, list] of [
         [t('board.plan.sheet.cameras'), cameras],
         [t('board.plan.sheet.lights'), lights],
@@ -393,8 +354,8 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
         let drawn = 0;
         for (const { icon, count } of rows) {
           if (!fits(ROW * 2)) break;
-          const name = line(icon, icons, t);
-          row(count > 1 ? `${name} ×${count}` : name, value(icon), icon);
+          const name = legendLine(icon, icons, t);
+          row(count > 1 ? `${name} ×${count}` : name, legendValue(icon), icon);
           drawn += 1;
         }
         more(rows.length - drawn);

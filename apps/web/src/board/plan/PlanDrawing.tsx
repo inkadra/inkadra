@@ -32,7 +32,7 @@ import {
   planRoomDims,
   planStack,
   type RoomDim,
-  roomMetres,
+  roomSizeText,
   shownOpenings,
   wallPieces,
   wallPoints,
@@ -394,21 +394,8 @@ export function RoomDimView({ dim, text }: { dim: RoomDim; text: string }) {
   );
 }
 
-/**
- * A room's size in the app's language (decision 0119), the one formatter of the editor, the view,
- * the card and the exports: "8.0 m", "8,0 m" in Italian; "8.0 m overall" when the room is not a
- * rectangle.
- */
-export function roomSizeText(
-  length: number,
-  scale: number,
-  overall: boolean,
-  t: (key: string, opts?: Record<string, unknown>) => string,
-  locale: string,
-): string {
-  const size = roomMetres(length, scale, locale);
-  return overall ? t('board.plan.roomOverall', { size }) : size;
-}
+/** A room's size as the plan writes it lives in canvas-core (decision 0116). */
+export { roomSizeText };
 
 /** The sizes of a plan's rooms, drawn when it has a scale and its switch is on (0119). */
 function RoomSizes({ plan, hidden }: { plan: PlanLike; hidden: readonly string[] }) {

@@ -2,29 +2,24 @@
 import {
   addPlanCircuit,
   type CircuitLoad,
-  type PlanElement,
+  familyKitCount,
   planPower,
+  powerText,
   removePlanCircuits,
+  setupName,
   updatePlanCircuits,
-  variantView,
 } from '@inkadra/canvas-core';
-import { MAX_PLAN_CIRCUITS, type PlanCircuit, type PlanIcon } from '@inkadra/doc-schema';
+import { MAX_PLAN_CIRCUITS, type PlanCircuit } from '@inkadra/doc-schema';
 import { Button, IconButton, Segmented } from '@inkadra/ui';
-import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
-import { itemName } from './elements.ts';
-import { foldNames, KIT_GROUPS, type KitLine, kitList } from './kit.ts';
+import { circuitNames, KIT_GROUPS, type KitLine, kitList } from './kit.ts';
 import { NumberField } from './NumberField.tsx';
 
-/** "2.5 kW · 10.8 A": a power and the amperes it draws, in the way of this language. */
-export function powerText(watts: number, amps: number, lang: string): string {
-  const kw = watts >= 1000;
-  const n = (v: number, d: number) => v.toLocaleString(lang, { maximumFractionDigits: d });
-  return `${kw ? `${n(watts / 1000, 1)} kW` : `${n(watts, 0)} W`} · ${n(amps, 1)} A`;
-}
+/** The power, the kit of a setup and the setup names live in canvas-core (decision 0116). */
+export { familyKitCount, powerText, setupKit, setupName } from '@inkadra/canvas-core';
 
 /** Copies the kit list as text ("Fresnel 2K ×1" a line); false if the clipboard refused. */
 export async function copyKit(kit: readonly KitLine[]): Promise<boolean> {
@@ -34,45 +29,6 @@ export async function copyKit(kit: readonly KitLine[]): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/** The kit of a setup as it is shown and counted: the setup over its base's Set. */
-export function setupKit(
-  plan: PlanElement,
-  base: PlanElement | undefined,
-  t: TFunction,
-  lang: string,
-) {
-  const merged = base ? variantView(plan, base) : plan;
-  return kitList(merged, t, lang);
-}
-
-/**
- * How many items all the setups of a plan need together (decision 0117): per kit line, the most
- * any one setup needs, since the same lamp moves from setup to setup.
- */
-export function familyKitCount(family: readonly PlanElement[], t: TFunction, lang: string): number {
-  const most = new Map<string, number>();
-  for (const p of family) {
-    const base = p.variantOf ? family.find((f) => f.id === p.variantOf) : undefined;
-    for (const l of setupKit(p, base, t, lang))
-      most.set(l.name, Math.max(most.get(l.name) ?? 0, l.count));
-  }
-  return [...most.values()].reduce((n, c) => n + c, 0);
-}
-
-/**
- * The name of a setup: "1 · Master", the base first. The base is "Base" until it is renamed like
- * any other setup (decision 0117).
- */
-export function setupName(p: PlanElement, family: readonly PlanElement[], t: TFunction): string {
-  const n =
-    Math.max(
-      0,
-      family.findIndex((f) => f.id === p.id),
-    ) + 1;
-  const name = p.variant || t(p.variantOf ? 'board.plan.variant' : 'board.plan.base');
-  return `${n} · ${name}`;
 }
 
 /**
@@ -99,13 +55,7 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
   // One circuit at a time, field by field: two people editing two circuits both keep theirs.
   const editCircuit = (c: PlanCircuit) =>
     ed.change(() => updatePlanCircuits(ed.doc, ownerOf(c), [c], LOCAL));
-  const names = (load: CircuitLoad) =>
-    foldNames(
-      load.lights
-        .map((id) => drawn.icons?.find((i) => i.id === id))
-        .filter((i): i is PlanIcon => !!i)
-        .map((i) => itemName(i, t)),
-    );
+  const names = (load: CircuitLoad) => circuitNames(load.lights, drawn.icons ?? [], t);
   const copy = async () => {
     setCopied(await copyKit(kit));
     setTimeout(() => setCopied(false), 2000);
@@ -126,7 +76,7 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
             <span className="plan-props__cap">{t(`board.plan.kitGroups.${g}`)}</span>
             <ul>
               {lines.map((l) => (
-                <li key={l.name} className="plan-props__row">
+                <li key={l.key} className="plan-props__row">
                   <span>{l.name}</span>
                   <span className="plan-kit__n">
                     {l.watts ? `${l.watts} W · ` : ''}×{l.count}

@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
-  attachRole,
-  catalogueKind,
-  categoryOf,
   gridStep,
-  isLight,
-  layerOf,
+  legendRow,
   linkedLocation,
   type PlanElement,
   planContentBox,
+  planLegend,
   variantView,
 } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
@@ -25,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { ExportCache } from '../export/cache.ts';
 import { sheetInclude } from '../export/plan-sheet.ts';
 import type { BoardStore } from '../store.ts';
-import { foldIcons, itemSummary } from './elements.ts';
+import { foldIcons } from './elements.ts';
 import { kitList, powerLines } from './kit.ts';
 import { planTitle } from './PlanCard.tsx';
 import { PlanDrawing, PlanGlyph, planCss, useLinkedPlan } from './PlanDrawing.tsx';
@@ -38,14 +35,11 @@ import './outputs.css';
 /** The legend of the view: cameras, lights and cast, each with its glyph and a line. */
 function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
   const { t, i18n } = useTranslation();
-  const icons = (plan.icons ?? []).filter((i) => !plan.hiddenLayers?.includes(layerOf(i)));
+  const { icons, cameras, lights, cast } = planLegend(plan);
   const groups: Array<[string, PlanIcon[]]> = [
-    [t('board.plan.sheet.cameras'), icons.filter((i) => catalogueKind(i.kind) === 'camera')],
-    [t('board.plan.sheet.lights'), icons.filter((i) => isLight(i.kind) && !i.on)],
-    [
-      t('board.plan.sheet.cast'),
-      icons.filter((i) => categoryOf(i.kind).id === 'people' && attachRole(i.kind) === 'seated'),
-    ],
+    [t('board.plan.sheet.cameras'), cameras],
+    [t('board.plan.sheet.lights'), lights],
+    [t('board.plan.sheet.cast'), cast],
   ];
   const kit = kitList(plan, t, i18n.language);
   const power = powerLines(plan, t, i18n.language);
@@ -57,27 +51,17 @@ function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
             <h3 className="plan-props__cap">{title}</h3>
             <ul>
               {foldIcons(list, icons).map(({ icon, count }) => {
-                const name =
-                  (icon.label || t(`board.plan.icons.${icon.kind}`)) +
-                  (count > 1 ? ` ×${count}` : '');
-                // An actor's way through the scene: the notes of its positions, in order.
-                const route =
-                  categoryOf(icon.kind).id === 'people' && icon.steps?.length
-                    ? [...icon.steps.map((s) => s.note), icon.stepNote].filter(Boolean).join(' → ')
-                    : '';
-                const lens = catalogueKind(icon.kind) === 'camera' ? `${icon.lens ?? 35} mm` : '';
-                const kelvin = icon.kelvin ? `${icon.kelvin} K` : '';
-                // The lens is in the name: the summary goes on with the support and the moves.
-                const shown = { lens: !lens, scale: plan.scale, locale: i18n.language };
-                const summary = route || itemSummary(icon, icons, t, shown);
-                const sub = [summary, kelvin].filter(Boolean).join(' · ');
+                const { name, sub } = legendRow(icon, count, icons, t, {
+                  scale: plan.scale,
+                  locale: i18n.language,
+                });
                 return (
                   <li key={icon.id} className="plan-view__item">
                     <span style={{ color: planCss(icon.color) }}>
                       <PlanGlyph kind={icon.kind} size={24} />
                     </span>
                     <span className="plan-props__name">
-                      <span>{[name, lens].filter(Boolean).join(' · ')}</span>
+                      <span>{name}</span>
                       {sub && <small>{sub}</small>}
                     </span>
                   </li>
@@ -92,7 +76,7 @@ function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
           <h3 className="plan-props__cap">{t('board.plan.tabs2.kit')}</h3>
           <ul>
             {kit.map((l) => (
-              <li key={l.name} className="plan-view__row">
+              <li key={l.key} className="plan-view__row">
                 <span>{l.name}</span>
                 <span className="plan-view__n">×{l.count}</span>
               </li>

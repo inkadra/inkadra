@@ -1,9 +1,16 @@
+// SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
 import {
   locationCoords,
+  northWay,
   shootingZone,
   sunBearingByClock,
+  sunDate,
+  sunDays,
+  sunFrom,
+  sunHeight,
   sunPosition,
+  sunRotation,
   sunTimes,
   sunTimesUtc,
 } from './sun.ts';
@@ -102,5 +109,103 @@ describe('where the sun is, for a set plan', () => {
     expect(sunBearingByClock(12 * 60)).toBe(180);
     expect(sunBearingByClock(18 * 60)).toBe(270);
     expect(sunBearingByClock(0)).toBe(0);
+  });
+});
+
+const block = (shotId: string | null) => ({
+  id: `b${shotId ?? 'none'}xxxxxxx`,
+  type: 'shot' as const,
+  title: '',
+  start: null,
+  duration: 30,
+  shotId,
+  cast: [],
+  departments: [],
+});
+
+describe('sunDays', () => {
+  const days = [
+    { id: 'd14', date: '2026-03-14', blocks: [block('frame2Axxxxx')] },
+    { id: 'd12', date: '2026-03-12', blocks: [block('frame9Axxxxx')] },
+    { id: 'd13', date: '2026-03-13', blocks: [block(null)] },
+  ];
+
+  it("numbers the days by date and keeps those that shoot the plan's scenes, with their ids", () => {
+    expect(sunDays(days, new Set(['frame2Axxxxx']))).toEqual([
+      { id: 'd14', n: 3, date: '2026-03-14' },
+    ]);
+  });
+
+  it('offers every day when the plan serves no scene or none of its shots is scheduled', () => {
+    const all = [
+      { id: 'd12', n: 1, date: '2026-03-12' },
+      { id: 'd13', n: 2, date: '2026-03-13' },
+      { id: 'd14', n: 3, date: '2026-03-14' },
+    ];
+    expect(sunDays(days, new Set())).toEqual(all);
+    expect(sunDays(days, new Set(['elsewherexxx']))).toEqual(all);
+  });
+});
+
+describe('northWay', () => {
+  it('names the nearest of eight ways, turning past a full circle', () => {
+    expect(northWay(0)).toBe('up');
+    expect(northWay(20)).toBe('up');
+    expect(northWay(90)).toBe('right');
+    expect(northWay(200)).toBe('down');
+    expect(northWay(337)).toBe('upLeft');
+    expect(northWay(359)).toBe('up');
+    expect(northWay(-90)).toBe('left');
+  });
+});
+
+describe("a plan's sun", () => {
+  it('turns its icons to shine from the bearing, on a plan turned by its north', () => {
+    // North up, a sun shining from the north turns a quarter; a plan's north turns it with it.
+    expect(sunRotation(0, 0)).toBe(90);
+    expect(sunRotation(270, 0)).toBe(0);
+    expect(sunRotation(180, 90)).toBe(0);
+    expect(sunRotation(-90, -45)).toBe(315);
+  });
+
+  it('says where it shines from and how high it stands', () => {
+    expect([0, 44, 90, 200, 337, 359].map(sunFrom)).toEqual([
+      'north',
+      'northEast',
+      'east',
+      'south',
+      'northWest',
+      'north',
+    ]);
+    expect([-3, 0, 19, 20, 49, 50].map(sunHeight)).toEqual([
+      'down',
+      'down',
+      'low',
+      'mid',
+      'mid',
+      'high',
+    ]);
+  });
+
+  it("follows its shooting day's live date, and keeps its last date when the day is gone", () => {
+    const all = [{ id: 'd1', n: 1, date: '2026-03-14' }];
+    expect(sunDate({ day: 'd1', date: '2026-03-01' }, all)).toEqual({
+      date: '2026-03-14',
+      day: all[0],
+      gone: false,
+    });
+    expect(sunDate({ day: 'd9', date: '2026-03-01' }, all)).toEqual({
+      date: '2026-03-01',
+      day: undefined,
+      gone: true,
+    });
+    // Before the days are read nothing is gone; a plan without a day keeps its date.
+    expect(sunDate({ day: 'd9', date: '2026-03-01' }, null).gone).toBe(false);
+    expect(sunDate({ date: '2026-03-02' }, all)).toEqual({
+      date: '2026-03-02',
+      day: undefined,
+      gone: false,
+    });
+    expect(sunDate(undefined, all)).toEqual({ date: undefined, day: undefined, gone: false });
   });
 });

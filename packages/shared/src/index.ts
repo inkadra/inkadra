@@ -30,6 +30,7 @@ export * from './schedule.ts';
 export * from './search.ts';
 export * from './server-status.ts';
 export * from './sharing.ts';
+export * from './sun.ts';
 export * from './tasks.ts';
 export * from './transfers.ts';
 export * from './users.ts';

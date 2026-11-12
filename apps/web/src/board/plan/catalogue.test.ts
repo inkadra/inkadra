@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { LEGACY_KINDS, PLAN_CATEGORIES, PLAN_NOTE_TOOLS } from '@inkadra/canvas-core';
+import {
+  LEGACY_KINDS,
+  PLAN_CATEGORIES,
+  PLAN_NOTE_TOOLS,
+  PLAN_WORDS_EN,
+} from '@inkadra/canvas-core';
 import { PLAN_ICON_KINDS } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import { LOCALES } from '../../i18n/locales.ts';
@@ -47,4 +52,17 @@ describe.each(LOCALES)('the set plan catalogue in %s (decision 0104)', (locale) 
     const offered = PLAN_ICON_KINDS.filter((k) => !(k in LEGACY_KINDS));
     expect(offered.filter((k) => !p.synonyms[k]?.trim())).toEqual([]);
   });
+});
+
+it('says the same as the shared English words of canvas-core (decision 0116)', () => {
+  // The package is what another client loads; the web's English catalogue must not drift from it.
+  const en = JSON.parse(readFileSync(join(__dirname, '../../i18n/en.json'), 'utf8'));
+  const leaves = (o: object, at: string[] = []): Array<[string[], string]> =>
+    Object.entries(o).flatMap(([k, v]) =>
+      typeof v === 'object' ? leaves(v, [...at, k]) : [[[...at, k], v as string]],
+    );
+  const differ = leaves(PLAN_WORDS_EN).filter(
+    ([path, text]) => path.reduce<any>((o, k) => o?.[k], en) !== text,
+  );
+  expect(differ).toEqual([]);
 });

@@ -19,15 +19,8 @@ export function plansOfScene(elements: Iterable<Element>, sceneId: string): Plan
     .sort((a, b) => a.createdAt - b.createdAt);
 }
 
-/** The scenes a plan serves that still exist, in its order. */
-export function scenesOfPlan(
-  plan: Pick<PlanElement, 'sceneIds'>,
-  byId: ReadonlyMap<string, Element>,
-): SceneElement[] {
-  return (plan.sceneIds ?? [])
-    .map((id) => byId.get(id))
-    .filter((e): e is SceneElement => e?.type === 'scene');
-}
+/** The scenes a plan serves live in canvas-core (decision 0116). */
+export { scenesOfPlan } from '@inkadra/canvas-core';
 
 /**
  * Links between plans and scenes travel in the address: `?view=canvas&plan=<id>` opens a plan
