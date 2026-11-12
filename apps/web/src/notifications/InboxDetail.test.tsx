@@ -34,7 +34,7 @@ const reply = (id: string, createdAt = '2026-10-25T11:00:00Z') =>
   ({
     id,
     body: `message ${id}`,
-    mentions: [],
+    mentions: [] as Comment['mentions'],
     createdAt,
     visibility: 'everyone',
   }) as Comment;
@@ -253,7 +253,11 @@ it('writes mentions as names in the conversation and in the other comments', asy
         ? { myRole: 'editor' }
         : {
             items: [
-              thread('a', { ...mentioned, replyCount: 1, replies: [{ ...reply('r'), ...mentioned }] }),
+              thread('a', {
+                ...mentioned,
+                replyCount: 1,
+                replies: [{ ...reply('r'), ...mentioned }],
+              }),
               thread('b', mentioned),
             ],
             nextCursor: null,
