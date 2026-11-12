@@ -199,12 +199,23 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
       await expect(legend).not.toContainText('Segreto');
       await expect(legend).toContainText('Potenza a 230 V');
       await expect(legend).toContainText('Circuito A · 16 A: Chiave');
-      // Pan and zoom: the wheel zooms, a drag moves the sheet.
+      // Pan and zoom as on the board: Ctrl + wheel zooms round the pointer (decision 0118). The
+      // zoom button is named by the percent it shows, and fits the plan (WCAG 2.5.3).
       const stage = viewer.locator('.plan-view__stage');
       const box = (await stage.boundingBox())!;
+      const zoom = viewer.getByRole('button', { name: /^\d+% · Adatta la pianta$/ });
+      const percent = async () => Number((await zoom.innerText()).replace('%', ''));
+      const before = await percent();
+      await expect(
+        viewer.getByRole('button', { name: `${before}% · Adatta la pianta` }),
+      ).toBeVisible();
       await view.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await view.keyboard.down('Control');
       await view.mouse.wheel(0, -200);
-      await expect(viewer.getByRole('button', { name: '110%' })).toBeVisible();
+      await view.keyboard.up('Control');
+      await expect.poll(percent).toBeGreaterThan(before);
+      await zoom.click();
+      await expect.poll(percent).toBe(before);
       await viewer.getByRole('tab', { name: '2 · Primo piano' }).click();
       await expect(viewer.getByRole('tab', { name: '2 · Primo piano' })).toHaveAttribute(
         'aria-selected',

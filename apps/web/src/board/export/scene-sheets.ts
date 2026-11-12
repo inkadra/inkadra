@@ -8,7 +8,7 @@ import { type Element, PLAN_ASPECT, TODO_LISTS } from '@inkadra/doc-schema';
 import { clockMinutes, type ShootingDay } from '@inkadra/shared';
 import { sceneIdsOf } from '../film/needed.ts';
 import { clockLabel } from '../film/schedule.ts';
-import { type CardContext, framePicture, picture, planOps } from './board-render.ts';
+import { type CardContext, framedPlanOps, framePicture, picture } from './board-render.ts';
 import type { PageSetup, Shot } from './compose.ts';
 import { MARGIN, pageSize } from './layout.ts';
 import type { FontWeight, Op, Page } from './pages.ts';
@@ -580,7 +580,7 @@ export function sceneSheetPages(
                 stroke: c['border-default'],
                 lineWidth: 0.75,
               },
-              { kind: 'clip', ...drawing, ops: planOps(plan, drawing, ctx) },
+              { kind: 'clip', ...drawing, ops: framedPlanOps(plan, drawing, ctx) },
             ];
           },
         },

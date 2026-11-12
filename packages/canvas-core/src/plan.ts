@@ -7,6 +7,9 @@ import {
   MAX_STROKES,
   newElementId,
   PLAN_ASPECT,
+  PLAN_COORD_MAX,
+  PLAN_COORD_MIN,
+  PLAN_REACH,
   PLAN_SENSORS,
   type PlanIcon,
   type PlanLayer,
@@ -22,6 +25,7 @@ import { currentElements, keyAtEnd } from './board.ts';
 import { shapeHit, strokeHit } from './film.ts';
 import type { Point } from './geometry.ts';
 import {
+  attachRole,
   BEAM_KINDS,
   categoryOf,
   DEFAULT_METRES,
@@ -83,12 +87,18 @@ export function snapPlanPoint(p: Point, step = PLAN_GRID): Point {
   const sx = step / PLAN_VIEW_W;
   const sy = step / PLAN_VIEW_H;
   return {
-    x: Math.min(1, Math.max(0, Math.round(p.x / sx) * sx)),
-    y: Math.min(1, Math.max(0, Math.round(p.y / sy) * sy)),
+    x: Math.min(1 + PLAN_REACH_UNITS, Math.max(-PLAN_REACH_UNITS, Math.round(p.x / sx) * sx)),
+    y: Math.min(1 + PLAN_REACH_UNITS, Math.max(-PLAN_REACH_UNITS, Math.round(p.y / sy) * sy)),
   };
 }
 
-const clampGrid = (n: number) => Math.round(Math.max(0, Math.min(STROKE_GRID, n)));
+/** How far beyond its 3:2 extent a plan reaches, in units of the extent (decision 0118). */
+export const PLAN_REACH_UNITS = PLAN_REACH / STROKE_GRID;
+/** A plan coordinate in STROKE_GRID units, rounded and kept within the plan's reach. */
+export const clampGrid = (n: number) =>
+  Math.round(Math.max(PLAN_COORD_MIN, Math.min(PLAN_COORD_MAX, n)));
+/** A point of the drawing (0 to 1 across the extent) as a plan coordinate (decision 0118). */
+export const toPlanGrid = (n: number) => clampGrid(n * STROKE_GRID);
 
 /** The layer an item goes to without one of its own: its family's, Notes for texts and measures. */
 export function defaultLayer(item: PlanItem): PlanLayer {
@@ -241,7 +251,7 @@ export function iconCone(
 ): { points: [Point, Point, Point]; angle: number; reach: number; beam: boolean } | null {
   // A modifier of version 15 that is attached to a light lends it its light (decision 0104).
   const modifier = icon.kind === 'softbox' || icon.kind === 'para';
-  const beam = BEAM_KINDS.has(icon.kind) && !(modifier && icon.on);
+  const beam = BEAM_KINDS.has(icon.kind) && !(modifier && icon.on) && !glowsUnlessAimed(icon);
   if (!beam && icon.kind !== 'camera') return null;
   const angle = beam ? (icon.beam ?? DEFAULT_BEAM) : lensAngle(icon.lens ?? DEFAULT_LENS, sensor);
   const reach = icon.reach ?? (beam ? DEFAULT_REACH.beam : DEFAULT_REACH.cone);
@@ -273,7 +283,7 @@ export function coneEnd(icon: PlanIcon, sensor?: PlanSensor): Point | null {
  * its centre, `reach` view units wide (DEFAULT_GLOW without one). Null for other icons.
  */
 export function iconGlow(icon: PlanIcon): { centre: Point; radius: number } | null {
-  if (!GLOW_KINDS.has(icon.kind)) return null;
+  if (!GLOW_KINDS.has(icon.kind) && !glowsUnlessAimed(icon)) return null;
   const size = iconSize(icon);
   return {
     centre: iconCentre(icon),
@@ -281,6 +291,10 @@ export function iconGlow(icon: PlanIcon): { centre: Point; radius: number } | nu
   };
 }
 const DEFAULT_GLOW = 60;
+
+/** Tubes glow all round, as the mockup draws the Hair light, until a beam is set on them. */
+const glowsUnlessAimed = (icon: PlanIcon) =>
+  (icon.kind === 'tube' || icon.kind === 'kino') && icon.beam === undefined;
 
 /**
  * How warm a light's colour temperature is, from 0 (cool, 6500 K and above) to 1 (warm, 2000 K
@@ -684,20 +698,26 @@ export function lockAllows(
 }
 
 /**
- * The item drawn on top under `p` (relative to the drawing, 0 to 1), in the stacking order the
- * renderers draw (planStack): what is seen on top is picked first. Measures are drawn on top but
- * yield to the icons their ends sit on: a thin line must not hide the body under it.
+ * Every item under `p` (relative to the drawing, 0 to 1), in the order a click picks them
+ * (decisions 0104 and 0118): what the renderers draw on top first (planStack), except that
+ * - a light comes before the modifiers attached to its front, which follow it nearest first: a
+ *   click on a light with a softbox picks the light, a second click the softbox;
+ * - a measure yields to the icons its ends sit on (`from`, `to`) where they are under `p`: a thin
+ *   line must not hide the body under it.
+ * A second click on the same spot picks the next one (nextPlanItemAt): a stool under a person.
  */
-export function planItemAt(
+export function planItemsAt(
   plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
   p: Point,
   view?: PlanView,
   radius = 0.012,
-): PlanItemRef | null {
+): PlanItemRef[] {
   const v = { x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H };
   const stack = planStack(plan);
+  const hits: PlanStackEntry[] = [];
   for (let i = stack.length - 1; i >= 0; i--) {
-    const { ref, item } = stack[i] as PlanStackEntry;
+    const entry = stack[i] as PlanStackEntry;
+    const { ref, item } = entry;
     if (!reachable(item, view)) continue;
     const hit =
       ref.kind === 'icons'
@@ -705,21 +725,62 @@ export function planItemAt(
         : ref.kind === 'shapes'
           ? planShapeHit(item as PlanShape, p, radius)
           : strokeHit(item as PlanStroke, p, radius);
-    if (!hit) continue;
-    // A measure yields only to the icons its ends sit on, where they are under `p`.
-    const shape = item as PlanShape;
-    if (ref.kind === 'shapes' && shape.kind === 'measure' && (shape.from || shape.to)) {
-      const end = (plan.icons ?? []).find(
-        (icon) =>
-          (icon.id === shape.from || icon.id === shape.to) &&
-          reachable(icon, view) &&
-          iconHit(icon, v),
-      );
-      if (end) return { kind: 'icons', id: end.id };
-    }
-    return ref;
+    if (hit) hits.push(entry);
   }
-  return null;
+  const ids = new Set(hits.map((e) => e.item.id));
+  /** What an item follows in the order: the light of a modifier, the end icon of a measure. */
+  const leader = (e: PlanStackEntry): string | null => {
+    if (e.ref.kind === 'icons') {
+      const icon = e.item as PlanIcon;
+      return icon.on && ids.has(icon.on) && attachRole(icon.kind) === 'modifier' ? icon.on : null;
+    }
+    const shape = e.item as PlanShape;
+    if (e.ref.kind !== 'shapes' || shape.kind !== 'measure') return null;
+    // The lowest of its ends under `p`, so the measure comes after both.
+    const ends = hits.filter((h) => h.item.id === shape.from || h.item.id === shape.to);
+    return ends.at(-1)?.item.id ?? null;
+  };
+  const followers = new Map<string, PlanStackEntry[]>();
+  const order: PlanStackEntry[] = [];
+  for (const e of hits) {
+    const lead = leader(e);
+    if (lead) followers.set(lead, [...(followers.get(lead) ?? []), e]);
+    else order.push(e);
+  }
+  const out: PlanItemRef[] = [];
+  const put = (e: PlanStackEntry) => {
+    out.push(e.ref);
+    // Modifiers were met top first; nearest the light is the lowest of them.
+    for (const f of [...(followers.get(e.item.id) ?? [])].reverse()) put(f);
+  };
+  for (const e of order) put(e);
+  return out;
+}
+
+/** The item a click on `p` picks: the first of planItemsAt. */
+export function planItemAt(
+  plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
+  p: Point,
+  view?: PlanView,
+  radius = 0.012,
+): PlanItemRef | null {
+  return planItemsAt(plan, p, view, radius)[0] ?? null;
+}
+
+/**
+ * The item a click on `p` picks when `current` is already picked (decision 0118): the next one
+ * under the point, round to the first, so what is covered (a stool under a person, a softbox on
+ * its light) is reached by clicking again. The first one when `current` is not under `p`.
+ */
+export function nextPlanItemAt(
+  plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
+  p: Point,
+  current: string | null,
+  view?: PlanView,
+): PlanItemRef | null {
+  const list = planItemsAt(plan, p, view);
+  const at = current ? list.findIndex((r) => r.id === current) : -1;
+  return list[at < 0 ? 0 : (at + 1) % list.length] ?? null;
 }
 
 /** The item a reference points at, if it is still there. */

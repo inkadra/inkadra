@@ -23,15 +23,19 @@ import {
   itemsInRect,
   moveItem,
   moveWithAttached,
+  nextPlanItemAt,
   normalizeRotation,
+  PLAN_REACH_UNITS,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanItem,
   type PlanItemRef,
   type Point,
+  planContentBox,
   planItem,
   planItemAt,
   planItems,
+  planItemsAt,
   pulledAway,
   type ResizeHandle,
   ROTATE_STEP,
@@ -43,7 +47,7 @@ import {
   settleAttached,
   shownAngle,
   snapPlanPoint,
-  toGrid,
+  toPlanGrid,
   updateElement,
   withAttached,
   withGroups,
@@ -53,7 +57,6 @@ import {
   type FrameShape,
   MAX_SHAPES,
   MAX_STROKES,
-  PLAN_ASPECT,
   PLAN_LAYERS,
   type PlanIcon,
   type PlanShape,
@@ -68,9 +71,11 @@ import {
   type RefObject,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { pathOf } from '../film/strokes.ts';
@@ -89,6 +94,7 @@ import {
   planCss,
   TEXT_SIZES,
 } from './PlanDrawing.tsx';
+import { usePlanSurface, ZoomControl } from './PlanSurface.tsx';
 import { useWallTools } from './PlanWalls.tsx';
 
 /** Two presses on an item within this time (ms) are a double click, by mouse or by finger. */
@@ -97,8 +103,11 @@ const DOUBLE_PRESS = 400;
 const LONG_PRESS = 400;
 /** A finger that moves less than this (view units, about 9 px on a phone) has tapped. */
 const TAP_SLOP = 24;
-/** Steps of the zoom, in percent of the plan fitted to its area. */
-export const ZOOMS = [50, 75, 100, 150, 200, 300, 400];
+/** A press that moves less than this (px) has clicked. */
+const CLICK_SLOP = 4;
+/** What the bars floating over the surface cover, px, which Fit leaves free. */
+const DESKTOP_INSETS = { top: 16, right: 16, bottom: 72, left: 16 };
+const PHONE_INSETS = { top: 48, right: 0, bottom: 0, left: 0 };
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
 const HANDLE_SIGN: Record<ResizeHandle, [number, number]> = {
   nw: [-1, -1],
@@ -161,6 +170,12 @@ export interface CanvasHandle {
   /** A client point as a point of the drawing (0 to 1), or null outside it. */
   pointOf: (at: { clientX: number; clientY: number }) => Point | null;
   zoomBy: (dir: 1 | -1) => void;
+  /** Frames what is on the plan. */
+  fit: () => void;
+  /** Moves the view by (dx, dy) px: the arrows with nothing picked. */
+  panBy: (dx: number, dy: number) => void;
+  /** Space held: a drag pans, whatever the tool (decision 0118). */
+  space: (down: boolean) => void;
   /** A key for the tool in use (the length typed for a wall); true when it took it. */
   key: (e: KeyboardEvent) => boolean;
 }
@@ -227,18 +242,29 @@ export function selectionMenu(ed: Ed, t: TFunction): MenuItem[] {
 }
 
 /**
- * The drawing of the editor (decision 0104): the plan fitted to its area and zoomable, the
- * gestures of decision 0071 (draw, place, move, turn, resize, box selection, blocking), the bar
- * of tools at the bottom, the zoom and, with a scale, the scale bar. Nothing floats over the
- * drawing for the selection: its properties are in the right panel.
+ * The drawing of the editor (decisions 0104 and 0118): a surface that fills the area between the
+ * panels, the plan's extent a quiet frame in it, panned and zoomed (PlanSurface); the gestures of
+ * decision 0071 (draw, place, move, turn, resize, box selection, blocking), the bar of tools at
+ * the bottom, the zoom and, with a scale, the scale bar. Nothing floats over the drawing for the
+ * selection: its properties are in the right panel. On a phone the bar of tools is drawn into
+ * `toolSlot`, under the selection's sheet.
  */
-export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHandle | null> }) {
+export function PlanCanvas({
+  ed,
+  handle,
+  toolSlot,
+}: {
+  ed: Ed;
+  handle: RefObject<CanvasHandle | null>;
+  toolSlot?: HTMLElement | null;
+}) {
   const { t, i18n } = useTranslation();
   const { phone, drawn, step, tool, armed } = ed;
   const [shapeTool, setShapeTool] = useState<'rect' | 'ellipse'>('rect');
   const [lineTool, setLineTool] = useState<'line' | 'arrow'>('line');
-  const [zoom, setZoom] = useState(100);
-  const [px, setPx] = useState(0);
+  const [spaceDown, setSpaceDown] = useState(false);
+  /** A click on what is picked, where more lies under it: the next one when it is let go. */
+  const cycle = useRef<{ p: Point; from: string; at: { x: number; y: number } } | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [measureDraft, setMeasureDraft] = useState<{
     id: string;
@@ -264,8 +290,6 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   const lastPress = useRef<{ id: string; at: number } | null>(null);
   const tapOff = useRef<PlanItemRef[] | null>(null);
   const longPress = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const stage = useRef<HTMLDivElement>(null);
-  const scroller = useRef<HTMLDivElement>(null);
   const textInput = useRef<HTMLInputElement>(null);
   const viewOf = ed.viewOf;
   const ink =
@@ -275,41 +299,44 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   const selected = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
   const item = ed.item;
   const shown = ed.shown;
+  // Fit frames what this person sees drawn: their own hidden layers left out too.
+  const content = useMemo(
+    () => planContentBox(shown, true, [...ed.myHidden]),
+    [shown, ed.myHidden],
+  );
+  const surf = usePlanSurface({
+    content,
+    insets: phone ? PHONE_INSETS : DESKTOP_INSETS,
+    grid: step,
+    fitWidth: phone,
+  });
+  const stage = surf.stage;
+  const zoom = surf.percent;
   const current = ed.preview?.find((p) => p.id === item?.id) ?? item ?? null;
   const many = selection.length > 1 ? selection.flatMap((r) => planItem(shown, r) ?? []) : [];
 
   useEffect(() => {
     if (text) textInput.current?.focus();
   }, [text]);
-  // The size of a view unit on screen, for the scale bar.
-  useEffect(() => {
-    const el = stage.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setPx(el.getBoundingClientRect().width));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const pointAt = (e: { clientX: number; clientY: number }): Point => {
     const r = stage.current?.getBoundingClientRect();
     if (!r || r.width === 0) return { x: 0, y: 0 };
     return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
   };
-  const inside = (p: Point) => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
+  /** Within the plan's reach (decision 0118): anywhere on the surface, in practice. */
+  const inside = (p: Point) =>
+    Math.min(p.x, p.y) >= -PLAN_REACH_UNITS && Math.max(p.x, p.y) <= 1 + PLAN_REACH_UNITS;
   const snapped = (p: Point) => (ed.snap ? snapPlanPoint(p, step) : p);
   const walls = useWallTools(ed, { snapped, zoom });
   const placing = useBackgroundPlacing(ed, zoom);
-  const zoomBy = (dir: 1 | -1) =>
-    setZoom((z) => {
-      const at = ZOOMS.indexOf(z);
-      return ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, at + dir))] as number;
-    });
+  const zoomBy = surf.zoomBy;
   // The middle of what is in view, where Enter and a tap on the phone place.
   ed.middle.current = () => {
-    const s = scroller.current?.getBoundingClientRect();
+    const s = surf.surface.current?.getBoundingClientRect();
     if (!s) return { x: 0.5, y: 0.5 };
     const p = pointAt({ clientX: s.left + s.width / 2, clientY: s.top + s.height / 2 });
-    return { x: Math.max(0.02, Math.min(0.98, p.x)), y: Math.max(0.02, Math.min(0.98, p.y)) };
+    return p;
   };
 
   function openMeasure(m: {
@@ -357,6 +384,9 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       return inside(p) ? p : null;
     },
     zoomBy,
+    fit: surf.fit,
+    panBy: surf.panBy,
+    space: setSpaceDown,
     key: (e) => walls.key(e),
   }));
 
@@ -367,8 +397,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     if (draft) ed.disarm();
     const value = draft?.value.trim().slice(0, 500);
     if (!draft || !value) return;
-    const x = toGrid(draft.at.x);
-    const y = toGrid(draft.at.y);
+    const x = toPlanGrid(draft.at.x);
+    const y = toPlanGrid(draft.at.y);
     // A text is a note unless a layer is active: it goes where that layer lives.
     ed.change(() =>
       addShape(
@@ -391,9 +421,22 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   };
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
-    if (e.button !== 0 || (e.target as HTMLElement).closest('.plan-editor__text')) return;
+    if ((e.target as HTMLElement).closest('.plan-editor__text')) return;
     e.stopPropagation();
+    // A second finger pinches: what the first one started is dropped (decision 0118).
+    if (surf.down(e)) {
+      onPointerCancel();
+      return;
+    }
+    // The middle button, or Space held, pans whatever the tool.
+    if (e.button === 1 || (e.button === 0 && spaceDown)) {
+      e.preventDefault();
+      surf.startPan(e);
+      return;
+    }
+    if (e.button !== 0) return;
     setMenu(null);
+    cycle.current = null;
     const p = pointAt(e);
     if (text) {
       commitText();
@@ -498,8 +541,29 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       return;
     }
     if (tool === 'select' || tool === 'icons') {
-      const hit = planItemAt(drawn, p, viewOf);
-      if (hit && (e.shiftKey || (phone && tool === 'select' && selection.length > 0))) {
+      // What a click picks (decision 0118): the top item, a light before its modifiers; Alt, or
+      // a click again on what is picked, the next one under the pointer (a stool under a person).
+      const top = planItemAt(drawn, p, viewOf);
+      const single = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
+      const under = top ? planItemsAt(drawn, p, viewOf) : [];
+      const onPicked = !!single && under.some((r) => r.id === single.id);
+      let hit = top;
+      if (top && e.altKey && !e.shiftKey)
+        hit = nextPlanItemAt(drawn, p, onPicked ? (single as PlanItemRef).id : top.id, viewOf);
+      else if (onPicked && !e.shiftKey) {
+        hit = single;
+        if (under.length > 1)
+          cycle.current = {
+            p,
+            from: (single as PlanItemRef).id,
+            at: { x: e.clientX, y: e.clientY },
+          };
+      }
+      if (
+        hit &&
+        !cycle.current &&
+        (e.shiftKey || (phone && tool === 'select' && selection.length > 0))
+      ) {
         // Shift (or, on a phone, a tap while something is picked) adds or takes away.
         const group = withGroups(drawn, [hit]);
         const has = selection.some((r) => r.id === hit.id);
@@ -547,13 +611,16 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       }
       if (ed.wallSel || ed.lockedWall) ed.selectWall(null);
       // An item of a locked layer cannot be picked, but says why in the properties.
-      const under = planItemAt(drawn, p, { hidden: ed.hiddenLayers });
-      const lockedOne = under && planItem(drawn, under);
+      const beneath = planItemAt(drawn, p, { hidden: ed.hiddenLayers });
+      const lockedOne = beneath && planItem(drawn, beneath);
       if (lockedOne) ed.setLockedItem(lockedOne);
-      if (!e.shiftKey) ed.setSelection([]);
-      e.currentTarget.setPointerCapture(e.pointerId);
-      // A finger draws the box after a long press; a mouse at once.
+      // As on the board (decision 0118): a mouse dragged on empty space draws the selection box
+      // (with Shift it adds) and Space, the middle button or the wheel pan. A finger pans, and
+      // draws the box after a long press (decision 0071); a tap there lets go of the selection.
       const touch = e.pointerType === 'touch';
+      if (touch && !e.shiftKey) surf.startPan(e);
+      if (!touch && !e.shiftKey) ed.setSelection([]);
+      e.currentTarget.setPointerCapture(e.pointerId);
       const started = {
         kind: 'marquee' as const,
         a: p,
@@ -565,7 +632,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       gesture.current = started;
       if (touch)
         longPress.current = setTimeout(() => {
-          if (gesture.current !== started) return;
+          if (gesture.current !== started || surf.panMoved() >= CLICK_SLOP) return;
+          surf.stopPan();
           started.live = true;
           setMarquee({ a: p, b: p });
         }, LONG_PRESS);
@@ -596,6 +664,14 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   }
 
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    if (surf.moveTo(e)) {
+      // A finger that pans before its long press draws no box.
+      if (gesture.current?.kind === 'marquee' && !gesture.current.live) {
+        gesture.current = null;
+        clearTimeout(longPress.current);
+      }
+      return;
+    }
     const p = pointAt(e);
     if (placing.move(p) || walls.move(p)) return;
     const g = gesture.current;
@@ -701,8 +777,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       const q = snapped(p);
       const next: PlanShape =
         g.which === 0
-          ? { ...g.item, x0: toGrid(q.x), y0: toGrid(q.y) }
-          : { ...g.item, x1: toGrid(q.x), y1: toGrid(q.y) };
+          ? { ...g.item, x0: toPlanGrid(q.x), y0: toPlanGrid(q.y) }
+          : { ...g.item, x1: toPlanGrid(q.x), y1: toPlanGrid(q.y) };
       // A measure's end let go anywhere no longer follows its icon.
       delete next[g.which === 0 ? 'from' : 'to'];
       ed.setPreview(next);
@@ -743,7 +819,9 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   }
 
   /** A gesture the browser took away (a scroll, a second finger): nothing is written. */
-  function onPointerCancel() {
+  function onPointerCancel(e?: PointerEvent<HTMLDivElement>) {
+    if (e) surf.up(e);
+    cycle.current = null;
     walls.cancel();
     clearTimeout(longPress.current);
     tapOff.current = null;
@@ -755,9 +833,29 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     setMarquee(null);
   }
 
-  function onPointerUp() {
+  function onPointerUp(e: PointerEvent<HTMLDivElement>) {
+    const surfaced = surf.up(e);
+    if (surfaced) {
+      clearTimeout(longPress.current);
+      if (gesture.current?.kind === 'marquee' && !gesture.current.live) gesture.current = null;
+      // A click on empty space lets go of the selection.
+      if (surfaced === 'click') ed.setSelection([]);
+      if (!gesture.current) return;
+    }
     if (placing.up() || walls.up()) return;
     clearTimeout(longPress.current);
+    // A click again on what is picked picks the next item under it.
+    const again = cycle.current;
+    cycle.current = null;
+    if (again && Math.hypot(e.clientX - again.at.x, e.clientY - again.at.y) < CLICK_SLOP) {
+      gesture.current = null;
+      ed.setPreview(null);
+      setTarget(null);
+      setChip(null);
+      const next = nextPlanItemAt(drawn, again.p, again.from, viewOf);
+      if (next) ed.select(next);
+      return;
+    }
     const taken = tapOff.current;
     tapOff.current = null;
     if (taken) ed.setSelection((now) => now.filter((r) => !taken.some((x) => x.id === r.id)));
@@ -804,7 +902,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
             tool: 'pencil',
             color: ink,
             width: PLAN_PEN,
-            points: encodeStroke(g.points),
+            points: encodeStroke(g.points, PLAN_REACH_UNITS),
           },
           LOCAL,
         ),
@@ -813,7 +911,12 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     }
     setLiveShape(null);
     if (g.shape === 'scale') {
-      const length = gridLength(toGrid(g.a.x), toGrid(g.a.y), toGrid(g.b.x), toGrid(g.b.y));
+      const length = gridLength(
+        toPlanGrid(g.a.x),
+        toPlanGrid(g.a.y),
+        toPlanGrid(g.b.x),
+        toPlanGrid(g.b.y),
+      );
       ed.setTool('select');
       if (length > 10) setScaleDraft({ length, metres: '' });
       return;
@@ -833,10 +936,10 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       kind: g.shape,
       color: ink,
       width: PLAN_PEN,
-      x0: toGrid(g.a.x),
-      y0: toGrid(g.a.y),
-      x1: toGrid(g.b.x),
-      y1: toGrid(g.b.y),
+      x0: toPlanGrid(g.a.x),
+      y0: toPlanGrid(g.a.y),
+      x1: toPlanGrid(g.b.x),
+      y1: toPlanGrid(g.b.y),
       ...(g.shape === 'zone' || g.shape === 'measure' ? { layer: 'notes' as const } : {}),
       ...(fromIcon ? { from: fromIcon.id } : {}),
       ...(toIcon ? { to: toIcon.id } : {}),
@@ -900,6 +1003,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
   const frame = current ? itemFrame(current) : null;
   const pad = 8;
   const symbol = isIcon(current) && !isSized(current.kind);
+  const ring = frame ? Math.hypot(frame.w / 2 + pad, frame.h / 2 + pad) : 0;
   const ends =
     current && 'x0' in current && !frame && !frozen
       ? [
@@ -930,13 +1034,18 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
         className={`plan-editor__selection${frozen ? ' is-locked' : ''}`}
         transform={`translate(${frame.centre.x} ${frame.centre.y}) rotate(${frame.angle})`}
       >
-        <rect
-          x={-frame.w / 2 - pad}
-          y={-frame.h / 2 - pad}
-          width={frame.w + pad * 2}
-          height={frame.h + pad * 2}
-          rx={4}
-        />
+        {/* A symbol (a light, a camera, a person) is ringed, its handles on the ring (audit M6). */}
+        {symbol ? (
+          <circle className="plan-editor__ring" r={ring} />
+        ) : (
+          <rect
+            x={-frame.w / 2 - pad}
+            y={-frame.h / 2 - pad}
+            width={frame.w + pad * 2}
+            height={frame.h + pad * 2}
+            rx={4}
+          />
+        )}
         {HANDLES.filter((h) => !frozen && (!symbol || h.length === 2)).map((h) => {
           const [sx, sy] = HANDLE_SIGN[h];
           return (
@@ -952,7 +1061,7 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
             />
           );
         })}
-        {!frozen && rotateGrip(0, -frame.h / 2 - pad)}
+        {!frozen && rotateGrip(0, symbol ? -ring : -frame.h / 2 - pad)}
       </g>
     ) : (
       <g className={`plan-editor__selection${frozen ? ' is-locked' : ''}`}>
@@ -1088,24 +1197,33 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
               ...(liveShape.kind === 'scale' ? { dashed: true } : {}),
               color: ink,
               width: PLAN_PEN,
-              x0: toGrid(liveShape.a.x),
-              y0: toGrid(liveShape.a.y),
-              x1: toGrid(liveShape.b.x),
-              y1: toGrid(liveShape.b.y),
+              x0: toPlanGrid(liveShape.a.x),
+              y0: toPlanGrid(liveShape.a.y),
+              x1: toPlanGrid(liveShape.b.x),
+              y1: toPlanGrid(liveShape.b.y),
             } as PlanShape
           }
         />
       )}
-      {lit && (
-        <rect
-          className="plan-editor__target"
-          x={lit.x - 6}
-          y={lit.y - 6}
-          width={lit.w + 12}
-          height={lit.h + 12}
-          rx={6}
-        />
-      )}
+      {/* The base a dragged icon would land on, ringed (audit S2); a long one boxed. */}
+      {lit &&
+        (Math.max(lit.w, lit.h) <= 1.5 * Math.min(lit.w, lit.h) ? (
+          <circle
+            className="plan-editor__target"
+            cx={lit.x + lit.w / 2}
+            cy={lit.y + lit.h / 2}
+            r={Math.max(lit.w, lit.h) / 2 + 6}
+          />
+        ) : (
+          <rect
+            className="plan-editor__target"
+            x={lit.x - 6}
+            y={lit.y - 6}
+            width={lit.w + 12}
+            height={lit.h + 12}
+            rx={6}
+          />
+        ))}
       {many.length > 1 ? manyBox : !moving && outline}
       {blockingGrips}
       {reachGrip}
@@ -1327,28 +1445,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
     checked: tool === x && plain,
     action: () => pickTool(x),
   }));
-  const zoomControl = (
-    <fieldset className="plan-float plan-canvas__zoom" aria-label={t('board.plan.zoom')}>
-      <IconButton
-        icon="minus"
-        label={t('board.plan.zoomOut')}
-        disabled={zoom === ZOOMS[0]}
-        onClick={() => zoomBy(-1)}
-      />
-      <span className="plan-canvas__percent" aria-live="polite">
-        {zoom}%
-      </span>
-      <IconButton
-        icon="plus"
-        label={t('board.plan.zoomIn')}
-        disabled={zoom === ZOOMS.at(-1)}
-        onClick={() => zoomBy(1)}
-      />
-      <IconButton icon="fit" label={t('board.plan.zoomFit')} onClick={() => setZoom(100)} />
-    </fieldset>
-  );
   /** One metre on screen, when the plan has a scale. */
-  const metrePx = drawn.scale && px ? (drawn.scale / PLAN_VIEW_W) * px : 0;
+  const metrePx = drawn.scale && surf.unit ? drawn.scale * surf.unit : 0;
   const scaleBar = metrePx > 0 && (
     <div className="plan-canvas__scalebar" aria-hidden="true">
       <span>{metrePx < 24 ? '5 m' : '1 m'}</span>
@@ -1615,100 +1713,87 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
 
   return (
     <div className="plan-canvas">
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: the drawing is pointer work; the panels and keys give the same tools. */}
       <div
-        ref={scroller}
-        className="plan-canvas__scroll"
-        onPointerDown={(e) => {
-          if (e.target === e.currentTarget) ed.setSelection([]);
+        ref={surf.surface}
+        className={`plan-canvas__surface plan-editor__stage--${tool}${spaceDown ? ' is-hand' : ''}`}
+        onPointerDown={onPointerDown}
+        onMouseDown={(e) => {
+          // No autoscroll on the middle button; the measure's field keeps the focus.
+          if (e.button === 1 || measureDraft) e.preventDefault();
         }}
-        onWheel={(e) => {
-          if (!(e.ctrlKey || e.metaKey)) return;
-          e.preventDefault();
-          zoomBy(e.deltaY < 0 ? 1 : -1);
-        }}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        onContextMenu={contextMenu}
       >
-        <div
-          className="plan-canvas__sheet"
-          style={{ width: `calc(min(100cqw, ${PLAN_ASPECT * 100}cqh) * ${k})` }}
-        >
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: the drawing is pointer work; the panels and keys give the same tools. */}
-          <div
-            ref={stage}
-            className={`plan-editor__stage plan-editor__stage--${tool}`}
-            onPointerDown={onPointerDown}
-            onMouseDown={(e) => {
-              if (measureDraft) e.preventDefault();
-            }}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerCancel}
-            onContextMenu={contextMenu}
+        <div ref={stage} className="plan-editor__stage">
+          {rulers}
+          {ghostPlan && (
+            <div className="plan-canvas__ghost" aria-hidden="true">
+              <PlanDrawing plan={ghostPlan} moves={false} extent />
+            </div>
+          )}
+          <PlanDrawing
+            plan={
+              placing.preview && shown.background
+                ? { ...shown, background: { ...shown.background, ...placing.preview } }
+                : shown
+            }
+            background
+            extent
+            // The surface draws the dots; over a picture the drawing draws them again.
+            grid={shown.background && !shown.background.hidden ? step : undefined}
+            ghosts={ed.ghosts}
+            route
+            hidden={hiddenList}
+            lifted={lifted}
+            label={t('board.plan.drawing')}
           >
-            {rulers}
-            {ghostPlan && (
-              <div className="plan-canvas__ghost" aria-hidden="true">
-                <PlanDrawing plan={ghostPlan} moves={false} />
-              </div>
-            )}
-            <PlanDrawing
-              plan={
-                placing.preview && shown.background
-                  ? { ...shown, background: { ...shown.background, ...placing.preview } }
-                  : shown
-              }
-              background
-              grid={step}
-              ghosts={ed.ghosts}
-              route
-              hidden={hiddenList}
-              lifted={lifted}
-              label={t('board.plan.drawing')}
+            {liveLayer}
+          </PlanDrawing>
+          {isEmpty && tool === 'select' && !armed && (
+            <p className="plan-editor__empty">{t('board.plan.emptyHint')}</p>
+          )}
+          {marquee && !phone && (
+            <span
+              className="plan-editor__tool-label"
+              style={{
+                left: `${Math.min(Math.max(marquee.a.x, marquee.b.x) * 100, 72)}%`,
+                top: `${Math.min(Math.max(marquee.a.y, marquee.b.y) * 100, 94)}%`,
+              }}
             >
-              {liveLayer}
-            </PlanDrawing>
-            {isEmpty && tool === 'select' && !armed && (
-              <p className="plan-editor__empty">{t('board.plan.emptyHint')}</p>
-            )}
-            {marquee && !phone && (
-              <span
-                className="plan-editor__tool-label"
-                style={{
-                  left: `${Math.min(Math.max(marquee.a.x, marquee.b.x) * 100, 72)}%`,
-                  top: `${Math.min(Math.max(marquee.a.y, marquee.b.y) * 100, 94)}%`,
-                }}
-              >
-                {t('board.plan.marquee', { count: marqueeCount })}
-              </span>
-            )}
-            {text && (
-              <input
-                ref={textInput}
-                className="plan-editor__text"
-                aria-label={t('film.pen.textField')}
-                placeholder={t('film.pen.textPlaceholder')}
-                maxLength={500}
-                value={text.value}
-                style={{ left: `${text.at.x * 100}%`, top: `${text.at.y * 100}%` }}
-                onChange={(e) => {
-                  const draft = { ...text, value: e.target.value };
-                  textRef.current = draft;
-                  setText(draft);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    commitText();
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    textRef.current = null;
-                    setText(null);
-                  }
-                }}
-                onBlur={commitText}
-              />
-            )}
-          </div>
+              {t('board.plan.marquee', { count: marqueeCount })}
+            </span>
+          )}
+          {text && (
+            <input
+              ref={textInput}
+              className="plan-editor__text"
+              aria-label={t('film.pen.textField')}
+              placeholder={t('film.pen.textPlaceholder')}
+              maxLength={500}
+              value={text.value}
+              style={{ left: `${text.at.x * 100}%`, top: `${text.at.y * 100}%` }}
+              onChange={(e) => {
+                const draft = { ...text, value: e.target.value };
+                textRef.current = draft;
+                setText(draft);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitText();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  textRef.current = null;
+                  setText(null);
+                }
+              }}
+              onBlur={commitText}
+            />
+          )}
         </div>
       </div>
       {moveBar}
@@ -1747,8 +1832,8 @@ export function PlanCanvas({ ed, handle }: { ed: Ed; handle: RefObject<CanvasHan
       )}
       {!phone && scaleBar}
       {!phone && !movingIcon && !placing.active && desktopTools}
-      {!phone && zoomControl}
-      {phone && phoneTools}
+      {!phone && <ZoomControl surface={surf} />}
+      {phone && toolSlot && createPortal(phoneTools, toolSlot)}
       {measurePanel}
       {menu && (
         <ContextMenu

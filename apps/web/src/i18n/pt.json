@@ -1459,6 +1459,7 @@
       "viewLength": "Comprimento da vista",
       "zoom": "Zoom",
       "zoomFit": "Ajustar a planta",
+      "zoomFitAt": "{{percent}}% · Ajustar a planta",
       "stands": {
         "cstand": "C-stand",
         "combo": "Tripé combo",
@@ -1620,7 +1621,7 @@
       "view": {
         "only": "Só leitura",
         "legend": "Legenda",
-        "hint": "Arraste para mover, belisque ou role para o zoom",
+        "hint": "Arraste para mover, belisque ou Ctrl + roda para o zoom",
         "note": "Quem pode abrir o quadro vê esta planta, a legenda, o material e a potência.",
         "guestNote": "Vê a planta tal como é partilhada consigo: os setups, a legenda, o material e a potência."
       },
@@ -5125,7 +5126,7 @@
         "steps": {
           "0": {
             "title": "Desenhe o cenário",
-            "text": "Linhas, formas, textos e medidas a partir da barra inferior."
+            "text": "Linhas, formas, textos e medidas a partir da barra em baixo. Arraste num espaço vazio para selecionar; clique outra vez para escolher o que está por baixo."
           },
           "1": {
             "title": "A biblioteca",
@@ -5146,6 +5147,10 @@
           "5": {
             "title": "Fundo",
             "text": "Uma planta ou uma foto sob o desenho para decalcar: mova-a, escale-a, escolha opacidade e cinzentos."
+          },
+          "6": {
+            "title": "Mover-se na planta",
+            "text": "Espaço e arrastar, a roda ou dois dedos movem a planta; Ctrl e a roda ou um belisco fazem zoom. Sem seleção, as setas movem-na, 0 ajusta-a, + e − mudam o zoom."
           }
         }
       },

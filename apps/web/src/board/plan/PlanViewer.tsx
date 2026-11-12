@@ -3,15 +3,23 @@ import {
   attachRole,
   catalogueKind,
   categoryOf,
+  gridStep,
   isLight,
   layerOf,
   linkedLocation,
   type PlanElement,
+  planContentBox,
   variantView,
 } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton } from '@inkadra/ui';
-import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
+import {
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ExportCache } from '../export/cache.ts';
@@ -23,10 +31,9 @@ import { planTitle } from './PlanCard.tsx';
 import { PlanDrawing, PlanGlyph, planCss, useLinkedPlan } from './PlanDrawing.tsx';
 import { downloadPlanSheet, planSheetEnv, planSheetRequest } from './PlanExport.tsx';
 import { setupName } from './PlanKit.tsx';
+import { usePlanSurface } from './PlanSurface.tsx';
 import './plan.css';
 import './outputs.css';
-
-const ZOOMS = [50, 75, 100, 150, 200, 300];
 
 /** The legend of the view: cameras, lights and cast, each with its glyph and a line. */
 function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
@@ -142,16 +149,18 @@ export function PlanViewer({
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const [zoom, setZoom] = useState(100);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [busy, setBusy] = useState(false);
   const [cache] = useState(() => new ExportCache());
-  const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const pinch = useRef<{ distance: number; zoom: number } | null>(null);
   const shown = useLinkedPlan(variantView(plan, base));
+  // The same surface as the editor's (decision 0118): the dots, pan and zoom, Fit on the content.
+  const content = useMemo(() => planContentBox(shown), [shown]);
+  const surface = usePlanSurface({
+    content,
+    insets: { top: 8, right: 8, bottom: 56, left: 8 },
+    grid: gridStep(shown),
+  });
   const tabs = family?.length ? family : [plan];
   const place = store ? linkedLocation(base ?? plan, store.getSnapshot().byId)?.name : undefined;
-  const at = ZOOMS.indexOf(zoom);
   // The view takes the focus, for its keys, and gives it back on close.
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -159,38 +168,10 @@ export function PlanViewer({
     root.current?.focus({ preventScroll: true });
     return () => before?.focus?.({ preventScroll: true });
   }, []);
-  const zoomTo = (next: number) => setZoom(Math.min(400, Math.max(25, Math.round(next))));
-
   const down = (e: ReactPointerEvent<HTMLDivElement>) => {
     // The zoom bar sits on the stage: its buttons keep their clicks.
     if ((e.target as Element).closest('.plan-view__bar')) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()] as [
-        { x: number; y: number },
-        { x: number; y: number },
-      ];
-      pinch.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), zoom };
-    }
-  };
-  const move = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const last = pointers.current.get(e.pointerId);
-    if (!last) return;
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.current.size === 2 && pinch.current) {
-      const [a, b] = [...pointers.current.values()] as [
-        { x: number; y: number },
-        { x: number; y: number },
-      ];
-      zoomTo(pinch.current.zoom * (Math.hypot(a.x - b.x, a.y - b.y) / pinch.current.distance));
-      return;
-    }
-    setPan((p) => ({ x: p.x + e.clientX - last.x, y: p.y + e.clientY - last.y }));
-  };
-  const up = (e: ReactPointerEvent<HTMLDivElement>) => {
-    pointers.current.delete(e.pointerId);
-    if (pointers.current.size < 2) pinch.current = null;
+    if (!surface.down(e)) surface.startPan(e);
   };
   const pdf = async () => {
     if (!store) return;
@@ -216,14 +197,15 @@ export function PlanViewer({
       aria-label={planTitle(t, shown)}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
-        else if (e.key === '+' || e.key === '=') zoomTo(zoom * 1.25);
-        else if (e.key === '-') zoomTo(zoom / 1.25);
+        else if (e.key === '+' || e.key === '=') surface.zoomBy(1);
+        else if (e.key === '-') surface.zoomBy(-1);
+        else if (e.key === '0' || (e.shiftKey && e.code === 'Digit1')) surface.fit();
         else if (e.key.startsWith('Arrow')) {
           const d = 40;
-          setPan((p) => ({
-            x: p.x + (e.key === 'ArrowLeft' ? d : e.key === 'ArrowRight' ? -d : 0),
-            y: p.y + (e.key === 'ArrowUp' ? d : e.key === 'ArrowDown' ? -d : 0),
-          }));
+          surface.panBy(
+            e.key === 'ArrowLeft' ? d : e.key === 'ArrowRight' ? -d : 0,
+            e.key === 'ArrowUp' ? d : e.key === 'ArrowDown' ? -d : 0,
+          );
         }
       }}
     >
@@ -274,46 +256,37 @@ export function PlanViewer({
       <div className="plan-view__body">
         {/* biome-ignore lint/a11y/noStaticElementInteractions: dragging pans; the keys and the bar do it too. */}
         <div
-          className="plan-view__stage"
+          ref={surface.surface}
+          className="plan-view__stage plan-canvas__surface"
           onPointerDown={down}
-          onPointerMove={move}
-          onPointerUp={up}
-          onPointerCancel={up}
-          onWheel={(e) => zoomTo(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1))}
+          onPointerMove={(e) => surface.moveTo(e)}
+          onPointerUp={(e) => surface.up(e)}
+          onPointerCancel={(e) => surface.up(e)}
         >
-          <div
-            className="plan-view__sheet"
-            style={{
-              width: `calc(min(100cqw, 150cqh) * ${zoom / 100})`,
-              translate: `${pan.x}px ${pan.y}px`,
-            }}
-          >
-            <PlanDrawing plan={shown} background />
+          <div ref={surface.stage} className="plan-view__sheet">
+            <PlanDrawing plan={shown} background extent />
           </div>
           <div className="plan-view__bar" role="toolbar" aria-label={t('board.plan.name')}>
             <IconButton
               icon="minus"
               label={t('board.plan.zoomOut')}
-              disabled={zoom <= 25}
-              onClick={() => zoomTo(at > 0 ? (ZOOMS[at - 1] as number) : zoom / 1.25)}
+              disabled={surface.percent <= 25}
+              onClick={() => surface.zoomBy(-1)}
             />
             <button
               type="button"
               className="plan-editor__lens plan-viewer__zoom"
-              onClick={() => {
-                setZoom(100);
-                setPan({ x: 0, y: 0 });
-              }}
+              // The name holds the percent it shows (WCAG 2.5.3).
+              aria-label={t('board.plan.zoomFitAt', { percent: surface.percent })}
+              onClick={surface.fit}
             >
-              {zoom}%
+              {surface.percent}%
             </button>
             <IconButton
               icon="plus"
               label={t('board.plan.zoomIn')}
-              disabled={zoom >= 400}
-              onClick={() =>
-                zoomTo(at >= 0 && at < ZOOMS.length - 1 ? (ZOOMS[at + 1] as number) : zoom * 1.25)
-              }
+              disabled={surface.percent >= 800}
+              onClick={() => surface.zoomBy(1)}
             />
             {!phone && <span className="plan-view__hint">{t('board.plan.view.hint')}</span>}
           </div>

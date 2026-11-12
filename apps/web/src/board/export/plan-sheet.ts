@@ -12,6 +12,7 @@ import {
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
+  planFrame,
 } from '@inkadra/canvas-core';
 import { type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
@@ -230,7 +231,8 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
       stroke: c['border-default'],
       lineWidth: 0.75,
     });
-    const area = input.area ?? { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H };
+    // What the editor showed, or what is drawn on the plan (decision 0118).
+    const area = input.area ?? planFrame(plan, include.background);
     const k = Math.min((frame.w - 16) / area.w, (frame.h - 16) / area.h);
     const shown = { w: area.w * k, h: area.h * k };
     const view = {
@@ -264,28 +266,31 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
     }
     if (include.grid) {
       const step = gridStep(plan) * k;
-      for (let x = whole.x; x <= whole.x + whole.w + 0.1; x += step)
+      // The lines of the plan's grid over what is shown, beyond the old extent too (0118).
+      const first = (from: number, origin: number) =>
+        origin + Math.ceil((from - origin) / step - 1e-6) * step;
+      for (let x = first(view.x, whole.x); x <= view.x + view.w + 0.1; x += step)
         inside.push({
           kind: 'line',
           x1: x,
-          y1: whole.y,
+          y1: view.y,
           x2: x,
-          y2: whole.y + whole.h,
+          y2: view.y + view.h,
           color: c['border-default'],
           width: 0.3,
         });
-      for (let y = whole.y; y <= whole.y + whole.h + 0.1; y += step)
+      for (let y = first(view.y, whole.y); y <= view.y + view.h + 0.1; y += step)
         inside.push({
           kind: 'line',
-          x1: whole.x,
+          x1: view.x,
           y1: y,
-          x2: whole.x + whole.w,
+          x2: view.x + view.w,
           y2: y,
           color: c['border-default'],
           width: 0.3,
         });
     }
-    inside.push(...planOps(plan, whole, ctx));
+    inside.push(...planOps(plan, whole, ctx, true, true, view));
     ops.push({ kind: 'clip', ...view, ops: inside });
 
     // The side column.

@@ -11,11 +11,15 @@ import {
   iconCone,
   iconGlow,
   iconGlyph,
+  iconLabel,
+  iconSubLabel,
   iconTransform,
   labelAnchor,
   linkedPlan,
   measureEnds,
   openingLines,
+  PLAN_LABEL_SIZE,
+  PLAN_SUB_LABEL_SIZE,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
@@ -23,9 +27,11 @@ import {
   type PlanNoteTool,
   type PlanStackEntry,
   pieceOutline,
+  planFrame,
   planStack,
   shownOpenings,
   wallPieces,
+  wallPoints,
 } from '@inkadra/canvas-core';
 import {
   PLAN_ASPECT,
@@ -131,7 +137,11 @@ export const PLAN_PEN = 4;
 /** Font sizes of texts, S, M and L, in thousandths of the width. */
 export const TEXT_SIZES = { S: 14, M: 18, L: 26 } as const;
 /** Font size of icon labels, in thousandths of the width. */
-export const LABEL_SIZE = 16;
+/** Sizes of an icon's label and of a light's second line (canvas-core, decision 0118). */
+export const LABEL_SIZE = PLAN_LABEL_SIZE;
+export const SUB_LABEL_SIZE = PLAN_SUB_LABEL_SIZE;
+// The words of the plan live in canvas-core (decision 0116); the web's callers import them here.
+export { iconLabel, iconSubLabel };
 export const PLAN_TEXT = TEXT_SIZES.M;
 
 /** The paper of a plan: what opaque fills mix into and holes show (decision 0104). */
@@ -199,18 +209,6 @@ export function PlanGlyph({
   );
 }
 
-/** "A cam · 35 mm": the label of an icon on the plan. */
-export function iconLabel(icon: PlanIcon): string {
-  const mm = icon.lens ?? 35;
-  // "A cam 35mm" already says it: no "· 35 mm" again.
-  const said = new RegExp(`\\b${mm}\\s?mm\\b`, 'i').test(icon.label ?? '');
-  const lens = icon.kind === 'camera' && icon.showLens && !said ? `${mm} mm` : '';
-  // The power as written, or the watts (decision 0104).
-  const written = icon.power || (icon.watts ? `${icon.watts} W` : '');
-  const power = written && !icon.label?.includes(written) ? written : '';
-  return [icon.label, lens, power].filter(Boolean).join(' · ');
-}
-
 /**
  * The label of an icon, over everything else of the plan, with a halo of the card's colour so
  * it reads over walls and beams; `lifted` moves it past the handles of a selected icon.
@@ -225,19 +223,35 @@ export const PlanLabel = memo(function PlanLabel({
   const label = iconLabel(icon);
   if (!label) return null;
   const at = labelAnchor(icon);
+  const sub = iconSubLabel(icon);
+  const y = at.y + (lifted ? 20 : 0);
   return (
-    <text
-      className="plan__label"
-      x={at.x}
-      y={at.y + (lifted ? 20 : 0)}
-      textAnchor="middle"
-      fontSize={LABEL_SIZE}
-      fontWeight={500}
-      fontFamily="inherit"
-      style={{ color: planCss(icon.color) }}
-    >
-      {label}
-    </text>
+    <>
+      <text
+        className="plan__label"
+        x={at.x}
+        y={y}
+        textAnchor="middle"
+        fontSize={LABEL_SIZE}
+        fontWeight={500}
+        fontFamily="inherit"
+        style={{ color: planCss(icon.color) }}
+      >
+        {label}
+      </text>
+      {sub && (
+        <text
+          className="plan__label plan__label--dim"
+          x={at.x}
+          y={y + LABEL_SIZE + 2}
+          textAnchor="middle"
+          fontSize={SUB_LABEL_SIZE}
+          fontFamily="inherit"
+        >
+          {sub}
+        </text>
+      )}
+    </>
   );
 });
 
@@ -363,6 +377,18 @@ export const PlanWallsView = memo(function PlanWallsView({
   const byId = new Map(walls.map((w) => [w.id, w]));
   return (
     <g className="plan__walls" style={{ color: planCss(PLAN_INK) }}>
+      {/* A closed room's floor, tinted under everything (audit L1). */}
+      {walls
+        .filter((w) => w.closed)
+        .map((wall) => (
+          <polygon
+            key={`f${wall.id}`}
+            className="plan__floor"
+            points={wallPoints(wall)
+              .map((p) => `${p.x},${p.y}`)
+              .join(' ')}
+          />
+        ))}
       {walls.flatMap((wall) =>
         wallPieces(wall, openings).map((piece, i) => (
           <polygon
@@ -403,6 +429,9 @@ export const PlanWallsView = memo(function PlanWallsView({
 
 /** Radius of the number of a blocking position, in view units. */
 const STEP_DOT = 11;
+/** Where the editor draws a position's number: under it and to the left, clear of its label. */
+const STEP_BELOW = 20;
+const STEP_BESIDE = 26;
 
 /**
  * The blocking of an icon (round 6, d): its earlier positions as veiled copies, the moves
@@ -484,12 +513,17 @@ const BlockingNumbers = memo(function BlockingNumbers({
   const at = blockingPositions(icon);
   return (
     <g style={{ color: planCss(icon.color) }}>
-      {(route ? at.slice(0, -1) : at).map((p, i) => (
+      {at.map((p, i) => (
         <g
           // biome-ignore lint/suspicious/noArrayIndexKey: the number is the place in the order.
           key={i}
           className="plan__step"
-          transform={route ? `translate(${p.x} ${p.y})` : `translate(${p.x - 24} ${p.y - 24})`}
+          // In the editor each position, the last too, is numbered beside it (audit M5).
+          transform={
+            route
+              ? `translate(${p.x - STEP_BESIDE} ${p.y + STEP_BELOW})`
+              : `translate(${p.x - 24} ${p.y - 24})`
+          }
         >
           <circle r={STEP_DOT} style={{ fill: 'currentColor' }} />
           <text textAnchor="middle" y={4.5} fontSize={13} fontWeight={600}>
@@ -663,9 +697,16 @@ const PlanDrawingView = memo(function PlanDrawingView({
   lifted,
   label,
   background = false,
+  extent = false,
   children,
 }: {
   plan: PlanLike;
+  /**
+   * Draws in the coordinates of the plan's 3:2 extent, what lies beyond it too, for a surface
+   * that pans and zooms (the editor, the view). Otherwise the drawing frames what is on the plan
+   * (planFrame, decision 0118): the card, the slides, the call sheet.
+   */
+  extent?: boolean;
   /**
    * The picture under the plan (decision 0110): drawn in the editor and on the board card, left
    * out of the slides and sheets, as of exports, unless they ask for it.
@@ -689,11 +730,14 @@ const PlanDrawingView = memo(function PlanDrawingView({
   const off = [...(plan.hiddenLayers ?? []), ...(hidden ?? [])];
   const stack = planStack(plan, off);
   const icons = stack.filter((e) => e.ref.kind === 'icons').map((e) => e.item as PlanIcon);
+  const frame = extent
+    ? { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H }
+    : planFrame(plan, background, hidden ?? []);
   return (
     // biome-ignore lint/a11y/noSvgWithoutTitle: named by aria-label in the editor, hidden elsewhere.
     <svg
       className="plan__svg"
-      viewBox={`0 0 ${PLAN_VIEW_W} ${PLAN_VIEW_H}`}
+      viewBox={`${frame.x} ${frame.y} ${frame.w} ${frame.h}`}
       style={{ aspectRatio: String(PLAN_ASPECT) }}
       {...(label ? { role: 'group', 'aria-label': label } : { 'aria-hidden': true })}
     >

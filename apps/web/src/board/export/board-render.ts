@@ -19,14 +19,17 @@ import {
   linkedPlan,
   measureEnds,
   openingLines,
+  PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanStackEntry,
   pieceOutline,
+  planFrame,
   planStack,
   type Rect,
   shownOpenings,
   variantView,
   wallPieces,
+  wallPoints,
 } from '@inkadra/canvas-core';
 import {
   type Element,
@@ -42,10 +45,12 @@ import { croppedRotatedSize } from '../image-crop.ts';
 import {
   CHARACTER_COLOURS,
   iconLabel,
+  iconSubLabel,
   LABEL_SIZE,
   measureText,
   PLAN_INK,
   planToken,
+  SUB_LABEL_SIZE,
 } from '../plan/PlanDrawing.tsx';
 import { videoEmbedUrl } from '../youtube.ts';
 import type { Placed } from './board-model.ts';
@@ -658,7 +663,7 @@ export function body(p: Placed, ctx: CardContext): Op[] {
         },
       ];
       const box = { x: p.x, y: p.y + PLAN_HEAD, w: p.w, h: p.w / PLAN_ASPECT };
-      return [...ops, ...planOps(drawn, box, ctx)];
+      return [...ops, ...framedPlanOps(drawn, box, ctx)];
     }
     case 'map': {
       const ops: Op[] = [];
@@ -953,6 +958,30 @@ function mix(hex: string, base: string, t: number): string {
 }
 
 /**
+ * A plan framed in `box` (decision 0118): what is drawn on it (planFrame), centred, in the plan's
+ * shape; what lies beyond the frame is cut.
+ */
+export function framedPlanOps(
+  stored: Extract<Element, { type: 'plan' }>,
+  box: Rect,
+  ctx: CardContext,
+  moves = true,
+): Op[] {
+  const f = planFrame(stored, false);
+  const k = Math.min(box.w / f.w, box.h / f.h);
+  const whole = {
+    x: box.x + (box.w - f.w * k) / 2 - f.x * k,
+    y: box.y + (box.h - f.h * k) / 2 - f.y * k,
+    w: PLAN_VIEW_W * k,
+    h: PLAN_VIEW_H * k,
+  };
+  return planOps(stored, whole, ctx, moves, true, box);
+}
+
+/** How much of the ink tints the floor of a closed room over the paper (audit L1). */
+const FLOOR_TINT = 0.04;
+
+/**
  * A set plan's drawing as vectors, without the grid (decisions 0062 and 0104), in the printed
  * theme's colours and the stacking order of the board: walls, tiers 0 and 1, beams and blocking
  * moves, tiers 2 to 5, blocking numbers, labels. `moves`: blocking moves and numbers, on unless
@@ -965,6 +994,8 @@ export function planOps(
   moves = true,
   /** Beams and cones; a legend's glyph leaves them out. */
   beams = true,
+  /** Where the drawing is cut; `box` (the plan's extent) without one. */
+  clipTo?: Rect,
 ): Op[] {
   // Links read from the cards the audience may see; without them, the text the icons hold.
   const el = ctx.cards ? linkedPlan(stored, ctx.cards, { palette: CHARACTER_COLOURS }) : stored;
@@ -986,6 +1017,14 @@ export function planOps(
     const wallInk = ink(PLAN_INK);
     const openings = shownOpenings(el);
     const walls = new Map((el.walls ?? []).map((w) => [w.id, w]));
+    // A closed room's floor, tinted under everything (audit L1).
+    for (const wall of el.walls ?? [])
+      if (wall.closed)
+        inside.push({
+          kind: 'polygon',
+          points: flat(wallPoints(wall)),
+          fill: mix(c['text-primary'], c['surface-1'], FLOOR_TINT),
+        });
     for (const wall of el.walls ?? [])
       for (const piece of wallPieces(wall, openings))
         inside.push({
@@ -1089,7 +1128,7 @@ export function planOps(
   }
   for (const e of stack) if (e.tier >= 2) inside.push(...itemOps(e));
   inside.push(...numbers, ...labels);
-  return [{ kind: 'clip', ...box, ops: inside }];
+  return [{ kind: 'clip', ...(clipTo ?? box), ops: inside }];
 
   /**
    * A camera's cone, a light's beam tinted by its colour temperature, or the glow of a light
@@ -1204,6 +1243,33 @@ export function planOps(
         },
         { kind: 'text', x, y, text: label, size, weight: 500, color },
       );
+      // A named light's colour temperature and level, dim, under its label (audit M4).
+      const sub = iconSubLabel(icon);
+      if (sub) {
+        const small = SUB_LABEL_SIZE * k;
+        const sw = ctx.measure(sub, small, 400);
+        const sx = box.x + a.x * k - sw / 2;
+        const sy = y + (LABEL_SIZE + 2) * k;
+        labels.push(
+          {
+            kind: 'rect',
+            x: sx - 2 * k,
+            y: sy - small,
+            w: sw + 4 * k,
+            h: small * 1.3,
+            fill: c['surface-1'],
+          },
+          {
+            kind: 'text',
+            x: sx,
+            y: sy,
+            text: sub,
+            size: small,
+            weight: 400,
+            color: c['text-secondary'],
+          },
+        );
+      }
     }
     return out;
   }

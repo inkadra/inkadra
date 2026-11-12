@@ -261,13 +261,17 @@ for (const theme of ['dark', 'light'] as const) {
     await expect.poll(async () => (await icons('actor'))[0]?.pose).toBe('seated');
     await shot('actor');
 
-    // Several items: a box over the two lamps; align them; the mix is named.
+    // Several items: a box over the two lamps, drawn with Shift (a plain drag on empty space
+    // pans, decision 0118); align them; the mix is named.
     const a = await point([170, 110]);
     const b = await point([730, 190]);
+    await page.keyboard.press('Escape');
+    await page.keyboard.down('Shift');
     await page.mouse.move(a.x, a.y);
     await page.mouse.down();
     await page.mouse.move(b.x, b.y, { steps: 5 });
     await page.mouse.up();
+    await page.keyboard.up('Shift');
     await expect(props).toContainText('2 elementi selezionati');
     await props.getByRole('button', { name: 'Allinea in alto' }).click();
     await shot('multi');
@@ -322,11 +326,18 @@ for (const theme of ['dark', 'light'] as const) {
     await expect(kit.getByRole('radio', { name: '120 V' })).toBeChecked();
     await shot('kit');
 
-    // Zoom in and back to fit.
-    await editor.getByRole('button', { name: 'Ingrandisci' }).click();
-    await expect(editor.locator('.plan-canvas__percent')).toHaveText('150%');
+    // Zoom in and back to fit: the plan opens fitted to what is drawn (decision 0118).
+    const percent = editor.locator('.plan-canvas__percent');
     await editor.getByRole('button', { name: 'Adatta la pianta' }).click();
-    await expect(editor.locator('.plan-canvas__percent')).toHaveText('100%');
+    // The percent follows the view on the next frame.
+    await page.evaluate(
+      () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+    );
+    const fitted = await percent.innerText();
+    await editor.getByRole('button', { name: 'Ingrandisci' }).click();
+    await expect(percent).not.toHaveText(fitted);
+    await editor.getByRole('button', { name: 'Adatta la pianta' }).click();
+    await expect(percent).toHaveText(fitted);
 
     // A setup from the current one: tabs, and the note of what changed from the base.
     await editor.getByRole('button', { name: 'Aggiungi un setup' }).click();
@@ -447,8 +458,12 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(viewer.locator('.plan__svg')).toBeVisible();
       await expect(viewer.getByRole('toolbar', { name: 'Strumenti della pianta' })).toHaveCount(0);
       await expect(viewer.locator('.plan-editor__stage')).toHaveCount(0);
+      // Opened fitted to what is drawn (decision 0118); the button zooms in.
+      const zoom = viewer.getByRole('button', { name: /^\d+% · Adatta la pianta$/ });
+      const percent = async () => Number((await zoom.innerText()).replace('%', ''));
+      const opened = await percent();
       await viewer.getByRole('button', { name: 'Ingrandisci' }).click();
-      await expect(viewer.getByRole('button', { name: '150%' })).toBeVisible();
+      await expect.poll(percent).toBeGreaterThan(opened);
       await viewer.getByRole('button', { name: 'Riduci' }).click();
       await settle(view, viewer);
       await view.screenshot({ path: join(out, `1280-${theme}-guest.png`) });
@@ -556,7 +571,7 @@ test('every library name fits its tile, in all six languages, at 1280 and 390 px
   expect(cut).toEqual([]);
 });
 
-test('earlier positions can be shown from the plan menu whenever an item has some', async ({
+test('earlier positions show by default and can be hidden from the plan menu', async ({
   page,
   baseURL,
 }) => {
@@ -565,11 +580,12 @@ test('earlier positions can be shown from the plan menu whenever an item has som
   await page.locator(`[data-el="${planId}"]`).dblclick();
   const editor = page.getByRole('dialog', { name: /Pianta del set/ });
   const faded = editor.locator('.plan-editor__stage [style*="opacity: 0.4"]');
-  await expect(faded).toHaveCount(0);
+  // As the mockup draws them (audit M5): the earlier position veiled.
+  await expect(faded).toHaveCount(1);
   // Nothing selected: the plan's menu (by the scale) has the switch, as before decision 0104.
   await editor.locator('.plan-top__end .plan-top__btn[aria-haspopup="menu"]').click();
   await page.getByRole('menuitemradio', { name: 'Mostra posizioni precedenti' }).click();
-  await expect(faded).toHaveCount(1);
+  await expect(faded).toHaveCount(0);
 });
 
 test('a drag writes only what it changed: a colour set meanwhile by someone else stays', async ({

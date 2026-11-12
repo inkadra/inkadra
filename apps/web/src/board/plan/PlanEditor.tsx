@@ -21,7 +21,7 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu } from '../chrome.tsx';
-import { isMac } from '../shortcuts.ts';
+import { canSpacePan, isMac } from '../shortcuts.ts';
 import { isIcon, type PlanEditorProps, QUARTER_TURN, usePlanEditing } from './editing.ts';
 import { kitList } from './kit.ts';
 import { isNoteTool, type LibraryItem } from './library.ts';
@@ -38,6 +38,9 @@ import { PlanStart } from './PlanStart.tsx';
 import { ScenePicker } from './scenes.tsx';
 import { type SetupChange, setupChanges } from './setups.ts';
 import './plan.css';
+
+/** Px an arrow key moves the view when nothing is picked; four times that with Shift. */
+const PAN_KEY_STEP = 40;
 
 const NOTE_TOOL = { arrow: 'arrow', text: 'text', measure: 'measure', zone: 'zone' } as const;
 
@@ -84,6 +87,7 @@ export function PlanEditor(props: PlanEditorProps) {
   const [setupMenu, setSetupMenu] = useState<CSSProperties | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [fullProps, setFullProps] = useState(false);
+  const [toolSlot, setToolSlot] = useState<HTMLDivElement | null>(null);
   const [copied, setCopied] = useState(false);
   const [backgroundOpen, setBackgroundOpen] = useState<CSSProperties | null>(null);
   const backgroundButton = useRef<HTMLButtonElement>(null);
@@ -174,6 +178,12 @@ export function PlanEditor(props: PlanEditorProps) {
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
     // Whatever the editor does not use never reaches the board behind it.
     e.stopImmediatePropagation();
+    // Space held pans the drawing, as on the board (decision 0118).
+    if (e.key === ' ' && canSpacePan(e.target)) {
+      e.preventDefault();
+      if (!e.repeat) canvas.current?.space(e.type === 'keydown');
+      return;
+    }
     if (e.type !== 'keydown') return;
     // The setup tabs: arrows move between setups, F2 renames the current one. Here, since this
     // listener stops every key before the tabs' own handlers would see it.
@@ -230,7 +240,7 @@ export function PlanEditor(props: PlanEditorProps) {
       ed.remove();
     else if (mod && key === 'a')
       ed.setSelection(
-        itemsInRect(drawn, { x: -1, y: -1, w: 2000, h: 2000 }, ed.viewOf).filter((r) => {
+        itemsInRect(drawn, { x: -1e5, y: -1e5, w: 2e5, h: 2e5 }, ed.viewOf).filter((r) => {
           const found = planItem(drawn, r);
           return !!found && (!ed.activeLayer || layerOf(found) === ed.activeLayer);
         }),
@@ -250,11 +260,20 @@ export function PlanEditor(props: PlanEditorProps) {
         x: e.key === 'ArrowLeft' ? -k : e.key === 'ArrowRight' ? k : 0,
         y: e.key === 'ArrowUp' ? -k : e.key === 'ArrowDown' ? k : 0,
       });
+    } else if (e.key.startsWith('Arrow') && !ed.wallSel) {
+      // Nothing picked: the arrows move the view, as in the read-only view (decision 0118).
+      const d = e.shiftKey ? PAN_KEY_STEP * 4 : PAN_KEY_STEP;
+      canvas.current?.panBy(
+        e.key === 'ArrowLeft' ? d : e.key === 'ArrowRight' ? -d : 0,
+        e.key === 'ArrowUp' ? d : e.key === 'ArrowDown' ? -d : 0,
+      );
     } else if (mod && key === 'z') e.shiftKey ? ed.store.undo.redo() : ed.store.undo.undo();
     else if (mod && key === 'y') ed.store.undo.redo();
     else if (mod && key === 'd' && selection.length) ed.duplicate();
-    else if (mod && (key === '=' || key === '+')) canvas.current?.zoomBy(1);
-    else if (mod && key === '-') canvas.current?.zoomBy(-1);
+    // Zoom by keys as on the board: + and −, with or without Ctrl/⌘; Shift+1 or 0 fits.
+    else if (key === '=' || key === '+') canvas.current?.zoomBy(1);
+    else if (key === '-') canvas.current?.zoomBy(-1);
+    else if ((e.shiftKey && e.code === 'Digit1') || (!mod && key === '0')) canvas.current?.fit();
     else if (!mod && key === 'r' && selection.length)
       ed.rotate(e.shiftKey ? -QUARTER_TURN : QUARTER_TURN);
     else if (!mod && e.key === ']' && selection.length) ed.restack(1);
@@ -683,7 +702,7 @@ export function PlanEditor(props: PlanEditorProps) {
           </Button>
         </header>
         <div className="plan-main plan-main--phone">
-          <PlanCanvas ed={ed} handle={canvas} />
+          <PlanCanvas ed={ed} handle={canvas} toolSlot={toolSlot} />
           <button
             type="button"
             className="plan-float plan-top__kitpill"
@@ -715,6 +734,8 @@ export function PlanEditor(props: PlanEditorProps) {
             />
           </section>
         )}
+        {/* The bar of tools, at the very bottom under the sheet (audit P2). */}
+        <div ref={setToolSlot} className="plan-phone-tools" />
         {ed.sheet === 'library' && library}
         {picker.field}
         {backgroundPop}

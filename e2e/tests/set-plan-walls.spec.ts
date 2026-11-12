@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { createElement, toWallPoints } from '@inkadra/canvas-core';
-import { createBoardDoc, type Element, readElement, roots } from '@inkadra/doc-schema';
+import { createBoardDoc, type Element, readElement, roots, STROKE_GRID } from '@inkadra/doc-schema';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
@@ -175,6 +175,18 @@ test('starts from a ready room, draws and closes a room with a typed length, pla
       return [p.walls?.length, p.walls?.[0]?.closed, p.walls?.[0]?.points.length, p.scale];
     })
     .toEqual([1, true, 8, 88]);
+  // The room picked: its size written outside its walls, as the mockup does (decision 0118).
+  const room = (await read(ids.empty)).walls?.[0]?.points ?? [];
+  const side = [
+    (((room[0] as number) + (room[2] as number)) / 2 / STROKE_GRID) * 1000,
+    (((room[1] as number) + (room[3] as number)) / 2 / STROKE_GRID) * (1000 / 1.5),
+  ];
+  const onWall = await at(side);
+  await page.mouse.click(onWall.x, onWall.y);
+  const dims = editor.locator('[data-room-dims]');
+  await expect(dims).toContainText('8,0 m');
+  await expect(dims).toContainText('6,0 m');
+  await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await expect(editor).toHaveCount(0);
 

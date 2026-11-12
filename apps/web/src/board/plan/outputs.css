@@ -131,24 +131,15 @@
   grid-template-columns: minmax(0, 1fr) 300px;
   min-height: 0;
 }
-.plan-view__stage {
+.plan-view .plan-view__stage {
   position: relative;
-  container-type: size;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
+  inset: auto;
   min-height: 0;
-  background: var(--ink-bg-canvas);
+  background-color: var(--ink-bg-canvas);
   cursor: grab;
-  touch-action: none;
 }
-.plan-view__stage:active {
+.plan-view .plan-view__stage:active {
   cursor: grabbing;
-}
-.plan-view__sheet {
-  background: var(--ink-surface-1);
-  border: 1px solid var(--ink-border-muted);
-  border-radius: var(--ink-radius-sm);
 }
 .plan-view__bar {
   position: absolute;

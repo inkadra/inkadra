@@ -2,6 +2,7 @@
 import { type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import type { Point } from './geometry.ts';
 import {
+  clampGrid,
   iconCentre,
   iconTransform,
   normalizeRotation,
@@ -60,8 +61,8 @@ const toView = (p: { x: number; y: number }): Point => ({
   y: (p.y / STROKE_GRID) * PLAN_VIEW_H,
 });
 const toGrid = (p: Point) => ({
-  x: Math.round(Math.max(0, Math.min(STROKE_GRID, (p.x / PLAN_VIEW_W) * STROKE_GRID))),
-  y: Math.round(Math.max(0, Math.min(STROKE_GRID, (p.y / PLAN_VIEW_H) * STROKE_GRID))),
+  x: clampGrid((p.x / PLAN_VIEW_W) * STROKE_GRID),
+  y: clampGrid((p.y / PLAN_VIEW_H) * STROKE_GRID),
 });
 
 function turn(p: Point, degrees: number): Point {
@@ -359,10 +360,9 @@ export function moveWithAttached(
   const all = withAttached(icons, ids);
   const gx = (d.x / PLAN_VIEW_W) * STROKE_GRID;
   const gy = (d.y / PLAN_VIEW_H) * STROKE_GRID;
-  const clamp = (n: number) => Math.round(Math.max(0, Math.min(STROKE_GRID, n)));
   return icons
     .filter((i) => all.has(i.id))
-    .map((i) => ({ ...i, x: clamp(i.x + gx), y: clamp(i.y + gy) }));
+    .map((i) => ({ ...i, x: clampGrid(i.x + gx), y: clampGrid(i.y + gy) }));
 }
 
 /**

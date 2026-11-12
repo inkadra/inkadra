@@ -160,6 +160,7 @@ it('lists the shots without empty labels', () => {
 it('draws the background where it was placed, at its opacity, in greys, and not when hidden', () => {
   const images = (ops: readonly Op[]): Array<Extract<Op, { kind: 'image' }>> =>
     ops.flatMap((op) => (op.kind === 'image' ? [op] : op.kind === 'clip' ? images(op.ops) : []));
+  // The old extent shown, so that where the picture lies can be compared (decision 0118).
   const sheet = (background: PlanElement['background'], hidden?: PlanElement['hiddenLayers']) =>
     images(
       planSheetPages(
@@ -167,7 +168,7 @@ it('draws the background where it was placed, at its opacity, in greys, and not 
           setups: [{ plan: { ...plan, background, hiddenLayers: hidden }, name: 'S', shots: [] }],
           scene: '',
           place: '',
-          area: null,
+          area: { x: 0, y: 0, w: 1000, h: 1000 / 1.5 },
           include: { ...PLAN_SHEET_INCLUDE, background: true },
           t,
           locale: 'en',

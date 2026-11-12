@@ -231,7 +231,14 @@ for (const theme of ['dark', 'light'] as const) {
     await card.dblclick();
     const editor = page.getByRole('dialog', { name: 'Pianta del set · Cucina, giorno 2' });
     await expect(editor.getByRole('toolbar', { name: 'Strumenti della pianta' })).toBeVisible();
-    await expect(editor.locator('pattern')).toHaveCount(1);
+    // The dots of the grid cover the whole surface (decision 0118).
+    await expect
+      .poll(() =>
+        editor
+          .locator('.plan-canvas__surface')
+          .evaluate((el) => (el as HTMLElement).style.backgroundSize),
+      )
+      .not.toBe('0px 0px');
     // The board behind never gets the editor's keys: Delete, N or Ctrl+D act on nothing there.
     await expect(editor).toBeFocused();
     for (const key of ['Delete', 'n', 'Control+d', 'ArrowLeft']) await page.keyboard.press(key);
@@ -340,8 +347,8 @@ for (const theme of ['dark', 'light'] as const) {
     }
     const annaNow = async () => (await saved()).plan?.icons?.find((i) => i.label === 'Anna');
     await expect.poll(async () => (await annaNow())?.steps?.length).toBe(2);
-    // Numbered points, the icon being the last position; no veiled copies.
-    await expect(editor.locator('.plan__step')).toHaveCount(2);
+    // Every position numbered, the icon being the last one (audit M5).
+    await expect(editor.locator('.plan__step')).toHaveCount(3);
     await page.screenshot({ path: join(out, `desktop-${theme}-blocking.png`) });
     await editor
       .getByRole('toolbar', { name: 'Percorso' })
@@ -371,12 +378,15 @@ for (const theme of ['dark', 'light'] as const) {
 
     // Several items: a box dragged over the table and Marco picks both; Group keeps them
     // together.
+    // A plain drag on empty space pans (decision 0118): Shift draws the box.
     const from2 = at(160, 95);
     const to2 = at(250, 185);
+    await page.keyboard.down('Shift');
     await page.mouse.move(from2.x, from2.y);
     await page.mouse.down();
     await page.mouse.move(to2.x, to2.y, { steps: 5 });
     await page.mouse.up();
+    await page.keyboard.up('Shift');
     await expect(props).toContainText(/\d+ elementi selezionati/);
     await props.getByRole('button', { name: 'Raggruppa', exact: true }).click();
     await expect
@@ -470,10 +480,10 @@ for (const theme of ['dark', 'light'] as const) {
     const spot2 = at(60, 120);
     await page.mouse.click(spot2.x, spot2.y);
     await page.keyboard.up('Shift');
-    await expect(stage).toHaveClass(/--icons/);
+    await expect(editor.locator('.plan-canvas__surface')).toHaveClass(/--icons/);
     const spot3 = at(60, 170);
     await page.mouse.click(spot3.x, spot3.y);
-    await expect(stage).toHaveClass(/--select/);
+    await expect(editor.locator('.plan-canvas__surface')).toHaveClass(/--select/);
     await expect
       .poll(async () => (await saved()).plan?.icons?.filter((i) => i.kind === 'fresnel').length)
       .toBe(4);

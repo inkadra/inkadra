@@ -1459,6 +1459,7 @@
       "viewLength": "View length",
       "zoom": "Zoom",
       "zoomFit": "Fit the plan",
+      "zoomFitAt": "{{percent}}% · Fit the plan",
       "stands": {
         "cstand": "C-stand",
         "combo": "Combo stand",
@@ -1620,7 +1621,7 @@
       "view": {
         "only": "View only",
         "legend": "Legend",
-        "hint": "Drag to move, pinch or scroll to zoom",
+        "hint": "Drag to move, pinch or Ctrl + scroll to zoom",
         "note": "Anyone who can open the board sees this plan, the legend, the kit and the power.",
         "guestNote": "You see the plan as it is shared with you: the setups, the legend, the kit and the power."
       },
@@ -5125,7 +5126,7 @@
         "steps": {
           "0": {
             "title": "Draw the set",
-            "text": "Lines, shapes, texts and measures from the bar at the bottom."
+            "text": "Lines, shapes, texts and measures from the bar at the bottom. Drag on empty space to select; click again to pick what lies underneath."
           },
           "1": {
             "title": "The library",
@@ -5146,6 +5147,10 @@
           "5": {
             "title": "Background",
             "text": "A floor plan or a photo under the drawing to trace over: move it, scale it, set its opacity and greys."
+          },
+          "6": {
+            "title": "Move around the plan",
+            "text": "Space and drag, the wheel or two fingers move the plan; Ctrl and the wheel or a pinch zoom it. With nothing selected the arrows move it, 0 fits it, + and − zoom."
           }
         }
       },

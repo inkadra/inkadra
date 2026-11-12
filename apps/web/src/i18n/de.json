@@ -1459,6 +1459,7 @@
       "viewLength": "Sichtlänge",
       "zoom": "Zoom",
       "zoomFit": "Plan einpassen",
+      "zoomFitAt": "{{percent}}% · Plan einpassen",
       "stands": {
         "cstand": "C-Stand",
         "combo": "Combo-Stativ",
@@ -1620,7 +1621,7 @@
       "view": {
         "only": "Nur ansehen",
         "legend": "Legende",
-        "hint": "Ziehen zum Verschieben, kneifen oder scrollen zum Zoomen",
+        "hint": "Ziehen zum Verschieben, kneifen oder Strg + Mausrad zum Zoomen",
         "note": "Wer das Board öffnen kann, sieht diesen Plan, die Legende, das Material und den Strom.",
         "guestNote": "Du siehst den Plan so, wie er mit dir geteilt ist: Setups, Legende, Material und Strom."
       },
@@ -5125,7 +5126,7 @@
         "steps": {
           "0": {
             "title": "Das Set zeichnen",
-            "text": "Linien, Formen, Texte und Maße aus der Leiste unten."
+            "text": "Linien, Formen, Texte und Maße aus der Leiste unten. Ziehe auf einer leeren Stelle, um auszuwählen; klicke erneut, um auszuwählen, was darunter liegt."
           },
           "1": {
             "title": "Die Bibliothek",
@@ -5146,6 +5147,10 @@
           "5": {
             "title": "Hintergrund",
             "text": "Ein Grundriss oder ein Foto unter der Zeichnung zum Nachzeichnen: verschieben, skalieren, Deckkraft und Grautöne wählen."
+          },
+          "6": {
+            "title": "Im Plan bewegen",
+            "text": "Leertaste und Ziehen, das Mausrad oder zwei Finger verschieben den Plan; Strg und Mausrad oder Kneifen zoomen. Ohne Auswahl verschieben ihn die Pfeiltasten, 0 passt ihn ein, + und − zoomen."
           }
         }
       },

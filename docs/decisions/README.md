@@ -122,6 +122,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0115](0115-set-plan-setup-grouping-and-natural-sources.md) | One grouping of shots for the shot list and the schedule (by setup too) in the account's preferences; the sun and other natural sources are in the legend, never in the kit or the power; the sheet prints the background, grey when grey |
 | [0116](0116-shared-client-logic-in-mpl-packages.md) | Product logic shared by clients (call sheet, moodboard groups, comment parts, card estimates and measures) lives once in an MPL package; a client never copies it from an AGPL app |
 | [0117](0117-set-plan-setups-share-circuits.md) | Set plan: setups share the base's circuits, voltage and title; the first setup is renamed like the others; "All setups" counts distinct items |
+| [0118](0118-set-plan-drawing-surface.md) | Set plan: coordinates reach beyond the 3:2 extent (schema 25), outputs frame what is drawn, the editor and view pan and zoom a surface without edges; a click picks a light before its modifiers, a click again what lies under |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071, 0104): they were accepted in parallel,
 and accepted records are not renumbered.

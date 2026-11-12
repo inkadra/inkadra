@@ -35,7 +35,7 @@ import {
   type SceneElement,
   settleWrite,
   snapTarget,
-  toGrid,
+  toPlanGrid,
   transferPlanItems,
   updateElement,
   updatePlanItems,
@@ -148,7 +148,8 @@ export function usePlanEditing(props: PlanEditorProps) {
   /** Layers, and the Grip and crew group, this person hides while editing. */
   const [myHidden, setMyHidden] = useState<ReadonlySet<PlanGroupName>>(new Set());
   const [activeLayer, setActiveLayer] = useState<PlanLayer | null>(null);
-  const [ghosts, setGhosts] = useState(false);
+  // Earlier positions show, veiled, as the mockup draws them (audit M5).
+  const [ghosts, setGhosts] = useState(true);
   /** The base setup drawn faintly behind a setup. */
   const [ghostBase, setGhostBase] = useState(false);
   const [moving, setMoving] = useState<string | null>(null);
@@ -500,8 +501,8 @@ export function usePlanEditing(props: PlanEditorProps) {
         icon: {
           kind: k,
           color: penColor ?? iconColor(k),
-          x: toGrid(p.x),
-          y: toGrid(p.y),
+          x: toPlanGrid(p.x),
+          y: toPlanGrid(p.y),
           ...defaultIconSize(k, drawn.scale),
           ...(layer !== kindLayer(k) ? { layer } : {}),
         },
