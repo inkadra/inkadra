@@ -185,7 +185,8 @@ whether an asset can be shown yet stay with the client and are passed in.
 
 For the server to render the set plan sheet with the web's code, the exports' pages begin to move
 into a new MPL-2.0 package, `packages/print` (`@inkadra/print`), which draws pages as a list of
-operations (decision 0038) and holds no PDF library: canvas-core stays independent of rendering.
+operations (decision 0038) and keeps its PDF library on its own path (below): canvas-core stays
+independent of rendering.
 First moved, whole: the page model (`ops.ts`, from the web's `export/pages.ts`: `Op`, `Page`,
 `ImageInfo`, `Measure`, `FontWeight`, `roundedRectPath`, `fitBox`, `imagePlacement`), the text
 (`text.ts`: `TextStyle`, `wrapText`, `ellipsize`, `textBlock`, `lineHeight`, `missingGlyphs`) and
@@ -238,6 +239,18 @@ exported on its own path, `@inkadra/print/measure`, so a client of the page mode
 the font reader. The web's `fonts.ts` keeps fetching Inter and the theme's heading font and calls
 them; a package test proves `measureFrom` gives the web's widths of the sheet's texts from
 `@fontsource/inter`'s files (a test-only dependency), and the sheet's goldens did not change.
+
+Then the PDF writer (`pdf.ts`, from the web's `export/render-pdf.ts`): `renderPdf` and
+`PdfMeta`, with what it draws with (`drawOps`, `clipPath`, `color`), on `pdf-lib` and
+`@pdf-lib/fontkit` (MIT, the web's versions), exported on its own path, `@inkadra/print/pdf`, so
+a client of the page model does not load the PDF library. It takes the pictures as `PdfImage`
+(size, JPEG or PNG bytes; the web's `LoadedImage` is one) and, for a picture printed in greys, a
+`grey` provider from the caller, since decoding and encoding a picture is the platform's; without
+one such a picture is drawn as given. How a picture turns grey is `greyPixels` (`grey.ts`, from
+the web's `export/images.ts`: Rec. 601 luma, rounded, alpha kept), which a provider applies to
+the decoded pixels. The web's `render-pdf.ts` wraps it with the browser's `greyBytes`, so its
+callers did not change; a package test writes a JPEG and a provider's greys in Node and compares
+the drawing operators, and the sheet's PDF goldens did not change.
 
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
