@@ -6151,7 +6151,7 @@
                 "review"
               ]
             },
-            "description": "The optional views that are on (decision 0121). Null or omitted on boards from before it: a storyboard then has all of its views, an ordinary board its moodboard when it holds images, links or colours (`referenceCount`)."
+            "description": "The optional views that are on (decision 0121). Null or omitted on boards from before it: a storyboard then has all of its views, an ordinary board its moodboard when it holds images, links or colours (`referenceCount`) and its review while a guest review link is live (`clientReview`)."
           },
           "docSchemaVersion": {
             "type": "integer",

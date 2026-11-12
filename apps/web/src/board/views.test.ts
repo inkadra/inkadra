@@ -28,7 +28,8 @@ describe('the views of a board (decision 0121)', () => {
     ]);
     // A view another kind owns is never on, whatever is stored.
     expect(boardViews(board('moodboard', ['shotlist']), undefined)).toEqual(['moodboard']);
-    expect(boardViews(board('board', ['review']), undefined)).toEqual(['canvas']);
+    expect(boardViews(board('board', ['review']), undefined)).toEqual(['canvas', 'review']);
+    expect(boardViews(board('moodboard', ['review']), undefined)).toEqual(['moodboard']);
   });
 
   it('has no Board view on a storyboard', () => {
@@ -50,6 +51,13 @@ describe('the views of a board (decision 0121)', () => {
     expect(viewsOn(board('board', null), { referenceCount: 3 })).toEqual(['moodboard']);
     expect(viewsOn(board('board', null), { referenceCount: 0 })).toEqual([]);
     expect(viewsOn(board('board', undefined), undefined)).toEqual([]);
+    // ... and its review while a guest review link is live.
+    expect(viewsOn(board('board', null), { clientReview: true })).toEqual(['review']);
+    expect(viewsOn(board('board', null), { referenceCount: 1, clientReview: true })).toEqual([
+      'moodboard',
+      'review',
+    ]);
+    expect(viewsOn(board('board', []), { clientReview: true })).toEqual([]);
     // A stored choice wins over the content.
     expect(viewsOn(board('board', []), { referenceCount: 3 })).toEqual([]);
   });

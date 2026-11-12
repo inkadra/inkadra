@@ -144,10 +144,23 @@ test('the sidebar tree of a project, and Add storyboard and Add moodboard in its
   const always = page.getByRole('menuitemcheckbox', { name: 'Lavagna' });
   await expect(always).toHaveAttribute('aria-checked', 'true');
   await expect(always).toHaveAttribute('aria-disabled', 'true');
+  // The views a board may turn on are switches that show off as well as on.
+  const moodboard = page.getByRole('menuitemcheckbox', { name: 'Moodboard' });
+  await expect(moodboard).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByRole('menuitemcheckbox', { name: 'Revisione' })).toHaveAttribute(
+    'aria-checked',
+    'false',
+  );
+  await expect(moodboard.locator('.ink-switch')).not.toHaveClass(/is-on/);
   await shoot(page, 'views-menu');
-  await page.getByRole('menuitemcheckbox', { name: 'Moodboard' }).click();
+  // The keyboard turns it on: the first switch has the focus.
+  await expect(moodboard).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(viewTabs(page)).toHaveText(['Lavagna', 'Moodboard']);
   await expect(row('Lavagna')).toBeVisible();
+  await page.getByRole('button', { name: 'Menu della board', exact: true }).click();
+  await expect(moodboard).toHaveAttribute('aria-checked', 'true');
+  await expect(moodboard.locator('.ink-switch')).toHaveClass(/is-on/);
   await page.keyboard.press('Escape');
   await blur(page);
   await shoot(page, 'board-with-moodboard');

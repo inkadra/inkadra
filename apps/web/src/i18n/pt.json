@@ -1275,6 +1275,7 @@
       "variants": "Variantes",
       "variant": "Variante",
       "base": "Base",
+      "newForScene": "Nova planta do set",
       "newVariant": "Nova variante",
       "variantMenu": "Duplicar como variante",
       "variantName": "Variante {{n}}",

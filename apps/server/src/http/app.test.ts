@@ -251,7 +251,8 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
     const on = await patch(story.id, ['review', 'shotlist']);
     expect(on.json().views).toEqual(['shotlist', 'review']);
     expect((await patch(mood.id, ['shotlist'])).statusCode).toBe(400);
-    expect((await patch(rootBoardId, ['review'])).statusCode).toBe(400);
+    expect((await patch(mood.id, ['review'])).statusCode).toBe(400);
+    expect((await patch(rootBoardId, ['review'])).json().views).toEqual(['review']);
     expect((await patch(rootBoardId, ['moodboard'])).json().views).toEqual(['moodboard']);
   });
 });

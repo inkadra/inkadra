@@ -22,7 +22,7 @@ import { CardReview } from '../CardReview.tsx';
 import { ContextMenu, Toast, UploadPanel } from '../chrome.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { PresentationView } from '../PresentationView.tsx';
-import { plansOfScene, ScenePlanButton, useTakeParam } from '../plan/scenes.tsx';
+import { addScenePlan, plansOfScene, ScenePlanButton, useTakeParam } from '../plan/scenes.tsx';
 import { openComments } from '../review-store.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { startUpload } from '../uploads.ts';
@@ -441,6 +441,7 @@ export function StoryboardView({
               group={g}
               store={store}
               readOnly={readOnly}
+              userId={userId}
               onAddFrame={() => newFrame(g.scene?.id ?? null)}
               onDelete={deleteScene}
             >
@@ -639,6 +640,7 @@ function SceneSection({
   group,
   store,
   readOnly,
+  userId,
   onAddFrame,
   onDelete,
   children,
@@ -646,6 +648,7 @@ function SceneSection({
   group: SceneGroup;
   store: BoardStore;
   readOnly: boolean;
+  userId: string;
   onAddFrame: () => void;
   /** Deletes an omitted scene and its frames, saving a version first. */
   onDelete: (scene: SceneElement) => void;
@@ -764,7 +767,10 @@ function SceneSection({
           {scene.omitted && `${t('film.scene.notInScript')} · `}
           {t('film.total', { count: frames.length })}
         </span>
-        <ScenePlanButton plans={plansOfScene(store.getSnapshot().byId.values(), scene.id)} />
+        <ScenePlanButton
+          plans={plansOfScene(store.getSnapshot().byId.values(), scene.id)}
+          onNew={readOnly ? undefined : () => addScenePlan(store, scene, userId)}
+        />
         {/* An editor's pressed toggle already says the scene is hidden. */}
         {(readOnly || !scene.guestHidden) && <GuestVisibility store={store} element={scene} />}
         {!readOnly && scene.omitted && (

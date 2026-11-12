@@ -874,7 +874,10 @@ export type MenuItem =
       content?: ReactNode;
       /** One choice of a set, ticked when it is the current one. */
       checked?: boolean;
-      /** With `checked`: a switch of its own rather than one choice of a set. */
+      /**
+       * With `checked`: a switch of its own rather than one choice of a set, drawn as a switch
+       * that shows off as well as on (a disabled one keeps the tick).
+       */
       toggle?: boolean;
       /** Where the phone's card sheet puts the action, out of the list of other actions. */
       sheet?: SheetSlot;
@@ -1036,10 +1039,20 @@ export function ContextMenu({
               </span>
             )}
             {item.content ?? item.label}
-            {item.checked && (
-              <span className="menu__check" aria-hidden="true">
-                <Icon name="check" size={14} />
+            {item.toggle && !item.disabled ? (
+              // The switch is drawn, not a control: the item is the menuitemcheckbox.
+              <span
+                className={`ink-switch menu__switch${item.checked ? ' is-on' : ''}`}
+                aria-hidden="true"
+              >
+                <span className="ink-switch__track" />
               </span>
+            ) : (
+              item.checked && (
+                <span className="menu__check" aria-hidden="true">
+                  <Icon name="check" size={14} />
+                </span>
+              )
             )}
             {item.hint && (
               <span id={`${hintId}-${i}`} className="menu__hint" aria-hidden="true">

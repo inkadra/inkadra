@@ -1,6 +1,7 @@
 import { type Browser, expect, type Page, test } from '@playwright/test';
 import { captureComments } from '../helpers/comment-screenshots.ts';
 import { chooseSelect } from '../helpers/select.ts';
+import { turnOn } from '../helpers/views.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists. Each test makes
 // its own project, so it does not depend on the other specs.
@@ -612,8 +613,17 @@ test('card comments keep their audience explicit and resolved conversations reac
   await expect(panel.locator('.comment-thread')).toBeFocused();
   await expect(panel.getByText('Possiamo schiarire il cielo?')).toBeVisible();
   await panel.getByRole('button', { name: 'Riapri' }).click();
-  // The Review view belongs to storyboards: a board's cards are reviewed on the canvas (0121).
+  // A new board starts without its Review view (decision 0121): the address opens the canvas
+  // until the view is turned on.
   await page.goto(`/p/${project.id}?view=review`);
   await expect(page.getByTestId('canvas')).toBeVisible();
   await expect(page.locator('.client-review')).toHaveCount(0);
+  await turnOn(page, 'Revisione');
+  await page.goto(`/p/${project.id}?view=review`);
+  const review = page.locator('.client-review');
+  await expect(review.getByRole('button', { name: 'Cambia stato' })).toBeVisible();
+  await expect(review.locator('.comment-thread').first()).toHaveCSS('border-top-width', '0px');
+  await review.getByRole('button', { name: 'Rispondi' }).first().click();
+  await expect(review.getByText('Anche gli ospiti leggono questa risposta.')).toBeVisible();
+  await captureComments(page, 'review-view');
 });

@@ -1275,6 +1275,7 @@
       "variants": "Variants",
       "variant": "Variant",
       "base": "Base",
+      "newForScene": "New set plan",
       "newVariant": "New variant",
       "variantMenu": "Duplicate as a variant",
       "variantName": "Variant {{n}}",

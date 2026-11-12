@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type PlanElement, type SceneElement, updateElement } from '@inkadra/canvas-core';
+import {
+  createElement,
+  type PlanElement,
+  type SceneElement,
+  updateElement,
+} from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Button, Checkbox, Icon } from '@inkadra/ui';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
@@ -17,6 +22,23 @@ export function plansOfScene(elements: Iterable<Element>, sceneId: string): Plan
   return [...elements]
     .filter((e): e is PlanElement => e.type === 'plan' && !!e.sceneIds?.includes(sceneId))
     .sort((a, b) => a.createdAt - b.createdAt);
+}
+
+/**
+ * A new set plan for a scene, the same card a plan made on the canvas and linked to the scene
+ * is, placed under the scene: a storyboard has no canvas to draw it on (decision 0121).
+ */
+export function addScenePlan(store: BoardStore, scene: SceneElement, userId: string): string {
+  store.undo.stopCapturing();
+  const plan = createElement(
+    store.doc,
+    'plan',
+    { x: scene.x, y: scene.y + (scene.h ?? 0) + 40 },
+    { sceneIds: [scene.id] },
+    { userId, origin: LOCAL },
+  );
+  store.undo.stopCapturing();
+  return plan.id;
 }
 
 /** The scenes a plan serves live in canvas-core (decision 0116). */
@@ -192,21 +214,28 @@ export function ScenePicker({
 }
 
 /**
- * "Pianta del set" on a scene: opens its plan, or a menu when the scene has several. Nothing
- * when it has none.
+ * "Pianta del set" on a scene: opens its plan, or a menu when the scene has several. When it has
+ * none, "New set plan" for an editor (`onNew` makes it and gives its id), otherwise nothing.
  */
 export function ScenePlanButton({
   plans,
   compact,
+  onNew,
 }: {
   plans: readonly PlanElement[];
   /** The short chip of the schedule. */
   compact?: boolean;
+  onNew?: (() => string) | undefined;
 }) {
   const { t } = useTranslation();
   const { openPlan } = usePlanNav();
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  if (plans.length === 0) return null;
+  if (plans.length === 0)
+    return onNew ? (
+      <Button icon="map" onClick={() => openPlan(onNew())}>
+        {t('board.plan.newForScene')}
+      </Button>
+    ) : null;
   const name = (p: PlanElement) =>
     p.title ? `${t('board.plan.name')} · ${p.title}` : t('board.plan.name');
   return (

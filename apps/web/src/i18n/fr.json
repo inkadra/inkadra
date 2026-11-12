@@ -1275,6 +1275,7 @@
       "variants": "Variantes",
       "variant": "Variante",
       "base": "Base",
+      "newForScene": "Nouveau plan au sol",
       "newVariant": "Nouvelle variante",
       "variantMenu": "Dupliquer en variante",
       "variantName": "Variante {{n}}",

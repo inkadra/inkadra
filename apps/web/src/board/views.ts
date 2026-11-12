@@ -67,16 +67,22 @@ export function defaultView(kind: BoardKind | undefined): BoardView {
 }
 
 type ViewsOf = Pick<Board, 'kind' | 'views'>;
-type CountsOf = Pick<BoardCount, 'referenceCount' | 'looseCount'> | undefined;
+type CountsOf =
+  | Pick<BoardCount, 'referenceCount' | 'looseCount' | 'clientReview'>
+  | undefined;
 
 /**
  * The optional views that are on. Boards from before decision 0121 store none: a storyboard
- * keeps all of its views, an ordinary board its moodboard when it holds images, links or colours.
+ * keeps all of its views, an ordinary board its moodboard when it holds images, links or colours
+ * and its review while a guest review link is live.
  */
 export function viewsOn(board: ViewsOf, counts: CountsOf): BoardOptionalView[] {
   const allowed = OPTIONAL_VIEWS[board.kind];
   if (board.views) return allowed.filter((v) => board.views?.includes(v));
-  if (board.kind === 'board') return (counts?.referenceCount ?? 0) > 0 ? ['moodboard'] : [];
+  if (board.kind === 'board')
+    return allowed.filter((v) =>
+      v === 'moodboard' ? (counts?.referenceCount ?? 0) > 0 : !!counts?.clientReview,
+    );
   return [...allowed];
 }
 

@@ -12,12 +12,12 @@ export const BoardOptionalView = z.enum(['moodboard', 'shotlist', 'schedule', 't
 export type BoardOptionalView = z.infer<typeof BoardOptionalView>;
 
 /**
- * The views each kind may turn on (decision 0121): a board its moodboard, a storyboard its shot
- * list and review. shortcut: Schedule and Troupe stay on the storyboard until the Production
+ * The views each kind may turn on (decision 0121): a board its moodboard and review (a guest
+ * review link can be made on any board), a storyboard its shot list and review. shortcut: Schedule and Troupe stay on the storyboard until the Production
  * board of 0121 holds them; move them there in that step.
  */
 export const OPTIONAL_VIEWS: Record<BoardKind, readonly BoardOptionalView[]> = {
-  board: ['moodboard'],
+  board: ['moodboard', 'review'],
   moodboard: [],
   storyboard: ['shotlist', 'schedule', 'troupe', 'review'],
 };
@@ -53,7 +53,8 @@ export const Board = z
         description:
           'The optional views that are on (decision 0121). Null or omitted on boards from ' +
           'before it: a storyboard then has all of its views, an ordinary board its moodboard ' +
-          'when it holds images, links or colours (`referenceCount`).',
+          'when it holds images, links or colours (`referenceCount`) and its review while a ' +
+          'guest review link is live (`clientReview`).',
       }),
     docSchemaVersion: z.int().min(1).openapi({
       description:

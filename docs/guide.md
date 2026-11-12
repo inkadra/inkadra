@@ -42,7 +42,7 @@ and **Moodboard** under **+ ▾**, add more, as many as you need. Each kind has 
 
 | Kind       | Always            | Can be turned on                     |
 | ---------- | ----------------- | ------------------------------------ |
-| Board      | the canvas        | Moodboard                            |
+| Board      | the canvas        | Moodboard and Review                 |
 | Moodboard  | the moodboard     | nothing                              |
 | Storyboard | scenes and frames | Shot list, Schedule, Crew and Review |
 
