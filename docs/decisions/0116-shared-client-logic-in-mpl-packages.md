@@ -89,7 +89,9 @@ stayed in the web until then). In `packages/canvas-core` (`plan-library.ts`): wh
 offers (`LIBRARY_CATEGORIES`, `LibraryItem`, `LibraryCategoryId`, `isNoteTool`), its search
 (`searchLibrary` with `LibraryHit`: by name, other names, category and group, ranked prefix,
 name, synonym, category, the shorter name first among prefixes, then the catalogue's order;
-`foldSearch`, how text is compared, case and accents ignored), the names it writes (`tileName`,
+`foldSearch`, how text is compared, case and accents ignored the same on every device: no
+locale's lower case, and the combining marks block rather than `\p{Diacritic}`, which Hermes may
+not parse), the names it writes (`tileName`,
 `placeOf`, `projectKitDetail`) and `knownLibraryItems` (the ids of a stored list a build knows).
 The words they ask for are in `PLAN_WORDS_EN` and the five languages (`board.plan.lib.alsoCalled`
 was added). In `packages/shared`, beside the preferences they write: `addPlanRecents` (newest

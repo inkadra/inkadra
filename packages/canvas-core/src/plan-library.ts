@@ -41,12 +41,18 @@ const KNOWN = new Set<string>([...PLAN_ICON_KINDS, ...PLAN_NOTE_TOOLS]);
 export const knownLibraryItems = (list: readonly string[]) =>
   list.filter((k) => KNOWN.has(k)) as LibraryItem[];
 
-/** Text as the search compares it: lower case, accents dropped ("Sôft" reads "soft"). */
+/**
+ * Text as the search compares it: lower case, accents dropped ("Sôft" reads "soft"). The same on
+ * every device: lower case by Unicode's default, never the device's locale (a Turkish one would
+ * write "GRID" as "grıd"), and the accents as the combining marks block after NFD, which every
+ * JavaScript engine parses (Hermes may not know `\p{Diacritic}`); on the catalogues' words it
+ * drops exactly what `\p{Diacritic}` dropped (a test checks every word).
+ */
 export const foldSearch = (s: string) =>
   s
-    .toLocaleLowerCase()
+    .toLowerCase()
     .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '');
+    .replace(/[\u0300-\u036f]/g, '');
 
 /**
  * The name on a library tile: the catalogue's shorter one (`tileNames`) where the full name

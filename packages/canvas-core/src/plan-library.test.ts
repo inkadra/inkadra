@@ -13,7 +13,7 @@ import {
   tileName,
 } from './plan-library.ts';
 import { english, wordsOf } from './plan-words.fixture.ts';
-import type { Words } from './plan-words.ts';
+import { PLAN_WORDS_EN, type Words } from './plan-words.ts';
 import { PLAN_WORDS_DE } from './plan-words-de.ts';
 import { PLAN_WORDS_ES } from './plan-words-es.ts';
 import { PLAN_WORDS_FR } from './plan-words-fr.ts';
@@ -131,6 +131,50 @@ describe('searchLibrary with the shared words', () => {
       expect(kinds.filter((k) => !found.includes(k))).toEqual([]);
     }
     expect(searchLibrary(italian, 'lights').filter((h) => h.by === 'category')).toEqual([]);
+  });
+});
+
+describe('foldSearch', () => {
+  it('folds the same on every device, whatever its locale', () => {
+    // A Turkish device: the locale's lower case writes "I" as a dotless "ı".
+    const own = String.prototype.toLocaleLowerCase;
+    String.prototype.toLocaleLowerCase = function (this: string) {
+      return own.call(this, 'tr');
+    };
+    try {
+      expect(foldSearch('GRID')).toBe('grid');
+      expect(searchLibrary(english, 'GRID').map((h) => h.item)).toContain('grid');
+    } finally {
+      String.prototype.toLocaleLowerCase = own;
+    }
+  });
+
+  it('drops from every word of the catalogues what `\\p{Diacritic}` dropped', () => {
+    const before = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '');
+    const differ: string[] = [];
+    let count = 0;
+    for (const words of [
+      PLAN_WORDS_EN,
+      PLAN_WORDS_IT,
+      PLAN_WORDS_ES,
+      PLAN_WORDS_DE,
+      PLAN_WORDS_FR,
+      PLAN_WORDS_PT,
+    ]) {
+      const { icons, synonyms, tileNames, groups, categories } = words.board.plan;
+      for (const text of [icons, synonyms, tileNames, groups, categories].flatMap((o) =>
+        Object.values(o),
+      )) {
+        count++;
+        if (foldSearch(text) !== before(text)) differ.push(text);
+      }
+    }
+    expect(count).toBeGreaterThan(2000);
+    expect(differ).toEqual([]);
   });
 });
 
