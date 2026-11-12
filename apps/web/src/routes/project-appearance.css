@@ -29,6 +29,9 @@
   min-width: 220px;
   overflow-y: auto;
 }
+.project-context-menu .ink-menu__item {
+  gap: 8px;
+}
 @media (pointer: coarse) {
   .project-navigation__options {
     min-width: 44px;

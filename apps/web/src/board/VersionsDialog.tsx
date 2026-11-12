@@ -1,14 +1,34 @@
 import type { HocuspocusProvider } from '@hocuspocus/provider';
 import { readBoardNotice } from '@inkadra/doc-schema';
 import type { BoardVersion, RestoredBoardVersion } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
-import { type SyntheticEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  Icon,
+  IconButton,
+  Segmented,
+  TextField,
+} from '@inkadra/ui';
+import {
+  type SyntheticEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
+import { formatDateTime } from '../lib/datetime.ts';
+import { useMenu } from '../routes/ProjectAppearance.tsx';
 import { isTyping } from './shortcuts.ts';
 import type { BoardStore } from './store.ts';
 import { TrashPanel, type TrashScan } from './TrashPanel.tsx';
 import {
+  daysAgo,
+  expiryDays,
   groupVersions,
   mergeVersions,
   type VersionAction,
@@ -16,7 +36,6 @@ import {
   versionStore,
 } from './versions.ts';
 import './versions.css';
-import { formatDateTime } from '../lib/datetime.ts';
 
 type VersionPage = { items: BoardVersion[]; nextCursor: string | null };
 export type VersionPreview = { version: BoardVersion; store: BoardStore };
@@ -59,6 +78,9 @@ export function VersionsDialog({
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
   const [editing, setEditing] = useState<BoardVersion | null>(null);
+  const [draft, setDraft] = useState('');
+  const [menuFor, setMenuFor] = useState<BoardVersion | null>(null);
+  const live = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [confirm, setConfirm] = useState<{
     version: BoardVersion;
     action: 'restore' | 'delete';
@@ -191,76 +213,94 @@ export function VersionsDialog({
     });
   const title = (v: BoardVersion) =>
     v.name ?? t(`versions.kind.${v.kind === 'restore' ? 'restore' : 'auto'}`);
+  const moreId = (id: string) => `${tabsId}-more-${id}`;
+  const editId = `${tabsId}-edit`;
+  const startEditing = (v: BoardVersion) => {
+    setEditing(v);
+    setDraft(v.name ?? '');
+  };
+  // Focus goes back to the ⋯ of the row, rendered again once the field is gone.
+  const stopEditing = () => {
+    const id = editing?.id;
+    setEditing(null);
+    setDraft('');
+    if (id) requestAnimationFrame(() => document.getElementById(moreId(id))?.focus());
+  };
+  const editingId = editing?.id;
+  useEffect(() => {
+    if (editingId) document.getElementById(editId)?.focus();
+  }, [editingId, editId]);
+  const menu = useMenu(
+    menuFor ? t('versions.actionsFor', { name: title(menuFor), date: date(menuFor) }) : '',
+    menuFor
+      ? [
+          {
+            label: t(menuFor.kind === 'named' ? 'versions.rename' : 'versions.keep'),
+            icon: menuFor.kind === 'named' ? 'pen' : 'star',
+            disabled: busy,
+            action: () => startEditing(menuFor),
+          },
+          {
+            label: t('versions.delete'),
+            icon: 'trash',
+            danger: true,
+            disabled: busy,
+            action: () => openConfirm(menuFor, 'delete'),
+          },
+        ]
+      : [],
+  );
+  const thisYear = new Date().getFullYear();
   return (
     <>
       <Dialog open={open} title={t('versions.title')} onCancel={holdWhileBusy} onClose={onClose}>
+        <div className="versions__tabs" data-tour="versions-tabs">
+          <Segmented
+            label={t('versions.view')}
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'versions', label: t('trash.versions') },
+              { value: 'trash', label: t('trash.title') },
+            ]}
+          />
+        </div>
         <div className="versions" aria-busy={busy} data-tour="versions">
-          <div
-            className="versions__tabs"
-            role="tablist"
-            aria-label={t('versions.title')}
-            data-tour="versions-tabs"
-          >
-            {(['versions', 'trash'] as const).map((value) => (
-              <Button
-                key={value}
-                id={`${tabsId}-${value}`}
-                role="tab"
-                aria-selected={tab === value}
-                aria-controls={`${tabsId}-panel`}
-                tabIndex={tab === value ? 0 : -1}
-                onClick={() => setTab(value)}
-                onKeyDown={(event) => {
-                  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-                  event.preventDefault();
-                  const next =
-                    event.key === 'Home'
-                      ? 'versions'
-                      : event.key === 'End'
-                        ? 'trash'
-                        : value === 'versions'
-                          ? 'trash'
-                          : 'versions';
-                  setTab(next);
-                  document.getElementById(`${tabsId}-${next}`)?.focus();
-                }}
-              >
-                {t(value === 'versions' ? 'trash.versions' : 'trash.title')}
-              </Button>
-            ))}
-          </div>
-          <div role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${tab}`}>
-            {tab === 'trash' ? (
-              // The Dialog keeps its children mounted while closed: mount the panel only while
-              // it is visible, so closing aborts the scan.
-              open && (
-                <TrashPanel boardId={boardId} store={store} editable={editable} cache={trashScan} />
-              )
-            ) : (
-              <>
-                <p className="ink-muted">{t('versions.description')}</p>
-                {editable && (
-                  <form
-                    className="versions__save"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (!name.trim()) return;
-                      void run(editing ? 'rename' : 'save', async () => {
-                        const saved = editing
-                          ? await api.patch<BoardVersion>(`${base}/${editing.id}`, {
-                              name: name.trim(),
-                            })
-                          : await api.post<BoardVersion>(base, { name: name.trim() });
-                        if (!alive.current) return;
-                        setName('');
-                        setEditing(null);
-                        if (page) merge([saved]);
-                        else await load();
-                      });
-                    }}
-                  >
+          {tab === 'trash' ? (
+            // The Dialog keeps its children mounted while closed: mount the panel only while
+            // it is visible, so closing aborts the scan.
+            open && (
+              <TrashPanel boardId={boardId} store={store} editable={editable} cache={trashScan} />
+            )
+          ) : (
+            <>
+              {editable && (
+                <form
+                  className="versions__now"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!name.trim()) return;
+                    void run('save', async () => {
+                      const saved = await api.post<BoardVersion>(base, { name: name.trim() });
+                      if (!alive.current) return;
+                      setName('');
+                      if (page) merge([saved]);
+                      else await load();
+                    });
+                  }}
+                >
+                  <p className="versions__now-head">
+                    <span className="versions__live" aria-hidden="true" />
+                    <strong>{t('versions.now')}</strong>
+                    <span className="ink-muted">
+                      <span className="versions__now-board">{t('versions.currentBoard')} · </span>
+                      {t('versions.elements', { count: live.byId.size })}
+                    </span>
+                  </p>
+                  <div className="versions__save">
                     <TextField
-                      label={editing ? t('versions.renameField') : t('versions.name')}
+                      label={t('versions.saveLabel')}
+                      placeholder={t('versions.placeholder')}
                       value={name}
                       maxLength={120}
                       required
@@ -268,129 +308,224 @@ export function VersionsDialog({
                       onChange={(e) => setName(e.target.value)}
                     />
                     <Button type="submit" variant="primary" disabled={busy || !name.trim()}>
-                      {t(editing ? 'versions.renameSubmit' : 'versions.save')}
+                      {t('versions.save')}
                     </Button>
-                    {editing && (
-                      <Button
-                        disabled={busy}
-                        onClick={() => {
-                          setEditing(null);
-                          setName('');
-                        }}
-                      >
-                        {t('versions.cancel')}
-                      </Button>
-                    )}
-                  </form>
-                )}
-                {(error || loadError) && (
-                  <p role="alert">
-                    {error ?? loadError}{' '}
-                    <Button disabled={busy} onClick={() => void load()}>
-                      {t('versions.reload')}
-                    </Button>
-                  </p>
-                )}
-                {!page && !error && !loadError && <p role="status">{t('versions.loading')}</p>}
-                {page?.items.length === 0 && <p className="ink-muted">{t('versions.empty')}</p>}
-                <div className="versions__list" data-tour="versions-list">
-                  {groupVersions(page?.items ?? []).map((group) => (
-                    <section
-                      key={group.day.toDateString()}
-                      aria-label={formatDateTime(group.day, {
-                        dateStyle: 'full',
-                      })}
-                    >
-                      <h3>{formatDateTime(group.day, { dateStyle: 'full' })}</h3>
+                  </div>
+                </form>
+              )}
+              {(error || loadError) && (
+                <p role="alert">
+                  {error ?? loadError}{' '}
+                  <Button disabled={busy} onClick={() => void load()}>
+                    {t('versions.reload')}
+                  </Button>
+                </p>
+              )}
+              {!page && !error && !loadError && <p role="status">{t('versions.loading')}</p>}
+              {page?.items.length === 0 && <p className="ink-muted">{t('versions.empty')}</p>}
+              <div className="versions__list" data-tour="versions-list">
+                {groupVersions(page?.items ?? []).map((group) => {
+                  const ago = daysAgo(group.day);
+                  const full = formatDateTime(group.day, {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    ...(group.day.getFullYear() !== thisYear && { year: 'numeric' }),
+                  });
+                  return (
+                    <section key={group.day.toDateString()} aria-label={full}>
+                      <h3 className="versions__day">
+                        {ago === 0 || ago === 1 ? (
+                          <>
+                            <strong>{t(ago === 0 ? 'versions.today' : 'versions.yesterday')}</strong>
+                            <span>{full}</span>
+                          </>
+                        ) : (
+                          <strong>{full}</strong>
+                        )}
+                      </h3>
                       <ul>
-                        {group.items.map((v) => (
-                          <li key={v.id} className="versions__item">
-                            <div className="versions__meta">
-                              <strong>{title(v)}</strong>
-                              <span className="ink-muted">
-                                <time dateTime={v.createdAt}>{date(v)}</time> ·{' '}
-                                {t(
-                                  `versions.kind.${v.kind === 'named' ? 'named' : v.kind === 'restore' ? 'restore' : 'auto'}`,
+                        {group.items.map((v) => {
+                          const days = expiryDays(v.expiresAt);
+                          const author = v.kind === 'auto' ? null : v.createdBy?.name;
+                          return (
+                            <li
+                              key={v.id}
+                              className={`versions__row${v.kind === 'named' ? ' is-named' : ''}`}
+                            >
+                              <time className="versions__time" dateTime={v.createdAt}>
+                                {formatDateTime(v.createdAt, { timeStyle: 'short' })}
+                              </time>
+                              <span className="versions__rail" aria-hidden="true" />
+                              <div className="versions__body">
+                                {editing?.id === v.id ? (
+                                  <div className="versions__text">
+                                    <form
+                                      className="versions__edit"
+                                      onSubmit={(e) => {
+                                        e.preventDefault();
+                                        if (!draft.trim()) return;
+                                        void run('rename', async () => {
+                                          const saved = await api.patch<BoardVersion>(
+                                            `${base}/${v.id}`,
+                                            { name: draft.trim() },
+                                          );
+                                          if (!alive.current) return;
+                                          stopEditing();
+                                          if (page) merge([saved]);
+                                          else await load();
+                                        });
+                                      }}
+                                    >
+                                      <input
+                                        id={editId}
+                                        className="ink-input"
+                                        aria-label={t('versions.name')}
+                                        aria-describedby={`${editId}-hint`}
+                                        value={draft}
+                                        maxLength={120}
+                                        required
+                                        disabled={busy}
+                                        onChange={(e) => setDraft(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          // Escape ends the edit, not the dialog.
+                                          if (e.key !== 'Escape' || busy) return;
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          stopEditing();
+                                        }}
+                                      />
+                                      <Button
+                                        type="submit"
+                                        variant="primary"
+                                        disabled={busy || !draft.trim()}
+                                      >
+                                        {t('versions.submitName')}
+                                      </Button>
+                                      <Button variant="ghost" disabled={busy} onClick={stopEditing}>
+                                        {t('versions.cancel')}
+                                      </Button>
+                                    </form>
+                                    <span id={`${editId}-hint`} className="versions__info">
+                                      {t('versions.nameHint')}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="versions__text">
+                                    <span className="versions__name">{title(v)}</span>
+                                    <span className="versions__info">
+                                      {v.kind === 'named' && (
+                                        <span className="versions__kept">
+                                          <Icon name="star" size={11} />
+                                          {t('versions.kept')}
+                                        </span>
+                                      )}
+                                      <span>
+                                        {[author, t('versions.elements', { count: v.elementCount })]
+                                          .filter(Boolean)
+                                          .join(' · ')}
+                                        {days !== null && ' ·'}
+                                      </span>
+                                      {days !== null && (
+                                        <span className="versions__expiry">
+                                          <Icon name="clock" size={12} />
+                                          {days === 0
+                                            ? t('versions.expiresSoon')
+                                            : t('versions.expiresIn', { count: days })}
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
                                 )}
-                              </span>
-                              <span className="ink-muted">
-                                {v.createdBy?.name ?? t('versions.automaticAuthor')} ·{' '}
-                                {t('versions.elements', { count: v.elementCount })}
-                              </span>
-                            </div>
-                            <div className="versions__actions">
-                              <Button
-                                disabled={busy}
-                                onClick={() =>
-                                  void run('preview', async () => {
-                                    const update = await api.bytes(`${base}/${v.id}/state`);
-                                    if (!alive.current) return;
-                                    const store = versionStore(update, boardId);
-                                    onPreview({ version: v, store });
-                                    onClose();
-                                  })
-                                }
-                              >
-                                {t('versions.preview')}
-                              </Button>
-                              {editable && (
-                                <>
-                                  <Button
-                                    disabled={busy}
-                                    onClick={(e) => {
-                                      setEditing(v);
-                                      setName(v.name ?? '');
-                                      e.currentTarget
-                                        .closest('dialog')
-                                        ?.querySelector<HTMLInputElement>('input')
-                                        ?.focus();
-                                    }}
-                                  >
-                                    {t(v.kind === 'named' ? 'versions.rename' : 'versions.keep')}
-                                  </Button>
-                                  <Button disabled={busy} onClick={() => openConfirm(v, 'restore')}>
-                                    {t('versions.restore')}
-                                  </Button>
-                                  <Button disabled={busy} onClick={() => openConfirm(v, 'delete')}>
-                                    {t('versions.delete')}
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </li>
-                        ))}
+                                {editing?.id !== v.id && (
+                                  <div className="versions__actions">
+                                    <Button
+                                      icon="eye"
+                                      disabled={busy}
+                                      onClick={() =>
+                                        void run('preview', async () => {
+                                          const update = await api.bytes(`${base}/${v.id}/state`);
+                                          if (!alive.current) return;
+                                          const store = versionStore(update, boardId);
+                                          onPreview({ version: v, store });
+                                          onClose();
+                                        })
+                                      }
+                                    >
+                                      {t('versions.preview')}
+                                    </Button>
+                                    {editable && (
+                                      <>
+                                        <Button
+                                          variant="ghost"
+                                          icon="undo"
+                                          disabled={busy}
+                                          onClick={() => openConfirm(v, 'restore')}
+                                        >
+                                          {t('versions.restore')}
+                                        </Button>
+                                        <IconButton
+                                          id={moreId(v.id)}
+                                          icon="more"
+                                          label={t('versions.actionsFor', {
+                                            name: title(v),
+                                            date: date(v),
+                                          })}
+                                          aria-haspopup="menu"
+                                          aria-expanded={menu.isOpen && menuFor?.id === v.id}
+                                          disabled={busy}
+                                          onClick={(e) => {
+                                            setMenuFor(v);
+                                            menu.open(e.currentTarget, e.currentTarget);
+                                          }}
+                                        />
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </section>
-                  ))}
-                </div>
-                {page?.nextCursor && (
-                  <Button
-                    disabled={busy}
-                    onClick={() =>
-                      void run('read', async () => {
-                        // A reload started meanwhile replaces the list: this page is then stale.
-                        const token = generation.current;
-                        const next = await api.get<VersionPage>(
-                          `${base}?cursor=${encodeURIComponent(page.nextCursor ?? '')}`,
+                  );
+                })}
+              </div>
+              {menu.layer}
+              {page?.nextCursor && (
+                <Button
+                  disabled={busy}
+                  onClick={() =>
+                    void run('read', async () => {
+                      // A reload started meanwhile replaces the list: this page is then stale.
+                      const token = generation.current;
+                      const next = await api.get<VersionPage>(
+                        `${base}?cursor=${encodeURIComponent(page.nextCursor ?? '')}`,
+                      );
+                      if (alive.current && token === generation.current)
+                        setPage(
+                          (p) =>
+                            p && {
+                              items: mergeVersions(p.items, next.items),
+                              nextCursor: next.nextCursor,
+                            },
                         );
-                        if (alive.current && token === generation.current)
-                          setPage(
-                            (p) =>
-                              p && {
-                                items: mergeVersions(p.items, next.items),
-                                nextCursor: next.nextCursor,
-                              },
-                          );
-                      })
-                    }
-                  >
-                    {t('versions.more')}
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
+                    })
+                  }
+                >
+                  {t('versions.more')}
+                </Button>
+              )}
+            </>
+          )}
           <DialogActions>
+            {tab === 'versions' && (
+              <p className="versions__retention">
+                <Icon name="clock" size={14} />
+                {t('versions.retention')}
+              </p>
+            )}
             <Button disabled={busy} onClick={onClose}>
               {t('versions.close')}
             </Button>
