@@ -11,6 +11,7 @@ export * from './image-crop.ts';
 export * from './moodboard.ts';
 export * from './plan.ts';
 export * from './plan-attach.ts';
+export * from './plan-editing.ts';
 export * from './plan-elements.ts';
 export * from './plan-icons.ts';
 export * from './plan-kit.ts';
