@@ -17,16 +17,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { wheelZoomFactor } from '../wheel-zoom.ts';
-import {
-  type Area,
-  fitView,
-  type Insets,
-  panBy,
-  pinchView,
-  stepZoom,
-  zoomAround,
-  zoomPercent,
-} from './view.ts';
 
 /** Smallest gap between two dots of the grid on screen, px: closer ones are skipped. */
 const MIN_DOT_GAP = 7;
@@ -42,7 +32,7 @@ interface Pinch {
 }
 
 /**
- * The drawing surface of a set plan (decision 0115), shared by the editor and the read-only
+ * The drawing surface of a set plan (decision 0117), shared by the editor and the read-only
  * view: it fills its area with the dot grid, and the plan's 3:2 extent (the stage) lies in it,
  * panned and zoomed with the board's maths (canvas-core `zoomAt`, `pinchViewport`, the wheel's
  * `wheelZoomFactor`): a drag on empty space, the middle button or Space pans, the wheel and a
@@ -58,13 +48,13 @@ export function usePlanSurface({
   /** What Fit frames, in view units; null for the whole extent. */
   content: Rect | null;
   /** Bars floating over the surface, which Fit leaves free. */
-  insets: Insets;
+  insets: PlanInsets;
   /** Spacing of the dots, in view units; none without. */
   grid?: number | undefined;
 }) {
   const surface = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const area = useRef<Area>({ w: 0, h: 0 });
+  const area = useRef<PlanArea>({ w: 0, h: 0 });
   const viewRef = useRef<Viewport | null>(null);
   const [view, setViewState] = useState<Viewport | null>(null);
   const frame = useRef<number | undefined>(undefined);
@@ -106,7 +96,7 @@ export function usePlanSurface({
 
   const fit = useCallback(() => {
     if (!area.current.w) return;
-    apply(fitView(fitArgs.current.content, area.current, fitArgs.current.insets));
+    apply(fitPlanView(fitArgs.current.content, area.current, fitArgs.current.insets));
   }, [apply]);
 
   // The area's size: the first one fits the plan's content, later ones keep the view.
@@ -119,7 +109,7 @@ export function usePlanSurface({
       area.current = { w: r.width, h: r.height };
       const v = viewRef.current;
       if (!v || !touched.current) fit();
-      else apply(panBy(v, area.current, 0, 0));
+      else apply(panPlanBy(v, area.current, 0, 0));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -158,12 +148,12 @@ export function usePlanSurface({
       const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY);
       if (e.shiftKey || (sideways && !e.ctrlKey && !e.metaKey)) {
         const dx = (e.shiftKey ? e.deltaY || e.deltaX : e.deltaX) * unit;
-        move((v) => panBy(v, area.current, -dx, 0));
+        move((v) => panPlanBy(v, area.current, -dx, 0));
         return;
       }
       const at = local(e);
       const { factor } = wheelZoomFactor(e.deltaY, e.deltaMode);
-      move((v) => zoomAround(v, area.current, v.zoom * factor, at));
+      move((v) => zoomPlanAround(v, area.current, v.zoom * factor, at));
     };
     // Older Safari zooms the page on a pinch even where touch-action is none.
     const noPageZoom = (e: Event) => e.preventDefault();
@@ -186,15 +176,15 @@ export function usePlanSurface({
     stage,
     view,
     /** The zoom as the control shows it. */
-    percent: view && area.current.w ? zoomPercent(view, area.current) : 100,
+    percent: view && area.current.w ? planZoomPercent(view, area.current) : 100,
     /** A view unit on screen, px. */
     unit: view?.zoom ?? 0,
     fit: () => {
       touched.current = true;
       fit();
     },
-    zoomBy: (dir: 1 | -1) => move((v) => stepZoom(v, area.current, dir)),
-    panBy: (dx: number, dy: number) => move((v) => panBy(v, area.current, dx, dy)),
+    zoomBy: (dir: 1 | -1) => move((v) => stepPlanZoom(v, area.current, dir)),
+    panBy: (dx: number, dy: number) => move((v) => panPlanBy(v, area.current, dx, dy)),
     /**
      * A pointer pressed on the surface. A second finger starts a pinch: true, and the caller
      * drops what the first finger started.
@@ -231,7 +221,7 @@ export function usePlanSurface({
         const to = pinchPoints(p.ids);
         if (to) {
           touched.current = true;
-          apply(pinchView(p.view, area.current, p.from, to));
+          apply(pinchPlanView(p.view, area.current, p.from, to));
         }
         return true;
       }
@@ -241,7 +231,7 @@ export function usePlanSurface({
       const dy = at.y - g.last.y;
       g.last = at;
       g.moved += Math.abs(dx) + Math.abs(dy);
-      move((v) => panBy(v, area.current, dx, dy));
+      move((v) => panPlanBy(v, area.current, dx, dy));
       return true;
     },
     /**

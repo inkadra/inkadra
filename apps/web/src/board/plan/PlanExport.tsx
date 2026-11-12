@@ -27,10 +27,11 @@ export function visibleArea(root: ParentNode, viewW: number, viewH: number): Are
   const viewport = root.querySelector('.plan-main__canvas')?.getBoundingClientRect();
   const sheet = root.querySelector('.plan-main__canvas .plan__svg')?.getBoundingClientRect();
   if (!viewport || !sheet || sheet.width <= 0 || sheet.height <= 0) return null;
-  const x0 = Math.max(0, ((viewport.left - sheet.left) / sheet.width) * viewW);
-  const y0 = Math.max(0, ((viewport.top - sheet.top) / sheet.height) * viewH);
-  const x1 = Math.min(viewW, ((viewport.right - sheet.left) / sheet.width) * viewW);
-  const y1 = Math.min(viewH, ((viewport.bottom - sheet.top) / sheet.height) * viewH);
+  // In the drawing's units, beyond its old extent too (decision 0117).
+  const x0 = ((viewport.left - sheet.left) / sheet.width) * viewW;
+  const y0 = ((viewport.top - sheet.top) / sheet.height) * viewH;
+  const x1 = ((viewport.right - sheet.left) / sheet.width) * viewW;
+  const y1 = ((viewport.bottom - sheet.top) / sheet.height) * viewH;
   if (x1 - x0 < 1 || y1 - y0 < 1) return null;
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }

@@ -24,6 +24,7 @@ import {
   type PlanNoteTool,
   type PlanStackEntry,
   pieceOutline,
+  planFrame,
   planStack,
   shownOpenings,
   wallPieces,
@@ -717,9 +718,16 @@ const PlanDrawingView = memo(function PlanDrawingView({
   lifted,
   label,
   background = false,
+  extent = false,
   children,
 }: {
   plan: PlanLike;
+  /**
+   * Draws in the coordinates of the plan's 3:2 extent, what lies beyond it too, for a surface
+   * that pans and zooms (the editor, the view). Otherwise the drawing frames what is on the plan
+   * (planFrame, decision 0117): the card, the slides, the call sheet.
+   */
+  extent?: boolean;
   /**
    * The picture under the plan (decision 0110): drawn in the editor and on the board card, left
    * out of the slides and sheets, as of exports, unless they ask for it.
@@ -743,11 +751,14 @@ const PlanDrawingView = memo(function PlanDrawingView({
   const off = [...(plan.hiddenLayers ?? []), ...(hidden ?? [])];
   const stack = planStack(plan, off);
   const icons = stack.filter((e) => e.ref.kind === 'icons').map((e) => e.item as PlanIcon);
+  const frame = extent
+    ? { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H }
+    : planFrame(plan, background && !off.includes('set'));
   return (
     // biome-ignore lint/a11y/noSvgWithoutTitle: named by aria-label in the editor, hidden elsewhere.
     <svg
       className="plan__svg"
-      viewBox={`0 0 ${PLAN_VIEW_W} ${PLAN_VIEW_H}`}
+      viewBox={`${frame.x} ${frame.y} ${frame.w} ${frame.h}`}
       style={{ aspectRatio: String(PLAN_ASPECT) }}
       {...(label ? { role: 'group', 'aria-label': label } : { 'aria-hidden': true })}
     >

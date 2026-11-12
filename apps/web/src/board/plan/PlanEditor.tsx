@@ -164,7 +164,7 @@ export function PlanEditor(props: PlanEditorProps) {
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
     // Whatever the editor does not use never reaches the board behind it.
     e.stopImmediatePropagation();
-    // Space held pans the drawing, as on the board (decision 0115).
+    // Space held pans the drawing, as on the board (decision 0117).
     if (e.key === ' ' && canSpacePan(e.target)) {
       e.preventDefault();
       if (!e.repeat) canvas.current?.space(e.type === 'keydown');
@@ -205,7 +205,7 @@ export function PlanEditor(props: PlanEditorProps) {
       ed.remove();
     else if (mod && key === 'a')
       ed.setSelection(
-        itemsInRect(drawn, { x: -1, y: -1, w: 2000, h: 2000 }, ed.viewOf).filter((r) => {
+        itemsInRect(drawn, { x: -1e5, y: -1e5, w: 2e5, h: 2e5 }, ed.viewOf).filter((r) => {
           const found = planItem(drawn, r);
           return !!found && (!ed.activeLayer || layerOf(found) === ed.activeLayer);
         }),

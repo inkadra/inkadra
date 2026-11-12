@@ -22,6 +22,7 @@ import {
   PLAN_VIEW_W,
   type PlanStackEntry,
   pieceOutline,
+  planFrame,
   planStack,
   type Rect,
   shownOpenings,
@@ -657,7 +658,7 @@ export function body(p: Placed, ctx: CardContext): Op[] {
       const box = { x: p.x, y: p.y + PLAN_HEAD, w: p.w, h: p.w / PLAN_ASPECT };
       const base = el.variantOf ? ctx.element?.(el.variantOf) : undefined;
       const drawn = base?.type === 'plan' ? variantView(el, base) : el;
-      return [...ops, ...planOps(drawn, box, ctx)];
+      return [...ops, ...framedPlanOps(drawn, box, ctx)];
     }
     case 'map': {
       const ops: Op[] = [];
@@ -951,6 +952,27 @@ function mix(hex: string, base: string, t: number): string {
     .join('')}`;
 }
 
+/**
+ * A plan framed in `box` (decision 0117): what is drawn on it (planFrame), centred, in the plan's
+ * shape; what lies beyond the frame is cut.
+ */
+export function framedPlanOps(
+  stored: Extract<Element, { type: 'plan' }>,
+  box: Rect,
+  ctx: CardContext,
+  moves = true,
+): Op[] {
+  const f = planFrame(stored, false);
+  const k = Math.min(box.w / f.w, box.h / f.h);
+  const whole = {
+    x: box.x + (box.w - f.w * k) / 2 - f.x * k,
+    y: box.y + (box.h - f.h * k) / 2 - f.y * k,
+    w: PLAN_VIEW_W * k,
+    h: PLAN_VIEW_H * k,
+  };
+  return planOps(stored, whole, ctx, moves, true, box);
+}
+
 /** How much of the ink tints the floor of a closed room over the paper (audit L1). */
 const FLOOR_TINT = 0.04;
 
@@ -967,6 +989,8 @@ export function planOps(
   moves = true,
   /** Beams and cones; a legend's glyph leaves them out. */
   beams = true,
+  /** Where the drawing is cut; `box` (the plan's extent) without one. */
+  clipTo?: Rect,
 ): Op[] {
   // Links read from the cards the audience may see; without them, the text the icons hold.
   const el = ctx.cards ? linkedPlan(stored, ctx.cards, { palette: CHARACTER_COLOURS }) : stored;
@@ -1099,7 +1123,7 @@ export function planOps(
   }
   for (const e of stack) if (e.tier >= 2) inside.push(...itemOps(e));
   inside.push(...numbers, ...labels);
-  return [{ kind: 'clip', ...box, ops: inside }];
+  return [{ kind: 'clip', ...(clipTo ?? box), ops: inside }];
 
   /**
    * A camera's cone, a light's beam tinted by its colour temperature, or the glow of a light

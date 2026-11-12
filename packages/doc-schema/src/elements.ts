@@ -319,6 +319,15 @@ export const STROKE_GRID = 4096;
 export const MAX_STROKE_POINTS = 1024;
 export const MAX_STROKES = 2000;
 const GridCoord = z.int().min(0).max(STROKE_GRID);
+/**
+ * How far a set plan's items may lie beyond its 3:2 extent, in STROKE_GRID units on every side
+ * (since version 25, decision 0117): the plan is drawn on a surface without edges, and the
+ * extent is only the unit its coordinates are counted in.
+ */
+export const PLAN_REACH = 4 * STROKE_GRID;
+export const PLAN_COORD_MIN = -PLAN_REACH;
+export const PLAN_COORD_MAX = STROKE_GRID + PLAN_REACH;
+const PlanCoord = z.int().min(PLAN_COORD_MIN).max(PLAN_COORD_MAX);
 
 export const Stroke = z.object({
   id: ElementId,
@@ -711,8 +720,8 @@ const PlanItemExtras = {
 
 /** A position an icon moved through, in blocking (since version 15). */
 export const PlanStep = z.object({
-  x: GridCoord,
-  y: GridCoord,
+  x: PlanCoord,
+  y: PlanCoord,
   rotation: z.int().min(0).max(359).optional(),
   note: z.string().max(200).optional().describe('"Porta, entra".'),
   bend: z
@@ -748,8 +757,8 @@ export const PlanIcon = z.object({
   id: ElementId,
   kind: z.enum(PLAN_ICON_KINDS),
   color: z.string().regex(/^#[0-9A-F]{6}$/),
-  x: GridCoord,
-  y: GridCoord,
+  x: PlanCoord,
+  y: PlanCoord,
   rotation: z.int().min(0).max(359).optional().describe('Degrees clockwise. Omitted = 0.'),
   label: z.string().max(60).optional().describe('"A cam", "Anna", "Key 1,2K".'),
   size: z.enum(['S', 'L']).optional().describe('Symbols: small or large. Omitted = medium.'),
@@ -842,8 +851,15 @@ function lenientList<T extends z.ZodType>(item: T, max: number) {
 
 const PlanIcons = lenientList(PlanIcon, MAX_PLAN_ICONS);
 
-/** A pen stroke of a plan: a frame stroke with a layer and a group. */
-export const PlanStroke = Stroke.extend(PlanItemExtras);
+/** A pen stroke of a plan: a frame stroke with a layer and a group, anywhere on the plan. */
+export const PlanStroke = Stroke.extend({
+  points: z
+    .array(PlanCoord)
+    .min(2)
+    .max(MAX_STROKE_POINTS * 2)
+    .refine((p) => p.length % 2 === 0, 'Points come in x, y pairs.'),
+  ...PlanItemExtras,
+});
 export type PlanStroke = z.infer<typeof PlanStroke>;
 
 /**
@@ -853,6 +869,10 @@ export type PlanStroke = z.infer<typeof PlanStroke>;
  */
 export const PlanShape = FrameShape.extend({
   kind: z.enum([...SHAPE_KINDS, 'measure', 'zone']),
+  x0: PlanCoord,
+  y0: PlanCoord,
+  x1: PlanCoord,
+  y1: PlanCoord,
   rotation: z.int().min(0).max(359).optional(),
   dashed: z.boolean().optional(),
   from: ElementId.optional().describe('Measure: icon its start follows.'),
@@ -876,7 +896,7 @@ export const MAX_PLAN_OPENINGS = 200;
 export const PlanWall = z.object({
   id: ElementId,
   points: z
-    .array(GridCoord)
+    .array(PlanCoord)
     .min(4)
     .max(MAX_WALL_POINTS * 2)
     .refine((p) => p.length % 2 === 0, 'Points come in x, y pairs.'),

@@ -1,18 +1,19 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-import { PLAN_VIEW_H, PLAN_VIEW_W } from '@inkadra/canvas-core';
+// SPDX-License-Identifier: MPL-2.0
 import type { PlanIcon } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
+import { PLAN_VIEW_H, PLAN_VIEW_W } from './plan.ts';
 import {
-  baseZoom,
-  boundView,
-  fitView,
-  panBy,
-  pinchView,
+  boundPlanView,
+  fitPlanView,
+  panPlanBy,
+  pinchPlanView,
+  planBaseZoom,
   planContentBox,
-  stepZoom,
-  zoomAround,
-  zoomPercent,
-} from './view.ts';
+  planFrame,
+  planZoomPercent,
+  stepPlanZoom,
+  zoomPlanAround,
+} from './plan-view.ts';
 
 const area = { w: 876, h: 848 };
 const toScreen = (v: { x: number; y: number; zoom: number }, p: { x: number; y: number }) => ({
@@ -22,8 +23,8 @@ const toScreen = (v: { x: number; y: number; zoom: number }, p: { x: number; y: 
 
 describe('the view of the plan surface', () => {
   it('calls 100 % the zoom at which the whole drawing fits the area', () => {
-    const v = fitView(null, area);
-    expect(zoomPercent(v, area)).toBe(100);
+    const v = fitPlanView(null, area);
+    expect(planZoomPercent(v, area)).toBe(100);
     // The drawing is in the middle.
     const a = toScreen(v, { x: 0, y: 0 });
     const b = toScreen(v, { x: PLAN_VIEW_W, y: PLAN_VIEW_H });
@@ -34,8 +35,8 @@ describe('the view of the plan surface', () => {
   it('fits a room in the middle of what the bars leave, closer than the whole drawing', () => {
     const room = { x: 160, y: 200, w: 560, h: 440 };
     const insets = { top: 0, right: 0, bottom: 72, left: 0 };
-    const v = fitView(room, area, insets);
-    expect(v.zoom).toBeGreaterThan(baseZoom(area));
+    const v = fitPlanView(room, area, insets);
+    expect(v.zoom).toBeGreaterThan(planBaseZoom(area));
     const a = toScreen(v, { x: room.x, y: room.y });
     const b = toScreen(v, { x: room.x + room.w, y: room.y + room.h });
     expect(a.x).toBeGreaterThanOrEqual(0);
@@ -46,37 +47,37 @@ describe('the view of the plan surface', () => {
   });
 
   it('never fits one small icon closer than 250 %', () => {
-    const v = fitView({ x: 500, y: 300, w: 10, h: 10 }, area);
-    expect(zoomPercent(v, area)).toBe(250);
+    const v = fitPlanView({ x: 500, y: 300, w: 10, h: 10 }, area);
+    expect(planZoomPercent(v, area)).toBe(250);
   });
 
   it('zooms around the pointer: the point under it stays under it', () => {
-    const v = fitView(null, area);
+    const v = fitPlanView(null, area);
     const pointer = { x: 600, y: 300 };
     const under = { x: pointer.x / v.zoom + v.x, y: pointer.y / v.zoom + v.y };
-    const next = zoomAround(v, area, v.zoom * 2, pointer);
-    expect(zoomPercent(next, area)).toBe(200);
+    const next = zoomPlanAround(v, area, v.zoom * 2, pointer);
+    expect(planZoomPercent(next, area)).toBe(200);
     const after = toScreen(next, under);
     expect(after.x).toBeCloseTo(pointer.x);
     expect(after.y).toBeCloseTo(pointer.y);
   });
 
   it('keeps the zoom between 25 % and 800 %', () => {
-    const v = fitView(null, area);
-    expect(zoomPercent(zoomAround(v, area, v.zoom * 100, { x: 0, y: 0 }), area)).toBe(800);
-    expect(zoomPercent(zoomAround(v, area, v.zoom / 100, { x: 0, y: 0 }), area)).toBe(25);
+    const v = fitPlanView(null, area);
+    expect(planZoomPercent(zoomPlanAround(v, area, v.zoom * 100, { x: 0, y: 0 }), area)).toBe(800);
+    expect(planZoomPercent(zoomPlanAround(v, area, v.zoom / 100, { x: 0, y: 0 }), area)).toBe(25);
   });
 
   it('steps the buttons through the levels round the middle', () => {
-    const v = fitView(null, area);
-    const inOnce = stepZoom(v, area, 1);
-    expect(zoomPercent(inOnce, area)).toBe(150);
-    expect(zoomPercent(stepZoom(inOnce, area, -1), area)).toBe(100);
-    expect(zoomPercent(stepZoom(v, area, -1), area)).toBe(75);
+    const v = fitPlanView(null, area);
+    const inOnce = stepPlanZoom(v, area, 1);
+    expect(planZoomPercent(inOnce, area)).toBe(150);
+    expect(planZoomPercent(stepPlanZoom(inOnce, area, -1), area)).toBe(100);
+    expect(planZoomPercent(stepPlanZoom(v, area, -1), area)).toBe(75);
     // From an odd level the next step is the next round one.
-    const odd = zoomAround(v, area, v.zoom * 1.3, { x: 0, y: 0 });
-    expect(zoomPercent(stepZoom(odd, area, 1), area)).toBe(150);
-    expect(zoomPercent(stepZoom(odd, area, -1), area)).toBe(100);
+    const odd = zoomPlanAround(v, area, v.zoom * 1.3, { x: 0, y: 0 });
+    expect(planZoomPercent(stepPlanZoom(odd, area, 1), area)).toBe(150);
+    expect(planZoomPercent(stepPlanZoom(odd, area, -1), area)).toBe(100);
     // The middle of the area stays where it was.
     const mid = { x: area.w / 2 / v.zoom + v.x, y: area.h / 2 / v.zoom + v.y };
     const m = toScreen(inOnce, mid);
@@ -85,20 +86,20 @@ describe('the view of the plan surface', () => {
   });
 
   it('pans by pixels and never loses the drawing', () => {
-    const v = fitView(null, area);
-    const moved = panBy(v, area, 100, -40);
+    const v = fitPlanView(null, area);
+    const moved = panPlanBy(v, area, 100, -40);
     expect(toScreen(moved, { x: 0, y: 0 }).x).toBeCloseTo(toScreen(v, { x: 0, y: 0 }).x + 100);
     expect(toScreen(moved, { x: 0, y: 0 }).y).toBeCloseTo(toScreen(v, { x: 0, y: 0 }).y - 40);
-    const far = panBy(v, area, 100_000, 100_000);
+    const far = panPlanBy(v, area, 100_000, 100_000);
     // At least 64 px of the drawing still show at the far edge.
     expect(toScreen(far, { x: 0, y: 0 }).x).toBeLessThanOrEqual(area.w - 64 + 0.001);
     expect(toScreen(far, { x: 0, y: 0 }).y).toBeLessThanOrEqual(area.h - 64 + 0.001);
-    const back = boundView({ ...v, x: -100_000, y: -100_000 }, area);
+    const back = boundPlanView({ ...v, x: -100_000, y: -100_000 }, area);
     expect(toScreen(back, { x: PLAN_VIEW_W, y: PLAN_VIEW_H }).x).toBeGreaterThanOrEqual(63.999);
   });
 
   it('pinches: the point under the fingers follows their middle, zoomed by their spread', () => {
-    const v = fitView(null, area);
+    const v = fitPlanView(null, area);
     const from = [
       { x: 300, y: 400 },
       { x: 400, y: 400 },
@@ -108,7 +109,7 @@ describe('the view of the plan surface', () => {
       { x: 450, y: 450 },
     ] as const;
     const under = { x: 350 / v.zoom + v.x, y: 400 / v.zoom + v.y };
-    const next = pinchView(v, area, from, to);
+    const next = pinchPlanView(v, area, from, to);
     expect(next.zoom).toBeCloseTo(v.zoom * 2);
     const after = toScreen(next, under);
     expect(after.x).toBeCloseTo(350);
@@ -130,5 +131,27 @@ describe('the view of the plan surface', () => {
     });
     expect(placed).toEqual({ x: -200, y: -100, w: 400, h: 200 });
     expect(planContentBox({ background: { assetId: 'pic', hidden: true } })).toBeNull();
+  });
+
+  it('frames what is drawn in the plan\'s shape, beyond the old extent too', () => {
+    expect(planFrame({})).toEqual({ x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H });
+    const far = { id: 'aAAAAAAAAAAAA', kind: 'table', color: '#1C1C1E', x: -2048, y: 6000 };
+    const near = { ...far, id: 'bAAAAAAAAAAAA', x: 2048, y: 2048 };
+    const content = planContentBox({ icons: [far, near] as PlanIcon[] });
+    const f = planFrame({ icons: [far, near] as PlanIcon[] });
+    expect(f.w / f.h).toBeCloseTo(1.5);
+    expect(f.x).toBeLessThan(content?.x ?? 0);
+    expect(f.y).toBeLessThan(content?.y ?? 0);
+    expect(f.x + f.w).toBeGreaterThan((content?.x ?? 0) + (content?.w ?? 0));
+    expect(f.y + f.h).toBeGreaterThan((content?.y ?? 0) + (content?.h ?? 0));
+    // One small item: never narrower than 400 view units, centred on it.
+    const one = planFrame({ icons: [near] as PlanIcon[] });
+    expect(one.w).toBe(400);
+    const box = planContentBox({ icons: [near] as PlanIcon[] });
+    expect(one.x + one.w / 2).toBeCloseTo((box?.x ?? 0) + (box?.w ?? 0) / 2);
+    // The background counts only when asked.
+    const bg = { assetId: 'pic', x: -900, y: -900, w: 100, h: 100 };
+    expect(planFrame({ icons: [near] as PlanIcon[], background: bg }, false)).toEqual(one);
+    expect(planFrame({ icons: [near] as PlanIcon[], background: bg }).x).toBeLessThan(-900);
   });
 });

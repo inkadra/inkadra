@@ -7,6 +7,9 @@ import {
   MAX_STROKES,
   newElementId,
   PLAN_ASPECT,
+  PLAN_COORD_MAX,
+  PLAN_COORD_MIN,
+  PLAN_REACH,
   PLAN_SENSORS,
   type PlanIcon,
   type PlanLayer,
@@ -84,12 +87,18 @@ export function snapPlanPoint(p: Point, step = PLAN_GRID): Point {
   const sx = step / PLAN_VIEW_W;
   const sy = step / PLAN_VIEW_H;
   return {
-    x: Math.min(1, Math.max(0, Math.round(p.x / sx) * sx)),
-    y: Math.min(1, Math.max(0, Math.round(p.y / sy) * sy)),
+    x: Math.min(1 + PLAN_REACH_UNITS, Math.max(-PLAN_REACH_UNITS, Math.round(p.x / sx) * sx)),
+    y: Math.min(1 + PLAN_REACH_UNITS, Math.max(-PLAN_REACH_UNITS, Math.round(p.y / sy) * sy)),
   };
 }
 
-const clampGrid = (n: number) => Math.round(Math.max(0, Math.min(STROKE_GRID, n)));
+/** How far beyond its 3:2 extent a plan reaches, in units of the extent (decision 0117). */
+export const PLAN_REACH_UNITS = PLAN_REACH / STROKE_GRID;
+/** A plan coordinate in STROKE_GRID units, rounded and kept within the plan's reach. */
+export const clampGrid = (n: number) =>
+  Math.round(Math.max(PLAN_COORD_MIN, Math.min(PLAN_COORD_MAX, n)));
+/** A point of the drawing (0 to 1 across the extent) as a plan coordinate (decision 0117). */
+export const toPlanGrid = (n: number) => clampGrid(n * STROKE_GRID);
 
 /** The layer an item goes to without one of its own: its family's, Notes for texts and measures. */
 export function defaultLayer(item: PlanItem): PlanLayer {
@@ -690,7 +699,7 @@ export function lockAllows(
 
 /**
  * Every item under `p` (relative to the drawing, 0 to 1), in the order a click picks them
- * (decisions 0104 and 0115): what the renderers draw on top first (planStack), except that
+ * (decisions 0104 and 0117): what the renderers draw on top first (planStack), except that
  * - a light comes before the modifiers attached to its front, which follow it nearest first: a
  *   click on a light with a softbox picks the light, a second click the softbox;
  * - a measure yields to the icons its ends sit on (`from`, `to`) where they are under `p`: a thin
@@ -759,7 +768,7 @@ export function planItemAt(
 }
 
 /**
- * The item a click on `p` picks when `current` is already picked (decision 0115): the next one
+ * The item a click on `p` picks when `current` is already picked (decision 0117): the next one
  * under the point, round to the first, so what is covered (a stool under a person, a softbox on
  * its light) is reached by clicking again. The first one when `current` is not under `p`.
  */

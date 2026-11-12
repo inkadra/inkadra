@@ -20,7 +20,7 @@ import {
 import { fastCheckOf, UNSURE } from './fast-items.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 24;
+export const CURRENT_SCHEMA_VERSION = 25;
 
 /**
  * For each document schema since decision 0102, the oldest client schema proven safe to write a
@@ -32,6 +32,7 @@ export const WRITER_SCHEMAS: Readonly<Record<number, { min: number; proof?: stri
   22: { min: 22 },
   23: { min: 23 },
   24: { min: 24 },
+  25: { min: 25 },
 };
 
 /**
@@ -213,6 +214,11 @@ const migrations: Record<number, Migration> = {
   // its own (decision 0114). Nothing is locked by the migration; older clients stay read-only, so
   // they can neither move a locked item nor drop the lock when they copy it.
   23: () => {},
+  // 25: a set plan's icons, steps, strokes, shapes and walls may lie beyond its 3:2 extent, up
+  // to PLAN_REACH on every side (decision 0117). Every stored coordinate stays valid and means
+  // what it meant; older clients stay read-only, since their check would drop an item that lies
+  // beyond the extent.
+  24: () => {},
 };
 
 /**

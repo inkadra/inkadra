@@ -199,6 +199,8 @@ test('icons snap together: seats, modifiers, stands; the base carries them; Alt 
   expect((await find('actor'))[0]?.on).toBe('iconChairAAAA');
   const chair = (await find('chair'))[0] as PlanIcon;
   const at = [(chair.x / STROKE_GRID) * 1000, (chair.y / STROKE_GRID) * (1000 / 1.5)];
+  // Nothing picked, a press there takes the person on top (a picked chair would move with her).
+  await page.keyboard.press('Escape');
   await drag(at, [520, 560]);
   await expect.poll(async () => (await find('actor'))[0]?.on).toBeUndefined();
 

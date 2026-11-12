@@ -107,18 +107,21 @@
   outline-offset: 1px;
 }
 /*
- * The plan's 3:2 extent (decision 0115): a quiet frame inside the surface, sized and moved by
- * the view (PlanSurface writes its width, height and transform).
+ * The unit the plan's coordinates count in, its old 3:2 extent (decision 0117): sized and moved
+ * by the view (PlanSurface writes its width, height and transform); what lies beyond it is drawn.
  */
-.plan-editor__stage {
+.plan-editor__stage,
+.plan-view__sheet {
   position: absolute;
   left: 0;
   top: 0;
   transform-origin: 0 0;
-  outline: 1px solid var(--ink-border-muted);
-  border-radius: var(--ink-radius-sm);
   container-type: inline-size;
   will-change: transform;
+}
+.plan-editor__stage .plan__svg,
+.plan-view__sheet .plan__svg {
+  overflow: visible;
 }
 .plan-editor__stage--select {
   cursor: default;
@@ -1183,7 +1186,7 @@ button.plan__badge:hover {
   opacity: 0.85;
 }
 
-/* The drawing surface: the whole area, its dots, the plan panned and zoomed in it (0115). */
+/* The drawing surface: the whole area, its dots, the plan panned and zoomed in it (0117). */
 .plan-canvas {
   position: absolute;
   inset: 0;

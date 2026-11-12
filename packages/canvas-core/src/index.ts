@@ -17,6 +17,7 @@ export * from './plan-links.ts';
 export * from './plan-power.ts';
 export * from './plan-start.ts';
 export * from './plan-variants.ts';
+export * from './plan-view.ts';
 export * from './plan-walls.ts';
 export * from './resize.ts';
 export * from './snap.ts';

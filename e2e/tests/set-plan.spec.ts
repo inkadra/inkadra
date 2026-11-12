@@ -231,7 +231,14 @@ for (const theme of ['dark', 'light'] as const) {
     await card.dblclick();
     const editor = page.getByRole('dialog', { name: 'Pianta del set · Cucina, giorno 2' });
     await expect(editor.getByRole('toolbar', { name: 'Strumenti della pianta' })).toBeVisible();
-    await expect(editor.locator('pattern')).toHaveCount(1);
+    // The dots of the grid cover the whole surface (decision 0117).
+    await expect
+      .poll(() =>
+        editor
+          .locator('.plan-canvas__surface')
+          .evaluate((el) => (el as HTMLElement).style.backgroundSize),
+      )
+      .not.toBe('0px 0px');
     // The board behind never gets the editor's keys: Delete, N or Ctrl+D act on nothing there.
     await expect(editor).toBeFocused();
     for (const key of ['Delete', 'n', 'Control+d', 'ArrowLeft']) await page.keyboard.press(key);

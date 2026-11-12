@@ -1271,7 +1271,7 @@ describe('review of snapping (pull request 603)', () => {
   });
 });
 
-describe('what a click picks (decision 0115)', () => {
+describe('what a click picks (decision 0117)', () => {
   const pt = (x: number, y: number) => ({ x: x / PLAN_VIEW_W, y: y / PLAN_VIEW_H });
   /** A key light on a C-stand with a softbox and a grid on its front, stacked on one spot. */
   const keyRig = (): PlanIcon[] => [

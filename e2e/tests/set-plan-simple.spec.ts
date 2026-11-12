@@ -261,13 +261,16 @@ for (const theme of ['dark', 'light'] as const) {
     await expect.poll(async () => (await icons('actor'))[0]?.pose).toBe('seated');
     await shot('actor');
 
-    // Several items: a box over the two lamps; align them; the mix is named.
+    // Several items: a box over the two lamps, drawn with Shift (a plain drag on empty space
+    // pans, decision 0117); align them; the mix is named.
     const a = await point([170, 110]);
     const b = await point([730, 190]);
+    await page.keyboard.down('Shift');
     await page.mouse.move(a.x, a.y);
     await page.mouse.down();
     await page.mouse.move(b.x, b.y, { steps: 5 });
     await page.mouse.up();
+    await page.keyboard.up('Shift');
     await expect(props).toContainText('2 elementi selezionati');
     await props.getByRole('button', { name: 'Allinea in alto' }).click();
     await shot('multi');

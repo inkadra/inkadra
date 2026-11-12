@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { z } from 'zod';
-import { MAX_STROKE_POINTS, PLAN_LAYERS, PlanStroke, STROKE_GRID, Stroke } from './elements.ts';
+import {
+  MAX_STROKE_POINTS,
+  PLAN_COORD_MAX,
+  PLAN_COORD_MIN,
+  PLAN_LAYERS,
+  PlanStroke,
+  STROKE_GRID,
+  Stroke,
+} from './elements.ts';
 
 /**
  * Hand-written checks of pen strokes, the items that make the first read of a board slow
@@ -27,14 +35,17 @@ const isPlain = (value: unknown): value is Record<string, unknown> => {
   return proto === Object.prototype || proto === null;
 };
 
-function points(value: unknown): number[] | null {
+/** A stroke's points, within the frame's grid, or with `plan` within a plan's reach (0117). */
+function points(value: unknown, plan: boolean): number[] | null {
+  const min = plan ? PLAN_COORD_MIN : 0;
+  const max = plan ? PLAN_COORD_MAX : STROKE_GRID;
   if (!Array.isArray(value)) return null;
   const n = value.length;
   if (n < 2 || n > MAX_STROKE_POINTS * 2 || n % 2 !== 0) return null;
   const out = new Array<number>(n);
   for (let i = 0; i < n; i++) {
     const p = value[i];
-    if (!Number.isSafeInteger(p) || p < 0 || p > STROKE_GRID) return null;
+    if (!Number.isSafeInteger(p) || p < min || p > max) return null;
     out[i] = p;
   }
   return out;
@@ -56,7 +67,7 @@ function stroke(value: unknown, plan: boolean): unknown {
       return UNSURE;
     out.opacity = o;
   }
-  const p = points(value.points);
+  const p = points(value.points, plan);
   if (!p) return UNSURE;
   out.points = p;
   if (!plan) return out;

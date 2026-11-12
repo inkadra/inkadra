@@ -388,11 +388,13 @@ function simplify(points: Point[], tolerance: number): Point[] {
 /**
  * Turns the points of a drawn line, relative to the picture (0 to 1 on both axes), into the
  * stored form: simplified, quantized to the STROKE_GRID and at most MAX_STROKE_POINTS points.
+ * `reach` lets the points lie that far beyond the picture on every side (a set plan, 0117).
  */
-export function encodeStroke(points: Point[]): number[] {
+export function encodeStroke(points: Point[], reach = 0): number[] {
+  const keep = (n: number) => Math.max(-reach, Math.min(1 + reach, n));
   const grid = points.map((p) => ({
-    x: Math.round(Math.max(0, Math.min(1, p.x)) * STROKE_GRID),
-    y: Math.round(Math.max(0, Math.min(1, p.y)) * STROKE_GRID),
+    x: Math.round(keep(p.x) * STROKE_GRID),
+    y: Math.round(keep(p.y) * STROKE_GRID),
   }));
   const deduped = grid.filter(
     (p, i) => i === 0 || p.x !== grid[i - 1]?.x || p.y !== grid[i - 1]?.y,

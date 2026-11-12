@@ -25,6 +25,7 @@ import {
   moveWithAttached,
   nextPlanItemAt,
   normalizeRotation,
+  PLAN_REACH_UNITS,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanItem,
@@ -45,11 +46,12 @@ import {
   settleAttached,
   shownAngle,
   snapPlanPoint,
-  toGrid,
+  toPlanGrid,
   updateElement,
   withAttached,
   withGroups,
   withReachAt,
+  planContentBox,
 } from '@inkadra/canvas-core';
 import {
   type FrameShape,
@@ -94,7 +96,6 @@ import {
 } from './PlanDrawing.tsx';
 import { usePlanSurface, ZoomControl } from './PlanSurface.tsx';
 import { useWallTools } from './PlanWalls.tsx';
-import { planContentBox } from './view.ts';
 
 /** Two presses on an item within this time (ms) are a double click, by mouse or by finger. */
 const DOUBLE_PRESS = 400;
@@ -171,7 +172,7 @@ export interface CanvasHandle {
   zoomBy: (dir: 1 | -1) => void;
   /** Frames what is on the plan. */
   fit: () => void;
-  /** Space held: a drag pans, whatever the tool (decision 0115). */
+  /** Space held: a drag pans, whatever the tool (decision 0117). */
   space: (down: boolean) => void;
   /** A key for the tool in use (the length typed for a wall); true when it took it. */
   key: (e: KeyboardEvent) => boolean;
@@ -239,7 +240,7 @@ export function selectionMenu(ed: Ed, t: TFunction): MenuItem[] {
 }
 
 /**
- * The drawing of the editor (decisions 0104 and 0115): a surface that fills the area between the
+ * The drawing of the editor (decisions 0104 and 0117): a surface that fills the area between the
  * panels, the plan's extent a quiet frame in it, panned and zoomed (PlanSurface); the gestures of
  * decision 0071 (draw, place, move, turn, resize, box selection, blocking), the bar of tools at
  * the bottom, the zoom and, with a scale, the scale bar. Nothing floats over the drawing for the
@@ -316,7 +317,9 @@ export function PlanCanvas({
     if (!r || r.width === 0) return { x: 0, y: 0 };
     return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
   };
-  const inside = (p: Point) => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
+  /** Within the plan's reach (decision 0117): anywhere on the surface, in practice. */
+  const inside = (p: Point) =>
+    Math.min(p.x, p.y) >= -PLAN_REACH_UNITS && Math.max(p.x, p.y) <= 1 + PLAN_REACH_UNITS;
   const snapped = (p: Point) => (ed.snap ? snapPlanPoint(p, step) : p);
   const walls = useWallTools(ed, { snapped, zoom });
   const placing = useBackgroundPlacing(ed, zoom);
@@ -326,7 +329,7 @@ export function PlanCanvas({
     const s = surf.surface.current?.getBoundingClientRect();
     if (!s) return { x: 0.5, y: 0.5 };
     const p = pointAt({ clientX: s.left + s.width / 2, clientY: s.top + s.height / 2 });
-    return { x: Math.max(0.02, Math.min(0.98, p.x)), y: Math.max(0.02, Math.min(0.98, p.y)) };
+    return p;
   };
 
   function openMeasure(m: {
@@ -386,8 +389,8 @@ export function PlanCanvas({
     if (draft) ed.disarm();
     const value = draft?.value.trim().slice(0, 500);
     if (!draft || !value) return;
-    const x = toGrid(draft.at.x);
-    const y = toGrid(draft.at.y);
+    const x = toPlanGrid(draft.at.x);
+    const y = toPlanGrid(draft.at.y);
     // A text is a note unless a layer is active: it goes where that layer lives.
     ed.change(() =>
       addShape(
@@ -412,7 +415,7 @@ export function PlanCanvas({
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest('.plan-editor__text')) return;
     e.stopPropagation();
-    // A second finger pinches: what the first one started is dropped (decision 0115).
+    // A second finger pinches: what the first one started is dropped (decision 0117).
     if (surf.down(e)) {
       onPointerCancel();
       return;
@@ -530,7 +533,7 @@ export function PlanCanvas({
       return;
     }
     if (tool === 'select' || tool === 'icons') {
-      // What a click picks (decision 0115): the top item, a light before its modifiers; Alt, or
+      // What a click picks (decision 0117): the top item, a light before its modifiers; Alt, or
       // a click again on what is picked, the next one under the pointer (a stool under a person).
       const top = planItemAt(drawn, p, viewOf);
       const single = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
@@ -603,7 +606,7 @@ export function PlanCanvas({
       const beneath = planItemAt(drawn, p, { hidden: ed.hiddenLayers });
       const lockedOne = beneath && planItem(drawn, beneath);
       if (lockedOne) ed.setLockedItem(lockedOne);
-      // A drag on empty space pans (decision 0115); a click there lets go of the selection.
+      // A drag on empty space pans (decision 0117); a click there lets go of the selection.
       // Shift and a mouse draw a box that adds; a finger draws one after a long press.
       const touch = e.pointerType === 'touch';
       if (!e.shiftKey) surf.startPan(e);
@@ -765,8 +768,8 @@ export function PlanCanvas({
       const q = snapped(p);
       const next: PlanShape =
         g.which === 0
-          ? { ...g.item, x0: toGrid(q.x), y0: toGrid(q.y) }
-          : { ...g.item, x1: toGrid(q.x), y1: toGrid(q.y) };
+          ? { ...g.item, x0: toPlanGrid(q.x), y0: toPlanGrid(q.y) }
+          : { ...g.item, x1: toPlanGrid(q.x), y1: toPlanGrid(q.y) };
       // A measure's end let go anywhere no longer follows its icon.
       delete next[g.which === 0 ? 'from' : 'to'];
       ed.setPreview(next);
@@ -890,7 +893,7 @@ export function PlanCanvas({
             tool: 'pencil',
             color: ink,
             width: PLAN_PEN,
-            points: encodeStroke(g.points),
+            points: encodeStroke(g.points, PLAN_REACH_UNITS),
           },
           LOCAL,
         ),
@@ -899,7 +902,7 @@ export function PlanCanvas({
     }
     setLiveShape(null);
     if (g.shape === 'scale') {
-      const length = gridLength(toGrid(g.a.x), toGrid(g.a.y), toGrid(g.b.x), toGrid(g.b.y));
+      const length = gridLength(toPlanGrid(g.a.x), toPlanGrid(g.a.y), toPlanGrid(g.b.x), toPlanGrid(g.b.y));
       ed.setTool('select');
       if (length > 10) setScaleDraft({ length, metres: '' });
       return;
@@ -919,10 +922,10 @@ export function PlanCanvas({
       kind: g.shape,
       color: ink,
       width: PLAN_PEN,
-      x0: toGrid(g.a.x),
-      y0: toGrid(g.a.y),
-      x1: toGrid(g.b.x),
-      y1: toGrid(g.b.y),
+      x0: toPlanGrid(g.a.x),
+      y0: toPlanGrid(g.a.y),
+      x1: toPlanGrid(g.b.x),
+      y1: toPlanGrid(g.b.y),
       ...(g.shape === 'zone' || g.shape === 'measure' ? { layer: 'notes' as const } : {}),
       ...(fromIcon ? { from: fromIcon.id } : {}),
       ...(toIcon ? { to: toIcon.id } : {}),
@@ -1180,10 +1183,10 @@ export function PlanCanvas({
               ...(liveShape.kind === 'scale' ? { dashed: true } : {}),
               color: ink,
               width: PLAN_PEN,
-              x0: toGrid(liveShape.a.x),
-              y0: toGrid(liveShape.a.y),
-              x1: toGrid(liveShape.b.x),
-              y1: toGrid(liveShape.b.y),
+              x0: toPlanGrid(liveShape.a.x),
+              y0: toPlanGrid(liveShape.a.y),
+              x1: toPlanGrid(liveShape.b.x),
+              y1: toPlanGrid(liveShape.b.y),
             } as PlanShape
           }
         />
@@ -1714,7 +1717,7 @@ export function PlanCanvas({
           {rulers}
           {ghostPlan && (
             <div className="plan-canvas__ghost" aria-hidden="true">
-              <PlanDrawing plan={ghostPlan} moves={false} />
+              <PlanDrawing plan={ghostPlan} moves={false} extent />
             </div>
           )}
           <PlanDrawing
@@ -1724,6 +1727,7 @@ export function PlanCanvas({
                 : shown
             }
             background
+            extent
             // The surface draws the dots; over a picture the drawing draws them again.
             grid={shown.background && !shown.background.hidden ? step : undefined}
             ghosts={ed.ghosts}

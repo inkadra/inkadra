@@ -9,6 +9,7 @@ import {
   linkedLocation,
   type PlanElement,
   variantView,
+  planContentBox,
 } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton } from '@inkadra/ui';
@@ -31,7 +32,6 @@ import { PlanDrawing, PlanGlyph, planCss, useLinkedPlan } from './PlanDrawing.ts
 import { downloadPlanSheet, planSheetEnv, planSheetRequest } from './PlanExport.tsx';
 import { setupName } from './PlanKit.tsx';
 import { usePlanSurface } from './PlanSurface.tsx';
-import { planContentBox } from './view.ts';
 import './plan.css';
 import './outputs.css';
 
@@ -146,7 +146,7 @@ export function PlanViewer({
   const [busy, setBusy] = useState(false);
   const [cache] = useState(() => new ExportCache());
   const shown = useLinkedPlan(variantView(plan, base));
-  // The same surface as the editor's (decision 0115): the dots, pan and zoom, Fit on the content.
+  // The same surface as the editor's (decision 0117): the dots, pan and zoom, Fit on the content.
   const content = useMemo(() => planContentBox(shown), [shown]);
   const surface = usePlanSurface({
     content,
@@ -257,8 +257,8 @@ export function PlanViewer({
           onPointerUp={(e) => surface.up(e)}
           onPointerCancel={(e) => surface.up(e)}
         >
-          <div ref={surface.stage} className="plan-view__sheet plan-editor__stage">
-            <PlanDrawing plan={shown} background />
+          <div ref={surface.stage} className="plan-view__sheet">
+            <PlanDrawing plan={shown} background extent />
           </div>
           <div className="plan-view__bar" role="toolbar" aria-label={t('board.plan.name')}>
             <IconButton

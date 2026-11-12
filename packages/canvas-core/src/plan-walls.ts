@@ -13,7 +13,7 @@ import {
 } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
 import type { Point } from './geometry.ts';
-import { lockAllows, PLAN_VIEW_H, PLAN_VIEW_W, type PlanElement } from './plan.ts';
+import { clampGrid, lockAllows, PLAN_VIEW_H, PLAN_VIEW_W, type PlanElement } from './plan.ts';
 import { NOMINAL_SCALE } from './plan-icons.ts';
 
 /**
@@ -607,8 +607,7 @@ export function sideAngle(from: Point, to: Point, before?: Point): number {
 
 /** Points in view units as a wall's `points`: grid units, kept on the drawing. */
 export function toWallPoints(points: readonly Point[]): number[] {
-  const grid = (v: number, size: number) =>
-    Math.max(0, Math.min(STROKE_GRID, Math.round((v / size) * STROKE_GRID)));
+  const grid = (v: number, size: number) => clampGrid((v / size) * STROKE_GRID);
   return points.flatMap((p) => [grid(p.x, PLAN_VIEW_W), grid(p.y, PLAN_VIEW_H)]);
 }
 
