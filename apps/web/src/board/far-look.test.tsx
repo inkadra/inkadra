@@ -60,10 +60,7 @@ const far = (() => {
     // happy-dom's URL reads no file: the path from the module's own address.
     join(dirname(fileURLToPath(import.meta.url)), 'board.css'),
     'utf8',
-  ).replace(
-    /\/\*[\s\S]*?\*\//g,
-    '',
-  );
+  ).replace(/\/\*[\s\S]*?\*\//g, '');
   const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
     .map(([, head = '', body = '']) => ({
       selector: head.replace(/\s+/g, ' ').trim(),
@@ -107,7 +104,12 @@ const cases: Case[] = [
   { name: 'location with photo', type: 'location', fields: { name: 'Port', assetId: 'img' } },
   { name: 'map', type: 'map', fields: { name: 'Port' } },
   { name: 'map with picture', type: 'map', fields: { name: 'Port', imageAssetId: 'img' } },
-  { name: 'map, missing', type: 'map', fields: { name: 'Port', imageAssetId: 'img' }, ready: false },
+  {
+    name: 'map, missing',
+    type: 'map',
+    fields: { name: 'Port', imageAssetId: 'img' },
+    ready: false,
+  },
   { name: 'file', type: 'file', fields: { assetId: 'img' } },
   { name: 'file, missing', type: 'file', fields: { assetId: 'img' }, ready: false },
   { name: 'link', type: 'link', fields: { url: 'https://example.com/a' } },
@@ -128,7 +130,10 @@ const cases: Case[] = [
     name: 'column of texts',
     type: 'column',
     fields: { title: 'Ideas', color: 'green' },
-    children: [{ type: 'note', fields: { color: 'orange' } }, { type: 'todo', fields: { items: [] } }],
+    children: [
+      { type: 'note', fields: { color: 'orange' } },
+      { type: 'todo', fields: { items: [] } },
+    ],
   },
   {
     name: 'column with a picture',
@@ -242,7 +247,8 @@ describe('the far look of board.css and farLook', () => {
       const shown = [...matches(far.show)].filter((p) => node.contains(p));
       const filled = matches(far.fill).has(node);
       // Everything of the card is hidden but what the show rule brings back.
-      for (const part of node.children) expect(matches(far.hide).has(part as HTMLElement)).toBe(true);
+      for (const part of node.children)
+        expect(matches(far.hide).has(part as HTMLElement)).toBe(true);
       const css =
         filled && shown.length === 0
           ? { look: 'block', color: FAR_BLOCK }
