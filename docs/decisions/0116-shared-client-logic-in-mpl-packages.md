@@ -16,7 +16,7 @@ follows AGPL code is not MPL code.
 Product logic shared by clients (the same input must give the same result on every client)
 lives once, in an MPL-2.0 package, as pure functions on the shared types: domain rules in
 `packages/shared`, card geometry and board rules in `packages/canvas-core`, measures and
-tokens in `packages/ui`. The web app imports it from there like every other client. A client
+tokens in `packages/ui`, printed pages as drawing operations in `packages/print`. The web app imports it from there like every other client. A client
 never copies or ports such logic from an AGPL app: it moves it into a package first, written by
 someone who can license it under the MPL, then imports it. Presentation that belongs to one
 client stays in that client.
@@ -183,6 +183,39 @@ pictures; arrows are drawn as at any zoom. The web keeps drawing it in CSS
 the stylesheet and `farLook` disagree. Which links play in their card (`videoEmbedUrl`) and
 whether an asset can be shown yet stay with the client and are passed in.
 
+For the server to render the set plan sheet with the web's code, the exports' pages begin to move
+into a new MPL-2.0 package, `packages/print` (`@inkadra/print`), which draws pages as a list of
+operations (decision 0038) and holds no PDF library: canvas-core stays independent of rendering.
+First moved, whole: the page model (`ops.ts`, from the web's `export/pages.ts`: `Op`, `Page`,
+`ImageInfo`, `Measure`, `FontWeight`, `roundedRectPath`, `fitBox`, `imagePlacement`), the text
+(`text.ts`: `TextStyle`, `wrapText`, `ellipsize`, `textBlock`, `lineHeight`, `missingGlyphs`) and
+the page sizes, margins and grids (`layout.ts`: `pageSize`, `contentBox`, `storyboardGrid`,
+`storyboardCells`, `slideCell`, `gridCells`, `chunk`, `paginateRows`, `fitRegion`,
+`pixelRatio`, `pngScales` and their constants), with their tests. A picture's crop checks went
+to canvas-core's `image-crop.ts`: `isIdentityCrop`, `hasImageTransform` and
+`normalizeImageRotation` (`(-180, 180]`; the web still calls it `normalizeRotation`, a name
+canvas-core already gives a set plan item's rotation in `[0, 360)`). The web's
+`export/pages.ts`, `text.ts` and `layout.ts` re-export the moved names.
+
+Then the set plan's printed drawing (`plan-ops.ts`, from the web's `export/board-render.ts`):
+`planOps`, `framedPlanOps` and what they draw with (`planShapeOps`, `strokeOp`, `head`,
+`drawArrow`, `dashes`, `mix`, `GLOW_RINGS`, `FLOOR_TINT`, `transformOps`), with the printed
+theme's colours as `Palette`. A plan's drawing reads only a `PlanDrawContext` (`measure`,
+`colors`, `roomSize`, `language`, `cards`); the web's `CardContext` extends it, so the compiler
+holds the drawing away from the rest of a board export. Its colours come from canvas-core
+(`PLAN_INK`, `CHARACTER_COLOURS`, `planToken`). The web's `board-render.ts` re-exports
+`planOps`, `framedPlanOps`, `transformOps` and `Palette`, and its fixtures and the plan sheet's
+goldens did not change.
+
+Then the set plan sheet's layout (`plan-sheet.ts`, from the web's `export/plan-sheet.ts`):
+`planSheetPages`, `PlanSheetInclude`, `PLAN_SHEET_INCLUDE`, `sheetInclude`, `PlanSheetSetup`,
+`PlanSheetInput` and `PLAN_SHEET_FRAME` with the sheet's measures. It reads a
+`PlanDrawContext`, not the web's `CardContext`, and its words through canvas-core's `Words`, not
+i18next's `TFunction`; capitals and numbers take the locale it is given. The export dialog's
+preview (`previewCrop`) stays in the web, whose `plan-sheet.ts` re-exports the moved names; the
+sheet's goldens and pins did not change. The PDF writer and the fonts follow, each in its own
+change.
+
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
 touch many rules; do it when the board stylesheet is next reworked).
@@ -203,8 +236,8 @@ Stays in the web or the server for now; each moves when a second client needs it
 - The rest of a plan's drawing that is not yet in canvas-core: the blocking moves (the board
   draws a quadratic curve with open wings stopped 26 short, exports a polyline with a filled
   head), the position numbers' places, a label's halo and the light's second line under it, the
-  ticks of the rooms' sizes, the beam's gradient and the glow's falloff. Move with a plan drawn
-  on another client.
+  ticks of the rooms' sizes, the beam's gradient and the glow's falloff, as the board draws
+  them (the printed ones are in `packages/print`). Move with a plan drawn on another client.
 
 Exports and the board draw a plan alike but not the same, and the move kept both as they were:
 exports stroke glyphs thinner (a part without a width of its own at 1 / 1.7 of the board's, one

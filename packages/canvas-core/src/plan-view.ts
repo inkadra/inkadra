@@ -18,7 +18,7 @@ import {
 } from './plan.ts';
 import { iconLabel, iconSubLabel, PLAN_LABEL_SIZE, PLAN_SUB_LABEL_SIZE } from './plan-labels.ts';
 import { backgroundBox } from './plan-start.ts';
-import { planRoomDims, planRooms, wallBounds } from './plan-walls.ts';
+import { planRoomDims, planRooms, type RoomDim, wallBounds } from './plan-walls.ts';
 
 /**
  * The view of a plan's drawing surface (decision 0118): a surface without edges that fills the
@@ -219,8 +219,47 @@ const union = (boxes: readonly Rect[]): Rect | null => {
 const around = (points: readonly Point[], pad = 0): Rect =>
   union(points.map((p) => ({ x: p.x - pad, y: p.y - pad, w: 2 * pad, h: 2 * pad }))) as Rect;
 
-/** Room sizes' text, view units round their line (decision 0119). */
-const ROOM_DIM_TEXT = 18;
+/** A room size's text, view units: its size and how far it sits off its line (decision 0119). */
+export const PLAN_ROOM_SIZE_TEXT = 12;
+export const PLAN_ROOM_SIZE_GAP = 5;
+/** Half the length of the ticks at a room size's ends, view units. */
+const ROOM_SIZE_TICK = 5;
+
+/** A room's size as the plan writes it, in the app's language: `roomSizeText` with its words. */
+export type RoomSizeWords = (length: number, scale: number, overall: boolean) => string;
+
+/**
+ * Everything drawn for a room size, view units: its line with the ticks, and its text as the
+ * editor and the card draw it (turned along the line, on the side away from the room) and, for a
+ * side, as the exports write it (level, left of the line). Both count: one box frames the screen
+ * and the sheets.
+ */
+function roomSizeBox(d: RoomDim, text: string): Rect {
+  const { a, b } = d;
+  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  // Read left to right, as the drawing turns it; "up" in the text's own frame.
+  let u = { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
+  if (u.x < 0) u = { x: -u.x, y: -u.y };
+  const up = { x: u.y, y: -u.x };
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  // Text about 0.6 of its size wide per letter, as icon labels count it; the halo adds a few units.
+  const w = text.length * PLAN_ROOM_SIZE_TEXT * 0.62 + 8;
+  const across = PLAN_ROOM_SIZE_GAP + PLAN_ROOM_SIZE_TEXT + 4;
+  const corners = [-w / 2, w / 2].flatMap((s) =>
+    [0, across].map((t) => ({ x: mid.x + u.x * s + up.x * t, y: mid.y + u.y * s + up.y * t })),
+  );
+  const boxes = [around([a, b], ROOM_SIZE_TICK), around(corners)];
+  if (a.y !== b.y) {
+    const base = mid.y + PLAN_ROOM_SIZE_TEXT * 0.35;
+    boxes.push({
+      x: mid.x - PLAN_ROOM_SIZE_GAP - w,
+      y: base - PLAN_ROOM_SIZE_TEXT - 2,
+      w,
+      h: PLAN_ROOM_SIZE_TEXT + 4,
+    });
+  }
+  return union(boxes) as Rect;
+}
 
 /** Radius of a blocking position's number and how far it sits from the position. */
 const STEP_REACH = 24 + 11;
@@ -289,11 +328,13 @@ export function itemDrawnBox(item: PlanItem, sensor?: PlanElement['sensor']): Re
 /**
  * What Fit frames and outputs show (decision 0118): the box of everything drawn on the plan
  * (`itemDrawnBox` of the items drawn, walls and, unless `background` is false, the background
- * picture), leaving out the plan's hidden layers and the caller's `hidden` ones (a person's own,
- * or a group as Grip and crew); view units, null when nothing is drawn.
+ * picture, the rooms' sizes with their text in the words `roomSize` writes them), leaving out the
+ * plan's hidden layers and the caller's `hidden` ones (a person's own, or a group as Grip and
+ * crew); view units, null when nothing is drawn.
  */
 export function planContentBox(
   plan: Framed,
+  roomSize: RoomSizeWords,
   background = true,
   hidden: readonly string[] = [],
 ): Rect | null {
@@ -307,7 +348,8 @@ export function planContentBox(
     for (const wall of plan.walls ?? []) boxes.push(wallBounds(wall));
     if (background && plan.background && !plan.background.hidden)
       boxes.push(backgroundBox(plan.background));
-    for (const d of planRoomDims(plan, hidden)) boxes.push(around([d.a, d.b], ROOM_DIM_TEXT));
+    for (const d of planRoomDims(plan, hidden))
+      boxes.push(roomSizeBox(d, roomSize(d.length, plan.scale as number, d.overall)));
   }
   return union(boxes);
 }
@@ -341,11 +383,12 @@ const FRAME_MIN_W = 400;
  */
 export function planFrame(
   plan: Framed,
+  roomSize: RoomSizeWords,
   background = true,
   hidden: readonly string[] = [],
   aspect: number = PLAN_ASPECT,
 ): Rect {
-  const box = planContentBox(plan, background, hidden);
+  const box = planContentBox(plan, roomSize, background, hidden);
   if (!box) return { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H };
   const m = FRAME_MARGIN + FRAME_SHARE * Math.max(box.w, box.h * PLAN_ASPECT);
   let w = Math.max(FRAME_MIN_W, box.w + 2 * m);

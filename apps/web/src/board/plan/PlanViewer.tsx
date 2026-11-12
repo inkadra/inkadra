@@ -25,7 +25,13 @@ import type { BoardStore } from '../store.ts';
 import { foldIcons } from './elements.ts';
 import { kitList, powerLines } from './kit.ts';
 import { planTitle } from './PlanCard.tsx';
-import { PlanDrawing, PlanGlyph, planCss, useLinkedPlan } from './PlanDrawing.tsx';
+import {
+  PlanDrawing,
+  PlanGlyph,
+  planCss,
+  useLinkedPlan,
+  useRoomSizeWords,
+} from './PlanDrawing.tsx';
 import { downloadPlanSheet, planSheetEnv, planSheetRequest } from './PlanExport.tsx';
 import { setupName } from './PlanKit.tsx';
 import { usePlanSurface } from './PlanSurface.tsx';
@@ -137,7 +143,8 @@ export function PlanViewer({
   const [cache] = useState(() => new ExportCache());
   const shown = useLinkedPlan(variantView(plan, base));
   // The same surface as the editor's (decision 0118): the dots, pan and zoom, Fit on the content.
-  const content = useMemo(() => planContentBox(shown), [shown]);
+  const roomSize = useRoomSizeWords();
+  const content = useMemo(() => planContentBox(shown, roomSize), [shown, roomSize]);
   const surface = usePlanSurface({
     content,
     insets: { top: 8, right: 8, bottom: 56, left: 8 },

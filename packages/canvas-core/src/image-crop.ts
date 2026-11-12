@@ -6,6 +6,7 @@ export const FULL_CROP: ImageCrop = { x: 0, y: 0, w: 1, h: 1 };
 
 /** Smallest crop any renderer keeps: the rounding step, so every positive schema value survives. */
 const MIN_STORED_SIZE = 1e-4;
+const EPS = 1e-4;
 
 // 'worklet' lets the React Native app call the crop geometry on the UI thread (Reanimated copies
 // FULL_CROP and MIN_STORED_SIZE into the worklet); elsewhere it is a no-op string.
@@ -69,4 +70,37 @@ export function croppedRotatedSize(
     width: Math.max(1e-3, rot.width * c.w),
     height: Math.max(1e-3, rot.height * c.h),
   };
+}
+
+/**
+ * Normalizes a picture's rotation in degrees into `(-180, 180]`, with `0` for multiples of 360
+ * (a set plan item's `normalizeRotation` gives `[0, 360)` instead).
+ */
+export function normalizeImageRotation(deg = 0): number {
+  if (!Number.isFinite(deg)) return 0;
+  let r = ((deg % 360) + 360) % 360;
+  if (r > 180) r -= 360;
+  const rounded = Math.round(r * 100) / 100;
+  return Object.is(rounded, -0) ? 0 : rounded;
+}
+
+/** True when the crop covers the full `[0, 1] x [0, 1]` frame. */
+export function isIdentityCrop(crop?: ImageCrop | null): boolean {
+  if (!crop) return true;
+  return (
+    Math.abs(crop.x) < EPS &&
+    Math.abs(crop.y) < EPS &&
+    Math.abs(crop.w - 1) < EPS &&
+    Math.abs(crop.h - 1) < EPS &&
+    (!crop.aspect || crop.aspect === 'free')
+  );
+}
+
+/** True when an image element has a non-identity crop or non-zero rotation. */
+export function hasImageTransform(el: {
+  crop?: ImageCrop | undefined;
+  rotation?: number | undefined;
+}): boolean {
+  if (!isIdentityCrop(el.crop)) return true;
+  return Math.abs(normalizeImageRotation(el.rotation)) >= EPS;
 }
