@@ -3,50 +3,10 @@
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
-import { northWay, sunDays, useScheduleDays } from './sun-days.ts';
+import { useScheduleDays } from './sun-days.ts';
 
 const get = vi.fn();
 vi.mock('../../lib/api.ts', () => ({ api: { get: (...a: unknown[]) => get(...a) } }));
-
-const block = (shotId: string | null) => ({
-  id: `b${shotId ?? 'none'}xxxxxxx`,
-  type: 'shot' as const,
-  title: '',
-  start: null,
-  duration: 30,
-  shotId,
-  cast: [],
-  departments: [],
-});
-
-describe('sunDays', () => {
-  const days = [
-    { id: 'd14', date: '2026-03-14', blocks: [block('frame2Axxxxx')] },
-    { id: 'd12', date: '2026-03-12', blocks: [block('frame9Axxxxx')] },
-    { id: 'd13', date: '2026-03-13', blocks: [block(null)] },
-  ];
-
-  it("numbers the days by date and keeps those that shoot the plan's scenes, with their ids", () => {
-    expect(sunDays(days, new Set(['frame2Axxxxx']))).toEqual([
-      { id: 'd14', n: 3, date: '2026-03-14' },
-    ]);
-  });
-
-  it('offers every day when the plan serves no scene or none of its shots is scheduled', () => {
-    const all = [
-      { id: 'd12', n: 1, date: '2026-03-12' },
-      { id: 'd13', n: 2, date: '2026-03-13' },
-      { id: 'd14', n: 3, date: '2026-03-14' },
-    ];
-    expect(sunDays(days, new Set())).toEqual(all);
-    expect(sunDays(days, new Set(['elsewherexxx']))).toEqual(all);
-  });
-});
-
-function Probe({ boardId, edit }: { boardId: string; edit: number }) {
-  useScheduleDays(boardId);
-  return createElement('span', null, edit);
-}
 
 describe('useScheduleDays', () => {
   it('reads the schedule once per board, not on every render (an edit of the board)', async () => {
@@ -81,14 +41,7 @@ describe('useScheduleDays', () => {
   });
 });
 
-describe('northWay', () => {
-  it('names the nearest of eight ways, turning past a full circle', () => {
-    expect(northWay(0)).toBe('up');
-    expect(northWay(20)).toBe('up');
-    expect(northWay(90)).toBe('right');
-    expect(northWay(200)).toBe('down');
-    expect(northWay(337)).toBe('upLeft');
-    expect(northWay(359)).toBe('up');
-    expect(northWay(-90)).toBe('left');
-  });
-});
+function Probe({ boardId, edit }: { boardId: string; edit: number }) {
+  useScheduleDays(boardId);
+  return createElement('span', null, edit);
+}

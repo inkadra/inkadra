@@ -1,9 +1,15 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: MPL-2.0
 import type { Element, PlanIcon } from '@inkadra/doc-schema';
-import type { TFunction } from 'i18next';
 import { expect, it } from 'vitest';
-import { planTitle } from './PlanCard.tsx';
-import { dayBySetup, groupBySetup, type ShotSetup, setupChanges, shotSetups } from './setups.ts';
+import {
+  dayBySetup,
+  groupBySetup,
+  planTitle,
+  type ShotSetup,
+  setupChanges,
+  shotSetups,
+} from './plan-setups.ts';
+import { english as t } from './plan-words.fixture.ts';
 
 const icon = (id: string, kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
   id: id.padEnd(13, 'A'),
@@ -55,18 +61,17 @@ it('lists the setups each shot belongs to, by the frames its cameras link to', (
     plan('close', 2, { variantOf: 'baseAAAAAAAAA', variant: 'CU Anna', icons: [cam] }),
     plan('empty', 3, { variantOf: 'baseAAAAAAAAA', icons: [] }),
   ];
-  const t = ((key: string) => key) as unknown as TFunction;
   expect(shotSetups(elements, t).get('frameAAAAAAAA')).toEqual([
     {
       planId: 'baseAAAAAAAAA',
-      name: '1 · board.plan.base',
-      plan: 'board.plan.name · Diner',
+      name: '1 · Base',
+      plan: 'Set plan · Diner',
       order: 0,
     },
     {
       planId: 'closeAAAAAAAA',
       name: '2 · CU Anna',
-      plan: 'board.plan.name · Diner',
+      plan: 'Set plan · Diner',
       order: 1,
     },
   ]);
@@ -142,11 +147,10 @@ it('pairs each icon with the nearest of its kind, named ones first, on plans of 
 });
 
 it('names a setup as a set plan with its base title and its own name (decision 0117)', () => {
-  const t = ((key: string) => key) as unknown as TFunction;
-  expect(planTitle(t, { title: 'Diner' })).toBe('board.plan.name · Diner');
+  expect(planTitle(t, { title: 'Diner' })).toBe('Set plan · Diner');
   expect(planTitle(t, { title: 'Diner', variant: 'Night', variantOf: 'baseAAAAAAAAA' })).toBe(
-    'board.plan.name · Diner · Night',
+    'Set plan · Diner · Night',
   );
   // A base renamed "Master" keeps that name on its tab, not in its title.
-  expect(planTitle(t, { variant: 'Master' })).toBe('board.plan.name');
+  expect(planTitle(t, { variant: 'Master' })).toBe('Set plan');
 });

@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { linkedLocation, type PlanElement, variantFamily, variantView } from '@inkadra/canvas-core';
-import type { Element } from '@inkadra/doc-schema';
-import type { TFunction } from 'i18next';
+import { type PlanElement, planCardWords, planTitle } from '@inkadra/canvas-core';
 import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useInRouterContext } from 'react-router';
 import { useBoard } from '../context.ts';
-import { planCounts } from './kit.ts';
 import { PlanDrawing } from './PlanDrawing.tsx';
-import { SceneBadges, scenesOfPlan, usePlanNav } from './scenes.tsx';
+import { SceneBadges, usePlanNav } from './scenes.tsx';
 import './plan.css';
 import './outputs.css';
 
@@ -16,61 +13,8 @@ function LinkedScenes({ scenes }: { scenes: Parameters<typeof SceneBadges>[0]['s
   return <SceneBadges scenes={scenes} onOpen={usePlanNav().openScene} />;
 }
 
-/**
- * "Set plan · Kitchen, day 2": the name of a plan in the editor, the view and the export; a setup
- * adds its own, "Set plan · Kitchen, day 2 · Evening" (its title is its base's, decision 0117).
- * The base's setup name stays on its tab.
- */
-export function planTitle(
-  t: TFunction,
-  plan: Pick<PlanElement, 'title' | 'variant' | 'variantOf'>,
-): string {
-  return [t('board.plan.name'), plan.title, plan.variantOf ? plan.variant : '']
-    .filter(Boolean)
-    .join(' · ');
-}
-
-/**
- * The words of a plan's card (decision 0111): its name (the base's title, else the linked
- * location), its scenes, and the counts of its setups, cameras and lights with their power. The
- * card on the board and board exports (decision 0119) write the same.
- */
-export function planCardWords(
-  element: PlanElement,
-  byId: ReadonlyMap<string, Element>,
-  t: TFunction,
-  locale: string,
-) {
-  // The base of a variant is another card: follow it, so a wall moved there moves here.
-  const baseEl = element.variantOf ? byId.get(element.variantOf) : undefined;
-  const base = baseEl?.type === 'plan' ? baseEl : undefined;
-  const plan = base ? variantView(element, base) : element;
-  const scenes = scenesOfPlan(element.sceneIds ? element : (base ?? element), byId);
-  const family = variantFamily(byId.values(), element);
-  const { cameras, lights, watts } = planCounts(plan);
-  const place = linkedLocation(base ?? element, byId)?.name;
-  // The title is the base's, shown by every setup (decision 0117).
-  const name = (base ? base.title : element.title) || place || t('board.plan.name');
-  const kw =
-    watts >= 1000
-      ? `${(watts / 1000).toLocaleString(locale, { maximumFractionDigits: 1 })} kW`
-      : `${watts} W`;
-  const chips = [
-    family.length > 1 ? t('board.plan.card.setups', { count: family.length }) : '',
-    cameras ? t('board.plan.card.cameras', { count: cameras }) : '',
-    lights
-      ? [t('board.plan.card.lights', { count: lights }), watts > 0 ? kw : '']
-          .filter(Boolean)
-          .join(' · ')
-      : '',
-  ].filter(Boolean);
-  return {
-    plan,
-    scenes,
-    title: element.variantOf && element.variant ? `${name} · ${element.variant}` : name,
-    chips,
-  };
-}
+/** The title and the words of a plan's card live in canvas-core (decision 0116). */
+export { planCardWords, planTitle };
 
 /**
  * A set plan on the board (#335, decision 0111): its drawing without the grid, then its name

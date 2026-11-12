@@ -15,6 +15,7 @@ import * as Y from 'yjs';
 import type { Point } from './geometry.ts';
 import { clampGrid, lockAllows, PLAN_VIEW_H, PLAN_VIEW_W, type PlanElement } from './plan.ts';
 import { NOMINAL_SCALE } from './plan-icons.ts';
+import type { Words } from './plan-words.ts';
 
 /**
  * Walls and openings of a plan (decision 0104). A wall is a polyline with a thickness, closed or
@@ -1119,4 +1120,37 @@ export function roomMetres(length: number, scale: number, locale: string): strin
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   })} m`;
+}
+
+/**
+ * A room's size in the app's language (decision 0119), the one formatter of the editor, the view,
+ * the card and the exports: "8.0 m", "8,0 m" in Italian; "8.0 m overall" when the room is not a
+ * rectangle.
+ */
+export function roomSizeText(
+  length: number,
+  scale: number,
+  overall: boolean,
+  t: Words,
+  locale: string,
+): string {
+  const size = roomMetres(length, scale, locale);
+  return overall ? t('board.plan.roomOverall', { size }) : size;
+}
+
+/** Width and depth of the walls' outline in metres, "8.0 × 6.3 m"; null without walls or scale. */
+export function roomSize(plan: PlanElement, locale: string): string | null {
+  const points = (plan.walls ?? []).flatMap((w) => w.points);
+  if (!plan.scale || points.length < 4) return null;
+  const xs = points.filter((_, i) => i % 2 === 0);
+  const ys = points.filter((_, i) => i % 2 === 1);
+  // Wall points are in STROKE_GRID units of the drawing's width and height.
+  const w = ((Math.max(...xs) - Math.min(...xs)) / STROKE_GRID) * PLAN_VIEW_W;
+  const h = ((Math.max(...ys) - Math.min(...ys)) / STROKE_GRID) * PLAN_VIEW_H;
+  const m = (v: number) =>
+    (v / (plan.scale as number)).toLocaleString(locale, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    });
+  return `${m(w)} × ${m(h)} m`;
 }

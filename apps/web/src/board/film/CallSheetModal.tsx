@@ -920,7 +920,7 @@ function SheetSceneBlock({
             {kit.length > 0 && (
               <ul className="sheet__kit">
                 {kit.map((k) => (
-                  <li key={k.name}>
+                  <li key={k.key}>
                     {k.name} ×{k.count}
                   </li>
                 ))}
