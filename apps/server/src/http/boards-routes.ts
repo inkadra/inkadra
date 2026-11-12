@@ -634,7 +634,10 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     if (patch.icon !== undefined) set.icon = patch.icon;
     if (patch.views !== undefined) {
       const allowed = OPTIONAL_VIEWS[current.kind];
-      if (patch.views.some((v) => !allowed.includes(v)))
+      // A web tab from before the Production board still sends a storyboard its Schedule and
+      // Troupe with the rest: dropped, not refused, so that tab can still turn a view on or off.
+      const legacy: readonly string[] = current.kind === 'storyboard' ? ['schedule', 'troupe'] : [];
+      if (patch.views.some((v) => !allowed.includes(v) && !legacy.includes(v)))
         throw new HttpError('bad_request', 'This kind of board cannot show that view.');
       set.views = allowed.filter((v) => patch.views?.includes(v));
     }

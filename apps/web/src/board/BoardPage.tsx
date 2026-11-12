@@ -418,21 +418,17 @@ function BoardScreen({
   }, []);
   // A storyboard's ⋯ menu leads to the Production board that plans it.
   const pointing = useDaysPointingAt(boardId, kind === 'storyboard' ? production?.id : undefined);
-  // Without a live one, it offers to add it to the project's editors while the project has days
-  // or a crew, which its card counts then (decision 0123): the move switched off, a project it
-  // skipped, or the board in the trash, which comes back with its days.
-  const addsProduction =
-    kind === 'storyboard' &&
-    !!boards &&
-    !production &&
-    !!rootBoardId &&
-    !!projectRole &&
-    atLeast(projectRole, 'editor') &&
-    isOn('production');
-  const waiting = useBoardPreview(addsProduction ? boardId : null, 'production');
+  // Without a live one, a member of a project that has days or a crew, which its card counts
+  // then (decision 0123), is told where they are: the move switched off, a project it skipped,
+  // or the board in the trash, which comes back with its days. Editors can add it; the entry
+  // shows with the Production module off too, since it leads to data that exists (0121).
+  const mayMissProduction =
+    kind === 'storyboard' && !!boards && !production && !!rootBoardId && !!projectRole;
+  const waiting = useBoardPreview(mayMissProduction ? boardId : null, 'production');
   const waitingPreview = waiting && 'preview' in waiting ? waiting.preview : undefined;
   const productionMissing =
-    addsProduction && (waitingPreview?.dayCount ?? 0) + (waitingPreview?.crewCount ?? 0) > 0;
+    mayMissProduction && (waitingPreview?.dayCount ?? 0) + (waitingPreview?.crewCount ?? 0) > 0;
+  const addsProduction = productionMissing && !!projectRole && atLeast(projectRole, 'editor');
   useEffect(() => {
     if (view === 'schedule' || view === 'troupe')
       setOpenedFilmViews((opened) => (opened[view] ? opened : { ...opened, [view]: true }));
@@ -802,7 +798,7 @@ function BoardScreen({
           {tabs.length > 1 && (
             <ViewTabs id={tabsId} kind={kind} tabs={tabs} view={view} onChoose={chooseView} />
           )}
-          {(editable || outside > 0 || productionLink) && (
+          {(editable || outside > 0 || productionLink || productionMissing) && (
             <div className="board-header-menu" ref={headerMenuAnchor}>
               <IconButton
                 id="board-header-menu"
@@ -835,14 +831,24 @@ function BoardScreen({
                         ]
                       : []),
                     // Days or a crew but no live Production board: where they are now.
-                    ...(productionMissing && editable
+                    ...(productionMissing
                       ? [
-                          {
-                            label: t('production.storyboardMissing'),
-                            icon: 'film' as const,
-                            kind: 'production' as const,
-                            action: addProduction,
-                          },
+                          addsProduction && editable
+                            ? {
+                                label: t('production.storyboardMissing'),
+                                icon: 'film' as const,
+                                kind: 'production' as const,
+                                action: () => {
+                                  if (!isOn('production')) void setModule('production', true);
+                                  addProduction();
+                                },
+                              }
+                            : {
+                                label: t('production.storyboardWaiting'),
+                                icon: 'film' as const,
+                                kind: 'production' as const,
+                                disabled: true,
+                              },
                           { divider: true as const },
                         ]
                       : []),
@@ -1026,6 +1032,8 @@ function BoardScreen({
       production,
       pointing,
       productionMissing,
+      addsProduction,
+      isOn,
       addProduction,
       navigate,
     ],
