@@ -162,12 +162,11 @@ test('plans frames of two storyboards and a scene without frames on the Producti
     await page.request.get(`/api/v1/boards/${production.id}/schedule`)
   ).json()) as { items: unknown[] };
   expect(days.items).toHaveLength(1);
-  // One step of undo: it goes, and the menu adds it again.
+  // One step of undo, and of redo; the board stays live, so the menu now opens it.
   await page.keyboard.press('Escape');
   await page.keyboard.press('ControlOrMeta+z');
   await expect(card).toHaveCount(0);
-  await page.getByRole('button', { name: 'Canvas', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Produzione', exact: true }).click();
+  await page.keyboard.press('ControlOrMeta+Shift+z');
   await expect(card).toBeVisible();
 });
 
