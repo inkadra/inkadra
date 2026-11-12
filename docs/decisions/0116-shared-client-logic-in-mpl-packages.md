@@ -104,6 +104,12 @@ the private calendar link on a phone (`calendar.helpPhone`, `privacyPhone`, `con
 those words (`describeNotification`: the access dates, the alert's sizes, the review status from
 `review.status.*`) stays in the web for now: it formats with the web's date and size helpers.
 
+The shooting schedule's empty states, which the mobile app shows too, are `SCHEDULE_WORDS_EN` in
+`packages/shared` (`schedule.empty`, `emptyTitle`, `emptyBody`, `emptyReadOnly`, `noBlocks`,
+`noMatches`, `allScheduled`, `callSheet.noBlocks`), with `SCHEDULE_WORDS_IT`, `_ES`, `_DE`,
+`_FR`, `_PT` imported by path (`@inkadra/shared/schedule-words/it`), tested both ways. The
+schedule's editing messages (saving, conflicts, offline) and the sun's notes stay in the web.
+
 One behaviour changed with the move, on purpose: the kit, the names on a circuit and the count
 across setups went by the translated name, so two kinds a language writes alike (or two specs
 that read alike) were one line in that language and two in English. They now go by what the item
