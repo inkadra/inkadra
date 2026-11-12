@@ -1,0 +1,498 @@
+<svg class="plan__svg" viewBox="-206.6 -124.4 1393.2 928.8" style="aspect-ratio: 1.5 / 1;" aria-hidden="true">
+<g class="plan__walls" style="color: var(--ink-text-secondary);">
+<polygon class="plan__floor" points="73.242188,48.828125 781.25,48.828125 781.25,390.625 73.242188,390.625">
+</polygon>
+<polygon points="253.242188,42.828125 433.242188,42.828125 433.242188,54.828125 253.242188,54.828125" style="fill: currentColor;">
+</polygon>
+<polygon points="513.242188,42.828125 787.25,42.828125 787.25,185.820313 775.25,185.820313 775.25,54.828125 513.242188,54.828125" style="fill: currentColor;">
+</polygon>
+<polygon points="787.25,295.820313 787.25,396.625 276.054688,396.625 276.054688,384.625 775.25,384.625 775.25,295.820313" style="fill: currentColor;">
+</polygon>
+<polygon points="186.054688,396.625 67.242188,396.625 67.242188,42.828125 193.242188,42.828125 193.242188,54.828125 79.242188,54.828125 79.242188,384.625 186.054688,384.625" style="fill: currentColor;">
+</polygon>
+<polygon points="858.492188,48.828125 858.492188,263.828125 850.492188,263.828125 850.492188,48.828125" style="fill: currentColor;">
+</polygon>
+<polygon points="858.492188,333.828125 858.492188,486.40775 954.709175,566.588573 949.5877,572.734343 850.492188,490.15475 850.492188,333.828125" style="fill: currentColor;">
+</polygon>
+<g data-opening="openAAAAAAAAA">
+<polyline points="193.242188,42.828125 193.242188,54.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="253.242188,42.828125 253.242188,54.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="193.242188,48.828125 193.242188,-11.171875" style="fill: none; stroke: currentColor; stroke-width: 2.88; stroke-linecap: butt;">
+</polyline>
+<polyline points="193.242188,-11.171875 201.073759,-10.658567 208.77133,-9.127425 216.203193,-6.604647 223.242188,-3.133399 229.767873,1.226925 235.668594,6.401718 240.843388,12.302439 245.203712,18.828125 248.674959,25.867119 251.197737,33.298982 252.728879,40.996553 253.242188,48.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 4 4; stroke-linecap: butt;">
+</polyline>
+</g>
+<g data-opening="openBBBBBBBBB">
+<polyline points="787.25,185.820313 775.25,185.820313" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="787.25,295.820313 775.25,295.820313" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="781.25,185.820313 726.25,185.820313" style="fill: none; stroke: currentColor; stroke-width: 2.88; stroke-linecap: butt;">
+</polyline>
+<polyline points="781.25,295.820313 726.25,295.820313" style="fill: none; stroke: currentColor; stroke-width: 2.88; stroke-linecap: butt;">
+</polyline>
+<polyline points="726.25,185.820313 726.720533,192.999253 728.12408,200.05536 730.436626,206.867901 733.618603,213.320313 737.615566,219.302191 742.359127,224.711185 747.768121,229.454746 753.75,233.45171 760.202411,236.633687 767.014953,238.946233 774.071059,240.34978 781.25,240.820313" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 4 4; stroke-linecap: butt;">
+</polyline>
+<polyline points="726.25,295.820313 726.720533,288.641372 728.12408,281.585265 730.436626,274.772724 733.618603,268.320313 737.615566,262.338434 742.359127,256.92944 747.768121,252.185879 753.75,248.188915 760.202411,245.006938 767.014953,242.694392 774.071059,241.290845 781.25,240.820313" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 4 4; stroke-linecap: butt;">
+</polyline>
+</g>
+<g data-opening="openCCCCCCCCC">
+<polyline points="433.242188,42.828125 433.242188,54.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="513.242188,42.828125 513.242188,54.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="433.242188,45.828125 481.242188,45.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="465.242188,51.828125 513.242188,51.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+</g>
+<g data-opening="openDDDDDDDDD">
+<polyline points="276.054688,396.625 276.054688,384.625" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="186.054688,396.625 186.054688,384.625" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="276.054688,396.625 186.054688,396.625" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="276.054688,390.625 186.054688,390.625" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="276.054688,384.625 186.054688,384.625" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+</g>
+<g data-opening="openEEEEEEEEE">
+<polyline points="858.492188,263.828125 850.492188,263.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="858.492188,333.828125 850.492188,333.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="854.492188,263.828125 854.492188,333.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 4 4; stroke-linecap: butt;">
+</polyline>
+</g>
+</g>
+<g class="plan-walls__room" data-room-dims="">
+<g class="plan-walls__dim">
+<path d="M73.242188 12.828125L781.25 12.828125M73.242188 17.828125L73.242188 7.828125M781.25 17.828125L781.25 7.828125">
+</path>
+<text class="plan-walls__dimtext" transform="translate(427.246094 12.828125) rotate(0)" y="-5" text-anchor="middle">8.9 m</text>
+</g>
+<g class="plan-walls__dim">
+<path d="M37.242188 390.625L37.242188 48.828125M42.242188 390.625L32.242188 390.625M42.242188 48.828125L32.242188 48.828125">
+</path>
+<text class="plan-walls__dimtext" transform="translate(37.242188 219.726563) rotate(-90)" y="-5" text-anchor="middle">4.3 m</text>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);">
+<path d="M48.8 488.3Q97.7 504.6 134.3 500.5Q170.9 496.4 195.3 516.8L219.7 537.1" fill="none" stroke="currentColor" stroke-width="3" stroke-opacity="1" stroke-linecap="round" stroke-linejoin="round" vector-effect="none">
+</path>
+</g>
+<g style="color: var(--ink-tag-orange);">
+<path d="M610.4 634.8Q732.4 602.2 781.3 622.6L830.1 642.9" fill="none" stroke="currentColor" stroke-width="12" stroke-opacity="0.35" stroke-linecap="round" stroke-linejoin="round" vector-effect="none">
+</path>
+</g>
+<g style="color: var(--ink-tag-green);">
+<rect x="122.070313" y="81.380208" width="195.3125" height="81.380208" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</rect>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(30 329.589844 398.763021)">
+<rect x="268.554688" y="374.348958" width="122.070313" height="48.828125" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</rect>
+</g>
+<g style="color: var(--ink-tag-green);">
+<ellipse cx="695.800781" cy="203.450521" rx="61.035156" ry="24.414063" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</ellipse>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(45 830.078125 406.901042)">
+<ellipse cx="830.078125" cy="406.901042" rx="73.242188" ry="32.552083" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</ellipse>
+</g>
+<g style="color: var(--ink-tag-green);">
+<line x1="48.828125" y1="358.072917" x2="219.726563" y2="472.005208" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+</line>
+</g>
+<g style="color: var(--ink-tag-green);">
+<path d="M292.96875 488.28125L439.453125 439.453125M427.98607 450.61138L439.453125 439.453125L423.584528 437.406754" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</path>
+</g>
+<g style="color: var(--ink-tag-green);">
+<path d="M952.148438 65.104167L805.664063 48.828125M843.383008 35.513428L805.664063 48.828125L839.540295 70.097842" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+</path>
+</g>
+<g style="color: var(--ink-tag-green);">
+<rect x="97.65625" y="211.588542" width="146.484375" height="65.104167" style="fill: currentColor; fill-opacity: 0.1; stroke: currentColor; stroke-width: 4; stroke-dasharray: 12 10;">
+</rect>
+<text x="107.65625" y="229.588542" font-size="14" fill="currentColor" font-family="inherit">Video village</text>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(15 878.90625 455.729167)">
+<rect x="805.664063" y="423.177083" width="146.484375" height="65.104167" style="fill: currentColor; fill-opacity: 0.1; stroke: currentColor; stroke-width: 4; stroke-dasharray: 12 10;">
+</rect>
+<text x="815.664063" y="441.177083" font-size="14" fill="currentColor" font-family="inherit">Back</text>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="icontableAAAA">
+<g transform="translate(537.109375 325.520833) rotate(20) scale(5.714286 5) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 0.540669;">
+<rect x="-14" y="-9" width="28" height="18" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconsofaAAAAA">
+<g transform="translate(634.765625 488.28125) rotate(0) scale(2 2) translate(1 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-6" y="-15" width="13" height="30" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-9-16v32M-9-16h14M-9 16h14" style="stroke-width: 3.2;">
+</path>
+<path d="M-6 0h13">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<polygon points="157.484375,501.780774 238.67663,199.809054 378.403429,280.480359" style="fill: currentColor; fill-opacity: 0.14; stroke: currentColor; stroke-opacity: 0.5; stroke-width: 1.5;">
+</polygon>
+</g>
+<g>
+<defs>
+<radialGradient id="plan-beam-r18" gradientUnits="userSpaceOnUse" cx="308.525099" cy="113.212599" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.312">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.052">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="308.525099,113.212599 528.52766,233.65625 428.96875,333.21516" style="fill: url(#plan-beam-r18); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r19" gradientUnits="userSpaceOnUse" cx="863.349901" cy="129.488641" r="300">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="863.349901,129.488641 742.82317,405.763399 587.075143,250.015372" style="fill: url(#plan-beam-r19); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r1a">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="500" cy="146.484375" r="66" fill="url(#plan-beam-r1a)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r1b">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="732.421875" cy="244.140625" r="99" fill="url(#plan-beam-r1b)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r1c">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="805.664063" cy="537.109375" r="66" fill="url(#plan-beam-r1c)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-red);">
+<defs>
+<radialGradient id="plan-beam-r1d" gradientUnits="userSpaceOnUse" cx="345.5377" cy="236.616182" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="345.5377,236.616182 95.24598,220.434263 143.401581,88.127834" style="fill: url(#plan-beam-r1d); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-blue);" data-blocking="iconcamAAAAAA">
+<path d="M73.242188 585.9375Q91.552734 569.661458 90.430639 570.658876M85.707033 583.837934L90.430639 570.658876L76.78867 573.804775" style="fill: none; stroke: currentColor; stroke-width: 2.5; stroke-dasharray: 10 8; stroke-linecap: round; stroke-linejoin: round;">
+</path>
+<path d="M109.863281 553.385417Q75.024721 477.31663 124.277908 507.310286M110.29336 506.652694L124.277908 507.310286L117.275369 495.187397" style="fill: none; stroke: currentColor; stroke-width: 2.5; stroke-dasharray: 10 8; stroke-linecap: round; stroke-linejoin: round;">
+</path>
+<g style="color: var(--ink-tag-blue); opacity: 0.4;" stroke-linecap="round" stroke-linejoin="round" data-icon="iconcamAAAAAA">
+<g transform="translate(73.242188 585.9375) rotate(330) scale(1.333333 1.333333) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.1675;">
+<rect x="-13" y="-7.5" width="17" height="15" rx="2.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-17" y="-5" width="4" height="10" rx="1">
+</rect>
+<rect x="4" y="-4.5" width="6" height="9">
+</rect>
+<path d="M10-5.5l6-3.5v18l-6-3.5z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-8 0h8" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue); opacity: 0.4;" stroke-linecap="round" stroke-linejoin="round" data-icon="iconcamAAAAAA">
+<g transform="translate(109.863281 553.385417) rotate(0) scale(1.333333 1.333333) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.1675;">
+<rect x="-13" y="-7.5" width="17" height="15" rx="2.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-17" y="-5" width="4" height="10" rx="1">
+</rect>
+<rect x="4" y="-4.5" width="6" height="9">
+</rect>
+<path d="M10-5.5l6-3.5v18l-6-3.5z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-8 0h8" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" data-blocking="iconactorAAAA">
+<path d="M439.453125 618.489583Q476.074219 594.075521 491.062005 584.083663M484.562429 596.483483L491.062005 584.083663L477.116181 585.31411" style="fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;">
+</path>
+<g style="color: var(--ink-tag-purple); opacity: 0.4;" stroke-linecap="round" stroke-linejoin="round" data-icon="iconactorAAAA">
+<g transform="translate(439.453125 618.489583) rotate(0) scale(1.833333 1.833333) translate(-2 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<rect x="-8" y="-12" width="8" height="24" rx="4" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="0" y="-10" width="12" height="6" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="0" y="4" width="12" height="6" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-2" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconcamAAAAAA">
+<g transform="translate(146.484375 520.833333) rotate(300) scale(1.333333 1.333333) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.1675;">
+<rect x="-13" y="-7.5" width="17" height="15" rx="2.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-17" y="-5" width="4" height="10" rx="1">
+</rect>
+<rect x="4" y="-4.5" width="6" height="9">
+</rect>
+<path d="M10-5.5l6-3.5v18l-6-3.5z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-8 0h8" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconfresnelAA">
+<g transform="translate(292.96875 97.65625) rotate(45) scale(1.294118 1.294118) translate(2 0)" style="fill: none; stroke: currentColor; stroke-width: 2.233182;">
+<rect x="-13" y="-8" width="18" height="16" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M5-8q7 8 0 16M7-9l8-6M7 9l8 6">
+</path>
+<circle cx="-17" cy="0" r="2">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconhmiAAAAAA">
+<g transform="translate(878.90625 113.932292) rotate(135) scale(1.571429 1.571429) translate(3 0)" style="fill: none; stroke: currentColor; stroke-width: 1.839091;">
+<rect x="-8" y="-10" width="15" height="20" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M7-10q8 10 0 20M-11 0h3">
+</path>
+<rect x="-17" y="-5" width="6" height="10" rx="1">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconlanternAA">
+<g transform="translate(500 146.484375) rotate(0) scale(1.833333 1.833333) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<circle cx="0" cy="0" r="12" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M-12 0h24M0-12v24" style="stroke-opacity: 0.5;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconfloorAAAA">
+<g transform="translate(732.421875 244.140625) rotate(0) scale(2.538462 2.538462) translate(-3 0)" style="fill: none; stroke: currentColor; stroke-width: 1.138485;">
+<circle cx="0" cy="0" r="10" style="stroke-dasharray: 3 3;">
+</circle>
+<circle cx="0" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M10 0h6">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconstreetAAA">
+<g transform="translate(805.664063 537.109375) rotate(90) scale(1.517241 1.517241) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.904773;">
+<circle cx="-12" cy="0" r="3">
+</circle>
+<path d="M-9 0h13">
+</path>
+<ellipse cx="9" cy="0" rx="5" ry="4" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</ellipse>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconringAAAAA">
+<g transform="translate(366.210938 244.140625) rotate(200) scale(1.692308 1.692308) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<circle cx="0" cy="0" r="13" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<circle cx="0" cy="0" r="7" style="fill: var(--plan-paper, var(--ink-surface-1));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="icongelAAAAAA">
+<g transform="translate(415.039063 113.932292) rotate(45) scale(1.692308 1.692308) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<rect x="-2.5" y="-13" width="5" height="26" rx="1" style="stroke: var(--ink-tag-orange); fill: var(--ink-tag-orange); fill-opacity: 0.7;">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconbutterfly">
+<g transform="translate(610.351563 406.901042) rotate(0) scale(2.206897 2.206897) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.309531;">
+<rect x="-12" y="-12" width="24" height="24" style="stroke-dasharray: 3 3; fill: currentColor; fill-opacity: 0.1;">
+</rect>
+<circle cx="-12" cy="-12" r="2.5">
+</circle>
+<circle cx="12" cy="-12" r="2.5">
+</circle>
+<circle cx="-12" cy="12" r="2.5">
+</circle>
+<circle cx="12" cy="12" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconcucoAAAAA">
+<g transform="translate(659.179688 97.65625) rotate(15) scale(1.375 1.375) translate(5.75 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<path d="M0-16v7M0-5v4M0 3v6M0 13v3" style="stroke-width: 4; stroke-linecap: butt;">
+</path>
+<circle cx="-9" cy="10" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconframeAAAA">
+<g transform="translate(219.726563 292.96875) rotate(0) scale(1.777778 1.777778) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.625625;">
+<path d="M0-14v28" style="stroke-dasharray: 3 3;">
+</path>
+<circle cx="0" cy="-16" r="2">
+</circle>
+<circle cx="0" cy="16" r="2">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="icondrapeAAAA">
+<g transform="translate(927.734375 325.520833) rotate(270) scale(3.226667 3.226667) translate(0 3)" style="fill: none; stroke: currentColor; stroke-width: 0.895661;">
+<path d="M-15-3q3.75 8 7.5 0t7.5 0t7.5 0t7.5 0" style="stroke-width: 3.2;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconmonitorAA">
+<g transform="translate(97.65625 65.104167) rotate(10) scale(2 2) translate(-4.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-4" y="-11" width="5" height="22" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M1 0h7">
+</path>
+<circle cx="10.5" cy="0" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: #123456;" stroke-linecap="round" stroke-linejoin="round" data-icon="iconcustomAAA">
+<g transform="translate(244.140625 423.177083) rotate(77) scale(1.375 1.375) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<rect x="-2.5" y="-16" width="5" height="32" rx="1" style="fill: color-mix(in srgb, currentColor 85%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconactorAAAA">
+<g transform="translate(512.695313 569.661458) rotate(180) scale(1.833333 1.833333) translate(-2 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<rect x="-8" y="-12" width="8" height="24" rx="4" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="0" y="-10" width="12" height="6" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="0" y="4" width="12" height="6" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-2" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconlyingAAAA">
+<g transform="translate(854.492188 618.489583) rotate(0) scale(1 1) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<rect x="-16" y="-6" width="22" height="12" rx="6" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="11" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-green);">
+<text x="341.796875" y="602.213542" fill="currentColor" font-size="18" font-family="inherit">Two
+lines</text>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(340 769.042969 594.075521)">
+<text x="708.007813" y="585.9375" fill="currentColor" font-size="26" font-family="inherit">Turned</text>
+</g>
+<g style="color: var(--ink-tag-green);">
+<path d="M97.65625 634.765625L390.625 634.765625M97.65625 643.765625L97.65625 625.765625M390.625 643.765625L390.625 625.765625" style="fill: none; stroke: currentColor; stroke-width: 2;">
+</path>
+<g class="plan__chip">
+<rect x="203.140625" y="619.765625" width="82" height="30" rx="6">
+</rect>
+<text x="244.140625" y="641.765625" text-anchor="middle" font-size="14" font-weight="600">3.66 m</text>
+</g>
+</g>
+<g style="color: var(--ink-tag-green);">
+<path d="M927.734375 162.760417L927.734375 292.96875M918.734375 162.760417L936.734375 162.760417M918.734375 292.96875L936.734375 292.96875" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-dasharray: 8 6;">
+</path>
+<g class="plan__chip">
+<rect x="886.734375" y="212.864583" width="82" height="30" rx="6">
+</rect>
+<text x="927.734375" y="234.864583" text-anchor="middle" font-size="14" font-weight="600">2.7 m</text>
+</g>
+</g>
+<g style="color: var(--ink-tag-green);">
+<path d="M500 146.484375L732.421875 244.140625M496.513722 154.781716L503.486278 138.187034M728.935597 252.437966L735.908153 235.843284" style="fill: none; stroke: currentColor; stroke-width: 2;">
+</path>
+<g class="plan__chip">
+<rect x="575.210938" y="180.3125" width="82" height="30" rx="6">
+</rect>
+<text x="616.210938" y="202.3125" text-anchor="middle" font-size="14" font-weight="600">3.15 m</text>
+</g>
+</g>
+<g style="color: var(--ink-tag-green);">
+<path d="M488.28125 32.552083L634.765625 40.690104M487.78202 41.538227L488.78048 23.56594M634.266395 49.676247L635.264855 31.703961" style="fill: none; stroke: currentColor; stroke-width: 2;">
+</path>
+<g class="plan__chip">
+<rect x="520.523438" y="21.621094" width="82" height="30" rx="6">
+</rect>
+<text x="561.523438" y="43.621094" text-anchor="middle" font-size="14" font-weight="600">1.83 m</text>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<g class="plan__step" transform="translate(49.242188 561.9375)">
+<circle r="11" style="fill: currentColor;">
+</circle>
+<text text-anchor="middle" y="4.5" font-size="13" font-weight="600">1</text>
+</g>
+<g class="plan__step" transform="translate(85.863281 529.385417)">
+<circle r="11" style="fill: currentColor;">
+</circle>
+<text text-anchor="middle" y="4.5" font-size="13" font-weight="600">2</text>
+</g>
+<g class="plan__step" transform="translate(122.484375 496.833333)">
+<circle r="11" style="fill: currentColor;">
+</circle>
+<text text-anchor="middle" y="4.5" font-size="13" font-weight="600">3</text>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);">
+<g class="plan__step" transform="translate(415.453125 594.489583)">
+<circle r="11" style="fill: currentColor;">
+</circle>
+<text text-anchor="middle" y="4.5" font-size="13" font-weight="600">1</text>
+</g>
+<g class="plan__step" transform="translate(488.695313 545.661458)">
+<circle r="11" style="fill: currentColor;">
+</circle>
+<text text-anchor="middle" y="4.5" font-size="13" font-weight="600">2</text>
+</g>
+</g>
+<text class="plan__label" x="146.484375" y="563.885892" text-anchor="middle" font-size="12" font-weight="500" font-family="inherit" style="color: var(--ink-tag-blue);">A cam · 50 mm</text>
+<text class="plan__label" x="292.96875" y="144.93879" text-anchor="middle" font-size="12" font-weight="500" font-family="inherit" style="color: var(--ink-tag-yellow);">Key · 1.2K</text>
+<text class="plan__label plan__label--dim" x="292.96875" y="158.93879" text-anchor="middle" font-size="11" font-family="inherit">3200 K · 60%</text>
+<text class="plan__label" x="512.695313" y="609.661458" text-anchor="middle" font-size="12" font-weight="500" font-family="inherit" style="color: var(--ink-tag-purple);">Anna</text>
+</svg>

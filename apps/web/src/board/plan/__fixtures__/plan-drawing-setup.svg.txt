@@ -1,0 +1,168 @@
+<svg class="plan__svg" viewBox="0 0 1000 666.666667" style="aspect-ratio: 1.5 / 1;" aria-hidden="true">
+<g class="plan__walls" style="color: var(--ink-text-secondary);">
+<polygon class="plan__floor" points="73.242188,48.828125 781.25,48.828125 781.25,390.625 73.242188,390.625">
+</polygon>
+<polygon points="253.242188,42.828125 433.242188,42.828125 433.242188,54.828125 253.242188,54.828125" style="fill: currentColor;">
+</polygon>
+<polygon points="513.242188,42.828125 787.25,42.828125 787.25,185.820313 775.25,185.820313 775.25,54.828125 513.242188,54.828125" style="fill: currentColor;">
+</polygon>
+<polygon points="787.25,295.820313 787.25,396.625 276.054688,396.625 276.054688,384.625 775.25,384.625 775.25,295.820313" style="fill: currentColor;">
+</polygon>
+<polygon points="186.054688,396.625 67.242188,396.625 67.242188,42.828125 193.242188,42.828125 193.242188,54.828125 79.242188,54.828125 79.242188,384.625 186.054688,384.625" style="fill: currentColor;">
+</polygon>
+<polygon points="858.492188,48.828125 858.492188,263.828125 850.492188,263.828125 850.492188,48.828125" style="fill: currentColor;">
+</polygon>
+<polygon points="858.492188,333.828125 858.492188,486.40775 954.709175,566.588573 949.5877,572.734343 850.492188,490.15475 850.492188,333.828125" style="fill: currentColor;">
+</polygon>
+<g data-opening="openAAAAAAAAA">
+<polyline points="193.242188,42.828125 193.242188,54.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="253.242188,42.828125 253.242188,54.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="193.242188,48.828125 193.242188,-11.171875" style="fill: none; stroke: currentColor; stroke-width: 2.88; stroke-linecap: butt;">
+</polyline>
+<polyline points="193.242188,-11.171875 201.073759,-10.658567 208.77133,-9.127425 216.203193,-6.604647 223.242188,-3.133399 229.767873,1.226925 235.668594,6.401718 240.843388,12.302439 245.203712,18.828125 248.674959,25.867119 251.197737,33.298982 252.728879,40.996553 253.242188,48.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 4 4; stroke-linecap: butt;">
+</polyline>
+</g>
+<g data-opening="openBBBBBBBBB">
+<polyline points="787.25,185.820313 775.25,185.820313" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="787.25,295.820313 775.25,295.820313" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="781.25,185.820313 726.25,185.820313" style="fill: none; stroke: currentColor; stroke-width: 2.88; stroke-linecap: butt;">
+</polyline>
+<polyline points="781.25,295.820313 726.25,295.820313" style="fill: none; stroke: currentColor; stroke-width: 2.88; stroke-linecap: butt;">
+</polyline>
+<polyline points="726.25,185.820313 726.720533,192.999253 728.12408,200.05536 730.436626,206.867901 733.618603,213.320313 737.615566,219.302191 742.359127,224.711185 747.768121,229.454746 753.75,233.45171 760.202411,236.633687 767.014953,238.946233 774.071059,240.34978 781.25,240.820313" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 4 4; stroke-linecap: butt;">
+</polyline>
+<polyline points="726.25,295.820313 726.720533,288.641372 728.12408,281.585265 730.436626,274.772724 733.618603,268.320313 737.615566,262.338434 742.359127,256.92944 747.768121,252.185879 753.75,248.188915 760.202411,245.006938 767.014953,242.694392 774.071059,241.290845 781.25,240.820313" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 4 4; stroke-linecap: butt;">
+</polyline>
+</g>
+<g data-opening="openCCCCCCCCC">
+<polyline points="433.242188,42.828125 433.242188,54.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="513.242188,42.828125 513.242188,54.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="433.242188,45.828125 481.242188,45.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="465.242188,51.828125 513.242188,51.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+</g>
+<g data-opening="openDDDDDDDDD">
+<polyline points="276.054688,396.625 276.054688,384.625" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="186.054688,396.625 186.054688,384.625" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="276.054688,396.625 186.054688,396.625" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="276.054688,390.625 186.054688,390.625" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="276.054688,384.625 186.054688,384.625" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+</g>
+<g data-opening="openEEEEEEEEE">
+<polyline points="858.492188,263.828125 850.492188,263.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="858.492188,333.828125 850.492188,333.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: butt;">
+</polyline>
+<polyline points="854.492188,263.828125 854.492188,333.828125" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 4 4; stroke-linecap: butt;">
+</polyline>
+</g>
+</g>
+<g class="plan-walls__room" data-room-dims="">
+<g class="plan-walls__dim">
+<path d="M73.242188 12.828125L781.25 12.828125M73.242188 17.828125L73.242188 7.828125M781.25 17.828125L781.25 7.828125">
+</path>
+<text class="plan-walls__dimtext" transform="translate(427.246094 12.828125) rotate(0)" y="-5" text-anchor="middle">8.9 m</text>
+</g>
+<g class="plan-walls__dim">
+<path d="M37.242188 390.625L37.242188 48.828125M42.242188 390.625L32.242188 390.625M42.242188 48.828125L32.242188 48.828125">
+</path>
+<text class="plan-walls__dimtext" transform="translate(37.242188 219.726563) rotate(-90)" y="-5" text-anchor="middle">4.3 m</text>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);">
+<path d="M48.8 488.3Q97.7 504.6 134.3 500.5Q170.9 496.4 195.3 516.8L219.7 537.1" fill="none" stroke="currentColor" stroke-width="3" stroke-opacity="1" stroke-linecap="round" stroke-linejoin="round" vector-effect="none">
+</path>
+</g>
+<g style="color: var(--ink-tag-orange);">
+<path d="M610.4 634.8Q732.4 602.2 781.3 622.6L830.1 642.9" fill="none" stroke="currentColor" stroke-width="12" stroke-opacity="0.35" stroke-linecap="round" stroke-linejoin="round" vector-effect="none">
+</path>
+</g>
+<g style="color: var(--ink-tag-green);">
+<rect x="122.070313" y="81.380208" width="195.3125" height="81.380208" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</rect>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(30 329.589844 398.763021)">
+<rect x="268.554688" y="374.348958" width="122.070313" height="48.828125" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</rect>
+</g>
+<g style="color: var(--ink-tag-green);">
+<ellipse cx="695.800781" cy="203.450521" rx="61.035156" ry="24.414063" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</ellipse>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(45 830.078125 406.901042)">
+<ellipse cx="830.078125" cy="406.901042" rx="73.242188" ry="32.552083" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</ellipse>
+</g>
+<g style="color: var(--ink-tag-green);">
+<line x1="48.828125" y1="358.072917" x2="219.726563" y2="472.005208" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+</line>
+</g>
+<g style="color: var(--ink-tag-green);">
+<path d="M292.96875 488.28125L439.453125 439.453125M427.98607 450.61138L439.453125 439.453125L423.584528 437.406754" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</path>
+</g>
+<g style="color: var(--ink-tag-green);">
+<path d="M952.148438 65.104167L805.664063 48.828125M843.383008 35.513428L805.664063 48.828125L839.540295 70.097842" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+</path>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(60 122.070313 187.174479)">
+<path d="M73.242188 162.760417L170.898438 211.588542M154.899928 211.370187L170.898438 211.588542L161.124648 198.920747" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+</path>
+</g>
+<g style="color: var(--ink-tag-green);">
+<rect x="97.65625" y="211.588542" width="146.484375" height="65.104167" style="fill: currentColor; fill-opacity: 0.1; stroke: currentColor; stroke-width: 4; stroke-dasharray: 12 10;">
+</rect>
+<text x="107.65625" y="229.588542" font-size="14" fill="currentColor" font-family="inherit">Video village</text>
+</g>
+<g style="color: var(--ink-tag-green);" transform="rotate(15 878.90625 455.729167)">
+<rect x="805.664063" y="423.177083" width="146.484375" height="65.104167" style="fill: currentColor; fill-opacity: 0.1; stroke: currentColor; stroke-width: 4; stroke-dasharray: 12 10;">
+</rect>
+<text x="815.664063" y="441.177083" font-size="14" fill="currentColor" font-family="inherit">Back</text>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="icontableAAAA">
+<g transform="translate(537.109375 325.520833) rotate(20) scale(5.714286 5) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 0.540669;">
+<rect x="-14" y="-9" width="28" height="18" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconsofaAAAAA">
+<g transform="translate(634.765625 488.28125) rotate(0) scale(2 2) translate(1 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-6" y="-15" width="13" height="30" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-9-16v32M-9-16h14M-9 16h14" style="stroke-width: 3.2;">
+</path>
+<path d="M-6 0h13">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<polygon points="711.748637,285.444307 398.43111,290.485059 474.97362,80.186242" style="fill: currentColor; fill-opacity: 0.14; stroke: currentColor; stroke-opacity: 0.5; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconsetupcamA">
+<g transform="translate(732.421875 292.96875) rotate(200) scale(1.333333 1.333333) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.1675;">
+<rect x="-13" y="-7.5" width="17" height="15" rx="2.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-17" y="-5" width="4" height="10" rx="1">
+</rect>
+<rect x="4" y="-4.5" width="6" height="9">
+</rect>
+<path d="M10-5.5l6-3.5v18l-6-3.5z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-8 0h8" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+</svg>

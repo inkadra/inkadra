@@ -1,5 +1,13 @@
+import { variantView } from '@inkadra/canvas-core';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { expectFixture, PLAN } from '../plan/plan-sample.fixture.ts';
+import {
+  CATALOGUE,
+  expectFixture,
+  PLAN,
+  PLAN_HIDDEN,
+  SETUP,
+  TURNED,
+} from '../plan/plan-sample.fixture.ts';
 import { type CardContext, type Palette, planOps } from './board-render.ts';
 import type { Op } from './pages.ts';
 
@@ -25,6 +33,7 @@ const ctx = {
   image: () => null,
   fileName: () => '',
   boardTitle: () => '',
+  language: 'en',
 } as unknown as CardContext;
 
 const round = (v: unknown): unknown =>
@@ -60,17 +69,30 @@ afterAll(() => {
   vi.restoreAllMocks();
 });
 
+const fixture = (name: string) => `${import.meta.dirname}/__fixtures__/${name}`;
+const drawn = (ops: readonly Op[]) => `${lines(ops).join('\n')}\n`;
+const BOX = { x: 20, y: 30, w: 600, h: 400 };
+
 describe('a set plan in exports', () => {
-  it('draws the sample plan as it did before the geometry moved to canvas-core', async () => {
-    const ops = planOps(PLAN, { x: 20, y: 30, w: 600, h: 400 }, ctx);
-    expectFixture(`${lines(ops).join('\n')}\n`, `${import.meta.dirname}/__fixtures__/plan-ops.txt`);
+  it('draws the sample plan as it did before the geometry moved to canvas-core', () => {
+    expectFixture(drawn(planOps(PLAN, BOX, ctx)), fixture('plan-ops.txt'));
   });
 
-  it('draws a legend glyph, without beams and labels, as before', async () => {
+  it('draws a legend glyph, without beams and labels, as before', () => {
     const ops = planOps(PLAN, { x: 0, y: 0, w: 120, h: 80 }, ctx, false, false);
-    expectFixture(
-      `${lines(ops).join('\n')}\n`,
-      `${import.meta.dirname}/__fixtures__/plan-ops-small.txt`,
-    );
+    expectFixture(drawn(ops), fixture('plan-ops-small.txt'));
+  });
+
+  it('leaves out the hidden layers', () => {
+    expectFixture(drawn(planOps(PLAN_HIDDEN, BOX, ctx)), fixture('plan-ops-hidden.txt'));
+  });
+
+  it('draws every kind of the catalogue', () => {
+    expectFixture(drawn(planOps(CATALOGUE, BOX, ctx)), fixture('plan-ops-catalogue.txt'));
+  });
+
+  it('draws a setup over its base’s Set layer, and turned lines, arrows and measures', () => {
+    expectFixture(drawn(planOps(variantView(SETUP, PLAN), BOX, ctx)), fixture('plan-ops-setup.txt'));
+    expectFixture(drawn(planOps(TURNED, BOX, ctx)), fixture('plan-ops-turned.txt'));
   });
 });

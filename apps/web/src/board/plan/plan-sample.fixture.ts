@@ -1,5 +1,11 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import type { Element, PlanIcon, PlanShape } from '@inkadra/doc-schema';
+import {
+  type Element,
+  PLAN_ICON_KINDS,
+  type PlanIcon,
+  type PlanShape,
+  type PlanStroke,
+} from '@inkadra/doc-schema';
 import { expect } from 'vitest';
 
 /**
@@ -136,6 +142,49 @@ export const SHAPES: PlanShape[] = [
   shape('mesnone', { kind: 'measure', x0: 2000, y0: 200, x1: 2600, y1: 250, text: 'x' }),
 ];
 
+/** A closed room and a loose wall, with every kind of opening, both sides and hinges. */
+const WALLS = [
+  {
+    id: 'wallAAAAAAAAA',
+    points: [300, 300, 3200, 300, 3200, 2400, 300, 2400],
+    thickness: 12,
+    closed: true,
+  },
+  { id: 'wallBBBBBBBBB', points: [3500, 300, 3500, 3000, 3900, 3500], thickness: 8 },
+];
+const OPENINGS = [
+  { id: 'openAAAAAAAAA', wall: 'wallAAAAAAAAA', kind: 'door', at: 150, width: 60 },
+  {
+    id: 'openBBBBBBBBB',
+    wall: 'wallAAAAAAAAA',
+    kind: 'doubledoor',
+    at: 900,
+    width: 110,
+    side: 'right',
+    hinge: 'end',
+  },
+  { id: 'openCCCCCCCCC', wall: 'wallAAAAAAAAA', kind: 'sliding', at: 400, width: 80 },
+  { id: 'openDDDDDDDDD', wall: 'wallAAAAAAAAA', kind: 'window', at: 1600, width: 90 },
+  { id: 'openEEEEEEEEE', wall: 'wallBBBBBBBBB', kind: 'opening', at: 250, width: 70 },
+];
+/** A pencil line and a see-through marker stroke. */
+const STROKES: PlanStroke[] = [
+  {
+    id: 'strokeAAAAAAA',
+    tool: 'pencil',
+    color: '#1C1C1E',
+    width: 3,
+    points: [200, 3000, 400, 3100, 700, 3050, 900, 3300],
+  },
+  {
+    id: 'strokeBBBBBBB',
+    tool: 'marker',
+    color: '#F79B54',
+    width: 12,
+    points: [2500, 3900, 3000, 3700, 3400, 3950],
+  },
+];
+
 export const PLAN = {
   id: 'planAAAAAAAAA',
   type: 'plan',
@@ -149,9 +198,77 @@ export const PLAN = {
   createdAt: 0,
   icons: ICONS,
   shapes: SHAPES,
-  strokes: [],
+  strokes: STROKES,
+  walls: WALLS,
+  openings: OPENINGS,
+  background: { assetId: 'assetAAAAAAAA', x: -60, y: -40, w: 1100, h: 760, opacity: 0.4, grey: true },
   scale: 80,
 } as unknown as Extract<Element, { type: 'plan' }>;
+
+/** The sample with its Set and Notes layers hidden: no walls, no set items, no zones. */
+export const PLAN_HIDDEN = { ...PLAN, hiddenLayers: ['set', 'notes'] } as typeof PLAN;
+
+/** Every kind of the catalogue, on a grid, each turned and coloured its own way. */
+export const CATALOGUE = {
+  ...PLAN,
+  id: 'planCCCCCCCCC',
+  shapes: [],
+  strokes: [],
+  walls: [],
+  openings: [],
+  icons: PLAN_ICON_KINDS.map((kind, i) =>
+    icon(`k${i}`, {
+      kind,
+      x: 150 + (i % 16) * 250,
+      y: 150 + Math.floor(i / 16) * 330,
+      rotation: (i * 37) % 360,
+      color: ['#EDD963', '#9DB8F2', '#60D8EB', '#B897F0', '#1C1C1E', '#F68186'][i % 6],
+      ...(i % 5 === 0 ? { percent: 60 } : {}),
+    }),
+  ),
+} as typeof PLAN;
+
+/** A setup of the sample: the base's Set layer under its own camera (decision 0062). */
+export const SETUP = {
+  ...PLAN,
+  id: 'planSSSSSSSSS',
+  variantOf: PLAN.id,
+  variant: 'Evening',
+  shapes: [],
+  strokes: [],
+  walls: [],
+  openings: [],
+  icons: [icon('setupcam', { kind: 'camera', color: '#9DB8F2', x: 3000, y: 1800, rotation: 200 })],
+} as typeof PLAN;
+
+/**
+ * Lines, arrows and measures with a rotation: the editor never writes one (it turns their ends),
+ * but a document may hold one; the board draws them turned.
+ */
+export const TURNED = {
+  ...PLAN,
+  id: 'planTTTTTTTTT',
+  icons: [],
+  strokes: [],
+  walls: [],
+  openings: [],
+  shapes: [
+    shape('tline', { kind: 'line', x0: 200, y0: 2200, x1: 900, y1: 2900, width: 6, rotation: 25 }),
+    shape('tarrow', { kind: 'arrow', x0: 300, y0: 1000, x1: 700, y1: 1300, rotation: 60 }),
+    shape('tarrowfat', { kind: 'arrow', x0: 3900, y0: 400, x1: 3300, y1: 300, width: 10, rotation: 300 }),
+    shape('tmeasure', { kind: 'measure', x0: 400, y0: 3900, x1: 1600, y1: 3700, rotation: 30 }),
+    shape('tmesdash', {
+      kind: 'measure',
+      x0: 3800,
+      y0: 1000,
+      x1: 3600,
+      y1: 1800,
+      text: '2.7',
+      dashed: true,
+      rotation: 200,
+    }),
+  ],
+} as typeof PLAN;
 
 const NUMBER = /-?\d+(?:\.\d+)?(?:e-?\d+)?/g;
 
