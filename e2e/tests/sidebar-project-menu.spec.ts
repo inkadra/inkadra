@@ -8,6 +8,8 @@ const admin = {
 };
 // A folder to put light and dark screenshots of the sidebar states in (review only).
 const shots = process.env.SIDEBAR_SHOTS;
+// The width of the review screenshots; the phone test sets its own.
+test.use({ viewport: { width: 1280, height: 800 } });
 
 async function setup(page: Page, origin: string) {
   const instance = await (await page.request.get('/api/v1/instance')).json();
@@ -128,6 +130,7 @@ test('the sidebar tree of a project, and Add storyboard and Add moodboard in its
   await expect(row('Moodboard')).toBeVisible();
   await expect(page.locator('.moodboard')).toBeVisible();
   await expect(viewTabs(page)).toHaveCount(0);
+  await shoot(page, 'moodboard');
 
   // Views of this board, in the ⋯ menu of the root board: Moodboard goes on, and its views
   // are listed under the project.
@@ -141,6 +144,8 @@ test('the sidebar tree of a project, and Add storyboard and Add moodboard in its
   await page.getByRole('menuitemcheckbox', { name: 'Moodboard' }).click();
   await expect(viewTabs(page)).toHaveText(['Lavagna', 'Moodboard']);
   await expect(row('Lavagna')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await shoot(page, 'board-with-moodboard');
   // An address that asks for a view that is off opens the board's first view.
   await page.goto(`/p/${project.id}?view=shotlist`);
   await expect(page.getByTestId('canvas')).toBeVisible();
@@ -165,6 +170,7 @@ test.describe('on a phone', () => {
     await expect(drawer).toBeHidden();
     // One view: no picker.
     await expect(page.getByRole('combobox', { name: 'Vista', exact: true })).toHaveCount(0);
+    await shoot(page, 'phone-board');
     await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
     await drawer.getByRole('button', { name: `Opzioni progetto: ${project.name}` }).click();
     await expect(page.getByRole('menuitem', { name: 'Aggiungi storyboard' })).toBeVisible();
@@ -178,9 +184,21 @@ test.describe('on a phone', () => {
     await shoot(page, 'phone-with-storyboard');
     await page.keyboard.press('Escape');
     await expect(drawer).toBeHidden();
+    await shoot(page, 'phone-storyboard');
     expect(await switcherOptions(page, 'phone-switcher-storyboard')).toEqual([
       'Storyboard',
       'Shot list',
     ]);
+    // A moodboard has one view: no picker on the phone either.
+    await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
+    await drawer.getByRole('button', { name: `Opzioni progetto: ${project.name}` }).click();
+    await page.getByRole('menuitem', { name: 'Aggiungi moodboard' }).click();
+    await expect(page.locator('.moodboard')).toBeVisible();
+    await expect(drawer).toBeHidden();
+    await expect(page.getByRole('combobox', { name: 'Vista', exact: true })).toHaveCount(0);
+    await shoot(page, 'phone-moodboard');
+    await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
+    await expect(drawer.getByRole('link', { name: 'Moodboard', exact: true })).toBeVisible();
+    await shoot(page, 'phone-moodboard-drawer');
   });
 });
