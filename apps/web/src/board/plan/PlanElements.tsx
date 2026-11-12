@@ -118,9 +118,7 @@ export function PlanElements({
         const hidden = ed.hiddenLayers.has(layer);
         // Grip and crew is no layer: its lock is the lock of each of its items (decision 0114).
         const locked = grip ? false : ed.locked.has(layer as PlanLayer);
-        const allLocked = grip
-          ? main.length > 0 && main.every((e) => itemLocked(e.item))
-          : locked;
+        const allLocked = grip ? main.length > 0 && main.every((e) => itemLocked(e.item)) : locked;
         const count = main.reduce((n, e) => n + e.refs.length, 0);
         const isSet = layer === 'set';
         // The Set is one line of counts; it opens on a click, or when it is the filter.

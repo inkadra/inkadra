@@ -80,7 +80,8 @@ export function standAlone(
   const room = Math.max(0, MAX_PLAN_CIRCUITS - (own.circuits?.length ?? 0));
   const circuits = (base.circuits ?? []).filter((c) => !held.has(c.id)).slice(0, room);
   const fields: Record<string, unknown> = { title: base.title };
-  for (const key of OWNED) if (own[key] === undefined && base[key] !== undefined) fields[key] = base[key];
+  for (const key of OWNED)
+    if (own[key] === undefined && base[key] !== undefined) fields[key] = base[key];
   return { circuits, fields: fields as ReturnType<typeof standAlone>['fields'] };
 }
 
@@ -161,7 +162,9 @@ export function adoptBase(variant: Y.Map<unknown>, base: PlanBase): void {
   const own = {
     circuits:
       ownList instanceof Y.Array
-        ? ownList.toArray().map((c) => ({ id: c instanceof Y.Map ? c.get('id') : (c as PlanCircuit)?.id }))
+        ? ownList
+            .toArray()
+            .map((c) => ({ id: c instanceof Y.Map ? c.get('id') : (c as PlanCircuit)?.id }))
         : [],
     ...Object.fromEntries(OWNED.map((k) => [k, variant.get(k)])),
   };

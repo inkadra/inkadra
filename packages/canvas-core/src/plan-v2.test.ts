@@ -1297,9 +1297,15 @@ describe('circuits of the setups (decision 0117)', () => {
   /** A base with what its setups read from it, and a setup whose light is on circuit A. */
   const family = () => {
     const doc = createBoardDoc(boardId);
-    const place = createElement(doc, 'location', { x: 0, y: 900 }, { name: 'Diner' }, {
-      userId: null,
-    });
+    const place = createElement(
+      doc,
+      'location',
+      { x: 0, y: 900 },
+      { name: 'Diner' },
+      {
+        userId: null,
+      },
+    );
     const base = createElement(
       doc,
       'plan',
@@ -1350,9 +1356,14 @@ describe('circuits of the setups (decision 0117)', () => {
   it('takes the same along when the setup is pasted on a board without its base', () => {
     const f = family();
     const other = createBoardDoc(boardId);
-    const [pasted] = pasteElements(other, copyElements(f.doc, [f.setup]), { x: 0, y: 0 }, {
-      userId: null,
-    }).ids;
+    const [pasted] = pasteElements(
+      other,
+      copyElements(f.doc, [f.setup]),
+      { x: 0, y: 0 },
+      {
+        userId: null,
+      },
+    ).ids;
     // The location card is not on that board: its link goes, as for any plan pasted there.
     expect(alone(planOf(other, pasted as string))).toEqual({
       variantOf: undefined,

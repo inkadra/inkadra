@@ -120,7 +120,10 @@ it('pairs each icon with the nearest of its kind, named ones first, on plans of 
   const setup = [2, 0, 1].map((n) => icon(`m${n}`, 'practical', { x: 1003 + n * 500 }));
   expect(setupChanges(base, setup)).toEqual([]);
   // A named camera keeps its pair even when another camera stands nearer.
-  const named = [icon('a', 'camera', { label: 'A cam', x: 3000 }), icon('b', 'camera', { x: 1000 })];
+  const named = [
+    icon('a', 'camera', { label: 'A cam', x: 3000 }),
+    icon('b', 'camera', { x: 1000 }),
+  ];
   const moved = [icon('a2', 'camera', { label: 'A cam', x: 1010 })];
   expect(setupChanges(named, moved).map((c) => [c.kind, c.icon.id.slice(0, 2)])).toEqual([
     ['moved', 'a2'],
@@ -129,7 +132,10 @@ it('pairs each icon with the nearest of its kind, named ones first, on plans of 
   // 300 icons each side, of a few kinds: every one paired, nothing reported.
   const kinds = ['practical', 'cob', 'stool', 'camera', 'actor'] as const;
   const big = Array.from({ length: 300 }, (_, n) =>
-    icon(`p${n}`, kinds[n % kinds.length] as PlanIcon['kind'], { x: (n * 37) % 4000, y: (n * 53) % 4000 }),
+    icon(`p${n}`, kinds[n % kinds.length] as PlanIcon['kind'], {
+      x: (n * 37) % 4000,
+      y: (n * 53) % 4000,
+    }),
   );
   const copy = big.map((i) => ({ ...i, id: `${i.id.slice(0, 12)}C` }));
   expect(setupChanges(big, copy)).toEqual([]);

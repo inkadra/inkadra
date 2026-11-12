@@ -132,7 +132,9 @@ test('set plan panels: circuits on every setup, the base renamed, identical lamp
     await expect(tabs.getByRole('tab', { name: '1 · Master' })).toBeFocused();
     // The arrows move between the setups, the focus following the tab.
     await page.keyboard.press('ArrowRight');
-    const second = editor.getByRole('tablist', { name: 'Setup' }).getByRole('tab', { name: '2 · PP Anna' });
+    const second = editor
+      .getByRole('tablist', { name: 'Setup' })
+      .getByRole('tab', { name: '2 · PP Anna' });
     await expect(second).toHaveAttribute('aria-selected', 'true');
     await expect(second).toBeFocused();
     await page.keyboard.press('ArrowLeft');
