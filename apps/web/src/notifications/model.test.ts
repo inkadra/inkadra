@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
-import { dayLabel, filterNotifications, unreadBadge } from './model.ts';
+import { dayLabel, filterNotifications, foldReports, unreadBadge } from './model.ts';
 
 describe('dayLabel', () => {
   const t = (key: string) => (key === 'notifications.today' ? 'Oggi' : 'Ieri');
@@ -11,9 +11,9 @@ describe('dayLabel', () => {
     expect(dayLabel(new Date(2026, 9, 23, 23, 55), now, 'it', t)).toBe('Ieri');
   });
 
-  it('writes older days as dates, with the year only when it differs', () => {
-    expect(dayLabel(new Date(2026, 9, 20), now, 'it', t)).toBe('20 ottobre');
-    expect(dayLabel(new Date(2025, 9, 20), now, 'it', t)).toBe('20 ottobre 2025');
+  it('writes older days as weekday and date, with the year only when it differs', () => {
+    expect(dayLabel(new Date(2026, 9, 20), now, 'it', t)).toBe('martedì 20 ottobre');
+    expect(dayLabel(new Date(2025, 9, 20), now, 'it', t)).toBe('lunedì 20 ottobre 2025');
   });
 });
 
@@ -37,5 +37,27 @@ describe('inbox filters and unread badge', () => {
     expect(unreadBadge(120)).toBe('99+');
     filterNotifications(items.concat(items), 'mentions');
     expect(unreadBadge(1)).toBe('1');
+  });
+});
+
+describe('foldReports', () => {
+  const report = (id: string) => ({ id, type: 'feedback_received' as const });
+  const comment = (id: string) => ({ id, type: 'comment' as const });
+
+  it('folds the in-app reports of a day into one entry where the first was', () => {
+    const items = [comment('a'), report('r1'), comment('b'), report('r2')];
+    expect(foldReports(items)).toEqual([
+      { kind: 'item', item: items[0] },
+      { kind: 'reports', items: [items[1], items[3]] },
+      { kind: 'item', item: items[2] },
+    ]);
+  });
+
+  it('keeps a single report as a plain row', () => {
+    const items = [report('r1'), comment('a')];
+    expect(foldReports(items)).toEqual([
+      { kind: 'item', item: items[0] },
+      { kind: 'item', item: items[1] },
+    ]);
   });
 });

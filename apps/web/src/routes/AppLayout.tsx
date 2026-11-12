@@ -75,6 +75,7 @@ import {
   useNotificationFeed,
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
+import type { InboxFilter } from '../notifications/model.ts';
 import { TutorialHost } from '../tutorial/TutorialHost.tsx';
 import { addBoardItems } from './add-storyboard.ts';
 import { editableProjects } from './home-data.ts';
@@ -110,7 +111,8 @@ interface ProjectsState {
   /** False when an administrator keeps project creation to some people (decision 0041). */
   canCreateProjects: boolean;
   openSearch: () => void;
-  openInbox: () => void;
+  /** Opens the Inbox, on one of its tabs (the Home's See all opens Tasks). */
+  openInbox: (filter?: InboxFilter) => void;
   unread: number;
   refreshUnread: () => Promise<void>;
   /** Counts of the open project's boards, which choose the views of boards from before 0121. */
@@ -279,11 +281,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const [headerContent, setHeaderContent] = useState<HeaderParts | null>(null);
   const [searching, setSearching] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>('all');
   // On a desktop the Inbox is a page of the shell; a phone keeps its own layout.
   const phone = useIsPhone();
   const inboxInPage = inboxOpen && !phone;
-  // Where the list puts its Mark all as read, in the top bar.
-  const [inboxActions, setInboxActions] = useState<HTMLElement | null>(null);
   const mobileInboxButton = useRef<HTMLButtonElement>(null);
   // The bell's "Open inbox" leaves the peek: closing the Inbox goes back to the bell.
   const inboxOpener = useRef<HTMLElement | null>(null);
@@ -586,6 +587,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           e.preventDefault();
           inboxOpener.current = e.currentTarget;
           setDrawerOpen(false);
+          setInboxFilter('all');
           setInboxOpen((o) => !o);
         }}
       />
@@ -691,27 +693,38 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     </Sidebar>
   );
 
-  // Home creates from the header only; search stays in the sidebar and on ⌘K.
-  const homeActions = (
-    <div className="home-header-actions">
+  // Home, Projects and the Inbox share one top bar: New project, feedback and the bell. Boards
+  // are made inside a project. Off for this person (decision 0041), it stays, explained.
+  const newProject = (
+    <>
       <Button
         variant="primary"
         icon="plus"
         data-tour="home-new"
-        disabled={writable.length === 0}
-        onClick={() => {
-          setBoardProject(undefined);
-          setCreatingBoard(true);
-        }}
+        disabled={!canCreate}
+        aria-describedby={canCreate ? undefined : 'new-project-off'}
+        onClick={() => setCreating(true)}
       >
-        {t('home.newBoard.action')}
+        {t('nav.newProject')}
       </Button>
-      {canCreate && (
-        <Button variant="secondary" onClick={() => setCreating(true)}>
-          {t('nav.newProject')}
-        </Button>
+      {!canCreate && (
+        <span id="new-project-off" className="ink-sr-only">
+          {t('projectCreation.off')}
+        </span>
       )}
-    </div>
+    </>
+  );
+  const bell = (
+    <NotificationBell
+      unread={unread}
+      onCount={refreshUnread}
+      feed={notifications}
+      onOpenInbox={(opener) => {
+        inboxOpener.current = opener;
+        setInboxFilter('all');
+        setInboxOpen(true);
+      }}
+    />
   );
 
   // The logo at the top left never moves (#333): open, it is the navigation's logo; collapsed,
@@ -767,12 +780,9 @@ export function AppLayout({ home }: { home?: ReactNode }) {
               </h2>
             </div>
             <div className="ink-header__group ink-header__end inbox-header">
-              <span ref={setInboxActions} style={{ display: 'contents' }} />
-              {canCreate && (
-                <Button variant="ghost" onClick={() => setCreating(true)}>
-                  {t('nav.newProject')}
-                </Button>
-              )}
+              {newProject}
+              <FeedbackEntry />
+              {bell}
             </div>
           </>
         )}
@@ -794,17 +804,11 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         </div>
         {instance?.demo && <DemoBar demo={instance.demo} />}
         <div className="ink-header__group ink-header__end">
-          {headerContent ? headerContent.end : pathname === '/' && homeActions}
+          {headerContent
+            ? headerContent.end
+            : (pathname === '/' || pathname === '/projects') && !inboxInPage && newProject}
           <FeedbackEntry />
-          <NotificationBell
-            unread={unread}
-            onCount={refreshUnread}
-            feed={notifications}
-            onOpenInbox={(opener) => {
-              inboxOpener.current = opener;
-              setInboxOpen(true);
-            }}
-          />
+          {bell}
         </div>
       </div>
       {projectId && openViews.length > 1 && (
@@ -844,7 +848,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           openImportProject: () => canCreate && setImporting(true),
           canCreateProjects: canCreate,
           openSearch: () => setSearching(true),
-          openInbox: () => setInboxOpen(true),
+          openInbox: (filter = 'all') => {
+            setInboxFilter(filter);
+            setInboxOpen(true);
+          },
           unread,
           refreshUnread,
           boardCounts: counts,
@@ -884,7 +891,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
               <NotificationList
                 fixed
                 bell={mobileInboxButton}
-                actionsIn={inboxActions}
+                initialFilter={inboxFilter}
                 onClose={() => {
                   setInboxOpen(false);
                   if (window.matchMedia('(width < 768px)').matches)
@@ -920,7 +927,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             setInboxOpen(false);
             setNewSheet(true);
           }}
-          onInbox={() => setInboxOpen((o) => !o)}
+          onInbox={() => {
+            setInboxFilter('all');
+            setInboxOpen((o) => !o);
+          }}
           onProfile={() => {
             setInboxOpen(false);
             navigate('/settings?section=account');
@@ -1009,7 +1019,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
                 setCreatingBoard(true);
               },
               toggleTheme: toggle,
-              openInbox: () => setInboxOpen(true),
+              openInbox: () => {
+                setInboxFilter('all');
+                setInboxOpen(true);
+              },
             })}
           />
         )}

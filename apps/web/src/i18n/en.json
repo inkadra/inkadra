@@ -139,7 +139,9 @@
       "shootingAt": "shooting today at {{location}}, call at {{time}}",
       "shooting": "shooting today, call at {{time}}",
       "unread_one": "{{count}} unread notification",
-      "unread_other": "{{count}} unread notifications"
+      "unread_other": "{{count}} unread notifications",
+      "dueWeek_one": "{{count}} task due this week",
+      "dueWeek_other": "{{count}} tasks due this week"
     },
     "today": {
       "title": "Today",
@@ -151,7 +153,7 @@
       "moreDays_other": "+{{count}} more shooting days today",
       "fewerDays": "Show less"
     },
-    "recentBoards": "Recent boards",
+    "recentBoards": "Continue",
     "continue": "Continue",
     "recentBoardsHint": "by last edit",
     "noRecentBoards": "No boards yet. Create one.",
@@ -161,7 +163,7 @@
     "activity": {
       "title": "Activity",
       "hint": "last 24 hours",
-      "openInbox": "Open inbox →",
+      "openInbox": "Open inbox",
       "empty": "No activity in the last 24 hours."
     },
     "loadError": "This section could not be loaded. Reload the page to try again.",
@@ -180,11 +182,12 @@
       "cards_one": "{{count}} item",
       "cards_other": "{{count}} items"
     },
-    "allProjects": "All projects →",
+    "allProjects": "All projects",
     "unsorted": {
       "waiting_one": "{{count}} item to sort",
       "waiting_other": "{{count}} items to sort"
-    }
+    },
+    "seeAll": "See all"
   },
   "project": {
     "dialogTitle": "New project",
@@ -2881,7 +2884,8 @@
       "all": "All",
       "mentions": "Mentions",
       "approvals": "Approvals",
-      "assigned": "Assigned to me"
+      "assigned": "Assigned to me",
+      "tasks": "Tasks"
     },
     "reviewStatus": "Review",
     "filter": "Inbox filter",
@@ -2911,7 +2915,16 @@
     "previewUnavailable": "Open the board to view this card.",
     "swipeRead": "Read",
     "swipeResolve": "Resolve",
-    "resolvedDone": "Thread resolved"
+    "resolvedDone": "Thread resolved",
+    "reports_one": "<b>{{count}} in-app report</b> received",
+    "reports_other": "<b>{{count}} in-app reports</b> received",
+    "showAll": "Show all",
+    "showFewer": "Show fewer",
+    "messages_one": "{{count}} message",
+    "messages_other": "{{count}} messages",
+    "visibleToGuests": "Visible to guests too",
+    "visibilityFromThread": "A reply has the same visibility as the comment it answers.",
+    "frameTitle": "Frame {{label}}"
   },
   "settings": {
     "sectionLead": {
@@ -3460,7 +3473,7 @@
     "breakdown": "{{changes}} with changes · {{pending}} pending"
   },
   "projectsPage": {
-    "counts": "{{active}} active · {{archived}} archived",
+    "counts": "{{active}} active, {{archived}} archived.",
     "search": "Search projects",
     "status": "Status",
     "all": "All",
@@ -3486,7 +3499,6 @@
     "unpin": "Unpin",
     "archive": "Archive",
     "unarchive": "Restore",
-    "noDates": "Dates to be confirmed",
     "boards_one": "{{count}} board",
     "boards_other": "{{count}} boards",
     "pinned": "Pinned",
@@ -3494,7 +3506,9 @@
     "details": "Type and time zone",
     "timeZone": "Time zone",
     "timeZoneAuto": "Automatic (device time zone: {{zone}})",
-    "timeZoneHint": "Sunrise and sunset on the call sheet use this time zone."
+    "timeZoneHint": "Sunrise and sunset on the call sheet use this time zone.",
+    "storageShort": "{{bytes}} of original files on this instance.",
+    "view": "View"
   },
   "projectDelete": {
     "menu": "Delete project…",
@@ -4619,7 +4633,14 @@
       "today": "today",
       "tomorrow": "tomorrow"
     },
-    "hint": "Type @ to assign · click the date to change it"
+    "hint": "Type @ to assign · click the date to change it",
+    "open_one": "{{count}} open",
+    "open_other": "{{count}} open",
+    "due": {
+      "today": "today",
+      "by": "by {{date}}",
+      "late": "overdue since {{date}}"
+    }
   },
   "calendar": {
     "title": "Calendar",
@@ -5056,8 +5077,8 @@
             "text": "Activity in your projects, newest first."
           },
           "2": {
-            "title": "New board",
-            "text": "Create one in any of your projects."
+            "title": "New project",
+            "text": "Boards live inside a project: start one here."
           }
         }
       },

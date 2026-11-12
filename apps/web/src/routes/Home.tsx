@@ -6,7 +6,7 @@ import {
   type RecentBoard,
   type UnsortedBoard,
 } from '@inkadra/shared';
-import { Avatar, kindStyle, ProjectGlyph } from '@inkadra/ui';
+import { Avatar, CoverCard, Icon, kindStyle, ListRow, ProjectGlyph } from '@inkadra/ui';
 import { type MouseEvent, type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -23,6 +23,7 @@ import {
 import { useProjects } from './AppLayout.tsx';
 import { BoardPreview } from './BoardPreview.tsx';
 import {
+  HOME_TASKS,
   homeProjects,
   type Loadable,
   localDate,
@@ -33,7 +34,7 @@ import {
   useShootingDays,
   useUnsorted,
 } from './home-data.ts';
-import { MyTasks } from './MyTasks.tsx';
+import { dueThisWeek, MyTasks, useMyTasks } from './MyTasks.tsx';
 import './home.css';
 
 export function greetingKey(hour: number) {
@@ -54,6 +55,7 @@ export function Home() {
   const today = useShootingDays(localDate(now));
   const recent = useRecentBoards();
   const activity = useActivity(now);
+  const tasks = useMyTasks();
   // Phones get the unsorted cards and a project list here; wider screens have the sidebar.
   const phone = useIsPhone();
   const unsorted = useUnsorted(phone);
@@ -73,34 +75,50 @@ export function Home() {
   const boards =
     recent.state === 'ready' ? { ...recent, items: recent.items.slice(0, RECENT_BOARDS) } : recent;
 
-  const summary = [
-    now.toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' }),
-  ];
+  // One line under the greeting: the date, then what waits, as a sentence of the language.
+  const date = now.toLocaleDateString(i18n.language, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
   const first = days[0];
+  const waiting: { text: string; shooting?: boolean }[] = [];
   if (first)
-    summary.push(
-      first.location.trim()
+    waiting.push({
+      text: first.location.trim()
         ? t('home.summary.shootingAt', { location: first.location.trim(), time: first.callTime })
         : t('home.summary.shooting', { time: first.callTime }),
-    );
-  if (unread > 0) summary.push(t('home.summary.unread', { count: unread }));
+      shooting: true,
+    });
+  if (unread > 0) waiting.push({ text: t('home.summary.unread', { count: unread }) });
+  const due = tasks.items ? dueThisWeek(tasks.items, now) : 0;
+  if (due > 0) waiting.push({ text: t('home.summary.dueWeek', { count: due }) });
+  const parts = new Intl.ListFormat(i18n.language, { type: 'conjunction' }).formatToParts(
+    waiting.map((w, i) => (i === 0 ? w.text.charAt(0).toUpperCase() + w.text.slice(1) : w.text)),
+  );
+  let element = 0;
 
   return (
     <div className="home">
       <header className="home__head">
         <div className="home__title">
           <h1 data-feedback-secret>{t(greetingKey(now.getHours()), { name: firstName })}</h1>
-          <p className="ink-muted">
-            {summary.map((part, index) => (
-              <span
-                key={part}
-                className={first && index === 1 ? 'home__shooting' : undefined}
-                data-feedback-secret={(first && index === 1) || undefined}
-              >
-                {index > 0 && ' · '}
-                {part}
-              </span>
-            ))}
+          <p className="ink-muted home__summary">
+            {date}.{waiting.length > 0 && ' '}
+            {parts.map((part, key) => {
+              if (part.type === 'literal') return part.value;
+              const item = waiting[element++];
+              return item?.shooting ? (
+                // biome-ignore lint/suspicious/noArrayIndexKey: the parts of one sentence never move
+                <span key={key} className="home__shooting" data-feedback-secret>
+                  {part.value}
+                </span>
+              ) : (
+                // biome-ignore lint/suspicious/noArrayIndexKey: the parts of one sentence never move
+                <b key={key}>{part.value}</b>
+              );
+            })}
+            {waiting.length > 0 && '.'}
           </p>
         </div>
 
@@ -110,7 +128,7 @@ export function Home() {
             aria-labelledby="home-today"
             data-feedback-secret
           >
-            <h2 id="home-today" className="ink-label home__today-chip">
+            <h2 id="home-today" className="home__today-chip">
               {t('home.today.title')}
             </h2>
             {/* Without the card a failed load would read as no shoot today. */}
@@ -142,38 +160,88 @@ export function Home() {
           </section>
         )}
       </header>
-      <MyTasks />
-      <Section
-        id="home-recent"
-        tour="home-recent"
-        title={t('home.recentBoards')}
-        action={
-          // Guests with shared boards only have no projects page to go to; a phone has the link
-          // under its project list instead.
-          !phone && projects && projects.length > 0 ? (
-            <a className="home__more" href="/projects" onClick={go('/projects')}>
-              {t('home.allProjects')}
-            </a>
-          ) : undefined
-        }
-        hint={t('home.recentBoardsHint')}
-      >
-        <LoadState list={boards} empty={t('home.noRecentBoards')}>
-          {(items) => (
-            <div className="home__boards" data-feedback-secret>
-              {items.map((b) => (
-                <BoardCard
-                  key={b.id}
-                  board={b}
-                  project={projects?.find((p) => p.id === b.projectId)}
-                  href={boardHref(b.projectId, b.id)}
-                  go={go}
-                />
-              ))}
+      <div className="home__columns">
+        <Section
+          id="home-recent"
+          tour="home-recent"
+          title={t('home.recentBoards')}
+          action={
+            // Guests with shared boards only have no projects page to go to; a phone has the link
+            // under its project list instead.
+            !phone && projects && projects.length > 0 ? (
+              <a className="home__more" href="/projects" onClick={go('/projects')}>
+                {t('home.allProjects')}
+              </a>
+            ) : undefined
+          }
+          hint={t('home.recentBoardsHint')}
+        >
+          <LoadState list={boards} empty={t('home.noRecentBoards')}>
+            {(items) => (
+              <div className="home__boards" data-feedback-secret>
+                {items.map((b, index) => (
+                  <BoardCard
+                    key={b.id}
+                    board={b}
+                    hero={index === 0}
+                    project={projects?.find((p) => p.id === b.projectId)}
+                    href={boardHref(b.projectId, b.id)}
+                    go={go}
+                  />
+                ))}
+              </div>
+            )}
+          </LoadState>
+        </Section>
+        <div className="home__side">
+          <MyTasks
+            list={tasks}
+            title={t('tasks.title')}
+            max={HOME_TASKS}
+            action={
+              <button type="button" className="home__more" onClick={() => openInbox('tasks')}>
+                {t('home.seeAll')}
+              </button>
+            }
+          />
+          <Section
+            id="home-activity"
+            tour="home-activity"
+            title={t('home.activity.title')}
+            hint={t('home.activity.hint')}
+            action={
+              <button type="button" className="home__more" onClick={() => openInbox()}>
+                {t('home.activity.openInbox')}
+              </button>
+            }
+          >
+            <div className="home__box">
+              <LoadState
+                list={activity}
+                empty={
+                  <>
+                    <Icon name="check" size={15} />
+                    {t('home.activity.empty')}
+                  </>
+                }
+              >
+                {(items) => (
+                  <ul className="home__activity">
+                    {items.map((n) => (
+                      <ActivityItem
+                        key={n.id}
+                        item={n}
+                        project={projects?.find((p) => p.id === n.projectId)}
+                        onRead={refreshUnread}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </LoadState>
             </div>
-          )}
-        </LoadState>
-      </Section>
+          </Section>
+        </div>
+      </div>
 
       {phone && (
         <>
@@ -219,43 +287,25 @@ export function Home() {
         </>
       )}
 
-      <Section
-        id="home-activity"
-        tour="home-activity"
-        title={t('home.activity.title')}
-        hint={t('home.activity.hint')}
-        action={
-          <button type="button" className="home__more" onClick={openInbox}>
-            {t('home.activity.openInbox')}
-          </button>
-        }
-      >
-        <LoadState list={activity} empty={t('home.activity.empty')}>
-          {(items) => (
-            <ul className="home__activity">
-              {items.map((n) => (
-                <ActivityItem key={n.id} item={n} onRead={refreshUnread} />
-              ))}
-            </ul>
-          )}
-        </LoadState>
-      </Section>
       {shared && shared.length > 0 && (
         <Section id="home-shared" title={t('home.shared')}>
           <div className="home__recent" data-feedback-secret>
             {shared.map((b) => (
-              <a
+              <CoverCard
                 key={b.id}
-                href={`/p/${b.projectId}/b/${b.id}`}
-                className="ink-card home__card"
-                onClick={go(`/p/${b.projectId}/b/${b.id}`)}
-              >
-                <BoardPreview boardId={b.id} />
-                <span className="home__meta">
-                  <span className="home__name">{b.title}</span>
-                  <span className="ink-muted home__when">{t(`roles.${b.myRole}`)}</span>
-                </span>
-              </a>
+                className="home__card"
+                cover={<BoardPreview boardId={b.id} />}
+                name={
+                  <a
+                    className="ink-cover-card__link"
+                    href={`/p/${b.projectId}/b/${b.id}`}
+                    onClick={go(`/p/${b.projectId}/b/${b.id}`)}
+                  >
+                    {b.title}
+                  </a>
+                }
+                meta={t(`roles.${b.myRole}`)}
+              />
             ))}
           </div>
         </Section>
@@ -283,7 +333,7 @@ function Section({
   return (
     <section className="home__section" aria-labelledby={id} data-tour={tour}>
       <div className="home__section-head">
-        <h2 id={id} className="ink-label">
+        <h2 id={id} className="ink-section-title">
           {title}
         </h2>
         {hint && <span className="ink-muted home__hint">{hint}</span>}
@@ -301,7 +351,7 @@ function LoadState<T>({
   children,
 }: {
   list: Loadable<T>;
-  empty: string;
+  empty: ReactNode;
   children: (items: T[]) => ReactNode;
 }) {
   const { t } = useTranslation();
@@ -317,7 +367,7 @@ function LoadState<T>({
         {t('home.loadError')}
       </p>
     );
-  if (list.items.length === 0) return <p className="ink-muted home__status">{empty}</p>;
+  if (list.items.length === 0) return <p className="ink-muted home__status home__empty">{empty}</p>;
   return children(list.items);
 }
 
@@ -438,86 +488,108 @@ function TodayDay({
   );
 }
 
+/** A recent board: the first one large, the next ones small (decision 0124). */
 function BoardCard({
   board,
   project,
+  hero,
   href,
   go,
 }: {
   board: RecentBoard;
   project?: Project;
+  hero?: boolean;
   href: string;
   go: (to: string) => (e: MouseEvent) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const labelId = useId();
   const kindId = useId();
   const descriptionId = useId();
   return (
-    <a
-      href={href}
-      className="ink-card home__card"
-      aria-labelledby={labelId}
-      aria-describedby={`${kindId} ${descriptionId}`}
-      onClick={go(href)}
-    >
-      <BoardPreview boardId={board.id} project={project} />
-      <span className="home__meta">
-        <span
-          id={kindId}
-          className="home__kind"
-          data-kind={board.kind}
-          style={kindStyle(board.kind)}
-        >
-          {t(`board.types.${board.kind}`)}
-        </span>
-        <span id={labelId} className="home__name">
-          {board.title}
-        </span>
-        <span id={descriptionId} className="ink-muted home__when">
+    <CoverCard
+      className={hero ? 'home__card home__card--hero' : 'home__card'}
+      cover={<BoardPreview boardId={board.id} project={project} />}
+      name={
+        <>
+          <a
+            href={href}
+            className="ink-cover-card__link"
+            aria-describedby={`${kindId} ${descriptionId}`}
+            onClick={go(href)}
+          >
+            {board.title}
+          </a>
+          <span
+            id={kindId}
+            className="home__kind"
+            data-kind={board.kind}
+            style={kindStyle(board.kind)}
+          >
+            {t(`board.types.${board.kind}`)}
+          </span>
+        </>
+      }
+      meta={
+        <span id={descriptionId} className="home__where">
           {project && <ProjectGlyph {...project.icon} />}
-          {board.projectName} · {relativeTime(board.editedAt, i18n.language)}
+          <span className="home__where-name">{board.projectName}</span>
+          <time dateTime={board.editedAt}>{relativeTime(board.editedAt, i18n.language)}</time>
         </span>
-      </span>
-    </a>
+      }
+    />
   );
 }
 
-function ActivityItem({ item, onRead }: { item: Notification; onRead: () => Promise<void> }) {
+function ActivityItem({
+  item,
+  project,
+  onRead,
+}: {
+  item: Notification;
+  project?: Project;
+  onRead: () => Promise<void>;
+}) {
   const { t, i18n } = useTranslation();
   const { user } = useSession();
   const navigate = useNavigate();
   const path = notificationPath(item);
   const actor = notificationActor(item, t);
-  const where = [...new Set([item.projectName, item.boardTitle])].filter(Boolean).join(' · ');
+  const where = [...new Set([item.projectName, item.boardTitle])].filter(Boolean).join(' / ');
   const body = (
-    <>
-      <span className="home__avatar" style={{ background: avatarBg(actor) }} data-feedback-secret>
-        <Avatar name={actor ?? 'Inkadra'} size={24} />
-      </span>
-      <span className="home__activity-body">
+    <ListRow
+      lead={
+        <>
+          <span className={`ink-row__dot${item.readAt ? ' is-read' : ''}`}>
+            {!item.readAt && <span className="ink-sr-only">{t('notifications.unread')}</span>}
+          </span>
+          <span className="home__avatar" style={{ background: avatarBg(actor) }} data-feedback-secret>
+            <Avatar name={actor ?? 'Inkadra'} size={24} />
+          </span>
+        </>
+      }
+      title={
         <span className={item.reviewStatus === 'approved' ? 'home__approved' : undefined}>
           {actor && <b data-feedback-secret>{actor} </b>}
           {describeNotification(item, t, { id: user?.id, locale: i18n.language })}
         </span>
-        <span className="ink-muted home__when">
-          {where && <span data-feedback-secret>{where} · </span>}
-          <time dateTime={item.createdAt}>{relativeTime(item.createdAt, i18n.language)}</time>
-        </span>
-      </span>
-      {!item.readAt && (
-        <span className="home__unread">
-          <span className="home__sr">{t('notifications.unread')}</span>
-        </span>
-      )}
-    </>
+      }
+      where={
+        where && (
+          <>
+            {project && <ProjectGlyph {...project.icon} />}
+            <span data-feedback-secret>{where}</span>
+          </>
+        )
+      }
+      trail={<time dateTime={item.createdAt}>{relativeTime(item.createdAt, i18n.language)}</time>}
+    />
   );
   return (
     <li className={item.readAt ? undefined : 'is-unread'}>
       {path ? (
         <a
           href={path}
-          className="home__activity-item"
+          className="ink-row home__activity-item"
           onClick={(e) => {
             e.preventDefault();
             // As in the inbox: opening it reads it.
@@ -532,7 +604,7 @@ function ActivityItem({ item, onRead }: { item: Notification; onRead: () => Prom
           {body}
         </a>
       ) : (
-        <span className="home__activity-item">{body}</span>
+        <span className="ink-row home__activity-item">{body}</span>
       )}
     </li>
   );

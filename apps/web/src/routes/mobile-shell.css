@@ -382,11 +382,6 @@
   }
 }
 
-.home-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
 /* Fingers need 44 px targets. */
 @media (width < 768px) {

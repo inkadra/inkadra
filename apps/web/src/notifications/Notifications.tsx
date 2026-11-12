@@ -12,10 +12,27 @@ import {
   notificationPath,
   type UnreadCount,
 } from '@inkadra/shared';
-import { Button, Checkbox, Icon, IconButton, Switch, swallowOutsidePress } from '@inkadra/ui';
-import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useTranslation } from 'react-i18next';
+import {
+  Button,
+  Checkbox,
+  Icon,
+  IconButton,
+  ListRow,
+  ProjectGlyph,
+  Switch,
+  swallowOutsidePress,
+} from '@inkadra/ui';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName, groupByDay, type Page, reviewKey } from '../board/review-model.ts';
 import { canComment } from '../board/review-store.ts';
@@ -23,7 +40,8 @@ import { expiryDate } from '../lib/access.ts';
 import { api } from '../lib/api.ts';
 import { signedInId } from '../lib/me.ts';
 import { moveTabFocus } from '../lib/tabs.ts';
-import { MyTasks } from '../routes/MyTasks.tsx';
+import { useProjects } from '../routes/AppLayout.tsx';
+import { MyTasksTab } from '../routes/MyTasks.tsx';
 import { formatStorage } from '../routes/StorageCharts.tsx';
 import { trackSave } from '../routes/settings-save.ts';
 import { Card, Row } from '../routes/settings-ui.tsx';
@@ -31,6 +49,7 @@ import { InboxDetail, InboxSkeleton } from './InboxDetail.tsx';
 import {
   dayLabel,
   filterNotifications,
+  foldReports,
   type InboxFilter,
   KNOWN_TYPES,
   unreadBadge,
@@ -43,7 +62,7 @@ const INBOX_TABS: { value: InboxFilter; label: string }[] = [
   { value: 'all', label: 'notifications.tabs.all' },
   { value: 'mentions', label: 'notifications.tabs.mentions' },
   { value: 'approvals', label: 'notifications.tabs.approvals' },
-  { value: 'tasks', label: 'tasks.title' },
+  { value: 'tasks', label: 'notifications.tabs.tasks' },
 ];
 
 /** Pathless notifications render disabled: keep them out of selection and keyboard order. */
@@ -366,7 +385,7 @@ export function NotificationList({
   bell,
   unread,
   fixed,
-  actionsIn,
+  initialFilter = 'all',
   onClose,
   onNavigate,
   onCount,
@@ -376,8 +395,8 @@ export function NotificationList({
   unread: number;
   bell?: RefObject<HTMLButtonElement | null>;
   fixed?: boolean;
-  /** The top bar's place for Mark all as read while the Inbox is a page of the shell. */
-  actionsIn?: HTMLElement | null;
+  /** The tab it opens on. */
+  initialFilter?: InboxFilter;
   onClose: () => void;
   onNavigate: () => void;
   onCount: () => Promise<void>;
@@ -390,7 +409,10 @@ export function NotificationList({
   const navigate = useNavigate();
   const ownFeed = useNotificationFeed(onCount);
   const { items, next, state, load, markRead, markAll: readAll } = feed ?? ownFeed;
-  const [filter, setFilter] = useState<InboxFilter>('all');
+  const [filter, setFilter] = useState<InboxFilter>(initialFilter);
+  const { projects } = useProjects();
+  // The days whose in-app reports are unfolded, by the id of their first report.
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set());
   const tabsId = useId();
   const [actionError, setActionError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -525,6 +547,104 @@ export function NotificationList({
 
   const selectedNotification = filteredItems.find((n) => n.id === selectedId) ?? null;
 
+  /** One notification: who and what, the comment's start, where, when. */
+  const renderRow = (n: Notification) => {
+    const path = notificationPath(n);
+    const actor = notificationActor(n, t);
+    const isSelected = n.id === selectedId;
+    const rowClass = `notification ${n.readAt ? '' : 'is-unread'} ${isSelected ? 'is-selected' : ''}`;
+    const swipe = mobile ? swipeActions(n) : [];
+    // A row of a thread may still turn out to have Resolve: only a swipe asks.
+    const swipable = swipe.length > 0 || (mobile && !!n.threadId && !resolvable.has(n.threadId));
+    const project = projects?.find((p) => p.id === n.projectId);
+    const where = [...new Set([n.projectName, n.boardTitle])].filter(Boolean).join(' / ');
+    const row = (
+      <>
+        <button
+          type="button"
+          data-notification-id={n.id}
+          tabIndex={n.id === tabStopId ? 0 : -1}
+          aria-current={isSelected ? 'true' : undefined}
+          onFocus={() => setFocusedId(n.id)}
+          className="ink-row notification__open notification__open--drawer"
+          disabled={!path}
+          onClick={async () => {
+            setActionError(false);
+            selectNotification(n);
+            if (!fixed && path) {
+              onNavigate();
+              navigate(path);
+            }
+          }}
+        >
+          <ListRow
+            lead={
+              <>
+                <span className={`ink-row__dot${n.readAt ? ' is-read' : ''}`}>
+                  {!n.readAt && <span className="ink-sr-only">{t('notifications.unread')}</span>}
+                </span>
+                <span
+                  className="notification__av"
+                  style={{ background: avatarBg(actor) }}
+                  data-feedback-secret
+                >
+                  {initials(actor)}
+                </span>
+              </>
+            }
+            title={
+              <span className="notification__line">
+                {actor && <b data-feedback-secret>{actor} </b>}
+                {describeNotification(n, t, { locale: i18n.language })}
+              </span>
+            }
+            preview={n.excerpt && <span data-feedback-secret>{n.excerpt}</span>}
+            where={
+              where && (
+                <>
+                  {project && <ProjectGlyph {...project.icon} />}
+                  <span data-feedback-secret>{where}</span>
+                </>
+              )
+            }
+            trail={<time dateTime={n.createdAt}>{relativeTime(n.createdAt, i18n.language)}</time>}
+          />
+        </button>
+        {!n.readAt && (
+          <IconButton
+            icon="check"
+            className="notification__read"
+            label={t('notifications.read')}
+            onClick={(e) => {
+              // The button goes away once read: focus stays on the notification.
+              const open = e.currentTarget
+                .closest('li')
+                ?.querySelector<HTMLButtonElement>('.notification__open');
+              void markRead(n.id).then(
+                () => (open && !open.disabled ? open : panel.current)?.focus(),
+                () => setActionError(true),
+              );
+            }}
+          />
+        )}
+      </>
+    );
+    return swipable ? (
+      <SwipeRow
+        key={n.id}
+        className={rowClass}
+        actions={swipe}
+        onSwipe={() => askResolvable(n)}
+      >
+        {row}
+      </SwipeRow>
+    ) : (
+      <li key={n.id} className={rowClass}>
+        {row}
+      </li>
+    );
+  };
+
   return (
     <div
       ref={panel}
@@ -543,48 +663,31 @@ export function NotificationList({
         if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
         e.preventDefault();
         // Enter uses the focused button's native click, including detail and action buttons.
+        // The rows as shown: folded reports are one row until they are unfolded.
+        const rows = [
+          ...(panel.current?.querySelectorAll<HTMLButtonElement>(
+            'button[data-notification-id]:not(:disabled)',
+          ) ?? []),
+        ];
         const target = e.target as HTMLElement;
         let currentIndex: number;
         if (target === panel.current) {
           // Focus is on the panel itself: ArrowDown enters the list, ArrowUp enters from the end.
-          currentIndex = e.key === 'ArrowDown' ? -1 : filteredItems.length;
+          currentIndex = e.key === 'ArrowDown' ? -1 : rows.length;
         } else {
-          if (!target.matches('button[data-notification-id]')) return;
-          currentIndex = filteredItems.findIndex((n) => n.id === target.dataset.notificationId);
+          currentIndex = rows.indexOf(target as HTMLButtonElement);
           if (currentIndex === -1) return;
         }
-        const step = e.key === 'ArrowDown' ? 1 : -1;
-        let nextIndex: number | null = null;
-        for (let i = currentIndex + step; i >= 0 && i < filteredItems.length; i += step) {
-          const candidate = filteredItems[i];
-          if (candidate && isNavigable(candidate)) {
-            nextIndex = i;
-            break;
-          }
-        }
-        const nextItem = nextIndex === null ? undefined : filteredItems[nextIndex];
-        if (nextItem) {
-          setFocusedId(nextItem.id);
-          const buttons =
-            panel.current?.querySelectorAll<HTMLButtonElement>('[data-notification-id]');
-          const el = [...(buttons ?? [])].find(
-            (button) => button.dataset.notificationId === nextItem.id,
-          );
-          el?.focus();
-          el?.scrollIntoView({ block: 'nearest' });
+        const el = rows[currentIndex + (e.key === 'ArrowDown' ? 1 : -1)];
+        if (el) {
+          setFocusedId(el.dataset.notificationId ?? null);
+          el.focus();
+          el.scrollIntoView({ block: 'nearest' });
         }
       }}
       onKeyUp={(e) => e.stopPropagation()}
     >
       <div className="notifications__list-pane" data-tour="inbox">
-        {inPage &&
-          actionsIn &&
-          createPortal(
-            <Button variant="ghost" disabled={!anyUnread} onClick={() => void markAll()}>
-              {t('notifications.readAll')}
-            </Button>,
-            actionsIn,
-          )}
         {!inPage && (
           <header className="notifications__head">
             <h2 id="notifications-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -648,6 +751,12 @@ export function NotificationList({
                 onClick={() => setFilter(tab.value)}
               >
                 {t(tab.label)}
+                {tab.value === 'all' && unread > 0 && (
+                  <span className="notifications-filter-tab__count">
+                    <span className="ink-sr-only">, </span>
+                    {unreadBadge(unread)}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -666,114 +775,52 @@ export function NotificationList({
             : {})}
         >
           {filter === 'tasks' ? (
-            <MyTasks onNavigate={onNavigate} />
+            <MyTasksTab onNavigate={onNavigate} />
           ) : (
             <>
               {state === 'ready' && filteredItems.length === 0 && (
                 <p className="notifications__empty">{t('notifications.empty')}</p>
               )}
-              {groups.map(([day, list]) => (
+              {groups.map(([day, list], index) => (
                 <section key={day} aria-label={day}>
-                  <h3 className="notifications__day">{day}</h3>
+                  <div className="notifications__day-head">
+                    <h3 className="notifications__day">{day}</h3>
+                    {/* Mark all as read heads the list it reads (in the bell, its own head). */}
+                    {inPage && index === 0 && (
+                      <button
+                        type="button"
+                        className="review-link notifications__read-all"
+                        disabled={!anyUnread}
+                        onClick={() => void markAll()}
+                      >
+                        {t('notifications.readAll')}
+                      </button>
+                    )}
+                  </div>
                   <ul className="notifications__list">
-                    {list.map((n) => {
-                      const path = notificationPath(n);
-                      const actor = notificationActor(n, t);
-                      const isSelected = n.id === selectedId;
-                      const rowClass = `notification ${n.readAt ? '' : 'is-unread'} ${
-                        isSelected ? 'is-selected' : ''
-                      }`;
-                      const swipe = mobile ? swipeActions(n) : [];
-                      // A row of a thread may still turn out to have Resolve: only a swipe asks.
-                      const swipable =
-                        swipe.length > 0 || (mobile && !!n.threadId && !resolvable.has(n.threadId));
-                      const row = (
-                        <>
-                          <button
-                            type="button"
-                            data-notification-id={n.id}
-                            tabIndex={n.id === tabStopId ? 0 : -1}
-                            aria-current={isSelected ? 'true' : undefined}
-                            onFocus={() => setFocusedId(n.id)}
-                            className="notification__open notification__open--drawer"
-                            disabled={!path}
-                            onClick={async () => {
-                              setActionError(false);
-                              selectNotification(n);
-                              if (!fixed && path) {
-                                onNavigate();
-                                navigate(path);
-                              }
-                            }}
-                          >
-                            {(!n.readAt || (fixed && isSelected)) && (
-                              <span className="notification__bar" />
-                            )}
-                            <span
-                              className="notification__av"
-                              style={{ background: avatarBg(actor) }}
-                              data-feedback-secret
-                            >
-                              {initials(actor)}
-                            </span>
-                            <div className="notification__body">
-                              <span className="notification__line">
-                                {actor && <b data-feedback-secret>{actor} </b>}
-                                {describeNotification(n, t, { locale: i18n.language })}
-                              </span>
-                              <div className="notification__subline">
-                                {(n.boardTitle || n.projectName) && (
-                                  <span className="notification__pill" data-feedback-secret>
-                                    {[...new Set([n.projectName, n.boardTitle])]
-                                      .filter(Boolean)
-                                      .join(' · ')}
-                                  </span>
-                                )}
-                                <time dateTime={n.createdAt}>
-                                  {relativeTime(n.createdAt, i18n.language)}
-                                </time>
-                              </div>
-                              {n.excerpt && (
-                                <span className="notification__excerpt">{n.excerpt}</span>
-                              )}
-                            </div>
-                            {!n.readAt && (
-                              <span className="notification__dot" style={{ flex: 'none' }} />
-                            )}
-                          </button>
-                          {!n.readAt && (
-                            <IconButton
-                              icon="check"
-                              label={t('notifications.read')}
-                              onClick={(e) => {
-                                // The button goes away once read: focus stays on the notification.
-                                const open = e.currentTarget
-                                  .closest('li')
-                                  ?.querySelector<HTMLButtonElement>('.notification__open');
-                                void markRead(n.id).then(
-                                  () => (open && !open.disabled ? open : panel.current)?.focus(),
-                                  () => setActionError(true),
-                                );
-                              }}
-                            />
-                          )}
-                        </>
-                      );
-                      return swipable ? (
-                        <SwipeRow
-                          key={n.id}
-                          className={rowClass}
-                          actions={swipe}
-                          onSwipe={() => askResolvable(n)}
-                        >
-                          {row}
-                        </SwipeRow>
+                    {foldReports(list).map((entry) =>
+                      entry.kind === 'item' ? (
+                        renderRow(entry.item)
                       ) : (
-                        <li key={n.id} className={rowClass}>
-                          {row}
-                        </li>
-                      );
-                    })}
+                        <ReportsRow
+                          key={`reports:${entry.items[0]?.id}`}
+                          items={entry.items}
+                          open={unfolded.has(entry.items[0]?.id ?? '')}
+                          tabStop={entry.items.some((n) => n.id === tabStopId)}
+                          onFocus={(id) => setFocusedId(id)}
+                          onToggle={() =>
+                            setUnfolded((current) => {
+                              const id = entry.items[0]?.id ?? '';
+                              const next = new Set(current);
+                              if (!next.delete(id)) next.add(id);
+                              return next;
+                            })
+                          }
+                        >
+                          {entry.items.map(renderRow)}
+                        </ReportsRow>
+                      ),
+                    )}
                   </ul>
                 </section>
               ))}
@@ -824,6 +871,82 @@ export function NotificationList({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Several in-app reports of one day, folded into one row (decision 0124). Unfolded, the reports
+ * follow as rows of their own; the row itself only folds and unfolds.
+ */
+function ReportsRow({
+  items,
+  open,
+  tabStop,
+  onFocus,
+  onToggle,
+  children,
+}: {
+  items: Notification[];
+  open: boolean;
+  tabStop: boolean;
+  onFocus: (id: string) => void;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const { t, i18n } = useTranslation();
+  const first = items[0];
+  const listId = useId();
+  if (!first) return null;
+  const unread = items.some((n) => !n.readAt);
+  return (
+    <li className={`notification notification--reports${unread ? ' is-unread' : ''}`}>
+      <button
+        type="button"
+        data-notification-id={`reports:${first.id}`}
+        tabIndex={tabStop && !open ? 0 : -1}
+        aria-expanded={open}
+        aria-controls={listId}
+        className="ink-row notification__open"
+        onFocus={() => onFocus(first.id)}
+        onClick={onToggle}
+      >
+        <ListRow
+          lead={
+            <>
+              <span className={`ink-row__dot${unread ? '' : ' is-read'}`}>
+                {unread && <span className="ink-sr-only">{t('notifications.unread')}</span>}
+              </span>
+              <span className="notification__stack" aria-hidden="true">
+                <span className="notification__av">{initials(null)}</span>
+                <span className="notification__av">{items.length}</span>
+              </span>
+            </>
+          }
+          title={
+            <span className="notification__line">
+              <Trans
+                i18nKey="notifications.reports"
+                count={items.length}
+                components={{ b: <b /> }}
+              />
+            </span>
+          }
+          preview={
+            <span className="notification__toggle">
+              {t(open ? 'notifications.showFewer' : 'notifications.showAll')}
+            </span>
+          }
+          trail={
+            <time dateTime={first.createdAt}>{relativeTime(first.createdAt, i18n.language)}</time>
+          }
+        />
+      </button>
+      {open && (
+        <ul id={listId} className="notifications__list notifications__list--nested">
+          {children}
+        </ul>
+      )}
+    </li>
   );
 }
 

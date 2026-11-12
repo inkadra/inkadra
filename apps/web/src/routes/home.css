@@ -1,5 +1,5 @@
 .home {
-  padding: 30px 32px 48px;
+  padding: 28px 32px 48px;
   max-width: 1600px;
   margin: 0 auto;
 }
@@ -12,12 +12,51 @@
 }
 .home__title h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
 }
 .home__title p {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
+  color: var(--ink-text-secondary);
+}
+.home__summary b {
+  color: var(--ink-text-primary);
+  font-weight: 500;
+}
+/* Two columns: the work to resume on the left, tasks and activity on the right. */
+.home__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 36px;
+  margin-top: 26px;
+  align-items: start;
+}
+.home__columns .home__section {
+  margin-top: 0;
+}
+.home__side {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+.home__box {
+  padding: 6px;
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+}
+.home__box > .home__status {
+  padding: 8px 6px;
+}
+.home__empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.home__box .home__empty {
+  padding: 8px 6px;
+  color: var(--ink-text-secondary);
 }
 .home__title p::first-letter {
   text-transform: uppercase;
@@ -29,8 +68,8 @@
 .home__section-head {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 .home__section-head h2 {
   margin: 0;
@@ -45,14 +84,19 @@
   border: 0;
   padding: 0;
   background: none;
-  color: var(--ink-text-secondary);
   font: inherit;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
 }
 .home__more:hover {
-  color: var(--ink-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.home__more:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--ink-radius-xs);
 }
 .home__status {
   margin: 0;
@@ -102,36 +146,33 @@
   margin-left: auto;
   text-decoration: none;
 }
-.home__recent,
-.home__boards {
+.home__recent {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }
+/* The most recent board large, the next three in a row under it. */
 .home__boards {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
-.home__card {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: var(--ink-radius-md);
-  color: inherit;
-  text-decoration: none;
-  transition: border-color 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+.home__card--hero {
+  grid-column: 1 / -1;
 }
-.home__card:hover {
-  border-color: var(--ink-border-strong);
+.home__card .ink-cover-card__cover {
+  height: 112px;
+}
+.home__card--hero .ink-cover-card__cover {
+  height: 300px;
+}
+.home__card--hero .ink-cover-card__name {
+  font-size: 15px;
 }
 .home__cover {
   display: block;
-  height: 128px;
+  height: 100%;
   background-color: var(--ink-bg-canvas);
-  background-image: radial-gradient(circle, var(--ink-canvas-dot) 1px, transparent 1.5px);
-  background-size: 22px 22px;
-}
-.home__boards .home__cover {
-  height: 96px;
 }
 .home__cover img {
   width: 100%;
@@ -139,20 +180,31 @@
   object-fit: cover;
   display: block;
 }
-.home__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px 12px;
-}
-.home__kind {
-  font-size: 11px;
-}
 .home__name {
   font-weight: 600;
 }
 .home__when {
   font-size: 11px;
+}
+.home__where {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink-text-muted);
+}
+.home__where svg {
+  width: 10px;
+  height: 10px;
+}
+.home__where-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home__where time {
+  margin-left: auto;
+  flex: none;
 }
 .home__activity {
   list-style: none;
@@ -160,44 +212,6 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-.home__activity-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px;
-  margin: 0 -8px;
-  border-radius: var(--ink-radius-sm);
-  color: inherit;
-  text-decoration: none;
-  font-size: 13px;
-}
-a.home__activity-item:hover {
-  background: var(--ink-surface-1);
-}
-.home__activity-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-.home__unread {
-  flex: none;
-  width: 7px;
-  height: 7px;
-  margin-top: 6px;
-  border-radius: var(--ink-radius-full);
-  background: var(--ink-accent-primary);
-}
-.home__sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 .home-new {
   display: flex;
@@ -213,11 +227,14 @@ a.home__activity-item:hover {
   .home__day-open {
     margin-left: 0;
   }
-  /* Recent boards: one row that scrolls sideways instead of a tall stack of cards. */
+  .home__columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    margin-top: 20px;
+  }
+  /* Recent boards: one row that scrolls sideways, the latest a little wider. */
   .home__boards {
-    grid-template-columns: none;
-    grid-auto-flow: column;
-    grid-auto-columns: 168px;
+    display: flex;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
@@ -227,10 +244,15 @@ a.home__activity-item:hover {
     padding: 0 16px 4px;
   }
   .home__boards > .home__card {
+    flex: 0 0 168px;
     scroll-snap-align: start;
   }
-  .home__boards .home__cover {
-    height: 88px;
+  .home__boards > .home__card--hero {
+    flex-basis: 260px;
+  }
+  .home__card .ink-cover-card__cover,
+  .home__card--hero .ink-cover-card__cover {
+    height: 112px;
   }
   /* Projects and shared boards: compact rows, as the mockup's project list. */
   .home__recent {
@@ -242,16 +264,15 @@ a.home__activity-item:hover {
     align-items: center;
     min-height: 56px;
   }
-  .home__recent .home__cover {
-    flex: none;
+  .home__recent .ink-cover-card__cover {
     width: 56px;
     height: 56px;
   }
   .home__recent .home__preview-summary {
     display: none;
   }
-  .home__recent .home__meta {
-    min-width: 0;
+  .home__recent .ink-cover-card__body {
+    flex: 1;
     padding: 8px 12px;
   }
 }
@@ -267,14 +288,12 @@ a.home__activity-item:hover {
   position: absolute;
   inset: 0;
 }
-/* Without a cover image: the project colour, faded into the card surface. */
+/* Without a cover image: the project's colour and the shape of its glyph, not one brown for all. */
 .home__preview.is-tinted {
   --tint: var(--ink-text-muted);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--tint) 22%, var(--ink-surface-1)),
-    var(--ink-surface-1) 75%
-  );
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--tint) 16%, var(--ink-surface-1));
 }
 .home__preview[data-tint="blue"] {
   --tint: var(--ink-tag-blue);
@@ -289,41 +308,32 @@ a.home__activity-item:hover {
   --tint: var(--ink-tag-green);
 }
 .home__preview-glyph {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--ink-radius-sm);
-  background: color-mix(in srgb, var(--tint) 24%, var(--ink-surface-1));
   color: var(--tint);
 }
 .home__preview-glyph svg {
-  width: 18px;
-  height: 18px;
+  width: 30px;
+  height: 30px;
 }
+/* The count over the picture: the same dark chip on a photo and on a tint, in both themes. */
 .home__preview-summary {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
-  padding: 2px 8px;
-  border-radius: var(--ink-radius-sm);
-  font-size: 11px;
-  color: var(--ink-text-secondary);
-}
-.home__preview > img ~ .home__preview-summary {
   left: 8px;
-  right: auto;
+  bottom: 8px;
+  padding: 2px 6px;
+  border-radius: var(--ink-radius-xs);
+  font-size: 11px;
   color: #ededed;
-  background: rgb(14 14 16 / 0.72);
-  backdrop-filter: blur(4px);
+  background: rgb(14 14 16 / 0.8);
 }
 
 .home__more {
   color: var(--ink-accent-primary);
   text-decoration: none;
+}
+.home__more:hover {
+  text-decoration: underline;
 }
 .home__shooting {
   color: var(--ink-tag-orange);
@@ -342,21 +352,23 @@ a.home__activity-item:hover {
   border-radius: var(--ink-radius-xs);
 }
 .home__kind {
-  align-self: flex-start;
-  padding: 2px 6px;
+  flex: none;
+  margin-left: auto;
+  padding: 0 6px;
+  line-height: 18px;
   border-radius: var(--ink-radius-xs);
+  font-size: 11px;
+  font-weight: 500;
   color: var(--ink-text-secondary);
   background: var(--ink-surface-2);
+}
+.home__card--hero .home__kind {
+  margin-left: 4px;
+  margin-right: auto;
 }
 .home [data-kind] {
   color: var(--kind-fg);
   background: var(--kind-bg);
-}
-.home__when svg {
-  width: 12px;
-  height: 12px;
-  vertical-align: middle;
-  margin-right: 4px;
 }
 .home__avatar {
   border-radius: 50%;
@@ -394,28 +406,29 @@ a.home__activity-item:hover {
 .home__preview[data-tint="pink"] {
   --tint: var(--ink-tag-pink);
 }
-.my-tasks__group {
-  margin-top: 16px;
-}
-.my-tasks__group--overdue h3 {
-  color: var(--ink-danger-fg);
-}
-.my-tasks__group--today h3 {
-  color: var(--ink-status-warn);
-}
-.my-tasks__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
-  color: var(--ink-text-primary);
-  text-decoration: none;
-  border-bottom: 1px solid var(--ink-border-default);
+.my-tasks__status {
+  margin: 0;
+  padding: 8px 10px;
   font-size: 13px;
 }
-.my-tasks__row > :last-child {
-  margin-left: auto;
-  font-size: 11px;
+.my-tasks__group:first-child .ink-row-group {
+  margin-top: 6px;
+}
+.my-tasks__group--overdue .ink-row-group {
+  color: var(--ink-danger-fg);
+}
+.my-tasks__group--today .ink-row-group {
+  color: var(--ink-status-warn);
+}
+.my-tasks__due {
+  color: var(--ink-status-warn);
+}
+.my-tasks__group--overdue .my-tasks__due {
+  color: var(--ink-danger-fg);
+}
+.my-tasks__group--undated .my-tasks__due,
+.my-tasks__group--later .my-tasks__due {
+  color: var(--ink-text-muted);
 }
 
 /* Phone only (Home.tsx renders them below 768 px): unsorted cards and the project list. */
@@ -512,4 +525,7 @@ a.home__activity-item:hover {
 .home__project:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+}
+.home__preview-glyph > span {
+  transform: scale(1.75);
 }

@@ -1,5 +1,15 @@
 import type { Project, ProjectGroup } from '@inkadra/shared';
-import { Avatar, Button, Dialog, DialogActions, Select } from '@inkadra/ui';
+import {
+  Avatar,
+  Button,
+  CoverCard,
+  Dialog,
+  DialogActions,
+  Icon,
+  IconButton,
+  ProjectGlyph,
+  Select,
+} from '@inkadra/ui';
 import {
   type FormEvent,
   type ReactNode,
@@ -180,6 +190,8 @@ export function Projects() {
       onError={() => setError(true)}
     />
   );
+  const storageNote =
+    usage !== null ? t('projectsPage.storage', { bytes: formatStorage(usage, i18n.language) }) : '';
   const change = (key: keyof typeof query, value: string) =>
     setQuery((q) => ({ ...q, [key]: value }));
   return (
@@ -193,107 +205,109 @@ export function Projects() {
                 active: items.filter((r) => !r.project.archivedAt).length,
                 archived: items.filter((r) => r.project.archivedAt).length,
               })}
+              {/* What the instance keeps, for the administrator: once known, in the same line. */}
+              {user?.role === 'admin' && (usage !== null || usageError) && (
+                <span className="projects-page__storage" title={usage !== null ? storageNote : undefined}>
+                  {' '}
+                  {usage !== null
+                    ? t('projectsPage.storageShort', { bytes: formatStorage(usage, i18n.language) })
+                    : t('projectsPage.storageError')}
+                </span>
+              )}
             </p>
           )}
         </div>
         <div className="projects-page__actions">
-          {/* Groups are personal: everyone sorts their own list (decision 0056). */}
-          <Button onClick={() => setNewGroup(true)}>{t('groups.new')}</Button>
           {canCreateProjects ? (
             <>
               <Link className="ink-btn ink-btn--ghost" to="/onboarding">
                 {t('onboarding.guidedSetup')}
               </Link>
-              <Button onClick={openImportProject}>{t('transfer.importMenu')}</Button>
-              <Button variant="primary" icon="plus" onClick={() => openNewProject()}>
-                {t('nav.newProject')}
+              <Button variant="ghost" onClick={openImportProject}>
+                {t('transfer.importMenu')}
               </Button>
             </>
           ) : (
-            // Decision 0041: shown, so people know where projects come from, but off.
-            <>
-              <span id="projects-creation-off" className="ink-muted projects-page__off">
-                {t('projectCreation.off')}
-              </span>
-              <Button
-                variant="primary"
-                icon="plus"
-                disabled
-                aria-describedby="projects-creation-off"
-              >
-                {t('nav.newProject')}
-              </Button>
-            </>
+            // Decision 0041: New project in the top bar is off; this says why.
+            <span className="ink-muted projects-page__off">{t('projectCreation.off')}</span>
           )}
+          {/* Groups are personal: everyone sorts their own list (decision 0056). */}
+          <Button onClick={() => setNewGroup(true)}>{t('groups.new')}</Button>
         </div>
       </header>
       <div className="projects-page__filters">
-        <label>
-          {t('projectsPage.search')}
+        <label className="projects-page__search">
+          <Icon name="search" size={15} />
           <input
             className="ink-input"
             type="search"
+            aria-label={t('projectsPage.search')}
+            placeholder={t('projectsPage.search')}
             value={query.search}
             onChange={(e) => change('search', e.target.value)}
           />
         </label>
-        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
-        <label>
-          {t('projectsPage.status')}
-          <Select className="ink-input" value={query.status} onChange={(e) => change('status', e)}>
-            {['all', 'active', 'archived'].map((v) => (
-              <option key={v} value={v}>
-                {t(`projectsPage.${v}`)}
-              </option>
-            ))}
-          </Select>
-        </label>
-        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
-        <label>
-          {t('onboarding.type')}
-          <Select className="ink-input" value={query.type} onChange={(e) => change('type', e)}>
-            <option value="all">{t('projectsPage.all')}</option>
-            {catalogs.projectTypes.map(({ id: v }) => (
-              <option key={v} value={v}>
-                {typeLabel(v)}
-              </option>
-            ))}
-          </Select>
-        </label>
-        {others && (
-          // biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button.
-          <label>
-            {t('projectsPage.people')}
-            <Select
-              className="ink-input"
-              value={query.person}
-              onChange={(e) => change('person', e)}
-            >
-              <option value="all">{t('projectsPage.all')}</option>
-              {[...people].map(([id, person]) => (
-                <option key={id} value={id}>
-                  {person.name}
-                </option>
-              ))}
-            </Select>
-          </label>
-        )}
-        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
-        <label>
-          {t('projectsPage.sort')}
-          <Select className="ink-input" value={query.sort} onChange={(e) => change('sort', e)}>
-            {['activity', 'name', 'created'].map((v) => (
-              <option key={v} value={v}>
-                {t(`projectsPage.sorts.${v}`)}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <div className="projects-page__view">
-          {['grid', 'list'].map((v) => (
-            <Button key={v} variant="ghost" aria-pressed={view === v} onClick={() => setView(v)}>
+        <Select
+          className="ink-input"
+          prefix={t('projectsPage.status')}
+          value={query.status}
+          onChange={(e) => change('status', e)}
+        >
+          {['all', 'active', 'archived'].map((v) => (
+            <option key={v} value={v}>
               {t(`projectsPage.${v}`)}
-            </Button>
+            </option>
+          ))}
+        </Select>
+        <Select
+          className="ink-input"
+          prefix={t('onboarding.type')}
+          value={query.type}
+          onChange={(e) => change('type', e)}
+        >
+          <option value="all">{t('projectsPage.all')}</option>
+          {catalogs.projectTypes.map(({ id: v }) => (
+            <option key={v} value={v}>
+              {typeLabel(v)}
+            </option>
+          ))}
+        </Select>
+        {others && (
+          <Select
+            className="ink-input"
+            prefix={t('projectsPage.people')}
+            value={query.person}
+            onChange={(e) => change('person', e)}
+          >
+            <option value="all">{t('projectsPage.all')}</option>
+            {[...people].map(([id, person]) => (
+              <option key={id} value={id}>
+                {person.name}
+              </option>
+            ))}
+          </Select>
+        )}
+        <Select
+          className="ink-input projects-page__sort"
+          prefix={t('projectsPage.sort')}
+          value={query.sort}
+          onChange={(e) => change('sort', e)}
+        >
+          {['activity', 'name', 'created'].map((v) => (
+            <option key={v} value={v}>
+              {t(`projectsPage.sorts.${v}`)}
+            </option>
+          ))}
+        </Select>
+        <div className="projects-page__view" role="group" aria-label={t('projectsPage.view')}>
+          {(['grid', 'list'] as const).map((v) => (
+            <IconButton
+              key={v}
+              icon={v}
+              label={t(`projectsPage.${v}`)}
+              aria-pressed={view === v}
+              onClick={() => setView(v)}
+            />
           ))}
         </div>
       </div>
@@ -331,17 +345,6 @@ export function Projects() {
             </GroupSection>
           ))}
       {newGroup && <ProjectGroupDialog onClose={() => setNewGroup(false)} />}
-      {user?.role === 'admin' && (
-        <p className="ink-muted projects-page__storage">
-          {usage !== null
-            ? t('projectsPage.storage', {
-                bytes: formatStorage(usage, i18n.language),
-              })
-            : usageError
-              ? t('projectsPage.storageError')
-              : t('comments.loading')}
-        </p>
-      )}
     </div>
   );
 }
@@ -476,58 +479,65 @@ function ProjectCard({
     onAppearanceSaved,
     onDeleted,
   );
+  const year = new Date().getFullYear();
   const date = (value: string) =>
     formatDateTime(`${value}T12:00:00`, {
       day: 'numeric',
       month: 'short',
-      year: 'numeric',
+      ...(value.startsWith(String(year)) ? {} : { year: 'numeric' }),
     });
-  const dates =
-    [...new Set([p.shootingStart, p.shootingEnd])]
-      .filter((d): d is string => !!d)
-      .map(date)
-      .join(' – ') || t('projectsPage.noDates');
+  const dates = [...new Set([p.shootingStart, p.shootingEnd])]
+    .filter((d): d is string => !!d)
+    .map(date)
+    .join(' – ');
+  // Type and dates only once they are set (decision 0124).
+  const meta = [
+    p.type && typeLabel(p.type),
+    t('projectsPage.boards', { count: row.boards.length }),
+    dates,
+  ]
+    .filter(Boolean)
+    .join(', ');
   return (
-    <article
-      className={`ink-card home__card project-card${dragging ? ' is-dragging' : ''}`}
+    <CoverCard
+      className={`project-card${dragging ? ' is-dragging' : ''}`}
       {...targetProps}
       {...drag}
-    >
-      <Link
-        to={`/p/${p.id}`}
-        className="project-card__cover"
-        aria-label={t('projectsPage.openNamed', { name: p.name })}
-        tabIndex={-1}
-      >
-        <BoardPreview boardId={p.rootBoardId} project={p} />
-      </Link>
-      {(p.pinned || p.archivedAt) && (
-        <span className="project-card__badge">
-          {t(p.archivedAt ? 'projectsPage.archived' : 'projectsPage.pinned')}
-        </span>
-      )}
-      {trigger('project-card__options')}
-      <div className="home__meta project-card__meta">
-        <div className="project-card__title">
-          <h2 className="home__name">
-            <Link to={`/p/${p.id}`}>{p.name}</Link>
-          </h2>
-          {p.type && <span className="project-card__type">{typeLabel(p.type)}</span>}
-        </div>
-        <span className="ink-muted home__when">
-          {dates} · {t('projectsPage.boards', { count: row.boards.length })}
-        </span>
-        <div className="project-card__members">
-          {row.members.map((m) => (
-            <span key={m.user.id} title={m.user.name}>
-              <Avatar image={m.user.image} name={m.user.name} size={20} />
+      cover={<BoardPreview boardId={p.rootBoardId} project={p} />}
+      overlay={
+        <>
+          {(p.pinned || p.archivedAt) && (
+            <span className="project-card__badge">
+              {t(p.archivedAt ? 'projectsPage.archived' : 'projectsPage.pinned')}
             </span>
-          ))}
-          <time className="ink-muted home__when" dateTime={row.activity}>
-            {relativeTime(row.activity, i18n.language)}
-          </time>
-        </div>
-      </div>
+          )}
+          {trigger('project-card__options')}
+        </>
+      }
+      name={
+        <>
+          <ProjectGlyph {...p.icon} />
+          <h2 className="project-card__title">
+            <Link to={`/p/${p.id}`} className="ink-cover-card__link">
+              {p.name}
+            </Link>
+          </h2>
+        </>
+      }
+      meta={meta}
+      foot={
+        <>
+          <span className="project-card__members">
+            {row.members.map((m) => (
+              <span key={m.user.id} title={m.user.name}>
+                <Avatar image={m.user.image} name={m.user.name} size={22} />
+              </span>
+            ))}
+          </span>
+          <time dateTime={row.activity}>{relativeTime(row.activity, i18n.language)}</time>
+        </>
+      }
+    >
       {layer}
       {typing && (
         <ProjectTypeDialog
@@ -536,7 +546,7 @@ function ProjectCard({
           onSave={(change) => mutate(p, change)}
         />
       )}
-    </article>
+    </CoverCard>
   );
 }
 
