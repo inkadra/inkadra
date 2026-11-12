@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import fontkit from '@pdf-lib/fontkit';
 import {
   decodePDFRawStream,
   PDFArray,
@@ -16,12 +17,18 @@ import { type PdfImage, renderPdf } from './pdf.ts';
 
 const require = createRequire(import.meta.url);
 
-/** Inter as the web loads it, read from `@fontsource/inter` on disk (a test-only dependency). */
+/** Inter as the web loads it, read from `@expo-google-fonts/inter` on disk (test-only). */
 function inter(): Record<FontWeight, Uint8Array> {
-  const file = (w: number) =>
-    readFileSync(require.resolve(`@fontsource/inter/files/inter-latin-${w}-normal.woff`));
-  const semibold = file(600);
-  return { 400: file(400), 500: file(500), 600: semibold, 700: file(700), heading: semibold };
+  const file = (name: string) =>
+    readFileSync(require.resolve(`@expo-google-fonts/inter/${name}/Inter_${name}.ttf`));
+  const semibold = file('600SemiBold');
+  return {
+    400: file('400Regular'),
+    500: file('500Medium'),
+    600: semibold,
+    700: file('700Bold'),
+    heading: semibold,
+  };
 }
 
 const bytesOf = (base64: string) => Uint8Array.from(Buffer.from(base64, 'base64'));
@@ -138,6 +145,44 @@ describe('renderPdf', () => {
     const { ops, pictures } = await written(await renderPdf([PAGE], inter(), IMAGES, META));
     expect(pictures).toEqual(['/DCTDecode /DeviceRGB 48x32']);
     expect(ops.filter((op) => op.endsWith(' Do'))).toHaveLength(3);
+  });
+
+  it('embeds Inter subsets whose glyphs keep their outlines, Polish and Cyrillic too', async () => {
+    // Google Fonts' TTFs have glyphs of odd length; unpatched, fontkit's subset truncates their
+    // offsets and most letters print blank (the fontkit patch in `patches/`).
+    const text = 'Przez okno, łagodne światło · Свет из окна, мягкий · NOTES';
+    const fonts = inter();
+    const page: Page = {
+      width: 400,
+      height: 100,
+      ops: [
+        { kind: 'text', text, x: 10, y: 20, size: 10, weight: 400, color: '#202020' },
+        { kind: 'text', text, x: 10, y: 60, size: 10, weight: 600, color: '#202020' },
+      ],
+    };
+    const pdf = await PDFDocument.load(await renderPdf([page], fonts, new Map(), META));
+    const source = { Regular: fonts[400], SemiBold: fonts[600] };
+    const checked: string[] = [];
+    for (const [, obj] of pdf.context.enumerateIndirectObjects()) {
+      if (!(obj instanceof PDFDict) || obj.get(PDFName.of('Type')) !== PDFName.of('FontDescriptor'))
+        continue;
+      const name = /^\/Inter-(\w+)-\d+$/.exec(String(obj.get(PDFName.of('FontName'))))?.[1];
+      // Every weight is embedded; the page draws two of them.
+      if (name !== 'Regular' && name !== 'SemiBold') continue;
+      const program = obj.lookup(PDFName.of('FontFile2'));
+      if (!(program instanceof PDFRawStream)) throw new Error(`No font program for ${name}`);
+      const subset = fontkit.create(Buffer.from(decodePDFRawStream(program).decode()));
+      const whole = fontkit.create(Buffer.from(source[name]));
+      // pdf-lib adds the glyphs in the order the text lays them out, after .notdef.
+      const used = [...new Set(whole.layout(text).glyphs.map((g) => g.id))];
+      const outline = (glyph: { path: { toSVG(): string } }) => glyph.path.toSVG();
+      expect(used.map((_, n) => outline(subset.getGlyph(n + 1)))).toEqual(
+        used.map((id) => outline(whole.getGlyph(id))),
+      );
+      expect(used.filter((id) => outline(whole.getGlyph(id)) !== '').length).toBeGreaterThan(30);
+      checked.push(name);
+    }
+    expect(checked.sort()).toEqual(['Regular', 'SemiBold']);
   });
 });
 

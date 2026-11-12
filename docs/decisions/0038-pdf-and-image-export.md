@@ -18,8 +18,8 @@ and not on the server.
   lines, wrapped text, pictures, pen strokes) in PDF points. Layout and pagination are pure
   functions with unit tests; text is measured with the same font that is embedded.
 - Two backends draw the same pages: **pdf-lib** (MIT) with **@pdf-lib/fontkit** (MIT) writes
-  the PDF with vector text and Inter (OFL-1.1, the interface font from `@fontsource/inter`)
-  embedded as a subset; the Canvas 2D API draws the PNG and the live preview of the dialog.
+  the PDF with vector text and Inter (OFL-1.1, the interface font) embedded as a subset; the
+  Canvas 2D API draws the PNG and the live preview of the dialog.
   Neither library uses `eval`, `new Function` or workers, so the CSP needs no change. The
   libraries and fonts are loaded with a dynamic `import()` only when the dialog opens.
   pdf-lib brings pako (MIT and Zlib), so Zlib, a permissive licence compatible with the AGPL,
@@ -47,5 +47,30 @@ and not on the server.
   board and its thumbnails are loaded.
 - The page is not pixel-identical to the canvas: rich text keeps paragraphs, headings and
   lists but not inline marks, and embedded videos show their poster or name.
-- Text outside the Latin range of the bundled Inter subset (for example CJK) prints as
-  missing glyphs until more subsets are embedded.
+- Text in a script Inter does not have (for example CJK) prints as missing glyphs.
+
+## Update 2026-11-12: Latin Extended and Cyrillic
+
+The PDF used Inter's Latin subset alone, so Polish, Czech, Turkish or Russian text printed as
+missing glyphs. Exports now read Inter as Google Fonts' whole static files, one per weight
+(400, 500, 600, 700), from `@expo-google-fonts/inter` (exact version; the fonts are OFL-1.1, the
+package's few lines of JavaScript MIT). Each file has Latin, Latin Extended, Cyrillic, Greek and
+Vietnamese, so the page model keeps one font per weight and pdf-lib still embeds only the glyphs
+a page uses. They are the same Inter build as `@fontsource/inter`'s subsets, so Latin text
+measures and wraps exactly as before.
+
+- TrueType, not WOFF2: fontkit reads WOFF2 but cannot subset it. The four files are about
+  335 KB each instead of 31 KB (about +1.25 MB in all), fetched only when an export is made and
+  not kept by the service worker (`.ttf`); a PDF's embedded subsets grow only by the glyphs it
+  uses.
+- Google Fonts' TTFs leave some glyphs at an odd length. fontkit gives a small subset the short
+  `loca` table, which stores each offset divided by two, so an odd length truncated every later
+  offset and most letters printed blank. `patches/@pdf-lib__fontkit@1.1.1.patch` (pnpm
+  `patchedDependencies` in `pnpm-workspace.yaml`) pads such a glyph by one byte; `pdf.test.ts` in
+  `@inkadra/print` decodes the embedded glyphs and fails without it. The Dockerfile's
+  `pnpm deploy` of the server allows the patch to go unused there, as the server does not depend
+  on fontkit yet. Upgrading fontkit means checking whether the fix is still needed before
+  dropping the patch.
+- `@inkadra/print` measures and writes with these files, so a sheet made on the server from the
+  same files stays identical to the web's.
+- No CJK: Inter has none, and a second font per text would change the page model.
