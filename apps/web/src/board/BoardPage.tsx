@@ -90,8 +90,8 @@ import {
   viewsOn,
 } from './views.ts';
 import './film/film.css';
-import { type Peer, usePeers } from './presence.ts';
 import { ScenePlan } from './plan/ScenePlan.tsx';
+import { type Peer, usePeers } from './presence.ts';
 import { missingOwnedBoard, projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 import { useBoardReviews } from './use-board-reviews.ts';
