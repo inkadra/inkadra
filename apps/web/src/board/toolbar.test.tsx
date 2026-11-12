@@ -124,7 +124,9 @@ it('opens the Canvas menu of boards to create, walks it with the keyboard and ma
 
     for (const [i, kind] of [[0], [1, 'moodboard'], [2, 'storyboard']] as const) {
       await act(async () => button.click());
-      await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[i]?.click());
+      await act(async () =>
+        document.querySelectorAll<HTMLElement>('[role="menuitem"]')[i]?.click(),
+      );
       if (kind) expect(onCanvas).toHaveBeenCalledWith(kind);
       else expect(onCanvas).toHaveBeenCalledWith(undefined);
       expect(document.querySelector('[role="menu"]')).toBeNull();
@@ -162,7 +164,9 @@ it('lists the other tools in More, each added with a click or put in the bar', a
       ...Array(8).fill('false'),
     ]);
     // A voice note from More starts the recorder.
-    await act(async () => panel.querySelectorAll<HTMLButtonElement>('.more-tools__add')[4]?.click());
+    await act(async () =>
+      panel.querySelectorAll<HTMLButtonElement>('.more-tools__add')[4]?.click(),
+    );
     expect(record).toHaveBeenCalledOnce();
     await act(async () => more.click());
     await act(async () =>
