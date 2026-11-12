@@ -6,6 +6,33 @@ import { UserSummary } from './users.ts';
 export const ProjectRole = z.enum(['owner', 'editor', 'commenter', 'viewer']);
 export type ProjectRole = z.infer<typeof ProjectRole>;
 
+/**
+ * How many characters a person sees in `value`. Hermes (React Native) has no `Intl.Segmenter`:
+ * there, code points (never half a surrogate pair), with what joins or changes the emoji before it
+ * (ZWJ and what follows, variation selectors, skin tones, keycap, tags) and a flag's second
+ * regional indicator counted with it.
+ */
+function graphemeCount(value: string): number {
+  if (typeof Intl.Segmenter === 'function')
+    return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(value)].length;
+  // shortcut: emoji sequences only, not every Unicode cluster rule (e.g. combining accents count
+  // apart); upgrade with a segmenter polyfill when a client counts text that is not an emoji.
+  let count = 0;
+  let joined = false;
+  let flagHalf = false;
+  for (const char of value) {
+    const regional = /\p{Regional_Indicator}/u.test(char);
+    if (joined || (regional && flagHalf) || /[\uFE0E\uFE0F\u20E3\u200D\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u.test(char)) {
+      joined = char === '\u200D';
+      flagHalf = false;
+      continue;
+    }
+    count += 1;
+    flagHalf = regional;
+  }
+  return count;
+}
+
 export const ProjectIcon = z
   .object({
     shape: z.enum([
@@ -37,11 +64,8 @@ export const ProjectIcon = z
       .string()
       .max(32)
       .refine((value) => {
-        const segments = [
-          ...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(value),
-        ];
         return (
-          segments.length === 1 &&
+          graphemeCount(value) === 1 &&
           /\p{Extended_Pictographic}|\p{Regional_Indicator}|[#*0-9]\uFE0F?\u20E3/u.test(value)
         );
       }, 'Use one emoji.')

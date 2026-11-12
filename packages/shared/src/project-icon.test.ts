@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { defaultProjectIcon, ProjectIcon } from './projects.ts';
 
 it('accepts every project shape and colour combination', () => {
@@ -19,5 +19,24 @@ it('rejects unknown API identities and preserves deterministic defaults', () => 
     shape: 'diamond',
     color: 'blue',
     emoji: null,
+  });
+});
+
+describe('a project emoji on Hermes, without Intl.Segmenter', () => {
+  const Segmenter = Intl.Segmenter;
+  afterEach(() => {
+    Intl.Segmenter = Segmenter;
+  });
+  const one = ['🎬', '❤️', '👍🏽', '👨‍👩‍👧', '🇮🇹', '1️⃣', '🏴󠁧󠁢󠁳󠁣󠁴󠁿', '🏳️‍🌈'];
+  const many = ['🎬🎥', '🇮🇹🇫🇷', 'ab', '👍x', '🎬 '];
+  const ok = (emoji: string) => ProjectIcon.safeParse({ shape: 'star', color: 'pink', emoji }).success;
+
+  it('reads one emoji as Intl.Segmenter does, where the old code threw', () => {
+    const segmented = [...one, ...many].map(ok);
+    Reflect.deleteProperty(Intl, 'Segmenter');
+    expect(() => new Intl.Segmenter(undefined, { granularity: 'grapheme' })).toThrow(TypeError);
+    expect(one.map(ok)).toEqual(one.map(() => true));
+    expect(many.map(ok)).toEqual(many.map(() => false));
+    expect([...one, ...many].map(ok)).toEqual(segmented);
   });
 });

@@ -35,6 +35,10 @@ A function a native client calls on the UI thread starts with the `'worklet'` di
 React Native's Reanimated needs and every other runtime ignores; the first are the crop geometry
 functions of `image-crop.ts` (`rotatedBounds`, `croppedRotatedSize` and the helpers they call).
 
+Package code must run on Hermes, React Native's engine: it never relies on `Intl.PluralRules`,
+`Intl.Segmenter`, `Intl.ListFormat`, `Intl.RelativeTimeFormat` or `Intl.DisplayNames` without a
+fallback for when they are missing (as `wordsFrom` and a project's emoji do).
+
 For the mobile app to read a set plan as the web does, these moved too. In
 `packages/canvas-core`: the kit (`kitList`, `KIT_GROUPS`, `planCounts`, `foldNames`,
 `setupKit`, `familyKitCount`), the power per circuit as text (`powerLines`, `powerText`); the
