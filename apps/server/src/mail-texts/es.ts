@@ -90,6 +90,7 @@ export const es: MailTexts = {
   resetAction: 'Elegir una contraseña nueva',
   resetFooter: '¿No la pediste? Ignora este correo: tu contraseña sigue igual.',
 
+  productionBoard: 'Producción',
   someone: 'Alguien',
   guestName: (name) => `${name} (invitado)`,
   today: 'Hoy',

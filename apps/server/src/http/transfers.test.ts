@@ -492,7 +492,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     const manifest = await zip.json('manifest.json', ProjectArchiveManifest, 1e6);
     expect(manifest).toMatchObject({
       format: 'inkadra-project',
-      formatVersion: 1,
+      formatVersion: 2,
       counts: { boards: 2, assets: 2, versions: 1 },
     });
     const readable = JSON.parse(
@@ -849,7 +849,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       docSchemaVersion: CURRENT_SCHEMA_VERSION,
       counts: { boards: 0, assets: 0, comments: 0, versions: 0 },
     };
-    expect(await send(await zipOf({ 'manifest.json': { ...manifest, formatVersion: 2 } }))).toBe(
+    expect(await send(await zipOf({ 'manifest.json': { ...manifest, formatVersion: 3 } }))).toBe(
       'unsupported_version',
     );
     expect(

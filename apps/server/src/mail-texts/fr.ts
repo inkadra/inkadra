@@ -97,6 +97,7 @@ export const fr: MailTexts = {
   resetAction: 'Choisir un nouveau mot de passe',
   resetFooter: 'Vous n’avez rien demandé ? Ignorez cet e-mail : votre mot de passe ne change pas.',
 
+  productionBoard: 'Production',
   someone: 'Quelqu’un',
   guestName: (name) => `${name} (invité)`,
   today: 'Aujourd’hui',

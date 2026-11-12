@@ -89,6 +89,7 @@ export const en: MailTexts = {
   resetAction: 'Choose a new password',
   resetFooter: 'Didn’t ask for it? Ignore this email: your password stays the same.',
 
+  productionBoard: 'Production',
   someone: 'Someone',
   guestName: (name) => `${name} (guest)`,
   today: 'Today',

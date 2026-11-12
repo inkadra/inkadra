@@ -256,10 +256,11 @@ export async function mergeCastLinks(db: Database): Promise<number> {
       .where(or(isNull(castLink.mergedAt), gt(castLink.updatedAt, castLink.mergedAt)))
       .orderBy(asc(castLink.createdAt), asc(castLink.boardId), asc(castLink.castKey));
     for (const link of links) {
+      // By project: the days a link's board planned may be the Production board's (0123).
       const days = await tx
         .select({ blocks: shootingDay.blocks })
         .from(shootingDay)
-        .where(eq(shootingDay.boardId, link.boardId));
+        .where(eq(shootingDay.projectId, link.projectId));
       const written = days
         .flatMap((d) => d.blocks.flatMap((b) => b.cast))
         .find((name) => castNameKey(name) === link.castKey);

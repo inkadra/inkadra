@@ -140,6 +140,10 @@ it("numbers a scene's shooting day by date: its first day when on several, none 
   // A frame left out of `byId` (hidden from the export's audience) does not count.
   byId.delete('f2');
   expect(sceneDay(days, 's1', byId)).toBe(3);
+  // A scene block plans the scene as a whole, drawn or not (decision 0123).
+  const planned = [...days, { date: '2026-03-01', blocks: [{ shotId: null, sceneId: 's2' }] }];
+  expect(sceneDay(planned, 's2', byId)).toBe(1);
+  expect(sceneDay(planned, 's1', byId)).toBe(4);
 });
 
 it('pairs each icon with the nearest of its kind, named ones first, on plans of 300 icons', () => {

@@ -23,9 +23,11 @@ import {
   EXPORT_LOGO_MAX_BYTES,
   EXPORT_LOGO_TYPES,
   PROJECT_ARCHIVE_LIMITS as LIMITS,
+  NEW_BOARD_VIEWS,
   PROJECT_ARCHIVE_FORMAT,
   PROJECT_ARCHIVE_VERSION,
   ProjectArchiveManifest,
+  type ScheduleBlock,
   SHOT_CATALOG_KEYS,
   type TransferSummary,
   z,
@@ -52,10 +54,13 @@ import {
   shareLink,
   sharePick,
   shootingDay,
+  user,
 } from '../db/schema.ts';
 import { readPreferences, readTheme } from '../http/export-settings-routes.ts';
 import { cleanMime, kindOf } from '../http/uploads.ts';
 import type { Jobs } from '../jobs.ts';
+import { mailText } from '../mail-texts.ts';
+import { adoptDays } from '../production.ts';
 import { writeBoardIndex } from '../search/index-doc.ts';
 import { newSecret, sha256 } from '../secrets.ts';
 import { originalKey, type Storage } from '../storage.ts';
@@ -110,6 +115,21 @@ async function loadDoc(zip: ZipReader, name: string, boardId: string): Promise<Y
   if (issues.length > 0)
     throw new ArchiveError('invalid_archive', `${name}: ${issues[0]?.message ?? 'invalid'}`);
   return doc;
+}
+
+/**
+ * A block with the boards of this import (decision 0123): a frame or scene on a board the archive
+ * does not hold loses its board id and keeps its label, so it reads as missing.
+ */
+export function remapBlock(block: ScheduleBlock, boardIds: ReadonlyMap<string, string>) {
+  const { shotBoardId, sceneBoardId, ...rest } = block;
+  const shot = shotBoardId === undefined ? undefined : boardIds.get(shotBoardId);
+  const scene = sceneBoardId === undefined ? undefined : boardIds.get(sceneBoardId);
+  return {
+    ...rest,
+    ...(shot ? { shotBoardId: shot } : {}),
+    ...(scene ? { sceneBoardId: scene } : {}),
+  } as ScheduleBlock;
 }
 
 /** Parents before children, whatever order boards.json lists them in (the tree is checked). */
@@ -519,9 +539,41 @@ export async function importProject(
           wrap: d.wrap,
           location: d.location,
           notes: d.notes,
-          blocks: d.blocks,
+          blocks: d.blocks.map((block) => remapBlock(block, boardIds)),
         })),
       );
+      // Before format 2 the days were the storyboards' (decision 0123): they move to a
+      // Production board, made as a running server makes it, at the end of the root.
+      if (
+        manifest.formatVersion < 2 &&
+        days.length > 0 &&
+        !boards.some((b) => b.kind === 'production')
+      ) {
+        const rootId = boardIds.get(root.id) as string;
+        const [last] = await tx
+          .select({ position: board.position })
+          .from(board)
+          .where(eq(board.parentBoardId, rootId))
+          .orderBy(desc(board.position))
+          .limit(1);
+        const [importer] = await tx
+          .select({ locale: user.locale })
+          .from(user)
+          .where(eq(user.id, userId));
+        const productionId = randomUUID();
+        await tx.insert(board).values({
+          id: productionId,
+          projectId,
+          parentBoardId: rootId,
+          kind: 'production',
+          views: NEW_BOARD_VIEWS.production,
+          title: mailText({ locale: importer?.locale }).productionBoard,
+          position: generateKeyBetween(last?.position ?? null, null),
+          docSchemaVersion: CURRENT_SCHEMA_VERSION,
+          createdBy: userId,
+        });
+        await adoptDays(tx, projectId, productionId);
+      }
 
       await importGuests(tx, guestData, { projectId, userId, boardIds, stored });
 

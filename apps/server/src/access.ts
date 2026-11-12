@@ -440,7 +440,8 @@ export async function linkIncludesBoard(
   link: { boardId: string; includeSubBoards: boolean; createdBy: string | null },
   access: BoardAccess,
 ): Promise<boolean> {
-  if (!link.createdBy) return false;
+  // Guests never reach the Production board (decision 0123).
+  if (!link.createdBy || access.board.kind === 'production') return false;
   const stop = access.chain.findIndex((b) => b.id === link.boardId);
   if (stop < 0 || (stop > 0 && !link.includeSubBoards)) return false;
   for (let i = 0; i <= stop; i++) {

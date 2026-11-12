@@ -84,7 +84,8 @@ export async function resolveLink(
   const byId = new Map(boards.map((b) => [b.id, b]));
   const editable = (id: string) => atLeast(roles.get(id)?.role ?? null, 'editor');
   const top = byId.get(link.boardId);
-  if (!top || !editable(top.id)) return { status: 'suspended' };
+  // The Production board is never shown to guests (decision 0123): a link on it does not work.
+  if (!top || !editable(top.id) || top.kind === 'production') return { status: 'suspended' };
 
   const isBelowTop = (id: string) => {
     const seen = new Set<string>();
@@ -148,7 +149,7 @@ export async function resolveLink(
       for (const el of view.visible) {
         if (el.type !== 'board' || included.has(el.boardId)) continue;
         const row = byId.get(el.boardId);
-        if (!row || !isBelowTop(row.id) || !editable(row.id)) continue;
+        if (!row || row.kind === 'production' || !isBelowTop(row.id) || !editable(row.id)) continue;
         included.set(row.id, { row, parentBoardId: next });
         queue.push(row.id);
       }

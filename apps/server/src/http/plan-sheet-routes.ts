@@ -18,7 +18,7 @@ import { requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { VERSION } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { asset, assetVariant, boardDoc, shootingDay, user } from '../db/schema.ts';
+import { asset, assetVariant, boardDoc, user } from '../db/schema.ts';
 import {
   guestSheetSource,
   memberSheetSource,
@@ -32,6 +32,7 @@ import {
   sheetPdf,
   sheetPicture,
 } from '../plan-sheet.ts';
+import { daysOfBoard } from '../production.ts';
 import type { Storage } from '../storage.ts';
 import { contentDisposition, fileHeaders, isThumbnail } from './assets-routes.ts';
 import { requireActor } from './auth-routes.ts';
@@ -247,17 +248,10 @@ export function createPlanSheets(deps: Deps) {
         }
       }
       const team = query.audience === 'team';
-      // The schedule's days as it shows them to this member (decision 0092): dates and blocks.
+      // The schedule's days as it shows them to this member (decision 0092): dates and blocks,
+      // the Production board's when the project has one (decision 0123).
       const days: ScheduledDay[] = team
-        ? (
-            await db
-              .select({ date: shootingDay.date, blocks: shootingDay.blocks })
-              .from(shootingDay)
-              .where(eq(shootingDay.boardId, boardId))
-          ).map((d) => ({
-            date: d.date,
-            blocks: d.blocks.map((b) => ({ shotId: b.shotId ?? null })),
-          }))
+        ? await daysOfBoard(db, actor, access.board.projectId, boardId)
         : [];
       return send(req, reply, {
         who: `user:${actor.id}`,

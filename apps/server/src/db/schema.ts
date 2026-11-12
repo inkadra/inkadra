@@ -350,7 +350,7 @@ export const board = pgTable(
       .notNull()
       .references(() => project.id, { onDelete: 'cascade' }),
     parentBoardId: uuid('parent_board_id'),
-    kind: text('kind', { enum: ['board', 'moodboard', 'storyboard'] })
+    kind: text('kind', { enum: ['board', 'moodboard', 'storyboard', 'production'] })
       .notNull()
       .default('board'),
     /**
@@ -375,6 +375,9 @@ export const board = pgTable(
     index('board_parent_idx').on(t.parentBoardId),
     // Exactly one root board per project.
     uniqueIndex('board_root_uq').on(t.projectId).where(sql`${t.parentBoardId} is null`),
+    // One Production board per project, trashed ones included (decision 0123): a deleted one is
+    // brought back with its days, never made a second time.
+    uniqueIndex('board_production_uq').on(t.projectId).where(sql`${t.kind} = 'production'`),
   ],
 );
 
@@ -1181,6 +1184,11 @@ export const shootingDay = pgTable(
     calls: jsonb('calls').$type<import('@inkadra/shared').DayCall[]>().notNull().default([]),
     updatedBy: jsonb('updated_by').$type<{ id: string; name: string }>(),
     revision: integer('revision').notNull().default(1),
+    /**
+     * The board a day came from when `adoptDays` moved it to the Production board (decision
+     * 0123); no foreign key, never read by the app: it is the way back by hand.
+     */
+    movedFrom: uuid('moved_from'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

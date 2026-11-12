@@ -309,6 +309,13 @@
       "when": 1794486795479,
       "tag": "0043_board_views",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1794502224350,
+      "tag": "0044_production_board",
+      "breakpoints": true
     }
   ]
 }
