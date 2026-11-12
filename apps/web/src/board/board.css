@@ -2130,6 +2130,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   margin: 0;
 }
 .menu--new-board > .menu__item:has(.new-board) {
+  align-items: stretch;
   height: auto;
   padding: 0;
   border-radius: var(--ink-radius-md);
@@ -2137,6 +2138,8 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .new-board {
   position: relative;
   display: grid;
+  grid-template-rows: auto auto 1fr;
+  align-content: start;
   gap: 2px;
   width: 100%;
   padding: 8px;

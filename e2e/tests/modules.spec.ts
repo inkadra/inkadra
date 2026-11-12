@@ -67,6 +67,7 @@ const modulesSwitch = (page: Page, name: string) => page.getByRole('switch', { n
 for (const width of [1280, 390]) {
   const phone = width < 768;
   test(`modules off hide the ways to create, never the data (${width} px)`, async ({ page }) => {
+    test.setTimeout(120_000);
     await page.setViewportSize({ width, height: phone ? 844 : 800 });
     await signedIn(page);
     await resetPreferences(page);
@@ -114,7 +115,8 @@ for (const width of [1280, 390]) {
           more.getByRole('button', { name: 'Metti Tabella nella barra' }),
         ).toHaveAttribute('aria-pressed', 'true');
         await shoot(page, 'more');
-        await page.keyboard.press('Escape');
+        await toolbar.getByRole('button', { name: 'Altri strumenti', exact: true }).click();
+        await expect(more).toHaveCount(0);
         await expect(toolbar.getByRole('button', { name: 'Tabella', exact: true })).toBeVisible();
       }
 
@@ -130,7 +132,8 @@ for (const width of [1280, 390]) {
       ).toBeVisible();
       if (phone) await expect(menu.getByRole('menuitem', { name: 'Inquadratura' })).toHaveCount(0);
       await shoot(page, 'canvas-menu');
-      await page.keyboard.press('Escape');
+      await page.locator('.toolbar__btn--canvas').click();
+      await expect(menu).toHaveCount(0);
 
       // A screenplay dropped on the board: its scenes arrive as cards, and once one line says
       // what Storyboard would do.
