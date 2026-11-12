@@ -1257,7 +1257,15 @@
       "lockLayer": "Lock {{layer}}",
       "unlockLayer": "Unlock {{layer}}",
       "layersHint": "The active layer ({{layer}}) takes new icons, strokes and shapes. What you hide here is yours alone; what you hide in a variant is for everyone.",
-      "hiddenAs": "Hidden: {{layer}}",
+      "hiddenAs": {
+        "set": "Set hidden",
+        "lights": "Lights hidden",
+        "camera": "Camera hidden",
+        "actors": "Actors hidden",
+        "notes": "Notes hidden",
+        "grip": "Grip and crew hidden"
+      },
+      "hiddenItem": "Hidden: {{layer}}",
       "lockedAs": {
         "set": "Set locked",
         "lights": "Lights locked",

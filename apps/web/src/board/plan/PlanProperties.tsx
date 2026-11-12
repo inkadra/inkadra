@@ -1298,7 +1298,7 @@ export function PlanProperties({
         // with the way back (decision 0119).
         <div className="plan-props__locked" role="status">
           <Icon name="eyeOff" size={16} />
-          <span>{t('board.plan.hiddenAs', { layer: groupName(ed.hiddenItem.group) })}</span>
+          <span>{t('board.plan.hiddenItem', { layer: groupName(ed.hiddenItem.group) })}</span>
           <Button
             onClick={() => {
               ed.toggleHidden((ed.hiddenItem as { group: PlanGroupName }).group);

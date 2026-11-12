@@ -1257,7 +1257,15 @@
       "lockLayer": "Verrouiller {{layer}}",
       "unlockLayer": "Déverrouiller {{layer}}",
       "layersHint": "Le calque actif ({{layer}}) reçoit les nouvelles icônes, traits et formes. Ce que vous masquez ici ne concerne que vous ; ce que vous masquez dans une variante vaut pour tout le monde.",
-      "hiddenAs": "Masqué : {{layer}}",
+      "hiddenAs": {
+        "set": "Décor masqué",
+        "lights": "Lumières masquées",
+        "camera": "Caméra masquée",
+        "actors": "Acteurs masqués",
+        "notes": "Notes masquées",
+        "grip": "Machinerie et équipe masquées"
+      },
+      "hiddenItem": "Masqué : {{layer}}",
       "lockedAs": {
         "set": "Décor verrouillé",
         "lights": "Lumières verrouillées",

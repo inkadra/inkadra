@@ -1257,7 +1257,15 @@
       "lockLayer": "Bloquear {{layer}}",
       "unlockLayer": "Desbloquear {{layer}}",
       "layersHint": "A camada ativa ({{layer}}) recebe os novos ícones, traços e formas. O que você oculta aqui só vale para você; o que oculta em uma variante vale para todos.",
-      "hiddenAs": "Oculto: {{layer}}",
+      "hiddenAs": {
+        "set": "Set oculto",
+        "lights": "Luzes ocultas",
+        "camera": "Câmera oculta",
+        "actors": "Atores ocultos",
+        "notes": "Notas ocultas",
+        "grip": "Maquinaria e equipe ocultas"
+      },
+      "hiddenItem": "Oculto: {{layer}}",
       "lockedAs": {
         "set": "Set bloqueado",
         "lights": "Luzes bloqueadas",

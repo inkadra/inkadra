@@ -1257,7 +1257,15 @@
       "lockLayer": "{{layer}} sperren",
       "unlockLayer": "{{layer}} entsperren",
       "layersHint": "Die aktive Ebene ({{layer}}) nimmt neue Symbole, Striche und Formen auf. Was du hier ausblendest, gilt nur für dich; was du in einer Variante ausblendest, gilt für alle.",
-      "hiddenAs": "Ausgeblendet: {{layer}}",
+      "hiddenAs": {
+        "set": "Set ausgeblendet",
+        "lights": "Licht ausgeblendet",
+        "camera": "Kamera ausgeblendet",
+        "actors": "Darsteller ausgeblendet",
+        "notes": "Notizen ausgeblendet",
+        "grip": "Grip und Crew ausgeblendet"
+      },
+      "hiddenItem": "Ausgeblendet: {{layer}}",
       "lockedAs": {
         "set": "Set gesperrt",
         "lights": "Licht gesperrt",

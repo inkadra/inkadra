@@ -1257,7 +1257,15 @@
       "lockLayer": "Blocca {{layer}}",
       "unlockLayer": "Sblocca {{layer}}",
       "layersHint": "Il livello attivo ({{layer}}) riceve le icone, i tratti e le forme nuove. Cosa nascondi qui è solo tuo; cosa nascondi in una variante vale per tutti.",
-      "hiddenAs": "Nascosto: {{layer}}",
+      "hiddenAs": {
+        "set": "Set nascosto",
+        "lights": "Luci nascoste",
+        "camera": "Camera nascosta",
+        "actors": "Attori nascosti",
+        "notes": "Note nascoste",
+        "grip": "Grip e troupe nascosti"
+      },
+      "hiddenItem": "Nascosto: {{layer}}",
       "lockedAs": {
         "set": "Set bloccato",
         "lights": "Luci bloccate",

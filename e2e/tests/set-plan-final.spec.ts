@@ -256,7 +256,7 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
     await sunRow.focus();
     await page.keyboard.press('Enter');
     await editor.getByRole('tab', { name: 'Proprietà' }).click();
-    await expect(props.getByRole('status')).toContainText('Nascosto: Luci');
+    await expect(props.getByRole('status').filter({ hasText: 'Nascosto: Luci' })).toBeVisible();
     await props.getByRole('button', { name: 'Mostra Luci' }).click();
     await expect.poll(async () => (await prefs()).planHidden).toEqual([]);
 
