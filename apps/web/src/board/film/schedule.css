@@ -1669,19 +1669,6 @@ fieldset.schedule__field > legend {
   }
 }
 
-/* The dot of a storyboard on the Production board (decision 0123): its colour, named by it. */
-.schedule__dot {
-  display: inline-block;
-  flex: none;
-  width: 7px;
-  height: 7px;
-  margin-right: 5px;
-  border-radius: 50%;
-  background: var(--dot);
-  /* A ring in the surface colour: the dot never melts into a block's tint of the same hue. */
-  box-shadow: 0 0 0 1px var(--ink-surface-1);
-  vertical-align: 1px;
-}
 .schedule__source-title {
   display: flex;
   align-items: center;

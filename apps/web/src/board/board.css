@@ -1513,6 +1513,85 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   color: var(--ink-tag-orange);
 }
 
+/* The dot of a storyboard (decision 0123): its colour, named by it; on the Production board and
+   its card, so it lives with the board's styles. */
+.schedule__dot {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--dot);
+  /* A ring in the surface colour: the dot never melts into a block's tint of the same hue. */
+  box-shadow: 0 0 0 1px var(--ink-surface-1);
+  vertical-align: 1px;
+}
+.board-card__day {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--ink-text-secondary);
+}
+.board-card__day b {
+  color: var(--ink-text-primary);
+  font-weight: 600;
+}
+.board-card__day span,
+.board-card__what,
+.board-card__person b,
+.board-card__role {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board-card__blocks,
+.board-card__crew {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.board-card__block,
+.board-card__person {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 0;
+  border-top: 1px solid var(--ink-border-subtle);
+}
+.board-card__block .schedule__dot {
+  margin-right: 0;
+}
+.board-card__time {
+  flex: none;
+  width: 3em;
+  color: var(--ink-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.board-card__what {
+  min-width: 0;
+  color: var(--ink-text-secondary);
+}
+.board-card__what b {
+  color: var(--ink-text-primary);
+  font-weight: 600;
+}
+.board-card__person b {
+  min-width: 0;
+  font-weight: 600;
+}
+.board-card__role {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  color: var(--ink-text-muted);
+  font-size: 10px;
+}
+.board-card__person .ink-avatar {
+  flex: none;
+}
+
 /* Section heading (#318): large quiet text, no card chrome, with an optional tint behind it. */
 .card--section {
   background: transparent;
