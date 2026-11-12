@@ -398,6 +398,7 @@ describe.skipIf(!url)('the sheet routes (needs DATABASE_URL)', () => {
   let app: Awaited<ReturnType<typeof createApp>>;
   const people: Record<string, { cookie: string; id: string }> = {};
   let projectId = '';
+  let rootBoardId = '';
   let boardId = '';
   let fixture: PlanSheetFixture;
   let pictureId = '';
@@ -436,7 +437,7 @@ describe.skipIf(!url)('the sheet routes (needs DATABASE_URL)', () => {
 
   async function newBoard(title: string) {
     const created = await request('POST', `/projects/${projectId}/boards`, 'owner', {
-      parentBoardId: null,
+      parentBoardId: rootBoardId,
       title,
     });
     expect(created.statusCode).toBe(201);
@@ -502,6 +503,7 @@ describe.skipIf(!url)('the sheet routes (needs DATABASE_URL)', () => {
       await signUp(name);
     const project = await request('POST', '/projects', 'owner', { name: 'Diner' });
     projectId = project.json().id;
+    rootBoardId = project.json().rootBoardId;
     for (const name of ['viewer', 'limited', 'busy1', 'busy2', 'busy3'])
       await request('PUT', `/projects/${projectId}/members/${people[name]?.id}`, 'owner', {
         role: 'viewer',
