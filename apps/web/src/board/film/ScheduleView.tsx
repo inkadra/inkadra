@@ -82,8 +82,8 @@ import {
 import {
   castConflicts,
   clockLabel,
+  conflictGroups,
   conflictNotes,
-  conflictPairs,
   newScheduleBlock,
   nowOnDay,
   whileVisible,
@@ -1166,8 +1166,9 @@ export function ScheduleView({
           ? t('schedule.statusSaved', { time: formatClock(localClock(savedAt)) })
           : '';
   // Open when something waits in the queue, folded when nothing does, unless the person chose.
+  // Folded while the queue loads: it opens once something turns out to wait, never flashes shut.
   if (waitingAtOpen === null && !loading && !sources.loading) setWaitingAtOpen(unscheduled.length);
-  const side = sideOpen(sideChoice, waitingAtOpen ?? 1);
+  const side = sideOpen(sideChoice, waitingAtOpen ?? 0);
   const chooseSide = (open: boolean) => {
     const value = open ? 'open' : 'closed';
     setSideChoice(value);
@@ -1202,10 +1203,10 @@ export function ScheduleView({
   if (hotDay && !drafted.some((d) => d.day.id === hotDay && conflictCount(d) > 0)) setHotDay(null);
   const notesOf = (entry: CalendarDay) =>
     conflictNotes(
-      conflictPairs(
+      conflictGroups(
         drafted.map((d) => d.draft),
         entry.draft.date,
-      ).filter((pair) => entry.draft.blocks.some((b) => b.id === pair.a.id || b.id === pair.b.id)),
+      ).filter((group) => group.blocks.some((b) => entry.draft.blocks.some((c) => c.id === b.id))),
       blockTitle,
       t,
       i18n.language,
@@ -1615,6 +1616,14 @@ export function ScheduleView({
               {conflictCount(selectedEntry) > 0 && (
                 <ConflictTag
                   dayId={selectedEntry.day.id}
+                  day={[
+                    dayLong(selectedEntry.draft.date, {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                    }),
+                    t('schedule.dayNumber', { n: selectedEntry.index + 1 }),
+                  ].join(' · ')}
                   count={conflictCount(selectedEntry)}
                   open={hotDay === selectedEntry.day.id}
                   onToggle={(open) => setHotDay(open ? selectedEntry.day.id : null)}
