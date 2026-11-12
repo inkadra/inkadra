@@ -60,8 +60,7 @@ too, into `packages/canvas-core`: the rules of the Walls and Openings tools (`pl
 `openingMetres`, `openingMaxMetres`, `resizeOpening`, `flipOpening`, `swingOpening`,
 `changeOpeningKind`, `outside`, `setSummary`), and starting a plan (`plan-start.ts`: `startPlan`,
 `PlanStartChoice`, `defaultStartChoice`, `startTitle`, `setSourceName`). The tools take the
-length typed as a number of metres: the parser of a typed length, `measureValue`, stays in the
-web for now and moves with the Properties constants.
+length typed as a number of metres, read with `measureValue` (below).
 
 Functions that write words take `t` as a `Words` function, i18next's shape, and ask for the
 web's keys. The English words they ask for, with the names, search words, tiles, groups and
@@ -153,11 +152,25 @@ every client, even when two lines read the same.
 
 Stays in the web: the Kit tab, the view and the card as React; the pointer and keyboard
 gestures, the state and the bars of the Walls and Openings tools, the start dialog and its
-pictures; the PDF sheet's layout and drawing; the clipboard copy of the kit; `measureValue`,
-`selectionMix` and the seats of the Properties (editing); the library panel, its rail, tiles,
-drag and drop, and the timer that saves the recents (`PlanLibrary.tsx`); reading the schedule
-and the project kit from the server (`useScheduleDays`, `useOtherKits`: the derivation of the
-project kit was already in canvas-core).
+pictures; the PDF sheet's layout and drawing; the clipboard copy of the kit; the library panel,
+its rail, tiles, drag and drop, and the timer that saves the recents (`PlanLibrary.tsx`); reading
+the schedule and the project kit from the server (`useScheduleDays`, `useOtherKits`: the
+derivation of the project kit was already in canvas-core).
+
+For the mobile app to show a set plan in the web's colours and offer the same Properties
+choices, these moved to `packages/canvas-core`. In `plan-draw.ts`, the colours as stored hex
+codes with the theme token each is drawn with and the name of its word (`PLAN_COLORS`,
+`PlanColor`, `PLAN_INK`, `planToken`), the characters' colours of linked actors
+(`CHARACTER_COLOURS`) and the colour a new icon or annotation starts in (`iconColor`,
+`NOTE_COLOR`). In `plan-properties.ts`, the presets of a camera's lens and a light's colour
+temperature and gel (`LENSES`, `KELVINS`, `KELVIN_RANGE`, `GELS`), how a typed measure is stored
+(`measureValue`), what a selection holds by layer (`selectionMix`) and the seats at a table or a
+counter (`SEAT_SURFACES`, `NAMED_SEATS`, `seatsAround`, `seatsLine`). The colours' names
+(`board.plan.colors.*`) and a selection's words (`board.plan.mix.*`) joined `PLAN_WORDS_EN` and the
+other five languages. Stays in the web: turning a token into CSS (`planCss`), the colour
+temperature slider's track and thumb (`KELVIN_TRACK`, `kelvinColour`, CSS gradients over the
+theme's tokens) and the Properties as React. A gel's preset is its own name in every language
+("Plus green"), as it was.
 
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
@@ -176,7 +189,6 @@ Stays in the web or the server for now; each moves when a second client needs it
   with a moodboard on another client.
 - `crewCastKeys` (server): repeats `castKeysOf` with the cards read from the boards. Moves when
   the server is changed to read the cards first and call `castKeysOf`.
-- The set plan colours: the set plan is being reworked.
 - The rest of a plan's drawing that is not yet in canvas-core: the blocking moves (the board
   draws a quadratic curve with open wings stopped 26 short, exports a polyline with a filled
   head), the position numbers' places, a label's halo and the light's second line under it, the

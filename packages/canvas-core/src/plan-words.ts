@@ -2,10 +2,11 @@
 
 /**
  * The words of a set plan that every client writes the same (decision 0116): the names of the
- * icons with their search words, the library's tiles, groups and categories, and the words the
- * shared functions (kit, power, legend, card, setups, sun, the summary of a plan's walls) ask
- * for. English, the source; the keys are those of the web catalogues (`board.plan.*`), so a
- * client loads this object as its English catalogue. The other languages have the same keys, one file each
+ * icons with their search words, the library's tiles, groups and categories, the plan colours'
+ * names, and the words the shared functions (kit, power, legend, card, setups, sun, a
+ * selection's mix, the summary of a plan's walls) ask for. English, the source; the keys are
+ * those of the web catalogues (`board.plan.*`), so a client loads this object as its English
+ * catalogue. The other languages have the same keys, one file each
  * (`@inkadra/canvas-core/plan-words/it`, `es`, `de`, `fr`, `pt`), so a client imports only those
  * it ships. The web's catalogues must say the same (a web test compares them).
  */
@@ -461,6 +462,29 @@ export const PLAN_WORDS_EN = {
         text: 'Text',
         measure: 'Measure',
         zone: 'Area',
+      },
+      colors: {
+        ink: 'Ink',
+        blue: 'Blue',
+        yellow: 'Yellow',
+        purple: 'Purple',
+        green: 'Green',
+        teal: 'Teal',
+        orange: 'Orange',
+        red: 'Red',
+        pink: 'Pink',
+      },
+      mix: {
+        lights_one: '{{count}} light',
+        lights_other: '{{count}} lights',
+        camera_one: '{{count}} camera item',
+        camera_other: '{{count}} camera items',
+        actors_one: '{{count}} person',
+        actors_other: '{{count}} people',
+        set_one: '{{count}} set item',
+        set_other: '{{count}} set items',
+        notes_one: '{{count}} note',
+        notes_other: '{{count}} notes',
       },
       card: {
         setups_one: '{{count}} setup',

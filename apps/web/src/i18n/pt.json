@@ -3107,7 +3107,7 @@
     "queueHintTouch": "Toque em um plano para adicioná-lo à diária selecionada.",
     "queueReadOnly": "Planos que ainda não estão em uma diária.",
     "emptyTitle": "Nenhuma diária ainda",
-    "emptyBody": "Add the first day, then drag shots onto it from the queue.",
+    "emptyBody": "Adicione a primeira diária e arraste para ela os planos não agendados.",
     "emptyReadOnly": "As diárias aparecem aqui quando a equipe as planejar.",
     "dayNumber": "Diária {{n}}",
     "castFlag": "Conflito de elenco",
@@ -3166,7 +3166,7 @@
     "moveShort": "Move to…",
     "moveTo": "Move to another day…",
     "night": "Night",
-    "noMatches": "No shots match these filters.",
+    "noMatches": "Nenhum plano corresponde a estes filtros.",
     "noShoot": "No shooting",
     "openDay": "open the day",
     "openStoryboard": "Open in the storyboard",
@@ -3952,16 +3952,16 @@
     "uploadError": "Não foi possível enviar o arquivo. Verifique a conexão e tente novamente.",
     "busy": "Outra importação sua ainda está em andamento. Aguarde terminar.",
     "failure": {
-      "too_large": "O arquivo é maior do que este servidor aceita.",
+      "too_large": "O pacote é maior do que este servidor aceita.",
       "invalid_archive": "Este arquivo não é um pacote válido do Inkadra.",
-      "unsupported_version": "O arquivo vem de um Inkadra mais recente. Atualize este servidor primeiro.",
+      "unsupported_version": "O pacote vem de um Inkadra mais recente. Atualize este servidor primeiro.",
       "too_new": "Os quadros vêm de um Inkadra mais recente. Atualize este servidor primeiro.",
-      "storage": "Não foi possível armazenar os arquivos. Peça ao administrador para verificar o espaço livre.",
+      "storage": "Não foi possível armazenar os arquivos. Peça a um administrador para verificar o espaço livre.",
       "gone": "Você não pode mais editar este projeto, ou ele foi excluído.",
       "interrupted": "O servidor parou durante o trabalho. Tente novamente.",
       "cancelled": "Cancelado.",
       "internal": "Algo deu errado. Tente novamente.",
-      "storage_full": "Os ficheiros do arquivo não cabem no espaço restante. Liberte espaço ou peça a um administrador."
+      "storage_full": "Os arquivos do pacote não cabem no espaço restante. Libere espaço ou peça a um administrador."
     },
     "importArchive": "Importar um arquivo…"
   },

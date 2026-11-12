@@ -11,10 +11,10 @@ export const SCHEDULE_WORDS_ES: ScheduleWords = {
   schedule: {
     empty: 'Sin jornadas de rodaje.',
     emptyTitle: 'Sin jornadas de rodaje',
-    emptyBody: 'Add the first day, then drag shots onto it from the queue.',
+    emptyBody: 'Añade la primera jornada y arrastra a ella los planos por planificar.',
     emptyReadOnly: 'Las jornadas de rodaje aparecen aquí cuando el equipo las planifica.',
     noBlocks: 'Aún no hay bloques. Añade uno o suelta un plano en la jornada.',
-    noMatches: 'No shots match these filters.',
+    noMatches: 'Ningún plano coincide con estos filtros.',
     allScheduled: 'Todos los planos están en una jornada de rodaje.',
   },
   callSheet: {

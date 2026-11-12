@@ -6,7 +6,7 @@ import {
   blockingCurve,
   blockingPositions,
   type CardsById,
-  categoryOf,
+  CHARACTER_COLOURS,
   type GlyphPart,
   glyphOf,
   glyphStroke,
@@ -22,6 +22,7 @@ import {
   measureText,
   openingLines,
   PLAN_DRAW_ORDER,
+  PLAN_INK,
   PLAN_LABEL_SIZE,
   PLAN_SUB_LABEL_SIZE,
   PLAN_TEXT_SIZES,
@@ -29,7 +30,6 @@ import {
   PLAN_VIEW_W,
   type PlanDrawLayer,
   type PlanElement,
-  type PlanFamily,
   type PlanNoteTool,
   type PlanStackEntry,
   type Point,
@@ -38,6 +38,7 @@ import {
   planRoomDims,
   planShapeOutline,
   planStack,
+  planToken,
   type RoomDim,
   roomSizeText,
   shownOpenings,
@@ -67,26 +68,17 @@ import { BoardContext } from '../context.ts';
 import { StrokePath } from '../film/FramePicture.tsx';
 import { PlanBackgroundView } from './PlanBackground.tsx';
 
-/**
- * The colours of a plan (decision 0062). Each is stored as a hex code, like a frame drawing's,
- * and drawn with the theme's token, so a wall in ink stays readable on a dark card and the
- * pastel accents of the dark theme turn darker on paper.
- */
-export const PLAN_COLORS = [
-  { hex: '#1C1C1E', token: 'text-secondary', name: 'ink' },
-  { hex: '#9DB8F2', token: 'tag-blue', name: 'blue' },
-  { hex: '#60D8EB', token: 'tag-teal', name: 'teal' },
-  { hex: '#7AD689', token: 'tag-green', name: 'green' },
-  { hex: '#EDD963', token: 'tag-yellow', name: 'yellow' },
-  { hex: '#F79B54', token: 'tag-orange', name: 'orange' },
-  { hex: '#F68186', token: 'tag-red', name: 'red' },
-  { hex: '#FF91CC', token: 'tag-pink', name: 'pink' },
-  { hex: '#B897F0', token: 'tag-purple', name: 'purple' },
-] as const;
-export type PlanColor = (typeof PLAN_COLORS)[number];
-export const PLAN_INK = PLAN_COLORS[0].hex;
-/** The colours a linked actor takes from its character, one per character (decision 0104). */
-export const CHARACTER_COLOURS: readonly string[] = PLAN_COLORS.slice(1).map((c) => c.hex);
+// The plan's colours and an icon's first colour live in canvas-core (decision 0116); the web's
+// callers import them here.
+export {
+  CHARACTER_COLOURS,
+  iconColor,
+  NOTE_COLOR,
+  PLAN_COLORS,
+  PLAN_INK,
+  type PlanColor,
+  planToken,
+} from '@inkadra/canvas-core';
 
 /**
  * The cards a plan's links resolve against wherever it is drawn (decision 0104): the board's,
@@ -112,29 +104,6 @@ export function useLinkedPlan<P extends Pick<PlanElement, 'icons'>>(plan: P): P 
     () => (cards ? linkedPlan(plan, cards, { palette: CHARACTER_COLOURS }) : plan),
     [plan, cards],
   );
-}
-
-/**
- * The colour a family starts in: lights yellow, cameras blue, video and sound teal, people
- * purple, the rest ink.
- */
-const FAMILY_COLORS: Record<PlanFamily, string> = {
-  light: '#EDD963',
-  camera: '#9DB8F2',
-  video: '#60D8EB',
-  person: '#B897F0',
-  ink: PLAN_INK,
-};
-/** Annotations (arrows, texts, measures, zones) start green, as in the library. */
-export const NOTE_COLOR = '#7AD689';
-
-export function iconColor(kind: PlanIconKind): string {
-  return FAMILY_COLORS[categoryOf(kind).family];
-}
-
-/** Token of a stored colour, or null for a colour outside the palette (drawn as it is). */
-export function planToken(hex: string): string | null {
-  return PLAN_COLORS.find((c) => c.hex === hex)?.token ?? null;
 }
 
 /** CSS colour of a stored colour on the board. */

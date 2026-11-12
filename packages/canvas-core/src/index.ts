@@ -21,6 +21,7 @@ export * from './plan-labels.ts';
 export * from './plan-library.ts';
 export * from './plan-links.ts';
 export * from './plan-power.ts';
+export * from './plan-properties.ts';
 export * from './plan-setups.ts';
 export * from './plan-start.ts';
 export * from './plan-variants.ts';
