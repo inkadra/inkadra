@@ -3336,6 +3336,14 @@
                     "null"
                   ]
                 },
+                "image": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uri",
+                  "description": "Avatar address of that account, null without one. Older servers leave it out."
+                },
                 "bytes": {
                   "type": "number",
                   "minimum": 0

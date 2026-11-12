@@ -228,6 +228,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         visible,
         userId: user.id,
         userName: user.name,
+        userImage: user.image,
         // shortcut: thumbnails written before `bytes` existed and animated copies count as 0;
         // add them if the figure proves too low, by measuring the files once.
         derivedBytes: sql<string>`sum((select coalesce(sum(v.bytes), 0) from asset_variant v
@@ -245,9 +246,10 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         project.iconColor,
         user.id,
         user.name,
+        user.image,
       );
     const people = await db
-      .select({ id: user.id, name: user.name })
+      .select({ id: user.id, name: user.name, image: user.image })
       .from(user)
       .where(isNull(user.deactivatedAt));
     return storageUsage(

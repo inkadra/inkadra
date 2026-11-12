@@ -154,6 +154,10 @@ export const StorageUsage = z
             description: 'Who uploaded the files; null when no account is linked to them.',
           }),
           name: z.string().nullable(),
+          image: z.url().nullable().optional().openapi({
+            description:
+              'Avatar address of that account, null without one. Older servers leave it out.',
+          }),
           bytes: z.number().nonnegative(),
           derivedBytes: z.number().nonnegative().optional().openapi({
             description: 'Previews and playable copies of those files, where their size is known.',

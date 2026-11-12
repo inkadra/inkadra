@@ -1,5 +1,5 @@
 import type { StorageUsage } from '@inkadra/shared';
-import { glyphColor } from '@inkadra/ui';
+import { Avatar, glyphColor, Icon } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -32,7 +32,17 @@ export function projectSwatch(row: StorageUsage['byProject'][number]): string {
 }
 
 type View = 'project' | 'user' | 'type';
-type Rows = Array<{ id: string; label: string; bytes: number; color?: string }>;
+/** Files with no linked account: a neutral avatar, ring and segment. */
+const NO_ACCOUNT = 'var(--ink-border-strong)';
+
+type Rows = Array<{
+  id: string;
+  label: string;
+  bytes: number;
+  color?: string;
+  /** Per person: their avatar, ringed in their colour; null for files with no linked account. */
+  person?: { image?: string | null } | null;
+}>;
 
 /** One breakdown: a stacked bar, then one row per category with its bar, size and share. */
 function Breakdown({ title, rows, total }: { title: string; rows: Rows; total: number }) {
@@ -64,24 +74,52 @@ function Breakdown({ title, rows, total }: { title: string; rows: Rows; total: n
           </tr>
         </thead>
         <tbody>
-          {sorted.map((row, i) => (
-            <tr key={row.id}>
-              <th scope="row">
-                <span className="storage-chart__label">
-                  <i
-                    style={{ background: row.color ?? SWATCHES[i % SWATCHES.length] }}
-                    aria-hidden="true"
-                  />
-                  {row.label}
-                </span>
-                <span className="storage-chart__track" aria-hidden="true">
-                  <span style={{ width: width(row.bytes) }} />
-                </span>
-              </th>
-              <td>{formatStorage(row.bytes, i18n.language)}</td>
-              <td>{storagePercent(row.bytes, total, i18n.language)}</td>
-            </tr>
-          ))}
+          {sorted.map((row, i) => {
+            const color = row.color ?? SWATCHES[i % SWATCHES.length];
+            const track = (
+              <span className="storage-chart__track" aria-hidden="true">
+                <span
+                  style={{
+                    width: width(row.bytes),
+                    ...(row.person !== undefined && { background: color }),
+                  }}
+                />
+              </span>
+            );
+            return (
+              <tr key={row.id}>
+                <th scope="row">
+                  {row.person === undefined ? (
+                    <>
+                      <span className="storage-chart__label">
+                        <i style={{ background: color }} aria-hidden="true" />
+                        {row.label}
+                      </span>
+                      {track}
+                    </>
+                  ) : (
+                    <span className="storage-chart__person">
+                      <span className="storage-chart__ring" style={{ color }} aria-hidden="true">
+                        {row.person ? (
+                          <Avatar name={row.label} image={row.person.image} size={32} />
+                        ) : (
+                          <span className="ink-avatar" style={{ width: 32, height: 32 }}>
+                            <Icon name="user" size={16} />
+                          </span>
+                        )}
+                      </span>
+                      <span>
+                        <span className="storage-chart__label">{row.label}</span>
+                        {track}
+                      </span>
+                    </span>
+                  )}
+                </th>
+                <td>{formatStorage(row.bytes, i18n.language)}</td>
+                <td>{storagePercent(row.bytes, total, i18n.language)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -119,6 +157,8 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
           id: row.userId ?? 'none',
           label: row.name ?? t('admin.storageCharts.noUser'),
           bytes: row.bytes + (row.derivedBytes ?? 0),
+          // Older servers send no image: initials.
+          ...(row.userId ? { person: { image: row.image } } : { person: null, color: NO_ACCOUNT }),
         })),
       },
     }),

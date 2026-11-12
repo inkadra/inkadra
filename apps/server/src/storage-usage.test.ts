@@ -26,6 +26,7 @@ describe('original storage usage', () => {
         visible: true,
         userId: null,
         userName: null,
+        userImage: null,
         derivedBytes: 0,
       },
       {
@@ -37,6 +38,7 @@ describe('original storage usage', () => {
         visible: false,
         userId: null,
         userName: null,
+        userImage: null,
         derivedBytes: 0,
       },
       {
@@ -48,6 +50,7 @@ describe('original storage usage', () => {
         visible: false,
         userId: null,
         userName: null,
+        userImage: null,
         derivedBytes: 0,
       },
       {
@@ -59,6 +62,7 @@ describe('original storage usage', () => {
         visible: true,
         userId: null,
         userName: null,
+        userImage: null,
         derivedBytes: 0,
       },
       {
@@ -70,6 +74,7 @@ describe('original storage usage', () => {
         visible: false,
         userId: null,
         userName: null,
+        userImage: null,
         derivedBytes: 0,
       },
     ]);
@@ -95,6 +100,7 @@ describe('original storage usage', () => {
       visible: true,
       userId: null,
       userName: null,
+      userImage: null,
       derivedBytes: 0,
       bytes: 100,
       mime: 'image/png',
@@ -111,6 +117,7 @@ describe('original storage usage', () => {
       visible,
       userId,
       userName: userId && `Name of ${userId}`,
+      userImage: userId === 'a' ? 'https://example.com/a.webp' : null,
       derivedBytes: bytes / 10,
     });
     const result = storageUsage(
@@ -122,15 +129,21 @@ describe('original storage usage', () => {
         group(5, null, false),
       ],
       [
-        { id: 'a', name: 'Name of a' },
-        { id: 'idle', name: 'Idle' },
+        { id: 'a', name: 'Name of a', image: 'https://example.com/a.webp' },
+        { id: 'idle', name: 'Idle', image: null },
       ],
     );
     expect(result.byUser).toEqual([
-      { userId: 'a', name: 'Name of a', bytes: 300, derivedBytes: 30 },
-      { userId: 'b', name: 'Name of b', bytes: 50, derivedBytes: 5 },
-      { userId: null, name: null, bytes: 15, derivedBytes: 1.5 },
-      { userId: 'idle', name: 'Idle', bytes: 0, derivedBytes: 0 },
+      {
+        userId: 'a',
+        name: 'Name of a',
+        image: 'https://example.com/a.webp',
+        bytes: 300,
+        derivedBytes: 30,
+      },
+      { userId: 'b', name: 'Name of b', image: null, bytes: 50, derivedBytes: 5 },
+      { userId: null, name: null, image: null, bytes: 15, derivedBytes: 1.5 },
+      { userId: 'idle', name: 'Idle', image: null, bytes: 0, derivedBytes: 0 },
     ]);
     expect(result.derivedBytes).toBe(36.5);
     expect(JSON.stringify(result.byUser)).not.toContain('Secret');
