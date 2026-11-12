@@ -15,12 +15,17 @@ import { NOMINAL_SCALE } from './plan-icons.ts';
 import {
   backgroundBox,
   copySetLayer,
+  defaultStartChoice,
   fitBackground,
   planPlace,
+  ROOM_PRESETS,
   roomScale,
   roomWalls,
   scaleBackground,
+  setSourceName,
   setSources,
+  startPlan,
+  startTitle,
 } from './plan-start.ts';
 import {
   addPlanOpening,
@@ -37,6 +42,7 @@ import {
   wallLength,
   wallPoints,
 } from './plan-walls.ts';
+import { english } from './plan-words.fixture.ts';
 
 const near = (a: { x: number; y: number }, b: { x: number; y: number }, by = 0.5) =>
   Math.abs(a.x - b.x) <= by && Math.abs(a.y - b.y) <= by;
@@ -243,6 +249,112 @@ describe('reusing the set of another plan', () => {
     expect(plan(source).icons).toHaveLength(6);
     addPlanWall(doc, target.id, wall);
     expect(plan(target.id).walls).toHaveLength(2);
+  });
+});
+
+describe('starting a plan', () => {
+  const fresh = (props: Record<string, unknown> = {}) => {
+    const doc = createBoardDoc('boardAAAAAAAA');
+    const add = <T extends Element['type']>(type: T, p: Record<string, unknown>) =>
+      createElement(doc, type, { x: 0, y: 0 }, p as never, { userId: null });
+    const target = add('plan', props);
+    let writes = 0;
+    doc.on('afterTransaction', () => writes++);
+    const plan = (id = target.id) => listElements(doc).find((e) => e.id === id) as PlanElement;
+    return { doc, add, target, plan, writes: () => writes };
+  };
+  const owners = (id: string, scale?: number) => ({ setOwner: id, scaleOwner: id, scale });
+
+  it.each(ROOM_PRESETS)('writes a ready %s room in one transaction, its scale first', (preset) => {
+    const { doc, target, plan, writes } = fresh();
+    const choice = `room:${preset}` as const;
+    expect(startPlan(doc, choice, owners(target.id), { widthM: 8, depthM: 6 })).toBe('written');
+    expect(writes()).toBe(1);
+    const scale = roomScale(8, 6) as number;
+    expect([plan().scale, plan().grid]).toEqual([scale, '0.5']);
+    const walls = roomWalls(preset, 8, 6, scale);
+    expect(plan().walls?.length ?? 0).toBe(walls.length);
+    expect((plan().walls ?? []).map(({ id: _, ...w }) => w)).toEqual(walls);
+  });
+
+  it("draws a ready room at the plan's own scale, and refuses one too big for it", () => {
+    const { doc, target, plan, writes } = fresh({ scale: 50, grid: '1' });
+    expect(startPlan(doc, 'room:rect', owners(target.id, 50), { widthM: 8, depthM: 6 })).toBe(
+      'written',
+    );
+    expect([plan().scale, plan().grid]).toEqual([50, '1']);
+    expect(plan().walls?.[0]).toMatchObject(roomWalls('rect', 8, 6, 50)[0] as object);
+    const big = startPlan(doc, 'room:l', owners(target.id, 50), { widthM: 100, depthM: 6 });
+    expect(big).toBeNull();
+    expect(plan().walls).toHaveLength(1);
+    expect(writes()).toBe(1);
+  });
+
+  it("reuses a Set into an empty plan, with the source's scale and grid when it has none", () => {
+    const { doc, add, target, plan, writes } = fresh();
+    const source = add('plan', {
+      scale: 60,
+      grid: '0.25',
+      walls: [{ id: 'wallAAAAAAAAA', points: [0, 0, 400, 0], thickness: 9 }],
+    });
+    const before = writes();
+    expect(startPlan(doc, 'reuse', owners(target.id), { source: plan(source.id) })).toBe('written');
+    expect(writes() - before).toBe(1);
+    expect([plan().scale, plan().grid, plan().walls?.length]).toEqual([60, '0.25', 1]);
+    // A source without a grid gives the default one.
+    const other = fresh();
+    const bare = other.add('plan', {
+      scale: 60,
+      walls: [{ id: 'wallAAAAAAAAA', points: [0, 0, 400, 0], thickness: 9 }],
+    });
+    startPlan(other.doc, 'reuse', owners(other.target.id), { source: other.plan(bare.id) });
+    expect(other.plan().grid).toBe('0.5');
+  });
+
+  it('reuses a Set into a plan with a scale, keeping its own', () => {
+    const { doc, add, target, plan } = fresh({ scale: 100 });
+    const source = add('plan', {
+      scale: 60,
+      walls: [{ id: 'wallAAAAAAAAA', points: [0, 0, 400, 0], thickness: 9 }],
+    });
+    startPlan(doc, 'reuse', owners(target.id, 100), { source: plan(source.id) });
+    expect([plan().scale, plan().grid, plan().walls?.length]).toEqual([100, undefined, 1]);
+    // A source without a scale gives none.
+    const other = fresh();
+    const bare = other.add('plan', {
+      walls: [{ id: 'wallAAAAAAAAA', points: [0, 0, 400, 0], thickness: 9 }],
+    });
+    startPlan(other.doc, 'reuse', owners(other.target.id), { source: other.plan(bare.id) });
+    expect([other.plan().scale, other.plan().walls?.length]).toEqual([undefined, 1]);
+  });
+
+  it('leaves drawing and tracing to the client, and writes nothing for them', () => {
+    const { doc, target, writes } = fresh();
+    expect(startPlan(doc, 'draw', owners(target.id), {})).toBe('draw');
+    expect(startPlan(doc, 'trace', owners(target.id), {})).toBe('trace');
+    expect(startPlan(doc, 'scan', owners(target.id), {})).toBeNull();
+    expect(startPlan(doc, 'reuse', owners(target.id), {})).toBeNull();
+    expect(writes()).toBe(0);
+  });
+
+  it('offers to reuse a Set only when there is one, and names the dialog and the sources', () => {
+    const { add, plan } = fresh();
+    expect(defaultStartChoice([])).toBe('room:rect');
+    expect(defaultStartChoice([plan()])).toBe('reuse');
+    const diner = add('location', { name: "Rosa's diner" });
+    const scene = add('scene', { number: '5', title: 'Coffee', location: 'Garage' });
+    const cards = new Map<string, Element>([diner, scene].map((c) => [c.id, c]));
+    expect(startTitle({ locationId: diner.id, title: 'Plan' }, cards)).toBe("Rosa's diner");
+    expect(startTitle({ sceneIds: [scene.id], title: 'Plan' }, cards)).toBe('Garage');
+    expect(startTitle({ title: 'Plan' }, cards)).toBe('Plan');
+    expect(startTitle({}, cards)).toBeUndefined();
+    expect(setSourceName({ locationId: diner.id, title: "Rosa's diner" }, cards, english)).toBe(
+      "Rosa's diner",
+    );
+    expect(setSourceName({ locationId: diner.id, title: 'Scene 5' }, cards, english)).toBe(
+      "Rosa's diner, Scene 5",
+    );
+    expect(setSourceName({}, cards, english)).toBe('Set plan');
   });
 });
 

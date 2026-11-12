@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
-  addPlanWall,
-  copySetLayer,
+  defaultStartChoice,
   layerOf,
-  linkedLocation,
   type PlanElement,
+  type PlanStartChoice,
   planItems,
   ROOM_MAX_METRES,
   ROOM_MIN_METRES,
   ROOM_PRESETS,
   type RoomPreset,
   roomScale,
-  roomWalls,
+  setSourceName,
   setSources,
-  updateElement,
+  setSummary,
+  startPlan,
+  startTitle,
 } from '@inkadra/canvas-core';
 import { Button, ChoiceTile, Select } from '@inkadra/ui';
 import { type ReactNode, useId, useRef, useState } from 'react';
@@ -22,9 +23,6 @@ import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
 import { NumberField } from './NumberField.tsx';
 import type { useBackgroundPicker } from './PlanBackground.tsx';
-import { setSummary } from './PlanWalls.tsx';
-
-type Choice = 'reuse' | 'draw' | 'trace' | 'scan' | `room:${RoomPreset}`;
 
 /** The drawings of the choices, as the approved mockup draws them (44 by 36). */
 const PICTURES: Record<'reuse' | 'draw' | 'trace' | 'scan', ReactNode> = {
@@ -84,7 +82,7 @@ export function PlanStart({
   // shortcut: only the plans of the open board are offered, the ones the web app can read;
   // upgrade when plans of other boards of the project can be read here with their access.
   const sources = setSources(ed.base ?? plan, ed.kitPlans ?? [], cards);
-  const [choice, setChoice] = useState<Choice>(sources.length ? 'reuse' : 'room:rect');
+  const [choice, setChoice] = useState<PlanStartChoice>(defaultStartChoice(sources));
   const [sourceId, setSourceId] = useState(sources[0]?.id ?? '');
   const [width, setWidth] = useState(8);
   const [depth, setDepth] = useState(6);
@@ -93,7 +91,6 @@ export function PlanStart({
   const scale = room ? roomScale(width, depth, drawn.scale) : null;
   const tooBig = !!room && scale === null;
 
-  const place = linkedLocation(plan, cards)?.name;
   const scene = (plan.sceneIds ?? []).map((s) => cards.get(s)).find((c) => c?.type === 'scene');
   const sceneLine =
     scene?.type === 'scene'
@@ -105,12 +102,8 @@ export function PlanStart({
           .filter(Boolean)
           .join(' · ')
       : '';
-  const title = place || (scene?.type === 'scene' && scene.location) || plan.title;
-  const sourceName = (p: PlanElement) => {
-    // A plan named after its location is named once: "Rosa's diner", not twice.
-    const parts = [...new Set([linkedLocation(p, cards)?.name, p.title].filter(Boolean))];
-    return parts.join(', ') || t('board.plan.name');
-  };
+  const title = startTitle(plan, cards);
+  const sourceName = (p: PlanElement) => setSourceName(p, cards, t);
 
   /** One click, one write: a second click (or a double click) before the dialog goes does nothing. */
   const went = useRef(false);
@@ -119,29 +112,20 @@ export function PlanStart({
     if (went.current) return;
     went.current = true;
     setBusy(true);
-    if (choice === 'reuse' && source) {
-      ed.change(() => {
-        copySetLayer(ed.doc, source, ed.setOwner, LOCAL);
-        // Its walls were measured at its scale: a plan without one takes it.
-        if (!drawn.scale && source.scale)
-          updateElement(
-            ed.doc,
-            ed.scaleOwner,
-            { scale: source.scale, grid: source.grid ?? '0.5' },
-            LOCAL,
-          );
-      });
-    } else if (choice === 'draw') {
+    let next = null as ReturnType<typeof startPlan>;
+    ed.change(() => {
+      next = startPlan(
+        ed.doc,
+        choice,
+        { setOwner: ed.setOwner, scaleOwner: ed.scaleOwner, scale: drawn.scale },
+        { source, widthM: width, depthM: depth },
+        LOCAL,
+      );
+    });
+    if (next === 'draw') {
       ed.setArmed(null);
       ed.setTool('walls');
-    } else if (choice === 'trace') picker.pick();
-    else if (room && scale) {
-      ed.change(() => {
-        if (!drawn.scale) updateElement(ed.doc, ed.scaleOwner, { scale, grid: '0.5' }, LOCAL);
-        for (const wall of roomWalls(room, width, depth, scale))
-          addPlanWall(ed.doc, ed.setOwner, wall, LOCAL);
-      });
-    }
+    } else if (next === 'trace') picker.pick();
     onClose();
   };
   const primary =
@@ -153,7 +137,7 @@ export function PlanStart({
           ? t('board.plan.start.traceGo')
           : t('board.plan.start.roomGo');
   const tile = (
-    value: Choice,
+    value: PlanStartChoice,
     children: ReactNode,
     opts: { label?: string; className?: string; disabled?: boolean } = {},
   ) => (
