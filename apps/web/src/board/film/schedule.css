@@ -405,8 +405,9 @@
 
 .schedule__calendar {
   --schedule-gutter: 76px;
-  /* Above and below each card inside its slot: back-to-back blocks never touch, starts stay put. */
-  --schedule-block-inset: 1px;
+  /* A card sits inside its slot, starts stay on their minute: back-to-back cards never touch. */
+  --schedule-inset-top: 1px;
+  --schedule-inset-bottom: 2px;
   /* Five days fit at 1280 px with the navigation open; seven may scroll sideways. */
   --schedule-column: minmax(128px, 1fr);
   flex: 1;
@@ -618,12 +619,17 @@
 .schedule__gap {
   position: absolute;
   left: 4px;
-  right: 4px;
+  right: 6px;
   display: grid;
   place-items: center;
+  pointer-events: none;
+}
+.schedule__gap::before {
+  content: "";
+  position: absolute;
+  inset: 2px 0;
   border: 1px dashed var(--ink-border-strong);
   border-radius: var(--ink-radius-sm);
-  pointer-events: none;
 }
 .schedule__gap > span {
   padding: 1px 8px;
@@ -636,15 +642,16 @@
 .schedule__placeholder {
   position: absolute;
   left: 4px;
-  right: 4px;
+  right: 6px;
   pointer-events: none;
 }
 .schedule__placeholder::before {
   content: "";
   position: absolute;
-  inset: var(--schedule-block-inset) 0;
+  inset: var(--schedule-inset-top) 0 var(--schedule-inset-bottom);
   border: 2px dashed var(--ink-accent-primary);
   border-radius: var(--ink-radius-sm);
+  background: var(--ink-accent-soft-bg);
 }
 .schedule__now {
   position: absolute;
@@ -693,7 +700,7 @@
   position: absolute;
   z-index: 1;
   display: flex;
-  padding-block: var(--schedule-block-inset);
+  padding: var(--schedule-inset-top) 0 var(--schedule-inset-bottom);
 }
 .schedule__block--shot {
   --block-bg: var(--ink-tag-blue-bg);
@@ -723,7 +730,7 @@
   align-items: flex-start;
   gap: 8px;
   padding: 4px 8px;
-  border: 1px solid var(--ink-border-subtle);
+  border: 0;
   border-radius: var(--ink-radius-sm);
   background: var(--block-bg);
   color: var(--ink-text-primary);
@@ -735,26 +742,34 @@
   user-select: none;
   -webkit-touch-callout: none;
 }
+/* States are rings, not borders, so every card keeps its size. */
 .schedule__block-select:hover {
-  border-color: var(--ink-border-strong);
+  box-shadow: inset 0 0 0 1px var(--ink-border-strong);
 }
 .schedule__block-select:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
 }
+.schedule__block.is-selected {
+  z-index: 2;
+}
 .schedule__block.is-selected .schedule__block-select {
-  border-color: var(--ink-accent-primary);
-  box-shadow: 0 0 0 1px var(--ink-accent-primary);
+  box-shadow: 0 0 0 2px var(--ink-accent-primary), var(--ink-shadow-menu);
 }
 .schedule__block.has-conflict .schedule__block-select {
-  border-color: var(--ink-status-danger);
+  box-shadow: inset 0 0 0 1.5px var(--ink-status-danger);
+}
+.schedule__block.is-selected.has-conflict .schedule__block-select {
+  box-shadow:
+    0 0 0 2px var(--ink-accent-primary),
+    inset 0 0 0 1.5px var(--ink-status-danger),
+    var(--ink-shadow-menu);
 }
 .schedule__block.is-dragging {
   z-index: 5;
 }
 .schedule__block.is-dragging .schedule__block-select {
-  border-color: var(--ink-accent-primary);
-  box-shadow: var(--shadow-float);
+  box-shadow: 0 0 0 2px var(--ink-accent-primary), var(--ink-shadow-menu);
   cursor: grabbing;
 }
 .schedule__block-text {
@@ -1275,6 +1290,7 @@ fieldset.schedule__field > legend {
   .schedule__calendar {
     --schedule-gutter: 76px;
     --schedule-column: minmax(0, 1fr);
+    --schedule-inset-top: 2px;
     overflow-x: hidden;
   }
   .schedule__more {
@@ -1449,9 +1465,6 @@ fieldset.schedule__field > legend {
 }
 
 /* Phase 2: a new block drawn on empty time, then its type from a small menu. */
-.schedule__placeholder.is-new::before {
-  background: var(--ink-accent-soft-bg);
-}
 .menu.schedule__create-menu {
   position: fixed;
   z-index: 30;

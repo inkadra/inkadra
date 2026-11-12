@@ -57,30 +57,27 @@ async function openSchedule(page: Page, name: string) {
   return page.getByRole('region', { name: 'Piano riprese', exact: true });
 }
 
-/** Each slot starts on its minute; each visible card sits inside it, apart from the next one. */
-async function expectSeams(day: Locator) {
+/**
+ * Each slot starts on its minute; each card sits inside it, `top` px below its minute and
+ * `bottom` px above the next one (the approved mockup), so back-to-back cards never touch.
+ * A 15-minute card stays inside its slot too.
+ */
+async function expectSeams(day: Locator, top: number, bottom: number) {
   const slots = day.locator('.schedule__block');
   await expect(slots).toHaveCount(blocks.length);
   const column = (await day.boundingBox())!;
-  const seams: number[] = [];
   let minute = CALL;
-  let previous: { bottom: number } | null = null;
+  let previous = 0;
   for (let i = 0; i < blocks.length; i++) {
     const slot = (await slots.nth(i).boundingBox())!;
     const card = (await slots.nth(i).locator('.schedule__block-select').boundingBox())!;
-    expect(Math.round(slot.y - column.y)).toBe(minute);
-    // The card above ends before this one starts.
-    if (previous) expect(card.y).toBeGreaterThan(previous.bottom);
-    expect(card.y).toBeGreaterThan(slot.y);
-    expect(card.y + card.height).toBeLessThan(slot.y + slot.height);
-    if (previous) seams.push(card.y - previous.bottom);
-    previous = { bottom: card.y + card.height };
+    expect(slot.y - column.y).toBeCloseTo(minute, 0);
+    expect(slot.height).toBeCloseTo(blocks[i][2], 0);
+    expect(card.y - slot.y).toBeCloseTo(top, 0);
+    expect(slot.y + slot.height - (card.y + card.height)).toBeCloseTo(bottom, 0);
+    if (i > 0) expect(card.y - previous).toBeCloseTo(top + bottom, 0);
+    previous = card.y + card.height;
     minute += blocks[i][2];
-  }
-  // The same small space between every pair, never an overlap.
-  for (const seam of seams) {
-    expect(seam).toBeGreaterThan(0);
-    expect(seam).toBeCloseTo(seams[0], 1);
   }
 }
 
@@ -110,11 +107,14 @@ test('consecutive blocks leave the same space between their cards', async ({ pag
   await page.setViewportSize({ width: 1280, height: 900 });
   const schedule = await openSchedule(page, 'Schedule block gap');
   const day = schedule.locator('.schedule__day');
+  const view = (name: string) => schedule.getByRole('radio', { name, exact: true }).check();
+  // Both views are captured before the first check, so a failing run still shows them.
   await capture(page, day, 'week-1280');
-  await expectSeams(day);
-  await schedule.getByRole('radio', { name: 'Giorno', exact: true }).check();
+  await view('Giorno');
   await capture(page, day, 'day-1280');
-  await expectSeams(day);
+  await expectSeams(day, 1, 2);
+  await view('Settimana');
+  await expectSeams(day, 1, 2);
 });
 
 test.describe('on a phone', () => {
@@ -125,6 +125,6 @@ test.describe('on a phone', () => {
     const schedule = await openSchedule(page, 'Schedule block gap phone');
     const day = schedule.locator('.schedule__day');
     await capture(page, day, 'phone-390');
-    await expectSeams(day);
+    await expectSeams(day, 2, 2);
   });
 });
