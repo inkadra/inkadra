@@ -6,6 +6,7 @@ import {
   blockingCurve,
   blockingPositions,
   type CardsById,
+  CHARACTER_COLOURS,
   type GlyphPart,
   glyphOf,
   glyphStroke,
