@@ -1,6 +1,7 @@
 import {
   canvasElements,
   childrenOf,
+  estimateHeight,
   growsWithText,
   isContainer,
   setElementView,
@@ -10,7 +11,6 @@ import {
   encodeValidatedSnapshot,
   openValidatedSnapshot,
   openValidatedSnapshotSteps,
-  PLAN_ASPECT,
   readElement,
   readElementSteps,
   roots,
@@ -18,7 +18,6 @@ import {
   type ValidatedSnapshot,
 } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
-import { croppedRotatedSize } from './image-crop.ts';
 
 /** Transaction origin of edits made in this tab: the undo history tracks only these. */
 export const LOCAL = Symbol('local');
@@ -532,36 +531,6 @@ export class BoardStore {
   /** The Y.Map behind an element, for rich text and to-do items. */
   map(id: string): Y.Map<unknown> | undefined {
     return roots(this.doc).elements.get(id);
-  }
-}
-
-function estimateHeight(el: Element): number {
-  switch (el.type) {
-    case 'image': {
-      const dims = croppedRotatedSize(4, 3, el.crop, el.rotation);
-      return Math.round((el.w * dims.height) / dims.width);
-    }
-    case 'column':
-    case 'scene':
-      return 120;
-    case 'frame':
-      return Math.round(el.w * 0.56) + 48;
-    case 'color':
-      return el.w;
-    case 'board':
-      return 66;
-    case 'todo':
-      return 48 + el.items.length * 26;
-    case 'section':
-      return 44;
-    case 'table':
-      return el.rows.length * 31 + 2;
-    case 'plan':
-      return Math.round(el.w / PLAN_ASPECT) + 34;
-    case 'map':
-      return el.imageAssetId ? Math.round((el.w * 560) / 1024) + 52 : 52;
-    default:
-      return 64;
   }
 }
 

@@ -1,24 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { Element } from '@inkadra/doc-schema';
-import { type CastLink, castNameKey, isMapLink, type ShootingDayInput } from '@inkadra/shared';
+import {
+  type CastLink,
+  castCalls,
+  castNameKey,
+  isMapLink,
+  plannedWrap,
+  type ShootingDayInput,
+} from '@inkadra/shared';
 import { neededForDay } from './needed.ts';
 import { clockMinutes, scheduleTimes } from './schedule.ts';
 
-/** First scheduled appearance, in local minutes from the shooting date (including overnight). */
-export function castCalls(day: ShootingDayInput) {
-  const calls = new Map<string, { name: string; start: number }>();
-  for (const { block, start } of scheduleTimes(day)) {
-    for (const value of block.cast) {
-      const name = value.trim();
-      if (!name) continue;
-      const key = castNameKey(name);
-      const previous = calls.get(key);
-      if (!previous || start < previous.start) calls.set(key, { name, start });
-    }
-  }
-  return [...calls.values()].sort((a, b) => a.start - b.start || a.name.localeCompare(b.name));
-}
+export { castCalls, plannedWrap } from '@inkadra/shared';
 
 /** The person's first call of the day through the cast names linked to them. */
 export function personalCall(
@@ -28,20 +22,6 @@ export function personalCall(
 ) {
   const mine = new Set(links.filter((link) => link.userId === userId).map((l) => l.castKey));
   return castCalls(day).find((call) => mine.has(castNameKey(call.name))) ?? null;
-}
-
-/**
- * Planned wrap in minutes from the shooting date: the saved wrap time when there is one (the
- * next morning when it is before the call), otherwise the end of the last block.
- */
-export function plannedWrap(day: ShootingDayInput): number | null {
-  const call = clockMinutes(day.callTime);
-  if (day.wrap) {
-    const wrap = clockMinutes(day.wrap);
-    return wrap < call ? wrap + 1440 : wrap;
-  }
-  const slots = scheduleTimes(day);
-  return slots.length ? Math.max(...slots.map((slot) => slot.end)) : null;
 }
 
 export interface DepartmentNote {

@@ -3,6 +3,7 @@ import {
   addScene,
   deleteElements,
   type FrameElement,
+  isDrawn,
   moveFrames,
   type SceneElement,
   type SceneGroup,
@@ -62,9 +63,6 @@ const sameMark = (a: FileMark | null, b: FileMark | null) =>
     (a.kind === 'insert'
       ? a.scene === (b as typeof a).scene && a.index === (b as typeof a).index
       : true));
-/** A frame counts as drawn once it has a picture or a pen drawing. */
-const isDrawn = (f: FrameElement) =>
-  !!f.assetId || (f.strokes?.length ?? 0) > 0 || (f.shapes?.length ?? 0) > 0;
 
 export function StoryboardView({
   store,

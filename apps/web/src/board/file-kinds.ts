@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { formatDuration } from '@inkadra/canvas-core';
-import { type Asset, isRawImageType } from '@inkadra/shared';
+import { type Asset, formatBytes, isRawImageType } from '@inkadra/shared';
+
+export { formatBytes } from '@inkadra/shared';
 
 /**
  * The file card family (#325): every file has the same anatomy, and the colour of its type
@@ -116,24 +118,6 @@ export function fileBadge(asset: Pick<Asset, 'kind' | 'mime' | 'filename' | 'vid
   if (ext) return (fileFamily(asset) === 'design' ? ext : ext.slice(0, 5)).toUpperCase();
   if (isPdf(asset)) return 'PDF';
   return '';
-}
-
-/** 4,2 MB in Italian, 4.2 MB in English: one decimal under ten, none above. */
-export function formatBytes(bytes: number, locale?: string): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let v = bytes / 1024;
-  let i = 0;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i += 1;
-  }
-  const digits = v < 10 ? 1 : 0;
-  const number = new Intl.NumberFormat(locale, {
-    maximumFractionDigits: digits,
-    minimumFractionDigits: 0,
-  }).format(v);
-  return `${number} ${units[i]}`;
 }
 
 /** 4K, 6K for camera resolutions, else the short side: 1080p, 720p. */

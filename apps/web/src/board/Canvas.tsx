@@ -22,6 +22,7 @@ import {
   deleteElements,
   distributeRects,
   dropIndex,
+  FAR_ZOOM,
   fillTable,
   fitRect,
   frameLabels,
@@ -213,8 +214,6 @@ const NEW_SHORT: Partial<Record<string, number>> = {
 };
 /** Extra world around the screen that stays rendered, so short pans show no gaps. */
 const OVERSCAN_PX = 400;
-/** Below this zoom, text is too small to read: cards are drawn as plain shapes. */
-const FAR_ZOOM = 0.3;
 
 /**
  * How much of the canvas the shell's floating panels cover (#333): the navigation at the left

@@ -84,6 +84,9 @@ the change, may lower `min`, and the entry names that test by its title, which s
 - Licences differ by folder: `apps/server` and `apps/web` are AGPL-3.0, everything in
   `packages/` is MPL-2.0 and starts each file with `SPDX-License-Identifier: MPL-2.0`. A
   package never imports from an app ([decision 0008](docs/decisions/0008-licences-per-component.md)).
+- Logic that two clients must apply alike (the same input gives the same result) lives once in a
+  package and the web app imports it from there; it is never copied from an app into another
+  client ([decision 0116](docs/decisions/0116-shared-client-logic-in-mpl-packages.md)).
 - Commits: imperative mood, short subject (`Add project list endpoint`), body when the why is
   not obvious. Maintainers squash or merge; history on `main` stays linear.
 

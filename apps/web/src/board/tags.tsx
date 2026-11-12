@@ -1,3 +1,4 @@
+import { normaliseTag } from '@inkadra/canvas-core';
 import { MAX_TAGS } from '@inkadra/doc-schema';
 import type { TagCount } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
@@ -6,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
 import { addClassification, useClassifications } from '../lib/classifications.ts';
 import { useIsAdmin } from '../lib/session-context.ts';
+
+export { normaliseTag } from '@inkadra/canvas-core';
 
 /** Tags already used in each project, for suggestions; refreshed when a picker opens. */
 const known = new Map<string, TagCount[]>();
@@ -73,11 +76,6 @@ export function filterTagSuggestions(tags: readonly TagCount[], rawTyped: string
       return b.count - a.count || a.tag.localeCompare(b.tag);
     })
     .slice(0, 20);
-}
-
-/** Tags are compared without case, so they are stored trimmed and in lower case. */
-export function normaliseTag(text: string): string {
-  return text.trim().replace(/^#/, '').replace(/\s+/g, ' ').toLowerCase().slice(0, 40);
 }
 
 export function TagList({ tags }: { tags: readonly string[] | undefined }) {

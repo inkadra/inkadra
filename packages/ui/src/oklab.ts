@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-/** Colour maths for the token tests: OKLab distance and WCAG contrast of `#RRGGBB` colours. */
+/**
+ * Colour maths of `#RRGGBB` colours: OKLab distance and WCAG luminance and contrast. Used by the
+ * token tests and by clients that pick a readable ink over a colour (`@inkadra/ui/oklab`).
+ */
 
 function linear(hex: string) {
   return [1, 3, 5].map((i) => {
