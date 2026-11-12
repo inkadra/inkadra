@@ -7,11 +7,11 @@ which do not mix well with the AGPL. They share types, schemas and geometry with
 
 **Decision.**
 
-| Component                                                                       | Licence       |
-| ------------------------------------------------------------------------------- | ------------- |
-| `apps/server`, `apps/web`, the Docker image                                     | AGPL-3.0-only |
-| `apps/mobile`, `apps/clipper`                                                   | MPL-2.0       |
-| `packages/shared`, `packages/doc-schema`, `packages/canvas-core`, `packages/ui` | MPL-2.0       |
+| Component                                                                                         | Licence       |
+| ------------------------------------------------------------------------------------------------- | ------------- |
+| `apps/server`, `apps/web`, the Docker image                                                       | AGPL-3.0-only |
+| `apps/mobile`, `apps/clipper`                                                                     | MPL-2.0       |
+| `packages/shared`, `packages/doc-schema`, `packages/canvas-core`, `packages/ui`, `packages/print` | MPL-2.0       |
 
 Each MPL-2.0 package carries its own `LICENSE`, `"license": "MPL-2.0"` in `package.json` and
 an `SPDX-License-Identifier: MPL-2.0` line at the top of every source file. Code that an

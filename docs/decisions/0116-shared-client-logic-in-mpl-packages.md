@@ -16,7 +16,7 @@ follows AGPL code is not MPL code.
 Product logic shared by clients (the same input must give the same result on every client)
 lives once, in an MPL-2.0 package, as pure functions on the shared types: domain rules in
 `packages/shared`, card geometry and board rules in `packages/canvas-core`, measures and
-tokens in `packages/ui`. The web app imports it from there like every other client. A client
+tokens in `packages/ui`, printed pages as drawing operations in `packages/print`. The web app imports it from there like every other client. A client
 never copies or ports such logic from an AGPL app: it moves it into a package first, written by
 someone who can license it under the MPL, then imports it. Presentation that belongs to one
 client stays in that client.
@@ -182,6 +182,21 @@ pictures; arrows are drawn as at any zoom. The web keeps drawing it in CSS
 (`canvas__world--far`); a web test renders every kind of card in the far world and fails when
 the stylesheet and `farLook` disagree. Which links play in their card (`videoEmbedUrl`) and
 whether an asset can be shown yet stay with the client and are passed in.
+
+For the server to render the set plan sheet with the web's code, the exports' pages begin to move
+into a new MPL-2.0 package, `packages/print` (`@inkadra/print`), which draws pages as a list of
+operations (decision 0038) and holds no PDF library: canvas-core stays independent of rendering.
+First moved, whole: the page model (`ops.ts`, from the web's `export/pages.ts`: `Op`, `Page`,
+`ImageInfo`, `Measure`, `FontWeight`, `roundedRectPath`, `fitBox`, `imagePlacement`), the text
+(`text.ts`: `TextStyle`, `wrapText`, `ellipsize`, `textBlock`, `lineHeight`, `missingGlyphs`) and
+the page sizes, margins and grids (`layout.ts`: `pageSize`, `contentBox`, `storyboardGrid`,
+`storyboardCells`, `slideCell`, `gridCells`, `chunk`, `paginateRows`, `fitRegion`,
+`pixelRatio`, `pngScales` and their constants), with their tests. A picture's crop checks went
+to canvas-core's `image-crop.ts`: `isIdentityCrop`, `hasImageTransform` and
+`normalizeImageRotation` (`(-180, 180]`; the web still calls it `normalizeRotation`, a name
+canvas-core already gives a set plan item's rotation in `[0, 360)`). The web's
+`export/pages.ts`, `text.ts` and `layout.ts` re-export the moved names. The sheet's drawing and
+layout, the PDF writer and the fonts follow, each in its own change.
 
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
