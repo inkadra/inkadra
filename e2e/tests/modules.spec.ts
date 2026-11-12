@@ -160,6 +160,8 @@ for (const width of [1280, 390]) {
       await drop();
       const notice = page.locator('.toast', { hasText: 'Con Storyboard diventano inquadrature.' });
       await expect(notice).toBeVisible();
+      // The scenes just landed on the board as cards: the notice can take them back.
+      await expect(notice.getByRole('button', { name: 'Annulla' })).toBeVisible();
       await expect(page.locator('[data-type="scene"]').first()).toBeVisible();
       await shoot(page, 'notice');
       // It leaves by itself, like the undo notices, and has a close button.

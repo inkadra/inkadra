@@ -1090,7 +1090,8 @@ export function Canvas({
       if (takeModuleNotice('storyboard')) {
         setToast({
           text: t('modules.notice.storyboard', { scenes }),
-          undo: false,
+          // Many cards just landed on the board: the notice can take them back, like the plain one.
+          undo: true,
           turnOn: 'storyboard',
         });
         return;

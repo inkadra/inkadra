@@ -1113,11 +1113,12 @@ function BoardScreen({
       )}
       {importingScript && editable && !preview && (
         <ScreenplayImportDialog
-          targets={
-            scriptStoryboard.groups.some((g) => g.scene)
-              ? ['append', 'revise', 'new']
-              : ['append', 'new']
-          }
+          // Storyboard off: this storyboard still takes the script, a new one is not offered.
+          targets={[
+            'append',
+            ...(scriptStoryboard.groups.some((g) => g.scene) ? (['revise'] as const) : []),
+            ...(isOn('storyboard') ? (['new'] as const) : []),
+          ]}
           storyboard={scriptStoryboard}
           onImport={importScript}
           onClose={() => setImportingScript(false)}
