@@ -119,9 +119,9 @@ it('names a version in its row: Escape leaves the edit, not the dialog', async (
   await act(async () => keep?.click());
   const field = host.querySelector<HTMLInputElement>('input[aria-label="versions.name"]');
   expect(document.activeElement).toBe(field);
-  const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
-  await act(async () => field?.dispatchEvent(escape));
-  expect(escape.defaultPrevented).toBe(true);
+  const key = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  await act(async () => field?.dispatchEvent(key));
+  expect(key.defaultPrevented).toBe(true);
   expect(host.querySelector('input[aria-label="versions.name"]')).toBeNull();
   expect(host.querySelector('dialog')?.open).toBe(true);
   expect(api.patch).not.toHaveBeenCalled();

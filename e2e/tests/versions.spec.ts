@@ -403,7 +403,9 @@ test('version failures explain rate limits and let the editor recover', async ({
     await saveHeld;
     await route.fallback();
   });
-  await dialog.getByRole('textbox', { name: 'Salva lo stato attuale come versione' }).fill('Held save');
+  await dialog
+    .getByRole('textbox', { name: 'Salva lo stato attuale come versione' })
+    .fill('Held save');
   await dialog.getByRole('button', { name: 'Salva versione', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Chiudi', exact: true })).toBeDisabled();
   await page.keyboard.press('Escape');
@@ -506,7 +508,9 @@ test('refreshing versions preserves uncertain save warnings without retrying', a
     await route.fulfill({ response, json: body });
   });
   for (let i = 1; i <= reasons.length; i++) {
-    await dialog.getByRole('textbox', { name: 'Salva lo stato attuale come versione' }).fill(`Uncertain ${i}`);
+    await dialog
+      .getByRole('textbox', { name: 'Salva lo stato attuale come versione' })
+      .fill(`Uncertain ${i}`);
     await dialog.getByRole('button', { name: 'Salva versione', exact: true }).click();
     await expect(dialog.getByText(`Refreshed ${i}`, { exact: true })).toBeVisible();
     await expect(dialog.getByRole('alert')).toContainText('prima di riprovare');
@@ -536,7 +540,9 @@ test('the versions panel follows other editors, and leaving a preview keeps the 
     await renameVersion(page, saved, 'Rinominata altrove');
     await expect(otherList.getByText('Rinominata altrove', { exact: true })).toBeVisible();
     await expect(otherList.getByText('Da un altro editor', { exact: true })).toHaveCount(0);
-    await dialog.getByRole('textbox', { name: 'Salva lo stato attuale come versione' }).fill('Da eliminare');
+    await dialog
+      .getByRole('textbox', { name: 'Salva lo stato attuale come versione' })
+      .fill('Da eliminare');
     await dialog.getByRole('button', { name: 'Salva versione', exact: true }).click();
     const extra = dialog;
     await expect(otherList.getByText('Da eliminare', { exact: true })).toBeVisible();

@@ -1,15 +1,7 @@
 import type { HocuspocusProvider } from '@hocuspocus/provider';
 import { readBoardNotice } from '@inkadra/doc-schema';
 import type { BoardVersion, RestoredBoardVersion } from '@inkadra/shared';
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  Icon,
-  IconButton,
-  Segmented,
-  TextField,
-} from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Icon, IconButton, Segmented, TextField } from '@inkadra/ui';
 import {
   type SyntheticEvent,
   useCallback,
@@ -337,7 +329,9 @@ export function VersionsDialog({
                       <h3 className="versions__day">
                         {ago === 0 || ago === 1 ? (
                           <>
-                            <strong>{t(ago === 0 ? 'versions.today' : 'versions.yesterday')}</strong>
+                            <strong>
+                              {t(ago === 0 ? 'versions.today' : 'versions.yesterday')}
+                            </strong>
                             <span>{full}</span>
                           </>
                         ) : (
