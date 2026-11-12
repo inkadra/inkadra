@@ -173,7 +173,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 260px;
+  /* The mockup's 260 px is drawn at 1440 px; the maintainer keeps this column tighter. */
+  width: 240px;
   overflow: auto;
   padding: 12px 10px;
   border-right: 1px solid var(--ink-border-subtle);
@@ -532,8 +533,9 @@
 }
 .schedule__head-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 2px 8px;
   min-width: 0;
 }
 .schedule__head-top > * {
@@ -593,10 +595,9 @@
   font-weight: 600;
   white-space: nowrap;
 }
-/* A narrow column cuts its tags rather than letting them cover the next day. */
+/* A narrow column moves its tags under the date, whole, rather than cutting them to a letter. */
 .schedule__head-top > .schedule__tag {
-  flex: 0 1 auto;
-  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1271,7 +1272,7 @@ fieldset.schedule__field > legend {
 
 .schedule__inspector {
   flex: none;
-  width: 360px;
+  width: 340px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1566,6 +1567,12 @@ fieldset.schedule__field > legend {
 .schedule__edge-button:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+}
+
+@media (768px <= width < 1400px) {
+  .schedule__queue {
+    width: 220px;
+  }
 }
 
 /* Phase 2: a new block drawn on empty time, then its type from a small menu. */
