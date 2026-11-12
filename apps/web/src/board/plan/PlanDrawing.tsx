@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  beamOpacity,
   beamStrength,
   beamWarmth,
   blockingCurve,
@@ -20,11 +21,13 @@ import {
   measureEnds,
   measureText,
   openingLines,
+  PLAN_DRAW_ORDER,
   PLAN_LABEL_SIZE,
   PLAN_SUB_LABEL_SIZE,
   PLAN_TEXT_SIZES,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
+  type PlanDrawLayer,
   type PlanElement,
   type PlanFamily,
   type PlanNoteTool,
@@ -51,6 +54,7 @@ import {
 import {
   type CSSProperties,
   createContext,
+  Fragment,
   memo,
   type ReactNode,
   useContext,
@@ -335,6 +339,7 @@ export const PlanBeamView = memo(function PlanBeamView({
       </g>
     );
   const [from] = cone?.points ?? [];
+  const opacity = beamOpacity(icon, cone?.beam ?? false);
   return (
     <g style={{ color: cone?.beam ? color : planCss(icon.color) }}>
       {cone?.beam && from && (
@@ -355,9 +360,9 @@ export const PlanBeamView = memo(function PlanBeamView({
         points={cone?.points.map((p) => `${p.x},${p.y}`).join(' ')}
         style={{
           fill: cone?.beam ? `url(#${id})` : 'currentColor',
-          fillOpacity: cone?.beam ? undefined : 0.14,
+          fillOpacity: cone?.beam ? undefined : opacity.fill,
           stroke: 'currentColor',
-          strokeOpacity: cone?.beam ? 0.35 : 0.5,
+          strokeOpacity: opacity.stroke,
           strokeWidth: 1.5,
         }}
       />
@@ -820,6 +825,35 @@ const PlanDrawingView = memo(function PlanDrawingView({
   const frame = extent
     ? { x: 0, y: 0, w: PLAN_VIEW_W, h: PLAN_VIEW_H }
     : planFrame(plan, background, hidden ?? []);
+  // The layers in canvas-core's order (decision 0116).
+  const layers: Record<PlanDrawLayer, ReactNode> = {
+    background: background && plan.background && !off.includes('set') && (
+      <PlanBackgroundView background={plan.background} />
+    ),
+    grid: grid && <GridDots step={grid} />,
+    walls: !off.includes('set') && <PlanWallsView plan={plan} />,
+    roomSizes: roomSizes && <RoomSizes plan={plan} hidden={off} />,
+    low: stack
+      .filter((e) => e.tier < 2)
+      .map((e) => <StackItem key={e.item.id} entry={e} plan={plan} />),
+    beams: icons.map((icon) => (
+      <PlanBeamView key={`c${icon.id}`} icon={icon} sensor={plan.sensor} />
+    )),
+    moves:
+      moves &&
+      icons.map((icon) => (
+        <BlockingView key={`b${icon.id}`} icon={icon} ghosts={ghosts} route={route} />
+      )),
+    high: stack
+      .filter((e) => e.tier >= 2)
+      .map((e) => <StackItem key={e.item.id} entry={e} plan={plan} />),
+    numbers:
+      moves &&
+      icons.map((icon) => <BlockingNumbers key={`n${icon.id}`} icon={icon} route={route} />),
+    labels: icons.map((icon) => (
+      <PlanLabel key={`l${icon.id}`} icon={icon} lifted={lifted?.has(icon.id)} />
+    )),
+  };
   return (
     // biome-ignore lint/a11y/noSvgWithoutTitle: named by aria-label in the editor, hidden elsewhere.
     <svg
@@ -828,33 +862,8 @@ const PlanDrawingView = memo(function PlanDrawingView({
       style={{ aspectRatio: String(PLAN_ASPECT) }}
       {...(label ? { role: 'group', 'aria-label': label } : { 'aria-hidden': true })}
     >
-      {background && plan.background && !off.includes('set') && (
-        <PlanBackgroundView background={plan.background} />
-      )}
-      {grid && <GridDots step={grid} />}
-      {!off.includes('set') && <PlanWallsView plan={plan} />}
-      {roomSizes && <RoomSizes plan={plan} hidden={off} />}
-      {stack
-        .filter((e) => e.tier < 2)
-        .map((e) => (
-          <StackItem key={e.item.id} entry={e} plan={plan} />
-        ))}
-      {icons.map((icon) => (
-        <PlanBeamView key={`c${icon.id}`} icon={icon} sensor={plan.sensor} />
-      ))}
-      {moves &&
-        icons.map((icon) => (
-          <BlockingView key={`b${icon.id}`} icon={icon} ghosts={ghosts} route={route} />
-        ))}
-      {stack
-        .filter((e) => e.tier >= 2)
-        .map((e) => (
-          <StackItem key={e.item.id} entry={e} plan={plan} />
-        ))}
-      {moves &&
-        icons.map((icon) => <BlockingNumbers key={`n${icon.id}`} icon={icon} route={route} />)}
-      {icons.map((icon) => (
-        <PlanLabel key={`l${icon.id}`} icon={icon} lifted={lifted?.has(icon.id)} />
+      {PLAN_DRAW_ORDER.map((layer) => (
+        <Fragment key={layer}>{layers[layer]}</Fragment>
       ))}
       {children}
     </svg>

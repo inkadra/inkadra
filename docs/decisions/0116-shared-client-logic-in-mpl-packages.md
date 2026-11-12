@@ -39,9 +39,10 @@ rows of the Elements tab and the legend (`foldIcons`, `elementSections`, `itemNa
 were written inline in the read-only view and the PDF sheet); the card and the setups
 (`planTitle`, `planCardWords`, `scenesOfPlan`, `setupName`, `setupChanges`, `shotSetups`,
 `groupBySetup`, `dayBySetup`); the room's size (`roomSizeText`, `roomSize`); the geometry the
-board draws an icon and a shape with, in view units (`placedGlyph` with `glyphStroke` and
-`flattenPart`; `planShapeOutline` with `measureText` and `PLAN_TEXT_SIZES`; `beamStrength`),
-which the board's SVG and the exports both call. In
+board draws an icon and a shape with, in view units (`placedGlyph` with `glyphStroke`,
+`glyphStrokeFactor` and `flattenPart`; `planShapeOutline` with `measureText` and
+`PLAN_TEXT_SIZES`), the beam's opacities (`beamStrength`, `beamOpacity`) and the order of a plan's
+layers (`PLAN_DRAW_ORDER`), which the board's SVG and the exports both call. In
 `packages/shared`: the sun (`sunPosition`, `sunBearingByClock`, `sunTimes`, `locationCoords`,
 `sunDays`, `northWay`, `sunRotation`, and `sunFrom`, `sunHeight`, `sunDate`, taken out of the
 web's sun section).
@@ -99,7 +100,8 @@ Stays in the web or the server for now; each moves when a second client needs it
 Exports and the board draw a plan alike but not the same, and the move kept both as they were:
 exports stroke glyphs thinner (their own width rule, dashes in stroke widths), print an arrow's
 head filled and shorter, write texts, a zone's name and a measure's length level and in their
-own sizes, and leave a measure level. `placedGlyph` and `planShapeOutline` give the board's
+own sizes, leave a measure level, fill a beam flat where the board shades it, stack four discs
+for a glow the board fades, and print the rooms' sizes with the labels, after the numbers. `placedGlyph` and `planShapeOutline` give the board's
 drawing; exports take their points and keep their own widths and texts. Making exports match
 the board is a change to what they print, for its own PR.
 

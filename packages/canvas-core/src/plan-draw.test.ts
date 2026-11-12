@@ -2,11 +2,12 @@
 import { PLAN_ICON_KINDS, type PlanIcon, type PlanShape } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import type { Point } from './geometry.ts';
-import { iconPoint, iconTransform } from './plan.ts';
+import { beamOpacity, beamStrength, iconPoint, iconTransform } from './plan.ts';
 import {
-  beamStrength,
   glyphStroke,
+  glyphStrokeFactor,
   measureText,
+  PLAN_DRAW_ORDER,
   placedGlyph,
   planShapeOutline,
 } from './plan-draw.ts';
@@ -109,11 +110,46 @@ describe('placedGlyph', () => {
   });
 });
 
-describe('beamStrength', () => {
+describe('glyphStrokeFactor', () => {
+  it('widens a small icon’s strokes 1.6 times, then less as it grows', () => {
+    expect(glyphStrokeFactor(0.5)).toBe(1.6);
+    expect(glyphStrokeFactor(1.0625)).toBeCloseTo(1.6);
+    expect(glyphStrokeFactor(2)).toBe(0.85);
+    expect(glyphStrokeFactor(4) * 4).toBeCloseTo(1.7);
+    expect(glyphStroke({ sx: 2, sy: 2 })).toBeCloseTo(DEFAULT_GLYPH_STROKE * 0.85);
+  });
+});
+
+describe('beam opacities', () => {
   it('reads the intensity, 0.8 when not set', () => {
     expect(beamStrength({})).toBeCloseTo(0.188);
     expect(beamStrength({ intensity: 0 })).toBeCloseTo(0.06);
     expect(beamStrength({ intensity: 1 })).toBeCloseTo(0.22);
+  });
+
+  it('fills a beam by its intensity and a camera’s cone at 0.14, edged at 0.35 and 0.5', () => {
+    expect(beamOpacity({ intensity: 0.5 }, true)).toEqual({
+      fill: beamStrength({ intensity: 0.5 }),
+      stroke: 0.35,
+    });
+    expect(beamOpacity({ intensity: 0.5 }, false)).toEqual({ fill: 0.14, stroke: 0.5 });
+  });
+});
+
+describe('PLAN_DRAW_ORDER', () => {
+  it('draws walls first, beams between the low and the high items, labels last', () => {
+    expect(PLAN_DRAW_ORDER).toEqual([
+      'background',
+      'grid',
+      'walls',
+      'roomSizes',
+      'low',
+      'beams',
+      'moves',
+      'high',
+      'numbers',
+      'labels',
+    ]);
   });
 });
 

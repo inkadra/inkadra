@@ -2,6 +2,7 @@
 import {
   arrowGeometry,
   arrowPolyline,
+  beamOpacity,
   beamStrength,
   beamWarmth,
   blockingCurve,
@@ -11,6 +12,7 @@ import {
   DEFAULT_GLYPH_STROKE,
   decodeStroke,
   flattenGlyph,
+  glyphStrokeFactor,
   iconCone,
   iconGlow,
   iconGlyph,
@@ -20,8 +22,10 @@ import {
   measureEnds,
   measureText,
   openingLines,
+  PLAN_DRAW_ORDER,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
+  type PlanDrawLayer,
   type PlanStackEntry,
   type Point,
   pieceOutline,
@@ -1062,8 +1066,21 @@ export function planOps(
   const at = (x: number, y: number) => ({ x: box.x + x * k, y: box.y + y * k });
   const flat = (pts: ReadonlyArray<{ x: number; y: number }>) =>
     pts.flatMap((p) => [box.x + p.x * k, box.y + p.y * k]);
-  const inside: Op[] = [];
-  const labels: Op[] = [];
+  // The layers in canvas-core's order (decision 0116); exports print the rooms' sizes with the
+  // labels, after the numbers, and draw no background or grid.
+  const layers: Record<PlanDrawLayer, Op[]> = {
+    background: [],
+    grid: [],
+    walls: [],
+    roomSizes: [],
+    low: [],
+    beams: [],
+    moves: [],
+    high: [],
+    numbers: [],
+    labels: [],
+  };
+  const labels = layers.labels;
   // Walls and their openings, on the Set layer (decision 0104).
   if (!el.hiddenLayers?.includes('set')) {
     const wallInk = ink(PLAN_INK);
@@ -1072,14 +1089,14 @@ export function planOps(
     // A closed room's floor, tinted under everything (audit L1).
     for (const wall of el.walls ?? [])
       if (wall.closed)
-        inside.push({
+        layers.walls.push({
           kind: 'polygon',
           points: flat(wallPoints(wall)),
           fill: mix(c['text-primary'], c['surface-1'], FLOOR_TINT),
         });
     for (const wall of el.walls ?? [])
       for (const piece of wallPieces(wall, openings))
-        inside.push({
+        layers.walls.push({
           kind: 'polygon',
           points: flat(pieceOutline(piece, wall.thickness)),
           fill: wallInk,
@@ -1130,9 +1147,9 @@ export function planOps(
       for (const line of openingLines(wall, o)) {
         const pts = line.points.map((p) => at(p.x, p.y));
         const w = (line.leaf ? 2.9 : 1.6) * k;
-        if (line.dashed) inside.push(...dashes(pts, 4 * k, 4 * k, wallInk, w));
+        if (line.dashed) layers.walls.push(...dashes(pts, 4 * k, 4 * k, wallInk, w));
         else
-          inside.push({
+          layers.walls.push({
             kind: 'polyline',
             points: pts.flatMap((p) => [p.x, p.y]),
             color: wallInk,
@@ -1153,10 +1170,10 @@ export function planOps(
     const icon = e.item as PlanIcon;
     return iconOps(icon, ink(icon.color), 1, true);
   };
-  for (const e of stack) if (e.tier < 2) inside.push(...itemOps(e));
-  for (const icon of beams ? shownIcons : []) inside.push(...beamOps(icon));
+  for (const e of stack) if (e.tier < 2) layers.low.push(...itemOps(e));
+  for (const icon of beams ? shownIcons : []) layers.beams.push(...beamOps(icon));
   // Blocking: the moves, the veiled earlier positions and the numbers (round 6, d).
-  const numbers: Op[] = [];
+  const numbers = layers.numbers;
   for (const icon of moves ? shownIcons : []) {
     const steps = icon.steps ?? [];
     if (steps.length === 0) continue;
@@ -1178,15 +1195,20 @@ export function planOps(
       )
         pts.pop();
       const w = 2.5 * k;
-      if (icon.dashed) inside.push(...dashes(pts, 10 * k, 8 * k, color, w));
+      if (icon.dashed) layers.moves.push(...dashes(pts, 10 * k, 8 * k, color, w));
       else
-        inside.push({ kind: 'polyline', points: pts.flatMap((p) => [p.x, p.y]), color, width: w });
+        layers.moves.push({
+          kind: 'polyline',
+          points: pts.flatMap((p) => [p.x, p.y]),
+          color,
+          width: w,
+        });
       const end = pts.at(-1) as { x: number; y: number };
       const prev = pts.at(-2) as { x: number; y: number };
-      inside.push(head(prev.x, prev.y, end.x, end.y, 14 * k, color));
+      layers.moves.push(head(prev.x, prev.y, end.x, end.y, 14 * k, color));
     }
     for (const step of steps)
-      inside.push(
+      layers.moves.push(
         ...iconOps(
           { ...icon, x: step.x, y: step.y, rotation: step.rotation ?? 0 },
           color,
@@ -1218,8 +1240,9 @@ export function planOps(
       );
     });
   }
-  for (const e of stack) if (e.tier >= 2) inside.push(...itemOps(e));
-  inside.push(...numbers, ...(beams ? labels : []));
+  for (const e of stack) if (e.tier >= 2) layers.high.push(...itemOps(e));
+  if (!beams) layers.labels = [];
+  const inside = PLAN_DRAW_ORDER.flatMap((layer) => layers[layer]);
   return [{ kind: 'clip', ...(clipTo ?? box), ops: inside }];
 
   /**
@@ -1232,6 +1255,7 @@ export function planOps(
     const warmth = icon.kind === 'camera' ? null : beamWarmth(icon.kelvin);
     const color = warmth === null ? ink(icon.color) : mix(c['tag-orange'], c['tag-blue'], warmth);
     const shade = beamStrength(icon);
+    const opacity = beamOpacity(icon, cone?.beam ?? false);
     if (glow) {
       // A soft glow, as the screen's radial one (audit SH3): discs stacked from the rim inwards,
       // each faint, so the shade falls off towards the edge.
@@ -1255,12 +1279,12 @@ export function planOps(
         kind: 'polygon',
         points: pts.flatMap((p) => [p.x, p.y]),
         fill: color,
-        opacity: cone.beam ? shade : 0.14,
+        opacity: opacity.fill,
       },
       {
         kind: 'polyline',
         points: [...pts, pts[0] as { x: number; y: number }].flatMap((p) => [p.x, p.y]),
-        color: mix(color, c['surface-1'], cone.beam ? 0.35 : 0.5),
+        color: mix(color, c['surface-1'], opacity.stroke),
         width: 1.5 * k,
       },
     ];
@@ -1271,7 +1295,7 @@ export function planOps(
     const out: Op[] = [];
     const color = veil < 1 ? mix(base, c['surface-1'], veil) : base;
     const t = iconTransform(icon);
-    const width = Math.min(1.6, 1.7 / Math.sqrt(t.sx * t.sy)) * Math.sqrt(t.sx * t.sy) * k;
+    const width = glyphStrokeFactor(Math.sqrt(t.sx * t.sy)) * Math.sqrt(t.sx * t.sy) * k;
     const paper = c['surface-1'];
     // The glyph's parts placed by canvas-core (decision 0116). shortcut: exports keep their own
     // stroke widths and dashes, from the glyph's widths, thinner than the board's; drop the

@@ -12,18 +12,44 @@ import { DEFAULT_GLYPH_STROKE, type FlatPart, flattenPart, iconGlyph } from './p
 /** Font sizes of a plan's texts, S, M and L, in view units. */
 export const PLAN_TEXT_SIZES = { S: 14, M: 18, L: 26 } as const;
 
-/** How dense a light's beam or glow is drawn: its intensity, 0.8 when not set. */
-export function beamStrength(icon: Pick<PlanIcon, 'intensity'>): number {
-  return 0.06 + 0.16 * (icon.intensity ?? 0.8);
+/**
+ * How much a glyph's stroke is widened for an icon drawn at `scale` (view units per glyph unit,
+ * the mean of its two axes): 1.6 for a small icon, then less as it grows (1.7 / scale), so a large
+ * icon is not drawn in heavy lines. The board strokes the parts without a width of their own at
+ * DEFAULT_GLYPH_STROKE times this, in glyph units (glyphStroke); exports at this times `scale`
+ * view units, times the part's width / DEFAULT_GLYPH_STROKE (their lines are thinner).
+ */
+export function glyphStrokeFactor(scale: number): number {
+  return Math.min(1.6, 1.7 / scale);
+}
+
+/** The board's stroke of the glyph parts without a width of their own, in glyph units. */
+export function glyphStroke(t: Pick<ReturnType<typeof iconTransform>, 'sx' | 'sy'>): number {
+  return DEFAULT_GLYPH_STROKE * glyphStrokeFactor(Math.sqrt(t.sx * t.sy));
 }
 
 /**
- * Stroke width of the glyph parts of an icon that have no width of their own, in glyph units:
- * it eases off as the icon grows, so a large icon is not drawn in heavy lines.
+ * The layers of a plan's drawing, bottom to top, as the board draws them (decisions 0104, 0110,
+ * 0119): the background picture, the editor's grid, the walls (floors, pieces, openings), the
+ * rooms' sizes, the items of tiers 0 and 1, the beams, cones and glows, the blocking moves (and
+ * veiled earlier positions), the items of tiers 2 to 5, the blocking numbers, the labels.
+ * Within `low` and `high` the items go in planStack's order (`tier < 2` and `tier >= 2`), which
+ * mixes strokes, shapes and icons; measures and zones are items like the others. Exports draw
+ * no background or grid, and print the rooms' sizes with the labels, after the numbers.
  */
-export function glyphStroke(t: Pick<ReturnType<typeof iconTransform>, 'sx' | 'sy'>): number {
-  return DEFAULT_GLYPH_STROKE * Math.min(1.6, 1.7 / Math.sqrt(t.sx * t.sy));
-}
+export const PLAN_DRAW_ORDER = [
+  'background',
+  'grid',
+  'walls',
+  'roomSizes',
+  'low',
+  'beams',
+  'moves',
+  'high',
+  'numbers',
+  'labels',
+] as const;
+export type PlanDrawLayer = (typeof PLAN_DRAW_ORDER)[number];
 
 /** A part of an icon's glyph placed on the plan. */
 export interface PlacedPart extends Omit<FlatPart, 'points'> {
