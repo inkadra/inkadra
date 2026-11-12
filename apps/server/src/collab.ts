@@ -19,6 +19,7 @@ import * as Y from 'yjs';
 import { type Actor, atLeast, boardRole } from './access.ts';
 import { adminEnrollmentRequired } from './admin-two-factor.ts';
 import type { Auth } from './auth.ts';
+import { noteWriter, type PendingWriters, storeWriters } from './board-writers.ts';
 import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
@@ -73,21 +74,38 @@ export function writeRefusal(state: {
 }
 
 /**
- * Whether an update holds items the document does not have, from the clocks alone: no walk of
- * the document. Deletions alone are not seen; the next edit with content is.
+ * The client ids under which an update holds items the document does not have, each with the
+ * last clock it holds, from the clocks alone: no walk of the document. Deletions alone are not
+ * seen; the next edit with content is. Items the document holds while they wait for others
+ * (Yjs's pending structs, which sync passes on to clients) count as had.
  */
-function addsItems(document: Y.Doc, update: Uint8Array): boolean {
-  let to: Map<number, number>;
+function newItems(document: Y.Doc, update: Uint8Array): Array<[client: number, clock: number]> {
+  let sent: { from: Map<number, number>; to: Map<number, number> };
+  let waiting: typeof sent | null = null;
   try {
-    to = Y.parseUpdateMeta(update).to;
+    sent = Y.parseUpdateMeta(update);
+    const pending = document.store.pendingStructs;
+    // Yjs keeps them in its second update format.
+    if (pending) waiting = Y.parseUpdateMetaV2(pending.update);
   } catch {
-    return false;
+    return [];
   }
-  if (to.size === 0) return false;
+  if (sent.to.size === 0) return [];
   const have = Y.decodeStateVector(Y.encodeStateVector(document));
-  for (const [client, clock] of to) if (clock > (have.get(client) ?? 0)) return true;
-  return false;
+  // Whether the clocks sent, [from, to), are all integrated or waiting: [0, have) ∪ [wFrom, wTo).
+  const held = (client: number, to: number) => {
+    const integrated = have.get(client) ?? 0;
+    if (to <= integrated) return true;
+    const wFrom = waiting?.from.get(client);
+    const wTo = waiting?.to.get(client);
+    if (wFrom === undefined || wTo === undefined || to > wTo) return false;
+    return wFrom <= integrated || (sent.from.get(client) ?? 0) >= wFrom;
+  };
+  return [...sent.to]
+    .filter(([client, to]) => !held(client, to))
+    .map(([client, to]) => [client, to - 1]);
 }
+const addsItems = (document: Y.Doc, update: Uint8Array) => newItems(document, update).length > 0;
 
 /** How often open connections are checked against the current roles (decision 0011). */
 export const ACCESS_RECHECK_MS = 30_000;
@@ -271,6 +289,13 @@ export function createCollabServer(deps: {
     Y.Doc,
     Map<string, { actorId: string; elementId: string; assigneeId: string }>
   >();
+  /** Who wrote under which client id since each board was last stored (decision 0120). */
+  const writers = new WeakMap<Y.Doc, PendingWriters>();
+  const writersOf = (document: Y.Doc) => {
+    const pending = writers.get(document) ?? new Map();
+    writers.set(document, pending);
+    return pending;
+  };
   let timer: NodeJS.Timeout | undefined;
 
   const server: Server<Context> = new Server<Context>({
@@ -420,9 +445,23 @@ export function createCollabServer(deps: {
         return;
       }
       await validateTaskUpdate(db, context.boardId, context.actor?.id, document, payload);
+      // Decision 0120: the ids this socket delivers new items under, read from what it sent.
+      // onChange sees the whole transaction, which can also integrate items another socket sent
+      // earlier that were waiting for theirs: those must not go on this account.
+      if (context.actor)
+        for (const [client, clock] of newItems(document, payload))
+          noteWriter(writersOf(document), client, context.actor.id, clock);
     },
 
     async onChange({ connection: from, document, context, update }) {
+      // The server's own writes (restores, clips, migrations) go under the document's id.
+      if (!from) {
+        let to: number | undefined;
+        try {
+          to = Y.parseUpdateMeta(update).to.get(document.clientID);
+        } catch {}
+        if (to !== undefined) noteWriter(writersOf(document), document.clientID, null, to - 1);
+      }
       // Checked on every change a client makes, so a board never grows far past the caps in
       // memory before the next store; the store measures it again.
       if (limits && from && !frozen.has(document)) {
@@ -483,6 +522,15 @@ export function createCollabServer(deps: {
           target: boardDoc.boardId,
           set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
         });
+      // Best effort (decision 0120): a failure loses who wrote, never the document.
+      const written = writers.get(document);
+      writers.delete(document);
+      if (written)
+        try {
+          await storeWriters(db, boardId, written, deps.now?.() ?? new Date());
+        } catch (err) {
+          log.error({ err, boardId }, 'board writers not recorded');
+        }
       for (const [key, value] of pending) {
         if (pendingAssignments.get(document)?.get(key) === value)
           pendingAssignments.get(document)?.delete(key);

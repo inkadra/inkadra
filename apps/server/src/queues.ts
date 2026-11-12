@@ -24,6 +24,7 @@ import {
   BoardEditNotStarted,
   type BoardWriter,
 } from './board-writer.ts';
+import { pruneWriters } from './board-writers.ts';
 import { VERSION } from './config.ts';
 import type { Database } from './db/client.ts';
 import { asset, clientAsset, creationRequest } from './db/schema.ts';
@@ -324,7 +325,10 @@ export async function startWorkers(
         return { removed: keys.length };
       }
       if (job.name === 'purge-uploads') return purgeUploads(deps.db, deps.storage, queues.jobs);
-      if (job.name === 'version-retention') return applyVersionRetention(deps.db);
+      if (job.name === 'version-retention') {
+        const versions = await applyVersionRetention(deps.db);
+        return { ...versions, writers: (await pruneWriters(deps.db)).removed };
+      }
       if (job.name === 'purge-notifications') return purgeNotifications(deps.db);
       if (job.name === 'access-expiry') return sweepAccessExpiry(deps.db);
       // Asks GitHub only when the stored answer is 6 hours old, or 15 minutes after a failure.
