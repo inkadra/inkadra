@@ -14,6 +14,7 @@ import {
   IconButton,
   Radio,
   Select,
+  type SelectOption,
   TextField,
 } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
@@ -42,6 +43,40 @@ function relative(value: string, locale: string): string {
     if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit);
   }
   return format.format(0, 'minute');
+}
+
+/** The «Creates projects» value of a member: the instance default, or their own yes or no. */
+export function projectCreationValue(override: boolean | null | undefined) {
+  return override === true ? 'yes' : override === false ? 'no' : 'default';
+}
+
+/**
+ * The «Creates projects» choices: the column names the setting, so a value is one short word;
+ * the default also shows the instance rule (· yes), hidden in the menu, where a line explains it.
+ */
+export function projectCreationOptions(
+  t: (key: string) => string,
+  instanceAllows: boolean,
+): SelectOption[] {
+  return [
+    {
+      value: 'default',
+      label: (
+        <>
+          {t('projectCreation.default')}
+          <span className="team-create__current">
+            {' · '}
+            {t(instanceAllows ? 'projectCreation.currentYes' : 'projectCreation.currentNo')}
+          </span>
+        </>
+      ),
+      description: t(
+        instanceAllows ? 'projectCreation.defaultHintYes' : 'projectCreation.defaultHintNo',
+      ),
+    },
+    { value: 'yes', label: t('projectCreation.yes'), description: t('projectCreation.yesHint') },
+    { value: 'no', label: t('projectCreation.no'), description: t('projectCreation.noHint') },
+  ];
 }
 
 export function Team() {
@@ -177,107 +212,122 @@ export function Team() {
           tour="users"
           title={t('admin.membersCount', { count: members.length })}
         >
-          {filtered?.map((m) => {
-            const last = m.role === 'admin' && !m.deactivatedAt && admins <= 1;
-            return (
-              <Row
-                key={m.id}
-                className={m.deactivatedAt ? 'team-member is-inactive' : 'team-member'}
-                leading={<Avatar name={m.name} image={m.image} size={32} />}
-                label={
-                  <>
-                    <span className="team-member__name">{m.name}</span>
-                    {m.id === user?.id && (
-                      <span className="settings-muted">· {t('settingsUi.members.you')}</span>
-                    )}
-                    {m.deactivatedAt && <Badge>{t('admin.inactive')}</Badge>}
-                  </>
-                }
-                help={
-                  <>
-                    <span className="team-member__meta">
-                      {[m.email, t('settingsUi.members.projects', { count: m.projectsCount })].join(
-                        ' · ',
-                      )}
-                      {' · '}
-                      {m.lastActiveAt ? (
-                        <time dateTime={m.lastActiveAt} title={date(m.lastActiveAt)}>
-                          {relative(m.lastActiveAt, i18n.language)}
-                        </time>
-                      ) : (
-                        t('admin.never')
-                      )}
-                    </span>
-                    <span className="team-col--space">
-                      <MemberSpace member={m} warnPercent={limits?.warnPercent ?? 80} />
-                    </span>
-                  </>
-                }
-              >
-                <Select
-                  className="ink-input team-role"
-                  aria-label={t('admin.roleFor', { name: m.name })}
-                  value={m.role}
-                  disabled={busy || last}
-                  data-ink-tooltip={last ? t('admin.lastAdmin') : undefined}
-                  onChange={(e) => void update(m.id, { role: e })}
-                >
-                  <option value="admin">{t('admin.roles.admin')}</option>
-                  <option value="member">{t('admin.roles.member')}</option>
-                </Select>
-                {m.role === 'admin' ? (
-                  <span className="settings-muted team-create">
-                    {t('projectCreation.column')}: {t('projectCreation.always')}
-                  </span>
-                ) : (
-                  <Select
-                    className="ink-input team-role team-create"
-                    aria-label={t('projectCreation.for', { name: m.name })}
-                    value={
-                      m.canCreateProjectsOverride === true
-                        ? 'yes'
-                        : m.canCreateProjectsOverride === false
-                          ? 'no'
-                          : 'default'
-                    }
-                    disabled={busy}
-                    onChange={(e) =>
-                      void update(m.id, {
-                        canCreateProjects: e === 'default' ? null : e === 'yes',
-                      })
+          {filtered !== undefined && filtered.length > 0 && (
+            // Aligned columns with a header (decision 0124); on a phone each row wraps under
+            // the name and the header is read only by screen readers.
+            <div
+              role="table"
+              className="team-table"
+              aria-label={t('admin.membersCount', { count: members.length })}
+            >
+              <div role="row" className="team-head">
+                <span role="columnheader">{t('settingsUi.members.person')}</span>
+                <span role="columnheader">{t('settingsUi.members.space')}</span>
+                <span role="columnheader">{t('admin.role')}</span>
+                <span role="columnheader">{t('projectCreation.column')}</span>
+                <span role="columnheader">
+                  <span className="ink-sr-only">{t('settingsUi.members.actions')}</span>
+                </span>
+              </div>
+              {filtered.map((m) => {
+                const last = m.role === 'admin' && !m.deactivatedAt && admins <= 1;
+                const meta = [
+                  m.email,
+                  t('settingsUi.members.projects', { count: m.projectsCount }),
+                  m.lastActiveAt ? relative(m.lastActiveAt, i18n.language) : t('admin.never'),
+                ].join(' · ');
+                return (
+                  <div
+                    role="row"
+                    key={m.id}
+                    className={
+                      m.deactivatedAt ? 'settings-row team-member is-inactive' : 'settings-row team-member'
                     }
                   >
-                    {(['default', 'yes', 'no'] as const).map((value) => (
-                      <option key={value} value={value}>
-                        {t('projectCreation.column')}:{' '}
-                        {t(
-                          value === 'yes'
-                            ? 'projectCreation.yes'
-                            : value === 'no'
-                              ? 'projectCreation.no'
-                              : settings?.membersCanCreateProjects === false
-                                ? 'projectCreation.defaultNo'
-                                : 'projectCreation.defaultYes',
-                        )}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-                <span className="team-col--actions">
-                  <MemberMenu
-                    member={m}
-                    disabled={busy}
-                    last={last}
-                    onSpace={() => setSpaceOf(m)}
-                    onFiles={() => setFilesOf(m)}
-                    onActive={() =>
-                      m.deactivatedAt ? void update(m.id, { active: true }) : setDeactivating(m)
-                    }
-                  />
-                </span>
-              </Row>
-            );
-          })}
+                    <div role="cell" className="team-col--who">
+                      <Avatar name={m.name} image={m.image} size={32} />
+                      <span className="settings-row__text">
+                        <span className="settings-row__label">
+                          <span className="team-member__name" title={m.name}>
+                            {m.name}
+                          </span>
+                          {m.id === user?.id && (
+                            <span className="settings-muted">· {t('settingsUi.members.you')}</span>
+                          )}
+                          {m.deactivatedAt && <Badge>{t('admin.inactive')}</Badge>}
+                        </span>
+                        <span className="settings-row__help team-member__meta" title={meta}>
+                          {m.email} · {t('settingsUi.members.projects', { count: m.projectsCount })}{' '}
+                          ·{' '}
+                          {m.lastActiveAt ? (
+                            <time dateTime={m.lastActiveAt} title={date(m.lastActiveAt)}>
+                              {relative(m.lastActiveAt, i18n.language)}
+                            </time>
+                          ) : (
+                            t('admin.never')
+                          )}
+                        </span>
+                      </span>
+                    </div>
+                    <div role="cell" className="team-col--space">
+                      <MemberSpace member={m} warnPercent={limits?.warnPercent ?? 80} />
+                    </div>
+                    <div role="cell" className="team-col--role">
+                      <Select
+                        variant="quiet"
+                        className="team-role"
+                        aria-label={t('admin.roleFor', { name: m.name })}
+                        value={m.role}
+                        disabled={busy || last}
+                        data-ink-tooltip={last ? t('admin.lastAdmin') : undefined}
+                        onChange={(e) => void update(m.id, { role: e })}
+                      >
+                        <option value="admin">{t('admin.roles.admin')}</option>
+                        <option value="member">{t('admin.roles.member')}</option>
+                      </Select>
+                    </div>
+                    <div role="cell" className="team-col--create">
+                      {m.role === 'admin' ? (
+                        <span className="settings-muted team-create">
+                          <span className="ink-sr-only">{t('projectCreation.column')}: </span>
+                          {t('projectCreation.always')}
+                        </span>
+                      ) : (
+                        <Select
+                          variant="quiet"
+                          className="team-role team-create"
+                          aria-label={t('projectCreation.for', { name: m.name })}
+                          value={projectCreationValue(m.canCreateProjectsOverride)}
+                          options={projectCreationOptions(
+                            t,
+                            settings?.membersCanCreateProjects !== false,
+                          )}
+                          disabled={busy}
+                          onChange={(e) =>
+                            void update(m.id, {
+                              canCreateProjects: e === 'default' ? null : e === 'yes',
+                            })
+                          }
+                        />
+                      )}
+                    </div>
+                    <div role="cell" className="team-col--actions">
+                      <MemberMenu
+                        member={m}
+                        disabled={busy}
+                        last={last}
+                        onSpace={() => setSpaceOf(m)}
+                        onFiles={() => setFilesOf(m)}
+                        onActive={() =>
+                          m.deactivatedAt ? void update(m.id, { active: true }) : setDeactivating(m)
+                        }
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {filtered?.length === 0 && <p className="settings-card__empty">{t('admin.noMembers')}</p>}
         </Card>
       )}
@@ -450,7 +500,7 @@ function InviteDialog({
   );
 }
 
-/** The Spazio column: what a person uses over their limit, with a short bar. */
+/** The Spazio column: what a person uses, over their limit and with a short bar if they have one. */
 function MemberSpace({ member, warnPercent }: { member: InstanceMember; warnPercent: number }) {
   const { t, i18n } = useTranslation();
   if (member.storageBytes === undefined) return null;
@@ -460,15 +510,14 @@ function MemberSpace({ member, warnPercent }: { member: InstanceMember; warnPerc
   return (
     <span className="space-mini">
       <span>
-        {size(member.storageBytes)}{' '}
-        <em>
-          /{' '}
-          {limit === null
-            ? t('storageSpace.unlimitedShort')
-            : own
-              ? t('storageSpace.own', { size: size(limit) })
-              : size(limit)}
-        </em>
+        {size(member.storageBytes)}
+        {/* Without a limit the size stands alone: no «/ unlimited» repeated on every row. */}
+        {limit !== null && (
+          <>
+            {' '}
+            <em>/ {own ? t('storageSpace.own', { size: size(limit) }) : size(limit)}</em>
+          </>
+        )}
       </span>
       {limit !== null && (
         <SpaceMeter

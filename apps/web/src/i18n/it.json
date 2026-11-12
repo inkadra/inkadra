@@ -3770,7 +3770,10 @@
       "allStatuses": "Tutti gli stati",
       "invitations": "Inviti in attesa",
       "projects_one": "{{count}} progetto",
-      "projects_other": "{{count}} progetti"
+      "projects_other": "{{count}} progetti",
+      "person": "Persona",
+      "space": "Spazio",
+      "actions": "Azioni"
     },
     "storage": {
       "used": "Spazio usato",
@@ -4631,10 +4634,15 @@
     "column": "Crea progetti",
     "always": "Sempre",
     "for": "Può creare progetti: {{name}}",
-    "defaultYes": "Come l’istanza (sì)",
-    "defaultNo": "Come l’istanza (no)",
     "yes": "Sì",
-    "no": "No"
+    "no": "No",
+    "default": "Predefinito",
+    "currentYes": "sì",
+    "currentNo": "no",
+    "defaultHintYes": "Come l’istanza: ora sì",
+    "defaultHintNo": "Come l’istanza: ora no",
+    "yesHint": "Sempre, anche se l’istanza cambia",
+    "noHint": "Solo i progetti a cui ha un invito"
   },
   "story": {
     "close": "Chiudi la scheda",

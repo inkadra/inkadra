@@ -3770,7 +3770,10 @@
       "allStatuses": "Tous les états",
       "invitations": "Invitations en attente",
       "projects_one": "{{count}} projet",
-      "projects_other": "{{count}} projets"
+      "projects_other": "{{count}} projets",
+      "person": "Personne",
+      "space": "Espace",
+      "actions": "Actions"
     },
     "storage": {
       "used": "Espace utilisé",
@@ -4631,10 +4634,15 @@
     "column": "Crée des projets",
     "always": "Toujours",
     "for": "Peut créer des projets : {{name}}",
-    "defaultYes": "Comme l’instance (oui)",
-    "defaultNo": "Comme l’instance (non)",
     "yes": "Oui",
-    "no": "Non"
+    "no": "Non",
+    "default": "Par défaut",
+    "currentYes": "oui",
+    "currentNo": "non",
+    "defaultHintYes": "Comme l’instance : oui pour l’instant",
+    "defaultHintNo": "Comme l’instance : non pour l’instant",
+    "yesHint": "Toujours, même si l’instance change",
+    "noHint": "Uniquement les projets sur invitation"
   },
   "story": {
     "close": "Fermer la fiche",

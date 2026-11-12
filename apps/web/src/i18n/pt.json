@@ -3770,7 +3770,10 @@
       "allStatuses": "Todos os status",
       "invitations": "Convites pendentes",
       "projects_one": "{{count}} projeto",
-      "projects_other": "{{count}} projetos"
+      "projects_other": "{{count}} projetos",
+      "person": "Pessoa",
+      "space": "Espaço",
+      "actions": "Ações"
     },
     "storage": {
       "used": "Espaço usado",
@@ -4631,10 +4634,15 @@
     "column": "Cria projetos",
     "always": "Sempre",
     "for": "Pode criar projetos: {{name}}",
-    "defaultYes": "Como a instância (sim)",
-    "defaultNo": "Como a instância (não)",
     "yes": "Sim",
-    "no": "Não"
+    "no": "Não",
+    "default": "Predefinido",
+    "currentYes": "sim",
+    "currentNo": "não",
+    "defaultHintYes": "Como a instância: agora sim",
+    "defaultHintNo": "Como a instância: agora não",
+    "yesHint": "Sempre, mesmo que a instância mude",
+    "noHint": "Apenas projetos com convite"
   },
   "story": {
     "close": "Fechar a ficha",

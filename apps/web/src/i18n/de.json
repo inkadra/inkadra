@@ -3770,7 +3770,10 @@
       "allStatuses": "Alle Status",
       "invitations": "Offene Einladungen",
       "projects_one": "{{count}} Projekt",
-      "projects_other": "{{count}} Projekte"
+      "projects_other": "{{count}} Projekte",
+      "person": "Person",
+      "space": "Speicher",
+      "actions": "Aktionen"
     },
     "storage": {
       "used": "Belegter Speicher",
@@ -4631,10 +4634,15 @@
     "column": "Erstellt Projekte",
     "always": "Immer",
     "for": "Kann Projekte erstellen: {{name}}",
-    "defaultYes": "Wie die Instanz (ja)",
-    "defaultNo": "Wie die Instanz (nein)",
     "yes": "Ja",
-    "no": "Nein"
+    "no": "Nein",
+    "default": "Standard",
+    "currentYes": "ja",
+    "currentNo": "nein",
+    "defaultHintYes": "Wie die Instanz: derzeit ja",
+    "defaultHintNo": "Wie die Instanz: derzeit nein",
+    "yesHint": "Immer, auch wenn sich die Instanz ändert",
+    "noHint": "Nur Projekte mit Einladung"
   },
   "story": {
     "close": "Karte schließen",
