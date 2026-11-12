@@ -147,7 +147,7 @@ export function sceneSheets(input: SheetInput): SceneSheet[] {
       ? [
           ...new Set(
             day.blocks
-              .filter((b) => b.shotId && frameIds.has(b.shotId))
+              .filter((b) => (b.shotId && frameIds.has(b.shotId)) || b.sceneId === scene.id)
               .flatMap((b) => b.departments.map((d) => d.trim()).filter(Boolean)),
           ),
         ]

@@ -180,6 +180,52 @@ export function scheduleTimes(day: Pick<ShootingDayInput, 'callTime' | 'blocks'>
   });
 }
 
+type BlockRefs = Pick<
+  ScheduleBlock,
+  'type' | 'shotId' | 'shotBoardId' | 'sceneId' | 'sceneBoardId'
+>;
+
+/**
+ * What a block plans and the board whose document holds it (decision 0123): a shot block its
+ * frame, a scene block its scene. A block without a board id belongs to the day's own board
+ * (days from before). Null when it names nothing.
+ */
+export function blockTarget(
+  block: Partial<BlockRefs>,
+  dayBoardId: string,
+): { kind: 'shot' | 'scene'; boardId: string; id: string } | null {
+  if (block.shotId)
+    return { kind: 'shot', boardId: block.shotBoardId ?? dayBoardId, id: block.shotId };
+  if (block.type === 'scene' && block.sceneId)
+    return { kind: 'scene', boardId: block.sceneBoardId ?? dayBoardId, id: block.sceneId };
+  return null;
+}
+
+/** One key for a frame or a scene of a board: element ids are unique only inside a document. */
+export const targetKey = (boardId: string, id: string) => `${boardId}/${id}`;
+
+/**
+ * The days as one board reads them (decision 0123): every day, so days keep their numbers and
+ * their times, with the frames and scenes of other boards taken out of the blocks. A storyboard
+ * reads the Production board's days this way, or its own days while the project has none.
+ */
+export function daysForBoard<
+  D extends { boardId: string; blocks: ReadonlyArray<Partial<BlockRefs>> },
+>(days: readonly D[], boardId: string): D[] {
+  return days.map((day) => {
+    if (day.blocks.every((b) => (blockTarget(b, day.boardId)?.boardId ?? boardId) === boardId))
+      return day;
+    return {
+      ...day,
+      blocks: day.blocks.map((b) => {
+        if ((blockTarget(b, day.boardId)?.boardId ?? boardId) === boardId) return b;
+        const { sceneId: _, ...rest } = b;
+        return { ...rest, shotId: null };
+      }),
+    };
+  });
+}
+
 /** Cast names are free text; the same person matches whatever the case or surrounding spaces. */
 export const castNameKey = (name: string) => name.trim().toLowerCase();
 

@@ -8,7 +8,14 @@ import {
 } from '@inkadra/canvas-core';
 import { aspectValue, type Element, getBoardAspect, hiddenFromGuests } from '@inkadra/doc-schema';
 import { planSheetInput, slugline as sceneSlugline } from '@inkadra/print';
-import type { Asset, AssetTrack, Board, CommentThread, ShotCatalogKey } from '@inkadra/shared';
+import type {
+  Asset,
+  AssetTrack,
+  Board,
+  CommentThread,
+  ShootingDay,
+  ShotCatalogKey,
+} from '@inkadra/shared';
 import { light } from '@inkadra/ui/tokens';
 import type { TFunction } from 'i18next';
 import { getClassifications, shotText } from '../../lib/classifications.ts';
@@ -107,7 +114,9 @@ export type ExportWhat =
   | 'shotlist'
   | 'scenesheets'
   /** The sheet of a set plan (decision 0111), from its editor or its read-only view. */
-  | 'setplan';
+  | 'setplan'
+  /** The call sheet of every shooting day: the Production board's Export (decision 0123). */
+  | 'callsheets';
 
 export interface ExportRequest {
   format: ExportFormat;
@@ -158,6 +167,17 @@ export interface ExportEnv {
   scope?: { projectId: string; boardId: string } | undefined;
   /** The project's clock for sunrise and sunset on the call sheet; the device's when none. */
   timeZone?: string | undefined;
+  /**
+   * The cards and frame labels of every storyboard the Production board read (decision 0123):
+   * its call sheets read each block's frame from its own storyboard.
+   */
+  across?:
+    | {
+        labels: ReadonlyMap<string, string>;
+        /** The cards of the storyboards a day plans, the first in tree order winning. */
+        elementsOf: (day: ShootingDay) => ReadonlyMap<string, Element>;
+      }
+    | undefined;
   threads: readonly CommentThread[];
   /** Review status of the cards (decision 0013), for "approved frames only". */
   reviews?: ReadonlyMap<string, { status: string }> | undefined;
@@ -225,13 +245,19 @@ function thumbnailPixels(req: ExportRequest, preview: boolean): number {
 }
 
 export function kindOf(what: ExportWhat): ExportKind {
-  return what === 'storyboard' || what === 'shotlist' || what === 'scenesheets' ? what : 'board';
+  return what === 'storyboard' ||
+    what === 'shotlist' ||
+    what === 'scenesheets' ||
+    what === 'callsheets'
+    ? what
+    : 'board';
 }
 
 /** What the title page and the PDF's subject call the content. */
 function kindLabel(kind: ExportKind, t: TFunction): string {
   if (kind === 'board') return t('export.kindBoard');
   if (kind === 'scenesheets') return t('export.whatScenesheets');
+  if (kind === 'callsheets') return t('export.whatCallsheets');
   return t(`film.views.${kind}`);
 }
 
@@ -394,7 +420,7 @@ export async function buildPages(
   const shownIds = new Set<string>();
   // Shooting days come from the server, once per preview.
   const fetchPlanning = (): Promise<Planning> =>
-    env.scope ? loadPlanning(env.scope.boardId) : Promise.resolve({ days: [] });
+    env.scope ? loadPlanning(env.scope.boardId, env.boards) : Promise.resolve({ days: [] });
   const planningOnce = async () => {
     const planning = preview
       ? await env.cache.once('planning', fetchPlanning)
@@ -471,6 +497,9 @@ export async function buildPages(
     } else {
       content = [boardPage(asImage ? 'fit' : setup, items, region ?? empty, ctx)];
     }
+  } else if (kind === 'callsheets') {
+    // Only the call sheets, below.
+    summary = t('export.whatCallsheets');
   } else if (kind === 'scenesheets') {
     // The storyboard as this export may show it: scenes and frames left out for clients go, and
     // the scenes the script left out unless asked for (decision 0082).
@@ -648,7 +677,7 @@ export async function buildPages(
   }
 
   // Call sheets last: shooting days come from the server.
-  if (req.callSheet && teamPdf(req)) {
+  if ((req.callSheet || kind === 'callsheets') && teamPdf(req)) {
     const planning = await planningOnce();
     // The roster is private team data (decision 0092): asked for the team call sheet only.
     const { crew, characters } = preview
@@ -665,10 +694,17 @@ export async function buildPages(
         ...callSheetPages(
           setup,
           heading,
-          callSheetSections(day, (id) => labels.get(id), t, snapshot.byId, crew, {
-            characters,
-            timeZone: env.timeZone,
-          }),
+          callSheetSections(
+            day,
+            (id) => (env.across?.labels ?? labels).get(id),
+            t,
+            env.across?.elementsOf(day) ?? snapshot.byId,
+            crew,
+            {
+              characters,
+              timeZone: env.timeZone,
+            },
+          ),
           ctx,
         ),
       );

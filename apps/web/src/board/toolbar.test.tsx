@@ -13,7 +13,7 @@ vi.mock('../lib/api.ts', () => ({
   api: { patch: vi.fn(async (_path: string, patch: unknown) => patch) },
 }));
 
-async function renderToolbar(onVoiceNote?: () => void) {
+async function renderToolbar(onVoiceNote?: () => void, onProduction?: () => void) {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
@@ -28,6 +28,7 @@ async function renderToolbar(onVoiceNote?: () => void) {
         onAdd={onAdd}
         onTool={onTool}
         onCanvas={onCanvas}
+        onProduction={onProduction}
       />,
     ),
   );
@@ -92,11 +93,12 @@ it('opens the Canvas menu of boards to create, walks it with the keyboard and ma
     const menu = document.querySelector<HTMLElement>('[role="menu"]')!;
     expect(menu.getAttribute('aria-label')).toBe('board.canvasMenu.label');
     const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
-    // One card per kind, with its preview; Production is not a kind yet.
+    // One card per kind, with its preview, Production last (decision 0123).
     expect(items.map((i) => i.getAttribute('aria-label'))).toEqual([
       'board.types.board',
       'film.views.moodboard',
       'film.views.storyboard',
+      'film.views.production',
     ]);
     expect(items.every((i) => i.querySelector('.new-board__preview'))).toBe(true);
     // Each kind carries its content-kind colour; Board stays neutral.
@@ -104,6 +106,7 @@ it('opens the Canvas menu of boards to create, walks it with the keyboard and ma
     expect(cards[0]).toContain('--kind-fg: var(--ink-text-secondary)');
     expect(cards[1]).toContain('--kind-fg: var(--ink-tag-orange)');
     expect(cards[2]).toContain('--kind-fg: var(--ink-tag-purple)');
+    expect(cards[3]).toContain('--kind-fg: var(--ink-tag-green)');
     expect(document.activeElement).toBe(items[0]);
     const key = (k: string) =>
       act(async () => {
@@ -114,7 +117,7 @@ it('opens the Canvas menu of boards to create, walks it with the keyboard and ma
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[1]);
     await key('End');
-    expect(document.activeElement).toBe(items[2]);
+    expect(document.activeElement).toBe(items[3]);
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[0]);
     await key('Escape');
@@ -122,7 +125,12 @@ it('opens the Canvas menu of boards to create, walks it with the keyboard and ma
     expect(document.activeElement).toBe(button);
     expect(button.getAttribute('aria-expanded')).toBe('false');
 
-    for (const [i, kind] of [[0], [1, 'moodboard'], [2, 'storyboard']] as const) {
+    for (const [i, kind] of [
+      [0],
+      [1, 'moodboard'],
+      [2, 'storyboard'],
+      [3, 'production'],
+    ] as const) {
       await act(async () => button.click());
       await act(async () =>
         document.querySelectorAll<HTMLElement>('[role="menuitem"]')[i]?.click(),
@@ -209,7 +217,7 @@ it('leaves the tools of a module that is off out of More', async () => {
     expect(names).toContain('board.types.plan');
     // In the Canvas menu the Storyboard kind stays, dimmed, with Turn on.
     await act(async () => host.querySelector<HTMLButtonElement>('.toolbar__btn--canvas')?.click());
-    const storyboard = [...document.querySelectorAll('[role="menuitem"]')].at(-1);
+    const storyboard = [...document.querySelectorAll('[role="menuitem"]')].at(2);
     expect(storyboard?.getAttribute('aria-label')).toBe('modules.kindOff');
     expect(storyboard?.querySelector('.new-board.is-off .new-board__tag')?.textContent).toBe(
       'modules.turnOn',
@@ -223,4 +231,40 @@ it('leaves the tools of a module that is off out of More', async () => {
 it('covers every tool with a tool colour and every menu entry with a canvas colour', () => {
   for (const { type, menuOnly } of TOOLS)
     if (!menuOnly) expect(Object.hasOwn(toolColor, type)).toBe(true);
+});
+
+it('offers the one Production board dimmed, "Already in the project", and opens it (0123)', async () => {
+  const onProduction = vi.fn();
+  const { host, onCanvas, cleanup } = await renderToolbar(undefined, onProduction);
+  try {
+    await act(async () => host.querySelector<HTMLButtonElement>('.toolbar__btn--canvas')?.click());
+    const production = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].at(-1);
+    expect(production?.getAttribute('aria-label')).toBe(
+      'film.views.production · board.canvasMenu.present',
+    );
+    expect(production?.querySelector('.new-board.is-off .new-board__desc')?.textContent).toBe(
+      'board.canvasMenu.present',
+    );
+    await act(async () => production?.click());
+    expect(onProduction).toHaveBeenCalledOnce();
+    expect(onCanvas).not.toHaveBeenCalled();
+  } finally {
+    await cleanup();
+  }
+  // With the module off, it is dimmed with Turn on, like the other kinds.
+  await updatePreferences({ modulesOff: ['production'] });
+  const off = await renderToolbar(undefined, onProduction);
+  try {
+    await act(async () =>
+      off.host.querySelector<HTMLButtonElement>('.toolbar__btn--canvas')?.click(),
+    );
+    const production = [...document.querySelectorAll('[role="menuitem"]')].at(-1);
+    expect(production?.getAttribute('aria-label')).toBe('modules.kindOff');
+    expect(production?.querySelector('.new-board.is-off .new-board__tag')?.textContent).toBe(
+      'modules.turnOn',
+    );
+  } finally {
+    await off.cleanup();
+    await updatePreferences({ modulesOff: [] });
+  }
 });

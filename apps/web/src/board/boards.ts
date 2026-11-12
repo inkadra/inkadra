@@ -143,6 +143,48 @@ export function childBoards(items: Board[] | null, parentId: string): Board[] {
   return (items ?? []).filter((b) => b.parentBoardId === parentId).sort(comparePosition);
 }
 
+/** The project's Production board among its boards, when the person can see it (decision 0123). */
+export function productionOf(items: readonly Board[] | null | undefined): Board | undefined {
+  return items?.find((b) => b.kind === 'production');
+}
+
+/** The loaded boards of the project that holds `boardId`; null while it is not loaded. */
+export function boardsWith(boardId: string): Board[] | null {
+  for (const { items } of cache.values()) if (items?.some((b) => b.id === boardId)) return items;
+  return null;
+}
+
+/** `boardsWith`, followed as the lists load and change. */
+export function useBoardsWith(boardId: string | undefined): Board[] | null {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+    () => (boardId ? boardsWith(boardId) : null),
+  );
+}
+
+/** The boards in the order of the sidebar's tree: each after its parent, siblings by position. */
+export function treeOrder(items: readonly Board[]): Board[] {
+  const ids = new Set(items.map((b) => b.id));
+  const out: Board[] = [];
+  const walk = (parentId: string | null) => {
+    for (const b of items
+      .filter(
+        (x) =>
+          x.parentBoardId === parentId || (parentId === null && !ids.has(x.parentBoardId ?? '')),
+      )
+      .sort(comparePosition)) {
+      if (out.includes(b)) continue;
+      out.push(b);
+      walk(b.id);
+    }
+  };
+  walk(null);
+  return out;
+}
+
 /** Top boards of the subtrees shared with you in projects you are not a member of. */
 export function useSharedBoards(enabled: boolean): Board[] | null {
   const [items, setItems] = useState<Board[] | null>(null);

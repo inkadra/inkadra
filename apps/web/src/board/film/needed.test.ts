@@ -71,3 +71,14 @@ describe('needed items of a shooting day', () => {
     expect(neededForDay(dayOf(frame(s3)), listElements(doc))[0]?.done).toBe(true);
   });
 });
+
+describe('a scene block (decision 0123)', () => {
+  it('needs what its scene needs, drawn or not', () => {
+    const { doc, scene, list } = board();
+    const s4 = scene('4');
+    list(s4, 'props', ['Ombrello']);
+    const day = { ...dayOf(), blocks: [{ ...newScheduleBlock('scene'), sceneId: s4 }] };
+    const rows = neededForDay(day, listElements(doc));
+    expect(rows.map((r) => [r.text, r.scenes])).toEqual([['Ombrello', ['4']]]);
+  });
+});

@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { moveTabFocus } from '../lib/tabs.ts';
 import { pickVariant, useAsset } from './assets.ts';
 import { type PreviewEntry, useBoardPreview } from './board-previews.ts';
+import { productionOf, useBoardsWith } from './boards.ts';
 import { loadCardView, saveCardView } from './canvas-prefs.ts';
 import { useBoard } from './context.ts';
 import { usePresetText } from './film/fields.tsx';
@@ -54,7 +55,7 @@ export function BoardCardPreview({
 }) {
   const { t } = useTranslation();
   const { userId } = useBoard();
-  const views = boardViews(board, counts);
+  const views = boardViews(board, counts, !!productionOf(useBoardsWith(board.id)));
   const [chosen, setChosen] = useState(() => loadCardView(userId, element.id));
   const view = cardView(views, chosen) ?? 'canvas';
   // What the canvas already knows of the board: when it changes the preview is asked again.

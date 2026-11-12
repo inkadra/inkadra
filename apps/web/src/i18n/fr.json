@@ -122,7 +122,8 @@
     "toShoot_other": "{{left}} plans sur {{count}} encore à tourner",
     "items_one": "{{count}} élément sur le tableau",
     "items_other": "{{count}} éléments sur le tableau",
-    "addMoodboard": "Ajouter un moodboard"
+    "addMoodboard": "Ajouter un moodboard",
+    "addProduction": "Ajouter la Production"
   },
   "home": {
     "greeting": {
@@ -297,8 +298,10 @@
       "desc": {
         "board": "Espace libre pour notes, images et fichiers.",
         "moodboard": "Références en groupes, avec une palette.",
-        "storyboard": "Scènes et plans, avec la liste des plans."
-      }
+        "storyboard": "Scènes et plans, avec la liste des plans.",
+        "production": "Plan de travail + Équipe"
+      },
+      "present": "Déjà dans le projet"
     },
     "toolGroups": {
       "navigate": "Naviguer et relier",
@@ -2001,7 +2004,8 @@
       "schedule": "Plan de travail",
       "review": "Révision",
       "moodboard": "Moodboard",
-      "troupe": "Équipe"
+      "troupe": "Équipe",
+      "production": "Production"
     },
     "aspect": {
       "label": "Format",
@@ -3165,7 +3169,8 @@
       "shot": "Tournage",
       "break": "Pause",
       "move": "Déplacement",
-      "note": "Note"
+      "note": "Note",
+      "scene": "Scène entière"
     },
     "days_one": "{{count}} journée de tournage",
     "days_other": "{{count}} journées de tournage",
@@ -3299,7 +3304,16 @@
     "dayMoved": "Journée déplacée du {{from}} au {{to}}.",
     "daysSwapped": "{{from}} et {{to}} échangés.",
     "blockNotes": "Note en évidence",
-    "blockNotesPlaceholder": "Imprimée sur la feuille, p. ex. GUIRLANDES ET VITRINES ALLUMÉES"
+    "blockNotesPlaceholder": "Imprimée sur la feuille, p. ex. GUIRLANDES ET VITRINES ALLUMÉES",
+    "unavailable": "Storyboard non disponible",
+    "missingScene": "Scène retirée",
+    "noStoryboardShots": "Aucun storyboard avec des scènes ou des plans. Les scènes et les plans des storyboards du projet arrivent ici.",
+    "filterStoryboard": "Filtrer par storyboard",
+    "storyboardFilterLabel": "Storyboard",
+    "wholeScene": "Planifier la scène entière",
+    "wholeSceneHint_one": "{{count}} plan, en un seul bloc",
+    "wholeSceneHint_other": "{{count}} plans, en un seul bloc",
+    "sceneNoFrames": "Pas encore de plans : planifiez-la en un bloc"
   },
   "moodboard": {
     "count_one": "{{count}} référence",
@@ -4317,7 +4331,8 @@
       "fraunces": "serif",
       "space-grotesk": "grotesk",
       "ibm-plex-mono": "mono"
-    }
+    },
+    "whatCallsheets": "Feuilles de service"
   },
   "screenplay": {
     "open": "Importer un scénario…",
@@ -5101,7 +5116,7 @@
           },
           "2": {
             "title": "Nouveaux tableaux",
-            "text": "Canevas crée des tableaux, des moodboards et des storyboards, et importe un scénario."
+            "text": "Canvas crée des tableaux, des moodboards, des storyboards et le tableau Production unique du projet (Plan de travail et Équipe), et importe un scénario."
           },
           "3": {
             "title": "Sélectionner une carte",
@@ -5207,15 +5222,15 @@
         "steps": {
           "0": {
             "title": "Le calendrier de tournage",
-            "text": "Jour ou semaine, comme un agenda : les blocs se mettent à la suite tout seuls. Glissez un plan à la bonne heure, ou cliquez dessus pour l’ajouter à la fin. Avec des plans au sol, « Grouper par : Setup » range les plans de chaque scène et de chaque journée sous leur setup."
+            "text": "Sur le tableau Production, un calendrier pour tout le projet : la file réunit les plans et les scènes de chaque storyboard. Jour ou semaine, comme un agenda : les blocs se mettent à la suite tout seuls. Glissez un plan à la bonne heure, ou cliquez dessus pour l’ajouter à la fin. Avec des plans au sol, « Grouper par : Setup » range les plans de chaque scène et de chaque journée sous leur setup."
           },
           "1": {
-            "title": "Déplacer et allonger",
-            "text": "Glissez pour réordonner, avec Alt pour fixer l’heure, par le bord inférieur pour la durée. Déposez sur une date libre pour créer une journée de tournage ; Ctrl+Z annule tout le geste."
+            "title": "Storyboards et pastilles",
+            "text": "Le filtre Storyboard montre les plans d’un seul ; la pastille de couleur dit de quel storyboard vient chaque bloc. « Planifier la scène entière » met une scène dans un bloc, même avant de la dessiner. Une pastille grise : storyboard non disponible, son libellé reste."
           },
           "2": {
-            "title": "Dessiner un bloc",
-            "text": "Glissez sur un temps libre pour dessiner un bloc par pas de 5 minutes, puis choisissez son type (touches 1–5). La vue Day a aussi « Block » dans la barre. Au clavier, N ajoute un bloc après celui sélectionné, ou à la fin de la journée."
+            "title": "Déplacer et allonger",
+            "text": "Glissez pour réordonner, avec Alt pour fixer l’heure, par le bord inférieur pour la durée. Déposez sur une date libre pour créer une journée de tournage ; Ctrl+Z annule tout le geste. Glissez sur un temps libre pour dessiner un bloc par pas de 5 minutes, puis choisissez son type (touches 1–5). La vue Day a aussi « Block » dans la barre. Au clavier, N ajoute un bloc après celui sélectionné, ou à la fin de la journée."
           },
           "3": {
             "title": "Déplacer une journée entière",
@@ -5565,7 +5580,7 @@
         "steps": {
           "0": {
             "title": "Équipe du projet",
-            "text": "Regroupez les personnes par département. Les contacts restent privés à l’équipe du projet. La même personne sur deux lignes ? Menu ⋯ de la ligne, « Fusionner avec… »."
+            "text": "L’équipe se trouve sur le tableau Production, à côté du plan de travail. Regroupez les personnes par département. Les contacts restent privés à l’équipe du projet. La même personne sur deux lignes ? Menu ⋯ de la ligne, « Fusionner avec… »."
           },
           "1": {
             "title": "Modifier une personne",
@@ -6309,5 +6324,9 @@
       "storyboard": "{{scenes}} sur le tableau. Avec Storyboard, elles deviennent des plans."
     },
     "offLine": "Module {{name}} désactivé : vous pouvez lire ce tableau."
+  },
+  "production": {
+    "storyboardLink_one": "Jours de tournage : {{count}} · Ouvrir la Production",
+    "storyboardLink_other": "Jours de tournage : {{count}} · Ouvrir la Production"
   }
 }

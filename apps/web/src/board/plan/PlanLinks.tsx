@@ -551,7 +551,7 @@ export function SunSection({ ed }: { ed: Ed }) {
       .sort()
       .join(' ');
   }, [ed.cards, sceneKey]);
-  const { offered, all } = useSunDays(scheduled, shotKey);
+  const { offered, all } = useSunDays(scheduled, shotKey, sceneKey);
   /** `dayGone`: the day it followed is no longer in the schedule; the plan keeps its last date. */
   const { date, day: linked, gone: dayGone } = sunDate(ed.plan.sun, all);
   const location = ed.cards.get(owner.locationId ?? '') as Location | undefined;
