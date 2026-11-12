@@ -237,7 +237,7 @@ for (const width of [1280, 390]) {
           await page
             .getByRole('textbox', { name: 'Testo sul disegno', exact: true })
             .press('Enter');
-          await expect(page.locator('.plan-editor__stage')).toHaveClass(/--select/);
+          await expect(page.locator('.plan-canvas__surface')).toHaveClass(/--select/);
           // A click selects, a double click writes.
           await page
             .locator('.plan-editor__stage text')
