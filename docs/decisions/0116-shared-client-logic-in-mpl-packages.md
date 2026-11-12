@@ -31,6 +31,10 @@ These moved: in `packages/shared`, the rules of the call sheet that say who is c
 exposes the colour maths. The web modules re-export the moved names, so their callers and tests
 did not change.
 
+A function a native client calls on the UI thread starts with the `'worklet'` directive, which
+React Native's Reanimated needs and every other runtime ignores; the first are the crop geometry
+functions of `image-crop.ts` (`rotatedBounds`, `croppedRotatedSize` and the helpers they call).
+
 For the mobile app to read a set plan as the web does, these moved too. In
 `packages/canvas-core`: the kit (`kitList`, `KIT_GROUPS`, `planCounts`, `foldNames`,
 `setupKit`, `familyKitCount`), the power per circuit as text (`powerLines`, `powerText`); the
