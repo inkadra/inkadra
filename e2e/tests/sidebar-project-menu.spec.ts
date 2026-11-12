@@ -191,7 +191,8 @@ test('a scene of a new storyboard gets a set plan without a canvas', async ({ pa
   const editor = page.getByRole('dialog', { name: /Pianta del set/ });
   await expect(editor).toBeVisible();
   await expect(page.getByTestId('canvas')).toHaveCount(0);
-  await page.keyboard.press('Escape');
+  await expect(editor.getByText('Scena 1', { exact: true })).toBeVisible();
+  await editor.getByRole('button', { name: 'Fatto', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(newPlan).toHaveCount(0);
   await scene.getByRole('button', { name: 'Pianta del set', exact: true }).click();
