@@ -31,9 +31,9 @@ const JPEG = bytesOf(
   '/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYyLjExLjEwMAD/2wBDAAgQEBMQExYWFhYWFhoYGhsbGxoaGhobGxsdHR0iIiIdHR0bGx0dICAiIiUmJSMjIiMmJigoKDAwLi44ODpFRVP/xABrAAADAQEBAQAAAAAAAAAAAAAFBgABBAIHAQEBAQAAAAAAAAAAAAAAAAAAAQMQAAECAwQJBQEAAAAAAAAAAAECAwAEERVkk+IhBRNTQdGSURIxIrOCNHIRAQEAAAAAAAAAAAAAAAAAAACB/8AAEQgAIAAwAwEiAAIRAAMRAP/aAAwDAQACEQMRAD8A+tzD6ZZpTqwSlNK+NK6SBxI7wJtG6TuDmjdagqknQASfZ6f2mDG3Z3jfUnnGag1o3Sdwc0Vo3Sdwc0GduzvG+pPOLbs7xvqTziwBrRuk7g5oLS76ZlpLqAQlVaeVK6CRwJ7R727O8b6k84D6qBTJNAgg+/1/tUQZrf8AC99PkTDHHFMMJmWlNLJCVUr40roIPEHtAmzr3O42WCmOKFyzr3O42WKzr3O42WAY4XNUfhZ+/wAiorOvc7jZYLS7CZZpLSCSlNaeVK6STwA7wH//2Q==',
 );
 
-/** A 2 × 2 PNG in greys, what the test's grey provider gives back. */
+/** A 3 × 2 PNG in greys (the JPEG's shape), what the test's grey provider gives back. */
 const GREY_PNG = bytesOf(
-  'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAAAAABX3VL4AAAADklEQVR4nGNocGBocAAABMYBgbG6zUoAAAAASUVORK5CYII=',
+  'iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAAAAAC4HznGAAAADklEQVR4nGNocDjBAMQAC7gDEW8W+sAAAAAASUVORK5CYII=',
 );
 
 const META = { title: 'Pictures', author: '', subject: 'Test', language: 'en' };
@@ -87,7 +87,9 @@ async function written(bytes: Uint8Array) {
     .map((line) => line.trim())
     .filter(Boolean);
   const xObjects = node.Resources()?.lookupMaybe(PDFName.of('XObject'), PDFDict);
-  const pictures = (xObjects?.values() ?? [])
+  // pdf-lib names a picture once per drawing; each picture is one object.
+  const refs = new Map((xObjects?.values() ?? []).map((ref) => [ref.toString(), ref]));
+  const pictures = [...refs.values()]
     .map((ref) => pdf.context.lookup(ref))
     .map((stream) => (stream instanceof PDFRawStream ? stream.dict : null))
     .map((dict) =>
@@ -106,13 +108,13 @@ describe('renderPdf', () => {
     const asked: PdfImage[] = [];
     const grey = async (img: PdfImage): Promise<PdfImage> => {
       asked.push(img);
-      return { width: img.width, height: img.height, bytes: GREY_PNG, type: 'png' };
+      return { width: 3, height: 2, bytes: GREY_PNG, type: 'png' };
     };
     const bytes = await renderPdf([PAGE], inter(), IMAGES, META, { grey });
     expect(asked).toEqual([IMAGES.get('floor')]);
     const { ops, pictures } = await written(bytes);
-    // The JPEG as given and the provider's PNG, nothing else.
-    expect(pictures).toEqual(['/DCTDecode /DeviceRGB 48x32', '/FlateDecode /DeviceGray 2x2']);
+    // The JPEG as given and the provider's PNG (pdf-lib writes it as RGB), nothing else.
+    expect(pictures).toEqual(['/DCTDecode /DeviceRGB 48x32', '/FlateDecode /DeviceRGB 3x2']);
     expect(ops.filter((op) => op.endsWith(' Do'))).toEqual([
       '/Image-# Do',
       '/Image-# Do',
@@ -139,4 +141,40 @@ describe('renderPdf', () => {
   });
 });
 
-const OPERATORS = `TODO`;
+/**
+ * The page's operators: the colour picture, the grey one at 0.6 (its graphics state), the grey one
+ * again from the same object, then the text.
+ */
+const OPERATORS = `1 j
+q
+1 0 0 1 10 58 cm
+1 0 0 1 0 0 cm
+48 0 0 32 0 0 cm
+1 0 0 1 0 0 cm
+/Image-# Do
+Q
+q
+/GS-# gs
+1 0 0 1 70 58 cm
+1 0 0 1 0 0 cm
+48 0 0 32 0 0 cm
+1 0 0 1 0 0 cm
+/Image-# Do
+Q
+q
+1 0 0 1 130 58 cm
+1 0 0 1 0 0 cm
+48 0 0 32 0 0 cm
+1 0 0 1 0 0 cm
+/Image-# Do
+Q
+q
+BT
+0.12549019607843137 0.12549019607843137 0.12549019607843137 rg
+/Inter-Regular-# 10 Tf
+24 TL
+1 0 0 1 10 40 Tm
+<00010002000300030004> Tj
+T*
+ET
+Q`;
